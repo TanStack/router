@@ -75,7 +75,7 @@ flowchart TB
     end
 
     subgraph "Plugin 1: compile-reference-file"
-        P1["Transform about.tsx<br/>• computeSharedBindings()<br/>• compileCodeSplitReferenceRoute()"]
+        P1["Transform about.tsx<br/>• computeSharedBindingsFromAst()<br/>• compileCodeSplitReferenceRouteFromAst()"]
     end
 
     subgraph "Plugin 2: compile-virtual-file"
@@ -126,9 +126,12 @@ Excludes file IDs that include `tsr-split` or `tsr-shared`.
 
 **What it does:**
 
-1. Detects per-route `codeSplitGroupings` if specified inline
-2. Calls `computeSharedBindings()` and caches the result in `sharedBindingsMap`
-3. Calls `compileCodeSplitReferenceRoute()` which:
+1. Parses the reference source once and detects per-route `codeSplitGroupings`
+   if specified inline
+2. Calls `computeSharedBindingsFromAst()` and caches the binding names in
+   `sharedBindingsMap`
+3. Passes that same AST to `compileCodeSplitReferenceRouteFromAst()` after both
+   analyses finish. The compiler mutates the AST, which stays local to this transform:
    - Replaces split properties with `lazyRouteComponent()` / `lazyFn()` wrappers
    - Injects `import()` expressions pointing to `?tsr-split=<encoded>` URLs
    - Removes shared binding declarations, replacing them with
@@ -285,15 +288,15 @@ size issue.
 
 ### The Solution
 
-`computeSharedBindings()` identifies bindings that are referenced by properties
+`computeSharedBindingsFromAst()` identifies bindings that are referenced by properties
 in 2+ distinct "groups" (where each split grouping index is one group, and all
 non-split properties form group `-1`). These bindings are extracted into a
 third virtual module (`?tsr-shared=1`) that both the reference module and the
 split modules import from, ensuring a single shared instance.
 
-### How `computeSharedBindings()` Works
+### How `computeSharedBindingsFromAst()` Works
 
-**Location:** `src/core/code-splitter/compilers.ts` (`computeSharedBindings`)
+**Location:** `src/core/code-splitter/compilers.ts` (`computeSharedBindingsFromAst`)
 
 **Algorithm:**
 
@@ -415,7 +418,7 @@ imports `cache` (needed by `setCached`) from the shared module.
 The three plugins share a closure containing `sharedBindingsMap`:
 
 ```
-Plugin 1 (reference): computeSharedBindings() → sharedBindingsMap.set(id, bindings)
+Plugin 1 (reference): computeSharedBindingsFromAst() → sharedBindingsMap.set(id, bindings)
 Plugin 2 (virtual):   sharedBindingsMap.get(baseId) → pass to compileCodeSplitVirtualRoute()
 Plugin 3 (shared):    sharedBindingsMap.get(baseId) → pass to compileCodeSplitSharedRoute()
 ```
@@ -609,14 +612,14 @@ transitive dependencies.
 6. Run `deadCodeElimination()`
 7. Generate output with source maps
 
-### `computeSharedBindings()`
+### `computeSharedBindingsFromAst()`
 
 **Purpose:** Analyze a route file to determine which module-level bindings
 are referenced by multiple split groups.
 
 See [Shared Bindings System](#shared-bindings-system) for the full algorithm.
 
-### `detectCodeSplitGroupingsFromRoute()`
+### `detectCodeSplitGroupingsFromAst()`
 
 **Purpose:** Parse inline `codeSplitGroupings` from route options.
 
@@ -849,7 +852,7 @@ it. Bundlers process transforms in plugin array order for a given module ID.
 
 ### 9. Imported Bindings Are Never Shared
 
-`computeSharedBindings()` only considers **locally-declared** module-level
+`computeSharedBindingsFromAst()` only considers **locally-declared** module-level
 bindings. Import statements are handled by the bundler's module system — if
 both the reference file and a virtual file import the same external module,
 the bundler deduplicates that import automatically. No shared module needed.
