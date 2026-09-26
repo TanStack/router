@@ -1,5 +1,6 @@
+import { parseAst } from '@tanstack/router-utils'
 import { describe, expect, it } from 'vitest'
-import { detectCodeSplitGroupingsFromRoute } from '../src/core/code-splitter/compilers'
+import { detectCodeSplitGroupingsFromAst } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import type { CodeSplitGroupings } from '../src/core/constants'
 
@@ -116,14 +117,16 @@ export const Route = createFileRoute({})
   },
 ]
 
-describe('detectCodeSplitGroupingsFromRoute - success', () => {
+describe('detectCodeSplitGroupingsFromAst - success', () => {
   it.each(successCases)(
     'should detect code split groupings for $name',
     ({ code, expectedGrouping }) => {
-      const result = detectCodeSplitGroupingsFromRoute({
-        code: code,
-        sourceFilename: 'test.ts',
-      })
+      const result = detectCodeSplitGroupingsFromAst(
+        parseAst({
+          code: code,
+          sourceFilename: 'test.ts',
+        }),
+      )
 
       expect(result.groupings).toEqual(expectedGrouping)
     },
@@ -182,13 +185,15 @@ codeSplitGroupings: groupings
   },
 ]
 
-describe('detectCodeSplitGroupingsFromRoute - fail', () => {
+describe('detectCodeSplitGroupingsFromAst - fail', () => {
   it.each(failCases)('should throw error for $name', ({ code }) => {
     expect(() =>
-      detectCodeSplitGroupingsFromRoute({
-        code: code,
-        sourceFilename: 'test.ts',
-      }),
+      detectCodeSplitGroupingsFromAst(
+        parseAst({
+          code: code,
+          sourceFilename: 'test.ts',
+        }),
+      ),
     ).toThrowError()
   })
 })

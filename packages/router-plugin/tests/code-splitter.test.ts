@@ -13,10 +13,8 @@ import {
   compileCodeSplitReferenceRouteFromAst,
   compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
-  computeSharedBindings,
   computeSharedBindingsFromAst,
   detectCodeSplitGroupingsFromAst,
-  detectCodeSplitGroupingsFromRoute,
   expandDestructuredDeclarations,
   expandSharedDestructuredDeclarators,
   expandTransitively,
@@ -75,10 +73,10 @@ describe('code-splitter works', () => {
             const file = await readFile(path.join(dirs.files, filename))
             const code = file.toString()
 
-            const sharedBindings = computeSharedBindings({
-              code,
-              codeSplitGroupings: grouping,
-            })
+            const sharedBindings = computeSharedBindingsFromAst(
+              parseAst({ code }),
+              grouping,
+            )
 
             const opts = {
               code,
@@ -96,7 +94,7 @@ describe('code-splitter works', () => {
             // snapshot matrix, including scope-sensitive shared extraction.
             const ast = parseAst({ code, filename })
             expect(detectCodeSplitGroupingsFromAst(ast)).toEqual(
-              detectCodeSplitGroupingsFromRoute({ code, filename }),
+              detectCodeSplitGroupingsFromAst(parseAst({ code, filename })),
             )
             const parsedSharedBindings = computeSharedBindingsFromAst(
               ast,
@@ -126,10 +124,10 @@ describe('code-splitter works', () => {
             const file = await readFile(path.join(dirs.files, filename))
             const code = file.toString()
 
-            const sharedBindings = computeSharedBindings({
-              code,
-              codeSplitGroupings: grouping,
-            })
+            const sharedBindings = computeSharedBindingsFromAst(
+              parseAst({ code }),
+              grouping,
+            )
 
             for (const targets of grouping) {
               const ident = createIdentifier(targets)
@@ -160,10 +158,10 @@ describe('code-splitter works', () => {
             const file = await readFile(path.join(dirs.files, filename))
             const code = file.toString()
 
-            const sharedBindings = computeSharedBindings({
-              code,
-              codeSplitGroupings: grouping,
-            })
+            const sharedBindings = computeSharedBindingsFromAst(
+              parseAst({ code }),
+              grouping,
+            )
 
             const snapshotFilename = path.join(
               dirs.snapshots,
@@ -249,7 +247,7 @@ function ${splitType}() {
   )
 })
 
-describe('computeSharedBindings fast paths', () => {
+describe('computeSharedBindingsFromAst fast paths', () => {
   it('returns empty when only one split group is present (default groupings)', () => {
     const code = `
 import { createFileRoute } from '@tanstack/react-router'
@@ -258,10 +256,10 @@ export const Route = createFileRoute('/')({
   component: () => shared,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultCodeSplitGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultCodeSplitGroupings,
+    )
     expect(result.size).toBe(0)
   })
 
@@ -274,10 +272,9 @@ export const Route = createFileRoute('/')({
   loader: () => shared,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: [['component', 'loader']],
-    })
+    const result = computeSharedBindingsFromAst(parseAst({ code }), [
+      ['component', 'loader'],
+    ])
     expect(result.size).toBe(0)
   })
 
@@ -290,10 +287,10 @@ export const Route = createFileRoute('/')({
   notFoundComponent: undefined,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultCodeSplitGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultCodeSplitGroupings,
+    )
     expect(result.size).toBe(0)
   })
 
@@ -305,10 +302,10 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <div>error</div>,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultCodeSplitGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultCodeSplitGroupings,
+    )
     expect(result.size).toBe(0)
   })
 
@@ -321,10 +318,10 @@ export const Route = createFileRoute('/')({
   beforeLoad: () => shared,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultCodeSplitGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultCodeSplitGroupings,
+    )
     expect(result).toContain('shared')
   })
 })
@@ -579,7 +576,7 @@ describe('collectLocalBindingsFromStatement', () => {
 })
 
 // ============================================================================
-// LAYER 2: Invariant Tests on computeSharedBindings
+// LAYER 2: Invariant Tests on computeSharedBindingsFromAst
 //
 // These verify the core "contracts" of the shared bindings computation:
 // - Route is never extracted
@@ -589,7 +586,7 @@ describe('collectLocalBindingsFromStatement', () => {
 // - Route-dependent bindings are excluded
 // ============================================================================
 
-describe('computeSharedBindings invariants', () => {
+describe('computeSharedBindingsFromAst invariants', () => {
   const defaultGroupings = defaultCodeSplitGroupings
 
   function getLocalBindings(code: string): Set<string> {
@@ -611,10 +608,10 @@ export const Route = createFileRoute('/')({
   beforeLoad: () => shared,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultGroupings,
+    )
     expect(result.has('Route')).toBe(false)
   })
 
@@ -629,10 +626,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{config.timeout}</div>,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultGroupings,
+    )
     const localBindings = getLocalBindings(code)
 
     for (const name of result) {
@@ -649,10 +646,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{helper()}</div>,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultGroupings,
+    )
     expect(result.has('helper')).toBe(false)
   })
 
@@ -665,10 +662,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{b}</div>,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultGroupings,
+    )
 
     // If any destructured sibling is shared, all must be
     const siblings = ['a', 'b', 'c']
@@ -689,10 +686,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{config.url}</div>,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultGroupings,
+    )
 
     // If config is shared (referenced by both loader via fetcher and component directly),
     // then BASE (which config depends on) should also be shared
@@ -713,10 +710,10 @@ export const Route = createFileRoute('/about')({
   component: () => <div>{usePageTitle()}</div>,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultGroupings,
+    )
 
     // usePageTitle references Route, so it must NOT be shared
     expect(result.has('usePageTitle')).toBe(false)
@@ -735,10 +732,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{componentOnly()} {shared}</div>,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultGroupings,
+    )
 
     // loaderOnly is only used by loader (non-split), should NOT be shared
     expect(result.has('loaderOnly')).toBe(false)
@@ -757,10 +754,10 @@ export const Route = createRootRoute({
   beforeLoad: () => shared,
 })
 `
-    const result = computeSharedBindings({
-      code,
-      codeSplitGroupings: defaultGroupings,
-    })
+    const result = computeSharedBindingsFromAst(
+      parseAst({ code }),
+      defaultGroupings,
+    )
     expect(result.size).toBe(0)
   })
 
@@ -774,9 +771,18 @@ export const Route = createFileRoute('/')({
 })
 `
     const opts = { code, codeSplitGroupings: defaultGroupings }
-    const result1 = computeSharedBindings(opts)
-    const result2 = computeSharedBindings(opts)
-    const result3 = computeSharedBindings(opts)
+    const result1 = computeSharedBindingsFromAst(
+      parseAst(opts),
+      opts.codeSplitGroupings,
+    )
+    const result2 = computeSharedBindingsFromAst(
+      parseAst(opts),
+      opts.codeSplitGroupings,
+    )
+    const result3 = computeSharedBindingsFromAst(
+      parseAst(opts),
+      opts.codeSplitGroupings,
+    )
 
     expect(result1).toEqual(result2)
     expect(result2).toEqual(result3)
@@ -793,7 +799,7 @@ export const Route = createFileRoute('/')({
 // - split grouping configurations
 // ============================================================================
 
-describe('small-scope exhaustive: computeSharedBindings', () => {
+describe('small-scope exhaustive: computeSharedBindingsFromAst', () => {
   // Helper to generate a route file with specific binding configurations
   function makeRouteCode(opts: {
     bindings: Array<{ name: string; kind: 'const' | 'function' | 'class' }>
@@ -889,10 +895,10 @@ ${props.join(',\n')}
             loaderRefs: ['x'],
             componentRefs: [],
           })
-          const result = computeSharedBindings({
-            code,
-            codeSplitGroupings: groupings,
-          })
+          const result = computeSharedBindingsFromAst(
+            parseAst({ code }),
+            groupings,
+          )
           expect(result.has('x')).toBe(false)
         })
 
@@ -903,10 +909,10 @@ ${props.join(',\n')}
             loaderRefs: [],
             componentRefs: ['x'],
           })
-          const result = computeSharedBindings({
-            code,
-            codeSplitGroupings: groupings,
-          })
+          const result = computeSharedBindingsFromAst(
+            parseAst({ code }),
+            groupings,
+          )
           expect(result.has('x')).toBe(false)
         })
 
@@ -917,10 +923,10 @@ ${props.join(',\n')}
             loaderRefs: ['x'],
             componentRefs: ['x'],
           })
-          const result = computeSharedBindings({
-            code,
-            codeSplitGroupings: groupings,
-          })
+          const result = computeSharedBindingsFromAst(
+            parseAst({ code }),
+            groupings,
+          )
           expect(result.has('x')).toBe(true)
         })
 
@@ -932,10 +938,10 @@ ${props.join(',\n')}
             componentRefs: ['x'],
             beforeLoadRefs: ['x'],
           })
-          const result = computeSharedBindings({
-            code,
-            codeSplitGroupings: groupings,
-          })
+          const result = computeSharedBindingsFromAst(
+            parseAst({ code }),
+            groupings,
+          )
           expect(result.has('x')).toBe(true)
         })
       }
@@ -954,10 +960,10 @@ ${props.join(',\n')}
           loaderRefs: ['a', 'b'],
           componentRefs: [],
         })
-        const result = computeSharedBindings({
-          code,
-          codeSplitGroupings: groupings,
-        })
+        const result = computeSharedBindingsFromAst(
+          parseAst({ code }),
+          groupings,
+        )
         expect(result.has('a')).toBe(false)
         expect(result.has('b')).toBe(false)
       })
@@ -972,10 +978,10 @@ ${props.join(',\n')}
           loaderRefs: ['a'],
           componentRefs: ['b'],
         })
-        const result = computeSharedBindings({
-          code,
-          codeSplitGroupings: groupings,
-        })
+        const result = computeSharedBindingsFromAst(
+          parseAst({ code }),
+          groupings,
+        )
         expect(result.has('a')).toBe(false)
         expect(result.has('b')).toBe(false)
       })
@@ -990,10 +996,10 @@ ${props.join(',\n')}
           loaderRefs: ['a', 'b'],
           componentRefs: ['a', 'b'],
         })
-        const result = computeSharedBindings({
-          code,
-          codeSplitGroupings: groupings,
-        })
+        const result = computeSharedBindingsFromAst(
+          parseAst({ code }),
+          groupings,
+        )
         expect(result.has('a')).toBe(true)
         expect(result.has('b')).toBe(true)
       })
@@ -1008,10 +1014,10 @@ ${props.join(',\n')}
           loaderRefs: ['a'],
           componentRefs: ['a', 'b'],
         })
-        const result = computeSharedBindings({
-          code,
-          codeSplitGroupings: groupings,
-        })
+        const result = computeSharedBindingsFromAst(
+          parseAst({ code }),
+          groupings,
+        )
         expect(result.has('a')).toBe(true)
         expect(result.has('b')).toBe(false)
       })
@@ -1029,10 +1035,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{config.url}</div>,
 })
 `
-      const result = computeSharedBindings({
-        code,
-        codeSplitGroupings: defaultCodeSplitGroupings,
-      })
+      const result = computeSharedBindingsFromAst(
+        parseAst({ code }),
+        defaultCodeSplitGroupings,
+      )
       // config is directly used by both groups → shared
       expect(result.has('config')).toBe(true)
       // BASE is a dep of config → also shared
@@ -1050,10 +1056,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{a}</div>,
 })
 `
-      const result = computeSharedBindings({
-        code,
-        codeSplitGroupings: defaultCodeSplitGroupings,
-      })
+      const result = computeSharedBindingsFromAst(
+        parseAst({ code }),
+        defaultCodeSplitGroupings,
+      )
       expect(result.has('a')).toBe(true)
       expect(result.has('b')).toBe(true)
       expect(result.has('c')).toBe(true)
@@ -1071,10 +1077,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{A}</div>,
 })
 `
-      const result = computeSharedBindings({
-        code,
-        codeSplitGroupings: defaultCodeSplitGroupings,
-      })
+      const result = computeSharedBindingsFromAst(
+        parseAst({ code }),
+        defaultCodeSplitGroupings,
+      )
       expect(result.has('A')).toBe(true)
       expect(result.has('B')).toBe(true)
       expect(result.has('C')).toBe(true)
@@ -1108,10 +1114,10 @@ export const Route = createFileRoute('/')({
         )
         const code = file.toString()
 
-        const result = computeSharedBindings({
-          code,
-          codeSplitGroupings: defaultCodeSplitGroupings,
-        })
+        const result = computeSharedBindingsFromAst(
+          parseAst({ code }),
+          defaultCodeSplitGroupings,
+        )
 
         // Contract 1: Route is never shared
         expect(result.has('Route')).toBe(false)
@@ -1129,10 +1135,10 @@ export const Route = createFileRoute('/')({
         }
 
         // Contract 3: result is deterministic
-        const result2 = computeSharedBindings({
-          code,
-          codeSplitGroupings: defaultCodeSplitGroupings,
-        })
+        const result2 = computeSharedBindingsFromAst(
+          parseAst({ code }),
+          defaultCodeSplitGroupings,
+        )
         expect(result).toEqual(result2)
       },
     )

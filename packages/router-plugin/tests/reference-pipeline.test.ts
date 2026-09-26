@@ -7,8 +7,8 @@ import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-  detectCodeSplitGroupingsFromRoute,
+  computeSharedBindingsFromAst,
+  detectCodeSplitGroupingsFromAst,
 } from '../src/core/code-splitter/compilers'
 import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
@@ -27,8 +27,11 @@ vi.mock('@tanstack/router-utils', async (importOriginal) => {
 async function createHarness(
   options: Partial<Config> = {},
   command: 'serve' | 'build' = 'serve',
+  extension: 'ts' | 'tsx' = 'tsx',
 ) {
-  const filename = normalizePath(path.resolve('src/routes/pipeline.tsx'))
+  const filename = normalizePath(
+    path.resolve(`src/routes/pipeline.${extension}`),
+  )
   const context = createRouterPluginContext()
   context.routesByFile.set(filename, { routeId: '/pipeline' })
   const result = createRouterCodeSplitterPlugin(options, context)
@@ -74,6 +77,47 @@ export const Route = createFileRoute('/pipeline')({ component: () => <div /> })`
     expect(parseAst).toHaveBeenCalledTimes(1)
   })
 
+  it('parses once with identifier options and shared destructured bindings', async () => {
+    const onRouteOptions = vi.fn()
+    const harness = await createHarness(
+      {
+        codeSplittingOptions: {
+          compilerPlugins: [{ name: 'observe-sharing', onRouteOptions }],
+        },
+      },
+      'build',
+    )
+    const code = await readFile(
+      new URL(
+        './code-splitter/test-files/react/shared-identifier-options.tsx',
+        import.meta.url,
+      ),
+      'utf8',
+    )
+    vi.mocked(parseAst).mockClear()
+    await harness.transform(code)
+    expect(parseAst).toHaveBeenCalledTimes(1)
+    expect(onRouteOptions).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        opts: expect.objectContaining({
+          sharedBindings: new Set(['read', 'render', 'seed']),
+        }),
+      }),
+    )
+  })
+
+  it('preserves filename-dependent TypeScript parsing', async () => {
+    const harness = await createHarness({}, 'build', 'ts')
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const value = <string>'typescript'
+export const Route = createFileRoute('/pipeline')({ loader: () => value, component: () => value })`
+    const result = await harness.transform(code)
+    expect(result).toMatchObject({
+      code: expect.stringContaining('tsr-shared=1'),
+    })
+  })
+
   it.each(['react', 'solid', 'vue'] as const)(
     'preserves %s compiler hooks, HMR and sourcemaps after analysis',
     async (targetFramework) => {
@@ -111,15 +155,16 @@ export const Route = createFileRoute('/pipeline')({ component: () => <div /> })`
           codeSplittingOptions: { compilerPlugins: [mutationPlugin] },
         })
         const { filename } = harness
-        const { groupings } = detectCodeSplitGroupingsFromRoute({
-          code,
-          filename,
-        })
-        const sharedBindings = computeSharedBindings({
-          code,
-          filename,
-          codeSplitGroupings: groupings!,
-        })
+        const { groupings } = detectCodeSplitGroupingsFromAst(
+          parseAst({
+            code,
+            filename,
+          }),
+        )
+        const sharedBindings = computeSharedBindingsFromAst(
+          parseAst({ code, filename }),
+          groupings!,
+        )
         const baseline = compileCodeSplitReferenceRoute({
           code,
           filename,
@@ -168,11 +213,10 @@ export const Route = createFileRoute('/pipeline')({
   component: () => <div>{${name ? `${name}.value` : "'none'"}}</div>,
 })`
         const { filename } = harness
-        const sharedBindings = computeSharedBindings({
-          code,
-          filename,
-          codeSplitGroupings: defaultCodeSplitGroupings,
-        })
+        const sharedBindings = computeSharedBindingsFromAst(
+          parseAst({ code, filename }),
+          defaultCodeSplitGroupings,
+        )
         expect([...sharedBindings]).toEqual(name ? [name] : [])
         const reference = compileCodeSplitReferenceRoute({
           code,
@@ -309,11 +353,10 @@ export const Route = createFileRoute('/pipeline')({
   loader: () => shared.title,
   component: () => <div>{shared.title}</div>,
 })`
-    const sharedBindings = computeSharedBindings({
-      code,
-      filename: harness.filename,
-      codeSplitGroupings: defaultCodeSplitGroupings,
-    })
+    const sharedBindings = computeSharedBindingsFromAst(
+      parseAst({ code, filename: harness.filename }),
+      defaultCodeSplitGroupings,
+    )
     expect([...sharedBindings]).toEqual(['shared'])
     const baseline = compileCodeSplitReferenceRoute({
       code,
