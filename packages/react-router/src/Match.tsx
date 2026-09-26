@@ -73,9 +73,13 @@ export const Match = React.memo(function MatchImpl({
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useSelector(matchStore)
-  return <MatchView router={router} match={match!} />
+  const match =
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useSelector(matchStore) ?? router.stores.departed.get(routeId)
+  if (!match) {
+    return null
+  }
+  return <MatchView router={router} match={match} />
 })
 
 function MatchView({
@@ -290,13 +294,20 @@ export const Outlet = React.memo(function OutletImpl() {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     ;[parentGlobalNotFound, parentNotFoundError] = useSelector(
       parentMatchStore,
-      (match): OutletMatchSelection => [!!match!._notFound, match!.error],
+      (match): OutletMatchSelection => {
+        const parentMatch = match ?? router.stores.departed.get(routeId)
+        return [!!parentMatch?._notFound, parentMatch?.error]
+      },
       { compare: outletMatchSelectionEqual },
     )
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     childRouteId = useSelector(router.stores.ids, (ids) => {
-      return ids[ids.indexOf(routeId) + 1]
+      const presentedIds = ids.includes(routeId)
+        ? ids
+        : router.stores.previousIds
+      const index = presentedIds.indexOf(routeId)
+      return index === -1 ? undefined : presentedIds[index + 1]
     })
   }
 
