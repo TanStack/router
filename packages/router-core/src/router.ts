@@ -1462,9 +1462,7 @@ export class RouterCore<
       state: HistoryLocation['state'],
     ): ParsedLocation<FullSearchSchema<TRouteTree>> => {
       // Fast path: no rewrite configured and pathname doesn't need encoding
-      // Characters that need encoding: space, high unicode, control chars
-      // eslint-disable-next-line no-control-regex
-      if (!this.rewrite && !/[ \x00-\x1f\x7f\u0080-\uffff]/.test(pathname)) {
+      if (!this.rewrite && !NEEDS_URL_CONSTRUCTION_RE.test(pathname)) {
         const parsedSearch = this.options.parseSearch(search)
         const searchStr = this.options.stringifySearch(parsedSearch)
 
@@ -2912,6 +2910,11 @@ function needsInheritedParams(
 }
 
 const EMPTY_RECORD: Record<string, never> = Object.freeze({})
+
+// Characters that need encoding: space, high unicode, control chars. Hoisted:
+// a regex literal allocates a new RegExp each time it is evaluated.
+// eslint-disable-next-line no-control-regex
+const NEEDS_URL_CONSTRUCTION_RE = /[ \x00-\x1f\x7f\u0080-\uffff]/
 
 // Keep this separate from recursive execution to limit JIT compiler memory.
 // A counted loop instead of `for...of`: Maglev's inlined array iteration
