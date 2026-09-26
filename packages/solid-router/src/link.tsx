@@ -133,6 +133,8 @@ export function useLinkProps<
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.
     const fromLocation = currentLocation()
+    // Read reactive props before untrack and give changed values a fresh
+    // buildLocation cache key; the original props object keeps its identity.
     const nextOptions = { ...options } as any
     // untrack because router-core will also access stores, which are signals in solid
     return Solid.untrack(() => router.buildLocation(nextOptions, fromLocation))
