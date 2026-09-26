@@ -1,5 +1,4 @@
-import type * as t from '@babel/types'
-import type * as babel from '@babel/core'
+import type { JSXElement } from '@yuku-toolchain/types'
 
 /**
  * Handles <ClientOnly> JSX elements on the server side.
@@ -18,11 +17,9 @@ import type * as babel from '@babel/core'
  *   <ClientOnly />
  */
 export function handleClientOnlyJSX(
-  path: babel.NodePath<t.JSXElement>,
+  element: JSXElement,
   _opts: { env: 'server' },
 ): void {
-  const element = path.node
-
   // Remove all children - they are client-only code
   element.children = []
 

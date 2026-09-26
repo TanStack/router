@@ -92,9 +92,7 @@ describe('createMiddleware compiles correctly', async () => {
 
     expect(result!.code).toMatchInlineSnapshot(`
       "import { createMiddleware } from '@tanstack/react-start';
-      const myMiddleware = createMiddleware({
-        type: 'function'
-      });"
+      const myMiddleware = createMiddleware({ type: 'function' });"
     `)
   })
 

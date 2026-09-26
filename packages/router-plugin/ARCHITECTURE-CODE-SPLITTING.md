@@ -1,7 +1,7 @@
 # Automatic Code-Splitting Architecture
 
 > Internal documentation for the TanStack Router code-splitting system.
-> This covers the Babel-based transform pipeline that splits route files into
+> This covers the Yuku-based transform pipeline that splits route files into
 > lazily-loaded modules (typically separate chunks) at build time.
 
 ---
@@ -115,8 +115,24 @@ returns an **array of 3 plugins** that share a closure containing:
 
 - `sharedBindingsMap: Map<string, Set<string>>` — maps normalized file paths
   to their computed shared binding names
+- `analyzedRoutes` — bounded LRU of immutable Yuku source analysis, reused by
+  grouping detection, shared ownership, and output generation
 - `userConfig` — resolved plugin configuration
 - Helper functions for grouping resolution
+
+### Immutable analysis and output ownership
+
+`analyzeRouteModule()` parses and resolves bindings with Yuku once for a source
+revision. It records route options, exports, and the dependency graph using
+resolved symbol identities, so shadowed names and JSX references are distinct.
+Each output gets its own AST copy with a map back to the original nodes. Output
+mutation never changes the original semantic snapshot.
+
+The plugin caches at most 128 analyses. Keys retain module query parameters
+other than `tsr-split` and `tsr-shared`; cached analysis is reused only when the
+source text also matches. Grouping decisions and generated output are not
+cached, so client/server configuration stays local to each transform. Changed
+source replaces the entry, and `buildEnd` clears retained ASTs.
 
 ### Plugin 1: `tanstack-router:code-splitter:compile-reference-file`
 
@@ -157,8 +173,7 @@ Excludes file IDs that include `tsr-split` or `tsr-shared`.
    virtual file should export (e.g., `['component']`)
 3. Reads shared bindings from `sharedBindingsMap` for the base file
 4. Calls `compileCodeSplitVirtualRoute()` which:
-   - Removes shared binding declarations before traversal (prevents scope
-     collision crashes)
+   - Constructs an output tree using the immutable source analysis
    - Keeps only the intended split properties as named exports
    - Converts user-exported declarations to imports from the base file
    - Adds `import { ... } from '...?tsr-shared=1'` if shared bindings exist
@@ -297,44 +312,17 @@ split modules import from, ensuring a single shared instance.
 
 **Algorithm:**
 
-1. **Collect local bindings** — Cheap loop over `program.body` to find all
-   module-level `const`/`let`/`var`/`function`/`class` declarations. Deletes
-   `Route` from the set (must never be extracted). If no local bindings
-   remain, returns empty set immediately (fast path).
-
-2. **Find route options** — Uses `babel.traverse` to locate the
-   `createFileRoute('/')({ ... })` call and extract the options object.
-
-3. **Fast path: group count check** — Iterates over route option properties,
-   tracking whether any non-split properties exist, and counting distinct
-   split group indices.
-   - If there are no non-split properties and fewer than 2 split groups are
-     present, nothing can be shared and it returns an empty set.
-
-4. **Build dependency graph** — `buildDependencyGraph()` creates a map from
-   each local binding to the set of other local bindings it references. Uses
-   `collectIdentifiersFromNode()` (a fast recursive walker, much cheaper than
-   `babel.traverse`) for each declaration.
-
-5. **Attribute bindings to groups** — For each route option property:
-   - Collects direct module-level references from the property value
-   - Expands transitively via the dependency graph (BFS)
-   - Records which group index each binding belongs to
-
-6. **Identify shared bindings** — Any binding appearing in 2+ distinct groups
-   is shared.
-
-7. **Handle destructured declarators** — If bindings from the same
-   `const { a, b } = fn()` appear in different groups, the entire declarator
-   must be shared (can't split the initialization).
-
-8. **Expand destructured declarations** — If any binding in a destructured
-   pattern is shared, all bindings in that pattern must be shared.
-
-9. **Remove Route-dependent bindings** — `removeBindingsDependingOnRoute()`
-   builds a reverse dependency graph, walks backwards from `Route` via BFS,
-   and removes any shared binding that transitively depends on `Route`. This
-   prevents Route duplication in the shared module.
+1. Use the analyzed module's root-scope symbols and resolved declarations.
+   Imports and the `Route` singleton cannot be extracted.
+2. Attribute each route property to a split group, or group `-1` for eager
+   properties. Ignore fallback values and the grouping configuration itself.
+3. Collect runtime references using Yuku's resolved references, excluding
+   type-only positions and locally shadowed bindings. Follow transitive
+   declaration dependencies without following `Route` into the whole route.
+4. Extract symbols reached from at least two groups. Bindings from one
+   destructured initializer form one unit, including unreferenced siblings.
+5. Exclude every symbol that transitively depends on `Route`, including its
+   destructured siblings, to preserve the single reference-module instance.
 
 ### Concrete Example
 
@@ -547,10 +535,10 @@ eliminated.
 
 **Key steps:**
 
-1. Parse AST, collect `findReferencedIdentifiers()` for DCE
+1. Reuse source analysis and clone an output tree with semantic provenance
 2. For each split-able property in route options:
    - Check if the value is exported (if so, skip splitting — warn user)
-   - Generate a dynamic import URL: `addSplitSearchParamToFilename()`
+   - Generate a dynamic import URL: `splitFilename()`
    - Create importer: `const $$splitComponentImporter = () => import('...')`
    - Replace property value with `lazyRouteComponent(importer, 'component')`
      or `lazyFn(importer, 'loader')`
@@ -559,7 +547,7 @@ eliminated.
    - Remove shared declarations from AST
    - Add `import { ... } from '...?tsr-shared=1'`
    - Re-export user-exported shared bindings
-5. Run `deadCodeElimination()`
+5. Run `removeUnusedBindings()`
 6. Generate output code with source maps
 
 ### `compileCodeSplitVirtualRoute()`
@@ -574,16 +562,15 @@ shared bindings set.
 
 **Key steps:**
 
-1. Parse AST, collect referenced identifiers
-2. **Remove shared declarations first** (before `babel.traverse`) — critical
-   to avoid `checkBlockScopedCollisions` crashes
+1. Reuse source analysis and clone an output tree
+2. Resolve shared declaration ownership against the original symbols
 3. Track split-able nodes and their metadata
 4. For each intended split target:
    - Resolve the property value through bindings
    - Create a named export (e.g., `export { SplitComponent as component }`)
 5. Convert remaining user exports to imports from the base file
 6. Add shared bindings import if applicable
-7. Run `deadCodeElimination()`
+7. Run `removeUnusedBindings()`
 8. Strip orphaned expression statements
 9. Generate output with source maps
 
@@ -599,14 +586,14 @@ transitive dependencies.
 
 **Key steps:**
 
-1. Parse AST, collect referenced identifiers
+1. Reuse source analysis and clone an output tree
 2. Build dependency graph, expand shared bindings transitively
 3. Filter `program.body` to keep only:
    - Import declarations (DCE removes unused ones)
    - Declarations of bindings in the keep set
 4. Strip `export` wrappers from kept declarations
 5. Add `export { ... }` for all shared bindings
-6. Run `deadCodeElimination()`
+6. Run `removeUnusedBindings()`
 7. Generate output with source maps
 
 ### `computeSharedBindings()`
@@ -624,100 +611,57 @@ Traverses the AST looking for a `codeSplitGroupings` property on the route
 options object (supports both `createFileRoute` and `createRoute` call sites).
 If found, extracts the array-of-arrays value and returns it.
 
-### Helper Functions
+### Native helpers
 
-| Function                                | Purpose                                                                                                        |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `collectIdentifiersFromNode()`          | Fast recursive walker to collect referenced identifier names from any AST node. Cheaper than `babel.traverse`. |
-| `buildDeclarationMap()`                 | Maps binding name → AST declaration node for all module-level declarations.                                    |
-| `buildDependencyGraph()`                | Maps binding name → set of other local bindings it references.                                                 |
-| `expandTransitively()`                  | BFS expansion of a set through a dependency graph.                                                             |
-| `removeBindingsDependingOnRoute()`      | Reverse-graph BFS from `Route` to find and remove dependents.                                                  |
-| `expandDestructuredDeclarations()`      | If any binding in a destructured pattern is shared, mark all as shared.                                        |
-| `expandSharedDestructuredDeclarators()` | If bindings from same declarator appear in different groups, mark declarator as shared.                        |
-| `collectLocalBindingsFromStatement()`   | Collects locally-declared names from a statement (cheap, no traversal).                                        |
-| `collectModuleLevelRefsFromNode()`      | Intersects `collectIdentifiersFromNode()` with local module-level bindings.                                    |
-| `removeSharedDeclarations()`            | Filters shared binding declarations out of `program.body`.                                                     |
-| `findExportedSharedBindings()`          | Finds which shared bindings have `export` in the original source.                                              |
+| Function                    | Purpose                                                                                       |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| `analyzeRouteModule()`      | Build the immutable route syntax and semantic model.                                          |
+| `moduleDeclarationGraph()`  | Map resolved symbols to declaration units and runtime dependencies.                           |
+| `collectModuleReferences()` | Collect actual module-scope references, including JSX and excluding shadowed/type-only names. |
+| `expandTransitively()`      | Return a dependency closure without mutating its input.                                       |
+| `cloneModuleAst()`          | Create an output AST and preserve original-node provenance.                                   |
+| `removeUnusedBindings()`    | Retain output dependencies using surviving semantic references.                               |
+| `generateModule()`          | Print native ASTs with Yuku and original-source maps.                                         |
 
 ---
 
 ## Dead Code Elimination
 
-After each compiler transforms the AST, it runs `deadCodeElimination()` from
-`@tanstack/router-utils`. This is critical because:
+Each compiler first decides which declarations belong to its output, then calls
+`removeUnusedBindings()` from `@tanstack/router-utils`. This reconstructs
+liveness from **surviving** references in the output tree; the original semantic
+tables are never assumed to update after mutation.
 
-- The reference file no longer uses the component implementation (it was
-  replaced with a lazy wrapper), so the original component code and its
-  dependencies should be stripped.
-- The virtual file only exports specific properties, so everything else
-  (loader, beforeLoad, other components) should be stripped.
-- The shared file only keeps shared bindings, so everything else should be
-  stripped.
+Source nodes retain their original symbol identity through the clone map.
+Compiler-created references explicitly identify their intended symbol/name via
+`linkGeneratedReference()`. Parsed compiler snippets carry native reference
+provenance too. This avoids treating a new local or property name as a reference
+to an unrelated original binding.
 
-### How It Works
+Exports and top-level effects seed liveness. Dependency closure keeps nested
+captures and whole destructured initializers together. Originally unused user
+declarations remain in the reference output rather than silently discarding
+intentional initializers; shared output retains only its explicitly owned
+bindings and dependencies. Unused original and generated imports are removed.
 
-1. **`findReferencedIdentifiers(ast)`** — Collects all `Identifier` NodePaths
-   in the AST that are in a "referenced" position (not binding sites). Returns
-   a `Set<NodePath>`.
+Standalone source effects stay in the reference module. Virtual outputs remove
+expression statements that do not belong to their retained local declarations;
+shared outputs include declarations rather than duplicating standalone effects.
 
-2. **`deadCodeElimination(ast, refIdents)`** — Iterates over all bindings in
-   the program scope. For each binding, checks whether any of its references
-   are in `refIdents`. If not, the binding is unreferenced and its declaration
-   is removed. Repeats until no more bindings can be removed (handles chains
-   where removing one binding makes another unreferenced).
+Directive prologues remain at the beginning of nonempty outputs: injected imports
+and lazy helpers are inserted after them. A virtual output containing only
+directives is empty. Code generation preserves comments/annotations and uses the
+original source spans for source maps.
 
-### Import Registration for DCE
-
-When the compilers add new imports (for shared bindings, or convert exports
-to imports in virtual files), they must register the import specifier locals
-in `refIdents` so DCE can later decide whether to keep or remove them:
-
-```ts
-sharedImportPath.traverse({
-  Identifier(identPath) {
-    if (identPath.parentPath.isImportSpecifier() && identPath.key === 'local') {
-      refIdents.add(identPath)
-    }
-  },
-})
-```
-
-Without this, DCE would have no path references for the new imports and would
-always remove them.
-
-### Post-DCE Cleanup in Virtual Files
-
-DCE only removes unused **declarations**. Bare side-effect statements like
-`console.log(...)` survive even when no locally-bound names reference them.
-The virtual compiler has an additional cleanup pass:
-
-```ts
-ast.program.body = ast.program.body.filter((stmt) => {
-  if (!t.isExpressionStatement(stmt)) return true
-  const refs = collectIdentifiersFromNode(stmt)
-  return [...refs].some((name) => locallyBound.has(name))
-})
-```
-
-This strips expression statements that don't reference any locally-bound name.
-
-### Directive Prologue Handling
-
-If the file body is empty after DCE (virtual file where no properties matched),
-directive prologues (`'use client'`, `'use strict'`) are also stripped:
-
-```ts
-if (ast.program.body.length === 0) {
-  ast.program.directives = []
-}
-```
+Framework compiler hooks receive native programs, source modules, and explicit
+insertion/renaming operations. They no longer receive Babel node paths or scope
+objects.
 
 ---
 
 ## Framework Support
 
-The code-splitting system is framework-agnostic at the Babel transform level.
+The code-splitting system is framework-agnostic at the native AST transform level.
 Framework differences are confined to `framework-options.ts`:
 
 | Framework | Package                  | `createFileRoute` | `lazyFn` | `lazyRouteComponent` |
@@ -773,9 +717,8 @@ compiled output as a `console.warn` to make it obvious during local testing.)
 
 ### 2. Root Routes Are Never Split
 
-`createRootRoute()` and `createRootRouteWithContext()` are in
-`unsplittableCreateRouteFns`. The reference compiler adds HMR handling but
-exits before attempting any code-splitting transforms.
+Only `createFileRoute()` definitions enter the splitting phase. Root factories
+still receive the framework's HMR handling.
 
 ### 3. `undefined`, `null`, and `boolean` Values Are Kept In-Place
 
@@ -814,32 +757,24 @@ function useRouteStuff() {
 Even if `useRouteStuff` is referenced by multiple groups, it cannot be
 extracted to the shared module because it depends on `Route`. Extracting it
 would require `Route` in the shared module, duplicating the route singleton.
-`removeBindingsDependingOnRoute()` handles this via reverse-graph BFS.
+`computeSharedBindings()` excludes these bindings through the reverse dependency
+graph, including their destructured declaration siblings.
 
-### 6. `removeSharedDeclarations` Must Run Before `babel.traverse` in Virtual Files
+### 6. Shared Imports Replace Their Original Declarations
 
-In `compileCodeSplitVirtualRoute()`, shared declarations are removed
-**before** `babel.traverse` runs:
-
-```ts
-if (opts.sharedBindings && opts.sharedBindings.size > 0) {
-  removeSharedDeclarations(ast, opts.sharedBindings)
-}
-
-babel.traverse(ast, { ... })
-```
-
-If done after, Babel's scope analysis would see both the shared declaration
-and the new shared import, causing a `checkBlockScopedCollisions` crash
-(duplicate `const` binding in the same scope).
+An output cannot retain both a shared declaration and its replacement import.
+The compiler removes the complete original declaration, then adds the shared
+import. All dependency decisions still use the immutable source module's
+symbols; output clones are never analyzed while partially transformed.
+Exports, including multiple aliases and quoted names, are redirected to the
+same shared binding.
 
 ### 7. Directive Prologues Survive Code-Splitting
 
-Babel stores directives (like `'use client'`) in `program.directives`, not
-in `program.body`. They are preserved through all transforms automatically.
-The only exception is when the body is completely empty after DCE — then
-directives are stripped too (a file with just `'use client'` and no code is
-useless).
+Yuku represents directives (like `'use client'`) as expression statements with
+directive metadata in `program.body`. Injected imports and helpers are placed
+after the directive prologue. Shared and virtual output filtering explicitly
+preserves directives; a virtual output with no other statements becomes empty.
 
 ### 8. Plugin Ordering in the Array Matters
 
@@ -854,7 +789,7 @@ bindings. Import statements are handled by the bundler's module system — if
 both the reference file and a virtual file import the same external module,
 the bundler deduplicates that import automatically. No shared module needed.
 
-### 10. `SPLIT_NODES_CONFIG` — Split Strategy per Property
+### 10. Split Strategy per Property
 
 Each splittable property has a configured split strategy:
 

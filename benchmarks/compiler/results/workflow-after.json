@@ -1,0 +1,107 @@
+{
+  "timestamp": "2026-09-26T14:48:12.644Z",
+  "compilerFingerprint": {
+    "commit": "f69eb7a5aa5a4cedc95c1d995339f7a3e9bf00fd",
+    "sha256": "9c8751495155f052d418d5aabd437317091a3dfef76e8d6dbc9cf90a42803fc5",
+    "javascriptFiles": 125,
+    "sourceSha256": "b194df1fe4ed7069df76ac9a4301a3b3de5b47b25ae180ac3173e76f606a6852",
+    "sourceFiles": 137,
+    "dependencyVersions": {
+      "yuku-analyzer": "0.11.0",
+      "yuku-ast": "0.11.0",
+      "yuku-codegen": "0.11.0",
+      "@yuku-toolchain/types": "0.11.0"
+    }
+  },
+  "workspace": "/Users/Flo/.codex/worktrees/137d/router",
+  "fixturesRoot": "/var/folders/yp/rq726d2d0d7g6xxqbg_dd8km0000gn/T/yuku-original-corpus-bglioxxf",
+  "node": "v24.8.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M3 Max",
+  "corpus": {
+    "files": 52,
+    "bytes": 43238,
+    "sha256": "db1fbf4179e31c63b623a3eb3e5ea3a148ff27b3300ea8dbed97afb396857a1e"
+  },
+  "repetitions": 1,
+  "iterations": 3,
+  "diagnosticOnly": false,
+  "warmups": 1,
+  "summary": {
+    "yuku-splitter": {
+      "medianMsPerCorpus": 109.47915266666666,
+      "minMsPerCorpus": 109.47915266666666,
+      "maxMsPerCorpus": 109.47915266666666,
+      "medianPeakRssMiB": 142.734375,
+      "medianRetainedHeapMiB": 7.991462707519531,
+      "medianWallMs": 544.022916,
+      "phasesMsPerCorpus": {
+        "parseAnalyze": 13.80327466666688,
+        "detectGroupings": 0.1154189999999365,
+        "sharedAnalysis": 2.1330990000001293,
+        "referenceCompile": 30.270637333332843,
+        "virtualCompile": 58.2318856666667,
+        "sharedCompile": 3.467555333333299
+      },
+      "countsPerCorpus": {
+        "parses": 156,
+        "outputs": 517,
+        "sharedModules": 26,
+        "unchangedReferences": 29
+      }
+    }
+  },
+  "samples": [
+    {
+      "repetition": 0,
+      "wallMs": 544.022916,
+      "mode": "yuku-splitter",
+      "corpus": {
+        "files": 52,
+        "bytes": 43238,
+        "sha256": "db1fbf4179e31c63b623a3eb3e5ea3a148ff27b3300ea8dbed97afb396857a1e"
+      },
+      "elapsedMs": 328.437458,
+      "phases": {
+        "parseAnalyze": 41.40982400000064,
+        "detectGroupings": 0.3462569999998095,
+        "sharedAnalysis": 6.399297000000388,
+        "referenceCompile": 90.81191199999853,
+        "virtualCompile": 174.6956570000001,
+        "sharedCompile": 10.402665999999897
+      },
+      "counts": {
+        "parses": 156,
+        "outputs": 517,
+        "sharedModules": 26,
+        "unchangedReferences": 29
+      },
+      "peakRssKiB": 146160,
+      "before": {
+        "rss": 98304000,
+        "heapTotal": 31293440,
+        "heapUsed": 8290960,
+        "external": 3732273,
+        "arrayBuffers": 509287
+      },
+      "after": {
+        "rss": 149504000,
+        "heapTotal": 52264960,
+        "heapUsed": 22583744,
+        "external": 5129090,
+        "arrayBuffers": 2838350
+      },
+      "retained": {
+        "rss": 149012480,
+        "heapTotal": 44138496,
+        "heapUsed": 8379656,
+        "external": 5129090,
+        "arrayBuffers": 380951
+      },
+      "outputBytes": 535904,
+      "outputMapBytes": 1993316,
+      "resolvedReferences": 0
+    }
+  ]
+}

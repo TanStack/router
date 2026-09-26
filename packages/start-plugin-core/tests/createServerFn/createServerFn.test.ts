@@ -195,11 +195,7 @@ describe('createServerFn compiles correctly', async () => {
       const myFunc = () => {
         return 'hello from the server';
       };
-      const myServerFn_createServerFn_handler = createServerRpc({
-        id: "2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b",
-        name: "myServerFn",
-        filename: "src/test.ts"
-      }, opts => myServerFn.__executeServer(opts));
+      const myServerFn_createServerFn_handler = createServerRpc({ "id": "2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b", "name": "myServerFn", "filename": "src/test.ts" }, (opts) => myServerFn.__executeServer(opts));
       const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler, myFunc);
       export { myServerFn_createServerFn_handler };"
     `)
@@ -344,20 +340,12 @@ describe('createServerFn compiles correctly', async () => {
       "import { createServerRpc } from '@tanstack/react-start/server-rpc';
       import { createServerFn } from '@tanstack/react-start';
       const exportedVar = 'exported';
-      const exportedFn_createServerFn_handler = createServerRpc({
-        id: "c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864",
-        name: "exportedFn",
-        filename: "src/test.ts"
-      }, opts => exportedFn.__executeServer(opts));
+      const exportedFn_createServerFn_handler = createServerRpc({ "id": "c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864", "name": "exportedFn", "filename": "src/test.ts" }, (opts) => exportedFn.__executeServer(opts));
       const exportedFn = createServerFn().handler(exportedFn_createServerFn_handler, async () => {
         return exportedVar;
       });
       const nonExportedVar = 'non-exported';
-      const nonExportedFn_createServerFn_handler = createServerRpc({
-        id: "f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2",
-        name: "nonExportedFn",
-        filename: "src/test.ts"
-      }, opts => nonExportedFn.__executeServer(opts));
+      const nonExportedFn_createServerFn_handler = createServerRpc({ "id": "f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2", "name": "nonExportedFn", "filename": "src/test.ts" }, (opts) => nonExportedFn.__executeServer(opts));
       const nonExportedFn = createServerFn().handler(nonExportedFn_createServerFn_handler, async () => {
         return nonExportedVar;
       });

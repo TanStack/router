@@ -1,21 +1,22 @@
 import crypto from 'node:crypto'
-import * as t from '@babel/types'
+import { is, walk } from 'yuku-ast'
 import {
-  deadCodeElimination,
-  extractModuleInfoFromAst,
-  findReferencedIdentifiers,
-  generateFromAst,
-  getVariableDeclaratorForExpressionPath,
-  parseAst,
+  analyzeModule,
+  cloneModuleAst,
+  extractModuleInfo,
+  generateModule,
+  parseExpression,
+  removeUnusedBindings,
   unwrapExpression,
 } from '@tanstack/router-utils'
-import babel from '@babel/core'
 import { handleCreateServerFn } from './handleCreateServerFn'
 import { handleCreateMiddleware } from './handleCreateMiddleware'
 import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
-import { cleanId } from './utils'
+import { cleanId, createAstEditor, getVariableDeclarator } from './utils'
+import type * as t from '@yuku-toolchain/types'
+import type { Module } from 'yuku-analyzer'
 import type {
   CompilationContext,
   DevServerFnModuleSpecifierEncoder,
@@ -29,6 +30,7 @@ import type {
   StartCompilerEnvironment,
   StartCompilerImportTransform,
   StartCompilerPlugin,
+  StartCompilerTransformContext,
   StartCompilerTransformResult,
 } from '../types'
 
@@ -39,7 +41,7 @@ type Binding = ModuleInfoBinding & {
 type ImportBinding = Extract<Binding, { type: 'import' }>
 
 type Kind = 'None' | `Root` | `Builder` | LookupKind
-type ParsedAst = ReturnType<typeof parseAst>
+type ParsedAst = t.Program
 type StartCompilerAstPlugin = StartCompilerPlugin & {
   transformAst: NonNullable<StartCompilerPlugin['transformAst']>
 }
@@ -103,7 +105,9 @@ function isStartCompilerEnvironmentEnabled(
     | undefined,
   env: StartCompilerEnvironment,
 ): boolean {
-  if (!environment) return true
+  if (!environment) {
+    return true
+  }
   if (Array.isArray(environment)) {
     return environment.includes(env)
   }
@@ -244,7 +248,9 @@ export function detectKindsInCode(
   }
 
   for (const transform of opts?.compilerTransforms ?? []) {
-    if (!isCompilerTransformEnabledForEnv(transform, env)) continue
+    if (!isCompilerTransformEnabledForEnv(transform, env)) {
+      continue
+    }
     transform.detect.lastIndex = 0
     if (transform.detect.test(code)) {
       detected.add(getExternalLookupKind(transform))
@@ -307,192 +313,11 @@ interface ModuleInfo {
   reExportAllSources: Array<string>
 }
 
-/**
- * Checks if all kinds in the set are guaranteed to be top-level only.
- * Only ServerFn is always declared at module level (must be assigned to a variable).
- * Middleware, IsomorphicFn, ServerOnlyFn, ClientOnlyFn can be nested inside functions.
- * When all kinds are top-level-only, we can use a fast scan instead of full traversal.
- */
-function areAllKindsTopLevelOnly(kinds: Set<LookupKind>): boolean {
-  return kinds.size === 1 && kinds.has('ServerFn')
-}
-
-/**
- * Checks if we need to detect JSX elements (e.g., <ClientOnly>).
- */
-function needsJSXDetection(
-  kinds: Set<LookupKind>,
-  externalLookupSetup?: Map<ExternalLookupKind, DirectCallSetup>,
-): boolean {
-  for (const kind of kinds) {
-    if (getLookupSetup(kind, externalLookupSetup)?.type === 'jsx') {
-      return true
-    }
-  }
-  return false
-}
-
-/**
- * Checks if a CallExpression is a direct-call candidate for NESTED detection.
- * Returns true if the callee is a known factory function name.
- * This is stricter than top-level detection because we need to filter out
- * invocations of existing server functions (e.g., `myServerFn()`).
- */
-function isNestedDirectCallCandidate(
-  node: t.CallExpression,
-  lookupKinds: Set<LookupKind>,
-  externalLookupSetup?: Map<ExternalLookupKind, DirectCallSetup>,
-): boolean {
-  let calleeName: string | undefined
-  if (t.isIdentifier(node.callee)) {
-    calleeName = node.callee.name
-  } else if (
-    t.isMemberExpression(node.callee) &&
-    t.isIdentifier(node.callee.property)
-  ) {
-    calleeName = node.callee.property.name
-  }
-  if (!calleeName) return false
-  for (const kind of lookupKinds) {
-    if (isExternalLookupKind(kind)) continue
-    const setup = getLookupSetup(kind, externalLookupSetup)
-    if (setup?.type === 'directCall' && setup.factoryNames.has(calleeName)) {
-      return true
-    }
-  }
-  return false
-}
-
-function isSimpleDirectCallExpression(node: t.CallExpression): boolean {
-  return (
-    t.isIdentifier(node.callee) ||
-    (t.isMemberExpression(node.callee) &&
-      t.isIdentifier(node.callee.object) &&
-      t.isIdentifier(node.callee.property))
-  )
-}
-
-function isTopLevelDirectCallCandidateNode(node: t.CallExpression): boolean {
-  return isSimpleDirectCallExpression(node)
-}
-
-function getPotentialCandidateCallExpression(
-  node: t.Expression | null | undefined,
-): t.CallExpression | null {
-  if (!node) {
-    return null
-  }
-
-  const unwrapped = unwrapExpression(node)
-  return t.isCallExpression(unwrapped) ? unwrapped : null
-}
-
-/**
- * Checks if a CallExpression path is a top-level direct-call candidate.
- * Top-level means the call is the init of a VariableDeclarator at program level.
- * We accept any simple identifier call or namespace call at top level
- * (e.g., `createServerOnlyFn()`, `TanStackStart.createServerOnlyFn()`) and let
- * resolution verify it. This handles renamed imports.
- */
-function isTopLevelDirectCallCandidate(
-  path: babel.NodePath<t.CallExpression>,
-): boolean {
-  const node = path.node
-
-  // Must be a simple identifier call or namespace call
-  if (!isSimpleDirectCallExpression(node)) {
-    return false
-  }
-
-  // Must be top-level: VariableDeclarator -> VariableDeclaration -> Program
-  // or VariableDeclarator -> VariableDeclaration -> ExportNamedDeclaration -> Program.
-  const variableDeclarator = getVariableDeclaratorForExpressionPath(
-    path as babel.NodePath<t.Expression>,
-  )
-  if (!variableDeclarator) {
-    return false
-  }
-
-  const variableDeclaration = variableDeclarator.parentPath
-  if (!variableDeclaration.isVariableDeclaration()) {
-    return false
-  }
-
-  const parent = variableDeclaration.parentPath
-  return (
-    parent.isProgram() ||
-    (parent.isExportNamedDeclaration() && parent.parentPath.isProgram())
-  )
-}
-
 function isDirectCallCandidateForKind(
   kind: Exclude<LookupKind, 'ClientOnlyJSX'>,
   externalLookupSetup?: Map<ExternalLookupKind, DirectCallSetup>,
 ): boolean {
   return getLookupSetup(kind, externalLookupSetup)?.type === 'directCall'
-}
-
-function hasBuiltInDirectCallKinds(kinds: Set<LookupKind>): boolean {
-  for (const kind of kinds) {
-    if (isExternalLookupKind(kind)) continue
-    if (BuiltInLookupSetup[kind].type === 'directCall') return true
-  }
-  return false
-}
-
-function hasExternalLookupKinds(kinds: Set<LookupKind>): boolean {
-  for (const kind of kinds) {
-    if (isExternalLookupKind(kind)) return true
-  }
-  return false
-}
-
-interface ExternalDirectCallCandidates {
-  identifiers: Map<string, ExternalLookupKind>
-  namespaces: Map<string, Map<string, ExternalLookupKind>>
-}
-
-interface CallExpressionCandidate {
-  path: babel.NodePath<t.CallExpression>
-  /** Set when import scanning already proved the call's lookup kind. */
-  kind?: Exclude<LookupKind, 'ClientOnlyJSX'>
-}
-
-function hasExternalDirectCallCandidates(
-  candidates: ExternalDirectCallCandidates,
-): boolean {
-  return candidates.identifiers.size > 0 || candidates.namespaces.size > 0
-}
-
-function getExternalDirectCallCandidateKind(
-  path: babel.NodePath<t.CallExpression>,
-  candidates: ExternalDirectCallCandidates,
-): ExternalLookupKind | undefined {
-  const node = path.node
-
-  if (t.isIdentifier(node.callee)) {
-    const kind = candidates.identifiers.get(node.callee.name)
-    if (!kind) return undefined
-
-    const binding = path.scope.getBinding(node.callee.name)
-    return binding?.path.isImportSpecifier() ? kind : undefined
-  }
-
-  if (
-    t.isMemberExpression(node.callee) &&
-    t.isIdentifier(node.callee.object) &&
-    t.isIdentifier(node.callee.property)
-  ) {
-    const kind = candidates.namespaces
-      .get(node.callee.object.name)
-      ?.get(node.callee.property.name)
-    if (!kind) return undefined
-
-    const binding = path.scope.getBinding(node.callee.object.name)
-    return binding?.path.isImportNamespaceSpecifier() ? kind : undefined
-  }
-
-  return undefined
 }
 
 export class StartCompiler {
@@ -505,10 +330,6 @@ export class StartCompiler {
   >()
   private externalLookupSetup = new Map<ExternalLookupKind, DirectCallSetup>()
   private compilerPlugins: Array<StartCompilerPlugin>
-  private externalDirectCallKindsBySource = new Map<
-    string,
-    Map<string, ExternalLookupKind>
-  >()
   private resolveIdCache = new Map<string, string | null>()
   private exportResolutionCache = new Map<
     string,
@@ -576,22 +397,15 @@ export class StartCompiler {
 
     for (const transform of options.compilerTransforms ?? []) {
       const kind = getExternalLookupKind(transform)
-      if (!this.validLookupKinds.has(kind)) continue
+      if (!this.validLookupKinds.has(kind)) {
+        continue
+      }
 
       this.externalTransformsByKind.set(kind, transform)
 
       const factoryNames = new Set<string>()
       for (const entry of transform.imports) {
         factoryNames.add(entry.rootExport)
-
-        let rootExports = this.externalDirectCallKindsBySource.get(
-          entry.libName,
-        )
-        if (!rootExports) {
-          rootExports = new Map()
-          this.externalDirectCallKindsBySource.set(entry.libName, rootExports)
-        }
-        rootExports.set(entry.rootExport, kind)
       }
 
       this.externalLookupSetup.set(kind, {
@@ -674,46 +488,6 @@ export class StartCompiler {
 
   private get mode(): 'dev' | 'build' {
     return this.options.mode ?? 'dev'
-  }
-
-  private getExternalDirectCallCandidates(
-    kinds: Set<LookupKind>,
-    moduleInfo: ModuleInfo,
-  ): ExternalDirectCallCandidates {
-    const identifiers = new Map<string, ExternalLookupKind>()
-    const namespaces = new Map<string, Map<string, ExternalLookupKind>>()
-
-    if (this.externalDirectCallKindsBySource.size === 0) {
-      return { identifiers, namespaces }
-    }
-
-    for (const [localName, binding] of moduleInfo.bindings) {
-      if (binding.type !== 'import') continue
-
-      const rootExports = this.externalDirectCallKindsBySource.get(
-        binding.source,
-      )
-      if (!rootExports) continue
-
-      if (binding.importedName === '*') {
-        const namespaceExports = new Map<string, ExternalLookupKind>()
-        for (const [rootExport, kind] of rootExports) {
-          if (kinds.has(kind)) {
-            namespaceExports.set(rootExport, kind)
-          }
-        }
-        if (namespaceExports.size > 0) {
-          namespaces.set(localName, namespaceExports)
-        }
-      } else {
-        const kind = rootExports.get(binding.importedName)
-        if (kind && kinds.has(kind)) {
-          identifiers.set(localName, kind)
-        }
-      }
-    }
-
-    return { identifiers, namespaces }
   }
 
   private async resolveIdCached(id: string, importer?: string) {
@@ -818,11 +592,8 @@ export class StartCompiler {
   /**
    * Extracts bindings and exports from an already-parsed AST.
    */
-  private extractModuleInfo(
-    ast: ReturnType<typeof parseAst>,
-    id: string,
-  ): ModuleInfo {
-    const extracted = extractModuleInfoFromAst(ast)
+  private extractModuleInfo(module: Module, id: string): ModuleInfo {
+    const extracted = extractModuleInfo(module)
 
     const info: ModuleInfo = {
       id,
@@ -843,9 +614,12 @@ export class StartCompiler {
     id: string
     parserFilename?: string
   }) {
-    const ast = parseAst({ code, filename: parserFilename ?? cleanId(id) })
-    const info = this.extractModuleInfo(ast, id)
-    return { info, ast }
+    const module = analyzeModule({
+      code,
+      filename: parserFilename ?? cleanId(id),
+    })
+    const info = this.extractModuleInfo(module, id)
+    return { info, module }
   }
 
   public invalidateModule(id: string) {
@@ -937,10 +711,14 @@ export class StartCompiler {
         await Promise.all(
           Array.from(importSources, async (source) => {
             const resolved = await resolveSource(source, moduleInfo.id)
-            if (!resolved) return
+            if (!resolved) {
+              return
+            }
 
             const targetId = cleanId(resolved)
-            if (targetId === moduleId) return
+            if (targetId === moduleId) {
+              return
+            }
 
             let importers = importersByTarget.get(targetId)
             if (!importers) {
@@ -993,438 +771,247 @@ export class StartCompiler {
       await this.init()
     }
 
-    // Use detected kinds if provided, otherwise fall back to all valid kinds for this env
     const fileKinds = detectedKinds
-      ? new Set([...detectedKinds].filter((k) => this.validLookupKinds.has(k)))
-      : this.validLookupKinds
-
-    const astTransformPlugins = this.getAstTransformPluginsForCode(code)
-    // Always parse and extract module info upfront.
-    // This ensures the module is cached for import resolution even if no candidates are found.
-    const ast = this.ingestModule({ code, id, parserFilename }).ast
-    const warnFn = warn ?? this.options.warn
-    let astHasChanges = false
-
-    builtInTransforms: {
-      // Early exit if no built-in or import transforms need this file.
-      if (fileKinds.size === 0) {
-        break builtInTransforms
-      }
-
-      const hasExternalKinds = hasExternalLookupKinds(fileKinds)
-      const checkDirectCalls =
-        hasBuiltInDirectCallKinds(fileKinds) ||
-        (fileKinds.has('ServerFn') &&
-          !hasExternalKinds &&
-          hasBuiltInDirectCallKinds(this.validLookupKinds))
-      // Optimization: ServerFn is always a top-level declaration (must be assigned to a variable).
-      // If the file only has ServerFn, we can skip full AST traversal and only visit
-      // the specific top-level declarations that have candidates.
-      const canUseFastPath = areAllKindsTopLevelOnly(fileKinds)
-
-      // Single-pass traversal to:
-      // 1. Collect candidate paths (only candidates, not all CallExpressions)
-      // 2. Build a map for looking up paths of nested calls in method chains
-      const candidatePaths: Array<CallExpressionCandidate> = []
-      // Map for nested chain lookup - only populated for CallExpressions that are
-      // part of a method chain (callee.object is a CallExpression)
-      const chainCallPaths = new Map<
-        t.CallExpression,
-        babel.NodePath<t.CallExpression>
-      >()
-
-      // JSX candidates (e.g., <ClientOnly>)
-      const jsxCandidatePaths: Array<babel.NodePath<t.JSXElement>> = []
-      const checkJSX = needsJSXDetection(fileKinds, this.externalLookupSetup)
-      // Get module info that was just cached by ingestModule
-      const moduleInfo = this.moduleCache.get(id)!
-      const externalDirectCallCandidates = this.getExternalDirectCallCandidates(
-        fileKinds,
-        moduleInfo,
-      )
-      const checkExternalDirectCalls = hasExternalDirectCallCandidates(
-        externalDirectCallCandidates,
-      )
-
-      if (canUseFastPath) {
-        // Fast path: only visit top-level statements that have potential candidates
-
-        // Collect indices of top-level statements that contain candidates
-        const candidateIndices: Array<number> = []
-        for (let i = 0; i < ast.program.body.length; i++) {
-          const node = ast.program.body[i]!
-          let declarations: Array<t.VariableDeclarator> | undefined
-
-          if (t.isVariableDeclaration(node)) {
-            declarations = node.declarations
-          } else if (t.isExportNamedDeclaration(node) && node.declaration) {
-            if (t.isVariableDeclaration(node.declaration)) {
-              declarations = node.declaration.declarations
-            }
-          }
-
-          if (declarations) {
-            for (const decl of declarations) {
-              const init = getPotentialCandidateCallExpression(decl.init)
-              if (init) {
-                if (
-                  isMethodChainCandidate(init, fileKinds) ||
-                  (checkDirectCalls && isTopLevelDirectCallCandidateNode(init))
-                ) {
-                  candidateIndices.push(i)
-                  break // Only need to mark this statement once
-                }
-              }
-            }
-          }
-        }
-
-        // Early exit: no potential candidates found at top level
-        if (candidateIndices.length === 0) {
-          break builtInTransforms
-        }
-
-        // Targeted traversal: only visit the specific statements that have candidates
-        // This is much faster than traversing the entire AST
-        babel.traverse(ast, {
-          Program(programPath) {
-            const bodyPaths = programPath.get('body')
-            for (const idx of candidateIndices) {
-              const stmtPath = bodyPaths[idx]
-              if (!stmtPath) continue
-
-              // Traverse only this statement's subtree
-              stmtPath.traverse({
-                CallExpression(path) {
-                  const node = path.node
-                  const parent = path.parent
-
-                  // Check if this call is part of a larger chain (inner call)
-                  if (
-                    t.isMemberExpression(parent) &&
-                    t.isCallExpression(path.parentPath.parent)
-                  ) {
-                    chainCallPaths.set(node, path)
-                    return
-                  }
-
-                  // Method chain pattern
-                  if (isMethodChainCandidate(node, fileKinds)) {
-                    candidatePaths.push({ path })
-                    return
-                  }
-
-                  if (checkExternalDirectCalls) {
-                    const kind = getExternalDirectCallCandidateKind(
-                      path,
-                      externalDirectCallCandidates,
-                    )
-                    if (kind) {
-                      candidatePaths.push({ path, kind })
-                      return
-                    }
-                  }
-
-                  if (isTopLevelDirectCallCandidate(path)) {
-                    candidatePaths.push({ path })
-                  }
-                },
-              })
-            }
-            // Stop traversal after processing Program
-            programPath.stop()
-          },
-        })
-      } else {
-        // Normal path: full traversal for non-fast-path kinds
-        babel.traverse(ast, {
-          CallExpression: (path) => {
-            const node = path.node
-            const parent = path.parent
-
-            // Check if this call is part of a larger chain (inner call)
-            // If so, store it for method chain lookup but don't treat as candidate
-            if (
-              t.isMemberExpression(parent) &&
-              t.isCallExpression(path.parentPath.parent)
-            ) {
-              // This is an inner call in a chain - store for later lookup
-              chainCallPaths.set(node, path)
-              return
-            }
-
-            // Pattern 1: Method chain pattern (.handler(), .server(), .client(), etc.)
-            if (isMethodChainCandidate(node, fileKinds)) {
-              candidatePaths.push({ path })
-              return
-            }
-
-            // External direct-call transforms are import-bound. Direct imports
-            // already identify the transform kind, so skip async import tracing.
-            if (checkExternalDirectCalls) {
-              const kind = getExternalDirectCallCandidateKind(
-                path,
-                externalDirectCallCandidates,
-              )
-              if (kind) {
-                candidatePaths.push({ path, kind })
-                return
-              }
-            }
-
-            if (checkDirectCalls && isTopLevelDirectCallCandidate(path)) {
-              candidatePaths.push({ path })
-              return
-            }
-
-            // Pattern 2: Direct call pattern
-            if (checkDirectCalls) {
-              if (
-                isNestedDirectCallCandidate(
-                  node,
-                  fileKinds,
-                  this.externalLookupSetup,
-                )
-              ) {
-                candidatePaths.push({ path })
-                return
-              }
-            }
-          },
-          // Pattern 3: JSX element pattern (e.g., <ClientOnly>)
-          // Collect JSX elements where the component is imported from a known package
-          // and resolves to a JSX kind (e.g., ClientOnly from @tanstack/react-router)
-          JSXElement: (path) => {
-            if (!checkJSX) return
-
-            const openingElement = path.node.openingElement
-            const nameNode = openingElement.name
-
-            // Only handle simple identifier names (not namespaced or member expressions)
-            if (!t.isJSXIdentifier(nameNode)) return
-
-            const componentName = nameNode.name
-            const binding = moduleInfo.bindings.get(componentName)
-
-            // Must be an import binding from a known package
-            if (!binding || binding.type !== 'import') return
-
-            // Verify the import source is a known TanStack router package
-            const knownExports = this.knownRootImports.get(binding.source)
-            if (!knownExports) return
-
-            // Verify the imported name resolves to a JSX kind (e.g., ClientOnlyJSX)
-            const kind = knownExports.get(binding.importedName)
-            if (kind !== 'ClientOnlyJSX') return
-
-            jsxCandidatePaths.push(path)
-          },
-        })
-      }
-
-      if (candidatePaths.length === 0 && jsxCandidatePaths.length === 0) {
-        break builtInTransforms
-      }
-
-      // Resolve only candidates whose import scan did not already prove the kind.
-      const resolvedCandidates: Array<{
-        path: babel.NodePath<t.CallExpression>
-        kind: Kind
-      }> = []
-      const unresolvedCandidates: Array<CallExpressionCandidate> = []
-
-      for (const candidate of candidatePaths) {
-        if (candidate.kind) {
-          resolvedCandidates.push({
-            path: candidate.path,
-            kind: candidate.kind,
-          })
-        } else {
-          unresolvedCandidates.push(candidate)
-        }
-      }
-
-      if (unresolvedCandidates.length > 0) {
-        resolvedCandidates.push(
-          ...(await Promise.all(
-            unresolvedCandidates.map(async (candidate) => ({
-              path: candidate.path,
-              kind: await this.resolveExprKind(candidate.path.node, id),
-            })),
-          )),
+      ? new Set(
+          [...detectedKinds].filter((kind) => this.validLookupKinds.has(kind)),
         )
-      }
-
-      // Filter to valid candidates
-      const validCandidates = resolvedCandidates.filter(({ path, kind }) => {
+      : this.validLookupKinds
+    const candidateKinds = new Set(fileKinds)
+    if (
+      fileKinds.has('ServerFn') &&
+      ![...fileKinds].some(isExternalLookupKind)
+    ) {
+      for (const kind of this.validLookupKinds) {
         if (
-          !this.validLookupKinds.has(
-            kind as Exclude<LookupKind, 'ClientOnlyJSX'>,
-          )
+          !isExternalLookupKind(kind) &&
+          getLookupSetup(kind)?.type === 'directCall'
         ) {
-          return false
+          candidateKinds.add(kind)
         }
-
-        if (
-          isLookupKind(kind) &&
-          kind !== 'ClientOnlyJSX' &&
-          !isMethodChainCandidate(path.node, fileKinds)
-        ) {
-          return isDirectCallCandidateForKind(kind, this.externalLookupSetup)
-        }
-
-        return true
-      }) as Array<{
-        path: babel.NodePath<t.CallExpression>
-        kind: Exclude<LookupKind, 'ClientOnlyJSX'>
-      }>
-
-      if (validCandidates.length === 0 && jsxCandidatePaths.length === 0) {
-        break builtInTransforms
       }
-
-      // Process valid candidates to collect method chains
-      const pathsToRewrite: Array<{
-        path: babel.NodePath<t.CallExpression>
-        kind: Exclude<LookupKind, 'ClientOnlyJSX'>
-        methodChain: MethodChainPaths
-      }> = []
-
-      for (const { path, kind } of validCandidates) {
-        const node = path.node
-
-        // Collect method chain paths by walking DOWN from root through the chain
-        const methodChain: MethodChainPaths = {
-          middleware: null,
-          validator: null,
-          // TODO remove upon stable
-          inputValidator: null,
-          handler: null,
-          server: null,
-          client: null,
+    }
+    const { module } = this.ingestModule({ code, id, parserFilename })
+    const { program: ast, originalNodes } = cloneModuleAst(module)
+    const editor = createAstEditor(ast)
+    const context: CompilationContext = {
+      ast,
+      module,
+      originalNodes,
+      ...editor,
+      code,
+      id,
+      env: this.options.env,
+      envName: this.options.envName,
+      mode: this.mode,
+      root: this.options.root,
+      framework: this.options.framework,
+      providerEnvName: this.options.providerEnvName,
+      parseExpression,
+      warn: warn ?? this.options.warn,
+      generateFunctionId: (options) => this.generateFunctionId(options),
+      getKnownServerFns: this.options.getKnownServerFns,
+      serverFnProviderModuleDirectives:
+        this.options.serverFnProviderModuleDirectives,
+      onServerFnsById: this.options.onServerFnsById,
+    }
+    const calls: Array<t.CallExpression> = []
+    const jsx: Array<t.JSXElement> = []
+    const sourceInfo = this.moduleCache.get(id)!
+    walk(ast, {
+      CallExpression: (node, position) => {
+        if (
+          is.MemberExpression(position.parent) &&
+          is.CallExpression(editor.parentOf(position.parent))
+        ) {
+          return
         }
-
-        // Walk down the call chain using nodes, look up paths from map
-        let currentNode: t.CallExpression = node
-        let currentPath: babel.NodePath<t.CallExpression> = path
-
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        while (true) {
-          const callee = currentNode.callee
-          if (!t.isMemberExpression(callee)) {
-            break
+        if (isMethodChainCandidate(node, fileKinds)) {
+          calls.push(node)
+          return
+        }
+        const callee = is.Expression(node.callee)
+          ? unwrapExpression(node.callee)
+          : node.callee
+        const name = is.Identifier(callee)
+          ? callee.name
+          : is.MemberExpression(callee) && is.Identifier(callee.property)
+            ? callee.property.name
+            : null
+        if (!name) {
+          return
+        }
+        const receiver =
+          is.MemberExpression(callee) && is.Expression(callee.object)
+            ? unwrapExpression(callee.object)
+            : null
+        const simpleDirectCall =
+          is.Identifier(callee) || is.Identifier(receiver)
+        const declarator = getVariableDeclarator(node, editor.parentOf)
+        const declaration = declarator && editor.parentOf(declarator)
+        const parent = declaration && editor.parentOf(declaration)
+        const topLevel =
+          is.Program(parent) ||
+          (is.ExportNamedDeclaration(parent) &&
+            is.Program(editor.parentOf(parent)))
+        for (const kind of candidateKinds) {
+          const setup = getLookupSetup(kind, this.externalLookupSetup)
+          if (setup?.type !== 'directCall') {
+            continue
           }
-
-          // Record method chain path if it's a known method
-          if (t.isIdentifier(callee.property)) {
-            const name = callee.property.name as keyof MethodChainPaths
-            if (name in methodChain) {
-              // Get first argument path
-              const args = currentPath.get('arguments')
-              const firstArgPath =
-                Array.isArray(args) && args.length > 0
-                  ? (args[0] ?? null)
-                  : null
-              methodChain[name] = {
-                callPath: currentPath,
-                firstArgPath,
-              }
+          if ((topLevel && simpleDirectCall) || setup.factoryNames.has(name)) {
+            calls.push(node)
+            return
+          }
+          if (isExternalLookupKind(kind)) {
+            const root = is.Identifier(callee)
+              ? callee
+              : is.Identifier(receiver)
+                ? receiver
+                : null
+            const symbol = root && module.symbolOf(originalNodes.get(root)!)
+            const binding = symbol && sourceInfo.bindings.get(symbol.name)
+            if (
+              binding?.type === 'import' &&
+              symbol?.scope === module.rootScope &&
+              this.knownRootImports
+                .get(binding.source)
+                ?.get(
+                  binding.importedName === '*' ? name : binding.importedName,
+                ) === kind
+            ) {
+              calls.push(node)
+              return
             }
           }
-
-          // Move to the inner call (the object of the member expression)
-          if (!t.isCallExpression(callee.object)) {
+        }
+      },
+      JSXElement: (node) => {
+        if (
+          !fileKinds.has('ClientOnlyJSX') ||
+          !is.JSXIdentifier(node.openingElement.name)
+        ) {
+          return
+        }
+        const original = originalNodes.get(node.openingElement.name)!
+        const symbol = module.symbolOf(original)
+        if (!symbol || symbol.scope !== module.rootScope) {
+          return
+        }
+        const binding = sourceInfo.bindings.get(symbol.name)
+        if (
+          binding?.type === 'import' &&
+          this.knownRootImports
+            .get(binding.source)
+            ?.get(binding.importedName) === 'ClientOnlyJSX'
+        ) {
+          jsx.push(node)
+        }
+      },
+    })
+    const candidatesByKind = new Map<
+      Exclude<LookupKind, 'ClientOnlyJSX'>,
+      Array<RewriteCandidate>
+    >()
+    const resolved = await Promise.all(
+      calls.map(async (node) => {
+        // Only module bindings can participate in the cross-module builder graph.
+        // Local shadowing is decided by Yuku's resolved references before tracing.
+        let base: t.Node = node
+        for (;;) {
+          if (is.Expression(base)) {
+            base = unwrapExpression(base)
+          }
+          if (is.CallExpression(base)) {
+            base = base.callee
+          } else if (is.MemberExpression(base)) {
+            base = base.object
+          } else {
             break
           }
-          currentNode = callee.object
-          // Look up path from chain map, or use candidate path if not found
-          const nextPath = chainCallPaths.get(currentNode)
-          if (!nextPath) {
-            break
+        }
+        if (is.Identifier(base)) {
+          const symbol = module.symbolOf(originalNodes.get(base)!)
+          if (!symbol || symbol.scope !== module.rootScope) {
+            return { node, kind: 'None' as Kind }
           }
-          currentPath = nextPath
         }
-
-        pathsToRewrite.push({ path, kind, methodChain })
+        return { node, kind: await this.resolveExprKind(node, id) }
+      }),
+    )
+    for (const { node, kind } of resolved) {
+      if (
+        !isLookupKind(kind) ||
+        kind === 'ClientOnlyJSX' ||
+        !candidateKinds.has(kind)
+      ) {
+        continue
       }
-
-      const refIdents = findReferencedIdentifiers(ast)
-
-      const context: CompilationContext = {
-        ast,
-        id,
-        code,
-        env: this.options.env,
-        envName: this.options.envName,
-        mode: this.mode,
-        root: this.options.root,
-        framework: this.options.framework,
-        providerEnvName: this.options.providerEnvName,
-        types: t,
-        parseExpression: (expressionCode) =>
-          babel.template.expression(expressionCode, {
-            placeholderPattern: false,
-          })(),
-        warn: warnFn,
-
-        generateFunctionId: (opts) => this.generateFunctionId(opts),
-        getKnownServerFns: this.options.getKnownServerFns,
-        serverFnProviderModuleDirectives:
-          this.options.serverFnProviderModuleDirectives,
-        onServerFnsById: this.options.onServerFnsById,
+      if (
+        !isMethodChainCandidate(node, fileKinds) &&
+        !isDirectCallCandidateForKind(kind, this.externalLookupSetup)
+      ) {
+        continue
       }
-
-      // Group candidates by kind for batch processing
-      const candidatesByKind = new Map<
-        Exclude<LookupKind, 'ClientOnlyJSX'>,
-        Array<RewriteCandidate>
-      >()
-
-      for (const { path: candidatePath, kind, methodChain } of pathsToRewrite) {
-        const candidate: RewriteCandidate = { path: candidatePath, methodChain }
-        const existing = candidatesByKind.get(kind)
-        if (existing) {
-          existing.push(candidate)
-        } else {
-          candidatesByKind.set(kind, [candidate])
+      const methodChain: MethodChainPaths = {
+        middleware: null,
+        validator: null,
+        inputValidator: null,
+        handler: null,
+        server: null,
+        client: null,
+      }
+      let current = node
+      for (;;) {
+        const callee = is.Expression(current.callee)
+          ? unwrapExpression(current.callee)
+          : current.callee
+        if (!is.MemberExpression(callee)) {
+          break
         }
+        if (
+          is.Identifier(callee.property) &&
+          callee.property.name in methodChain
+        ) {
+          methodChain[callee.property.name as keyof MethodChainPaths] = {
+            call: current,
+            firstArg: current.arguments[0] ?? null,
+          }
+        }
+        const object = is.Expression(callee.object)
+          ? unwrapExpression(callee.object)
+          : callee.object
+        if (!is.CallExpression(object)) {
+          break
+        }
+        current = object
       }
-
-      // External transforms run before built-ins by default so they can augment
-      // user handlers before server function extraction clones provider bodies.
+      const candidates = candidatesByKind.get(kind) ?? []
+      candidates.push({ node, methodChain })
+      candidatesByKind.set(kind, candidates)
+    }
+    let modified = candidatesByKind.size > 0 || jsx.length > 0
+    if (modified) {
       this.runExternalTransforms('pre', candidatesByKind, context)
-
       for (const kind of BuiltInKindHandlerOrder) {
         const candidates = candidatesByKind.get(kind)
-        if (!candidates) continue
-        const handler = BuiltInKindHandlers[kind]
-        handler(candidates, context, kind)
+        if (candidates) {
+          BuiltInKindHandlers[kind](candidates, context, kind)
+        }
       }
-
       this.runExternalTransforms('post', candidatesByKind, context)
-
-      // Handle JSX candidates (e.g., <ClientOnly>)
-      // Validation was already done during traversal - just call the handler
-      for (const jsxPath of jsxCandidatePaths) {
-        handleClientOnlyJSX(jsxPath, { env: 'server' })
+      for (const element of jsx) {
+        handleClientOnlyJSX(element, { env: 'server' })
       }
-
-      deadCodeElimination(ast, refIdents)
-      astHasChanges = true
+      removeUnusedBindings(module, ast, originalNodes, {
+        preserveInitiallyUnused: true,
+      })
     }
-
-    if (astTransformPlugins.length > 0) {
-      astHasChanges =
-        this.runAstTransforms({
-          ast,
-          code,
-          id,
-          transforms: astTransformPlugins,
-          warn: warnFn,
-        }) || astHasChanges
-    }
-
-    return astHasChanges ? this.generateResultFromAst(ast, code, id) : null
+    modified =
+      this.runAstTransforms(
+        context,
+        this.getAstTransformPluginsForCode(code),
+      ) || modified
+    return modified ? this.generateResultFromAst(ast, code, id) : null
   }
 
   private generateResultFromAst(
@@ -1432,21 +1019,7 @@ export class StartCompiler {
     sourceCode: string,
     id: string,
   ): StartCompilerTransformResult {
-    const result = generateFromAst(ast, {
-      sourceMaps: true,
-      sourceFileName: id,
-      filename: id,
-    })
-
-    // @babel/generator does not populate sourcesContent because it only has
-    // the AST, not the original text.  Without this, Vite's composed sourcemap
-    // omits the original source, causing downstream consumers to fall back to
-    // the compiled output and fail to resolve original line numbers.
-    if (result.map) {
-      result.map.sourcesContent = [sourceCode]
-    }
-
-    return result
+    return generateModule(ast, { source: sourceCode, filename: id })
   }
 
   private getAstTransformPluginsForCode(
@@ -1454,51 +1027,26 @@ export class StartCompiler {
   ): Array<StartCompilerAstPlugin> {
     return this.compilerPlugins.filter(
       (plugin): plugin is StartCompilerAstPlugin => {
-        if (!plugin.transformAst) return false
-        if (!plugin.detect) return true
+        if (!plugin.transformAst) {
+          return false
+        }
+        if (!plugin.detect) {
+          return true
+        }
         plugin.detect.lastIndex = 0
         return plugin.detect.test(code)
       },
     )
   }
 
-  private runAstTransforms({
-    ast,
-    code,
-    id,
-    transforms,
-    warn,
-  }: {
-    ast: ParsedAst
-    code: string
-    id: string
-    transforms: Array<StartCompilerAstPlugin>
-    warn?: (message: string) => void
-  }): boolean {
+  private runAstTransforms(
+    context: StartCompilerTransformContext,
+    transforms: Array<StartCompilerAstPlugin>,
+  ): boolean {
     let modified = false
-
     for (const plugin of transforms) {
-      const context = {
-        ast,
-        code,
-        id,
-        env: this.options.env,
-        envName: this.options.envName,
-        mode: this.mode,
-        root: this.options.root,
-        framework: this.options.framework,
-        providerEnvName: this.options.providerEnvName,
-        types: t,
-        parseExpression: (expressionCode: string) =>
-          babel.template.expression(expressionCode, {
-            placeholderPattern: false,
-          })(),
-        warn,
-      }
-
       modified = plugin.transformAst(context) || modified
     }
-
     return modified
   }
 
@@ -1511,10 +1059,14 @@ export class StartCompiler {
     context: CompilationContext,
   ) {
     for (const [kind, transform] of this.externalTransformsByKind) {
-      if ((transform.order ?? 'pre') !== order) continue
+      if ((transform.order ?? 'pre') !== order) {
+        continue
+      }
 
       const candidates = candidatesByKind.get(kind)
-      if (!candidates) continue
+      if (!candidates) {
+        continue
+      }
 
       transform.transform(candidates, context)
     }
@@ -1807,7 +1359,7 @@ export class StartCompiler {
       getLookupSetup(resolvedKind, this.externalLookupSetup)?.type ===
         'directCall' &&
       binding.init &&
-      t.isCallExpression(unwrapExpression(binding.init))
+      is.CallExpression(unwrapExpression(binding.init))
     ) {
       binding.resolvedKind = 'None'
       return 'None'
@@ -1817,11 +1369,11 @@ export class StartCompiler {
   }
 
   private async resolveExprKind(
-    expr: t.Expression | null,
+    expr: t.Expression | t.Super | null,
     fileId: string,
     visited = new Set<string>(),
   ): Promise<Kind> {
-    if (!expr) {
+    if (!expr || is.Super(expr)) {
       return 'None'
     }
 
@@ -1829,21 +1381,18 @@ export class StartCompiler {
 
     let result: Kind = 'None'
 
-    if (t.isCallExpression(expr)) {
-      if (!t.isExpression(expr.callee)) {
+    if (is.CallExpression(expr)) {
+      if (!is.Expression(expr.callee)) {
         return 'None'
       }
-      const calleeKind = await this.resolveCalleeKind(
-        expr.callee,
-        fileId,
-        visited,
-      )
+      const callee = unwrapExpression(expr.callee)
+      const calleeKind = await this.resolveCalleeKind(callee, fileId, visited)
       if (calleeKind === 'Root' || calleeKind === 'Builder') {
         return 'Builder'
       }
       // For method chain patterns (callee is MemberExpression like .server() or .client()),
       // return the resolved kind if valid
-      if (t.isMemberExpression(expr.callee)) {
+      if (is.MemberExpression(callee)) {
         if (this.validLookupKinds.has(calleeKind as LookupKind)) {
           return calleeKind
         }
@@ -1854,16 +1403,16 @@ export class StartCompiler {
       // @tanstack/start-fn-stubs (via fast path or slow path through re-exports).
       // This handles both direct imports from @tanstack/react-start and imports
       // from intermediate packages that re-export from @tanstack/start-client-core.
-      if (t.isIdentifier(expr.callee)) {
+      if (is.Identifier(callee)) {
         if (this.validLookupKinds.has(calleeKind as LookupKind)) {
           return calleeKind
         }
       }
-    } else if (t.isMemberExpression(expr) && t.isIdentifier(expr.property)) {
+    } else if (is.MemberExpression(expr) && is.Identifier(expr.property)) {
       result = await this.resolveCalleeKind(expr.object, fileId, visited)
     }
 
-    if (result === 'None' && t.isIdentifier(expr)) {
+    if (result === 'None' && is.Identifier(expr)) {
       result = await this.resolveIdentifierKind(expr.name, fileId, visited)
     }
 
@@ -1871,15 +1420,18 @@ export class StartCompiler {
   }
 
   private async resolveCalleeKind(
-    callee: t.Expression,
+    callee: t.Expression | t.Super,
     fileId: string,
     visited = new Set<string>(),
   ): Promise<Kind> {
-    if (t.isIdentifier(callee)) {
+    if (is.Expression(callee)) {
+      callee = unwrapExpression(callee)
+    }
+    if (is.Identifier(callee)) {
       return this.resolveIdentifierKind(callee.name, fileId, visited)
     }
 
-    if (t.isMemberExpression(callee) && t.isIdentifier(callee.property)) {
+    if (is.MemberExpression(callee) && is.Identifier(callee.property)) {
       const prop = callee.property.name
 
       // Check if this property matches any method chain pattern
@@ -1890,7 +1442,9 @@ export class StartCompiler {
 
         // Check each possible kind that uses this identifier
         for (const kind of possibleKinds) {
-          if (!this.validLookupKinds.has(kind)) continue
+          if (!this.validLookupKinds.has(kind)) {
+            continue
+          }
 
           if (kind === 'ServerFn') {
             if (base === 'Root' || base === 'Builder') {
@@ -1917,9 +1471,12 @@ export class StartCompiler {
       }
 
       // Check if the object is a namespace import
-      if (t.isIdentifier(callee.object)) {
+      const receiver = is.Expression(callee.object)
+        ? unwrapExpression(callee.object)
+        : callee.object
+      if (is.Identifier(receiver)) {
         const info = await this.getModuleInfo(fileId)
-        const binding = info.bindings.get(callee.object.name)
+        const binding = info.bindings.get(receiver.name)
         if (
           binding &&
           binding.type === 'import' &&
@@ -1967,8 +1524,10 @@ function isMethodChainCandidate(
   node: t.CallExpression,
   lookupKinds: Set<LookupKind>,
 ): boolean {
-  const callee = node.callee
-  if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.property)) {
+  const callee = is.Expression(node.callee)
+    ? unwrapExpression(node.callee)
+    : node.callee
+  if (!is.MemberExpression(callee) || !is.Identifier(callee.property)) {
     return false
   }
 

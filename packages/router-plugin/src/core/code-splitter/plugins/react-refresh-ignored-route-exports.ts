@@ -1,10 +1,17 @@
-import * as template from '@babel/template'
-import * as t from '@babel/types'
+import { parseStatements } from '@tanstack/router-utils'
 import { getUniqueProgramIdentifier } from '../../utils'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
-const buildReactRefreshIgnoredRouteExportsStatements = template.statements(
-  `
+export function createReactRefreshIgnoredRouteExportsPlugin(): ReferenceRouteCompilerPlugin {
+  return {
+    name: 'react-refresh-ignored-route-exports',
+    onAddHmr(ctx) {
+      const anchorName = getUniqueProgramIdentifier(
+        ctx.program,
+        'TSRFastRefreshAnchor',
+      )
+      ctx.program.body.push(
+        ...parseStatements(`
 const hot = import.meta.hot
 if (hot && typeof window !== 'undefined') {
   hot.data ??= {}
@@ -23,44 +30,12 @@ if (hot && typeof window !== 'undefined') {
     }
   })()
 
-  tsrReactRefresh.ignoredExportsById.set(%%moduleId%%, ['Route'])
+  tsrReactRefresh.ignoredExportsById.set(${JSON.stringify(ctx.opts.id)}, ['Route'])
 }
-`,
-  { syntacticPlaceholders: true },
-)
 
-/**
- * A trivial component-shaped export that gives `@vitejs/plugin-react` a valid
- * Fast Refresh boundary. Without at least one non-ignored component export,
- * the module would be invalidated (full page reload) on every update even
- * though our custom route HMR handler already manages the update.
- */
-const buildRefreshAnchorStatement = template.statement(
-  `export function %%anchorName%%() { return null }`,
-  { syntacticPlaceholders: true },
-)
-
-export function createReactRefreshIgnoredRouteExportsPlugin(): ReferenceRouteCompilerPlugin {
-  return {
-    name: 'react-refresh-ignored-route-exports',
-    onAddHmr(ctx) {
-      const anchorName = getUniqueProgramIdentifier(
-        ctx.programPath,
-        'TSRFastRefreshAnchor',
+export function ${anchorName.name}() { return null }
+`),
       )
-
-      ctx.programPath.pushContainer(
-        'body',
-        buildReactRefreshIgnoredRouteExportsStatements({
-          moduleId: t.stringLiteral(ctx.opts.id),
-        }),
-      )
-
-      ctx.programPath.pushContainer(
-        'body',
-        buildRefreshAnchorStatement({ anchorName }),
-      )
-
       return { modified: true }
     },
   }

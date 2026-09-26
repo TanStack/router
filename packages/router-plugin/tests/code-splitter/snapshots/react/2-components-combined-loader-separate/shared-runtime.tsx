@@ -1,0 +1,9 @@
+import { state } from "shared-runtime.tsx?tsr-shared=1";
+const $$splitComponentImporter = () => import("shared-runtime.tsx?tsr-split=component---errorComponent---notFoundComponent---pendingComponent");
+import { lazyRouteComponent } from "@tanstack/react-router";
+const $$splitLoaderImporter = () => import("shared-runtime.tsx?tsr-split=loader");
+import { lazyFn } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router';
+console.log('shared-runtime:reference');
+export const Route = createFileRoute('/shared-runtime')({ beforeLoad: () => state, loader: lazyFn($$splitLoaderImporter, "loader"), component: lazyRouteComponent($$splitComponentImporter, "component") });
+export { createSeed as default, state as firstState, state as secondState, state as "odd-name" } from "shared-runtime.tsx?tsr-shared=1";

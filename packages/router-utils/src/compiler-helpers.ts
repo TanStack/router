@@ -1,31 +1,410 @@
-import * as t from '@babel/types'
+import { bindingIdentifiers, is, nameOf, walk } from 'yuku-ast'
+import { generatedReferenceOf } from './ast'
+import type { Module, Scope, Symbol } from 'yuku-analyzer'
+import type { Expression, Node, Program } from '@yuku-toolchain/types'
 
-type CompilerNodePath<TNode extends t.Node = t.Node> = {
-  node: TNode
-  parentPath: CompilerNodePath | null
-  isVariableDeclarator: () => boolean
+export interface ModuleDeclarationGraph {
+  declarations: Map<Symbol, Node>
+  dependencies: Map<Symbol, Set<Symbol>>
+  declarationSymbols: Map<Node, Set<Symbol>>
 }
 
-type ReplacePathNode<TPath, TNode extends t.Node> = Omit<TPath, 'node'> & {
-  node: TNode
+/** Runtime references resolved by Yuku, including JSX and excluding shadowed names. */
+export function collectModuleReferences(
+  module: Module,
+  node: Node,
+): Set<Symbol> {
+  const references = new Set<Symbol>()
+  module.walk(
+    {
+      enter(current) {
+        const reference = module.referenceOf(current)
+        if (
+          reference &&
+          !reference.inTypePosition &&
+          reference.symbol?.scope === module.rootScope
+        ) {
+          references.add(reference.symbol)
+        }
+      },
+    },
+    node,
+  )
+  return references
 }
 
-type IdentifierScopeFrame = {
-  kind: 'program' | 'function' | 'block'
-  bindings: Set<string>
+function declarationOf(module: Module, identifier: Node): Node | undefined {
+  let current: Node | null = identifier
+  while (current) {
+    if (is.VariableDeclarator(current)) {
+      const statement = module.parentOf(current)
+      const parent = statement && module.parentOf(statement)
+      if (
+        is.ForInStatement(parent) ||
+        is.ForOfStatement(parent) ||
+        is.ForStatement(parent)
+      ) {
+        return undefined
+      }
+      return current
+    }
+    if (is.TSEnumDeclaration(current) || is.TSModuleDeclaration(current)) {
+      return current.id === identifier ? current : undefined
+    }
+    if (
+      is.FunctionDeclaration(current) ||
+      is.ClassDeclaration(current) ||
+      is.TSDeclareFunction(current)
+    ) {
+      return current.id === identifier ? current : undefined
+    }
+    if (
+      is.ImportSpecifier(current) ||
+      is.ImportDefaultSpecifier(current) ||
+      is.ImportNamespaceSpecifier(current)
+    ) {
+      return current
+    }
+    if (is.Function(current) || is.Class(current) || is.Program(current)) {
+      return undefined
+    }
+    current = module.parentOf(current)
+  }
+  return undefined
 }
-type IdentifierScopeStack = Array<IdentifierScopeFrame>
+
+function declarationIndex(
+  module: Module,
+  symbols: Array<Symbol>,
+): Pick<ModuleDeclarationGraph, 'declarations' | 'declarationSymbols'> {
+  const declarations = new Map<Symbol, Node>()
+  const declarationSymbols = new Map<Node, Set<Symbol>>()
+  for (const symbol of symbols) {
+    for (const identifier of symbol.declarations) {
+      const declaration = declarationOf(module, identifier)
+      if (!declaration) {
+        continue
+      }
+      const previous = declarations.get(symbol)
+      if (
+        !previous ||
+        (is.TSDeclareFunction(previous) && !is.TSDeclareFunction(declaration))
+      ) {
+        declarations.set(symbol, declaration)
+      }
+      const siblings = declarationSymbols.get(declaration) ?? new Set<Symbol>()
+      siblings.add(symbol)
+      declarationSymbols.set(declaration, siblings)
+    }
+  }
+  return { declarations, declarationSymbols }
+}
+
+/** Bindings sharing a declarator are one initialization unit. */
+export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
+  const index = declarationIndex(module, module.rootScope.bindings)
+  const dependencies = new Map<Symbol, Set<Symbol>>()
+  for (const [declaration, owners] of index.declarationSymbols) {
+    const references = collectModuleReferences(module, declaration)
+    for (const symbol of owners) {
+      const combined = dependencies.get(symbol) ?? new Set<Symbol>()
+      for (const reference of references) {
+        if (reference !== symbol) {
+          combined.add(reference)
+        }
+      }
+      dependencies.set(symbol, combined)
+    }
+  }
+  return { ...index, dependencies }
+}
+
+export function expandTransitively<T>(
+  roots: Set<T>,
+  dependencies: Map<T, Set<T>>,
+): Set<T> {
+  const expanded = new Set(roots)
+  for (const item of expanded) {
+    for (const dependency of dependencies.get(item) ?? []) {
+      expanded.add(dependency)
+    }
+  }
+  return expanded
+}
+
+/** Erase imports/exports that exist only in TypeScript's type space. */
+export function stripTypeExports(program: Program): void {
+  program.body = program.body.filter((statement) => {
+    if (is.ImportDeclaration(statement)) {
+      if (statement.importKind === 'type') {
+        return false
+      }
+      const hadSpecifiers = statement.specifiers.length > 0
+      statement.specifiers = statement.specifiers.filter(
+        (specifier) =>
+          !is.ImportSpecifier(specifier) || specifier.importKind !== 'type',
+      )
+      return !hadSpecifiers || statement.specifiers.length > 0
+    }
+    if (is.ExportAllDeclaration(statement)) {
+      return statement.exportKind !== 'type'
+    }
+    if (is.ExportNamedDeclaration(statement)) {
+      if (
+        statement.exportKind === 'type' ||
+        is.TSInterfaceDeclaration(statement.declaration) ||
+        is.TSTypeAliasDeclaration(statement.declaration)
+      ) {
+        return false
+      }
+      const hadSpecifiers = statement.specifiers.length > 0
+      statement.specifiers = statement.specifiers.filter(
+        (specifier) => specifier.exportKind !== 'type',
+      )
+      return (
+        !!statement.declaration ||
+        !hadSpecifiers ||
+        statement.specifiers.length > 0
+      )
+    }
+    return true
+  })
+}
+
+export interface RemoveUnusedBindingsOptions {
+  roots?: Iterable<Symbol | string>
+  /** Preserve user declarations that were unused before the transform. */
+  preserveInitiallyUnused?: boolean
+}
+
+/**
+ * Rebuild liveness from surviving nodes, using original symbol identity. This
+ * removes dependencies of erased route options without reparsing generated code.
+ * Callers decide output ownership before invoking this lexical binding cleanup.
+ */
+export function removeUnusedBindings(
+  module: Module,
+  program: Program,
+  originalNodes: WeakMap<Node, Node>,
+  {
+    roots = [],
+    preserveInitiallyUnused = true,
+  }: RemoveUnusedBindingsOptions = {},
+): void {
+  stripTypeExports(program)
+  const graph = declarationIndex(module, module.symbols)
+  const byName = new Map(
+    module.rootScope.bindings.map((symbol) => [symbol.name, symbol]),
+  )
+  const originalOwners = new Map<Node, Set<Symbol>>(graph.declarationSymbols)
+  // Export records are uses even when there are no lexical references. A
+  // transform that removes an export may also remove its declaration graph.
+  const { exports: originalExports } = module
+  const originallyExported = new Set(
+    originalExports
+      .filter((record) => !record.typeOnly && record.local)
+      .map((record) => record.local),
+  )
+  const live = new Set<Symbol>()
+  const dependencies = new Map<Symbol, Set<Symbol>>()
+  const present = new Set<Symbol>()
+  const ownerStack: Array<Set<Symbol> | null> = []
+  const scopeStack: Array<Scope> = []
+  const addDependency = (from: Symbol, to: Symbol) => {
+    const edges = dependencies.get(from) ?? new Set<Symbol>()
+    edges.add(to)
+    dependencies.set(from, edges)
+  }
+  for (const root of roots) {
+    const symbol = typeof root === 'string' ? byName.get(root) : root
+    if (symbol) {
+      live.add(symbol)
+    }
+  }
+  walk(program, {
+    enter(node) {
+      const original = originalNodes.get(node)
+      const own = original ? originalOwners.get(original) : undefined
+      const parentOwner = ownerStack.at(-1) ?? null
+      const owner = own ?? parentOwner
+      ownerStack.push(owner)
+      const scope = original
+        ? module.scopeOf(original)
+        : (scopeStack.at(-1) ?? module.rootScope)
+      scopeStack.push(scope)
+      if (own) {
+        for (const symbol of own) {
+          present.add(symbol)
+          if (
+            preserveInitiallyUnused &&
+            symbol.references.length === 0 &&
+            !originallyExported.has(symbol)
+          ) {
+            if (parentOwner) {
+              for (const parent of parentOwner) {
+                addDependency(parent, symbol)
+              }
+            } else {
+              live.add(symbol)
+            }
+          }
+          for (const parent of parentOwner ?? []) {
+            addDependency(symbol, parent)
+          }
+        }
+      }
+      const markExport = (identifier: Node) => {
+        const originalIdentifier = originalNodes.get(identifier)
+        const symbol = originalIdentifier
+          ? module.symbolOf(originalIdentifier)
+          : byName.get(nameOf(identifier) ?? '')
+        if (!symbol) {
+          return
+        }
+        if (owner) {
+          for (const parent of owner) {
+            addDependency(parent, symbol)
+          }
+        } else {
+          live.add(symbol)
+        }
+      }
+      if (is.ExportNamedDeclaration(node) && node.declaration) {
+        const declaration = node.declaration
+        if (is.VariableDeclaration(declaration)) {
+          for (const item of declaration.declarations) {
+            for (const identifier of bindingIdentifiers(item.id)) {
+              markExport(identifier)
+            }
+          }
+        } else if ('id' in declaration && declaration.id) {
+          markExport(declaration.id)
+        }
+      }
+      if (
+        is.ExportDefaultDeclaration(node) &&
+        (is.FunctionDeclaration(node.declaration) ||
+          is.ClassDeclaration(node.declaration)) &&
+        node.declaration.id
+      ) {
+        markExport(node.declaration.id)
+      }
+      if (is.ExportSpecifier(node)) {
+        markExport(node.local)
+      }
+      const reference = original ? module.referenceOf(original) : null
+      let symbol =
+        reference && !reference.inTypePosition ? reference.symbol : null
+      const generated = generatedReferenceOf(node)
+      if (!original && generated) {
+        symbol =
+          typeof generated === 'string'
+            ? module.resolve(generated, scope)
+            : generated
+      }
+      if (!symbol || !graph.declarations.has(symbol)) {
+        return
+      }
+      if (!owner) {
+        live.add(symbol)
+      } else {
+        for (const source of owner) {
+          const edges = dependencies.get(source) ?? new Set<Symbol>()
+          edges.add(symbol)
+          dependencies.set(source, edges)
+        }
+      }
+    },
+    leave() {
+      ownerStack.pop()
+      scopeStack.pop()
+    },
+  })
+  // Destructuring must initialize once in its entirety if any sibling is live.
+  for (const siblings of graph.declarationSymbols.values()) {
+    const representative = siblings.values().next().value
+    if (!representative) {
+      continue
+    }
+    for (const symbol of siblings) {
+      if (symbol !== representative) {
+        addDependency(representative, symbol)
+        addDependency(symbol, representative)
+      }
+    }
+  }
+  const retained = expandTransitively(live, dependencies)
+  const removable = new Set(
+    [...present].filter((symbol) => !retained.has(symbol)),
+  )
+  walk(program, {
+    enter(node, context) {
+      const original = originalNodes.get(node)
+      const owners = original ? originalOwners.get(original) : undefined
+      if (owners && [...owners].every((symbol) => removable.has(symbol))) {
+        context.remove()
+      }
+    },
+    leave(node, context) {
+      if (is.VariableDeclaration(node) && node.declarations.length === 0) {
+        context.remove()
+      } else if (is.ImportDeclaration(node) && node.specifiers.length === 0) {
+        const original = originalNodes.get(node)
+        if (
+          original &&
+          is.ImportDeclaration(original) &&
+          original.specifiers.length > 0
+        ) {
+          context.remove()
+        }
+      } else if (
+        is.ExportNamedDeclaration(node) &&
+        !node.declaration &&
+        node.specifiers.length === 0 &&
+        !node.source
+      ) {
+        context.remove()
+      }
+    },
+  })
+
+  const referencedNames = new Set<string>()
+  walk(program, {
+    enter(node) {
+      const original = originalNodes.get(node)
+      if (original) {
+        const reference = module.referenceOf(original)
+        if (reference && !reference.inTypePosition) {
+          referencedNames.add(reference.name)
+        }
+      } else {
+        const generated = generatedReferenceOf(node)
+        if (generated) {
+          referencedNames.add(
+            typeof generated === 'string' ? generated : generated.name,
+          )
+        }
+      }
+    },
+  })
+  program.body = program.body.filter((statement) => {
+    if (
+      !is.ImportDeclaration(statement) ||
+      originalNodes.has(statement) ||
+      statement.specifiers.length === 0
+    ) {
+      return true
+    }
+    statement.specifiers = statement.specifiers.filter((specifier) =>
+      referencedNames.has(specifier.local.name),
+    )
+    return statement.specifiers.length > 0
+  })
+}
 
 export type ModuleInfoBinding =
-  | {
-      type: 'import'
-      source: string
-      importedName: string
-    }
-  | {
-      type: 'var'
-      init: t.Expression | null
-    }
+  | { type: 'import'; source: string; importedName: string }
+  | { type: 'var'; init: Expression | null }
 
 export interface ExtractedModuleInfo {
   bindings: Map<string, ModuleInfoBinding>
@@ -33,870 +412,72 @@ export interface ExtractedModuleInfo {
   reExportAllSources: Array<string>
 }
 
-function getTransparentWrapperExpression(node: t.Node): t.Expression | null {
-  if (
-    t.isTSAsExpression(node) ||
-    t.isTSSatisfiesExpression(node) ||
-    t.isTSTypeAssertion(node) ||
-    t.isTSNonNullExpression(node) ||
-    t.isParenthesizedExpression(node)
-  ) {
-    return node.expression
-  }
-
-  return null
-}
-
-export function unwrapExpression(expr: t.Expression): t.Expression {
-  let inner = getTransparentWrapperExpression(expr)
-  while (inner) {
-    expr = inner
-    inner = getTransparentWrapperExpression(expr)
-  }
-
-  return expr
-}
-
-export function getVariableDeclaratorForExpressionPath<
-  TPath extends CompilerNodePath<t.Expression>,
->(path: TPath): ReplacePathNode<TPath, t.VariableDeclarator> | null {
-  let currentPath: CompilerNodePath = path
-  let parentPath = currentPath.parentPath
-
-  while (
-    parentPath &&
-    getTransparentWrapperExpression(parentPath.node) === currentPath.node
-  ) {
-    currentPath = parentPath
-    parentPath = parentPath.parentPath
-  }
-
-  if (
-    parentPath?.isVariableDeclarator() &&
-    t.isVariableDeclarator(parentPath.node) &&
-    parentPath.node.init === currentPath.node
-  ) {
-    return parentPath as ReplacePathNode<TPath, t.VariableDeclarator>
-  }
-
-  return null
-}
-
-function getModuleExportName(node: t.Identifier | t.StringLiteral) {
-  return t.isIdentifier(node) ? node.name : node.value
-}
-
-function addVariableDeclarationModuleInfo(
-  declaration: t.VariableDeclaration,
-  bindings: Map<string, ModuleInfoBinding>,
-  exportMap?: Map<string, string>,
-) {
-  for (const declarator of declaration.declarations) {
-    for (const name of collectIdentifiersFromPattern(declarator.id)) {
-      bindings.set(name, {
-        type: 'var',
-        init: declarator.init ?? null,
-      })
-      exportMap?.set(name, name)
-    }
-  }
-}
-
-function addDeclarationModuleInfo(
-  declaration: t.Declaration,
-  bindings: Map<string, ModuleInfoBinding>,
-  exportMap?: Map<string, string>,
-) {
-  if (t.isVariableDeclaration(declaration)) {
-    addVariableDeclarationModuleInfo(declaration, bindings, exportMap)
-    return
-  }
-
-  if (
-    (t.isFunctionDeclaration(declaration) ||
-      t.isClassDeclaration(declaration)) &&
-    declaration.id
-  ) {
-    bindings.set(declaration.id.name, {
-      type: 'var',
-      init: null,
-    })
-    exportMap?.set(declaration.id.name, declaration.id.name)
-  }
-}
-
-function hasIdentifierBinding(scopes: IdentifierScopeStack, name: string) {
-  for (let i = scopes.length - 1; i >= 0; i--) {
-    if (scopes[i]!.bindings.has(name)) {
-      return true
-    }
-  }
-  return false
-}
-
-function currentIdentifierScope(scopes: IdentifierScopeStack) {
-  return scopes[scopes.length - 1]!
-}
-
-function nearestFunctionIdentifierScope(scopes: IdentifierScopeStack) {
-  for (let i = scopes.length - 1; i >= 0; i--) {
-    const scope = scopes[i]!
-    if (scope.kind === 'function' || scope.kind === 'program') {
-      return scope
-    }
-  }
-  return currentIdentifierScope(scopes)
-}
-
-function addIdentifierPatternBindings(
-  pattern: t.LVal | t.Node | null | undefined,
-  scope: IdentifierScopeFrame,
-) {
-  for (const name of collectIdentifiersFromPattern(pattern)) {
-    scope.bindings.add(name)
-  }
-}
-
-function addIdentifierDeclarationBindings(
-  declaration: t.Node,
-  scopes: IdentifierScopeStack,
-) {
-  if (t.isVariableDeclaration(declaration)) {
-    const scope =
-      declaration.kind === 'var'
-        ? nearestFunctionIdentifierScope(scopes)
-        : currentIdentifierScope(scopes)
-    for (const declarator of declaration.declarations) {
-      addIdentifierPatternBindings(declarator.id, scope)
-    }
-    return
-  }
-
-  if (
-    (t.isFunctionDeclaration(declaration) ||
-      t.isClassDeclaration(declaration) ||
-      t.isTSTypeAliasDeclaration(declaration) ||
-      t.isTSInterfaceDeclaration(declaration) ||
-      t.isTSEnumDeclaration(declaration)) &&
-    declaration.id
-  ) {
-    currentIdentifierScope(scopes).bindings.add(declaration.id.name)
-  }
-}
-
-function addIdentifierImportBindings(
-  node: t.ImportDeclaration,
-  scope: IdentifierScopeFrame,
-) {
-  for (const specifier of node.specifiers) {
-    scope.bindings.add(specifier.local.name)
-  }
-}
-
-function createNestedIdentifierScope(
-  kind: IdentifierScopeFrame['kind'],
-  scopes: IdentifierScopeStack,
-): IdentifierScopeStack {
-  return [...scopes, { kind, bindings: new Set() }]
-}
-
-function addIdentifierBlockBindings(
-  body: Array<t.Node>,
-  scopes: IdentifierScopeStack,
-) {
-  for (const statement of body) {
-    if (t.isImportDeclaration(statement)) {
-      addIdentifierImportBindings(statement, currentIdentifierScope(scopes))
-    } else if (t.isExportNamedDeclaration(statement) && statement.declaration) {
-      addIdentifierDeclarationBindings(statement.declaration, scopes)
-    } else {
-      addIdentifierDeclarationBindings(statement, scopes)
-    }
-  }
-}
-
-function walkIdentifierChildren(
-  current: t.Node,
-  parent: t.Node | undefined,
-  scopes: IdentifierScopeStack,
-  ids: Set<string>,
-) {
-  for (const key of t.VISITOR_KEYS[current.type] ?? []) {
-    const child = (current as any)[key]
-    if (Array.isArray(child)) {
-      for (const item of child) {
-        if (item && typeof item.type === 'string') {
-          walkIdentifierNode(item, current, parent, key, scopes, ids)
-        }
-      }
-    } else if (child && typeof child.type === 'string') {
-      walkIdentifierNode(child, current, parent, key, scopes, ids)
-    }
-  }
-}
-
-function walkIdentifierNode(
-  current: t.Node | null | undefined,
-  parent: t.Node | undefined,
-  grandparent: t.Node | undefined,
-  parentKey: string | undefined,
-  scopes: IdentifierScopeStack,
-  ids: Set<string>,
-) {
-  if (!current) return
-
-  if (t.isIdentifier(current)) {
-    if (
-      (!parent || t.isReferenced(current, parent, grandparent)) &&
-      !hasIdentifierBinding(scopes, current.name)
-    ) {
-      ids.add(current.name)
-    }
-    return
-  }
-
-  if (t.isJSXIdentifier(current)) {
-    if (parent && t.isJSXAttribute(parent) && parentKey === 'name') {
-      return
-    }
-
-    if (parent && t.isJSXMemberExpression(parent) && parentKey === 'property') {
-      return
-    }
-
-    const first = current.name[0]
-    if (first && first === first.toLowerCase()) {
-      return
-    }
-
-    if (!hasIdentifierBinding(scopes, current.name)) {
-      ids.add(current.name)
-    }
-    return
-  }
-
-  if (t.isProgram(current)) {
-    const nestedScopes = createNestedIdentifierScope('program', scopes)
-    addIdentifierBlockBindings(current.body, nestedScopes)
-    for (const child of current.body) {
-      walkIdentifierNode(child, current, parent, 'body', nestedScopes, ids)
-    }
-    return
-  }
-
-  if (t.isBlockStatement(current)) {
-    const nestedScopes = createNestedIdentifierScope('block', scopes)
-    addIdentifierBlockBindings(current.body, nestedScopes)
-    for (const child of current.body) {
-      walkIdentifierNode(child, current, parent, 'body', nestedScopes, ids)
-    }
-    return
-  }
-
-  if (
-    t.isFunctionDeclaration(current) ||
-    t.isFunctionExpression(current) ||
-    t.isArrowFunctionExpression(current) ||
-    t.isObjectMethod(current) ||
-    t.isClassMethod(current) ||
-    t.isClassPrivateMethod(current)
-  ) {
-    if (t.isFunctionDeclaration(current) && current.id) {
-      currentIdentifierScope(scopes).bindings.add(current.id.name)
-    }
-
-    const nestedScopes = createNestedIdentifierScope('function', scopes)
-    if (
-      (t.isFunctionDeclaration(current) || t.isFunctionExpression(current)) &&
-      current.id
-    ) {
-      currentIdentifierScope(nestedScopes).bindings.add(current.id.name)
-    }
-    for (const param of current.params) {
-      addIdentifierPatternBindings(param, currentIdentifierScope(nestedScopes))
-    }
-
-    walkIdentifierChildren(current, parent, nestedScopes, ids)
-    return
-  }
-
-  if (t.isCatchClause(current)) {
-    const nestedScopes = createNestedIdentifierScope('block', scopes)
-    addIdentifierPatternBindings(
-      current.param,
-      currentIdentifierScope(nestedScopes),
-    )
-    walkIdentifierNode(
-      current.param,
-      current,
-      parent,
-      'param',
-      nestedScopes,
-      ids,
-    )
-    walkIdentifierNode(current.body, current, parent, 'body', nestedScopes, ids)
-    return
-  }
-
-  if (t.isImportDeclaration(current)) {
-    addIdentifierImportBindings(current, currentIdentifierScope(scopes))
-    return
-  }
-
-  if (t.isClassDeclaration(current) || t.isClassExpression(current)) {
-    if (t.isClassDeclaration(current) && current.id) {
-      currentIdentifierScope(scopes).bindings.add(current.id.name)
-    }
-
-    const nestedScopes = current.id
-      ? createNestedIdentifierScope('block', scopes)
-      : scopes
-    if (current.id) {
-      currentIdentifierScope(nestedScopes).bindings.add(current.id.name)
-    }
-
-    walkIdentifierChildren(current, parent, nestedScopes, ids)
-    return
-  }
-
-  if (t.isVariableDeclaration(current)) {
-    addIdentifierDeclarationBindings(current, scopes)
-  } else if (t.isVariableDeclarator(current)) {
-    const scope =
-      parent && t.isVariableDeclaration(parent) && parent.kind === 'var'
-        ? nearestFunctionIdentifierScope(scopes)
-        : currentIdentifierScope(scopes)
-    addIdentifierPatternBindings(current.id, scope)
-  } else if (
-    t.isTSTypeAliasDeclaration(current) ||
-    t.isTSInterfaceDeclaration(current) ||
-    t.isTSEnumDeclaration(current)
-  ) {
-    currentIdentifierScope(scopes).bindings.add(current.id.name)
-  }
-
-  walkIdentifierChildren(current, parent, scopes, ids)
-}
-
-/**
- * Recursively walk an AST node and collect referenced identifier-like names.
- * This avoids Babel path/scope allocation for module-level dependency scans.
- */
-export function collectIdentifiersFromNode(node: t.Node): Set<string> {
-  const ids = new Set<string>()
-  walkIdentifierNode(
-    node,
-    undefined,
-    undefined,
-    undefined,
-    [{ kind: 'program', bindings: new Set() }],
-    ids,
-  )
-  return ids
-}
-
-export function collectIdentifiersFromPattern(
-  node: t.LVal | t.Node | null | undefined,
-): Array<string> {
-  if (!node) {
-    return []
-  }
-
-  if (t.isIdentifier(node)) {
-    return [node.name]
-  }
-
-  if (t.isAssignmentPattern(node)) {
-    return collectIdentifiersFromPattern(node.left)
-  }
-
-  if (t.isRestElement(node)) {
-    return collectIdentifiersFromPattern(node.argument)
-  }
-
-  if (t.isObjectPattern(node)) {
-    return node.properties.flatMap((prop) => {
-      if (t.isObjectProperty(prop)) {
-        return collectIdentifiersFromPattern(prop.value as t.LVal)
-      }
-      if (t.isRestElement(prop)) {
-        return collectIdentifiersFromPattern(prop.argument)
-      }
-      return []
-    })
-  }
-
-  if (t.isArrayPattern(node)) {
-    return node.elements.flatMap((element) =>
-      collectIdentifiersFromPattern(element),
-    )
-  }
-
-  return []
-}
-
-export function collectLocalBindingsFromStatement(
-  node: t.Statement | t.ModuleDeclaration,
-  bindings: Set<string>,
-) {
-  const declaration =
-    t.isExportNamedDeclaration(node) && node.declaration
-      ? node.declaration
-      : t.isExportDefaultDeclaration(node)
-        ? node.declaration
-        : node
-
-  if (t.isVariableDeclaration(declaration)) {
-    for (const declarator of declaration.declarations) {
-      for (const name of collectIdentifiersFromPattern(declarator.id)) {
-        bindings.add(name)
-      }
-    }
-  } else if (t.isFunctionDeclaration(declaration) && declaration.id) {
-    bindings.add(declaration.id.name)
-  } else if (t.isClassDeclaration(declaration) && declaration.id) {
-    bindings.add(declaration.id.name)
-  }
-}
-
-export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
+/** The bundler owns cross-module resolution; Yuku provides local module records. */
+export function extractModuleInfo(sourceModule: Module): ExtractedModuleInfo {
   const bindings = new Map<string, ModuleInfoBinding>()
-  const exportMap = new Map<string, string>()
+  const exportBindings = new Map<string, string>()
   const reExportAllSources: Array<string> = []
-
-  for (const node of ast.program.body) {
-    if (t.isImportDeclaration(node)) {
-      const source = node.source.value
-      for (const specifier of node.specifiers) {
-        if (t.isImportSpecifier(specifier)) {
-          bindings.set(specifier.local.name, {
-            type: 'import',
-            source,
-            importedName: getModuleExportName(specifier.imported),
-          })
-        } else if (t.isImportDefaultSpecifier(specifier)) {
-          bindings.set(specifier.local.name, {
-            type: 'import',
-            source,
-            importedName: 'default',
-          })
-        } else if (t.isImportNamespaceSpecifier(specifier)) {
-          bindings.set(specifier.local.name, {
-            type: 'import',
-            source,
-            importedName: '*',
-          })
-        }
-      }
+  const graph = declarationIndex(sourceModule, sourceModule.rootScope.bindings)
+  for (const [symbol, declaration] of graph.declarations) {
+    bindings.set(symbol.name, {
+      type: 'var',
+      init: is.VariableDeclarator(declaration) ? declaration.init : null,
+    })
+  }
+  for (const record of sourceModule.imports) {
+    if (record.local && record.specifier && !record.typeOnly) {
+      bindings.set(record.local.name, {
+        type: 'import',
+        source: record.specifier,
+        importedName: record.isNamespace ? '*' : (record.name ?? 'default'),
+      })
+    }
+  }
+  let syntheticIndex = 0
+  const syntheticName = () => {
+    let name: string
+    do {
+      name = `__module_export_${syntheticIndex++}__`
+    } while (bindings.has(name))
+    return name
+  }
+  for (const record of sourceModule.exports) {
+    if (record.typeOnly) {
       continue
     }
-
-    if (t.isVariableDeclaration(node)) {
-      addVariableDeclarationModuleInfo(node, bindings)
-      continue
-    }
-
-    if (t.isFunctionDeclaration(node) || t.isClassDeclaration(node)) {
-      addDeclarationModuleInfo(node, bindings)
-      continue
-    }
-
-    if (t.isExportNamedDeclaration(node)) {
-      if (node.declaration) {
-        addDeclarationModuleInfo(node.declaration, bindings, exportMap)
-      }
-
-      for (const specifier of node.specifiers) {
-        if (t.isExportNamespaceSpecifier(specifier)) {
-          const exported = getModuleExportName(specifier.exported)
-          exportMap.set(exported, exported)
-          if (node.source) {
-            bindings.set(exported, {
-              type: 'import',
-              source: node.source.value,
-              importedName: '*',
-            })
-          }
-        } else if (t.isExportSpecifier(specifier)) {
-          const local = getModuleExportName(specifier.local)
-          const exported = getModuleExportName(specifier.exported)
-          exportMap.set(exported, local)
-
-          if (node.source) {
-            bindings.set(local, {
-              type: 'import',
-              source: node.source.value,
-              importedName: local,
-            })
-          }
-        }
-      }
-      continue
-    }
-
-    if (t.isExportDefaultDeclaration(node)) {
-      const declaration = node.declaration
-      if (t.isIdentifier(declaration)) {
-        exportMap.set('default', declaration.name)
-      } else if (
-        (t.isFunctionDeclaration(declaration) ||
-          t.isClassDeclaration(declaration)) &&
-        declaration.id
-      ) {
-        bindings.set(declaration.id.name, {
-          type: 'var',
-          init: null,
+    if (record.kind === 'star' && record.specifier) {
+      reExportAllSources.push(record.specifier)
+    } else if (record.name) {
+      if (record.local) {
+        exportBindings.set(record.name, record.local.name)
+      } else if (record.specifier) {
+        const name = syntheticName()
+        bindings.set(name, {
+          type: 'import',
+          source: record.specifier,
+          importedName:
+            record.kind === 'namespace'
+              ? '*'
+              : (record.fromName ?? record.name),
         })
-        exportMap.set('default', declaration.id.name)
-      } else {
-        const synth = '__default_export__'
-        bindings.set(synth, {
-          type: 'var',
-          init: t.isExpression(declaration) ? declaration : null,
-        })
-        exportMap.set('default', synth)
-      }
-      continue
-    }
-
-    if (t.isExportAllDeclaration(node)) {
-      reExportAllSources.push(node.source.value)
-    }
-  }
-
-  return {
-    bindings,
-    exports: exportMap,
-    reExportAllSources,
-  }
-}
-
-export function buildDeclarationMap(ast: t.File): Map<string, t.Node> {
-  const map = new Map<string, t.Node>()
-
-  for (const statement of ast.program.body) {
-    const declaration =
-      t.isExportNamedDeclaration(statement) && statement.declaration
-        ? statement.declaration
-        : t.isExportDefaultDeclaration(statement)
-          ? statement.declaration
-          : statement
-
-    if (t.isVariableDeclaration(declaration)) {
-      for (const declarator of declaration.declarations) {
-        for (const name of collectIdentifiersFromPattern(declarator.id)) {
-          map.set(name, declarator)
-        }
-      }
-    } else if (t.isFunctionDeclaration(declaration) && declaration.id) {
-      map.set(declaration.id.name, declaration)
-    } else if (t.isClassDeclaration(declaration) && declaration.id) {
-      map.set(declaration.id.name, declaration)
-    }
-  }
-
-  return map
-}
-
-export function buildDependencyGraph(
-  declarationMap: Map<string, t.Node>,
-  localBindings: Set<string>,
-): Map<string, Set<string>> {
-  const graph = new Map<string, Set<string>>()
-
-  for (const [name, declarationNode] of declarationMap) {
-    if (!localBindings.has(name)) continue
-
-    const dependencies = new Set<string>()
-    for (const id of collectIdentifiersFromNode(declarationNode)) {
-      if (id !== name && localBindings.has(id)) {
-        dependencies.add(id)
-      }
-    }
-    graph.set(name, dependencies)
-  }
-
-  return graph
-}
-
-export function collectModuleLevelRefsFromNode(
-  node: t.Node,
-  localModuleLevelBindings: Set<string>,
-): Set<string> {
-  const refs = new Set<string>()
-
-  for (const name of collectIdentifiersFromNode(node)) {
-    if (localModuleLevelBindings.has(name)) {
-      refs.add(name)
-    }
-  }
-
-  return refs
-}
-
-export function expandTransitively(
-  bindings: Set<string>,
-  dependencyGraph: Map<string, Set<string>>,
-) {
-  const queue = [...bindings]
-  const visited = new Set<string>()
-
-  while (queue.length > 0) {
-    const name = queue.pop()!
-    if (visited.has(name)) continue
-    visited.add(name)
-
-    const dependencies = dependencyGraph.get(name)
-    if (!dependencies) continue
-
-    for (const dependency of dependencies) {
-      if (!bindings.has(dependency)) {
-        bindings.add(dependency)
-        queue.push(dependency)
-      }
-    }
-  }
-}
-
-export function expandSharedDestructuredDeclarators(
-  ast: t.File,
-  refsByGroup: Map<string, Set<number>>,
-  sharedBindings: Set<string>,
-) {
-  for (const statement of ast.program.body) {
-    const declaration =
-      t.isExportNamedDeclaration(statement) && statement.declaration
-        ? statement.declaration
-        : statement
-
-    if (!t.isVariableDeclaration(declaration)) continue
-
-    for (const declarator of declaration.declarations) {
-      if (
-        !t.isObjectPattern(declarator.id) &&
-        !t.isArrayPattern(declarator.id)
-      ) {
-        continue
-      }
-
-      const names = collectIdentifiersFromPattern(declarator.id)
-      const usedGroups = new Set<number>()
-
-      for (const name of names) {
-        const groups = refsByGroup.get(name)
-        if (!groups) continue
-        for (const group of groups) {
-          usedGroups.add(group)
-        }
-      }
-
-      if (usedGroups.size >= 2) {
-        for (const name of names) {
-          sharedBindings.add(name)
+        exportBindings.set(record.name, name)
+      } else if (record.name === 'default') {
+        const statement = sourceModule.ast.body.find(
+          is.ExportDefaultDeclaration,
+        )
+        if (statement) {
+          const declaration = statement.declaration
+          const name = syntheticName()
+          bindings.set(name, {
+            type: 'var',
+            init: is.Expression(declaration) ? declaration : null,
+          })
+          exportBindings.set('default', name)
         }
       }
     }
   }
+  return { bindings, exports: exportBindings, reExportAllSources }
 }
 
-export function expandDestructuredDeclarations(
-  ast: t.File,
-  bindings: Set<string>,
-) {
-  for (const statement of ast.program.body) {
-    const declaration =
-      t.isExportNamedDeclaration(statement) && statement.declaration
-        ? statement.declaration
-        : statement
-
-    if (!t.isVariableDeclaration(declaration)) continue
-
-    for (const declarator of declaration.declarations) {
-      if (
-        !t.isObjectPattern(declarator.id) &&
-        !t.isArrayPattern(declarator.id)
-      ) {
-        continue
-      }
-
-      const names = collectIdentifiersFromPattern(declarator.id)
-      if (names.some((name) => bindings.has(name))) {
-        for (const name of names) {
-          bindings.add(name)
-        }
-      }
-    }
-  }
-}
-
-export function removeBindingsTransitivelyDependingOn(
-  bindings: Set<string>,
-  dependencyGraph: Map<string, Set<string>>,
-  roots: Iterable<string>,
-) {
-  const reverseGraph = new Map<string, Set<string>>()
-
-  for (const [name, dependencies] of dependencyGraph) {
-    for (const dependency of dependencies) {
-      let parents = reverseGraph.get(dependency)
-      if (!parents) {
-        parents = new Set()
-        reverseGraph.set(dependency, parents)
-      }
-      parents.add(name)
-    }
-  }
-
-  const visited = new Set<string>()
-  const queue = [...roots]
-
-  while (queue.length > 0) {
-    const current = queue.pop()!
-    if (visited.has(current)) continue
-    visited.add(current)
-
-    const parents = reverseGraph.get(current)
-    if (!parents) continue
-
-    for (const parent of parents) {
-      if (!visited.has(parent)) {
-        queue.push(parent)
-      }
-    }
-  }
-
-  for (const name of [...bindings]) {
-    if (visited.has(name)) {
-      bindings.delete(name)
-    }
-  }
-}
-
-export function removeModuleLevelBindings(
-  ast: t.File,
-  namesToRemove: Set<string>,
-) {
-  ast.program.body = ast.program.body.filter((statement) => {
-    const declaration =
-      t.isExportNamedDeclaration(statement) && statement.declaration
-        ? statement.declaration
-        : statement
-
-    if (t.isVariableDeclaration(declaration)) {
-      declaration.declarations = declaration.declarations.filter(
-        (declarator) =>
-          !collectIdentifiersFromPattern(declarator.id).some((name) =>
-            namesToRemove.has(name),
-          ),
-      )
-      return declaration.declarations.length > 0
-    }
-
-    if (t.isFunctionDeclaration(declaration) && declaration.id) {
-      return !namesToRemove.has(declaration.id.name)
-    }
-
-    if (t.isClassDeclaration(declaration) && declaration.id) {
-      return !namesToRemove.has(declaration.id.name)
-    }
-
-    if (t.isExportDefaultDeclaration(statement)) {
-      const defaultDeclaration = statement.declaration
-      if (
-        (t.isFunctionDeclaration(defaultDeclaration) ||
-          t.isClassDeclaration(defaultDeclaration)) &&
-        defaultDeclaration.id
-      ) {
-        return !namesToRemove.has(defaultDeclaration.id.name)
-      }
-    }
-
-    return true
-  })
-}
-
-export function retainModuleLevelDeclarations(
-  ast: t.File,
-  bindingsToKeep: Set<string>,
-) {
-  ast.program.body = ast.program.body.filter((statement) => {
-    if (t.isImportDeclaration(statement)) return true
-
-    const declaration =
-      t.isExportNamedDeclaration(statement) && statement.declaration
-        ? statement.declaration
-        : statement
-
-    if (t.isVariableDeclaration(declaration)) {
-      declaration.declarations = declaration.declarations.filter((declarator) =>
-        collectIdentifiersFromPattern(declarator.id).some((name) =>
-          bindingsToKeep.has(name),
-        ),
-      )
-      return declaration.declarations.length > 0
-    }
-
-    if (t.isFunctionDeclaration(declaration) && declaration.id) {
-      return bindingsToKeep.has(declaration.id.name)
-    }
-
-    if (t.isClassDeclaration(declaration) && declaration.id) {
-      return bindingsToKeep.has(declaration.id.name)
-    }
-
-    return false
-  })
-}
-
-export function unwrapExportedDeclarations(ast: t.File) {
-  const body: Array<t.Statement | t.ModuleDeclaration> = []
-
-  for (const statement of ast.program.body) {
-    if (t.isExportNamedDeclaration(statement)) {
-      if (statement.declaration) {
-        body.push(statement.declaration)
-      }
-      continue
-    }
-
-    if (t.isExportDefaultDeclaration(statement)) {
-      const declaration = statement.declaration
-      if (
-        (t.isFunctionDeclaration(declaration) ||
-          t.isClassDeclaration(declaration)) &&
-        declaration.id
-      ) {
-        body.push(declaration)
-      }
-      continue
-    }
-
-    if (t.isExportAllDeclaration(statement)) {
-      continue
-    }
-
-    body.push(statement)
-  }
-
-  ast.program.body = body
-}
-
-export function stripUnreferencedTopLevelExpressionStatements(ast: t.File) {
-  const locallyBound = new Set<string>()
-
-  for (const statement of ast.program.body) {
-    collectLocalBindingsFromStatement(statement, locallyBound)
-  }
-
-  ast.program.body = ast.program.body.filter((statement) => {
-    if (!t.isExpressionStatement(statement)) return true
-
-    for (const name of collectIdentifiersFromNode(statement)) {
-      if (locallyBound.has(name)) {
-        return true
-      }
-    }
-
-    return false
-  })
-}
+export { unwrap as unwrapExpression } from 'yuku-ast'

@@ -91,18 +91,10 @@ function createExternalTransformCompiler() {
       ],
       detect: /\brenderThing\b/,
       transform: (candidates, context) => {
-        const t = context.types
         for (const candidate of candidates) {
-          const args = candidate.path.node.arguments
+          const args = candidate.node.arguments
           if (args.length !== 1) continue
-          args.push(
-            t.objectExpression([
-              t.objectProperty(
-                t.identifier('injected'),
-                context.parseExpression('loadThing()'),
-              ),
-            ]),
-          )
+          args.push(context.parseExpression('({ injected: loadThing() })'))
         }
       },
     },
@@ -515,6 +507,35 @@ describe('compiler handles external import transforms', () => {
 })
 
 describe('server function provider module directives', () => {
+  test.each([
+    'export const Route = { component: Page }',
+    'export function Route() { return Page() }',
+    'export default function Route() { return Page() }',
+  ])(
+    'removes browser-only dependencies of stripped exports: %s',
+    async (route) => {
+      const compiler = createFullCompiler('server')
+      const result = await compiler.compile({
+        code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const getMessage = createServerFn().handler(() => 'server message')
+        const browserState = { window }
+        function Page() { return browserState }
+        ${route}
+      `,
+        id: '/test/src/routes/message.tsx?tss-serverfn-split',
+      })
+
+      expect(result).not.toBeNull()
+      expect(result!.code).toContain('server message')
+      expect(result!.code).toContain('createServerRpc')
+      expect(result!.code).not.toContain('window')
+      expect(result!.code).not.toContain('browserState')
+      expect(result!.code).not.toContain('Page')
+      expect(result!.code).not.toContain('Route')
+    },
+  )
+
   const code = `
     import { createServerFn } from '@tanstack/react-start'
 
@@ -1266,3 +1287,127 @@ describe('re-export chain resolution', () => {
     expect(updatedResult!.code).not.toContain('server-only-value')
   })
 })
+
+test('resolves distinct re-export aliases without conflating their source bindings', async () => {
+  const sources: Record<string, string> = {
+    './barrel': `export { wrap as allowed } from './server'; export { wrap as denied } from './client'`,
+    './server': `export { createServerOnlyFn as wrap } from '@tanstack/start-fn-stubs'`,
+    './client': `export { createClientOnlyFn as wrap } from '@tanstack/start-fn-stubs'`,
+  }
+  const compiler: StartCompiler = new StartCompiler({
+    ...getDefaultTestOptions('server'),
+    env: 'server',
+    mode: 'build',
+    lookupKinds: getLookupKindsForEnv('server'),
+    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react'),
+    getKnownServerFns: () => ({}),
+    resolveId: async (id) => (sources[id] ? id : null),
+    loadModule: async (id) => {
+      if (sources[id]) {
+        compiler.ingestModule({ id, code: sources[id] })
+      }
+    },
+  })
+  const result = await compiler.compile({
+    id: '/test/entry.ts',
+    code: `import { allowed, denied } from './barrel'; export const a = allowed(() => 'server-value'); export const b = denied(() => 'client-value')`,
+  })
+  expect(result).not.toBeNull()
+  expect(result!.code).not.toContain('./barrel')
+  const evaluate = new Function(
+    `${result!.code.replace(/\bexport (?=const)/g, '')}\nreturn { a, b }`,
+  )
+  const { a, b } = evaluate()
+  expect(a()).toBe('server-value')
+  expect(() => b()).toThrow('can only be called on the client')
+})
+
+test('leaves unrelated SSR middleware chains to the bundler when a server function factory is present', async () => {
+  const compiler = new StartCompiler({
+    ...getDefaultTestOptions('server'),
+    env: 'server',
+    mode: 'build',
+    lookupKinds: getLookupKindsForEnv('server'),
+    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react'),
+    getKnownServerFns: () => ({}),
+    resolveId: async () => {
+      throw new Error(
+        'SSR host has no package import conditions for this unrelated binding',
+      )
+    },
+    loadModule: async () => {
+      throw new Error('Unexpected compiler dependency load')
+    },
+  })
+  const code = `import { createMiddleware, createServerFn } from '@tanstack/react-start';
+const middleware = createMiddleware({ type: 'function' }).server(({ next }) => next({ context: { role: 'admin' } }));
+export const factory = createServerFn().middleware([middleware]);`
+  await expect(
+    compiler.compile({
+      id: '/test/auth-wrapper.ts',
+      code,
+      detectedKinds: detectKindsInCode(code, 'server'),
+    }),
+  ).resolves.toBeNull()
+})
+
+test.each([
+  `(createServerOnlyFn)(() => 'server-value')`,
+  `(createIsomorphicFn)().server(() => 'server-value').client(() => 'client-value')`,
+  `(createIsomorphicFn().server(() => 'server-value')).client(() => 'client-value')`,
+])(
+  'compiles transparent parentheses around native call chains: %s',
+  async (expression) => {
+    const compiler = createFullCompiler('server')
+    const result = await compiler.compile({
+      id: '/test/parenthesized.ts',
+      code: `import { createServerOnlyFn, createIsomorphicFn } from '@tanstack/react-start'; export const fn = ${expression}`,
+    })
+
+    expect(result).not.toBeNull()
+    const evaluate = new Function(
+      `${result!.code.replace(/^import .+;$/gm, '').replace(/\bexport (?=const)/g, '')}\nreturn fn`,
+    )
+    expect(evaluate()()).toBe('server-value')
+  },
+)
+
+test('compiles a server function through a parenthesized namespace receiver', async () => {
+  const compiler = createFullCompiler('client')
+  const result = await compiler.compile({
+    id: '/test/namespace-parenthesized.ts',
+    code: `import * as Start from '@tanstack/react-start'; export const fn = (Start).createServerFn().handler(() => 'private-server-body')`,
+  })
+  expect(result).not.toBeNull()
+  expect(result!.code).not.toContain('private-server-body')
+  expect(result!.code).toContain('createClientRpc')
+})
+
+test('preserves a shadowed parenthesized namespace receiver', async () => {
+  const compiler = createFullCompiler('client')
+  const code = `import * as Start from '@tanstack/react-start'; export function fn(Start) { return (Start).createServerFn().handler(() => 'local-runtime-body') }`
+  const result = await compiler.compile({
+    id: '/test/shadowed-namespace.ts',
+    code,
+  })
+  const output = result?.code ?? code
+  expect(output).toContain('local-runtime-body')
+  expect(output).not.toContain('createClientRpc')
+})
+
+test.each([
+  `(Start).createServerOnlyFn(() => 'private-server-body')`,
+  `(Start).createIsomorphicFn().server(() => 'private-server-body').client(() => 'client-value')`,
+  `(Start).createMiddleware().server(() => 'private-server-body')`,
+])(
+  'removes server-only code through a parenthesized namespace: %s',
+  async (expression) => {
+    const compiler = createFullCompiler('client')
+    const result = await compiler.compile({
+      id: '/test/namespace-builtins.ts',
+      code: `import * as Start from '@tanstack/react-start'; export const fn = ${expression}`,
+    })
+    expect(result).not.toBeNull()
+    expect(result!.code).not.toContain('private-server-body')
+  },
+)

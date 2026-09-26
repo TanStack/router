@@ -1,12 +1,7 @@
-const collection = {
-  name: 'todos',
-  preload: async () => {}
-};
+const collection = { name: 'todos', preload: async () => {} };
 const SplitLoader = async () => {
   await collection.preload();
-  return {
-    data: 'loaded'
-  };
+  return { data: 'loaded' };
 };
 export { SplitLoader as loader };
 const SplitComponent = () => <div>{collection.name}</div>;

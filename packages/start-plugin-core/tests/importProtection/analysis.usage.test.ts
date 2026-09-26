@@ -53,7 +53,7 @@ describe('findPostCompileUsagePos', () => {
 
   test('ignores binding positions (variable declarator id)', () => {
     const p = pos(
-      `import { x } from 'denied';\nconst x = 1;\nconst y = x;`,
+      `import { x } from 'denied';\n{ const x = 1;\nconst y = x; }`,
       'denied',
     )
     expect(p).toBeUndefined()
@@ -277,5 +277,40 @@ describe('findOriginalUnsafeUsagePos', () => {
     )
 
     expect(p).toBeUndefined()
+  })
+})
+
+test.each([
+  `createServerFn().handler((() => denied()))`,
+  `(createServerFn)().handler(() => denied())`,
+])(
+  'preserves safe-boundary recognition through parentheses: %s',
+  (expression) => {
+    const code = `import { denied } from 'denied';\nexport const result = ${expression}`
+    expect(findOriginalUnsafeUsagePos(code, 'denied', 'client')).toBeUndefined()
+  },
+)
+
+test.each([
+  `createIsomorphicFn().client((() => denied()))`,
+  `(createClientOnlyFn)((() => denied()))`,
+])('preserves server safe boundaries through parentheses: %s', (expression) => {
+  const code = `import { denied } from 'denied';\nexport const result = ${expression}`
+  expect(findOriginalUnsafeUsagePos(code, 'denied', 'server')).toBeUndefined()
+})
+
+test('does not treat an immediately invoked function as a safe handler argument', () => {
+  const code = `import { denied } from 'denied';\nexport const result = createServerFn().handler((() => denied())())`
+  expect(findOriginalUnsafeUsagePos(code, 'denied', 'client')).toEqual({
+    line: 2,
+    column0: code.split('\n')[1]!.indexOf('denied'),
+  })
+})
+
+test('prefers parenthesized call usage over an earlier value reference', () => {
+  const code = `import { denied } from 'denied';\nconst value = denied;\n(denied)()`
+  expect(findPostCompileUsagePos(code, 'denied')).toEqual({
+    line: 3,
+    column0: 1,
   })
 })

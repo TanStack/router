@@ -1,4 +1,4 @@
-import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
+import { analyzeModule, generateModule, logDiff } from '@tanstack/router-utils'
 import { compileCodeSplitReferenceRoute } from './code-splitter/compilers'
 import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import { createRouteHmrStatement } from './hmr'
@@ -76,18 +76,17 @@ export function createRouterHmrPlugin(
           }
         }
 
-        const ast = parseAst({ code, filename: normalizedId })
-        ast.program.body.push(
+        const ast = analyzeModule({ code, filename: normalizedId }).ast
+        ast.body.push(
           ...createRouteHmrStatement([], {
             hmrStyle,
             targetFramework: userConfig.target,
             routeId: routeEntry.routeId,
           }),
         )
-        const result = generateFromAst(ast, {
-          sourceMaps: true,
+        const result = generateModule(ast, {
+          source: code,
           filename: normalizedId,
-          sourceFileName: normalizedId,
         })
         if (debug) {
           logDiff(code, result.code)
