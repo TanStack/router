@@ -1884,7 +1884,7 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
-  buildLocation: BuildLocationFn = (opts) => {
+  buildLocation: BuildLocationFn = (opts, _fromLocation) => {
     if (!(isServer ?? this.isServer)) {
       const cached = this.staticLocations!.get(opts)
       if (cached) {
@@ -1900,6 +1900,7 @@ export class RouterCore<
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
       } = {},
+      fromLocation?: ParsedLocation,
     ): ParsedLocation => {
       if (dest.href) {
         const parsed = parseHref(dest.href, {} as ParsedHistoryState)
@@ -1916,7 +1917,10 @@ export class RouterCore<
 
       // We allow the caller to override the current location
       const currentLocation =
-        dest._fromLocation || this._pendingLocation || this.latestLocation
+        dest._fromLocation ||
+        fromLocation ||
+        this._pendingLocation ||
+        this.latestLocation
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match
@@ -2178,7 +2182,7 @@ export class RouterCore<
       }
     }
 
-    const next = build(opts)
+    const next = build(opts, _fromLocation)
 
     if (opts.mask) {
       next.maskedLocation = build({
@@ -2210,7 +2214,7 @@ export class RouterCore<
     if (
       !(isServer ?? this.isServer) &&
       !usedCurrent &&
-      opts._fromLocation &&
+      (opts._fromLocation || _fromLocation) &&
       !next.maskedLocation
     ) {
       this.staticLocations!.set(opts, next)

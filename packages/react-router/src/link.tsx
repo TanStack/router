@@ -266,8 +266,8 @@ export function useLinkProps<
     activeOptions,
   )
   // `_options` is the options object from the render that last changed the
-  // destination. `dest` is its copy that the link owns: one stable object per
-  // link lets the router reuse location-independent results.
+  // destination. `dest` snapshots it with a fresh cache key when those values
+  // change, even if a useLinkProps caller reuses its options object.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [_options, dest] = React.useMemo(
     () => [options, { ...options } as any] as const,
@@ -300,10 +300,7 @@ export function useLinkProps<
         return [directExternalLink ?? undefined]
       }
 
-      if (!_options._fromLocation) {
-        dest._fromLocation = location
-      }
-      const next = router.buildLocation(dest)
+      const next = router.buildLocation(dest, location)
 
       // Use publicHref - it contains the correct href for display
       // When a rewrite changes the origin, publicHref is the full URL
@@ -323,7 +320,7 @@ export function useLinkProps<
             ),
       ]
     },
-    [stableActiveOptions, disabled, isHydrated, _options, dest, router, to],
+    [stableActiveOptions, disabled, isHydrated, dest, router, to],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks

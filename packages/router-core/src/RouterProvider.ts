@@ -44,4 +44,6 @@ export type BuildLocationFn = <
     _includeValidateSearch?: boolean
     _isNavigate?: boolean
   },
+  /** @internal Default source for the destination, without mutating opts. */
+  _fromLocation?: ParsedLocation,
 ) => ParsedLocation
