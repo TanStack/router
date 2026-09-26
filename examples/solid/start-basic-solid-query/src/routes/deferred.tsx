@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { queryOptions, useQuery } from '@tanstack/solid-query'
+import { noop, queryOptions, useQuery } from '@tanstack/solid-query'
 import { Suspense, createSignal } from 'solid-js'
 
 const deferredQueryOptions = () =>
@@ -18,7 +18,7 @@ const deferredQueryOptions = () =>
 export const Route = createFileRoute('/deferred')({
   loader: ({ context }) => {
     // Kick off loading as early as possible!
-    context.queryClient.prefetchQuery(deferredQueryOptions())
+    void context.queryClient.query(deferredQueryOptions()).catch(noop)
   },
   component: Deferred,
 })

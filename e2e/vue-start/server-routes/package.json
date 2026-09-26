@@ -12,7 +12,7 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/vue-query": "^5.90.9",
+    "@tanstack/vue-query": "catalog:",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-router-ssr-query": "workspace:^",

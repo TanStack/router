@@ -230,17 +230,17 @@ With file-based routing the route tree is generated, so this is handled for you.
 When using external caches like TanStack Query, don't let the router infer complex return types you never consume:
 
 ```tsx
-// SLOWER — TS infers the full ensureQueryData return type into the route tree
+// SLOWER — TS infers the full query return type into the route tree
 export const Route = createFileRoute('/posts/$postId')({
   loader: ({ context: { queryClient }, params: { postId } }) =>
-    queryClient.ensureQueryData(postQueryOptions(postId)),
+    queryClient.query({ ...postQueryOptions(postId), staleTime: 'static' }),
   component: PostComponent,
 })
 
-// FASTER — void return, inference stays out of the route tree
+// FASTER — async loader returns no query data, inference stays out of the route tree
 export const Route = createFileRoute('/posts/$postId')({
-  loader: async ({ context: { queryClient }, params: { postId } }) => {
-    await queryClient.ensureQueryData(postQueryOptions(postId))
+  loader: async ({ context: { queryClient }, params: { postId: id } }) => {
+    await queryClient.query({ ...postQueryOptions(id), staleTime: 'static' })
   },
   component: PostComponent,
 })

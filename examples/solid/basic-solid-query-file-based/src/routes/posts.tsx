@@ -6,7 +6,7 @@ import { createMemo } from 'solid-js'
 
 export const Route = createFileRoute('/posts')({
   loader: ({ context: { queryClient } }) =>
-    queryClient.ensureQueryData(postsQueryOptions),
+    queryClient.query({ ...postsQueryOptions, staleTime: 'static' }),
   component: PostsComponent,
 })
 

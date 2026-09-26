@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/react-query": "^5.102.0",
-    "@tanstack/react-query-devtools": "^5.90.0",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-query-devtools": "catalog:",
     "@tanstack/react-router": "^1.170.39",
     "@tanstack/react-router-devtools": "^1.167.2",
     "@tanstack/router-plugin": "^1.168.40",

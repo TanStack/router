@@ -10,7 +10,10 @@ import { invoicesQueryOptions } from '../utils/queryOptions'
 
 export const Route = createFileRoute('/dashboard/invoices')({
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
+    opts.context.queryClient.query({
+      ...invoicesQueryOptions(),
+      staleTime: 'static',
+    }),
   component: InvoicesComponent,
 })
 

@@ -253,7 +253,10 @@ const dashboardIndexRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: '/',
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
+    opts.context.queryClient.query({
+      ...invoicesQueryOptions(),
+      staleTime: 'static',
+    }),
   component: DashboardIndexComponent,
 })
 
@@ -275,7 +278,10 @@ const invoicesLayoutRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: 'invoices',
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
+    opts.context.queryClient.query({
+      ...invoicesQueryOptions(),
+      staleTime: 'static',
+    }),
   component: InvoicesLayoutComponent,
 })
 
@@ -421,9 +427,10 @@ const invoiceRoute = createRoute({
       })
       .parse(search),
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(
-      invoiceQueryOptions(opts.params.invoiceId),
-    ),
+    opts.context.queryClient.query({
+      ...invoiceQueryOptions(opts.params.invoiceId),
+      staleTime: 'static',
+    }),
   component: InvoiceComponent,
 })
 
@@ -544,7 +551,10 @@ const usersLayoutRoute = createRoute({
     sortBy: search.usersView?.sortBy,
   }),
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(usersQueryOptions(opts.deps)),
+    opts.context.queryClient.query({
+      ...usersQueryOptions(opts.deps),
+      staleTime: 'static',
+    }),
   component: UsersComponent,
 })
 
@@ -710,9 +720,10 @@ const userRoute = createRoute({
     userId: search.userId,
   }),
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(
-      userQueryOptions(opts.deps.userId),
-    ),
+    opts.context.queryClient.query({
+      ...userQueryOptions(opts.deps.userId),
+      staleTime: 'static',
+    }),
   component: UserComponent,
 })
 

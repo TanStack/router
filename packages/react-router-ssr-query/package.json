@@ -71,7 +71,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "@tanstack/react-router": "workspace:*",
-    "@tanstack/react-query": ">=5.102.0",
+    "@tanstack/react-query": "catalog:",
     "vite": "*",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

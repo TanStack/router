@@ -3,6 +3,6 @@ import { postsQueryOptions } from '@router-solid-mono-solid-query/post-query'
 
 export const Route = createFileRoute('/')({
   loader: ({ context: { queryClient } }) => {
-    return queryClient.ensureQueryData(postsQueryOptions)
+    return queryClient.query({ ...postsQueryOptions, staleTime: 'static' })
   },
 })
