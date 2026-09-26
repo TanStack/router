@@ -5,6 +5,94 @@ comparison from the complete existing route splitter and actual Vite builds.
 They are not CodSpeed runtime benchmarks. A faster toolkit roundtrip does not
 establish an equivalent speedup in a migrated compiler or application build.
 
+## Final migration evaluation
+
+After correctness fixes and application validation, five baseline/native pairs
+were run in a quiet window. The order alternates AB/BA between repetitions for
+each workload. `results/final-alternating.json` records every sample, order,
+source hash, compiler source/dist fingerprint, dependency version, and Git HEAD.
+Both checkouts have supporting commit `0ec43cd02c`; the baseline compiler source
+is unchanged from `bb4423e`. Node 24.8.0 ran on an Apple M3 Max.
+
+| Workload                                                           | Babel median (min–max), ms | Native median (min–max), ms | Time reduction | Median peak process RSS, Babel → native |
+| ------------------------------------------------------------------ | -------------------------: | --------------------------: | -------------: | --------------------------------------: |
+| Complete 52-fixture splitter, three configurations                 |     295.71 (294.85–302.86) |         88.70 (88.11–90.38) |          70.0% |                       397.3 → 200.7 MiB |
+| Synthetic 250-route production Vite build                          |  1807.10 (1720.87–1871.08) |   1054.69 (1043.91–1104.89) |          41.6% |                       732.9 → 647.8 MiB |
+| React Start server-functions production app, all Vite environments |  1530.60 (1467.79–1571.32) |   1038.35 (1013.42–1074.08) |          32.2% |                       658.7 → 545.6 MiB |
+
+The splitter uses two warmups and ten measured corpus passes per fresh worker.
+It produces 517 modules in both engines, with 858 versus 156 full-source
+analyses per corpus. Both synthetic builds emit 751 chunks and 722,613 JS bytes.
+The real Start app emits 1,214,457 versus 1,208,118 JS bytes; matching output
+text is not required. All corresponding input hashes match. Builds exclude
+Nx orchestration and the separate TypeScript check; both apps were first built
+through their Nx targets. These results describe the measured workloads, not a
+guaranteed speedup for every application.
+
+Reproduce paired measurements after building both workspaces:
+
+```sh
+node benchmarks/compiler/compare.mjs --baseline /path/to/baseline --fixtures-root /path/to/frozen-original-52-fixtures --output final-alternating.json
+```
+
+The fixed comparison corpus is the original 52 fixture files, SHA-256
+`db1fbf4179e31c63b623a3eb3e5ea3a148ff27b3300ea8dbed97afb396857a1e`.
+New native-only syntax fixtures are excluded from both comparative engines.
+
+Separate native reuse attribution (five workers, two warmups, ten passes)
+measured 91.69 ms with reuse versus 130.85 ms without it, a 29.9% reduction;
+peak process RSS was 199.0 versus 335.0 MiB. A diagnostic-only run hashes the
+complete generated code and source maps and confirms identical hashes in both
+modes. See `final-reuse.json` and `final-reuse-digest.json`.
+
+Separate 50 ms process-tree sampling observed no child processes during either
+workload in either checkout (26–46 samples per run). Sampled tree peaks were
+751.3 → 633.8 MiB for 250 routes and 655.4 → 554.4 MiB for Start. These are
+single instrumented diagnostics, not additional speed samples; short-lived
+processes or peaks between samples could be missed. Kernel-reported worker
+peaks are retained alongside them in `final-process-tree-*.json`.
+
+The bounded cache remains 128 entries. Three fresh speed workers per variant,
+plus separate analyzer-call/live-memory diagnostics, produced:
+
+| Routes | Cache entries limit | Median build ms | Median peak RSS MiB | Full-source analyzer calls | Heap released by cache clear MiB |
+| -----: | ------------------: | --------------: | ------------------: | -------------------------: | -------------------------------: |
+|    250 |                 128 |         1109.41 |               658.1 |                        751 |                              7.3 |
+|    250 |                 256 |         1028.04 |               624.1 |                        251 |                             14.2 |
+|    250 |                 512 |         1040.04 |               643.0 |                        251 |                             14.2 |
+|    750 |                 128 |         2782.43 |              1108.8 |                       2251 |                              7.9 |
+|    750 |                 256 |         2783.74 |              1136.6 |                       2251 |                             14.8 |
+|    750 |                 512 |         2689.50 |              1153.0 |                       1501 |                             28.6 |
+
+The 256-entry cache helps the fitting 250-route case, but provides no measured
+speed gain at 750 routes and retains more live memory. At 750 routes, 512 entries
+save only 3.3% build time while peak RSS rises 4.0%. This does not justify changing
+the default. Reuse is opportunistic: 128 entries still analyze each route three
+times in the measured production request order. The cache is cleared at build
+end. Heap deltas around explicit GC are observations, not attribution of every
+native allocation; RSS need not fall when the allocator retains freed pages.
+See `final-cache-*-timing.json` and `final-cache-*-profile.json`.
+
+Final dense-module checks also remain faster and use less peak process memory:
+
+| Workload                                                       | Babel median ms | Native median ms | Median peak RSS, Babel → native |
+| -------------------------------------------------------------- | --------------: | ---------------: | ------------------------------: |
+| 100 bound Hydrate spreads, client                              |           19.95 |            12.60 |                125.8 → 89.3 MiB |
+| 500 bound Hydrate spreads, client                              |           70.50 |            52.46 |               265.3 → 153.0 MiB |
+| 100 bound Hydrate spreads, server                              |           16.32 |             8.16 |                121.2 → 78.8 MiB |
+| 500 bound Hydrate spreads, server                              |           46.79 |            36.20 |               203.3 → 122.5 MiB |
+| 1,000 shared destructured bindings, three split configurations |         3793.85 |           187.40 |               354.9 → 166.5 MiB |
+
+These are three fresh workers per engine, one warmup, and three Hydrate compiles
+or two splitter corpus passes per worker. They are sequential baseline/native
+stress comparisons, separate from the alternating main workloads. Source hashes
+and output counts match between engines. See `final-hydrate-*.json` and
+`final-bindings-1000-*.json`. The earlier before/after files retain evidence for
+the two measured scaling optimizations.
+
+The earlier sections below preserve exploratory and optimization measurements;
+the final paired comparison above is the main adoption evidence.
+
 Use the Node version in `.nvmrc` and the root pnpm version. Build both workspaces
 through Nx before timing: workspace package imports consume `dist`. The default
 modes benchmark the native compiler; select Babel modes against a baseline checkout.
@@ -44,6 +132,10 @@ these settings. A corpus hash protects against fixture edits during a run.
   reusing one immutable analysis for all outputs of each grouping scenario.
 - `yuku-splitter-no-reuse`: omit the optional analysis from each native compiler
   entry point to attribute the separate effect of analysis reuse.
+
+`--digest-output` separately hashes every generated code string and serialized
+source map to check reuse/no-reuse output identity. It marks the result as a
+diagnostic; do not use these instrumented samples for speed comparisons.
 
 Phase times include normal allocations and GC. Process wall time additionally
 includes module loading, fixture loading, warmups, explicit GC, and process
