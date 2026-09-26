@@ -7,4 +7,4 @@ export const Route = createFileRoute('/shared-runtime')({ beforeLoad: () => stat
   increment();
   return state;
 }, component: lazyRouteComponent($$splitComponentImporter, "component") });
-export { createSeed as default, state as firstState, state as secondState, state as "odd-name" } from "shared-runtime.tsx?tsr-shared=1";
+export { state as firstState, state as secondState, state as "odd-name", createSeed as default } from "shared-runtime.tsx?tsr-shared=1";

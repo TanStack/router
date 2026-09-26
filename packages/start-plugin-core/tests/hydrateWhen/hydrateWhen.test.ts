@@ -189,8 +189,10 @@ describe('Hydrate compiler transform fixtures', async () => {
     })!
     const output = analyzeModule({ code: compiled.code })
     expect(
-      output.unresolvedReferences.some((reference) => reference.name === '_H0'),
-    ).toBe(true)
+      output.unresolvedReferences.filter(
+        (reference) => reference.name === '_H0',
+      ),
+    ).toHaveLength(1)
   })
 
   test('retains captured local components and values across extraction', async () => {
