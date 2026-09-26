@@ -117,30 +117,32 @@ test('isomorphic functions can have different implementations on client and serv
   )
 })
 
-test('env-only functions can only be called on the server or client respectively', async ({
-  page,
-}) => {
-  await page.goto('/env-only')
+for (const namespace of [false, true]) {
+  test(`env-only functions respect their environment (namespace: ${namespace})`, async ({
+    page,
+  }) => {
+    await page.goto(`/env-only?namespace=${namespace}`)
 
-  await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('networkidle')
 
-  await page.getByTestId('test-env-only-results-btn').click()
-  await page.waitForLoadState('networkidle')
+    await page.getByTestId('test-env-only-results-btn').click()
+    await page.waitForLoadState('networkidle')
 
-  await expect(page.getByTestId('server-on-server')).toContainText(
-    'server got: hello',
-  )
-  await expect(page.getByTestId('server-on-client')).toContainText(
-    'serverEcho threw an error: createServerOnlyFn() functions can only be called on the server!',
-  )
+    await expect(page.getByTestId('server-on-server')).toHaveText(
+      `server got: hello${namespace ? ' (NAMESPACE_SERVER_ONLY_BODY)' : ''}`,
+    )
+    await expect(page.getByTestId('server-on-client')).toHaveText(
+      'serverEcho threw an error: createServerOnlyFn() functions can only be called on the server!',
+    )
 
-  await expect(page.getByTestId('client-on-server')).toContainText(
-    'clientEcho threw an error: createClientOnlyFn() functions can only be called on the client!',
-  )
-  await expect(page.getByTestId('client-on-client')).toContainText(
-    'client got: hello',
-  )
-})
+    await expect(page.getByTestId('client-on-server')).toHaveText(
+      'clientEcho threw an error: createClientOnlyFn() functions can only be called on the client!',
+    )
+    await expect(page.getByTestId('client-on-client')).toHaveText(
+      `client got: hello${namespace ? ' (NAMESPACE_CLIENT_ONLY_BODY)' : ''}`,
+    )
+  })
+}
 
 test('Server function can return null for GET and POST calls', async ({
   page,
