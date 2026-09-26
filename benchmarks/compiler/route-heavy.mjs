@@ -75,6 +75,7 @@ if (!args.includes('--worker')) {
         cpu: cpus()[0].model,
         routes,
         repetitions,
+        diagnosticOnly: profileAnalysis,
         ...(cacheLimit === null
           ? {}
           : { analysisCacheLimit: Number(cacheLimit) }),

@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { compilerFingerprint } from './provenance.mjs'
 
 // Separate diagnostic run: ps sampling deliberately stays outside speed runs.
 const args = process.argv.slice(2)
 const script = args.shift()
+const workspaceArgument = args.indexOf('--workspace')
+const workspace =
+  workspaceArgument < 0
+    ? fileURLToPath(new URL('../../', import.meta.url))
+    : args[workspaceArgument + 1]
 assert.ok(
   script,
   'Usage: node process-tree.mjs <build.mjs|route-heavy.mjs> [args]',
@@ -102,6 +108,7 @@ console.log(
     {
       timestamp: new Date().toISOString(),
       node: process.version,
+      compilerFingerprint: compilerFingerprint(workspace),
       diagnosticOnly: true,
       sampleIntervalMs: 50,
       samples,

@@ -1,0 +1,117 @@
+{
+  "timestamp": "2026-09-26T14:39:13.701Z",
+  "compilerFingerprint": {
+    "commit": "0ec43cd02c88574bc2d12a42a1f54ddcb00af3b7",
+    "sha256": "9c8751495155f052d418d5aabd437317091a3dfef76e8d6dbc9cf90a42803fc5",
+    "javascriptFiles": 125,
+    "sourceSha256": "b194df1fe4ed7069df76ac9a4301a3b3de5b47b25ae180ac3173e76f606a6852",
+    "sourceFiles": 137,
+    "dependencyVersions": {
+      "yuku-analyzer": "0.11.0",
+      "yuku-ast": "0.11.0",
+      "yuku-codegen": "0.11.0",
+      "@yuku-toolchain/types": "0.11.0"
+    }
+  },
+  "workspace": "/Users/Flo/.codex/worktrees/137d/router",
+  "node": "v24.8.0",
+  "cpu": "Apple M3 Max",
+  "routes": 750,
+  "repetitions": 3,
+  "diagnosticOnly": false,
+  "analysisCacheLimit": 512,
+  "summary": {
+    "medianBuildMs": 2689.4981669999997,
+    "medianPeakRssMiB": 1153.03125,
+    "medianWallMs": 3163.621208
+  },
+  "samples": [
+    {
+      "buildMs": 2689.4981669999997,
+      "peakRssMiB": 1146.25,
+      "sourceHash": "644731e732e90294372c00d2d34047c19766a1fd20b26c669ea83fb0d7ad5e22",
+      "chunks": 2251,
+      "emittedJsBytes": 1641651,
+      "before": {
+        "rss": 138461184,
+        "heapTotal": 59326464,
+        "heapUsed": 23220048,
+        "external": 3987968,
+        "arrayBuffers": 44335
+      },
+      "after": {
+        "rss": 1200947200,
+        "heapTotal": 368803840,
+        "heapUsed": 267464040,
+        "external": 6966526,
+        "arrayBuffers": 68485
+      },
+      "retained": {
+        "rss": 1169588224,
+        "heapTotal": 247742464,
+        "heapUsed": 55654944,
+        "external": 6944921,
+        "arrayBuffers": 68485
+      },
+      "wallMs": 3163.621208
+    },
+    {
+      "buildMs": 2695.580333,
+      "peakRssMiB": 1153.03125,
+      "sourceHash": "644731e732e90294372c00d2d34047c19766a1fd20b26c669ea83fb0d7ad5e22",
+      "chunks": 2251,
+      "emittedJsBytes": 1641651,
+      "before": {
+        "rss": 139214848,
+        "heapTotal": 59326464,
+        "heapUsed": 23219136,
+        "external": 3979576,
+        "arrayBuffers": 44335
+      },
+      "after": {
+        "rss": 1208123392,
+        "heapTotal": 368836608,
+        "heapUsed": 268451792,
+        "external": 6966526,
+        "arrayBuffers": 68485
+      },
+      "retained": {
+        "rss": 1176944640,
+        "heapTotal": 248791040,
+        "heapUsed": 55652664,
+        "external": 6944921,
+        "arrayBuffers": 68485
+      },
+      "wallMs": 3184.2321250000005
+    },
+    {
+      "buildMs": 2647.87875,
+      "peakRssMiB": 1155.421875,
+      "sourceHash": "644731e732e90294372c00d2d34047c19766a1fd20b26c669ea83fb0d7ad5e22",
+      "chunks": 2251,
+      "emittedJsBytes": 1641651,
+      "before": {
+        "rss": 140328960,
+        "heapTotal": 59326464,
+        "heapUsed": 23221576,
+        "external": 3987768,
+        "arrayBuffers": 44335
+      },
+      "after": {
+        "rss": 1210580992,
+        "heapTotal": 368017408,
+        "heapUsed": 267324120,
+        "external": 6966526,
+        "arrayBuffers": 68485
+      },
+      "retained": {
+        "rss": 1179353088,
+        "heapTotal": 251936768,
+        "heapUsed": 55635824,
+        "external": 6944921,
+        "arrayBuffers": 68485
+      },
+      "wallMs": 3129.3204590000005
+    }
+  ]
+}
