@@ -234,7 +234,7 @@ export type PendingSession = [
   /** Pending reveal time until acknowledged, then minimum-visible-until time. */
   deadline: number,
   revealTimer?: ReturnType<typeof setTimeout>,
-  ack?: Promise<boolean> | true,
+  ack?: Promise<boolean> | boolean,
   component?: unknown,
 ]
 
@@ -1453,21 +1453,56 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   }
   const matches = tx[3 /* matches */]
   const presented = router.stores.matches.get()
+  // Only the first presented `pending` entry is the painted boundary. The
+  // fallback replaces every match after it, so those carry `pending` in the
+  // offered snapshot without ever rendering.
+  const paintedBoundary = presented.findIndex(
+    (candidate) => candidate.status === 'pending',
+  )
   let session = router._pending
   for (let index = 0; index < matches.length; index++) {
-    const match = matches[index]!
-    const success = match.status === 'success' && !match._notFound
-    const presentedPending =
-      presented[index]?.id === match.id &&
-      presented[index]?.status === 'pending'
-    if (success && !presentedPending) {
-      continue
+    let match = matches[index]!
+    let presentedPending =
+      index === paintedBoundary && presented[index]?.id === match.id
+    if (match.status === 'success' && !match._notFound) {
+      if (!presentedPending) {
+        continue
+      }
+      // A painted boundary holds through its minimum window. The render ack
+      // arms the session deadline, so a live deadline means the outgoing
+      // fallback was seen; anything else advances at once.
+      if (session?.[1 /* boundaryId */] === match.id) {
+        const remaining = session[2 /* deadline */] - Date.now()
+        if (remaining > 0) {
+          session[0 /* generation */] = tx
+          clearTimeout(session[3 /* revealTimer */])
+          session[3 /* revealTimer */] = setTimeout(
+            () => offerPending(router, tx),
+            remaining,
+          )
+          return
+        }
+      }
+      // Advance past a settled match only toward pending descendants. A
+      // terminal settled match that is still painted (e.g. a data-only route
+      // whose SSR data arrived as success while the client component still
+      // needs its pending phase) falls through and is offered instead.
+      // Select the first unresolved descendant directly; the settled matches
+      // between it and this painted boundary do not need another scan.
+      for (let next = index + 1; next < matches.length; next++) {
+        const descendant = matches[next]!
+        if (descendant.status !== 'success' || descendant._notFound) {
+          match = descendant
+          index = next
+          presentedPending = false
+          break
+        }
+      }
     }
     const route = getRoute(router, match as WorkMatch)
-    const delay =
-      success || match.invalid
-        ? 0
-        : (route.options.pendingMs ?? router.options.defaultPendingMs)
+    const delay = match.invalid
+      ? 0
+      : (route.options.pendingMs ?? router.options.defaultPendingMs)
     const component =
       route.options.pendingComponent ??
       (router.options as any).defaultPendingComponent
@@ -1481,15 +1516,8 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
     }
     const min =
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs ?? 0
-    let tookOver = false
-    if (session?.[1 /* boundaryId */] === match.id) {
-      tookOver = session[0 /* generation */] !== tx
-      session[0 /* generation */] = tx
-    } else {
+    if (session?.[1 /* boundaryId */] !== match.id) {
       clearTimeout(session?.[3 /* revealTimer */])
-      router._pending = session = undefined
-    }
-    if (!session) {
       // Hydration and redirects can preserve pending presentation without a session.
       // Do not delay it again; conservatively start pendingMinMs from now.
       router._pending = session = [
@@ -1497,17 +1525,19 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
         match.id,
         presentedPending ? Date.now() + min : tx[4 /* startedAt */] + delay,
         undefined,
-        presentedPending || undefined,
+        presentedPending,
         component,
       ]
     }
+    // A successor or replacement fallback must publish its own offer.
     if (
       session[4 /* ack */] &&
-      !tookOver &&
+      session[0 /* generation */] === tx &&
       session[5 /* component */] === component
     ) {
       return
     }
+    session[0 /* generation */] = tx
     session[5 /* component */] = component
     if (!session[4 /* ack */]) {
       clearTimeout(session[3 /* revealTimer */])
