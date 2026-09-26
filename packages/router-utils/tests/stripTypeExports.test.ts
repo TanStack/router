@@ -1,13 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { generateFromAst, parseAst, stripTypeExports } from '../src/ast'
+import { generateModule, analyzeModule } from '../src/ast'
+import { stripTypeExports } from '../src/compiler-helpers'
 
 function transform(code: string): string {
-  const ast = parseAst({ code })
-  stripTypeExports(ast)
-  return generateFromAst(ast, {
-    sourceFileName: 'test.ts',
-    filename: 'test.ts',
-  }).code
+  const ast = analyzeModule({ code })
+  stripTypeExports(ast.ast)
+  return generateModule(ast.ast, { source: code, filename: 'test.ts' }).code
 }
 
 describe('stripTypeExports', () => {
@@ -16,14 +14,14 @@ describe('stripTypeExports', () => {
       const code = `import data from './data.json' with { type: 'json' }
 export const value = data`
 
-      expect(() => parseAst({ code })).not.toThrow()
+      expect(() => analyzeModule({ code })).not.toThrow()
     })
 
     test('parses import attributes with deprecated assert syntax', () => {
       const code = `import data from './data.json' assert { type: 'json' }
 export const value = data`
 
-      expect(() => parseAst({ code })).not.toThrow()
+      expect(() => analyzeModule({ code })).not.toThrow()
     })
 
     test('parses angle-bracket type assertions in .ts files without JSX', () => {
@@ -31,7 +29,7 @@ export const value = data`
   return <T>value
 }`
 
-      expect(() => parseAst({ code, filename: 'cast.ts' })).not.toThrow()
+      expect(() => analyzeModule({ code, filename: 'cast.ts' })).not.toThrow()
     })
   })
 

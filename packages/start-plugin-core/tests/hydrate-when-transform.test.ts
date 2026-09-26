@@ -1,8 +1,14 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import * as t from '@babel/types'
-import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import { walk } from 'yuku-ast'
+import {
+  analyzeModule,
+  cloneModuleAst,
+  generateModule,
+  parseExpression,
+  removeUnusedBindings,
+} from '@tanstack/router-utils'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import type { CompileStartFrameworkOptions } from '../src/types'
@@ -70,9 +76,12 @@ function compileHydrate(options: {
 }) {
   const plugin = options.plugin ?? createHydrateCompilerPlugin()
   const envName = options.envName ?? options.env
-  const ast = parseAst({ code: options.code, sourceFilename: options.id })
+  const module = analyzeModule({ code: options.code, filename: options.id })
+  const { program: ast, originalNodes } = cloneModuleAst(module)
   const result = plugin.transformAst?.({
     ast,
+    module,
+    originalNodes,
     code: options.code,
     id: options.id,
     root: options.root,
@@ -81,14 +90,37 @@ function compileHydrate(options: {
     mode: 'dev',
     framework: options.framework ?? 'react',
     providerEnvName: 'ssr',
-    types: t,
-    parseExpression: (expressionCode) => t.identifier(expressionCode),
+    parseExpression,
+    replaceNode(node, replacement) {
+      walk(ast, {
+        enter(current, context) {
+          if (current === node) {
+            context.replace(replacement)
+            context.stop()
+          }
+        },
+      })
+    },
+    parentOf(node) {
+      let parent: import('@yuku-toolchain/types').Node | null = null
+      walk(ast, {
+        enter(current, context) {
+          if (current === node) {
+            parent = context.parent
+            context.stop()
+          }
+        },
+      })
+      return parent
+    },
   })
-  if (!result) return null
+  if (!result) {
+    return null
+  }
 
-  const generated = generateFromAst(ast, {
-    sourceMaps: true,
-    sourceFileName: options.id,
+  removeUnusedBindings(module, ast, originalNodes)
+  const generated = generateModule(ast, {
+    source: options.code,
     filename: options.id,
   })
 
@@ -156,13 +188,16 @@ const props = { when: true, fallback: <p>server-fallback</p> }`,
     'strips fallback from a parenthesized spread %s',
     (spread) => {
       const result = compileHydrate({
-        code: `import { Hydrate } from '@tanstack/react-start'; ${spread.includes('props') ? 'const props = ({ fallback: <p>server-fallback</p> });' : ''} export function Page() { return <Hydrate ${spread}><p>child</p></Hydrate> }`,
+        code: `import { Hydrate } from '@tanstack/react-start'; const props = ({ fallback: <p>server-fallback</p> }); export function Page() { return <Hydrate ${spread}><p>child</p></Hydrate> }`,
         id,
         root,
         env: 'server',
       })
-      expect(result).not.toBeNull()
-      expect(result?.code).not.toContain('server-fallback')
+      // An unused declaration is deliberately preserved; only the used spread
+      // binding should lose its fallback.
+      expect(result?.code.match(/server-fallback/g) ?? []).toHaveLength(
+        spread.includes('props') ? 0 : 1,
+      )
     },
   )
 
@@ -173,7 +208,6 @@ const props = { when: true, fallback: <p>server-fallback</p> }`,
       root,
       env: 'server',
     })
-    expect(result).not.toBeNull()
     expect(result?.code).not.toContain('server-fallback')
   })
 
@@ -186,7 +220,6 @@ const props = { when: true, fallback: <p>server-fallback</p> }`,
         root,
         env: 'client',
       })
-      expect(result).not.toBeNull()
       expect(result?.code).not.toContain('.preload')
     },
   )

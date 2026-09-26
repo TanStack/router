@@ -85,9 +85,6 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
-    "@babel/code-frame": "7.29.7",
-    "@babel/core": "catalog:",
-    "@babel/types": "catalog:",
     "@jridgewell/remapping": "^2.3.5",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
@@ -105,12 +102,13 @@
     "ufo": "^1.6.4",
     "vitefu": "^1.1.3",
     "xmlbuilder2": "^4.0.3",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@yuku-toolchain/types": "0.11.0",
+    "yuku-analyzer": "0.11.0",
+    "yuku-ast": "0.11.0"
   },
   "devDependencies": {
     "@rsbuild/core": "catalog:",
-    "@types/babel__code-frame": "^7.0.6",
-    "@types/babel__core": "^7.20.5",
     "@types/node": ">=20",
     "@types/picomatch": "^4.0.2",
     "vite": "*",

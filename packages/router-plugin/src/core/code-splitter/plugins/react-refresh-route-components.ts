@@ -1,8 +1,13 @@
-import * as t from '@babel/types'
+import { b } from 'yuku-ast'
+import {
+  moduleDeclarationGraph,
+  unwrapExpression,
+} from '@tanstack/router-utils'
 import {
   getObjectPropertyKeyName,
   getUniqueProgramIdentifier,
 } from '../../utils'
+import type { ObjectProperty, VariableDeclaration } from '@yuku-toolchain/types'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
 const REACT_REFRESH_ROUTE_COMPONENT_IDENTS = new Set([
@@ -13,11 +18,9 @@ const REACT_REFRESH_ROUTE_COMPONENT_IDENTS = new Set([
   'notFoundComponent',
 ])
 
-type RouteComponentContext = {
-  programPath: Parameters<typeof getUniqueProgramIdentifier>[0]
-  insertionPath: { insertBefore: (nodes: Array<t.VariableDeclaration>) => void }
-  routeOptions: t.ObjectExpression
-}
+type RouteComponentContext = Parameters<
+  NonNullable<ReferenceRouteCompilerPlugin['onAddHmr']>
+>[0]
 
 function isReactComponentName(name: string) {
   const firstCharacter = name[0]
@@ -29,18 +32,18 @@ function isReactComponentName(name: string) {
   )
 }
 
-function getRouteComponentKey(prop: t.ObjectProperty) {
+function getRouteComponentKey(prop: ObjectProperty) {
   const key = getObjectPropertyKeyName(prop)
 
   return key && REACT_REFRESH_ROUTE_COMPONENT_IDENTS.has(key) ? key : undefined
 }
 
 function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
-  const hoistedDeclarations: Array<t.VariableDeclaration> = []
+  const hoistedDeclarations: Array<VariableDeclaration> = []
   let modified = false
 
   for (const prop of ctx.routeOptions.properties) {
-    if (!t.isObjectProperty(prop)) {
+    if (prop.type !== 'Property' || prop.method || prop.kind !== 'init') {
       continue
     }
 
@@ -50,56 +53,67 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
       continue
     }
 
-    if (t.isIdentifier(prop.value)) {
+    prop.value = unwrapExpression(prop.value)
+
+    if (prop.value.type === 'Identifier') {
       if (isReactComponentName(prop.value.name)) {
         continue
       }
 
-      const bindingNode = ctx.programPath.scope.getBinding(prop.value.name)
-        ?.path.node
+      const original = ctx.originalNodes.get(prop.value)
+      const symbol = original ? ctx.module.symbolOf(original) : null
+      if (symbol && ctx.opts.sharedBindings?.has(symbol.name)) {
+        continue
+      }
+      const bindingNode = symbol
+        ? moduleDeclarationGraph(ctx.module).declarations.get(symbol)
+        : undefined
       const isLocalComponentBinding =
-        t.isFunctionDeclaration(bindingNode) ||
-        t.isClassDeclaration(bindingNode) ||
-        t.isVariableDeclarator(bindingNode)
+        bindingNode?.type === 'FunctionDeclaration' ||
+        bindingNode?.type === 'ClassDeclaration' ||
+        bindingNode?.type === 'VariableDeclarator'
 
       if (!isLocalComponentBinding) {
         continue
       }
 
       const componentIdentifier = getUniqueProgramIdentifier(
-        ctx.programPath,
+        ctx.program,
         `TSR${key[0]!.toUpperCase()}${key.slice(1)}`,
       )
 
-      ctx.programPath.scope.rename(prop.value.name, componentIdentifier.name)
+      ctx.renameBinding(prop.value, componentIdentifier.name)
       modified = true
       continue
     }
 
     if (
-      !t.isArrowFunctionExpression(prop.value) &&
-      !t.isFunctionExpression(prop.value)
+      prop.value.type !== 'ArrowFunctionExpression' &&
+      prop.value.type !== 'FunctionExpression'
     ) {
       continue
     }
 
     const hoistedIdentifier = getUniqueProgramIdentifier(
-      ctx.programPath,
+      ctx.program,
       `TSR${key[0]!.toUpperCase()}${key.slice(1)}`,
     )
 
     hoistedDeclarations.push(
-      t.variableDeclaration('const', [
-        t.variableDeclarator(hoistedIdentifier, t.cloneNode(prop.value, true)),
-      ]),
+      b.VariableDeclaration({
+        kind: 'const',
+        declarations: [
+          b.VariableDeclarator({ id: hoistedIdentifier, init: prop.value }),
+        ],
+      }),
     )
 
-    prop.value = t.cloneNode(hoistedIdentifier)
+    prop.value = b.Identifier({ name: hoistedIdentifier.name })
     modified = true
   }
 
   if (hoistedDeclarations.length > 0) {
-    ctx.insertionPath.insertBefore(hoistedDeclarations)
+    ctx.insertBefore(hoistedDeclarations)
   }
 
   return modified
@@ -121,7 +135,7 @@ export function createReactRefreshRouteComponentsPlugin(): ReferenceRouteCompile
     onVirtualRouteSplitNode(ctx) {
       if (
         ctx.splitNodeMeta.splitStrategy !== 'lazyRouteComponent' ||
-        !t.isFunctionDeclaration(ctx.splitNode) ||
+        ctx.splitNode.type !== 'FunctionDeclaration' ||
         !ctx.splitNode.id ||
         isReactComponentName(ctx.splitNode.id.name)
       ) {
@@ -129,14 +143,11 @@ export function createReactRefreshRouteComponentsPlugin(): ReferenceRouteCompile
       }
 
       const componentIdentifier = getUniqueProgramIdentifier(
-        ctx.programPath,
+        ctx.program,
         ctx.splitNodeMeta.localExporterIdent,
       )
 
-      ctx.programPath.scope.rename(
-        ctx.splitNode.id.name,
-        componentIdentifier.name,
-      )
+      ctx.renameBinding(ctx.splitNode.id, componentIdentifier.name)
     },
   }
 }

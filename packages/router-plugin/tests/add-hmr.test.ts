@@ -1,6 +1,8 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { is, walk } from 'yuku-ast'
+import type { Node } from '@yuku-toolchain/types'
 
 import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
@@ -162,19 +164,31 @@ describe('add-hmr works', () => {
     expect(output).toContain('/posts')
   })
 
-  it('prefers the current generated route id over stale Vite hot data', async () => {
-    const statement = createRouteHmrStatement([], {
+  it('prefers the current generated route id over stale Vite hot data', () => {
+    const statements = createRouteHmrStatement([], {
       hmrStyle: 'vite',
       targetFramework: 'react',
       routeId: '/current-route',
     })
-    const output = JSON.stringify(statement)
-
-    expect(output).toContain('"name":"initialRouteId"')
-    expect(output).toContain(
-      '"operator":"??","left":{"type":"StringLiteral","value":"/current-route"',
-    )
-    expect(output).toContain('"object":{"type":"Identifier","name":"hotData"}')
+    let initializer: Node | null = null
+    for (const statement of statements) {
+      walk(statement, {
+        VariableDeclarator(node) {
+          if (is.Identifier(node.id) && node.id.name === 'initialRouteId') {
+            initializer = node.init
+          }
+        },
+      })
+    }
+    expect(initializer).toMatchObject({
+      type: 'LogicalExpression',
+      operator: '??',
+      left: { type: 'Literal', value: '/current-route' },
+      right: {
+        type: 'MemberExpression',
+        object: { type: 'Identifier', name: 'hotData' },
+      },
+    })
   })
 
   it('normalizes the generated root route id for Vite HMR', async () => {

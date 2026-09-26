@@ -117,20 +117,18 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@babel/core": "catalog:",
-    "@babel/template": "^7.29.7",
-    "@babel/types": "catalog:",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "chokidar": "catalog:",
     "unplugin": "^3.3.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@yuku-toolchain/types": "0.11.0",
+    "yuku-analyzer": "0.11.0",
+    "yuku-ast": "0.11.0"
   },
   "devDependencies": {
     "@rsbuild/core": "catalog:",
-    "@types/babel__core": "^7.20.5",
-    "@types/babel__template": "^7.4.4",
     "@types/node": ">=20",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

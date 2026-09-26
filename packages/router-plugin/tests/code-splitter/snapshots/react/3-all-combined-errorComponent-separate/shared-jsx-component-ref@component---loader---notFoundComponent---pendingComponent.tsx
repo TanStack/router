@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 const shared = 1;
 function SharedComponent() {
   return <div>{shared}</div>;

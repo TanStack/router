@@ -26,7 +26,6 @@ import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
   StartCompilerPlugin,
-  StartCompilerTransformResult,
 } from '../types'
 import type {
   DevServerFnModuleSpecifierEncoder,
@@ -259,7 +258,7 @@ export function registerStartCompilerTransforms(
           let nextCode = code
           let previousResult: {
             code: string
-            map: StartCompilerTransformResult['map']
+            map: string | null
           } | null = null
           const id = ctx.resource
           const root = getRoot()
@@ -275,7 +274,7 @@ export function registerStartCompilerTransforms(
             nextCode = virtualResult.code
             previousResult = {
               code: virtualResult.code,
-              map: virtualResult.map ?? null,
+              map: virtualResult.map ? JSON.stringify(virtualResult.map) : null,
             }
           }
 
@@ -391,7 +390,7 @@ export function registerStartCompilerTransforms(
           if (result) {
             return {
               code: result.code,
-              map: result.map ?? null,
+              map: result.map ? JSON.stringify(result.map) : null,
             }
           }
 

@@ -1,3 +1,4 @@
+import { textColors, gradients, Route } from "random-number.tsx";
 import { Await, Link } from '@tanstack/react-router';
 import { Carbon } from '~/components/Carbon';
 import { twMerge } from 'tailwind-merge';
@@ -13,49 +14,22 @@ import bytesImage from '~/images/bytes.svg';
 import bytesUidotdevImage from '~/images/bytes-uidotdev.png';
 import { useMutation } from '~/hooks/useMutation';
 import { sample } from '~/utils/utils';
-import { textColors } from "random-number.tsx";
-import { gradients } from "random-number.tsx";
-const courses = [{
-  name: 'The Official TanStack React Query Course',
-  cardStyles: `border-t-4 border-red-500 hover:(border-green-500)`,
-  href: 'https://query.gg/?s=tanstack',
-  description: `Learn how to build enterprise quality apps with TanStack's React Query the easy way with our brand new course.`
-}];
-import { Route } from "random-number.tsx";
-async function bytesSignupServerFn({
-  email
-}: {
+const courses = [{ name: 'The Official TanStack React Query Course', cardStyles: `border-t-4 border-red-500 hover:(border-green-500)`, href: 'https://query.gg/?s=tanstack', description: `Learn how to build enterprise quality apps with TanStack's React Query the easy way with our brand new course.` }];
+async function bytesSignupServerFn({ email }: {
   email: string;
 }) {
   'use server';
-
-  return fetch(`https://bytes.dev/api/bytes-optin-cors`, {
-    method: 'POST',
-    body: JSON.stringify({
-      email,
-      influencer: 'tanstack'
-    }),
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json'
-    }
-  });
+  return fetch(`https://bytes.dev/api/bytes-optin-cors`, { method: 'POST', body: JSON.stringify({ email, influencer: 'tanstack' }), headers: { Accept: 'application/json', 'Content-Type': 'application/json' } });
 }
 function Index() {
-  const bytesSignupMutation = useMutation({
-    fn: bytesSignupServerFn
-  });
-  const {
-    sponsorsPromise,
-    randomNumber,
-    testing2
-  } = Route.useLoaderData();
+  const bytesSignupMutation = useMutation({ fn: bytesSignupServerFn });
+  const { sponsorsPromise, randomNumber, testing2 } = Route.useLoaderData();
   const gradient = sample(gradients, randomNumber);
   const textColor = sample(textColors, randomNumber);
-  return <>
+  return (<>
       {discordImage}
       {gradient}
       {textColor}
-    </>;
+    </>);
 }
 export { Index as component };

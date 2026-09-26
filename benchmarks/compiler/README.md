@@ -1,5 +1,20 @@
 # Compiler migration benchmarks
 
+**Adoption is blocked:** Yuku 0.11.0 omits runtime references for standalone JSX
+component names beginning with `_`, `$`, or Unicode. A public split-route case
+using `_Widget` or `$Widget` in both a loader and component can produce an
+unresolved component binding. Existing green suites do not override that known
+semantic failure: a public Vite build-and-execute reproduction throws
+`ReferenceError` for both names while the `Widget` control renders correctly.
+The runnable reproduction is
+[`jsx-prefixed-route-repro.mjs`](yuku-feasibility/jsx-prefixed-route-repro.mjs).
+No local workaround has been implemented. The implementation
+and local evaluation are complete, but the migration is not ready to land until
+the upstream analyzer is fixed and correctness, performance, and bundles are
+remeasured. Results below preserve current performance evidence pending that fix.
+Linux GNU/musl and Windows native-package/compiler CI is also required before
+adoption; local execution covered macOS arm64 only.
+
 These local wall-clock measurements separate a Babel/Yuku toolkit feasibility
 comparison from the complete existing route splitter and actual Vite builds.
 They are not CodSpeed runtime benchmarks. A faster toolkit roundtrip does not
@@ -73,6 +88,11 @@ end. Heap deltas around explicit GC are observations, not attribution of every
 native allocation; RSS need not fall when the allocator retains freed pages.
 See `final-cache-*-timing.json` and `final-cache-*-profile.json`.
 
+The cache-clear heap drops above are from the 750-route diagnostic where stated,
+with forced GC before and after clearing; they do not isolate native allocation
+ownership. The 3.3% difference is an observed median from three speed workers per
+variant, not an established statistically reliable benefit.
+
 Final dense-module checks also remain faster and use less peak process memory:
 
 | Workload                                                       | Babel median ms | Native median ms | Median peak RSS, Babel → native |
@@ -92,6 +112,34 @@ the two measured scaling optimizations.
 
 The earlier sections below preserve exploratory and optimization measurements;
 the final paired comparison above is the main adoption evidence.
+
+## Final stash-workflow artifacts
+
+Supporting commits `0ec43cd02c` and `f69eb7a5aa` preserve tests and measurement
+artifacts without changing the baseline compiler. The implementation was then
+stashed and restored for the required BEFORE/AFTER checks. Identical public HMR
+export-contract tests passed 8/16 cases on Babel and 16/16 on native Yuku. All
+eight baseline failures involve automatic route splitting and expose preexisting
+public-export deficiencies, not migration regressions. Details and original log
+paths are in `results/workflow-contracts.json`.
+
+`workflow-before.json` and `workflow-after.json` record one fresh process, one
+warmup and three corpus passes per phase: 358.39 → 109.48 ms, with peak RSS
+384.14 → 142.73 MiB. These are smoke checks for the stash workflow; speed
+conclusions use the five alternating pairs above.
+
+All 18 client bundle scenarios were also measured in both phases with source
+attribution enabled. Complete attributed snapshots are preserved unchanged in
+`results/bundle-before.json` and `results/bundle-after.json`. The latter is a
+pre-cleanup candidate, also retained as `bundle-after-pre-cleanup.json`, not
+final acceptance data. Sixteen scenarios
+have identical raw, gzip, initial raw/gzip, Brotli, initial Brotli, and chunk-count
+metrics. Deferred hydration changes by +65 raw/+33 gzip bytes for React and
++65 raw/+32 gzip for Solid; both remain at three chunks. Independent emitted-code
+review found unused generated lazy-route component calls in the eager route
+chunks. Tracing those calls exposed the blocking upstream JSX reference defect
+above. An upstream fix and final revalidation are pending; the local
+`RESULT-optimization-yuku.md` report contains the comparison.
 
 Use the Node version in `.nvmrc` and the root pnpm version. Build both workspaces
 through Nx before timing: workspace package imports consume `dist`. The default

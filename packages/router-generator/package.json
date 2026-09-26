@@ -65,14 +65,15 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@babel/types": "catalog:",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
     "jiti": "^2.7.0",
     "magic-string": "^0.30.21",
     "prettier": "^3.9.6",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@yuku-toolchain/types": "0.11.0",
+    "yuku-ast": "0.11.0"
   },
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",

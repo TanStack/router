@@ -1,5 +1,5 @@
-import * as t from '@babel/types'
-import type babel from '@babel/core'
+import { b, walk } from 'yuku-ast'
+import type { Identifier, Program, Property } from '@yuku-toolchain/types'
 
 export const debug =
   process.env.TSR_VITE_DEBUG &&
@@ -22,45 +22,46 @@ export const routeFactoryCallCodeFilter = [
   /\bcreateRootRouteWithContext\s*(?:<|\()/,
 ]
 
-export function getObjectPropertyKeyName(
-  prop: t.ObjectProperty,
-): string | undefined {
+export function getObjectPropertyKeyName(prop: Property): string | undefined {
   if (prop.computed) {
     return undefined
   }
 
-  if (t.isIdentifier(prop.key)) {
+  if (prop.key.type === 'Identifier') {
     return prop.key.name
   }
 
-  if (t.isStringLiteral(prop.key)) {
+  if (prop.key.type === 'Literal' && typeof prop.key.value === 'string') {
     return prop.key.value
   }
 
   return undefined
 }
 
+const reservedProgramNames = new WeakMap<Program, Set<string>>()
+
 export function getUniqueProgramIdentifier(
-  programPath: babel.NodePath<t.Program>,
+  program: Program,
   baseName: string,
-): t.Identifier {
+): Identifier {
+  let names = reservedProgramNames.get(program)
+  if (!names) {
+    names = new Set<string>()
+    reservedProgramNames.set(program, names)
+  }
+  walk(program, {
+    Identifier(node) {
+      names.add(node.name)
+    },
+    JSXIdentifier(node) {
+      names.add(node.name)
+    },
+  })
   let name = baseName
   let suffix = 2
-
-  const programScope = programPath.scope.getProgramParent()
-
-  while (
-    programScope.hasBinding(name) ||
-    programScope.hasGlobal(name) ||
-    programScope.hasReference(name)
-  ) {
-    name = `${baseName}${suffix}`
-    suffix++
+  while (names.has(name)) {
+    name = `${baseName}${suffix++}`
   }
-
-  // Register the name so subsequent calls within the same traversal
-  // see it and avoid collisions
-  programScope.references[name] = true
-
-  return t.identifier(name)
+  names.add(name)
+  return b.Identifier({ name })
 }

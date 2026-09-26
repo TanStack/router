@@ -1,11 +1,75 @@
 # Yuku feasibility and upstream findings
 
+Reported upstream:
+
+- [Missing JSX component references (migration blocker)](https://github.com/yuku-toolchain/yuku/issues/204)
+- [Whitespace-padded purity comments are dropped](https://github.com/yuku-toolchain/yuku/issues/202)
+- [Invalid object-method AST crashes code generation](https://github.com/yuku-toolchain/yuku/issues/203)
+
 Investigated with Node 24.8.0 on macOS arm64, using published `yuku-parser`,
 `yuku-analyzer`, and `yuku-codegen` **0.11.0**. The independent syntax oracle was
 `@babel/parser` 7.28.5; it is only an investigation tool, not a proposed runtime
 compatibility layer. The initial isolated probes did not change workspace dependencies. The subsequent
 migration uses Yuku directly in the compiler packages; Babel is not retained as
 an AST compatibility layer.
+
+## Migration blocker: non-ASCII-uppercase JSX component references are missing
+
+Published `yuku-analyzer` 0.11.0 records no binding references for standalone
+`<_Widget />`, `<$Widget />`, `<ÉWidget />`, or `<éWidget />` tags. These tags
+refer to JavaScript values. Plain ASCII-uppercase `<Widget />` and member tags
+such as `<_Widget.Child />` work. Lowercase intrinsic tags such as `<widget />`
+and namespaced tags such as `<svg:path />` correctly produce no value references.
+Opening and closing component tags are both affected.
+
+Run the standalone dependency-only reproducer against an installation containing
+`yuku-analyzer`:
+
+```sh
+node benchmarks/compiler/yuku-feasibility/jsx-reference-repro.mjs packages/router-utils
+```
+
+The assertion fails with eight missing-reference cases and one false reference
+for the intrinsic `<Widget-card />` tag on 0.11.0. This script
+uses only the published `analyze` API and does not modify semantic tables or ASTs.
+The separate public Vite Router reproducer,
+[`jsx-prefixed-route-repro.mjs`](./jsx-prefixed-route-repro.mjs), demonstrates a
+runtime consequence: a component used by an eager route option and a split JSX
+component can be omitted from the lazy chunk, causing a `ReferenceError`.
+The ASCII-uppercase control passes. This is a migration correctness blocker,
+not only a bundle-size issue.
+
+Run the public Router check in the native checkout (expected to fail), or verify
+the exact known failure without leaving the diagnostic process unsuccessful:
+
+```sh
+node benchmarks/compiler/yuku-feasibility/jsx-prefixed-route-repro.mjs --workspace "$PWD"
+node benchmarks/compiler/yuku-feasibility/jsx-prefixed-route-repro.mjs --workspace "$PWD" --expect-regression
+```
+
+Passing `--workspace /path/to/baseline/router` runs the same public plugin and
+runtime contract against the built baseline. The Babel baseline passed all three
+component names (`Widget`, `_Widget`, `$Widget`); the native version throws for
+the latter two. This checks rendering and loader execution, not cross-chunk
+identity: the baseline has a separate, preexisting duplication limitation.
+
+Root cause is the ASCII-uppercase-only condition in upstream
+[`src/parser/semantic/binder.zig:1038`](https://github.com/yuku-toolchain/yuku/blob/eb400037678815bdbc2e5477c4b5458e436286ad/src/parser/semantic/binder.zig#L1038).
+The inspected source is commit `eb400037678815bdbc2e5477c4b5458e436286ad`.
+[`jsx-reference-upstream.patch`](./jsx-reference-upstream.patch) proposes recording
+every non-intrinsic standalone tag, retaining the existing member-root behavior.
+It includes upstream tests for underscore, dollar, and Unicode names; opening
+and closing tags; lexical shadowing; intrinsic tags; and namespaced tags. The
+patch is a proposal, has not been applied to the dependency, and has not been
+compiled or run in the upstream repository.
+
+The full bundle comparison also exposed this defect through generated `<_H0 />`
+Hydrate tags: the missing reference makes route cleanup preserve the lazy factory
+as an initially unused declaration. Each deferred-hydration eager entry retains
+65 raw bytes of unnecessary output (React +33 gzip/+22 Brotli; Solid +32 gzip/+61
+Brotli across all client assets). These are removable residues once upstream
+reference tracking is corrected, not required runtime behavior. No production
+workaround, generated-name change, or purity annotation was added locally.
 
 ## Confirmed upstream defect: whitespace-padded purity comments disappear
 

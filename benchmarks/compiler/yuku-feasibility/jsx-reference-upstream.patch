@@ -1,0 +1,61 @@
+--- a/src/parser/semantic/binder.zig
++++ b/src/parser/semantic/binder.zig
+@@ -1035,7 +1035,9 @@
+                         .jsx_member_expression => true,
+                         else => false,
+                     };
+-                    if (member or (text.len > 0 and text[0] >= 'A' and text[0] <= 'Z')) {
++                    const intrinsic = text.len > 0 and
++                        ((text[0] >= 'a' and text[0] <= 'z') or std.mem.indexOfScalar(u8, text, '-') != null);
++                    if (member or (text.len > 0 and !intrinsic)) {
+                         _ = try self.addReference(id.name, scope.current, root_idx, .{});
+                     }
+                 }
+--- a/test/analyzer/references.test.ts
++++ b/test/analyzer/references.test.ts
+@@ -240,6 +240,45 @@
+ });
+ 
+ describe("JSX", () => {
++  test("non-intrinsic JSX names include underscore, dollar, and Unicode prefixes", () => {
++    for (const name of ["Widget", "_Widget", "$Widget", "ÉWidget", "éWidget"]) {
++      for (const [tag, expected] of [
++        [`<${name} />`, 1],
++        [`<${name}></${name}>`, 2],
++        [`<${name}.Child />`, 1],
++      ] as const) {
++        const module = new Analyzer().addFile(
++          "input.tsx",
++          `const ${name} = () => null; export const render = () => ${tag};`,
++        );
++        const symbol = module.rootScope.find(name)!;
++        expect(symbol.references.length).toBe(expected);
++        expect(symbol.references.every((reference) => reference.symbol === symbol)).toBe(true);
++      }
++    }
++  });
++
++  test("JSX component names resolve to the nearest lexical declaration", () => {
++    const module = new Analyzer().addFile(
++      "input.tsx",
++      `const _Widget = () => null;
++       function render() { const _Widget = () => null; return <_Widget />; }`,
++    );
++    const outer = module.rootScope.find("_Widget")!;
++    const inner = module.symbols.find((symbol) => symbol.name === "_Widget" && symbol !== outer)!;
++    expect(outer.references.length).toBe(0);
++    expect(inner.references.length).toBe(1);
++    expect(inner.references[0].symbol).toBe(inner);
++  });
++
++  test("intrinsic and namespaced tags do not create variable references", () => {
++    const module = new Analyzer().addFile(
++      "input.tsx",
++      `export const render = () => <><div /><my-element /><X-element /><svg:path /></>;`,
++    );
++    expect(module.unresolvedReferences.length).toBe(0);
++  });
++
+   test("a component name resolves to its binding, an intrinsic element is free", () => {
+     expect(
+       summary(`const App = () => <Foo><div /></Foo>; function Foo() { return null; }`, {

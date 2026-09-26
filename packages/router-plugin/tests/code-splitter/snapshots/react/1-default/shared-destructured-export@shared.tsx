@@ -1,11 +1,5 @@
-const {
-  apiUrl,
-  timeout
-} = getConfig();
+const { apiUrl, timeout } = getConfig();
 function getConfig() {
-  return {
-    apiUrl: '/api',
-    timeout: 5000
-  };
+  return { apiUrl: '/api', timeout: 5000 };
 }
 export { apiUrl, getConfig, timeout };

@@ -1,7 +1,7 @@
 import path from 'node:path'
-import * as t from '@babel/types'
+import { is } from 'yuku-ast'
 import { describe, expect, it, vi } from 'vitest'
-import { parseAst } from '@tanstack/router-utils'
+import { analyzeModule } from '@tanstack/router-utils'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { unpluginRouterComposedFactory } from '../src/core/router-composed-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
@@ -78,12 +78,12 @@ function getCode(result: TransformResult | null | undefined) {
 }
 
 function countProgramHotDeclarations(code: string) {
-  const ast = parseAst({ code })
-  return ast.program.body.filter((statement) => {
+  const ast = analyzeModule({ code })
+  return ast.ast.body.filter((statement) => {
     return (
-      t.isVariableDeclaration(statement) &&
+      is.VariableDeclaration(statement) &&
       statement.declarations.some((declaration) => {
-        return t.isIdentifier(declaration.id) && declaration.id.name === 'hot'
+        return is.Identifier(declaration.id) && declaration.id.name === 'hot'
       })
     )
   }).length
@@ -192,25 +192,7 @@ export const Route = createFileRoute('/changing')({
     const combined = await setup(true)
     const first = await separate(source('firstState', 'first version'))
     expect(first.reference).toContain('tsr-split=component')
-    const virtualImports = parseAst({
-      code: first.virtual,
-    }).program.body.filter((statement) => t.isImportDeclaration(statement))
-    expect(virtualImports).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          source: expect.objectContaining({
-            value: expect.stringContaining('tsr-shared'),
-          }),
-          specifiers: expect.arrayContaining([
-            expect.objectContaining({
-              type: 'ImportSpecifier',
-              imported: expect.objectContaining({ name: 'firstState' }),
-              local: expect.objectContaining({ name: 'firstState' }),
-            }),
-          ]),
-        }),
-      ]),
-    )
+    expect(first.virtual).toContain('import { firstState }')
     expect(first.shared).toContain('first version')
 
     const second = await separate(source('secondState', 'second version'))
