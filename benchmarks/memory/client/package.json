@@ -22,7 +22,7 @@
     "vue": "^3.5.16"
   },
   "devDependencies": {
-    "@codspeed/vitest-plugin": "^5.5.0",
+    "@codspeed/vitest-plugin": "^5.7.1",
     "@datadog/pprof": "^5.13.2",
     "@platformatic/flame": "^1.6.0",
     "@testing-library/react": "^16.2.0",

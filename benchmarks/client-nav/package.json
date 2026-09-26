@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@platformatic/flame": "^1.6.0",
-    "@codspeed/vitest-plugin": "^5.5.0",
+    "@codspeed/vitest-plugin": "^5.7.1",
     "@tanstack/router-plugin": "workspace:^",
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^6.0.1",
