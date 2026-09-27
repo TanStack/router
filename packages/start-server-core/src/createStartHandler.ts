@@ -1048,6 +1048,9 @@ async function handleServerRoutes({
   let terminalHandler: TODO = (ctx: TODO) =>
     executeRouter(ctx.context, matchedRoutes)
   let terminalNext: TODO
+  // Slot validators from every request middleware in the route chain, then
+  // the method's own. All of them must pass (intersection).
+  const validators: Array<RequestValidatorSlots> = []
 
   // Collect middleware from matched routes, filtering out those already executed
   // in the request phase
@@ -1061,6 +1064,7 @@ async function handleServerRoutes({
         if (!executedRequestMiddlewares.has(m)) {
           routeMiddlewares.push(m.options.server)
         }
+        if (m.options.validator) validators.push(m.options.validator)
       }
     }
   }
@@ -1082,17 +1086,6 @@ async function handleServerRoutes({
         : (handlers[requestMethod] ?? handlers['ANY'])
     if (handler) {
       const mayDefer = !!foundRoute.options.component
-      // Slot validators from every request middleware in the route chain,
-      // then the method's own. All of them must pass (intersection).
-      const validators: Array<RequestValidatorSlots> = []
-      for (const route of matchedRoutes) {
-        const serverMiddleware = route.options.server?.middleware as
-          | Array<AnyRequestMiddleware>
-          | undefined
-        for (const m of flattenMiddlewares(serverMiddleware ?? [])) {
-          if (m.options.validator) validators.push(m.options.validator)
-        }
-      }
 
       if (typeof handler !== 'function') {
         if (handler.middleware?.length) {
