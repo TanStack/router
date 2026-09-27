@@ -735,6 +735,18 @@ export function setProtectedResponseHeader(
   return next
 }
 
+function decodePathname(pathname: string): string | undefined {
+  try {
+    // Return the value so bundlers preserve the potentially throwing decode.
+    return decodeURI(pathname)
+  } catch (error) {
+    if (error instanceof URIError) {
+      return undefined
+    }
+    throw error
+  }
+}
+
 function runInStartRequest(
   request: Request,
   run: (event: StartEvent) => MaybePromise<Response>,
@@ -747,6 +759,11 @@ function runInStartRequest(
       return new Response(null, { status: 400, statusText: 'Bad Request' })
     }
     throw error
+  }
+  const pathname = requestUrl.pathname
+  // Validate encoded paths without changing the pathname used for routing.
+  if (pathname.includes('%') && decodePathname(pathname) === undefined) {
+    return new Response(null, { status: 400, statusText: 'Bad Request' })
   }
   const event: StartEvent = { request, requestUrl }
   return eventStorage.run(event, () => run(event))
