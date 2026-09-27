@@ -67,7 +67,7 @@ export function makeData() {
     },
     car: {
       singleInstance: makeCar({
-        make: 'Toyota',
+        make: 'Toyota </script> $df("not-a-fragment") こんにちは',
         model: 'Camry',
         year: 2020,
       }),
@@ -149,6 +149,15 @@ export function RenderData({
         })}
       </div>
       <b>Foo</b>
+      <button
+        data-testid={`${id}-honk`}
+        onClick={(event) => {
+          event.currentTarget.textContent =
+            data.car.singleInstance.honk().message
+        }}
+      >
+        Honk
+      </button>
       <div data-testid={`${id}-foo`}>
         {JSON.stringify({
           value: data.foo.singleInstance.value,
