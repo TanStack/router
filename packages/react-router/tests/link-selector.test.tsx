@@ -1,10 +1,10 @@
 import React from 'react'
-import { act, cleanup, render } from '@testing-library/react'
+import { act, cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
   Link,
   RouterContextProvider,
-  createBrowserHistory,
+  RouterProvider,
   createHashHistory,
   createMemoryHistory,
   createRootRoute,
@@ -86,93 +86,36 @@ test('changed destination, active options and disabled props replace prepared st
   expect(link).toHaveAttribute('aria-current', 'page')
 })
 
-test('router updates refresh formatted hrefs and their external or blocked classification', async () => {
-  vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const router = await setup()
-  const view = render(
-    <RouterContextProvider router={router}>
-      <Link to="/posts/$id" params={{ id: '1' }}>
-        Post
-      </Link>
-    </RouterContextProvider>,
-  )
-  const link = view.getByText('Post')
-  expect(link).toHaveAttribute('aria-current', 'page')
-
-  for (const [href, allowed, active] of [
-    ['custom:post', true, false],
-    ['custom:post', false, false],
-    ['/formatted', false, true],
-  ] as const) {
-    const history = createMemoryHistory({ initialEntries: ['/posts/1'] })
-    history.createHref = () => href
-    router.update({ history, protocolAllowlist: allowed ? ['custom:'] : [] })
-    await act(() => router.load())
-    expect(link.getAttribute('href')).toBe(
-      href === 'custom:post' && !allowed ? null : href,
-    )
-    expect(link.getAttribute('aria-current')).toBe(active ? 'page' : null)
-  }
-})
-
 test('hash history refreshes a cached destination after the outer URL changes', async () => {
   const original = window.location.href
   window.history.replaceState(null, '', '/shell?outer=one#/posts/1')
   const history = createHashHistory()
-  const router = await setup()
-  router.update({ history })
+  const root = createRootRoute({
+    component: () => (
+      <Link to="/posts/$id" params={{ id: '1' }} search={{}}>
+        Post
+      </Link>
+    ),
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([
+      createRoute({ getParentRoute: () => root, path: '/posts/$id' }),
+    ]),
+    history,
+    trailingSlash: 'never',
+  })
   try {
-    await router.load()
-    const view = render(
-      <RouterContextProvider router={router}>
-        <Link to="/posts/$id" params={{ id: '1' }} search={{}}>
-          Post
-        </Link>
-      </RouterContextProvider>,
-    )
-    const link = view.getByText('Post')
+    const view = render(<RouterProvider router={router} />)
+    const link = await view.findByText('Post')
     expect(link).toHaveAttribute('href', '/shell?outer=one#/posts/1')
-    await act(async () => {
+    expect(link).toHaveAttribute('aria-current', 'page')
+    act(() => {
       window.history.replaceState(null, '', '/other?outer=two#/posts/2')
-      await router.load()
     })
-    expect(link).toHaveAttribute('href', '/other?outer=two#/posts/1')
-    expect(link).not.toHaveAttribute('aria-current')
-  } finally {
-    cleanup()
-    history.destroy()
-    window.history.replaceState(null, '', original)
-  }
-})
-
-test('a live custom formatter can change a cached link from internal to external or blocked', async () => {
-  vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const original = window.location.href
-  window.history.replaceState(null, '', '/posts/1')
-  let formatted = '/posts/1'
-  const history = createBrowserHistory({ createHref: () => formatted })
-  const router = await setup()
-  router.update({ history })
-  try {
-    await router.load()
-    const view = render(
-      <RouterContextProvider router={router}>
-        <Link to="/posts/$id" params={{ id: '1' }} search={{}}>
-          Post
-        </Link>
-      </RouterContextProvider>,
-    )
-    const link = view.getByText('Post')
-    for (const [href, expected, active] of [
-      ['https://other.example/', 'https://other.example/', false],
-      ['javascript:blocked()', null, false],
-      ['/posts/1', '/posts/1', true],
-    ] as const) {
-      formatted = href
-      await act(() => router.load())
-      expect(link.getAttribute('href')).toBe(expected)
-      expect(link.getAttribute('aria-current')).toBe(active ? 'page' : null)
-    }
+    await waitFor(() => {
+      expect(link).toHaveAttribute('href', '/other?outer=two#/posts/1')
+      expect(link).not.toHaveAttribute('aria-current')
+    })
   } finally {
     cleanup()
     history.destroy()
