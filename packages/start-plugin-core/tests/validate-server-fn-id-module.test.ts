@@ -80,6 +80,22 @@ describe('validateServerFnId', () => {
     ).rejects.toThrow('Invalid server function ID')
   })
 
+  // Regression: serverFnsById is a plain object, so an inherited
+  // Object.prototype key ("toString", "constructor") must NOT count as a
+  // registered id. Otherwise the validator returns "export {}" and the dev
+  // wrapper later fails decoding the id without SERVER_FN_NOT_FOUND -> 500
+  // instead of 404.
+  test.each(['toString', 'constructor'])(
+    'treats the inherited prototype key %j as an unknown id (404)',
+    async (fnId) => {
+      const ctx = makeCtx()
+
+      await expect(validateServerFnId(fnId, ctx)).rejects.toThrow(
+        'Invalid server function ID',
+      )
+    },
+  )
+
   test('propagates a source-transform failure instead of masking it as a 404', async () => {
     // A broken source file makes transformRequest reject. That is a real build
     // error and must surface as-is, NOT be converted into "Invalid server

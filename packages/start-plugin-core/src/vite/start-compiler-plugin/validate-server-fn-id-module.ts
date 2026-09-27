@@ -27,7 +27,7 @@ export async function validateServerFnId(
 ): Promise<string> {
   const { serverFnsById, root, environment, error } = ctx
 
-  if (fnId && serverFnsById[fnId]) {
+  if (fnId && Object.hasOwn(serverFnsById, fnId)) {
     return `export {}`
   }
 
@@ -71,7 +71,7 @@ export async function validateServerFnId(
         await environment.transformRequest(`${absPath}?${SERVER_FN_LOOKUP}`)
 
         // Re-check after lazy compilation
-        if (serverFnsById[fnId]) {
+        if (Object.hasOwn(serverFnsById, fnId)) {
           return `export {}`
         }
       }
