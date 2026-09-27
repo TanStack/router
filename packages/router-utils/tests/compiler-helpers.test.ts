@@ -10,6 +10,7 @@ import {
 } from '../src/ast'
 import {
   collectModuleReferences,
+  createBindingCleanup,
   extractModuleInfo,
   moduleDeclarationGraph,
   removeUnusedBindings,
@@ -194,6 +195,168 @@ describe('semantic dependency analysis', () => {
 })
 
 describe('output liveness', () => {
+  test('recomputes nested liveness for each output of the same source', () => {
+    const code = `
+      import { server } from './server'
+      import { client } from './client'
+      export function factory() {
+        const load = () => server()
+        const render = () => client()
+        const unused = sideEffect()
+        return createRoute({ loader: load, component: render })
+      }
+    `
+    const filename = 'route.tsx'
+    const module = analyzeModule({ code, filename })
+    const cleanup = createBindingCleanup(module)
+    const original = generateModule(module.ast, { source: code, filename })
+    const compile = (
+      source: typeof module,
+      erase: string,
+      preserveInitiallyUnused: boolean,
+      cleanup = createBindingCleanup(source),
+    ) => {
+      const { program, originalNodes } = cloneModuleAst(source)
+      walk(program, {
+        Property(node, context) {
+          if (is.Identifier(node.key, erase)) {
+            context.remove()
+          }
+        },
+      })
+      cleanup(program, originalNodes, {
+        preserveInitiallyUnused,
+      })
+      return generateModule(program, { source: code, filename })
+    }
+    for (const erase of ['loader', 'component', 'loader']) {
+      for (const preserve of [true, false, true]) {
+        const output = compile(module, erase, preserve, cleanup)
+        expect(output).toEqual(
+          compile(analyzeModule({ code, filename }), erase, preserve),
+        )
+        expect(output.code).not.toContain(
+          erase === 'loader' ? './server' : './client',
+        )
+        expect(output.code).toContain(
+          erase === 'loader' ? './client' : './server',
+        )
+        expect(output.code.includes('sideEffect()')).toBe(preserve)
+      }
+    }
+    expect(generateModule(module.ast, { source: code, filename })).toEqual(
+      original,
+    )
+  })
+
+  test('keeps roots, removed exports, and generated references output-local', () => {
+    const module = analyzeModule({
+      code: `const { first, last } = initialize(); const unused = sideEffect(); export { first };`,
+    })
+    const cleanup = createBindingCleanup(module)
+    const compile = (root?: string, generated = false) => {
+      const { program, originalNodes } = cloneModuleAst(module)
+      program.body = program.body.filter(
+        (node) => !is.ExportNamedDeclaration(node),
+      )
+      if (generated) {
+        program.body.push(...parseStatements('export const result = last'))
+      }
+      cleanup(program, originalNodes, {
+        roots: root ? [root] : [],
+        preserveInitiallyUnused: false,
+      })
+      const output = generateModule(program).code
+      cleanup(program, originalNodes, {
+        preserveInitiallyUnused: false,
+      })
+      if (generated) {
+        expect(generateModule(program).code).toBe(output)
+        program.body = program.body.filter(
+          (node) => !is.ExportNamedDeclaration(node),
+        )
+        cleanup(program, originalNodes, {
+          preserveInitiallyUnused: false,
+        })
+      }
+      expect(generateModule(program).code).not.toContain('initialize()')
+      return output
+    }
+    expect(compile()).not.toContain('initialize()')
+    expect(compile('last')).toContain('first, last')
+    expect(compile(undefined, true)).toContain('first, last')
+    expect(compile()).not.toContain('initialize()')
+    expect(compile('unused')).toContain('sideEffect()')
+    // The initially-unused last sibling preserves the whole destructuring.
+    const { program, originalNodes } = cloneModuleAst(module)
+    program.body = program.body.filter(
+      (node) => !is.ExportNamedDeclaration(node),
+    )
+    cleanup(program, originalNodes)
+    expect(generateModule(program).code).toContain('initialize()')
+  })
+
+  test('uses fresh source metadata when the same filename is reanalyzed', () => {
+    const filename = 'route.tsx'
+    for (const exported of [true, false, true]) {
+      const module = analyzeModule({
+        code: `const value = initialize(); ${exported ? 'export { value }' : ''}`,
+        filename,
+      })
+      const cleanup = createBindingCleanup(module)
+      for (let output = 0; output < 2; output++) {
+        const { program, originalNodes } = cloneModuleAst(module)
+        program.body = program.body.filter(
+          (node) => !is.ExportNamedDeclaration(node),
+        )
+        cleanup(program, originalNodes)
+        expect(generateModule(program).code.includes('initialize()')).toBe(
+          !exported,
+        )
+      }
+    }
+  })
+
+  test('reuses all declaration owners for overloads and merged namespaces', () => {
+    const module = analyzeModule({
+      code: `
+        const first = 1; const second = 2;
+        function helper(value: string): string;
+        function helper(value: number): number;
+        function helper(value: any) { return first + value }
+        namespace Merged { export const a = helper(first) }
+        namespace Merged { export const b = second }
+        export { Merged };
+      `,
+    })
+    const cleanup = createBindingCleanup(module)
+    for (const keep of ['a', 'b', 'a']) {
+      const { program, originalNodes } = cloneModuleAst(module)
+      program.body = program.body.filter((node) => {
+        if (!is.TSModuleDeclaration(node) || !is.TSModuleBlock(node.body)) {
+          return true
+        }
+        const member = node.body.body[0]
+        return (
+          is.ExportNamedDeclaration(member) &&
+          is.VariableDeclaration(member.declaration) &&
+          is.Identifier(member.declaration.declarations[0]?.id, keep)
+        )
+      })
+      cleanup(program, originalNodes, {
+        preserveInitiallyUnused: false,
+      })
+      const output = generateModule(program).code
+      expect(output.includes('const first')).toBe(keep === 'a')
+      expect(output.includes('const second')).toBe(keep === 'b')
+      expect(output.includes('return first + value')).toBe(keep === 'a')
+      expect(output.includes('function helper(value: string)')).toBe(
+        keep === 'a',
+      )
+      expect(output).toContain(`export const ${keep}`)
+    }
+  })
+
   test('removes transitively erased server dependencies while preserving unrelated side effects', () => {
     const output = cleanup(
       `

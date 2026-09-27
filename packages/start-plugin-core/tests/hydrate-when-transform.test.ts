@@ -149,6 +149,54 @@ function loadVirtualHydrateModule(options: {
 }
 
 describe('Hydrate compiler transform', () => {
+  test.each(['react', 'solid'] as const)(
+    'isolates %s sibling cleanup through shared source reuse and replacement',
+    (framework) => {
+      const plugin = createHydrateCompilerPlugin()
+      for (const firstImport of ['./first', './updated']) {
+        const code = `
+        import { Hydrate } from '@tanstack/${framework}-start'
+        import { First } from '${firstImport}'
+        import { Second } from './second'
+        export function Page() {
+          return <><Hydrate when={true}><First /></Hydrate><Hydrate when={true}><Second /></Hydrate></>
+        }
+      `
+        const transformed = compileHydrate({
+          code,
+          id,
+          root,
+          env: 'client',
+          framework,
+          plugin,
+        })
+        expect(transformed?.boundaries).toHaveLength(2)
+        for (const index of [1, 0]) {
+          const virtualId = virtualHydrateId(
+            id,
+            transformed!.boundaries[index]!,
+          )
+          const output = plugin.loadVirtualModule?.({
+            id: virtualId,
+            root,
+            env: 'client',
+            envName: 'client',
+          })
+          expect(output).toEqual(
+            loadVirtualHydrateModule({ code, id: virtualId, root }),
+          )
+          expect(output?.code).toContain(index === 0 ? firstImport : './second')
+          expect(output?.code).not.toContain(
+            index === 0 ? './second' : firstImport,
+          )
+          if (firstImport === './updated') {
+            expect(output?.code).not.toContain('./first')
+          }
+        }
+      }
+    },
+  )
+
   test.each(['client', 'server'] as const)(
     'resolves spread props declared after their containing function in %s output',
     (env) => {

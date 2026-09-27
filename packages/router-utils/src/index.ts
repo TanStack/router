@@ -23,6 +23,7 @@ export {
   expandTransitively,
   stripTypeExports,
   removeUnusedBindings,
+  createBindingCleanup,
 } from './compiler-helpers'
 export type {
   ModuleDeclarationGraph,

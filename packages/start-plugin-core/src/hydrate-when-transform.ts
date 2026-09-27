@@ -5,12 +5,12 @@ import {
   analyzeModule,
   cloneModuleAst,
   collectModuleReferences,
+  createBindingCleanup,
   expandTransitively,
   generateModule,
   moduleDeclarationGraph,
   parseExpression,
   parseStatements,
-  removeUnusedBindings,
   unwrapExpression,
 } from '@tanstack/router-utils'
 import { tssHydrate } from './hydration-constants'
@@ -501,6 +501,7 @@ function transformHydrateAst(
 }
 
 function loadHydrateVirtualModule(options: {
+  cleanup: ReturnType<typeof createBindingCleanup>
   module: Module
   id: string
   root: string
@@ -626,13 +627,14 @@ function loadHydrateVirtualModule(options: {
     },
   })
   ast.body.push(output)
-  removeUnusedBindings(module, ast, originalNodes, {
+  options.cleanup(ast, originalNodes, {
     preserveInitiallyUnused: false,
   })
   return generateModule(ast, { source: options.code, filename: options.id })
 }
 export function createHydrateCompilerPlugin(): StartCompilerPlugin {
   type SourceEntry = {
+    cleanup: ReturnType<typeof createBindingCleanup>
     module: Module
     code: string
     framework: CompileStartFrameworkOptions
@@ -664,8 +666,10 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
       return existing
     }
 
+    const module = sourceModule ?? analyzeModule({ code, filename: sourceId })
     const entry = {
-      module: sourceModule ?? analyzeModule({ code, filename: sourceId }),
+      module,
+      cleanup: createBindingCleanup(module),
       code,
       framework,
       virtualModules: new Map<string, StartCompilerTransformResult | null>(),
@@ -747,6 +751,7 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
       }
 
       const result = loadHydrateVirtualModule({
+        cleanup: sourceEntry.cleanup,
         module: sourceEntry.module,
         code: sourceEntry.code,
         id: context.id,

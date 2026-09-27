@@ -177,6 +177,47 @@ export interface RemoveUnusedBindingsOptions {
   preserveInitiallyUnused?: boolean
 }
 
+interface CleanupMetadata {
+  declarations: ReadonlyMap<Symbol, Node>
+  declarationSymbols: ReadonlyMap<Node, ReadonlySet<Symbol>>
+  byName: ReadonlyMap<string, Symbol>
+  originallyExported: ReadonlySet<Symbol | null>
+}
+
+function createCleanupMetadata(sourceModule: Module): CleanupMetadata {
+  const graph = declarationIndex(sourceModule, sourceModule.symbols)
+  return {
+    declarations: graph.declarations,
+    declarationSymbols: graph.declarationSymbols,
+    byName: new Map(
+      sourceModule.rootScope.bindings.map((symbol) => [symbol.name, symbol]),
+    ),
+    // Export records are uses even without lexical references. Erasing an
+    // export must not turn its declaration into an initially-unused root.
+    originallyExported: new Set(
+      sourceModule.exports
+        .filter((record) => !record.typeOnly && record.local)
+        .map((record) => record.local),
+    ),
+  }
+}
+
+/**
+ * Keep immutable source metadata with an analysis that produces sibling outputs.
+ * Each output tree and provenance map must be cloned from this Module.
+ */
+export function createBindingCleanup(module: Module) {
+  let metadata: CleanupMetadata | undefined
+  return (
+    program: Program,
+    originalNodes: WeakMap<Node, Node>,
+    options: RemoveUnusedBindingsOptions = {},
+  ): void => {
+    metadata ??= createCleanupMetadata(module)
+    cleanupBindings(module, program, originalNodes, options, metadata)
+  }
+}
+
 /**
  * Rebuild liveness from surviving nodes, using original symbol identity. This
  * removes dependencies of erased route options without reparsing generated code.
@@ -186,29 +227,34 @@ export function removeUnusedBindings(
   module: Module,
   program: Program,
   originalNodes: WeakMap<Node, Node>,
-  {
-    roots = [],
-    preserveInitiallyUnused = true,
-  }: RemoveUnusedBindingsOptions = {},
+  options: RemoveUnusedBindingsOptions = {},
+): void {
+  cleanupBindings(
+    module,
+    program,
+    originalNodes,
+    options,
+    createCleanupMetadata(module),
+  )
+}
+
+function cleanupBindings(
+  module: Module,
+  program: Program,
+  originalNodes: WeakMap<Node, Node>,
+  { roots = [], preserveInitiallyUnused = true }: RemoveUnusedBindingsOptions,
+  graph: CleanupMetadata,
 ): void {
   stripTypeExports(program)
-  const graph = declarationIndex(module, module.symbols)
-  const byName = new Map(
-    module.rootScope.bindings.map((symbol) => [symbol.name, symbol]),
-  )
-  const originalOwners = new Map<Node, Set<Symbol>>(graph.declarationSymbols)
-  // Export records are uses even when there are no lexical references. A
-  // transform that removes an export may also remove its declaration graph.
-  const { exports: originalExports } = module
-  const originallyExported = new Set(
-    originalExports
-      .filter((record) => !record.typeOnly && record.local)
-      .map((record) => record.local),
-  )
+  const {
+    byName,
+    originallyExported,
+    declarationSymbols: originalOwners,
+  } = graph
   const live = new Set<Symbol>()
   const dependencies = new Map<Symbol, Set<Symbol>>()
   const present = new Set<Symbol>()
-  const ownerStack: Array<Set<Symbol> | null> = []
+  const ownerStack: Array<ReadonlySet<Symbol> | null> = []
   const scopeStack: Array<Scope> = []
   const addDependency = (from: Symbol, to: Symbol) => {
     const edges = dependencies.get(from) ?? new Set<Symbol>()
