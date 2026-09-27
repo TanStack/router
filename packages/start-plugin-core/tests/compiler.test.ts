@@ -78,7 +78,10 @@ function createFullCompiler(
   })
 }
 
-function createExternalTransformCompiler() {
+function createExternalTransformCompiler(options?: {
+  loadModule?: (id: string) => Promise<void>
+  resolveId?: (id: string, importer?: string) => Promise<string | null>
+}) {
   const compilerTransforms: Array<StartCompilerImportTransform> = [
     {
       name: 'test-render-option-injection',
@@ -111,8 +114,8 @@ function createExternalTransformCompiler() {
       compilerTransforms,
     }),
     getKnownServerFns: () => ({}),
-    loadModule: async () => {},
-    resolveId: async (id) => id,
+    loadModule: options?.loadModule ?? (async () => {}),
+    resolveId: options?.resolveId ?? (async (id) => id),
     mode: 'build',
     compilerTransforms,
   })
@@ -450,6 +453,97 @@ describe('compiler handles multiple files with different kinds', () => {
 })
 
 describe('compiler handles external import transforms', () => {
+  test.each([
+    'export const component = renderThing.bind(null)',
+    'export const component = renderThing.call(null)',
+    'const renderThing = "other"; export const component = runtime[renderThing](<Card />)',
+    'export function component(runtime) { return runtime.renderThing(<Card />) }',
+  ])(
+    'only transforms direct calls to configured bindings: %s',
+    async (body) => {
+      const compiler = createExternalTransformCompiler()
+      const namedImport = body.includes('const renderThing =')
+        ? ''
+        : "import { renderThing } from '@example/runtime'"
+      const result = await compiler.compile({
+        code: `
+        ${namedImport}
+        import * as runtime from '@example/runtime'
+        ${body}
+      `,
+        id: '/test/src/runtime.tsx',
+        detectedKinds: new Set(['External:test-render-option-injection']),
+      })
+      expect(result).toBeNull()
+    },
+  )
+
+  test.each([
+    'export const component = renderThing(<Card />)',
+    'export function component() { return renderThing(<Card />) }',
+    'export const component = runtime.renderThing(<Card />)',
+    'export function component() { return (runtime).renderThing(<Card />) }',
+  ])('does not load unrelated virtual runtime imports: %s', async (body) => {
+    const resolved: Array<string> = []
+    const loaded: Array<string> = []
+    const compiler = createExternalTransformCompiler({
+      resolveId: async (id) => {
+        resolved.push(id)
+        return `\0${id}`
+      },
+      loadModule: async (id) => {
+        loaded.push(id)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { renderThing } from 'virtual:rsc-runtime'
+        import * as runtime from 'virtual:rsc-runtime'
+        ${body}
+      `,
+      id: '/test/src/runtime.tsx',
+      detectedKinds: new Set(['External:test-render-option-injection']),
+    })
+
+    expect(result).toBeNull()
+    expect(resolved).toEqual([])
+    expect(loaded).toEqual([])
+  })
+
+  test('transforms configured aliases without tracing unrelated runtime calls', async () => {
+    const resolved: Array<string> = []
+    const loaded: Array<string> = []
+    const compiler = createExternalTransformCompiler({
+      resolveId: async (id) => {
+        resolved.push(id)
+        return id
+      },
+      loadModule: async (id) => {
+        loaded.push(id)
+      },
+    })
+    const result = await compiler.compile({
+      code: `
+        import { renderThing as renderCard } from '@example/runtime'
+        import * as configured from '@example/runtime'
+        import { renderThing } from 'virtual:rsc-runtime'
+        export const foreign = renderThing(<ForeignCard />)
+        export function component() {
+          return [renderCard(<Card />), (configured).renderThing(<OtherCard />)]
+        }
+      `,
+      id: '/test/src/card.tsx',
+      detectedKinds: new Set(['External:test-render-option-injection']),
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code.match(/injected: loadThing\(\)/g)).toHaveLength(2)
+    expect(result!.code).toContain('renderThing(<ForeignCard />)')
+    expect(resolved).toEqual([])
+    expect(loaded).toEqual([])
+  })
+
   test('runs configured direct-call transforms before server function extraction', async () => {
     const compiler = createExternalTransformCompiler()
 
