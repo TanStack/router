@@ -1,0 +1,52 @@
+{
+  "current": {
+    "commit": "9148909cc5e578082c4d7b2e56ca08e531a987be",
+    "sha256": "46deda5530df333cc08ffa8c93673ddff058819b5be2a658ea513330f6bf9528",
+    "javascriptFiles": 126,
+    "sourceSha256": "1f7ed4e9d9872504ee29ec6ed47e1b5672946ab7601e9579ceef944cb68398fe",
+    "sourceFiles": 138,
+    "dependencyVersions": {
+      "yuku-analyzer": "0.12.0",
+      "yuku-ast": "0.12.0",
+      "yuku-codegen": "0.12.0",
+      "@yuku-toolchain/types": "0.12.0"
+    }
+  },
+  "measuredFiles": [
+    "direct-ast-builders-digests.json",
+    "direct-ast-builders-timings.json",
+    "direct-ast-heavy-builds-100.json",
+    "direct-ast-heavy-builds-1000.json",
+    "direct-ast-heavy-builds-5000.json"
+  ],
+  "compilerSourceAndBuiltOutputsUnchanged": true,
+  "clientBundleScenarios": 18,
+  "byteIdenticalClientJavaScriptFiles": 38,
+  "baseline": {
+    "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+    "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+    "javascriptFiles": 125,
+    "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+    "sourceFiles": 137,
+    "dependencyVersions": {
+      "yuku-analyzer": "0.12.0",
+      "yuku-ast": "0.12.0",
+      "yuku-codegen": "0.12.0",
+      "@yuku-toolchain/types": "0.12.0"
+    }
+  },
+  "initialInlineCandidate": {
+    "commit": "9148909cc5e578082c4d7b2e56ca08e531a987be",
+    "sha256": "ac852d5d9cc39288b083f877a57e775f90f1aba24d25fe23d04a367f39f15e4c",
+    "javascriptFiles": 125,
+    "sourceSha256": "df25df7620a45bb20b475ea383eebac0f4011e3722a97cf5c370f792eb367198",
+    "sourceFiles": 137,
+    "dependencyVersions": {
+      "yuku-analyzer": "0.12.0",
+      "yuku-ast": "0.12.0",
+      "yuku-codegen": "0.12.0",
+      "@yuku-toolchain/types": "0.12.0"
+    }
+  },
+  "baseAdvance": "Only e2e/solid-start/start-manifest/tests/start-manifest.spec.ts changed between 6c228b37ad and 9148909cc5"
+}

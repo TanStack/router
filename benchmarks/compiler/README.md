@@ -1,5 +1,59 @@
 # Compiler migration benchmarks
 
+## Direct server-function AST construction
+
+See the [evaluation report](direct-ast.md) for results,
+validation, hunk attribution, and whole-build limitations.
+
+`server-fn-ast.mjs` compares two built checkouts through the same Start compiler
+host. It uses fresh compiler instances and identical source modules, alternating
+baseline/candidate process order. Build both checkouts through Nx first:
+
+```sh
+node benchmarks/compiler/server-fn-ast.mjs --baseline /path/to/baseline --digest --repetitions 1 --iterations 1 --warmups 1 --output /tmp/server-fn-digests.json
+node benchmarks/compiler/server-fn-ast.mjs --baseline /path/to/baseline --output /tmp/server-fn-timings.json
+```
+
+The separate digest run asserts complete code and serialized source-map equality.
+Do not use its instrumented timings for speed claims. Default timing runs use five
+fresh process pairs, two warmups and eight measured passes. Results preserve input
+and compiler fingerprints, individual pass timings, between-process variation,
+peak process RSS, and post-GC retained heap.
+
+Cases cover 60 changed modules with two server functions each for client, SSR,
+provider build, and provider development; development includes existing, duplicate,
+and escaped directives plus both HMR runtime branches. `dense` contains 150
+provider functions in one module, `single` contains one provider per module, and
+`control` contains no compiler candidates. Select cases with `--cases`.
+Compiler-only timings exclude Vite/Rsbuild orchestration and do not predict the
+same percentage improvement in whole builds. Use `build.mjs` with
+`--app e2e/react-start/server-functions` for the production integration workload.
+
+For a larger complete Start production build, use the generated workload:
+
+```sh
+node benchmarks/compiler/server-fn-build.mjs --baseline /path/to/baseline --functions 1000 --repetitions 7 --output /tmp/server-fn-builds.json
+```
+
+`--functions` defaults to 1,000 and `--per-module` to 10. The harness creates a
+temporary React Start app under the existing server-functions e2e package and
+builds the normal client and server environments through Vite `buildApp()`.
+Every function is referenced by a rendered button. After timing, it verifies
+all RPC IDs exist in both outputs, all handler markers exist on the server,
+and none leak into client output. It checks exact client JavaScript equality
+and complete server JavaScript equality after normalizing checkout/temp roots
+and content-hashed chunk filenames; normalized filename collisions fail.
+
+Seven fresh-process pairs alternate baseline/candidate order. Results include
+all samples, medians, standard deviations, coefficients of variation, source
+hashes, stable compiler fingerprints, and peak process RSS. Timing includes
+builder creation, transformation, bundling, minification, and output writes;
+it excludes fixture generation, plugin-module imports, validation, and hashing.
+Peak RSS covers the entire worker process. Fixed custom RPC IDs bypass the
+default ID hash in both variants. Keep functions per module constant when
+comparing sizes; 5,000 functions referenced by a single route is a stress case,
+not a representative application. Run benchmarks without concurrent builds/tests.
+
 ## Current Yuku 0.12.0 evaluation
 
 Yuku 0.12.0 fixes the reported JSX-reference and purity-comment defects. The

@@ -1,0 +1,277 @@
+{
+  "hunk-provider": {
+    "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+    "status": {
+      "state": "success",
+      "command": "node scripts/benchmarks/bundle-size/measure.mjs --scenario react-start.full --analysis",
+      "scenarioFilter": "react-start.full",
+      "measuredScenarios": ["react-start.full"],
+      "packageBuildProjects": ["@tanstack/react-start"],
+      "skipPackageBuilds": false,
+      "durationMs": 9718,
+      "git": {
+        "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "branch": "codex/direct-compiler-ast",
+        "dirty": true
+      }
+    },
+    "metrics": [
+      {
+        "id": "react-start.full",
+        "scenarioDir": "react-start-full",
+        "outDir": "react-start-full",
+        "toolchain": "vite",
+        "framework": "react",
+        "packageName": "@tanstack/react-start",
+        "case": "full",
+        "entryKey": "../../../../packages/react-start/dist/plugin/default-entry/client.tsx",
+        "manifestPath": "client/.vite/manifest.json",
+        "manifestOutDir": "benchmarks/bundle-size/dist/react-start-full/client",
+        "initialJsFiles": ["assets/index-Cd7IBEMc.js"],
+        "jsFiles": ["assets/index-Cd7IBEMc.js", "assets/routes-CAOKtzHM.js"],
+        "files": [
+          {
+            "file": "assets/index-Cd7IBEMc.js",
+            "rawBytes": 319393,
+            "gzipBytes": 102156,
+            "brotliBytes": 88681,
+            "initial": true
+          },
+          {
+            "file": "assets/routes-CAOKtzHM.js",
+            "rawBytes": 134,
+            "gzipBytes": 141,
+            "brotliBytes": 136,
+            "initial": false
+          }
+        ],
+        "initialRawBytes": 319393,
+        "initialGzipBytes": 102156,
+        "initialBrotliBytes": 88681,
+        "rawBytes": 319527,
+        "gzipBytes": 102297,
+        "brotliBytes": 88817
+      }
+    ]
+  },
+  "hunk-imports": {
+    "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+    "status": {
+      "state": "success",
+      "command": "node scripts/benchmarks/bundle-size/measure.mjs --scenario react-start.full --analysis",
+      "scenarioFilter": "react-start.full",
+      "measuredScenarios": ["react-start.full"],
+      "packageBuildProjects": ["@tanstack/react-start"],
+      "skipPackageBuilds": false,
+      "durationMs": 7979,
+      "git": {
+        "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "branch": "codex/direct-compiler-ast",
+        "dirty": true
+      }
+    },
+    "metrics": [
+      {
+        "id": "react-start.full",
+        "scenarioDir": "react-start-full",
+        "outDir": "react-start-full",
+        "toolchain": "vite",
+        "framework": "react",
+        "packageName": "@tanstack/react-start",
+        "case": "full",
+        "entryKey": "../../../../packages/react-start/dist/plugin/default-entry/client.tsx",
+        "manifestPath": "client/.vite/manifest.json",
+        "manifestOutDir": "benchmarks/bundle-size/dist/react-start-full/client",
+        "initialJsFiles": ["assets/index-Cd7IBEMc.js"],
+        "jsFiles": ["assets/index-Cd7IBEMc.js", "assets/routes-CAOKtzHM.js"],
+        "files": [
+          {
+            "file": "assets/index-Cd7IBEMc.js",
+            "rawBytes": 319393,
+            "gzipBytes": 102156,
+            "brotliBytes": 88681,
+            "initial": true
+          },
+          {
+            "file": "assets/routes-CAOKtzHM.js",
+            "rawBytes": 134,
+            "gzipBytes": 141,
+            "brotliBytes": 136,
+            "initial": false
+          }
+        ],
+        "initialRawBytes": 319393,
+        "initialGzipBytes": 102156,
+        "initialBrotliBytes": 88681,
+        "rawBytes": 319527,
+        "gzipBytes": 102297,
+        "brotliBytes": 88817
+      }
+    ]
+  },
+  "hunk-directives": {
+    "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+    "status": {
+      "state": "success",
+      "command": "node scripts/benchmarks/bundle-size/measure.mjs --scenario react-start.full --analysis",
+      "scenarioFilter": "react-start.full",
+      "measuredScenarios": ["react-start.full"],
+      "packageBuildProjects": ["@tanstack/react-start"],
+      "skipPackageBuilds": false,
+      "durationMs": 8449,
+      "git": {
+        "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "branch": "codex/direct-compiler-ast",
+        "dirty": true
+      }
+    },
+    "metrics": [
+      {
+        "id": "react-start.full",
+        "scenarioDir": "react-start-full",
+        "outDir": "react-start-full",
+        "toolchain": "vite",
+        "framework": "react",
+        "packageName": "@tanstack/react-start",
+        "case": "full",
+        "entryKey": "../../../../packages/react-start/dist/plugin/default-entry/client.tsx",
+        "manifestPath": "client/.vite/manifest.json",
+        "manifestOutDir": "benchmarks/bundle-size/dist/react-start-full/client",
+        "initialJsFiles": ["assets/index-Cd7IBEMc.js"],
+        "jsFiles": ["assets/index-Cd7IBEMc.js", "assets/routes-CAOKtzHM.js"],
+        "files": [
+          {
+            "file": "assets/index-Cd7IBEMc.js",
+            "rawBytes": 319393,
+            "gzipBytes": 102156,
+            "brotliBytes": 88681,
+            "initial": true
+          },
+          {
+            "file": "assets/routes-CAOKtzHM.js",
+            "rawBytes": 134,
+            "gzipBytes": 141,
+            "brotliBytes": 136,
+            "initial": false
+          }
+        ],
+        "initialRawBytes": 319393,
+        "initialGzipBytes": 102156,
+        "initialBrotliBytes": 88681,
+        "rawBytes": 319527,
+        "gzipBytes": 102297,
+        "brotliBytes": 88817
+      }
+    ]
+  },
+  "hunk-caller": {
+    "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+    "status": {
+      "state": "success",
+      "command": "node scripts/benchmarks/bundle-size/measure.mjs --scenario react-start.full --analysis",
+      "scenarioFilter": "react-start.full",
+      "measuredScenarios": ["react-start.full"],
+      "packageBuildProjects": ["@tanstack/react-start"],
+      "skipPackageBuilds": false,
+      "durationMs": 9830,
+      "git": {
+        "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "branch": "codex/direct-compiler-ast",
+        "dirty": true
+      }
+    },
+    "metrics": [
+      {
+        "id": "react-start.full",
+        "scenarioDir": "react-start-full",
+        "outDir": "react-start-full",
+        "toolchain": "vite",
+        "framework": "react",
+        "packageName": "@tanstack/react-start",
+        "case": "full",
+        "entryKey": "../../../../packages/react-start/dist/plugin/default-entry/client.tsx",
+        "manifestPath": "client/.vite/manifest.json",
+        "manifestOutDir": "benchmarks/bundle-size/dist/react-start-full/client",
+        "initialJsFiles": ["assets/index-Cd7IBEMc.js"],
+        "jsFiles": ["assets/index-Cd7IBEMc.js", "assets/routes-CAOKtzHM.js"],
+        "files": [
+          {
+            "file": "assets/index-Cd7IBEMc.js",
+            "rawBytes": 319393,
+            "gzipBytes": 102156,
+            "brotliBytes": 88681,
+            "initial": true
+          },
+          {
+            "file": "assets/routes-CAOKtzHM.js",
+            "rawBytes": 134,
+            "gzipBytes": 141,
+            "brotliBytes": 136,
+            "initial": false
+          }
+        ],
+        "initialRawBytes": 319393,
+        "initialGzipBytes": 102156,
+        "initialBrotliBytes": 88681,
+        "rawBytes": 319527,
+        "gzipBytes": 102297,
+        "brotliBytes": 88817
+      }
+    ]
+  },
+  "hunk-hmr": {
+    "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+    "status": {
+      "state": "success",
+      "command": "node scripts/benchmarks/bundle-size/measure.mjs --scenario react-start.full --analysis",
+      "scenarioFilter": "react-start.full",
+      "measuredScenarios": ["react-start.full"],
+      "packageBuildProjects": ["@tanstack/react-start"],
+      "skipPackageBuilds": false,
+      "durationMs": 8300,
+      "git": {
+        "sha": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "branch": "codex/direct-compiler-ast",
+        "dirty": true
+      }
+    },
+    "metrics": [
+      {
+        "id": "react-start.full",
+        "scenarioDir": "react-start-full",
+        "outDir": "react-start-full",
+        "toolchain": "vite",
+        "framework": "react",
+        "packageName": "@tanstack/react-start",
+        "case": "full",
+        "entryKey": "../../../../packages/react-start/dist/plugin/default-entry/client.tsx",
+        "manifestPath": "client/.vite/manifest.json",
+        "manifestOutDir": "benchmarks/bundle-size/dist/react-start-full/client",
+        "initialJsFiles": ["assets/index-Cd7IBEMc.js"],
+        "jsFiles": ["assets/index-Cd7IBEMc.js", "assets/routes-CAOKtzHM.js"],
+        "files": [
+          {
+            "file": "assets/index-Cd7IBEMc.js",
+            "rawBytes": 319393,
+            "gzipBytes": 102156,
+            "brotliBytes": 88681,
+            "initial": true
+          },
+          {
+            "file": "assets/routes-CAOKtzHM.js",
+            "rawBytes": 134,
+            "gzipBytes": 141,
+            "brotliBytes": 136,
+            "initial": false
+          }
+        ],
+        "initialRawBytes": 319393,
+        "initialGzipBytes": 102156,
+        "initialBrotliBytes": 88681,
+        "rawBytes": 319527,
+        "gzipBytes": 102297,
+        "brotliBytes": 88817
+      }
+    ]
+  }
+}

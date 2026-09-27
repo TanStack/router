@@ -1,0 +1,392 @@
+{
+  "timestamp": "2026-09-27T17:33:03.014Z",
+  "node": "v24.8.0",
+  "cpu": "Apple M3 Max",
+  "functions": 5000,
+  "perModule": 10,
+  "repetitions": 7,
+  "summary": [
+    {
+      "variant": "baseline",
+      "medianBuildMs": 6682.983125,
+      "meanBuildMs": 6642.1029822857145,
+      "sdMs": 172.26834064428698,
+      "cvPercent": 2.5935812965219207,
+      "medianPeakRssMiB": 883.78125
+    },
+    {
+      "variant": "candidate",
+      "medianBuildMs": 6048.852083,
+      "meanBuildMs": 6098.115690571429,
+      "sdMs": 132.83476011206875,
+      "cvPercent": 2.178291899536287,
+      "medianPeakRssMiB": 849.546875
+    }
+  ],
+  "samples": [
+    {
+      "variant": "baseline",
+      "repetition": 0,
+      "buildMs": 6687.667625,
+      "peakRssMiB": 880.71875,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954036,
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 0,
+      "buildMs": 6251.591834,
+      "peakRssMiB": 879.09375,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954006,
+      "compilerFingerprint": {
+        "commit": "9148909cc5e578082c4d7b2e56ca08e531a987be",
+        "sha256": "46deda5530df333cc08ffa8c93673ddff058819b5be2a658ea513330f6bf9528",
+        "javascriptFiles": 126,
+        "sourceSha256": "1f7ed4e9d9872504ee29ec6ed47e1b5672946ab7601e9579ceef944cb68398fe",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 1,
+      "buildMs": 6037.202541000001,
+      "peakRssMiB": 843.109375,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954006,
+      "compilerFingerprint": {
+        "commit": "9148909cc5e578082c4d7b2e56ca08e531a987be",
+        "sha256": "46deda5530df333cc08ffa8c93673ddff058819b5be2a658ea513330f6bf9528",
+        "javascriptFiles": 126,
+        "sourceSha256": "1f7ed4e9d9872504ee29ec6ed47e1b5672946ab7601e9579ceef944cb68398fe",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 1,
+      "buildMs": 6515.549875000001,
+      "peakRssMiB": 883.78125,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954036,
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 2,
+      "buildMs": 6836.936625,
+      "peakRssMiB": 869.375,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954036,
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 2,
+      "buildMs": 5970.385792,
+      "peakRssMiB": 892.125,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954006,
+      "compilerFingerprint": {
+        "commit": "9148909cc5e578082c4d7b2e56ca08e531a987be",
+        "sha256": "46deda5530df333cc08ffa8c93673ddff058819b5be2a658ea513330f6bf9528",
+        "javascriptFiles": 126,
+        "sourceSha256": "1f7ed4e9d9872504ee29ec6ed47e1b5672946ab7601e9579ceef944cb68398fe",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 3,
+      "buildMs": 6295.2315419999995,
+      "peakRssMiB": 846.8125,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954006,
+      "compilerFingerprint": {
+        "commit": "9148909cc5e578082c4d7b2e56ca08e531a987be",
+        "sha256": "46deda5530df333cc08ffa8c93673ddff058819b5be2a658ea513330f6bf9528",
+        "javascriptFiles": 126,
+        "sourceSha256": "1f7ed4e9d9872504ee29ec6ed47e1b5672946ab7601e9579ceef944cb68398fe",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 3,
+      "buildMs": 6682.983125,
+      "peakRssMiB": 885.546875,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954036,
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 4,
+      "buildMs": 6863.689084,
+      "peakRssMiB": 918.359375,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954036,
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 4,
+      "buildMs": 6048.852083,
+      "peakRssMiB": 835.171875,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954006,
+      "compilerFingerprint": {
+        "commit": "9148909cc5e578082c4d7b2e56ca08e531a987be",
+        "sha256": "46deda5530df333cc08ffa8c93673ddff058819b5be2a658ea513330f6bf9528",
+        "javascriptFiles": 126,
+        "sourceSha256": "1f7ed4e9d9872504ee29ec6ed47e1b5672946ab7601e9579ceef944cb68398fe",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 5,
+      "buildMs": 6127.387333,
+      "peakRssMiB": 875.90625,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954006,
+      "compilerFingerprint": {
+        "commit": "9148909cc5e578082c4d7b2e56ca08e531a987be",
+        "sha256": "46deda5530df333cc08ffa8c93673ddff058819b5be2a658ea513330f6bf9528",
+        "javascriptFiles": 126,
+        "sourceSha256": "1f7ed4e9d9872504ee29ec6ed47e1b5672946ab7601e9579ceef944cb68398fe",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 5,
+      "buildMs": 6468.603042000001,
+      "peakRssMiB": 877.09375,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954036,
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 6,
+      "buildMs": 6439.2915,
+      "peakRssMiB": 925.59375,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954036,
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 6,
+      "buildMs": 5956.158709,
+      "peakRssMiB": 849.546875,
+      "sourceHash": "d5ce579b8bbef08da77221bd64015a33981759040c4f22a0e61e1cdc226300f5",
+      "outputHash": "3ec24c5ae566ecb0136c9b8bfec879db757ac5957bcd4f85cdffbb65ec1b380b",
+      "clientHash": "067590b80063dcd9f0a44f8c77c7ed10aed6ffb90e206bb02c4e34edd623cc76",
+      "retainedFunctions": 5000,
+      "javascriptFiles": 509,
+      "clientFiles": 2,
+      "javascriptBytes": 4954006,
+      "compilerFingerprint": {
+        "commit": "9148909cc5e578082c4d7b2e56ca08e531a987be",
+        "sha256": "46deda5530df333cc08ffa8c93673ddff058819b5be2a658ea513330f6bf9528",
+        "javascriptFiles": 126,
+        "sourceSha256": "1f7ed4e9d9872504ee29ec6ed47e1b5672946ab7601e9579ceef944cb68398fe",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      }
+    }
+  ]
+}

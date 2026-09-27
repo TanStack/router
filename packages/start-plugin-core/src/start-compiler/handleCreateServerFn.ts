@@ -1,5 +1,4 @@
-import { b, is } from 'yuku-ast'
-import { parseExpression, parseStatements } from '@tanstack/router-utils'
+import { is } from 'yuku-ast'
 import path from 'pathe'
 import {
   cleanId,
@@ -8,7 +7,20 @@ import {
   sourcePosition,
   stripMethodCall,
 } from './utils'
-import type { Program, ProgramStatement } from '@yuku-toolchain/types'
+import {
+  createServerFnCaller,
+  createServerFnExports,
+  createServerFnHmr,
+  createServerFnImport,
+  createServerFnProvider,
+  generatedReference,
+  stringLiteral,
+} from './serverFnAst'
+import type {
+  Directive,
+  Program,
+  ProgramStatement,
+} from '@yuku-toolchain/types'
 import type { CompilationContext, RewriteCandidate, ServerFn } from './types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
@@ -115,7 +127,7 @@ export function handleCreateServerFn(
       }
       context.replaceNode(
         handler.firstArg,
-        parseExpression(`${runtimeName}(${JSON.stringify(functionId)})`),
+        createServerFnCaller(runtimeName, functionId),
       )
       continue
     }
@@ -133,45 +145,29 @@ export function handleCreateServerFn(
     }
     const statements: Array<ProgramStatement> = container.body
     const statementIndex = statements.indexOf(statement)
-    const metadata = JSON.stringify({
-      id: functionId,
-      name: variableName,
-      filename: relativeFilename,
+    const extracted = createServerFnProvider({
+      runtimeName,
+      functionName,
+      functionId,
+      variableName,
+      relativeFilename,
     })
-    const extracted = parseStatements(
-      `const ${functionName} = createServerRpc(${metadata}, (opts) => ${variableName}.__executeServer(opts));`,
-    )[0]!
     statements.splice(statementIndex, 0, extracted)
     // Move the existing handler node; its source-binding identity remains intact.
-    handler.call.arguments = [parseExpression(functionName), handler.firstArg]
+    handler.call.arguments = [
+      generatedReference(functionName),
+      handler.firstArg,
+    ]
     exportNames.add(functionName)
   }
 
   if (isProvider) {
     removeExports(context.ast)
     if (exportNames.size) {
-      context.ast.body.push(
-        b.ExportNamedDeclaration({
-          declaration: null,
-          source: null,
-          attributes: [],
-          exportKind: 'value',
-          specifiers: [...exportNames].map((name) =>
-            b.ExportSpecifier({
-              local: b.Identifier({ name }),
-              exported: b.Identifier({ name }),
-              exportKind: 'value',
-            }),
-          ),
-        }),
-      )
+      context.ast.body.push(createServerFnExports(exportNames))
     }
     if (context.mode === 'dev') {
-      context.ast.body.push(
-        ...parseStatements(
-          'if (import.meta.hot) { import.meta.hot.accept(() => {}); } if (import.meta.webpackHot) { import.meta.webpackHot.accept(() => {}); }',
-        ),
-      )
+      context.ast.body.push(...createServerFnHmr())
     }
     const existing = new Set(
       context.ast.body.filter(is.Directive).map((node) => node.directive),
@@ -186,8 +182,14 @@ export function handleCreateServerFn(
       },
     )
     context.ast.body.unshift(
-      ...parseStatements(
-        missing.map((directive) => `${JSON.stringify(directive)};`).join('\n'),
+      ...missing.map(
+        (directive): Directive => ({
+          type: 'ExpressionStatement',
+          start: 0,
+          end: 0,
+          expression: stringLiteral(directive),
+          directive: JSON.stringify(directive).slice(1, -1),
+        }),
       ),
     )
   } else if (Object.keys(serverFnsById).length) {
@@ -201,9 +203,7 @@ export function handleCreateServerFn(
   context.ast.body.splice(
     importIndex,
     0,
-    ...parseStatements(
-      `import { ${runtimeName} } from '@tanstack/${context.framework}-start/${importPath}';`,
-    ),
+    createServerFnImport(runtimeName, context.framework, importPath),
   )
 }
 
