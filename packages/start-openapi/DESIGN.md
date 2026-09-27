@@ -19,7 +19,7 @@ tool with no per-tool code:
 ```ts
 export const Route = createFileRoute('/api/v1/sequences/$id')({
   server: {
-    middleware: [authMiddleware], // carries securityScheme
+    middleware: [authMiddleware],
     handlers: ({ createHandlers }) =>
       createHandlers({
         GET: {
@@ -79,27 +79,13 @@ method's `validator` when using `createHandlers`. The plain `handlers: { GET: {.
 record cannot infer per-method generics, so `data` is loose there, the same as
 `context` is today.
 
-### 2. `securityScheme` on request middleware
-
-```ts
-const auth = createMiddleware({ type: 'request' })
-  .securityScheme({
-    name: 'bearerAuth',
-    scheme: { type: 'http', scheme: 'bearer' },
-  })
-  .server(/* verify token */)
-```
-
-Declared once, inherited by every route whose chain includes it, including
-routes nested under a parent route that declares it. Metadata only.
-
-### 3. `response` on the method builder
+### 2. `response` on the method builder
 
 A per-status map of schemas (or `{ description, schema, mediaType }`). Metadata
 only, never executed. A per-status map is the only shape that round-trips to
 OpenAPI without guessing status codes.
 
-### 4. Operation metadata on the method builder
+### 3. Operation metadata on the method builder
 
 `operationId`, `summary`, `description`, `tags`, `deprecated`. OpenAPI
 tolerates a missing `description`, a model does not: it is the only thing
@@ -108,6 +94,27 @@ telling the model when to call the tool.
 ---
 
 ## Decisions
+
+- **Security lives in the generator, not in core.** Auth runs inside a
+  middleware's `.server()`, which a collector cannot see. Rather than add a
+  metadata-only field to core, the generator takes a map from auth middleware
+  to the scheme it enforces:
+
+  ```ts
+  generateOpenApiDocument(routeTree, {
+    info,
+    securitySchemes: new Map([
+      [
+        authMiddleware,
+        { name: 'bearerAuth', scheme: { type: 'http', scheme: 'bearer' } },
+      ],
+    ]),
+  })
+  ```
+
+  Every route whose chain (including parent routes) contains that middleware
+  gets `security`. MCP barely needs it: MCP auth is server-level, and forwarding
+  the caller's `Authorization` header lets the real middleware enforce it.
 
 - **Tool / operation names.** `operationId` when declared, otherwise derived
   from method and path: `GET /api/v1/sequences/$id` → `getApiV1SequencesById`
