@@ -9,12 +9,18 @@ on:
       - 'packages/**'
       - 'benchmarks/**'
       - 'scripts/benchmarks/bundle-size/**'
+      - 'patches/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   push:
     branches: [main]
     paths:
       - 'packages/**'
       - 'benchmarks/**'
       - 'scripts/benchmarks/bundle-size/**'
+      - 'patches/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   workflow_dispatch:
 
 concurrency:

@@ -13,6 +13,9 @@
       "{workspaceRoot}/.nx/workflows/sandboxing-config.yaml",
       "{workspaceRoot}/.nvmrc",
       "{workspaceRoot}/package.json",
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/pnpm-workspace.yaml",
+      "{workspaceRoot}/patches/**/*",
       "{workspaceRoot}/tsconfig.json"
     ],
     "dependentTaskOutputs": [

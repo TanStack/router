@@ -22,6 +22,9 @@ on:
       - '!packages/**/__tests__/**'
       - '!packages/**/*.test.*'
       - 'benchmarks/**'
+      - 'patches/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   workflow_dispatch:
 
 concurrency:

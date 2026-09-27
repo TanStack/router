@@ -138,6 +138,9 @@ overrides:
   '@tanstack/start-static-server-functions': workspace:*
   '@tanstack/nitro-v2-vite-plugin': workspace:*
 
+patchedDependencies:
+  '@tanstack/store@0.11.1': 4ee8e39207e53f6e9e60b573da7f8e87dc75b0135ab6f2de1fef305bb2d72271
+
 importers:
 
   .:
@@ -14351,7 +14354,7 @@ importers:
         version: 0.18.4
       '@tanstack/store':
         specifier: ^0.11.0
-        version: 0.11.1
+        version: 0.11.1(patch_hash=4ee8e39207e53f6e9e60b573da7f8e87dc75b0135ab6f2de1fef305bb2d72271)
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -36579,7 +36582,7 @@ snapshots:
 
   '@tanstack/react-store@0.11.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tanstack/store': 0.11.1
+      '@tanstack/store': 0.11.1(patch_hash=4ee8e39207e53f6e9e60b573da7f8e87dc75b0135ab6f2de1fef305bb2d72271)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       use-sync-external-store: 1.6.0(react@19.2.3)
@@ -36615,7 +36618,7 @@ snapshots:
       '@tanstack/virtual-core': 3.13.12
       solid-js: 1.9.12
 
-  '@tanstack/store@0.11.1': {}
+  '@tanstack/store@0.11.1(patch_hash=4ee8e39207e53f6e9e60b573da7f8e87dc75b0135ab6f2de1fef305bb2d72271)': {}
 
   '@tanstack/virtual-core@3.13.0': {}
 
@@ -36709,7 +36712,7 @@ snapshots:
 
   '@tanstack/vue-store@0.11.1(vue@3.5.25(@typescript/typescript6@6.0.2))':
     dependencies:
-      '@tanstack/store': 0.11.1
+      '@tanstack/store': 0.11.1(patch_hash=4ee8e39207e53f6e9e60b573da7f8e87dc75b0135ab6f2de1fef305bb2d72271)
       vue: 3.5.25(@typescript/typescript6@6.0.2)
       vue-demi: 0.14.10(vue@3.5.25(@typescript/typescript6@6.0.2))
 
