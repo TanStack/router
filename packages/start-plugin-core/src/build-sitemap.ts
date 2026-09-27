@@ -49,7 +49,12 @@ export type SitemapData = {
 function buildTime(): Date {
   const epoch = process.env.SOURCE_DATE_EPOCH
   if (epoch !== undefined && /^\d+$/.test(epoch)) {
-    return new Date(Number(epoch) * 1000)
+    const date = new Date(Number(epoch) * 1000)
+    // Out of Date's range (or beyond safe integer precision) is an Invalid
+    // Date, whose toISOString() throws; treat it like any other bad value.
+    if (!Number.isNaN(date.getTime())) {
+      return date
+    }
   }
   return new Date()
 }

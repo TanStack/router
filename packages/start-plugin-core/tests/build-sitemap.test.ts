@@ -93,6 +93,19 @@ describe('buildSitemap', () => {
     expect(pages.lastBuilt).toBe('2025-06-07T08:09:10.000Z')
   })
 
+  it('ignores a SOURCE_DATE_EPOCH beyond the range a Date can represent', () => {
+    // 8640000000001 s is past Date's ±8.64e15 ms limit: an Invalid Date, whose
+    // toISOString() would throw.
+    process.env.SOURCE_DATE_EPOCH = '8640000000001'
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2025-06-07T08:09:10Z'))
+
+    const { sitemap, pages } = build()
+
+    expect(sitemap).toContain('<lastmod>2025-06-07</lastmod>')
+    expect(pages.lastBuilt).toBe('2025-06-07T08:09:10.000Z')
+  })
+
   it('ignores a SOURCE_DATE_EPOCH that is not a whole number of seconds', () => {
     process.env.SOURCE_DATE_EPOCH = 'yesterday'
     vi.useFakeTimers()
