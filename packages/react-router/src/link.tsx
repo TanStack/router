@@ -643,8 +643,11 @@ function getServerLinkProps(
 
 const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
 const cancelPreload = (eventTarget: object) => {
-  clearTimeout(timeoutMap.get(eventTarget))
-  timeoutMap.delete(eventTarget)
+  const timer = timeoutMap.get(eventTarget)
+  if (timer !== undefined) {
+    clearTimeout(timer)
+    timeoutMap.delete(eventTarget)
+  }
 }
 
 export const composeHandlers = (
