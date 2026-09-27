@@ -313,7 +313,8 @@ export function useLinkProps<
       if (!inactive || inactive[0] !== href) {
         inactive = [
           href,
-          !disabled && (!href || getUrlScheme(href)) ? undefined : false,
+          // Internal/disabled links use false; external/blocked links use undefined.
+          !(disabled || (href && !getUrlScheme(href))) && undefined,
         ]
         active = [href, true]
       }
