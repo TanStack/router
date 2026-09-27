@@ -249,6 +249,11 @@ function encodeParam(
   if (splat && (!value || /^[a-zA-Z0-9\-._~!/]*$/.test(value))) {
     return value
   }
+  // Ordinary parameters with no escapable characters still pass through the
+  // caller's decoder, unlike the existing splat fast path.
+  if (!splat && /^[a-zA-Z0-9_.!~*'()-]*$/.test(value)) {
+    return decoder ? decoder(value) : value
+  }
   let encoded = encodeURIComponent(value)
   if (splat) {
     // Splats preserve '/', but still encode spaces, '+', '?' and '#'.

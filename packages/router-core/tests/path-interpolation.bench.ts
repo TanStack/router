@@ -16,6 +16,19 @@ const scenarios: Array<{
   inputs: Array<PathInterpolationTestOptions>
   register?: boolean
 }> = [
+  ...['unescaped ASCII', 'escaped Unicode', 'mixed encoding'].map((name) => ({
+    name,
+    inputs: Array.from({ length: 200 }, (_, index) => ({
+      path: '/items/$id',
+      params: {
+        id:
+          name === 'unescaped ASCII' ||
+          (name === 'mixed encoding' && index % 2 === 0)
+            ? `item-${index}`
+            : `item ${index}/café`,
+      },
+    })),
+  })),
   {
     name: 'single-param shared hits',
     inputs: Array.from({ length: 200 }, (_, index) => ({

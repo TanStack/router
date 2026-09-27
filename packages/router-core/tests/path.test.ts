@@ -1586,3 +1586,58 @@ function toNullObj<T>(obj: T): T {
   if (typeof obj === 'object') return Object.assign(Object.create(null), obj)
   return obj
 }
+
+describe('ordinary parameter encoding fast path', () => {
+  it.each([
+    "abc-123_.*!~'()",
+    '',
+    'with space',
+    '/',
+    '%2F',
+    '+',
+    '?',
+    '#',
+    'café',
+    '\t',
+    '\u0000',
+    '😀',
+  ])('preserves native encoding and the decoder for %j', (id) => {
+    const path = '/items/$id'
+    const segments = parseSegments(false, { fullPath: path }, 0)
+    const used: Record<string, unknown> = {}
+    const decoder = vi.fn((encoded: string) => encoded)
+    expect(interpolatePath(path, segments, { id }, decoder, used)).toBe(
+      `/items/${encodeURIComponent(id)}`,
+    )
+    expect(decoder).toHaveBeenCalledExactlyOnceWith(encodeURIComponent(id))
+    expect(used).toEqual({ id })
+  })
+
+  it('preserves malformed Unicode errors before invoking the decoder', () => {
+    const path = '/items/$id'
+    const decoder = vi.fn((encoded: string) => encoded)
+    expect(() =>
+      interpolatePath(
+        path,
+        parseSegments(false, { fullPath: path }, 0),
+        { id: '\ud800' },
+        decoder,
+      ),
+    ).toThrow(URIError)
+    expect(decoder).not.toHaveBeenCalled()
+  })
+
+  it('keeps custom decoder output and errors on unescaped parameters', () => {
+    const path = '/items/$id'
+    const segments = parseSegments(false, { fullPath: path }, 0)
+    expect(interpolatePath(path, segments, { id: 'abc' }, () => 'custom')).toBe(
+      '/items/custom',
+    )
+    const failure = new Error('decoder failed')
+    expect(() =>
+      interpolatePath(path, segments, { id: 'abc' }, () => {
+        throw failure
+      }),
+    ).toThrow(failure)
+  })
+})
