@@ -814,7 +814,8 @@ export class StartCompiler {
         this.options.serverFnProviderModuleDirectives,
       onServerFnsById: this.options.onServerFnsById,
     }
-    const calls: Array<t.CallExpression> = []
+    const calls: Array<{ node: t.CallExpression; kind?: ExternalLookupKind }> =
+      []
     const jsx: Array<t.JSXElement> = []
     const sourceInfo = this.moduleCache.get(id)!
     walk(ast, {
@@ -826,7 +827,7 @@ export class StartCompiler {
           return
         }
         if (isMethodChainCandidate(node, fileKinds)) {
-          calls.push(node)
+          calls.push({ node })
           return
         }
         const callee = is.Expression(node.callee)
@@ -853,35 +854,41 @@ export class StartCompiler {
           is.Program(parent) ||
           (is.ExportNamedDeclaration(parent) &&
             is.Program(editor.parentOf(parent)))
+        // External transforms are bound to configured imports. Their known kind
+        // must take precedence over generic built-in alias tracing.
+        const root = is.Identifier(callee)
+          ? callee
+          : is.Identifier(receiver)
+            ? receiver
+            : null
+        const symbol = root && module.symbolOf(originalNodes.get(root)!)
+        const binding = symbol && sourceInfo.bindings.get(symbol.name)
+        if (
+          binding?.type === 'import' &&
+          symbol?.scope === module.rootScope &&
+          (binding.importedName === '*'
+            ? is.MemberExpression(callee) && !callee.computed
+            : is.Identifier(callee))
+        ) {
+          const kind = this.knownRootImports
+            .get(binding.source)
+            ?.get(binding.importedName === '*' ? name : binding.importedName)
+          if (kind && isExternalLookupKind(kind) && candidateKinds.has(kind)) {
+            calls.push({ node, kind })
+            return
+          }
+        }
         for (const kind of candidateKinds) {
-          const setup = getLookupSetup(kind, this.externalLookupSetup)
+          if (isExternalLookupKind(kind)) {
+            continue
+          }
+          const setup = getLookupSetup(kind)
           if (setup?.type !== 'directCall') {
             continue
           }
           if ((topLevel && simpleDirectCall) || setup.factoryNames.has(name)) {
-            calls.push(node)
+            calls.push({ node })
             return
-          }
-          if (isExternalLookupKind(kind)) {
-            const root = is.Identifier(callee)
-              ? callee
-              : is.Identifier(receiver)
-                ? receiver
-                : null
-            const symbol = root && module.symbolOf(originalNodes.get(root)!)
-            const binding = symbol && sourceInfo.bindings.get(symbol.name)
-            if (
-              binding?.type === 'import' &&
-              symbol?.scope === module.rootScope &&
-              this.knownRootImports
-                .get(binding.source)
-                ?.get(
-                  binding.importedName === '*' ? name : binding.importedName,
-                ) === kind
-            ) {
-              calls.push(node)
-              return
-            }
           }
         }
       },
@@ -913,7 +920,10 @@ export class StartCompiler {
       Array<RewriteCandidate>
     >()
     const resolved = await Promise.all(
-      calls.map(async (node) => {
+      calls.map(async ({ node, kind }) => {
+        if (kind) {
+          return { node, kind }
+        }
         // Only module bindings can participate in the cross-module builder graph.
         // Local shadowing is decided by Yuku's resolved references before tracing.
         let base: t.Node = node

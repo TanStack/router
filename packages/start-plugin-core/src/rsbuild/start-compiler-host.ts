@@ -258,7 +258,7 @@ export function registerStartCompilerTransforms(
           let nextCode = code
           let previousResult: {
             code: string
-            map: string | null
+            map: Rspack.RawSourceMap | null
           } | null = null
           const id = ctx.resource
           const root = getRoot()
@@ -274,7 +274,9 @@ export function registerStartCompilerTransforms(
             nextCode = virtualResult.code
             previousResult = {
               code: virtualResult.code,
-              map: virtualResult.map ? JSON.stringify(virtualResult.map) : null,
+              // Downstream JSX loaders consume Source Map v3 objects. Rspack's
+              // type requires `file` and excludes valid null source contents.
+              map: (virtualResult.map ?? null) as Rspack.RawSourceMap | null,
             }
           }
 
@@ -390,7 +392,7 @@ export function registerStartCompilerTransforms(
           if (result) {
             return {
               code: result.code,
-              map: result.map ? JSON.stringify(result.map) : null,
+              map: (result.map ?? null) as Rspack.RawSourceMap | null,
             }
           }
 

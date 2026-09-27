@@ -38,7 +38,14 @@ export function analyzeModule({
     (diagnostic) => diagnostic.severity === 'error',
   )
   if (error) {
-    throw new SyntaxError(`${filename}: ${error.message} (at ${error.start})`)
+    const lines = code.slice(0, error.start).split(/\r\n|[\n\r\u2028\u2029]/)
+    const loc = { line: lines.length, column: lines[lines.length - 1]!.length }
+    throw Object.assign(
+      new SyntaxError(
+        `${filename}: ${error.message} (${loc.line}:${loc.column})`,
+      ),
+      { loc, pos: error.start },
+    )
   }
   return module
 }
