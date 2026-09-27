@@ -35,7 +35,7 @@ Authentication involves many considerations including password security, session
 - **Authentication**: Who is this user? (Login/logout)
 - **Authorization**: What can this user do? (Permissions/roles)
 
-TanStack Start provides the tools for both through server functions, sessions, and route protection.
+TanStack Start provides server functions, request and cookie utilities, and route protection. Session storage and authentication come from your application or a library you choose.
 
 > Protect the data/API boundary first. Any server function, server route, or other API endpoint that returns or mutates private data must authorize the request itself. `beforeLoad` is useful for route UX: it keeps users out of screens they cannot use and avoids triggering work that would fail anyway. It is not the security boundary for the data. See [Authentication Server Primitives](./authentication-server-primitives.md) for the server-side pattern.
 
@@ -48,6 +48,7 @@ Server functions handle sensitive authentication logic securely on the server:
 ```tsx
 import { createServerFn } from '@tanstack/solid-start'
 import { redirect } from '@tanstack/solid-router'
+import { getAppSession } from '~/utils/session'
 
 // Login server function
 export const loginFn = createServerFn({ method: 'POST' })
@@ -61,11 +62,9 @@ export const loginFn = createServerFn({ method: 'POST' })
     }
 
     // Create session
-    const session = await useAppSession()
-    await session.update({
-      userId: user.id,
-      email: user.email,
-    })
+    const session = await getAppSession()
+    session.userId = user.id
+    await session.save()
 
     // Redirect to protected area
     throw redirect({ to: '/dashboard' })
@@ -73,16 +72,16 @@ export const loginFn = createServerFn({ method: 'POST' })
 
 // Logout server function
 export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
-  const session = await useAppSession()
-  await session.clear()
+  const session = await getAppSession()
+  session.destroy()
   throw redirect({ to: '/' })
 })
 
 // Get current user
 export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const session = await useAppSession()
-    const userId = session.get('userId')
+    const session = await getAppSession()
+    const userId = session.userId
 
     if (!userId) {
       return null
@@ -96,32 +95,52 @@ export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
 
 ### 2. Session Management
 
-TanStack Start provides secure HTTP-only cookie sessions:
+Start does not provide a session API. This guide uses iron-session for encrypted cookie sessions. Start's cookie helpers connect it to server functions, server routes, and request middleware.
+
+For encrypted cookie sessions, install [iron-session](https://github.com/vvo/iron-session):
+
+```sh
+pnpm add iron-session
+```
+
+This example uses iron-session 9's cookie adapter. Its Node runtime requires Node 22.13 or newer; check the library's runtime requirements for other deployment targets.
 
 ```tsx
-// utils/session.ts
-import { useSession } from '@tanstack/solid-start/server'
+// utils/session.ts — import only from server code
+import { getIronSession } from 'iron-session'
+import { getCookie, setCookie } from '@tanstack/solid-start/server'
 
 type SessionData = {
-  userId?: string
-  email?: string
-  role?: string
+  userId: string
+  oauthState: string
 }
 
-export function useAppSession() {
-  return useSession<SessionData>({
-    // Session configuration
-    name: 'app-session',
-    password: process.env.SESSION_SECRET!, // At least 32 characters
-    // Optional: customize cookie settings
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      httpOnly: true,
+export function getAppSession(ttl = 7 * 24 * 60 * 60) {
+  const password = process.env.SESSION_SECRET
+  if (!password || password.length < 32) {
+    throw new Error('SESSION_SECRET must be at least 32 characters')
+  }
+
+  return getIronSession<SessionData>(
+    { read: getCookie, write: setCookie },
+    {
+      cookieName: 'app-session',
+      password,
+      ttl,
+      cookieOptions: {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        httpOnly: true,
+        path: '/',
+      },
     },
-  })
+  )
 }
 ```
+
+Read fields directly from the returned session, change them, then `await session.save()` before returning or redirecting. Missing or expired sessions have no user ID. `session.destroy()` removes the browser cookie. Keep one session object for the operation; another call to `getAppSession()` reads the incoming request again. For middleware, pass that object through request context when downstream code needs the same mutations.
+
+The `getAppSession` helper belongs to your application. Start does not cache sessions, choose expiration rules, or synchronize concurrent writes. Keep secrets and session objects in server code, and read request-specific configuration inside the active request.
 
 ### 3. Authentication Context
 
@@ -254,8 +273,9 @@ export const registerFn = createServerFn({ method: 'POST' })
     })
 
     // Create session
-    const session = await useAppSession()
-    await session.update({ userId: user.id })
+    const session = await getAppSession()
+    session.userId = user.id
+    await session.save()
 
     return { success: true, user: { id: user.id, email: user.email } }
   })
@@ -323,8 +343,9 @@ export const initiateOAuthFn = createServerFn({ method: 'POST' })
     const state = generateRandomState()
 
     // Store state in session for CSRF protection
-    const session = await useAppSession()
-    await session.update({ oauthState: state })
+    const session = await getAppSession()
+    session.oauthState = state
+    await session.save()
 
     // Generate OAuth URL
     const authUrl = generateOAuthUrl(provider, state)
@@ -387,21 +408,9 @@ const hashedPassword = await bcrypt.hash(password, saltRounds)
 
 ### 2. Session Security
 
-```tsx
-// Use secure session configuration
-export function useAppSession() {
-  return useSession({
-    name: 'app-session',
-    password: process.env.SESSION_SECRET!, // 32+ characters
-    cookie: {
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: 'lax', // CSRF protection
-      httpOnly: true, // XSS protection
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    },
-  })
-}
-```
+Set the library's server-validated expiration as well as appropriate cookie attributes. In the iron-session example, `ttl` limits a sealed credential's lifetime from its latest save; saving again renews it. A numeric `cookieOptions.maxAge` controls browser retention. In iron-session 9, explicitly setting `maxAge: undefined` also disables seal expiry; omit the property to use the configured `ttl`. Use an application-validated timestamp or a server-side record if you also need an absolute lifetime that writes cannot extend.
+
+Use `httpOnly`, `sameSite`, and `path` deliberately, and require `secure: true` on HTTPS deployments. These cookie attributes complement server-side authorization and CSRF protections. Keep only the minimum session data and load current account permissions from their authoritative store. Logout removes a stateless cookie from the current browser; it cannot revoke a copy without server-side state.
 
 ### 3. Rate Limiting
 
@@ -581,16 +590,14 @@ export const loginFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const user = await authenticateUser(data.email, data.password)
-    if (!user) return { error: 'Invalid credentials' }
+    if (!user) {
+      return { error: 'Invalid credentials' }
+    }
 
-    const session = await useAppSession()
-    await session.update(
-      { userId: user.id },
-      {
-        // Extend session if remember me is checked
-        maxAge: data.rememberMe ? 30 * 24 * 60 * 60 : undefined, // 30 days vs session
-      },
-    )
+    const ttl = data.rememberMe ? 30 * 24 * 60 * 60 : 8 * 60 * 60
+    const session = await getAppSession(ttl)
+    session.userId = user.id
+    await session.save()
 
     return { success: true }
   })
@@ -610,7 +617,6 @@ If you're migrating from client-side authentication (localStorage, context only)
 ### From Other Frameworks
 
 - **Next.js**: Replace API routes with server functions, migrate NextAuth sessions
-- **Remix**: Convert loaders/actions to server functions, adapt session patterns
 - **SvelteKit**: Move form actions to server functions, update route protection
 
 ## Production Considerations

@@ -23,7 +23,7 @@ export DEMO_PASSWORD='choose-a-local-demo-password'
 
 Run `pnpm dev:next` for Next.js at <http://localhost:3100> and `pnpm dev` in another terminal for Start at <http://localhost:3101>. Sign in as `reader@example.com` using the password you set.
 
-The apps use different cookie names and session formats. Signing in to one does not sign you in to the other. Changing `SESSION_PASSWORD` invalidates that app's session. Saved state is tied to that session, not durable account storage.
+Both apps use iron-session, with different cookie names. Signing in to one does not sign you in to the other. Changing `SESSION_PASSWORD` invalidates that app's session. Saved state is tied to that session, not durable account storage.
 
 ## Check the migration
 
@@ -50,7 +50,7 @@ For a production-mode smoke check, keep the environment variables set and run `p
 | `generateMetadata`                            | Route `head` using `loaderData`                         |
 | `next-app/app/actions.ts`                     | `src/server/account.ts`                                 |
 | Server Action form and `revalidatePath`       | `useServerFn`, local pending state, `router.invalidate` |
-| `cookies()` with `iron-session`               | `useSession`                                            |
+| `cookies()` with `iron-session`               | `iron-session` with `getCookie` / `setCookie`           |
 | `next-app/next.config.ts` redirect            | `src/routes/old-notes.tsx` redirect                     |
 | `next-app/app/sitemap.ts`                     | `src/routes/sitemap[.]xml.ts` server route              |
 

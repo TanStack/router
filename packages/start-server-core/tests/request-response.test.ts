@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   getResponseHeader,
   getResponseHeaders,
-  requestHandler,
   setResponseHeader,
   setResponseHeaders,
 } from '../src/request-response'
+import { requestHandler } from '../src/internal-request-response'
 
 describe('setResponseHeaders', () => {
   it('should set a single header via Headers object', async () => {
@@ -56,7 +56,7 @@ describe('setResponseHeaders', () => {
     await handler(request, {})
   })
 
-  it('should preserve the live response headers when passed back to itself', async () => {
+  it('should preserve response header values when a snapshot is passed back', async () => {
     const cookies = ['session=abc123; Path=/', 'user=john; Path=/']
     const handler = requestHandler(() => {
       setResponseHeader('set-cookie', cookies)
@@ -66,7 +66,7 @@ describe('setResponseHeaders', () => {
 
       setResponseHeaders(headers)
 
-      expect(getResponseHeaders()).toBe(headers)
+      expect(Array.from(getResponseHeaders())).toEqual(entries)
       expect(Array.from(headers)).toEqual(entries)
       expect(headers.getSetCookie()).toEqual(cookies)
       return new Response('OK')

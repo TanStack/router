@@ -37,7 +37,7 @@ This skill covers the Solid-specific bindings, setup, and patterns for TanStack 
 
 All core APIs (`createServerFn`, `createMiddleware`, `createStart`, `createIsomorphicFn`, `createServerOnlyFn`, `createClientOnlyFn`) are available from `@tanstack/solid-start`.
 
-Server utilities (`getRequest`, `getRequestHeader`, `setResponseHeader`, `setCookie`, `getCookie`, `useSession`) are imported from `@tanstack/solid-start/server`.
+Server utilities (`getRequest`, `getRequestHeader`, `setResponseHeader`, `setCookie`, `getCookie`) are imported from `@tanstack/solid-start/server`.
 
 ## Full Project Setup
 
