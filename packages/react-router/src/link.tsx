@@ -291,18 +291,17 @@ export function useLinkProps<
   // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const selectLinkState = React.useMemo(() => {
+    // Direct destinations and the router's allowlist are stable for this selector.
+    const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
+    if (directExternalLink !== undefined) {
+      const state: LinkState = [directExternalLink ?? undefined]
+      return () => state
+    }
+
     let inactive: LinkState | undefined
     let active: LinkState
 
     return (location: ParsedLocation): LinkState => {
-      const directExternalLink = resolveExternalLink(
-        to,
-        router.protocolAllowlist,
-      )
-      if (directExternalLink !== undefined) {
-        return [directExternalLink ?? undefined]
-      }
-
       if (!_options._fromLocation) {
         dest._fromLocation = location
       }

@@ -40,6 +40,7 @@ describe.each([
   'dynamic-inactive',
   'dynamic-external',
   'changing-href',
+  'direct-external',
 ] as const)('Link selector reruns: %s', (kind) => {
   const root = createRootRoute()
   const router = createRouter({
@@ -56,7 +57,9 @@ describe.each([
   render(
     <RouterContextProvider router={router}>
       <Link
-        to="/posts/$id"
+        to={
+          kind === 'direct-external' ? 'https://other.example/' : '/posts/$id'
+        }
         params={{ id: '1' }}
         search={
           kind.startsWith('dynamic')
@@ -81,17 +84,21 @@ describe.each([
   const build = vi.spyOn(router, 'buildLocation')
   select(locations[0]!)
   select(locations[1]!)
-  expect(build.mock.results[0]!.value === build.mock.results[1]!.value).toBe(
-    !kind.startsWith('dynamic'),
-  )
+  if (kind === 'direct-external') {
+    expect(build).not.toHaveBeenCalled()
+  } else {
+    expect(build.mock.results[0]!.value === build.mock.results[1]!.value).toBe(
+      !kind.startsWith('dynamic'),
+    )
+  }
   build.mockRestore()
   for (const [i, location] of locations.entries()) {
     const selected = select(location)
     expect(selected[0]).toContain(
-      kind === 'dynamic-external' ? 'https://other.example/' : '/posts/1',
+      kind.endsWith('external') ? 'https://other.example/' : '/posts/1',
     )
     expect(selected[1]).toBe(
-      kind === 'dynamic-external'
+      kind.endsWith('external')
         ? undefined
         : !kind.endsWith('inactive') &&
             (kind !== 'mixed-search' || i % 2 === 0),

@@ -94,13 +94,10 @@ test('router updates refresh formatted hrefs and their external or blocked class
       <Link to="/posts/$id" params={{ id: '1' }}>
         Post
       </Link>
-      <Link to="custom:post">External</Link>
     </RouterContextProvider>,
   )
   const link = view.getByText('Post')
-  const external = view.getByText('External')
   expect(link).toHaveAttribute('aria-current', 'page')
-  expect(external).not.toHaveAttribute('href')
 
   for (const [href, allowed, active] of [
     ['custom:post', true, false],
@@ -115,7 +112,6 @@ test('router updates refresh formatted hrefs and their external or blocked class
       href === 'custom:post' && !allowed ? null : href,
     )
     expect(link.getAttribute('aria-current')).toBe(active ? 'page' : null)
-    expect(external.getAttribute('href')).toBe(allowed ? 'custom:post' : null)
   }
 })
 
@@ -213,3 +209,41 @@ test.each([false, true])(
     expect(link).toHaveAttribute('aria-current', 'page')
   },
 )
+
+test('external classification follows changed destinations and router instances', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const router = await setup()
+  router.update({ protocolAllowlist: ['https:', 'custom:'] })
+  function tree(to: string, currentRouter = router) {
+    return (
+      <RouterContextProvider router={currentRouter}>
+        <Link to={to}>Destination</Link>
+      </RouterContextProvider>
+    )
+  }
+  const view = render(tree('/posts/1'))
+  const link = view.getByText('Destination')
+  expect(link).toHaveAttribute('aria-current', 'page')
+  for (const to of ['https://other.example/', 'custom:post']) {
+    view.rerender(tree(to))
+    await act(() => router.navigate({ to: '/posts/$id', params: { id: '2' } }))
+    expect(link).toHaveAttribute('href', to)
+    expect(link).not.toHaveAttribute('aria-current')
+  }
+  view.rerender(tree('javascript:blocked()'))
+  await act(() => router.navigate({ to: '/posts/$id', params: { id: '1' } }))
+  expect(link).not.toHaveAttribute('href')
+  expect(link).not.toHaveAttribute('aria-current')
+  view.rerender(tree('/posts/2'))
+  await act(() => router.navigate({ to: '/posts/$id', params: { id: '2' } }))
+  expect(link).toHaveAttribute('href', '/posts/2')
+  expect(link).toHaveAttribute('aria-current', 'page')
+
+  // Each mounted router keeps its allowlist; switching routers resets the selector.
+  view.rerender(tree('custom:post'))
+  expect(link).toHaveAttribute('href', 'custom:post')
+  const otherRouter = await setup()
+  view.rerender(tree('custom:post', otherRouter))
+  expect(link).not.toHaveAttribute('href')
+  expect(link).not.toHaveAttribute('aria-current')
+})
