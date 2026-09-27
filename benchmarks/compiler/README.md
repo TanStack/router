@@ -468,3 +468,31 @@ wins justify both changes. Results retain the same source hashes, iteration
 counts, output counts and generated-byte totals; see `*-yuku-after.json`.
 The destructuring table deliberately omits the earlier cold Babel number to
 avoid comparing different warmup/iteration configurations.
+
+## Fused AST cloning
+
+See the [fused cloning evaluation](fused-cloning.md) for final measurements,
+validation, attribution, and the peak-memory limitation.
+
+`clone.mjs` measures cloning independently of analysis and printing. Build the
+selected checkout's router-utils through Nx first, then run each case in a fresh
+process with the same Node version and parameters in both checkouts:
+
+```sh
+node --expose-gc benchmarks/compiler/clone.mjs --workspace /path/to/checkout --case route
+```
+
+Cases are `route`, `wide` (1,000 declarations), `literals` (comments, regexes,
+BigInts, and array elisions), `deep` (200 unary expressions), `identifier`,
+`generated` (a CSS-loading fragment), and `shared` (aliased child references).
+Each process checks copied fields, node isolation, module provenance, and module
+code/maps before timing. Generated-reference semantics are covered by unit tests.
+The default is 100 samples of 20 clones after 200 warmup clones. Results include
+raw batch samples, mean, standard deviation, median, p99, peak process RSS,
+post-GC heap delta, output digest, and source/built compiler fingerprints.
+
+For this native-to-native optimization use `measure.mjs --modes yuku-splitter`
+in **both** workspaces, with identical `--fixtures-root`, warmups and iterations.
+The older `compare.mjs` intentionally selects Babel for its baseline and must
+not be used unchanged. Use separate `--digest-output` runs to verify emitted
+code and source maps; alternate baseline/candidate ordering for timing runs.

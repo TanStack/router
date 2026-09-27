@@ -7,7 +7,7 @@ import {
   generateModule,
   linkGeneratedReference,
 } from '../src/ast'
-import type { Identifier, Program } from '@yuku-toolchain/types'
+import type { Identifier, Node, Program } from '@yuku-toolchain/types'
 import type { Module } from 'yuku-analyzer'
 
 test('native AST and semantic handles preserve their types', () => {
@@ -15,6 +15,9 @@ test('native AST and semantic handles preserve their types', () => {
   expectTypeOf(module).toEqualTypeOf<Module>()
   const clone = cloneModuleAst(module)
   expectTypeOf(clone.program).toEqualTypeOf<Program>()
+  expectTypeOf(clone.copiedNodes).toEqualTypeOf<
+    Pick<ReadonlyMap<Node, Node>, 'get'>
+  >()
   const reference = linkGeneratedReference(
     b.Identifier({ name: 'value' }),
     'value',

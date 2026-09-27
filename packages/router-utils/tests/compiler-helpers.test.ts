@@ -345,19 +345,24 @@ describe('output liveness', () => {
     expect(output).toContain('initiallyUnused')
   })
 
-  test('generated parameter shadowing cannot retain an erased server import', () => {
-    const module = analyzeModule({
-      code: `import { server } from './server'; export const result = server()`,
-    })
-    const { program, originalNodes } = cloneModuleAst(module)
-    program.body.splice(
-      1,
-      1,
-      ...parseStatements('export const result = (server) => server()'),
-    )
-    removeUnusedBindings(module, program, originalNodes)
-    expect(generateModule(program).code).not.toContain('./server')
-  })
+  test.each([false, true])(
+    'generated parameter shadowing cannot retain an erased server import (clone: %s)',
+    (clone) => {
+      const module = analyzeModule({
+        code: `import { server } from './server'; export const result = server()`,
+      })
+      const { program, originalNodes } = cloneModuleAst(module)
+      program.body.splice(
+        1,
+        1,
+        ...parseStatements('export const result = (server) => server()').map(
+          (node) => (clone ? cloneGeneratedNode(node) : node),
+        ),
+      )
+      removeUnusedBindings(module, program, originalNodes)
+      expect(generateModule(program).code).not.toContain('./server')
+    },
+  )
 
   test('retains source dependencies introduced in generated nodes', () => {
     const module = analyzeModule({ code: 'const value = 1;' })

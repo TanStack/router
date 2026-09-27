@@ -94,27 +94,74 @@ export interface ModuleAstClone {
   program: Program
   /** Resolve surviving copied nodes against the original semantic snapshot. */
   originalNodes: WeakMap<Node, Node>
+  /** Find an output node from the immutable source model. */
+  copiedNodes: Pick<ReadonlyMap<Node, Node>, 'get'>
 }
 
 export function cloneModuleAst(module: Module): ModuleAstClone {
-  const program = structuredClone(module.ast)
-  const originals: Array<Node> = []
-  walk(module.ast, {
-    enter(node) {
-      originals.push(node)
-    },
-  })
   const originalNodes = new WeakMap<Node, Node>()
-  let index = 0
-  walk(program, {
-    enter(node) {
-      originalNodes.set(node, originals[index++]!)
-    },
-  })
-  return { program, originalNodes }
+  const { node: program, copiedNodes } = cloneAst(module.ast, originalNodes)
+  return { program, originalNodes, copiedNodes }
 }
 
 const generatedReferences = new WeakMap<Node, Symbol | string>()
+
+/** Copy AST values and provenance together, without a recursive depth limit. */
+function cloneAst<T extends Node>(
+  node: T,
+  originalNodes?: WeakMap<Node, Node>,
+): { node: T; copiedNodes: Pick<ReadonlyMap<Node, Node>, 'get'> } {
+  // This output-local lookup also tracks arrays and comment records to preserve
+  // aliases. Expose only node lookup, not iteration over the bookkeeping records.
+  const copies = new Map<object, any>()
+  const pending: Array<Record<string, any>> = []
+  const copy = (value: any): any => {
+    if (value === null || typeof value !== 'object') {
+      return value
+    }
+    const existing = copies.get(value)
+    if (existing) {
+      return existing
+    }
+    // Native regex literals carry a RegExp value as well as their raw spelling.
+    const result = Array.isArray(value)
+      ? new Array(value.length)
+      : value instanceof RegExp
+        ? new RegExp(value.source, value.flags)
+        : {}
+    copies.set(value, result)
+    if (!(value instanceof RegExp)) {
+      pending.push(value, result)
+      if (typeof value.type === 'string') {
+        originalNodes?.set(result as Node, value)
+        const reference = generatedReferences.get(value)
+        if (reference !== undefined) {
+          generatedReferences.set(result as Node, reference)
+        }
+      }
+    }
+    return result
+  }
+  const result = copy(node)
+  while (pending.length) {
+    const target = pending.pop()!
+    const source = pending.pop()!
+    for (const key of Object.keys(source)) {
+      const value = copy(source[key])
+      if (key === '__proto__') {
+        Object.defineProperty(target, key, {
+          value,
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        })
+      } else {
+        target[key] = value
+      }
+    }
+  }
+  return { node: result, copiedNodes: copies }
+}
 
 /** Explicitly connect a new reference to a source binding; never infer local scope. */
 export function linkGeneratedReference<T extends Node>(
@@ -131,23 +178,7 @@ export function generatedReferenceOf(node: Node): Symbol | string | undefined {
 
 /** Copy a generated fragment without dropping its native reference provenance. */
 export function cloneGeneratedNode<T extends Node>(node: T): T {
-  const copy = structuredClone(node)
-  const originals: Array<Node> = []
-  walk(node, {
-    enter(original) {
-      originals.push(original)
-    },
-  })
-  let index = 0
-  walk(copy, {
-    enter(current) {
-      const reference = generatedReferences.get(originals[index++]!)
-      if (reference) {
-        generatedReferences.set(current, reference)
-      }
-    },
-  })
-  return copy
+  return cloneAst(node).node
 }
 
 /** Parse compiler-owned snippets; their nodes have no original-source spans. */
