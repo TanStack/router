@@ -163,11 +163,6 @@ function MatchView({
     )
   }
 
-  const matchComponent = (
-    <matchContext.Provider value={match.routeId}>
-      {content}
-    </matchContext.Provider>
-  )
   const scrollRestoration =
     (isServer ?? router.isServer) &&
     route.parentRoute?.id === rootRouteId &&
@@ -178,17 +173,21 @@ function MatchView({
     ? (route.options as RootRouteOptions).shellComponent
     : undefined
 
-  // Keep shell children and provider/boundary order, without inactive components.
-  return ShellComponent ? (
-    <ShellComponent>
-      {matchComponent}
-      {scrollRestoration}
-    </ShellComponent>
-  ) : (
-    <>
-      {matchComponent}
-      {scrollRestoration}
-    </>
+  // The shell and route boundaries must share this match's context.
+  return (
+    <matchContext.Provider value={match.routeId}>
+      {ShellComponent ? (
+        <ShellComponent>
+          {content}
+          {scrollRestoration}
+        </ShellComponent>
+      ) : (
+        <>
+          {content}
+          {scrollRestoration}
+        </>
+      )}
+    </matchContext.Provider>
   )
 }
 
