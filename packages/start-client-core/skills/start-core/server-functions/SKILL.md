@@ -494,5 +494,5 @@ Relative `fetch` is fine in a browser-only event handler. It is not a universal 
 
 - [start-core/execution-model](../execution-model/SKILL.md) — understanding where code runs
 - [start-core/middleware](../middleware/SKILL.md) — composing server functions with middleware
-- [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md) — sessions, cookies, OAuth, CSRF, rate limiting (the server-side half of auth; `getCurrentUser`/`useSession`-style helpers belong here, not at module scope)
+- [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md) — sessions, cookies, OAuth, CSRF, rate limiting (the server-side half of auth; `getCurrentUser` and external session helpers belong here, not at module scope)
 - [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) — routing-side UX guards; data auth belongs in the server function, server route, or API endpoint handler/middleware

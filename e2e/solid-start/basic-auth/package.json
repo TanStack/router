@@ -19,6 +19,7 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
+    "iron-session": "^9.0.1",
     "redaxios": "catalog:",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^3.6.0"

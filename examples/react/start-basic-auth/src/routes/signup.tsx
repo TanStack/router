@@ -3,7 +3,7 @@ import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { useMutation } from '~/hooks/useMutation'
 import { Auth } from '~/components/Auth'
-import { useAppSession } from '~/utils/session'
+import { getAppSession } from '~/utils/session'
 
 export const signupFn = createServerFn({ method: 'POST' })
   .validator(
@@ -20,9 +20,6 @@ export const signupFn = createServerFn({ method: 'POST' })
     // Encrypt the password using Sha256 into plaintext
     const password = await hashPassword(data.password)
 
-    // Create a session
-    const session = await useAppSession()
-
     if (found) {
       if (found.password !== password) {
         return {
@@ -33,9 +30,9 @@ export const signupFn = createServerFn({ method: 'POST' })
       }
 
       // Store the user's email in the session
-      await session.update({
-        userEmail: found.email,
-      })
+      const session = await getAppSession()
+      session.userEmail = found.email
+      await session.save()
 
       // Redirect to the prev page stored in the "redirect" search param
       throw redirect({
@@ -52,9 +49,9 @@ export const signupFn = createServerFn({ method: 'POST' })
     })
 
     // Store the user's email in the session
-    await session.update({
-      userEmail: user.email,
-    })
+    const session = await getAppSession()
+    session.userEmail = user.email
+    await session.save()
 
     // Redirect to the prev page stored in the "redirect" search param
     throw redirect({

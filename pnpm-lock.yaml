@@ -1737,6 +1737,9 @@ importers:
       http-proxy-middleware:
         specifier: ^3.0.5
         version: 3.0.5(supports-color@10.2.2)
+      iron-session:
+        specifier: ^9.0.1
+        version: 9.0.1
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
@@ -1828,6 +1831,9 @@ importers:
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
+      iron-session:
+        specifier: ^9.0.1
+        version: 9.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -2923,6 +2929,55 @@ importers:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
 
+  e2e/react-start/response-reconciliation:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.2.3
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.63.0
+        version: 1.63.0
+      '@rsbuild/core':
+        specifier: ^2.0.8
+        version: 2.2.5
+      '@rsbuild/plugin-react':
+        specifier: ^2.0.0
+        version: 2.0.0(@rsbuild/core@2.2.5)(@rspack/core@2.2.7(@swc/helpers@0.5.23))
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+      srvx:
+        specifier: ^0.11.9
+        version: 0.11.22
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+
   e2e/react-start/root-document-hydration:
     dependencies:
       '@tanstack/react-router':
@@ -3670,6 +3725,67 @@ importers:
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+
+  e2e/react-start/session-handling:
+    dependencies:
+      '@hono/session':
+        specifier: 0.2.1
+        version: 0.2.1(hono@4.13.9)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      hono:
+        specifier: 4.13.9
+        version: 4.13.9
+      hono-sessions:
+        specifier: 0.8.1
+        version: 0.8.1(hono@4.13.9)
+      iron-session:
+        specifier: 9.0.1
+        version: 9.0.1
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.2.3
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.63.0
+        version: 1.63.0
+      '@rsbuild/core':
+        specifier: ^2.0.8
+        version: 2.2.5
+      '@rsbuild/plugin-react':
+        specifier: ^2.0.0
+        version: 2.0.0(@rsbuild/core@2.2.5)(@rspack/core@2.2.7(@swc/helpers@0.5.23))
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+      srvx:
+        specifier: ^0.11.9
+        version: 0.11.22
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
       vite:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
@@ -4896,6 +5012,9 @@ importers:
       '@tanstack/solid-start':
         specifier: workspace:*
         version: link:../../../packages/solid-start
+      iron-session:
+        specifier: ^9.0.1
+        version: 9.0.1
       redaxios:
         specifier: 'catalog:'
         version: 0.5.1
@@ -6924,6 +7043,9 @@ importers:
       '@tanstack/vue-start':
         specifier: workspace:*
         version: link:../../../packages/vue-start
+      iron-session:
+        specifier: ^9.0.1
+        version: 9.0.1
       redaxios:
         specifier: 'catalog:'
         version: 0.5.1
@@ -10016,6 +10138,9 @@ importers:
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
+      iron-session:
+        specifier: ^9.0.1
+        version: 9.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -10780,7 +10905,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-start
       iron-session:
-        specifier: ^9.0.0
+        specifier: ^9.0.1
         version: 9.0.1
       next:
         specifier: 16.3.4
@@ -12773,6 +12898,9 @@ importers:
       '@tanstack/solid-start':
         specifier: workspace:*
         version: link:../../../packages/solid-start
+      iron-session:
+        specifier: ^9.0.1
+        version: 9.0.1
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -13152,7 +13280,7 @@ importers:
     dependencies:
       '@convex-dev/better-auth':
         specifier: ^0.9.7
-        version: 0.9.7(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(better-auth@1.6.19(@opentelemetry/api@1.9.1)(@prisma/client@7.0.0(@typescript/typescript6@6.0.2)(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)))(@tanstack/solid-start@packages+solid-start)(mysql2@3.15.3)(next@16.3.4(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@25.0.9)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2))(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.12)(vitest@4.1.4)(vue@3.5.25(@typescript/typescript6@6.0.2)))(convex@1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(hono@4.7.10)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 0.9.7(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(better-auth@1.6.19(@opentelemetry/api@1.9.1)(@prisma/client@7.0.0(@typescript/typescript6@6.0.2)(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)))(@tanstack/solid-start@packages+solid-start)(mysql2@3.15.3)(next@16.3.4(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@25.0.9)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2))(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.12)(vitest@4.1.4)(vue@3.5.25(@typescript/typescript6@6.0.2)))(convex@1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(hono@4.13.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
@@ -15289,12 +15417,12 @@ importers:
       '@tanstack/start-storage-context':
         specifier: workspace:*
         version: link:../start-storage-context
+      cookie-es:
+        specifier: ^3.0.0
+        version: 3.1.1
       fetchdts:
         specifier: ^0.1.6
         version: 0.1.7
-      h3-v2:
-        specifier: npm:h3@2.0.1-rc.20
-        version: h3@2.0.1-rc.20(crossws@0.4.12(srvx@1.0.5))
       seroval:
         specifier: ^1.6.7
         version: 1.6.7
@@ -15311,9 +15439,9 @@ importers:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
-      cookie-es:
-        specifier: ^3.0.0
-        version: 3.1.1
+      iron-session:
+        specifier: 9.0.1
+        version: 9.0.1
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
@@ -18142,6 +18270,11 @@ packages:
     engines: {node: '>=18.14.1'}
     peerDependencies:
       hono: ^4
+
+  '@hono/session@0.2.1':
+    resolution: {integrity: sha512-9bEkT8DnQDM0KNOrSokXMvx4wp1uLmopu0BCLrHjw5DMWPAEDcONuqyn/1dqosQktcNYA3HwUHGK8WT86JtnYA==}
+    peerDependencies:
+      hono: '>=4.0.0'
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -25127,16 +25260,6 @@ packages:
   h3@1.15.11:
     resolution: {integrity: sha512-L3THSe2MPeBwgIZVSH5zLdBBU90TOxarvhK9d04IDY2AmVS8j2Jz2LIWtwsGOU3lu2I5jCN7FNvVfY2+XyF+mg==}
 
-  h3@2.0.1-rc.20:
-    resolution: {integrity: sha512-28ljodXuUp0fZovdiSRq4G9OgrxCztrJe5VdYzXAB7ueRvI7pIUqLU14Xi3XqdYJ/khXjfpUOOD2EQa6CmBgsg==}
-    engines: {node: '>=20.11.1'}
-    hasBin: true
-    peerDependencies:
-      crossws: ^0.4.1
-    peerDependenciesMeta:
-      crossws:
-        optional: true
-
   h3@2.0.1-rc.32:
     resolution: {integrity: sha512-Epg1E85L8yIKd9UeAQAVdm6QVrnHbppMsQ641EjpNi4c0IlAg+PJlwp4Xw03Z1loRXPQaH9k64gJT5qDELqm+g==}
     engines: {node: '>=20.11.1'}
@@ -25212,6 +25335,15 @@ packages:
 
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
+
+  hono-sessions@0.8.1:
+    resolution: {integrity: sha512-YLSKuIP13yhXTQe2x3sCc1JWsqt1Z3WZB2DWE+oX+YpOsC3lv8uCHnCoNHcY9DPyflDw4XQJN+MFVvcp5QwWdw==}
+    peerDependencies:
+      hono: ^4.0.0
+
+  hono@4.13.9:
+    resolution: {integrity: sha512-7dMkQmZoC4E6F7AtaQSPhlWAdnBti+j7rreMZl8QB4jFiEhP9TWbGWUMi8WYzBCgmgulxuvLQupKqo+Co6Omyg==}
+    engines: {node: '>=16.9.0'}
 
   hono@4.7.10:
     resolution: {integrity: sha512-QkACju9MiN59CKSY5JsGZCYmPZkA6sIW6OFCUp7qDjZu6S6KHtJHhAc9Uy9mV9F8PJ1/HQ3ybZF2yjCa/73fvQ==}
@@ -27680,9 +27812,6 @@ packages:
 
   rou3@0.7.12:
     resolution: {integrity: sha512-iFE4hLDuloSWcD7mjdCDhx2bKcIsYbtOTpfH5MHHLSKMOUyjqQXTeZVa289uuwEGEKFoE/BAPbhaU4B774nceg==}
-
-  rou3@0.8.1:
-    resolution: {integrity: sha512-ePa+XGk00/3HuCqrEnK3LxJW7I0SdNg6EFzKUJG73hMAdDcOUC/i/aSz7LSDwLrGr33kal/rqOGydzwl6U7zBA==}
 
   rou3@0.9.2:
     resolution: {integrity: sha512-3SOzvaAg8rkHrXtRjpCvCvbyO5to9oOO27Z/XqHEYXfMRVSw/qMIVdmaOk9W2lcRLtR6dlqTjo9hDeJk70QBYQ==}
@@ -30694,12 +30823,12 @@ snapshots:
 
   '@colors/colors@1.6.0': {}
 
-  '@convex-dev/better-auth@0.9.7(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(better-auth@1.6.19(@opentelemetry/api@1.9.1)(@prisma/client@7.0.0(@typescript/typescript6@6.0.2)(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)))(@tanstack/solid-start@packages+solid-start)(mysql2@3.15.3)(next@16.3.4(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@25.0.9)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2))(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.12)(vitest@4.1.4)(vue@3.5.25(@typescript/typescript6@6.0.2)))(convex@1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(hono@4.7.10)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@convex-dev/better-auth@0.9.7(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(better-auth@1.6.19(@opentelemetry/api@1.9.1)(@prisma/client@7.0.0(@typescript/typescript6@6.0.2)(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)))(@tanstack/solid-start@packages+solid-start)(mysql2@3.15.3)(next@16.3.4(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@25.0.9)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2))(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.12)(vitest@4.1.4)(vue@3.5.25(@typescript/typescript6@6.0.2)))(convex@1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(hono@4.13.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       better-auth: 1.6.19(@opentelemetry/api@1.9.1)(@prisma/client@7.0.0(@typescript/typescript6@6.0.2)(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)))(@tanstack/solid-start@packages+solid-start)(mysql2@3.15.3)(next@16.3.4(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@25.0.9)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2))(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.12)(vitest@4.1.4)(vue@3.5.25(@typescript/typescript6@6.0.2))
       common-tags: 1.8.2
       convex: 1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
-      convex-helpers: 0.1.104(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(hono@4.7.10)(react@19.2.3)(zod@3.25.76)
+      convex-helpers: 0.1.104(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(hono@4.13.9)(react@19.2.3)(zod@3.25.76)
       jose: 6.1.0
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
@@ -32059,6 +32188,11 @@ snapshots:
   '@hono/node-server@1.14.2(hono@4.7.10)':
     dependencies:
       hono: 4.7.10
+
+  '@hono/session@0.2.1(hono@4.13.9)':
+    dependencies:
+      hono: 4.13.9
+      jose: 6.1.3
 
   '@humanfs/core@0.19.1': {}
 
@@ -34744,6 +34878,15 @@ snapshots:
       react-refresh: 0.18.0
     optionalDependencies:
       '@rsbuild/core': 2.1.1
+    transitivePeerDependencies:
+      - '@rspack/core'
+
+  '@rsbuild/plugin-react@2.0.0(@rsbuild/core@2.2.5)(@rspack/core@2.2.7(@swc/helpers@0.5.23))':
+    dependencies:
+      '@rspack/plugin-react-refresh': 2.0.0(@rspack/core@2.2.7(@swc/helpers@0.5.23))(react-refresh@0.18.0)
+      react-refresh: 0.18.0
+    optionalDependencies:
+      '@rsbuild/core': 2.2.5
     transitivePeerDependencies:
       - '@rspack/core'
 
@@ -38534,12 +38677,12 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex-helpers@0.1.104(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(hono@4.7.10)(react@19.2.3)(zod@3.25.76):
+  convex-helpers@0.1.104(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(hono@4.13.9)(react@19.2.3)(zod@3.25.76):
     dependencies:
       convex: 1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
     optionalDependencies:
       '@standard-schema/spec': 1.1.0
-      hono: 4.7.10
+      hono: 4.13.9
       react: 19.2.3
       typescript: '@typescript/typescript6@6.0.2'
       zod: 3.25.76
@@ -40355,13 +40498,6 @@ snapshots:
       ufo: 1.6.4
       uncrypto: 0.1.3
 
-  h3@2.0.1-rc.20(crossws@0.4.12(srvx@1.0.5)):
-    dependencies:
-      rou3: 0.8.1
-      srvx: 0.11.22
-    optionalDependencies:
-      crossws: 0.4.12(srvx@1.0.5)
-
   h3@2.0.1-rc.32(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0):
     dependencies:
       rou3: 0.9.2
@@ -40422,6 +40558,14 @@ snapshots:
   hoist-non-react-statics@3.3.2:
     dependencies:
       react-is: 16.13.1
+
+  hono-sessions@0.8.1(hono@4.13.9):
+    dependencies:
+      hono: 4.13.9
+      iron-webcrypto: 1.2.1
+      ohash: 2.0.11
+
+  hono@4.13.9: {}
 
   hono@4.7.10: {}
 
@@ -41208,7 +41352,7 @@ snapshots:
 
   light-my-request@6.6.0:
     dependencies:
-      cookie: 1.0.2
+      cookie: 1.1.1
       process-warning: 4.0.1
       set-cookie-parser: 2.7.2
 
@@ -43268,8 +43412,6 @@ snapshots:
       fsevents: 2.3.3
 
   rou3@0.7.12: {}
-
-  rou3@0.8.1: {}
 
   rou3@0.9.2: {}
 

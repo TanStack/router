@@ -1,0 +1,84 @@
+{
+  "name": "tanstack-react-start-e2e-response-reconciliation",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm dev:vite --port 3000",
+    "dev:e2e": "pnpm dev:vite",
+    "dev:vite": "vite dev",
+    "dev:rsbuild": "rsbuild dev",
+    "build": "pnpm build:vite",
+    "build:vite": "vite build && tsc --noEmit",
+    "build:rsbuild": "rsbuild build && tsc --noEmit",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "test:e2e:local": "pnpm build && playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@rsbuild/core": "^2.0.8",
+    "@rsbuild/plugin-react": "^2.0.0",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@types/node": "25.0.9",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "srvx": "^0.11.9",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.14"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "parallelism": false
+      },
+      "test:e2e--vite-ssr": {
+        "parallelism": false
+      },
+      "test:e2e--vite-ssr--custom-entry": {
+        "parallelism": false
+      },
+      "test:e2e--rsbuild-ssr": {
+        "parallelism": false
+      },
+      "test:e2e--rsbuild-ssr--custom-entry": {
+        "parallelism": false
+      }
+    },
+    "metadata": {
+      "playwrightModes": [
+        {
+          "toolchain": "vite",
+          "mode": "ssr"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "custom-entry",
+          "env": {
+            "TSS_E2E_SERVER_ENTRY": "server-entry"
+          }
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr",
+          "name": "custom-entry",
+          "env": {
+            "TSS_E2E_SERVER_ENTRY": "server-entry"
+          }
+        }
+      ]
+    }
+  }
+}

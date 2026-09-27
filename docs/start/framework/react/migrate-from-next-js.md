@@ -22,7 +22,7 @@ cd examples/react/start-next-migration
 
 Follow the example's [README](https://github.com/TanStack/router/blob/main/examples/react/start-next-migration/README.md) to set `SESSION_PASSWORD` and `DEMO_PASSWORD`. Run `pnpm dev:next` at `http://localhost:3100` and `pnpm dev` in another terminal at `http://localhost:3101`.
 
-The example's single account is `reader@example.com`. It stores one saved-article flag in a session cookie so you can exercise a protected mutation without connecting a database. It is not a production authentication implementation. The two apps use different session formats and cookie names, so sign in separately to each.
+The example's single account is `reader@example.com`. It stores one saved-article flag in a session cookie so you can exercise a protected mutation without connecting a database. It is not a production authentication implementation. Both apps use iron-session with different cookie names, so sign in separately to each.
 
 With those ports free, run:
 
@@ -148,7 +148,7 @@ Next.js Action forms and these Start event-handler forms have different no-JavaS
 
 Follow the [authentication guide](./guide/authentication) for the route-context pattern. Check sessions on the server for private reads and mutations. A hidden button or a client route guard is not authorization.
 
-The example deliberately changes from `iron-session` with Next.js `cookies()` to Start's `useSession`. Existing cookies are not assumed to be compatible. A real migration can keep its existing auth provider or session service and adapt the request boundary instead. If sessions must survive cutover or rollback, verify cookie names, domains, paths, signing/encryption formats, expiration, key rotation, and logout in both deployments.
+The example keeps `iron-session` and replaces Next.js `cookies()` with a small adapter using Start's `getCookie` and `setCookie`. Start does not provide a session API. The example uses different cookie names to keep its two local apps independent; sharing a library alone does not make every session configuration compatible. A real migration can keep its existing auth provider or session service and adapt the request boundary instead. If sessions must survive cutover or rollback, verify cookie names, domains, paths, signing/encryption formats, expiration, key rotation, and logout in both deployments.
 
 Private pages need a cache policy that prevents another user receiving personalized HTML. The Start reference returns `Cache-Control: private, no-store` for `/saved`. Check the final response through your deployment and CDN, including after sign-in and sign-out. Do not prerender or publicly cache pages that include private account data.
 
