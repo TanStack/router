@@ -10,7 +10,12 @@ import { routesManifestPlugin } from '../../start-router-plugin/generator-plugin
 import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
 import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
-import { SERVER_PROP } from '../../start-router-plugin/constants'
+import {
+  CLIENT_ROUTE_OPTION_DELETE_NODES,
+  SERVER_PROP,
+  SERVER_ROUTE_OPTION_DELETE_NODES,
+} from '../../start-router-plugin/constants'
+import { shouldStripRouteOptionsFromServer } from '../../prerender-route-options-env'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type {
@@ -147,7 +152,7 @@ export function tanStackStartRouter(
     tanstackRouterGenerator(() => {
       const routerConfig = getConfig().startConfig.router
       const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
-      if (startPluginOpts.prerender?.enabled === true) {
+      if (startPluginOpts.prerender?.enabled !== false) {
         plugins.push(prerenderRoutesPlugin())
       }
       return {
@@ -163,7 +168,7 @@ export function tanStackStartRouter(
         ...routerConfig,
         codeSplittingOptions: {
           ...routerConfig.codeSplittingOptions,
-          deleteNodes: ['ssr', 'server', 'headers'],
+          deleteNodes: CLIENT_ROUTE_OPTION_DELETE_NODES,
           addHmr: true,
         },
         plugin: {
@@ -171,18 +176,25 @@ export function tanStackStartRouter(
         },
       }
     }, routerPluginContext),
-    tanStackRouterCodeSplitter(() => {
-      const routerConfig = getConfig().startConfig.router
-      return {
-        ...routerConfig,
-        codeSplittingOptions: {
-          ...routerConfig.codeSplittingOptions,
-          addHmr: false,
-        },
-        plugin: {
-          vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
-        },
-      }
-    }, routerPluginContext),
+    ...[VITE_ENVIRONMENT_NAMES.server, VITE_ENVIRONMENT_NAMES.prerender].map(
+      (environmentName) =>
+        tanStackRouterCodeSplitter(() => {
+          const { startConfig } = getConfig()
+          const routerConfig = startConfig.router
+          return {
+            ...routerConfig,
+            codeSplittingOptions: {
+              ...routerConfig.codeSplittingOptions,
+              addHmr: false,
+              deleteNodes:
+                environmentName === VITE_ENVIRONMENT_NAMES.server &&
+                shouldStripRouteOptionsFromServer(startConfig)
+                  ? SERVER_ROUTE_OPTION_DELETE_NODES
+                  : undefined,
+            },
+            plugin: { vite: { environmentName } },
+          }
+        }, routerPluginContext),
+    ),
   ]
 }

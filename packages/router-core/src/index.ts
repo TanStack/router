@@ -137,6 +137,7 @@ export {
   getRouteSegments,
   hasMissingPathParams,
 } from './path'
+export { parsePathTemplate } from './new-process-route-tree'
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'

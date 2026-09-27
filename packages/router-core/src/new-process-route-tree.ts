@@ -294,6 +294,14 @@ export function parseSegments<TRouteLike extends RouteLike>(
   return [node, cursor, segmentData]
 }
 
+/**
+ * Compile a route path template for `interpolatePath` without processing a
+ * route tree, e.g. at build time.
+ */
+export function parsePathTemplate(path: string): RouteInterpolation {
+  return parseSegments(false, { fullPath: path }, 1)
+}
+
 function sortDynamic(
   a: {
     prefix: string

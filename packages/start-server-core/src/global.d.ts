@@ -1,4 +1,12 @@
+import type { AnyRoute } from '@tanstack/router-core'
+
+/* eslint-disable no-var */
 declare global {
+  /** Set by the built server entry while prerendering dynamic route params. */
+  var TSS_PRERENDER_ROUTE_TREE:
+    | (() => Promise<AnyRoute | undefined>)
+    | undefined
+
   namespace NodeJS {
     interface ProcessEnv {
       TSS_ROUTER_BASEPATH: string

@@ -15,10 +15,12 @@ const spaModeConfiguration = {
 const prerenderConfiguration = {
   enabled: true,
   filter: (page: { path: string }) =>
+    !(process.platform === 'win32' && page.path.includes('|')) &&
     ![
       '/this-route-does-not-exist',
       '/redirect',
       '/i-do-not-exist',
+      '/posts/i-do-not-exist',
       '/not-found',
       '/specialChars/search',
       '/specialChars/hash',
@@ -26,7 +28,7 @@ const prerenderConfiguration = {
       '/search-params', // search-param routes have dynamic content based on query params
       '/transition',
       '/users',
-    ].some((p) => page.path.includes(p)),
+    ].some((p) => page.path === p || page.path.startsWith(`${p}/`)),
   maxRedirects: 100,
 }
 
@@ -48,6 +50,12 @@ export default defineConfig({
     tanstackStart({
       spa: isSpaMode ? spaModeConfiguration : undefined,
       prerender: isPrerender ? prerenderConfiguration : undefined,
+      sitemap: isPrerender
+        ? {
+            enabled: true,
+            host: 'https://example.com',
+          }
+        : undefined,
     }),
     vueJsx(),
   ],
