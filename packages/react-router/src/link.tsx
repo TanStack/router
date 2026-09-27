@@ -92,7 +92,7 @@ function resolveIsActive(
   next: ParsedLocation,
   activeOptions: ActiveOptions | undefined,
   basepath: string,
-  isHydrated: boolean,
+  hydrating = false,
 ): boolean {
   const currentPath = removeTrailingSlash(location.pathname, basepath)
   const nextPath = removeTrailingSlash(next.pathname, basepath)
@@ -123,7 +123,7 @@ function resolveIsActive(
   }
 
   if (activeOptions?.includeHash) {
-    return isHydrated && location.hash === next.hash
+    return (hydrating ? '' : location.hash) === next.hash
   }
   return true
 }
@@ -256,8 +256,12 @@ export function useLinkProps<
     onTouchStart,
   } = options as typeof options & { to?: string }
 
+  const hashFromLocation =
+    !options.href &&
+    !options._fromLocation &&
+    (options.hash === true || typeof options.hash === 'function')
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isHydrated = useHydrated(!!activeOptions?.includeHash)
+  const isHydrated = useHydrated(activeOptions?.includeHash || hashFromLocation)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
@@ -277,6 +281,7 @@ export function useLinkProps<
       options.from,
       options._fromLocation,
       options.hash,
+      options.href,
       options.to,
       stableSearch,
       stableParams,
@@ -303,7 +308,13 @@ export function useLinkProps<
       if (!_options._fromLocation) {
         dest._fromLocation = location
       }
-      const next = router.buildLocation(dest)
+      // Only hash-dependent destinations need the server's empty hash. Keep
+      // the source location identity so links share the route-match cache.
+      const next = router.buildLocation(
+        !isHydrated && hashFromLocation
+          ? { ...dest, hash: dest.hash === true ? '' : dest.hash('') }
+          : dest,
+      )
 
       // Use publicHref - it contains the correct href for display
       // When a rewrite changes the origin, publicHref is the full URL
@@ -319,11 +330,20 @@ export function useLinkProps<
               next,
               stableActiveOptions,
               router.basepath,
-              isHydrated,
+              !isHydrated,
             ),
       ]
     },
-    [stableActiveOptions, disabled, isHydrated, _options, dest, router, to],
+    [
+      stableActiveOptions,
+      disabled,
+      isHydrated,
+      hashFromLocation,
+      _options,
+      dest,
+      router,
+      to,
+    ],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -620,7 +640,6 @@ function getServerLinkProps(
   }
 
   const blockedLink = !disabled && !hrefOption
-  // Hash is not available on the server, so it never counts as hydrated.
   const isActive =
     !!next &&
     !blockedLink &&
@@ -629,7 +648,6 @@ function getServerLinkProps(
       next,
       activeOptions,
       router.basepath,
-      false,
     )
   return applyLinkState(
     props,
