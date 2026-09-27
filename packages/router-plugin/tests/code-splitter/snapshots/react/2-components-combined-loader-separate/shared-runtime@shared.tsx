@@ -1,9 +1,5 @@
-enum Count {
-  Initial = 0
-}
-namespace Labels {
-  export const component = 'count';
-}
+const Count = { Initial: 0 };
+const Labels = { component: 'count' };
 const seed = createSeed();
 const { state, increment } = createState(seed);
 function createSeed() {

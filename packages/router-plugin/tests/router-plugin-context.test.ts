@@ -192,7 +192,25 @@ export const Route = createFileRoute('/changing')({
     const combined = await setup(true)
     const first = await separate(source('firstState', 'first version'))
     expect(first.reference).toContain('tsr-split=component')
-    expect(first.virtual).toContain('import { firstState }')
+    const virtualImports = analyzeModule({
+      code: first.virtual,
+    }).ast.body.filter((statement) => is.ImportDeclaration(statement))
+    expect(virtualImports).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: expect.objectContaining({
+            value: expect.stringContaining('tsr-shared'),
+          }),
+          specifiers: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'ImportSpecifier',
+              imported: expect.objectContaining({ name: 'firstState' }),
+              local: expect.objectContaining({ name: 'firstState' }),
+            }),
+          ]),
+        }),
+      ]),
+    )
     expect(first.shared).toContain('first version')
 
     const second = await separate(source('secondState', 'second version'))

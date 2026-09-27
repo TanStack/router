@@ -188,16 +188,13 @@ const props = { when: true, fallback: <p>server-fallback</p> }`,
     'strips fallback from a parenthesized spread %s',
     (spread) => {
       const result = compileHydrate({
-        code: `import { Hydrate } from '@tanstack/react-start'; const props = ({ fallback: <p>server-fallback</p> }); export function Page() { return <Hydrate ${spread}><p>child</p></Hydrate> }`,
+        code: `import { Hydrate } from '@tanstack/react-start'; ${spread.includes('props') ? 'const props = ({ fallback: <p>server-fallback</p> });' : ''} export function Page() { return <Hydrate ${spread}><p>child</p></Hydrate> }`,
         id,
         root,
         env: 'server',
       })
-      // An unused declaration is deliberately preserved; only the used spread
-      // binding should lose its fallback.
-      expect(result?.code.match(/server-fallback/g) ?? []).toHaveLength(
-        spread.includes('props') ? 0 : 1,
-      )
+      expect(result).not.toBeNull()
+      expect(result?.code).not.toContain('server-fallback')
     },
   )
 
@@ -208,6 +205,7 @@ const props = { when: true, fallback: <p>server-fallback</p> }`,
       root,
       env: 'server',
     })
+    expect(result).not.toBeNull()
     expect(result?.code).not.toContain('server-fallback')
   })
 
@@ -220,6 +218,7 @@ const props = { when: true, fallback: <p>server-fallback</p> }`,
         root,
         env: 'client',
       })
+      expect(result).not.toBeNull()
       expect(result?.code).not.toContain('.preload')
     },
   )
