@@ -3,14 +3,11 @@ import { z } from 'zod'
 import {
   buildOpenApiDocument,
   collectFromRouteTree,
+  defaultOperationId,
   generateOpenApiDocument,
   toOpenApiPath,
 } from '../src'
-import type {
-  OpenApiManifest,
-  StandardSchemaV1,
-  ToJSONSchema,
-} from '../src'
+import type { OpenApiManifest, StandardSchemaV1, ToJSONSchema } from '../src'
 
 const info = { title: 'Test API', version: '1.0.0' }
 
@@ -43,17 +40,21 @@ describe('buildOpenApiDocument (emitter)', () => {
           summary: 'Create a sequence',
           tags: ['sequences'],
           request: {
-            body: fake({
-              $id: 'CreateSequence',
-              type: 'object',
-              properties: { name: { type: 'string' } },
-              required: ['name'],
-            }),
-            query: fake({
-              type: 'object',
-              properties: { page: { type: 'integer' } },
-              required: [],
-            }),
+            body: [
+              fake({
+                $id: 'CreateSequence',
+                type: 'object',
+                properties: { name: { type: 'string' } },
+                required: ['name'],
+              }),
+            ],
+            query: [
+              fake({
+                type: 'object',
+                properties: { page: { type: 'integer' } },
+                required: [],
+              }),
+            ],
           },
           responses: {
             202: fake({
@@ -99,13 +100,19 @@ describe('buildOpenApiDocument (emitter)', () => {
 
     // Query object is split into individual, non-required params.
     expect(op.parameters).toEqual([
-      { name: 'page', in: 'query', required: false, schema: { type: 'integer' } },
+      {
+        name: 'page',
+        in: 'query',
+        required: false,
+        schema: { type: 'integer' },
+      },
     ])
 
     // Per-status responses, with description fallbacks.
     expect(op.responses['202'].description).toBe('Successful response')
-    expect(op.responses['202'].content['application/json'].schema.properties.id)
-      .toBeDefined()
+    expect(
+      op.responses['202'].content['application/json'].schema.properties.id,
+    ).toBeDefined()
     expect(op.responses['402'].description).toBe('Payment required')
 
     // Security references the named scheme.
@@ -129,7 +136,9 @@ describe('buildOpenApiDocument (emitter)', () => {
       { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
     ])
     // Every operation gets at least one response.
-    expect(doc.paths['/api/v1/sequences/{id}'].get.responses['200']).toBeDefined()
+    expect(
+      doc.paths['/api/v1/sequences/{id}'].get.responses['200'],
+    ).toBeDefined()
   })
 
   it('lifts $defs into components and rewrites refs', async () => {
@@ -140,11 +149,18 @@ describe('buildOpenApiDocument (emitter)', () => {
             method: 'post',
             path: '/things',
             request: {
-              body: fake({
-                type: 'object',
-                properties: { inner: { $ref: '#/$defs/Inner' } },
-                $defs: { Inner: { type: 'object', properties: { x: { type: 'number' } } } },
-              }),
+              body: [
+                fake({
+                  type: 'object',
+                  properties: { inner: { $ref: '#/$defs/Inner' } },
+                  $defs: {
+                    Inner: {
+                      type: 'object',
+                      properties: { x: { type: 'number' } },
+                    },
+                  },
+                }),
+              ],
             },
           },
         ],
@@ -152,11 +168,14 @@ describe('buildOpenApiDocument (emitter)', () => {
       },
       { info, toJSONSchema: fakeConverter },
     )
-    const schema = doc.paths['/things'].post.requestBody.content['application/json'].schema
+    const schema =
+      doc.paths['/things'].post.requestBody.content['application/json'].schema
     expect(schema.properties.inner).toEqual({
       $ref: '#/components/schemas/Inner',
     })
-    expect(doc.components.schemas.Inner.properties.x).toEqual({ type: 'number' })
+    expect(doc.components.schemas.Inner.properties.x).toEqual({
+      type: 'number',
+    })
     expect(schema.$defs).toBeUndefined()
   })
 })
@@ -187,7 +206,7 @@ describe('collectFromRouteTree (collector)', () => {
               handlers: ({ createHandlers }: any) =>
                 createHandlers({
                   POST: {
-                    inputValidator: {
+                    validator: {
                       body: CreateSequence,
                       query: Pagination,
                     },
@@ -215,8 +234,8 @@ describe('collectFromRouteTree (collector)', () => {
     expect(manifest.operations).toHaveLength(2) // POST + GET on the api route
     const post = manifest.operations.find((o) => o.method === 'post')!
     expect(post.path).toBe('/api/v1/sequences/{id}')
-    expect(post.request?.body).toBe(CreateSequence)
-    expect(post.request?.query).toBe(Pagination)
+    expect(post.request?.body).toEqual([CreateSequence])
+    expect(post.request?.query).toEqual([Pagination])
     expect(post.responses).toEqual({ 202: SequenceResult })
     expect(post.security).toEqual(['bearerAuth'])
 
@@ -250,7 +269,7 @@ describe('generateOpenApiDocument (end-to-end with Zod v4)', () => {
             server: {
               handlers: {
                 POST: {
-                  inputValidator: { body: CreateSequence },
+                  validator: { body: CreateSequence },
                   response: { 200: z.object({ id: z.string() }) },
                   handler: () => new Response(),
                 },
@@ -276,15 +295,100 @@ describe('generateOpenApiDocument (end-to-end with Zod v4)', () => {
     expect(body.type).toBe('object')
     expect(body.properties.name).toEqual({ type: 'string' })
     expect(body.required).toEqual(['name'])
-    expect(op.responses['200'].content['application/json'].schema.properties.id)
-      .toBeDefined()
+    expect(
+      op.responses['200'].content['application/json'].schema.properties.id,
+    ).toBeDefined()
   })
 })
 
 describe('toOpenApiPath', () => {
   it('converts TanStack $params to OpenAPI {params}', () => {
-    expect(toOpenApiPath('/api/v1/sequences/$id')).toBe('/api/v1/sequences/{id}')
+    expect(toOpenApiPath('/api/v1/sequences/$id')).toBe(
+      '/api/v1/sequences/{id}',
+    )
     expect(toOpenApiPath('/files/$')).toBe('/files/{_splat}')
     expect(toOpenApiPath('/static/path')).toBe('/static/path')
+  })
+})
+
+describe('defaultOperationId', () => {
+  it('derives an MCP-safe name from method and path', () => {
+    expect(defaultOperationId('get', '/api/v1/sequences/{id}')).toBe(
+      'getApiV1SequencesById',
+    )
+    expect(defaultOperationId('post', '/api/team-members')).toBe(
+      'postApiTeamMembers',
+    )
+    expect(defaultOperationId('get', '/files/{_splat}')).toBe('getFilesBySplat')
+  })
+})
+
+describe('middleware chain', () => {
+  const tenantHeader = z.object({ 'x-tenant': z.string() })
+  const pageQuery = z.object({ page: z.number().optional() })
+  const limitQuery = z.object({ limit: z.number(), page: z.number() })
+
+  const auth = {
+    options: {
+      validator: { headers: tenantHeader },
+      securityScheme: {
+        name: 'bearerAuth',
+        scheme: { type: 'http' as const, scheme: 'bearer' as const },
+      },
+    },
+  }
+  const paginated = {
+    options: { middleware: [auth], validator: { query: pageQuery } },
+  }
+
+  const tree = {
+    fullPath: '/',
+    children: [
+      {
+        fullPath: '/api',
+        options: { server: { middleware: [auth] } },
+        children: [
+          {
+            fullPath: '/api/items',
+            options: {
+              server: {
+                handlers: {
+                  GET: {
+                    description: 'List items',
+                    middleware: [paginated],
+                    validator: { query: limitQuery },
+                    handler: () => new Response(),
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    ],
+  }
+
+  it('inherits parent route middleware and intersects every validator', () => {
+    const [op] = collectFromRouteTree(tree).operations
+    expect(op!.security).toEqual(['bearerAuth'])
+    // `auth` appears twice in the chain but is deduped.
+    expect(op!.request).toEqual({
+      headers: [tenantHeader],
+      query: [pageQuery, limitQuery],
+    })
+    expect(op!.description).toBe('List items')
+    expect(op!.operationId).toBe('getApiItems')
+  })
+
+  it('emits allOf for a parameter declared by more than one schema', async () => {
+    const doc = await generateOpenApiDocument(tree, { info })
+    const params = doc.paths['/api/items'].get.parameters
+    const page = params.find((p: any) => p.name === 'page')
+    expect(page.required).toBe(true)
+    expect(page.schema.allOf).toHaveLength(2)
+    expect(params.find((p: any) => p.name === 'x-tenant')).toMatchObject({
+      in: 'header',
+      required: true,
+    })
   })
 })

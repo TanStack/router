@@ -1,15 +1,20 @@
 import type {
   AnyContext,
   AnyRoute,
+  AnyStandardSchemaValidator,
   Assign,
   Constrain,
   Expand,
+  IntersectAssign,
   ResolveAllParamsFromParent,
   UnionToIntersection,
 } from '@tanstack/router-core'
 import type {
   AnyRequestMiddleware,
   AssignAllServerRequestContext,
+  IntersectAllMiddleware,
+  RequestValidatorSlots,
+  ResolveRequestData,
 } from './createMiddleware'
 
 declare module '@tanstack/router-core' {
@@ -155,12 +160,13 @@ export interface RouteServerOptions<
     | Partial<
         Record<
           RouteMethod,
-          RouteMethodHandlerFn<
+          RouteMethodHandler<
             TRegister,
             TParentRoute,
             TFullPath,
             TParams,
             TServerMiddlewares,
+            any,
             any,
             any
           >
@@ -245,6 +251,14 @@ export type CreateHandlersFn<
   const TMethodOptionsMiddlewares,
   const TMethodHeadMiddlewares,
   TServerContext,
+  TMethodAllValidator = undefined,
+  TMethodGetValidator = undefined,
+  TMethodPostValidator = undefined,
+  TMethodPutValidator = undefined,
+  TMethodPatchValidator = undefined,
+  TMethodDeleteValidator = undefined,
+  TMethodOptionsValidator = undefined,
+  TMethodHeadValidator = undefined,
 >(
   opts: CreateMethodFnOpts<
     TRegister,
@@ -260,7 +274,15 @@ export type CreateHandlersFn<
     TMethodDeleteMiddlewares,
     TMethodOptionsMiddlewares,
     TMethodHeadMiddlewares,
-    TServerContext
+    TServerContext,
+    TMethodAllValidator,
+    TMethodGetValidator,
+    TMethodPostValidator,
+    TMethodPutValidator,
+    TMethodPatchValidator,
+    TMethodDeleteValidator,
+    TMethodOptionsValidator,
+    TMethodHeadValidator
   >,
 ) => CustomHandlerFunctionsRecord<
   TRegister,
@@ -287,6 +309,14 @@ export interface CreateMethodFnOpts<
   TMethodOptionsMiddlewares,
   TMethodHeadMiddlewares,
   TServerContext,
+  TMethodAllValidator = undefined,
+  TMethodGetValidator = undefined,
+  TMethodPostValidator = undefined,
+  TMethodPutValidator = undefined,
+  TMethodPatchValidator = undefined,
+  TMethodDeleteValidator = undefined,
+  TMethodOptionsValidator = undefined,
+  TMethodHeadValidator = undefined,
 > {
   ANY?: RouteMethodHandler<
     TRegister,
@@ -295,7 +325,8 @@ export interface CreateMethodFnOpts<
     TParams,
     TServerMiddlewares,
     TMethodAllMiddlewares,
-    TServerContext
+    TServerContext,
+    TMethodAllValidator
   >
   GET?: RouteMethodHandler<
     TRegister,
@@ -304,7 +335,8 @@ export interface CreateMethodFnOpts<
     TParams,
     TServerMiddlewares,
     TMethodGetMiddlewares,
-    TServerContext
+    TServerContext,
+    TMethodGetValidator
   >
   POST?: RouteMethodHandler<
     TRegister,
@@ -313,7 +345,8 @@ export interface CreateMethodFnOpts<
     TParams,
     TServerMiddlewares,
     TMethodPostMiddlewares,
-    TServerContext
+    TServerContext,
+    TMethodPostValidator
   >
   PUT?: RouteMethodHandler<
     TRegister,
@@ -322,7 +355,8 @@ export interface CreateMethodFnOpts<
     TParams,
     TServerMiddlewares,
     TMethodPutMiddlewares,
-    TServerContext
+    TServerContext,
+    TMethodPutValidator
   >
   PATCH?: RouteMethodHandler<
     TRegister,
@@ -331,7 +365,8 @@ export interface CreateMethodFnOpts<
     TParams,
     TServerMiddlewares,
     TMethodPatchMiddlewares,
-    TServerContext
+    TServerContext,
+    TMethodPatchValidator
   >
   DELETE?: RouteMethodHandler<
     TRegister,
@@ -340,7 +375,8 @@ export interface CreateMethodFnOpts<
     TParams,
     TServerMiddlewares,
     TMethodDeleteMiddlewares,
-    TServerContext
+    TServerContext,
+    TMethodDeleteValidator
   >
   OPTIONS?: RouteMethodHandler<
     TRegister,
@@ -349,7 +385,8 @@ export interface CreateMethodFnOpts<
     TParams,
     TServerMiddlewares,
     TMethodOptionsMiddlewares,
-    TServerContext
+    TServerContext,
+    TMethodOptionsValidator
   >
   HEAD?: RouteMethodHandler<
     TRegister,
@@ -358,7 +395,8 @@ export interface CreateMethodFnOpts<
     TParams,
     TServerMiddlewares,
     TMethodHeadMiddlewares,
-    TServerContext
+    TServerContext,
+    TMethodHeadValidator
   >
 }
 
@@ -370,6 +408,7 @@ export type RouteMethodHandler<
   TServerMiddlewares,
   TMethodMiddlewares,
   TServerContext,
+  TMethodValidator = undefined,
 > =
   | RouteMethodHandlerFn<
       TRegister,
@@ -387,7 +426,8 @@ export type RouteMethodHandler<
       TParams,
       TServerMiddlewares,
       TMethodMiddlewares,
-      TServerContext
+      TServerContext,
+      TMethodValidator
     >
 
 export interface RouteMethodBuilderOptions<
@@ -398,7 +438,23 @@ export interface RouteMethodBuilderOptions<
   TServerMiddlewares,
   TMethodMiddlewares,
   TResponse,
+  TMethodValidator = undefined,
 > {
+  /** Stable operation name. Used as the OpenAPI `operationId` and MCP tool name. */
+  operationId?: string
+  summary?: string
+  /** What the operation does. Surfaced to OpenAPI and to models as an MCP tool description. */
+  description?: string
+  tags?: Array<string>
+  deprecated?: boolean
+  middleware?: Constrain<
+    TMethodMiddlewares,
+    ReadonlyArray<AnyRequestMiddleware>
+  >
+  /** Slot-shaped validator. Runs after middleware, before `handler`; the result is `ctx.data`. */
+  validator?: Constrain<TMethodValidator, RequestValidatorSlots>
+  /** Per-status response schemas. Metadata only, never executed. */
+  response?: RouteResponseMap
   handler?: RouteMethodHandlerFn<
     TRegister,
     TParentRoute,
@@ -406,13 +462,23 @@ export interface RouteMethodBuilderOptions<
     TParams,
     TServerMiddlewares,
     TMethodMiddlewares,
-    TResponse
-  >
-  middleware?: Constrain<
-    TMethodMiddlewares,
-    ReadonlyArray<AnyRequestMiddleware>
+    TResponse,
+    TMethodValidator
   >
 }
+
+export type RouteResponseMap = Partial<
+  Record<
+    number | 'default',
+    | AnyStandardSchemaValidator
+    | {
+        description?: string
+        schema?: AnyStandardSchemaValidator
+        /** Defaults to `application/json`. */
+        mediaType?: string
+      }
+  >
+>
 
 export type ResolveAllServerContext<
   TRegister,
@@ -443,6 +509,7 @@ export type RouteMethodHandlerFn<
   TServerMiddlewares,
   TMethodMiddlewares,
   TServerContext,
+  TMethodValidator = undefined,
 > = (
   ctx: RouteMethodHandlerCtx<
     TRegister,
@@ -450,7 +517,8 @@ export type RouteMethodHandlerFn<
     TFullPath,
     TParams,
     TServerMiddlewares,
-    TMethodMiddlewares
+    TMethodMiddlewares,
+    TMethodValidator
   >,
 ) =>
   | RouteMethodResult<TServerContext>
@@ -473,7 +541,18 @@ export interface RouteMethodHandlerCtx<
   in out TParams,
   in out TServerMiddlewares,
   in out TMethodMiddlewares,
+  in out TMethodValidator = undefined,
 > {
+  /** Validated request slots from the middleware chain and method `validator`. */
+  data: Expand<
+    IntersectAssign<
+      IntersectAllMiddleware<
+        MergeMethodMiddlewares<TServerMiddlewares, TMethodMiddlewares>,
+        'allData'
+      >,
+      ResolveRequestData<TMethodValidator>
+    >
+  >
   context: Expand<
     AssignAllMethodContext<
       TRegister,
