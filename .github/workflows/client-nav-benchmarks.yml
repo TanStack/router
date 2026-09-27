@@ -25,7 +25,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: client-nav-benchmarks-${{ github.ref }}
+  # An empty Nx rerun must not replace the preceding run in the pending queue.
+  group: client-nav-benchmarks-${{ github.ref }}${{ github.actor == 'nx-cloud[bot]' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: false
   queue: single
 
@@ -39,8 +40,54 @@ env:
   NX_NO_CLOUD: true
 
 jobs:
+  check_nx_rerun:
+    name: Check Nx Cloud rerun
+    # Ordinary updates skip this job without acquiring a runner.
+    if: >-
+      ${{ github.event_name == 'pull_request' &&
+          github.event.action == 'synchronize' &&
+          github.actor == 'nx-cloud[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Check commit message and tree
+        id: check
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            core.setOutput('skip', 'false')
+            try {
+              const { before, pull_request } = context.payload
+              if (!before) {
+                return
+              }
+              const { data: head } = await github.rest.repos.getCommit({
+                ...context.repo,
+                ref: pull_request.head.sha,
+              })
+              if (!head.commit.message.includes('[Self-Healing CI Rerun]')) {
+                return
+              }
+              const { data: previous } = await github.rest.repos.getCommit({
+                ...context.repo,
+                ref: before,
+              })
+              // Compare with the previous PR head, not just the parent: a push
+              // could contain real changes followed by an empty rerun commit.
+              core.setOutput('skip', head.commit.tree.sha === previous.commit.tree.sha)
+            } catch {
+              core.warning('Could not verify an empty Nx Cloud rerun; running benchmarks.')
+            }
+
   benchmarks:
     name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
+    needs: check_nx_rerun
+    # A skipped or failed check must still allow benchmarks; respect cancellation.
+    if: ${{ !cancelled() && needs.check_nx_rerun.outputs.skip != 'true' }}
     strategy:
       fail-fast: false
       matrix:
