@@ -27,6 +27,7 @@ import {
   decodeViteDevServerModuleSpecifier,
 } from './module-specifier'
 import { mergeHotUpdateModules } from './hot-update'
+import { getDevServerFnValidatorModule } from './dev-server-fn-validator-module'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
@@ -184,19 +185,6 @@ function invalidateModuleNodes(
   for (const mod of modules) {
     environment.moduleGraph.invalidateModule(mod, seen)
   }
-}
-
-function getDevServerFnValidatorModule(): string {
-  return `
-export async function getServerFnById(id, _access) {
-  const validateIdImport = ${JSON.stringify(validateServerFnIdVirtualModule)} + '?id=' + id
-  await import(/* @vite-ignore */ '/@id/__x00__' + validateIdImport)
-  const decoded = Buffer.from(id, 'base64url').toString('utf8')
-  const devServerFn = JSON.parse(decoded)
-  const mod = await import(/* @vite-ignore */ devServerFn.file)
-  return mod[devServerFn.export]
-}
-`
 }
 
 function parseIdQuery(id: string): {
@@ -635,7 +623,7 @@ export function startCompilerPlugin(
         }
 
         if (this.environment.mode !== 'build') {
-          return getDevServerFnValidatorModule()
+          return getDevServerFnValidatorModule(validateServerFnIdVirtualModule)
         }
 
         // When SSR is the provider, server-only-referenced functions aren't in the manifest,

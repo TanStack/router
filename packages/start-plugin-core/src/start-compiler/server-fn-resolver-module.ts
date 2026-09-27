@@ -42,7 +42,12 @@ export function generateServerFnResolverModule(
   const clientReferencedCheck = opts.includeClientReferencedCheck
     ? `
   if (access.origin === 'client' && !serverFnInfo.isClientReferenced) {
-    throw new Error('Server function not accessible from client: ' + id)
+    // Flagged like a missing id so the request handler answers 404: otherwise a
+    // server-only id answers 500 while an unknown id answers 404, letting a
+    // client enumerate which server-only ids exist.
+    const error = new Error('Server function not accessible from client: ' + id)
+    error[${JSON.stringify(SERVER_FN_NOT_FOUND)}] = true
+    throw error
   }
 `
     : ''

@@ -46,6 +46,16 @@ describe('generateServerFnResolverModule', () => {
       await expect(
         getServerFnById('fn_private', { origin: 'client' }),
       ).rejects.toThrow('Server function not accessible from client')
+      // A server-only id requested from the client must answer 404 like an
+      // unknown id, otherwise the 500-vs-404 split lets a caller enumerate
+      // which server-only ids exist.
+      const clientAccessError = await getServerFnById('fn_private', {
+        origin: 'client',
+      }).then(
+        () => undefined,
+        (thrown: unknown) => thrown,
+      )
+      expect(isServerFnNotFound(clientAccessError)).toBe(true)
       await expect(
         getServerFnById('fn_private', { origin: 'server' }),
       ).resolves.toBe(action)
