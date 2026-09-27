@@ -28,4 +28,20 @@ describe('validateAndNormalizePrerenderPages', () => {
     )
     expect(pages.map((page) => page.path)).toEqual(['/', '/docs?v=2'])
   })
+
+  it('keeps one entry, the first, for pages that normalize to the same path', () => {
+    const pages = validateAndNormalizePrerenderPages(
+      [
+        { path: '/', sitemap: { priority: 0.9 } },
+        { path: '/#mission', sitemap: { priority: 0.1 } },
+        { path: '/docs#a' },
+        { path: '/docs#b' },
+      ],
+      routerBaseUrl,
+    )
+    expect(pages).toEqual([
+      { path: '/', sitemap: { priority: 0.9 } },
+      { path: '/docs' },
+    ])
+  })
 })

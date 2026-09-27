@@ -348,7 +348,7 @@ export function validateAndNormalizePrerenderPages(
   pages: Array<Page>,
   routerBaseUrl: URL,
 ): Array<Page> {
-  return pages.map((page) => {
+  const normalized = pages.map((page) => {
     let url: URL
     try {
       url = new URL(page.path, routerBaseUrl)
@@ -384,5 +384,14 @@ export function validateAndNormalizePrerenderPages(
       ...page,
       path: normalizedPath,
     }
+  })
+  // Two declarations that normalize to one path (`/` and `/#mission`) are
+  // one page; the first keeps its options. The crawl queue would only skip
+  // the second fetch, while the sitemap lists every entry.
+  const seen = new Set<string>()
+  return normalized.filter((page) => {
+    if (seen.has(page.path)) return false
+    seen.add(page.path)
+    return true
   })
 }
