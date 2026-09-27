@@ -25,7 +25,6 @@ import type {
   NonNullableUpdater,
   Updater,
 } from './utils'
-import type { ParsedLocation } from './location'
 
 export type IsRequiredParams<TParams> =
   Record<never, never> extends TParams ? never : true
@@ -370,7 +369,6 @@ export interface MaskOptions<
   in out TMaskFrom extends string,
   in out TMaskTo extends string,
 > {
-  _fromLocation?: ParsedLocation
   mask?: ToMaskOptions<TRouter, TMaskFrom, TMaskTo>
 }
 

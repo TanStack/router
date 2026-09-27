@@ -376,11 +376,7 @@ async function contextualize(
     const common = {
       params: match.params,
       location,
-      navigate: (opts: any) =>
-        router.navigate({
-          ...opts,
-          _fromLocation: location,
-        }),
+      navigate: (opts: any) => router.navigate(opts, location),
       buildLocation: router.buildLocation,
       cause: preload ? ('preload' as const) : match.cause,
       abortController: options[0 /* controller */],
@@ -579,11 +575,7 @@ function getLoaderContext(
   return {
     params: match.params,
     location,
-    navigate: (opts: any) =>
-      router.navigate({
-        ...opts,
-        _fromLocation: location,
-      }),
+    navigate: (opts: any) => router.navigate(opts, location),
     cause: preload ? ('preload' as const) : match.cause,
     abortController: controller,
     preload,
@@ -1084,11 +1076,13 @@ function materializeRedirect(
       ) {
         return outcome
       }
-      const location = router.buildLocation({
-        ...redirectOptions,
-        _fromLocation: lane[0 /* location */],
-        _includeValidateSearch: true,
-      })
+      const location = router.buildLocation(
+        {
+          ...redirectOptions,
+          _includeValidateSearch: true,
+        },
+        lane[0 /* location */],
+      )
       const publicLocation = location.maskedLocation ?? location
       if (publicLocation.external) {
         // Loader outcomes can be shared by lanes with different search/params.
@@ -2412,11 +2406,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
             params: match.params,
             context: parentContext,
             location,
-            navigate: (opts: any) =>
-              router.navigate({
-                ...opts,
-                _fromLocation: location,
-              }),
+            navigate: (opts: any) => router.navigate(opts, location),
             buildLocation: router.buildLocation,
             cause: match.cause,
             abortController: controller,

@@ -278,7 +278,7 @@ The integration enables client redirect handling by default. The client branch i
 
 The client branch installs redirect handlers on the QueryClient caches. It preserves all other cache configuration.
 
-Redirect handlers operate after Query Core completes its retry process. They store the Router location at that time in `error.options._fromLocation`.
+Redirect handlers operate after Query Core completes its retry process. They capture the Router location at that time and pass it as the separate source argument to `router.resolveRedirect` and `router.navigate`.
 
 Then the integration resolves the redirect. Then it calls `router.navigate`.
 

@@ -27,6 +27,7 @@ import {
   redirect,
   retainSearchParams,
   stripSearchParams,
+  useLinkProps,
   useLoaderData,
   useMatchRoute,
   useParams,
@@ -70,6 +71,37 @@ afterEach(() => {
 const WAIT_TIME = 300
 
 describe('Link', () => {
+  test('useLinkProps follows changes to a reused reactive options object', async () => {
+    const options = Vue.reactive({ to: '/a', hash: 'first' })
+    const HookLink = Vue.defineComponent({
+      setup() {
+        const props = useLinkProps(options)
+        return () => Vue.h('a', { ...Vue.unref(props) }, 'Reactive destination')
+      },
+    })
+    const rootRoute = createRootRoute({ component: HookLink })
+    const aRoute = createRoute({ getParentRoute: () => rootRoute, path: '/a' })
+    const bRoute = createRoute({ getParentRoute: () => rootRoute, path: '/b' })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([aRoute, bRoute]),
+      history,
+    })
+    render(<RouterProvider router={router} />)
+
+    const link = await screen.findByRole('link', {
+      name: 'Reactive destination',
+    })
+    expect(link).toHaveAttribute('href', '/a#first')
+
+    options.to = '/b'
+    await waitFor(() => expect(link).toHaveAttribute('href', '/b#first'))
+    options.hash = 'second'
+    await waitFor(() => expect(link).toHaveAttribute('href', '/b#second'))
+
+    await fireEvent.click(link)
+    await waitFor(() => expect(router.state.location.href).toBe('/b#second'))
+  })
+
   test('keeps protocol-relative Link paths on the router origin', async () => {
     const inputs = [
       '//evil.example',

@@ -193,8 +193,9 @@ function useLinkPropsImpl(
     // Rebuild when inherited search/hash or the current route context changes.
 
     const options = getOptions()
-    const opts = { _fromLocation: currentLocation.value, ...options }
-    return router.buildLocation(opts)
+    // useLinkProps can receive a stable reactive proxy. Snapshot it to track
+    // property changes and give each recomputation a fresh buildLocation cache key.
+    return router.buildLocation({ ...options }, currentLocation.value)
   })
 
   const href = Vue.computed(() => {

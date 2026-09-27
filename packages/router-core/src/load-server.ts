@@ -131,8 +131,7 @@ function materializeRedirect(
   }
   signal?.throwIfAborted()
   try {
-    outcome[1].options._fromLocation = lane.location
-    router.resolveRedirect(outcome[1])
+    router.resolveRedirect(outcome[1], lane.location)
     signal?.throwIfAborted()
     return outcome
   } catch (cause) {
@@ -154,11 +153,7 @@ function maybe<TValue>(
 }
 
 function navigateFrom(router: AnyRouter, location: ParsedLocation) {
-  return (options: any) =>
-    router.navigate({
-      ...options,
-      _fromLocation: location,
-    })
+  return (options: any) => router.navigate(options, location)
 }
 
 function waitFor<T>(value: Promise<T>, signal?: AbortSignal): Promise<T> {
@@ -938,8 +933,7 @@ export async function loadServerRoute(
     if (!isRedirect(cause)) {
       throw cause
     }
-    cause.options._fromLocation = next
-    result = { type: 'redirect', redirect: router.resolveRedirect(cause) }
+    result = { type: 'redirect', redirect: router.resolveRedirect(cause, next) }
   }
 
   router._serverResult = result

@@ -720,11 +720,13 @@ describe('buildLocation - search params', () => {
       _includeValidateSearch: true,
     } as any)
 
-    const location = router.buildLocation({
-      to: '/',
-      _fromLocation: currentLocation,
-      _includeValidateSearch: true,
-    } as any)
+    const location = router.buildLocation(
+      {
+        to: '/',
+        _includeValidateSearch: true,
+      } as any,
+      currentLocation as any,
+    )
 
     expect(location.search).toEqual({
       filter: ['default'],
@@ -1287,13 +1289,15 @@ describe('buildLocation - state', () => {
     await router.load()
 
     const emptyState = {}
-    const location = router.buildLocation({
-      to: '/posts',
-      _fromLocation: {
+    const location = router.buildLocation(
+      {
+        to: '/posts',
+      } as any,
+      {
         ...router.state.location,
         state: emptyState,
-      },
-    } as any)
+      } as any,
+    )
 
     expect(location.state).toEqual({})
     expect(location.state).not.toBe(emptyState)
@@ -1876,11 +1880,13 @@ describe('buildLocation - params edge cases', () => {
       })
       try {
         for (let repeat = 0; repeat < 2; repeat++) {
-          const location = router.buildLocation({
-            to: '/items/$id',
-            _fromLocation: { ...router.latestLocation },
-            params: update,
-          })
+          const location = router.buildLocation(
+            {
+              to: '/items/$id',
+              params: update,
+            },
+            { ...router.latestLocation },
+          )
           expect(location.pathname).toBe('/items/target')
           expect(router.getMatchedRoutes('/items/original')[1]).toEqual({
             id: 'original',
@@ -2729,18 +2735,20 @@ describe('buildLocation - _fromLocation override', () => {
     await router.load()
 
     // Override the current location with a different search
-    const location = router.buildLocation({
-      to: '/posts',
-      search: true, // Preserve search from _fromLocation
-      _fromLocation: {
+    const location = router.buildLocation(
+      {
+        to: '/posts',
+        search: true,
+      } as any,
+      {
         pathname: '/posts',
         search: { page: 5 },
         searchStr: '?page=5',
         hash: '',
         href: '/posts?page=5',
         state: {},
-      },
-    } as any)
+      } as any,
+    )
 
     // Should use search from _fromLocation, not current location
     expect(location.search).toEqual({ page: 5 })
@@ -2762,18 +2770,20 @@ describe('buildLocation - _fromLocation override', () => {
 
     await router.load()
 
-    const location = router.buildLocation({
-      to: '/posts',
-      hash: true, // Preserve hash from _fromLocation
-      _fromLocation: {
+    const location = router.buildLocation(
+      {
+        to: '/posts',
+        hash: true,
+      } as any,
+      {
         pathname: '/posts',
         search: {},
         searchStr: '',
         hash: 'overridden',
         href: '/posts#overridden',
         state: {},
-      },
-    } as any)
+      } as any,
+    )
 
     expect(location.hash).toBe('overridden')
   })
@@ -2797,18 +2807,20 @@ describe('buildLocation - _fromLocation override', () => {
 
     await router.load()
 
-    const location = router.buildLocation({
-      to: '/posts',
-      state: true, // Preserve state from _fromLocation
-      _fromLocation: {
+    const location = router.buildLocation(
+      {
+        to: '/posts',
+        state: true,
+      } as any,
+      {
         pathname: '/posts',
         search: {},
         searchStr: '',
         hash: '',
         href: '/posts',
         state: { overridden: true },
-      },
-    } as any)
+      } as any,
+    )
 
     expect(location.state).toMatchObject({ overridden: true })
   })
@@ -2840,18 +2852,20 @@ describe('buildLocation - _fromLocation override', () => {
     await router.load()
 
     // When _fromLocation is provided, it affects the context for resolution
-    const location = router.buildLocation({
-      to: './settings',
-      params: { userId: '456' },
-      _fromLocation: {
+    const location = router.buildLocation(
+      {
+        to: './settings',
+        params: { userId: '456' },
+      } as any,
+      {
         pathname: '/users/456',
         search: {},
         searchStr: '',
         hash: '',
         href: '/users/456',
         state: {},
-      },
-    } as any)
+      } as any,
+    )
 
     expect(location.pathname).toBe('/users/456/settings')
   })

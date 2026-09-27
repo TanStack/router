@@ -37,11 +37,13 @@ describe.each([false, true])(
       function run() {
         checksum = 0
         for (let index = 0; index < iterations; index++) {
-          checksum += router.buildLocation({
-            to: '/target',
-            params: true,
-            _fromLocation: { ...location },
-          }).pathname.length
+          checksum += router.buildLocation(
+            {
+              to: '/target',
+              params: true,
+            },
+            { ...location },
+          ).pathname.length
         }
       }
       run()
