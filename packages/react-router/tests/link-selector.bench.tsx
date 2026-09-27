@@ -10,6 +10,7 @@ import {
   createRouter,
 } from '../src'
 import type { ParsedLocation } from '../src'
+import type * as ReactStore from '@tanstack/react-store'
 
 type Selection = [string | undefined, boolean?]
 type Selector = (location: ParsedLocation) => Selection
@@ -20,8 +21,7 @@ const captured = vi.hoisted(() => ({
 // Capture the actual hook selector without exporting production internals or
 // timing React renders. Locations below come from the public buildLocation API.
 vi.mock('@tanstack/react-store', async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import('@tanstack/react-store')>()
+  const original = await importOriginal<typeof ReactStore>()
   return {
     ...original,
     useSelector: (...args: Parameters<typeof original.useSelector>) => {
