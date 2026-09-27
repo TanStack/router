@@ -1,5 +1,4 @@
 import { isStandardSchema } from './standard-schema'
-import type { StandardSchemaV1 } from './standard-schema'
 import type { JSONSchema, ToJSONSchema } from './types'
 
 /**
@@ -47,18 +46,4 @@ export const defaultToJSONSchema: ToJSONSchema = async (schema, io) => {
     `[start-openapi] No built-in JSON Schema converter for vendor "${vendor}". ` +
       'Pass `options.toJSONSchema` to support this validator library.',
   )
-}
-
-/**
- * A schema slot may be a Standard Schema *or* an already-resolved
- * `ResponseObject.schema`. This narrows + converts, returning `undefined` for an
- * absent slot.
- */
-export async function convertSlot(
-  schema: StandardSchemaV1 | undefined,
-  io: 'input' | 'output',
-  toJSONSchema: ToJSONSchema,
-): Promise<JSONSchema | undefined> {
-  if (!schema) return undefined
-  return toJSONSchema(schema, io)
 }
