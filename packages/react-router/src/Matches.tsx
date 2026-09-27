@@ -11,7 +11,6 @@ import { useLayoutEffect } from './utils'
 import { Transitioner, settleOwner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match, renderPending } from './Match'
-import { SafeFragment } from './SafeFragment'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -51,10 +50,6 @@ export function Matches() {
 
   const pendingElement = renderPending(router, rootRoute)
 
-  // Do not render a root Suspense during SSR or hydrating from SSR
-  const ResolvedSuspense =
-    (isServer ?? router.isServer) || router.ssr ? SafeFragment : React.Suspense
-
   const inner = (
     <>
       {!(isServer ?? router.isServer) && (
@@ -67,9 +62,13 @@ export function Matches() {
           t={React.useState<AnyRouter>()[1]}
         />
       )}
-      <ResolvedSuspense fallback={pendingElement}>
+      {(isServer ?? router.isServer) || router.ssr ? (
         <MatchesInner />
-      </ResolvedSuspense>
+      ) : (
+        <React.Suspense fallback={pendingElement}>
+          <MatchesInner />
+        </React.Suspense>
+      )}
     </>
   )
 
