@@ -1,11 +1,11 @@
 ---
-'@tanstack/react-start': major
-'@tanstack/solid-start': major
-'@tanstack/vue-start': major
-'@tanstack/start-server-core': major
-'@tanstack/react-start-server': major
-'@tanstack/solid-start-server': major
-'@tanstack/vue-start-server': major
+'@tanstack/react-start': patch
+'@tanstack/solid-start': patch
+'@tanstack/vue-start': patch
+'@tanstack/start-server-core': patch
+'@tanstack/react-start-server': patch
+'@tanstack/solid-start-server': patch
+'@tanstack/vue-start-server': patch
 ---
 
 Remove the built-in `useSession` API. Applications choose a session library, such as iron-session, and save or destroy sessions explicitly before returning or redirecting. Connect a cookie adapter through `getCookie` and `setCookie`, or append serialized cookies with `appendResponseHeader('set-cookie', cookie)`. Existing session cookies require a deliberate migration or signing in again with a new cookie name.
