@@ -1,5 +1,78 @@
 # Compiler migration benchmarks
 
+## Immutable cleanup metadata
+
+`cleanup.mjs` isolates reusable binding cleanup using independently edited outputs
+of the same analyzed module. It uses `createBindingCleanup` on the candidate and
+the original `removeUnusedBindings` API on older baselines. Build both checkouts through Nx, then alternate fresh
+processes against identical inputs:
+
+```sh
+node --expose-gc benchmarks/compiler/cleanup.mjs --workspace /path/to/checkout --case route --outputs 1
+node --expose-gc benchmarks/compiler/cleanup.mjs --workspace /path/to/checkout --case route --outputs 5
+node --expose-gc benchmarks/compiler/cleanup.mjs --workspace /path/to/checkout --case route --outputs 1 --warm
+node --expose-gc benchmarks/compiler/cleanup.mjs --workspace /path/to/checkout --case nested --retention
+```
+
+Cases cover a small route-shaped factory, 40 factories with nested declarations,
+200 exported factories (`wide`), and a binding-free side effect (`empty`). Each
+timed job creates a fresh analysis outside the timer. `--outputs 1` measures first
+cleanup; `--outputs 5` includes first cleanup and sibling reuse; `--warm` primes
+metadata with a separate output outside the timer. Analysis, cloning, editing,
+printing, and correctness checks are excluded. Timings are milliseconds per
+complete N-output module; p99 is the percentile of batch averages, not individual
+output latency. Compare recorded code/map digests across checkouts.
+
+`--retention` is a separate untimed diagnostic: retain 128 analyses, populate
+cleanup metadata, release both cleanup owners and analyses, then collect after an event-loop turn. It
+records heap/RSS at each stage and remaining weak references. Normal timing-run
+heap deltas measure churn, not the cost of keeping source metadata alive. Use
+`measure.mjs --modes yuku-splitter` and `route-heavy.mjs` for complete compiler
+and Vite-build costs. See [the evaluation](RESULT-optimization-cleanup-metadata.md)
+for results and limitations.
+
+`cleanup-hydrate.mjs` measures a complete client compile followed by one load of
+each distinct Hydrate virtual child. Every pass uses a fresh compiler/plugin, so
+it does not time virtual-output cache hits. Use `--boundaries 1`, `2`, `10`, and
+`25` with `--workspace` and `--iterations`; run with `node --expose-gc`. Code/map
+digests and per-child dependency isolation are checked outside the timed passes.
+After timing, a separate diagnostic retains 64 source entries with all children
+loaded and measures heap before/after public invalidation. Compare alternating
+fresh baseline/candidate processes. The existing `server-fn-ast.mjs` cases cover
+one-off cleanup in client, SSR-caller, and provider compilation separately.
+
+`cleanup-build.mjs` measures complete React Router Vite production builds while
+varying route count, source declaration density, and split-group count:
+
+```sh
+node benchmarks/compiler/cleanup-build.mjs --baseline /path/to/baseline --routes 64 --helpers 12 --groups 4 --repetitions 11 --output /tmp/cleanup-build.json
+node benchmarks/compiler/cleanup-build.mjs --baseline /path/to/baseline --routes 64 --helpers 12 --groups 4 --repetitions 1 --diagnostic --output /tmp/cleanup-build-diagnostic.json
+```
+
+Every route has loader, component, pending, and error pipelines with independently
+used formatting helpers and nested bindings. `--helpers` is the number of helpers
+per pipeline; `--groups 1` combines the four targets and `--groups 4` splits them
+separately. These settings preserve source code between grouping comparisons.
+Shared state is used by both the reference and component outputs. The generated
+route tree comes from the normal Router plugin, without manual edits. Production
+cache size and request order are unchanged.
+
+Timing includes route generation, transforms, bundling, minification, source maps,
+and disk writes, excluding fixture creation, plugin imports, output validation,
+and hashing. Each sample is a fresh process, alternating baseline/candidate order.
+The harness checks expected chunks, live helper markers, identical complete
+JavaScript output, and stable source/compiler hashes. It records total build time,
+time through module graph completion, paired deltas, process variation, and peak
+RSS. It does not include TypeScript checking or Nx/package-build orchestration.
+
+Run `--diagnostic` separately: its benchmark-local loader counts analysis requests,
+new analyses, metadata constructions and cleanups, and times cleanup work. It
+also measures live heap around the existing build-end cache clear and checks
+analysis weak references after a later event-loop turn. Instrumentation and GC
+perturb timings; do not use these runs for whole-build speed claims. The fixture
+is a controlled generated workload, especially at high helper counts, rather
+than a representative sample of applications. See [the whole-build follow-up](cleanup-build.md).
+
 ## Direct server-function AST construction
 
 See the [evaluation report](direct-ast.md) for results,
