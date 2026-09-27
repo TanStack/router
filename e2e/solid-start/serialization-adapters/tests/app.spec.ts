@@ -163,6 +163,8 @@ test.describe('SSR serialization adapters', () => {
       )
       await second.release()
       await checkData(page, 'stream-second')
+      await page.waitForLoadState('load')
+      await expect.poll(() => page.evaluate(() => !!window.$_TSR)).toBe(false)
     } finally {
       await first.close()
       await second.close()

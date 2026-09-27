@@ -67,6 +67,7 @@ export function makeData() {
     },
     car: {
       singleInstance: makeCar({
+        // Preserve escaped HTML and text resembling Solid's native swap tasks.
         make: 'Toyota </script> $df("not-a-fragment") こんにちは',
         model: 'Camry',
         year: 2020,
