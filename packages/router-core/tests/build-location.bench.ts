@@ -39,6 +39,7 @@ function createBenchRouter(withMiddleware: boolean) {
     ]),
     history,
     scrollRestoration: false,
+    isServer: false,
   })
   history.destroy()
   return router
@@ -72,7 +73,11 @@ function defineCase(
   // Correctness before timing: every link resolves to the expected href.
   dests.forEach((dest, index) => {
     dest._fromLocation = router.latestLocation
-    expect(router.buildLocation(dest as any).href).toBe(expectedHref(index))
+    const location = router.buildLocation(dest as any)
+    expect(location.href).toBe(expectedHref(index))
+    if (name === 'absolute to + literal params (static cache hit)') {
+      expect(router.buildLocation(dest as any)).toBe(location)
+    }
   })
   let checksum = 0
   bench(

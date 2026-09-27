@@ -1892,6 +1892,12 @@ export class RouterCore<
       }
     }
 
+    // Keep the cache-hit path outside the closure-heavy builder so hits do not
+    // allocate the builder's captured function context.
+    return this.buildLocationUncached(opts)
+  }
+
+  private buildLocationUncached: BuildLocationFn = (opts) => {
     // Set by `current()` whenever a build reads the current location. A
     // location built without it depends only on `opts` and the route tree.
     let usedCurrent = false

@@ -2856,3 +2856,39 @@ describe('buildLocation - _fromLocation override', () => {
     expect(location.pathname).toBe('/users/456/settings')
   })
 })
+
+describe('buildLocation bound cache entry', () => {
+  test.each([false, true])(
+    'keeps detached calls and invalidation working (server=%s)',
+    (isServer) => {
+      const root = new BaseRootRoute({})
+      const route = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/posts/$id',
+      })
+      const router = createTestRouter({
+        routeTree: root.addChildren([route]),
+        history: createMemoryHistory({ initialEntries: ['/posts/one'] }),
+        isServer,
+      })
+      const build = router.buildLocation
+      const options = {
+        to: '/posts/$id',
+        params: { id: 'two' },
+        _fromLocation: router.latestLocation,
+      }
+      const first = build(options)
+      expect(first.href).toBe('/posts/two')
+      expect(build(options)).toEqual(first)
+      if (!isServer) {
+        expect(build(options)).toBe(first)
+      }
+      router.update({ basepath: '/app' })
+      const updated = build(options)
+      expect(updated.href).toBe('/app/posts/two')
+      expect(updated).not.toBe(first)
+      expect(router.buildLocation).toBe(build)
+      router.history.destroy()
+    },
+  )
+})
