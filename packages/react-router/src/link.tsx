@@ -290,8 +290,11 @@ export function useLinkProps<
   // the subscription instead re-renders every link on every navigation, because
   // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectLinkState = React.useCallback(
-    (location: ParsedLocation): LinkState => {
+  const selectLinkState = React.useMemo(() => {
+    let inactive: LinkState | undefined
+    let active: LinkState
+
+    return (location: ParsedLocation): LinkState => {
       const directExternalLink = resolveExternalLink(
         to,
         router.protocolAllowlist,
@@ -305,26 +308,28 @@ export function useLinkProps<
       }
       const next = router.buildLocation(dest)
 
-      // Use publicHref - it contains the correct href for display
-      // When a rewrite changes the origin, publicHref is the full URL
-      // Otherwise it's the origin-stripped path
-      // This avoids constructing URL objects in the hot path
-      const hrefOption = getHrefOption(next, router, disabled)
-      return [
-        hrefOption,
-        !disabled && (!hrefOption || getUrlScheme(hrefOption))
-          ? undefined
-          : resolveIsActive(
-              location,
-              next,
-              stableActiveOptions,
-              router.basepath,
-              isHydrated,
-            ),
-      ]
-    },
-    [stableActiveOptions, disabled, isHydrated, _options, dest, router, to],
-  )
+      // History formatters can depend on the current browser URL (hash history).
+      // Reuse classification and immutable results until the formatted href changes.
+      const href = getHrefOption(next, router, disabled)
+      if (!inactive || inactive[0] !== href) {
+        inactive = [
+          href,
+          !disabled && (!href || getUrlScheme(href)) ? undefined : false,
+        ]
+        active = [href, true]
+      }
+      return inactive[1] !== undefined &&
+        resolveIsActive(
+          location,
+          next,
+          stableActiveOptions,
+          router.basepath,
+          isHydrated,
+        )
+        ? active
+        : inactive
+    }
+  }, [stableActiveOptions, disabled, isHydrated, _options, dest, router, to])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = useSelector(
