@@ -43,6 +43,7 @@ export async function generateOpenApiDocument(
   const manifest = collectFromRouteTree(root, {
     include: options.include,
     methods: options.methods,
+    securitySchemes: options.securitySchemes,
   })
   return buildOpenApiDocument(manifest, options)
 }
