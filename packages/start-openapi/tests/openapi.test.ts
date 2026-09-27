@@ -186,14 +186,16 @@ describe('collectFromRouteTree (collector)', () => {
     const Pagination = z.object({ page: z.number().optional() })
     const SequenceResult = z.object({ id: z.string() })
 
-    const apiKeyAuth = {
-      options: {
-        securityScheme: {
+    const apiKeyAuth = { options: {} }
+    const securitySchemes = new Map([
+      [
+        apiKeyAuth,
+        {
           name: 'bearerAuth',
           scheme: { type: 'http' as const, scheme: 'bearer' as const },
         },
-      },
-    }
+      ],
+    ])
 
     const tree = {
       fullPath: '/',
@@ -229,7 +231,10 @@ describe('collectFromRouteTree (collector)', () => {
       ],
     }
 
-    const manifest = collectFromRouteTree(tree, { include: ['/api'] })
+    const manifest = collectFromRouteTree(tree, {
+      include: ['/api'],
+      securitySchemes,
+    })
 
     expect(manifest.operations).toHaveLength(2) // POST + GET on the api route
     const post = manifest.operations.find((o) => o.method === 'post')!
@@ -328,15 +333,16 @@ describe('middleware chain', () => {
   const pageQuery = z.object({ page: z.number().optional() })
   const limitQuery = z.object({ limit: z.number(), page: z.number() })
 
-  const auth = {
-    options: {
-      validator: { headers: tenantHeader },
-      securityScheme: {
+  const auth = { options: { validator: { headers: tenantHeader } } }
+  const securitySchemes = new Map([
+    [
+      auth,
+      {
         name: 'bearerAuth',
         scheme: { type: 'http' as const, scheme: 'bearer' as const },
       },
-    },
-  }
+    ],
+  ])
   const paginated = {
     options: { middleware: [auth], validator: { query: pageQuery } },
   }
@@ -369,7 +375,7 @@ describe('middleware chain', () => {
   }
 
   it('inherits parent route middleware and intersects every validator', () => {
-    const [op] = collectFromRouteTree(tree).operations
+    const [op] = collectFromRouteTree(tree, { securitySchemes }).operations
     expect(op!.security).toEqual(['bearerAuth'])
     // `auth` appears twice in the chain but is deduped.
     expect(op!.request).toEqual({

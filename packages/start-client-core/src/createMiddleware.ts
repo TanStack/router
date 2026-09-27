@@ -59,12 +59,6 @@ export const createMiddleware: CreateMiddlewareFn<{}> = (options, __opts) => {
     validator: setValidator,
     // TODO remove upon stable
     inputValidator: setValidator,
-    securityScheme: (securityScheme: any) => {
-      return createMiddleware(
-        {},
-        Object.assign(resolvedOptions, { securityScheme }) as any,
-      )
-    },
     client: (client: any) => {
       return createMiddleware({}, Object.assign(resolvedOptions, { client }))
     },
@@ -757,36 +751,6 @@ export type ResolveRequestData<TValidator> = unknown extends TValidator
       }
     : undefined
 
-/** Mirrors the OpenAPI 3.1 Security Scheme Object. */
-export type SecurityScheme =
-  | {
-      type: 'http'
-      scheme: 'bearer' | 'basic' | (string & {})
-      bearerFormat?: string
-      description?: string
-    }
-  | {
-      type: 'apiKey'
-      name: string
-      in: 'header' | 'query' | 'cookie'
-      description?: string
-    }
-  | {
-      type: 'oauth2'
-      flows: Record<string, unknown>
-      description?: string
-    }
-  | {
-      type: 'openIdConnect'
-      openIdConnectUrl: string
-      description?: string
-    }
-
-export interface NamedSecurityScheme {
-  name: string
-  scheme: SecurityScheme
-}
-
 export interface RequestMiddlewareWithTypes<
   TRegister,
   TMiddlewares,
@@ -815,7 +779,6 @@ export interface RequestMiddlewareOptions<
 > {
   middleware?: TMiddlewares
   validator?: TValidator
-  securityScheme?: NamedSecurityScheme
   server?: RequestServerFn<TRegister, TMiddlewares, TServerContext>
 }
 export interface RequestMiddlewareTypes<
@@ -855,9 +818,6 @@ export interface RequestMiddlewareAfterMiddleware<
   validator: <TNewValidator extends RequestValidatorSlots>(
     validator: TNewValidator,
   ) => RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares, TNewValidator>
-  securityScheme: (
-    securityScheme: NamedSecurityScheme,
-  ) => RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares, TValidator>
 }
 
 export interface RequestMiddlewareServer<

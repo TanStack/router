@@ -830,15 +830,11 @@ test('createMiddleware with type request can return sync Response', () => {
   })
 })
 
-test('request middleware slot validators and security scheme', () => {
+test('request middleware slot validators', () => {
   const schema = <TOutput>() =>
     ({}) as StandardSchemaValidator<unknown, TOutput>
 
   const auth = createMiddleware({ type: 'request' })
-    .securityScheme({
-      name: 'bearerAuth',
-      scheme: { type: 'http', scheme: 'bearer' },
-    })
     .validator({ headers: schema<{ authorization: string }>() })
     .server(({ next }) => next())
 
