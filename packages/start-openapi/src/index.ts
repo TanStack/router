@@ -4,7 +4,11 @@ import type { CollectOptions, RuntimeRouteNode } from './collect'
 import type { GenerateOptions, OpenApiDocument } from './types'
 
 export { buildOpenApiDocument } from './emit'
-export { collectFromRouteTree, toOpenApiPath } from './collect'
+export {
+  collectFromRouteTree,
+  defaultOperationId,
+  toOpenApiPath,
+} from './collect'
 export { defaultToJSONSchema } from './schema'
 export { isStandardSchema } from './standard-schema'
 
@@ -15,7 +19,6 @@ export type {
   RuntimeMethodBuilderOptions,
   RuntimeMiddleware,
   CollectOptions,
-  OperationMeta,
 } from './collect'
 export type * from './types'
 export type { StandardSchemaV1 } from './standard-schema'
