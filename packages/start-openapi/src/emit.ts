@@ -1,4 +1,4 @@
-import { convertSlot, defaultToJSONSchema } from './schema'
+import { defaultToJSONSchema } from './schema'
 import type { StandardSchemaV1 } from './standard-schema'
 import type {
   GenerateOptions,
@@ -94,7 +94,12 @@ async function buildOperation(
 
   // Query params: required iff the JSON Schema marks them required.
   parameters.push(
-    ...(await slotToParameters(op.request?.query, 'query', components, toJSONSchema)),
+    ...(await slotToParameters(
+      op.request?.query,
+      'query',
+      components,
+      toJSONSchema,
+    )),
   )
 
   // Header params.
@@ -109,13 +114,20 @@ async function buildOperation(
 
   if (parameters.length) operation.parameters = parameters
 
-  // Request body.
-  const bodySchema = await convertSlot(op.request?.body, 'input', toJSONSchema)
-  if (bodySchema) {
+  // Request body. Several schemas (middleware + method) must all hold.
+  const bodySchemas = await Promise.all(
+    (op.request?.body ?? []).map(async (schema) =>
+      hoist(await toJSONSchema(schema, 'input'), components),
+    ),
+  )
+  if (bodySchemas.length) {
     operation.requestBody = {
       required: true,
       content: {
-        'application/json': { schema: hoist(bodySchema, components) },
+        'application/json': {
+          schema:
+            bodySchemas.length === 1 ? bodySchemas[0] : { allOf: bodySchemas },
+        },
       },
     }
   }
@@ -132,33 +144,45 @@ async function buildOperation(
 }
 
 /**
- * Expand a slot schema (an object schema) into one OpenAPI parameter per
- * top-level property. This is how a single `query`/`path`/`headers` Zod object
- * becomes individual `parameters[]` entries.
+ * Expand slot schemas (object schemas) into one OpenAPI parameter per
+ * top-level property. This is how a `query`/`path`/`headers` Zod object
+ * becomes individual `parameters[]` entries. When several schemas declare the
+ * same property, the request must satisfy all of them: the parameter schema
+ * becomes an `allOf` and it is required if any of them requires it.
  */
 async function slotToParameters(
-  schema: StandardSchemaV1 | undefined,
+  schemas: Array<StandardSchemaV1> | undefined,
   location: 'query' | 'path' | 'header',
   components: { schemas: Record<string, JSONSchema> },
   toJSONSchema: ToJSONSchema,
 ): Promise<Array<Record<string, unknown>>> {
-  if (!schema) return []
-  const json = await toJSONSchema(schema, 'input')
-  const resolved = hoist(json, components)
-  // Parameters need the concrete object schema, not a $ref, to read properties.
-  const objectSchema = resolved.$ref
-    ? components.schemas[refName(resolved.$ref)]
-    : resolved
+  const params = new Map<string, Record<string, any>>()
+  for (const schema of schemas ?? []) {
+    const resolved = hoist(await toJSONSchema(schema, 'input'), components)
+    // Parameters need the concrete object schema, not a $ref, to read properties.
+    const objectSchema = resolved.$ref
+      ? components.schemas[refName(resolved.$ref)]
+      : resolved
 
-  const props: Record<string, JSONSchema> = objectSchema?.properties ?? {}
-  const required: Array<string> = objectSchema?.required ?? []
+    const props: Record<string, JSONSchema> = objectSchema?.properties ?? {}
+    const required: Array<string> = objectSchema?.required ?? []
 
-  return Object.entries(props).map(([name, propSchema]) => ({
-    name,
-    in: location,
-    required: location === 'path' ? true : required.includes(name),
-    schema: propSchema,
-  }))
+    for (const [name, propSchema] of Object.entries(props)) {
+      const isRequired = location === 'path' || required.includes(name)
+      const prev = params.get(name)
+      params.set(
+        name,
+        prev
+          ? {
+              ...prev,
+              required: prev.required || isRequired,
+              schema: { allOf: [prev.schema, propSchema] },
+            }
+          : { name, in: location, required: isRequired, schema: propSchema },
+      )
+    }
+  }
+  return [...params.values()]
 }
 
 async function buildResponses(

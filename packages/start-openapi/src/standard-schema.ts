@@ -15,7 +15,9 @@ export interface StandardSchemaV1Props<TInput, TOutput> {
   readonly vendor: string
   readonly validate: (
     value: unknown,
-  ) => StandardSchemaV1Result<TOutput> | Promise<StandardSchemaV1Result<TOutput>>
+  ) =>
+    | StandardSchemaV1Result<TOutput>
+    | Promise<StandardSchemaV1Result<TOutput>>
   readonly types?:
     | { readonly input: TInput; readonly output: TOutput }
     | undefined

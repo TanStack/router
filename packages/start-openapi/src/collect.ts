@@ -1,9 +1,11 @@
 import type {
-  InputValidatorSlots,
   NamedSecurityScheme,
   OpenApiManifest,
   OpenApiMethod,
   OperationInput,
+  RequestSlot,
+  RequestSlotSchemas,
+  RequestValidatorSlots,
   ResponseMap,
   SecurityScheme,
 } from './types'
@@ -13,8 +15,7 @@ import type {
  * reads. These mirror the real runtime objects (`route.options.server`,
  * `middleware.options`, a method builder's resolved options) without importing
  * router internals — so the collector compiles standalone and stays robust to
- * unrelated type churn. The fields marked "proposed" are the additive surface
- * this design introduces; see `DESIGN.md`.
+ * unrelated type churn.
  */
 export interface RuntimeRouteNode {
   /** Full path as TanStack stores it, e.g. `/api/v1/sequences/$id`. */
@@ -36,10 +37,9 @@ export interface RuntimeServerOptions {
   /** Either a resolved record or a `({ createHandlers }) => createHandlers({...})` fn. */
   handlers?:
     | Record<string, RuntimeMethodHandler>
-    | ((opts: { createHandlers: (d: any) => any }) => Record<
-        string,
-        RuntimeMethodHandler
-      >)
+    | ((opts: {
+        createHandlers: (d: any) => any
+      }) => Record<string, RuntimeMethodHandler>)
 }
 
 /** A method entry: either a bare handler fn (no metadata) or a builder options object. */
@@ -50,30 +50,25 @@ export type RuntimeMethodHandler =
 export interface RuntimeMethodBuilderOptions {
   handler?: (...args: Array<any>) => unknown
   middleware?: Array<RuntimeMiddleware>
-  /** Proposed: per-status response schemas. */
+  /** Per-status response schemas. */
   response?: ResponseMap
-  /** Proposed: slot-shaped inline input validator. */
-  inputValidator?: InputValidatorSlots
-  /** Optional OpenAPI metadata hints. */
-  meta?: OperationMeta
-}
-
-export interface RuntimeMiddleware {
-  options?: {
-    middleware?: Array<RuntimeMiddleware>
-    /** Proposed: slot-shaped input validator on request middleware. */
-    inputValidator?: InputValidatorSlots
-    /** Proposed: declarative security scheme. */
-    securityScheme?: NamedSecurityScheme | { name: string; scheme: SecurityScheme }
-  }
-}
-
-export interface OperationMeta {
+  /** Slot-shaped validator. */
+  validator?: RequestValidatorSlots
   operationId?: string
   summary?: string
   description?: string
   tags?: Array<string>
   deprecated?: boolean
+}
+
+export interface RuntimeMiddleware {
+  options?: {
+    middleware?: Array<RuntimeMiddleware>
+    /** Slot-shaped validator on request middleware. */
+    validator?: RequestValidatorSlots
+    /** Declarative security scheme. */
+    securityScheme?: NamedSecurityScheme
+  }
 }
 
 export interface CollectOptions {
@@ -95,13 +90,18 @@ const DEFAULT_METHODS: Array<OpenApiMethod> = [
   'delete',
 ]
 
+const SLOTS: Array<RequestSlot> = ['body', 'query', 'path', 'headers']
+
 /**
  * Walk a live route tree and collect a normalized {@link OpenApiManifest}.
  *
  * Reads only *declarative* metadata — it resolves the `handlers` builder (which
- * is a pure `(d) => d` at runtime) and reads `response` / `inputValidator` /
+ * is a pure `(d) => d` at runtime) and reads `response` / `validator` /
  * `securityScheme` off the resolved options. It never invokes a route handler or
  * a middleware `.server()` function.
+ *
+ * Middleware on ancestor routes applies too, matching the order Start runs it
+ * in: parent routes, the route itself, then the method.
  */
 export function collectFromRouteTree(
   root: RuntimeRouteNode,
@@ -111,7 +111,7 @@ export function collectFromRouteTree(
   const operations: Array<OperationInput> = []
   const securitySchemes = new Map<string, SecurityScheme>()
 
-  for (const node of walk(root)) {
+  for (const { node, middleware } of walk(root, [])) {
     const server = node.options?.server
     if (!server?.handlers) continue
 
@@ -121,8 +121,6 @@ export function collectFromRouteTree(
       continue
 
     const handlers = resolveHandlers(server.handlers)
-    const routeSecurity = collectSecurity(server.middleware, securitySchemes)
-    const routeSlots = collectSlots(server.middleware)
     const openApiPath = toOpenApiPath(fullPath)
 
     for (const [methodKey, entry] of Object.entries(handlers)) {
@@ -130,27 +128,25 @@ export function collectFromRouteTree(
       if (!methods.has(method)) continue
 
       const builder = isBuilderOptions(entry) ? entry : undefined
-      const methodSecurity = collectSecurity(builder?.middleware, securitySchemes)
-      const methodSlots = mergeSlots(
-        routeSlots,
-        collectSlots(builder?.middleware),
-        builder?.inputValidator,
-      )
+      const chain = flatten([...middleware, ...(builder?.middleware ?? [])])
+      const security = collectSecurity(chain, securitySchemes)
+      const request = collectSlots([
+        ...chain.map((m) => m.options?.validator),
+        builder?.validator,
+      ])
 
       operations.push({
         method,
         path: openApiPath,
-        request: emptyToUndefined(methodSlots),
+        request,
         responses: builder?.response,
-        security:
-          routeSecurity.length || methodSecurity.length
-            ? dedupe([...routeSecurity, ...methodSecurity])
-            : undefined,
-        operationId: builder?.meta?.operationId,
-        summary: builder?.meta?.summary,
-        description: builder?.meta?.description,
-        tags: builder?.meta?.tags,
-        deprecated: builder?.meta?.deprecated,
+        security: security.length ? security : undefined,
+        operationId:
+          builder?.operationId ?? defaultOperationId(method, openApiPath),
+        summary: builder?.summary,
+        description: builder?.description,
+        tags: builder?.tags,
+        deprecated: builder?.deprecated,
       })
     }
   }
@@ -164,12 +160,16 @@ export function collectFromRouteTree(
   }
 }
 
-function* walk(node: RuntimeRouteNode): Generator<RuntimeRouteNode> {
-  yield node
+function* walk(
+  node: RuntimeRouteNode,
+  inherited: Array<RuntimeMiddleware>,
+): Generator<{ node: RuntimeRouteNode; middleware: Array<RuntimeMiddleware> }> {
+  const middleware = [...inherited, ...(node.options?.server?.middleware ?? [])]
+  yield { node, middleware }
   const children = node.children
   if (!children) return
   const list = Array.isArray(children) ? children : Object.values(children)
-  for (const child of list) yield* walk(child)
+  for (const child of list) yield* walk(child, middleware)
 }
 
 function resolveHandlers(
@@ -189,65 +189,54 @@ function isBuilderOptions(
   return typeof entry === 'object'
 }
 
-/** Flatten a middleware chain (each may nest `.middleware([...])`), parents first. */
+/**
+ * Flatten a middleware chain (each may nest `.middleware([...])`), parents
+ * first, deduped like Start's own `flattenMiddlewares`.
+ */
 function flatten(
-  middleware: Array<RuntimeMiddleware> | undefined,
+  middleware: Array<RuntimeMiddleware>,
+  seen = new Set<RuntimeMiddleware>(),
 ): Array<RuntimeMiddleware> {
   const out: Array<RuntimeMiddleware> = []
-  for (const m of middleware ?? []) {
-    out.push(...flatten(m.options?.middleware), m)
-  }
-  return out
-}
-
-function collectSecurity(
-  middleware: Array<RuntimeMiddleware> | undefined,
-  registry: Map<string, SecurityScheme>,
-): Array<string> {
-  const names: Array<string> = []
-  for (const m of flatten(middleware)) {
-    const s = m.options?.securityScheme
-    if (!s) continue
-    registry.set(s.name, s.scheme)
-    names.push(s.name)
-  }
-  return names
-}
-
-function collectSlots(
-  middleware: Array<RuntimeMiddleware> | undefined,
-): InputValidatorSlots {
-  let slots: InputValidatorSlots = {}
-  for (const m of flatten(middleware)) {
-    slots = mergeSlots(slots, m.options?.inputValidator)
-  }
-  return slots
-}
-
-/**
- * Merge slot validators. Last writer wins per slot — the design's open question
- * #2 (whether request validators should *intersect* like function middleware)
- * deliberately surfaces here; intersection would require an `allOf` merge, which
- * we leave as a follow-up (see `DESIGN.md`).
- */
-function mergeSlots(
-  ...sources: Array<InputValidatorSlots | undefined>
-): InputValidatorSlots {
-  const out: InputValidatorSlots = {}
-  for (const src of sources) {
-    if (!src) continue
-    for (const slot of ['body', 'query', 'path', 'headers'] as const) {
-      const schema = src[slot]
-      if (schema) out[slot] = schema
+  for (const m of middleware) {
+    out.push(...flatten(m.options?.middleware ?? [], seen))
+    if (!seen.has(m)) {
+      seen.add(m)
+      out.push(m)
     }
   }
   return out
 }
 
-function emptyToUndefined(
-  slots: InputValidatorSlots,
-): InputValidatorSlots | undefined {
-  return Object.keys(slots).length ? slots : undefined
+function collectSecurity(
+  chain: Array<RuntimeMiddleware>,
+  registry: Map<string, SecurityScheme>,
+): Array<string> {
+  const names = new Set<string>()
+  for (const m of chain) {
+    const s = m.options?.securityScheme
+    if (!s) continue
+    registry.set(s.name, s.scheme)
+    names.add(s.name)
+  }
+  return [...names]
+}
+
+/**
+ * Gather every schema per slot. Start validates the request against all of
+ * them (intersection), so none may be dropped.
+ */
+function collectSlots(
+  sources: Array<RequestValidatorSlots | undefined>,
+): RequestSlotSchemas | undefined {
+  const out: RequestSlotSchemas = {}
+  for (const src of sources) {
+    for (const slot of SLOTS) {
+      const schema = src?.[slot]
+      if (schema) (out[slot] ??= []).push(schema)
+    }
+  }
+  return Object.keys(out).length ? out : undefined
 }
 
 /** `/api/v1/sequences/$id` → `/api/v1/sequences/{id}` (TanStack `$param` → OpenAPI). */
@@ -262,6 +251,24 @@ export function toOpenApiPath(fullPath: string): string {
     .join('/')
 }
 
-function dedupe<T>(arr: Array<T>): Array<T> {
-  return [...new Set(arr)]
+/**
+ * Derive an operation name from method + path when none is declared:
+ * `get /api/v1/sequences/{id}` → `getApiV1SequencesById`. Satisfies MCP tool
+ * name rules (`[A-Za-z0-9_-]`) so it can be used as the tool name as-is.
+ */
+export function defaultOperationId(method: string, path: string): string {
+  const words = path
+    .split('/')
+    .filter(Boolean)
+    .map((seg) => {
+      const param = /^\{(.+)\}$/.exec(seg)?.[1]
+      return param ? `by_${param}` : seg
+    })
+    .flatMap((seg) => seg.split(/[^A-Za-z0-9]+/))
+    .filter(Boolean)
+  return [method.toLowerCase(), ...words.map(capitalize)].join('')
+}
+
+function capitalize(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1)
 }

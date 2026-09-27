@@ -2,7 +2,11 @@ import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import type { RequestServerNextFn } from '../createMiddleware'
 import type { ConstrainValidator, CustomFetch } from '../createServerFn'
-import type { Register, SerializationError } from '@tanstack/router-core'
+import type {
+  Register,
+  SerializationError,
+  StandardSchemaValidator,
+} from '@tanstack/router-core'
 import type { ServerFnMeta } from '../constants'
 
 test('createServeMiddleware removes middleware after middleware,', () => {
@@ -824,4 +828,26 @@ test('createMiddleware with type request can return sync Response', () => {
       headers: { 'Content-Type': 'application/json' },
     })
   })
+})
+
+test('request middleware slot validators and security scheme', () => {
+  const schema = <TOutput>() =>
+    ({}) as StandardSchemaValidator<unknown, TOutput>
+
+  const auth = createMiddleware({ type: 'request' })
+    .securityScheme({
+      name: 'bearerAuth',
+      scheme: { type: 'http', scheme: 'bearer' },
+    })
+    .validator({ headers: schema<{ authorization: string }>() })
+    .server(({ next }) => next())
+
+  const paginated = createMiddleware({ type: 'request' })
+    .middleware([auth])
+    .validator({ query: schema<{ page: number }>() })
+    .server(({ next }) => next())
+
+  expectTypeOf(paginated['~types'].allData).toEqualTypeOf<
+    { headers: { authorization: string } } & { query: { page: number } }
+  >()
 })

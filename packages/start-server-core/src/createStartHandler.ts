@@ -44,6 +44,7 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AnyStartInstanceOptions,
+  RequestValidatorSlots,
   RouteMethod,
   RouteMethodHandlerFn,
   RouterEntry,
@@ -933,6 +934,86 @@ function withParsedParams(
   }
 }
 
+const requestSlots = ['path', 'query', 'headers', 'body'] as const
+
+/**
+ * Validate request slots before the handler runs and pass the result as
+ * `ctx.data`. Runs after middleware, so auth rejects before validation does.
+ * Each schema in a slot must pass; object outputs are shallow-merged.
+ */
+function withValidatedData(
+  handler: TODO,
+  validators: Array<RequestValidatorSlots>,
+): TODO {
+  if (!validators.length) return handler
+
+  return async (ctx: TODO) => {
+    const data: Record<string, unknown> = {}
+    const issues: Array<{ slot: string; issues: ReadonlyArray<unknown> }> = []
+
+    for (const slot of requestSlots) {
+      const schemas = validators.flatMap((v) => v[slot] ?? [])
+      if (!schemas.length) continue
+      const raw = await readRequestSlot(slot, ctx)
+      for (const schema of schemas) {
+        const result = await schema['~standard'].validate(raw)
+        if (result.issues) {
+          issues.push({ slot, issues: result.issues })
+          continue
+        }
+        const prev = data[slot]
+        data[slot] =
+          isPlainObject(prev) && isPlainObject(result.value)
+            ? { ...prev, ...result.value }
+            : result.value
+      }
+    }
+
+    if (issues.length) {
+      return Response.json(
+        { message: 'Invalid request', issues },
+        { status: 400 },
+      )
+    }
+    return handler({ ...ctx, data })
+  }
+}
+
+async function readRequestSlot(
+  slot: (typeof requestSlots)[number],
+  ctx: { request: Request; params: Record<string, unknown> },
+): Promise<unknown> {
+  switch (slot) {
+    case 'path':
+      return ctx.params
+    case 'headers':
+      return Object.fromEntries(ctx.request.headers)
+    case 'query': {
+      const query: Record<string, string | Array<string>> = {}
+      const searchParams = new URL(ctx.request.url).searchParams
+      for (const key of searchParams.keys()) {
+        const values = searchParams.getAll(key)
+        query[key] = values.length > 1 ? values : values[0]!
+      }
+      return query
+    }
+    case 'body': {
+      // Clone so the handler can still read the body itself.
+      const text = await ctx.request.clone().text()
+      if (!text) return undefined
+      try {
+        return JSON.parse(text)
+      } catch {
+        return text
+      }
+    }
+  }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 async function handleServerRoutes({
   getRouter,
   request,
@@ -1001,19 +1082,35 @@ async function handleServerRoutes({
         : (handlers[requestMethod] ?? handlers['ANY'])
     if (handler) {
       const mayDefer = !!foundRoute.options.component
+      // Slot validators from every request middleware in the route chain,
+      // then the method's own. All of them must pass (intersection).
+      const validators: Array<RequestValidatorSlots> = []
+      for (const route of matchedRoutes) {
+        const serverMiddleware = route.options.server?.middleware as
+          | Array<AnyRequestMiddleware>
+          | undefined
+        for (const m of flattenMiddlewares(serverMiddleware ?? [])) {
+          if (m.options.validator) validators.push(m.options.validator)
+        }
+      }
 
       if (typeof handler !== 'function') {
         if (handler.middleware?.length) {
           const handlerMiddlewares = flattenMiddlewares(handler.middleware)
           for (const m of handlerMiddlewares) {
             routeMiddlewares.push(m.options.server)
+            if (m.options.validator) validators.push(m.options.validator)
           }
         }
+        if (handler.validator) validators.push(handler.validator)
       }
       const routeHandler =
         typeof handler === 'function' ? handler : handler.handler
       if (routeHandler) {
-        const parsedHandler = withParsedParams(routeHandler, matchedRoutes)
+        const parsedHandler = withParsedParams(
+          withValidatedData(routeHandler, validators),
+          matchedRoutes,
+        )
         if (!mayDefer) {
           terminalHandler = parsedHandler
           terminalNext = throwIfMayNotDefer
