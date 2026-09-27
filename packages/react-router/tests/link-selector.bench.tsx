@@ -37,6 +37,7 @@ describe.each([
   'trailing-slash',
   'mixed-search',
   'dynamic',
+  'dynamic-inactive',
   'dynamic-external',
   'changing-href',
 ] as const)('Link selector reruns: %s', (kind) => {
@@ -73,7 +74,7 @@ describe.each([
   const locations = Array.from({ length: 32 }, (_, i) =>
     router.buildLocation({
       to: '/posts/$id',
-      params: { id: kind === 'inactive' ? '2' : '1' },
+      params: { id: kind.endsWith('inactive') ? '2' : '1' },
       search: i % 2 === 0 ? search : {},
     }),
   )
@@ -92,7 +93,8 @@ describe.each([
     expect(selected[1]).toBe(
       kind === 'dynamic-external'
         ? undefined
-        : kind !== 'inactive' && (kind !== 'mixed-search' || i % 2 === 0),
+        : !kind.endsWith('inactive') &&
+            (kind !== 'mixed-search' || i % 2 === 0),
     )
   }
   if (kind === 'changing-href') {
