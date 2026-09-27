@@ -102,28 +102,24 @@ function MatchesInner() {
 
   const matchComponent = routeId ? <Match routeId={routeId} /> : null
 
-  return (
-    <matchContext.Provider value={routeId}>
-      {router.options.disableGlobalCatchBoundary ? (
-        matchComponent
-      ) : (
-        <CatchBoundary
-          getResetKey={() => match}
-          onCatch={
-            process.env.NODE_ENV !== 'production'
-              ? (error) => {
-                  console.warn(
-                    `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-                  )
-                  console.warn('Warning:', error)
-                }
-              : undefined
-          }
-        >
-          {matchComponent}
-        </CatchBoundary>
-      )}
-    </matchContext.Provider>
+  return router.options.disableGlobalCatchBoundary ? (
+    matchComponent
+  ) : (
+    <CatchBoundary
+      getResetKey={() => match}
+      onCatch={
+        process.env.NODE_ENV !== 'production'
+          ? (error) => {
+              console.warn(
+                `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+              )
+              console.warn('Warning:', error)
+            }
+          : undefined
+      }
+    >
+      {matchComponent}
+    </CatchBoundary>
   )
 }
 
