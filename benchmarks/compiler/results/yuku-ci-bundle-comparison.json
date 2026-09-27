@@ -1,0 +1,860 @@
+{
+  "beforeCommit": "a5eac3fc2e685f5f38be0a16b18dd4ecb3cc6d5c",
+  "afterCommit": "25fe0cedebfd642f4181c2339dea876c2d432ab9",
+  "beforeRun": "benchmarks/bundle-size/results/runs/yuku-ci-before/current.json",
+  "afterRun": "benchmarks/bundle-size/results/runs/yuku-ci-after/current.json",
+  "scenarios": 18,
+  "clientJavaScriptFiles": 38,
+  "allMetricsIdentical": true,
+  "allClientJavaScriptByteIdentical": true,
+  "rows": [
+    {
+      "id": "react-router.minimal",
+      "before": {
+        "gzipBytes": 85945,
+        "rawBytes": 267626,
+        "brotliBytes": 74944,
+        "initialGzipBytes": 85807,
+        "initialRawBytes": 267492,
+        "initialBrotliBytes": 74844,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 85945,
+        "rawBytes": 267626,
+        "brotliBytes": 74944,
+        "initialGzipBytes": 85807,
+        "initialRawBytes": 267492,
+        "initialBrotliBytes": 74844,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-CACocPfh.js",
+          "sha256": "86604281bb1bdf2cfb121861c8e3a5288856fac7e067584a726948b646e0b068",
+          "rawBytes": 267492,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-B46inek_.js",
+          "sha256": "31c0bfa8bd1df692e2832def2986bcc5ef8195e6a1cc9c19ec2e291041978c59",
+          "rawBytes": 134,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "react-router.full",
+      "before": {
+        "gzipBytes": 89588,
+        "rawBytes": 279793,
+        "brotliBytes": 78161,
+        "initialGzipBytes": 89448,
+        "initialRawBytes": 279659,
+        "initialBrotliBytes": 78061,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 89588,
+        "rawBytes": 279793,
+        "brotliBytes": 78161,
+        "initialGzipBytes": 89448,
+        "initialRawBytes": 279659,
+        "initialBrotliBytes": 78061,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-CtZTBhVk.js",
+          "sha256": "96f60fcf7cdddd45c9db4df86e94ef172323ea7b4181ac7a55525f55d74d3f86",
+          "rawBytes": 279659,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-7NK1qBsd.js",
+          "sha256": "dd0be177d2d413cc74dd1da0768d68ad146fa8ef55b6d651390a19a914a1d32f",
+          "rawBytes": 134,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "solid-router.minimal",
+      "before": {
+        "gzipBytes": 34339,
+        "rawBytes": 98300,
+        "brotliBytes": 31058,
+        "initialGzipBytes": 34213,
+        "initialRawBytes": 98185,
+        "initialBrotliBytes": 30944,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 34339,
+        "rawBytes": 98300,
+        "brotliBytes": 31058,
+        "initialGzipBytes": 34213,
+        "initialRawBytes": 98185,
+        "initialBrotliBytes": 30944,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-Dy_3Ox3l.js",
+          "sha256": "ddf36367e3899a167e1e617fc6f21008152f1b44a92d47a8f8095ce20db0d99d",
+          "rawBytes": 98185,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-D8hSF7ZI.js",
+          "sha256": "4d9f7b3f42d824d0d68f14c7a0ae1718d2f54c24c68f8a22abc1bce711886f1f",
+          "rawBytes": 115,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "solid-router.full",
+      "before": {
+        "gzipBytes": 39342,
+        "rawBytes": 113413,
+        "brotliBytes": 35502,
+        "initialGzipBytes": 39216,
+        "initialRawBytes": 113298,
+        "initialBrotliBytes": 35413,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 39342,
+        "rawBytes": 113413,
+        "brotliBytes": 35502,
+        "initialGzipBytes": 39216,
+        "initialRawBytes": 113298,
+        "initialBrotliBytes": 35413,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-D6Cf9lm3.js",
+          "sha256": "0e21b9c8fe727ea14bd8348699dff0942c1ea0190aab0221167696447de1159d",
+          "rawBytes": 113298,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-CefOHnPT.js",
+          "sha256": "59f835867cca5a6542bc4fc927f266c2d539c84496a06e52ee615b43c2b11421",
+          "rawBytes": 115,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "vue-router.minimal",
+      "before": {
+        "gzipBytes": 50606,
+        "rawBytes": 140051,
+        "brotliBytes": 45815,
+        "initialGzipBytes": 50480,
+        "initialRawBytes": 139933,
+        "initialBrotliBytes": 45706,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 50606,
+        "rawBytes": 140051,
+        "brotliBytes": 45815,
+        "initialGzipBytes": 50480,
+        "initialRawBytes": 139933,
+        "initialBrotliBytes": 45706,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-mTVmRlrH.js",
+          "sha256": "6d91651780f69c79795f8649a6d1cea096a20d0be57ebdad890360e987fd525f",
+          "rawBytes": 139933,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-C7yO66tv.js",
+          "sha256": "7e1fe0b0c74bde9dc24c6357e4211c052fc522a9fe655fc4f278bd171342797e",
+          "rawBytes": 118,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "vue-router.full",
+      "before": {
+        "gzipBytes": 56357,
+        "rawBytes": 158795,
+        "brotliBytes": 50843,
+        "initialGzipBytes": 56230,
+        "initialRawBytes": 158677,
+        "initialBrotliBytes": 50737,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 56357,
+        "rawBytes": 158795,
+        "brotliBytes": 50843,
+        "initialGzipBytes": 56230,
+        "initialRawBytes": 158677,
+        "initialBrotliBytes": 50737,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-BWTd4vpu.js",
+          "sha256": "0cea2161895f91428a4ad0af96b08d4cd2ecd349ab6fe18d7961c6f19b1c9ba5",
+          "rawBytes": 158677,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-Cawy44i-.js",
+          "sha256": "cf97adaad513fdce498a5f92888a3ff9089b26fe9d478eeadc911b8e659a8885",
+          "rawBytes": 118,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "react-start.minimal",
+      "before": {
+        "gzipBytes": 99084,
+        "rawBytes": 309586,
+        "brotliBytes": 86040,
+        "initialGzipBytes": 98942,
+        "initialRawBytes": 309452,
+        "initialBrotliBytes": 85914,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 99084,
+        "rawBytes": 309586,
+        "brotliBytes": 86040,
+        "initialGzipBytes": 98942,
+        "initialRawBytes": 309452,
+        "initialBrotliBytes": 85914,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-BTFsWYZ2.js",
+          "sha256": "9541ad0b4eec4bcf400826343d82ca153fbc9fd60940a1a45f4dbb0a18a7da70",
+          "rawBytes": 309452,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-_adKZmnD.js",
+          "sha256": "ddcad6bfcbd4a48f6b2bb34a52527f0b3b3458fade5689ca86f13a7448a7158e",
+          "rawBytes": 134,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "react-start.query-integration",
+      "before": {
+        "gzipBytes": 106692,
+        "rawBytes": 336835,
+        "brotliBytes": 92625,
+        "initialGzipBytes": 106553,
+        "initialRawBytes": 336701,
+        "initialBrotliBytes": 92525,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 106692,
+        "rawBytes": 336835,
+        "brotliBytes": 92625,
+        "initialGzipBytes": 106553,
+        "initialRawBytes": 336701,
+        "initialBrotliBytes": 92525,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-BxmQPJvl.js",
+          "sha256": "fe2b3b7d773964b94e577e5903c09cb2089ce0fe7c7bae8218413193f602eb90",
+          "rawBytes": 336701,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-FIXhgZC1.js",
+          "sha256": "801fb19f0314e09d64c6f6c41a4ed95d2c59a5159366e8956501e98d34fb1a21",
+          "rawBytes": 134,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "react-start.deferred-hydration",
+      "before": {
+        "gzipBytes": 99820,
+        "rawBytes": 310975,
+        "brotliBytes": 86687,
+        "initialGzipBytes": 98965,
+        "initialRawBytes": 309490,
+        "initialBrotliBytes": 85891,
+        "jsFileCount": 3
+      },
+      "after": {
+        "gzipBytes": 99820,
+        "rawBytes": 310975,
+        "brotliBytes": 86687,
+        "initialGzipBytes": 98965,
+        "initialRawBytes": 309490,
+        "initialBrotliBytes": 85891,
+        "jsFileCount": 3
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-3kJic1S_.js",
+          "sha256": "720229c52c3d43d39ec0d79904c06550f3ac84d17565dc40d7d6e1694133cb68",
+          "rawBytes": 309490,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-D5QU4JK0.js",
+          "sha256": "280b32006f984fb13baf013028d3d1ec41f418c9b21acb8e292afe924399540d",
+          "rawBytes": 1358,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-ySiPLgyu.js",
+          "sha256": "e2872a5ee7c280f942c8a4b84f3cab6ef17fb14043886e9f83941d41b713c927",
+          "rawBytes": 127,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "react-start.full",
+      "before": {
+        "gzipBytes": 102297,
+        "rawBytes": 319527,
+        "brotliBytes": 88817,
+        "initialGzipBytes": 102156,
+        "initialRawBytes": 319393,
+        "initialBrotliBytes": 88681,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 102297,
+        "rawBytes": 319527,
+        "brotliBytes": 88817,
+        "initialGzipBytes": 102156,
+        "initialRawBytes": 319393,
+        "initialBrotliBytes": 88681,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-Cd7IBEMc.js",
+          "sha256": "37fc6be381dde885f06df25e8502bbaa55feeb577d6e6bd43ede74c806ae3d4d",
+          "rawBytes": 319393,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-CAOKtzHM.js",
+          "sha256": "afb63835bda4cca303c0d8056a5ab3b2d51ffdee7009c712d34a44b75962fe35",
+          "rawBytes": 134,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "react-start.rsbuild.minimal",
+      "before": {
+        "gzipBytes": 102799,
+        "rawBytes": 320976,
+        "brotliBytes": 88815,
+        "initialGzipBytes": 102584,
+        "initialRawBytes": 320711,
+        "initialBrotliBytes": 88637,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 102799,
+        "rawBytes": 320976,
+        "brotliBytes": 88815,
+        "initialGzipBytes": 102584,
+        "initialRawBytes": 320711,
+        "initialBrotliBytes": 88637,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/js/async/589.2e1275ece9.js",
+          "sha256": "69834a28d730086d60e4d47e9a75e232b677a3b2e494d2517b8cd1b699909111",
+          "rawBytes": 265,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/js/index.264cc9f9ee.js",
+          "sha256": "617062affaf6066fccc9f595a9b8c8fbb0762d3e568e98bb3ce7e8c3675af98e",
+          "rawBytes": 320711,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "react-start.rsbuild.minimal-iife",
+      "before": {
+        "gzipBytes": 103220,
+        "rawBytes": 321952,
+        "brotliBytes": 89094,
+        "initialGzipBytes": 103009,
+        "initialRawBytes": 321722,
+        "initialBrotliBytes": 88917,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 103220,
+        "rawBytes": 321952,
+        "brotliBytes": 89094,
+        "initialGzipBytes": 103009,
+        "initialRawBytes": 321722,
+        "initialBrotliBytes": 88917,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/js/async/589.b126e78307.js",
+          "sha256": "73d9a4eafe9ed300b8670a0a4a7de897a9983236de4041f4ad8221e41409e34b",
+          "rawBytes": 230,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/js/index.2add52c747.js",
+          "sha256": "ecc1e92698646e11888f584e7939295f9f2c075793e80c9b8f0e4bcc4a755e36",
+          "rawBytes": 321722,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "react-start.rsbuild.full",
+      "before": {
+        "gzipBytes": 106123,
+        "rawBytes": 331313,
+        "brotliBytes": 91566,
+        "initialGzipBytes": 105908,
+        "initialRawBytes": 331048,
+        "initialBrotliBytes": 91388,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 106123,
+        "rawBytes": 331313,
+        "brotliBytes": 91566,
+        "initialGzipBytes": 105908,
+        "initialRawBytes": 331048,
+        "initialBrotliBytes": 91388,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/js/async/589.2e1275ece9.js",
+          "sha256": "69834a28d730086d60e4d47e9a75e232b677a3b2e494d2517b8cd1b699909111",
+          "rawBytes": 265,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/js/index.967d49c361.js",
+          "sha256": "f04f05e6893970aa75550e1c6ff47fed6c2954f496c6211481842faa30e701be",
+          "rawBytes": 331048,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "solid-start.minimal",
+      "before": {
+        "gzipBytes": 47502,
+        "rawBytes": 139037,
+        "brotliBytes": 42356,
+        "initialGzipBytes": 47373,
+        "initialRawBytes": 138919,
+        "initialBrotliBytes": 42237,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 47502,
+        "rawBytes": 139037,
+        "brotliBytes": 42356,
+        "initialGzipBytes": 47373,
+        "initialRawBytes": 138919,
+        "initialBrotliBytes": 42237,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-B0qjIHsX.js",
+          "sha256": "5fdcd50b33e9d320f9ea00be06eae7451d9fdcdca9699b01cbfd7f5ca414245d",
+          "rawBytes": 138919,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-BQFXEekx.js",
+          "sha256": "767844c8a8081c09d01ad99680b16188a451df8dcc51535f7bca6962b9eafd5c",
+          "rawBytes": 118,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "solid-start.deferred-hydration",
+      "before": {
+        "gzipBytes": 50629,
+        "rawBytes": 146581,
+        "brotliBytes": 45137,
+        "initialGzipBytes": 47440,
+        "initialRawBytes": 139023,
+        "initialBrotliBytes": 42243,
+        "jsFileCount": 3
+      },
+      "after": {
+        "gzipBytes": 50629,
+        "rawBytes": 146581,
+        "brotliBytes": 45137,
+        "initialGzipBytes": 47440,
+        "initialRawBytes": 139023,
+        "initialBrotliBytes": 42243,
+        "jsFileCount": 3
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-BIBdV0Vn.js",
+          "sha256": "b46a676f61d0c51ea988be5609ef3ae5b69185ef743d9d56a9028366b7a03c58",
+          "rawBytes": 139023,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-DuQdI2eu.js",
+          "sha256": "39b951069cfa6aec6534a22334f790a8ff278826ba9d398df13ec69ed8ff5cff",
+          "rawBytes": 7442,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-TZDnLIP-.js",
+          "sha256": "2609ec6a4c3061940db2979bb74888e44afded495b54fada7168a600d68a6869",
+          "rawBytes": 116,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "solid-start.full",
+      "before": {
+        "gzipBytes": 52686,
+        "rawBytes": 154752,
+        "brotliBytes": 46677,
+        "initialGzipBytes": 52558,
+        "initialRawBytes": 154634,
+        "initialBrotliBytes": 46582,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 52686,
+        "rawBytes": 154752,
+        "brotliBytes": 46677,
+        "initialGzipBytes": 52558,
+        "initialRawBytes": 154634,
+        "initialBrotliBytes": 46582,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-DXth79Aa.js",
+          "sha256": "48026839b0b92248d6a85475ac03f27178932ecb64823488c7af920debe7882c",
+          "rawBytes": 154634,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-DSCkGZ-I.js",
+          "sha256": "3c518c06385ad4deb879b43e49dbe124a47b016ac6e21235334157dd864146ca",
+          "rawBytes": 118,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "vue-start.minimal",
+      "before": {
+        "gzipBytes": 67042,
+        "rawBytes": 190696,
+        "brotliBytes": 59841,
+        "initialGzipBytes": 66915,
+        "initialRawBytes": 190578,
+        "initialBrotliBytes": 59739,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 67042,
+        "rawBytes": 190696,
+        "brotliBytes": 59841,
+        "initialGzipBytes": 66915,
+        "initialRawBytes": 190578,
+        "initialBrotliBytes": 59739,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-QUrTZhJK.js",
+          "sha256": "80121044f8fa77c6c2f7dda98bb6732e9fdfa66d17020bb03a688e1e2939b27f",
+          "rawBytes": 190578,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-B-T8eoIb.js",
+          "sha256": "9d81aac5f24add71d87ebe5c43a4d3c38312b4212be5c95b87ea90de3cc387e6",
+          "rawBytes": 118,
+          "byteIdentical": true
+        }
+      ]
+    },
+    {
+      "id": "vue-start.full",
+      "before": {
+        "gzipBytes": 70992,
+        "rawBytes": 203304,
+        "brotliBytes": 63249,
+        "initialGzipBytes": 70866,
+        "initialRawBytes": 203186,
+        "initialBrotliBytes": 63154,
+        "jsFileCount": 2
+      },
+      "after": {
+        "gzipBytes": 70992,
+        "rawBytes": 203304,
+        "brotliBytes": 63249,
+        "initialGzipBytes": 70866,
+        "initialRawBytes": 203186,
+        "initialBrotliBytes": 63154,
+        "jsFileCount": 2
+      },
+      "delta": {
+        "gzipBytes": 0,
+        "rawBytes": 0,
+        "brotliBytes": 0,
+        "initialGzipBytes": 0,
+        "initialRawBytes": 0,
+        "initialBrotliBytes": 0,
+        "jsFileCount": 0
+      },
+      "files": [
+        {
+          "file": "assets/index-DN9eru7X.js",
+          "sha256": "37ebf56a33065007168ac66f9e9db725ab3be7610a994313803141bcdc13929d",
+          "rawBytes": 203186,
+          "byteIdentical": true
+        },
+        {
+          "file": "assets/routes-Sbm3s8Zr.js",
+          "sha256": "87acfb6967f6a7098d536990f973982ef98cc3a7c857ceea5d0a01f111f6185f",
+          "rawBytes": 118,
+          "byteIdentical": true
+        }
+      ]
+    }
+  ],
+  "hydrateAttribution": [
+    {
+      "id": "react-start.deferred-hydration",
+      "files": [
+        {
+          "file": "assets/index-3kJic1S_.js",
+          "initial": true,
+          "H0LazyFactoryCalls": 0
+        },
+        {
+          "file": "assets/routes-D5QU4JK0.js",
+          "initial": false,
+          "H0LazyFactoryCalls": 1
+        },
+        {
+          "file": "assets/routes-ySiPLgyu.js",
+          "initial": false,
+          "H0LazyFactoryCalls": 0
+        }
+      ],
+      "conclusion": "No unused H0 lazy component factory in initial entry; exactly one factory in deferred route component. Before/after emitted bytes identical."
+    },
+    {
+      "id": "solid-start.deferred-hydration",
+      "files": [
+        {
+          "file": "assets/index-BIBdV0Vn.js",
+          "initial": true,
+          "H0LazyFactoryCalls": 0
+        },
+        {
+          "file": "assets/routes-DuQdI2eu.js",
+          "initial": false,
+          "H0LazyFactoryCalls": 1
+        },
+        {
+          "file": "assets/routes-TZDnLIP-.js",
+          "initial": false,
+          "H0LazyFactoryCalls": 0
+        }
+      ],
+      "conclusion": "No unused H0 lazy component factory in initial entry; exactly one factory in deferred route component. Before/after emitted bytes identical."
+    }
+  ]
+}

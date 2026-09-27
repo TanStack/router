@@ -1,0 +1,125 @@
+{
+  "timestamp": "2026-09-27T17:27:54.956Z",
+  "compilerFingerprint": {
+    "commit": "a5eac3fc2e685f5f38be0a16b18dd4ecb3cc6d5c",
+    "sha256": "9c8751495155f052d418d5aabd437317091a3dfef76e8d6dbc9cf90a42803fc5",
+    "javascriptFiles": 125,
+    "sourceSha256": "d1a6077f97f89aab70a85d1217fe0ada890f9fed69c2dd1161eeeb5796f7f9bd",
+    "sourceFiles": 137,
+    "dependencyVersions": {
+      "yuku-analyzer": "0.12.0",
+      "yuku-ast": "0.12.0",
+      "yuku-codegen": "0.12.0",
+      "@yuku-toolchain/types": "0.12.0"
+    }
+  },
+  "node": "v24.8.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M3 Max",
+  "app": "e2e/react-start/server-functions",
+  "repetitions": 3,
+  "profile": false,
+  "summary": {
+    "medianBuildMs": 1087.5925,
+    "minBuildMs": 1051.003541,
+    "maxBuildMs": 1096.911584,
+    "medianWallMs": 1225.837125,
+    "medianPeakRssMiB": 567.328125
+  },
+  "samples": [
+    {
+      "repetition": 0,
+      "wallMs": 1244.429333,
+      "buildMs": 1096.911584,
+      "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+      "peakRssKiB": 587072,
+      "before": {
+        "rss": 89194496,
+        "heapTotal": 24625152,
+        "heapUsed": 14189960,
+        "external": 3832029,
+        "arrayBuffers": 36007
+      },
+      "after": {
+        "rss": 600621056,
+        "heapTotal": 243007488,
+        "heapUsed": 68733184,
+        "external": 6460881,
+        "arrayBuffers": 67168
+      },
+      "retained": {
+        "rss": 595214336,
+        "heapTotal": 199753728,
+        "heapUsed": 56978776,
+        "external": 6460881,
+        "arrayBuffers": 54451
+      },
+      "emittedFiles": 163,
+      "emittedCodeBytes": 1213766,
+      "hookTimings": {}
+    },
+    {
+      "repetition": 1,
+      "wallMs": 1188.1987080000001,
+      "buildMs": 1051.003541,
+      "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+      "peakRssKiB": 547712,
+      "before": {
+        "rss": 89260032,
+        "heapTotal": 24625152,
+        "heapUsed": 14174176,
+        "external": 3832029,
+        "arrayBuffers": 36007
+      },
+      "after": {
+        "rss": 560316416,
+        "heapTotal": 234979328,
+        "heapUsed": 77449888,
+        "external": 14711415,
+        "arrayBuffers": 3125095
+      },
+      "retained": {
+        "rss": 557973504,
+        "heapTotal": 204472320,
+        "heapUsed": 56979040,
+        "external": 9505916,
+        "arrayBuffers": 54451
+      },
+      "emittedFiles": 163,
+      "emittedCodeBytes": 1213766,
+      "hookTimings": {}
+    },
+    {
+      "repetition": 2,
+      "wallMs": 1225.837125,
+      "buildMs": 1087.5925,
+      "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+      "peakRssKiB": 580944,
+      "before": {
+        "rss": 89210880,
+        "heapTotal": 25149440,
+        "heapUsed": 14190480,
+        "external": 3832029,
+        "arrayBuffers": 36007
+      },
+      "after": {
+        "rss": 594608128,
+        "heapTotal": 244219904,
+        "heapUsed": 122340312,
+        "external": 15225047,
+        "arrayBuffers": 8805864
+      },
+      "retained": {
+        "rss": 591708160,
+        "heapTotal": 219152384,
+        "heapUsed": 57005808,
+        "external": 15225047,
+        "arrayBuffers": 54451
+      },
+      "emittedFiles": 163,
+      "emittedCodeBytes": 1213766,
+      "hookTimings": {}
+    }
+  ]
+}

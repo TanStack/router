@@ -1,12 +1,82 @@
 # Native Yuku compiler migration
 
-**Current status: Yuku 0.12.0 fixes the reported JSX-reference and purity-comment
-defects. The upgraded compiler and consuming application checks pass locally.
-Fresh alternating measurements show lower build time and peak process memory
-than Babel on all three measured workloads. All 18 client bundle scenarios
-match the Babel baseline in aggregate size and chunk-count metrics.** No
-production API adaptation or local dependency workaround was needed for the
-upgrade.
+**Current status: the three CI regressions are fixed. Test, Preview,
+Version Preview, and Bundle Size CI pass at `25fe0cedeb`; all five local compiler
+package gates and the expanded local browser matrix also pass. The final
+regression measurements show no observed performance or memory regression,
+and all 38 client JavaScript files across 18 scenarios are byte-identical
+before and after the fixes.** The
+recorded Yuku 0.12.0 measurements below precede this CI follow-up: they show
+lower build time and peak process memory than Babel on all three measured
+workloads, with all 18 client bundle scenarios matching the Babel baseline.
+
+## CI follow-up after the main merge
+
+CI at `9594d49eaa` reported nine failed targets and 17 dependent targets that
+could not execute. The failures exposed three integration regressions:
+
+- Rsbuild received serialized source-map strings from the Start compiler host.
+  Downstream JSX loaders require Source Map v3 objects. Both ordinary and
+  virtual-module transform paths now return the objects directly; the existing
+  Solid deferred-hydration Rsbuild build reproduced the failure and passes
+  with the fix.
+- External import transforms entered generic built-in alias tracing, causing
+  the compiler to try loading bundler-owned RSC virtual modules as files.
+  Configured external calls now retain their resolved transform kind and use
+  exact import bindings. Public compiler regressions cover named aliases,
+  static namespace calls, unrelated virtual imports, computed/member access,
+  and local shadowing. The compiler test file passes all 66 cases after the
+  failing regressions were established.
+- Syntax errors lost readable line/column positions when the native diagnostic
+  offset was embedded in the message. The error path now derives UTF-16
+  line/column positions and exposes `loc`/`pos`, retaining the filename and
+  native wording. Six public regressions failed before the fix and pass after
+  it, covering Unicode and all JavaScript line terminators. The actual Rsbuild
+  overlay passes its full client/server message and import-trace assertions.
+
+Supporting commit `a5eac3fc2e` preserves the new tests and updated overlay
+expectations; fix commit `25fe0cedebfd642f4181c2339dea876c2d432ab9` passes
+[Test, Preview, and Version Preview CI](https://github.com/TanStack/router/actions/runs/36337536321)
+and [Bundle Size CI](https://github.com/TanStack/router/actions/runs/36337536358).
+The [Test job](https://github.com/TanStack/router/actions/runs/36337536321/job/108671150455)
+reports 846 successful tasks and zero failures. This Linux GNU run exercises
+the native packages and compiler; Linux musl and Windows remain uncovered.
+These fixes use the existing native compiler architecture and do not work around
+dependency defects.
+
+All five local package gates pass: router-utils 57, router-generator 261 runtime
+plus 12 fixture type tests, router-plugin 716, start-plugin-core 593, and
+react-start-rsc 61, with TypeScript 5.6–7, lint, and package integrity/export
+checks: 1,700 unit/fixture-type tests in total. Eight local application aggregates
+and dedicated Vite/Rsbuild server-function suites pass 1,516 browser test
+executions, with 20 existing skips and zero failures. These are executions across
+modes and aggregate reruns, not unique test definitions. This includes the
+previously unexecuted Rsbuild consumers and RSC browser suites; the separate
+RSC Rsbuild production build also passes. The
+[CI follow-up validation record](benchmarks/compiler/results/yuku-ci-validation.json)
+preserves commands, target definitions, counts, and unchanged compiler
+source/output fingerprints throughout validation.
+
+The final workflow compared the native compiler before the fixes at
+`a5eac3fc2e` with `25fe0cedeb`, using matching inputs and three fresh processes
+per phase on the same macOS arm64 machine. Median splitter time was
+100.70 → 100.88 ms (+0.18%, overlapping ranges), and Start build time was
+1087.59 → 1051.18 ms (−3.35%). Median peak process RSS was
+124.22 → 123.83 MiB and 567.33 → 550.81 MiB, respectively. These sequential,
+nonalternating samples are a limited regression check, not evidence of a
+statistically established speedup. The splitter used one warmup and three
+measured passes per process; Start used one production build per process.
+The [final workflow record](benchmarks/compiler/results/yuku-ci-workflow-after.json)
+links all raw samples and input/compiler fingerprints.
+
+All 18 final attributed client bundle scenarios have zero changes in aggregate
+raw/gzip/Brotli, initial-load sizes, and chunk counts. All 38 emitted JavaScript
+files also match byte for byte, with hashes checked independently. Both Hydrate
+scenarios retain zero `H0` lazy factory calls in the initial entry and exactly
+one in the deferred component chunk. See the
+[final comparison](benchmarks/compiler/results/yuku-ci-bundle-comparison.json).
+The earlier Babel/native measurements and validation counts below remain
+evidence for their recorded revisions, not new measurements of this follow-up.
 
 ## Scope and architecture
 
@@ -35,7 +105,7 @@ guarantee of one parse per route for every request order. In the initial
 250-route Vite profile, the 128-entry bound caused each route to be analyzed
 three times. Generated snippets also require parsing separately.
 
-## Current 0.12.0 correctness and provenance
+## Recorded 0.12.0 correctness and provenance before the CI follow-up
 
 The comparison baseline is main commit `1e113034bdeccf696e6658d0b886439deb023bfd`.
 The candidate starts at merge commit `c32cb041a25679107a2b22454499dcf98ff9ec75`
@@ -79,12 +149,13 @@ invalid-AST crash hardening; it is not a demonstrated supported-input blocker.
 Official Node 20.19.0 loaded Router's public CommonJS entrypoints and exercised
 analysis/cloning/generation; Node 22.12.0 loaded Start's public ESM entrypoints.
 These [0.12.0 smoke checks](benchmarks/compiler/results/yuku-0.12-node-smoke.json)
-and the main Node 24.8.0 checks ran on macOS arm64. Linux GNU/musl and Windows
-native installation/import behavior remain unverified locally. These results
-must not be presented as cross-platform certification; those platform checks
-remain an adoption-validation gap.
+and the main Node 24.8.0 checks ran on macOS arm64; the Node 20/22 smoke checks
+were not repeated for the CI follow-up. The successful Linux GNU CI run at
+`25fe0cedeb` now adds native package/compiler coverage on that platform.
+Linux musl and Windows native installation/import behavior remain unverified;
+these results must not be presented as cross-platform certification.
 
-## Current 0.12.0 performance and bundles
+## Recorded 0.12.0 performance and bundles before the CI follow-up
 
 Five fresh baseline/candidate pairs alternate AB/BA order per workload. Compiler
 processes use two warmups and ten measured corpus passes; application samples
@@ -149,7 +220,7 @@ diagnostic timings are excluded from speed claims. See route
 [baseline](benchmarks/compiler/results/yuku-0.12-process-tree-routes-baseline.json)/[candidate](benchmarks/compiler/results/yuku-0.12-process-tree-routes-candidate.json)
 and Start [baseline](benchmarks/compiler/results/yuku-0.12-process-tree-start-baseline.json)/[candidate](benchmarks/compiler/results/yuku-0.12-process-tree-start-candidate.json).
 
-## Final 0.12.0 client bundles and workflow
+## Recorded 0.12.0 client bundles and workflow before the CI follow-up
 
 All 18 scenarios completed with source attribution enabled and package builds
 through Nx. Baseline main `1e113034bd` and the restored 0.12.0 candidate have
@@ -463,5 +534,7 @@ small executable reproducers and proposed fixes:
 
 Native import/analyze/clone/generate smoke checks passed on official Node
 20.19.0 and 22.12.0 binaries, alongside workspace validation on Node 24.8.0.
-Only macOS arm64 native binaries were executed. Linux GNU/musl and Windows
-installation/import checks remain unverified locally.
+During these earlier 0.11.0 measurements, only macOS arm64 native binaries were
+executed; Linux GNU/musl and Windows installation/import checks were unverified
+in that phase. The later Linux GNU CI coverage is recorded in the current
+CI follow-up section above.
