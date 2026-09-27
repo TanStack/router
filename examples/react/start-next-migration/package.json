@@ -12,8 +12,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.170.39",
-    "@tanstack/react-start": "^1.168.58",
+    "@tanstack/react-router": "^1.170.40",
+    "@tanstack/react-start": "^1.168.59",
     "iron-session": "^9.0.0",
     "next": "16.3.4",
     "react": "^19.2.3",

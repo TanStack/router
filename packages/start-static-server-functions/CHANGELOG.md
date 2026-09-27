@@ -1,5 +1,16 @@
 # @tanstack/start-static-server-functions
 
+## 1.167.38
+
+### Patch Changes
+
+- [#8297](https://github.com/TanStack/router/pull/8297) [`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f) - Update `seroval` and `seroval-plugins` from 1.6.2 to 1.6.7. This picks up the typed array length guard, the `maxBase64Length` and `compactArrayBufferViews` options, and the `isStream` export.
+
+- Updated dependencies [[`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f), [`76a7c0b`](https://github.com/TanStack/router/commit/76a7c0bfadb42d5f7fe7b9e1748acc7333178c91)]:
+  - @tanstack/start-client-core@1.170.33
+  - @tanstack/react-start@1.168.59
+  - @tanstack/solid-start@1.168.56
+
 ## 1.167.37
 
 ### Patch Changes
