@@ -123,8 +123,8 @@ function MatchView({
     ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
     : SafeFragment
   return (
-    <ShellComponent>
-      <matchContext.Provider value={match.routeId}>
+    <matchContext.Provider value={match.routeId}>
+      <ShellComponent>
         <ResolvedSuspenseBoundary fallback={pendingElement}>
           <ResolvedCatchBoundary
             getResetKey={() => match}
@@ -171,13 +171,13 @@ function MatchView({
             </ResolvedNotFoundBoundary>
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
-      </matchContext.Provider>
-      {(isServer ?? router.isServer) &&
-      route.parentRoute?.id === rootRouteId &&
-      router.options.scrollRestoration ? (
-        <ScrollRestoration />
-      ) : null}
-    </ShellComponent>
+        {(isServer ?? router.isServer) &&
+        route.parentRoute?.id === rootRouteId &&
+        router.options.scrollRestoration ? (
+          <ScrollRestoration />
+        ) : null}
+      </ShellComponent>
+    </matchContext.Provider>
   )
 }
 
