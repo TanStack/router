@@ -32,7 +32,6 @@ concurrency:
 
 permissions:
   contents: read # required for actions/checkout
-  id-token: write # required for OIDC authentication with CodSpeed
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
@@ -43,7 +42,8 @@ jobs:
   check_nx_rerun:
     name: Check Nx Cloud rerun
     # Ordinary updates skip this job without acquiring a runner.
-    if: >-
+    # The actor only gates optional benchmark work; it grants no privileges.
+    if: >- # zizmor: ignore[bot-conditions]
       ${{ github.event_name == 'pull_request' &&
           github.event.action == 'synchronize' &&
           github.actor == 'nx-cloud[bot]' }}
@@ -70,6 +70,9 @@ jobs:
 
   benchmarks:
     name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
+    permissions:
+      contents: read
+      id-token: write # required for OIDC authentication with CodSpeed
     needs: check_nx_rerun
     # A skipped or failed check must still allow benchmarks; respect cancellation.
     if: ${{ !cancelled() && needs.check_nx_rerun.outputs.skip != 'true' }}
