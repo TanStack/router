@@ -306,19 +306,35 @@ export class Generator {
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
     const routesByFile: GetRoutesByFileMapResult = new Map()
     for (const [filePath, cacheEntry] of this.routeNodeCache.entries()) {
-      const entry = { routeId: cacheEntry.routeId }
-      routesByFile.set(filePath, entry)
-      // A route file reached through a symlink (a Bazel sandbox, a
-      // pnpm-linked source tree, Nix) is scanned under its link path, but a
-      // bundler that resolves symlinks — Vite's default — hands its
-      // transform hooks the real path. The consumers of this map (the code
-      // splitter, whose client-side stripping of `server.handlers` hangs
-      // off the lookup, and route HMR) look up by that id, so the entry is
-      // keyed under the real path too.
+      routesByFile.set(filePath, { routeId: cacheEntry.routeId })
+    }
+    // A route file reached through a symlink (a Bazel sandbox, a
+    // pnpm-linked source tree, Nix) is scanned under its link path, but a
+    // bundler that resolves symlinks — Vite's default — hands its transform
+    // hooks the real path. The consumers of this map (the code splitter,
+    // whose client-side stripping of `server.handlers` hangs off the
+    // lookup, and route HMR) look up by that id, so each entry is also
+    // keyed under its real path. A scanned path always wins over an alias,
+    // and a real path that two scanned routes with different ids resolve
+    // to gets no alias at all: better a miss than the wrong route.
+    const ambiguousRealPaths = new Set<string>()
+    for (const [filePath, cacheEntry] of this.routeNodeCache.entries()) {
       const realPath = realpathOrUndefined(filePath)
-      if (realPath !== undefined && realPath !== filePath) {
-        routesByFile.set(realPath, entry)
+      if (
+        realPath === undefined ||
+        realPath === filePath ||
+        this.routeNodeCache.has(realPath) ||
+        ambiguousRealPaths.has(realPath)
+      ) {
+        continue
       }
+      const existing = routesByFile.get(realPath)
+      if (existing !== undefined && existing.routeId !== cacheEntry.routeId) {
+        ambiguousRealPaths.add(realPath)
+        routesByFile.delete(realPath)
+        continue
+      }
+      routesByFile.set(realPath, { routeId: cacheEntry.routeId })
     }
     return routesByFile
   }
