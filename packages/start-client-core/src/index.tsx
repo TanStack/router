@@ -62,8 +62,6 @@ export {
   type RequestServerResult,
   type RequestValidatorSlots,
   type ResolveRequestData,
-  type SecurityScheme,
-  type NamedSecurityScheme,
 } from './createMiddleware'
 export type {
   CompiledFetcherFnOptions,

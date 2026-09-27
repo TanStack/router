@@ -66,8 +66,6 @@ export interface RuntimeMiddleware {
     middleware?: Array<RuntimeMiddleware>
     /** Slot-shaped validator on request middleware. */
     validator?: RequestValidatorSlots
-    /** Declarative security scheme. */
-    securityScheme?: NamedSecurityScheme
   }
 }
 
@@ -80,6 +78,18 @@ export interface CollectOptions {
   include?: Array<string>
   /** HTTP methods to emit operations for (default: get/post/put/patch/delete). */
   methods?: Array<OpenApiMethod>
+  /**
+   * Security scheme per auth middleware. Auth runs inside `.server()`, which a
+   * collector cannot see, so map the middleware to the scheme it enforces.
+   * Every route whose chain includes it gets `security` in the spec.
+   *
+   * ```ts
+   * securitySchemes: new Map([
+   *   [authMiddleware, { name: 'bearerAuth', scheme: { type: 'http', scheme: 'bearer' } }],
+   * ])
+   * ```
+   */
+  securitySchemes?: Map<unknown, NamedSecurityScheme>
 }
 
 const DEFAULT_METHODS: Array<OpenApiMethod> = [
@@ -96,8 +106,8 @@ const SLOTS: Array<RequestSlot> = ['body', 'query', 'path', 'headers']
  * Walk a live route tree and collect a normalized {@link OpenApiManifest}.
  *
  * Reads only *declarative* metadata — it resolves the `handlers` builder (which
- * is a pure `(d) => d` at runtime) and reads `response` / `validator` /
- * `securityScheme` off the resolved options. It never invokes a route handler or
+ * is a pure `(d) => d` at runtime) and reads `response` / `validator` off
+ * the resolved options. It never invokes a route handler or
  * a middleware `.server()` function.
  *
  * Middleware on ancestor routes applies too, matching the order Start runs it
@@ -129,7 +139,11 @@ export function collectFromRouteTree(
 
       const builder = isBuilderOptions(entry) ? entry : undefined
       const chain = flatten([...middleware, ...(builder?.middleware ?? [])])
-      const security = collectSecurity(chain, securitySchemes)
+      const security = collectSecurity(
+        chain,
+        options.securitySchemes,
+        securitySchemes,
+      )
       const request = collectSlots([
         ...chain.map((m) => m.options?.validator),
         builder?.validator,
@@ -210,11 +224,12 @@ function flatten(
 
 function collectSecurity(
   chain: Array<RuntimeMiddleware>,
+  byMiddleware: Map<unknown, NamedSecurityScheme> | undefined,
   registry: Map<string, SecurityScheme>,
 ): Array<string> {
   const names = new Set<string>()
   for (const m of chain) {
-    const s = m.options?.securityScheme
+    const s = byMiddleware?.get(m)
     if (!s) continue
     registry.set(s.name, s.scheme)
     names.add(s.name)
