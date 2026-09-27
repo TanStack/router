@@ -40,9 +40,24 @@ export type SitemapData = {
   urls: Array<SitemapUrl>
 }
 
+/**
+ * The build's "now". `SOURCE_DATE_EPOCH` (seconds since the Unix epoch, the
+ * reproducible-builds convention: https://reproducible-builds.org/specs/source-date-epoch/)
+ * pins it, so a build from the same sources writes the same `sitemap.xml`
+ * and `pages.json` instead of stamping the day it happened to run.
+ */
+function buildTime(): Date {
+  const epoch = process.env.SOURCE_DATE_EPOCH
+  if (epoch !== undefined && /^\d+$/.test(epoch)) {
+    return new Date(Number(epoch) * 1000)
+  }
+  return new Date()
+}
+
 function buildSitemapJson(
   pages: TanStackStartOutputConfig['pages'],
   host: string,
+  now: Date,
 ): SitemapData {
   const slash = checkSlash(host)
 
@@ -54,7 +69,7 @@ function buildSitemapJson(
       loc: `${host}${slash}${page.path.replace(/^\/+/g, '')}`,
       lastmod: page.sitemap?.lastmod
         ? new Date(page.sitemap.lastmod).toISOString().split('T')[0]!
-        : new Date().toISOString().split('T')[0]!,
+        : now.toISOString().split('T')[0]!,
       priority: page.sitemap?.priority,
       changefreq: page.sitemap?.changefreq,
       alternateRefs: page.sitemap?.alternateRefs,
@@ -169,7 +184,8 @@ export function buildSitemap({
   logger.info('Building Sitemap...')
 
   // Build the sitemap data
-  const sitemapData = buildSitemapJson(pages, host)
+  const now = buildTime()
+  const sitemapData = buildSitemapJson(pages, host, now)
 
   // Generate output paths
   const xmlOutputPath = path.join(publicDir, outputPath)
@@ -188,7 +204,7 @@ export function buildSitemap({
         {
           pages,
           host,
-          lastBuilt: new Date().toISOString(),
+          lastBuilt: now.toISOString(),
         },
         null,
         2,
