@@ -337,7 +337,7 @@ export function useLinkProps<
     selectLinkState,
     LINK_SELECTOR_OPTIONS,
   )
-  const externalLink = isActive === undefined ? href : undefined
+  const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
