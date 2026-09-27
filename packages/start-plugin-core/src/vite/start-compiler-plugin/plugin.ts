@@ -1,5 +1,4 @@
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
-import { resolve as resolvePath } from 'pathe'
 import {
   SERVER_FN_LOOKUP,
   TRANSFORM_ID_REGEX,
@@ -22,12 +21,10 @@ import {
 } from '../../hydrate-when-transform'
 import { resolveViteId } from '../../utils'
 import { appendIdQueryFlag, removeIdQueryFlag } from '../module-id'
-import {
-  createViteDevServerFnModuleSpecifierEncoder,
-  decodeViteDevServerModuleSpecifier,
-} from './module-specifier'
+import { createViteDevServerFnModuleSpecifierEncoder } from './module-specifier'
 import { mergeHotUpdateModules } from './hot-update'
 import { getDevServerFnValidatorModule } from './dev-server-fn-validator-module'
+import { validateServerFnId } from './validate-server-fn-id-module'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
@@ -544,59 +541,16 @@ export function startCompilerPlugin(
         },
         async handler(id) {
           const parsed = parseIdQuery(id)
-          const fnId = parsed.query.id
-          if (fnId && serverFnsById[fnId]) {
-            return `export {}`
-          }
-
-          // ID not yet registered — the source file may not have been
-          // transformed in this dev session yet (e.g. cold restart with
-          // cached client). Try to decode the ID, discover the source
-          // file, trigger its compilation, and re-check.
-          if (fnId) {
-            try {
-              const decoded = JSON.parse(
-                Buffer.from(fnId, 'base64url').toString('utf8'),
-              )
-              if (
-                typeof decoded.file === 'string' &&
-                typeof decoded.export === 'string'
-              ) {
-                // Use the Vite when to decode the module specifier
-                // back to the original source file path.
-                const sourceFile = decodeViteDevServerModuleSpecifier(
-                  decoded.file,
-                )
-
-                if (sourceFile) {
-                  // Resolve to absolute path
-                  const absPath = resolvePath(root, sourceFile)
-
-                  // Trigger transform of the source file in this environment,
-                  // which will compile createServerFn calls and populate
-                  // serverFnsById as a side effect.
-                  if (this.environment.mode !== 'dev') {
-                    this.error(
-                      `could not validate server function ID ${fnId}: unknown environment mode ${this.environment.mode}`,
-                    )
-                  }
-
-                  await this.environment.transformRequest(
-                    `${absPath}?${SERVER_FN_LOOKUP}`,
-                  )
-
-                  // Re-check after lazy compilation
-                  if (serverFnsById[fnId]) {
-                    return `export {}`
-                  }
-                }
-              }
-            } catch {
-              // Decoding or fetching failed — fall through to error
-            }
-          }
-
-          this.error(`Invalid server function ID: ${fnId}`)
+          return validateServerFnId(parsed.query.id, {
+            serverFnsById,
+            root,
+            environment: {
+              mode: this.environment.mode,
+              transformRequest: (reqId) =>
+                this.environment.transformRequest(reqId),
+            },
+            error: (message) => this.error(message),
+          })
         },
       },
     },

@@ -174,6 +174,27 @@ describe('generateServerFnResolverModule', () => {
     expect(isServerFnNotFound(error)).toBe(true)
   })
 
+  // `manifest` is an object literal, so bracket access with an inherited property
+  // name (`toString`, `constructor`, …) reads Object.prototype instead of `undefined`.
+  // Without an ownership check the resolver skips the marked 404 branch and throws
+  // an unmarked error the handler answers 500 for, so a client can tell an inherited
+  // name apart from an unknown id.
+  test.each(['toString', 'constructor'])(
+    'flags the inherited property name %s as a missing id so the handler answers 404',
+    async (inheritedName) => {
+      const { getServerFnById } = await loadGeneratedResolver()
+
+      const error = await getServerFnById(inheritedName, {
+        origin: 'client',
+      }).then(
+        () => undefined,
+        (thrown: unknown) => thrown,
+      )
+
+      expect(isServerFnNotFound(error)).toBe(true)
+    },
+  )
+
   // Only the request handler acts on the flag; every other caller of the resolver
   // (SSR RPC, the RSC action loader, the serialization adapter) keeps propagating
   // this value as-is, so it has to stay a real Error with a usable message.

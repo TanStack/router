@@ -64,7 +64,10 @@ const manifest = {
 }
 
 export async function getServerFnById(id, access) {
-  const serverFnInfo = manifest[id]
+  // Own-property check only: an inherited name like 'toString' or 'constructor'
+  // would otherwise read Object.prototype, skip the marked branch below, and throw
+  // an unmarked 500 instead of the 404 an absent id must answer.
+  const serverFnInfo = Object.hasOwn(manifest, id) ? manifest[id] : undefined
   if (!serverFnInfo) {
     // Every build mints new ids, so a cache, a crawler or a tab that has not
     // reloaded keeps requesting ids from a previous deployment. Flagged so the
