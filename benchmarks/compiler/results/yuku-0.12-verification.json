@@ -1,0 +1,106 @@
+{
+  "verifiedAt": "2026-09-27T14:45:43.979Z",
+  "node": "v24.8.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "versions": {
+    "yuku-analyzer": "0.12.0",
+    "yuku-ast": "0.12.0",
+    "yuku-codegen": "0.12.0",
+    "@yuku-toolchain/types": "0.12.0",
+    "@yuku-analyzer/binding-darwin-arm64": "0.12.0",
+    "@yuku-codegen/binding-darwin-arm64": "0.12.0"
+  },
+  "purity": {
+    "pipeline": "analyze(source, {path: input.js, attachComments: true}).ast \u2192 generate(ast), default comment policy",
+    "cases": [
+      {
+        "source": "const value = /* @__PURE__ */ factory();",
+        "output": "const value = /* @__PURE__ */ factory();"
+      },
+      {
+        "source": "const value = /* #__PURE__ */ factory();",
+        "output": "const value = /* #__PURE__ */ factory();"
+      },
+      {
+        "source": "const value = /*\n @__PURE__\n*/ factory();",
+        "output": "const value = /*\n @__PURE__\n*/ factory();"
+      }
+    ]
+  },
+  "jsx": {
+    "command": [
+      "/Users/Flo/.nvm/versions/node/v24.8.0/bin/node",
+      "benchmarks/compiler/yuku-feasibility/jsx-reference-repro.mjs",
+      "packages/router-utils"
+    ],
+    "exitCode": 0,
+    "output": {
+      "failures": []
+    }
+  },
+  "publicVite": {
+    "command": [
+      "/Users/Flo/.nvm/versions/node/v24.8.0/bin/node",
+      "benchmarks/compiler/yuku-feasibility/jsx-prefixed-route-repro.mjs",
+      "--workspace",
+      "/Users/Flo/.codex/worktrees/137d/router"
+    ],
+    "exitCode": 0,
+    "output": {
+      "workspace": "/Users/Flo/.codex/worktrees/137d/router",
+      "expectRegression": false,
+      "results": [
+        {
+          "name": "Widget",
+          "result": "component and loader execute successfully"
+        },
+        {
+          "name": "_Widget",
+          "result": "component and loader execute successfully"
+        },
+        {
+          "name": "$Widget",
+          "result": "component and loader execute successfully"
+        }
+      ]
+    }
+  },
+  "packageGates": {
+    "command": "CI=1 NX_DAEMON=false pnpm nx run-many --projects=@tanstack/router-utils,@tanstack/router-generator,@tanstack/router-plugin --targets=test:unit,test:types,test:eslint,test:build --parallel=1 --outputStyle=stream --skipRemoteCache",
+    "exitCode": 0,
+    "log": "/tmp/reviewer3-yuku012-gates.log",
+    "routerUtilsTests": 51,
+    "routerGeneratorRuntimeTests": 261,
+    "routerGeneratorFixtureTypeTests": 12,
+    "routerPluginTests": 716,
+    "publicVitePermanentTestNames": [
+      "Widget",
+      "_Widget",
+      "$Widget",
+      "\u00c9Widget",
+      "\u00e9Widget"
+    ],
+    "publicVitePermanentAssertions": [
+      "rendered component executes",
+      "loader component executes",
+      "component identity is shared across separate lazy chunks"
+    ]
+  },
+  "routeConsumerGates": {
+    "command": "CI=1 NX_DAEMON=false pnpm nx run-many --projects=tanstack-router-e2e-react-basic-file-based-code-splitting,tanstack-router-e2e-solid-basic-file-based-code-splitting,tanstack-router-e2e-vue-basic-file-based-jsx,tanstack-router-e2e-vue-basic-file-sfc --targets=test:e2e --parallel=1 --outputStyle=stream --skipRemoteCache",
+    "exitCode": 0,
+    "log": "/tmp/reviewer3-yuku012-route-consumers.log",
+    "durationSeconds": 51.6,
+    "server": "Production Vite build then preview; Chromium, one worker",
+    "results": {
+      "reactCodeSplitting": 6,
+      "solidCodeSplitting": 5,
+      "vueJsx": 22,
+      "vueSfc": 22
+    },
+    "allBrowserSuitesExecuted": true,
+    "cachedTasks": "11 dependency builds; all four browser suites executed",
+    "trackedConsumerFileChanges": false
+  }
+}

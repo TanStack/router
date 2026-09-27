@@ -67,10 +67,10 @@
     "diff": "^8.0.4",
     "pathe": "catalog:",
     "tinyglobby": "catalog:",
-    "@yuku-toolchain/types": "0.11.0",
-    "yuku-analyzer": "0.11.0",
-    "yuku-ast": "0.11.0",
-    "yuku-codegen": "0.11.0"
+    "@yuku-toolchain/types": "0.12.0",
+    "yuku-analyzer": "0.12.0",
+    "yuku-ast": "0.12.0",
+    "yuku-codegen": "0.12.0"
   },
   "devDependencies": {
     "vite": "*",

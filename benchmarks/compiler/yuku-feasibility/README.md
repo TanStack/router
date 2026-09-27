@@ -1,19 +1,28 @@
 # Yuku feasibility and upstream findings
 
-Reported upstream:
+Upstream status as of September 27, 2026:
 
-- [Missing JSX component references (migration blocker)](https://github.com/yuku-toolchain/yuku/issues/204)
-- [Whitespace-padded purity comments are dropped](https://github.com/yuku-toolchain/yuku/issues/202)
-- [Invalid object-method AST crashes code generation](https://github.com/yuku-toolchain/yuku/issues/203)
+- [Missing JSX component references, #204](https://github.com/yuku-toolchain/yuku/issues/204): fixed in 0.12.0 by [#208](https://github.com/yuku-toolchain/yuku/pull/208).
+- [Whitespace-padded purity comments, #202](https://github.com/yuku-toolchain/yuku/issues/202): fixed in 0.12.0 by [#209](https://github.com/yuku-toolchain/yuku/pull/209).
+- [Invalid object-method AST crash, #203](https://github.com/yuku-toolchain/yuku/issues/203): still open; invalid-input hardening, not a migration blocker.
 
-Investigated with Node 24.8.0 on macOS arm64, using published `yuku-parser`,
-`yuku-analyzer`, and `yuku-codegen` **0.11.0**. The independent syntax oracle was
+The workspace now uses Yuku **0.12.0**. Its installed analyzer passes the
+standalone JSX reference diagnostic with zero failures. Direct
+analyzer-to-default-codegen checks also preserve all three tested purity-comment
+forms. The public split-route runtime reproducer also passes against rebuilt
+0.12.0 compiler packages. Permanent Vite tests cover ASCII, underscore, dollar,
+and Unicode names and verify shared component identity across chunks. See
+[the verification record](../results/yuku-0.12-verification.json) and the
+[0.12.0 release](https://github.com/yuku-toolchain/yuku/releases/tag/v0.12.0).
+
+The historical investigation below used Node 24.8.0 on macOS arm64 with published
+`yuku-parser`, `yuku-analyzer`, and `yuku-codegen` **0.11.0**. The independent syntax oracle was
 `@babel/parser` 7.28.5; it is only an investigation tool, not a proposed runtime
 compatibility layer. The initial isolated probes did not change workspace dependencies. The subsequent
 migration uses Yuku directly in the compiler packages; Babel is not retained as
 an AST compatibility layer.
 
-## Migration blocker: non-ASCII-uppercase JSX component references are missing
+## Historical 0.11.0 blocker: missing JSX component references
 
 Published `yuku-analyzer` 0.11.0 records no binding references for standalone
 `<_Widget />`, `<$Widget />`, `<ÉWidget />`, or `<éWidget />` tags. These tags
@@ -36,45 +45,60 @@ The separate public Vite Router reproducer,
 [`jsx-prefixed-route-repro.mjs`](./jsx-prefixed-route-repro.mjs), demonstrates a
 runtime consequence: a component used by an eager route option and a split JSX
 component can be omitted from the lazy chunk, causing a `ReferenceError`.
-The ASCII-uppercase control passes. This is a migration correctness blocker,
-not only a bundle-size issue.
+The ASCII-uppercase control passed. This made 0.11.0 unsuitable for the migration,
+independently of its bundle-size impact. Upstream 0.12.0 fixes the reference
+classification, and the public runtime check below now passes against rebuilt
+compiler packages, resolving this correctness blocker.
 
-Run the public Router check in the native checkout (expected to fail), or verify
-the exact known failure without leaving the diagnostic process unsuccessful:
+Run the public Router check in the native checkout (expected to pass with 0.12.0):
 
 ```sh
 node benchmarks/compiler/yuku-feasibility/jsx-prefixed-route-repro.mjs --workspace "$PWD"
+```
+
+The following command verifies the historical failure against a checkout using
+0.11.0. It intentionally expects the regression and is not a 0.12.0 acceptance check:
+
+```sh
 node benchmarks/compiler/yuku-feasibility/jsx-prefixed-route-repro.mjs --workspace "$PWD" --expect-regression
 ```
 
 Passing `--workspace /path/to/baseline/router` runs the same public plugin and
 runtime contract against the built baseline. The Babel baseline passed all three
-component names (`Widget`, `_Widget`, `$Widget`); the native version throws for
+component names (`Widget`, `_Widget`, `$Widget`); the native 0.11.0 version threw for
 the latter two. This checks rendering and loader execution, not cross-chunk
 identity: the baseline has a separate, preexisting duplication limitation.
 
-Root cause is the ASCII-uppercase-only condition in upstream
+The 0.11.0 root cause was the ASCII-uppercase-only condition in upstream
 [`src/parser/semantic/binder.zig:1038`](https://github.com/yuku-toolchain/yuku/blob/eb400037678815bdbc2e5477c4b5458e436286ad/src/parser/semantic/binder.zig#L1038).
 The inspected source is commit `eb400037678815bdbc2e5477c4b5458e436286ad`.
-[`jsx-reference-upstream.patch`](./jsx-reference-upstream.patch) proposes recording
-every non-intrinsic standalone tag, retaining the existing member-root behavior.
+[`jsx-reference-upstream.patch`](./jsx-reference-upstream.patch) preserves the
+historical proposal to record every non-intrinsic standalone tag, retaining the
+existing member-root behavior.
 It includes upstream tests for underscore, dollar, and Unicode names; opening
 and closing tags; lexical shadowing; intrinsic tags; and namespaced tags. The
-patch is a proposal, has not been applied to the dependency, and has not been
-compiled or run in the upstream repository.
+patch was not applied to the dependency or compiled/run in the upstream
+repository. It is superseded by upstream [#208](https://github.com/yuku-toolchain/yuku/pull/208),
+included in 0.12.0.
 
-The full bundle comparison also exposed this defect through generated `<_H0 />`
-Hydrate tags: the missing reference makes route cleanup preserve the lazy factory
+The historical 0.11.0 full bundle comparison also exposed this defect through
+generated `<_H0 />` Hydrate tags: the missing reference makes route cleanup preserve the lazy factory
 as an initially unused declaration. Each deferred-hydration eager entry retains
 65 raw bytes of unnecessary output (React +33 gzip/+22 Brotli; Solid +32 gzip/+61
-Brotli across all client assets). These are removable residues once upstream
-reference tracking is corrected, not required runtime behavior. No production
-workaround, generated-name change, or purity annotation was added locally.
+Brotli across all client assets). These were attributed to missing reference
+tracking. The fresh 0.12.0 comparison confirms their removal: all 18 scenarios
+match the Babel baseline in aggregate raw/gzip/Brotli, initial sizes, and chunk
+counts. See [before](../results/yuku-0.12-bundle-before.json) and
+[after](../results/yuku-0.12-bundle-after.json). The
+[emitted-code comparison](../results/yuku-0.12-bundle-comparison.json) also verifies
+all 38 client JavaScript files are byte-identical, with no `H0` factory in either
+Hydrate eager entry and exactly one in each lazy component chunk.
+No production workaround, generated-name change, or purity annotation was added locally.
 
-## Confirmed upstream defect: whitespace-padded purity comments disappear
+## Fixed in 0.12.0: whitespace-padded purity comments
 
 The documented default `comments: 'some'` policy promises preservation of
-annotations, but drops common forms such as `/* @__PURE__ */` and
+annotations, but 0.11.0 dropped common forms such as `/* @__PURE__ */` and
 `/* #__PURE__ */`. The annotation is present in the parsed AST. Printing removes
 it. This can prevent a downstream bundler from removing a pure call.
 
@@ -87,19 +111,22 @@ node benchmarks/compiler/yuku-feasibility/pure-comment-repro.mjs /path/to/scratc
 The assertion fails with 0.11.0. The generated code is
 `const value = factory();`.
 
-Root cause is in upstream
+The 0.11.0 root cause was in upstream
 [`src/parser/codegen/utils.zig`](https://github.com/yuku-toolchain/yuku/blob/eb400037678815bdbc2e5477c4b5458e436286ad/src/parser/codegen/utils.zig#L162),
 `isSignificantBlockComment`. It recognizes `@` and `#` only as the first byte of
 the comment value, and its subsequent scan recognizes legal notices but not
 purity annotations. Parser comment values preserve whitespace after `/*`.
-The same root cause remains in upstream commit
+The same root cause was present in upstream commit
 `eb400037678815bdbc2e5477c4b5458e436286ad` examined during this investigation.
 
-Proposed upstream fix: normalize leading whitespace before checking annotation
-markers, or explicitly recognize whitespace-padded `@__PURE__`, `#__PURE__`, and
-no-side-effects annotation forms. Add parser-to-codegen regression tests for
-both marker styles, with and without whitespace and newlines, and verify the
-other comment policies remain unchanged.
+The historical proposed upstream fix was to normalize leading whitespace before
+checking annotation markers, or explicitly recognize whitespace-padded `@__PURE__`, `#__PURE__`, and
+no-side-effects annotation forms. It also called for parser-to-codegen regression tests for
+both marker styles, with and without whitespace and newlines, and verification
+that other comment policies remain unchanged. Upstream [#209](https://github.com/yuku-toolchain/yuku/pull/209)
+implements the fix in 0.12.0. The installed 0.12.0 analyzer and default codegen
+preserved the three directly tested purity-comment forms; the original 0.11.0
+failure remains documented above for provenance.
 
 `comments: 'all'` is an existing documented option and preserves these comments.
 Preserving all source comments is a reasonable compiler policy independently of
@@ -118,7 +145,9 @@ for this input. Run it with a dependency directory argument; a parent process
 captures the crash safely. This is invalid-input hardening, **not** a supported
 syntax defect or migration blocker. Proposed upstream improvement: validate
 method/accessor value shapes at the native boundary and return a diagnostic
-instead of terminating the host process.
+instead of terminating the host process. Issue #203 remains open and the
+0.12.0 release does not claim to fix it. No new invalid-AST crash check has
+been performed for this upgrade.
 
 The initial corpus contained 115 input fixtures: 72 from router-plugin (including
 all 52 route-splitting fixtures) and 43 from start-plugin-core. Each was analyzed,
@@ -149,7 +178,10 @@ output independent of the old Babel-specific configuration.
 The native packages advertise macOS x64/arm64, Windows x64/arm64, Linux
 x64/arm64/arm GNU and musl, FreeBSD x64, and Android arm64 binaries. Only macOS
 arm64 was executed here. The packages are ESM and declare no Node `engines`
-constraint. A SHA-256-verified official Node 20.19.0 binary also successfully
+constraint. The minimum-Node-version smoke checks below were originally run on
+0.11.0 and have now been repeated successfully on 0.12.0; the
+[current record](../results/yuku-0.12-node-smoke.json) preserves their scope.
+A SHA-256-verified official Node 20.19.0 binary successfully
 loaded the built router-utils CommonJS entry point and exercised its public
 analyze/clone/generate helpers, the router-plugin Vite factory initialization,
 and the router-generator `Generator` export. A separately verified official

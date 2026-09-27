@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-09-27T15:04:54.088Z",
+  "compilerFingerprint": {
+    "commit": "c32cb041a25679107a2b22454499dcf98ff9ec75",
+    "sha256": "9c8751495155f052d418d5aabd437317091a3dfef76e8d6dbc9cf90a42803fc5",
+    "javascriptFiles": 125,
+    "sourceSha256": "8b15d7b0f37a00fb36511b29f775db58a7ff55dc5fd6362cf64b3ddcfef29c64",
+    "sourceFiles": 137,
+    "dependencyVersions": {
+      "yuku-analyzer": "0.12.0",
+      "yuku-ast": "0.12.0",
+      "yuku-codegen": "0.12.0",
+      "@yuku-toolchain/types": "0.12.0"
+    }
+  },
+  "workspace": "/Users/Flo/.codex/worktrees/137d/router",
+  "node": "v24.8.0",
+  "env": "client",
+  "repetitions": 3,
+  "iterations": 3,
+  "summary": [
+    {
+      "boundaries": 500,
+      "medianCompileMs": 60.566319666666665,
+      "medianPeakRssMiB": 164.109375
+    }
+  ],
+  "samples": [
+    {
+      "repetition": 0,
+      "boundaries": 500,
+      "sourceBytes": 64797,
+      "sourceHash": "aea6496894e0e1c67a6e9cfdcac86b2f7ac164c8cb53edd3480d2861ecaa9dad",
+      "msPerCompile": 60.566319666666665,
+      "peakRssMiB": 164.109375,
+      "before": {
+        "rss": 102989824,
+        "heapTotal": 46759936,
+        "heapUsed": 7627080,
+        "external": 8328301,
+        "arrayBuffers": 24819
+      },
+      "retained": {
+        "rss": 166510592,
+        "heapTotal": 80314368,
+        "heapUsed": 7753432,
+        "external": 10615832,
+        "arrayBuffers": 24819
+      },
+      "outputBytes": 958652
+    },
+    {
+      "repetition": 1,
+      "boundaries": 500,
+      "sourceBytes": 64797,
+      "sourceHash": "aea6496894e0e1c67a6e9cfdcac86b2f7ac164c8cb53edd3480d2861ecaa9dad",
+      "msPerCompile": 60.71866666666666,
+      "peakRssMiB": 191.109375,
+      "before": {
+        "rss": 101253120,
+        "heapTotal": 47808512,
+        "heapUsed": 7608040,
+        "external": 8327266,
+        "arrayBuffers": 5745226
+      },
+      "retained": {
+        "rss": 195264512,
+        "heapTotal": 148193280,
+        "heapUsed": 8490792,
+        "external": 8318870,
+        "arrayBuffers": 1983379
+      },
+      "outputBytes": 958652
+    },
+    {
+      "repetition": 2,
+      "boundaries": 500,
+      "sourceBytes": 64797,
+      "sourceHash": "aea6496894e0e1c67a6e9cfdcac86b2f7ac164c8cb53edd3480d2861ecaa9dad",
+      "msPerCompile": 57.856778,
+      "peakRssMiB": 156.328125,
+      "before": {
+        "rss": 102187008,
+        "heapTotal": 47284224,
+        "heapUsed": 7627184,
+        "external": 8327380,
+        "arrayBuffers": 24819
+      },
+      "retained": {
+        "rss": 158777344,
+        "heapTotal": 77414400,
+        "heapUsed": 8469992,
+        "external": 8657272,
+        "arrayBuffers": 1983379
+      },
+      "outputBytes": 958652
+    }
+  ]
+}

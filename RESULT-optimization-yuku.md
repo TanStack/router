@@ -1,21 +1,16 @@
 # Native Yuku compiler migration
 
-**Status: blocked on Yuku 0.11.0 analyzer correctness. Implementation and local
-evaluation are complete, but this migration is not ready to land. Adoption
-requires an upstream analyzer fix and
-subsequent correctness, performance, and bundle reruns.** A newly confirmed
-semantic failure overrides the passing existing suites: standalone JSX component
-names beginning with `_`, `$`, or Unicode are omitted from Yuku's reference
-records, so the native route compiler can generate a chunk with an unresolved
-component binding. No local workaround has been implemented.
-
-All measurements below describe the current implementation before resolution
-of that defect. They demonstrate potential performance improvements on their
-recorded inputs, not a correctness-qualified adoption recommendation.
+**Current status: Yuku 0.12.0 fixes the reported JSX-reference and purity-comment
+defects. The upgraded compiler and consuming application checks pass locally.
+Fresh alternating measurements show lower build time and peak process memory
+than Babel on all three measured workloads. All 18 client bundle scenarios
+match the Babel baseline in aggregate size and chunk-count metrics.** No
+production API adaptation or local dependency workaround was needed for the
+upgrade.
 
 ## Scope and architecture
 
-The compiler packages use Yuku 0.11.0 for parsing, semantic analysis, AST
+The compiler packages use Yuku 0.12.0 for parsing, semantic analysis, AST
 transformation, and code generation. There is no Babel compatibility layer or
 fallback in the migrated compiler. Babel can still occur transitively in
 unrelated framework tooling.
@@ -40,7 +35,170 @@ guarantee of one parse per route for every request order. In the initial
 250-route Vite profile, the 128-entry bound caused each route to be analyzed
 three times. Generated snippets also require parsing separately.
 
-## Evaluation design
+## Current 0.12.0 correctness and provenance
+
+The comparison baseline is main commit `1e113034bdeccf696e6658d0b886439deb023bfd`.
+The candidate starts at merge commit `c32cb041a25679107a2b22454499dcf98ff9ec75`
+with the 0.12.0 dependency upgrade and expanded regression tests. Supporting
+commit `d863fc26f5928780e3db179ce3118f65eafd9dd2` preserves the three added/expanded
+test files for the final workflow; its restored source/output fingerprints match
+the five-pair measurements. Runtime compiler
+source required no changes for this upgrade. The baseline compiler source and
+built JavaScript fingerprints match the earlier Babel baseline; new measurements
+record both checkout revisions, compiler source/output hashes, dependency
+versions, and input hashes. A source fingerprint includes package manifests,
+so upgrading external native dependencies changes it even when built compiler
+JavaScript is identical.
+
+Package unit/typechecked counts are router-utils 51, router-generator 261 runtime
+plus 12 fixture type tests, router-plugin 716, start-plugin-core 584, and
+react-start-rsc 61. TypeScript 5.6 through 7, lint, and package integrity/export
+checks passed. Public Vite regressions execute `Widget`, `_Widget`, `$Widget`,
+`ÉWidget`, and `éWidget`, and verify function identity across separate loader and
+component chunks. Hydrate checks positively identify bound captured references;
+missing references can no longer pass through an empty unresolved-reference list.
+See [Router verification](benchmarks/compiler/results/yuku-0.12-verification.json)
+and [Start/RSC verification](benchmarks/compiler/results/yuku-0.12-start-rsc-validation.json).
+
+Production browser checks passed for React/Solid route splitting (6/5), Vue
+JSX/SFC (22/22), server functions under Vite/Rsbuild (53 each), deferred hydration
+under React/Solid (16/15; one React development-only case skipped), and import
+protection under Vite/Rsbuild (87 each). Live Vite HMR passed 28 tests. RSC's
+production build passed; no RSC browser-suite run is claimed. Dependency builds
+could use valid Nx cache entries; the recorded browser suites executed. See
+[application verification](benchmarks/compiler/results/yuku-0.12-app-validation.json)
+and the route-consumer section of the Router verification record.
+
+Upstream [#204](https://github.com/yuku-toolchain/yuku/issues/204) and
+[#202](https://github.com/yuku-toolchain/yuku/issues/202) are fixed in 0.12.0.
+Installed-package checks report zero JSX-reference failures and preserve all
+three tested purity-comment forms through default code generation. Issue
+[#203](https://github.com/yuku-toolchain/yuku/issues/203) remains open for
+invalid-AST crash hardening; it is not a demonstrated supported-input blocker.
+
+Official Node 20.19.0 loaded Router's public CommonJS entrypoints and exercised
+analysis/cloning/generation; Node 22.12.0 loaded Start's public ESM entrypoints.
+These [0.12.0 smoke checks](benchmarks/compiler/results/yuku-0.12-node-smoke.json)
+and the main Node 24.8.0 checks ran on macOS arm64. Linux GNU/musl and Windows
+native installation/import behavior remain unverified locally. These results
+must not be presented as cross-platform certification; those platform checks
+remain an adoption-validation gap.
+
+## Current 0.12.0 performance and bundles
+
+Five fresh baseline/candidate pairs alternate AB/BA order per workload. Compiler
+processes use two warmups and ten measured corpus passes; application samples
+are one production build per process. The quiet runs use Node 24.8.0 on Apple M3
+Max. Input hashes match between engines, and compiler source/output fingerprints
+and dependency versions remain stable across all 30 samples.
+
+| Workload                                | Babel median (min–max), ms | Yuku 0.12 median (min–max), ms | Time reduction | Median peak process RSS, Babel → Yuku |
+| --------------------------------------- | -------------------------: | -----------------------------: | -------------: | ------------------------------------: |
+| Complete splitter, original 52 fixtures |     323.36 (310.05–340.62) |            94.18 (90.59–95.93) |          70.9% |                   405.25 → 260.98 MiB |
+| Synthetic 250-route Vite build          |  1916.48 (1850.32–2013.52) |      1098.14 (1079.48–1233.97) |          42.7% |                   719.30 → 649.30 MiB |
+| Start server-functions production build |  1588.83 (1544.65–1756.59) |      1061.93 (1054.32–1148.69) |          33.2% |                   659.14 → 547.72 MiB |
+
+Sample coefficients of variation range from 2.6% to 5.6%. These are workload-level
+medians, not tail-latency estimates or guarantees for every application. Both
+splitters emit 517 modules; both synthetic applications emit 751 chunks and
+722,613 JavaScript bytes. Both Start builds emit 163 files, with JavaScript bytes
+of 1,214,457 versus 1,208,118. Counts and raw sizes do not replace the client gzip
+bundle comparison. Raw samples and full provenance are in
+[yuku-0.12-alternating.json](benchmarks/compiler/results/yuku-0.12-alternating.json).
+
+Peak RSS includes each Node process and its in-process native allocations, not
+simultaneous subprocess totals. These comparisons show lower memory than Babel;
+they do not establish a memory improvement over the historical 0.11.0 runs. In
+particular, the new splitter's median peak RSS is higher than the earlier native
+measurement. Separate sessions do not establish a controlled 0.11.0-to-0.12.0
+regression or its cause. Do not combine samples from the two measurement windows.
+
+Separate native reuse attribution measured 88.67 ms with reuse versus 128.30 ms
+without (30.9% lower), and median peak RSS of 246.20 versus 338.77 MiB. Five fresh
+processes per mode used two warmups and ten measured passes, rotating mode order.
+A separate diagnostic confirms identical generated code/source-map SHA-256
+digests. See [reuse timings](benchmarks/compiler/results/yuku-0.12-reuse.json)
+and [output digests](benchmarks/compiler/results/yuku-0.12-reuse-digest.json);
+diagnostic timings are excluded from the speed comparison.
+
+Separate sequential stress runs used three fresh processes per engine and
+matching input hashes. At 500 Hydrate boundaries, client compilation measured
+76.90 → 60.57 ms (267.77 → 164.11 MiB peak RSS), and server compilation measured
+53.71 → 38.34 ms (204.53 → 124.14 MiB), using one warmup and three measured
+compiles. The 1,000-binding splitter used one warmup and two measured passes:
+3924.50 → 183.04 ms (364.19 → 173.94 MiB), with 12 outputs per engine. Generated
+code/map sizes differ between printers; matching output counts are not a semantic
+equivalence assertion. Records: [Hydrate client baseline](benchmarks/compiler/results/yuku-0.12-hydrate-client-baseline.json)
+and [candidate](benchmarks/compiler/results/yuku-0.12-hydrate-client-candidate.json),
+[Hydrate server baseline](benchmarks/compiler/results/yuku-0.12-hydrate-server-baseline.json)
+and [candidate](benchmarks/compiler/results/yuku-0.12-hydrate-server-candidate.json),
+[destructuring baseline](benchmarks/compiler/results/yuku-0.12-bindings-1000-baseline.json)
+and [candidate](benchmarks/compiler/results/yuku-0.12-bindings-1000-candidate.json).
+
+The larger 750-route workload measured 5004.05 → 2843.16 ms and 1296.31 →
+1123.72 MiB median peak RSS across three fresh processes per engine. Both emitted
+2,251 chunks and 1,641,651 JavaScript bytes from matching inputs, with the
+production cache bound still 128. See [baseline](benchmarks/compiler/results/yuku-0.12-routes-750-baseline.json)
+and [candidate](benchmarks/compiler/results/yuku-0.12-routes-750-candidate.json).
+These sequential stress runs supplement the five-pair primary comparison.
+
+Separate single-run process-tree diagnostics sampled every 50 ms: route-build
+peaks were 755.69 → 625.17 MiB, and Start-build peaks were 654.73 → 547.34 MiB.
+No descendants were observed, and peaks between samples may be missed. These
+diagnostic timings are excluded from speed claims. See route
+[baseline](benchmarks/compiler/results/yuku-0.12-process-tree-routes-baseline.json)/[candidate](benchmarks/compiler/results/yuku-0.12-process-tree-routes-candidate.json)
+and Start [baseline](benchmarks/compiler/results/yuku-0.12-process-tree-start-baseline.json)/[candidate](benchmarks/compiler/results/yuku-0.12-process-tree-start-candidate.json).
+
+## Final 0.12.0 client bundles and workflow
+
+All 18 scenarios completed with source attribution enabled and package builds
+through Nx. Baseline main `1e113034bd` and the restored 0.12.0 candidate have
+identical raw, gzip, Brotli, initial raw/gzip/Brotli, and JavaScript chunk-count
+metrics in every scenario. This includes all React/Solid/Vue Router and Start
+cases, React Start query integration and Rsbuild variants, and both deferred
+hydration cases. The old +65 raw-byte Hydrate residues and +33/+32 gzip increases
+are absent. An independent byte-for-byte comparison also verified all 38 emitted
+client JavaScript files across the 18 scenarios. In both Hydrate cases, the eager
+entry contains no `H0` lazy factory and the component chunk contains exactly one.
+Per-file hashes and emitted-code/source-map attribution are preserved in the
+[comparison record](benchmarks/compiler/results/yuku-0.12-bundle-comparison.json).
+Complete attributed snapshots are
+[before](benchmarks/compiler/results/yuku-0.12-bundle-before.json) and
+[after](benchmarks/compiler/results/yuku-0.12-bundle-after.json).
+
+The same five-name public JSX test ran in the separate main baseline checkout
+and restored candidate. Babel rendered and executed loaders for every name but
+failed shared-function identity for `_Widget`, `$Widget`, and `éWidget` (2 passed,
+3 failed). Yuku 0.12.0 passed all five, including identity. These are preexisting
+baseline ownership limitations, not new rendering failures. The baseline test
+file was restored afterward. See the durable
+[workflow record](benchmarks/compiler/results/yuku-0.12-workflow-contracts.json).
+
+The dependency upgrade was stashed and restored around this final workflow;
+the Babel BEFORE implementation came from the separate main checkout. Matching
+52-fixture smoke runs used one process, one warmup, and three measured passes:
+355.22 → 99.99 ms and 382.52 → 123.36 MiB peak RSS. These verify the workflow,
+not statistical precision; performance conclusions use the five alternating
+pairs. Source/output fingerprints and dependency versions match those primary
+runs. Raw [before](benchmarks/compiler/results/yuku-0.12-workflow-before.json)
+and [after](benchmarks/compiler/results/yuku-0.12-workflow-after.json) records
+preserve the configuration.
+
+All baseline bundle measurements succeeded. Git metadata reporting initially
+failed because that shell resolved Apple Git with an unaccepted Xcode license;
+the report was regenerated from completed measurements using Homebrew Git. This
+was a report-only repair, recorded in the workflow artifact; measurements were
+not replaced or inferred.
+
+## Historical 0.11.0 evaluation
+
+Everything in this section records the earlier 0.11.0 evaluation, including its
+source attribution, implementation corrections, and stash-workflow checks.
+Its JSX correctness blocker was subsequently fixed by the upstream release;
+current correctness and acceptance status are stated above. Preserve these
+figures as historical evidence rather than combining them with fresh samples.
+
+### Evaluation design
 
 The baseline compiler is commit `bb4423e09872aee4f2544600d0eba3303fc7db56` in a
 separate managed checkout. Supporting commits `0ec43cd02c` and `f69eb7a5aa`
@@ -66,7 +224,7 @@ the native benchmark's no-reuse mode, without adding a production fallback or
 compatibility option. Test, documentation, and benchmark changes do not affect
 emitted application code.
 
-## Final speed and process-memory results
+### Historical speed and process-memory results
 
 Five fresh baseline/native pairs alternate execution order between repetitions.
 Each compiler process performs two warmups and ten measured corpus passes;
@@ -118,7 +276,7 @@ default remains 128: the small-workload gain does not justify greater retained
 memory and weak gains when the working set exceeds the cache. The migration
 therefore does not claim that every physical route is parsed exactly once.
 
-## Initial measured results
+### Initial measured results
 
 Three fresh processes, two warmup passes and five measured passes per compiler
 process; application builds use three fresh processes:
@@ -138,7 +296,7 @@ Peak process RSS was 186.5 versus 294.5 MiB. These initial measurements are
 retained in `benchmarks/compiler/results/quiet-initial-*.json`. The five-pair
 final comparison above is the primary performance evidence.
 
-## Measured algorithmic corrections
+### Measured algorithmic corrections
 
 Independent review identified repeated whole-tree searches for Hydrate spread
 bindings and a complete graph between bindings in one destructuring declaration.
@@ -181,7 +339,7 @@ process, 1,000 shared destructured bindings measured 3793.85 → 187.40 ms
 stress comparisons are recorded in `final-hydrate-*.json` and
 `final-bindings-1000-*.json`; they are separate from the alternating main runs.
 
-## Integration checks
+### Integration checks
 
 Final package checks passed for router-utils (45 unit/typechecked tests),
 router-generator (261 runtime and 12 fixture type tests), router-plugin (708
@@ -217,7 +375,7 @@ Three public provider regressions cover named variable, named function, and
 named default exports. The live Vite HMR suite passed all 28 browser tests,
 including state preservation and transitive server-function invalidation.
 
-## Final stash-workflow checks
+### Final stash-workflow checks
 
 After the supporting commits, implementation changes were stashed for the
 BEFORE phase and restored for AFTER. The baseline checkout retained the Babel
@@ -242,14 +400,14 @@ statistical precision. Primary conclusions use the five alternating pairs.
 Raw records are [workflow-before.json](benchmarks/compiler/results/workflow-before.json)
 and [workflow-after.json](benchmarks/compiler/results/workflow-after.json).
 
-## Initial full client bundle comparison — cleanup pending
+### Historical full client bundle comparison
 
 Both phases completed all 18 bundle scenarios with source attribution enabled,
 identical scenario selection, and package builds through Nx. The complete
 snapshots, including per-file metrics and source attribution, are preserved as
 [bundle-before.json](benchmarks/compiler/results/bundle-before.json) and
 [bundle-after.json](benchmarks/compiler/results/bundle-after.json). The latter
-is the candidate before the pending Hydrate cleanup, not final acceptance data;
+records the 0.11.0 candidate before the upstream correction;
 an immutable copy is [bundle-after-pre-cleanup.json](benchmarks/compiler/results/bundle-after-pre-cleanup.json).
 
 Sixteen scenarios have identical raw, gzip, initial raw/gzip, Brotli, initial
@@ -269,16 +427,15 @@ by 14 bytes for React and 58 for Solid. Independent emitted-code review located
 unused generated `lazyRouteComponent(..., 'H0')` calls in the eager route chunk
 for both increases. Tracing them exposed the upstream JSX reference omission
 described below, with broader semantic consequences than these size increases.
-There is no local cleanup workaround. Correctness, performance, and all-scenario
-bundle checks must be repeated after the upstream fix; these snapshots do not
-establish an acceptable final candidate.
+No local cleanup workaround was added. These snapshots describe 0.11.0; the
+current 0.12.0 comparison is recorded separately above.
 
-## Upstream findings and platform limits
+### Upstream findings and platform limits
 
 The [upstream report](benchmarks/compiler/yuku-feasibility/README.md) contains
 small executable reproducers and proposed fixes:
 
-- **Blocking semantic defect:** standalone JSX names beginning with `_`, `$`,
+- **Historical 0.11.0 blocking semantic defect:** standalone JSX names beginning with `_`, `$`,
   or Unicode do not receive runtime reference records. The upstream binder's
   `binder.zig` handling checks only ASCII `A`–`Z` for standalone JSX names.
   For example, `const _Widget = () => 'hello'` used by a route loader and by
@@ -293,11 +450,8 @@ small executable reproducers and proposed fixes:
   The runnable companion is
   [jsx-prefixed-route-repro.mjs](benchmarks/compiler/yuku-feasibility/jsx-prefixed-route-repro.mjs).
   This is reachable public route usage, not only a generated-code corner case.
-  The upstream fix must align JSX component reference classification with the
-  language's component/intrinsic-name rules, with `_`, `$`, Unicode, ASCII
-  component, and lowercase intrinsic regression coverage. The existing green
-  suites do not cover or negate this known failure. No repository workaround
-  is authorized or implemented.
+  This defect was fixed upstream in 0.12.0 and verified by the current checks
+  above. No repository workaround was implemented.
 - The default `comments: 'some'` policy drops whitespace-padded purity
   annotations. The native compiler uses the documented `comments: 'all'`
   policy to preserve source comments generally; it does not repair annotations.
@@ -311,18 +465,3 @@ Native import/analyze/clone/generate smoke checks passed on official Node
 20.19.0 and 22.12.0 binaries, alongside workspace validation on Node 24.8.0.
 Only macOS arm64 native binaries were executed. Linux GNU/musl and Windows
 installation/import checks remain unverified locally.
-
-## Required before adoption
-
-1. Obtain a corrected upstream analyzer release with coverage for standalone
-   JSX component reference classification. Preserve the public split-route
-   runtime reproduction as a regression; do not add a local analyzer workaround.
-2. Update the dependency and rerun affected compiler/package checks and consuming
-   application suites, including the new binding regression, Hydrate, route
-   splitting/HMR, and server functions.
-3. Repeat identical baseline/native performance and memory workloads, plus all
-   18 attributed bundle scenarios. Current improvements and the two Hydrate size
-   increases are evidence for this candidate, not acceptance of the corrected one.
-4. Validate native package installation/import and relevant compiler behavior in
-   Linux GNU/musl and Windows CI, alongside the already exercised macOS arm64
-   and supported Node versions.

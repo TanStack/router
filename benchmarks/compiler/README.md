@@ -1,28 +1,82 @@
 # Compiler migration benchmarks
 
-**Adoption is blocked:** Yuku 0.11.0 omits runtime references for standalone JSX
-component names beginning with `_`, `$`, or Unicode. A public split-route case
-using `_Widget` or `$Widget` in both a loader and component can produce an
-unresolved component binding. Existing green suites do not override that known
-semantic failure: a public Vite build-and-execute reproduction throws
-`ReferenceError` for both names while the `Widget` control renders correctly.
-The runnable reproduction is
-[`jsx-prefixed-route-repro.mjs`](yuku-feasibility/jsx-prefixed-route-repro.mjs).
-No local workaround has been implemented. The implementation
-and local evaluation are complete, but the migration is not ready to land until
-the upstream analyzer is fixed and correctness, performance, and bundles are
-remeasured. Results below preserve current performance evidence pending that fix.
-Linux GNU/musl and Windows native-package/compiler CI is also required before
-adoption; local execution covered macOS arm64 only.
+## Current Yuku 0.12.0 evaluation
+
+Yuku 0.12.0 fixes the reported JSX-reference and purity-comment defects. The
+upgraded compiler passes the dependency probes, package checks, public Vite
+shared-identity regressions, and consuming application suites. Fresh alternating
+speed/memory measurements and the full 18-scenario client bundle comparison are complete;
+results from 0.11.0 below remain historical. No local analyzer workaround or
+production source adaptation was required for the dependency upgrade.
+
+The new Babel baseline is main commit `1e113034bd`; its compiler source and built
+output fingerprints match the earlier baseline. The candidate is based on
+`c32cb041a2`, with all four Yuku packages upgraded to 0.12.0. Fresh results are recorded in
+[`yuku-0.12-alternating.json`](results/yuku-0.12-alternating.json):
+
+| Workload                                | Babel median, ms | Yuku 0.12 median, ms | Time reduction | Median peak process RSS, Babel → Yuku |
+| --------------------------------------- | ---------------: | -------------------: | -------------: | ------------------------------------: |
+| Complete 52-fixture splitter            |           323.36 |                94.18 |          70.9% |                   405.25 → 260.98 MiB |
+| Synthetic 250-route Vite build          |          1916.48 |              1098.14 |          42.7% |                   719.30 → 649.30 MiB |
+| Start server-functions production build |          1588.83 |              1061.93 |          33.2% |                   659.14 → 547.72 MiB |
+
+Five fresh pairs alternate order, with matching inputs and stable executable,
+source, and dependency fingerprints. Splitter workers use two warmups and ten
+measured passes. Sample timing coefficients of variation are 2.6–5.6%. Peak RSS
+covers the Node process, including native allocations; it is not a process-tree
+sum. This establishes lower memory than Babel on these workloads, not an
+improvement over 0.11.0. Historical and current samples must remain separate.
+
+Separate three-process stress comparisons also favor 0.12.0: 500-boundary Hydrate
+client/server compilation measured 76.90 → 60.57 ms and 53.71 → 38.34 ms;
+1,000-binding splitting measured 3924.50 → 183.04 ms. The 750-route build measured
+5004.05 → 2843.16 ms and 1296.31 → 1123.72 MiB peak RSS, with matching inputs,
+2,251 chunks and 1,641,651 emitted JavaScript bytes. These are sequential runs,
+not extra alternating pairs. Separate 50 ms process-tree diagnostics recorded
+755.69 → 625.17 MiB for 250 routes and 654.73 → 547.34 MiB for Start. No
+descendants were observed; short peaks can be missed. Diagnostic timing is
+excluded from speed claims. Full sample configurations and links are in the
+current report below.
+
+All 18 attributed client-bundle scenarios match the main Babel baseline in raw,
+gzip, Brotli, initial raw/gzip/Brotli, and JavaScript chunk count. The old Hydrate
+size increases are absent. See complete
+[before](results/yuku-0.12-bundle-before.json)/[after](results/yuku-0.12-bundle-after.json)
+snapshots. A separate comparison verifies all 38 emitted client JavaScript files
+are byte-identical and records their SHA-256 hashes. The Hydrate eager entries
+contain no `H0` factory; each lazy component chunk retains exactly one. See the
+[comparison and attribution record](results/yuku-0.12-bundle-comparison.json).
+
+The final workflow uses supporting test commit `d863fc26f5`, with compiler
+source/output fingerprints unchanged from the primary 0.12.0 samples. The five
+public JSX cases pass on native; baseline rendering succeeds but three shared
+identity assertions fail. One-process workflow smoke timings (355.22 → 99.99 ms,
+382.52 → 123.36 MiB peak RSS) supplement, rather than replace, the five-pair
+comparison. The [workflow record](results/yuku-0.12-workflow-contracts.json)
+also documents the baseline's report-only Git metadata repair after all 18
+measurements had succeeded.
+
+See the [current migration report](../../RESULT-optimization-yuku.md) for package
+and browser counts, the [Router verification](results/yuku-0.12-verification.json),
+[Start/RSC verification](results/yuku-0.12-start-rsc-validation.json), and
+[application verification](results/yuku-0.12-app-validation.json).
+
+Node 20.19.0 Router CommonJS and Node 22.12.0 Start ESM smoke checks passed on
+macOS arm64 with 0.12.0; [their record](results/yuku-0.12-node-smoke.json) does not
+establish Linux GNU/musl or Windows native-package installation compatibility.
+Those platform checks remain unverified locally. Upstream #203 remains open as
+invalid-input crash hardening, not a demonstrated supported-input blocker;
+[upstream details](yuku-feasibility/README.md) preserve the original reproducers.
 
 These local wall-clock measurements separate a Babel/Yuku toolkit feasibility
 comparison from the complete existing route splitter and actual Vite builds.
 They are not CodSpeed runtime benchmarks. A faster toolkit roundtrip does not
 establish an equivalent speedup in a migrated compiler or application build.
 
-## Final migration evaluation
+## Historical 0.11.0 migration evaluation
 
-After correctness fixes and application validation, five baseline/native pairs
+The following recorded figures are historical 0.11.0 results. After the initial
+correctness fixes and application validation, five baseline/native pairs
 were run in a quiet window. The order alternates AB/BA between repetitions for
 each workload. `results/final-alternating.json` records every sample, order,
 source hash, compiler source/dist fingerprint, dependency version, and Git HEAD.
@@ -110,10 +164,10 @@ and output counts match between engines. See `final-hydrate-*.json` and
 `final-bindings-1000-*.json`. The earlier before/after files retain evidence for
 the two measured scaling optimizations.
 
-The earlier sections below preserve exploratory and optimization measurements;
-the final paired comparison above is the main adoption evidence.
+The following sections preserve historical exploratory and optimization
+measurements. Current conclusions use the 0.12.0 comparison at the top.
 
-## Final stash-workflow artifacts
+## Historical 0.11.0 stash-workflow artifacts
 
 Supporting commits `0ec43cd02c` and `f69eb7a5aa` preserve tests and measurement
 artifacts without changing the baseline compiler. The implementation was then
@@ -137,8 +191,8 @@ have identical raw, gzip, initial raw/gzip, Brotli, initial Brotli, and chunk-co
 metrics. Deferred hydration changes by +65 raw/+33 gzip bytes for React and
 +65 raw/+32 gzip for Solid; both remain at three chunks. Independent emitted-code
 review found unused generated lazy-route component calls in the eager route
-chunks. Tracing those calls exposed the blocking upstream JSX reference defect
-above. An upstream fix and final revalidation are pending; the local
+chunks. Tracing those calls exposed the historical upstream JSX reference defect
+above. The upstream defect is fixed in 0.12.0; fresh measurement is tracked above. The local
 `RESULT-optimization-yuku.md` report contains the comparison.
 
 Use the Node version in `.nvmrc` and the root pnpm version. Build both workspaces
@@ -153,7 +207,7 @@ node benchmarks/compiler/measure.mjs > candidate.json
 
 `--yuku-root` optionally selects a directory containing `node_modules/yuku-analyzer`
 and `node_modules/yuku-codegen`; by default these resolve from the workspace's
-router-utils package. The recorded evaluation uses version 0.11.0 of both.
+router-utils package. Historical measurements use 0.11.0; fresh measurements use 0.12.0.
 The override was used for the initial isolated toolkit evaluation. Resolve Babel
 from the baseline workspace dependencies. Preserve baseline build outputs/results
 before rebuilding migrated packages.
