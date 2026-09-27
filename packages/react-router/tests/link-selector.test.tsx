@@ -17,13 +17,14 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function setup() {
+async function setup(trailingSlash: 'never' | 'preserve' = 'never') {
   const root = createRootRoute()
   const router = createRouter({
     routeTree: root.addChildren([
       createRoute({ getParentRoute: () => root, path: '/posts/$id' }),
     ]),
     history: createMemoryHistory({ initialEntries: ['/posts/1'] }),
+    trailingSlash,
   })
   await router.load()
   return router
