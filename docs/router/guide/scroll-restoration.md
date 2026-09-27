@@ -63,6 +63,10 @@ const router = createRouter({
 > [!NOTE]
 > The `<ScrollRestoration />` component still works, but has been deprecated.
 
+Destroying a history removes the scroll handlers and scroll restoration subscriptions for
+routers using it. Replacing a router's history releases its previous scroll
+restoration setup.
+
 ## Custom Cache Keys
 
 Falling in behind Remix's own Scroll Restoration APIs, you can also customize the key used to cache scroll positions for a given scrollable area using the `getKey` option. This could be used, for example, to force the same scroll position to be used regardless of the users browser history.
