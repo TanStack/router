@@ -223,7 +223,7 @@ describe('server-function protocol headers through public request middleware', (
     },
   )
 
-  it('restores direct protocol header mutations at each middleware boundary without helper writes', async () => {
+  it('restores direct protocol header mutations as the response leaves the pipeline', async () => {
     const mutateHeaders = (response: Response) => {
       response.headers.set('content-type', 'text/plain')
       response.headers.delete('x-tss-serialized')
@@ -232,11 +232,10 @@ describe('server-function protocol headers through public request middleware', (
     mocks.middleware = [
       createMiddleware().server(async ({ next }) => {
         const result = await next()
-        expect(result.response.headers.get('content-type')).toBe(
-          'application/json',
-        )
-        expect(result.response.headers.get('x-tss-serialized')).toBe('true')
-        expect(result.response.headers.get('x-tss-raw')).toBeNull()
+        // Outer middleware sees an inner middleware's direct change until
+        // Start sends the response.
+        expect(result.response.headers.get('content-type')).toBe('text/plain')
+        expect(result.response.headers.get('x-tss-serialized')).toBeNull()
         mutateHeaders(result.response)
         return result
       }),
@@ -251,11 +250,11 @@ describe('server-function protocol headers through public request middleware', (
     await expect(callServerFn()).resolves.toEqual({ result: { answer: 42 } })
   })
 
-  it('restores a raw response marker directly removed by each middleware layer', async () => {
+  it('restores a raw response marker directly removed by middleware as the response leaves the pipeline', async () => {
     mocks.middleware = [
       createMiddleware().server(async ({ next }) => {
         const result = await next()
-        expect(result.response.headers.get('x-tss-raw')).toBe('true')
+        expect(result.response.headers.get('x-tss-raw')).toBeNull()
         result.response.headers.delete('x-tss-raw')
         return result
       }),

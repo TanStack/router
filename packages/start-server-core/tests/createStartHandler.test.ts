@@ -130,6 +130,13 @@ function createTestStartHandler(
   return createServerEntry({ fetch: createStartHandler(options) }).fetch
 }
 
+// Only server-function replies carry protocol headers.
+function createProtocolRequest() {
+  return new Request('http://localhost/_serverFn/test', {
+    headers: { 'x-tsr-serverFn': 'true' },
+  })
+}
+
 function createResponseHandler(callback: () => Response | Promise<Response>) {
   startMocks.requestMiddleware = [createMiddleware().server(callback)]
   return createStartHandler(() => {
@@ -329,7 +336,7 @@ describe('createStartHandler response reconciliation', () => {
       return response
     })
 
-    const response = await handler(new Request('http://localhost/'), {})
+    const response = await handler(createProtocolRequest(), {})
 
     expect(response.headers.get('content-type')).toBe('application/json')
     expect(response.headers.get('x-tss-serialized')).toBe('true')
@@ -353,7 +360,7 @@ describe('createStartHandler response reconciliation', () => {
       return response
     })
 
-    const response = await handler(new Request('http://localhost/'), {})
+    const response = await handler(createProtocolRequest(), {})
 
     expect(response.headers.get('content-type')).toBe('application/json')
     expect(response.headers.get('x-tss-raw')).toBe('true')
@@ -374,7 +381,7 @@ describe('createStartHandler response reconciliation', () => {
       return reconciled
     })
 
-    const response = await handler(new Request('http://localhost/'), {})
+    const response = await handler(createProtocolRequest(), {})
 
     expect(seenHeader).toBe('original')
     expect(seenHeadersHeader).toBe('original')
@@ -582,25 +589,23 @@ describe('createStartHandler response reconciliation', () => {
     await expect(response.text()).resolves.toBe('second')
   })
 
-  it('checks protected headers after the same response was reconciled', async () => {
-    let firstResponse: Response | undefined
-    let secondResponse: Response | undefined
+  it('restores protected headers changed directly on the response as it leaves the pipeline', async () => {
+    let returned: Response | undefined
     const handler = createResponseHandler(() => {
       const response = new Response('ok', {
         headers: { 'x-transport': 'original' },
       })
       protectResponseHeaders(response, new Map([['x-transport', 'original']]))
-      firstResponse = reconcileResponse(response, getStartEvent())
-      firstResponse.headers.set('x-transport', 'mutated')
-      secondResponse = reconcileResponse(firstResponse, getStartEvent())
-      return secondResponse
+      response.headers.set('x-transport', 'mutated')
+      returned = response
+      return response
     })
 
-    const response = await handler(new Request('http://localhost/'), {})
+    const response = await handler(createProtocolRequest(), {})
 
-    expect(secondResponse).not.toBe(firstResponse)
-    expect(secondResponse?.body).toBe(firstResponse?.body)
-    expect(firstResponse?.headers.get('x-transport')).toBe('mutated')
+    expect(response).not.toBe(returned)
+    expect(response.body).toBe(returned?.body)
+    expect(returned?.headers.get('x-transport')).toBe('mutated')
     expect(response.headers.get('x-transport')).toBe('original')
   })
 

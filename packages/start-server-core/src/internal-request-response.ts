@@ -409,12 +409,8 @@ function mergeStartSetCookieValues(
 
 function hasProtectedHeaderChanges(
   response: Response,
-  protectedHeaders?: ProtectedHeaders,
+  protectedHeaders: ProtectedHeaders,
 ): boolean {
-  if (!protectedHeaders) {
-    return false
-  }
-
   const headers = response.headers
   for (const [name, value] of protectedHeaders) {
     if (headers.get(name) !== value) {
@@ -425,13 +421,9 @@ function hasProtectedHeaderChanges(
 }
 
 function applyProtectedHeaders(
-  protectedHeaders: ProtectedHeaders | undefined,
+  protectedHeaders: ProtectedHeaders,
   headers: Headers,
 ): void {
-  if (!protectedHeaders) {
-    return
-  }
-
   for (const [name, value] of protectedHeaders) {
     if (value === null) {
       headers.delete(name)
@@ -623,14 +615,9 @@ function reconcileResponseWithEvent(
     helperStatus = getHelperStatus(event.responseState, serialized)
   }
   const state = event.responseState
-  const appliedHeaderAppends = event.responseHeaderAppends?.get(response)
-  const protectedHeadersChanged = hasProtectedHeaderChanges(
-    response,
-    protectedHeaders,
-  )
 
-  // Without helper writes or changed protocol headers, preserve the response.
-  if (!state && !protectedHeadersChanged && !mustDropBody) {
+  // Without helper writes, preserve the response.
+  if (!state && !mustDropBody) {
     event.currentResponse = response
     return response
   }
@@ -646,28 +633,20 @@ function reconcileResponseWithEvent(
     !statusChanged &&
     !statusTextChanged &&
     !mustDropBody &&
-    !headersChanged &&
-    !protectedHeadersChanged
+    !headersChanged
   ) {
     event.currentResponse = response
     return response
   }
 
-  let headers = response.headers
-  if (headersChanged) {
-    headers = applyHeaderState(
-      headers,
-      state,
-      protectedHeaders,
-      appliedHeaderAppends,
-    )
-  }
-  if (protectedHeadersChanged) {
-    if (headers === response.headers) {
-      headers = cloneHeaders(headers)
-    }
-    applyProtectedHeaders(protectedHeaders, headers)
-  }
+  const headers = headersChanged
+    ? applyHeaderState(
+        response.headers,
+        state,
+        protectedHeaders,
+        event.responseHeaderAppends?.get(response),
+      )
+    : response.headers
 
   const reconciled =
     statusChanged ||
@@ -812,14 +791,12 @@ export function reconcileResponse(
   event: StartEvent,
   disposeBody?: (reason: string) => void,
 ): Response {
-  // Without helper writes or protocol requirements, only a bodyless status
-  // could change the response. Router redirects still need destination
-  // resolution (or an RPC envelope), so they keep their identity until
-  // createStartHandler resolves them; response getters can already read the
-  // helper overlay on this snapshot.
+  // Without helper writes, only a bodyless status could change the response.
+  // Router redirects still need destination resolution (or an RPC envelope),
+  // so they keep their identity until createStartHandler resolves them;
+  // response getters can already read the helper overlay on this snapshot.
   if (
     (!event.responseState &&
-      !getProtectedResponseHeaders(response) &&
       canHaveBody(event.request.method, response.status)) ||
     isRedirect(response)
   ) {
@@ -827,6 +804,35 @@ export function reconcileResponse(
     return response
   }
   return reconcileResponseWithEvent(response, event, disposeBody)
+}
+
+/**
+ * Restore protocol headers that middleware changed directly on the response.
+ * Start does this once, when the response leaves the request middleware
+ * pipeline; helper writes never override them.
+ */
+export function restoreResponseProtocol(
+  response: Response,
+  event: StartEvent,
+): Response {
+  const protectedHeaders = getProtectedResponseHeaders(response)
+  if (
+    !protectedHeaders ||
+    !hasProtectedHeaderChanges(response, protectedHeaders)
+  ) {
+    return response
+  }
+  const headers = cloneHeaders(response.headers)
+  applyProtectedHeaders(protectedHeaders, headers)
+  const restored = createReconciledResponse(
+    response.body,
+    response.status,
+    response.statusText,
+    headers,
+  )
+  transferResponseMetadata(response, restored)
+  event.currentResponse = restored
+  return restored
 }
 
 /** Apply helper state after a response bypasses the middleware pipeline. */
@@ -925,9 +931,10 @@ function decodePathname(pathname: string): string | undefined {
   }
 }
 
-function runInStartRequest(
+function runInStartRequest<TRegister>(
   request: Request,
-  run: () => MaybePromise<Response>,
+  requestOpts: any,
+  handler: RequestHandler<TRegister>,
 ): MaybePromise<Response> {
   let requestUrl: URL
   try {
@@ -944,7 +951,7 @@ function runInStartRequest(
     return new Response(null, { status: 400, statusText: 'Bad Request' })
   }
   const event: StartEvent = { request, requestUrl }
-  return eventStorage.run(event, run)
+  return eventStorage.run(event, handler, request, requestOpts)
 }
 
 /**
@@ -978,7 +985,7 @@ export function withStartRequest<TRegister = unknown>(
     if (eventStorage.getStore()?.request === request) {
       return handler(request, requestOpts)
     }
-    return runInStartRequest(request, () => handler(request, requestOpts))
+    return runInStartRequest(request, requestOpts, handler)
   }
 }
 
