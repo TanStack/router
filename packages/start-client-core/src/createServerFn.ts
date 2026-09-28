@@ -248,22 +248,20 @@ export async function executeMiddleware(
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
-  const globalMiddlewares = getStartOptions()?.functionMiddleware || []
-  let flattenedMiddlewares = flattenMiddlewares([
-    ...globalMiddlewares,
-    ...middlewares,
-  ])
-
-  // On server, filter out middlewares that already executed in the request phase
-  // to prevent duplicate execution (issue #5239)
-  if (env === 'server') {
-    const startContext = getStartContextServerOnly({ throwIfNotFound: false })
-    if (startContext?.executedRequestMiddlewares) {
-      flattenedMiddlewares = flattenedMiddlewares.filter(
-        (m) => !startContext.executedRequestMiddlewares.has(m),
-      )
-    }
-  }
+  const globalMiddlewares: Array<AnyFunctionMiddleware | AnyRequestMiddleware> =
+    getStartOptions()?.functionMiddleware || []
+  // On the server, flattening skips middlewares that already executed in the
+  // request phase to prevent duplicate execution (issue #5239)
+  const flattenedMiddlewares = flattenMiddlewares(
+    globalMiddlewares.concat(middlewares),
+    undefined,
+    env === 'server'
+      ? new Set(
+          getStartContextServerOnly({ throwIfNotFound: false })
+            ?.executedRequestMiddlewares,
+        )
+      : undefined,
+  )
 
   let index = 0
 
@@ -832,28 +830,39 @@ export function flattenMiddlewares<
   maxDepth: number = 100,
   seen: Set<T> = new Set<T>(),
 ): Array<T> {
-  const flattened: Array<T> = []
+  return flattenInto(middlewares, maxDepth, seen, [], 0)
+}
 
-  const recurse = (middleware: Array<T>, depth: number) => {
-    if (depth > maxDepth) {
-      throw new Error(
-        `Middleware nesting depth exceeded maximum of ${maxDepth}. Check for circular references.`,
+function flattenInto<T extends AnyFunctionMiddleware | AnyRequestMiddleware>(
+  middlewares: Array<T>,
+  maxDepth: number,
+  seen: Set<T>,
+  flattened: Array<T>,
+  depth: number,
+): Array<T> {
+  if (depth > maxDepth) {
+    throw new Error(
+      `Middleware nesting depth exceeded maximum of ${maxDepth}. Check for circular references.`,
+    )
+  }
+  // eslint-disable-next-line @typescript-eslint/prefer-for-of -- avoids the iterator protocol
+  for (let i = 0; i < middlewares.length; i++) {
+    const middleware = middlewares[i]!
+    if (middleware.options.middleware) {
+      flattenInto(
+        middleware.options.middleware as Array<T>,
+        maxDepth,
+        seen,
+        flattened,
+        depth + 1,
       )
     }
-    middleware.forEach((m) => {
-      if (m.options.middleware) {
-        recurse(m.options.middleware as Array<T>, depth + 1)
-      }
 
-      if (!seen.has(m)) {
-        seen.add(m)
-        flattened.push(m)
-      }
-    })
+    if (!seen.has(middleware)) {
+      seen.add(middleware)
+      flattened.push(middleware)
+    }
   }
-
-  recurse(middlewares, 0)
-
   return flattened
 }
 
