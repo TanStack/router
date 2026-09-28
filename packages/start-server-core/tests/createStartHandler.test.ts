@@ -2963,7 +2963,9 @@ describe('createStartHandler SSR cleanup ownership', () => {
     expect(response.headers.get('x-tss-raw')).toBe('thrown')
     await expect(response.text()).resolves.toBe('handled')
     expect(dispose).toHaveBeenCalledOnce()
-    await cloneCancellation
+    // The clone's cancellation races Start's disposal of the shared source: it
+    // resolves, or rejects with the cleanup's abort. Either way it settles.
+    await cloneCancellation.catch(() => {})
     expect(router.serverSsr).toBeUndefined()
   })
 

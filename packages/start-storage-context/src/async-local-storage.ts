@@ -42,10 +42,10 @@ if (!globalObj[GLOBAL_STORAGE_KEY]) {
 
 const startStorage = globalObj[GLOBAL_STORAGE_KEY]
 
-export async function runWithStartContext<T>(
+export function runWithStartContext<T>(
   context: StartStorageContext,
-  fn: () => T | Promise<T>,
-): Promise<T> {
+  fn: () => T,
+): T {
   return startStorage.run(context, fn)
 }
 
