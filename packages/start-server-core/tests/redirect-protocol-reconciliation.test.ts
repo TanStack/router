@@ -389,7 +389,9 @@ describe('server-function protocol headers through public request middleware', (
     },
   )
 
-  it.each(mutations)(
+  // Setting the serialized marker cannot break a serialized reply, so that
+  // mutation would pass without the protection this test covers.
+  it.each(mutations.filter(({ name }) => name !== 'the serialized marker'))(
     'decodes serialized values wrapped in a same-body response despite $name',
     async ({ run }) => {
       mocks.middleware = [
