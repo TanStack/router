@@ -45,6 +45,8 @@ interface ResponseState {
   clearHeaders: boolean
   setCookieBehavior?: 'merge' | 'replace'
   headerAppends?: Map<string, HeaderAppendOperation>
+  /** Identity of each Set-Cookie string seen by this request's merges. */
+  setCookieKeys?: Map<string, string | undefined>
 }
 
 interface HeaderAppendOperation {
@@ -337,30 +339,42 @@ function replaceSetCookieValues(
   }
 }
 
-function getMergedSetCookieValues(
-  headers: Headers,
-  cookiesToMerge: Array<string>,
-): Array<string> {
-  const cookieKeysToMerge = new Set(
-    cookiesToMerge.map(getDistinctCookieKeyFromHeader).filter(Boolean),
-  )
-  const currentCookies = getSetCookieValues(headers).filter((cookie) => {
-    const cookieKey = getDistinctCookieKeyFromHeader(cookie)
-    return !cookieKey || !cookieKeysToMerge.has(cookieKey)
-  })
-  return currentCookies.concat(cookiesToMerge)
+// Every reconcile pass merges the same immutable cookie strings again, so
+// parse each string's identity once per request.
+function getCookieKey(
+  state: ResponseState,
+  cookie: string,
+): string | undefined {
+  const keys = (state.setCookieKeys ||= new Map())
+  let key = keys.get(cookie)
+  if (key === undefined && !keys.has(cookie)) {
+    key = getDistinctCookieKeyFromHeader(cookie)
+    keys.set(cookie, key)
+  }
+  return key
 }
 
-function mergeSetCookieValues(
-  headers: Headers,
+function getMergedSetCookieValues(
+  state: ResponseState,
+  currentCookies: Array<string>,
   cookiesToMerge: Array<string>,
-): void {
-  if (cookiesToMerge.length > 0) {
-    replaceSetCookieValues(
-      headers,
-      getMergedSetCookieValues(headers, cookiesToMerge),
-    )
+): Array<string> {
+  if (currentCookies.length === 0) {
+    return cookiesToMerge
   }
+  const cookieKeysToMerge = new Set<string>()
+  for (const cookie of cookiesToMerge) {
+    const cookieKey = getCookieKey(state, cookie)
+    if (cookieKey) {
+      cookieKeysToMerge.add(cookieKey)
+    }
+  }
+  return currentCookies
+    .filter((cookie) => {
+      const cookieKey = getCookieKey(state, cookie)
+      return !cookieKey || !cookieKeysToMerge.has(cookieKey)
+    })
+    .concat(cookiesToMerge)
 }
 
 function mergeStartSetCookieValues(
@@ -376,7 +390,10 @@ function mergeStartSetCookieValues(
   if (state.setCookieBehavior !== 'replace') {
     state.setCookieBehavior = 'merge'
   }
-  mergeSetCookieValues(state.headers, cookies)
+  replaceSetCookieValues(
+    state.headers,
+    getMergedSetCookieValues(state, getSetCookieValues(state.headers), cookies),
+  )
 }
 
 function hasProtectedHeaderChanges(
@@ -472,11 +489,11 @@ function applyHeaderState(
 
   if (state.setCookieBehavior && !protectedHeaders?.has('set-cookie')) {
     const eventSetCookies = getSetCookieValues(state.headers)
+    const currentCookies = getSetCookieValues(headers)
     const cookies =
       state.setCookieBehavior === 'replace'
         ? eventSetCookies
-        : getMergedSetCookieValues(headers, eventSetCookies)
-    const currentCookies = getSetCookieValues(headers)
+        : getMergedSetCookieValues(state, currentCookies, eventSetCookies)
     if (
       cookies.length !== currentCookies.length ||
       cookies.some((cookie, index) => cookie !== currentCookies[index])
