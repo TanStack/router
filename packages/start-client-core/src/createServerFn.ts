@@ -1,6 +1,7 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { isRedirect, parseRedirect } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
@@ -178,42 +179,46 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           // can reject mismatched methods before parsing payloads
           method: resolvedOptions.method,
           // The extracted function on the server-side calls
-          // this function
-          __executeServer: async (opts: any) => {
-            const startContext = getStartContextServerOnly()
-            const serverContextAfterGlobalMiddlewares =
-              startContext.contextAfterGlobalMiddlewares
-            const ctx = {
-              ...extractedFn,
-              data: opts.data,
-              method: opts.method ?? resolvedOptions.method,
-              // Ensure we use the full serverFnMeta from the provider file's extractedFn
-              // (which has id, name, filename) rather than the partial one from SSR/client
-              // callers (which only has id)
-              serverFnMeta: extractedFn.serverFnMeta,
-              // Merge client context first so trusted server middleware context wins.
-              context: safeObjectMerge(
-                opts.context,
-                serverContextAfterGlobalMiddlewares,
-              ),
-              request: startContext.request,
-            }
+          // this function. Browsers never execute a server function.
+          __executeServer:
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- isServer is only known outside development
+            (isServer ?? typeof window === 'undefined')
+              ? async (opts: any) => {
+                  const startContext = getStartContextServerOnly()
+                  const serverContextAfterGlobalMiddlewares =
+                    startContext.contextAfterGlobalMiddlewares
+                  const ctx = {
+                    ...extractedFn,
+                    data: opts.data,
+                    method: opts.method ?? resolvedOptions.method,
+                    // Ensure we use the full serverFnMeta from the provider file's extractedFn
+                    // (which has id, name, filename) rather than the partial one from SSR/client
+                    // callers (which only has id)
+                    serverFnMeta: extractedFn.serverFnMeta,
+                    // Merge client context first so trusted server middleware context wins.
+                    context: safeObjectMerge(
+                      opts.context,
+                      serverContextAfterGlobalMiddlewares,
+                    ),
+                    request: startContext.request,
+                  }
 
-            const result = await executeMiddleware(
-              resolvedMiddleware,
-              'server',
-              ctx,
-            )
+                  const result = await executeMiddleware(
+                    resolvedMiddleware,
+                    'server',
+                    ctx,
+                  )
 
-            // Only send the result and sendContext back to the client. A
-            // failed call sends only its thrown value, under an `error` key.
-            if ('error' in result) {
-              return { error: result.error }
-            }
-            return result.sendContext === undefined
-              ? { result: result.result }
-              : { result: result.result, context: result.sendContext }
-          },
+                  // Only send the result and sendContext back to the client. A
+                  // failed call sends only its thrown value, under an `error` key.
+                  if ('error' in result) {
+                    return { error: result.error }
+                  }
+                  return result.sendContext === undefined
+                    ? { result: result.result }
+                    : { result: result.result, context: result.sendContext }
+                }
+              : undefined,
         },
       ) as any
     },
@@ -948,13 +953,17 @@ function serverFnBaseToMiddleware(
         return next(res)
       },
       // Always the last middleware, so it returns the result instead of
-      // passing it through next().
-      server: async ({ next: _next, ...ctx }) => {
-        // Execute the server function
-        const result = await options.serverFn?.(ctx)
+      // passing it through next(). Browsers never execute a server function.
+      server:
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- isServer is only known outside development
+        (isServer ?? typeof window === 'undefined')
+          ? async ({ next: _next, ...ctx }) => {
+              // Execute the server function
+              const result = await options.serverFn?.(ctx)
 
-        return { ...ctx, result } as any
-      },
+              return { ...ctx, result } as any
+            }
+          : undefined,
     },
   }
 }
