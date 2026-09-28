@@ -1,0 +1,520 @@
+diff --git a/dist/atom.cjs b/dist/atom.cjs
+index 8a575cda07c98d3caf1e0045d68c1b3df84b0044..adb43aae8881331d3134bd14ed42254db886279c 100644
+--- a/dist/atom.cjs
++++ b/dist/atom.cjs
+@@ -11,6 +11,7 @@ function toObserver(nextHandler, errorHandler, completionHandler) {
+ 	};
+ }
+ const queuedEffects = [];
++let writeVersion = 0;
+ let cycle = 0;
+ const { link, unlink, propagate, checkDirty, shallowPropagate } = /* @__PURE__ */ require_alien.createReactiveSystem({
+ 	update(atom) {
+@@ -20,13 +21,7 @@ const { link, unlink, propagate, checkDirty, shallowPropagate } = /* @__PURE__ *
+ 		queuedEffects[queuedEffectsLength++] = effect;
+ 		effect.flags &= ~2;
+ 	},
+-	unwatched(atom) {
+-		if (atom.depsTail !== void 0) {
+-			atom.depsTail = void 0;
+-			atom.flags = 1 | 16;
+-			purgeDeps(atom);
+-		}
+-	}
++	unwatched
+ });
+ let notifyIndex = 0;
+ let queuedEffectsLength = 0;
+@@ -40,6 +35,22 @@ function batch(fn) {
+ 		if (!--batchDepth) flush();
+ 	}
+ }
++function unwatched(atom) {
++    if (atom.deps !== undefined) {
++        const dependencies = [];
++        let dep = atom.deps;
++        while (dep !== undefined) {
++            const source = dep.dep;
++            dependencies.push([source, source._version]);
++            dep = dep.nextDep;
++        }
++        atom._dependencies =
++            atom.flags & (16 | 32) ? undefined : dependencies;
++        atom.depsTail = undefined;
++        atom.flags = 1 | 16;
++        purgeDeps(atom);
++    }
++}
+ function purgeDeps(sub) {
+ 	const depsTail = sub.depsTail;
+ 	let dep = depsTail !== void 0 ? depsTail.nextDep : sub.deps;
+@@ -94,6 +105,7 @@ function createAtom(valueOrFn, options) {
+ 	const isComputed = typeof valueOrFn === "function";
+ 	const getter = valueOrFn;
+ 	const atom = {
++		_version: 0,
+ 		_snapshot: isComputed ? void 0 : valueOrFn,
+ 		subs: void 0,
+ 		subsTail: void 0,
+@@ -120,6 +132,7 @@ function createAtom(valueOrFn, options) {
+ 			const prevSub = activeSub;
+ 			const compare = options?.compare ?? Object.is;
+ 			if (isComputed) {
++				if (getValue !== void 0) { atom._dependencies = void 0; }
+ 				activeSub = atom;
+ 				++cycle;
+ 				atom.depsTail = void 0;
+@@ -130,6 +143,7 @@ function createAtom(valueOrFn, options) {
+ 				const newValue = typeof getValue === "function" ? getValue(oldValue) : getValue === void 0 && isComputed ? getter(oldValue) : getValue;
+ 				if (oldValue === void 0 || !compare(oldValue, newValue)) {
+ 					atom._snapshot = newValue;
++					atom._version = ++writeVersion;
+ 					return true;
+ 				}
+ 				return false;
+@@ -142,17 +156,78 @@ function createAtom(valueOrFn, options) {
+ 	};
+ 	if (isComputed) {
+ 		atom.flags = 1 | 16;
+-		atom.get = function() {
+-			const flags = atom.flags;
+-			if (flags & 16 || flags & 32 && checkDirty(atom.deps, atom)) {
+-				if (atom._update()) {
+-					const subs = atom.subs;
+-					if (subs !== void 0) shallowPropagate(subs);
+-				}
+-			} else if (flags & 32) atom.flags = flags & ~32;
+-			if (activeSub !== void 0) link(atom, activeSub, cycle);
+-			return atom._snapshot;
+-		};
++        let readVersion = -1;
++        atom.get = function () {
++            // Observed clean reads are the hot path; they need no lifetime repair.
++            if (!(atom.flags & (16 | 32)) &&
++                atom._dependencies === undefined) {
++                if (activeSub !== undefined) {
++                    link(atom, activeSub, cycle);
++                }
++                return atom._snapshot;
++            }
++            const unobserved = activeSub === undefined && atom.subs === undefined;
++            if (unobserved && readVersion === writeVersion) {
++                return atom._snapshot;
++            }
++            try {
++                // Reconnect unchanged dependencies without rerunning the getter. This
++                // preserves object snapshots, previous-value getters and pending loads.
++                const dependencies = atom._dependencies;
++                if (dependencies) {
++                    atom._dependencies = undefined;
++                    const prevSub = activeSub;
++                    activeSub = atom;
++                    ++cycle;
++                    atom.depsTail = undefined;
++                    try {
++                        if (dependencies.every(([source, version]) => {
++                            source.get();
++                            return source._version === version;
++                        })) {
++                            atom.flags = 1;
++                        }
++                    }
++                    finally {
++                        activeSub = prevSub;
++                    }
++                }
++                const flags = atom.flags;
++                if (flags & 16 ||
++                    (flags & 32 && checkDirty(atom.deps, atom))) {
++                    if (atom._update()) {
++                        const subs = atom.subs;
++                        if (subs !== undefined) {
++                            shallowPropagate(subs);
++                        }
++                    }
++                }
++                else if (flags & 32) {
++                    atom.flags = flags & ~32;
++                }
++                if (activeSub !== undefined) {
++                    link(atom, activeSub, cycle);
++                }
++                if (unobserved) {
++                    readVersion = writeVersion;
++                }
++                return atom._snapshot;
++            }
++            catch (error) {
++                // A throwing child has not linked itself to its parent yet.
++                if (atom.subs === undefined) {
++                    unwatched(atom);
++                }
++                atom._dependencies = undefined;
++                atom.flags |= 16;
++                throw error;
++            }
++            finally {
++                if (unobserved) {
++                    unwatched(atom);
++                }
++            }
++        };
+ 	} else atom.set = function(valueOrFn) {
+ 		if (atom._update(valueOrFn)) {
+ 			const subs = atom.subs;
+@@ -207,4 +282,3 @@ exports.createAsyncAtom = createAsyncAtom;
+ exports.createAtom = createAtom;
+ exports.flush = flush;
+ exports.toObserver = toObserver;
+-//# sourceMappingURL=atom.cjs.map
+\ No newline at end of file
+diff --git a/dist/atom.js b/dist/atom.js
+index a2288775d6fd4613848ac3eae3fc6b9f47ed1fae..abfdb7c30f249a768a051a8e3ceaefb96d161ced 100644
+--- a/dist/atom.js
++++ b/dist/atom.js
+@@ -11,6 +11,7 @@ function toObserver(nextHandler, errorHandler, completionHandler) {
+ 	};
+ }
+ const queuedEffects = [];
++let writeVersion = 0;
+ let cycle = 0;
+ const { link, unlink, propagate, checkDirty, shallowPropagate } = /* @__PURE__ */ createReactiveSystem({
+ 	update(atom) {
+@@ -20,13 +21,7 @@ const { link, unlink, propagate, checkDirty, shallowPropagate } = /* @__PURE__ *
+ 		queuedEffects[queuedEffectsLength++] = effect;
+ 		effect.flags &= ~2;
+ 	},
+-	unwatched(atom) {
+-		if (atom.depsTail !== void 0) {
+-			atom.depsTail = void 0;
+-			atom.flags = 1 | 16;
+-			purgeDeps(atom);
+-		}
+-	}
++	unwatched
+ });
+ let notifyIndex = 0;
+ let queuedEffectsLength = 0;
+@@ -40,6 +35,22 @@ function batch(fn) {
+ 		if (!--batchDepth) flush();
+ 	}
+ }
++function unwatched(atom) {
++    if (atom.deps !== undefined) {
++        const dependencies = [];
++        let dep = atom.deps;
++        while (dep !== undefined) {
++            const source = dep.dep;
++            dependencies.push([source, source._version]);
++            dep = dep.nextDep;
++        }
++        atom._dependencies =
++            atom.flags & (16 | 32) ? undefined : dependencies;
++        atom.depsTail = undefined;
++        atom.flags = 1 | 16;
++        purgeDeps(atom);
++    }
++}
+ function purgeDeps(sub) {
+ 	const depsTail = sub.depsTail;
+ 	let dep = depsTail !== void 0 ? depsTail.nextDep : sub.deps;
+@@ -94,6 +105,7 @@ function createAtom(valueOrFn, options) {
+ 	const isComputed = typeof valueOrFn === "function";
+ 	const getter = valueOrFn;
+ 	const atom = {
++		_version: 0,
+ 		_snapshot: isComputed ? void 0 : valueOrFn,
+ 		subs: void 0,
+ 		subsTail: void 0,
+@@ -120,6 +132,7 @@ function createAtom(valueOrFn, options) {
+ 			const prevSub = activeSub;
+ 			const compare = options?.compare ?? Object.is;
+ 			if (isComputed) {
++				if (getValue !== void 0) { atom._dependencies = void 0; }
+ 				activeSub = atom;
+ 				++cycle;
+ 				atom.depsTail = void 0;
+@@ -130,6 +143,7 @@ function createAtom(valueOrFn, options) {
+ 				const newValue = typeof getValue === "function" ? getValue(oldValue) : getValue === void 0 && isComputed ? getter(oldValue) : getValue;
+ 				if (oldValue === void 0 || !compare(oldValue, newValue)) {
+ 					atom._snapshot = newValue;
++					atom._version = ++writeVersion;
+ 					return true;
+ 				}
+ 				return false;
+@@ -142,17 +156,78 @@ function createAtom(valueOrFn, options) {
+ 	};
+ 	if (isComputed) {
+ 		atom.flags = 1 | 16;
+-		atom.get = function() {
+-			const flags = atom.flags;
+-			if (flags & 16 || flags & 32 && checkDirty(atom.deps, atom)) {
+-				if (atom._update()) {
+-					const subs = atom.subs;
+-					if (subs !== void 0) shallowPropagate(subs);
+-				}
+-			} else if (flags & 32) atom.flags = flags & ~32;
+-			if (activeSub !== void 0) link(atom, activeSub, cycle);
+-			return atom._snapshot;
+-		};
++        let readVersion = -1;
++        atom.get = function () {
++            // Observed clean reads are the hot path; they need no lifetime repair.
++            if (!(atom.flags & (16 | 32)) &&
++                atom._dependencies === undefined) {
++                if (activeSub !== undefined) {
++                    link(atom, activeSub, cycle);
++                }
++                return atom._snapshot;
++            }
++            const unobserved = activeSub === undefined && atom.subs === undefined;
++            if (unobserved && readVersion === writeVersion) {
++                return atom._snapshot;
++            }
++            try {
++                // Reconnect unchanged dependencies without rerunning the getter. This
++                // preserves object snapshots, previous-value getters and pending loads.
++                const dependencies = atom._dependencies;
++                if (dependencies) {
++                    atom._dependencies = undefined;
++                    const prevSub = activeSub;
++                    activeSub = atom;
++                    ++cycle;
++                    atom.depsTail = undefined;
++                    try {
++                        if (dependencies.every(([source, version]) => {
++                            source.get();
++                            return source._version === version;
++                        })) {
++                            atom.flags = 1;
++                        }
++                    }
++                    finally {
++                        activeSub = prevSub;
++                    }
++                }
++                const flags = atom.flags;
++                if (flags & 16 ||
++                    (flags & 32 && checkDirty(atom.deps, atom))) {
++                    if (atom._update()) {
++                        const subs = atom.subs;
++                        if (subs !== undefined) {
++                            shallowPropagate(subs);
++                        }
++                    }
++                }
++                else if (flags & 32) {
++                    atom.flags = flags & ~32;
++                }
++                if (activeSub !== undefined) {
++                    link(atom, activeSub, cycle);
++                }
++                if (unobserved) {
++                    readVersion = writeVersion;
++                }
++                return atom._snapshot;
++            }
++            catch (error) {
++                // A throwing child has not linked itself to its parent yet.
++                if (atom.subs === undefined) {
++                    unwatched(atom);
++                }
++                atom._dependencies = undefined;
++                atom.flags |= 16;
++                throw error;
++            }
++            finally {
++                if (unobserved) {
++                    unwatched(atom);
++                }
++            }
++        };
+ 	} else atom.set = function(valueOrFn) {
+ 		if (atom._update(valueOrFn)) {
+ 			const subs = atom.subs;
+@@ -203,4 +278,3 @@ function effect(fn) {
+ 
+ //#endregion
+ export { batch, createAsyncAtom, createAtom, flush, toObserver };
+-//# sourceMappingURL=atom.js.map
+\ No newline at end of file
+diff --git a/src/atom.ts b/src/atom.ts
+index a47910e51edc56622f2a92582720613891911e41..f9e0179de0f65267a9e0aebcd42fb6ea936495e6 100644
+--- a/src/atom.ts
++++ b/src/atom.ts
+@@ -35,6 +35,8 @@ export function toObserver<T>(
+ }
+ 
+ interface InternalAtom<T> extends ReactiveNode {
++  _dependencies?: Array<[InternalAtom<any>, number]>
++  _version: number
+   _snapshot: T
+   _update: (getValue?: T | ((snapshot: T) => T)) => boolean
+   get: () => T
+@@ -42,6 +44,7 @@ interface InternalAtom<T> extends ReactiveNode {
+ }
+ 
+ const queuedEffects: Array<Effect | undefined> = []
++let writeVersion = 0
+ let cycle = 0
+ const { link, unlink, propagate, checkDirty, shallowPropagate } =
+   createReactiveSystem({
+@@ -53,13 +56,7 @@ const { link, unlink, propagate, checkDirty, shallowPropagate } =
+       queuedEffects[queuedEffectsLength++] = effect
+       effect.flags &= ~WATCHING
+     },
+-    unwatched(atom: InternalAtom<any>): void {
+-      if (atom.depsTail !== undefined) {
+-        atom.depsTail = undefined
+-        atom.flags = MUTABLE | DIRTY
+-        purgeDeps(atom)
+-      }
+-    },
++    unwatched,
+   })
+ 
+ let notifyIndex = 0
+@@ -78,6 +75,25 @@ export function batch(fn: () => void) {
+   }
+ }
+ 
++// Keep dependencies in the direction the caller owns. Without observers, the
++// source must not retain its derived atoms (e.g. an abandoned React render).
++function unwatched(atom: InternalAtom<any>) {
++  if (atom.deps !== undefined) {
++    const dependencies: Array<[InternalAtom<any>, number]> = []
++    let dep = atom.deps
++    while (dep !== undefined) {
++      const source = dep.dep as InternalAtom<any>
++      dependencies.push([source, source._version])
++      dep = dep.nextDep
++    }
++    atom._dependencies =
++      atom.flags & (DIRTY | PENDING) ? undefined : dependencies
++    atom.depsTail = undefined
++    atom.flags = MUTABLE | DIRTY
++    purgeDeps(atom)
++  }
++}
++
+ function purgeDeps(sub: ReactiveNode) {
+   const depsTail = sub.depsTail
+   let dep = depsTail !== undefined ? depsTail.nextDep : sub.deps
+@@ -160,6 +176,7 @@ export function createAtom<T>(
+ 
+   // Create plain object atom
+   const atom: InternalAtom<T> = {
++    _version: 0,
+     _snapshot: isComputed ? undefined! : valueOrFn,
+ 
+     subs: undefined,
+@@ -197,6 +214,9 @@ export function createAtom<T>(
+       const prevSub = activeSub
+       const compare = options?.compare ?? Object.is
+       if (isComputed) {
++        if (getValue !== undefined) {
++          atom._dependencies = undefined
++        }
+         activeSub = atom
+         ++cycle
+         atom.depsTail = undefined
+@@ -218,6 +238,7 @@ export function createAtom<T>(
+               : getValue!
+         if (oldValue === undefined || !compare(oldValue, newValue)) {
+           atom._snapshot = newValue
++          atom._version = ++writeVersion
+           return true
+         }
+         return false
+@@ -233,22 +254,79 @@ export function createAtom<T>(
+ 
+   if (isComputed) {
+     atom.flags = MUTABLE | DIRTY
++    let readVersion = -1
+     atom.get = function (): T {
+-      const flags = atom.flags
+-      if (flags & DIRTY || (flags & PENDING && checkDirty(atom.deps!, atom))) {
+-        if (atom._update()) {
+-          const subs = atom.subs
+-          if (subs !== undefined) {
+-            shallowPropagate(subs)
+-          }
++      // Observed clean reads are the hot path; they need no lifetime repair.
++      if (
++        !(atom.flags & (DIRTY | PENDING)) &&
++        atom._dependencies === undefined
++      ) {
++        if (activeSub !== undefined) {
++          link(atom, activeSub, cycle)
+         }
+-      } else if (flags & PENDING) {
+-        atom.flags = flags & ~PENDING
++        return atom._snapshot
+       }
+-      if (activeSub !== undefined) {
+-        link(atom, activeSub, cycle)
++      const unobserved = activeSub === undefined && atom.subs === undefined
++      if (unobserved && readVersion === writeVersion) {
++        return atom._snapshot
++      }
++      try {
++        // Reconnect unchanged dependencies without rerunning the getter. This
++        // preserves object snapshots, previous-value getters and pending loads.
++        const dependencies = atom._dependencies
++        if (dependencies) {
++          atom._dependencies = undefined
++          const prevSub = activeSub
++          activeSub = atom
++          ++cycle
++          atom.depsTail = undefined
++          try {
++            if (
++              dependencies.every(([source, version]) => {
++                source.get()
++                return source._version === version
++              })
++            ) {
++              atom.flags = MUTABLE
++            }
++          } finally {
++            activeSub = prevSub
++          }
++        }
++        const flags = atom.flags
++        if (
++          flags & DIRTY ||
++          (flags & PENDING && checkDirty(atom.deps!, atom))
++        ) {
++          if (atom._update()) {
++            const subs = atom.subs
++            if (subs !== undefined) {
++              shallowPropagate(subs)
++            }
++          }
++        } else if (flags & PENDING) {
++          atom.flags = flags & ~PENDING
++        }
++        if (activeSub !== undefined) {
++          link(atom, activeSub, cycle)
++        }
++        if (unobserved) {
++          readVersion = writeVersion
++        }
++        return atom._snapshot
++      } catch (error) {
++        // A throwing child has not linked itself to its parent yet.
++        if (atom.subs === undefined) {
++          unwatched(atom)
++        }
++        atom._dependencies = undefined
++        atom.flags |= DIRTY
++        throw error
++      } finally {
++        if (unobserved) {
++          unwatched(atom)
++        }
+       }
+-      return atom._snapshot
+     }
+   } else {
+     ;(atom as unknown as Atom<T>).set = function (

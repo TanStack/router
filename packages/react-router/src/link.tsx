@@ -1,7 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { useSelector } from '@tanstack/react-store'
+import { _normalizeHref } from '@tanstack/history'
+import { createAtom } from '@tanstack/react-store'
 import {
   deepEqual,
   functionalUpdate,
@@ -35,8 +36,8 @@ type LinkState = [href: string | undefined, isActive?: boolean]
 
 // Keep referentially stable values while their contents are equal. Links
 // routinely pass inline `params` / `search` object literals, which would
-// otherwise change `_options` identity on every parent render, rebuild the
-// store selector, and discard its memoized selection. One ref holds all of
+// otherwise rebuild the destination subscription on every parent render and
+// discard its memoized selection. One ref holds all of
 // them; each entry is replaced only when its own contents change.
 //
 // The router reuses a built location for as long as it sees the same options
@@ -66,10 +67,6 @@ function preloadLink(router: AnyRouter, options: unknown) {
   })
 }
 
-const LINK_SELECTOR_OPTIONS = {
-  compare: (a: LinkState, b: LinkState) => a[0] === b[0] && a[1] === b[1],
-}
-
 function resolveExternalLink(
   to: string | undefined,
   protocolAllowlist: AnyRouter['protocolAllowlist'],
@@ -88,13 +85,15 @@ function resolveExternalLink(
 }
 
 function resolveIsActive(
-  location: ParsedLocation,
+  location: ParsedLocation | undefined,
   next: ParsedLocation,
   activeOptions: ActiveOptions | undefined,
   basepath: string,
   isHydrated: boolean,
+  pathname = location!.pathname,
+  getLocation?: () => ParsedLocation,
 ): boolean {
-  const currentPath = removeTrailingSlash(location.pathname, basepath)
+  const currentPath = removeTrailingSlash(pathname, basepath)
   const nextPath = removeTrailingSlash(next.pathname, basepath)
 
   // Both modes compare normalized paths; fuzzy matches need a segment boundary.
@@ -112,7 +111,7 @@ function resolveIsActive(
 
   if (activeOptions?.includeSearch ?? true) {
     const searchTest = deepEqual(
-      location.search,
+      (location ??= getLocation!()).search,
       next.search,
       !activeOptions?.exact,
       activeOptions?.explicitUndefined,
@@ -123,7 +122,7 @@ function resolveIsActive(
   }
 
   if (activeOptions?.includeHash) {
-    return isHydrated && location.hash === next.hash
+    return isHydrated && (location ?? getLocation!()).hash === next.hash
   }
   return true
 }
@@ -265,77 +264,158 @@ export function useLinkProps<
     options.params,
     activeOptions,
   )
-  // `_options` is the options object from the render that last changed the
-  // destination. `dest` is its copy that the link owns: one stable object per
-  // link lets the router reuse location-independent results.
+  // The destination owns its build dependencies. React observes only the
+  // derived href/active tuple, never a historical location snapshot.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [_options, dest] = React.useMemo(
-    () => [options, { ...options } as any] as const,
+  const { getSnapshot, subscribe, _options } = React.useMemo(
+    (): {
+      _options: typeof options
+      getSnapshot: () => LinkState
+      subscribe: (listener: () => void) => () => void
+    } => {
+      // Direct destinations and the router's allowlist are stable for this subscription.
+      const directExternalLink = resolveExternalLink(
+        to,
+        router.protocolAllowlist,
+      )
+      if (directExternalLink !== undefined) {
+        const state: LinkState = [directExternalLink ?? undefined]
+        return {
+          _options: options,
+          getSnapshot: () => state,
+          subscribe: () => () => {},
+        }
+      }
+
+      let initialLocation: ParsedLocation | undefined =
+        router.stores.location.get()
+      const dest = {
+        ...options,
+        _fromLocation: options._fromLocation ?? initialLocation,
+      } as any
+      let initialNext: ParsedLocation | undefined = router.buildLocation(dest)
+      const fixed =
+        router.history.createHref === _normalizeHref &&
+        !!router.getCachedLocation(dest)
+      dest._fromLocation = options._fromLocation
+      const locationSource = fixed ? router.getLinkLocationStore() : undefined
+      let inactive: LinkState | undefined
+      let active: LinkState
+      let previousNext: ParsedLocation | undefined
+      let previousFormatter: typeof router.history.createHref | undefined
+
+      const derive = (location?: ParsedLocation): LinkState => {
+        const key = locationSource?.get()
+        if (!fixed && !options._fromLocation) {
+          dest._fromLocation = location
+        }
+        const next =
+          initialNext && location === initialLocation
+            ? initialNext
+            : (fixed && router.getCachedLocation(dest)) ||
+              router.buildLocation(
+                dest,
+                fixed ? router.stores.location.get : undefined,
+              )
+        if (initialNext) {
+          initialNext = initialLocation = undefined
+        }
+
+        // History formatters can depend on the current browser URL (hash history).
+        // Reuse classification and immutable results until the formatted href changes.
+        const formatter = router.history.createHref
+        const href =
+          fixed &&
+          next === previousNext &&
+          formatter === previousFormatter &&
+          formatter === _normalizeHref
+            ? inactive![0]
+            : getHrefOption(next, router, disabled)
+        if (fixed) {
+          previousNext = next
+          previousFormatter = formatter
+        }
+        if (!inactive || inactive[0] !== href) {
+          inactive = [
+            href,
+            // Internal/disabled links use false; external/blocked links use undefined.
+            !(disabled || (href && !getUrlScheme(href))) && undefined,
+          ]
+          active = [href, true]
+        }
+        return inactive[1] !== undefined &&
+          resolveIsActive(
+            location,
+            next,
+            stableActiveOptions,
+            router.basepath,
+            isHydrated,
+            location?.pathname ?? key![0],
+            router.stores.location.get,
+          )
+          ? active
+          : inactive
+      }
+      const derived = fixed
+        ? createAtom<LinkState | { error: unknown }>(() => {
+            try {
+              return derive()
+            } catch (error) {
+              // Store publishes synchronously; React owns errors from Link props.
+              return { error }
+            }
+          })
+        : undefined
+      let previousLocation: ParsedLocation | undefined
+      let snapshot: LinkState
+      return {
+        _options: options,
+        getSnapshot: derived
+          ? () => {
+              const value = derived.get()
+              if ('error' in value) {
+                throw value.error
+              }
+              return value
+            }
+          : () => {
+              const location = router.stores.location.get()
+              if (location !== previousLocation) {
+                snapshot = derive(location)
+                previousLocation = location
+              }
+              return snapshot
+            },
+        subscribe: (listener) =>
+          (derived
+            ? derived.subscribe(listener)
+            : router.stores.location.subscribe(listener)
+          ).unsubscribe,
+      }
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
       options.from,
       options._fromLocation,
       options.hash,
-      options.to,
+      to,
       stableSearch,
       stableParams,
       options.state,
       options.mask,
       options.unsafeRelative,
+      stableActiveOptions,
+      disabled,
+      isHydrated,
     ],
   )
 
-  // Derive inside the selector so `compareLinkState` can bail out. Deriving after
-  // the subscription instead re-renders every link on every navigation, because
-  // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectLinkState = React.useMemo(() => {
-    // Direct destinations and the router's allowlist are stable for this selector.
-    const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
-    if (directExternalLink !== undefined) {
-      const state: LinkState = [directExternalLink ?? undefined]
-      return () => state
-    }
-
-    let inactive: LinkState | undefined
-    let active: LinkState
-
-    return (location: ParsedLocation): LinkState => {
-      if (!_options._fromLocation) {
-        dest._fromLocation = location
-      }
-      const next = router.buildLocation(dest)
-
-      // History formatters can depend on the current browser URL (hash history).
-      // Reuse classification and immutable results until the formatted href changes.
-      const href = getHrefOption(next, router, disabled)
-      if (!inactive || inactive[0] !== href) {
-        inactive = [
-          href,
-          // Internal/disabled links use false; external/blocked links use undefined.
-          !(disabled || (href && !getUrlScheme(href))) && undefined,
-        ]
-        active = [href, true]
-      }
-      return inactive[1] !== undefined &&
-        resolveIsActive(
-          location,
-          next,
-          stableActiveOptions,
-          router.basepath,
-          isHydrated,
-        )
-        ? active
-        : inactive
-    }
-  }, [stableActiveOptions, disabled, isHydrated, _options, dest, router, to])
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [href, isActive] = useSelector(
-    router.stores.location,
-    selectLinkState,
-    LINK_SELECTOR_OPTIONS,
+  const [href, isActive] = React.useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getSnapshot,
   )
   const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined

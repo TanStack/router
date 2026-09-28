@@ -115,6 +115,8 @@ export function normalizeProtocolRelative(url: string): string {
   return match ? '/' + url.slice(match[0].length) : url
 }
 
+export { normalizeHref as _normalizeHref }
+
 function normalizeHref(href: string): string {
   // eslint-disable-next-line no-control-regex
   if (/[\x00-\x1f\x7f]/.test(href)) {
@@ -546,7 +548,7 @@ export function createBrowserHistory(opts?: {
       }
       win.history.go(n)
     },
-    createHref: (href) => createHref(href),
+    createHref,
     flush,
     destroy: () => {
       win.history.pushState = originalPushState
@@ -598,6 +600,9 @@ export function createBrowserHistory(opts?: {
     return res
   }
 
+  if (!opts) {
+    history.createHref = normalizeHref
+  }
   return history
 }
 
@@ -655,7 +660,7 @@ export function createMemoryHistory(
   const _setBlockers = (newBlockers: Array<NavigationBlocker>) =>
     (blockers = newBlockers)
 
-  return createHistory({
+  const history = createHistory({
     getLocation,
     getLength: () => entries.length,
     pushState: (path, state) => {
@@ -685,6 +690,8 @@ export function createMemoryHistory(
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
   })
+  history.createHref = normalizeHref
+  return history
 }
 
 const noop = () => {}

@@ -44,4 +44,6 @@ export type BuildLocationFn = <
     _includeValidateSearch?: boolean
     _isNavigate?: boolean
   },
+  /** @internal Read lazily so derived destinations track only actual dependencies. */
+  getLocation?: () => ParsedLocation,
 ) => ParsedLocation
