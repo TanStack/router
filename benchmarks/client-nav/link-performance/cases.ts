@@ -1,5 +1,42 @@
 export const LINK_CASES = [
   {
+    id: 'indexed-eligible',
+    label: 'All destinations path eligible',
+    description:
+      '2000 fixed destinations remain path eligible through search-only navigation.',
+  },
+  {
+    id: 'indexed-dynamic',
+    label: 'Two thousand dependent destinations',
+    description: 'All 2000 search updater destinations take the generic path.',
+  },
+  {
+    id: 'indexed-mount',
+    label: 'Mount and dispose fixed destinations',
+    description:
+      'Mount 2000 unique links, navigate the warm-up lap and dispose the router each batch.',
+  },
+  {
+    id: 'indexed-small',
+    label: 'Eight fixed destinations',
+    description: 'Small-page subscription overhead.',
+  },
+  {
+    id: 'indexed-many',
+    label: 'Two thousand fixed destinations',
+    description: 'Sparse active candidates among 2000 unique destinations.',
+  },
+  {
+    id: 'indexed-dense',
+    label: 'Two thousand identical destinations',
+    description: 'All 2000 active predicates change together.',
+  },
+  {
+    id: 'indexed-mixed',
+    label: 'Fixed and dependent destinations',
+    description: '1000 fixed and 1000 search updater destinations.',
+  },
+  {
     id: 'shared-params',
     label: 'Shared string params',
     description: '200 persistent Links reuse 40 string parameter values.',
@@ -73,6 +110,13 @@ export const LINK_CASES = [
 export type LinkCaseId = (typeof LINK_CASES)[number]['id']
 
 export const LINK_COUNT = 200
+export function linkCount(caseId: LinkCaseId) {
+  return caseId === 'indexed-small'
+    ? 8
+    : caseId.startsWith('indexed-')
+      ? 2000
+      : LINK_COUNT
+}
 export const NAVIGATION_STATES = [1, 2, 3, 0] as const
 export const LOCALES = ['en', 'fr', 'de', 'es'] as const
 
@@ -101,6 +145,9 @@ export function sourceSearch(
   stateIndex: number,
 ): Partial<LinkSearch> {
   switch (caseId) {
+    case 'indexed-eligible':
+    case 'indexed-dynamic':
+    case 'indexed-mixed':
     case 'location-updaters':
     case 'relative':
     case 'middleware':
@@ -156,6 +203,8 @@ function url(pathname: string, search: Partial<LinkSearch> = {}, hash = '') {
 
 function sourcePath(caseId: LinkCaseId, stateIndex: number) {
   switch (caseId) {
+    case 'indexed-eligible':
+      return '/items/item-0'
     case 'relative':
       return `/teams/team-${stateIndex}/item-${stateIndex}`
     case 'numeric-params':
@@ -196,8 +245,21 @@ function expectedHref(caseId: LinkCaseId, stateIndex: number, index: number) {
   switch (caseId) {
     case 'shared-params':
       return `/items/${itemId}`
+    case 'indexed-mount':
+    case 'indexed-small':
+    case 'indexed-many':
     case 'unique-params':
       return `/items/item-${index}`
+    case 'indexed-eligible':
+      return '/items/item-0'
+    case 'indexed-dynamic':
+      return url(`/items/item-${index}`, { page: stateIndex + 2 })
+    case 'indexed-dense':
+      return '/items/item-0'
+    case 'indexed-mixed':
+      return index % 2
+        ? url(`/items/item-${index}`, { page: stateIndex + 2 })
+        : `/items/item-${index}`
     case 'param-updaters':
       return `/items/item-${stateIndex}-related-${index % 40}`
     case 'location-updaters':
@@ -304,9 +366,9 @@ export function assertScenario(
     )
   }
   const links = root.querySelectorAll<HTMLAnchorElement>('a[data-perf-link]')
-  if (links.length !== LINK_COUNT) {
+  if (links.length !== linkCount(caseId)) {
     throw new Error(
-      `${caseId}: expected ${LINK_COUNT} Links, got ${links.length}`,
+      `${caseId}: expected ${linkCount(caseId)} Links, got ${links.length}`,
     )
   }
   for (const [index, link] of links.entries()) {
@@ -322,7 +384,20 @@ export function assertScenario(
     let active: boolean | undefined
     if (caseId === 'shared-params') {
       active = index % 40 === stateIndex
-    } else if (caseId === 'unique-params') {
+    } else if (caseId === 'indexed-eligible') {
+      active = true
+    } else if (caseId === 'indexed-dynamic') {
+      active = false
+    } else if (caseId === 'indexed-dense') {
+      active = stateIndex === 0
+    } else if (caseId === 'indexed-mixed') {
+      active = index % 2 === 0 && index === stateIndex
+    } else if (
+      caseId === 'unique-params' ||
+      caseId === 'indexed-small' ||
+      caseId === 'indexed-many' ||
+      caseId === 'indexed-mount'
+    ) {
       active = index === stateIndex
     } else if (caseId === 'active') {
       active =

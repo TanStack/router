@@ -1,4 +1,5 @@
 import {
+  _normalizeHref,
   createBrowserHistory,
   normalizeProtocolRelative,
   parseHref,
@@ -126,7 +127,11 @@ import type {
   HydrationScriptOutput,
   InitialHydrationScriptTags,
 } from './ssr/hydrationScripts'
-import type { GetStoreConfig, RouterStores } from './stores'
+import type {
+  GetStoreConfig,
+  RouterReadableStore,
+  RouterStores,
+} from './stores'
 
 function isExternalUrl(url: URL, origin: string) {
   return (
@@ -1192,6 +1197,42 @@ export class RouterCore<
   // Client only: server renders never repeat an options object, so server
   // bundles fold `isServer` and drop the cache entirely.
   private staticLocations: WeakMap<object, ParsedLocation> | undefined
+  getCachedLocation = (options: object) => this.staticLocations?.get(options)
+  private linkLocationStore?: RouterReadableStore<
+    readonly [string, object | undefined, unknown]
+  >
+
+  /** Shared pathname, build configuration and href-formatting dependencies. */
+  getLinkLocationStore = () => {
+    if (isServer ?? this.isServer) {
+      return
+    }
+    if (!this.linkLocationStore) {
+      const read = () =>
+        [
+          this.stores.location.get().pathname,
+          this.staticLocations,
+          this.history.createHref,
+        ] as const
+      let previous: ReturnType<typeof read> | undefined
+      this.linkLocationStore = this.getStoreConfig(this).createReadonlyStore(
+        () => {
+          const next = read()
+          if (
+            !previous ||
+            // Custom formatters can read the browser URL on any navigation.
+            next[2] !== _normalizeHref ||
+            next.some((value, index) => value !== previous![index])
+          ) {
+            previous = next
+          }
+          return previous
+        },
+      )
+    }
+    return this.linkLocationStore
+  }
+
   isServer!: boolean
   readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1884,7 +1925,7 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
-  buildLocation: BuildLocationFn = (opts) => {
+  buildLocation: BuildLocationFn = (opts, getLocation) => {
     if (!(isServer ?? this.isServer)) {
       const cached = this.staticLocations!.get(opts)
       if (cached) {
@@ -1915,8 +1956,7 @@ export class RouterCore<
       }
 
       // We allow the caller to override the current location
-      const currentLocation =
-        dest._fromLocation || this._pendingLocation || this.latestLocation
+      let currentLocation: ParsedLocation | undefined
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match
@@ -1924,11 +1964,14 @@ export class RouterCore<
       let lightweight: LightweightRouteMatchResult | undefined
       const current = () => {
         usedCurrent = true
-        return currentLocation
+        return (currentLocation ??=
+          dest._fromLocation ||
+          getLocation?.() ||
+          this._pendingLocation ||
+          this.latestLocation)
       }
       const currentMatch = () => {
-        usedCurrent = true
-        return (lightweight ??= this.matchRoutesLightweight(currentLocation))
+        return (lightweight ??= this.matchRoutesLightweight(current()))
       }
 
       // check that from path exists in the current route tree
@@ -2210,7 +2253,7 @@ export class RouterCore<
     if (
       !(isServer ?? this.isServer) &&
       !usedCurrent &&
-      opts._fromLocation &&
+      (opts._fromLocation || getLocation) &&
       !next.maskedLocation
     ) {
       this.staticLocations!.set(opts, next)

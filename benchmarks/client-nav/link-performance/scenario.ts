@@ -54,6 +54,12 @@ export function createClientScenario(
       anchors = [...container.querySelectorAll('a[data-perf-link]')]
     },
     async batch() {
+      if (id === 'indexed-mount') {
+        test.after()
+        await test.before()
+        anchors = [...container!.querySelectorAll('a[data-perf-link]')]
+        return
+      }
       for (let index = 0; index < ticksPerIteration; index++) {
         await test.tick()
       }
