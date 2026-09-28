@@ -1244,6 +1244,61 @@ describe('createStartHandler redirect safety', () => {
     )
   })
 
+  it.each(['href', 'to'] as const)(
+    'snapshots RPC redirect headers before %s option serialization writes helpers',
+    async (target) => {
+      startMocks.routerFactory = makeRouter
+      const callerHeaders = new Headers([
+        ['x-snapshot', 'before'],
+        ['set-cookie', 'first=1; Path=/'],
+        ['set-cookie', 'second=2; Path=/'],
+      ])
+      const state = {
+        toJSON() {
+          source.headers.set('x-snapshot', 'after')
+          source.headers.append('set-cookie', 'late=3; Path=/')
+          setResponseHeader('x-serialization', 'complete')
+          appendResponseHeader('x-steps', 'serialized')
+          return { serialized: true }
+        },
+      }
+      const options = { [target]: '/safe', headers: callerHeaders, state }
+      const source = redirect(options)
+      startMocks.serverFnResult = source
+      const handler = createTestStartHandler(() => new Response('unused'))
+
+      const response = await handler(
+        new Request('http://localhost/_serverFn/test', {
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      )
+
+      expect(response.headers.get('x-snapshot')).toBe('before')
+      expect(response.headers.getSetCookie()).toEqual([
+        'first=1; Path=/',
+        'second=2; Path=/',
+      ])
+      expect(response.headers.get('x-serialization')).toBe('complete')
+      expect(response.headers.get('x-steps')).toBe('serialized')
+      expect(response.headers.get('content-type')).toBe('application/json')
+      expect(response.headers.get('location')).toBeNull()
+      expect(response.headers.get('x-tss-raw')).toBeNull()
+      expect(response.headers.get('x-tss-serialized')).toBeNull()
+      expect(await response.json()).toEqual(
+        expect.objectContaining({
+          href: '/safe',
+          state: { serialized: true },
+          isSerializedRedirect: true,
+        }),
+      )
+      expect(source.headers.get('x-snapshot')).toBe('after')
+      expect(options.headers).toBe(callerHeaders)
+      expect(callerHeaders.get('x-snapshot')).toBe('before')
+      expect(options.state).toBe(state)
+    },
+  )
+
   it('preserves redirect headers and caller options across RPC then native form reuse', async () => {
     const headers = {
       Location: '/work',
