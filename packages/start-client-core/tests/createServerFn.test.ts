@@ -142,6 +142,24 @@ describe('flattenMiddlewares', () => {
     ).toEqual(['inner', 'outer', 'sibling'])
   })
 
+  test('skips empty slots in nested middleware arrays', () => {
+    const sparse: Array<typeof inner> = []
+    sparse[1] = inner
+    const parent = createMiddleware({ type: 'function' }).middleware(sparse)
+    names.set(parent, 'parent')
+
+    expect(nameAll(flattenMiddlewares([parent]))).toEqual(['inner', 'parent'])
+  })
+
+  test('throws for a nested middleware list that is not an array', () => {
+    const guard = createMiddleware({ type: 'function' })
+    const parent = createMiddleware({ type: 'function' }).middleware(
+      guard as never,
+    )
+
+    expect(() => flattenMiddlewares([parent])).toThrow(TypeError)
+  })
+
   test('throws for nesting deeper than the limit', () => {
     const looped = createMiddleware({ type: 'function' })
     looped.middleware([looped])
