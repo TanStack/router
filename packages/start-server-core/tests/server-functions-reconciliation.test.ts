@@ -625,6 +625,99 @@ describe('server function response reconciliation', () => {
     expect(response!.headers.getSetCookie()).toEqual([])
   })
 
+  describe('keeps Location off serialized replies', () => {
+    async function callWithResponse() {
+      let response: Response | undefined
+      const call = createClientRpc('test')({
+        method: 'GET',
+        fetch: async (input: string, init: RequestInit) => {
+          response = await createHandler()(
+            new Request(new URL(input, 'http://localhost'), init),
+            {},
+          )
+          return response
+        },
+      })
+      return { call, response: () => response! }
+    }
+
+    it('for JSON results with a helper redirect status', async () => {
+      const action = createAction()
+      action.mockImplementation(() => {
+        setResponseStatus(302)
+        setResponseHeader('location', '/elsewhere')
+        return { result: { ok: true } }
+      })
+      serverFnMocks.action = action
+
+      const { call, response } = await callWithResponse()
+
+      await expect(call).resolves.toEqual({ result: { ok: true } })
+      expect(response().status).toBe(302)
+      expect(response().headers.get('location')).toBeNull()
+    })
+
+    it('for framed results with a helper redirect status', async () => {
+      const action = createAction()
+      action.mockImplementation(() => {
+        setResponseStatus(303)
+        setResponseHeader('location', '/elsewhere')
+        return { result: { stream: new RawStream(new ReadableStream()) } }
+      })
+      serverFnMocks.action = action
+
+      const response = await createHandler()(createServerFunctionRequest(), {})
+
+      expect(response.headers.get('content-type')).toBe(
+        TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+      )
+      expect(response.headers.get('location')).toBeNull()
+      await response.body!.cancel()
+    })
+
+    it('for errors that carry a redirect status and Location', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      serverFnMocks.action = createAction()
+      serverFnMocks.middleware = [
+        createMiddleware().server(() => {
+          throw Object.assign(new Error('moved'), {
+            status: 302,
+            headers: { location: 'https://evil.example/' },
+          })
+        }),
+      ]
+
+      try {
+        const { call, response } = await callWithResponse()
+
+        await expect(call).rejects.toThrow('moved')
+        expect(response().headers.get('location')).toBeNull()
+      } finally {
+        consoleError.mockRestore()
+      }
+    })
+
+    it('for not-found envelopes', async () => {
+      serverFnMocks.action = createAction()
+      serverFnMocks.middleware = [
+        createMiddleware().server(() => {
+          setResponseStatus(302)
+          setResponseHeader('location', '/helper')
+          throw notFound({ headers: { location: '/not-found' } })
+        }),
+      ]
+
+      const { call, response } = await callWithResponse()
+
+      await expect(call).rejects.toSatisfy((value: unknown) =>
+        isNotFound(value),
+      )
+      expect(response().headers.get('location')).toBeNull()
+    })
+  })
+
   it('applies helper headers to serialized action errors', async () => {
     const action = createAction()
     action.mockImplementation(() => {
