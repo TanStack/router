@@ -90,6 +90,7 @@ function createHandler() {
 }
 
 type CallServerFn = (opts?: {
+  data?: unknown
   fetch?: (input: string, init: RequestInit) => Promise<Response>
 }) => Promise<unknown>
 type AttachHandler = (...args: Array<unknown>) => CallServerFn & {
@@ -130,8 +131,9 @@ function defineServerFn(
   let response: Response | undefined
 
   return {
-    call: () =>
+    call: (data?: unknown) =>
       client({
+        data,
         fetch: async (input, init) => {
           response = await createHandler()(
             new Request(new URL(input, 'http://localhost'), init),
@@ -168,6 +170,14 @@ async function readFrames(response: Response) {
   }
 
   return frames
+}
+
+async function settle(promise: Promise<unknown>) {
+  try {
+    return { resolved: await promise }
+  } catch (rejected) {
+    return { rejected }
+  }
 }
 
 afterEach(() => {
@@ -1124,14 +1134,6 @@ describe('server function response reconciliation', () => {
 })
 
 describe('server function throws reach the caller', () => {
-  async function settle(promise: Promise<unknown>) {
-    try {
-      return { resolved: await promise }
-    } catch (rejected) {
-      return { rejected }
-    }
-  }
-
   // Calls the server function from inside its own handler, as a nested
   // server-side call would, and records how the inner call settled.
   async function settleOnServer(throwInner: () => never) {
@@ -1402,5 +1404,159 @@ describe('server function throws reach the caller', () => {
       expect((outcome.rejected as Response).status).toBe(403)
       expect(response().status).toBe(403)
     })
+  })
+})
+
+describe('function middleware', () => {
+  it('passes data and context between client middleware, server middleware and the handler', async () => {
+    let clientContext: unknown
+    let serverResult: unknown
+    const { call } = defineServerFn(
+      'POST',
+      (({ data, context }: { data: unknown; context: object }) => ({
+        data,
+        context: { ...context },
+      })) as () => unknown,
+      [
+        createMiddleware({ type: 'function' })
+          .inputValidator((data: number) => data + 1)
+          .client(async ({ next }) => {
+            const result = await next({
+              context: { local: 'client' },
+              sendContext: { sent: 'client' },
+            })
+            clientContext = { ...result.context }
+            return result
+          })
+          .server(async ({ next }) => {
+            const result = await next({
+              context: { added: 'server' },
+              sendContext: { sent: 'server' },
+            })
+            serverResult = {
+              context: { ...result.context },
+              sendContext: { ...result.sendContext },
+            }
+            return result
+          }),
+      ],
+    )
+
+    await expect(call(1)).resolves.toEqual({
+      data: 2,
+      context: { sent: 'client', added: 'server' },
+    })
+    expect(serverResult).toEqual({
+      context: { sent: 'client', added: 'server' },
+      sendContext: { sent: 'server' },
+    })
+    expect(clientContext).toEqual({ local: 'client', sent: 'server' })
+  })
+
+  it('runs the validator of middleware that has no server function', async () => {
+    const { call } = defineServerFn(
+      'POST',
+      (({ data }: { data: unknown }) => data) as () => unknown,
+      [
+        createMiddleware({ type: 'function' })
+          .inputValidator((data: number) => data * 10)
+          .client(({ next }) => next()),
+      ],
+    )
+
+    await expect(call(2)).resolves.toBe(20)
+  })
+
+  it('skips middleware that already ran as request middleware', async () => {
+    const runs: Array<string> = []
+    const shared = createMiddleware().server(({ next }) => {
+      runs.push('shared')
+      return next()
+    })
+    serverFnMocks.middleware = [shared]
+    const { call } = defineServerFn('POST', () => 'ok', [
+      shared as unknown as AnyFunctionMiddleware,
+      createMiddleware({ type: 'function' })
+        .middleware([shared])
+        .server(({ next }) => {
+          runs.push('function')
+          return next()
+        }),
+    ])
+
+    await expect(call()).resolves.toBe('ok')
+    expect(runs).toEqual(['shared', 'function'])
+  })
+
+  it('resolves with a Response that server middleware returns', async () => {
+    const handler = vi.fn(() => 'unused')
+    const { call } = defineServerFn('POST', handler, [
+      createMiddleware({ type: 'function' }).server(async ({ next }) => next()),
+      createMiddleware({ type: 'function' }).server(
+        (() => new Response('from middleware', { status: 202 })) as never,
+      ),
+    ])
+
+    const outcome = await settle(call())
+
+    expect(outcome.resolved).toBeInstanceOf(Response)
+    const returned = outcome.resolved as Response
+    expect(returned.status).toBe(202)
+    await expect(returned.text()).resolves.toBe('from middleware')
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('rejects with a redirect that server middleware returns', async () => {
+    let caught: unknown
+    const { call } = defineServerFn('POST', () => 'unused', [
+      createMiddleware({ type: 'function' }).server(async ({ next }) => {
+        try {
+          return await next()
+        } catch (error) {
+          caught = error
+          throw error
+        }
+      }),
+      createMiddleware({ type: 'function' }).server((() =>
+        redirect({ href: '/login' })) as never),
+    ])
+
+    const outcome = await settle(call())
+
+    expect(isRedirect(caught)).toBe(true)
+    expect(outcome.rejected).toSatisfy(
+      (value: unknown) => isRedirect(value) && value.options.href === '/login',
+    )
+  })
+
+  it('lets outer middleware recover from a failure in inner middleware', async () => {
+    const { call } = defineServerFn('POST', () => 'unused', [
+      createMiddleware({ type: 'function' }).server((async ({
+        next,
+      }: {
+        next: () => Promise<unknown>
+      }) => {
+        try {
+          return await next()
+        } catch (error) {
+          return { result: `recovered from ${(error as Error).message}` }
+        }
+      }) as never),
+      createMiddleware({ type: 'function' }).server(() => {
+        throw new Error('inner')
+      }),
+    ])
+
+    await expect(call()).resolves.toBe('recovered from inner')
+  })
+
+  it('rejects when server middleware returns undefined', async () => {
+    const { call } = defineServerFn('POST', () => 'unused', [
+      createMiddleware({ type: 'function' }).server((() => undefined) as never),
+    ])
+
+    await expect(call()).rejects.toThrow(
+      'User middleware returned undefined. You must call next() or return a result in your middlewares.',
+    )
   })
 })
