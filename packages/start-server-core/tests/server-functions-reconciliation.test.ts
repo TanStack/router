@@ -1,33 +1,54 @@
 // @vitest-environment node
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { RawStream } from '@tanstack/router-core'
 import {
   TSS_FORMDATA_CONTEXT,
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+  createCsrfMiddleware,
 } from '@tanstack/start-client-core'
-import { runWithStartContext } from '@tanstack/start-storage-context'
-import { handleServerAction } from '../src/server-functions-handler'
+import { createStartHandler } from '../src/createStartHandler'
 import {
   FRAME_HEADER_SIZE,
   FRAME_TYPE_CHUNK,
   FRAME_TYPE_END,
   FRAME_TYPE_JSON,
+  createClientRpc,
 } from '@tanstack/start-client-core/client-rpc'
 import {
-  requestHandler,
+  getRequestUrl,
   setResponseHeader,
   setResponseStatus,
-} from '../src/internal-request-response'
+} from '../src/request-response'
 
-const serverFnMocks = vi.hoisted(() => ({
-  action: undefined as
-    | undefined
-    | (ReturnType<typeof vi.fn> & { method: string }),
+const serverFnMocks = vi.hoisted(() => {
+  const previousServerFnBase = process.env.TSS_SERVER_FN_BASE
+  process.env.TSS_SERVER_FN_BASE = '/_serverFn/'
+  return {
+    previousServerFnBase,
+    middleware: [] as Array<unknown>,
+    action: undefined as
+      | undefined
+      | (ReturnType<typeof vi.fn> & { method: string }),
+  }
+})
+
+vi.mock('#tanstack-start-entry', () => ({
+  startInstance: {
+    getOptions: () => ({
+      requestMiddleware: serverFnMocks.middleware,
+      serializationAdapters: [],
+    }),
+  },
 }))
 
 vi.mock('../src/getServerFnById', () => ({
   getServerFnById: () => serverFnMocks.action,
+}))
+
+// Run the public client RPC in Node without the compiler's browser replacement.
+vi.mock('../../start-client-core/dist/esm/getStartOptions.js', () => ({
+  getStartOptions: () => undefined,
 }))
 
 function createServerFunctionRequest(
@@ -44,24 +65,9 @@ function createAction(method = 'GET') {
 }
 
 function createHandler() {
-  return requestHandler((request) =>
-    runWithStartContext(
-      {
-        getRouter: async () => undefined as any,
-        request,
-        startOptions: { serializationAdapters: [] },
-        contextAfterGlobalMiddlewares: {},
-        executedRequestMiddlewares: new Set(),
-        handlerType: 'serverFn',
-      },
-      () =>
-        handleServerAction({
-          request,
-          context: {},
-          serverFnId: 'test',
-        }),
-    ),
-  )
+  return createStartHandler(() => {
+    throw new Error('Server function requests should not render HTML')
+  })
 }
 
 async function readFrames(response: Response) {
@@ -91,9 +97,102 @@ async function readFrames(response: Response) {
 
 afterEach(() => {
   serverFnMocks.action = undefined
+  serverFnMocks.middleware = []
 })
 
-describe('handleServerAction error handling', () => {
+afterAll(() => {
+  if (serverFnMocks.previousServerFnBase === undefined) {
+    Reflect.deleteProperty(process.env, 'TSS_SERVER_FN_BASE')
+  } else {
+    process.env.TSS_SERVER_FN_BASE = serverFnMocks.previousServerFnBase
+  }
+})
+
+describe('server function response reconciliation', () => {
+  it('round-trips GET input without normalizing the original query encoding', async () => {
+    const data = {
+      spaces: 'one two three',
+      plus: 'one+two',
+      tilde: 'one~two',
+      unicode: 'Grüße 🌍',
+      percent: '100%',
+    }
+    const action = createAction()
+    action.mockImplementation((payload) => ({
+      result: { data: payload.data, requestUrl: getRequestUrl().href },
+    }))
+    serverFnMocks.action = action
+    const handler = createHandler()
+    let originalUrl = ''
+
+    const result = await createClientRpc('test')({
+      method: 'GET',
+      data,
+      fetch: async (input: string, init: RequestInit) => {
+        const url = new URL(input, 'http://localhost')
+        const payload = url.searchParams.get('payload')!
+        // Mix equivalent space encodings and retain literal ~. URLSearchParams
+        // serialization would canonicalize these even though decoding must not.
+        const encoded = encodeURIComponent(payload).replace('%20', '+')
+        const request = new Request(
+          `http://localhost/_serverFn/test?payload=${encoded}&space=a%20b+c&plus=%2b&tilde=~&unicode=%e2%98%83&percent=%25`,
+          init,
+        )
+        originalUrl = request.url
+        return handler(request, {})
+      },
+    })
+
+    expect(action).toHaveBeenCalledOnce()
+    expect(action.mock.calls[0]?.[0].data).toEqual(data)
+    expect(result).toEqual({ result: { data, requestUrl: originalUrl } })
+  })
+
+  it('does not execute the action when an async CSRF matcher allows an aborted request', async () => {
+    const controller = new AbortController()
+    const reason = new Error('Request disconnected')
+    let resolveMatcher!: (allowed: boolean) => void
+    let matcherStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      matcherStarted = resolve
+    })
+    const matching = new Promise<boolean>((resolve) => {
+      resolveMatcher = resolve
+    })
+    const matcher = vi.fn(() => {
+      matcherStarted()
+      return matching
+    })
+    serverFnMocks.middleware = [createCsrfMiddleware({ origin: matcher })]
+    const action = createAction()
+    action.mockReturnValue({ result: 'must not execute' })
+    serverFnMocks.action = action
+
+    const pending = createHandler()(
+      createServerFunctionRequest('http://localhost/_serverFn/test', {
+        signal: controller.signal,
+        headers: { Origin: 'http://localhost' },
+      }),
+      {},
+    )
+    const rejected = expect(pending).rejects.toBe(reason)
+
+    try {
+      await started
+      expect(action).not.toHaveBeenCalled()
+      controller.abort(reason)
+      await rejected
+      resolveMatcher(true)
+      // Let the late matcher continuation attempt to enter the next middleware.
+      await new Promise<void>((resolve) => setImmediate(resolve))
+
+      expect(matcher).toHaveBeenCalledOnce()
+      expect(action).not.toHaveBeenCalled()
+    } finally {
+      resolveMatcher(true)
+    }
+  })
+
   it('preserves HTTP-style action error metadata', async () => {
     const action = createAction()
     const error = Object.assign(new Error('conflict'), {

@@ -22,6 +22,7 @@ import {
 import {
   appendResponseHeader,
   clearResponseHeaders,
+  getResponseHeader,
   setCookie,
   setResponseHeader,
   setResponseStatus,
@@ -188,6 +189,136 @@ const mutations = [
 ]
 
 describe('server-function protocol headers through public request middleware', () => {
+  it.each(['constructor', 'toString', '__proto__'])(
+    'allows helpers to write and clear the %s header on protocol responses',
+    async (name) => {
+      mocks.middleware = [
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          expect(result.response.headers.get(name)).toBe('from-helper')
+          expect(getResponseHeader(name)).toBe('from-helper')
+          clearResponseHeaders()
+          expect(getResponseHeader(name)).toBeUndefined()
+          return result
+        }),
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          setResponseHeader(name, 'from-helper')
+          expect(getResponseHeader(name)).toBe('from-helper')
+          return result
+        }),
+      ]
+      mocks.action = () => ({
+        result: new Response('raw result', {
+          headers: [[name, 'from-response']],
+        }),
+      })
+
+      const response = await callServerFn()
+      expect(response).toBeInstanceOf(Response)
+      expect(response.headers.get(name)).toBeNull()
+      expect(response.headers.get('x-tss-raw')).toBe('true')
+      expect(await response.text()).toBe('raw result')
+    },
+  )
+
+  it('restores direct protocol header mutations at each middleware boundary without helper writes', async () => {
+    const mutateHeaders = (response: Response) => {
+      response.headers.set('content-type', 'text/plain')
+      response.headers.delete('x-tss-serialized')
+      response.headers.append('x-tss-raw', 'true')
+    }
+    mocks.middleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        expect(result.response.headers.get('content-type')).toBe(
+          'application/json',
+        )
+        expect(result.response.headers.get('x-tss-serialized')).toBe('true')
+        expect(result.response.headers.get('x-tss-raw')).toBeNull()
+        mutateHeaders(result.response)
+        return result
+      }),
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        mutateHeaders(result.response)
+        return result
+      }),
+    ]
+    mocks.action = () => ({ result: { answer: 42 } })
+
+    await expect(callServerFn()).resolves.toEqual({ result: { answer: 42 } })
+  })
+
+  it('restores a raw response marker directly removed by each middleware layer', async () => {
+    mocks.middleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        expect(result.response.headers.get('x-tss-raw')).toBe('true')
+        result.response.headers.delete('x-tss-raw')
+        return result
+      }),
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        result.response.headers.delete('x-tss-raw')
+        return result
+      }),
+    ]
+    mocks.action = () => ({ result: new Response('raw result') })
+
+    const response = await callServerFn()
+    expect(response).toBeInstanceOf(Response)
+    expect(response.headers.get('x-tss-raw')).toBe('true')
+    expect(await response.text()).toBe('raw result')
+  })
+
+  it('wraps raw responses without changing their headers or duplicating their body', async () => {
+    const cancel = vi.fn()
+    const source = new Response(new ReadableStream({ cancel }), {
+      status: 201,
+      statusText: 'Created',
+      headers: [
+        ['content-type', 'application/octet-stream'],
+        ['set-cookie', 'session=one; Path=/'],
+        ['set-cookie', 'session=two; Path=/admin'],
+      ],
+    })
+    mocks.action = () => ({ result: source })
+
+    const response = await callServerFn()
+    expect(response).toBeInstanceOf(Response)
+    expect(response).not.toBe(source)
+    expect(response.body).toBe(source.body)
+    expect(response.status).toBe(201)
+    expect(response.statusText).toBe('Created')
+    expect(response.headers.get('x-tss-raw')).toBe('true')
+    expect(source.headers.get('x-tss-raw')).toBeNull()
+    expect(response.headers.getSetCookie()).toEqual([
+      'session=one; Path=/',
+      'session=two; Path=/admin',
+    ])
+    response.headers.set('content-type', 'text/plain')
+    expect(source.headers.get('content-type')).toBe('application/octet-stream')
+
+    const reason = new Error('client disconnected')
+    await response.body!.cancel(reason)
+    expect(cancel).toHaveBeenCalledExactlyOnceWith(reason)
+  })
+
+  it('marks raw responses with immutable headers without modifying their source', async () => {
+    const source = Response.redirect('https://start.example/login', 303)
+    mocks.action = () => ({ result: source })
+
+    const response = await callServerFn()
+
+    expect(response).toBeInstanceOf(Response)
+    expect(response.status).toBe(303)
+    expect(response.body).toBeNull()
+    expect(response.headers.get('location')).toBe('https://start.example/login')
+    expect(response.headers.get('x-tss-raw')).toBe('true')
+    expect(source.headers.get('x-tss-raw')).toBeNull()
+  })
+
   it('keeps Location absent from RPC redirect JSON despite a helper override', async () => {
     mocks.middleware = [
       createMiddleware().server(async ({ next }) => {
