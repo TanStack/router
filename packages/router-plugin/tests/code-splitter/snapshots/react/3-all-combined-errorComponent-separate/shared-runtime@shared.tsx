@@ -18,6 +18,14 @@ function createSeed() {
 }
 function createState(initialState: {
   count: number;
+}): {
+  state: {
+    count: number;
+  };
+  increment: () => number;
+};
+function createState(initialState: {
+  count: number;
 }) {
   console.log('shared-runtime:state');
   return {

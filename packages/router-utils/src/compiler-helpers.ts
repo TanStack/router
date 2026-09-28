@@ -849,7 +849,13 @@ export function retainModuleLevelDeclarations(
       return declaration.declarations.length > 0
     }
 
-    if (t.isFunctionDeclaration(declaration) && declaration.id) {
+    // Overload signatures travel with the function they describe, so that
+    // the shared module exports the same signature set as the source.
+    if (
+      (t.isFunctionDeclaration(declaration) ||
+        t.isTSDeclareFunction(declaration)) &&
+      declaration.id
+    ) {
       return bindingsToKeep.has(declaration.id.name)
     }
 
