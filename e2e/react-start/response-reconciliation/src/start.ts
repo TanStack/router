@@ -1,5 +1,6 @@
 import { createMiddleware, createStart } from '@tanstack/react-start'
 import {
+  clearResponseHeaders,
   setCookie,
   getCookie,
   setResponseHeader,
@@ -55,6 +56,14 @@ const globalResponseMiddleware = createMiddleware().server(
         status: 302,
         headers: { location: '/api/base' },
       })
+    }
+
+    if (scenario === 'global-same-body-wrapper') {
+      const result = await next()
+      const wrapped = new Response(result.response.body, result.response)
+      clearResponseHeaders()
+      setResponseHeader('x-same-body-wrapper', 'yes')
+      return { ...result, response: wrapped }
     }
 
     if (scenario === 'global-throw') {

@@ -350,6 +350,11 @@ async function executeMiddleware(
     if (current && current.response === exposed) {
       current.streamResponse ??= streamResponse
     } else if (current && inheritsResponseOwnership(current, exposed)) {
+      // A wrapper around the same body stream carries the same encoded bytes,
+      // so it keeps the transport requirements that decode them.
+      if (exposed.body === current.response.body) {
+        transferResponseProtocol(current.response, exposed)
+      }
       current.response = exposed
       current.streamResponse ??= streamResponse
     } else {

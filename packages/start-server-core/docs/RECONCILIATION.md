@@ -139,7 +139,7 @@ If a middleware sets one of these statuses after a streamed SSR response is prod
 SSR streaming responses carry cleanup ownership metadata. Middleware reconciliation preserves or disposes that ownership based on the final body:
 
 - Same response: ownership is preserved.
-- Wrapper response with the same body: ownership moves to the wrapper.
+- Wrapper response with the same body: ownership moves to the wrapper, and the wrapper keeps the protected transport headers of the body it wraps.
 - Different response or dropped body: original stream owner is disposed.
 - Middleware error after `next()`: original stream owner is disposed.
 
