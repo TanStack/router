@@ -9,32 +9,33 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SsrRouteImport } from './routes/ssr'
-import { Route as ServerFunctionsRouteImport } from './routes/server-functions'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiTwoReturnedResponsesRouteImport } from './routes/api/two-returned-responses'
-import { Route as ApiThrowAfterStatusRouteImport } from './routes/api/throw-after-status'
-import { Route as ApiSameBoundaryConflictRouteImport } from './routes/api/same-boundary-conflict'
-import { Route as ApiRouteBeforeNextRouteImport } from './routes/api/route-before-next'
-import { Route as ApiRouteAfterNextRouteImport } from './routes/api/route-after-next'
-import { Route as ApiReplaceExplicitSetCookieRouteImport } from './routes/api/replace-explicit-set-cookie'
-import { Route as ApiReplaceAfterDirectMutationRouteImport } from './routes/api/replace-after-direct-mutation'
-import { Route as ApiRemoveReturnedHeaderRouteImport } from './routes/api/remove-returned-header'
-import { Route as ApiRedirectWithCookiesRouteImport } from './routes/api/redirect-with-cookies'
-import { Route as ApiReadonlyAfterNextRouteImport } from './routes/api/readonly-after-next'
-import { Route as ApiNullBodyStatusRouteImport } from './routes/api/null-body-status'
-import { Route as ApiMultipleCookiesRouteImport } from './routes/api/multiple-cookies'
-import { Route as ApiGetResponseHeadersHelperRouteImport } from './routes/api/get-response-headers-helper'
-import { Route as ApiGetResponseHeaderHelperRouteImport } from './routes/api/get-response-header-helper'
-import { Route as ApiExplicitSetCookieHeaderRouteImport } from './routes/api/explicit-set-cookie-header'
-import { Route as ApiDirectMutationVisibleRouteImport } from './routes/api/direct-mutation-visible'
-import { Route as ApiClearReturnedHeadersRouteImport } from './routes/api/clear-returned-headers'
-import { Route as ApiBulkHeadersRouteImport } from './routes/api/bulk-headers'
+import { Route as ServerFunctionsRouteImport } from './routes/server-functions'
+import { Route as SsrRouteImport } from './routes/ssr'
 import { Route as ApiBaseRouteImport } from './routes/api/base'
+import { Route as ApiBulkHeadersRouteImport } from './routes/api/bulk-headers'
+import { Route as ApiClearReturnedHeadersRouteImport } from './routes/api/clear-returned-headers'
+import { Route as ApiDirectMutationVisibleRouteImport } from './routes/api/direct-mutation-visible'
+import { Route as ApiExplicitSetCookieHeaderRouteImport } from './routes/api/explicit-set-cookie-header'
+import { Route as ApiGetResponseHeaderHelperRouteImport } from './routes/api/get-response-header-helper'
+import { Route as ApiGetResponseHeadersHelperRouteImport } from './routes/api/get-response-headers-helper'
+import { Route as ApiMultipleCookiesRouteImport } from './routes/api/multiple-cookies'
+import { Route as ApiNullBodyStatusRouteImport } from './routes/api/null-body-status'
+import { Route as ApiReadonlyAfterNextRouteImport } from './routes/api/readonly-after-next'
+import { Route as ApiRedirectWithCookiesRouteImport } from './routes/api/redirect-with-cookies'
+import { Route as ApiRemoveReturnedHeaderRouteImport } from './routes/api/remove-returned-header'
+import { Route as ApiReplaceAfterDirectMutationRouteImport } from './routes/api/replace-after-direct-mutation'
+import { Route as ApiReplaceExplicitSetCookieRouteImport } from './routes/api/replace-explicit-set-cookie'
+import { Route as ApiRouteAfterNextRouteImport } from './routes/api/route-after-next'
+import { Route as ApiRouteBeforeNextRouteImport } from './routes/api/route-before-next'
+import { Route as ApiSameBoundaryConflictRouteImport } from './routes/api/same-boundary-conflict'
+import { Route as ApiStatusContractsRouteImport } from './routes/api/status-contracts'
+import { Route as ApiThrowAfterStatusRouteImport } from './routes/api/throw-after-status'
+import { Route as ApiTwoReturnedResponsesRouteImport } from './routes/api/two-returned-responses'
 
-const SsrRoute = SsrRouteImport.update({
-  id: '/ssr',
-  path: '/ssr',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServerFunctionsRoute = ServerFunctionsRouteImport.update({
@@ -42,83 +43,30 @@ const ServerFunctionsRoute = ServerFunctionsRouteImport.update({
   path: '/server-functions',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const SsrRoute = SsrRouteImport.update({
+  id: '/ssr',
+  path: '/ssr',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTwoReturnedResponsesRoute = ApiTwoReturnedResponsesRouteImport.update({
-  id: '/api/two-returned-responses',
-  path: '/api/two-returned-responses',
+const ApiBaseRoute = ApiBaseRouteImport.update({
+  id: '/api/base',
+  path: '/api/base',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiThrowAfterStatusRoute = ApiThrowAfterStatusRouteImport.update({
-  id: '/api/throw-after-status',
-  path: '/api/throw-after-status',
+const ApiBulkHeadersRoute = ApiBulkHeadersRouteImport.update({
+  id: '/api/bulk-headers',
+  path: '/api/bulk-headers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSameBoundaryConflictRoute = ApiSameBoundaryConflictRouteImport.update({
-  id: '/api/same-boundary-conflict',
-  path: '/api/same-boundary-conflict',
+const ApiClearReturnedHeadersRoute = ApiClearReturnedHeadersRouteImport.update({
+  id: '/api/clear-returned-headers',
+  path: '/api/clear-returned-headers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRouteBeforeNextRoute = ApiRouteBeforeNextRouteImport.update({
-  id: '/api/route-before-next',
-  path: '/api/route-before-next',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiRouteAfterNextRoute = ApiRouteAfterNextRouteImport.update({
-  id: '/api/route-after-next',
-  path: '/api/route-after-next',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiReplaceExplicitSetCookieRoute =
-  ApiReplaceExplicitSetCookieRouteImport.update({
-    id: '/api/replace-explicit-set-cookie',
-    path: '/api/replace-explicit-set-cookie',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiReplaceAfterDirectMutationRoute =
-  ApiReplaceAfterDirectMutationRouteImport.update({
-    id: '/api/replace-after-direct-mutation',
-    path: '/api/replace-after-direct-mutation',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiRemoveReturnedHeaderRoute = ApiRemoveReturnedHeaderRouteImport.update({
-  id: '/api/remove-returned-header',
-  path: '/api/remove-returned-header',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiRedirectWithCookiesRoute = ApiRedirectWithCookiesRouteImport.update({
-  id: '/api/redirect-with-cookies',
-  path: '/api/redirect-with-cookies',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiReadonlyAfterNextRoute = ApiReadonlyAfterNextRouteImport.update({
-  id: '/api/readonly-after-next',
-  path: '/api/readonly-after-next',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiNullBodyStatusRoute = ApiNullBodyStatusRouteImport.update({
-  id: '/api/null-body-status',
-  path: '/api/null-body-status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiMultipleCookiesRoute = ApiMultipleCookiesRouteImport.update({
-  id: '/api/multiple-cookies',
-  path: '/api/multiple-cookies',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiGetResponseHeadersHelperRoute =
-  ApiGetResponseHeadersHelperRouteImport.update({
-    id: '/api/get-response-headers-helper',
-    path: '/api/get-response-headers-helper',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiGetResponseHeaderHelperRoute =
-  ApiGetResponseHeaderHelperRouteImport.update({
-    id: '/api/get-response-header-helper',
-    path: '/api/get-response-header-helper',
+const ApiDirectMutationVisibleRoute =
+  ApiDirectMutationVisibleRouteImport.update({
+    id: '/api/direct-mutation-visible',
+    path: '/api/direct-mutation-visible',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiExplicitSetCookieHeaderRoute =
@@ -127,25 +75,83 @@ const ApiExplicitSetCookieHeaderRoute =
     path: '/api/explicit-set-cookie-header',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiDirectMutationVisibleRoute =
-  ApiDirectMutationVisibleRouteImport.update({
-    id: '/api/direct-mutation-visible',
-    path: '/api/direct-mutation-visible',
+const ApiGetResponseHeaderHelperRoute =
+  ApiGetResponseHeaderHelperRouteImport.update({
+    id: '/api/get-response-header-helper',
+    path: '/api/get-response-header-helper',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiClearReturnedHeadersRoute = ApiClearReturnedHeadersRouteImport.update({
-  id: '/api/clear-returned-headers',
-  path: '/api/clear-returned-headers',
+const ApiGetResponseHeadersHelperRoute =
+  ApiGetResponseHeadersHelperRouteImport.update({
+    id: '/api/get-response-headers-helper',
+    path: '/api/get-response-headers-helper',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiMultipleCookiesRoute = ApiMultipleCookiesRouteImport.update({
+  id: '/api/multiple-cookies',
+  path: '/api/multiple-cookies',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBulkHeadersRoute = ApiBulkHeadersRouteImport.update({
-  id: '/api/bulk-headers',
-  path: '/api/bulk-headers',
+const ApiNullBodyStatusRoute = ApiNullBodyStatusRouteImport.update({
+  id: '/api/null-body-status',
+  path: '/api/null-body-status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBaseRoute = ApiBaseRouteImport.update({
-  id: '/api/base',
-  path: '/api/base',
+const ApiReadonlyAfterNextRoute = ApiReadonlyAfterNextRouteImport.update({
+  id: '/api/readonly-after-next',
+  path: '/api/readonly-after-next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRedirectWithCookiesRoute = ApiRedirectWithCookiesRouteImport.update({
+  id: '/api/redirect-with-cookies',
+  path: '/api/redirect-with-cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRemoveReturnedHeaderRoute = ApiRemoveReturnedHeaderRouteImport.update({
+  id: '/api/remove-returned-header',
+  path: '/api/remove-returned-header',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReplaceAfterDirectMutationRoute =
+  ApiReplaceAfterDirectMutationRouteImport.update({
+    id: '/api/replace-after-direct-mutation',
+    path: '/api/replace-after-direct-mutation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiReplaceExplicitSetCookieRoute =
+  ApiReplaceExplicitSetCookieRouteImport.update({
+    id: '/api/replace-explicit-set-cookie',
+    path: '/api/replace-explicit-set-cookie',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiRouteAfterNextRoute = ApiRouteAfterNextRouteImport.update({
+  id: '/api/route-after-next',
+  path: '/api/route-after-next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRouteBeforeNextRoute = ApiRouteBeforeNextRouteImport.update({
+  id: '/api/route-before-next',
+  path: '/api/route-before-next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSameBoundaryConflictRoute = ApiSameBoundaryConflictRouteImport.update({
+  id: '/api/same-boundary-conflict',
+  path: '/api/same-boundary-conflict',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStatusContractsRoute = ApiStatusContractsRouteImport.update({
+  id: '/api/status-contracts',
+  path: '/api/status-contracts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiThrowAfterStatusRoute = ApiThrowAfterStatusRouteImport.update({
+  id: '/api/throw-after-status',
+  path: '/api/throw-after-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTwoReturnedResponsesRoute = ApiTwoReturnedResponsesRouteImport.update({
+  id: '/api/two-returned-responses',
+  path: '/api/two-returned-responses',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/api/route-after-next': typeof ApiRouteAfterNextRoute
   '/api/route-before-next': typeof ApiRouteBeforeNextRoute
   '/api/same-boundary-conflict': typeof ApiSameBoundaryConflictRoute
+  '/api/status-contracts': typeof ApiStatusContractsRoute
   '/api/throw-after-status': typeof ApiThrowAfterStatusRoute
   '/api/two-returned-responses': typeof ApiTwoReturnedResponsesRoute
 }
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/api/route-after-next': typeof ApiRouteAfterNextRoute
   '/api/route-before-next': typeof ApiRouteBeforeNextRoute
   '/api/same-boundary-conflict': typeof ApiSameBoundaryConflictRoute
+  '/api/status-contracts': typeof ApiStatusContractsRoute
   '/api/throw-after-status': typeof ApiThrowAfterStatusRoute
   '/api/two-returned-responses': typeof ApiTwoReturnedResponsesRoute
 }
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/api/route-after-next': typeof ApiRouteAfterNextRoute
   '/api/route-before-next': typeof ApiRouteBeforeNextRoute
   '/api/same-boundary-conflict': typeof ApiSameBoundaryConflictRoute
+  '/api/status-contracts': typeof ApiStatusContractsRoute
   '/api/throw-after-status': typeof ApiThrowAfterStatusRoute
   '/api/two-returned-responses': typeof ApiTwoReturnedResponsesRoute
 }
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
     | '/api/route-after-next'
     | '/api/route-before-next'
     | '/api/same-boundary-conflict'
+    | '/api/status-contracts'
     | '/api/throw-after-status'
     | '/api/two-returned-responses'
   fileRoutesByTo: FileRoutesByTo
@@ -269,6 +279,7 @@ export interface FileRouteTypes {
     | '/api/route-after-next'
     | '/api/route-before-next'
     | '/api/same-boundary-conflict'
+    | '/api/status-contracts'
     | '/api/throw-after-status'
     | '/api/two-returned-responses'
   id:
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/api/route-after-next'
     | '/api/route-before-next'
     | '/api/same-boundary-conflict'
+    | '/api/status-contracts'
     | '/api/throw-after-status'
     | '/api/two-returned-responses'
   fileRoutesById: FileRoutesById
@@ -318,17 +330,18 @@ export interface RootRouteChildren {
   ApiRouteAfterNextRoute: typeof ApiRouteAfterNextRoute
   ApiRouteBeforeNextRoute: typeof ApiRouteBeforeNextRoute
   ApiSameBoundaryConflictRoute: typeof ApiSameBoundaryConflictRoute
+  ApiStatusContractsRoute: typeof ApiStatusContractsRoute
   ApiThrowAfterStatusRoute: typeof ApiThrowAfterStatusRoute
   ApiTwoReturnedResponsesRoute: typeof ApiTwoReturnedResponsesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/ssr': {
-      id: '/ssr'
-      path: '/ssr'
-      fullPath: '/ssr'
-      preLoaderRoute: typeof SsrRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/server-functions': {
@@ -338,130 +351,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServerFunctionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/ssr': {
+      id: '/ssr'
+      path: '/ssr'
+      fullPath: '/ssr'
+      preLoaderRoute: typeof SsrRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/two-returned-responses': {
-      id: '/api/two-returned-responses'
-      path: '/api/two-returned-responses'
-      fullPath: '/api/two-returned-responses'
-      preLoaderRoute: typeof ApiTwoReturnedResponsesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/throw-after-status': {
-      id: '/api/throw-after-status'
-      path: '/api/throw-after-status'
-      fullPath: '/api/throw-after-status'
-      preLoaderRoute: typeof ApiThrowAfterStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/same-boundary-conflict': {
-      id: '/api/same-boundary-conflict'
-      path: '/api/same-boundary-conflict'
-      fullPath: '/api/same-boundary-conflict'
-      preLoaderRoute: typeof ApiSameBoundaryConflictRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/route-before-next': {
-      id: '/api/route-before-next'
-      path: '/api/route-before-next'
-      fullPath: '/api/route-before-next'
-      preLoaderRoute: typeof ApiRouteBeforeNextRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/route-after-next': {
-      id: '/api/route-after-next'
-      path: '/api/route-after-next'
-      fullPath: '/api/route-after-next'
-      preLoaderRoute: typeof ApiRouteAfterNextRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/replace-explicit-set-cookie': {
-      id: '/api/replace-explicit-set-cookie'
-      path: '/api/replace-explicit-set-cookie'
-      fullPath: '/api/replace-explicit-set-cookie'
-      preLoaderRoute: typeof ApiReplaceExplicitSetCookieRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/replace-after-direct-mutation': {
-      id: '/api/replace-after-direct-mutation'
-      path: '/api/replace-after-direct-mutation'
-      fullPath: '/api/replace-after-direct-mutation'
-      preLoaderRoute: typeof ApiReplaceAfterDirectMutationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/remove-returned-header': {
-      id: '/api/remove-returned-header'
-      path: '/api/remove-returned-header'
-      fullPath: '/api/remove-returned-header'
-      preLoaderRoute: typeof ApiRemoveReturnedHeaderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/redirect-with-cookies': {
-      id: '/api/redirect-with-cookies'
-      path: '/api/redirect-with-cookies'
-      fullPath: '/api/redirect-with-cookies'
-      preLoaderRoute: typeof ApiRedirectWithCookiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/readonly-after-next': {
-      id: '/api/readonly-after-next'
-      path: '/api/readonly-after-next'
-      fullPath: '/api/readonly-after-next'
-      preLoaderRoute: typeof ApiReadonlyAfterNextRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/null-body-status': {
-      id: '/api/null-body-status'
-      path: '/api/null-body-status'
-      fullPath: '/api/null-body-status'
-      preLoaderRoute: typeof ApiNullBodyStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/multiple-cookies': {
-      id: '/api/multiple-cookies'
-      path: '/api/multiple-cookies'
-      fullPath: '/api/multiple-cookies'
-      preLoaderRoute: typeof ApiMultipleCookiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/get-response-headers-helper': {
-      id: '/api/get-response-headers-helper'
-      path: '/api/get-response-headers-helper'
-      fullPath: '/api/get-response-headers-helper'
-      preLoaderRoute: typeof ApiGetResponseHeadersHelperRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/get-response-header-helper': {
-      id: '/api/get-response-header-helper'
-      path: '/api/get-response-header-helper'
-      fullPath: '/api/get-response-header-helper'
-      preLoaderRoute: typeof ApiGetResponseHeaderHelperRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/explicit-set-cookie-header': {
-      id: '/api/explicit-set-cookie-header'
-      path: '/api/explicit-set-cookie-header'
-      fullPath: '/api/explicit-set-cookie-header'
-      preLoaderRoute: typeof ApiExplicitSetCookieHeaderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/direct-mutation-visible': {
-      id: '/api/direct-mutation-visible'
-      path: '/api/direct-mutation-visible'
-      fullPath: '/api/direct-mutation-visible'
-      preLoaderRoute: typeof ApiDirectMutationVisibleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/clear-returned-headers': {
-      id: '/api/clear-returned-headers'
-      path: '/api/clear-returned-headers'
-      fullPath: '/api/clear-returned-headers'
-      preLoaderRoute: typeof ApiClearReturnedHeadersRouteImport
+    '/api/base': {
+      id: '/api/base'
+      path: '/api/base'
+      fullPath: '/api/base'
+      preLoaderRoute: typeof ApiBaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/bulk-headers': {
@@ -471,11 +372,130 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBulkHeadersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/base': {
-      id: '/api/base'
-      path: '/api/base'
-      fullPath: '/api/base'
-      preLoaderRoute: typeof ApiBaseRouteImport
+    '/api/clear-returned-headers': {
+      id: '/api/clear-returned-headers'
+      path: '/api/clear-returned-headers'
+      fullPath: '/api/clear-returned-headers'
+      preLoaderRoute: typeof ApiClearReturnedHeadersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/direct-mutation-visible': {
+      id: '/api/direct-mutation-visible'
+      path: '/api/direct-mutation-visible'
+      fullPath: '/api/direct-mutation-visible'
+      preLoaderRoute: typeof ApiDirectMutationVisibleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/explicit-set-cookie-header': {
+      id: '/api/explicit-set-cookie-header'
+      path: '/api/explicit-set-cookie-header'
+      fullPath: '/api/explicit-set-cookie-header'
+      preLoaderRoute: typeof ApiExplicitSetCookieHeaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/get-response-header-helper': {
+      id: '/api/get-response-header-helper'
+      path: '/api/get-response-header-helper'
+      fullPath: '/api/get-response-header-helper'
+      preLoaderRoute: typeof ApiGetResponseHeaderHelperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/get-response-headers-helper': {
+      id: '/api/get-response-headers-helper'
+      path: '/api/get-response-headers-helper'
+      fullPath: '/api/get-response-headers-helper'
+      preLoaderRoute: typeof ApiGetResponseHeadersHelperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/multiple-cookies': {
+      id: '/api/multiple-cookies'
+      path: '/api/multiple-cookies'
+      fullPath: '/api/multiple-cookies'
+      preLoaderRoute: typeof ApiMultipleCookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/null-body-status': {
+      id: '/api/null-body-status'
+      path: '/api/null-body-status'
+      fullPath: '/api/null-body-status'
+      preLoaderRoute: typeof ApiNullBodyStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/readonly-after-next': {
+      id: '/api/readonly-after-next'
+      path: '/api/readonly-after-next'
+      fullPath: '/api/readonly-after-next'
+      preLoaderRoute: typeof ApiReadonlyAfterNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/redirect-with-cookies': {
+      id: '/api/redirect-with-cookies'
+      path: '/api/redirect-with-cookies'
+      fullPath: '/api/redirect-with-cookies'
+      preLoaderRoute: typeof ApiRedirectWithCookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/remove-returned-header': {
+      id: '/api/remove-returned-header'
+      path: '/api/remove-returned-header'
+      fullPath: '/api/remove-returned-header'
+      preLoaderRoute: typeof ApiRemoveReturnedHeaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/replace-after-direct-mutation': {
+      id: '/api/replace-after-direct-mutation'
+      path: '/api/replace-after-direct-mutation'
+      fullPath: '/api/replace-after-direct-mutation'
+      preLoaderRoute: typeof ApiReplaceAfterDirectMutationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/replace-explicit-set-cookie': {
+      id: '/api/replace-explicit-set-cookie'
+      path: '/api/replace-explicit-set-cookie'
+      fullPath: '/api/replace-explicit-set-cookie'
+      preLoaderRoute: typeof ApiReplaceExplicitSetCookieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/route-after-next': {
+      id: '/api/route-after-next'
+      path: '/api/route-after-next'
+      fullPath: '/api/route-after-next'
+      preLoaderRoute: typeof ApiRouteAfterNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/route-before-next': {
+      id: '/api/route-before-next'
+      path: '/api/route-before-next'
+      fullPath: '/api/route-before-next'
+      preLoaderRoute: typeof ApiRouteBeforeNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/same-boundary-conflict': {
+      id: '/api/same-boundary-conflict'
+      path: '/api/same-boundary-conflict'
+      fullPath: '/api/same-boundary-conflict'
+      preLoaderRoute: typeof ApiSameBoundaryConflictRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/status-contracts': {
+      id: '/api/status-contracts'
+      path: '/api/status-contracts'
+      fullPath: '/api/status-contracts'
+      preLoaderRoute: typeof ApiStatusContractsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/throw-after-status': {
+      id: '/api/throw-after-status'
+      path: '/api/throw-after-status'
+      fullPath: '/api/throw-after-status'
+      preLoaderRoute: typeof ApiThrowAfterStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/two-returned-responses': {
+      id: '/api/two-returned-responses'
+      path: '/api/two-returned-responses'
+      fullPath: '/api/two-returned-responses'
+      preLoaderRoute: typeof ApiTwoReturnedResponsesRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -502,6 +522,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRouteAfterNextRoute: ApiRouteAfterNextRoute,
   ApiRouteBeforeNextRoute: ApiRouteBeforeNextRoute,
   ApiSameBoundaryConflictRoute: ApiSameBoundaryConflictRoute,
+  ApiStatusContractsRoute: ApiStatusContractsRoute,
   ApiThrowAfterStatusRoute: ApiThrowAfterStatusRoute,
   ApiTwoReturnedResponsesRoute: ApiTwoReturnedResponsesRoute,
 }
