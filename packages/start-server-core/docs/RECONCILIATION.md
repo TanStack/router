@@ -153,6 +153,8 @@ Built-in server entries use `createServerEntry` to keep the complete entry callb
 
 Server function RPC errors are converted before the top-level server-entry boundary so serialized protocol headers and bodies are preserved.
 
+Both error builders adopt HTTP-style metadata from the thrown value, or from `error.cause` when the error has no `headers`. Start builds a new JSON body for an error, so it never copies headers that describe another body or connection from error metadata: `Content-Length`, `Content-Encoding`, `Content-Range`, `Transfer-Encoding`, `Trailer`, `Connection`, `Keep-Alive`, `Proxy-Connection`, `TE`, and `Upgrade`. When `error.cause` is a `Response`, such as a failed upstream `fetch`, its `Set-Cookie` and `Content-Type` headers are not copied either.
+
 `handleStartError` behavior:
 
 - Inside an active request scope, it uses that invocation's event for object, response, and primitive throws.

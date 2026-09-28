@@ -6,6 +6,7 @@ import {
   setResponseHeaders,
   setResponseStatus,
 } from '@tanstack/react-start/server'
+import { createUpstreamFailure } from './routes/api/-upstream'
 
 const globalResponseMiddleware = createMiddleware().server(
   async ({ next, request }) => {
@@ -43,6 +44,10 @@ const globalResponseMiddleware = createMiddleware().server(
       setCookie('global-one', '1', { path: '/' })
       setCookie('global-two', '2', { path: '/' })
       return next()
+    }
+
+    if (scenario === 'global-upstream-cause') {
+      throw new Error('Upstream failed', { cause: createUpstreamFailure() })
     }
 
     if (scenario === 'global-throw') {

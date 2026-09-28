@@ -208,18 +208,47 @@ export function getErrorStatusText(error: unknown): string | undefined {
   return undefined
 }
 
+// Start always builds a new error body. Headers that describe another body's
+// bytes or its connection would corrupt that body on the wire.
+const ERROR_BODY_EXCLUDED_HEADERS = [
+  'connection',
+  'content-encoding',
+  'content-length',
+  'content-range',
+  'keep-alive',
+  'proxy-connection',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]
+
 export function getErrorHeaders(error: unknown): Headers | undefined {
-  const cause = getObjectProperty(error, 'cause')
-  const headers =
-    getObjectProperty(error, 'headers') ?? getObjectProperty(cause, 'headers')
-  if (!headers) {
+  let init = getObjectProperty(error, 'headers')
+  let cause: unknown
+  if (!init) {
+    cause = getObjectProperty(error, 'cause')
+    init = getObjectProperty(cause, 'headers')
+  }
+  if (!init) {
     return undefined
   }
+  let headers: Headers
   try {
-    return new Headers(headers as HeadersInit)
+    headers = new Headers(init as HeadersInit)
   } catch {
     return undefined
   }
+  for (const name of ERROR_BODY_EXCLUDED_HEADERS) {
+    headers.delete(name)
+  }
+  // A Response cause is another server's reply, such as a failed upstream
+  // fetch. Its cookies and media type were never meant for this client.
+  if (cause instanceof Response) {
+    headers.delete('set-cookie')
+    headers.delete('content-type')
+  }
+  return headers
 }
 
 function getResponseState(event: StartEvent): ResponseState {

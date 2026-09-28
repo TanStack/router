@@ -136,6 +136,8 @@ Error conversion preserves:
 - Cookies from `setCookie` and `appendResponseHeader('set-cookie', ...)`, including multiple `Set-Cookie` headers
 - HTTP-style error metadata such as `error.status`, `error.statusText`, `error.headers`, and `error.cause.headers`
 
+Start builds a new JSON body for an error, so it never copies headers that describe another body or connection from error metadata: `Content-Length`, `Content-Encoding`, `Content-Range`, `Transfer-Encoding`, `Trailer`, `Connection`, `Keep-Alive`, `Proxy-Connection`, `TE`, and `Upgrade`. When `error.cause` is a `Response`, such as a failed upstream `fetch`, its `Set-Cookie` and `Content-Type` headers are not copied either.
+
 Explicit helper status, status text, and header operations take precedence over error metadata. When neither a helper nor the error supplies a status, Start also logs the error to the server console. The generic JSON body does not expose the error's message or stack.
 
 Errors that Router handles through route error components do not reach this top-level catch. Server function calls and their request middleware use a separate error response path that preserves the RPC serialization protocol. Failures during initialization, before that path is established, fall back to the top-level error response. Errors in a streamed body after the entry has returned its `Response` cannot replace that response's status or headers.
