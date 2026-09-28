@@ -38,6 +38,7 @@ import {
   getResponseHeader,
   getResponseHeaders,
   getResponseStatus,
+  getStartEvent,
   handleStartError,
   protectResponseHeaders,
   reconcileResponse,
@@ -377,7 +378,7 @@ describe('createStartHandler response reconciliation', () => {
         headers: { 'x-transport': 'original' },
       })
       protectResponseHeaders(response, new Map([['x-transport', 'original']]))
-      const reconciled = reconcileResponse(response)
+      const reconciled = reconcileResponse(response, getStartEvent())
       reconciled.headers.set('x-transport', 'mutated')
       seenHeader = getResponseHeader('x-transport')
       seenHeadersHeader = getResponseHeaders().get('x-transport')
@@ -402,6 +403,7 @@ describe('createStartHandler response reconciliation', () => {
               'x-remove': 'remove-me',
             },
           }),
+          getStartEvent(),
         )
         const headers = getResponseHeaders() as Headers
         expect(headers.get('x-remove')).toBe('remove-me')
@@ -535,8 +537,8 @@ describe('createStartHandler response reconciliation', () => {
     let secondResponse: Response | undefined
     const handler = createResponseHandler(() => {
       const response = new Response('ok')
-      firstResponse = reconcileResponse(response)
-      secondResponse = reconcileResponse(firstResponse)
+      firstResponse = reconcileResponse(response, getStartEvent())
+      secondResponse = reconcileResponse(firstResponse, getStartEvent())
       return secondResponse
     })
 
@@ -550,7 +552,7 @@ describe('createStartHandler response reconciliation', () => {
     let reconciledResponse: Response | undefined
     const handler = createResponseHandler(() => {
       const response = new Response('ok')
-      reconciledResponse = reconcileResponse(response)
+      reconciledResponse = reconcileResponse(response, getStartEvent())
       setResponseHeader('x-late-helper', 'true')
       return reconciledResponse
     })
@@ -566,7 +568,7 @@ describe('createStartHandler response reconciliation', () => {
   it('reapplies helper headers after direct mutation of a reconciled response', async () => {
     const handler = createResponseHandler(() => {
       setResponseHeader('x-helper', 'true')
-      const response = reconcileResponse(new Response('ok'))
+      const response = reconcileResponse(new Response('ok'), getStartEvent())
       response.headers.delete('x-helper')
       return response
     })
@@ -580,7 +582,7 @@ describe('createStartHandler response reconciliation', () => {
     let firstResponse: Response | undefined
     const handler = createResponseHandler(() => {
       setResponseHeader('x-helper', 'true')
-      firstResponse = reconcileResponse(new Response('first'))
+      firstResponse = reconcileResponse(new Response('first'), getStartEvent())
       return new Response('second')
     })
 
@@ -599,9 +601,9 @@ describe('createStartHandler response reconciliation', () => {
         headers: { 'x-transport': 'original' },
       })
       protectResponseHeaders(response, new Map([['x-transport', 'original']]))
-      firstResponse = reconcileResponse(response)
+      firstResponse = reconcileResponse(response, getStartEvent())
       firstResponse.headers.set('x-transport', 'mutated')
-      secondResponse = reconcileResponse(firstResponse)
+      secondResponse = reconcileResponse(firstResponse, getStartEvent())
       return secondResponse
     })
 

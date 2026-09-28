@@ -14,7 +14,7 @@ import type {
 import type { CookieSerializeOptions } from 'cookie-es'
 import type { RequestHandler } from './request-handler'
 
-interface StartEvent {
+export interface StartEvent {
   request: Request
   requestUrl?: URL
   /**
@@ -813,16 +813,20 @@ export function handleStartError(error: unknown): Response {
 
 export function reconcileResponse(
   response: Response,
+  event: StartEvent,
   disposeBody?: (reason: string) => void,
 ): Response {
-  const event = eventStorage.getStore()
-  if (!event) {
-    return response
-  }
-  // Router redirects still need destination resolution (or an RPC envelope).
-  // Keep their semantic identity until createStartHandler resolves them;
-  // response getters can already read the helper overlay on this snapshot.
-  if (isRedirect(response)) {
+  // Without helper writes or protocol requirements, only a bodyless status
+  // could change the response. Router redirects still need destination
+  // resolution (or an RPC envelope), so they keep their identity until
+  // createStartHandler resolves them; response getters can already read the
+  // helper overlay on this snapshot.
+  if (
+    (!event.responseState &&
+      !getProtectedResponseHeaders(response) &&
+      canHaveBody(event.request.method, response.status)) ||
+    isRedirect(response)
+  ) {
     event.currentResponse = response
     return response
   }
@@ -989,7 +993,7 @@ export function withStartRequest<TRegister = unknown>(
   }
 }
 
-function getStartEvent() {
+export function getStartEvent() {
   const event = eventStorage.getStore()
   if (!event) {
     throw new Error(

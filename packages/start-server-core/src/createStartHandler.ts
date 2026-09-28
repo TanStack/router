@@ -33,6 +33,7 @@ import {
   createFinalizedResponse,
   finalizeResponse,
   getParsedRequestUrl,
+  getStartEvent,
   reconcileResponse,
   transferResponseProtocol,
   withStartRequest,
@@ -313,29 +314,6 @@ function getOwnedResponse(
   }
 }
 
-/**
- * One middleware invocation. Once it has returned, the result of any next()
- * call still pending below it is abandoned: it must not replace or cancel the
- * response the invocation chose (for example the winner of a `Promise.race`).
- */
-interface MiddlewareInvocation {
-  returned: boolean
-  caller?: MiddlewareInvocation
-}
-
-function isAbandoned(invocation: MiddlewareInvocation): boolean {
-  for (
-    let current: MiddlewareInvocation | undefined = invocation;
-    current;
-    current = current.caller
-  ) {
-    if (current.returned) {
-      return true
-    }
-  }
-  return false
-}
-
 function createLateResponseDisposer(signal: AbortSignal) {
   return (result: TODO) => disposeResponseResult(result, signal.reason)
 }
@@ -353,9 +331,15 @@ async function executeMiddleware(
 ): Promise<HandlerCallbackResult> {
   let index = -1
   let responseOwnership: MiddlewareResponseOwnership | undefined
-  // The pipeline is the root caller. Once it returns, the HTTP runtime owns
-  // the response, so every result that settles later is abandoned.
-  const pipeline: MiddlewareInvocation = { returned: false }
+  // Invocations form one chain: invocation `d` runs middleware `d` and calls
+  // next() at most once; the pipeline itself is depth -1. Once an invocation
+  // returns, a result of next() still pending below it is abandoned: it must
+  // not replace or cancel the response that invocation chose (for example the
+  // winner of a `Promise.race`). A caller at depth `d` is therefore abandoned
+  // when `returnedDepth <= d`, where this is the shallowest returned depth.
+  let returnedDepth = Infinity
+  // The request event is fixed for the pipeline; look it up once.
+  const event = getStartEvent()
   const disposeAbandonedResult = createLateResponseDisposer(signal)
 
   const adoptResponse = (
@@ -406,7 +390,7 @@ async function executeMiddleware(
     }
   }
 
-  const setResponse = (response: TODO, caller: MiddlewareInvocation) => {
+  const setResponse = (response: TODO, caller: number) => {
     const ssrResponse = isSsrResponse(response) ? response : undefined
     const streamResponse =
       ssrResponse?.serverSsrCleanup === 'stream' ? ssrResponse : undefined
@@ -414,7 +398,7 @@ async function executeMiddleware(
       ? ssrResponse.response
       : response
 
-    if (isAbandoned(caller)) {
+    if (returnedDepth <= caller) {
       if (exposed !== ctx.response) {
         disposeResponseResult(response, 'late middleware response')
       }
@@ -424,33 +408,46 @@ async function executeMiddleware(
     // SSR cleanup callbacks may set headers on the response that replaces it.
     adoptResponse(exposed, streamResponse)
     if (exposed instanceof Response) {
-      const reconciled = reconcileResponse(exposed, disposeCurrentBody)
-      if (reconciled !== exposed) {
-        const source = responseBodySources.get(exposed)
-        if (source && reconciled.body) {
-          responseBodySources.set(reconciled, source)
-        }
-        adoptResponse(reconciled)
-      }
+      reconcileExposed(exposed)
     }
   }
 
-  const reconcileCtxResponse = (caller: MiddlewareInvocation) => {
-    setResponse(ctx.response, caller)
+  const reconcileExposed = (exposed: Response) => {
+    const reconciled = reconcileResponse(exposed, event, disposeCurrentBody)
+    if (reconciled !== exposed) {
+      const source = responseBodySources.get(exposed)
+      if (source && reconciled.body) {
+        responseBodySources.set(reconciled, source)
+      }
+      adoptResponse(reconciled)
+    }
+  }
+
+  const reconcileCtxResponse = (caller: number) => {
+    const response = ctx.response
+    // The owned response is already adopted; only helper state and protocol
+    // repair can still change it.
+    if (
+      response !== undefined &&
+      response === responseOwnership?.response &&
+      returnedDepth > caller
+    ) {
+      reconcileExposed(response)
+    } else {
+      setResponse(response, caller)
+    }
   }
 
   let nextPromise: Promise<TODO> | undefined
 
-  function next(caller: MiddlewareInvocation, nextCtx?: TODO): Promise<TODO> {
-    const result = runNext(caller, nextCtx)
+  function next(nextCtx?: TODO): Promise<TODO> {
+    // Only the deepest started invocation can call next().
+    const result = runNext(index, nextCtx)
     nextPromise = result
     return result
   }
 
-  async function runNext(
-    caller: MiddlewareInvocation,
-    nextCtx?: TODO,
-  ): Promise<TODO> {
+  async function runNext(caller: number, nextCtx?: TODO): Promise<TODO> {
     signal.throwIfAborted()
 
     // Merge context if provided using safeObjectMerge for prototype pollution prevention
@@ -468,22 +465,18 @@ async function executeMiddleware(
       }
     }
 
-    index++
-    const isTerminal = index === middlewares.length
+    const depth = ++index
+    const isTerminal = depth === middlewares.length
     const middleware =
-      index < middlewares.length
-        ? middlewares[index]
+      depth < middlewares.length
+        ? middlewares[depth]
         : isTerminal
           ? terminal
           : undefined
+    const middlewareNext = isTerminal && terminalNext ? terminalNext : next
     if (!middleware) {
       return ctx
     }
-    const invocation: MiddlewareInvocation = { returned: false, caller }
-    const middlewareNext =
-      isTerminal && terminalNext
-        ? terminalNext
-        : (childCtx?: TODO) => next(invocation, childCtx)
 
     let result: TODO
     try {
@@ -505,8 +498,10 @@ async function executeMiddleware(
         )
       }
     } catch (err) {
-      invocation.returned = true
-      if (!isAbandoned(caller)) {
+      if (depth < returnedDepth) {
+        returnedDepth = depth
+      }
+      if (returnedDepth > caller) {
         // Middleware can replace next()'s shared response before throwing.
         // Track that body for cleanup without rebuilding a body it may have
         // already locked, consumed, or transferred.
@@ -532,14 +527,16 @@ async function executeMiddleware(
       }
       throw err
     }
-    invocation.returned = true
+    if (depth < returnedDepth) {
+      returnedDepth = depth
+    }
 
     if (isTerminal && terminalNext && !result) {
       throwRouteHandlerError()
     }
 
     if (isTerminal && !terminalNext && result instanceof DeferredResponse) {
-      if (!isAbandoned(caller)) {
+      if (returnedDepth > caller) {
         // Cleanup may write response helpers. Construct only after it has run,
         // then publish without rechecking headers that no user has received.
         adoptResponse(undefined)
@@ -558,7 +555,7 @@ async function executeMiddleware(
         reconcileCtxResponse(caller)
       }
       if (
-        !isAbandoned(caller) &&
+        returnedDepth > caller &&
         response !== result &&
         result.context &&
         result.context !== ctx.context
@@ -573,7 +570,7 @@ async function executeMiddleware(
   }
 
   try {
-    await runNext(pipeline)
+    await runNext(-1)
     const response = ctx.response
     if (!response) {
       throwRouteHandlerError()
@@ -581,10 +578,10 @@ async function executeMiddleware(
     if (signal.aborted) {
       throw signal.reason
     }
-    pipeline.returned = true
+    returnedDepth = -1
     return responseOwnership ? getOwnedResponse(responseOwnership) : response
   } catch (err) {
-    pipeline.returned = true
+    returnedDepth = -1
     if (responseOwnership) {
       disposeResponseOwnership(
         responseOwnership,
@@ -938,7 +935,7 @@ export function createStartHandler<TRegister = Register>(
           throw error
         }
         if (error instanceof Response) {
-          middlewareResponse = reconcileResponse(error)
+          middlewareResponse = reconcileResponse(error, getStartEvent())
         } else if (!isServerFnRequest) {
           throw error
         } else {
@@ -956,7 +953,10 @@ export function createStartHandler<TRegister = Register>(
             disposeLate,
             disposeLate,
           )
-          middlewareResponse = reconcileResponse(middlewareResponse)
+          middlewareResponse = reconcileResponse(
+            middlewareResponse,
+            getStartEvent(),
+          )
         }
       }
 
