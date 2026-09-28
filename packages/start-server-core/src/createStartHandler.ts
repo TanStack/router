@@ -42,6 +42,7 @@ import {
   DeferredResponse,
   createServerFnErrorResponse,
   handleServerAction,
+  toThrownServerFnResponse,
 } from './server-functions-handler'
 import { createEarlyHintsCollector } from './early-hints'
 import {
@@ -521,7 +522,12 @@ async function executeMiddleware(
         throw signal.reason
       }
       if (err instanceof Response) {
-        setResponse(err, caller)
+        // A thrown Response replies to the request. For a server function
+        // call, the client rejects the call with it.
+        setResponse(
+          ctx.handlerType === 'serverFn' ? toThrownServerFnResponse(err) : err,
+          caller,
+        )
         return ctx
       }
       throw err

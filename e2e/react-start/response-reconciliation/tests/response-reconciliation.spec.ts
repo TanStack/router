@@ -671,7 +671,7 @@ test.describe('server functions', () => {
       // A second RegExp would make Playwright read the array as a fixture
       // tuple, so all expected statuses share one pattern.
       whitelistErrors: [
-        /Failed to load resource: the server responded with a status of (401 \(Unauthorized\)|418 \([^)]*\)|500 \([^)]*\)|502 \([^)]*\))/,
+        /Failed to load resource: the server responded with a status of (401 \(Unauthorized\)|403 \([^)]*\)|418 \([^)]*\)|500 \([^)]*\)|502 \([^)]*\))/,
       ],
     })
 
@@ -758,6 +758,42 @@ test.describe('server functions', () => {
       expect(header(response, 'x-global-error')).toBe('yes')
       expect(header(response, 'x-tss-serialized')).toBe('true')
       await expectServerFunctionResult(page, 'globalSerialized', /Unauthorized/)
+    })
+
+    test('a string thrown by request middleware rejects the server function call with it', async ({
+      page,
+    }) => {
+      const response = await invokeJsonServerFunction(
+        page,
+        'globalSerialized',
+        'global-throw-string',
+      )
+
+      expect(response.status()).toBe(500)
+      expect(header(response, 'x-tss-serialized')).toBe('true')
+      await expectServerFunctionResult(
+        page,
+        'globalSerialized',
+        'thrown:"global string"',
+      )
+    })
+
+    test('a Response thrown by request middleware rejects the server function call with it', async ({
+      page,
+    }) => {
+      const response = await invokeServerFunction(
+        page,
+        'globalSerialized',
+        'global-throw-response',
+      )
+
+      expect(response.status()).toBe(403)
+      expect(header(response, 'x-tss-raw')).toBe('thrown')
+      await expectServerFunctionResult(
+        page,
+        'globalSerialized',
+        'thrown 403:{"denied":true}',
+      )
     })
 
     test('regression #5107: function middleware thrown errors preserve explicit response status', async ({

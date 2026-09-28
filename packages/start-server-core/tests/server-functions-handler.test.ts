@@ -273,9 +273,9 @@ test('a synchronous serialization failure cancels registered raw streams', async
     expect(response.headers.get(X_TSS_SERIALIZED)).toBe('true')
     expect(response.headers.get('content-type')).toBe('application/json')
     expect(
-      fromCrossJSON(await response.json(), {
+      fromCrossJSON<{ error: unknown }>(await response.json(), {
         plugins: defaultSerovalDeserializerPlugins,
-      }),
+      }).error,
     ).toBeInstanceOf(Error)
   } finally {
     consoleInfo.mockRestore()
@@ -414,7 +414,7 @@ test('bounds synchronously replayed Seroval records before framing', async () =>
       serverFnId: 'test',
     })
 
-    const error = fromCrossJSON(await response.json(), {
+    const { error } = fromCrossJSON<{ error: unknown }>(await response.json(), {
       plugins: defaultSerovalDeserializerPlugins,
     })
     expect(error).toBeInstanceOf(Error)

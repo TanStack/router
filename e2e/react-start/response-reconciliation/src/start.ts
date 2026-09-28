@@ -80,6 +80,14 @@ const globalResponseMiddleware = createMiddleware().server(
       throw new Error('Unauthorized global middleware')
     }
 
+    if (scenario === 'global-throw-string') {
+      throw 'global string'
+    }
+
+    if (scenario === 'global-throw-response') {
+      throw Response.json({ denied: true }, { status: 403 })
+    }
+
     return next()
   },
 )
