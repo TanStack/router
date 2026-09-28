@@ -47,7 +47,7 @@ Response state is created lazily on the first helper write. Requests that never 
 
 `getResponseHeader` and `getResponseHeaders` read the current returned response plus helper overlay. Helper writes are visible immediately, even before a final `Response` exists. `getResponseHeaders()` returns a detached snapshot with a read-only TypeScript interface. Its `forEach` callback also receives that read-only interface. Casting the snapshot to `Headers` and mutating it does not change outgoing response state; outside production, `set`, `append`, and `delete` on the snapshot log a warning that names the helper to use instead. Use `setResponseHeader`, `setResponseHeaders`, `appendResponseHeader`, `removeResponseHeader`, or `clearResponseHeaders` for writes. Use `getSetCookie()` on the snapshot when all individual cookie values are needed.
 
-Internal code can use `getResponse` to read a snapshot of the event-owned status state during serialization. This is not public API and it is read-only; all writes go through the status/header/cookie helpers above.
+Internal code can use `getSerializedResponseState` to read the helper status and status text that apply to a serialized server-function reply. This is not public API and it is read-only; all writes go through the status/header/cookie helpers above.
 
 ## Reconciliation Model
 
@@ -130,7 +130,7 @@ Reconciliation drops bodies for response shapes that cannot carry one:
 
 `setResponseStatus` ignores codes that are not integers from `200` to `599`, such as informational `101`, `0`, or `NaN`, because Fetch responses cannot carry them. The call changes neither status nor status text: an earlier helper status, or otherwise the returned or error status, stays in effect, and Start logs a warning outside production. Call `setResponseStatus(undefined, text)` to set only the status text.
 
-Server-function replies that Start serializes are the exception. Their protected content type describes a body that the client must decode, so reconciliation never applies a helper-selected `204`, `205`, or `304` to them, together with that call's status text. Serialized errors ignore these statuses from error metadata too. `setResponseStatus` logs a warning outside production when such a status is set during a server-function RPC call. A raw `Response` returned by a server function is not serialized and still follows the rules above.
+Server-function replies that Start serializes are the exception. Their protected content type describes a body that the client must decode, so reconciliation never applies a helper-selected `204`, `205`, or `304` to them, together with that call's status text. Serialized errors ignore these statuses from error metadata too. Outside production, Start logs a warning, once per request, when it ignores such a status for a serialized reply. Serialized replies are recognized by the protocol requirements Start attaches to the `Response` it creates. Middleware that clones a serialized reply or rebuilds it around a new body must pass the result through `transferResponseBodyOwnership` to keep those requirements; otherwise the rebuilt response is an ordinary response, so a bodyless helper status drops its body and its `Location` is not removed. A raw `Response` returned by a server function is not serialized and still follows the rules above.
 
 If a middleware sets one of these statuses after a streamed SSR response is produced, the middleware executor treats that as response replacement and disposes the original SSR stream owner.
 
