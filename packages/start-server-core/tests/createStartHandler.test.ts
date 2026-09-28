@@ -37,12 +37,13 @@ import {
   getRequestUrl,
   getResponseHeader,
   getResponseHeaders,
+  getResponseStatus,
   handleStartError,
   protectResponseHeaders,
   reconcileResponse,
-  requestHandler,
   setCookie,
   setResponseHeader,
+  setResponseHeaders,
   setResponseStatus,
 } from '../src/internal-request-response'
 import {
@@ -63,7 +64,9 @@ const startMocks = vi.hoisted(() => {
     previousServerFnBase,
     requestMiddleware: [] as Array<any>,
     serverFnResult: undefined as undefined | Response | object,
-    serverFnHandler: undefined as undefined | (() => unknown),
+    serverFnHandler: undefined as
+      | undefined
+      | ((opts: { serverFnId: string }) => unknown),
     serverFnCalls: [] as Array<{ context?: unknown }>,
     router: undefined as undefined | AnyRouter,
     routerFactory: undefined as undefined | (() => AnyRouter),
@@ -93,10 +96,10 @@ vi.mock('../src/server-functions-handler', () => ({
       },
     })
   },
-  handleServerAction: (opts: { context?: unknown }) => {
+  handleServerAction: (opts: { context?: unknown; serverFnId: string }) => {
     startMocks.serverFnCalls.push({ context: opts.context })
     return startMocks.serverFnHandler
-      ? startMocks.serverFnHandler()
+      ? startMocks.serverFnHandler(opts)
       : startMocks.serverFnResult
   },
 }))
@@ -105,6 +108,13 @@ function createTestStartHandler(
   options: Parameters<typeof createStartHandler>[0],
 ) {
   return createServerEntry({ fetch: createStartHandler(options) }).fetch
+}
+
+function createResponseHandler(callback: () => Response | Promise<Response>) {
+  startMocks.requestMiddleware = [createMiddleware().server(callback)]
+  return createStartHandler(() => {
+    throw new Error('Response middleware should prevent rendering')
+  })
 }
 
 const getStoreConfig = () => ({
@@ -239,9 +249,9 @@ afterAll(() => {
   }
 })
 
-describe('requestHandler response reconciliation', () => {
+describe('createStartHandler response reconciliation', () => {
   it('preserves returned response cookies when getSetCookie is unavailable', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setCookie('helper', '1', { path: '/' })
       const headers = new Headers()
       headers.append('set-cookie', 'returned-one=1; Path=/')
@@ -263,7 +273,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('does not dedupe absent-path cookies against explicit-path cookies', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setCookie('same', 'helper', { path: '/' })
       return new Response('ok', {
         headers: { 'set-cookie': 'same=returned' },
@@ -280,7 +290,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('restores protected headers after direct response mutation', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       const response = new Response('ok', {
         headers: {
           'content-type': 'application/json',
@@ -300,7 +310,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('merges repeated protected header snapshots', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       const response = new Response('ok', {
         headers: {
           'content-type': 'application/json',
@@ -320,13 +330,13 @@ describe('requestHandler response reconciliation', () => {
     expect(response.headers.get('x-tss-raw')).toBe('true')
   })
 
-  it('rejects protecting Set-Cookie snapshots', () => {
-    const handler = requestHandler(() => {
+  it('rejects protecting Set-Cookie snapshots', async () => {
+    const handler = createResponseHandler(() => {
       const response = new Response('ok')
       protectResponseHeaders(response, ['set-cookie'])
       return response
     })
-    expect(() => handler(new Request('http://localhost/'), {})).toThrow(
+    await expect(handler(new Request('http://localhost/'), {})).rejects.toThrow(
       'Set-Cookie headers cannot be protected.',
     )
   })
@@ -334,7 +344,7 @@ describe('requestHandler response reconciliation', () => {
   it('reads protected header snapshots after direct response mutation', async () => {
     let seenHeader: string | undefined
     let seenHeadersHeader: string | null | undefined
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       const response = new Response('ok', {
         headers: { 'x-transport': 'original' },
       })
@@ -354,7 +364,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('returns getResponseHeaders as a read-only snapshot after reconciliation', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       const response = reconcileResponse(
         new Response('ok', {
           headers: {
@@ -379,7 +389,7 @@ describe('requestHandler response reconciliation', () => {
 
   it('preserves empty string response header values', async () => {
     let seenHeader: string | undefined
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseHeader('x-empty', '')
       seenHeader = getResponseHeader('x-empty')
       return new Response('ok')
@@ -392,7 +402,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('keeps helper headers set after clearing response headers', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       clearResponseHeaders()
       setResponseHeader('x-after-clear', 'yes')
       return new Response('ok', {
@@ -409,7 +419,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('replaces Set-Cookie arrays and keeps later semantic cookie updates', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseHeader('set-cookie', ['array=1; Path=/', 'same=first; Path=/'])
       setCookie('same', 'second', { path: '/' })
       return new Response('ok', {
@@ -426,7 +436,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('appends non-cookie response headers without replacing values', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       appendResponseHeader('link', '</a.css>; rel=preload')
       appendResponseHeader('link', ['</b.css>; rel=preload'])
       return new Response('ok')
@@ -440,7 +450,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('merges appended raw Set-Cookie strings by cookie identity', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setCookie('helper', '1', { path: '/' })
       appendResponseHeader('set-cookie', 'external=abc; Path=/; HttpOnly')
       // Same cookie identity replaces the previous value instead of
@@ -470,7 +480,7 @@ describe('requestHandler response reconciliation', () => {
     vi.stubEnv('NODE_ENV', 'development')
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      const handler = requestHandler(() => {
+      const handler = createResponseHandler(() => {
         setResponseStatus(999)
         return new Response('ok')
       })
@@ -489,7 +499,7 @@ describe('requestHandler response reconciliation', () => {
   it('returns the same response after repeated clean reconciliation', async () => {
     let firstResponse: Response | undefined
     let secondResponse: Response | undefined
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       const response = new Response('ok')
       firstResponse = reconcileResponse(response)
       secondResponse = reconcileResponse(firstResponse)
@@ -504,7 +514,7 @@ describe('requestHandler response reconciliation', () => {
 
   it('applies helper mutations after the same response was reconciled', async () => {
     let reconciledResponse: Response | undefined
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       const response = new Response('ok')
       reconciledResponse = reconcileResponse(response)
       setResponseHeader('x-late-helper', 'true')
@@ -520,7 +530,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('reapplies helper headers after direct mutation of a reconciled response', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseHeader('x-helper', 'true')
       const response = reconcileResponse(new Response('ok'))
       response.headers.delete('x-helper')
@@ -534,7 +544,7 @@ describe('requestHandler response reconciliation', () => {
 
   it('applies earlier helper state to later replacement responses', async () => {
     let firstResponse: Response | undefined
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseHeader('x-helper', 'true')
       firstResponse = reconcileResponse(new Response('first'))
       return new Response('second')
@@ -550,7 +560,7 @@ describe('requestHandler response reconciliation', () => {
   it('checks protected headers after the same response was reconciled', async () => {
     let firstResponse: Response | undefined
     let secondResponse: Response | undefined
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       const response = new Response('ok', {
         headers: { 'x-transport': 'original' },
       })
@@ -570,7 +580,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('applies helper status to the returned response', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseStatus(201, 'Created')
       return new Response('ok')
     })
@@ -582,7 +592,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('sanitizes helper statusText writes', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseStatus(418, 'Bad\nTeapot')
       return new Response('ok')
     })
@@ -594,7 +604,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('returns 400 for malformed URLs that throw TypeError', async () => {
-    const handler = requestHandler(() => new Response('unused'))
+    const handler = createResponseHandler(() => new Response('unused'))
     const response = await handler({ url: 'http://%' } as Request, {})
 
     expect(response.status).toBe(400)
@@ -602,7 +612,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('parses request helpers from forwarded headers and cookies', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       return Response.json({
         host: getRequestHost(),
         forwardedHost: getRequestHost({ xForwardedHost: true }),
@@ -646,7 +656,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('preserves HTTP-style error status, statusText, and headers', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       const error = new Error('handled') as Error & {
         status: number
         statusText: string
@@ -671,7 +681,7 @@ describe('requestHandler response reconciliation', () => {
 
   it('converts errors through handleStartError', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       throw new Error('handled by default')
     })
 
@@ -690,7 +700,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('preserves HTTP-style error headers from cause', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       throw new Error('wrapped', {
         cause: {
           status: 409,
@@ -709,7 +719,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('keeps helper status over HTTP-style error status', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseStatus(401, 'Unauthorized')
       const error = new Error('handled') as Error & { status: number }
       error.status = 418
@@ -726,7 +736,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('rethrows primitive errors', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       return Promise.reject('primitive failure')
     })
 
@@ -740,7 +750,7 @@ describe('requestHandler response reconciliation', () => {
       status: 409,
       headers: { 'x-error': 'yes' },
     })
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseHeader('x-helper', 'yes')
       throw error
     })
@@ -778,7 +788,7 @@ describe('requestHandler response reconciliation', () => {
     const cancelled = new Promise<void>((resolve) => {
       resolveCancel = resolve
     })
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseStatus(204)
       return new Response(
         new ReadableStream({
@@ -804,7 +814,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('falls back from informational statuses that Fetch responses cannot use', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseStatus(101)
       return new Response('ok')
     })
@@ -815,7 +825,7 @@ describe('requestHandler response reconciliation', () => {
   })
 
   it('keeps the previous status when a helper write is out of range', async () => {
-    const handler = requestHandler(() => {
+    const handler = createResponseHandler(() => {
       setResponseStatus(418)
       setResponseStatus(700)
       return new Response('ok')
@@ -828,6 +838,73 @@ describe('requestHandler response reconciliation', () => {
 })
 
 describe('createStartHandler redirect safety', () => {
+  it('publishes early normalized redirects with helper writes from the custom entry', async () => {
+    const handler = createStartHandler(() => {
+      throw new Error('Early redirects should not render HTML')
+    })
+    const entry = createServerEntry({
+      fetch: async (request, options) => {
+        setCookie('entry', 'visited')
+        const response = await handler(request, options)
+        expect(getResponseStatus()).toBe(308)
+        expect(getResponseHeader('location')).toBe('http://localhost/target')
+        expect(getResponseHeaders().getSetCookie()).toEqual([
+          'entry=visited; Path=/',
+        ])
+        return response
+      },
+    })
+
+    const response = await entry.fetch(
+      new Request('http://localhost//target'),
+      {},
+    )
+
+    expect(response.status).toBe(308)
+    expect(response.headers.getSetCookie()).toEqual(['entry=visited; Path=/'])
+  })
+
+  it.each(['GET', 'HEAD'])(
+    'publishes the final %s server-function redirect response to custom-entry helpers',
+    async (method) => {
+      startMocks.routerFactory = makeRouter
+      startMocks.serverFnResult = redirect({ to: '/login' })
+      const handler = createStartHandler(() => {
+        throw new Error('Server function redirects should not render HTML')
+      })
+      const entry = createServerEntry({
+        fetch: async (request, options) => {
+          const response = await handler(request, options)
+          expect(getResponseStatus()).toBe(200)
+          expect(getResponseHeader('location')).toBeUndefined()
+          expect(getResponseHeaders().get('content-type')).toBe(
+            'application/json',
+          )
+          return response
+        },
+      })
+
+      const response = await entry.fetch(
+        new Request('http://localhost/_serverFn/test', {
+          method,
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('location')).toBeNull()
+      if (method === 'HEAD') {
+        expect(response.body).toBeNull()
+      } else {
+        await expect(response.json()).resolves.toMatchObject({
+          href: '/login',
+          isSerializedRedirect: true,
+        })
+      }
+    },
+  )
+
   it.each(
     [false, true].flatMap((rpc) =>
       ['relative-to', 'functional-options'].flatMap((options) =>
@@ -1037,6 +1114,26 @@ describe('createStartHandler redirect safety', () => {
     expect(response.status).toBe(307)
     expect(response.headers.get('Location')).toBe('/work?next=home')
     expect(factory).toHaveBeenCalledTimes(1)
+  })
+
+  it('resolves redirects thrown by a server handlers factory before route middleware runs', async () => {
+    startMocks.router = makeRouter({
+      server: {
+        handlers: () => {
+          setCookie('factory', 'visited')
+          throw redirect({ to: '/login' })
+        },
+      },
+    })
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createTestStartHandler(render)
+
+    const response = await handler(new Request('http://localhost/'), {})
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('Location')).toBe('/login')
+    expect(response.headers.getSetCookie()).toEqual(['factory=visited; Path=/'])
+    expect(render).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -1303,6 +1400,155 @@ describe('createStartHandler router request Accept handling', () => {
 })
 
 describe('createStartHandler SSR cleanup ownership', () => {
+  it.each([204, 200])(
+    'preserves cancellation helper writes when a short-circuit body is dropped and cleanup selects %s without a router',
+    async (status) => {
+      const routerFactory = vi.fn(makeRouter)
+      startMocks.routerFactory = routerFactory
+      const cancel = vi.fn(() => {
+        setResponseStatus(status)
+        setCookie('cleanup', 'visited')
+        setResponseHeader('x-cleanup', 'complete')
+        appendResponseHeader('x-cleanup-steps', 'cancelled')
+      })
+      startMocks.requestMiddleware = [
+        createMiddleware().server(() => {
+          setResponseStatus(204)
+          return new Response(new ReadableStream({ cancel }), {
+            headers: { 'x-cleanup-steps': 'initial' },
+          })
+        }),
+      ]
+      const render = vi.fn(() => new Response('must not render'))
+      const handler = createTestStartHandler(render)
+
+      const response = await handler(new Request('http://localhost/'), {})
+
+      expect(routerFactory).not.toHaveBeenCalled()
+      expect(render).not.toHaveBeenCalled()
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(response.status).toBe(status)
+      expect(response.body).toBeNull()
+      expect(response.headers.getSetCookie()).toEqual([
+        'cleanup=visited; Path=/',
+      ])
+      expect(response.headers.get('x-cleanup')).toBe('complete')
+      expect(response.headers.get('x-cleanup-steps')).toBe('initial, cancelled')
+    },
+  )
+
+  it('preserves cancellation helper writes when outermost middleware replaces a server-function response without a router', async () => {
+    const routerFactory = vi.fn(makeRouter)
+    startMocks.routerFactory = routerFactory
+    const cancel = vi.fn(() => {
+      setCookie('cleanup', 'visited')
+      setResponseHeader('x-cleanup', 'complete')
+      appendResponseHeader('x-cleanup-steps', 'cancelled')
+    })
+    startMocks.serverFnHandler = () =>
+      new Response(new ReadableStream({ cancel }))
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        await next()
+        return new Response('replacement', {
+          headers: { 'x-cleanup-steps': 'replacement' },
+        })
+      }),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createTestStartHandler(render)
+
+    const response = await handler(
+      new Request('http://localhost/_serverFn/test', {
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+
+    expect(routerFactory).not.toHaveBeenCalled()
+    expect(render).not.toHaveBeenCalled()
+    expect(startMocks.serverFnCalls).toHaveLength(1)
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(response.status).toBe(200)
+    expect(response.headers.getSetCookie()).toEqual(['cleanup=visited; Path=/'])
+    expect(response.headers.get('x-cleanup')).toBe('complete')
+    expect(response.headers.get('x-cleanup-steps')).toBe(
+      'replacement, cancelled',
+    )
+    await expect(response.text()).resolves.toBe('replacement')
+  })
+
+  it.each(['drop', 'replace'] as const)(
+    'preserves cleanup helper writes when middleware disposes SSR through %s',
+    async (mode) => {
+      const router = makeRouter()
+      startMocks.router = router
+      const cancel = vi.fn()
+      const cleanup = vi.fn(() => {
+        setResponseHeader('x-cleanup', 'complete')
+        setCookie('cleanup', 'visited')
+      })
+      startMocks.requestMiddleware = [
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          if (mode === 'drop') {
+            setResponseStatus(204)
+            return result
+          }
+          return new Response('replacement')
+        }),
+      ]
+      const handler = createTestStartHandler(({ router: requestRouter }) => {
+        requestRouter.serverSsr!.onCleanup(cleanup)
+        return createSsrStreamResponse(
+          requestRouter,
+          new Response(new ReadableStream({ cancel })),
+        )
+      })
+
+      const response = await handler(new Request('http://localhost/'), {})
+
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(cleanup).toHaveBeenCalledOnce()
+      expect(router.serverSsr).toBeUndefined()
+      expect(response.headers.get('x-cleanup')).toBe('complete')
+      expect(response.headers.getSetCookie()).toEqual([
+        'cleanup=visited; Path=/',
+      ])
+      if (mode === 'drop') {
+        expect(response.status).toBe(204)
+        expect(response.body).toBeNull()
+      } else {
+        expect(response.status).toBe(200)
+        await expect(response.text()).resolves.toBe('replacement')
+      }
+    },
+  )
+
+  it('preserves response helper writes made by eager SSR cleanup callbacks', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const cleanup = vi.fn(() => {
+      setResponseStatus(202, 'Accepted')
+      setResponseHeader('x-cleanup', 'complete')
+      setCookie('cleanup', 'visited')
+    })
+    const handler = createTestStartHandler(({ router: requestRouter }) => {
+      requestRouter.serverSsr!.onCleanup(cleanup)
+      return new Response('eager document')
+    })
+
+    const response = await handler(new Request('http://localhost/'), {})
+
+    expect(cleanup).toHaveBeenCalledOnce()
+    expect(router.serverSsr).toBeUndefined()
+    expect(response.status).toBe(202)
+    expect(response.statusText).toBe('Accepted')
+    expect(response.headers.get('x-cleanup')).toBe('complete')
+    expect(response.headers.getSetCookie()).toEqual(['cleanup=visited; Path=/'])
+    await expect(response.text()).resolves.toBe('eager document')
+  })
+
   it('does not duplicate helper cookies across repeated reconciliation', async () => {
     startMocks.serverFnResult = new Response('ok')
     startMocks.requestMiddleware = [
@@ -1565,6 +1811,61 @@ describe('createStartHandler SSR cleanup ownership', () => {
     expect(router.serverSsr).toBeDefined()
 
     await response.body!.cancel('done')
+    expect(router.serverSsr).toBeUndefined()
+  })
+
+  it('adopts a replacement registered on a directly returned next promise', async () => {
+    startMocks.router = makeRouter()
+    const cancel = vi.fn()
+    const original = new Response(new ReadableStream({ cancel }))
+    const replacement = new Response('replacement')
+    const cancelReplacement = vi.spyOn(replacement.body!, 'cancel')
+    startMocks.requestMiddleware = [
+      createMiddleware().server(({ next }) => {
+        const pending = Promise.resolve(next())
+        void pending.then((result) => {
+          result.response = replacement
+        })
+        return pending
+      }),
+    ]
+
+    const handler = createTestStartHandler(() => original)
+    const response = await handler(new Request('http://localhost/'), {})
+
+    expect(response).toBe(replacement)
+    expect(cancel).toHaveBeenCalledExactlyOnceWith(
+      'middleware response replaced',
+    )
+    expect(cancelReplacement).not.toHaveBeenCalled()
+    await expect(response.text()).resolves.toBe('replacement')
+  })
+
+  it('disposes SSR ownership when a directly returned next promise drops the body', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const cancel = vi.fn()
+    startMocks.requestMiddleware = [
+      createMiddleware().server(({ next }) => {
+        const pending = Promise.resolve(next())
+        void pending.then(() => {
+          setResponseStatus(204)
+        })
+        return pending
+      }),
+    ]
+
+    const handler = createTestStartHandler(({ router: requestRouter }) =>
+      createSsrStreamResponse(
+        requestRouter,
+        new Response(new ReadableStream({ cancel })),
+      ),
+    )
+    const response = await handler(new Request('http://localhost/'), {})
+
+    expect(response.status).toBe(204)
+    expect(response.body).toBeNull()
+    expect(cancel).toHaveBeenCalledOnce()
     expect(router.serverSsr).toBeUndefined()
   })
 
@@ -2074,6 +2375,100 @@ describe('createStartHandler SSR cleanup ownership', () => {
 })
 
 describe('createStartHandler router initialization', () => {
+  it('normalizes a server function router URL while preserving the incoming URL', async () => {
+    const requestUrl =
+      'http://localhost/_serverFn/test?space=a%20b&tilde=~&bad=%GG&a=1&a=2#part'
+    let middlewarePathname: string | undefined
+    let middlewareRequestUrl: string | undefined
+    let factoryCalls = 0
+    startMocks.requestMiddleware = [
+      createMiddleware().server(({ pathname, request, next }) => {
+        middlewarePathname = pathname
+        middlewareRequestUrl = request.url
+        return next()
+      }),
+    ]
+    startMocks.routerFactory = () => {
+      factoryCalls++
+      return makeRouter()
+    }
+    startMocks.serverFnHandler = async () => {
+      const [first, second] = await Promise.all([
+        getRouterInstance(),
+        getRouterInstance(),
+      ])
+      return Response.json({
+        href: first.history.location.href,
+        origin: first.options.origin,
+        requestUrl: getRequestUrl().href,
+        sameRouter: first === second,
+      })
+    }
+
+    const handler = createTestStartHandler(() => new Response('unused'))
+    const response = await handler(
+      new Request(requestUrl, { headers: { 'x-tsr-serverFn': 'true' } }),
+      {},
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      href: '/_serverFn/test?space=a+b&tilde=%7E&bad=%25GG&a=1&a=2#part',
+      origin: 'http://localhost',
+      requestUrl,
+      sameRouter: true,
+    })
+    expect(middlewarePathname).toBe('/_serverFn/test')
+    expect(middlewareRequestUrl).toBe(requestUrl)
+    expect(factoryCalls).toBe(1)
+  })
+
+  it.each(['/%5FserverFn/test', '/_serverFn/%74est'])(
+    'dispatches an encoded server function pathname: %s',
+    async (pathname) => {
+      let middlewarePathname: string | undefined
+      startMocks.requestMiddleware = [
+        createMiddleware().server(({ pathname: currentPathname, next }) => {
+          middlewarePathname = currentPathname
+          return next()
+        }),
+      ]
+      startMocks.serverFnHandler = ({ serverFnId }) => {
+        return Response.json({ serverFnId, requestUrl: getRequestUrl().href })
+      }
+      const handler = createTestStartHandler(() => new Response('unused'))
+      const response = await handler(
+        new Request(`http://localhost${pathname}`, {
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({
+        serverFnId: 'test',
+        requestUrl: `http://localhost${pathname}`,
+      })
+      expect(middlewarePathname).toBe('/_serverFn/test')
+    },
+  )
+
+  it('redirects a protocol-relative server function pathname before dispatch', async () => {
+    const handler = createTestStartHandler(() => new Response('unused'))
+    const response = await handler(
+      new Request('http://localhost//_serverFn/test?space=a%20b', {
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(308)
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/_serverFn/test?space=a+b',
+    )
+    expect(startMocks.serverFnCalls).toHaveLength(0)
+  })
+
   it('shares one router between concurrent request-context reads', async () => {
     let factoryCalls = 0
     let instances: Array<AnyRouter> = []
@@ -3340,5 +3735,202 @@ describe('createStartHandler inlineCss option', () => {
     expect(getStaticHandlerInlineCssDefault(true)).toBe(true)
     expect(getStaticHandlerInlineCssDefault(false)).toBe(false)
     expect(getStaticHandlerInlineCssDefault(() => true)).toBe(undefined)
+  })
+})
+
+describe('setResponseHeaders', () => {
+  it('should set a single header via Headers object', async () => {
+    const headers = new Headers()
+    headers.set('X-Custom-Header', 'test-value')
+
+    const handler = createResponseHandler(() => {
+      setResponseHeaders(headers)
+      const responseHeaders = getResponseHeaders()
+      expect(responseHeaders.get('X-Custom-Header')).toBe('test-value')
+      return new Response('OK')
+    })
+
+    const request = new Request('http://localhost:3000/test')
+    await handler(request, {})
+  })
+
+  it('should set multiple headers via Headers object', async () => {
+    const headers = new Headers()
+    headers.set('X-Custom-Header', 'test-value')
+    headers.set('X-Another-Header', 'another-value')
+    headers.set('Content-Type', 'application/json')
+
+    const handler = createResponseHandler(() => {
+      setResponseHeaders(headers)
+      const responseHeaders = getResponseHeaders()
+      expect(responseHeaders.get('X-Custom-Header')).toBe('test-value')
+      expect(responseHeaders.get('X-Another-Header')).toBe('another-value')
+      expect(responseHeaders.get('Content-Type')).toBe('application/json')
+      return new Response('OK')
+    })
+
+    const request = new Request('http://localhost:3000/test')
+    await handler(request, {})
+  })
+
+  it('should handle empty Headers object', async () => {
+    const handler = createResponseHandler(() => {
+      const headers = new Headers()
+      setResponseHeaders(headers)
+      const responseHeaders = getResponseHeaders()
+      expect(responseHeaders).toBeDefined()
+      expect(Array.from(responseHeaders.entries()).length).toEqual(0)
+      return new Response('OK')
+    })
+
+    const request = new Request('http://localhost:3000/test')
+    await handler(request, {})
+  })
+
+  it('should preserve response header values when a snapshot is passed back', async () => {
+    const cookies = ['session=abc123; Path=/', 'user=john; Path=/']
+    const handler = createResponseHandler(() => {
+      setResponseHeader('set-cookie', cookies)
+      setResponseHeader('x-custom', 'keep')
+      const headers = getResponseHeaders()
+      const entries = Array.from(headers)
+
+      setResponseHeaders(headers)
+
+      expect(Array.from(getResponseHeaders())).toEqual(entries)
+      expect(Array.from(headers)).toEqual(entries)
+      expect(headers.getSetCookie()).toEqual(cookies)
+      return new Response('OK')
+    })
+
+    const response = await handler(
+      new Request('http://localhost:3000/test'),
+      {},
+    )
+    expect(response.headers.getSetCookie()).toEqual(cookies)
+    expect(response.headers.get('x-custom')).toBe('keep')
+  })
+
+  it('should replace existing headers with the same name', async () => {
+    const handler = createResponseHandler(() => {
+      setResponseHeaders(
+        new Headers({
+          'X-Custom-Header': 'old-value',
+        }),
+      )
+      expect(getResponseHeader('X-Custom-Header')).toEqual('old-value')
+      setResponseHeaders(
+        new Headers({
+          'X-Custom-Header': 'new-value',
+        }),
+      )
+      expect(getResponseHeader('X-Custom-Header')).toEqual('new-value')
+
+      return new Response('OK')
+    })
+
+    const request = new Request('http://localhost:3000/test')
+    await handler(request, {})
+  })
+
+  it('should handle multiple headers with the same name added via headers.append()', async () => {
+    const headers = new Headers()
+    headers.append('Set-Cookie', 'session=abc123; Path=/; HttpOnly')
+    headers.append('Set-Cookie', 'user=john; Path=/; Secure')
+
+    const handler = createResponseHandler(() => {
+      setResponseHeaders(headers)
+
+      // Set-Cookie values remain separate during Headers iteration.
+      const setCookieValue = getResponseHeader('Set-Cookie')
+
+      expect(setCookieValue).toBeDefined()
+
+      // Both cookie values should be present in the result
+      expect(setCookieValue).toContain('session=abc123')
+      expect(setCookieValue).toContain('user=john')
+      expect(getResponseHeaders().getSetCookie()).toEqual([
+        'session=abc123; Path=/; HttpOnly',
+        'user=john; Path=/; Secure',
+      ])
+
+      return new Response('OK')
+    })
+
+    const request = new Request('http://localhost:3000/test')
+    await handler(request, {})
+  })
+
+  it.each(['constructor', '__proto__'])(
+    'should replace the %s header',
+    async (name) => {
+      const handler = createResponseHandler(() => {
+        setResponseHeader(name, 'old-value')
+        setResponseHeaders(new Headers([[name, 'new-value']]))
+        expect(getResponseHeader(name)).toBe('new-value')
+        return new Response('OK')
+      })
+
+      await handler(new Request('http://localhost:3000/test'), {})
+    },
+  )
+
+  it('should replace cookies on each call while preserving unrelated headers', async () => {
+    const cookies = [
+      'session=new; Expires=Wed, 21 Oct 2030 07:28:00 GMT; Path=/',
+      'user=john; Path=/',
+      'user=john; Path=/',
+    ] as const
+    const headers = new Headers([
+      ['X-Last', 'last'],
+      ['Set-Cookie', cookies[0]],
+      ['X-First', 'first'],
+      ['set-cookie', cookies[1]],
+      ['SET-COOKIE', cookies[2]],
+    ])
+    const handler = createResponseHandler(() => {
+      setResponseHeader('set-cookie', ['old=1', 'old=2'])
+      setResponseHeader('x-keep', 'keep')
+      setResponseHeaders(headers)
+
+      expect(getResponseHeaders().getSetCookie()).toEqual(cookies)
+      expect(headers.getSetCookie()).toEqual(cookies)
+      expect(getResponseHeader('x-first')).toBe('first')
+      expect(getResponseHeader('x-last')).toBe('last')
+      expect(getResponseHeader('x-keep')).toBe('keep')
+
+      setResponseHeaders(new Headers({ 'set-cookie': 'next=1' }))
+      expect(getResponseHeaders().getSetCookie()).toEqual(['next=1'])
+      expect(getResponseHeader('x-keep')).toBe('keep')
+
+      setResponseHeaders(new Headers())
+      expect(getResponseHeaders().getSetCookie()).toEqual(['next=1'])
+      return new Response('OK')
+    })
+
+    const response = await handler(
+      new Request('http://localhost:3000/test'),
+      {},
+    )
+    expect(response.headers.getSetCookie()).toEqual(['next=1'])
+    expect(response.headers.get('x-keep')).toBe('keep')
+  })
+
+  it('should replace combined values for ordinary headers', async () => {
+    const handler = createResponseHandler(() => {
+      setResponseHeader('x-custom', 'old-value')
+      setResponseHeaders(
+        new Headers([
+          ['X-Custom', 'first'],
+          ['x-custom', 'second'],
+          ['x-empty', ''],
+        ]),
+      )
+      expect(getResponseHeader('x-custom')).toBe('first, second')
+      expect(getResponseHeaders().get('x-empty')).toBe('')
+      return new Response('OK')
+    })
+
+    await handler(new Request('http://localhost:3000/test'), {})
   })
 })
