@@ -19,6 +19,10 @@ export const ServerFunctionSerializationAdapter = createSerializationAdapter({
       // validated the same way as direct HTTP calls to server functions.
       const serverFn = await getServerFnById(functionId, { origin: 'client' })
       const result = await serverFn(opts ?? {}, signal)
+      // Only a failed call has an `error` key, holding the thrown value.
+      if ('error' in result) {
+        throw result.error
+      }
       return result.result
     }
     return fn as never
