@@ -170,6 +170,12 @@ const bodylessStatusFn = createServerFn().handler(() => {
   return { ok: true }
 })
 
+const helperLocationFn = createServerFn().handler(() => {
+  setResponseStatus(302)
+  setResponseHeader('location', '/api/base')
+  return { ok: true }
+})
+
 export const Route = createFileRoute('/server-functions')({
   component: ServerFunctions,
 })
@@ -210,6 +216,7 @@ function ServerFunctions() {
       <ServerFunctionButton name="returnRedirect" fn={returnRedirectFn} />
       <ServerFunctionButton name="throwRedirect" fn={throwRedirectFn} />
       <ServerFunctionButton name="bodylessStatus" fn={bodylessStatusFn} />
+      <ServerFunctionButton name="helperLocation" fn={helperLocationFn} />
     </main>
   )
 }

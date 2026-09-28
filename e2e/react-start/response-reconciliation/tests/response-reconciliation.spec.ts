@@ -735,6 +735,31 @@ test.describe('server functions', () => {
     await expectServerFunctionResult(page, 'bodylessStatus', '{"ok":true}')
   })
 
+  test('serialized replies drop a helper Location so fetch does not follow it', async ({
+    page,
+  }) => {
+    const response = await invokeJsonServerFunction(page, 'helperLocation')
+
+    expect(response.status()).toBe(302)
+    expect(header(response, 'location')).toBeNull()
+    expect(response.request().redirectedTo()).toBeNull()
+    await expectServerFunctionResult(page, 'helperLocation', '{"ok":true}')
+  })
+
+  test('serialized errors drop a Location from error metadata', async ({
+    page,
+  }) => {
+    const response = await invokeJsonServerFunction(
+      page,
+      'globalSerialized',
+      'global-location-error',
+    )
+
+    expect(header(response, 'location')).toBeNull()
+    expect(response.request().redirectedTo()).toBeNull()
+    await expectServerFunctionResult(page, 'globalSerialized', 'Moved error')
+  })
+
   test('transport headers win over user helpers while user headers persist', async ({
     page,
   }) => {

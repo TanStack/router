@@ -41,10 +41,13 @@ const FORM_DATA_CONTENT_TYPES = [
   'multipart/form-data',
   'application/x-www-form-urlencoded',
 ]
+// Serialized replies are decoded by the client from their body. An HTTP
+// Location would let fetch follow a helper or error redirect status first.
 const SERIALIZED_JSON_HEADERS: ReadonlyMap<string, string | null> = new Map([
   ['content-type', 'application/json'],
   [X_TSS_SERIALIZED, 'true'],
   [X_TSS_RAW_RESPONSE, null],
+  ['location', null],
 ])
 const SERIALIZED_JSON_HEADER_INIT: HeadersInit = {
   'Content-Type': 'application/json',
@@ -68,11 +71,13 @@ const SERIALIZED_FRAMED_HEADERS: ReadonlyMap<string, string | null> = new Map([
   ['content-type', TSS_CONTENT_TYPE_FRAMED_VERSIONED],
   [X_TSS_SERIALIZED, 'true'],
   [X_TSS_RAW_RESPONSE, null],
+  ['location', null],
 ])
 const NOT_FOUND_HEADERS: ReadonlyMap<string, string | null> = new Map([
   ['content-type', 'application/json'],
   [X_TSS_SERIALIZED, null],
   [X_TSS_RAW_RESPONSE, null],
+  ['location', null],
 ])
 const RAW_RESPONSE_HEADERS: ReadonlyMap<string, string | null> = new Map([
   [X_TSS_RAW_RESPONSE, 'true'],
@@ -126,6 +131,7 @@ export async function createServerFnErrorResponse(
   headers.set('Content-Type', 'application/json')
   headers.set(X_TSS_SERIALIZED, 'true')
   headers.delete(X_TSS_RAW_RESPONSE)
+  headers.delete('location')
   // The client decodes the serialized error, so it always needs a body.
   const bodyErrorStatus =
     errorStatus !== undefined && canHaveBody('GET', errorStatus)
@@ -579,6 +585,7 @@ function isNotFoundResponse(error: any) {
     copiedHeaders.set('Content-Type', 'application/json')
     copiedHeaders.delete(X_TSS_SERIALIZED)
     copiedHeaders.delete(X_TSS_RAW_RESPONSE)
+    copiedHeaders.delete('location')
     responseHeaders = copiedHeaders
   } else {
     responseHeaders = { 'Content-Type': 'application/json' }

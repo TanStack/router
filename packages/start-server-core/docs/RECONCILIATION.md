@@ -115,7 +115,7 @@ Server function protocol responses protect required header values and required a
 - Plain redirect and not-found JSON require JSON content type, with both incompatible transport markers absent.
 - Explicit raw responses require `x-tss-raw: true`; their application content type is not protected.
 
-RPC redirect envelopes also require `Location` to be absent. The client reads the destination from the JSON `href`; an HTTP `Location` could make fetch follow a helper-selected 3xx response before the client decodes it. Native form and document redirects still use `Location`. Helper status and status text control HTTP metadata, while the redirect's own `statusCode` remains in its Router navigation options.
+Every serialized reply (JSON and framed results, errors, not-found envelopes, and RPC redirect envelopes) also requires `Location` to be absent, whether it comes from a helper, from error metadata, or from `notFound({ headers })`. The client decodes these replies from their body; an HTTP `Location` could make fetch follow a helper-selected or error-supplied 3xx status before the client decodes it. For redirect envelopes, the client reads the destination from the JSON `href`. Native form and document redirects still use `Location`. Helper status and status text control HTTP metadata, while the redirect's own `statusCode` remains in its Router navigation options.
 
 Other helper headers and cookies still reconcile onto server function responses. Replacing, removing, or clearing headers through the helpers cannot change protected protocol requirements.
 

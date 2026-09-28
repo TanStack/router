@@ -50,6 +50,13 @@ const globalResponseMiddleware = createMiddleware().server(
       throw new Error('Upstream failed', { cause: createUpstreamFailure() })
     }
 
+    if (scenario === 'global-location-error') {
+      throw Object.assign(new Error('Moved error'), {
+        status: 302,
+        headers: { location: '/api/base' },
+      })
+    }
+
     if (scenario === 'global-throw') {
       setResponseStatus(401, 'Unauthorized')
       setResponseHeader('x-global-error', 'yes')
