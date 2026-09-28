@@ -9,7 +9,6 @@ import {
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
   getSerovalPlugins,
-  safeObjectMerge,
 } from '@tanstack/start-client-core'
 import {
   MAX_FRAMED_STREAMS,
@@ -177,13 +176,13 @@ export async function createServerFnErrorResponse(
   return errorResponse
 }
 
+// The action merges the client context with the trusted server context
+// (__executeServer), so the client context is passed through unmerged.
 export const handleServerAction = async ({
   request,
-  context,
   serverFnId,
 }: {
   request: Request
-  context: any
   serverFnId: string
 }) => {
   const methodUpper = request.method.toUpperCase()
@@ -231,8 +230,7 @@ export const handleServerAction = async ({
       const serializedContext = formData.get(TSS_FORMDATA_CONTEXT)
       formData.delete(TSS_FORMDATA_CONTEXT)
 
-      const params = {
-        context,
+      const params: { context?: unknown; data: FormData; method: string } = {
         data: formData,
         method: methodUpper,
       }
@@ -243,10 +241,7 @@ export const handleServerAction = async ({
             plugins: getRequestSerovalPlugins(),
           })
           if (typeof deserializedContext === 'object' && deserializedContext) {
-            params.context = safeObjectMerge(
-              deserializedContext as Record<string, unknown>,
-              context,
-            )
+            params.context = deserializedContext
           }
         } catch (e) {
           // Log warning for debugging but don't expose to client
@@ -279,7 +274,7 @@ export const handleServerAction = async ({
       // `result` key cannot decide the outcome of the call.
       res = await action({
         data: payload.data,
-        context: safeObjectMerge(payload.context, context),
+        context: payload.context,
         method: methodUpper,
       })
     }

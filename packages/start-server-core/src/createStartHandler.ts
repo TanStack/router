@@ -801,7 +801,6 @@ export function createStartHandler<TRegister = Register>(
             () =>
               handleServerAction({
                 request,
-                context,
                 serverFnId,
               }),
           )
