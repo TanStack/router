@@ -14,7 +14,10 @@ import {
 } from '@tanstack/start-client-core/client-rpc'
 import { RawStream } from '@tanstack/router-core'
 import { defaultSerovalDeserializerPlugins } from '@tanstack/router-core/ssr/server'
-import { handleServerAction } from '../src/server-functions-handler'
+import {
+  DeferredResponse,
+  handleServerAction,
+} from '../src/server-functions-handler'
 import { createServerEntry, setResponseStatus } from '../src/request-response'
 import type * as StartClientCore from '@tanstack/start-client-core'
 
@@ -42,7 +45,12 @@ beforeEach(() => {
 
 function callServerAction(options: Parameters<typeof handleServerAction>[0]) {
   return createServerEntry({
-    fetch: () => handleServerAction(options),
+    fetch: async () => {
+      const result = await handleServerAction(options)
+      return result instanceof DeferredResponse
+        ? result.createResponse()
+        : result
+    },
   }).fetch(options.request)
 }
 

@@ -39,6 +39,7 @@ import {
 } from './internal-request-response'
 import { getStartManifest } from './router-manifest'
 import {
+  DeferredResponse,
   createServerFnErrorResponse,
   handleServerAction,
 } from './server-functions-handler'
@@ -495,6 +496,16 @@ async function executeMiddleware(
       throwRouteHandlerError()
     }
 
+    if (isTerminal && !terminalNext && result instanceof DeferredResponse) {
+      if (!settled) {
+        // Cleanup may write response helpers. Construct only after it has run,
+        // then publish without rechecking headers that no user has received.
+        adoptResponse(undefined)
+        adoptResponse(result.createResponse())
+      }
+      return ctx
+    }
+
     if (result && result !== ctx) {
       const response = getResponseFromResult(result)
       // Select the replacement before reconciling: middleware may already
@@ -724,7 +735,9 @@ export function createStartHandler<TRegister = Register>(
         executedRequestMiddlewares,
         handlerType,
       }
-      let terminal: (ctx: PipelineContext) => Promise<HandlerCallbackResult>
+      let terminal: (
+        ctx: PipelineContext,
+      ) => Promise<HandlerCallbackResult | DeferredResponse>
 
       if (isServerFnRequest) {
         if (
@@ -863,7 +876,8 @@ export function createStartHandler<TRegister = Register>(
           // An empty global pipeline has no additional middleware to run.
           const disposeLate = createLateResponseDisposer(signal)
           middlewareResponse = await waitForRequest(
-            terminal(middlewareCtx),
+            // Only server-function terminals can defer JSON construction.
+            terminal(middlewareCtx) as Promise<HandlerCallbackResult>,
             signal,
             disposeLate,
             disposeLate,
