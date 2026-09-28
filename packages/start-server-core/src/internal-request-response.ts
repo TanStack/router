@@ -16,7 +16,8 @@ import type { RequestHandler } from './request-handler'
 
 export interface StartEvent {
   request: Request
-  requestUrl?: URL
+  /** The parsed request URL. Callers must not mutate it. */
+  requestUrl: URL
   /**
    * Lazily created response state. Stays `undefined` until the first
    * response helper write so requests that never use helpers pay nothing.
@@ -772,8 +773,10 @@ export function handleStartError(error: unknown): Response {
   }
   // Outside a server entry there is no invocation to recover. The thrown
   // value is never used as a request identifier.
+  const request = new Request('http://localhost')
   return createErrorResponse(error, {
-    request: new Request('http://localhost'),
+    request,
+    requestUrl: new URL(request.url),
   })
 }
 
@@ -829,9 +832,11 @@ export function restoreResponseProtocol(
 }
 
 /** Apply helper state after a response bypasses the middleware pipeline. */
-export function finalizeResponse(response: Response): Response {
-  const event = eventStorage.getStore()
-  return event ? reconcileResponseWithEvent(response, event) : response
+export function finalizeResponse(
+  response: Response,
+  event: StartEvent,
+): Response {
+  return reconcileResponseWithEvent(response, event)
 }
 
 /** Build a Start-owned body with already normalized protocol headers. */
@@ -839,9 +844,9 @@ export function createFinalizedResponse(
   body: string | Uint8Array,
   headers: HeadersInit,
   protectedHeaders: ProtectedHeaders,
+  event: StartEvent,
 ): Response {
-  const event = eventStorage.getStore()
-  const state = event?.responseState
+  const state = event.responseState
   const helperStatus = getHelperStatus(
     state,
     isSerializedResponse(protectedHeaders),
@@ -855,9 +860,7 @@ export function createFinalizedResponse(
     )
   }
   const response = new Response(
-    event && !canHaveBody(event.request.method, status)
-      ? null
-      : (body as BodyInit),
+    canHaveBody(event.request.method, status) ? (body as BodyInit) : null,
     {
       status,
       statusText: getHelperStatusText(state, helperStatus) ?? '',
@@ -865,7 +868,7 @@ export function createFinalizedResponse(
     },
   )
   protectResponseHeaders(response, protectedHeaders)
-  return event ? publishResponse(response, event) : response
+  return publishResponse(response, event)
 }
 
 export function protectResponseHeaders(
@@ -924,10 +927,17 @@ function decodePathname(pathname: string): string | undefined {
   }
 }
 
-function runInStartRequest<TRegister>(
+/** A Start handler that runs in a request scope and receives its event. */
+type ScopedRequestHandler = (
   request: Request,
   requestOpts: any,
-  handler: RequestHandler<TRegister>,
+  event: StartEvent,
+) => MaybePromise<Response>
+
+function runInStartRequest(
+  request: Request,
+  requestOpts: any,
+  handler: ScopedRequestHandler,
 ): MaybePromise<Response> {
   let requestUrl: URL
   try {
@@ -944,7 +954,7 @@ function runInStartRequest<TRegister>(
     return new Response(null, { status: 400, statusText: 'Bad Request' })
   }
   const event: StartEvent = { request, requestUrl }
-  return eventStorage.run(event, handler, request, requestOpts)
+  return eventStorage.run(event, handler, request, requestOpts, event)
 }
 
 /**
@@ -971,12 +981,11 @@ export function createServerEntry<TRegister = unknown>(entry: {
  * handler delegating the same request participates in its scope. Independent
  * fetch invocations and different requests get a fresh event.
  */
-export function withStartRequest<TRegister = unknown>(
-  handler: RequestHandler<TRegister>,
-) {
+export function withStartRequest(handler: ScopedRequestHandler) {
   return (request: Request, requestOpts: any): MaybePromise<Response> => {
-    if (eventStorage.getStore()?.request === request) {
-      return handler(request, requestOpts)
+    const event = eventStorage.getStore()
+    if (event?.request === request) {
+      return handler(request, requestOpts, event)
     }
     return runInStartRequest(request, requestOpts, handler)
   }
@@ -992,10 +1001,6 @@ export function getStartEvent() {
   return event
 }
 
-function getStartRequestUrl(event: StartEvent): URL {
-  return (event.requestUrl ||= new URL(event.request.url))
-}
-
 /**
  * Internal: returns the per-request parsed URL for `request`, memoized on the
  * Start event so the framework parses each request URL only once. Falls back
@@ -1005,7 +1010,7 @@ function getStartRequestUrl(event: StartEvent): URL {
 export function getParsedRequestUrl(request: Request): URL {
   const event = eventStorage.getStore()
   if (event && event.request === request) {
-    return getStartRequestUrl(event)
+    return event.requestUrl
   }
   return new URL(request.url)
 }
@@ -1063,11 +1068,7 @@ export function getRequestHost(opts?: { xForwardedHost?: boolean }) {
       return host
     }
   }
-  return (
-    headers.get('host') ||
-    getStartRequestUrl(getStartEvent()).host ||
-    'localhost'
-  )
+  return headers.get('host') || getStartEvent().requestUrl.host || 'localhost'
 }
 
 /**
@@ -1083,7 +1084,7 @@ export function getRequestUrl(opts?: {
 }) {
   const event = getStartEvent()
   // Clone the memoized URL so callers can mutate the result freely.
-  const url = new URL(getStartRequestUrl(event))
+  const url = new URL(event.requestUrl)
   url.protocol = getRequestProtocol(opts)
   if (opts?.xForwardedHost) {
     const host = getRequestHost(opts)
@@ -1121,7 +1122,7 @@ export function getRequestProtocol(opts?: {
       return 'http'
     }
   }
-  const url = getStartRequestUrl(getStartEvent())
+  const url = getStartEvent().requestUrl
   return url.protocol.slice(0, -1) as 'http' | 'https' | (string & {})
 }
 

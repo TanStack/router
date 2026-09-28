@@ -33,6 +33,7 @@ import type {
   MultiplexedStreamRecord,
 } from './frame-protocol'
 import type { Plugin as SerovalPlugin } from 'seroval'
+import type { StartEvent } from './internal-request-response'
 
 // Known FormData 'Content-Type' header values - module-level constant
 const FORM_DATA_CONTENT_TYPES = [
@@ -56,11 +57,12 @@ const SERIALIZED_JSON_HEADER_INIT: HeadersInit = {
 export class DeferredResponse {
   constructor(private readonly body: Uint8Array) {}
 
-  createResponse(): Response {
+  createResponse(event: StartEvent): Response {
     return createFinalizedResponse(
       this.body,
       SERIALIZED_JSON_HEADER_INIT,
       SERIALIZED_JSON_HEADERS,
+      event,
     )
   }
 }
