@@ -100,7 +100,7 @@ export default createServerEntry({
 
 The built-in entry uses `createServerEntry` to catch errors that escape the Start handler and call `handleStartError(error)` inside the active request context. This works without a custom `src/server.ts`. Response helpers such as `setResponseStatus`, `setResponseHeader`, and `setCookie` are applied to the error response.
 
-For an uncaught error, Start returns a generic JSON error body with status `500` unless a response helper or HTTP-style error property supplies another status. A thrown `Response` keeps its body and response metadata, with response helpers applied. Bodies are removed for `HEAD` requests and statuses `204`, `205`, and `304`.
+For an uncaught error, Start returns a generic JSON error body with status `500` unless a response helper or HTTP-style error property supplies an error status. A thrown `Response` keeps its body and response metadata, with response helpers applied. Bodies are removed for `HEAD` requests.
 
 For example, a request to this server route returns `401` with a `WWW-Authenticate` header:
 
@@ -131,14 +131,16 @@ export const Route = createFileRoute('/api/protected')({
 
 Error conversion preserves:
 
-- Status and status text from `setResponseStatus`
+- Error statuses (`400`-`599`) and their status text from `setResponseStatus`
 - Header operations from the response helpers
 - Cookies from `setCookie` and `appendResponseHeader('set-cookie', ...)`, including multiple `Set-Cookie` headers
 - HTTP-style error metadata such as `error.status`, `error.statusText`, `error.headers`, and `error.cause.headers`
 
 Start builds a new JSON body for an error, so it never copies headers that describe another body or connection from error metadata: `Content-Length`, `Content-Encoding`, `Content-Range`, `Transfer-Encoding`, `Trailer`, `Connection`, `Keep-Alive`, `Proxy-Connection`, `TE`, and `Upgrade`. When `error.cause` is a `Response`, such as a failed upstream `fetch`, its `Set-Cookie` and `Content-Type` headers are not copied either.
 
-Explicit helper status, status text, and header operations take precedence over error metadata. When neither a helper nor the error supplies a status, Start also logs the error to the server console. The generic JSON body does not expose the error's message or stack.
+Explicit helper error statuses, their status text, and header operations take precedence over error metadata. An error response only uses an error status (`400`-`599`). A status set with `setResponseStatus` before the error applies only when it is an error status. A success, redirect, or bodyless status such as `200`, `201`, `302`, or `204` describes the response that the failure replaced, so Start discards it together with its status text and uses the error's own status or `500`. Error metadata such as `error.status` or `error.statusCode` likewise applies only when it is `400` or higher.
+
+Start logs the error to the server console unless the error's own metadata marks it as an HTTP error with a status of `400` or higher, even when a helper selected the status. The generic JSON body does not expose the error's message or stack.
 
 Errors that Router handles through route error components do not reach this top-level catch. Server function calls and their request middleware use a separate error response path that preserves the RPC serialization protocol. Failures during initialization, before that path is established, fall back to the top-level error response. Errors in a streamed body after the entry has returned its `Response` cannot replace that response's status or headers.
 

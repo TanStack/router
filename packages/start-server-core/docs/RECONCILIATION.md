@@ -155,6 +155,8 @@ Built-in server entries use `createServerEntry` to keep the complete entry callb
 
 Server function RPC errors are converted before the top-level server-entry boundary so serialized protocol headers and bodies are preserved.
 
+Both error builders resolve status the same way. An error response only uses an error status (`400`-`599`). A status set with `setResponseStatus` before the error applies only when it is an error status. A success, redirect, or bodyless status such as `200`, `201`, `302`, or `204` describes the response that the failure replaced, so Start discards it together with its status text and uses the error's own status or `500`. Error metadata such as `error.status` or `error.statusCode` likewise applies only when it is `400` or higher. Start logs the error to the server console unless the error's own metadata marks it as an HTTP error with a status of `400` or higher, even when a helper selected the status. Because a discarded helper status no longer applies, later reconciliation and `getResponseStatus()` report the error status.
+
 Both error builders adopt HTTP-style metadata from the thrown value, or from `error.cause` when the error has no `headers`. Start builds a new JSON body for an error, so it never copies headers that describe another body or connection from error metadata: `Content-Length`, `Content-Encoding`, `Content-Range`, `Transfer-Encoding`, `Trailer`, `Connection`, `Keep-Alive`, `Proxy-Connection`, `TE`, and `Upgrade`. When `error.cause` is a `Response`, such as a failed upstream `fetch`, its `Set-Cookie` and `Content-Type` headers are not copied either.
 
 `handleStartError` behavior:

@@ -746,6 +746,100 @@ describe('createStartHandler response reconciliation', () => {
     expect(response.headers.get('x-error-cause')).toBe('handled')
   })
 
+  it.each([200, 201, 302])(
+    'does not let a helper %s status hide an uncaught error',
+    async (helperStatus) => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      try {
+        const handler = createResponseHandler(() => {
+          setResponseStatus(helperStatus, 'Helper Status')
+          throw new TypeError('unexpected failure')
+        })
+
+        const response = await createServerEntry({ fetch: handler }).fetch(
+          new Request('http://localhost/'),
+          {},
+        )
+
+        expect(response.status).toBe(500)
+        expect(response.statusText).toBe('')
+        await expect(response.json()).resolves.toMatchObject({
+          status: 500,
+          unhandled: true,
+        })
+        expect(consoleError).toHaveBeenCalledOnce()
+      } finally {
+        consoleError.mockRestore()
+      }
+    },
+  )
+
+  it('logs an error thrown after a helper selects an error status', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const handler = createResponseHandler(() => {
+        setResponseStatus(401, 'Unauthorized')
+        throw new Error('not signed in')
+      })
+
+      const response = await createServerEntry({ fetch: handler }).fetch(
+        new Request('http://localhost/'),
+        {},
+      )
+
+      expect(response.status).toBe(401)
+      expect(response.statusText).toBe('Unauthorized')
+      expect(consoleError).toHaveBeenCalledOnce()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('uses 500 when error metadata carries a non-error status', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const handler = createResponseHandler(() => {
+        throw Object.assign(new Error('moved'), {
+          status: 302,
+          statusText: 'Found',
+        })
+      })
+
+      const response = await createServerEntry({ fetch: handler }).fetch(
+        new Request('http://localhost/'),
+        {},
+      )
+
+      expect(response.status).toBe(500)
+      expect(response.statusText).toBe('')
+      expect(consoleError).toHaveBeenCalledOnce()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('does not log errors whose metadata carries an HTTP error status', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const handler = createResponseHandler(() => {
+        setResponseStatus(201)
+        throw Object.assign(new Error('conflict'), { statusCode: 409 })
+      })
+
+      const response = await createServerEntry({ fetch: handler }).fetch(
+        new Request('http://localhost/'),
+        {},
+      )
+
+      expect(response.status).toBe(409)
+      expect(consoleError).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
   it('does not copy an upstream Response cause body framing, cookies, or media type', async () => {
     const handler = createResponseHandler(() => {
       throw new Error('upstream failed', {

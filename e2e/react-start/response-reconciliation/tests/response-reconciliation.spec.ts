@@ -271,6 +271,20 @@ test.describe('server routes', () => {
     })
   })
 
+  test('a helper success status does not hide an uncaught error', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      '/api/status-contracts?scenario=helper-success-crash',
+    )
+
+    expect(response.status()).toBe(500)
+    await expect(response.json()).resolves.toMatchObject({
+      status: 500,
+      unhandled: true,
+    })
+  })
+
   test('errors caused by an upstream response do not copy its framing or cookies', async ({
     request,
   }) => {
@@ -645,7 +659,7 @@ test.describe('server functions', () => {
       // A second RegExp would make Playwright read the array as a fixture
       // tuple, so both expected statuses share one pattern.
       whitelistErrors: [
-        /Failed to load resource: the server responded with a status of (401 \(Unauthorized\)|502 \([^)]*\))/,
+        /Failed to load resource: the server responded with a status of (401 \(Unauthorized\)|500 \([^)]*\)|502 \([^)]*\))/,
       ],
     })
 
@@ -686,6 +700,20 @@ test.describe('server functions', () => {
         'globalSerialized',
         'Upstream failed',
       )
+    })
+
+    test('serialized errors drop a Location from error metadata', async ({
+      page,
+    }) => {
+      const response = await invokeJsonServerFunction(
+        page,
+        'globalSerialized',
+        'global-location-error',
+      )
+
+      expect(header(response, 'location')).toBeNull()
+      expect(response.request().redirectedTo()).toBeNull()
+      await expectServerFunctionResult(page, 'globalSerialized', 'Moved error')
     })
 
     test('server function request middleware errors are serialized', async ({
@@ -744,20 +772,6 @@ test.describe('server functions', () => {
     expect(header(response, 'location')).toBeNull()
     expect(response.request().redirectedTo()).toBeNull()
     await expectServerFunctionResult(page, 'helperLocation', '{"ok":true}')
-  })
-
-  test('serialized errors drop a Location from error metadata', async ({
-    page,
-  }) => {
-    const response = await invokeJsonServerFunction(
-      page,
-      'globalSerialized',
-      'global-location-error',
-    )
-
-    expect(header(response, 'location')).toBeNull()
-    expect(response.request().redirectedTo()).toBeNull()
-    await expectServerFunctionResult(page, 'globalSerialized', 'Moved error')
   })
 
   test('same-body wrapper responses keep serialized transport headers', async ({
