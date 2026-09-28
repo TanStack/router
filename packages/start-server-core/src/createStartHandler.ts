@@ -444,6 +444,7 @@ async function executeMiddleware(
       // Copy own properties except context (Object.keys returns only own
       // enumerable properties). An indexed loop avoids the iterator protocol.
       const keys = Object.keys(nextCtx)
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
       for (let i = 0; i < keys.length; i++) {
         const key = keys[i]!
         if (key === 'response') {
