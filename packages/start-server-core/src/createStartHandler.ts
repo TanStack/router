@@ -832,14 +832,14 @@ export function createStartHandler<TRegister = Register>(
             )
           }
 
-          const manifest = await waitForRequest(
-            resolveManifestForRequest({
-              request,
-              requestInlineCss: requestOpts?.inlineCss,
-              getBaseManifest: () => getBaseManifest(matchedRoutes),
-            }),
-            signal,
-          )
+          const pendingManifest = resolveManifestForRequest({
+            request,
+            requestInlineCss: requestOpts?.inlineCss,
+            getBaseManifest: () => getBaseManifest(matchedRoutes),
+          })
+          const manifest = isPromise(pendingManifest)
+            ? await waitForRequest(pendingManifest, signal)
+            : pendingManifest
 
           const earlyHints = createEarlyHintsForRequest({
             onEarlyHints: requestOpts?.onEarlyHints,
