@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
-import { RawStream } from '@tanstack/router-core'
+import { RawStream, notFound } from '@tanstack/router-core'
 import {
   TSS_FORMDATA_CONTEXT,
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
@@ -247,6 +247,79 @@ describe('server function response reconciliation', () => {
     expect(response.status).toBe(404)
     expect(response.headers.get('content-type')).toBe('application/json')
     expect(response.headers.get('x-tss-serialized')).toBe(null)
+    await expect(response.json()).resolves.toEqual({
+      isNotFound: true,
+      data: 'missing',
+    })
+  })
+
+  it('preserves caller not-found headers and cookies while normalizing transport headers', async () => {
+    const cookies = [
+      'session=one; Path=/; Expires=Wed, 21 Oct 2030 07:28:00 GMT',
+      'preferences=two; Path=/',
+    ]
+    const headers = new Headers({
+      'content-type': 'text/plain',
+      'x-tss-serialized': 'true',
+      'x-tss-raw': 'true',
+      'x-not-found': 'preserved',
+    })
+    for (const cookie of cookies) {
+      headers.append('set-cookie', cookie)
+    }
+    const originalHeaders = Array.from(headers)
+    const action = createAction()
+    action.mockImplementation(() => {
+      setResponseHeader('x-helper', 'also preserved')
+      throw notFound({ data: 'missing', headers })
+    })
+    serverFnMocks.action = action
+
+    const response = await createHandler()(createServerFunctionRequest(), {})
+
+    expect(response.status).toBe(404)
+    expect(response.headers.get('content-type')).toBe('application/json')
+    expect(response.headers.get('x-tss-serialized')).toBe(null)
+    expect(response.headers.get('x-tss-raw')).toBe(null)
+    expect(response.headers.get('x-not-found')).toBe('preserved')
+    expect(response.headers.get('x-helper')).toBe('also preserved')
+    expect(response.headers.getSetCookie()).toEqual(cookies)
+    expect(Array.from(headers)).toEqual(originalHeaders)
+    await expect(response.json()).resolves.toEqual({
+      isNotFound: true,
+      data: 'missing',
+    })
+  })
+
+  it('captures not-found headers before serializing data', async () => {
+    const headers = new Headers({ 'x-snapshot': 'original' })
+    const action = createAction()
+    action.mockImplementation(() => {
+      throw notFound({
+        headers,
+        data: {
+          toJSON() {
+            headers.set('x-snapshot', 'changed during serialization')
+            setResponseHeader('x-helper', 'written during serialization')
+            setResponseHeader('content-type', 'text/plain')
+            setResponseHeader('x-tss-raw', 'true')
+            return 'missing'
+          },
+        },
+      })
+    })
+    serverFnMocks.action = action
+
+    const response = await createHandler()(createServerFunctionRequest(), {})
+
+    expect(response.status).toBe(404)
+    expect(response.headers.get('x-snapshot')).toBe('original')
+    expect(response.headers.get('x-helper')).toBe(
+      'written during serialization',
+    )
+    expect(response.headers.get('content-type')).toBe('application/json')
+    expect(response.headers.get('x-tss-raw')).toBeNull()
+    expect(headers.get('x-snapshot')).toBe('changed during serialization')
     await expect(response.json()).resolves.toEqual({
       isNotFound: true,
       data: 'missing',
