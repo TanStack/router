@@ -959,6 +959,18 @@ describe('createStartHandler response reconciliation', () => {
     expect(response.statusText).toBe('Unauthorized')
   })
 
+  it('sends a Response thrown by request middleware on a document request unmarked', async () => {
+    const handler = createResponseHandler(() => {
+      throw new Response('teapot', { status: 418 })
+    })
+
+    const response = await handler(new Request('http://localhost/'), {})
+
+    expect(response.status).toBe(418)
+    expect(response.headers.get('x-tss-raw')).toBeNull()
+    await expect(response.text()).resolves.toBe('teapot')
+  })
+
   it('rethrows primitive errors', async () => {
     const handler = createResponseHandler(() => {
       return Promise.reject('primitive failure')
