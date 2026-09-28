@@ -106,6 +106,45 @@ function callClientServerFn(
   )({ fetch })
 }
 
+// Compiled shape of a server function: the provider module registers the
+// RPC entry, and callers get a client or server-side stub with the same
+// middleware.
+function defineServerFn(
+  method: 'GET' | 'POST',
+  handler: () => unknown,
+  middleware: Array<AnyFunctionMiddleware> = [],
+) {
+  const attach = (extractedFn: unknown, serverFn?: unknown) =>
+    (
+      createServerFn({ method }).middleware(middleware)
+        .handler as unknown as AttachHandler
+    )(extractedFn, serverFn)
+  const rpc = createServerRpc(
+    { id: 'test', name: 'test', filename: 'test.ts' },
+    (opts: unknown) => provider.__executeServer(opts),
+  )
+  const provider = attach(rpc, handler)
+  serverFnMocks.action = rpc as unknown as typeof serverFnMocks.action
+  const client = attach(createClientRpc('test'))
+  const onServer = attach(createSsrRpc('test'))
+  let response: Response | undefined
+
+  return {
+    call: () =>
+      client({
+        fetch: async (input, init) => {
+          response = await createHandler()(
+            new Request(new URL(input, 'http://localhost'), init),
+            {},
+          )
+          return response
+        },
+      }),
+    onServer,
+    response: () => response!,
+  }
+}
+
 async function readFrames(response: Response) {
   const reader = response.body!.getReader()
   const frames: Array<{
@@ -173,13 +212,13 @@ describe('server function response reconciliation', () => {
           return next({ context: { inner: 'yes' } })
         }),
       ]
-      const action = createAction(method)
-      action.mockImplementation(({ context }) => {
+      // A real server function merges the client context with the trusted
+      // server context, which wins.
+      defineServerFn(method, (({ context }: { context: unknown }) => {
         events.push('action')
         appendResponseHeader('x-steps', 'action')
-        return { result: context }
-      })
-      serverFnMocks.action = action
+        return context
+      }) as () => unknown)
       const payload = JSON.stringify(toJSON({ context: clientContext }))
       const request = createServerFunctionRequest(
         method === 'GET'
@@ -217,7 +256,6 @@ describe('server function response reconciliation', () => {
         inner: 'yes',
       })
       expect(events).toEqual(['outer before', 'inner', 'action', 'outer after'])
-      expect(action).toHaveBeenCalledOnce()
       expect(requestContext).toEqual({ nonce: 'request' })
       expect(globalContext).toEqual({ trusted: 'server', global: 'yes' })
       expect(clientContext).toEqual({ trusted: 'client', client: 'yes' })
@@ -985,11 +1023,11 @@ describe('server function response reconciliation', () => {
   })
 
   it('falls back to default context for malformed FormData context', async () => {
-    const action = createAction('POST')
-    action.mockImplementation((payload) => {
-      return { result: { context: payload.context, method: payload.method } }
-    })
-    serverFnMocks.action = action
+    let receivedContext: unknown
+    defineServerFn('POST', (({ context }: { context: unknown }) => {
+      receivedContext = context
+      return { ok: true }
+    }) as () => unknown)
     const handler = createHandler()
     const formData = new FormData()
     formData.set(TSS_FORMDATA_CONTEXT, '{not json')
@@ -1004,8 +1042,7 @@ describe('server function response reconciliation', () => {
     )
 
     expect(response.status).toBe(200)
-    expect(action).toHaveBeenCalledOnce()
-    expect(action.mock.calls[0]?.[0].context).toEqual({})
+    expect(receivedContext).toEqual({})
   })
 
   it('streams RawStreams discovered after initial serialization', async () => {
@@ -1087,45 +1124,6 @@ describe('server function response reconciliation', () => {
 })
 
 describe('server function throws reach the caller', () => {
-  // Compiled shape of a server function: the provider module registers the
-  // RPC entry, and callers get a client or server-side stub with the same
-  // middleware.
-  function defineServerFn(
-    method: 'GET' | 'POST',
-    handler: () => unknown,
-    middleware: Array<AnyFunctionMiddleware> = [],
-  ) {
-    const attach = (extractedFn: unknown, serverFn?: unknown) =>
-      (
-        createServerFn({ method }).middleware(middleware)
-          .handler as unknown as AttachHandler
-      )(extractedFn, serverFn)
-    const rpc = createServerRpc(
-      { id: 'test', name: 'test', filename: 'test.ts' },
-      (opts: unknown) => provider.__executeServer(opts),
-    )
-    const provider = attach(rpc, handler)
-    serverFnMocks.action = rpc as unknown as typeof serverFnMocks.action
-    const client = attach(createClientRpc('test'))
-    const onServer = attach(createSsrRpc('test'))
-    let response: Response | undefined
-
-    return {
-      call: () =>
-        client({
-          fetch: async (input, init) => {
-            response = await createHandler()(
-              new Request(new URL(input, 'http://localhost'), init),
-              {},
-            )
-            return response
-          },
-        }),
-      onServer,
-      response: () => response!,
-    }
-  }
-
   async function settle(promise: Promise<unknown>) {
     try {
       return { resolved: await promise }

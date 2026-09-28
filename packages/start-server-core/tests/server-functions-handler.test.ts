@@ -95,7 +95,6 @@ test.each([false, 0, '', null])(
         request: new Request('http://localhost/_serverFn/test', {
           method: 'POST',
         }),
-        context: {},
         serverFnId: 'test',
       }),
     ).resolves.toBe(result)
@@ -110,7 +109,6 @@ test('serializes a complete direct JSON record without LF', async () => {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -132,7 +130,6 @@ test('cancelling a framed response disposes its serializer', async () => {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -155,7 +152,6 @@ test('aborting the request disposes a handed-off framed response', async () => {
       headers: { 'x-tsr-serverFn': 'true' },
       signal: abortController.signal,
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -194,7 +190,6 @@ test('cancels synchronous RawStreams without pulling when the request is already
       headers: { 'x-tsr-serverFn': 'true' },
       signal: abortController.signal,
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -230,7 +225,6 @@ test('bounds and cancels synchronous RawStreams when their response remains unre
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -264,7 +258,6 @@ test('a synchronous serialization failure cancels registered raw streams', async
         method: 'POST',
         headers: { 'x-tsr-serverFn': 'true' },
       }),
-      context: {},
       serverFnId: 'test',
     })
 
@@ -301,7 +294,6 @@ test('admits replayed nested RawStream references before their chunks', async ()
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -319,7 +311,6 @@ test('frames every record from a synchronously replayed Seroval stream', async (
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -378,7 +369,6 @@ test('keeps work discovered after a transient synchronous completion', async () 
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
   resolveLate(
@@ -411,7 +401,6 @@ test('bounds synchronously replayed Seroval records before framing', async () =>
         method: 'POST',
         headers: { 'x-tsr-serverFn': 'true' },
       }),
-      context: {},
       serverFnId: 'test',
     })
 
@@ -438,7 +427,6 @@ test('admits late RawStream references before their chunks', async () => {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
   resolveRawStream(
@@ -471,7 +459,6 @@ test('rejects a non-ASCII JSON record larger than the wire limit', async () => {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -504,7 +491,6 @@ test.each(['RawStream', 'ReadableStream'])(
           method: 'POST',
           headers: { 'x-tsr-serverFn': 'true' },
         }),
-        context: {},
         serverFnId: 'test',
       })
 
@@ -554,7 +540,6 @@ test('rejects excess RawStreams before starting their readers', async () => {
         method: 'POST',
         headers: { 'x-tsr-serverFn': 'true' },
       }),
-      context: {},
       serverFnId: 'test',
     })
 

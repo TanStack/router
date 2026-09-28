@@ -104,6 +104,7 @@ vi.mock('#tanstack-router-entry', () => ({
 vi.mock('../src/server-functions-handler', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('../src/server-functions-handler')>()
+  const { getStartContext } = await import('@tanstack/start-storage-context')
   return {
     ...actual,
     createServerFnErrorResponse: () => {
@@ -115,8 +116,12 @@ vi.mock('../src/server-functions-handler', async (importOriginal) => {
         },
       })
     },
-    handleServerAction: (opts: { context?: unknown; serverFnId: string }) => {
-      startMocks.serverFnCalls.push({ context: opts.context })
+    handleServerAction: (opts: { serverFnId: string }) => {
+      // Server functions read the trusted server context from the start
+      // context, like __executeServer.
+      startMocks.serverFnCalls.push({
+        context: getStartContext().contextAfterGlobalMiddlewares,
+      })
       return startMocks.serverFnHandler
         ? startMocks.serverFnHandler(opts)
         : startMocks.serverFnResult
