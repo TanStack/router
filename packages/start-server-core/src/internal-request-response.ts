@@ -155,14 +155,15 @@ function sanitizeStatusMessage(statusMessage = ''): string {
 // codes like 783/999) cannot be carried through the pipeline at all.
 function sanitizeStatusCode(
   statusCode: string | number | undefined,
-  defaultStatusCode: number | undefined = 200,
-): number {
-  if (!statusCode) {
-    return defaultStatusCode
-  }
+): number | undefined {
   const code = typeof statusCode === 'string' ? Number(statusCode) : statusCode
-  if (!Number.isInteger(code) || code < 200 || code > 599) {
-    return defaultStatusCode
+  if (
+    code === undefined ||
+    !Number.isInteger(code) ||
+    code < 200 ||
+    code > 599
+  ) {
+    return undefined
   }
   return code
 }
@@ -187,14 +188,12 @@ function getStatusCodeProperty(
 
 export function getErrorStatus(error: unknown): number | undefined {
   const cause = getObjectProperty(error, 'cause')
-  const status = sanitizeStatusCode(
+  return sanitizeStatusCode(
     getStatusCodeProperty(error, 'status') ??
       getStatusCodeProperty(error, 'statusCode') ??
       getStatusCodeProperty(cause, 'status') ??
       getStatusCodeProperty(cause, 'statusCode'),
-    0,
   )
-  return status || undefined
 }
 
 export function getErrorStatusText(error: unknown): string | undefined {
@@ -1374,14 +1373,14 @@ export function getResponseStatus(): number {
 
 export function setResponseStatus(code?: number, text?: string): void {
   const event = getStartEvent()
-  if (code) {
-    // An unusable code must not replace a returned or error status. Ignore the
-    // whole call, including its status text, which describes that code.
-    const status = sanitizeStatusCode(code, 0)
-    if (!status) {
+  if (code !== undefined) {
+    // An unusable code must not replace an earlier, returned, or error status.
+    // Ignore the whole call, including its status text, which describes it.
+    const status = sanitizeStatusCode(code)
+    if (status === undefined) {
       if (process.env.NODE_ENV !== 'production') {
         console.warn(
-          `setResponseStatus(${code}) was ignored: Fetch Response objects only support status codes in the 200-599 range.`,
+          `setResponseStatus(${code}) was ignored: Fetch Response status codes must be integers from 200 to 599.`,
         )
       }
       return

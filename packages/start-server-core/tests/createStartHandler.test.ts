@@ -1091,6 +1091,49 @@ describe('createStartHandler response reconciliation', () => {
     },
   )
 
+  it.each([0, Number.NaN])(
+    'ignores setResponseStatus(%s) with its status text',
+    async (status) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const handler = createResponseHandler(() => {
+          setResponseStatus(status, 'Ignored')
+          return new Response('missing', {
+            status: 404,
+            statusText: 'Not Found',
+          })
+        })
+
+        const response = await handler(new Request('http://localhost/'), {})
+
+        expect(response.status).toBe(404)
+        expect(response.statusText).toBe('Not Found')
+        expect(warnSpy).toHaveBeenCalledOnce()
+      } finally {
+        warnSpy.mockRestore()
+      }
+    },
+  )
+
+  it('ignores out-of-range statuses without a warning in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const handler = createResponseHandler(() => {
+        setResponseStatus(999)
+        return new Response('missing', { status: 404 })
+      })
+
+      const response = await handler(new Request('http://localhost/'), {})
+
+      expect(response.status).toBe(404)
+      expect(warnSpy).not.toHaveBeenCalled()
+    } finally {
+      warnSpy.mockRestore()
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('keeps the uncaught error status and log after an ignored status write', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
