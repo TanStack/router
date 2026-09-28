@@ -733,10 +733,10 @@ export function createStartHandler<TRegister = Register>(
         routerPromise ??= (async () => {
           signal.throwIfAborted()
           const routerUrl = url === requestUrl ? getNormalizedURL(url).url : url
-          const requestRouter = await waitForRequest(
-            entries.routerEntry.getRouter(),
-            signal,
-          )
+          const pendingRouter = entries.routerEntry.getRouter()
+          const requestRouter = isPromise(pendingRouter)
+            ? await waitForRequest(pendingRouter, signal)
+            : pendingRouter
 
           let isShell = IS_SHELL_ENV
           if (IS_PRERENDERING && !isShell) {
