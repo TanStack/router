@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect } from 'react'
+import React, { useLayoutEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Link,
@@ -273,7 +273,7 @@ function ResultsComponent() {
   const navigate = useNavigate({ from: '/results' })
   const { color } = useSearch({ from: '/results' })
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (color) {
       return
     }
