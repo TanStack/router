@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { runWithStartContext } from '@tanstack/start-storage-context'
 import { createMiddleware } from '../src/createMiddleware'
-import { createServerFn } from '../src/createServerFn'
+import { createServerFn, flattenMiddlewares } from '../src/createServerFn'
 
 test('appends factory middleware in order without changing source builders', () => {
   const first = createMiddleware({ type: 'function' })
@@ -106,4 +106,48 @@ describe('client-side throws', () => {
       expect(fetched).toBe(false)
     },
   )
+})
+
+describe('flattenMiddlewares', () => {
+  const inner = createMiddleware({ type: 'function' })
+  const middle = createMiddleware({ type: 'function' }).middleware([inner])
+  const outer = createMiddleware({ type: 'function' }).middleware([
+    inner,
+    middle,
+  ])
+  const sibling = createMiddleware({ type: 'function' })
+  const names = new Map<unknown, string>([
+    [inner, 'inner'],
+    [middle, 'middle'],
+    [outer, 'outer'],
+    [sibling, 'sibling'],
+  ])
+  const nameAll = (middlewares: Array<unknown>) =>
+    middlewares.map((middleware) => names.get(middleware))
+
+  test('lists nested middleware before its parent and keeps first occurrences', () => {
+    expect(nameAll(flattenMiddlewares([outer, sibling, middle]))).toEqual([
+      'inner',
+      'middle',
+      'outer',
+      'sibling',
+    ])
+  })
+
+  test('skips middleware in the seen set but still lists its children', () => {
+    expect(
+      nameAll(
+        flattenMiddlewares([outer, sibling], undefined, new Set([middle])),
+      ),
+    ).toEqual(['inner', 'outer', 'sibling'])
+  })
+
+  test('throws for nesting deeper than the limit', () => {
+    const looped = createMiddleware({ type: 'function' })
+    looped.middleware([looped])
+
+    expect(() => flattenMiddlewares([looped], 3)).toThrow(
+      'Middleware nesting depth exceeded maximum of 3. Check for circular references.',
+    )
+  })
 })
