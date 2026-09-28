@@ -1,7 +1,16 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { runWithStartContext } from '@tanstack/start-storage-context'
 import { createMiddleware } from '../src/createMiddleware'
-import { createServerFn, flattenMiddlewares } from '../src/createServerFn'
+import {
+  createServerFn,
+  executeMiddleware,
+  flattenMiddlewares,
+} from '../src/createServerFn'
+
+vi.mock('../src/getStartOptions', () => ({ getStartOptions: () => undefined }))
+vi.mock('../src/getStartContextServerOnly', () => ({
+  getStartContextServerOnly: () => undefined,
+}))
 
 test('appends factory middleware in order without changing source builders', () => {
   const first = createMiddleware({ type: 'function' })
@@ -168,4 +177,26 @@ describe('flattenMiddlewares', () => {
       'Middleware nesting depth exceeded maximum of 3. Check for circular references.',
     )
   })
+})
+
+test('request middleware slot validators are not run as server function validators', async () => {
+  const schema = {
+    '~standard': {
+      version: 1 as const,
+      vendor: 'test',
+      validate: () => ({ issues: [{ message: 'must not run' }] }),
+    },
+  }
+  const middleware = createMiddleware({ type: 'request' })
+    .validator({ query: schema })
+    .server(({ next }) => next())
+
+  const result = await executeMiddleware([middleware], 'server', {
+    method: 'POST',
+    data: { input: 1 },
+    context: {},
+  } as any)
+
+  expect(result.error).toBeUndefined()
+  expect(result.data).toEqual({ input: 1 })
 })

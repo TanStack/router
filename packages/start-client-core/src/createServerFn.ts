@@ -298,12 +298,15 @@ export async function executeMiddleware(
     // Middleware without a function for this environment only validates.
     while (index < flattenedMiddlewares.length) {
       const options = flattenedMiddlewares[index++]!.options as {
+        type?: string
         validator?: AnyValidator
         client?: MiddlewareFn
         server?: MiddlewareFn
       }
       const validator = options.validator
-      if (validator && env === 'server') {
+      // Request middleware validators are slot-shaped ({ body, query, ... })
+      // and only apply to server routes.
+      if (validator && env === 'server' && options.type !== 'request') {
         // Execute the middleware's input function
         ctx.data = await execValidator(validator, ctx.data)
       }
