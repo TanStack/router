@@ -1003,6 +1003,44 @@ describe('createStartHandler response reconciliation', () => {
     )
   })
 
+  it('drops the body of a returned bodyless-status response on runtimes that allow one', async () => {
+    // Bun accepts a body on 204, 205, and 304 responses; Node rejects them.
+    // This subclass reports 204 for a body-bearing response, as Bun would.
+    // Fields initialize after the base constructor has validated the body.
+    class BodylessStatusResponse extends Response {
+      reportsBodylessStatus = true
+      override get status() {
+        return this.reportsBodylessStatus ? 204 : super.status
+      }
+    }
+    let cancelledReason: unknown
+    const handler = createResponseHandler(
+      () =>
+        new BodylessStatusResponse(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array([1]))
+            },
+            cancel(reason) {
+              cancelledReason = reason
+            },
+          }),
+          { headers: { 'x-returned': 'yes' } },
+        ),
+    )
+
+    const response = await handler(new Request('http://localhost/'), {})
+
+    expect(response.status).toBe(204)
+    expect(response.body).toBeNull()
+    expect(response.headers.get('x-returned')).toBe('yes')
+    await vi.waitFor(() =>
+      expect(cancelledReason).toBe(
+        'Response body dropped by Start reconciliation',
+      ),
+    )
+  })
+
   it('falls back from informational statuses that Fetch responses cannot use', async () => {
     const handler = createResponseHandler(() => {
       setResponseStatus(101)
