@@ -11,6 +11,7 @@ import {
 } from '@tanstack/react-router'
 import {
   LINK_COUNT,
+  linkCount,
   LOCALES,
   encodedValue,
   optionalCategory,
@@ -230,7 +231,7 @@ export function assertStateUpdates(router: LinkRouter): void {
 }
 
 function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
-  const itemId = `item-${stateIndex}`
+  const itemId = caseId === 'indexed-eligible' ? 'item-0' : `item-${stateIndex}`
   const common = {
     search: sourceSearch(caseId, stateIndex),
     hash: caseId === 'location-updaters' ? `source-${stateIndex}` : '',
@@ -282,7 +283,7 @@ function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
   }
 }
 
-const indexes = Array.from({ length: LINK_COUNT }, (_, index) => index)
+const indexes = Array.from({ length: 2000 }, (_, index) => index)
 const controls = [0, 1, 2, 3] as const
 
 function SourcePath() {
@@ -311,7 +312,9 @@ function RootLayout() {
       </nav>
       <SourcePath />
       <section aria-label="Measured Links">
-        {indexes.map((index) => measuredLink(context, index))}
+        {indexes
+          .slice(0, linkCount(context.caseId))
+          .map((index) => measuredLink(context, index))}
       </section>
       <Outlet />
     </>
@@ -330,6 +333,9 @@ function measuredLink(
   } as const
   const itemId = `item-${index % 40}`
   switch (caseId) {
+    case 'indexed-mount':
+    case 'indexed-small':
+    case 'indexed-many':
     case 'shared-params':
     case 'unique-params':
       return (
@@ -337,8 +343,35 @@ function measuredLink(
           {...common}
           to="/items/$itemId"
           params={{
-            itemId: caseId === 'unique-params' ? `item-${index}` : itemId,
+            itemId: caseId === 'shared-params' ? itemId : `item-${index}`,
           }}
+        />
+      )
+    case 'indexed-dense':
+      return (
+        <Link {...common} to="/items/$itemId" params={{ itemId: 'item-0' }} />
+      )
+    case 'indexed-eligible':
+      return (
+        <Link
+          {...common}
+          to="/items/$itemId"
+          params={{ itemId: 'item-0' }}
+          activeOptions={{ includeSearch: false }}
+        />
+      )
+    case 'indexed-dynamic':
+    case 'indexed-mixed':
+      return (
+        <Link
+          {...common}
+          to="/items/$itemId"
+          params={{ itemId: `item-${index}` }}
+          search={
+            caseId === 'indexed-dynamic' || index % 2
+              ? (previous) => ({ page: (previous.page ?? 1) + 1 })
+              : {}
+          }
         />
       )
     case 'param-updaters':

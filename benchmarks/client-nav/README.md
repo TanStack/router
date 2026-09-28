@@ -301,3 +301,19 @@ intervals should contain zero before trusting similarly sized A/B differences.
 Shared-machine contention can still make small changes unresolved. Do not
 interpret a point estimate alone, or an inconclusive result, as proof that
 a workload is unchanged.
+
+The `indexed-*` Link cases cover destination-aware subscriptions: eight fixed
+links, 2,000 unique fixed links, identical destinations, all-path-eligible
+ancestors, all-dependent destinations, and a fixed/dependent mixture. The
+`indexed-mount` client case mounts and disposes a fresh 2,000-link router per
+batch, including the ordinary untimed-validation navigation lap inside that
+batch; compare it only with the same workload on the other revision. The other
+cases retain their anchors and measure eight navigations per batch.
+
+Historical location collectability has separate React unit coverage. Run it
+with GC enabled rather than interpreting ordinary memory benchmark timings as
+heap measurements:
+
+```sh
+CI=1 NX_DAEMON=false pnpm nx run @tanstack/react-router:test:unit --outputStyle=stream --skipRemoteCache --skipNxCache -- tests/link-subscription-memory.test.tsx --pool=forks --execArgv=--expose-gc
+```
