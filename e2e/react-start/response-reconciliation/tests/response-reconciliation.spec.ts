@@ -760,6 +760,21 @@ test.describe('server functions', () => {
     await expectServerFunctionResult(page, 'globalSerialized', 'Moved error')
   })
 
+  test('same-body wrapper responses keep serialized transport headers', async ({
+    page,
+  }) => {
+    const response = await invokeJsonServerFunction(
+      page,
+      'globalSerialized',
+      'global-same-body-wrapper',
+    )
+
+    expect(header(response, 'x-same-body-wrapper')).toBe('yes')
+    expect(header(response, 'x-tss-serialized')).toBe('true')
+    expect(header(response, 'content-type')).toContain('application/json')
+    await expectServerFunctionResult(page, 'globalSerialized', '{"ok":true}')
+  })
+
   test('transport headers win over user helpers while user headers persist', async ({
     page,
   }) => {

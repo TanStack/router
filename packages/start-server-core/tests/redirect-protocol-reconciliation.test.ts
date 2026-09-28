@@ -22,6 +22,7 @@ import {
 import {
   appendResponseHeader,
   clearResponseHeaders,
+  removeResponseHeader,
   getResponseHeader,
   setCookie,
   setResponseHeader,
@@ -387,6 +388,54 @@ describe('server-function protocol headers through public request middleware', (
       })
     },
   )
+
+  it.each(mutations)(
+    'decodes serialized values wrapped in a same-body response despite $name',
+    async ({ run }) => {
+      mocks.middleware = [
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          run()
+          return result
+        }),
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          // An ordinary wrapper that keeps the body stream and response init.
+          return new Response(result.response.body, result.response)
+        }),
+      ]
+      mocks.action = () => ({ result: { answer: 42 } })
+
+      await expect(callServerFn()).resolves.toEqual({
+        result: { answer: 42 },
+      })
+    },
+  )
+
+  it('keeps a raw result raw when a same-body wrapper loses its marker', async () => {
+    mocks.middleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        removeResponseHeader('x-tss-raw')
+        return result
+      }),
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        const headers = new Headers(result.response.headers)
+        headers.delete('x-tss-raw')
+        return new Response(result.response.body, {
+          status: result.response.status,
+          headers,
+        })
+      }),
+    ]
+    mocks.action = () => ({ result: new Response('raw result') })
+
+    const response = await callServerFn()
+    expect(response).toBeInstanceOf(Response)
+    expect(response.headers.get('x-tss-raw')).toBe('true')
+    expect(await response.text()).toBe('raw result')
+  })
 
   it('decodes framed RawStream results despite a raw response marker', async () => {
     mocks.middleware = [
