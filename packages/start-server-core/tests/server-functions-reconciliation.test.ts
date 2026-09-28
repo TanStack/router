@@ -37,6 +37,7 @@ import {
 } from '../src/request-response'
 import { createServerRpc } from '../src/createServerRpc'
 import { createSsrRpc } from '../src/createSsrRpc'
+import { ServerFunctionSerializationAdapter } from '../src/serializer/ServerFunctionSerializationAdapter'
 import type { AnyFunctionMiddleware } from '@tanstack/start-client-core'
 
 const serverFnMocks = vi.hoisted(() => {
@@ -1229,6 +1230,25 @@ describe('server function throws reach the caller', () => {
       expect(await response.text()).not.toContain('crafted')
     },
   )
+
+  it('rejects a server function received as data when its call fails', async () => {
+    let outcome: { resolved?: unknown; rejected?: unknown } | undefined
+    let nested = false
+    const receivedFn = ServerFunctionSerializationAdapter.fromSerializable({
+      functionId: 'test',
+    }) as unknown as (opts: { data: unknown }) => Promise<unknown>
+    const { call } = defineServerFn('POST', async () => {
+      if (nested) {
+        throw 0
+      }
+      nested = true
+      outcome = await settle(receivedFn({ data: 1 }))
+      return { ok: true }
+    })
+
+    await expect(call()).resolves.toEqual({ ok: true })
+    expect(outcome).toEqual({ rejected: 0 })
+  })
 
   it('rejects a server-side call with a thrown 0', async () => {
     const outcome = await settleOnServer(() => {
