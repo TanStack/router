@@ -282,10 +282,6 @@ function deleteHeaderState(event: StartEvent, name: string): void {
   }
 }
 
-function isPromiseLike<T>(value: MaybePromise<T>): value is Promise<T> {
-  return typeof (value as Promise<T>).then === 'function'
-}
-
 function getDistinctCookieKey(
   name: string,
   options: { domain?: string; path?: string },
@@ -362,8 +358,9 @@ function hasProtectedHeaderChanges(
     return false
   }
 
+  const headers = response.headers
   for (const [name, value] of protectedHeaders) {
-    if (response.headers.get(name) !== value) {
+    if (headers.get(name) !== value) {
       return true
     }
   }
@@ -484,33 +481,20 @@ export function canHaveBody(method: string, status: number): boolean {
   )
 }
 
-function cancelDroppedBody(response: Response, method: string): void {
+function cancelDroppedBody(response: Response, reason: string): void {
   try {
-    response.body
-      ?.cancel(
-        method === 'HEAD'
-          ? 'HEAD body stripped'
-          : 'Response body dropped by Start reconciliation',
-      )
-      .catch(() => {})
+    response.body?.cancel(reason).catch(() => {})
   } catch {
     // Ignore locked or already-consumed bodies.
   }
 }
 
 function createReconciledResponse(
-  response: Response,
-  event: StartEvent,
+  body: Response['body'],
   status: number,
   statusText: string,
   headers: Headers,
 ): Response {
-  const shouldKeepBody = canHaveBody(event.request.method, status)
-  if (!shouldKeepBody) {
-    cancelDroppedBody(response, event.request.method)
-  }
-  const body = shouldKeepBody ? response.body : null
-
   try {
     return new Response(body, {
       status,
@@ -525,19 +509,42 @@ function createReconciledResponse(
   }
 }
 
-function reconcileResponseWithEvent(response: Response, event: StartEvent) {
+function reconcileResponseWithEvent(
+  response: Response,
+  event: StartEvent,
+  disposeBody?: (reason: string) => void,
+) {
+  let body = response.body
+  const mustDropBody =
+    body !== null &&
+    !canHaveBody(
+      event.request.method,
+      event.responseState?.status ?? response.status,
+    )
+  if (mustDropBody) {
+    const reason =
+      event.request.method === 'HEAD'
+        ? 'HEAD body stripped'
+        : 'Response body dropped by Start reconciliation'
+    if (disposeBody) {
+      disposeBody(reason)
+    } else {
+      cancelDroppedBody(response, reason)
+    }
+    // Cancellation/SSR cleanup can write helpers. Read their final state before
+    // applying headers or recording appends, and never reuse the canceled body.
+    body = null
+  }
   const state = event.responseState
   const appliedHeaderAppends = event.responseHeaderAppends?.get(response)
   const protectedHeaders = getProtectedResponseHeaders(response)
+  const protectedHeadersChanged = hasProtectedHeaderChanges(
+    response,
+    protectedHeaders,
+  )
 
-  // Fast path: no helper ever wrote response state and the response carries
-  // no protected headers — nothing to reconcile.
-  if (
-    !state &&
-    !protectedHeaders &&
-    (response.body === null ||
-      canHaveBody(event.request.method, response.status))
-  ) {
+  // Without helper writes or changed protocol headers, preserve the response.
+  if (!state && !protectedHeadersChanged && !mustDropBody) {
     event.currentResponse = response
     return response
   }
@@ -546,13 +553,7 @@ function reconcileResponseWithEvent(response: Response, event: StartEvent) {
   const statusText = state?.statusText ?? response.statusText
   const statusChanged = status !== response.status
   const statusTextChanged = statusText !== response.statusText
-  const mustDropBody =
-    response.body !== null && !canHaveBody(event.request.method, status)
   const headersChanged = !!state && hasHeaderState(state)
-  const protectedHeadersChanged = hasProtectedHeaderChanges(
-    response,
-    protectedHeaders,
-  )
 
   if (
     !statusChanged &&
@@ -586,7 +587,7 @@ function reconcileResponseWithEvent(response: Response, event: StartEvent) {
     statusTextChanged ||
     mustDropBody ||
     headers !== response.headers
-      ? createReconciledResponse(response, event, status, statusText, headers)
+      ? createReconciledResponse(body, status, statusText, headers)
       : response
   if (protectedHeaders && reconciled !== response) {
     installProtectedResponseHeaders(reconciled, protectedHeaders)
@@ -674,7 +675,10 @@ export function handleStartError(error: unknown): Response {
   })
 }
 
-export function reconcileResponse(response: Response): Response {
+export function reconcileResponse(
+  response: Response,
+  disposeBody?: (reason: string) => void,
+): Response {
   const event = eventStorage.getStore()
   if (!event) {
     return response
@@ -686,44 +690,51 @@ export function reconcileResponse(response: Response): Response {
     event.currentResponse = response
     return response
   }
-  return reconcileResponseWithEvent(response, event)
+  return reconcileResponseWithEvent(response, event, disposeBody)
+}
+
+/** Apply helper state after a response bypasses the middleware pipeline. */
+export function finalizeResponse(response: Response): Response {
+  const event = eventStorage.getStore()
+  return event ? reconcileResponseWithEvent(response, event) : response
 }
 
 export function protectResponseHeaders(
   response: Response,
-  headerNames: Array<string>,
+  headers: ProtectedHeaders,
 ): void {
-  // Publish a new snapshot rather than mutating one already attached to a
-  // response that may have been forwarded or reconstructed.
-  const protectedHeaders = new Map(getProtectedResponseHeaders(response))
-  for (const name of headerNames) {
-    const normalizedName = normalizeHeaderName(name)
-    if (normalizedName === 'set-cookie') {
-      throw new Error('Set-Cookie headers cannot be protected.')
-    }
-    protectedHeaders.set(normalizedName, response.headers.get(normalizedName))
+  // Callers supply immutable protocol requirements with lowercase names.
+  // Share those requirements across responses instead of capturing each one.
+  if (headers.has('set-cookie')) {
+    throw new Error('Set-Cookie headers cannot be protected.')
   }
-  installProtectedResponseHeaders(response, protectedHeaders)
+  const previous = getProtectedResponseHeaders(response)
+  if (previous === headers) {
+    return
+  }
+  if (previous) {
+    const merged = new Map(previous)
+    for (const [name, value] of headers) {
+      merged.set(name, value)
+    }
+    headers = merged
+  }
+  installProtectedResponseHeaders(response, headers)
 }
 
 /**
- * Set and protect a transport header on a new response. Reuse the body stream
+ * Set and protect transport headers on a new response. Reuse the body stream
  * without cloning or teeing it; callers transfer ownership to the result.
  */
-export function setProtectedResponseHeader(
+export function setProtectedResponseHeaders(
   response: Response,
-  name: string,
-  value: string,
+  headers: ProtectedHeaders,
 ): Response {
-  const headers = cloneHeaders(response.headers)
-  headers.set(name, value)
   let next: Response
   try {
-    next = new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    })
+    // Response copies its initializer's headers; change only that fresh copy.
+    next = new Response(response.body, response)
+    applyProtectedHeaders(headers, next.headers)
   } catch (cause) {
     throw new Error(
       'Unable to set response header because its body has already been consumed or locked.',
@@ -731,7 +742,7 @@ export function setProtectedResponseHeader(
     )
   }
   transferResponseMetadata(response, next)
-  protectResponseHeaders(next, [name])
+  protectResponseHeaders(next, headers)
   return next
 }
 
@@ -749,7 +760,7 @@ function decodePathname(pathname: string): string | undefined {
 
 function runInStartRequest(
   request: Request,
-  run: (event: StartEvent) => MaybePromise<Response>,
+  run: () => MaybePromise<Response>,
 ): MaybePromise<Response> {
   let requestUrl: URL
   try {
@@ -766,7 +777,7 @@ function runInStartRequest(
     return new Response(null, { status: 400, statusText: 'Bad Request' })
   }
   const event: StartEvent = { request, requestUrl }
-  return eventStorage.run(event, () => run(event))
+  return eventStorage.run(event, run)
 }
 
 /**
@@ -796,24 +807,15 @@ export function createServerEntry<TRegister = unknown>(entry: {
   }
 }
 
-export function requestHandler<TRegister = unknown>(
+/** Establish request scope; the response pipeline owns reconciliation. */
+export function withStartRequest<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
   return (request: Request, requestOpts: any): MaybePromise<Response> => {
-    const run = (event: StartEvent): MaybePromise<Response> => {
-      const response = handler(request, requestOpts)
-      if (isPromiseLike(response)) {
-        return response.then((resolved) =>
-          reconcileResponseWithEvent(resolved, event),
-        )
-      }
-      return reconcileResponseWithEvent(response, event)
+    if (eventStorage.getStore()?.request === request) {
+      return handler(request, requestOpts)
     }
-    const event = eventStorage.getStore()
-    if (event?.request === request) {
-      return run(event)
-    }
-    return runInStartRequest(request, run)
+    return runInStartRequest(request, () => handler(request, requestOpts))
   }
 }
 

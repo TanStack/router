@@ -51,7 +51,9 @@ Internal code can use `getResponse` to read a snapshot of the event-owned status
 
 ## Reconciliation Model
 
-Route handlers, middleware, SSR handlers, and server functions can all return `Response` objects. Start reconciles those responses with helper mutations before the response leaves the request boundary.
+Route handlers, middleware, SSR handlers, and server functions can all return `Response` objects. Start reconciles those responses with helper mutations before they cross each user middleware boundary. The request-scope wrapper only establishes or reuses the scope; it does not repeat reconciliation after the pipeline completes. Responses created outside the pipeline, including resolved redirects and server-function errors, are finalized at those creation points.
+
+When middleware replaces a body, or response status rules drop it, Start disposes the body before reading the helper state and recording applied appends. Synchronous cancellation and SSR cleanup callbacks can therefore contribute headers to the outgoing response. Eager router cleanup also finishes before final response publication.
 
 Reconciliation rules:
 

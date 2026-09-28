@@ -24,7 +24,6 @@ import {
   isSsrResponse,
   normalizeSsrResponse,
   replaceSsrResponse,
-  stripSsrResponseBody,
   waitForRequest,
 } from '@tanstack/router-core/ssr/server'
 import {
@@ -32,12 +31,12 @@ import {
   runWithStartContext,
 } from '@tanstack/start-storage-context'
 import {
+  finalizeResponse,
   getParsedRequestUrl,
   protectResponseHeaders,
   reconcileResponse,
-  requestHandler,
-  transferResponseMetadata,
   transferResponseProtocol,
+  withStartRequest,
 } from './internal-request-response'
 import { getStartManifest } from './router-manifest'
 import {
@@ -107,9 +106,8 @@ interface Entries {
   pluginAdapters: PluginAdaptersEntry
 }
 
-// Cached entries - promises stored immediately to prevent concurrent imports
-// that can cause race conditions during module initialization
-let entriesPromise: Promise<Entries> | undefined
+// Share initialization, then reuse the loaded entries without a promise wait.
+let cachedEntries: Entries | Promise<Entries> | undefined
 let hasWarnedMissingCsrfMiddleware = false
 const defaultCsrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === 'serverFn',
@@ -143,10 +141,13 @@ async function loadEntries(): Promise<Entries> {
 }
 
 function getEntries() {
-  if (!entriesPromise) {
-    entriesPromise = loadEntries()
+  if (!cachedEntries) {
+    cachedEntries = loadEntries().then((entries) => {
+      cachedEntries = entries
+      return entries
+    })
   }
-  return entriesPromise
+  return cachedEntries
 }
 
 function hasCsrfMiddleware(
@@ -353,6 +354,7 @@ async function executeMiddleware(
       current.streamResponse ??= streamResponse
     } else {
       if (current) {
+        responseOwnership = undefined
         disposeResponseOwnership(current, 'middleware response replaced')
       }
       if (hasResponseBody(exposed)) {
@@ -368,11 +370,19 @@ async function executeMiddleware(
     ctx.response = exposed
   }
 
+  const disposeCurrentBody = (reason: string) => {
+    const current = responseOwnership
+    responseOwnership = undefined
+    if (current) {
+      disposeResponseOwnership(current, reason)
+    }
+  }
+
   const setResponse = (response: TODO) => {
     const ssrResponse = isSsrResponse(response) ? response : undefined
     const streamResponse =
       ssrResponse?.serverSsrCleanup === 'stream' ? ssrResponse : undefined
-    let exposed: Response | undefined = ssrResponse
+    const exposed: Response | undefined = ssrResponse
       ? ssrResponse.response
       : response
 
@@ -382,14 +392,19 @@ async function executeMiddleware(
       }
       return
     }
+    // Dispose a replaced body before reading helper state: cancellation and
+    // SSR cleanup callbacks may set headers on the response that replaces it.
+    adoptResponse(exposed, streamResponse)
     if (exposed instanceof Response) {
-      const source = responseBodySources.get(exposed)
-      exposed = reconcileResponse(exposed)
-      if (source && exposed.body) {
-        responseBodySources.set(exposed, source)
+      const reconciled = reconcileResponse(exposed, disposeCurrentBody)
+      if (reconciled !== exposed) {
+        const source = responseBodySources.get(exposed)
+        if (source && reconciled.body) {
+          responseBodySources.set(reconciled, source)
+        }
+        adoptResponse(reconciled)
       }
     }
-    adoptResponse(exposed, streamResponse)
   }
 
   const reconcileCtxResponse = () => {
@@ -441,11 +456,8 @@ async function executeMiddleware(
       // A directly returned next() promise already propagates request aborts.
       if (nextPromise && pending === nextPromise) {
         nextPromise = undefined
-        await pending
-        if (signal.aborted) {
-          throw signal.reason
-        }
-        return ctx
+        result = await pending
+        signal.throwIfAborted()
       } else if (!isPromise(pending)) {
         result = pending
         signal.throwIfAborted()
@@ -509,7 +521,6 @@ async function executeMiddleware(
 
   try {
     await runNext()
-    reconcileCtxResponse()
     const response = ctx.response
     if (!response) {
       throwRouteHandlerError()
@@ -591,24 +602,34 @@ export function createStartHandler<TRegister = Register>(
     let router: AnyRouter | undefined
     let routerPromise: Promise<AnyRouter> | undefined
     let responseOwnsCleanup = false
+    let response: Response | undefined
 
     try {
       signal.throwIfAborted()
       // The Start event already parsed and validated the request URL; reuse
       // it instead of re-parsing. The memoized URL must not be mutated.
       const requestUrl = getParsedRequestUrl(request)
-      // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
-      // during normalization paths like '//posts' are flattened to '/posts'.
-      // in these cases we would prefer to redirect to the new path
-      const { url, handledProtocolRelativeURL } = getNormalizedURL(requestUrl)
-      const href = url.pathname + url.search + url.hash
-      const origin = url.origin
-
-      if (handledProtocolRelativeURL) {
-        return Response.redirect(url, 308)
+      let url = requestUrl
+      const pathname = url.pathname
+      // Plain RPC paths need no routing normalization. Their payload is read
+      // from the original query; normalize only if they later request a router.
+      if (
+        !SERVER_FN_BASE ||
+        !pathname.startsWith(SERVER_FN_BASE) ||
+        pathname.includes('%') ||
+        pathname.startsWith('//')
+      ) {
+        const normalized = getNormalizedURL(requestUrl)
+        url = normalized.url
+        if (normalized.handledProtocolRelativeURL) {
+          return finalizeResponse(Response.redirect(url, 308))
+        }
       }
 
-      const entries = await waitForRequest(getEntries(), signal)
+      const pendingEntries = getEntries()
+      const entries = isPromise(pendingEntries)
+        ? await waitForRequest(pendingEntries, signal)
+        : pendingEntries
       const isServerFnRequest =
         !!SERVER_FN_BASE && url.pathname.startsWith(SERVER_FN_BASE)
       const startInstance = entries.startEntry.startInstance
@@ -656,6 +677,7 @@ export function createStartHandler<TRegister = Register>(
       const getRouter = (): Promise<AnyRouter> => {
         routerPromise ??= (async () => {
           signal.throwIfAborted()
+          const routerUrl = url === requestUrl ? getNormalizedURL(url).url : url
           const requestRouter = await waitForRequest(
             entries.routerEntry.getRouter(),
             signal,
@@ -666,13 +688,15 @@ export function createStartHandler<TRegister = Register>(
             isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
           }
 
-          const history = createServerHistory(href)
+          const history = createServerHistory(
+            routerUrl.pathname + routerUrl.search + routerUrl.hash,
+          )
 
           requestRouter.update({
             history,
             isShell,
             isPrerendering: IS_PRERENDERING,
-            origin: requestRouter.options.origin ?? origin,
+            origin: requestRouter.options.origin ?? routerUrl.origin,
             // Start-owned options that RouterConstructorOptions omits.
             ...{
               defaultSsr: requestStartOptions.defaultSsr,
@@ -701,7 +725,7 @@ export function createStartHandler<TRegister = Register>(
         executedRequestMiddlewares,
         handlerType,
       }
-      let terminal: (ctx: PipelineContext) => unknown
+      let terminal: (ctx: PipelineContext) => Promise<HandlerCallbackResult>
 
       if (isServerFnRequest) {
         if (
@@ -835,44 +859,62 @@ export function createStartHandler<TRegister = Register>(
       }
       let middlewareResponse: HandlerCallbackResult
       try {
-        middlewareResponse = await executeMiddleware(
-          flattenedRequestMiddlewares.map((d) => d.options.server),
-          terminal,
-          middlewareCtx,
-          signal,
-        )
+        if (!isServerFnRequest && flattenedRequestMiddlewares.length === 0) {
+          // The route pipeline already reconciles responses and owns cleanup.
+          // An empty global pipeline has no additional middleware to run.
+          const disposeLate = createLateResponseDisposer(signal)
+          middlewareResponse = await waitForRequest(
+            terminal(middlewareCtx),
+            signal,
+            disposeLate,
+            disposeLate,
+          )
+        } else {
+          middlewareResponse = await executeMiddleware(
+            flattenedRequestMiddlewares.map((d) => d.options.server),
+            terminal,
+            middlewareCtx,
+            signal,
+          )
+        }
       } catch (error) {
-        if (!isServerFnRequest || signal.aborted) {
+        if (signal.aborted) {
           throw error
         }
-        // Request middleware can throw before the server function runs.
-        const disposeLate = createLateResponseDisposer(signal)
-        middlewareResponse = await waitForRequest(
-          runWithStartContext(
-            {
-              ...startContext,
-              contextAfterGlobalMiddlewares: middlewareCtx.context,
-            },
-            () => createServerFnErrorResponse(error),
-          ),
-          signal,
-          disposeLate,
-          disposeLate,
-        )
+        if (error instanceof Response) {
+          middlewareResponse = reconcileResponse(error)
+        } else if (!isServerFnRequest) {
+          throw error
+        } else {
+          // Request middleware can throw before the server function runs.
+          const disposeLate = createLateResponseDisposer(signal)
+          middlewareResponse = await waitForRequest(
+            runWithStartContext(
+              {
+                ...startContext,
+                contextAfterGlobalMiddlewares: middlewareCtx.context,
+              },
+              () => createServerFnErrorResponse(error),
+            ),
+            signal,
+            disposeLate,
+            disposeLate,
+          )
+          middlewareResponse = reconcileResponse(middlewareResponse)
+        }
       }
 
       let result: SsrResponse
       try {
-        result = await handleRedirectResponse(
-          middlewareResponse,
-          getRouter,
-          signal,
-          isServerFnRequest && request.headers.get('x-tsr-serverFn') === 'true',
-        )
-        if (request.method === 'HEAD') {
-          const source = result.response
-          result = stripSsrResponseBody(result, 'HEAD body stripped')
-          transferResponseMetadata(source, result.response)
+        result = normalizeSsrResponse(middlewareResponse)
+        if (isRedirect(result.response)) {
+          result = await handleRedirectResponse(
+            result,
+            getRouter,
+            signal,
+            isServerFnRequest &&
+              request.headers.get('x-tsr-serverFn') === 'true',
+          )
         }
       } catch (error) {
         disposeResponseResult(
@@ -884,32 +926,44 @@ export function createStartHandler<TRegister = Register>(
       bindSsrResponseToRequest(router, result, signal)
       signal.throwIfAborted()
       responseOwnsCleanup = result.serverSsrCleanup === 'stream'
-      return result.response
+      response = result.response
     } finally {
-      if (router?.serverSsr && !responseOwnsCleanup) {
+      if (router && !responseOwnsCleanup) {
         // Clean up router SSR state if it was set up but won't be cleaned up by the callback
         // (e.g., in redirect cases or early returns before the callback is invoked).
         // Transformed streaming response bodies clean up when consumed/cancelled.
-        router.serverSsr.cleanup()
+        router.serverSsr?.cleanup()
+        // Eager or abandoned-stream cleanup callbacks can write response helpers.
+        if (response) {
+          response = finalizeResponse(response)
+        }
       }
       // `routerPromise` stays memoized: a streamed Suspense boundary or a late
       // server function may still ask for this request's router.
     }
+    return response
   }
 
-  return requestHandler(startRequestResolver)
+  return withStartRequest(startRequestResolver)
 }
 
 const relativeRedirectProtocols = new Set<string>()
+const SERIALIZED_REDIRECT_HEADERS: ReadonlyMap<string, string | null> = new Map(
+  [
+    ['content-type', 'application/json'],
+    ['location', null],
+    [X_TSS_RAW_RESPONSE, null],
+    [X_TSS_SERIALIZED, null],
+  ],
+)
 
 async function handleRedirectResponse(
-  response: HandlerCallbackResult,
+  ssrResponse: SsrResponse,
   getRouter: () => Promise<AnyRouter>,
   signal: AbortSignal,
   serializeRedirect: boolean,
 ): Promise<SsrResponse> {
   signal.throwIfAborted()
-  const ssrResponse = normalizeSsrResponse(response)
   const redirect = ssrResponse.response
   if (!isRedirect(redirect)) {
     return ssrResponse
@@ -971,19 +1025,15 @@ async function handleRedirectResponse(
       { ...redirectOptions, isSerializedRedirect: true },
       { headers: responseHeaders },
     )
-    protectResponseHeaders(response, [
-      'content-type',
-      'location',
-      X_TSS_RAW_RESPONSE,
-      X_TSS_SERIALIZED,
-    ])
+    protectResponseHeaders(response, SERIALIZED_REDIRECT_HEADERS)
     return replaceSsrResponse(
       ssrResponse,
-      response,
+      finalizeResponse(response),
       'redirect response replaced',
     )
   }
 
+  ssrResponse.response = finalizeResponse(redirect)
   return ssrResponse
 }
 

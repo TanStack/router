@@ -297,7 +297,13 @@ describe('createStartHandler response reconciliation', () => {
           'x-tss-serialized': 'true',
         },
       })
-      protectResponseHeaders(response, ['content-type', 'x-tss-serialized'])
+      protectResponseHeaders(
+        response,
+        new Map([
+          ['content-type', 'application/json'],
+          ['x-tss-serialized', 'true'],
+        ]),
+      )
       response.headers.set('content-type', 'text/plain')
       response.headers.set('x-tss-serialized', 'false')
       return response
@@ -317,8 +323,11 @@ describe('createStartHandler response reconciliation', () => {
           'x-tss-raw': 'true',
         },
       })
-      protectResponseHeaders(response, ['content-type'])
-      protectResponseHeaders(response, ['x-tss-raw'])
+      protectResponseHeaders(
+        response,
+        new Map([['content-type', 'application/json']]),
+      )
+      protectResponseHeaders(response, new Map([['x-tss-raw', 'true']]))
       response.headers.set('content-type', 'text/plain')
       response.headers.set('x-tss-raw', 'false')
       return response
@@ -333,7 +342,7 @@ describe('createStartHandler response reconciliation', () => {
   it('rejects protecting Set-Cookie snapshots', async () => {
     const handler = createResponseHandler(() => {
       const response = new Response('ok')
-      protectResponseHeaders(response, ['set-cookie'])
+      protectResponseHeaders(response, new Map([['set-cookie', null]]))
       return response
     })
     await expect(handler(new Request('http://localhost/'), {})).rejects.toThrow(
@@ -348,7 +357,7 @@ describe('createStartHandler response reconciliation', () => {
       const response = new Response('ok', {
         headers: { 'x-transport': 'original' },
       })
-      protectResponseHeaders(response, ['x-transport'])
+      protectResponseHeaders(response, new Map([['x-transport', 'original']]))
       const reconciled = reconcileResponse(response)
       reconciled.headers.set('x-transport', 'mutated')
       seenHeader = getResponseHeader('x-transport')
@@ -564,7 +573,7 @@ describe('createStartHandler response reconciliation', () => {
       const response = new Response('ok', {
         headers: { 'x-transport': 'original' },
       })
-      protectResponseHeaders(response, ['x-transport'])
+      protectResponseHeaders(response, new Map([['x-transport', 'original']]))
       firstResponse = reconcileResponse(response)
       firstResponse.headers.set('x-transport', 'mutated')
       secondResponse = reconcileResponse(firstResponse)

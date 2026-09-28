@@ -25,7 +25,7 @@ import {
   getRequest,
   getResponse,
   protectResponseHeaders,
-  setProtectedResponseHeader,
+  setProtectedResponseHeaders,
 } from './internal-request-response'
 import { getServerFnById } from './getServerFnById'
 import { createMultiplexedStream } from './frame-protocol'
@@ -41,11 +41,24 @@ const FORM_DATA_CONTENT_TYPES = [
   'multipart/form-data',
   'application/x-www-form-urlencoded',
 ]
-const PROTECTED_SERIALIZED_HEADERS = [
-  'content-type',
-  X_TSS_SERIALIZED,
-  X_TSS_RAW_RESPONSE,
-]
+const SERIALIZED_JSON_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  ['content-type', 'application/json'],
+  [X_TSS_SERIALIZED, 'true'],
+  [X_TSS_RAW_RESPONSE, null],
+])
+const SERIALIZED_FRAMED_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  ['content-type', TSS_CONTENT_TYPE_FRAMED_VERSIONED],
+  [X_TSS_SERIALIZED, 'true'],
+  [X_TSS_RAW_RESPONSE, null],
+])
+const NOT_FOUND_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  ['content-type', 'application/json'],
+  [X_TSS_SERIALIZED, null],
+  [X_TSS_RAW_RESPONSE, null],
+])
+const RAW_RESPONSE_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  [X_TSS_RAW_RESPONSE, 'true'],
+])
 
 // Maximum payload size for GET requests (1MB)
 const MAX_PAYLOAD_SIZE = 1_000_000
@@ -104,7 +117,7 @@ export async function createServerFnErrorResponse(
       statusText,
       headers,
     })
-    protectResponseHeaders(errorResponse, PROTECTED_SERIALIZED_HEADERS)
+    protectResponseHeaders(errorResponse, SERIALIZED_JSON_HEADERS)
     return errorResponse
   }
 
@@ -119,7 +132,7 @@ export async function createServerFnErrorResponse(
     statusText,
     headers,
   })
-  protectResponseHeaders(errorResponse, PROTECTED_SERIALIZED_HEADERS)
+  protectResponseHeaders(errorResponse, SERIALIZED_JSON_HEADERS)
   return errorResponse
 }
 
@@ -133,8 +146,6 @@ export const handleServerAction = async ({
   serverFnId: string
 }) => {
   const methodUpper = request.method.toUpperCase()
-  const url = getParsedRequestUrl(request)
-
   const action = await getServerFnById(serverFnId, { origin: 'client' })
 
   // Early method check: reject mismatched HTTP methods before parsing
@@ -207,7 +218,8 @@ export const handleServerAction = async ({
       res = await action(params)
     } else if (methodUpper === 'GET') {
       // Get payload directly from searchParams
-      const payloadParam = url.searchParams.get('payload')
+      const payloadParam =
+        getParsedRequestUrl(request).searchParams.get('payload')
       // Reject oversized payloads to prevent DoS
       if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
         throw new Error('Payload too large')
@@ -245,7 +257,7 @@ export const handleServerAction = async ({
       if (isRedirect(unwrapped)) {
         return unwrapped
       }
-      return setProtectedResponseHeader(unwrapped, X_TSS_RAW_RESPONSE, 'true')
+      return setProtectedResponseHeaders(unwrapped, RAW_RESPONSE_HEADERS)
     }
 
     return serializeResult(res, request, getRequestSerovalPlugins())
@@ -284,7 +296,7 @@ function serializeResult(
         [X_TSS_SERIALIZED]: 'true',
       },
     })
-    protectResponseHeaders(response, PROTECTED_SERIALIZED_HEADERS)
+    protectResponseHeaders(response, SERIALIZED_JSON_HEADERS)
     return response
   }
   const signal = request.signal
@@ -381,7 +393,7 @@ function serializeResult(
         [X_TSS_SERIALIZED]: 'true',
       },
     })
-    protectResponseHeaders(response, PROTECTED_SERIALIZED_HEADERS)
+    protectResponseHeaders(response, SERIALIZED_JSON_HEADERS)
     return response
   }
 
@@ -557,7 +569,7 @@ function serializeResult(
           [X_TSS_SERIALIZED]: 'true',
         },
       })
-      protectResponseHeaders(response, PROTECTED_SERIALIZED_HEADERS)
+      protectResponseHeaders(response, SERIALIZED_FRAMED_HEADERS)
       return response
     } catch (error) {
       cancelRawStream(multiplexedStream, error)
@@ -577,6 +589,6 @@ function isNotFoundResponse(error: any) {
     status: 404,
     headers: responseHeaders,
   })
-  protectResponseHeaders(response, PROTECTED_SERIALIZED_HEADERS)
+  protectResponseHeaders(response, NOT_FOUND_HEADERS)
   return response
 }
