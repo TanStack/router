@@ -51,7 +51,7 @@ async function setup(component: React.FunctionComponent) {
   return { router, gate, link }
 }
 
-test('outgoing relative hrefs inherit live params, search and hash while hash-sensitive active presentation follows changed props', async () => {
+test('outgoing relative Links keep both href and hash-sensitive active presentation live', async () => {
   function Table() {
     const [hash, setHash] = React.useState<true | string>(true)
     const [includeHash, setIncludeHash] = React.useState(true)
@@ -67,6 +67,7 @@ test('outgoing relative hrefs inherit live params, search and hash while hash-se
           relative
         </Link>
         <button onClick={() => setHash('new')}>change hash</button>
+        <button onClick={() => setHash('old')}>old hash</button>
         <button onClick={() => setIncludeHash(false)}>ignore hash</button>
       </>
     )
@@ -87,9 +88,12 @@ test('outgoing relative hrefs inherit live params, search and hash while hash-se
   expect(link).toHaveAttribute('href', '/detail/2?filter=new#new')
   expect(link).toHaveAttribute('aria-current', 'page')
 
-  // The new hash matches the candidate URL, but not the outgoing presentation.
+  // Relative destinations stay on the live path, including their active state.
   fireEvent.click(screen.getByRole('button', { name: 'change hash' }))
   expect(link).toHaveAttribute('href', '/detail/2?filter=new#new')
+  expect(link).toHaveAttribute('aria-current', 'page')
+  fireEvent.click(screen.getByRole('button', { name: 'old hash' }))
+  expect(link).toHaveAttribute('href', '/detail/2?filter=new#old')
   expect(link).not.toHaveAttribute('aria-current')
   fireEvent.click(screen.getByRole('button', { name: 'ignore hash' }))
   expect(link).toHaveAttribute('aria-current', 'page')
