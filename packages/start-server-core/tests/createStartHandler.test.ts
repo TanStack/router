@@ -50,7 +50,21 @@ import {
   getStaticHandlerInlineCssDefault,
   resolveInlineCssForRequest,
 } from '../src/inlineCss'
-import type { AnyRouter } from '@tanstack/router-core'
+import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
+import type {
+  HandlersFnOpts,
+  RouteMethodHandlerFn,
+} from '@tanstack/start-client-core'
+
+type TestRouteHandlerFn<TContext = undefined> = RouteMethodHandlerFn<
+  {},
+  AnyRoute,
+  '/',
+  {},
+  undefined,
+  undefined,
+  TContext
+>
 
 const startMocks = vi.hoisted(() => {
   const hadServerFnBase = Object.prototype.hasOwnProperty.call(
@@ -3097,23 +3111,148 @@ describe('createStartHandler direct server routes', () => {
     expect(afterNext).not.toHaveBeenCalled()
   })
 
-  it('lets a component route handler defer to document rendering with next', async () => {
-    const routeHandler = vi.fn(({ next }: any) => next())
+  it.each(['function', 'object'] as const)(
+    'preserves the non-component %s handler next callback',
+    async (handlerKind) => {
+      const events: Array<string> = []
+      let observedNext: unknown
+      let caught: unknown
+      const middleware = createMiddleware().server(async ({ next }) => {
+        events.push('middleware before')
+        try {
+          return await next()
+        } catch (error) {
+          caught = error
+          events.push('middleware caught')
+          return new Response('cannot defer', { status: 409 })
+        }
+      })
+      const routeHandler = vi.fn<TestRouteHandlerFn>(({ next }) => {
+        events.push('handler')
+        observedNext = next
+        return next()
+      })
+      startMocks.router = makeRouter({
+        component: undefined,
+        server: {
+          middleware: [middleware],
+          handlers:
+            handlerKind === 'function'
+              ? { GET: routeHandler }
+              : ({
+                  createHandlers,
+                }: HandlersFnOpts<{}, AnyRoute, '/', {}, undefined>) =>
+                  createHandlers({ GET: { handler: routeHandler } }),
+        },
+      })
+      const render = vi.fn(() => new Response('must not render'))
+      const handler = createTestStartHandler(render)
+
+      const response = await handler(new Request('http://localhost/'), {})
+
+      expect(observedNext).toBeTypeOf('function')
+      expect(caught).toBeInstanceOf(Error)
+      expect(caught).not.toBeInstanceOf(TypeError)
+      expect(response.status).toBe(409)
+      await expect(response.text()).resolves.toBe('cannot defer')
+      expect(events).toEqual([
+        'middleware before',
+        'handler',
+        'middleware caught',
+      ])
+      expect(routeHandler).toHaveBeenCalledOnce()
+      expect(render).not.toHaveBeenCalled()
+    },
+  )
+
+  it('lets a component route handler defer context to document rendering with next', async () => {
+    const events: Array<string> = []
+    const requestContext = Object.freeze({ nonce: 'request' })
+    const globalContext = Object.freeze({ global: 'yes', shared: 'global' })
+    const routeContext = Object.freeze({ route: 'yes', shared: 'route' })
+    const handlerContext = Object.freeze({ handler: 'yes', shared: 'handler' })
+    let loadedContext: unknown
+    let resumedContext: unknown
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        events.push('global before')
+        const result = await next({ context: globalContext })
+        events.push('global after')
+        appendResponseHeader('x-after', 'global')
+        return result
+      }),
+    ]
+    const middleware = createMiddleware().server(async ({ next }) => {
+      events.push('route before')
+      const result = await next({ context: routeContext })
+      resumedContext = result.context
+      events.push('route after')
+      appendResponseHeader('x-after', 'route')
+      return result
+    })
+    const routeHandler = vi.fn<TestRouteHandlerFn<typeof handlerContext>>(
+      async ({ next }) => {
+        events.push('handler before')
+        const result = await next({ context: handlerContext })
+        events.push('handler after')
+        appendResponseHeader('x-after', 'handler')
+        return result
+      },
+    )
+    const loader = vi.fn(
+      ({ serverContext }: { serverContext?: Record<string, unknown> }) => {
+        events.push('loader')
+        loadedContext = serverContext
+        return 'loaded'
+      },
+    )
     const router = makeRouter({
+      loader,
       server: {
+        middleware: [middleware],
         handlers: {
           GET: routeHandler,
         },
       },
     })
     startMocks.router = router
-    const render = vi.fn(() => new Response('rendered document'))
+    const render = vi.fn(() => {
+      events.push('render')
+      return Response.json({ context: loadedContext })
+    })
     const handler = createTestStartHandler(render)
 
-    const response = await handler(new Request('http://localhost/'), {})
+    const response = await handler(new Request('http://localhost/'), {
+      context: requestContext,
+    })
 
-    await expect(response.text()).resolves.toBe('rendered document')
+    const expectedContext = {
+      nonce: 'request',
+      global: 'yes',
+      route: 'yes',
+      handler: 'yes',
+      shared: 'handler',
+    }
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ context: expectedContext })
+    expect(resumedContext).toEqual(expectedContext)
+    expect(response.headers.get('x-after')).toBe('handler, route, global')
+    expect(events).toEqual([
+      'global before',
+      'route before',
+      'handler before',
+      'loader',
+      'render',
+      'handler after',
+      'route after',
+      'global after',
+    ])
+    expect(requestContext).toEqual({ nonce: 'request' })
+    expect(globalContext).toEqual({ global: 'yes', shared: 'global' })
+    expect(routeContext).toEqual({ route: 'yes', shared: 'route' })
+    expect(handlerContext).toEqual({ handler: 'yes', shared: 'handler' })
     expect(routeHandler).toHaveBeenCalledOnce()
+    expect(loader).toHaveBeenCalledOnce()
     expect(render).toHaveBeenCalledOnce()
     expect(router.serverSsr).toBeUndefined()
   })
