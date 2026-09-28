@@ -150,6 +150,14 @@ describe('Link destination updates', () => {
       }),
     )
     expect(link).toHaveAttribute('href', '/target/fixed?retained=value#details')
+    await act(() =>
+      router.navigate({
+        to: '/items/$source',
+        params: { source: 'two' },
+        search: { retained: 'again' },
+      }),
+    )
+    expect(link).toHaveAttribute('href', '/target/fixed?retained=again#details')
 
     rootRoute.update({ search: undefined })
     router.setRoutes(router.buildRouteTree())

@@ -9,6 +9,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  defaultStringifySearch,
 } from '../src'
 
 afterEach(() => {
@@ -18,6 +19,7 @@ afterEach(() => {
 
 async function setup(
   history = createMemoryHistory({ initialEntries: ['/items/0'] }),
+  stringifySearch = defaultStringifySearch,
 ) {
   const root = createRootRoute()
   const router = createRouter({
@@ -26,31 +28,40 @@ async function setup(
       createRoute({ getParentRoute: () => root, path: '/other' }),
     ]),
     history,
+    stringifySearch,
   })
   await router.load()
   return router
 }
 
 test('unrelated navigation does not rebuild fixed Link destinations', async () => {
-  const router = await setup()
+  const stringifySearch = vi.fn(defaultStringifySearch)
+  const router = await setup(undefined, stringifySearch)
   const build = vi.spyOn(router, 'buildLocation')
   const view = render(
     <RouterContextProvider router={router}>
       {Array.from({ length: 50 }, (_, id) => (
-        <Link key={id} to="/items/$id" params={{ id: String(id) }}>
+        <Link
+          key={id}
+          to="/items/$id"
+          params={{ id: String(id) }}
+          search={{ link: id }}
+          activeOptions={{ includeSearch: false }}
+        >
           {id}
         </Link>
       ))}
     </RouterContextProvider>,
   )
   build.mockClear()
+  stringifySearch.mockClear()
   await act(() => router.navigate({ to: '/other' }))
   expect(view.getByText('0')).not.toHaveAttribute('aria-current')
-  expect(view.getByText('49')).toHaveAttribute('href', '/items/49')
-  // Only the previously path-eligible link needs to reconsider its selection.
+  expect(view.getByText('49')).toHaveAttribute('href', '/items/49?link=49')
+  // Path changes check active state, but reuse the built destinations.
   expect(
-    build.mock.calls.filter(([options]) => options.to === '/items/$id'),
-  ).toHaveLength(1)
+    stringifySearch.mock.calls.filter(([search]) => 'link' in search),
+  ).toHaveLength(0)
   build.mockClear()
   await act(() => router.navigate({ to: '/other', search: { page: 2 } }))
   expect(
@@ -83,6 +94,9 @@ test('shared path buckets preserve independent exact, search and hash predicates
     ['/items/0', {}, '', ['fuzzy', 'exact']],
     ['/items/0/details', {}, '', ['fuzzy']],
     ['/items/01', {}, '', []],
+    ['/items/01', { page: 2 }, 'details', []],
+    ['/items/0', { page: 3 }, 'details', ['fuzzy', 'hash']],
+    ['/items/0', { page: 2 }, '', ['fuzzy', 'search']],
   ] as const) {
     await act(() => router.navigate({ to, search, hash }))
     for (const name of ['fuzzy', 'exact', 'search', 'hash']) {
@@ -212,7 +226,11 @@ test('a mounted Link switches between fixed and inherited search while its sibli
         <Link to="/items/9">sibling</Link>
         <Link
           to="/items/9"
-          search={inherit ? (previous) => ({ page: previous.page }) : {}}
+          search={
+            inherit
+              ? (previous: Record<string, unknown>) => ({ page: previous.page })
+              : {}
+          }
         >
           target
         </Link>
@@ -235,7 +253,7 @@ test('links catch a navigation between render and initial subscription', async (
   const router = await setup()
   function NavigateOnMount() {
     React.useLayoutEffect(() => {
-      void router.navigate({ to: '/other' })
+      void router.navigate({ to: '/other', search: { page: 2 } })
     }, [])
     return null
   }
@@ -243,6 +261,14 @@ test('links catch a navigation between render and initial subscription', async (
     <RouterContextProvider router={router}>
       <Link to="/items/0">old</Link>
       <Link to="/other">new</Link>
+      <Link
+        to="/items/9"
+        search={(previous: Record<string, unknown>) => ({
+          page: previous.page,
+        })}
+      >
+        dynamic
+      </Link>
       <NavigateOnMount />
     </RouterContextProvider>,
   )
@@ -251,6 +277,7 @@ test('links catch a navigation between render and initial subscription', async (
   })
   expect(view.getByText('old')).not.toHaveAttribute('aria-current')
   expect(view.getByText('new')).toHaveAttribute('aria-current', 'page')
+  expect(view.getByText('dynamic')).toHaveAttribute('href', '/items/9?page=2')
 })
 
 test('replacing a formatter invalidates unrelated indexed links', async () => {
@@ -308,4 +335,53 @@ test('explicit source locations remain pinned while active state follows navigat
   await act(() => router.navigate({ to: '/items/1', search: { page: 2 } }))
   expect(view.getByText('pinned')).toHaveAttribute('href', '/items/0?page=1')
   expect(view.getByText('pinned')).not.toHaveAttribute('aria-current')
+})
+
+test('configuration invalidation refreshes inactive links without a pathname change', async () => {
+  const router = await setup()
+  const view = render(
+    <RouterContextProvider router={router}>
+      <Link to="/items/9" search={{ page: 1 }}>
+        target
+      </Link>
+    </RouterContextProvider>,
+  )
+  expect(view.getByText('target')).toHaveAttribute('href', '/items/9?page=1')
+  router.update({
+    stringifySearch: (search) =>
+      defaultStringifySearch({ ...search, configured: true }),
+  })
+  await act(() => router.navigate({ to: '/items/0', search: { page: 2 } }))
+  expect(view.getByText('target')).toHaveAttribute(
+    'href',
+    '/items/9?page=1&configured=true',
+  )
+})
+
+test('replacing history refreshes inactive links on same-path navigation', async () => {
+  const original = window.location.href
+  window.history.replaceState(null, '', '/items/0')
+  const replacement = createBrowserHistory({
+    createHref: (href) => `${href}#shell`,
+  })
+  try {
+    const router = await setup()
+    const view = render(
+      <RouterContextProvider router={router}>
+        <Link to="/items/9">target</Link>
+      </RouterContextProvider>,
+    )
+    router.update({ history: replacement })
+    await act(() => router.navigate({ to: '/items/0', search: { page: 2 } }))
+    expect(view.getByText('target')).toHaveAttribute('href', '/items/9#shell')
+    router.update({
+      history: createMemoryHistory({ initialEntries: ['/items/0'] }),
+    })
+    await act(() => router.navigate({ to: '/items/0', search: { page: 3 } }))
+    expect(view.getByText('target')).toHaveAttribute('href', '/items/9')
+  } finally {
+    cleanup()
+    replacement.destroy()
+    window.history.replaceState(null, '', original)
+  }
 })

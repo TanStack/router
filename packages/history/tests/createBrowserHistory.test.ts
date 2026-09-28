@@ -42,6 +42,21 @@ function createBrowserHistoryHarness(createHref?: (path: string) => string) {
 }
 
 describe('createBrowserHistory', () => {
+  test('observes changes to the constructor href formatter', () => {
+    const harness = createBrowserHistoryHarness()
+    harness.history.destroy()
+    const options: Parameters<typeof createBrowserHistory>[0] = {
+      window: harness.window,
+    }
+    const history = createBrowserHistory(options)
+    expect(history.createHref('/a')).toBe('/a')
+    options.createHref = (href) => '/mapped' + href
+    expect(history.createHref('/a')).toBe('/mapped/a')
+    options.createHref = undefined
+    expect(history.createHref('/a')).toBe('/a')
+    history.destroy()
+  })
+
   test('passes the original destination to a custom formatter', () => {
     const { history, pushState } = createBrowserHistoryHarness(
       (href) => '/mapped?value=' + encodeURIComponent(href),
