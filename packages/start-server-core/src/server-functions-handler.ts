@@ -293,7 +293,6 @@ function serializeResult(
   request: Request,
   plugins: Array<SerovalPlugin<any, any>>,
 ): Response | DeferredResponse {
-  const alsResponse = getSerializedResponseState()
   const signal = request.signal
   const initialRecords: Array<Uint8Array> = []
   let initialBytes = 0
@@ -545,10 +544,12 @@ function serializeResult(
     options: MultiplexedStreamOptions,
   ) {
     const multiplexedStream = createMultiplexedStream(records, options)
+    // Completed JSON reads helper state later, when the pipeline accepts it.
+    const { status, statusText } = getSerializedResponseState()
     try {
       const response = new Response(multiplexedStream, {
-        status: alsResponse.status,
-        statusText: alsResponse.statusText,
+        status,
+        statusText,
         headers: {
           'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
           [X_TSS_SERIALIZED]: 'true',

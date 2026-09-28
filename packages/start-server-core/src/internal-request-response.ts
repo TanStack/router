@@ -45,6 +45,8 @@ interface ResponseState {
   clearHeaders: boolean
   setCookieBehavior?: 'merge' | 'replace'
   headerAppends?: Map<string, HeaderAppendOperation>
+  /** Outside production: a discarded bodyless status was already reported. */
+  bodylessStatusWarned?: boolean
   /** Identity of each Set-Cookie string seen by this request's merges. */
   setCookieKeys?: Map<string, string | undefined>
 }
@@ -544,9 +546,16 @@ function getHelperStatus(
   serialized: boolean,
 ): number | undefined {
   const status = state?.status
-  return serialized && status !== undefined && !canHaveBody('GET', status)
-    ? undefined
-    : status
+  if (!serialized || status === undefined || canHaveBody('GET', status)) {
+    return status
+  }
+  if (process.env.NODE_ENV !== 'production' && !state!.bodylessStatusWarned) {
+    state!.bodylessStatusWarned = true
+    console.warn(
+      `setResponseStatus(${status}) does not apply to serialized server function responses, because the client must decode their body. Return a Response from the server function to send a response without a body.`,
+    )
+  }
+  return undefined
 }
 
 /** Helper status text describes the helper status and is ignored with it. */
@@ -1388,15 +1397,6 @@ export function setResponseStatus(code?: number, text?: string): void {
         )
       }
       return
-    }
-    if (
-      process.env.NODE_ENV !== 'production' &&
-      !canHaveBody('GET', status) &&
-      event.request.headers.get('x-tsr-serverFn') === 'true'
-    ) {
-      console.warn(
-        `setResponseStatus(${status}) does not apply to serialized server function responses, because the client must decode their body. Return a Response from the server function to send a response without a body.`,
-      )
     }
     getResponseState(event).status = status
   }

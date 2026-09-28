@@ -889,6 +889,27 @@ describe('server function response reconciliation', () => {
     },
   )
 
+  it('applies a bodyless helper status to a raw Response result without a warning', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const action = createAction()
+    action.mockImplementation(() => {
+      setResponseStatus(204)
+      return { result: new Response('raw body') }
+    })
+    serverFnMocks.action = action
+
+    try {
+      const response = await createHandler()(createServerFunctionRequest(), {})
+
+      expect(response.status).toBe(204)
+      expect(response.body).toBeNull()
+      expect(response.headers.get('x-tss-raw')).toBe('true')
+      expect(warnSpy).not.toHaveBeenCalled()
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
   it.each([204, 205, 304])(
     'keeps serialized redirect and not-found envelopes when a helper selects %s',
     async (status) => {
