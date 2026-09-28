@@ -766,6 +766,15 @@ test.describe('server functions', () => {
     })
   })
 
+  test('a server function that throws 0 rejects on the client', async ({
+    page,
+  }) => {
+    const response = await invokeJsonServerFunction(page, 'throwZero')
+
+    expect(header(response, 'x-tss-serialized')).toBe('true')
+    await expectServerFunctionResult(page, 'throwZero', 'thrown:0')
+  })
+
   test('serialized server function replies keep their body when a helper selects 204', async ({
     page,
   }) => {

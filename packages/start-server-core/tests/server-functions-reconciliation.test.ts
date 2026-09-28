@@ -14,6 +14,7 @@ import {
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
   createCsrfMiddleware,
   createMiddleware,
+  createServerFn,
 } from '@tanstack/start-client-core'
 import {
   createStartHandler,
@@ -34,6 +35,9 @@ import {
   setResponseHeader,
   setResponseStatus,
 } from '../src/request-response'
+import { createServerRpc } from '../src/createServerRpc'
+import { createSsrRpc } from '../src/createSsrRpc'
+import type { AnyFunctionMiddleware } from '@tanstack/start-client-core'
 
 const serverFnMocks = vi.hoisted(() => {
   const previousServerFnBase = process.env.TSS_SERVER_FN_BASE
@@ -1071,4 +1075,134 @@ describe('server function response reconciliation', () => {
       }
     },
   )
+})
+
+describe('server function throws reach the caller', () => {
+  type CallServerFn = (opts?: {
+    fetch?: (input: string, init: RequestInit) => Promise<Response>
+  }) => Promise<unknown>
+  type AttachHandler = (...args: Array<unknown>) => CallServerFn & {
+    __executeServer: (opts: unknown) => Promise<unknown>
+  }
+
+  // Compiled shape of a server function: the provider module registers the
+  // RPC entry, and callers get a client or server-side stub with the same
+  // middleware.
+  function defineServerFn(
+    method: 'GET' | 'POST',
+    handler: () => unknown,
+    middleware: Array<AnyFunctionMiddleware> = [],
+  ) {
+    const attach = (extractedFn: unknown, serverFn?: unknown) =>
+      (
+        createServerFn({ method }).middleware(middleware)
+          .handler as unknown as AttachHandler
+      )(extractedFn, serverFn)
+    const rpc = createServerRpc(
+      { id: 'test', name: 'test', filename: 'test.ts' },
+      (opts: unknown) => provider.__executeServer(opts),
+    )
+    const provider = attach(rpc, handler)
+    serverFnMocks.action = rpc as unknown as typeof serverFnMocks.action
+    const client = attach(createClientRpc('test'))
+    const onServer = attach(createSsrRpc('test'))
+    let response: Response | undefined
+
+    return {
+      call: () =>
+        client({
+          fetch: async (input, init) => {
+            response = await createHandler()(
+              new Request(new URL(input, 'http://localhost'), init),
+              {},
+            )
+            return response
+          },
+        }),
+      onServer,
+      response: () => response!,
+    }
+  }
+
+  async function settle(promise: Promise<unknown>) {
+    try {
+      return { resolved: await promise }
+    } catch (rejected) {
+      return { rejected }
+    }
+  }
+
+  // Calls the server function from inside its own handler, as a nested
+  // server-side call would, and records how the inner call settled.
+  async function settleOnServer(throwInner: () => never) {
+    let outcome: { resolved?: unknown; rejected?: unknown } | undefined
+    let nested = false
+    const { call, onServer } = defineServerFn('POST', async () => {
+      if (nested) {
+        throwInner()
+      }
+      nested = true
+      outcome = await settle(onServer())
+      return { ok: true }
+    })
+
+    await expect(call()).resolves.toEqual({ ok: true })
+    return outcome!
+  }
+
+  const falsyValues = [undefined, null, 0, '', false, Number.NaN, BigInt(0)]
+
+  describe.each(['GET', 'POST'] as const)('falsy throws over %s', (method) => {
+    it.each(falsyValues)('rejects with a thrown %s', async (value) => {
+      const { call } = defineServerFn(method, () => {
+        throw value
+      })
+
+      const outcome = await settle(call())
+
+      expect(outcome).toHaveProperty('rejected')
+      expect(Object.is(outcome.rejected, value)).toBe(true)
+    })
+
+    it.each(falsyValues)(
+      'rejects with %s thrown by function middleware and lets outer middleware catch it',
+      async (value) => {
+        let caught: { value: unknown } | undefined
+        const { call } = defineServerFn(method, () => ({ ok: true }), [
+          createMiddleware({ type: 'function' }).server(async ({ next }) => {
+            try {
+              return await next()
+            } catch (error) {
+              caught = { value: error }
+              throw error
+            }
+          }),
+          createMiddleware({ type: 'function' }).server(() => {
+            throw value
+          }),
+        ])
+
+        const outcome = await settle(call())
+
+        expect(outcome).toHaveProperty('rejected')
+        expect(Object.is(outcome.rejected, value)).toBe(true)
+        expect(caught).toBeDefined()
+        expect(Object.is(caught!.value, value)).toBe(true)
+      },
+    )
+
+    it('still resolves with a returned undefined', async () => {
+      const { call } = defineServerFn(method, () => undefined)
+
+      await expect(call()).resolves.toBeUndefined()
+    })
+  })
+
+  it('rejects a server-side call with a thrown 0', async () => {
+    const outcome = await settleOnServer(() => {
+      throw 0
+    })
+
+    expect(outcome).toEqual({ rejected: 0 })
+  })
 })

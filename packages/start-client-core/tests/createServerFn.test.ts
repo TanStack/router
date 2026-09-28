@@ -1,4 +1,5 @@
-import { expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
+import { runWithStartContext } from '@tanstack/start-storage-context'
 import { createMiddleware } from '../src/createMiddleware'
 import { createServerFn } from '../src/createServerFn'
 
@@ -51,4 +52,58 @@ test('does not register middleware appended while reading the input', () => {
     first,
   ])
   expect(middlewares).toHaveLength(2)
+})
+
+describe('client-side throws', () => {
+  function runOnClient<T>(fn: () => Promise<T>) {
+    return runWithStartContext(
+      {
+        getRouter() {
+          throw new Error('Client middleware does not need a router')
+        },
+        request: new Request('http://localhost/'),
+        startOptions: {},
+        contextAfterGlobalMiddlewares: {},
+        executedRequestMiddlewares: new Set(),
+        handlerType: 'serverFn',
+      },
+      fn,
+    )
+  }
+
+  test.each([undefined, null, 0, '', false])(
+    'rejects when client middleware throws %s',
+    async (value) => {
+      let fetched = false
+      const extractedFn = Object.assign(
+        async () => {
+          fetched = true
+          return { result: 'fetched' }
+        },
+        {
+          url: '/_serverFn/client-throw',
+          serverFnMeta: { id: 'client-throw' },
+        },
+      )
+      const fn = (
+        createServerFn().middleware([
+          createMiddleware({ type: 'function' }).client(() => {
+            throw value
+          }),
+        ]).handler as unknown as (
+          extractedFn: unknown,
+        ) => () => Promise<unknown>
+      )(extractedFn)
+
+      const outcome = await runOnClient(() =>
+        fn().then(
+          (resolved) => ({ resolved }),
+          (rejected: unknown) => ({ rejected }),
+        ),
+      )
+
+      expect(outcome).toStrictEqual({ rejected: value })
+      expect(fetched).toBe(false)
+    },
+  )
 })
