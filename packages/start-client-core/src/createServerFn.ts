@@ -183,20 +183,20 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
               startContext.contextAfterGlobalMiddlewares
-            const ctx = {
-              ...extractedFn,
-              ...opts,
-              // Ensure we use the full serverFnMeta from the provider file's extractedFn
-              // (which has id, name, filename) rather than the partial one from SSR/client
-              // callers (which only has id)
-              serverFnMeta: extractedFn.serverFnMeta,
-              // Merge client context first so trusted server middleware context wins.
-              context: safeObjectMerge(
-                opts.context,
-                serverContextAfterGlobalMiddlewares,
-              ),
-              request: startContext.request,
-            }
+            // Assign after the spreads: an object literal with properties
+            // after a second spread defines each of them through a slow
+            // runtime call.
+            const ctx = { ...extractedFn, ...opts }
+            // Ensure we use the full serverFnMeta from the provider file's extractedFn
+            // (which has id, name, filename) rather than the partial one from SSR/client
+            // callers (which only has id)
+            ctx.serverFnMeta = extractedFn.serverFnMeta
+            // Merge client context first so trusted server middleware context wins.
+            ctx.context = safeObjectMerge(
+              opts.context,
+              serverContextAfterGlobalMiddlewares,
+            )
+            ctx.request = startContext.request
 
             const result = await executeMiddleware(
               resolvedMiddleware,
@@ -271,28 +271,27 @@ export async function executeMiddleware(
     callerCtx: ServerFnMiddlewareResult,
     userCtx?: ServerFnMiddlewareResult,
   ): Promise<ServerFnMiddlewareResult> => {
-    // Use safeObjectMerge for context objects to prevent prototype pollution
-    const ctx: ServerFnMiddlewareResult =
-      userCtx === undefined
-        ? callerCtx
-        : {
-            ...callerCtx,
-            ...userCtx,
-            context: safeObjectMerge(callerCtx.context, userCtx.context),
-            sendContext: mergeOptionalSendContext(
-              callerCtx.sendContext,
-              userCtx.sendContext,
-            ),
-            headers: mergeOptionalHeaders(callerCtx.headers, userCtx.headers),
-            _callSiteFetch: callerCtx._callSiteFetch,
-            fetch: callerCtx._callSiteFetch ?? userCtx.fetch ?? callerCtx.fetch,
-            result:
-              userCtx.result !== undefined
-                ? userCtx.result
-                : userCtx instanceof Response
-                  ? userCtx
-                  : callerCtx.result,
-          }
+    let ctx = callerCtx
+    if (userCtx !== undefined) {
+      // Assign after the spreads: an object literal with properties after a
+      // second spread defines each of them through a slow runtime call.
+      ctx = { ...callerCtx, ...userCtx }
+      // Use safeObjectMerge for context objects to prevent prototype pollution
+      ctx.context = safeObjectMerge(callerCtx.context, userCtx.context)
+      ctx.sendContext = mergeOptionalSendContext(
+        callerCtx.sendContext,
+        userCtx.sendContext,
+      )
+      ctx.headers = mergeOptionalHeaders(callerCtx.headers, userCtx.headers)
+      ctx._callSiteFetch = callerCtx._callSiteFetch
+      ctx.fetch = callerCtx._callSiteFetch ?? userCtx.fetch ?? callerCtx.fetch
+      ctx.result =
+        userCtx.result !== undefined
+          ? userCtx.result
+          : userCtx instanceof Response
+            ? userCtx
+            : callerCtx.result
+    }
 
     let result = ctx
     // Middleware without a function for this environment only validates.
