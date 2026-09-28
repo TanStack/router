@@ -359,17 +359,6 @@ describe('createStartHandler response reconciliation', () => {
     expect(response.headers.get('x-tss-raw')).toBe('true')
   })
 
-  it('rejects protecting Set-Cookie snapshots', async () => {
-    const handler = createResponseHandler(() => {
-      const response = new Response('ok')
-      protectResponseHeaders(response, new Map([['set-cookie', null]]))
-      return response
-    })
-    await expect(handler(new Request('http://localhost/'), {})).rejects.toThrow(
-      'Set-Cookie headers cannot be protected.',
-    )
-  })
-
   it('reads protected header snapshots after direct response mutation', async () => {
     let seenHeader: string | undefined
     let seenHeadersHeader: string | null | undefined

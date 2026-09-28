@@ -87,6 +87,9 @@ export type ReadonlyResponseHeaders = Omit<
   ) => void
 }
 
+// Lowercase protocol header names mapped to a required value, or to null when
+// the header must be absent. Set-Cookie is never protected: it has one value
+// per cookie.
 type ProtectedHeaders = ReadonlyMap<string, string | null>
 
 type MaybePromise<T> = T | Promise<T>
@@ -147,7 +150,7 @@ function normalizeHeaderName(name: string): string {
   return name.toLowerCase()
 }
 
-function sanitizeStatusMessage(statusMessage = ''): string {
+function sanitizeStatusMessage(statusMessage: string): string {
   // Strip everything except horizontal tab and printable ASCII (space–'~')
   // to prevent header injection through status text.
   return statusMessage.replace(/[^\t\x20-\x7e]/g, '')
@@ -526,13 +529,7 @@ function hasHeaderState(state: ResponseState): boolean {
 }
 
 function canHaveBody(method: string, status: number): boolean {
-  return (
-    method !== 'HEAD' &&
-    status !== 101 &&
-    status !== 204 &&
-    status !== 205 &&
-    status !== 304
-  )
+  return method !== 'HEAD' && status !== 204 && status !== 205 && status !== 304
 }
 
 /** A protected content type marks a Start-serialized body the client decodes. */
@@ -604,14 +601,13 @@ function reconcileResponseWithEvent(
 ) {
   const protectedHeaders = getProtectedResponseHeaders(response)
   const serialized = isSerializedResponse(protectedHeaders)
+  let helperStatus = getHelperStatus(event.responseState, serialized)
   // Some runtimes, such as Bun, allow a body on a 204, 205, or 304 response,
   // so check the response's own status too. Read the body last: the getter
   // allocates a stream for responses that have not exposed one yet.
   const mustDropBody =
-    !canHaveBody(
-      event.request.method,
-      getHelperStatus(event.responseState, serialized) ?? response.status,
-    ) && response.body !== null
+    !canHaveBody(event.request.method, helperStatus ?? response.status) &&
+    response.body !== null
   if (mustDropBody) {
     const reason =
       event.request.method === 'HEAD'
@@ -622,9 +618,10 @@ function reconcileResponseWithEvent(
     } else {
       cancelDroppedBody(response, reason)
     }
+    // Cancellation/SSR cleanup can write helpers. Read their final state
+    // before applying headers or recording appends.
+    helperStatus = getHelperStatus(event.responseState, serialized)
   }
-  // Cancellation/SSR cleanup can write helpers. Read their final state before
-  // applying headers or recording appends, and never reuse a canceled body.
   const state = event.responseState
   const appliedHeaderAppends = event.responseHeaderAppends?.get(response)
   const protectedHeadersChanged = hasProtectedHeaderChanges(
@@ -638,7 +635,6 @@ function reconcileResponseWithEvent(
     return response
   }
 
-  const helperStatus = getHelperStatus(state, serialized)
   const status = helperStatus ?? response.status
   const statusText =
     getHelperStatusText(state, helperStatus) ?? response.statusText
@@ -879,9 +875,6 @@ export function protectResponseHeaders(
 ): void {
   // Callers supply immutable protocol requirements with lowercase names.
   // Share those requirements across responses instead of capturing each one.
-  if (headers.has('set-cookie')) {
-    throw new Error('Set-Cookie headers cannot be protected.')
-  }
   const previous = getProtectedResponseHeaders(response)
   if (previous === headers) {
     return
@@ -963,25 +956,21 @@ export function createServerEntry<TRegister = unknown>(entry: {
   fetch: RequestHandler<TRegister>
 }): { fetch: RequestHandler<TRegister> } {
   return {
-    fetch: (request: Request, requestOpts: any) => {
-      const run = async () => {
-        try {
-          return await entry.fetch(request, requestOpts)
-        } catch (error) {
-          return handleStartError(error)
-        }
+    fetch: withStartRequest(async (request: Request, requestOpts: any) => {
+      try {
+        return await entry.fetch(request, requestOpts)
+      } catch (error) {
+        return handleStartError(error)
       }
-      // A nested entry delegating the same request participates in its scope.
-      // Independent fetch invocations and different requests get a fresh event.
-      if (eventStorage.getStore()?.request === request) {
-        return run()
-      }
-      return runInStartRequest(request, run)
-    },
+    }),
   }
 }
 
-/** Establish request scope; the response pipeline owns reconciliation. */
+/**
+ * Establish request scope; the response pipeline owns reconciliation. A nested
+ * handler delegating the same request participates in its scope. Independent
+ * fetch invocations and different requests get a fresh event.
+ */
 export function withStartRequest<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
