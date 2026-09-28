@@ -48,10 +48,11 @@ const SERIALIZED_JSON_HEADERS: ReadonlyMap<string, string | null> = new Map([
   [X_TSS_RAW_RESPONSE, null],
   ['location', null],
 ])
-const SERIALIZED_JSON_HEADER_INIT: HeadersInit = {
-  'Content-Type': 'application/json',
+// A shared template the Response constructor copies. Never mutate it.
+const SERIALIZED_JSON_HEADER_INIT = new Headers({
+  'content-type': 'application/json',
   [X_TSS_SERIALIZED]: 'true',
-}
+})
 
 /** Completed bytes own no stream until the request pipeline accepts them. */
 export class DeferredResponse {

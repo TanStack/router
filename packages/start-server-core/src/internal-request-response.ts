@@ -839,35 +839,34 @@ export function finalizeResponse(
   return reconcileResponseWithEvent(response, event)
 }
 
-/** Build a Start-owned body with already normalized protocol headers. */
+/**
+ * Build a Start-owned serialized reply with already normalized protocol
+ * headers. Such a reply always carries a body, so a bodyless helper status does
+ * not apply to it.
+ */
 export function createFinalizedResponse(
   body: string | Uint8Array,
-  headers: HeadersInit,
+  headers: Headers,
   protectedHeaders: ProtectedHeaders,
   event: StartEvent,
 ): Response {
   const state = event.responseState
-  const helperStatus = getHelperStatus(
-    state,
-    isSerializedResponse(protectedHeaders),
-  )
-  const status = helperStatus ?? 200
-  if (state && hasHeaderState(state)) {
-    headers = applyHeaderState(
-      headers instanceof Headers ? headers : new Headers(headers),
-      state,
-      protectedHeaders,
-    )
+  let status = 200
+  let statusText = ''
+  if (state) {
+    const helperStatus = getHelperStatus(state, true)
+    status = helperStatus ?? 200
+    statusText = getHelperStatusText(state, helperStatus) ?? ''
+    if (hasHeaderState(state)) {
+      headers = applyHeaderState(headers, state, protectedHeaders)
+    }
   }
   const response = new Response(
     canHaveBody(event.request.method, status) ? (body as BodyInit) : null,
-    {
-      status,
-      statusText: getHelperStatusText(state, helperStatus) ?? '',
-      headers,
-    },
+    { status, statusText, headers },
   )
-  protectResponseHeaders(response, protectedHeaders)
+  // A new response has no protection to merge with.
+  installProtectedResponseHeaders(response, protectedHeaders)
   return publishResponse(response, event)
 }
 
