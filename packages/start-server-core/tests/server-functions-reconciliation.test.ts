@@ -1578,6 +1578,46 @@ describe('function middleware', () => {
     await expect(call()).resolves.toBe('recovered from inner')
   })
 
+  it('does not duplicate Set-Cookie headers of a server-side call in the result of next()', async () => {
+    let cookies: Array<string> | undefined
+    let nested = false
+    const { call, onServer } = defineServerFn(
+      'POST',
+      async () => {
+        if (!nested) {
+          nested = true
+          await onServer({
+            headers: new Headers([['set-cookie', 'a=1']]),
+          } as never)
+        }
+        return 'ok'
+      },
+      [
+        createMiddleware({ type: 'function' }).server(async ({ next }) => {
+          const result = await next()
+          const headers = (result as { headers?: HeadersInit }).headers
+          if (headers) {
+            cookies = new Headers(headers).getSetCookie()
+          }
+          return result
+        }),
+      ],
+    )
+
+    await expect(call()).resolves.toBe('ok')
+    expect(cookies).toEqual(['a=1'])
+  })
+
+  it('resolves with the handler result even when middleware passed a result to next()', async () => {
+    const { call } = defineServerFn('POST', () => undefined, [
+      createMiddleware({ type: 'function' }).server(({ next }) =>
+        next({ result: 'from middleware' } as never),
+      ),
+    ])
+
+    await expect(call()).resolves.toBeUndefined()
+  })
+
   it('rejects when server middleware returns undefined', async () => {
     const { call } = defineServerFn('POST', () => 'unused', [
       createMiddleware({ type: 'function' }).server((() => undefined) as never),
