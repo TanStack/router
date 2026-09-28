@@ -1,13 +1,5 @@
-import { state, createState, createSeed, Labels } from "shared-runtime.tsx?tsr-shared=1";
+import { state, createSeed, Labels } from "shared-runtime.tsx?tsr-shared=1";
 const label = createComponentLabel();
-function createState(initialState: {
-  count: number;
-}): {
-  state: {
-    count: number;
-  };
-  increment: () => number;
-};
 function createComponentLabel() {
   console.log('shared-runtime:component');
   return Labels.component;
