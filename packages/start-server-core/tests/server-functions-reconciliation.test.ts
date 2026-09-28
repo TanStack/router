@@ -1,13 +1,18 @@
 // @vitest-environment node
 
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
+import { fromCrossJSON } from 'seroval'
 import { RawStream, notFound } from '@tanstack/router-core'
 import {
   TSS_FORMDATA_CONTEXT,
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
   createCsrfMiddleware,
+  createMiddleware,
 } from '@tanstack/start-client-core'
-import { createStartHandler } from '../src/createStartHandler'
+import {
+  createStartHandler,
+  transferResponseBodyOwnership,
+} from '../src/createStartHandler'
 import {
   FRAME_HEADER_SIZE,
   FRAME_TYPE_CHUNK,
@@ -16,7 +21,10 @@ import {
   createClientRpc,
 } from '@tanstack/start-client-core/client-rpc'
 import {
+  appendResponseHeader,
   getRequestUrl,
+  getResponseHeader,
+  setCookie,
   setResponseHeader,
   setResponseStatus,
 } from '../src/request-response'
@@ -109,6 +117,286 @@ afterAll(() => {
 })
 
 describe('server function response reconciliation', () => {
+  it.each([202, 204, 205, 304])(
+    'includes helper writes made while serializing a synchronous result with status %s',
+    async (status) => {
+      const serialized = vi.fn(() => {
+        setResponseStatus(status, 'Serialized status')
+        setResponseHeader('x-serialized', 'yes')
+        appendResponseHeader('x-steps', 'serialized')
+        setCookie('session', 'serialized', { path: '/' })
+        setResponseHeader('content-type', 'text/plain')
+        setResponseHeader('x-tss-raw', 'true')
+        return 'serialized value'
+      })
+      const action = createAction()
+      action.mockReturnValue({
+        result: {
+          get value() {
+            return serialized()
+          },
+        },
+      })
+      serverFnMocks.action = action
+
+      const response = await createHandler()(createServerFunctionRequest(), {})
+
+      expect(serialized).toHaveBeenCalledOnce()
+      expect(response.status).toBe(status)
+      expect(response.statusText).toBe('Serialized status')
+      expect(response.headers.get('x-serialized')).toBe('yes')
+      expect(response.headers.get('x-steps')).toBe('serialized')
+      expect(response.headers.getSetCookie()).toEqual([
+        'session=serialized; Path=/',
+      ])
+      expect(response.headers.get('content-type')).toBe('application/json')
+      expect(response.headers.get('x-tss-serialized')).toBe('true')
+      expect(response.headers.get('x-tss-raw')).toBeNull()
+      if (status === 202) {
+        expect(fromCrossJSON(await response.json(), {})).toEqual({
+          result: { value: 'serialized value' },
+        })
+      } else {
+        expect(response.body).toBeNull()
+        await expect(response.text()).resolves.toBe('')
+      }
+    },
+  )
+
+  it.each([203, 204])(
+    'includes fallback cancellation helper writes when a pending action replaces it with status %s',
+    async (status) => {
+      let releaseAction!: () => void
+      const actionCanFinish = new Promise<void>((resolve) => {
+        releaseAction = resolve
+      })
+      let pendingAction: Promise<unknown> | undefined
+      const cancelFallback = vi.fn(() => {
+        setResponseStatus(status, 'Cleanup status')
+        setResponseHeader('x-cleanup', 'yes')
+        appendResponseHeader('x-steps', 'cleanup')
+        setCookie('session', 'cleanup', { path: '/' })
+      })
+      const fallback = new Response(
+        new ReadableStream<Uint8Array>({ cancel: cancelFallback }),
+        { status: 504 },
+      )
+      serverFnMocks.middleware = [
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          releaseAction()
+          await pendingAction
+          return result
+        }),
+        createMiddleware().server(({ next }) => {
+          pendingAction = Promise.resolve(next())
+          return fallback
+        }),
+      ]
+      const action = createAction()
+      action.mockImplementation(async () => {
+        await actionCanFinish
+        appendResponseHeader('x-steps', 'action')
+        return { result: 'completed' }
+      })
+      serverFnMocks.action = action
+
+      try {
+        const response = await createHandler()(
+          createServerFunctionRequest(),
+          {},
+        )
+
+        expect(cancelFallback).toHaveBeenCalledOnce()
+        expect(response.status).toBe(status)
+        expect(response.statusText).toBe('Cleanup status')
+        expect(response.headers.get('x-cleanup')).toBe('yes')
+        expect(response.headers.get('x-steps')).toBe('action, cleanup')
+        expect(response.headers.getSetCookie()).toEqual([
+          'session=cleanup; Path=/',
+        ])
+        expect(response.headers.get('content-type')).toBe('application/json')
+        expect(response.headers.get('x-tss-serialized')).toBe('true')
+        if (status === 204) {
+          expect(response.body).toBeNull()
+          await expect(response.text()).resolves.toBe('')
+        } else {
+          expect(fromCrossJSON(await response.json(), {})).toEqual({
+            result: 'completed',
+          })
+        }
+      } finally {
+        releaseAction()
+        await pendingAction
+      }
+    },
+  )
+
+  it('keeps an early middleware response readable after a late JSON action completes', async () => {
+    let releaseAction!: () => void
+    const actionCanFinish = new Promise<void>((resolve) => {
+      releaseAction = resolve
+    })
+    let pendingAction: Promise<unknown> | undefined
+    const cancelFallback = vi.fn()
+    const fallback = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('fallback'))
+          controller.close()
+        },
+        cancel: cancelFallback,
+      }),
+      { status: 504, headers: { 'x-fallback': 'yes' } },
+    )
+    serverFnMocks.middleware = [
+      createMiddleware().server(({ next }) => {
+        pendingAction = Promise.resolve(next())
+        return fallback
+      }),
+    ]
+    const action = createAction()
+    action.mockImplementation(async () => {
+      await actionCanFinish
+      return { result: 'late' }
+    })
+    serverFnMocks.action = action
+
+    try {
+      const response = await createHandler()(createServerFunctionRequest(), {})
+      expect(response.status).toBe(504)
+
+      releaseAction()
+      await pendingAction
+
+      expect(action).toHaveBeenCalledOnce()
+      expect(cancelFallback).not.toHaveBeenCalled()
+      expect(response.headers.get('x-fallback')).toBe('yes')
+      expect(response.headers.get('x-tss-serialized')).toBeNull()
+      await expect(response.text()).resolves.toBe('fallback')
+    } finally {
+      releaseAction()
+      await pendingAction
+    }
+  })
+
+  it('does not publish late JSON after a pending request is aborted', async () => {
+    const controller = new AbortController()
+    const reason = new Error('Request disconnected')
+    let releaseAction!: () => void
+    const actionCanFinish = new Promise<void>((resolve) => {
+      releaseAction = resolve
+    })
+    let actionStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      actionStarted = resolve
+    })
+    let observeResponse!: (value: string | undefined) => void
+    const observedResponse = new Promise<string | undefined>((resolve) => {
+      observeResponse = resolve
+    })
+    const serialized = vi.fn(() => {
+      // Observe the request after all late promise continuations have settled.
+      setImmediate(() => observeResponse(getResponseHeader('x-tss-serialized')))
+      return 'late'
+    })
+    const action = createAction()
+    action.mockImplementation(async () => {
+      actionStarted()
+      await actionCanFinish
+      return {
+        result: {
+          get value() {
+            return serialized()
+          },
+        },
+      }
+    })
+    serverFnMocks.action = action
+    const pending = createHandler()(
+      createServerFunctionRequest('http://localhost/_serverFn/test', {
+        signal: controller.signal,
+      }),
+      {},
+    )
+    const rejected = expect(pending).rejects.toBe(reason)
+    try {
+      await started
+      controller.abort(reason)
+      await rejected
+      releaseAction()
+      await expect(observedResponse).resolves.toBeUndefined()
+      expect(serialized).toHaveBeenCalledOnce()
+    } finally {
+      releaseAction()
+    }
+  })
+
+  it('preserves JSON protocol headers when middleware delegates a transformed body', async () => {
+    const action = createAction()
+    action.mockReturnValue({ result: 'delegated' })
+    serverFnMocks.action = action
+    serverFnMocks.middleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        const response = transferResponseBodyOwnership(
+          result.response,
+          new Response(
+            result.response.body!.pipeThrough(new TransformStream()),
+            {
+              headers: {
+                'content-type': 'text/plain',
+                'x-tss-raw': 'true',
+                'x-delegated': 'yes',
+              },
+            },
+          ),
+        )
+        appendResponseHeader('x-steps', 'delegated')
+        return response
+      }),
+    ]
+
+    const response = await createHandler()(createServerFunctionRequest(), {})
+
+    expect(response.headers.get('content-type')).toBe('application/json')
+    expect(response.headers.get('x-tss-serialized')).toBe('true')
+    expect(response.headers.get('x-tss-raw')).toBeNull()
+    expect(response.headers.get('x-delegated')).toBe('yes')
+    expect(response.headers.get('x-steps')).toBe('delegated')
+    expect(fromCrossJSON(await response.json(), {})).toEqual({
+      result: 'delegated',
+    })
+  })
+
+  it('repairs protocol mutations attached to a directly returned next promise', async () => {
+    const action = createAction()
+    action.mockReturnValue({ result: 'completed' })
+    serverFnMocks.action = action
+    serverFnMocks.middleware = [
+      createMiddleware().server(({ next }) => {
+        const pending = next()
+        void Promise.resolve(pending).then((result) => {
+          result.response.headers.set('content-type', 'text/plain')
+          result.response.headers.delete('x-tss-serialized')
+          result.response.headers.set('x-tss-raw', 'true')
+          appendResponseHeader('x-steps', 'after-next')
+        })
+        return pending
+      }),
+    ]
+
+    const response = await createHandler()(createServerFunctionRequest(), {})
+
+    expect(response.headers.get('content-type')).toBe('application/json')
+    expect(response.headers.get('x-tss-serialized')).toBe('true')
+    expect(response.headers.get('x-tss-raw')).toBeNull()
+    expect(response.headers.get('x-steps')).toBe('after-next')
+    expect(fromCrossJSON(await response.json(), {})).toEqual({
+      result: 'completed',
+    })
+  })
+
   it('round-trips GET input without normalizing the original query encoding', async () => {
     const data = {
       spaces: 'one two three',

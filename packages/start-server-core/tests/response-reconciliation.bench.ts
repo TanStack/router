@@ -101,6 +101,20 @@ const scenarios = [
     extraHeaders: undefined,
     action: () => ({ result }),
   },
+  {
+    id: 'serialized-protected-helpers',
+    name: 'serialized response with two protocol repairs and only protected helper writes',
+    extraHeaders: undefined,
+    action: () => {
+      // These writes create helper state but cannot change the JSON transport.
+      // Compare with serialized-repaired to expose needless header allocation
+      // while preserving every established middleware path and workload.
+      setResponseHeader('content-type', 'text/plain')
+      setResponseHeader('x-tss-serialized', 'false')
+      setResponseHeader('x-tss-raw', 'true')
+      return { result }
+    },
+  },
   ...[0, 4, 20].flatMap((extraHeaders) =>
     [false, true].map((repair) => ({
       id: `raw-${repair ? 'repaired' : 'unchanged'}-${extraHeaders}`,

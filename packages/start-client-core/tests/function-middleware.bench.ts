@@ -230,10 +230,49 @@ function createWorkload(scenario: Scenario) {
     }
   }
 
+  function invokeIndex(index: number) {
+    return invoke(inputs[index]!)
+  }
+
+  return { verify, batch, invokeIndex }
+}
+
+function createMixedWorkload(env: Scenario['env']) {
+  const absent = createWorkload({
+    name: 'mixed-absent',
+    env,
+    headers: 'absent',
+    depth: 4,
+    initialSendContext: 'absent',
+    nextSendContext: 'absent',
+  })
+  const supplied = createWorkload({
+    name: 'mixed-supplied',
+    env,
+    headers: 'supplied',
+    depth: 4,
+    initialSendContext: 'present',
+    nextSendContext: 'present',
+  })
+
+  async function verify() {
+    await absent.verify()
+    await supplied.verify()
+  }
+
+  async function batch() {
+    // Interleave 120 absent calls and 40 supplied calls in each 160-call batch.
+    for (let index = 0; index < batchSize; index++) {
+      await (index % 4 === 0 ? supplied : absent).invokeIndex(index)
+    }
+  }
+
   return { verify, batch }
 }
 
-const workloads: Array<ReturnType<typeof createWorkload>> = []
+const workloads: Array<
+  ReturnType<typeof createWorkload> | ReturnType<typeof createMixedWorkload>
+> = []
 
 afterAll(async () => {
   for (const workload of workloads) {
@@ -252,6 +291,23 @@ for (const scenario of scenarios) {
       setup: async () => {
         if (!workload) {
           workload = createWorkload(scenario)
+          workloads.push(workload)
+        }
+        await workload.verify()
+      },
+    })
+  })
+}
+
+for (const env of ['server', 'client'] as const) {
+  describe(`function middleware ${env}-mixed-75-absent-25-supplied-layers-4`, () => {
+    let workload: ReturnType<typeof createMixedWorkload> | undefined
+
+    bench('160 calls', () => workload!.batch(), {
+      ...benchOptions,
+      setup: async () => {
+        if (!workload) {
+          workload = createMixedWorkload(env)
           workloads.push(workload)
         }
         await workload.verify()
