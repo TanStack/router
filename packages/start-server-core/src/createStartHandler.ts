@@ -840,12 +840,13 @@ export function createStartHandler<TRegister = Register>(
 
           earlyHints?.collectStatic({ manifest, matchedRoutes })
 
-          // Read request assets at call time: RSC adds them to this context.
-          const startContext = getStartContext({ throwIfNotFound: false })
+          // The request's stored context, not the resolver's template: RSC
+          // adds request assets to it, so read them at call time.
+          const storedStartContext = getStartContext({ throwIfNotFound: false })
           attachRouterServerSsrUtils({
             router: routerInstance,
             manifest,
-            getRequestAssets: () => startContext?.requestAssets,
+            getRequestAssets: () => storedStartContext?.requestAssets,
           })
 
           // `additionalContext` is request-scoped and only read from router.options
@@ -864,7 +865,7 @@ export function createStartHandler<TRegister = Register>(
 
           // Pass request-scoped assets to dehydrate for manifest injection
           await routerInstance.serverSsr!.dehydrate({
-            requestAssets: startContext?.requestAssets,
+            requestAssets: storedStartContext?.requestAssets,
             signal,
           })
           signal.throwIfAborted()
@@ -909,7 +910,8 @@ export function createStartHandler<TRegister = Register>(
         if (!isServerFnRequest && flattenedRequestMiddlewares.length === 0) {
           // An empty global pipeline has no additional middleware to run. The
           // route pipeline already reconciles responses, owns cleanup, and
-          // waits on the request signal for every pending result.
+          // waits on the request signal for every pending result. Only
+          // server-function terminals can defer JSON construction.
           middlewareResponse = await (terminal(
             middlewareCtx,
           ) as Promise<HandlerCallbackResult>)

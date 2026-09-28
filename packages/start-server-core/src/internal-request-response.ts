@@ -509,8 +509,9 @@ function isSerializedResponse(protectedHeaders: ProtectedHeaders | undefined) {
 }
 
 /**
- * Serialized server-function replies always carry a body, so a helper status
- * that forbids one does not apply to them.
+ * A helper status that forbids a body never applies to a serialized
+ * server-function reply, because the client must decode it. Only a HEAD request
+ * drops its body.
  */
 function getHelperStatus(
   state: ResponseState | undefined,
@@ -565,11 +566,12 @@ function createReconciledResponse(
   }
 }
 
-function reconcileResponseWithEvent(
+/** Apply helper state to a response, including one that bypasses middleware. */
+export function finalizeResponse(
   response: Response,
   event: StartEvent,
   disposeBody?: (reason: string) => void,
-) {
+): Response {
   const protectedHeaders = getProtectedResponseHeaders(response)
   const serialized = isSerializedResponse(protectedHeaders)
   let helperStatus = getHelperStatus(event.responseState, serialized)
@@ -735,7 +737,7 @@ function createErrorResponse(error: unknown, event: StartEvent): Response {
 
 function finalizeError(error: unknown, event: StartEvent): Response {
   if (error instanceof Response) {
-    return reconcileResponseWithEvent(error, event)
+    return finalizeResponse(error, event)
   }
   return createErrorResponse(error, event)
 }
@@ -776,7 +778,7 @@ export function reconcileResponse(
     event.currentResponse = response
     return response
   }
-  return reconcileResponseWithEvent(response, event, disposeBody)
+  return finalizeResponse(response, event, disposeBody)
 }
 
 /**
@@ -808,18 +810,10 @@ export function restoreResponseProtocol(
   return restored
 }
 
-/** Apply helper state after a response bypasses the middleware pipeline. */
-export function finalizeResponse(
-  response: Response,
-  event: StartEvent,
-): Response {
-  return reconcileResponseWithEvent(response, event)
-}
-
 /**
  * Build a Start-owned serialized reply with already normalized protocol
- * headers. Such a reply always carries a body, so a bodyless helper status does
- * not apply to it.
+ * headers. A bodyless helper status never applies to it; only a HEAD request
+ * drops its body.
  */
 export function createFinalizedResponse(
   body: string | Uint8Array,
@@ -1295,7 +1289,8 @@ export function setResponseHeader(
  *
  * For `set-cookie`, values must be fully serialized cookie strings; they are
  * merged into the outgoing cookies and deduped by cookie identity
- * (name + domain + path), exactly like `setCookie`. This is the primitive to
+ * (name + domain + path), exactly like `setCookie`. A value that cannot be
+ * parsed is identified by its exact string. This is the primitive to
  * use when bridging external session/auth libraries that produce raw
  * `Set-Cookie` strings.
  *
@@ -1454,8 +1449,8 @@ export function deleteCookie(
 }
 
 /**
- * Internal: helper status state for a serialized server-function reply, which
- * always carries a body. Bodyless statuses are omitted with their status text.
+ * Internal: helper status state for a serialized server-function reply.
+ * Bodyless statuses never apply to it and are omitted with their status text.
  */
 export function getSerializedResponseState(): {
   status: number | undefined
