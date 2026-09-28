@@ -38,8 +38,9 @@ export function safeObjectMerge<T extends Record<string, unknown>>(
 export function createNullProtoObject<T extends object>(
   source?: T,
 ): { [K in keyof T]: T[K] } {
-  return safeObjectMerge(
-    source as Record<string, unknown> | undefined,
-    undefined,
+  return (
+    source
+      ? safeObjectMerge(source as Record<string, unknown>, undefined)
+      : Object.create(null)
   ) as { [K in keyof T]: T[K] }
 }
