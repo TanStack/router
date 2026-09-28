@@ -40,7 +40,12 @@ export interface FinalManifestOptions {
 }
 
 type FinalManifestCacheKey = 'inline-css' | 'linked-css'
-type FinalManifestCache = Map<FinalManifestCacheKey, Promise<ServerManifest>>
+// An entry holds the pending manifest, then the manifest itself once it
+// resolves, so later requests read it without waiting.
+type FinalManifestCache = Map<
+  FinalManifestCacheKey,
+  ServerManifest | Promise<ServerManifest>
+>
 export type GetBaseManifest = () => Promise<ServerManifest>
 
 export interface FinalManifestRequestOptions {
@@ -62,7 +67,9 @@ export interface FinalManifestResolver {
   warmup: (opts: {
     getBaseManifest: GetBaseManifest
   }) => Promise<ServerManifest> | undefined
-  resolveCached: (opts: FinalManifestRequestOptions) => Promise<ServerManifest>
+  resolveCached: (
+    opts: FinalManifestRequestOptions,
+  ) => ServerManifest | Promise<ServerManifest>
   resolveUncached: (
     opts: FinalManifestRequestOptions,
   ) => Promise<ServerManifest>
@@ -190,8 +197,25 @@ export function createFinalManifestResolver(
           transformResolver.getTransformFn({ warmup: true }),
         onError: transformResolver.clearCachedCreateTransform,
       }),
-    resolveCached: (requestOpts) =>
-      resolveRequest(requestOpts, finalManifestCache),
+    resolveCached: (requestOpts) => {
+      // With a cached transform, the entry for the request's inline-CSS choice
+      // is the manifest resolveRequest would produce. This repeats the rules of
+      // resolveInlineCssForRequest and resolveFinalManifest for the common case
+      // where neither needs a per-request callback.
+      const inlineCss =
+        requestOpts.requestInlineCss !== undefined
+          ? requestOpts.requestInlineCss
+          : handlerDefaultInlineCss
+      if (transformResolver.cache && inlineCss !== undefined) {
+        const cached = finalManifestCache.get(
+          getFinalManifestCacheKey(inlineCss),
+        )
+        if (cached) {
+          return cached
+        }
+      }
+      return resolveRequest(requestOpts, finalManifestCache)
+    },
     resolveUncached: (requestOpts) => resolveRequest(requestOpts, undefined),
   }
 }
@@ -205,14 +229,24 @@ function cacheFinalManifestPromise(
   cacheKey: FinalManifestCacheKey,
   promise: Promise<ServerManifest>,
 ): Promise<ServerManifest> {
-  const cachedFinalManifestPromise = promise.catch((error) => {
-    if (
-      cachedFinalManifestPromises.get(cacheKey) === cachedFinalManifestPromise
-    ) {
-      cachedFinalManifestPromises.delete(cacheKey)
-    }
-    throw error
-  })
+  const cachedFinalManifestPromise = promise.then(
+    (manifest) => {
+      if (
+        cachedFinalManifestPromises.get(cacheKey) === cachedFinalManifestPromise
+      ) {
+        cachedFinalManifestPromises.set(cacheKey, manifest)
+      }
+      return manifest
+    },
+    (error) => {
+      if (
+        cachedFinalManifestPromises.get(cacheKey) === cachedFinalManifestPromise
+      ) {
+        cachedFinalManifestPromises.delete(cacheKey)
+      }
+      throw error
+    },
+  )
 
   cachedFinalManifestPromises.set(cacheKey, cachedFinalManifestPromise)
   return cachedFinalManifestPromise
@@ -222,7 +256,7 @@ function getOrCreateCachedFinalManifestPromise(
   cachedFinalManifestPromises: FinalManifestCache,
   cacheKey: FinalManifestCacheKey,
   computeFinalManifest: () => Promise<ServerManifest>,
-): Promise<ServerManifest> {
+): ServerManifest | Promise<ServerManifest> {
   const cachedFinalManifestPromise = cachedFinalManifestPromises.get(cacheKey)
   if (cachedFinalManifestPromise) {
     return cachedFinalManifestPromise
@@ -290,11 +324,13 @@ function warmupFinalManifest(opts: {
     return undefined
   }
 
+  // Warmup runs when the handler is created, before any request fills the
+  // cache.
   const inlineCss = opts.handlerDefaultInlineCss
-  const warmupPromise = getOrCreateCachedFinalManifestPromise(
+  const warmupPromise = cacheFinalManifestPromise(
     opts.finalManifestCache,
     getFinalManifestCacheKey(inlineCss),
-    async () => {
+    Promise.resolve().then(async () => {
       const [base, transformFn] = await Promise.all([
         opts.getBaseManifest(),
         opts.getTransformFn(),
@@ -305,7 +341,7 @@ function warmupFinalManifest(opts: {
         transformFn,
         inlineCss,
       })
-    },
+    }),
   )
 
   if (opts.onError) {
