@@ -245,6 +245,32 @@ test.describe('server routes', () => {
     })
   }
 
+  test('out-of-range setResponseStatus keeps the returned status', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      '/api/status-contracts?scenario=invalid-status-return',
+    )
+
+    expect(response.status()).toBe(404)
+    expect(response.statusText()).toBe('Not Found')
+    await expect(response.text()).resolves.toBe('missing')
+  })
+
+  test('out-of-range setResponseStatus keeps the uncaught error status', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      '/api/status-contracts?scenario=invalid-status-throw',
+    )
+
+    expect(response.status()).toBe(500)
+    await expect(response.json()).resolves.toMatchObject({
+      status: 500,
+      unhandled: true,
+    })
+  })
+
   test('regression #5107: thrown errors preserve explicit response status and headers', async ({
     request,
   }) => {

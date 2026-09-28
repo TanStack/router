@@ -128,7 +128,7 @@ Reconciliation drops bodies for response shapes that cannot carry one:
 - status `205`
 - status `304`
 
-Informational statuses like `101` cannot be used to construct Fetch responses, so they are sanitized before reconciliation.
+`setResponseStatus` ignores codes outside the `200`-`599` range, such as informational `101`, because Fetch responses cannot carry them. The call changes neither status nor status text, so the returned or error status stays in effect, and Start logs a warning outside production.
 
 If a middleware sets one of these statuses after a streamed SSR response is produced, the middleware executor treats that as response replacement and disposes the original SSR stream owner.
 

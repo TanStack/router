@@ -1198,18 +1198,23 @@ export function getResponseStatus(): number {
 }
 
 export function setResponseStatus(code?: number, text?: string): void {
-  const state = getResponseState(getStartEvent())
+  const event = getStartEvent()
   if (code) {
-    const sanitized = sanitizeStatusCode(code, state.status)
-    if (process.env.NODE_ENV === 'development' && sanitized !== code) {
-      console.warn(
-        `setResponseStatus(${code}) was ignored: Fetch Response objects only support status codes in the 200-599 range.`,
-      )
+    // An unusable code must not replace a returned or error status. Ignore the
+    // whole call, including its status text, which describes that code.
+    const status = sanitizeStatusCode(code, 0)
+    if (!status) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(
+          `setResponseStatus(${code}) was ignored: Fetch Response objects only support status codes in the 200-599 range.`,
+        )
+      }
+      return
     }
-    state.status = sanitized
+    getResponseState(event).status = status
   }
   if (text) {
-    state.statusText = sanitizeStatusMessage(text)
+    getResponseState(event).statusText = sanitizeStatusMessage(text)
   }
 }
 

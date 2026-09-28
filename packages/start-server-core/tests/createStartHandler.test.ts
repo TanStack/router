@@ -863,6 +863,59 @@ describe('createStartHandler response reconciliation', () => {
 
     expect(response.status).toBe(418)
   })
+
+  it.each([101, 199, 600, 999, 404.5])(
+    'ignores setResponseStatus(%s) instead of overriding a returned status',
+    async (status) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const handler = createResponseHandler(() => {
+          setResponseStatus(status, 'Ignored')
+          return new Response('missing', {
+            status: 404,
+            statusText: 'Not Found',
+          })
+        })
+
+        const response = await handler(new Request('http://localhost/'), {})
+
+        expect(response.status).toBe(404)
+        expect(response.statusText).toBe('Not Found')
+        expect(warnSpy).toHaveBeenCalledOnce()
+        expect(warnSpy.mock.calls[0]![0]).toContain(
+          `setResponseStatus(${status}) was ignored`,
+        )
+      } finally {
+        warnSpy.mockRestore()
+      }
+    },
+  )
+
+  it('keeps the uncaught error status and log after an ignored status write', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const handler = createResponseHandler(() => {
+        setResponseStatus(999)
+        throw new Error('unexpected failure')
+      })
+
+      const response = await createServerEntry({ fetch: handler }).fetch(
+        new Request('http://localhost/'),
+        {},
+      )
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toMatchObject({
+        status: 500,
+        unhandled: true,
+      })
+      expect(consoleError).toHaveBeenCalledOnce()
+    } finally {
+      warnSpy.mockRestore()
+      consoleError.mockRestore()
+    }
+  })
 })
 
 describe('createStartHandler redirect safety', () => {
