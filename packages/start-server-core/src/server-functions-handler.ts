@@ -39,8 +39,8 @@ const FORM_DATA_CONTENT_TYPES = [
   'multipart/form-data',
   'application/x-www-form-urlencoded',
 ]
-// Serialized replies are decoded by the client from their body. An HTTP
-// Location would let fetch follow a helper or error redirect status first.
+// Serialized replies are decoded by the client from their body. With a
+// helper-selected 3xx status, a Location would let fetch follow it first.
 const SERIALIZED_JSON_HEADERS: ReadonlyMap<string, string | null> = new Map([
   ['content-type', 'application/json'],
   [X_TSS_SERIALIZED, 'true'],

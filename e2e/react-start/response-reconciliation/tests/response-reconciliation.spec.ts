@@ -723,6 +723,8 @@ test.describe('server functions', () => {
         'global-location-error',
       )
 
+      // Error metadata below 400 falls back to 500, and Location is dropped.
+      expect(response.status()).toBe(500)
       expect(header(response, 'location')).toBeNull()
       expect(response.request().redirectedTo()).toBeNull()
       await expectServerFunctionResult(page, 'globalSerialized', 'Moved error')
