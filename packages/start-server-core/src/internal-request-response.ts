@@ -48,7 +48,7 @@ interface ResponseState {
   /** Outside production: a discarded bodyless status was already reported. */
   bodylessStatusWarned?: boolean
   /** Identity of each Set-Cookie string seen by this request's merges. */
-  setCookieKeys?: Map<string, string | undefined>
+  setCookieKeys?: Map<string, string>
 }
 
 interface HeaderAppendOperation {
@@ -332,12 +332,12 @@ function getDistinctCookieKey(
   return [name, options.domain || '', options.path ?? defaultPath].join(';')
 }
 
-function getDistinctCookieKeyFromHeader(cookie: string): string | undefined {
+function getDistinctCookieKeyFromHeader(cookie: string): string {
   const parsed = parseSetCookie(cookie)
-  if (!parsed) {
-    return undefined
-  }
-  return getDistinctCookieKey(parsed.name, parsed)
+  // A cookie the parser rejects is identified by its exact string, so merging
+  // it again replaces it. Header values cannot contain NUL, so this key cannot
+  // match a parsed name, domain, and path.
+  return parsed ? getDistinctCookieKey(parsed.name, parsed) : `\0${cookie}`
 }
 
 function replaceSetCookieValues(
@@ -352,13 +352,10 @@ function replaceSetCookieValues(
 
 // Every reconcile pass merges the same immutable cookie strings again, so
 // parse each string's identity once per request.
-function getCookieKey(
-  state: ResponseState,
-  cookie: string,
-): string | undefined {
+function getCookieKey(state: ResponseState, cookie: string): string {
   const keys = (state.setCookieKeys ||= new Map())
   let key = keys.get(cookie)
-  if (key === undefined && !keys.has(cookie)) {
+  if (key === undefined) {
     key = getDistinctCookieKeyFromHeader(cookie)
     keys.set(cookie, key)
   }
@@ -375,16 +372,10 @@ function getMergedSetCookieValues(
   }
   const cookieKeysToMerge = new Set<string>()
   for (const cookie of cookiesToMerge) {
-    const cookieKey = getCookieKey(state, cookie)
-    if (cookieKey) {
-      cookieKeysToMerge.add(cookieKey)
-    }
+    cookieKeysToMerge.add(getCookieKey(state, cookie))
   }
   return currentCookies
-    .filter((cookie) => {
-      const cookieKey = getCookieKey(state, cookie)
-      return !cookieKey || !cookieKeysToMerge.has(cookieKey)
-    })
+    .filter((cookie) => !cookieKeysToMerge.has(getCookieKey(state, cookie)))
     .concat(cookiesToMerge)
 }
 
