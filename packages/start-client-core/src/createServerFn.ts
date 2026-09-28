@@ -203,14 +203,14 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               resolvedMiddleware,
               'server',
               ctx,
-            ).then((d) => ({
-              // Only send the result and sendContext back to the client
-              result: d.result,
-              error: d.error,
-              context: d.sendContext,
-            }))
+            )
 
-            return result
+            // Only send the result and sendContext back to the client
+            return {
+              result: result.result,
+              error: result.error,
+              context: result.sendContext,
+            }
           },
         },
       ) as any
@@ -224,6 +224,22 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
     return createServerFn(undefined, newOptions)
   }
   return Object.assign(fun, res) as any
+}
+
+function mergeOptionalSendContext(
+  target: Record<string, unknown> | undefined,
+  source: Record<string, unknown> | null | undefined,
+) {
+  return target === undefined && source === undefined
+    ? undefined
+    : safeObjectMerge(target, source)
+}
+
+function mergeOptionalHeaders(
+  target: HeadersInit | undefined,
+  source: HeadersInit | undefined,
+) {
+  return target || source ? mergeHeaders(target, source) : undefined
 }
 
 export async function executeMiddleware(
@@ -297,8 +313,11 @@ export async function executeMiddleware(
             ...ctx,
             ...userCtx,
             context: safeObjectMerge(ctx.context, userCtx.context),
-            sendContext: safeObjectMerge(ctx.sendContext, userCtx.sendContext),
-            headers: mergeHeaders(ctx.headers, userCtx.headers),
+            sendContext: mergeOptionalSendContext(
+              ctx.sendContext,
+              userCtx.sendContext,
+            ),
+            headers: mergeOptionalHeaders(ctx.headers, userCtx.headers),
             _callSiteFetch: ctx._callSiteFetch,
             fetch: ctx._callSiteFetch ?? userCtx.fetch ?? ctx.fetch,
             result:
@@ -360,13 +379,19 @@ export async function executeMiddleware(
   }
 
   // Start the middleware chain
-  return callNextMiddleware({
+  const initialCtx = {
     ...opts,
-    headers: opts.headers || {},
-    sendContext: opts.sendContext || {},
+    // Client next() results always expose HeadersInit. Server middleware does
+    // not require a headers value unless one was explicitly supplied.
+    headers: opts.headers || (env === 'client' ? {} : undefined),
+    sendContext: opts.sendContext,
     context: opts.context || createNullProtoObject(),
     _callSiteFetch: opts.fetch,
-  })
+  }
+  if (initialCtx.sendContext !== undefined) {
+    initialCtx.sendContext ||= {}
+  }
+  return callNextMiddleware(initialCtx)
 }
 
 export type CompiledFetcherFnOptions = {

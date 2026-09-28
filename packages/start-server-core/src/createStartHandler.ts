@@ -23,7 +23,6 @@ import {
   getNormalizedURL,
   isSsrResponse,
   normalizeSsrResponse,
-  replaceSsrResponse,
   waitForRequest,
 } from '@tanstack/router-core/ssr/server'
 import {
@@ -31,9 +30,9 @@ import {
   runWithStartContext,
 } from '@tanstack/start-storage-context'
 import {
+  createFinalizedResponse,
   finalizeResponse,
   getParsedRequestUrl,
-  protectResponseHeaders,
   reconcileResponse,
   transferResponseProtocol,
   withStartRequest,
@@ -928,12 +927,10 @@ export function createStartHandler<TRegister = Register>(
       responseOwnsCleanup = result.serverSsrCleanup === 'stream'
       response = result.response
     } finally {
-      if (router && !responseOwnsCleanup) {
-        // Clean up router SSR state if it was set up but won't be cleaned up by the callback
-        // (e.g., in redirect cases or early returns before the callback is invoked).
-        // Transformed streaming response bodies clean up when consumed/cancelled.
-        router.serverSsr?.cleanup()
-        // Eager or abandoned-stream cleanup callbacks can write response helpers.
+      if (router?.serverSsr && !responseOwnsCleanup) {
+        // Stream disposal already publishes its cleanup writes at the pipeline
+        // boundary. Only live eager SSR state can still add response helpers.
+        router.serverSsr.cleanup()
         if (response) {
           response = finalizeResponse(response)
         }
@@ -1014,6 +1011,7 @@ async function handleRedirectResponse(
   if (serializeRedirect) {
     const redirectOptions = { ...(opts as TODO) }
     delete redirectOptions.headers
+    redirectOptions.isSerializedRedirect = true
     const responseHeaders = new Headers(redirect.headers)
     responseHeaders.set('content-type', 'application/json')
     // The client follows the href in this JSON envelope. An HTTP Location
@@ -1021,16 +1019,22 @@ async function handleRedirectResponse(
     responseHeaders.delete('location')
     responseHeaders.delete(X_TSS_RAW_RESPONSE)
     responseHeaders.delete(X_TSS_SERIALIZED)
-    const response = Response.json(
-      { ...redirectOptions, isSerializedRedirect: true },
-      { headers: responseHeaders },
-    )
-    protectResponseHeaders(response, SERIALIZED_REDIRECT_HEADERS)
-    return replaceSsrResponse(
-      ssrResponse,
-      finalizeResponse(response),
-      'redirect response replaced',
-    )
+    // A caller-supplied toJSON can return undefined despite the library type.
+    const body = JSON.stringify(redirectOptions) as string | undefined
+    if (body === undefined) {
+      throw new TypeError('Value is not JSON serializable')
+    }
+    // Both serialization and disposal can write helpers. Construct the envelope
+    // afterward with its final state instead of reconciling a temporary response.
+    disposeSsrResponse(ssrResponse, 'redirect response replaced')
+    return {
+      response: createFinalizedResponse(
+        body,
+        responseHeaders,
+        SERIALIZED_REDIRECT_HEADERS,
+      ),
+      serverSsrCleanup: 'none',
+    }
   }
 
   ssrResponse.response = finalizeResponse(redirect)

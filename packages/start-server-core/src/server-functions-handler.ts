@@ -580,10 +580,17 @@ function serializeResult(
 
 function isNotFoundResponse(error: any) {
   const { headers, ...rest } = error
-  const responseHeaders = new Headers(headers || {})
-  responseHeaders.set('Content-Type', 'application/json')
-  responseHeaders.delete(X_TSS_SERIALIZED)
-  responseHeaders.delete(X_TSS_RAW_RESPONSE)
+  let responseHeaders: HeadersInit
+  if (headers) {
+    // Snapshot caller headers before serialization can run user callbacks.
+    const copiedHeaders = new Headers(headers)
+    copiedHeaders.set('Content-Type', 'application/json')
+    copiedHeaders.delete(X_TSS_SERIALIZED)
+    copiedHeaders.delete(X_TSS_RAW_RESPONSE)
+    responseHeaders = copiedHeaders
+  } else {
+    responseHeaders = { 'Content-Type': 'application/json' }
+  }
 
   const response = new Response(JSON.stringify(rest), {
     status: 404,
