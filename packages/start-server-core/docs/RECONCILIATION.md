@@ -142,6 +142,7 @@ SSR streaming responses carry cleanup ownership metadata. Middleware reconciliat
 - Wrapper response with the same body: ownership moves to the wrapper, and the wrapper keeps the protected transport headers of the body it wraps.
 - Different response or dropped body: original stream owner is disposed.
 - Middleware error after `next()`: original stream owner is disposed.
+- Late result from an abandoned `next()`: a middleware can return its own response while its `next()` is still running, for example a timeout built with `Promise.race`. From then on, the result of that `next()` is abandoned, even while outer middleware is still running. It never replaces or cancels the response the middleware returned, and its body is disposed. Helper writes made by the abandoned work still apply, because helper state belongs to the request.
 
 This prevents cleanup leaks while still allowing middleware to wrap streamed responses without prematurely disposing the stream.
 

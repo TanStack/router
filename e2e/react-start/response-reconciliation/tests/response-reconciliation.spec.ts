@@ -271,6 +271,18 @@ test.describe('server routes', () => {
     })
   })
 
+  test('a timeout fallback survives the handler it abandoned while an outer middleware awaits', async ({
+    request,
+  }) => {
+    const response = await request.get('/api/status-contracts?scenario=slow', {
+      headers: { 'x-reconciliation-scenario': 'global-timeout' },
+    })
+
+    expect(response.status()).toBe(504)
+    expect(header(response, 'x-timeout-fallback')).toBe('yes')
+    await expect(response.text()).resolves.toBe('timeout')
+  })
+
   test('a helper success status does not hide an uncaught error', async ({
     request,
   }) => {

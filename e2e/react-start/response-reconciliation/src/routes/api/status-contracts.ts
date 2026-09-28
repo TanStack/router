@@ -5,7 +5,7 @@ import { createUpstreamFailure } from './-upstream'
 export const Route = createFileRoute('/api/status-contracts')({
   server: {
     handlers: {
-      GET: ({ request }) => {
+      GET: async ({ request }) => {
         const scenario = new URL(request.url).searchParams.get('scenario')
 
         if (scenario === 'invalid-status-return') {
@@ -19,6 +19,11 @@ export const Route = createFileRoute('/api/status-contracts')({
         if (scenario === 'invalid-status-throw') {
           setResponseStatus(101)
           throw new Error('Unexpected status contract failure')
+        }
+
+        if (scenario === 'slow') {
+          await new Promise((resolve) => setTimeout(resolve, 150))
+          return new Response('slow result')
         }
 
         if (scenario === 'helper-success-crash') {

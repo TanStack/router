@@ -2155,6 +2155,66 @@ describe('createStartHandler SSR cleanup ownership', () => {
     expect(await response.text()).toBe('timeout')
   })
 
+  it.each(['shared result', 'captured response'] as const)(
+    'keeps an inner fallback when the result it abandoned settles while an outer middleware awaits (%s)',
+    async (returned) => {
+      let resolveInner!: (response: Response) => void
+      startMocks.serverFnHandler = () =>
+        new Promise<Response>((resolve) => {
+          resolveInner = resolve
+        })
+      const timeoutCancel = vi.fn()
+      const timeoutResponse = new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('timeout'))
+            controller.close()
+          },
+          cancel: timeoutCancel,
+        }),
+        { status: 504 },
+      )
+      const innerCancel = vi.fn()
+      startMocks.requestMiddleware = [
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          const captured = result.response
+          // The abandoned inner result settles while this middleware awaits.
+          resolveInner(
+            new Response(new ReadableStream({ cancel: innerCancel }), {
+              status: 200,
+            }),
+          )
+          await new Promise((resolve) => setTimeout(resolve, 10))
+          return returned === 'shared result' ? result : captured
+        }),
+        createMiddleware().server(({ next }) =>
+          Promise.race([
+            next(),
+            new Promise<Response>((resolve) =>
+              setTimeout(() => resolve(timeoutResponse), 5),
+            ),
+          ]),
+        ),
+      ]
+
+      const handler = createTestStartHandler(() => new Response('unused'))
+      const response = await handler(
+        new Request('http://localhost/_serverFn/test', {
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(504)
+      expect(timeoutCancel).not.toHaveBeenCalled()
+      expect(innerCancel).toHaveBeenCalledExactlyOnceWith(
+        'late middleware response',
+      )
+      expect(await response.text()).toBe('timeout')
+    },
+  )
+
   it('disposes stream response replaced by middleware result', async () => {
     const router = makeRouter()
     startMocks.router = router

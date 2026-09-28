@@ -312,6 +312,29 @@ function getOwnedResponse(
   }
 }
 
+/**
+ * One middleware invocation. Once it has returned, the result of any next()
+ * call still pending below it is abandoned: it must not replace or cancel the
+ * response the invocation chose (for example the winner of a `Promise.race`).
+ */
+interface MiddlewareInvocation {
+  returned: boolean
+  caller?: MiddlewareInvocation
+}
+
+function isAbandoned(invocation: MiddlewareInvocation): boolean {
+  for (
+    let current: MiddlewareInvocation | undefined = invocation;
+    current;
+    current = current.caller
+  ) {
+    if (current.returned) {
+      return true
+    }
+  }
+  return false
+}
+
 function createLateResponseDisposer(signal: AbortSignal) {
   return (result: TODO) => disposeResponseResult(result, signal.reason)
 }
@@ -329,10 +352,9 @@ async function executeMiddleware(
 ): Promise<HandlerCallbackResult> {
   let index = -1
   let responseOwnership: MiddlewareResponseOwnership | undefined
-  // Once the pipeline returned, the HTTP runtime owns the response. A result
-  // that settles later (for example the loser of a `Promise.race`) must not
-  // replace or cancel it.
-  let settled = false
+  // The pipeline is the root caller. Once it returns, the HTTP runtime owns
+  // the response, so every result that settles later is abandoned.
+  const pipeline: MiddlewareInvocation = { returned: false }
   const disposeAbandonedResult = createLateResponseDisposer(signal)
 
   const adoptResponse = (
@@ -383,7 +405,7 @@ async function executeMiddleware(
     }
   }
 
-  const setResponse = (response: TODO) => {
+  const setResponse = (response: TODO, caller: MiddlewareInvocation) => {
     const ssrResponse = isSsrResponse(response) ? response : undefined
     const streamResponse =
       ssrResponse?.serverSsrCleanup === 'stream' ? ssrResponse : undefined
@@ -391,7 +413,7 @@ async function executeMiddleware(
       ? ssrResponse.response
       : response
 
-    if (settled) {
+    if (isAbandoned(caller)) {
       if (exposed !== ctx.response) {
         disposeResponseResult(response, 'late middleware response')
       }
@@ -412,19 +434,22 @@ async function executeMiddleware(
     }
   }
 
-  const reconcileCtxResponse = () => {
-    setResponse(ctx.response)
+  const reconcileCtxResponse = (caller: MiddlewareInvocation) => {
+    setResponse(ctx.response, caller)
   }
 
   let nextPromise: Promise<TODO> | undefined
 
-  function next(nextCtx?: TODO): Promise<TODO> {
-    const result = runNext(nextCtx)
+  function next(caller: MiddlewareInvocation, nextCtx?: TODO): Promise<TODO> {
+    const result = runNext(caller, nextCtx)
     nextPromise = result
     return result
   }
 
-  async function runNext(nextCtx?: TODO): Promise<TODO> {
+  async function runNext(
+    caller: MiddlewareInvocation,
+    nextCtx?: TODO,
+  ): Promise<TODO> {
     signal.throwIfAborted()
 
     // Merge context if provided using safeObjectMerge for prototype pollution prevention
@@ -435,7 +460,7 @@ async function executeMiddleware(
       // Copy own properties except context (Object.keys returns only own enumerable properties)
       for (const key of Object.keys(nextCtx)) {
         if (key === 'response') {
-          setResponse(nextCtx.response)
+          setResponse(nextCtx.response, caller)
         } else if (key !== 'context') {
           ctx[key] = nextCtx[key]
         }
@@ -450,10 +475,14 @@ async function executeMiddleware(
         : isTerminal
           ? terminal
           : undefined
-    const middlewareNext = isTerminal && terminalNext ? terminalNext : next
     if (!middleware) {
       return ctx
     }
+    const invocation: MiddlewareInvocation = { returned: false, caller }
+    const middlewareNext =
+      isTerminal && terminalNext
+        ? terminalNext
+        : (childCtx?: TODO) => next(invocation, childCtx)
 
     let result: TODO
     try {
@@ -475,7 +504,8 @@ async function executeMiddleware(
         )
       }
     } catch (err) {
-      if (!settled) {
+      invocation.returned = true
+      if (!isAbandoned(caller)) {
         // Middleware can replace next()'s shared response before throwing.
         // Track that body for cleanup without rebuilding a body it may have
         // already locked, consumed, or transferred.
@@ -491,18 +521,19 @@ async function executeMiddleware(
         throw signal.reason
       }
       if (err instanceof Response) {
-        setResponse(err)
+        setResponse(err, caller)
         return ctx
       }
       throw err
     }
+    invocation.returned = true
 
     if (isTerminal && terminalNext && !result) {
       throwRouteHandlerError()
     }
 
     if (isTerminal && !terminalNext && result instanceof DeferredResponse) {
-      if (!settled) {
+      if (!isAbandoned(caller)) {
         // Cleanup may write response helpers. Construct only after it has run,
         // then publish without rechecking headers that no user has received.
         adoptResponse(undefined)
@@ -516,11 +547,12 @@ async function executeMiddleware(
       // Select the replacement before reconciling: middleware may already
       // have transferred or piped the previous response's body.
       if (response !== undefined) {
-        setResponse(response)
+        setResponse(response, caller)
       } else {
-        reconcileCtxResponse()
+        reconcileCtxResponse(caller)
       }
       if (
+        !isAbandoned(caller) &&
         response !== result &&
         result.context &&
         result.context !== ctx.context
@@ -528,14 +560,14 @@ async function executeMiddleware(
         ctx.context = safeObjectMerge(ctx.context, result.context)
       }
     } else {
-      reconcileCtxResponse()
+      reconcileCtxResponse(caller)
     }
 
     return ctx
   }
 
   try {
-    await runNext()
+    await runNext(pipeline)
     const response = ctx.response
     if (!response) {
       throwRouteHandlerError()
@@ -543,10 +575,10 @@ async function executeMiddleware(
     if (signal.aborted) {
       throw signal.reason
     }
-    settled = true
+    pipeline.returned = true
     return responseOwnership ? getOwnedResponse(responseOwnership) : response
   } catch (err) {
-    settled = true
+    pipeline.returned = true
     if (responseOwnership) {
       disposeResponseOwnership(
         responseOwnership,

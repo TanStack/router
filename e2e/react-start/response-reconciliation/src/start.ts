@@ -66,6 +66,14 @@ const globalResponseMiddleware = createMiddleware().server(
       return { ...result, response: wrapped }
     }
 
+    if (scenario === 'global-timeout') {
+      // Keep working after next() while the handler the inner timeout
+      // abandoned is still running.
+      const result = await next()
+      await sleep(400)
+      return result
+    }
+
     if (scenario === 'global-throw') {
       setResponseStatus(401, 'Unauthorized')
       setResponseHeader('x-global-error', 'yes')
@@ -76,6 +84,30 @@ const globalResponseMiddleware = createMiddleware().server(
   },
 )
 
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+const globalTimeoutMiddleware = createMiddleware().server(
+  ({ next, request }) => {
+    const scenario =
+      request.headers.get('x-reconciliation-scenario') ||
+      getCookie('reconciliation-scenario')
+    if (scenario !== 'global-timeout') {
+      return next()
+    }
+    return Promise.race([
+      next(),
+      sleep(50).then(
+        () =>
+          new Response('timeout', {
+            status: 504,
+            headers: { 'x-timeout-fallback': 'yes' },
+          }),
+      ),
+    ])
+  },
+)
+
 export const startInstance = createStart(() => ({
-  requestMiddleware: [globalResponseMiddleware],
+  requestMiddleware: [globalResponseMiddleware, globalTimeoutMiddleware],
 }))

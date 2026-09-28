@@ -247,69 +247,59 @@ describe('server function response reconciliation', () => {
     },
   )
 
-  it.each([203, 204])(
-    'includes fallback cancellation helper writes when a pending action replaces it with status %s',
-    async (status) => {
-      let releaseAction!: () => void
-      const actionCanFinish = new Promise<void>((resolve) => {
-        releaseAction = resolve
-      })
-      let pendingAction: Promise<unknown> | undefined
-      const cancelFallback = vi.fn(() => {
-        setResponseStatus(status, 'Cleanup status')
-        setResponseHeader('x-cleanup', 'yes')
-        appendResponseHeader('x-steps', 'cleanup')
-        setCookie('session', 'cleanup', { path: '/' })
-      })
-      const fallback = new Response(
-        new ReadableStream<Uint8Array>({ cancel: cancelFallback }),
-        { status: 504 },
-      )
-      serverFnMocks.middleware = [
-        createMiddleware().server(async ({ next }) => {
-          const result = await next()
-          releaseAction()
-          await pendingAction
-          return result
-        }),
-        createMiddleware().server(({ next }) => {
-          pendingAction = Promise.resolve(next())
-          return fallback
-        }),
-      ]
-      const action = createAction()
-      action.mockImplementation(async () => {
-        await actionCanFinish
-        appendResponseHeader('x-steps', 'action')
-        return { result: 'completed' }
-      })
-      serverFnMocks.action = action
-
-      try {
-        const response = await createHandler()(
-          createServerFunctionRequest(),
-          {},
-        )
-
-        expect(cancelFallback).toHaveBeenCalledOnce()
-        expect(response.status).toBe(status === 204 ? 200 : status)
-        expect(response.statusText).toBe(status === 204 ? '' : 'Cleanup status')
-        expect(response.headers.get('x-cleanup')).toBe('yes')
-        expect(response.headers.get('x-steps')).toBe('action, cleanup')
-        expect(response.headers.getSetCookie()).toEqual([
-          'session=cleanup; Path=/',
-        ])
-        expect(response.headers.get('content-type')).toBe('application/json')
-        expect(response.headers.get('x-tss-serialized')).toBe('true')
-        expect(fromCrossJSON(await response.json(), {})).toEqual({
-          result: 'completed',
-        })
-      } finally {
+  it('keeps a returned fallback when the action it abandoned completes while an outer middleware awaits', async () => {
+    let releaseAction!: () => void
+    const actionCanFinish = new Promise<void>((resolve) => {
+      releaseAction = resolve
+    })
+    let pendingAction: Promise<unknown> | undefined
+    const cancelFallback = vi.fn()
+    const fallback = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('fallback'))
+          controller.close()
+        },
+        cancel: cancelFallback,
+      }),
+      { status: 504 },
+    )
+    serverFnMocks.middleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
         releaseAction()
         await pendingAction
-      }
-    },
-  )
+        return result
+      }),
+      createMiddleware().server(({ next }) => {
+        pendingAction = Promise.resolve(next())
+        return fallback
+      }),
+    ]
+    const action = createAction()
+    action.mockImplementation(async () => {
+      await actionCanFinish
+      appendResponseHeader('x-steps', 'action')
+      return { result: 'completed' }
+    })
+    serverFnMocks.action = action
+
+    try {
+      const response = await createHandler()(createServerFunctionRequest(), {})
+
+      expect(action).toHaveBeenCalledOnce()
+      expect(cancelFallback).not.toHaveBeenCalled()
+      expect(response.status).toBe(504)
+      expect(response.headers.get('x-tss-serialized')).toBeNull()
+      // Helper writes belong to the request, so the abandoned action's
+      // writes still apply to the response that replaced its result.
+      expect(response.headers.get('x-steps')).toBe('action')
+      await expect(response.text()).resolves.toBe('fallback')
+    } finally {
+      releaseAction()
+      await pendingAction
+    }
+  })
 
   it('keeps an early middleware response readable after a late JSON action completes', async () => {
     let releaseAction!: () => void
