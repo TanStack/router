@@ -1,5 +1,6 @@
 import { afterAll, bench, describe, expect, vi } from 'vitest'
 import { fromCrossJSON } from 'seroval'
+import { notFound } from '@tanstack/router-core'
 import {
   createCsrfMiddleware,
   createMiddleware,
@@ -117,8 +118,39 @@ const scenarios = [
     })),
   ),
 ]
+const notFoundHeaders = new Headers({
+  'content-type': 'text/plain',
+  'x-tss-serialized': 'true',
+  'x-tss-raw': 'true',
+  'x-not-found': 'preserved',
+})
+for (const cookie of cookies) {
+  notFoundHeaders.append('set-cookie', cookie)
+}
+const originalNotFoundHeaders = Array.from(notFoundHeaders)
+const notFoundScenarios = [
+  {
+    id: 'not-found-without-headers',
+    name: 'not-found response without supplied headers',
+    headers: undefined,
+    action: () => {
+      throw notFound()
+    },
+  },
+  {
+    id: 'not-found-with-headers',
+    name: 'not-found response with supplied headers and three cookies',
+    headers: notFoundHeaders,
+    action: () => {
+      throw notFound({ headers: notFoundHeaders })
+    },
+  },
+]
 const actions = new Map(
-  scenarios.map((scenario) => [scenario.id, scenario.action]),
+  [...scenarios, ...notFoundScenarios].map((scenario) => [
+    scenario.id,
+    scenario.action,
+  ]),
 )
 
 const fetch = createStartHandler(() => {
@@ -169,6 +201,28 @@ for (const scenario of scenarios) {
   }
 }
 
+for (const scenario of notFoundScenarios) {
+  const response = await handler.fetch(requestFor(scenario.id, 0))
+  expect(response.status).toBe(404)
+  expect(response.headers.get('content-type')).toBe('application/json')
+  expect(response.headers.get('x-tss-serialized')).toBeNull()
+  expect(response.headers.get('x-tss-raw')).toBeNull()
+  expect(response.headers.get('x-not-found')).toBe(
+    scenario.headers ? 'preserved' : null,
+  )
+  expect(response.headers.getSetCookie()).toEqual(
+    scenario.headers ? cookies : [],
+  )
+  expect(Array.from(notFoundHeaders)).toEqual(originalNotFoundHeaders)
+  expect(await response.json()).toEqual({ isNotFound: true })
+}
+
+function validateNotFoundResponse(response: Response) {
+  if (response.status !== 404) {
+    throw new Error(`Expected not-found response, received ${response.status}`)
+  }
+}
+
 afterAll(() => {
   if (fixture.previousServerFnBase === undefined) {
     Reflect.deleteProperty(process.env, 'TSS_SERVER_FN_BASE')
@@ -188,6 +242,21 @@ describe('response reconciliation', () => {
           totalRequests: 160,
           buildRequest: (random) =>
             requestFor(scenario.id, Math.floor(random() * 1_000_000)),
+        }),
+      { warmupIterations: 100, time: 5_000, throws: true },
+    )
+  }
+  for (const scenario of notFoundScenarios) {
+    bench(
+      scenario.name,
+      () =>
+        runRequestLoop(handler, {
+          seed: 0xdecafbad,
+          concurrency: 8,
+          totalRequests: 160,
+          buildRequest: (random) =>
+            requestFor(scenario.id, Math.floor(random() * 1_000_000)),
+          validateResponse: validateNotFoundResponse,
         }),
       { warmupIterations: 100, time: 5_000, throws: true },
     )
