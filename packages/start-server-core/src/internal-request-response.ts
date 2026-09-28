@@ -1164,6 +1164,50 @@ export function setResponseHeaders(
   }
 }
 
+let SnapshotHeaders: typeof Headers | undefined
+
+/**
+ * Outside production, return the snapshot as a Headers subclass that warns when
+ * code tries to change the outgoing response through it. Its contents and
+ * behavior are identical to the production snapshot.
+ */
+function toResponseHeadersSnapshot(headers: Headers): ReadonlyResponseHeaders {
+  if (process.env.NODE_ENV === 'production') {
+    return headers as ReadonlyResponseHeaders
+  }
+  SnapshotHeaders ??= class ResponseHeadersSnapshot extends Headers {
+    override append(name: string, value: string): void {
+      warnSnapshotMutation('append')
+      super.append(name, value)
+    }
+    override delete(name: string): void {
+      warnSnapshotMutation('delete')
+      super.delete(name)
+    }
+    override set(name: string, value: string): void {
+      warnSnapshotMutation('set')
+      super.set(name, value)
+    }
+  }
+  // The constructor fills entries without calling the overridden methods.
+  const entries: Array<[string, string]> = []
+  for (const [name, value] of headers) {
+    if (name !== 'set-cookie') {
+      entries.push([name, value])
+    }
+  }
+  for (const cookie of getSetCookieValues(headers)) {
+    entries.push(['set-cookie', cookie])
+  }
+  return new SnapshotHeaders(entries) as ReadonlyResponseHeaders
+}
+
+function warnSnapshotMutation(method: string): void {
+  console.warn(
+    `getResponseHeaders().${method}() does not change the response: getResponseHeaders() returns a read-only snapshot. Use setResponseHeader, appendResponseHeader, removeResponseHeader, clearResponseHeaders, or setCookie instead.`,
+  )
+}
+
 /**
  * Read a detached snapshot of the effective response headers.
  * Use response header and cookie helpers to change the outgoing response.
@@ -1173,9 +1217,9 @@ export function getResponseHeaders(): ReadonlyResponseHeaders {
   const state = event.responseState
   const currentResponse = event.currentResponse
   if (!currentResponse) {
-    return (
-      state ? cloneHeaders(state.headers) : new Headers()
-    ) as ReadonlyResponseHeaders
+    return toResponseHeadersSnapshot(
+      state ? cloneHeaders(state.headers) : new Headers(),
+    )
   }
   const protectedHeaders = getProtectedResponseHeaders(currentResponse)
   let headers = currentResponse.headers
@@ -1195,7 +1239,7 @@ export function getResponseHeaders(): ReadonlyResponseHeaders {
   if (protectedHeaders) {
     applyProtectedHeaders(protectedHeaders, headers)
   }
-  return headers as ReadonlyResponseHeaders
+  return toResponseHeadersSnapshot(headers)
 }
 
 export function getResponseHeader(
