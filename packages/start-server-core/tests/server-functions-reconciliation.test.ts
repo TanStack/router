@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
-import { fromCrossJSON } from 'seroval'
+import { fromCrossJSON, toJSON } from 'seroval'
 import { RawStream, notFound } from '@tanstack/router-core'
 import {
   TSS_FORMDATA_CONTEXT,
@@ -117,6 +117,85 @@ afterAll(() => {
 })
 
 describe('server function response reconciliation', () => {
+  it.each(['GET', 'POST'] as const)(
+    'preserves request middleware context through the %s RPC terminal',
+    async (method) => {
+      const requestContext = Object.freeze({ nonce: 'request' })
+      const globalContext = Object.freeze({
+        trusted: 'server',
+        global: 'yes',
+      })
+      const clientContext = Object.freeze({
+        trusted: 'client',
+        client: 'yes',
+      })
+      const events: Array<string> = []
+      let resumedContext: unknown
+      serverFnMocks.middleware = [
+        createMiddleware().server(async ({ next }) => {
+          events.push('outer before')
+          const result = await next({ context: globalContext })
+          resumedContext = result.context
+          events.push('outer after')
+          appendResponseHeader('x-steps', 'outer after')
+          return result
+        }),
+        createMiddleware().server(({ next }) => {
+          events.push('inner')
+          return next({ context: { inner: 'yes' } })
+        }),
+      ]
+      const action = createAction(method)
+      action.mockImplementation(({ context }) => {
+        events.push('action')
+        appendResponseHeader('x-steps', 'action')
+        return { result: context }
+      })
+      serverFnMocks.action = action
+      const payload = JSON.stringify(toJSON({ context: clientContext }))
+      const request = createServerFunctionRequest(
+        method === 'GET'
+          ? `http://localhost/_serverFn/test?payload=${encodeURIComponent(payload)}`
+          : 'http://localhost/_serverFn/test',
+        method === 'GET'
+          ? undefined
+          : {
+              method,
+              headers: { 'content-type': 'application/json' },
+              body: payload,
+            },
+      )
+
+      const response = await createHandler()(request, {
+        context: requestContext,
+      })
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('x-tss-serialized')).toBe('true')
+      expect(response.headers.get('x-steps')).toBe('action, outer after')
+      expect(fromCrossJSON(await response.json(), {})).toEqual({
+        result: {
+          nonce: 'request',
+          trusted: 'server',
+          global: 'yes',
+          client: 'yes',
+          inner: 'yes',
+        },
+      })
+      expect(resumedContext).toEqual({
+        nonce: 'request',
+        trusted: 'server',
+        global: 'yes',
+        inner: 'yes',
+      })
+      expect(events).toEqual(['outer before', 'inner', 'action', 'outer after'])
+      expect(action).toHaveBeenCalledOnce()
+      expect(requestContext).toEqual({ nonce: 'request' })
+      expect(globalContext).toEqual({ trusted: 'server', global: 'yes' })
+      expect(clientContext).toEqual({ trusted: 'client', client: 'yes' })
+    },
+  )
+
   it.each([202, 204, 205, 304])(
     'includes helper writes made while serializing a synchronous result with status %s',
     async (status) => {
