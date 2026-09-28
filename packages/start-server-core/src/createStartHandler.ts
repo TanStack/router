@@ -443,8 +443,11 @@ async function executeMiddleware(
       if (nextCtx.context) {
         ctx.context = safeObjectMerge(ctx.context, nextCtx.context)
       }
-      // Copy own properties except context (Object.keys returns only own enumerable properties)
-      for (const key of Object.keys(nextCtx)) {
+      // Copy own properties except context (Object.keys returns only own
+      // enumerable properties). An indexed loop avoids the iterator protocol.
+      const keys = Object.keys(nextCtx)
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]!
         if (key === 'response') {
           setResponse(nextCtx.response, caller)
         } else if (key !== 'context') {
