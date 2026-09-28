@@ -164,12 +164,11 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             context: createNullProtoObject(),
           })
 
-          const redirect = parseRedirect(result.error)
-          if (redirect) {
-            throw redirect
+          // Only a failed call has an `error` key. Its value is whatever was
+          // thrown, so a thrown undefined or 0 still rejects the call.
+          if ('error' in result) {
+            throw parseRedirect(result.error) ?? result.error
           }
-
-          if (result.error) throw result.error
           return result.result
         },
         {
@@ -205,12 +204,11 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               ctx,
             )
 
-            // Only send the result and sendContext back to the client
-            return {
-              result: result.result,
-              error: result.error,
-              context: result.sendContext,
-            }
+            // Only send the result and sendContext back to the client. A
+            // failed call sends only its thrown value, under an `error` key.
+            return 'error' in result
+              ? { error: result.error }
+              : { result: result.result, context: result.sendContext }
           },
         },
       ) as any
@@ -326,12 +324,11 @@ export async function executeMiddleware(
                 : userCtx instanceof Response
                   ? userCtx
                   : (ctx as any).result,
-            error: userCtx.error ?? (ctx as any).error,
           }
 
           const result = await callNextMiddleware(nextCtx)
 
-          if (result.error) {
+          if ('error' in result) {
             throw result.error
           }
 
@@ -904,6 +901,7 @@ export type ServerFnMiddlewareOptions = {
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
   result?: unknown
+  /** Present only when the call failed. Holds the thrown value, even `undefined`. */
   error?: unknown
 }
 

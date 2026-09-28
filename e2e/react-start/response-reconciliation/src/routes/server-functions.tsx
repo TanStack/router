@@ -170,6 +170,10 @@ const bodylessStatusFn = createServerFn().handler(() => {
   return { ok: true }
 })
 
+const throwZeroFn = createServerFn().handler(() => {
+  throw 0
+})
+
 const helperLocationFn = createServerFn().handler(() => {
   setResponseStatus(302)
   setResponseHeader('location', '/api/base')
@@ -217,6 +221,7 @@ function ServerFunctions() {
       <ServerFunctionButton name="throwRedirect" fn={throwRedirectFn} />
       <ServerFunctionButton name="bodylessStatus" fn={bodylessStatusFn} />
       <ServerFunctionButton name="helperLocation" fn={helperLocationFn} />
+      <ServerFunctionButton name="throwZero" fn={throwZeroFn} />
     </main>
   )
 }
@@ -246,7 +251,11 @@ function ServerFunctionButton({
               setResult(JSON.stringify(value))
             }
           } catch (error) {
-            setResult(error instanceof Error ? error.message : 'error')
+            setResult(
+              error instanceof Error
+                ? error.message
+                : `thrown:${JSON.stringify(error) ?? String(error)}`,
+            )
           }
         }}
       >

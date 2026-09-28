@@ -251,7 +251,7 @@ export const handleServerAction = async ({
       res = await action(payload)
     }
 
-    const unwrapped = res.result !== undefined ? res.result : res.error
+    const unwrapped = 'error' in res ? res.error : res.result
 
     if (isNotFound(res)) {
       res = isNotFoundResponse(res)
