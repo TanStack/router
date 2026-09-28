@@ -108,7 +108,7 @@ const serverFn = createServerFn({ method: 'POST' }).handler(async () => {
 
 `getResponseHeader` and `getResponseHeaders` are read helpers. Treat the `Headers` returned by `getResponseHeaders()` as a snapshot; mutating it does not change the outgoing response. Use the setter/removal helpers for writes.
 
-`appendResponseHeader(name, value)` appends without replacing existing values. For `set-cookie` it accepts fully serialized cookie strings and merges them by cookie identity (name + domain + path) — the primitive for bridging external session/auth libraries:
+`appendResponseHeader(name, value)` appends without replacing existing values. For `set-cookie` it accepts fully serialized cookie strings and merges them by cookie identity (name + domain + path; a value `cookie-es` cannot parse is identified by its exact string) — the primitive for bridging external session/auth libraries:
 
 ```ts
 appendResponseHeader('set-cookie', await externalSessionLib.commit())

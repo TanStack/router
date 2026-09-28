@@ -98,6 +98,8 @@ Cookies use native `cookie-es` parsing and serialization.
 
 If domain is absent, identity uses an empty domain. `setCookie` defaults to `Path=/`, but returned `Set-Cookie` headers without `Path` keep an empty path identity so they do not dedupe against explicit-path cookies.
 
+A `Set-Cookie` value that `cookie-es` cannot parse, for example one whose name is an `Object.prototype` key such as `constructor` or whose name and value exceed 4096 characters, is identified by its exact string. Only identical strings dedupe.
+
 Cookie behavior has two modes:
 
 - `setCookie`/`deleteCookie`/`appendResponseHeader('set-cookie', ...)`: merge with existing returned response cookies.
