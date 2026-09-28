@@ -390,7 +390,7 @@ Stream typed data from server functions to the client. See the [Streaming Data f
 
 ### Raw Responses
 
-Return `Response` objects binary data, or custom content types.
+Return a `Response` for binary data or custom content types, and the call resolves with it. Throw a `Response` instead to reject the call with it. Either way, the caller receives its status, headers, and body.
 
 ### Progressive Enhancement
 

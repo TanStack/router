@@ -114,6 +114,7 @@ Server function protocol responses protect required header values and required a
 - Serialized JSON and framed results require their content type and `x-tss-serialized: true`, with `x-tss-raw` absent.
 - Plain redirect and not-found JSON require JSON content type, with both incompatible transport markers absent.
 - Explicit raw responses require `x-tss-raw: true`; their application content type is not protected.
+- A `Response` that a server function or its function middleware throws requires `x-tss-raw: thrown`, and the client rejects the call with it. Its application content type is not protected either.
 
 Every serialized reply (JSON and framed results, errors, not-found envelopes, and RPC redirect envelopes) also requires `Location` to be absent, whether it comes from a helper, from error metadata, or from `notFound({ headers })`. The client decodes these replies from their body. Error replies always use an error status, but a helper can still select a 3xx status for other serialized replies, and an HTTP `Location` would then make fetch follow the redirect before the client decodes the reply. For redirect envelopes, the client reads the destination from the JSON `href`. Native form and document redirects still use `Location`. Helper status and status text control HTTP metadata, while the redirect's own `statusCode` remains in its Router navigation options.
 
