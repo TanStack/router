@@ -21,6 +21,14 @@ separate cookies and 0, 4, or 20 extra headers. Each raw size runs with both
 unchanged and repaired protocol headers, so an optimization that scans all
 headers cannot hide its cost behind the repair cases' early exit.
 
+Two additional cases throw the public `notFound()` error, with and without
+supplied headers, through the same handler and protocol-repair middleware. The
+supplied-header case reuses caller-owned headers with a normal header, incorrect
+transport headers, and three cookies. Assertions before measurement check the
+404 status, JSON body, transport normalization, cookie preservation, and caller
+header immutability. Timed batches validate the 404 status and drain each body,
+using the same request count, concurrency, and seed as the existing nine cases.
+
 Copy the same benchmark and config to both revisions for a comparison. Keep the
 Node version, V8 flags, batch size, and case names unchanged; compare against the
 unoptimized response-reconciliation branch to measure these newly introduced
