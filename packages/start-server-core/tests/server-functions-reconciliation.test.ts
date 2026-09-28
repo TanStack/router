@@ -117,6 +117,50 @@ afterAll(() => {
 })
 
 describe('server function response reconciliation', () => {
+  it('preserves public result accessor errors when resuming after a middleware short circuit', async () => {
+    const accessorError = new Error('request pathname is unavailable')
+    const pathnameGetter = vi.fn(() => {
+      throw accessorError
+    })
+    let caughtError: unknown
+    const action = createAction()
+    action.mockReturnValue({ result: 'terminal ran' })
+    serverFnMocks.action = action
+    serverFnMocks.middleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        // `pathname` is part of the public RequestServerResult returned by next().
+        Object.defineProperty(result, 'pathname', {
+          configurable: true,
+          enumerable: true,
+          get: pathnameGetter,
+        })
+        try {
+          return await next()
+        } catch (error) {
+          caughtError = error
+          return new Response('continuation rejected', { status: 409 })
+        }
+      }),
+      createMiddleware().server(() => new Response(null, { status: 204 })),
+    ]
+
+    const response = await createHandler()(createServerFunctionRequest(), {})
+
+    expect({
+      status: response.status,
+      accessorCalls: pathnameGetter.mock.calls.length,
+      actionCalls: action.mock.calls.length,
+      caughtError,
+    }).toEqual({
+      status: 409,
+      accessorCalls: 1,
+      actionCalls: 0,
+      caughtError: accessorError,
+    })
+    await expect(response.text()).resolves.toBe('continuation rejected')
+  })
+
   it.each(['GET', 'POST'] as const)(
     'preserves request middleware context through the %s RPC terminal',
     async (method) => {
