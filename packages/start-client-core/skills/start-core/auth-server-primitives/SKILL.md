@@ -48,46 +48,38 @@ The recommended session storage is an HTTP-only cookie holding either an opaque 
 ```tsx
 // src/server/session.ts
 import {
-  getRequestHeader,
-  setResponseHeader,
+  deleteCookie,
+  getCookie,
+  setCookie,
 } from '@tanstack/react-start/server'
 
 const SESSION_COOKIE = '__Host-session' // __Host- prefix binds to the exact origin + path '/'
 const ONE_DAY = 60 * 60 * 24
 
+const sessionCookieOptions = {
+  httpOnly: true, // not readable from JS — defeats XSS exfiltration
+  secure: true, // HTTPS only (required for __Host- prefix)
+  sameSite: 'lax', // sent on top-level navigations, blocks most CSRF
+  path: '/', // required for __Host- prefix
+} as const
+
 export function setSessionCookie(token: string) {
-  setResponseHeader(
-    'Set-Cookie',
-    [
-      `${SESSION_COOKIE}=${token}`,
-      `HttpOnly`, // not readable from JS — defeats XSS exfiltration
-      `Secure`, // HTTPS only (required for __Host- prefix)
-      `SameSite=Lax`, // sent on top-level navigations, blocks most CSRF
-      `Path=/`, // required for __Host- prefix
-      `Max-Age=${ONE_DAY}`,
-    ].join('; '),
-  )
+  setCookie(SESSION_COOKIE, token, {
+    ...sessionCookieOptions,
+    maxAge: ONE_DAY,
+  })
 }
 
 export function clearSessionCookie() {
-  setResponseHeader(
-    'Set-Cookie',
-    `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`,
-  )
+  deleteCookie(SESSION_COOKIE, sessionCookieOptions)
 }
 
 export function readSessionToken(): string | null {
-  const header = getRequestHeader('cookie')
-  if (!header) return null
-  for (const part of header.split(/;\s*/)) {
-    // Split only on the FIRST '=' — signed/base64 values often contain '='.
-    const eq = part.indexOf('=')
-    if (eq === -1) continue
-    if (part.slice(0, eq) === SESSION_COOKIE) return part.slice(eq + 1)
-  }
-  return null
+  return getCookie(SESSION_COOKIE) ?? null
 }
 ```
+
+Write cookies with `setCookie` (or `appendResponseHeader('set-cookie', serialized)` for a cookie that a library already serialized). Do not use `setResponseHeader('Set-Cookie', ...)` for this: it replaces every cookie on the outgoing response, including cookies set by other middleware or returned by a handler.
 
 Flag rationale:
 
@@ -185,10 +177,7 @@ For OAuth authorization-code flow, generate a one-time `state` (CSRF defense) an
 // src/server/oauth.functions.ts
 import { createServerFn } from '@tanstack/react-start'
 import { redirect } from '@tanstack/react-router'
-import {
-  getRequestHeader,
-  setResponseHeader,
-} from '@tanstack/react-start/server'
+import { getRequestHeader, setCookie } from '@tanstack/react-start/server'
 import crypto from 'node:crypto'
 
 const OAUTH_STATE_COOKIE = '__Host-oauth' // expires fast; one-shot
@@ -209,10 +198,13 @@ export const startOAuth = createServerFn({ method: 'GET' }).handler(
       crypto.createHash('sha256').update(verifier).digest(),
     )
 
-    setResponseHeader(
-      'Set-Cookie',
-      `${OAUTH_STATE_COOKIE}=${signed({ state, verifier })}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
-    )
+    setCookie(OAUTH_STATE_COOKIE, signed({ state, verifier }), {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 600,
+    })
 
     throw redirect({
       href:
