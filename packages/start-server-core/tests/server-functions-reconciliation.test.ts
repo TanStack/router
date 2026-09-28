@@ -1578,6 +1578,16 @@ describe('function middleware', () => {
     await expect(call()).resolves.toBe('recovered from inner')
   })
 
+  it('resolves with the handler result even when middleware passed a result to next()', async () => {
+    const { call } = defineServerFn('POST', () => undefined, [
+      createMiddleware({ type: 'function' }).server(({ next }) =>
+        next({ result: 'from middleware' } as never),
+      ),
+    ])
+
+    await expect(call()).resolves.toBeUndefined()
+  })
+
   it('rejects when server middleware returns undefined', async () => {
     const { call } = defineServerFn('POST', () => 'unused', [
       createMiddleware({ type: 'function' }).server((() => undefined) as never),
