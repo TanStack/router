@@ -154,8 +154,9 @@ export const createStart = <
     // microtask per request.
     getOptions: () => {
       const options = getOptions()
+      // Promise.resolve adopts any thenable and returns a native promise as is.
       return isPromise(options)
-        ? options.then(dedupeOptions)
+        ? Promise.resolve(options).then(dedupeOptions)
         : dedupeOptions(options)
     },
     createMiddleware: createMiddleware,
