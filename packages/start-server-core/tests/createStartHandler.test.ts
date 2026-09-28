@@ -392,27 +392,33 @@ describe('createStartHandler response reconciliation', () => {
   })
 
   it('returns getResponseHeaders as a read-only snapshot after reconciliation', async () => {
-    const handler = createResponseHandler(() => {
-      const response = reconcileResponse(
-        new Response('ok', {
-          headers: {
-            'x-keep': 'yes',
-            'x-remove': 'remove-me',
-          },
-        }),
-      )
-      const headers = getResponseHeaders() as Headers
-      expect(headers.get('x-remove')).toBe('remove-me')
-      headers.set('x-added', 'yes')
-      headers.delete('x-remove')
-      return response
-    })
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const handler = createResponseHandler(() => {
+        const response = reconcileResponse(
+          new Response('ok', {
+            headers: {
+              'x-keep': 'yes',
+              'x-remove': 'remove-me',
+            },
+          }),
+        )
+        const headers = getResponseHeaders() as Headers
+        expect(headers.get('x-remove')).toBe('remove-me')
+        headers.set('x-added', 'yes')
+        headers.delete('x-remove')
+        return response
+      })
 
-    const response = await handler(new Request('http://localhost/'), {})
+      const response = await handler(new Request('http://localhost/'), {})
 
-    expect(response.headers.get('x-keep')).toBe('yes')
-    expect(response.headers.get('x-added')).toBe(null)
-    expect(response.headers.get('x-remove')).toBe('remove-me')
+      expect(response.headers.get('x-keep')).toBe('yes')
+      expect(response.headers.get('x-added')).toBe(null)
+      expect(response.headers.get('x-remove')).toBe('remove-me')
+      expect(warnSpy).toHaveBeenCalledTimes(2)
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 
   it('preserves empty string response header values', async () => {
