@@ -262,117 +262,82 @@ export async function executeMiddleware(
     }
   }
 
-  const callNextMiddleware: NextFn = async (ctx) => {
-    // Get the next middleware
-    const nextMiddleware = flattenedMiddlewares.shift()
+  let index = 0
 
-    // If there are no more middlewares, return the context
-    if (!nextMiddleware) {
-      return ctx
-    }
-
-    // Execute the middleware
-    try {
-      let validator =
-        'validator' in nextMiddleware.options
-          ? nextMiddleware.options.validator
-          : undefined
-
-      // TODO remove upon stable
-      if (!validator && 'inputValidator' in nextMiddleware.options) {
-        validator = nextMiddleware.options.inputValidator
-      }
-
-      if (validator && env === 'server') {
-        // Execute the middleware's input function
-        ctx.data = await execValidator(validator as AnyValidator, ctx.data)
-      }
-
-      let middlewareFn: MiddlewareFn | undefined = undefined
-      if (env === 'client') {
-        if ('client' in nextMiddleware.options) {
-          middlewareFn = nextMiddleware.options.client as
-            | MiddlewareFn
-            | undefined
-        }
-      }
-      // env === 'server'
-      else if ('server' in nextMiddleware.options) {
-        middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
-      }
-
-      if (middlewareFn) {
-        const userNext = async (
-          userCtx: ServerFnMiddlewareResult | undefined = {} as any,
-        ) => {
-          // Return the next middleware
-          // Use safeObjectMerge for context objects to prevent prototype pollution
-          const nextCtx = {
-            ...ctx,
+  // Runs the remaining middlewares. A middleware's next() continues with its
+  // context merged with what it passed. Failures reject every pending next()
+  // up to the top, where they become `{ error }`.
+  const callNextMiddleware = async (
+    callerCtx: ServerFnMiddlewareResult,
+    userCtx?: ServerFnMiddlewareResult,
+  ): Promise<ServerFnMiddlewareResult> => {
+    // Use safeObjectMerge for context objects to prevent prototype pollution
+    const ctx: ServerFnMiddlewareResult =
+      userCtx === undefined
+        ? callerCtx
+        : {
+            ...callerCtx,
             ...userCtx,
-            context: safeObjectMerge(ctx.context, userCtx.context),
+            context: safeObjectMerge(callerCtx.context, userCtx.context),
             sendContext: mergeOptionalSendContext(
-              ctx.sendContext,
+              callerCtx.sendContext,
               userCtx.sendContext,
             ),
-            headers: mergeOptionalHeaders(ctx.headers, userCtx.headers),
-            _callSiteFetch: ctx._callSiteFetch,
-            fetch: ctx._callSiteFetch ?? userCtx.fetch ?? ctx.fetch,
+            headers: mergeOptionalHeaders(callerCtx.headers, userCtx.headers),
+            _callSiteFetch: callerCtx._callSiteFetch,
+            fetch: callerCtx._callSiteFetch ?? userCtx.fetch ?? callerCtx.fetch,
             result:
               userCtx.result !== undefined
                 ? userCtx.result
                 : userCtx instanceof Response
                   ? userCtx
-                  : (ctx as any).result,
+                  : callerCtx.result,
           }
 
-          const result = await callNextMiddleware(nextCtx)
+    let result = ctx
+    // Middleware without a function for this environment only validates.
+    while (index < flattenedMiddlewares.length) {
+      const options = flattenedMiddlewares[index++]!.options as {
+        validator?: AnyValidator
+        // TODO remove upon stable
+        inputValidator?: AnyValidator
+        client?: MiddlewareFn
+        server?: MiddlewareFn
+      }
+      const validator = options.validator || options.inputValidator
+      if (validator && env === 'server') {
+        // Execute the middleware's input function
+        ctx.data = await execValidator(validator, ctx.data)
+      }
 
-          if ('error' in result) {
-            throw result.error
-          }
-
-          return result
-        }
-
-        // Execute the middleware
-        const result = await middlewareFn({
+      const middlewareFn = env === 'client' ? options.client : options.server
+      if (middlewareFn) {
+        result = await middlewareFn({
           ...ctx,
-          next: userNext,
+          next: (nextCtx = {} as ServerFnMiddlewareResult) =>
+            callNextMiddleware(ctx, nextCtx),
         })
 
-        // If result is NOT a ctx object, we need to return it as
-        // the { result }
-        if (isRedirect(result)) {
-          return {
-            ...ctx,
-            error: result,
-          }
-        }
-
         if (result instanceof Response) {
-          return {
-            ...ctx,
-            result,
+          // A returned redirect fails the call; any other Response is its
+          // result.
+          if (isRedirect(result)) {
+            throw result
           }
-        }
-
-        if (!(result as any)) {
+          result = { ...ctx, result }
+        } else if (!(result as any)) {
           throw new Error(
             'User middleware returned undefined. You must call next() or return a result in your middlewares.',
           )
         }
-
-        return result
-      }
-
-      return callNextMiddleware(ctx)
-    } catch (error: any) {
-      return {
-        ...ctx,
-        error,
+        break
       }
     }
+
+    if ('error' in result) {
+      throw result.error
+    }
+    return result
   }
 
   // Start the middleware chain
@@ -388,7 +353,11 @@ export async function executeMiddleware(
   if (initialCtx.sendContext !== undefined) {
     initialCtx.sendContext ||= {}
   }
-  return callNextMiddleware(initialCtx)
+  try {
+    return await callNextMiddleware(initialCtx)
+  } catch (error) {
+    return { ...initialCtx, error }
+  }
 }
 
 export type CompiledFetcherFnOptions = {
@@ -966,14 +935,13 @@ function serverFnBaseToMiddleware(
 
         return next(res)
       },
-      server: async ({ next, ...ctx }) => {
+      // Always the last middleware, so it returns the result instead of
+      // passing it through next().
+      server: async ({ next: _next, ...ctx }) => {
         // Execute the server function
         const result = await options.serverFn?.(ctx)
 
-        return next({
-          ...ctx,
-          result,
-        } as any)
+        return { ...ctx, result } as any
       },
     },
   }
