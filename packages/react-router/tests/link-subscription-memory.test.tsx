@@ -18,6 +18,10 @@ declare module '@tanstack/history' {
 
 afterEach(cleanup)
 
+function identityHref(href: string) {
+  return href
+}
+
 // Run through Nx with --pool=forks --execArgv=--expose-gc. Weak references test
 // collectability, rather than treating noisy heap-size deltas as assertions.
 test.skipIf(!global.gc)(
@@ -74,5 +78,47 @@ test.skipIf(!global.gc)(
       </RouterContextProvider>,
     )
     expect(remounted.getByText('again')).toHaveAttribute('aria-current', 'page')
+  },
+)
+
+test.skipIf(!global.gc)(
+  'a router releases the last Link location after all Links unmount',
+  async () => {
+    const root = createRootRoute()
+    const router = createRouter({
+      routeTree: root.addChildren([
+        createRoute({ getParentRoute: () => root, path: '/items/$id' }),
+        createRoute({ getParentRoute: () => root, path: '/other' }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/other'] }),
+      defaultGcTime: 0,
+    })
+    await router.load()
+    async function visitAndUnmount() {
+      const view = render(
+        <RouterContextProvider router={router}>
+          <Link to="/items/0">item</Link>
+        </RouterContextProvider>,
+      )
+      const payload = { value: 'last mounted Link location' }
+      router.history.createHref = identityHref
+      await act(() =>
+        router.navigate({
+          to: '/items/0',
+          replace: true,
+          state: { linkSubscriptionPayload: payload },
+        }),
+      )
+      view.unmount()
+      return new WeakRef(payload)
+    }
+    const ref = await visitAndUnmount()
+    await act(() => router.navigate({ to: '/other', replace: true, state: {} }))
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      global.gc!()
+    }
+    expect(ref.deref()).toBeUndefined()
+    expect(router.state.location.pathname).toBe('/other')
   },
 )

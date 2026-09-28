@@ -1,5 +1,5 @@
 import React from 'react'
-import { act, cleanup, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
   Link,
@@ -14,6 +14,7 @@ import {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
@@ -33,6 +34,24 @@ async function setup(
   await router.load()
   return router
 }
+
+test('an unrelated parent render preserves a pending intent preload', async () => {
+  const router = await setup()
+  const preload = vi.spyOn(router, 'preloadRoute').mockResolvedValue([])
+  vi.useFakeTimers()
+  const content = (label: string) => (
+    <RouterContextProvider router={router}>
+      <Link to="/other" preload="intent" preloadDelay={100}>
+        {label}
+      </Link>
+    </RouterContextProvider>
+  )
+  const view = render(content('before'))
+  fireEvent.mouseEnter(view.getByRole('link'))
+  view.rerender(content('after'))
+  await act(() => vi.advanceTimersByTimeAsync(100))
+  expect(preload).toHaveBeenCalledTimes(1)
+})
 
 test('unrelated navigation does not rebuild fixed Link destinations', async () => {
   const stringifySearch = vi.fn(defaultStringifySearch)
@@ -384,4 +403,38 @@ test('replacing history refreshes inactive links on same-path navigation', async
     replacement.destroy()
     window.history.replaceState(null, '', original)
   }
+})
+
+test('fixed Link derivation errors reach React boundaries without interrupting navigation', async () => {
+  const router = await setup()
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  class Boundary extends React.Component<React.PropsWithChildren> {
+    state = { failed: false }
+    static getDerivedStateFromError() {
+      return { failed: true }
+    }
+    render() {
+      return this.state.failed ? 'link failed' : this.props.children
+    }
+  }
+  const view = render(
+    <RouterContextProvider router={router}>
+      <Boundary>
+        <Link to="/items/0" search={{ bad: true }}>
+          item
+        </Link>
+      </Boundary>
+    </RouterContextProvider>,
+  )
+  router.update({
+    stringifySearch: (search) => {
+      if (search.bad) {
+        throw new Error('invalid Link search')
+      }
+      return defaultStringifySearch(search)
+    },
+  })
+  await act(() => router.navigate({ to: '/other', search: {} }))
+  expect(view.getByText('link failed')).toBeTruthy()
+  expect(router.state.location.pathname).toBe('/other')
 })

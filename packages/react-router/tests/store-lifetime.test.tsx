@@ -197,3 +197,37 @@ test('async completion discards the dependencies of its pending computation', as
   expect(load).toHaveBeenCalledTimes(1)
   subscription.unsubscribe()
 })
+
+test('unobserved previous-value computations notice writes that return to the original value', () => {
+  const source = createAtom(1)
+  const derived = createAtom<number>((previous = 0) => previous + source.get())
+  expect(derived.get()).toBe(1)
+  source.set(2)
+  source.set(1)
+  expect(derived.get()).toBe(2)
+})
+
+test.skipIf(!global.gc)(
+  'unobserved computations do not retain obsolete dependency values',
+  async () => {
+    function setup() {
+      const payload = { value: 'old location payload' }
+      const source = createAtom<{ value: number; payload?: object }>({
+        value: 0,
+      })
+      source.set({ value: 1, payload })
+      const derived = createAtom(() => source.get().value)
+      expect(derived.get()).toBe(1)
+      source.set({ value: 2 })
+      return { source, derived, ref: new WeakRef(payload) }
+    }
+    const { source, derived, ref } = setup()
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      global.gc!()
+    }
+    expect(ref.deref()).toBeUndefined()
+    expect(derived.get()).toBe(2)
+    expect(source.get().value).toBe(2)
+  },
+)
