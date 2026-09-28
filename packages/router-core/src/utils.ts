@@ -193,10 +193,6 @@ export function last<T>(arr: ReadonlyArray<T>) {
   return arr[arr.length - 1]
 }
 
-function isFunction(d: any): d is Function {
-  return typeof d === 'function'
-}
-
 /**
  * Apply a value-or-updater to a previous value.
  * Accepts either a literal value or a function of the previous value.
@@ -205,15 +201,14 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   updater: Updater<TPrevious, TResult> | NonNullableUpdater<TPrevious, TResult>,
   previous: TPrevious,
 ): TResult {
-  if (isFunction(updater)) {
-    return updater(previous)
+  if (typeof updater === 'function') {
+    return (updater as Function)(previous)
   }
 
   return updater
 }
 
 export const hasOwn = Object.prototype.hasOwnProperty
-const isEnumerable = Object.prototype.propertyIsEnumerable
 
 export function hasKeys(obj: Record<string, unknown>) {
   for (const key in obj) {
@@ -223,133 +218,146 @@ export function hasKeys(obj: Record<string, unknown>) {
 }
 
 export const createNull = () => Object.create(null)
+// Search and params objects use null prototypes so keys like `__proto__` stay data.
 export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
-  replaceEqualDeep(prev, next, createNull)
+  replaceEqualDeep(prev, next, true)
 
 /**
- * This function returns `prev` if `_next` is deeply equal.
- * If not, it will replace any deeply equal children of `b` with those of `a`.
- * This can be used for structural sharing between immutable JSON values for example.
- * Do not use this with signals
+ * Reuse equal children between immutable plain objects and dense arrays.
+ * Return `prev` for deeply equal values; otherwise return an object already
+ * containing the resolved children or create a copy with the shared children.
+ * Getters and own `__proto__` keys in ordinary object copies are unsupported.
+ * Do not use this with signals.
  */
 export function replaceEqualDeep<T>(
   prev: any,
-  _next: T,
-  _makeObj = () => ({}),
+  next: T,
+  _nullProto?: boolean,
+  _depth?: number,
+): T
+export function replaceEqualDeep(
+  prev: any,
+  next: any,
+  _nullProto?: boolean,
   _depth = 0,
-): T {
+): any {
   if (isServer) {
-    return _next
+    return next
   }
-  if (prev === _next) {
+  if (prev === next) {
     return prev
   }
 
-  if (_depth > 500) return _next
+  if (_depth++ > 500) {
+    return next
+  }
 
-  const next = _next as any
+  const array = Array.isArray(prev) && Array.isArray(next)
 
-  const array = isPlainArray(prev) && isPlainArray(next)
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) {
+    return next
+  }
 
-  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
+  const prevKeys: Array<any> = Object.keys(prev)
+  const previousCount = prevKeys.length
+  const nextKeys: Array<any> = Object.keys(next)
+  const length = nextKeys.length
+  // Hidden object keys and symbols on next make the value opaque. Arrays
+  // must have only dense enumerable indices: a hole and an extra key can
+  // cancel out in the count, so also check the last key of both arrays.
+  if (
+    array
+      ? previousCount !== prev.length ||
+        length !== next.length ||
+        (previousCount && last(prevKeys) !== `${previousCount - 1}`) ||
+        (length && last(nextKeys) !== `${length - 1}`)
+      : previousCount !== Object.getOwnPropertyNames(prev).length ||
+        length !== Object.getOwnPropertyNames(next).length ||
+        Object.getOwnPropertySymbols(next).length
+  ) {
+    return next
+  }
 
-  const prevItems = array ? prev : getEnumerableOwnKeys(prev)
-  if (!prevItems) return next
-  const nextItems = array ? next : getEnumerableOwnKeys(next)
-  if (!nextItems) return next
-  const prevSize = prevItems.length
-  const nextSize = nextItems.length
-  const copy: any = array ? new Array(nextSize) : _makeObj()
+  let i = 0
+  let child: any
+  let previous: any
+  let key: any
 
-  let equalItems = 0
-
-  for (let i = 0; i < nextSize; i++) {
-    const key = array ? i : (nextItems[i] as any)
-    const p = prev[key]
-    const n = next[key]
-
-    if (p === n) {
-      copy[key] = p
-      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++
-      continue
+  if (array) {
+    // Entries before the first difference already resolve to prev.
+    for (; i < length; i++) {
+      key = i
+      previous = prev[key]
+      child = next[key]
+      child =
+        previous === child
+          ? previous
+          : typeof previous === 'object'
+            ? replaceEqualDeep(previous, child, _nullProto, _depth)
+            : child
+      if (child !== previous) {
+        break
+      }
     }
-
-    if (
-      p === null ||
-      n === null ||
-      typeof p !== 'object' ||
-      typeof n !== 'object'
-    ) {
-      copy[key] = n
-      continue
+    if (i === length && previousCount === length) {
+      return prev
     }
-
-    const v = replaceEqualDeep(p, n, _makeObj, _depth + 1)
-    copy[key] = v
-    if (v === p) equalItems++
+  } else {
+    let equal = previousCount === length
+    let unchanged = true
+    for (; i < length; i++) {
+      key = nextKeys[i]!
+      previous = prev[key]
+      const incoming = next[key]
+      child =
+        previous === incoming
+          ? previous
+          : typeof previous === 'object'
+            ? replaceEqualDeep(previous, incoming, _nullProto, _depth)
+            : incoming
+      equal &&=
+        child === previous && (prevKeys[i] === key || hasOwn.call(prev, key))
+      unchanged &&= Object.is(child, incoming)
+      // This key has been checked; its private slot can hold the result.
+      prevKeys[i] = child
+    }
+    if (equal) {
+      return Object.getOwnPropertySymbols(prev).length ? next : prev
+    }
+    if (unchanged) {
+      return next
+    }
   }
 
-  return prevSize === nextSize && equalItems === prevSize ? prev : copy
+  // Reuse the validated array key list; it is private and has the right length.
+  const copy: any = array ? nextKeys.fill(0) : _nullProto ? createNull() : {}
+  for (let j = 0; j < length; j++) {
+    key = array ? j : nextKeys[j]!
+    if (array) {
+      previous = prev[key]
+      if (j > i) {
+        child = next[key]
+        child =
+          previous === child
+            ? previous
+            : typeof previous === 'object'
+              ? replaceEqualDeep(previous, child, _nullProto, _depth)
+              : child
+      }
+      copy[key] = j < i ? previous : child
+    } else {
+      copy[key] = prevKeys[j]
+    }
+  }
+  return copy
 }
 
-/**
- * Equivalent to `Reflect.ownKeys`, but ensures that objects are "clone-friendly":
- * will return false if object has any non-enumerable properties.
- *
- * Optimized for the common case where objects have no symbol properties.
- */
-function getEnumerableOwnKeys(o: object) {
-  const names = Object.getOwnPropertyNames(o)
-
-  // Fast path: check all string property names are enumerable
-  for (const name of names) {
-    if (!isEnumerable.call(o, name)) return false
-  }
-
-  // Only check symbols if the object has any (most plain objects don't)
-  const symbols = Object.getOwnPropertySymbols(o)
-
-  // Fast path: no symbols, return names directly (avoids array allocation/concat)
-  if (symbols.length === 0) return names
-
-  // Slow path: has symbols, need to check and merge
-  const keys: Array<string | symbol> = names
-  for (const symbol of symbols) {
-    if (!isEnumerable.call(o, symbol)) return false
-    keys.push(symbol)
-  }
-  return keys
-}
-
-// Copied from: https://github.com/jonschlinkert/is-plain-object
-export function isPlainObject(o: any) {
-  if (!hasObjectPrototype(o)) {
+export function isPlainObject(o: unknown): boolean {
+  if (!o || typeof o !== 'object') {
     return false
   }
-
-  // If has modified constructor
-  const ctor = o.constructor
-  if (typeof ctor === 'undefined') {
-    return true
-  }
-
-  // If has modified prototype
-  const prot = ctor.prototype
-  if (!hasObjectPrototype(prot)) {
-    return false
-  }
-
-  // If constructor does not have an Object-specific method
-  if (!prot.hasOwnProperty('isPrototypeOf')) {
-    return false
-  }
-
-  // Most likely a plain Object
-  return true
-}
-
-function hasObjectPrototype(o: any) {
-  return Object.prototype.toString.call(o) === '[object Object]'
+  // An own constructor is data, so classify the actual prototype.
+  return (Object.getPrototypeOf(o)?.constructor ?? Object) === Object
 }
 
 /**
@@ -360,44 +368,48 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
 }
 
 /**
- * Perform a deep equality check with options for partial comparison and
- * ignoring `undefined` values. Optimized for router state comparisons.
+ * Perform a deep equality check optimized for router state comparisons.
+ *
+ * - `partial`: `b` may omit keys that `a` has (arrays stay length-exact).
+ * - `explicitUndefined`: keys holding `undefined` take part in the comparison
+ *   instead of being ignored.
+ *
+ * Internal: the flags are positional so hot callers pass no options object.
  */
 export function deepEqual(
   a: any,
   b: any,
-  opts?: { partial?: boolean; ignoreUndefined?: boolean },
+  partial?: boolean,
+  explicitUndefined?: boolean,
 ): boolean {
   if (a === b) {
     return true
   }
 
-  if (typeof a !== typeof b) {
-    return false
-  }
-
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false
     for (let i = 0, l = a.length; i < l; i++) {
-      if (!deepEqual(a[i], b[i], opts)) return false
+      const av = a[i]
+      const bv = b[i]
+      if (av !== bv && !deepEqual(av, bv, partial, explicitUndefined)) {
+        return false
+      }
     }
     return true
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    const ignoreUndefined = opts?.ignoreUndefined ?? true
-
-    if (opts?.partial) {
+    if (partial) {
       for (const k in b) {
-        if (!ignoreUndefined || b[k] !== undefined) {
-          if (!deepEqual(a[k], b[k], opts)) return false
+        if (explicitUndefined || b[k] !== undefined) {
+          if (!deepEqual(a[k], b[k], partial, explicitUndefined)) return false
         }
       }
       return true
     }
 
     let aCount = 0
-    if (!ignoreUndefined) {
+    if (explicitUndefined) {
       aCount = Object.keys(a).length
     } else {
       for (const k in a) {
@@ -405,15 +417,18 @@ export function deepEqual(
       }
     }
 
-    let bCount = 0
     for (const k in b) {
-      if (!ignoreUndefined || b[k] !== undefined) {
-        bCount++
-        if (bCount > aCount || !deepEqual(a[k], b[k], opts)) return false
+      if (explicitUndefined || b[k] !== undefined) {
+        if (
+          aCount-- === 0 ||
+          !deepEqual(a[k], b[k], partial, explicitUndefined)
+        ) {
+          return false
+        }
       }
     }
 
-    return aCount === bCount
+    return aCount === 0
   }
 
   return false
@@ -523,15 +538,26 @@ export function findLast<T>(
 }
 
 /**
- * Remove control characters that can cause open redirect vulnerabilities.
- * Characters like \r (CR) and \n (LF) can trick URL parsers into interpreting
- * paths like "/\r/evil.com" as "http://evil.com".
+ * Re-encode characters that are unsafe in URL paths.
+ * Includes ASCII control characters (0x00-0x1F, 0x7F) and a subset of the
+ * WHATWG URL "path percent-encode set" (", <, >, `, {, }).
+ *
+ * Space (0x20) is intentionally excluded — decodeURI decodes %20 to space
+ * and the router stores decoded spaces in location.pathname. The existing
+ * encodePathLikeUrl already handles re-encoding spaces for outgoing URLs.
+ *
+ * These characters are decoded by decodeURI but must remain percent-encoded
+ * in paths to match how upstream layers (CDNs, edge middleware, browsers)
+ * interpret the URL, preventing infinite redirect loops and path mismatches.
  */
+// eslint-disable-next-line no-control-regex
+const PATH_UNSAFE_RE = /[\x00-\x1f\x7f"<>`{}]/g
+
 function sanitizePathSegment(segment: string): string {
-  // Remove ASCII control characters (0x00-0x1F) and DEL (0x7F)
-  // These include CR (\r = 0x0D), LF (\n = 0x0A), and other potentially dangerous characters
-  // eslint-disable-next-line no-control-regex
-  return segment.replace(/[\x00-\x1f\x7f]/g, '')
+  return segment.replace(
+    PATH_UNSAFE_RE,
+    (ch) => '%' + ch.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'),
+  )
 }
 
 function decodeSegment(segment: string): string {
@@ -566,19 +592,51 @@ export const DEFAULT_PROTOCOL_ALLOWLIST = [
 ]
 
 /**
- * Check if a URL string uses a protocol that is not in the allowlist.
- * Returns true for blocked protocols like javascript:, blob:, data:, etc.
+ * Extract the explicit URL scheme, including its colon, using WHATWG
+ * normalization rules. This does not validate the rest of the URL.
  *
- * The URL constructor correctly normalizes:
+ * Returning `undefined` means "no explicit scheme", not "safe URL";
+ * protocol-relative URLs such as "//evil.example" require a separate check.
+ */
+export function getUrlScheme(url: string): string | undefined {
+  if (url[0] === '/') {
+    return undefined
+  }
+  if (!url.includes(':')) {
+    return undefined
+  }
+  // WHATWG strips leading C0/space and TAB/LF/CR within a scheme.
+  // Match the prefix first so relative paths and URL bodies need no copying.
+  // eslint-disable-next-line no-control-regex
+  return /^[\x00-\x20]*([a-z][a-z\d+.\t\n\r-]*:)/i
+    .exec(url)?.[1]
+    ?.replace(/[\t\n\r]/g, '')
+    .toLowerCase()
+}
+
+// Match protocol-relative URLs such as "//evil.example", including backslash
+// and control-character variants. Stop at the second separator so validation
+// does not scan or normalize the URL body.
+// eslint-disable-next-line no-control-regex
+export const protocolRelativePrefixRegex = /^[\x00-\x20]*[\\/][\t\n\r]*[\\/]/
+
+/**
+ * Check if a URL string uses a protocol that is not in the allowlist or is
+ * protocol-relative (e.g. "//evil.example"), which can navigate to another host.
+ * Returns true for blocked protocols like javascript:, blob:, and data:, as
+ * well as slash/backslash variants of protocol-relative URLs.
+ *
+ * Scheme parsing normalizes:
  * - Mixed case (JavaScript: → javascript:)
  * - Whitespace/control characters (java\nscript: → javascript:)
  * - Leading whitespace
  *
- * For relative URLs (no protocol), returns false (safe).
+ * For relative URLs without a protocol-relative prefix, returns false.
  *
  * @param url - The URL string to check
  * @param allowlist - Set of protocols to allow
- * @returns true if the URL uses a protocol that is not allowed
+ * @returns true if the URL uses a protocol that is not allowed or can escape
+ * the current origin through a protocol-relative URL
  */
 export function isDangerousProtocol(
   url: string,
@@ -586,16 +644,14 @@ export function isDangerousProtocol(
 ): boolean {
   if (!url) return false
 
-  try {
-    // Use the URL constructor - it correctly normalizes protocols
-    // per WHATWG URL spec, handling all bypass attempts automatically
-    const parsed = new URL(url)
-    return !allowlist.has(parsed.protocol)
-  } catch {
-    // URL constructor throws for relative URLs (no protocol)
-    // These are safe - they can't execute scripts
-    return false
+  // Inputs like "/\evil.example" can navigate to another host just like
+  // "//evil.example", even with leading whitespace or ignored control characters.
+  if (protocolRelativePrefixRegex.test(url)) {
+    return true
   }
+
+  const scheme = getUrlScheme(url)
+  return scheme ? !allowlist.has(scheme) : false
 }
 
 // This utility is based on https://github.com/zertosh/htmlescape
@@ -621,38 +677,27 @@ export function escapeHtml(str: string): string {
   return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
 }
 
+// Decode component data only. Leave protocol-relative URL handling to callers;
+// this decoder also receives fragments, where slashes and backslashes are data.
 export function decodePath(path: string) {
-  if (!path) return { path, handledProtocolRelativeURL: false }
-
-  // Fast path: most paths are already decoded and safe.
-  // Only fall back to the slower scan/regex path when we see a '%' (encoded),
-  // a backslash (explicitly handled), a control character, or a protocol-relative
-  // prefix which needs collapsing.
+  if (!path) {
+    return path
+  }
+  let result = path
   // eslint-disable-next-line no-control-regex
-  if (!/[%\\\x00-\x1f\x7f]/.test(path) && !path.startsWith('//')) {
-    return { path, handledProtocolRelativeURL: false }
+  if (/[%\\\x00-\x1f\x7f]/.test(path)) {
+    const re = /%25|%5C/gi
+    let cursor = 0
+    let match
+    result = ''
+    while (null !== (match = re.exec(path))) {
+      result += decodeSegment(path.slice(cursor, match.index)) + match[0]
+      cursor = re.lastIndex
+    }
+    result += decodeSegment(cursor ? path.slice(cursor) : path)
   }
 
-  const re = /%25|%5C/gi
-  let cursor = 0
-  let result = ''
-  let match
-  while (null !== (match = re.exec(path))) {
-    result += decodeSegment(path.slice(cursor, match.index)) + match[0]
-    cursor = re.lastIndex
-  }
-  result = result + decodeSegment(cursor ? path.slice(cursor) : path)
-
-  // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
-  // After sanitizing control characters, paths like "/\r/evil.com" become "//evil.com"
-  // Collapse leading double slashes to a single slash
-  let handledProtocolRelativeURL = false
-  if (result.startsWith('//')) {
-    handledProtocolRelativeURL = true
-    result = '/' + result.replace(/^\/+/, '')
-  }
-
-  return { path: result, handledProtocolRelativeURL }
+  return result
 }
 
 /**
@@ -675,11 +720,12 @@ export function decodePath(path: string) {
  * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
  */
 export function encodePathLikeUrl(path: string): string {
-  // Encode whitespace and non-ASCII characters that browsers encode in URLs
-
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
-  // eslint-disable-next-line no-control-regex
-  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  // Encode whitespace and non-ASCII characters that browsers encode in URLs.
+  // The test uses one character class: it matches the same code units as the
+  // replacement pattern below and is cheaper than the alternation.
+  if (!/[\s\u0080-\uFFFF]/.test(path)) {
+    return path
+  }
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
   return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)

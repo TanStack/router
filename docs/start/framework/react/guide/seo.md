@@ -1,10 +1,11 @@
 ---
 id: seo
 title: SEO
+description: Configure SEO in TanStack Start with page metadata, canonical URLs, structured data, server rendering, sitemaps, and robots.txt.
 ---
 
 > [!NOTE]
-> Looking to optimize for AI assistants and LLMs? See the [LLM Optimization (LLMO) guide](./llmo).
+> Looking to optimize for AI assistants and LLMs? See the [Generative Engine Optimization (GEO) guide](./geo).
 
 ## What is SEO, really?
 

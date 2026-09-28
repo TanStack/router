@@ -9,15 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WildcardChar123Char125suffixRouteImport } from './routes/wildcard/{$}suffix'
-import { Route as WildcardChar123Char125DotsuffixRouteImport } from './routes/wildcard/{$}[.]suffix'
-import { Route as WildcardPrefixChar123Char125RouteImport } from './routes/wildcard/prefix{$}'
 import { Route as WildcardSplatRouteImport } from './routes/wildcard/$'
+import { Route as WildcardPrefixChar123Char125RouteImport } from './routes/wildcard/prefix{$}'
+import { Route as WildcardChar123Char125DotsuffixRouteImport } from './routes/wildcard/{$}[.]suffix'
+import { Route as WildcardChar123Char125suffixRouteImport } from './routes/wildcard/{$}suffix'
 
-const WildcardChar123Char125suffixRoute =
-  WildcardChar123Char125suffixRouteImport.update({
-    id: '/wildcard/{$}suffix',
-    path: '/wildcard/{$}suffix',
+const WildcardSplatRoute = WildcardSplatRouteImport.update({
+  id: '/wildcard/$',
+  path: '/wildcard/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WildcardPrefixChar123Char125Route =
+  WildcardPrefixChar123Char125RouteImport.update({
+    id: '/wildcard/prefix{$}',
+    path: '/wildcard/prefix{$}',
     getParentRoute: () => rootRouteImport,
   } as any)
 const WildcardChar123Char125DotsuffixRoute =
@@ -26,17 +31,12 @@ const WildcardChar123Char125DotsuffixRoute =
     path: '/wildcard/{$}.suffix',
     getParentRoute: () => rootRouteImport,
   } as any)
-const WildcardPrefixChar123Char125Route =
-  WildcardPrefixChar123Char125RouteImport.update({
-    id: '/wildcard/prefix{$}',
-    path: '/wildcard/prefix{$}',
+const WildcardChar123Char125suffixRoute =
+  WildcardChar123Char125suffixRouteImport.update({
+    id: '/wildcard/{$}suffix',
+    path: '/wildcard/{$}suffix',
     getParentRoute: () => rootRouteImport,
   } as any)
-const WildcardSplatRoute = WildcardSplatRouteImport.update({
-  id: '/wildcard/$',
-  path: '/wildcard/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/wildcard/$': typeof WildcardSplatRoute
@@ -87,18 +87,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/wildcard/{$}suffix': {
-      id: '/wildcard/{$}suffix'
-      path: '/wildcard/{$}suffix'
-      fullPath: '/wildcard/{$}suffix'
-      preLoaderRoute: typeof WildcardChar123Char125suffixRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/wildcard/{$}.suffix': {
-      id: '/wildcard/{$}.suffix'
-      path: '/wildcard/{$}.suffix'
-      fullPath: '/wildcard/{$}.suffix'
-      preLoaderRoute: typeof WildcardChar123Char125DotsuffixRouteImport
+    '/wildcard/$': {
+      id: '/wildcard/$'
+      path: '/wildcard/$'
+      fullPath: '/wildcard/$'
+      preLoaderRoute: typeof WildcardSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wildcard/prefix{$}': {
@@ -108,11 +101,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WildcardPrefixChar123Char125RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/wildcard/$': {
-      id: '/wildcard/$'
-      path: '/wildcard/$'
-      fullPath: '/wildcard/$'
-      preLoaderRoute: typeof WildcardSplatRouteImport
+    '/wildcard/{$}.suffix': {
+      id: '/wildcard/{$}.suffix'
+      path: '/wildcard/{$}.suffix'
+      fullPath: '/wildcard/{$}.suffix'
+      preLoaderRoute: typeof WildcardChar123Char125DotsuffixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wildcard/{$}suffix': {
+      id: '/wildcard/{$}suffix'
+      path: '/wildcard/{$}suffix'
+      fullPath: '/wildcard/{$}suffix'
+      preLoaderRoute: typeof WildcardChar123Char125suffixRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

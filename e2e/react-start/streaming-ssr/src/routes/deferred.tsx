@@ -1,55 +1,40 @@
 import { Await, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { Suspense } from 'react'
+import {
+  deferredDataDelay,
+  deferredDataMessage,
+  deferredImmediateName,
+  deferredServerDelay,
+  deferredSlowName,
+  delay,
+  makeDeferredMessage,
+  makeServerData,
+  sourceMarker,
+} from '../../../../streaming-ssr-fixtures'
 
-// Server function that returns immediately
 const getImmediateData = createServerFn({ method: 'GET' })
   .validator((data: { name: string }) => data)
-  .handler(({ data }) => {
-    return {
-      name: data.name,
-      timestamp: Date.now(),
-      // Track where this data came from - should always be 'server' if SSR works
-      source: 'server' as const,
-    }
-  })
+  .handler(({ data }) => makeServerData(data.name))
 
-// Server function that takes time to complete
 const getSlowData = createServerFn({ method: 'GET' })
   .validator((data: { name: string; delay: number }) => data)
   .handler(async ({ data }) => {
-    await new Promise((r) => setTimeout(r, data.delay))
-    return {
-      name: data.name,
-      timestamp: Date.now(),
-      // Track where this data came from - should always be 'server' if SSR works
-      source: 'server' as const,
-    }
+    await delay(data.delay)
+    return makeServerData(data.name)
   })
 
 export const Route = createFileRoute('/deferred')({
   loader: async () => {
     return {
-      // Deferred promise that resolves after 1 second
-      deferredData: new Promise<{ message: string; source: string }>((r) =>
-        setTimeout(
-          () =>
-            r({
-              message: 'Deferred data loaded!',
-              // Track where this data came from - should always be 'server' if SSR works
-              source: typeof window === 'undefined' ? 'server' : 'client',
-            }),
-          1000,
-        ),
-      ),
-      // Deferred server function call
+      deferredData: makeDeferredMessage(deferredDataMessage, deferredDataDelay),
       deferredServerData: getSlowData({
-        data: { name: 'Slow User', delay: 800 },
+        data: { name: deferredSlowName, delay: deferredServerDelay },
       }),
-      // Immediate data (awaited)
-      immediateData: await getImmediateData({ data: { name: 'Fast User' } }),
-      // Track where loader ran - should always be 'server' if SSR works
-      loaderSource: typeof window === 'undefined' ? 'server' : 'client',
+      immediateData: await getImmediateData({
+        data: { name: deferredImmediateName },
+      }),
+      loaderSource: sourceMarker(),
     }
   },
   component: Deferred,
@@ -63,7 +48,6 @@ function Deferred() {
     <div style={{ padding: '20px' }}>
       <h2>Deferred Data Test</h2>
 
-      {/* Immediate data should be available right away */}
       <div data-testid="immediate-data">
         Immediate: {immediateData.name} @ {immediateData.timestamp}
       </div>
@@ -74,7 +58,6 @@ function Deferred() {
 
       <div data-testid="loader-source">Loader source: {loaderSource}</div>
 
-      {/* Deferred promise */}
       <Suspense
         fallback={<div data-testid="deferred-loading">Loading deferred...</div>}
       >
@@ -88,7 +71,6 @@ function Deferred() {
         />
       </Suspense>
 
-      {/* Deferred server function */}
       <Suspense
         fallback={
           <div data-testid="server-loading">Loading server data...</div>

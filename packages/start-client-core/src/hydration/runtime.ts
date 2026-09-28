@@ -115,18 +115,19 @@ export function waitForHydrationPrefetchStrategy(
   }
 
   return new Promise((resolve) => {
-    const state = { disposed: false }
-    const cleanupStrategyRef: { current: void | (() => void) } = {
-      current: undefined,
-    }
+    let disposed = false
+    // The strategy may finish synchronously before returning its cleanup.
+    let cleanupStrategy: void | (() => void) = undefined
     let cleanupHydrate = () => {}
 
     const finish = (reason: HydrationPrefetchWaitReason) => {
-      if (state.disposed) return
-      state.disposed = true
+      if (disposed) {
+        return
+      }
+      disposed = true
       options.signal.removeEventListener('abort', onAbort)
       cleanupHydrate()
-      runHydrationStrategyCleanup(cleanupStrategyRef.current)?.()
+      runHydrationStrategyCleanup(cleanupStrategy)?.()
       resolve(reason)
     }
 
@@ -134,12 +135,13 @@ export function waitForHydrationPrefetchStrategy(
 
     options.signal.addEventListener('abort', onAbort, { once: true })
     cleanupHydrate = options.onHydrate(() => finish('hydrate'))
-    const cleanupStrategy = strategy._s?.({
+    cleanupStrategy = strategy._s?.({
       element: options.element,
       prefetch: () => finish('prefetch'),
     })
-    cleanupStrategyRef.current = cleanupStrategy
-    if (state.disposed) {
+    // A synchronous finish must immediately run the cleanup just returned.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (disposed) {
       runHydrationStrategyCleanup(cleanupStrategy)?.()
     }
   })

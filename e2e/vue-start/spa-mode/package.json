@@ -9,7 +9,7 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "npx serve dist/client",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/vue-router": "workspace:^",
@@ -24,7 +24,8 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
   }
 }

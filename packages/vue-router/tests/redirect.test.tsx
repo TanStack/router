@@ -1,11 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import {
   Link,
   Outlet,
   RouterProvider,
+  createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -15,8 +16,17 @@ import {
 } from '../src'
 
 import { sleep } from './utils'
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   vi.clearAllMocks()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
@@ -74,7 +84,7 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -196,7 +206,7 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -274,7 +284,7 @@ describe('redirect', () => {
         indexRoute,
         finalRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -290,110 +300,6 @@ describe('redirect', () => {
 
       expect(await screen.findByText('Final')).toBeInTheDocument()
       expect(window.location.pathname).toBe('/final')
-    })
-  })
-
-  describe('SSR', () => {
-    test('when `redirect` is thrown in `beforeLoad`', async () => {
-      const rootRoute = createRootRoute()
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        beforeLoad: () => {
-          throw redirect({
-            to: '/about',
-          })
-        },
-      })
-
-      const aboutRoute = createRoute({
-        path: '/about',
-        getParentRoute: () => rootRoute,
-        component: () => {
-          return <>About</>
-        },
-      })
-
-      const router = createRouter({
-        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-        // Mock server mode
-        isServer: true,
-        history: createMemoryHistory({
-          initialEntries: ['/'],
-        }),
-      })
-
-      await router.load()
-
-      expect(router.state.redirect).toBeDefined()
-      expect(router.state.redirect).toBeInstanceOf(Response)
-      const redirectResponse = router.state.redirect!
-
-      expect(redirectResponse.options).toEqual({
-        _fromLocation: expect.objectContaining({
-          hash: '',
-          href: '/',
-          pathname: '/',
-          search: {},
-          searchStr: '',
-        }),
-        to: '/about',
-        href: '/about',
-        statusCode: 307,
-      })
-    })
-
-    test('when `redirect` is thrown in `loader`', async () => {
-      const rootRoute = createRootRoute()
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        loader: () => {
-          throw redirect({
-            to: '/about',
-          })
-        },
-      })
-
-      const aboutRoute = createRoute({
-        path: '/about',
-        getParentRoute: () => rootRoute,
-        component: () => {
-          return <>About</>
-        },
-      })
-
-      const router = createRouter({
-        history: createMemoryHistory({
-          initialEntries: ['/'],
-        }),
-        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-        // Mock server mode
-        isServer: true,
-      })
-
-      await router.load()
-
-      const currentRedirect = router.state.redirect
-
-      expect(currentRedirect).toBeDefined()
-      expect(currentRedirect).toBeInstanceOf(Response)
-      const redirectResponse = currentRedirect!
-
-      expect(redirectResponse.options).toEqual({
-        _fromLocation: expect.objectContaining({
-          hash: '',
-          href: '/',
-          pathname: '/',
-          search: {},
-          searchStr: '',
-        }),
-        to: '/about',
-        href: '/about',
-        statusCode: 307,
-      })
     })
   })
 })

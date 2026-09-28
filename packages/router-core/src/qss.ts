@@ -26,16 +26,16 @@ export function encode(
   obj: Record<string, any>,
   stringify: (value: any) => string = String,
 ): string {
-  const result = new URLSearchParams()
+  let result: URLSearchParams | undefined
 
   for (const key in obj) {
     const val = obj[key]
     if (val !== undefined) {
-      result.set(key, stringify(val))
+      ;(result ||= new URLSearchParams()).set(key, stringify(val))
     }
   }
 
-  return result.toString()
+  return result ? result.toString() : ''
 }
 
 /**

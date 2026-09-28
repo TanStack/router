@@ -9,35 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PostsRouteImport } from './routes/posts'
-import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PostsDetailsRouteImport } from './routes/posts/details'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as PostsHomeRouteImport } from './routes/posts/home'
-import { Route as PostsLetsGoIndexRouteImport } from './routes/posts/lets-go/index'
-import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as PostsDetailsRouteImport } from './routes/posts/details'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as PostsLetsGoIndexRouteImport } from './routes/posts/lets-go/index'
 import { Route as PostsLetsGoDeeperHomeRouteImport } from './routes/posts/lets-go/deeper/home'
 
-const PostsRoute = PostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const PostsRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
   getParentRoute: () => rootRouteImport,
-} as any)
-const PostsDetailsRoute = PostsDetailsRouteImport.update({
-  id: '/$postId',
-  path: '/$postId',
-  getParentRoute: () => PostsRoute,
 } as any)
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
@@ -48,20 +43,25 @@ const PostsHomeRoute = PostsHomeRouteImport.update({
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
-const PostsLetsGoIndexRoute = PostsLetsGoIndexRouteImport.update({
-  id: '/inception/',
-  path: '/inception/',
+const PostsDetailsRoute = PostsDetailsRouteImport.update({
+  id: '/$postId',
+  path: '/$postId',
   getParentRoute: () => PostsRoute,
+} as any)
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
+  id: '/layout-a',
+  path: '/layout-a',
+  getParentRoute: () => LayoutLayout2Route,
 } as any)
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
-  id: '/layout-a',
-  path: '/layout-a',
-  getParentRoute: () => LayoutLayout2Route,
+const PostsLetsGoIndexRoute = PostsLetsGoIndexRouteImport.update({
+  id: '/inception/',
+  path: '/inception/',
+  getParentRoute: () => PostsRoute,
 } as any)
 const PostsLetsGoDeeperHomeRoute = PostsLetsGoDeeperHomeRouteImport.update({
   id: '/inception/deeper/',
@@ -143,11 +143,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -157,19 +157,12 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsDetailsRouteImport
-      parentRoute: typeof PostsRoute
     }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
@@ -185,12 +178,19 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof PostsHomeRouteImport
       parentRoute: typeof PostsRoute
     }
-    '/posts/inception/': {
-      id: '/posts/inception/'
-      path: '/inception'
-      fullPath: '/posts/inception/'
-      preLoaderRoute: typeof PostsLetsGoIndexRouteImport
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsDetailsRouteImport
       parentRoute: typeof PostsRoute
+    }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2Route
     }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
@@ -199,12 +199,12 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
       parentRoute: typeof LayoutLayout2Route
     }
-    '/_layout/_layout-2/layout-a': {
-      id: '/_layout/_layout-2/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
-      parentRoute: typeof LayoutLayout2Route
+    '/posts/inception/': {
+      id: '/posts/inception/'
+      path: '/inception'
+      fullPath: '/posts/inception/'
+      preLoaderRoute: typeof PostsLetsGoIndexRouteImport
+      parentRoute: typeof PostsRoute
     }
     '/posts/inception/deeper/': {
       id: '/posts/inception/deeper/'

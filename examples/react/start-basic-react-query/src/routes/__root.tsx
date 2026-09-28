@@ -83,6 +83,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <div className="p-2 flex gap-2 text-lg">
+          <Link to="/preferences">Preferences</Link>
           <Link
             to="/"
             activeProps={{

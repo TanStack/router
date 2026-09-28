@@ -1,6 +1,10 @@
 import { decode, encode } from './qss'
 import type { AnySchema } from './validators'
 
+// JSON can start with whitespace, ", [, {, -, a digit, or fa/nu/tr.
+// False positives safely fall through to JSON.parse.
+const jsonStart = /^(?:\s|["[{\d-]|fa|nu|tr)/
+
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
 export const defaultParseSearch = parseSearchWith(JSON.parse)
 /** Default `stringifySearch` using JSON.stringify for complex values. */
@@ -20,6 +24,7 @@ export const defaultStringifySearch = stringifySearchWith(
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
 export function parseSearchWith(parser: (str: string) => any) {
+  const isJsonParser = parser === JSON.parse
   return (searchStr: string): AnySchema => {
     if (searchStr[0] === '?') {
       searchStr = searchStr.substring(1)
@@ -31,6 +36,10 @@ export function parseSearchWith(parser: (str: string) => any) {
     for (const key in query) {
       const value = query[key]
       if (typeof value === 'string') {
+        // Skip JSON.parse when the value cannot begin valid JSON.
+        if (isJsonParser && !jsonStart.test(value)) {
+          continue
+        }
         try {
           query[key] = parser(value)
         } catch (_err) {
@@ -59,15 +68,19 @@ export function stringifySearchWith(
   stringify: (search: any) => string,
   parser?: (str: string) => any,
 ) {
-  const hasParser = typeof parser === 'function'
+  const isJsonParser = parser === JSON.parse
   function stringifyValue(val: any) {
-    if (typeof val === 'object' && val !== null) {
+    if (val && typeof val === 'object') {
       try {
         return stringify(val)
       } catch (_err) {
         // silent
       }
-    } else if (hasParser && typeof val === 'string') {
+    } else if (parser && typeof val === 'string') {
+      // Skip JSON.parse when the value cannot begin valid JSON.
+      if (isJsonParser && !jsonStart.test(val)) {
+        return val
+      }
       try {
         // Check if it's a valid parseable string.
         // If it is, then stringify it again.

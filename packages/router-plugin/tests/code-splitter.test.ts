@@ -20,6 +20,7 @@ import {
 } from '../src/core/code-splitter/compilers'
 import { createIdentifier } from '@tanstack/router-utils'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
+import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { frameworks } from './constants'
 import type { CodeSplitGroupings } from '../src/core/constants'
 
@@ -163,6 +164,62 @@ describe('code-splitter works', () => {
       },
     )
   })
+})
+
+describe('React Refresh virtual route compiler plugin', () => {
+  const splitComponentCases = [
+    { splitType: 'component', splitIdentifier: 'SplitComponent' },
+    {
+      splitType: 'pendingComponent',
+      splitIdentifier: 'SplitPendingComponent',
+    },
+    { splitType: 'errorComponent', splitIdentifier: 'SplitErrorComponent' },
+  ] as const
+
+  function createRouteCode(splitType: string) {
+    return `
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/')({ ${splitType} })
+
+function ${splitType}() {
+  return <div>lowercase function declaration</div>
+}
+`
+  }
+
+  it.each(splitComponentCases)(
+    'renames a lowercase $splitType binding when HMR is enabled',
+    ({ splitType, splitIdentifier }) => {
+      const result = compileCodeSplitVirtualRoute({
+        code: createRouteCode(splitType),
+        filename: `lowercase-function-declaration.tsx?tsr-split=${splitType}`,
+        splitTargets: [splitType],
+        compilerPlugins: getFrameworkHmrCompilerPlugins({
+          targetFramework: 'react',
+        }),
+      })
+
+      expect(result.code).toContain(`function ${splitIdentifier}()`)
+      expect(result.code).toContain(
+        `export { ${splitIdentifier} as ${splitType} }`,
+      )
+    },
+  )
+
+  it.each(splitComponentCases)(
+    'keeps a lowercase $splitType binding when HMR is disabled',
+    ({ splitType }) => {
+      const result = compileCodeSplitVirtualRoute({
+        code: createRouteCode(splitType),
+        filename: `lowercase-function-declaration.tsx?tsr-split=${splitType}`,
+        splitTargets: [splitType],
+      })
+
+      expect(result.code).toContain(`function ${splitType}()`)
+      expect(result.code).toContain(`export { ${splitType} }`)
+    },
+  )
 })
 
 describe('computeSharedBindings fast paths', () => {

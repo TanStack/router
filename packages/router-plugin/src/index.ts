@@ -13,8 +13,10 @@ export type {
 export type { RouterPluginContext } from './core/router-plugin-context'
 export { getObjectPropertyKeyName } from './core/utils'
 export type {
+  CodeSplitCompilerPlugin,
   ReferenceRouteCompilerPlugin,
   ReferenceRouteCompilerPluginContext,
+  VirtualRouteSplitNodeCompilerPluginContext,
 } from './core/code-splitter/plugins'
 export {
   tsrSplit,

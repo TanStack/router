@@ -1,13 +1,14 @@
 ---
-name: start-core/deployment
+name: deployment
 description: >-
   Deploy to Cloudflare Workers, Netlify, Vercel, Node.js/Docker,
   Bun, Railway. Selective SSR (ssr option per route), SPA mode,
   static prerendering, ISR with Cache-Control headers, SEO and
   head management.
-type: sub-skill
-library: tanstack-start
-library_version: '1.166.2'
+metadata:
+  type: sub-skill
+  library: tanstack-start
+  library_version: '1.170.14'
 requires:
   - start-core
 sources:

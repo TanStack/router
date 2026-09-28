@@ -25,7 +25,6 @@ export function getStatusColor(match: AnyRouteMatch) {
     success: 'green',
     error: 'red',
     notFound: 'purple',
-    redirected: 'gray',
   } as const
 
   return match.isFetching && match.status === 'success'

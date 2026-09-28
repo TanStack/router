@@ -9,25 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SimpleRouteImport } from './routes/simple'
-import { Route as PathnameMiddlewareRouteImport } from './routes/pathname-middleware'
-import { Route as MultipleServerFunctionsRouteImport } from './routes/multiple-server-functions'
-import { Route as ContextCollisionRouteImport } from './routes/context-collision'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContextCollisionRouteImport } from './routes/context-collision'
+import { Route as MultipleServerFunctionsRouteImport } from './routes/multiple-server-functions'
+import { Route as PathnameMiddlewareRouteImport } from './routes/pathname-middleware'
+import { Route as SimpleRouteImport } from './routes/simple'
 
-const SimpleRoute = SimpleRouteImport.update({
-  id: '/simple',
-  path: '/simple',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PathnameMiddlewareRoute = PathnameMiddlewareRouteImport.update({
-  id: '/pathname-middleware',
-  path: '/pathname-middleware',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MultipleServerFunctionsRoute = MultipleServerFunctionsRouteImport.update({
-  id: '/multiple-server-functions',
-  path: '/multiple-server-functions',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContextCollisionRoute = ContextCollisionRouteImport.update({
@@ -35,9 +25,19 @@ const ContextCollisionRoute = ContextCollisionRouteImport.update({
   path: '/context-collision',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const MultipleServerFunctionsRoute = MultipleServerFunctionsRouteImport.update({
+  id: '/multiple-server-functions',
+  path: '/multiple-server-functions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PathnameMiddlewareRoute = PathnameMiddlewareRouteImport.update({
+  id: '/pathname-middleware',
+  path: '/pathname-middleware',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SimpleRoute = SimpleRouteImport.update({
+  id: '/simple',
+  path: '/simple',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -97,25 +97,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/simple': {
-      id: '/simple'
-      path: '/simple'
-      fullPath: '/simple'
-      preLoaderRoute: typeof SimpleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pathname-middleware': {
-      id: '/pathname-middleware'
-      path: '/pathname-middleware'
-      fullPath: '/pathname-middleware'
-      preLoaderRoute: typeof PathnameMiddlewareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/multiple-server-functions': {
-      id: '/multiple-server-functions'
-      path: '/multiple-server-functions'
-      fullPath: '/multiple-server-functions'
-      preLoaderRoute: typeof MultipleServerFunctionsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/context-collision': {
@@ -125,11 +111,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContextCollisionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/multiple-server-functions': {
+      id: '/multiple-server-functions'
+      path: '/multiple-server-functions'
+      fullPath: '/multiple-server-functions'
+      preLoaderRoute: typeof MultipleServerFunctionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pathname-middleware': {
+      id: '/pathname-middleware'
+      path: '/pathname-middleware'
+      fullPath: '/pathname-middleware'
+      preLoaderRoute: typeof PathnameMiddlewareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/simple': {
+      id: '/simple'
+      path: '/simple'
+      fullPath: '/simple'
+      preLoaderRoute: typeof SimpleRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

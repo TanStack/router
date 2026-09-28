@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react'
 import { bench, describe } from 'vitest'
+import { getRouteSegments } from '@tanstack/router-core'
 import {
   Link,
   RouterProvider,
@@ -37,8 +38,16 @@ const InterpolatePathLink = ({
   to,
   params,
   children,
-}: React.PropsWithChildren<LinkProps>) => {
-  const href = interpolatePath({ path: to, params }).interpolatedPath
+}: React.PropsWithChildren<{
+  to: string
+  params: Record<string, number>
+}>) => {
+  const router = useRouter()
+  const href = interpolatePath(
+    to,
+    getRouteSegments(router.routesByPath[to])!,
+    params,
+  )
   return <a href={href}>{children}</a>
 }
 

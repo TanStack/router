@@ -9,25 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ImportedRouteImport } from './routes/imported'
-import { Route as EnhancedRouteImport } from './routes/enhanced'
-import { Route as CssRouteImport } from './routes/css'
-import { Route as ComponentsRouteImport } from './routes/components'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ComponentsRouteImport } from './routes/components'
+import { Route as CssRouteImport } from './routes/css'
+import { Route as EnhancedRouteImport } from './routes/enhanced'
+import { Route as ImportedRouteImport } from './routes/imported'
 
-const ImportedRoute = ImportedRouteImport.update({
-  id: '/imported',
-  path: '/imported',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EnhancedRoute = EnhancedRouteImport.update({
-  id: '/enhanced',
-  path: '/enhanced',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CssRoute = CssRouteImport.update({
-  id: '/css',
-  path: '/css',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsRoute = ComponentsRouteImport.update({
@@ -35,9 +25,19 @@ const ComponentsRoute = ComponentsRouteImport.update({
   path: '/components',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CssRoute = CssRouteImport.update({
+  id: '/css',
+  path: '/css',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnhancedRoute = EnhancedRouteImport.update({
+  id: '/enhanced',
+  path: '/enhanced',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportedRoute = ImportedRouteImport.update({
+  id: '/imported',
+  path: '/imported',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -81,25 +81,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/imported': {
-      id: '/imported'
-      path: '/imported'
-      fullPath: '/imported'
-      preLoaderRoute: typeof ImportedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/enhanced': {
-      id: '/enhanced'
-      path: '/enhanced'
-      fullPath: '/enhanced'
-      preLoaderRoute: typeof EnhancedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/css': {
-      id: '/css'
-      path: '/css'
-      fullPath: '/css'
-      preLoaderRoute: typeof CssRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components': {
@@ -109,11 +95,25 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ComponentsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/css': {
+      id: '/css'
+      path: '/css'
+      fullPath: '/css'
+      preLoaderRoute: typeof CssRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/enhanced': {
+      id: '/enhanced'
+      path: '/enhanced'
+      fullPath: '/enhanced'
+      preLoaderRoute: typeof EnhancedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/imported': {
+      id: '/imported'
+      path: '/imported'
+      fullPath: '/imported'
+      preLoaderRoute: typeof ImportedRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

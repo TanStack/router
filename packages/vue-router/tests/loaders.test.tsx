@@ -1,4 +1,11 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import { defineComponent } from 'vue'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/vue'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -199,13 +206,17 @@ test('reproducer for #2053', async () => {
     },
   })
 
+  const FooComponent = defineComponent({
+    setup() {
+      const params = fooRoute.useParams()
+      return () => <div>fooId: {params.value.fooId}</div>
+    },
+  })
+
   const fooRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/foo/$fooId',
-    component: () => {
-      const params = fooRoute.useParams()
-      return <div>fooId: {params.value.fooId}</div>
-    },
+    component: FooComponent,
   })
 
   window.history.replaceState(null, 'root', '/foo/3ΚΑΠΠΑ')
@@ -276,6 +287,51 @@ test('throw error from loader upon initial load', async () => {
   expect(errorElement).toBeInTheDocument()
 })
 
+// https://github.com/TanStack/router/pull/7673
+test('#7673: aborted loader does not render the route component with undefined loaderData', async () => {
+  const abortError = new DOMException('Aborted', 'AbortError')
+  const routeComponentRendered = vi.fn()
+  const renderedError = vi.fn()
+  const rootRoute = createRootRoute({})
+  const IndexComponent = defineComponent({
+    setup() {
+      const data = indexRoute.useLoaderData()
+      return () => {
+        routeComponentRendered()
+
+        return <div data-testid="index-content">{data.value.value}</div>
+      }
+    },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: (): Promise<{ value: string }> => Promise.reject(abortError),
+    component: IndexComponent,
+    errorComponent: ({ error }) => {
+      renderedError(error)
+      return <div data-testid="index-error">indexErrorComponent</div>
+    },
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('index-error')).toBeInTheDocument()
+  expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
+  expect(routeComponentRendered).not.toHaveBeenCalled()
+  expect(renderedError).toHaveBeenCalledWith(abortError)
+  expect(
+    router.state.matches.find((match) => match.routeId === indexRoute.id),
+  ).toMatchObject({
+    status: 'error',
+    error: abortError,
+  })
+})
+
 test('throw error from beforeLoad when navigating to route', async () => {
   const rootRoute = createRootRoute({})
 
@@ -324,17 +380,10 @@ test('reproducer #4245', async () => {
   const LOADER_WAIT_TIME = 500
   const rootRoute = createRootRoute({})
 
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    loader: async () => {
-      await sleep(LOADER_WAIT_TIME)
-      return 'index'
-    },
-
-    component: () => {
+  const IndexComponent = defineComponent({
+    setup() {
       const data = indexRoute.useLoaderData()
-      return (
+      return () => (
         <div>
           <Link to="/foo" data-testid="link-to-foo">
             foo
@@ -343,6 +392,17 @@ test('reproducer #4245', async () => {
         </div>
       )
     },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async () => {
+      await sleep(LOADER_WAIT_TIME)
+      return 'index'
+    },
+
+    component: IndexComponent,
   })
 
   const fooRoute = createRoute({
@@ -439,6 +499,30 @@ test('reproducer #4546', async () => {
   })
 
   let counter = 0
+  const Header = defineComponent({
+    setup() {
+      const router = useRouter()
+
+      const ctx = appRoute.useRouteContext()
+      return () => (
+        <div>
+          Header Counter:{' '}
+          <p data-testid="header-counter">{ctx.value.counter}</p>
+          <button
+            onClick={() => {
+              router.invalidate()
+            }}
+            data-testid="invalidate-router"
+            style={{
+              border: '1px solid blue',
+            }}
+          >
+            Invalidate router
+          </button>
+        </div>
+      )
+    },
+  })
   const appRoute = createRoute({
     getParentRoute: () => rootRoute,
     id: '_app',
@@ -458,42 +542,12 @@ test('reproducer #4546', async () => {
     },
   })
 
-  function Header() {
-    const router = useRouter()
-    const ctx = appRoute.useRouteContext()
-
-    return (
-      <div>
-        Header Counter: <p data-testid="header-counter">{ctx.value.counter}</p>
-        <button
-          onClick={() => {
-            router.invalidate()
-          }}
-          data-testid="invalidate-router"
-          style={{
-            border: '1px solid blue',
-          }}
-        >
-          Invalidate router
-        </button>
-      </div>
-    )
-  }
-
-  const indexRoute = createRoute({
-    getParentRoute: () => appRoute,
-    path: '/',
-    loader: ({ context }) => {
-      return {
-        counter: context.counter,
-      }
-    },
-
-    component: () => {
+  const IndexComponent = defineComponent({
+    setup() {
       const data = indexRoute.useLoaderData()
-      const ctx = indexRoute.useRouteContext()
 
-      return (
+      const ctx = indexRoute.useRouteContext()
+      return () => (
         <div
           style={{
             display: 'flex',
@@ -513,20 +567,24 @@ test('reproducer #4546', async () => {
       )
     },
   })
-  const idRoute = createRoute({
+
+  const indexRoute = createRoute({
     getParentRoute: () => appRoute,
-    path: '$id',
+    path: '/',
     loader: ({ context }) => {
       return {
         counter: context.counter,
       }
     },
 
-    component: () => {
+    component: IndexComponent,
+  })
+  const IdComponent = defineComponent({
+    setup() {
       const data = idRoute.useLoaderData()
-      const ctx = idRoute.useRouteContext()
 
-      return (
+      const ctx = idRoute.useRouteContext()
+      return () => (
         <div
           style={{
             display: 'flex',
@@ -545,6 +603,18 @@ test('reproducer #4546', async () => {
         </div>
       )
     },
+  })
+
+  const idRoute = createRoute({
+    getParentRoute: () => appRoute,
+    path: '$id',
+    loader: ({ context }) => {
+      return {
+        counter: context.counter,
+      }
+    },
+
+    component: IdComponent,
   })
 
   const routeTree = rootRoute.addChildren([
@@ -601,7 +671,7 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('3')
 
     const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('3')
+    await waitFor(() => expect(loaderData).toHaveTextContent('3'))
   }
 
   fireEvent.click(invalidateRouterButton)
@@ -631,11 +701,11 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('5')
 
     const loaderData = await screen.findByTestId('id-loader-data')
-    expect(loaderData).toHaveTextContent('5')
+    await waitFor(() => expect(loaderData).toHaveTextContent('5'))
   }
 })
 
-test('clears pendingTimeout when match resolves', async () => {
+test('does not show pending UI when routes resolve before their thresholds', async () => {
   const defaultPendingComponentOnMountMock = vi.fn()
   const nestedPendingComponentOnMountMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
@@ -703,7 +773,7 @@ test('clears pendingTimeout when match resolves', async () => {
   })
 
   render(<RouterProvider router={router} />)
-  await router.latestLoadPromise
+  await screen.findByText('Index page')
   const linkToFoo = await screen.findByTestId('link-to-foo')
   fireEvent.click(linkToFoo)
   const fooElement = await screen.findByText('Nested Foo page')
@@ -717,7 +787,7 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
 })
 
-test('cancelMatches after pending timeout', async () => {
+test('navigating away from pending UI aborts its loader', async () => {
   function getPendingComponent(onMount: () => void) {
     const PendingComponent = () => {
       onMount()
@@ -769,7 +839,7 @@ test('cancelMatches after pending timeout', async () => {
   const routeTree = rootRoute.addChildren([fooRoute, barRoute])
   const router = createRouter({ routeTree, history })
   render(<RouterProvider router={router} />)
-  await router.latestLoadPromise
+  await screen.findByText('Index page')
   const fooLink = await screen.findByTestId('link-to-foo')
   fireEvent.click(fooLink)
   await sleep(WAIT_TIME * 30)

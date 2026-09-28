@@ -1,4 +1,5 @@
 import { DefaultGlobalNotFound } from './not-found'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
 
 /**
@@ -14,17 +15,33 @@ export function renderRouteNotFound(
   route: AnyRoute,
   data: any,
 ) {
+  if (process.env.NODE_ENV !== 'production') {
+    if (!route.options.notFoundComponent) {
+      if (router.options.defaultNotFoundComponent) {
+        const DefaultNotFoundComponent = router.options.defaultNotFoundComponent
+        return renderInNonRouteComponentContext(
+          () => <DefaultNotFoundComponent {...data} />,
+          'notFoundComponent',
+        )
+      }
+
+      console.warn(
+        `Warning: A notFoundError was encountered on the route with ID "${route.id}", but a notFoundComponent option was not configured, nor was a router level defaultNotFoundComponent configured. Consider configuring at least one of these to avoid TanStack Router's overly generic defaultNotFoundComponent (<p>Not Found</p>)`,
+      )
+
+      return <DefaultGlobalNotFound />
+    }
+
+    const NotFoundComponent = route.options.notFoundComponent
+    return renderInNonRouteComponentContext(
+      () => <NotFoundComponent {...data} />,
+      'notFoundComponent',
+    )
+  }
+
   if (!route.options.notFoundComponent) {
     if (router.options.defaultNotFoundComponent) {
       return <router.options.defaultNotFoundComponent {...data} />
-    }
-
-    if (process.env.NODE_ENV !== 'production') {
-      if (!route.options.notFoundComponent) {
-        console.warn(
-          `Warning: A notFoundError was encountered on the route with ID "${route.id}", but a notFoundComponent option was not configured, nor was a router level defaultNotFoundComponent configured. Consider configuring at least one of these to avoid TanStack Router's overly generic defaultNotFoundComponent (<p>Not Found</p>)`,
-        )
-      }
     }
 
     return <DefaultGlobalNotFound />

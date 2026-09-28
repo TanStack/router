@@ -31,9 +31,9 @@ export const usePrevious = (fn: () => boolean) => {
  * When the intersection changes, the callback will be called with the `IntersectionObserverEntry`.
  *
  * @param ref - The ref to observe
- * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
- * @param options - The options to pass to the hook
  * @param callback - The callback to call when the intersection changes
+ * @param disabled - Whether observation is disabled
+ * @param cleanupWhenDisabled - Whether cleanup is needed without an observer (defaults to true)
  * @returns The IntersectionObserver instance
  * @example
  * ```tsx
@@ -42,17 +42,16 @@ export const usePrevious = (fn: () => boolean) => {
  * useIntersectionObserver(
  *  ref,
  *  (entry) => { doSomething(entry) },
- *  { rootMargin: '10px' },
- *  { disabled: false }
+ *  () => false
  * )
  * return <div ref={ref} />
  * ```
  */
 export function useIntersectionObserver<T extends Element>(
   ref: Vue.Ref<T | null>,
-  callback: (entry: IntersectionObserverEntry | undefined) => void,
-  intersectionObserverOptions: IntersectionObserverInit = {},
-  options: { disabled?: boolean | (() => boolean) } = {},
+  callback: (entry?: IntersectionObserverEntry) => void,
+  disabled: () => boolean,
+  cleanupWhenDisabled?: () => boolean,
 ): Vue.Ref<IntersectionObserver | null> {
   const isIntersectionObserverAvailable =
     typeof IntersectionObserver === 'function'
@@ -61,25 +60,32 @@ export function useIntersectionObserver<T extends Element>(
   // Use watchEffect with cleanup to properly manage the observer lifecycle
   Vue.watchEffect((onCleanup) => {
     const r = ref.value
-    // Support both static boolean and function for disabled check
-    const isDisabled =
-      typeof options.disabled === 'function'
-        ? options.disabled()
-        : options.disabled
-    if (!r || !isIntersectionObserverAvailable || isDisabled) {
+    if (disabled() || !r || !isIntersectionObserverAvailable) {
+      if (cleanupWhenDisabled?.() ?? true) {
+        onCleanup(() => callback())
+      }
       return
     }
 
-    const observer = new IntersectionObserver(([entry]) => {
-      callback(entry)
-    }, intersectionObserverOptions)
+    let active = true
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Queued notifications can arrive after this effect has cleaned up.
+        if (active) {
+          callback(entries.pop())
+        }
+      },
+      { rootMargin: '100px' },
+    )
 
     observerRef.value = observer
     observer.observe(r)
 
     onCleanup(() => {
+      active = false
       observer.disconnect()
       observerRef.value = null
+      callback()
     })
   })
 

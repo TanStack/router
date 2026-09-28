@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'pathe'
 
-vi.mock('@tanstack/start-server-core', () => ({
+vi.mock('@tanstack/start-server-core/constants', () => ({
   HEADERS: {
     TSS_SHELL: 'x-tss-shell',
   },

@@ -8,11 +8,13 @@ on:
     paths:
       - 'packages/**'
       - 'benchmarks/**'
+      - 'scripts/benchmarks/bundle-size/**'
   push:
     branches: [main]
     paths:
       - 'packages/**'
       - 'benchmarks/**'
+      - 'scripts/benchmarks/bundle-size/**'
   workflow_dispatch:
 
 concurrency:
@@ -43,7 +45,7 @@ jobs:
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
       - name: Measure Bundle Size
-        run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
+        run: pnpm benchmark:bundle-size --outputStyle=stream --skipRemoteCache
 
       - name: Capture Benchmark Outputs
         id: capture
@@ -98,6 +100,7 @@ jobs:
             --output benchmarks/bundle-size/results/pr-comment.md \
             --base-sha "$BASE_SHA" \
             --dashboard-url "https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME}/benchmarks/bundle-size/"
+          cat benchmarks/bundle-size/results/pr-comment.md
 
       - name: Upsert Sticky PR Comment
         env:
@@ -124,7 +127,7 @@ jobs:
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
       - name: Measure Bundle Size
-        run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
+        run: pnpm benchmark:bundle-size --outputStyle=stream --skipRemoteCache
       - name: Publish Benchmark Dashboard
         uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
         with:

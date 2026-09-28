@@ -16,16 +16,16 @@ import { Route as ApiBarRouteImport } from './routes/api/bar'
 
 const FooLazyRouteImport = createFileRoute('/foo')()
 
-const FooLazyRoute = FooLazyRouteImport.update({
-  id: '/foo',
-  path: '/foo',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/foo.lazy').then((d) => d.Route))
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FooLazyRoute = FooLazyRouteImport.update({
+  id: '/foo',
+  path: '/foo',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/foo.lazy').then((d) => d.Route))
 const ApiBarRoute = ApiBarRouteImport.update({
   id: '/api/bar',
   path: '/api/bar',
@@ -64,18 +64,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/foo': {
-      id: '/foo'
-      path: '/foo'
-      fullPath: '/foo'
-      preLoaderRoute: typeof FooLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/foo': {
+      id: '/foo'
+      path: '/foo'
+      fullPath: '/foo'
+      preLoaderRoute: typeof FooLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/bar': {

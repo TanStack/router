@@ -1,43 +1,39 @@
 import * as Vue from 'vue'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 
-interface ErrorComponentProps {
-  error: Error
-  reset: () => void
-}
-
 type CatchBoundaryProps = {
-  getResetKey: () => number | string
+  getResetKey: () => unknown
   children: Vue.VNode
   errorComponent?: ErrorRouteComponent | Vue.Component
-  onCatch?: (error: Error) => void
+  onCatch?: (error: unknown) => void
 }
 
 const VueErrorBoundary = Vue.defineComponent({
   name: 'VueErrorBoundary',
   props: {
     onError: Function,
-    resetKey: [String, Number],
+    resetKey: [String, Number, Object],
+    children: null,
+    errorComponent: null,
   },
-  emits: ['catch'],
-  setup(props, { slots }) {
-    const error = Vue.ref<Error | null>(null)
-    const resetFn = Vue.ref<(() => void) | null>(null)
+  setup(props) {
+    const error = Vue.shallowRef<[unknown] | 0>(0)
 
     const reset = () => {
-      error.value = null
+      error.value = 0
     }
 
     Vue.watch(
       () => props.resetKey,
-      (newKey, oldKey) => {
-        if (newKey !== oldKey && error.value) {
+      () => {
+        if (error.value) {
           reset()
         }
       },
     )
 
-    Vue.onErrorCaptured((err: Error) => {
+    Vue.onErrorCaptured((err: unknown) => {
       if (
         err instanceof Promise ||
         (err && typeof (err as any).then === 'function')
@@ -45,8 +41,7 @@ const VueErrorBoundary = Vue.defineComponent({
         return false
       }
 
-      error.value = err
-      resetFn.value = reset
+      error.value = [err]
 
       if (props.onError) {
         props.onError(err)
@@ -56,60 +51,42 @@ const VueErrorBoundary = Vue.defineComponent({
     })
 
     return () => {
-      if (error.value && slots.fallback) {
-        const fallbackContent = slots.fallback({
-          error: error.value,
-          reset,
-        })
-        return Array.isArray(fallbackContent) && fallbackContent.length === 1
-          ? fallbackContent[0]
-          : fallbackContent
+      if (!error.value) {
+        return props.children as Vue.VNode
       }
 
-      const defaultContent = slots.default && slots.default()
-      return Array.isArray(defaultContent) && defaultContent.length === 1
-        ? defaultContent[0]
-        : defaultContent
-    }
-  },
-})
+      const errorComponent = props.errorComponent ?? ErrorComponent
+      const errorProps = {
+        error: error.value[0],
+        reset,
+      }
 
-const CatchBoundaryWrapper = Vue.defineComponent({
-  name: 'CatchBoundary',
-  inheritAttrs: false,
-  props: ['getResetKey', 'children', 'errorComponent', 'onCatch'] as any,
-  setup(props: CatchBoundaryProps) {
-    const resetKey = Vue.computed(() => props.getResetKey())
-
-    return () => {
-      return Vue.h(
-        VueErrorBoundary,
-        {
-          resetKey: resetKey.value,
-          onError: props.onCatch,
-        },
-        {
-          default: () => props.children,
-          fallback: ({ error, reset }: ErrorComponentProps) => {
-            if (props.errorComponent) {
-              return Vue.h(props.errorComponent, { error, reset })
-            }
-            return Vue.h(ErrorComponent, { error, reset })
-          },
-        },
-      )
+      return process.env.NODE_ENV !== 'production'
+        ? renderInNonRouteComponentContext(
+            errorComponent,
+            errorProps,
+            'errorComponent',
+          )
+        : Vue.h(errorComponent, errorProps)
     }
   },
 })
 
 export function CatchBoundary(props: CatchBoundaryProps) {
-  return Vue.h(CatchBoundaryWrapper, props as any)
+  return Vue.h(VueErrorBoundary, {
+    resetKey: props.getResetKey() as any,
+    onError: props.onCatch,
+    children: props.children,
+    errorComponent: props.errorComponent,
+  })
 }
+CatchBoundary.inheritAttrs = false
+CatchBoundary.props = ['getResetKey', 'children', 'errorComponent', 'onCatch']
 
 export const ErrorComponent = Vue.defineComponent({
   name: 'ErrorComponent',
   props: {
-    error: Object,
+    error: null as unknown as Vue.PropType<unknown>,
     reset: Function,
   },
   setup(props) {
@@ -163,8 +140,12 @@ export const ErrorComponent = Vue.defineComponent({
                   },
                 },
                 [
-                  props.error?.message
-                    ? Vue.h('code', {}, props.error.message)
+                  (props.error as { message?: string } | null)?.message
+                    ? Vue.h(
+                        'code',
+                        {},
+                        (props.error as { message: string }).message,
+                      )
                     : null,
                 ],
               ),

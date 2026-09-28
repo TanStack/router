@@ -1,5 +1,4 @@
-import { HEADERS } from '@tanstack/start-server-core'
-import { buildSitemap } from './build-sitemap'
+import { HEADERS } from '@tanstack/start-server-core/constants'
 import type { TanStackStartOutputConfig } from './schema'
 
 export interface StartPostBuildAdapter {
@@ -56,6 +55,7 @@ export async function postBuild({
   }
 
   if (startConfig.sitemap?.enabled) {
+    const { buildSitemap } = await import('./build-sitemap')
     buildSitemap({
       startConfig,
       publicDir: adapter.getClientOutputDirectory(),

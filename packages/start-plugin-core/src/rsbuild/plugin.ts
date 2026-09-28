@@ -7,8 +7,9 @@ import {
   applyResolvedRouterBasepath,
   createStartConfigContext,
 } from '../config-context'
-import { escapeRegExp, normalizePath } from '../utils'
+import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
+import { addWorkspaceWatchIgnored } from './watch-ignored'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
   RSBUILD_CLIENT_ASSETS_DIR,
@@ -24,7 +25,7 @@ import {
   START_MANIFEST_PLACEHOLDER,
   registerVirtualModules,
 } from './virtual-modules'
-import { createServerSetup } from './dev-server'
+import { createServerSetup } from './server-middleware'
 import { registerClientBuildCapture } from './normalized-client-build'
 import { registerRouterPlugins } from './start-router-plugin'
 import { postBuildWithRsbuild } from './post-build'
@@ -159,6 +160,7 @@ export function tanStackStartRsbuild(
 
         const resolvedEntryPlan = configContext.resolveEntries()
         const isDev = api.context.action === 'dev'
+        const isPreview = api.context.action === 'preview'
 
         const entryAliases = createRsbuildResolvedEntryAliases({
           entryPaths: resolvedEntryPlan.entryPaths,
@@ -244,6 +246,10 @@ export function tanStackStartRsbuild(
             },
           },
           server: {
+            ...(rsbuildConfig.server?.printUrls === undefined ||
+            rsbuildConfig.server.printUrls === true
+              ? { printUrls: ({ urls }: { urls: Array<string> }) => urls }
+              : {}),
             // Rsbuild compression currently treats Node's raw header array
             // writeHead form as an object, which corrupts SSR response headers.
             compress: false,
@@ -252,11 +258,17 @@ export function tanStackStartRsbuild(
             htmlFallback: false,
             // server.setup returned callback runs after built-in middleware
             // but BEFORE fallback middleware — the ideal slot for SSR.
-            ...(isDev &&
-            startPluginOpts.rsbuild?.installDevServerMiddleware !== false
+            // Preview always installs the middleware since it is the only SSR
+            // handler; dev can opt out when a custom server hosts SSR.
+            ...(isPreview ||
+            (isDev &&
+              startPluginOpts.rsbuild?.installDevServerMiddleware !== false)
               ? {
                   setup: createServerSetup({
                     serverFnBasePath: serverFnBase,
+                    serverOutputDirectory:
+                      resolvedStartConfig.outputDirectories.server,
+                    publicBase: resolvedStartConfig.basePaths.publicBase,
                   }),
                 }
               : {}),
@@ -355,7 +367,7 @@ export function tanStackStartRsbuild(
       // ---------------------------------------------------------------
       // 4. Client build stats capture via processAssets
       // ---------------------------------------------------------------
-      const { getClientBuild } = registerClientBuildCapture(api)
+      const { getClientBuild } = registerClientBuildCapture(api, getConfig)
 
       // ---------------------------------------------------------------
       // 4b. Server manifest module generation (build only)
@@ -433,27 +445,12 @@ export function tanStackStartRsbuild(
           const workspaceDistRealpaths = resolveWorkspacePackageDistRealpaths()
           if (workspaceDistRealpaths.length === 0) return
 
-          const workspaceDistIgnored = new RegExp(
-            workspaceDistRealpaths
-              .map((path) => `^${escapeRegExp(path)}(?:[\\\\/]|$)`)
-              .join('|'),
-          )
-          const ignored = config.watchOptions?.ignored
-
           config.watchOptions = {
             ...(config.watchOptions ?? {}),
-            ignored:
-              ignored == null
-                ? new RegExp(
-                    `${defaultRspackWatchIgnored.source}|${workspaceDistIgnored.source}`,
-                  )
-                : typeof ignored === 'string'
-                  ? [ignored, ...workspaceDistRealpaths]
-                  : Array.isArray(ignored)
-                    ? [...ignored, ...workspaceDistRealpaths]
-                    : new RegExp(
-                        `${ignored.source}|${workspaceDistIgnored.source}`,
-                      ),
+            ignored: addWorkspaceWatchIgnored(
+              config.watchOptions?.ignored,
+              workspaceDistRealpaths,
+            ),
           }
         })
       }
@@ -778,8 +775,6 @@ export function tanStackStartRsbuild(
     },
   }
 }
-
-const defaultRspackWatchIgnored = /[\\/](?:\.git|node_modules)[\\/]/
 
 function seedResolveModules(
   config: RspackConfig,

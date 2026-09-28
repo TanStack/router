@@ -2,7 +2,21 @@
 
 # TanStack Solid Router
 
-![TanStack Router Header](https://raw.githubusercontent.com/TanStack/router/main/media/header_router.png)
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="https://tanstack.com/api/readme/router.png?framework=solid&theme=dark"
+  />
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="https://tanstack.com/api/readme/router.png?framework=solid"
+  />
+  <img
+    src="https://tanstack.com/api/readme/router.png?framework=solid"
+    alt="TanStack Solid Router"
+    width="900"
+  />
+</picture>
 
 🤖 Type-safe router w/ built-in caching & URL state management for Solid!
 

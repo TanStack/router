@@ -34,6 +34,7 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
+import { useIntersectionObserver } from '../src/utils'
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
@@ -43,12 +44,16 @@ import type { RouterHistory } from '../src'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
+let ioCallback: IntersectionObserverCallback
 let history: RouterHistory
 
 beforeEach(() => {
   const io = getIntersectionObserverMock({
     observe: ioObserveMock,
     disconnect: ioDisconnectMock,
+    onCreate: (callback) => {
+      ioCallback = callback
+    },
   })
   vi.stubGlobal('IntersectionObserver', io)
   history = createBrowserHistory()
@@ -56,6 +61,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   history.destroy?.()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
@@ -65,6 +71,295 @@ afterEach(() => {
 const WAIT_TIME = 300
 
 describe('Link', () => {
+  test('custom state props follow external, internal and blocked destination changes', async () => {
+    const [to, setTo] = Solid.createSignal('https://example.com/')
+    const root = createRootRoute()
+    const activeProps = () => ({
+      class: 'active-state',
+      style: { color: 'red' },
+    })
+    const inactiveProps = () => ({
+      class: 'inactive-state',
+      style: { color: 'blue' },
+      href: 'javascript:inactive()',
+    })
+    const index = createRoute({
+      getParentRoute: () => root,
+      path: '/',
+      component: () => (
+        <Link
+          data-testid="transition-link"
+          to={to()}
+          class="base"
+          style={{ 'font-weight': 700 }}
+          activeProps={activeProps}
+          inactiveProps={inactiveProps}
+        />
+      ),
+    })
+    const router = createRouter({
+      routeTree: root.addChildren([index]),
+      history,
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('transition-link')
+    for (const destination of [
+      'https://example.com/',
+      '/',
+      'javascript:blocked()',
+      '/',
+    ]) {
+      setTo(destination)
+      const active = destination === '/'
+      await waitFor(() => {
+        expect(link.getAttribute('href')).toBe(
+          destination.startsWith('javascript:') ? null : destination,
+        )
+        expect(link.getAttribute('class')?.trim()).toBe(
+          `base ${active ? 'active-state' : 'inactive-state'}`,
+        )
+        expect(link).toHaveStyle({
+          color: active ? 'rgb(255, 0, 0)' : 'rgb(0, 0, 255)',
+          'font-weight': '700',
+        })
+      })
+    }
+  })
+
+  test('keeps protocol-relative Link paths on the router origin', async () => {
+    const inputs = [
+      '//evil.example',
+      '/\\evil.example',
+      '\\/evil.example',
+      ' \t/\\evil.example',
+    ]
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          {inputs.map((to, index) => (
+            <Link data-testid={`unsafe-link-${index}`} to={to} />
+          ))}
+        </>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    for (let index = 0; index < inputs.length; index++) {
+      const link = await screen.findByTestId(`unsafe-link-${index}`)
+      const href = link.getAttribute('href')
+      expect(href).not.toBeNull()
+      expect(new URL(href!, window.location.href).origin).toBe(
+        window.location.origin,
+      )
+    }
+  })
+
+  test('blocks a dangerous final href produced by an output rewrite', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="rewritten-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      rewrite: {
+        output: ({ url }) =>
+          url.pathname === '/safe' ? new URL('javascript:alert(1)') : url,
+      },
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('rewritten-link')
+
+    expect(link).not.toHaveAttribute('href')
+    expect(link).toHaveAttribute('role', 'link')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(fireEvent.click(link)).toBe(true)
+  })
+
+  test('blocks a dangerous final href produced by custom history', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'javascript:alert(1)',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="custom-history-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('custom-history-link')
+
+    expect(link).not.toHaveAttribute('href')
+    expect(link).toHaveAttribute('role', 'link')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(fireEvent.click(link)).toBe(true)
+    customHistory.destroy()
+  })
+
+  test('does not transform a direct HTTPS link through custom history', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'https://other.example/',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link data-testid="direct-https-link" to="https://intended.example/" />
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+    try {
+      render(() => <RouterProvider router={router} />)
+      const link = await screen.findByTestId('direct-https-link')
+
+      expect(link).toHaveAttribute('href', 'https://intended.example/')
+      expect(fireEvent.click(link)).toBe(true)
+    } finally {
+      customHistory.destroy()
+    }
+  })
+
+  test('keeps a scheme-bearing custom-history href native', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'https://other.example/path',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="custom-history-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+
+    try {
+      render(() => <RouterProvider router={router} />)
+      const link = await screen.findByTestId('custom-history-link')
+
+      expect(link).toHaveAttribute('href', 'https://other.example/path')
+      expect(fireEvent.click(link)).toBe(true)
+    } finally {
+      customHistory.destroy()
+    }
+  })
+
+  test('reactively stops intercepting when a destination becomes external', async () => {
+    let setTo!: (to: string) => void
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const [to, _setTo] = Solid.createSignal('/safe')
+        setTo = _setTo
+        return <Link data-testid="reactive-external-link" to={to()} />
+      },
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('reactive-external-link')
+    setTo('https://other.example/path')
+    await waitFor(() =>
+      expect(link).toHaveAttribute('href', 'https://other.example/path'),
+    )
+
+    expect(fireEvent.click(link)).toBe(true)
+  })
+
+  test('blocks a custom protocol that is not in the allowlist', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link
+          data-testid="custom-protocol-link"
+          to="custom://example.com/path"
+        />
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      protocolAllowlist: [],
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('custom-protocol-link')
+
+    expect(link).not.toHaveAttribute('href')
+  })
+
+  test('a blocked link stays inactive and cannot regain an href', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link
+          data-testid="blocked-caller-href"
+          to="/safe"
+          href="https://caller.example/blocked"
+          inactiveProps={{ 'data-inactive': 'true' }}
+        >
+          {({ isActive }) => String(isActive)}
+        </Link>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      rewrite: {
+        output: ({ url }) =>
+          url.pathname === '/blocked' ? new URL('javascript:alert(1)') : url,
+      },
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(() => <RouterProvider router={router} />)
+
+    expect(
+      await screen.findByTestId('blocked-caller-href'),
+    ).not.toHaveAttribute('href')
+    expect(screen.getByTestId('blocked-caller-href')).toHaveAttribute(
+      'data-inactive',
+      'true',
+    )
+    expect(screen.getByTestId('blocked-caller-href')).toHaveTextContent('false')
+    expect(fireEvent.click(screen.getByTestId('blocked-caller-href'))).toBe(
+      true,
+    )
+  })
+
   // rerender doesn't exist in solid
 
   // test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
@@ -572,6 +867,45 @@ describe('Link', () => {
       expect(
         await screen.findByTestId('external-link-active'),
       ).toHaveTextContent('false')
+    })
+
+    test('updates href when link options change reactively', async () => {
+      const [to, setTo] = Solid.createSignal<'/a' | '/b'>('/a')
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <button onClick={() => setTo('/b')}>Change destination</button>
+            <Link data-testid="dynamic-link" to={to()}>
+              Destination
+            </Link>
+          </>
+        ),
+      })
+      const aRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/a',
+      })
+      const bRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/b',
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([aRoute, bRoute]),
+        history,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const link = await screen.findByTestId('dynamic-link')
+      expect(link).toHaveAttribute('href', '/a')
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Change destination' }),
+      )
+
+      await waitFor(() => {
+        expect(link).toHaveAttribute('href', '/b')
+      })
     })
 
     test('updates exact and fuzzy active state before the next route renders', async () => {
@@ -1414,22 +1748,17 @@ describe('Link', () => {
       '/Dashboard/posts?page=2&filter=inactive',
     )
 
-    await fireEvent.click(updateSearchLink)
+    fireEvent.click(updateSearchLink)
 
-    // Wait for navigation to complete and search params to update
     await waitFor(() => {
+      expect(window.location.pathname).toBe('/Dashboard/posts')
       expect(window.location.search).toBe('?page=2&filter=inactive')
+      expect(screen.getByTestId('current-page')).toHaveTextContent('Page: 2')
+      expect(screen.getByTestId('current-filter')).toHaveTextContent(
+        'Filter: inactive',
+      )
     })
-
-    await screen.findByTestId('current-page')
-    // Verify search was updated
-    expect(window.location.pathname).toBe('/Dashboard/posts')
-    expect(window.location.search).toBe('?page=2&filter=inactive')
-
-    const updatedPage = await screen.findByTestId('current-page')
-    const updatedFilter = await screen.findByTestId('current-filter')
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    await vi.waitFor(() => expect(router.state.status).toBe('idle'))
   })
 
   test('when navigating to /posts with invalid search', async () => {
@@ -4963,6 +5292,238 @@ describe('Link', () => {
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
 
+  test.each([undefined, false, true])(
+    'disabled observers honor the cleanup condition (%s)',
+    (cleanupWhenDisabled) => {
+      const callback = vi.fn()
+      const view = render(() => {
+        const [element, setElement] = Solid.createSignal<Element | null>(null)
+        useIntersectionObserver(
+          element,
+          callback,
+          () => true,
+          cleanupWhenDisabled === undefined
+            ? undefined
+            : () => cleanupWhenDisabled,
+        )
+        return <div ref={setElement} />
+      })
+      callback.mockClear()
+      view.unmount()
+      if (cleanupWhenDisabled === false) {
+        expect(callback).not.toHaveBeenCalled()
+      } else {
+        expect(callback).toHaveBeenCalledWith()
+      }
+    },
+  )
+
+  test.each(['intent', 'viewport'] as const)(
+    'preserves %s timer cleanup across mode changes and unmount',
+    async (mode) => {
+      const [preload, setPreload] = Solid.createSignal<
+        false | 'intent' | 'viewport'
+      >()
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <Link to="/about" preload={preload()} preloadDelay={50}>
+            Preload Link
+          </Link>
+        ),
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+        history,
+      })
+      const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+      const view = render(() => <RouterProvider router={router} />)
+      const link = await screen.findByRole('link', { name: 'Preload Link' })
+      const notify = (callback: IntersectionObserverCallback) => {
+        callback(
+          [
+            {
+              isIntersecting: true,
+              target: link,
+            } as unknown as IntersectionObserverEntry,
+          ],
+          {} as IntersectionObserver,
+        )
+      }
+      const trigger = () => {
+        if (mode === 'intent') {
+          fireEvent.mouseEnter(link)
+        } else {
+          notify(ioCallback)
+        }
+      }
+      vi.useFakeTimers()
+
+      setPreload(mode)
+      await Promise.resolve()
+      const oldObserver = mode === 'viewport' ? ioCallback : undefined
+      trigger()
+      await vi.advanceTimersByTimeAsync(49)
+      setPreload(false)
+      await Promise.resolve()
+      if (oldObserver) {
+        notify(oldObserver)
+      }
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+      setPreload(mode)
+      await Promise.resolve()
+      if (oldObserver) {
+        // The mode matches again, but the previous observer is still obsolete.
+        notify(oldObserver)
+      }
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).not.toHaveBeenCalled()
+      trigger()
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+      preloadRouteSpy.mockClear()
+      trigger()
+      const lastObserver = mode === 'viewport' ? ioCallback : undefined
+      view.unmount()
+      if (lastObserver) {
+        notify(lastObserver)
+      }
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).not.toHaveBeenCalled()
+    },
+  )
+
+  test('Link.preload="viewport" should respect preloadDelay', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link to="/about" preload="viewport" preloadDelay={50}>
+            Viewport Link
+          </Link>
+          <Link to="/about" preload="intent" preloadDelay={50}>
+            Intent Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(() => <RouterProvider router={router} />)
+
+    const viewportLink = await screen.findByRole('link', {
+      name: 'Viewport Link',
+    })
+    const intentLink = await screen.findByRole('link', { name: 'Intent Link' })
+    vi.useFakeTimers()
+
+    ioCallback([], {} as IntersectionObserver)
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    fireEvent.mouseLeave(viewportLink)
+
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(49)
+
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+
+    fireEvent.mouseEnter(intentLink)
+    fireEvent.mouseLeave(intentLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+  })
+
   test("Router.preload='render', should trigger the route loader on render", async () => {
     const mock = vi.fn()
 
@@ -5060,6 +5621,7 @@ describe('Link', () => {
   )
 
   test('Link.preload="intent" should preload on focus, hover, and touchstart', async () => {
+    const updateSearch = vi.fn((search) => search)
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -5067,7 +5629,7 @@ describe('Link', () => {
       component: () => (
         <>
           <h1>Index Heading</h1>
-          <Link to="/about" preload="intent">
+          <Link to="/about" search={updateSearch} preload="intent">
             About Link
           </Link>
         </>
@@ -5094,6 +5656,8 @@ describe('Link', () => {
     expect(aboutLink).toBeInTheDocument()
 
     const baselineCalls = preloadRouteSpy.mock.calls.length
+    const baselineSearchCalls = updateSearch.mock.calls.length
+    expect(baselineSearchCalls).toBeGreaterThan(0)
 
     fireEvent.focus(aboutLink)
     await waitFor(() =>
@@ -5109,6 +5673,10 @@ describe('Link', () => {
     await waitFor(() =>
       expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 3),
     )
+    expect(updateSearch).toHaveBeenCalledTimes(baselineSearchCalls + 3)
+    for (const call of preloadRouteSpy.mock.calls.slice(baselineCalls)) {
+      expect(call).toHaveLength(1)
+    }
   })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {

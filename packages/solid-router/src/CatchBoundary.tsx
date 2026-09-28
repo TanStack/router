@@ -1,10 +1,11 @@
 import * as Solid from 'solid-js'
 import { Dynamic } from 'solid-js/web'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 
 export function CatchBoundary(
   props: {
-    getResetKey: () => number | string
+    getResetKey: () => unknown
     children: Solid.JSX.Element
     errorComponent?: ErrorRouteComponent
     onCatch?: (error: Error) => void
@@ -16,15 +17,37 @@ export function CatchBoundary(
         props.onCatch?.(error)
 
         Solid.createEffect(
-          Solid.on([props.getResetKey], () => reset(), { defer: true }),
+          Solid.on(props.getResetKey, () => reset(), { defer: true }),
         )
 
+        // A lazy error component can suspend after the route enters its
+        // error state. Keep that suspension here so it does not render the
+        // route's pending fallback again.
+        if (process.env.NODE_ENV !== 'production') {
+          return (
+            <Solid.Suspense>
+              {renderInNonRouteComponentContext(
+                () => (
+                  <Dynamic
+                    component={props.errorComponent ?? ErrorComponent}
+                    error={error}
+                    reset={reset}
+                  />
+                ),
+                'errorComponent',
+              )}
+            </Solid.Suspense>
+          )
+        }
+
         return (
-          <Dynamic
-            component={props.errorComponent ?? ErrorComponent}
-            error={error}
-            reset={reset}
-          />
+          <Solid.Suspense>
+            <Dynamic
+              component={props.errorComponent ?? ErrorComponent}
+              error={error}
+              reset={reset}
+            />
+          </Solid.Suspense>
         )
       }}
     >
@@ -33,7 +56,7 @@ export function CatchBoundary(
   )
 }
 
-export function ErrorComponent({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: Error }) {
   const [show, setShow] = Solid.createSignal(
     process.env.NODE_ENV !== 'production',
   )

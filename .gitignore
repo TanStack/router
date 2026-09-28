@@ -66,6 +66,7 @@ nx-cloud.env
 .nx/workspace-data
 .nx/polygraph
 .nx/self-healing
+.nx/migrate-runs
 
 gpt/db.json
 
@@ -90,3 +91,6 @@ vite.config.ts.timestamp_*
 
 # eslint-plugin-start perf fixtures
 /e2e/eslint-plugin-start/src/perf/generated
+
+# local memory flame profiles
+benchmarks/memory/**/.profiles/

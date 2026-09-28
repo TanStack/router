@@ -1,5 +1,4 @@
 import { renderToReadableStream } from 'virtual:tanstack-rsc-runtime'
-import { getRequest } from '@tanstack/start-server-core'
 import { getStartContext } from '@tanstack/start-storage-context'
 import { ReplayableStream } from './ReplayableStream'
 import { RENDERABLE_RSC, SERVER_COMPONENT_STREAM } from './ServerComponentTypes'
@@ -72,7 +71,7 @@ export async function renderServerComponent<TNode>(
 
   // SSR path: buffer stream for replay, pre-decode for synchronous rendering
   if (isRouterRequest && ssrHandler) {
-    const signal = getRequest().signal
+    const signal = ctx.request.signal
     const stream = new ReplayableStream(flightStream, { signal })
 
     // Pre-decode during loader phase for synchronous SSR rendering

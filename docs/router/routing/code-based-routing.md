@@ -14,7 +14,7 @@ title: Code-Based Routing
 
 Code-based routing is no different from file-based routing in that it uses the same route tree concept to organize, match and compose matching routes into a component tree. The only difference is that instead of using the filesystem to organize your routes, you use code.
 
-Let's consider the same route tree from the [Route Trees & Nesting](./route-trees.md#route-trees) guide, and convert it to code-based routing:
+Let's consider the same route tree from the [Route Trees](./route-trees.md#route-trees) guide, and convert it to code-based routing:
 
 Here is the file-based version:
 

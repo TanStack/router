@@ -5,10 +5,11 @@ description: >-
   Vite plugin, StartClient, StartServer, Vue-specific setup,
   re-exports from @tanstack/start-client-core. Full project setup
   with Vue.
-type: framework
-library: tanstack-start
-library_version: '1.166.2'
-framework: vue
+metadata:
+  type: framework
+  library: tanstack-start
+  library_version: '1.166.2'
+  framework: vue
 requires:
   - start-core
 sources:
@@ -150,20 +151,23 @@ function RootComponent() {
 ```tsx
 import { createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
+import { defineComponent } from 'vue'
 
 const getGreeting = createServerFn({ method: 'GET' }).handler(async () => {
   return 'Hello from TanStack Start!'
+})
+
+const HomePage = defineComponent({
+  setup() {
+    const greeting = Route.useLoaderData()
+    return () => <h1>{greeting.value}</h1>
+  },
 })
 
 export const Route = createFileRoute('/')({
   loader: () => getGreeting(),
   component: HomePage,
 })
-
-function HomePage() {
-  const greeting = Route.useLoaderData()
-  return <h1>{greeting.value}</h1>
-}
 ```
 
 ## useServerFn Composable

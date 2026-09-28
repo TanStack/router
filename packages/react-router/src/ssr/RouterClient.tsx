@@ -3,16 +3,11 @@ import { Await } from '../awaited'
 import { RouterProvider } from '../RouterProvider'
 import type { AnyRouter } from '@tanstack/router-core'
 
-let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
+let hydrationPromise: Promise<void> | undefined
 
 export function RouterClient(props: { router: AnyRouter }) {
-  if (!hydrationPromise) {
-    if (!props.router.stores.matchesId.get().length) {
-      hydrationPromise = hydrate(props.router)
-    } else {
-      hydrationPromise = Promise.resolve()
-    }
-  }
+  hydrationPromise ??= hydrate(props.router).finally(() => window.$_TSR!.h())
+
   return (
     <Await
       promise={hydrationPromise}

@@ -10,15 +10,11 @@ const DEFAULT_MARKER = '<!-- bundle-size-benchmark -->'
 const INT_FORMAT = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 })
-const FIXED_2_FORMAT = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
+const FIXED_1_FORMAT = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
 })
-const PERCENT_FORMAT = new Intl.NumberFormat('en-US', {
-  style: 'percent',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
+const METRIC_KEYS = ['gzipBytes', 'initialGzipBytes', 'rawBytes', 'brotliBytes']
 
 function parseArgs(argv) {
   const { values } = parseNodeArgs({
@@ -106,14 +102,14 @@ function formatBytes(bytes, opts = {}) {
 
   let value
   if (absBytes < 1024) {
-    value = `${INT_FORMAT.format(absBytes)} B`
+    value = `${INT_FORMAT.format(absBytes)}&nbsp;B`
   } else {
     const kib = absBytes / 1024
     if (kib < 1024) {
-      value = `${FIXED_2_FORMAT.format(kib)} KiB`
+      value = `${FIXED_1_FORMAT.format(kib)}&nbsp;KiB`
     } else {
       const mib = kib / 1024
-      value = `${FIXED_2_FORMAT.format(mib)} MiB`
+      value = `${FIXED_1_FORMAT.format(mib)}&nbsp;MiB`
     }
   }
 
@@ -126,9 +122,11 @@ function formatDelta(current, baseline) {
   }
 
   const delta = current - baseline
-  const ratio = baseline === 0 ? 0 : Math.abs(delta / baseline)
-  const sign = delta > 0 ? '+' : delta < 0 ? '-' : ''
-  return `${formatBytes(delta, { signed: true })} (${sign}${PERCENT_FORMAT.format(ratio)})`
+  return formatBytes(delta, { signed: true })
+}
+
+function formatMetricCell(current, baseline) {
+  return `${formatBytes(current)}<br>${formatDelta(current, baseline)}`
 }
 
 function sparkline(values) {
@@ -192,6 +190,27 @@ function buildSeriesByScenario(historyEntries) {
   return map
 }
 
+function parseBenchmarkExtra(extra) {
+  if (typeof extra !== 'string') {
+    return {}
+  }
+
+  const values = {}
+  for (const part of extra.split(';')) {
+    const [key, rawValue] = part.trim().split('=')
+    const value = Number(rawValue)
+    if (key && Number.isFinite(value)) {
+      values[key] = value
+    }
+  }
+
+  return {
+    rawBytes: values.raw,
+    brotliBytes: values.brotli,
+    initialGzipBytes: values.initial_gzip,
+  }
+}
+
 function resolveBaselineFromHistory(historyEntries, baseSha) {
   if (!historyEntries.length) {
     return {
@@ -212,7 +231,10 @@ function resolveBaselineFromHistory(historyEntries, baseSha) {
   const benchesByName = new Map()
   for (const bench of baseEntry?.benches || []) {
     if (typeof bench?.name === 'string' && Number.isFinite(bench?.value)) {
-      benchesByName.set(bench.name, Number(bench.value))
+      benchesByName.set(bench.name, {
+        gzipBytes: Number(bench.value),
+        ...parseBenchmarkExtra(bench.extra),
+      })
     }
   }
 
@@ -228,7 +250,7 @@ function resolveBaselineFromCurrentJson(currentJson) {
   const benchesByName = new Map()
   for (const metric of currentJson?.metrics || []) {
     if (typeof metric?.id === 'string' && Number.isFinite(metric?.gzipBytes)) {
-      benchesByName.set(metric.id, Number(metric.gzipBytes))
+      benchesByName.set(metric.id, metric)
     }
   }
 
@@ -268,10 +290,22 @@ async function main() {
       ? resolveBaselineFromCurrentJson(baselineCurrent)
       : resolveBaselineFromHistory(historyEntries, args.baseSha)
 
+  const metrics = current.metrics || []
   const rows = []
 
-  for (const metric of current.metrics || []) {
-    const baselineValue = baseline.benchesByName.get(metric.id)
+  for (const metric of metrics) {
+    const baselineMetric = baseline.benchesByName.get(metric.id)
+    const hasBaseline = METRIC_KEYS.every((key) =>
+      Number.isFinite(baselineMetric?.[key]),
+    )
+
+    if (
+      hasBaseline &&
+      METRIC_KEYS.every((key) => metric[key] === baselineMetric[key])
+    ) {
+      continue
+    }
+
     const historySeries = (seriesByScenario.get(metric.id) || []).slice(
       // Reserve one slot for the current metric so the sparkline stays at trendPoints.
       -args.trendPoints + 1,
@@ -286,11 +320,20 @@ async function main() {
 
     rows.push({
       id: metric.id,
-      current: metric.gzipBytes,
-      raw: metric.rawBytes,
-      brotli: metric.brotliBytes,
-      initial: metric.initialGzipBytes,
-      deltaCell: formatDelta(metric.gzipBytes, baselineValue),
+      currentCell: formatMetricCell(
+        metric.gzipBytes,
+        baselineMetric?.gzipBytes,
+      ),
+      initialCell: formatMetricCell(
+        metric.initialGzipBytes,
+        baselineMetric?.initialGzipBytes,
+      ),
+      rawCell: formatMetricCell(metric.rawBytes, baselineMetric?.rawBytes),
+      brotliCell: formatMetricCell(
+        metric.brotliBytes,
+        baselineMetric?.brotliBytes,
+      ),
+      hasBaseline,
       trendCell: sparkline(historySeries.slice(-args.trendPoints)),
     })
   }
@@ -299,30 +342,45 @@ async function main() {
   lines.push(args.marker)
   lines.push('## Bundle Size Benchmarks')
   lines.push('')
-  lines.push(`- Commit: \`${formatShortSha(current.sha)}\``)
-  lines.push(
-    `- Measured at: \`${current.measuredAt || current.generatedAt || 'unknown'}\``,
-  )
-  lines.push(`- Baseline source: \`${baseline.source}\``)
-  if (args.dashboardUrl) {
-    lines.push(`- Dashboard: [bundle-size history](${args.dashboardUrl})`)
-  }
-  lines.push('')
-  lines.push(
-    '| Scenario | Current (gzip) | Delta vs baseline | Initial gzip | Raw | Brotli | Trend |',
-  )
-  lines.push('| --- | ---: | ---: | ---: | ---: | ---: | --- |')
 
-  for (const row of rows) {
+  if (metrics.length > 0 && rows.length === 0) {
     lines.push(
-      `| \`${row.id}\` | ${formatBytes(row.current)} | ${row.deltaCell} | ${formatBytes(row.initial)} | ${formatBytes(row.raw)} | ${formatBytes(row.brotli)} | ${row.trendCell} |`,
+      'This pull request does not affect bundle size in any measured scenario.',
+    )
+  } else if (metrics.length === 0) {
+    lines.push('No bundle-size scenarios were measured.')
+  } else {
+    lines.push(`- Commit: \`${formatShortSha(current.sha)}\``)
+    lines.push(
+      `- Measured at: \`${current.measuredAt || current.generatedAt || 'unknown'}\``,
+    )
+    lines.push(`- Baseline source: \`${baseline.source}\``)
+    if (args.dashboardUrl) {
+      lines.push(`- Dashboard: [bundle-size history](${args.dashboardUrl})`)
+    }
+    lines.push('')
+    lines.push(
+      rows.some((row) => !row.hasBaseline)
+        ? 'The following scenarios have bundle-size changes or lack baseline data for comparison:'
+        : 'The following scenarios have bundle-size changes compared with the baseline:',
+    )
+    lines.push('')
+    lines.push(
+      '| Scenario | Current (gzip) | Initial (gzip) | Raw | Brotli | Trend |',
+    )
+    lines.push('| --- | ---: | ---: | ---: | ---: | --- |')
+
+    for (const row of rows) {
+      lines.push(
+        `| \`${row.id}\` | ${row.currentCell} | ${row.initialCell} | ${row.rawCell} | ${row.brotliCell} | <pre>${row.trendCell}</pre> |`,
+      )
+    }
+
+    lines.push('')
+    lines.push(
+      '_Current gzip tracks all emitted client JS chunks. Initial gzip tracks only the entry/import graph. Trend sparkline is historical current gzip ending with this PR measurement; lower is better._',
     )
   }
-
-  lines.push('')
-  lines.push(
-    '_Current gzip tracks all emitted client JS chunks. Initial gzip tracks only the entry/import graph. Trend sparkline is historical current gzip ending with this PR measurement; lower is better._',
-  )
 
   const markdown = lines.join('\n') + '\n'
   await fsp.mkdir(path.dirname(outputPath), { recursive: true })

@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
@@ -51,11 +52,10 @@ export function validateSearchParams<
 function createTestRouter(
   options?: RouterOptions<AnyRoute, 'never', any, any, any>,
 ) {
-  const rootRoute = createRootRoute({
-    validateSearch: z.object({ root: z.string().optional() }),
-    component: () => {
+  const RootComponent = defineComponent({
+    setup() {
       const search = rootRoute.useSearch()
-      return (
+      return () => (
         <>
           <div data-testid="search-root">
             {search.value.root ?? '$undefined'}
@@ -64,6 +64,11 @@ function createTestRouter(
         </>
       )
     },
+  })
+
+  const rootRoute = createRootRoute({
+    validateSearch: z.object({ root: z.string().optional() }),
+    component: RootComponent,
   })
   const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
   const usersRoute = createRoute({
@@ -164,13 +169,10 @@ function createTestRouter(
       f.FileRoute('/_protected/_fileBasedLayout/fileBasedParent/child'),
     ),
   )
-  const searchRoute = createRoute({
-    validateSearch: z.object({ search: z.string().optional() }),
-    getParentRoute: () => rootRoute,
-    path: 'search',
-    component: () => {
+  const SearchComponent = defineComponent({
+    setup() {
       const search = searchRoute.useSearch()
-      return (
+      return () => (
         <>
           <div data-testid="search-search">
             {search.value.search ?? '$undefined'}
@@ -178,6 +180,13 @@ function createTestRouter(
         </>
       )
     },
+  })
+
+  const searchRoute = createRoute({
+    validateSearch: z.object({ search: z.string().optional() }),
+    getParentRoute: () => rootRoute,
+    path: 'search',
+    component: SearchComponent,
   })
   const searchWithDefaultRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -223,16 +232,10 @@ function createTestRouter(
     },
   })
 
-  const searchWithDefaultCheckRoute = createRoute({
-    validateSearch: z.object({
-      default: z.string().default('d1'),
-      optional: z.string().optional(),
-    }),
-    getParentRoute: () => searchWithDefaultRoute,
-    path: 'check',
-    component: () => {
+  const SearchWithDefaultCheckComponent = defineComponent({
+    setup() {
       const search = searchWithDefaultCheckRoute.useSearch()
-      return (
+      return () => (
         <>
           <div data-testid="search-default">{search.value.default}</div>
           <div data-testid="search-optional">
@@ -241,6 +244,16 @@ function createTestRouter(
         </>
       )
     },
+  })
+
+  const searchWithDefaultCheckRoute = createRoute({
+    validateSearch: z.object({
+      default: z.string().default('d1'),
+      optional: z.string().optional(),
+    }),
+    getParentRoute: () => searchWithDefaultRoute,
+    path: 'check',
+    component: SearchWithDefaultCheckComponent,
   })
 
   const nestedSearchRoute = createRoute({
@@ -1382,7 +1395,7 @@ describe('search params in URL', () => {
 
     describe.each(testCases)('search param validation', (validateSearch) => {
       it('does not throw an error when the search param is valid', async () => {
-        let errorSpy: Error | undefined
+        let errorSpy: unknown
         const rootRoute = createRootRoute({
           validateSearch,
           errorComponent: ({ error }) => {
@@ -1402,7 +1415,7 @@ describe('search params in URL', () => {
       })
 
       it('throws an error when the search param is not valid', async () => {
-        let errorSpy: Error | undefined
+        let errorSpy: unknown
         const rootRoute = createRootRoute({
           validateSearch,
           errorComponent: ({ error }) => {
@@ -1417,7 +1430,9 @@ describe('search params in URL', () => {
         await router.load()
 
         expect(errorSpy).toBeInstanceOf(SearchParamError)
-        expect(errorSpy?.cause).toBeInstanceOf(TestValidationError)
+        expect(
+          errorSpy instanceof Error ? errorSpy.cause : undefined,
+        ).toBeInstanceOf(TestValidationError)
       })
     })
   })
@@ -1657,11 +1672,10 @@ describe('does not strip search params if search validation fails', () => {
   })
 
   function getRouter() {
-    const rootRoute = createRootRoute({
-      validateSearch: z.object({ root: z.string() }),
-      component: () => {
+    const RootComponent = defineComponent({
+      setup() {
         const search = rootRoute.useSearch()
-        return (
+        return () => (
           <div>
             <div data-testid="search-root">
               {search.value.root ?? '$undefined'}
@@ -1671,13 +1685,15 @@ describe('does not strip search params if search validation fails', () => {
         )
       },
     })
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      validateSearch: z.object({ index: z.string() }),
-      component: () => {
+
+    const rootRoute = createRootRoute({
+      validateSearch: z.object({ root: z.string() }),
+      component: RootComponent,
+    })
+    const IndexComponent = defineComponent({
+      setup() {
         const search = rootRoute.useSearch()
-        return (
+        return () => (
           <>
             <div data-testid="search-index">
               {search.value.index ?? '$undefined'}
@@ -1686,6 +1702,13 @@ describe('does not strip search params if search validation fails', () => {
           </>
         )
       },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      validateSearch: z.object({ index: z.string() }),
+      component: IndexComponent,
     })
 
     const routeTree = rootRoute.addChildren([indexRoute])
@@ -1724,12 +1747,13 @@ describe('does not strip search params if search validation fails', () => {
   })
 })
 
-describe('statusCode reset on navigation', () => {
-  it('should reset statusCode to 200 when navigating from 404 to valid route', async () => {
+describe('route result reset on navigation', () => {
+  it('renders the requested route after navigating away from a not-found result', async () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
 
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
+      notFoundComponent: () => <div>Not Found</div>,
     })
 
     const indexRoute = createRoute({
@@ -1749,23 +1773,23 @@ describe('statusCode reset on navigation', () => {
 
     render(<RouterProvider router={router} />)
 
-    expect(router.state.statusCode).toBe(200)
-
-    await router.navigate({ to: '/' })
-    await waitFor(() => expect(router.state.statusCode).toBe(200))
+    expect(await screen.findByText('Home')).toBeInTheDocument()
 
     await router.navigate({ to: '/non-existing' })
-    await waitFor(() => expect(router.state.statusCode).toBe(404))
+    expect(await screen.findByText('Not Found')).toBeInTheDocument()
+    expect(screen.queryByText('Home')).not.toBeInTheDocument()
 
     await router.navigate({ to: '/valid' })
-    await waitFor(() => expect(router.state.statusCode).toBe(200))
+    expect(await screen.findByText('Valid Route')).toBeInTheDocument()
+    expect(screen.queryByText('Not Found')).not.toBeInTheDocument()
 
     await router.navigate({ to: '/another-non-existing' })
-    await waitFor(() => expect(router.state.statusCode).toBe(404))
+    expect(await screen.findByText('Not Found')).toBeInTheDocument()
+    expect(screen.queryByText('Valid Route')).not.toBeInTheDocument()
   })
 
   describe.each([true, false])(
-    'status code is set when loader/beforeLoad throws (isAsync=%s)',
+    'load failures render their route boundary (isAsync=%s)',
     (isAsync) => {
       const throwingFun = isAsync
         ? (toThrow: () => void) => async () => {
@@ -1780,7 +1804,7 @@ describe('statusCode reset on navigation', () => {
       const throwError = throwingFun(() => {
         throw new Error('test-error')
       })
-      it('should set statusCode to 404 when a route loader throws a notFound()', async () => {
+      it('should render notFoundComponent when a route loader throws a notFound()', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute()
@@ -1808,17 +1832,14 @@ describe('statusCode reset on navigation', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await router.navigate({ to: '/loader-throws-not-found' })
-        await waitFor(() => expect(router.state.statusCode).toBe(404))
         expect(
           await screen.findByTestId('not-found-component'),
         ).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
 
-      it('should set statusCode to 404 when a route beforeLoad throws a notFound()', async () => {
+      it('should render notFoundComponent when a route beforeLoad throws a notFound()', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute({
@@ -1853,17 +1874,14 @@ describe('statusCode reset on navigation', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await router.navigate({ to: '/beforeload-throws-not-found' })
-        await waitFor(() => expect(router.state.statusCode).toBe(404))
         expect(
           await screen.findByTestId('not-found-component'),
         ).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
 
-      it('should set statusCode to 500 when a route loader throws an Error', async () => {
+      it('should render errorComponent when a route loader throws an Error', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute()
@@ -1889,15 +1907,12 @@ describe('statusCode reset on navigation', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await router.navigate({ to: '/loader-throws-error' })
-        await waitFor(() => expect(router.state.statusCode).toBe(500))
         expect(await screen.findByTestId('error-component')).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
 
-      it('should set statusCode to 500 when a route beforeLoad throws an Error', async () => {
+      it('should render errorComponent when a route beforeLoad throws an Error', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute()
@@ -1926,10 +1941,7 @@ describe('statusCode reset on navigation', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await router.navigate({ to: '/beforeload-throws-error' })
-        await waitFor(() => expect(router.state.statusCode).toBe(500))
         expect(await screen.findByTestId('error-component')).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
@@ -2061,7 +2073,6 @@ describe('basepath', () => {
       })
 
       expect(router.state.location.pathname).toBe('/')
-      expect(router.state.statusCode).toBe(200)
     },
   )
 

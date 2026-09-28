@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
@@ -51,15 +52,17 @@ function setupTest(opts: {
     },
   })
 
-  const PostsComponent = () => {
-    const search = postsRoute.useSearch()
-    return (
-      <>
-        <h1 data-testid="posts-heading">Posts</h1>
-        <div data-testid="search">{search.value.value ?? '$undefined'}</div>
-      </>
-    )
-  }
+  const PostsComponent = defineComponent({
+    setup() {
+      const search = postsRoute.useSearch()
+      return () => (
+        <>
+          <h1 data-testid="posts-heading">Posts</h1>
+          <div data-testid="search">{search.value.value ?? '$undefined'}</div>
+        </>
+      )
+    },
+  })
 
   const postsRoute = createRoute({
     getParentRoute: () => rootRoute,

@@ -17,6 +17,7 @@ const prerenderConfiguration = {
   filter: (page: { path: string }) =>
     ![
       '/this-route-does-not-exist',
+      '/error-normalization',
       '/redirect',
       '/i-do-not-exist',
       '/not-found',

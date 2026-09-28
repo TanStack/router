@@ -7,11 +7,7 @@ export type PostType = {
   body: string
 }
 
-let queryURL = 'https://jsonplaceholder.typicode.com'
-
-if (process.env.NODE_ENV === 'test') {
-  queryURL = `http://localhost:${process.env.EXTERNAL_PORT}`
-}
+const queryURL = 'https://jsonplaceholder.typicode.com'
 
 export const fetchPost = async (postId: string) => {
   console.info(`Fetching post with id ${postId}...`)

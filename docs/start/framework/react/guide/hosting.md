@@ -1,6 +1,7 @@
 ---
 id: hosting
 title: Hosting
+description: Deploy TanStack Start with Vite or Rsbuild using hosting guides for Cloudflare, Netlify, Railway, Vercel, Node.js, and other runtimes.
 ---
 
 Hosting is the process of deploying your application to the internet so that users can access it. This is a critical part of any web development project, ensuring your application is available to the world. TanStack Start supports Vite and Rsbuild, giving you flexible build outputs for different hosting providers and runtimes.
@@ -298,7 +299,7 @@ npm install srvx
 
 ```json
     "build": "rsbuild build",
-    "start": "srvx --prod -s dist/client dist/server/index.js"
+    "start": "srvx --prod -s ../client dist/server/index.js"
 ```
 
 Express or any other custom Node.js server works too, as long as it serves the client assets and calls the server entry's `fetch` handler for dynamic requests.
