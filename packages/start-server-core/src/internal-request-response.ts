@@ -670,22 +670,58 @@ function publishResponse(response: Response, event: StartEvent): Response {
   return response
 }
 
+function getHttpErrorStatus(status: number | undefined): number | undefined {
+  return status !== undefined && status >= 400 ? status : undefined
+}
+
+/**
+ * Status for a response built from an uncaught error. Only an error status
+ * (400-599) from a helper or from error metadata describes the failure, so a
+ * success or redirect status set before the throw cannot hide it. The error is
+ * logged unless its own metadata marks it as an HTTP error. Reporting runs
+ * before helper state is read, so hooks that write helpers are included.
+ */
+function resolveErrorStatus(
+  error: unknown,
+  event: Pick<StartEvent, 'responseState'> | undefined,
+): { status: number; statusText: string } {
+  const metadataStatus = getErrorStatus(error)
+  const errorStatus = getHttpErrorStatus(metadataStatus)
+  if (errorStatus === undefined) {
+    console.error(error)
+  }
+  const state = event?.responseState
+  const helperStatus = getHttpErrorStatus(state?.status)
+  const status = helperStatus ?? errorStatus ?? 500
+  const statusText =
+    getHelperStatusText(state, helperStatus) ??
+    (status === errorStatus || metadataStatus === undefined
+      ? getErrorStatusText(error)
+      : undefined) ??
+    ''
+  if (state && state.status !== helperStatus) {
+    // The failure replaced the response that status was meant for. Discard it
+    // so later reconciliation keeps the error status.
+    state.status = undefined
+    state.statusText = undefined
+  }
+  return { status, statusText }
+}
+
+/** Internal: status and status text for a serialized server-function error. */
+export function getErrorResponseStatus(error: unknown): {
+  status: number
+  statusText: string
+} {
+  return resolveErrorStatus(error, eventStorage.getStore())
+}
+
 function createErrorResponse(error: unknown, event: StartEvent): Response {
   // Error metadata and reporting hooks can call public response helpers.
   // Materialize them before taking the state used to build the response.
-  const errorStatus = getErrorStatus(error)
   let headers = getErrorHeaders(error) ?? new Headers()
-  const errorStatusText =
-    event.responseState?.statusText === undefined
-      ? getErrorStatusText(error)
-      : undefined
-  if (event.responseState?.status === undefined && errorStatus === undefined) {
-    console.error(error)
-  }
-
+  const { status, statusText } = resolveErrorStatus(error, event)
   const state = event.responseState
-  const status = state?.status ?? errorStatus ?? 500
-  const statusText = state?.statusText ?? errorStatusText ?? ''
   const body = canHaveBody(event.request.method, status)
     ? JSON.stringify({
         status,

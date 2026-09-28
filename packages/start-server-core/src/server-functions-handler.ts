@@ -17,11 +17,9 @@ import {
 } from '@tanstack/start-client-core/client-rpc'
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import {
-  canHaveBody,
   createFinalizedResponse,
   getErrorHeaders,
-  getErrorStatus,
-  getErrorStatusText,
+  getErrorResponseStatus,
   getParsedRequestUrl,
   getSerializedResponseState,
   protectResponseHeaders,
@@ -118,29 +116,18 @@ export async function createServerFnErrorResponse(
   error: unknown,
   serovalPlugins?: Array<SerovalPlugin<any, any>>,
 ) {
-  const response = getSerializedResponseState()
   if (isNotFound(error)) {
     return isNotFoundResponse(error)
   }
 
-  const errorStatus = getErrorStatus(error)
-  if (response.status === undefined && errorStatus === undefined) {
-    console.error(error)
-  }
+  // Header getters and reporting hooks can write helpers before the status
+  // is resolved. Error statuses are always body-bearing, as the client needs.
   const headers = getErrorHeaders(error) ?? new Headers()
+  const { status, statusText } = getErrorResponseStatus(error)
   headers.set('Content-Type', 'application/json')
   headers.set(X_TSS_SERIALIZED, 'true')
   headers.delete(X_TSS_RAW_RESPONSE)
   headers.delete('location')
-  // The client decodes the serialized error, so it always needs a body.
-  const bodyErrorStatus =
-    errorStatus !== undefined && canHaveBody('GET', errorStatus)
-      ? errorStatus
-      : undefined
-  const status = response.status ?? bodyErrorStatus ?? 500
-  const statusText =
-    response.statusText ??
-    (bodyErrorStatus === errorStatus ? getErrorStatusText(error) : undefined)
 
   const serializedError = JSON.stringify(
     await toCrossJSONAsync(error, {

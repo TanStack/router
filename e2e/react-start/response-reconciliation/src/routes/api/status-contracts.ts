@@ -21,6 +21,11 @@ export const Route = createFileRoute('/api/status-contracts')({
           throw new Error('Unexpected status contract failure')
         }
 
+        if (scenario === 'helper-success-crash') {
+          setResponseStatus(201, 'Created')
+          throw new Error('Crash after a success status')
+        }
+
         if (scenario === 'upstream-error-cause') {
           throw new Error('Upstream failed', { cause: createUpstreamFailure() })
         }

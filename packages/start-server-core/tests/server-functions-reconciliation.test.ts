@@ -718,6 +718,38 @@ describe('server function response reconciliation', () => {
     })
   })
 
+  it('does not let a helper success status hide a request middleware crash', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    serverFnMocks.action = createAction()
+    serverFnMocks.middleware = [
+      createMiddleware().server(() => {
+        setResponseStatus(201, 'Created')
+        throw new TypeError('middleware crashed')
+      }),
+    ]
+    let response: Response | undefined
+
+    try {
+      await expect(
+        createClientRpc('test')({
+          method: 'GET',
+          fetch: async (input: string, init: RequestInit) => {
+            response = await createHandler()(
+              new Request(new URL(input, 'http://localhost'), init),
+              {},
+            )
+            return response
+          },
+        }),
+      ).rejects.toThrow('middleware crashed')
+      expect(response!.status).toBe(500)
+      expect(response!.statusText).toBe('')
+      expect(consoleError).toHaveBeenCalledOnce()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
   it('applies helper headers to serialized action errors', async () => {
     const action = createAction()
     action.mockImplementation(() => {

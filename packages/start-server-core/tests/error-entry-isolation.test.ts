@@ -83,19 +83,16 @@ describe('generic error response finalization', () => {
 
       const response = await entry.fetch(request(effect))
 
-      const status =
-        effect === 'status' ? 429 : effect === 'bodyless' ? 204 : 401
+      // A bodyless helper status does not describe the failure, so the
+      // error's own status applies.
+      const status = effect === 'status' ? 429 : 401
       expect(response.status).toBe(status)
       expect(response.headers.get('www-authenticate')).toBe('Bearer')
       expect(response.headers.getSetCookie()).toEqual(['refresh=value; Path=/'])
-      if (effect === 'bodyless') {
-        expect(response.body).toBeNull()
-      } else {
-        expect(await response.json()).toMatchObject({
-          status,
-          statusText: effect === 'status' ? 'Retry Later' : '',
-        })
-      }
+      expect(await response.json()).toMatchObject({
+        status,
+        statusText: effect === 'status' ? 'Retry Later' : '',
+      })
     },
   )
 
@@ -225,8 +222,11 @@ describe('generic error response finalization', () => {
   })
 
   it.each([204, 205, 304])(
-    'does not create a generic error body for helper status %i',
+    'ignores bodyless helper status %i for an uncaught error',
     async (status) => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
       startMocks.requestMiddleware = [
         createMiddleware().server(() => {
           setResponseStatus(status)
@@ -236,11 +236,16 @@ describe('generic error response finalization', () => {
       ]
       const entry = createServerEntry({ fetch: createHandler() })
 
-      const response = await entry.fetch(request('bodyless'))
+      try {
+        const response = await entry.fetch(request('bodyless'))
 
-      expect(response.status).toBe(status)
-      expect(response.body).toBeNull()
-      expect(response.headers.get('x-response-marker')).toBe('bodyless')
+        expect(response.status).toBe(500)
+        expect(response.headers.get('x-response-marker')).toBe('bodyless')
+        expect(await response.json()).toMatchObject({ status: 500 })
+        expect(consoleError).toHaveBeenCalledOnce()
+      } finally {
+        consoleError.mockRestore()
+      }
     },
   )
 
