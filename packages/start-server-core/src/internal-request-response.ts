@@ -122,7 +122,10 @@ export function transferResponseProtocol(
   target: Response,
 ): void {
   const protectedHeaders = getProtectedResponseHeaders(source)
-  if (protectedHeaders) {
+  if (
+    protectedHeaders &&
+    getProtectedResponseHeaders(target) !== protectedHeaders
+  ) {
     installProtectedResponseHeaders(target, protectedHeaders)
   }
 }

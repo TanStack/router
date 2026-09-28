@@ -139,7 +139,7 @@ If a middleware sets one of these statuses after a streamed SSR response is prod
 SSR streaming responses carry cleanup ownership metadata. Middleware reconciliation preserves or disposes that ownership based on the final body:
 
 - Same response: ownership is preserved.
-- Wrapper response with the same body: ownership moves to the wrapper, and the wrapper keeps the protected transport headers of the body it wraps.
+- Wrapper response with the same body: ownership moves to the wrapper, and the wrapper keeps the protected transport headers of the body it wraps. Start recognizes such a wrapper by the identity of its body stream. Some runtimes, such as Bun, can give a wrapper a new stream object for the same bytes, so middleware that wraps a server-function reply portably should use `transferResponseBodyOwnership(source, wrapper)`. A wrapper around a reply without a body has no stream to compare and is an ordinary replacement response without protocol protection.
 - Different response or dropped body: original stream owner is disposed.
 - Middleware error after `next()`: original stream owner is disposed.
 - Late result from an abandoned `next()`: a middleware can return its own response while its `next()` is still running, for example a timeout built with `Promise.race`. From then on, the result of that `next()` is abandoned, even while outer middleware is still running. It never replaces or cancels the response the middleware returned, and its body is disposed. Helper writes made by the abandoned work still apply, because helper state belongs to the request.
