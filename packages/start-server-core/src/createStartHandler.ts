@@ -673,15 +673,15 @@ export function createStartHandler<TRegister = Register>(
         serializationAdapters,
       }
 
-      // Flatten request middlewares once
+      // Reuse the flattening set for request middleware deduplication.
+      const executedRequestMiddlewares = new Set<TODO>()
       const flattenedRequestMiddlewares = requestStartOptions.requestMiddleware
-        ? flattenMiddlewares(requestStartOptions.requestMiddleware)
+        ? flattenMiddlewares(
+            requestStartOptions.requestMiddleware,
+            undefined,
+            executedRequestMiddlewares,
+          )
         : []
-
-      // Create set for deduplication
-      const executedRequestMiddlewares = new Set<TODO>(
-        flattenedRequestMiddlewares,
-      )
 
       // Memoized router getter
       const getRouter = (): Promise<AnyRouter> => {
