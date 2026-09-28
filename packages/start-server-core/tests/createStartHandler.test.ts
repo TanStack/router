@@ -2095,6 +2095,37 @@ describe('createStartHandler SSR cleanup ownership', () => {
     ).toHaveLength(1)
   })
 
+  it('does not duplicate cookies the cookie parser rejects across middleware levels', async () => {
+    const longValue = 'x'.repeat(5000)
+    startMocks.serverFnResult = new Response('ok')
+    const passThrough = createMiddleware().server(({ next }) => next())
+    startMocks.requestMiddleware = [
+      passThrough,
+      createMiddleware().server(({ next }) => next()),
+      createMiddleware().server(async ({ next }) => {
+        setCookie('constructor', '1', { path: '/' })
+        setCookie('long', longValue, { path: '/' })
+        return next()
+      }),
+    ]
+
+    const handler = createTestStartHandler(() => new Response('unused'))
+    const response = await handler(
+      new Request('http://localhost/_serverFn/test', {
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+    const cookies = getSetCookieValues(response.headers)
+
+    expect(
+      cookies.filter((cookie) => cookie.startsWith('constructor=1;')),
+    ).toHaveLength(1)
+    expect(
+      cookies.filter((cookie) => cookie.startsWith(`long=${longValue};`)),
+    ).toHaveLength(1)
+  })
+
   it('disposes stream response when later reconciliation drops the body', async () => {
     const router = makeRouter()
     startMocks.router = router
