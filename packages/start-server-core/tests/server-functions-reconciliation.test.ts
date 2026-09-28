@@ -1348,6 +1348,25 @@ describe('server function throws reach the caller', () => {
       }
     })
 
+    it('rejects with the serialization error for a value that cannot be sent', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      try {
+        const { call, response } = throwFromRequestMiddleware({
+          notSerializable: () => 1,
+        })
+
+        const outcome = await settle(call())
+
+        expect(outcome.rejected).toBeInstanceOf(Error)
+        expect(response().status).toBe(500)
+        expect(response().headers.get('x-tss-serialized')).toBe('true')
+      } finally {
+        consoleError.mockRestore()
+      }
+    })
+
     it('rejects with an Error and keeps its message', async () => {
       const consoleError = vi
         .spyOn(console, 'error')
