@@ -1367,6 +1367,18 @@ describe('server function throws reach the caller', () => {
       }
     })
 
+    it('re-sends the reply of next() when request middleware throws it', async () => {
+      serverFnMocks.middleware = [
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          throw result.response
+        }),
+      ]
+      const { call } = defineServerFn('POST', () => ({ handler: 'ran' }))
+
+      await expect(call()).resolves.toEqual({ handler: 'ran' })
+    })
+
     it('rejects with an Error and keeps its message', async () => {
       const consoleError = vi
         .spyOn(console, 'error')
