@@ -148,16 +148,23 @@ export async function createServerFnErrorResponse(
   headers.delete(X_TSS_RAW_RESPONSE)
   headers.delete('location')
 
-  const serializedError = JSON.stringify(
-    await toCrossJSONAsync(
-      { error },
-      {
-        refs: new Map(),
-        plugins:
-          serovalPlugins ?? getSerovalPlugins(routerDefaultSerovalPlugins),
-      },
-    ),
-  )
+  const plugins =
+    serovalPlugins ?? getSerovalPlugins(routerDefaultSerovalPlugins)
+  let serializedError: string
+  try {
+    serializedError = JSON.stringify(
+      await toCrossJSONAsync({ error }, { refs: new Map(), plugins }),
+    )
+  } catch (serializationError) {
+    // Like a result that cannot be serialized, the call rejects with the
+    // serialization error instead of the value it could not send.
+    serializedError = JSON.stringify(
+      await toCrossJSONAsync(
+        { error: serializationError },
+        { refs: new Map(), plugins },
+      ),
+    )
+  }
   const errorResponse = new Response(serializedError, {
     status,
     statusText,
