@@ -271,6 +271,26 @@ test.describe('server routes', () => {
     })
   })
 
+  test('errors caused by an upstream response do not copy its framing or cookies', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      '/api/status-contracts?scenario=upstream-error-cause',
+    )
+    const body = await response.body()
+
+    expect(response.status()).toBe(502)
+    expect(header(response, 'x-upstream')).toBe('yes')
+    expect(header(response, 'content-type')).toContain('application/json')
+    expect(header(response, 'content-encoding')).toBeNull()
+    const contentLength = header(response, 'content-length')
+    if (contentLength !== null) {
+      expect(Number(contentLength)).toBe(body.byteLength)
+    }
+    expect(await setCookieValues(response)).toEqual([])
+    expect(JSON.parse(body.toString())).toMatchObject({ status: 502 })
+  })
+
   test('regression #5107: thrown errors preserve explicit response status and headers', async ({
     request,
   }) => {
@@ -620,10 +640,12 @@ test.describe('server functions', () => {
     )
   })
 
-  test.describe('expected 401 responses', () => {
+  test.describe('expected error responses', () => {
     test.use({
+      // A second RegExp would make Playwright read the array as a fixture
+      // tuple, so both expected statuses share one pattern.
       whitelistErrors: [
-        /Failed to load resource: the server responded with a status of 401 \(Unauthorized\)/,
+        /Failed to load resource: the server responded with a status of (401 \(Unauthorized\)|502 \([^)]*\))/,
       ],
     })
 
@@ -637,6 +659,33 @@ test.describe('server functions', () => {
       expect(header(response, 'x-function-error')).toBe('yes')
       expect(header(response, 'x-tss-serialized')).toBe('true')
       await expectServerFunctionResult(page, 'throwAfterStatus', /Unauthorized/)
+    })
+
+    test('server function request middleware errors caused by an upstream response do not copy its framing or cookies', async ({
+      page,
+      context,
+    }) => {
+      const response = await invokeJsonServerFunction(
+        page,
+        'globalSerialized',
+        'global-upstream-cause',
+      )
+
+      expect(response.status()).toBe(502)
+      expect(header(response, 'x-upstream')).toBe('yes')
+      expect(header(response, 'content-type')).toContain('application/json')
+      expect(header(response, 'content-encoding')).toBeNull()
+      expect(await setCookieValues(response)).toEqual([])
+      expect(await context.cookies()).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'upstream-session' }),
+        ]),
+      )
+      await expectServerFunctionResult(
+        page,
+        'globalSerialized',
+        'Upstream failed',
+      )
     })
 
     test('server function request middleware errors are serialized', async ({

@@ -582,6 +582,49 @@ describe('server function response reconciliation', () => {
     expect(response.headers.get('x-tss-serialized')).toBe('true')
   })
 
+  it('does not copy upstream Response cause framing or cookies onto serialized errors', async () => {
+    const action = createAction()
+    serverFnMocks.middleware = [
+      createMiddleware().server(() => {
+        throw new Error('upstream failed', {
+          cause: new Response('<p>upstream</p>', {
+            status: 502,
+            headers: {
+              'content-encoding': 'gzip',
+              'content-length': '999',
+              'content-type': 'text/html',
+              'set-cookie': 'upstream=1; Path=/',
+              'x-upstream': 'yes',
+            },
+          }),
+        })
+      }),
+    ]
+    serverFnMocks.action = action
+    const handler = createHandler()
+    let response: Response | undefined
+
+    const call = createClientRpc('test')({
+      method: 'GET',
+      fetch: async (input: string, init: RequestInit) => {
+        response = await handler(
+          new Request(new URL(input, 'http://localhost'), init),
+          {},
+        )
+        return response
+      },
+    })
+
+    await expect(call).rejects.toThrow('upstream failed')
+    expect(action).not.toHaveBeenCalled()
+    expect(response!.status).toBe(502)
+    expect(response!.headers.get('x-upstream')).toBe('yes')
+    expect(response!.headers.get('content-type')).toBe('application/json')
+    expect(response!.headers.get('content-encoding')).toBeNull()
+    expect(response!.headers.get('content-length')).toBeNull()
+    expect(response!.headers.getSetCookie()).toEqual([])
+  })
+
   it('applies helper headers to serialized action errors', async () => {
     const action = createAction()
     action.mockImplementation(() => {

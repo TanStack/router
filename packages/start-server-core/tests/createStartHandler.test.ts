@@ -746,6 +746,74 @@ describe('createStartHandler response reconciliation', () => {
     expect(response.headers.get('x-error-cause')).toBe('handled')
   })
 
+  it('does not copy an upstream Response cause body framing, cookies, or media type', async () => {
+    const handler = createResponseHandler(() => {
+      throw new Error('upstream failed', {
+        cause: new Response('<p>upstream</p>', {
+          status: 502,
+          headers: {
+            'content-encoding': 'gzip',
+            'content-length': '999',
+            'content-type': 'text/html',
+            'set-cookie': 'upstream=1; Path=/',
+            'x-upstream': 'yes',
+          },
+        }),
+      })
+    })
+
+    const response = await createServerEntry({ fetch: handler }).fetch(
+      new Request('http://localhost/'),
+      {},
+    )
+
+    expect(response.status).toBe(502)
+    expect(response.headers.get('x-upstream')).toBe('yes')
+    expect(response.headers.get('content-type')).toBe('application/json')
+    expect(response.headers.get('content-encoding')).toBeNull()
+    expect(response.headers.get('content-length')).toBeNull()
+    expect(response.headers.getSetCookie()).toEqual([])
+    await expect(response.json()).resolves.toMatchObject({ status: 502 })
+  })
+
+  it('strips body framing headers from explicit error headers', async () => {
+    const handler = createResponseHandler(() => {
+      throw Object.assign(new Error('handled'), {
+        status: 401,
+        headers: {
+          connection: 'close',
+          'content-encoding': 'br',
+          'content-length': '1',
+          'content-range': 'bytes 0-0/1',
+          'keep-alive': 'timeout=5',
+          'transfer-encoding': 'chunked',
+          'set-cookie': 'explicit=1; Path=/',
+          'www-authenticate': 'Bearer',
+        },
+      })
+    })
+
+    const response = await createServerEntry({ fetch: handler }).fetch(
+      new Request('http://localhost/'),
+      {},
+    )
+
+    expect(response.status).toBe(401)
+    for (const name of [
+      'connection',
+      'content-encoding',
+      'content-length',
+      'content-range',
+      'keep-alive',
+      'transfer-encoding',
+    ]) {
+      expect(response.headers.get(name)).toBeNull()
+    }
+    expect(response.headers.get('www-authenticate')).toBe('Bearer')
+    expect(response.headers.getSetCookie()).toEqual(['explicit=1; Path=/'])
+    await expect(response.json()).resolves.toMatchObject({ status: 401 })
+  })
+
   it('keeps helper status over HTTP-style error status', async () => {
     const handler = createResponseHandler(() => {
       setResponseStatus(401, 'Unauthorized')

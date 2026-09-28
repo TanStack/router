@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { setResponseStatus } from '@tanstack/react-start/server'
+import { createUpstreamFailure } from './-upstream'
 
 export const Route = createFileRoute('/api/status-contracts')({
   server: {
@@ -18,6 +19,10 @@ export const Route = createFileRoute('/api/status-contracts')({
         if (scenario === 'invalid-status-throw') {
           setResponseStatus(101)
           throw new Error('Unexpected status contract failure')
+        }
+
+        if (scenario === 'upstream-error-cause') {
+          throw new Error('Upstream failed', { cause: createUpstreamFailure() })
         }
 
         return new Response(`Unknown scenario: ${scenario}`, { status: 400 })
