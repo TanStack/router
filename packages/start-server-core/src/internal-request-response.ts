@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { isRedirect } from '@tanstack/router-core'
 
 import { parseCookie, parseSetCookie, serializeCookie } from 'cookie-es'
-import { cloneHeaders, getSetCookieValues } from './headers'
+import { getSetCookieValues } from './headers'
 import type {
   RequestHeaderMap,
   RequestHeaderName,
@@ -434,7 +434,7 @@ function applyHeaderState(
   let headers = target
   const mutableHeaders = () => {
     if (headers === target) {
-      headers = cloneHeaders(target)
+      headers = new Headers(target)
     }
     return headers
   }
@@ -497,19 +497,6 @@ function applyHeaderState(
     }
   }
   return headers
-}
-
-function hasHeaders(headers: Headers): boolean {
-  return !headers.keys().next().done
-}
-
-function hasHeaderState(state: ResponseState): boolean {
-  return (
-    state.clearHeaders ||
-    !!state.removedHeaders?.size ||
-    !!state.setCookieBehavior ||
-    hasHeaders(state.headers)
-  )
 }
 
 function canHaveBody(method: string, status: number): boolean {
@@ -619,19 +606,9 @@ function reconcileResponseWithEvent(
     getHelperStatusText(state, helperStatus) ?? response.statusText
   const statusChanged = status !== response.status
   const statusTextChanged = statusText !== response.statusText
-  const headersChanged = !!state && hasHeaderState(state)
-
-  if (
-    !statusChanged &&
-    !statusTextChanged &&
-    !mustDropBody &&
-    !headersChanged
-  ) {
-    event.currentResponse = response
-    return response
-  }
-
-  const headers = headersChanged
+  // applyHeaderState returns the same headers when helper intent changes
+  // nothing.
+  const headers = state
     ? applyHeaderState(
         response.headers,
         state,
@@ -738,7 +715,7 @@ function createErrorResponse(error: unknown, event: StartEvent): Response {
     headers.set('content-type', 'application/json')
   }
 
-  if (state && hasHeaderState(state)) {
+  if (state) {
     headers = applyHeaderState(headers, state)
   }
 
@@ -818,7 +795,7 @@ export function restoreResponseProtocol(
   ) {
     return response
   }
-  const headers = cloneHeaders(response.headers)
+  const headers = new Headers(response.headers)
   applyProtectedHeaders(protectedHeaders, headers)
   const restored = createReconciledResponse(
     response.body,
@@ -857,9 +834,7 @@ export function createFinalizedResponse(
     const helperStatus = getHelperStatus(state, true)
     status = helperStatus ?? 200
     statusText = getHelperStatusText(state, helperStatus) ?? ''
-    if (hasHeaderState(state)) {
-      headers = applyHeaderState(headers, state, protectedHeaders)
-    }
+    headers = applyHeaderState(headers, state, protectedHeaders)
   }
   const response = new Response(
     canHaveBody(event.request.method, status) ? (body as BodyInit) : null,
@@ -1231,12 +1206,12 @@ export function getResponseHeaders(): ReadonlyResponseHeaders {
   const currentResponse = event.currentResponse
   if (!currentResponse) {
     return toResponseHeadersSnapshot(
-      state ? cloneHeaders(state.headers) : new Headers(),
+      state ? new Headers(state.headers) : new Headers(),
     )
   }
   const protectedHeaders = getProtectedResponseHeaders(currentResponse)
   let headers = currentResponse.headers
-  if (state && hasHeaderState(state)) {
+  if (state) {
     headers = applyHeaderState(
       headers,
       state,
@@ -1247,7 +1222,7 @@ export function getResponseHeaders(): ReadonlyResponseHeaders {
   // Read helpers always return a detached snapshot, including when applying
   // helper intent did not need to copy any headers.
   if (headers === currentResponse.headers) {
-    headers = cloneHeaders(headers)
+    headers = new Headers(headers)
   }
   if (protectedHeaders) {
     applyProtectedHeaders(protectedHeaders, headers)
