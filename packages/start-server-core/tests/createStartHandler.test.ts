@@ -2469,7 +2469,14 @@ describe('createStartHandler SSR cleanup ownership', () => {
         {},
       )
 
-      expect(response).toBe(replacement)
+      if (mode === 'throw') {
+        // A Response thrown on a server-function request is marked so the
+        // client rejects the call; the marked copy keeps the same body.
+        expect(response.headers.get('x-tss-raw')).toBe('thrown')
+        await expect(response.text()).resolves.toBe('replacement')
+      } else {
+        expect(response).toBe(replacement)
+      }
       expect(cancel).toHaveBeenCalledOnce()
       expect(cancel).toHaveBeenCalledWith('middleware response replaced')
     },
@@ -2880,7 +2887,10 @@ describe('createStartHandler SSR cleanup ownership', () => {
       {},
     )
 
-    expect(response).toBe(replacement)
+    // The client-facing copy is marked as thrown and keeps the same body.
+    expect(response.status).toBe(418)
+    expect(response.headers.get('x-tss-raw')).toBe('thrown')
+    await expect(response.text()).resolves.toBe('handled')
     expect(dispose).toHaveBeenCalledOnce()
     expect(router.serverSsr).toBeUndefined()
   })
@@ -2909,7 +2919,10 @@ describe('createStartHandler SSR cleanup ownership', () => {
       {},
     )
 
-    expect(response).toBe(replacement)
+    // The client-facing copy is marked as thrown and keeps the same body.
+    expect(response.status).toBe(418)
+    expect(response.headers.get('x-tss-raw')).toBe('thrown')
+    await expect(response.text()).resolves.toBe('handled')
     expect(dispose).toHaveBeenCalledOnce()
     await cloneCancellation
     expect(router.serverSsr).toBeUndefined()

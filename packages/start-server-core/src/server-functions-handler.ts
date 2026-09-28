@@ -116,6 +116,21 @@ function cancelRawStream(stream: ReadableStream<Uint8Array>, reason?: unknown) {
   void stream.cancel(reason).catch(() => {})
 }
 
+/**
+ * Marks a Response thrown during a server-function request so the client
+ * rejects the call with it. Redirects keep their own protocol.
+ */
+export function toThrownServerFnResponse(response: Response): Response {
+  return isRedirect(response)
+    ? response
+    : setProtectedResponseHeaders(response, THROWN_RESPONSE_HEADERS)
+}
+
+/**
+ * Builds the reply for a server-function request that failed outside the
+ * function, such as in request middleware. Like a failed call, it carries
+ * only the thrown value under an `error` key, so the client rethrows it.
+ */
 export async function createServerFnErrorResponse(
   error: unknown,
   serovalPlugins?: Array<SerovalPlugin<any, any>>,
@@ -134,10 +149,14 @@ export async function createServerFnErrorResponse(
   headers.delete('location')
 
   const serializedError = JSON.stringify(
-    await toCrossJSONAsync(error, {
-      refs: new Map(),
-      plugins: serovalPlugins ?? getSerovalPlugins(routerDefaultSerovalPlugins),
-    }),
+    await toCrossJSONAsync(
+      { error },
+      {
+        refs: new Map(),
+        plugins:
+          serovalPlugins ?? getSerovalPlugins(routerDefaultSerovalPlugins),
+      },
+    ),
   )
   const errorResponse = new Response(serializedError, {
     status,
@@ -267,13 +286,13 @@ export const handleServerAction = async ({
     }
 
     if (unwrapped instanceof Response) {
+      if (failed) {
+        return toThrownServerFnResponse(unwrapped)
+      }
       if (isRedirect(unwrapped)) {
         return unwrapped
       }
-      return setProtectedResponseHeaders(
-        unwrapped,
-        failed ? THROWN_RESPONSE_HEADERS : RAW_RESPONSE_HEADERS,
-      )
+      return setProtectedResponseHeaders(unwrapped, RAW_RESPONSE_HEADERS)
     }
 
     return serializeResult(res, request, getRequestSerovalPlugins())

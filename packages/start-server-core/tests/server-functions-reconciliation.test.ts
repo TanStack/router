@@ -88,6 +88,23 @@ function createHandler() {
   })
 }
 
+type CallServerFn = (opts?: {
+  fetch?: (input: string, init: RequestInit) => Promise<Response>
+}) => Promise<unknown>
+type AttachHandler = (...args: Array<unknown>) => CallServerFn & {
+  __executeServer: (opts: unknown) => Promise<unknown>
+}
+
+// Calls server function `test` through the client stub a compiled GET call
+// site uses, which rethrows failed calls.
+function callClientServerFn(
+  fetch: (input: string, init: RequestInit) => Promise<Response>,
+) {
+  return (createServerFn().handler as unknown as AttachHandler)(
+    createClientRpc('test'),
+  )({ fetch })
+}
+
 async function readFrames(response: Response) {
   const reader = response.body!.getReader()
   const frames: Array<{
@@ -598,15 +615,12 @@ describe('server function response reconciliation', () => {
     const handler = createHandler()
     let response: Response | undefined
 
-    const call = createClientRpc('test')({
-      method: 'GET',
-      fetch: async (input: string, init: RequestInit) => {
-        response = await handler(
-          new Request(new URL(input, 'http://localhost'), init),
-          {},
-        )
-        return response
-      },
+    const call = callClientServerFn(async (input, init) => {
+      response = await handler(
+        new Request(new URL(input, 'http://localhost'), init),
+        {},
+      )
+      return response
     })
 
     await expect(call).rejects.toThrow('upstream failed')
@@ -622,15 +636,12 @@ describe('server function response reconciliation', () => {
   describe('keeps Location off serialized replies', () => {
     async function callWithResponse() {
       let response: Response | undefined
-      const call = createClientRpc('test')({
-        method: 'GET',
-        fetch: async (input: string, init: RequestInit) => {
-          response = await createHandler()(
-            new Request(new URL(input, 'http://localhost'), init),
-            {},
-          )
-          return response
-        },
+      const call = callClientServerFn(async (input, init) => {
+        response = await createHandler()(
+          new Request(new URL(input, 'http://localhost'), init),
+          {},
+        )
+        return response
       })
       return { call, response: () => response! }
     }
@@ -646,7 +657,7 @@ describe('server function response reconciliation', () => {
 
       const { call, response } = await callWithResponse()
 
-      await expect(call).resolves.toEqual({ result: { ok: true } })
+      await expect(call).resolves.toEqual({ ok: true })
       expect(response().status).toBe(302)
       expect(response().headers.get('location')).toBeNull()
     })
@@ -725,15 +736,12 @@ describe('server function response reconciliation', () => {
 
     try {
       await expect(
-        createClientRpc('test')({
-          method: 'GET',
-          fetch: async (input: string, init: RequestInit) => {
-            response = await createHandler()(
-              new Request(new URL(input, 'http://localhost'), init),
-              {},
-            )
-            return response
-          },
+        callClientServerFn(async (input, init) => {
+          response = await createHandler()(
+            new Request(new URL(input, 'http://localhost'), init),
+            {},
+          )
+          return response
         }),
       ).rejects.toThrow('middleware crashed')
       expect(response!.status).toBe(500)
@@ -1059,16 +1067,16 @@ describe('server function response reconciliation', () => {
           throw new Error('helper status error')
         })
         serverFnMocks.action = action
-        await expect(
-          createClientRpc('test')({ method: 'GET', fetch: fetchResponse }),
-        ).rejects.toThrow('helper status error')
+        await expect(callClientServerFn(fetchResponse)).rejects.toThrow(
+          'helper status error',
+        )
 
         action.mockImplementation(() => {
           throw Object.assign(new Error('error status error'), { status })
         })
-        await expect(
-          createClientRpc('test')({ method: 'GET', fetch: fetchResponse }),
-        ).rejects.toThrow('error status error')
+        await expect(callClientServerFn(fetchResponse)).rejects.toThrow(
+          'error status error',
+        )
       } finally {
         warnSpy.mockRestore()
         consoleError.mockRestore()
@@ -1078,13 +1086,6 @@ describe('server function response reconciliation', () => {
 })
 
 describe('server function throws reach the caller', () => {
-  type CallServerFn = (opts?: {
-    fetch?: (input: string, init: RequestInit) => Promise<Response>
-  }) => Promise<unknown>
-  type AttachHandler = (...args: Array<unknown>) => CallServerFn & {
-    __executeServer: (opts: unknown) => Promise<unknown>
-  }
-
   // Compiled shape of a server function: the provider module registers the
   // RPC entry, and callers get a client or server-side stub with the same
   // middleware.
@@ -1260,5 +1261,66 @@ describe('server function throws reach the caller', () => {
 
     expect(outcome.rejected).toBeInstanceOf(Response)
     expect((outcome.rejected as Response).status).toBe(409)
+  })
+  describe('from global request middleware', () => {
+    function throwFromRequestMiddleware(value: unknown) {
+      serverFnMocks.middleware = [
+        createMiddleware().server(() => {
+          throw value
+        }),
+      ]
+      return defineServerFn('POST', () => ({ handler: 'ran' }))
+    }
+
+    it.each([
+      ['a string', 'boom'],
+      ['a plain object', { code: 'E_DENIED' }],
+      ['an object shaped like a result', { result: 'looks-like-success' }],
+      ['an object shaped like an error envelope', { error: 'inner' }],
+      ['zero', 0],
+      ['undefined', undefined],
+    ])('rejects with %s', async (_, value) => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      try {
+        const { call, response } = throwFromRequestMiddleware(value)
+
+        const outcome = await settle(call())
+
+        expect(outcome).toHaveProperty('rejected')
+        expect(outcome.rejected).toEqual(value)
+        expect(response().status).toBe(500)
+        expect(response().headers.get('x-tss-serialized')).toBe('true')
+      } finally {
+        consoleError.mockRestore()
+      }
+    })
+
+    it('rejects with an Error and keeps its message', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      try {
+        const { call } = throwFromRequestMiddleware(new Error('denied'))
+
+        await expect(call()).rejects.toThrow('denied')
+      } finally {
+        consoleError.mockRestore()
+      }
+    })
+
+    it.each([
+      ['text', () => new Response('nope', { status: 403 })],
+      ['JSON', () => Response.json({ nope: true }, { status: 403 })],
+    ])('rejects with a thrown %s Response', async (_, createResponse) => {
+      const { call, response } = throwFromRequestMiddleware(createResponse())
+
+      const outcome = await settle(call())
+
+      expect(outcome.rejected).toBeInstanceOf(Response)
+      expect((outcome.rejected as Response).status).toBe(403)
+      expect(response().status).toBe(403)
+    })
   })
 })

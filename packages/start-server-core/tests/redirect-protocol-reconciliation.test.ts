@@ -474,7 +474,9 @@ describe('server-function protocol headers through public request middleware', (
       throw new Error('Session update conflict')
     }
 
-    await expect(callServerFn()).rejects.toThrow('Session update conflict')
+    await expect(callServerFn()).resolves.toEqual({
+      error: new Error('Session update conflict'),
+    })
   })
 
   it('decodes not-found results despite a raw response marker', async () => {
@@ -515,7 +517,9 @@ describe('server-function protocol headers through public request middleware', (
       })
     }
 
-    await expect(callServerFn()).rejects.toThrow('Session update conflict')
+    await expect(callServerFn()).resolves.toEqual({
+      error: new Error('Session update conflict'),
+    })
   })
 
   it('owns protocol markers supplied in not-found headers', async () => {

@@ -309,9 +309,6 @@ async function getResponse(fn: () => Promise<Response>) {
 
       invariant()
     }
-    if (result instanceof Error) {
-      throw result
-    }
 
     return result
   }
