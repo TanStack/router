@@ -206,8 +206,11 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
 
             // Only send the result and sendContext back to the client. A
             // failed call sends only its thrown value, under an `error` key.
-            return 'error' in result
-              ? { error: result.error }
+            if ('error' in result) {
+              return { error: result.error }
+            }
+            return result.sendContext === undefined
+              ? { result: result.result }
               : { result: result.result, context: result.sendContext }
           },
         },

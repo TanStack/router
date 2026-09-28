@@ -1453,6 +1453,34 @@ describe('function middleware', () => {
     expect(clientContext).toEqual({ local: 'client', sent: 'server' })
   })
 
+  it.each([
+    ['leaves out context without sendContext', [], { result: 'ok' }],
+    [
+      'sends back sendContext as context',
+      [
+        createMiddleware({ type: 'function' }).server(({ next }) =>
+          next({ sendContext: { sent: 'server' } }),
+        ),
+      ],
+      { result: 'ok', context: { sent: 'server' } },
+    ],
+  ])('%s in a reply', async (_, middleware, reply) => {
+    defineServerFn('POST', () => 'ok', middleware)
+
+    const response = await createHandler()(
+      createServerFunctionRequest('http://localhost/_serverFn/test', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(toJSON({ data: 'input' })),
+      }),
+      {},
+    )
+
+    const received = fromCrossJSON<object>(await response.json(), {})
+    expect(Object.keys(received)).toEqual(Object.keys(reply))
+    expect(received).toEqual(reply)
+  })
+
   it('runs the validator of middleware that has no server function', async () => {
     const { call } = defineServerFn(
       'POST',
