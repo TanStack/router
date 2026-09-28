@@ -87,14 +87,12 @@ export interface CreateStartHandlerOptions extends FinalManifestOptions {
 }
 
 function getStartResponseHeaders(router: AnyRouter) {
-  return mergeHeaders(
-    {
-      'Content-Type': 'text/html; charset=utf-8',
-    },
-    ..._getRenderedMatches(router.stores.matches.get()).map((match) => {
-      return match.headers
-    }),
-  )
+  const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' })
+  const matches = _getRenderedMatches(router.stores.matches.get())
+  // Most matches set no headers; merge only when one does.
+  return matches.some((match) => match.headers)
+    ? mergeHeaders(headers, ...matches.map((match) => match.headers))
+    : headers
 }
 
 interface PluginAdaptersEntry {
@@ -837,18 +835,16 @@ export function createStartHandler<TRegister = Register>(
             ? await waitForRequest(pendingManifest, signal)
             : pendingManifest
 
-          const earlyHints = createEarlyHintsForRequest({
-            onEarlyHints: requestOpts?.onEarlyHints,
-            responseLinkHeader: requestOpts?.responseLinkHeader,
-          })
+          const earlyHints = createEarlyHintsForRequest(requestOpts)
 
           earlyHints?.collectStatic({ manifest, matchedRoutes })
 
+          // Read request assets at call time: RSC adds them to this context.
+          const startContext = getStartContext({ throwIfNotFound: false })
           attachRouterServerSsrUtils({
             router: routerInstance,
             manifest,
-            getRequestAssets: () =>
-              getStartContext({ throwIfNotFound: false })?.requestAssets,
+            getRequestAssets: () => startContext?.requestAssets,
           })
 
           // `additionalContext` is request-scoped and only read from router.options
@@ -866,9 +862,8 @@ export function createStartHandler<TRegister = Register>(
           )
 
           // Pass request-scoped assets to dehydrate for manifest injection
-          const ctx = getStartContext({ throwIfNotFound: false })
           await routerInstance.serverSsr!.dehydrate({
-            requestAssets: ctx?.requestAssets,
+            requestAssets: startContext?.requestAssets,
             signal,
           })
           signal.throwIfAborted()
