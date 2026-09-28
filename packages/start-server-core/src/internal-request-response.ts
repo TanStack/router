@@ -510,6 +510,33 @@ export function canHaveBody(method: string, status: number): boolean {
   )
 }
 
+/** A protected content type marks a Start-serialized body the client decodes. */
+function isSerializedResponse(protectedHeaders: ProtectedHeaders | undefined) {
+  return typeof protectedHeaders?.get('content-type') === 'string'
+}
+
+/**
+ * Serialized server-function replies always carry a body, so a helper status
+ * that forbids one does not apply to them.
+ */
+function getHelperStatus(
+  state: ResponseState | undefined,
+  serialized: boolean,
+): number | undefined {
+  const status = state?.status
+  return serialized && status !== undefined && !canHaveBody('GET', status)
+    ? undefined
+    : status
+}
+
+/** Helper status text describes the helper status and is ignored with it. */
+function getHelperStatusText(
+  state: ResponseState | undefined,
+  helperStatus: number | undefined,
+): string | undefined {
+  return helperStatus === state?.status ? state?.statusText : undefined
+}
+
 function cancelDroppedBody(response: Response, reason: string): void {
   try {
     response.body?.cancel(reason).catch(() => {})
@@ -543,11 +570,15 @@ function reconcileResponseWithEvent(
   event: StartEvent,
   disposeBody?: (reason: string) => void,
 ) {
+  const protectedHeaders = getProtectedResponseHeaders(response)
+  const serialized = isSerializedResponse(protectedHeaders)
   // Fetch already enforces bodyless response statuses. Only HEAD or a helper
   // status override can require dropping an existing body.
   const mustDropBody =
-    !canHaveBody(event.request.method, event.responseState?.status ?? 200) &&
-    response.body !== null
+    !canHaveBody(
+      event.request.method,
+      getHelperStatus(event.responseState, serialized) ?? 200,
+    ) && response.body !== null
   if (mustDropBody) {
     const reason =
       event.request.method === 'HEAD'
@@ -563,7 +594,6 @@ function reconcileResponseWithEvent(
   // applying headers or recording appends, and never reuse a canceled body.
   const state = event.responseState
   const appliedHeaderAppends = event.responseHeaderAppends?.get(response)
-  const protectedHeaders = getProtectedResponseHeaders(response)
   const protectedHeadersChanged = hasProtectedHeaderChanges(
     response,
     protectedHeaders,
@@ -575,8 +605,10 @@ function reconcileResponseWithEvent(
     return response
   }
 
-  const status = state?.status ?? response.status
-  const statusText = state?.statusText ?? response.statusText
+  const helperStatus = getHelperStatus(state, serialized)
+  const status = helperStatus ?? response.status
+  const statusText =
+    getHelperStatusText(state, helperStatus) ?? response.statusText
   const statusChanged = status !== response.status
   const statusTextChanged = statusText !== response.statusText
   const headersChanged = !!state && hasHeaderState(state)
@@ -738,7 +770,11 @@ export function createFinalizedResponse(
 ): Response {
   const event = eventStorage.getStore()
   const state = event?.responseState
-  const status = state?.status ?? 200
+  const helperStatus = getHelperStatus(
+    state,
+    isSerializedResponse(protectedHeaders),
+  )
+  const status = helperStatus ?? 200
   if (state && hasHeaderState(state)) {
     headers = applyHeaderState(
       headers instanceof Headers ? headers : new Headers(headers),
@@ -750,7 +786,11 @@ export function createFinalizedResponse(
     event && !canHaveBody(event.request.method, status)
       ? null
       : (body as BodyInit),
-    { status, statusText: state?.statusText ?? '', headers },
+    {
+      status,
+      statusText: getHelperStatusText(state, helperStatus) ?? '',
+      headers,
+    },
   )
   protectResponseHeaders(response, protectedHeaders)
   return event ? publishResponse(response, event) : response
@@ -1223,7 +1263,15 @@ export function clearResponseHeaders(
 
 export function getResponseStatus(): number {
   const event = getStartEvent()
-  return event.responseState?.status ?? event.currentResponse?.status ?? 200
+  const currentResponse = event.currentResponse
+  const serialized =
+    !!currentResponse &&
+    isSerializedResponse(getProtectedResponseHeaders(currentResponse))
+  return (
+    getHelperStatus(event.responseState, serialized) ??
+    currentResponse?.status ??
+    200
+  )
 }
 
 export function setResponseStatus(code?: number, text?: string): void {
@@ -1239,6 +1287,15 @@ export function setResponseStatus(code?: number, text?: string): void {
         )
       }
       return
+    }
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      !canHaveBody('GET', status) &&
+      event.request.headers.get('x-tsr-serverFn') === 'true'
+    ) {
+      console.warn(
+        `setResponseStatus(${status}) does not apply to serialized server function responses, because the client must decode their body. Return a Response from the server function to send a response without a body.`,
+      )
     }
     getResponseState(event).status = status
   }
@@ -1321,13 +1378,14 @@ export function deleteCookie(
 }
 
 /**
- * Internal: read-only snapshot of the event-owned response status state.
- * Use `setResponseStatus` and the header/cookie helpers for writes.
+ * Internal: helper status state for a serialized server-function reply, which
+ * always carries a body. Bodyless statuses are omitted with their status text.
  */
-export function getResponse(): {
+export function getSerializedResponseState(): {
   status: number | undefined
   statusText: string | undefined
 } {
   const state = getStartEvent().responseState
-  return { status: state?.status, statusText: state?.statusText }
+  const status = getHelperStatus(state, true)
+  return { status, statusText: getHelperStatusText(state, status) }
 }

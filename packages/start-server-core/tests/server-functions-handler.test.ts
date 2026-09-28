@@ -483,7 +483,7 @@ test('rejects a non-ASCII JSON record larger than the wire limit', async () => {
 })
 
 test.each(['RawStream', 'ReadableStream'])(
-  'skips %s serialization for a null-body status',
+  'serializes %s results despite a bodyless helper status',
   async (kind) => {
     const cancel = vi.fn()
     const source = new ReadableStream<Uint8Array>({ cancel })
@@ -495,6 +495,7 @@ test.each(['RawStream', 'ReadableStream'])(
     })
     const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => {})
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     try {
       const response = await callServerAction({
@@ -506,14 +507,18 @@ test.each(['RawStream', 'ReadableStream'])(
         serverFnId: 'test',
       })
 
-      expect(response.status).toBe(204)
-      expect(response.statusText).toBe('No Content')
-      expect(response.body).toBe(null)
-      expect(cancel).not.toHaveBeenCalled()
-      expect(source.locked).toBe(false)
+      // Serialized replies always carry a body for the client to decode.
+      expect(response.status).toBe(200)
+      expect(response.statusText).toBe('')
+      expect(response.headers.get('x-tss-serialized')).toBe('true')
+      expect(consoleWarn).toHaveBeenCalledOnce()
+      const reason = new Error('client disconnected')
+      await response.body!.cancel(reason)
+      await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
     } finally {
       consoleInfo.mockRestore()
       consoleError.mockRestore()
+      consoleWarn.mockRestore()
     }
   },
 )

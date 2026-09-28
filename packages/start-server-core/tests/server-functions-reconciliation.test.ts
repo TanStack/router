@@ -2,7 +2,13 @@
 
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { fromCrossJSON, toJSON } from 'seroval'
-import { RawStream, notFound } from '@tanstack/router-core'
+import {
+  RawStream,
+  isNotFound,
+  isRedirect,
+  notFound,
+  redirect,
+} from '@tanstack/router-core'
 import {
   TSS_FORMDATA_CONTEXT,
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
@@ -221,8 +227,12 @@ describe('server function response reconciliation', () => {
       const response = await createHandler()(createServerFunctionRequest(), {})
 
       expect(serialized).toHaveBeenCalledOnce()
-      expect(response.status).toBe(status)
-      expect(response.statusText).toBe('Serialized status')
+      // A serialized reply always carries a body, so a bodyless helper status
+      // is ignored together with its status text.
+      expect(response.status).toBe(status === 202 ? 202 : 200)
+      expect(response.statusText).toBe(
+        status === 202 ? 'Serialized status' : '',
+      )
       expect(response.headers.get('x-serialized')).toBe('yes')
       expect(response.headers.get('x-steps')).toBe('serialized')
       expect(response.headers.getSetCookie()).toEqual([
@@ -231,14 +241,9 @@ describe('server function response reconciliation', () => {
       expect(response.headers.get('content-type')).toBe('application/json')
       expect(response.headers.get('x-tss-serialized')).toBe('true')
       expect(response.headers.get('x-tss-raw')).toBeNull()
-      if (status === 202) {
-        expect(fromCrossJSON(await response.json(), {})).toEqual({
-          result: { value: 'serialized value' },
-        })
-      } else {
-        expect(response.body).toBeNull()
-        await expect(response.text()).resolves.toBe('')
-      }
+      expect(fromCrossJSON(await response.json(), {})).toEqual({
+        result: { value: 'serialized value' },
+      })
     },
   )
 
@@ -287,8 +292,8 @@ describe('server function response reconciliation', () => {
         )
 
         expect(cancelFallback).toHaveBeenCalledOnce()
-        expect(response.status).toBe(status)
-        expect(response.statusText).toBe('Cleanup status')
+        expect(response.status).toBe(status === 204 ? 200 : status)
+        expect(response.statusText).toBe(status === 204 ? '' : 'Cleanup status')
         expect(response.headers.get('x-cleanup')).toBe('yes')
         expect(response.headers.get('x-steps')).toBe('action, cleanup')
         expect(response.headers.getSetCookie()).toEqual([
@@ -296,14 +301,9 @@ describe('server function response reconciliation', () => {
         ])
         expect(response.headers.get('content-type')).toBe('application/json')
         expect(response.headers.get('x-tss-serialized')).toBe('true')
-        if (status === 204) {
-          expect(response.body).toBeNull()
-          await expect(response.text()).resolves.toBe('')
-        } else {
-          expect(fromCrossJSON(await response.json(), {})).toEqual({
-            result: 'completed',
-          })
-        }
+        expect(fromCrossJSON(await response.json(), {})).toEqual({
+          result: 'completed',
+        })
       } finally {
         releaseAction()
         await pendingAction
@@ -737,8 +737,9 @@ describe('server function response reconciliation', () => {
   })
 
   it.each([204, 205, 304])(
-    'drops serialized success body for %s responses',
+    'keeps serialized success bodies when a helper selects %s',
     async (status) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const action = createAction()
       action.mockImplementation(() => {
         setResponseStatus(status)
@@ -746,12 +747,69 @@ describe('server function response reconciliation', () => {
       })
       serverFnMocks.action = action
       const handler = createHandler()
+      let response: Response | undefined
 
-      const response = await handler(createServerFunctionRequest(), {})
+      try {
+        const result = await createClientRpc('test')({
+          method: 'GET',
+          fetch: async (input: string, init: RequestInit) => {
+            response = await handler(
+              new Request(new URL(input, 'http://localhost'), init),
+              {},
+            )
+            return response
+          },
+        })
 
-      expect(response.status).toBe(status)
-      expect(response.body).toBe(null)
-      expect(await response.text()).toBe('')
+        expect(result).toEqual({ result: { ok: true } })
+        expect(response!.status).toBe(200)
+        expect(response!.headers.get('x-tss-serialized')).toBe('true')
+        expect(warnSpy).toHaveBeenCalledOnce()
+        expect(warnSpy.mock.calls[0]![0]).toContain(
+          `setResponseStatus(${status})`,
+        )
+      } finally {
+        warnSpy.mockRestore()
+      }
+    },
+  )
+
+  it.each([204, 205, 304])(
+    'keeps serialized redirect and not-found envelopes when a helper selects %s',
+    async (status) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const fetchResponse = async (input: string, init: RequestInit) =>
+        createHandler()(
+          new Request(new URL(input, 'http://localhost'), init),
+          {},
+        )
+
+      try {
+        const action = createAction()
+        action.mockImplementation(() => {
+          setResponseStatus(status)
+          throw redirect({ href: '/login' })
+        })
+        serverFnMocks.action = action
+        await expect(
+          createClientRpc('test')({ method: 'GET', fetch: fetchResponse }),
+        ).rejects.toSatisfy(
+          (value: unknown) =>
+            isRedirect(value) && value.options.href === '/login',
+        )
+
+        serverFnMocks.middleware = [
+          createMiddleware().server(() => {
+            setResponseStatus(status)
+            throw notFound({ data: 'missing' })
+          }),
+        ]
+        await expect(
+          createClientRpc('test')({ method: 'GET', fetch: fetchResponse }),
+        ).rejects.toSatisfy((value: unknown) => isNotFound(value))
+      } finally {
+        warnSpy.mockRestore()
+      }
     },
   )
 
@@ -839,21 +897,42 @@ describe('server function response reconciliation', () => {
   })
 
   it.each([204, 205, 304])(
-    'drops serialized error body for %s responses',
+    'keeps serialized error bodies when a helper or the error selects %s',
     async (status) => {
-      const action = createAction()
-      action.mockImplementation(() => {
-        setResponseStatus(status)
-        throw new Error('no body')
-      })
-      serverFnMocks.action = action
-      const handler = createHandler()
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      const fetchResponse = async (input: string, init: RequestInit) => {
+        const response = await createHandler()(
+          new Request(new URL(input, 'http://localhost'), init),
+          {},
+        )
+        expect(response.status).toBe(500)
+        return response
+      }
 
-      const response = await handler(createServerFunctionRequest(), {})
+      try {
+        const action = createAction()
+        action.mockImplementation(() => {
+          setResponseStatus(status)
+          throw new Error('helper status error')
+        })
+        serverFnMocks.action = action
+        await expect(
+          createClientRpc('test')({ method: 'GET', fetch: fetchResponse }),
+        ).rejects.toThrow('helper status error')
 
-      expect(response.status).toBe(status)
-      expect(response.body).toBe(null)
-      expect(await response.text()).toBe('')
+        action.mockImplementation(() => {
+          throw Object.assign(new Error('error status error'), { status })
+        })
+        await expect(
+          createClientRpc('test')({ method: 'GET', fetch: fetchResponse }),
+        ).rejects.toThrow('error status error')
+      } finally {
+        warnSpy.mockRestore()
+        consoleError.mockRestore()
+      }
     },
   )
 })

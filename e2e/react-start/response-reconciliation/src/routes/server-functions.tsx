@@ -164,6 +164,12 @@ const throwRedirectFn = createServerFn().handler(() => {
   throw redirect({ to: '/' })
 })
 
+const bodylessStatusFn = createServerFn().handler(() => {
+  setResponseStatus(204, 'No Content')
+  setResponseHeader('x-bodyless-status', 'ignored')
+  return { ok: true }
+})
+
 export const Route = createFileRoute('/server-functions')({
   component: ServerFunctions,
 })
@@ -203,6 +209,7 @@ function ServerFunctions() {
       <ServerFunctionButton name="readAfterSet" fn={readAfterSetFn} />
       <ServerFunctionButton name="returnRedirect" fn={returnRedirectFn} />
       <ServerFunctionButton name="throwRedirect" fn={throwRedirectFn} />
+      <ServerFunctionButton name="bodylessStatus" fn={bodylessStatusFn} />
     </main>
   )
 }

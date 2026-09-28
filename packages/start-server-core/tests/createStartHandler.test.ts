@@ -1779,11 +1779,12 @@ describe('createStartHandler SSR cleanup ownership', () => {
   })
 
   it.each([
-    { method: 'GET', status: 204 },
-    { method: 'HEAD', status: 200 },
+    { method: 'GET', status: 204, hasBody: true },
+    { method: 'HEAD', status: 200, hasBody: false },
   ])(
-    'serializes $method RPC redirect options before omitting a body at status $status',
-    async ({ method, status }) => {
+    'serializes $method RPC redirect options with helper status $status',
+    async ({ method, status, hasBody }) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const toJSON = vi.fn(() => {
         clearResponseHeaders()
         setResponseStatus(status)
@@ -1806,9 +1807,11 @@ describe('createStartHandler SSR cleanup ownership', () => {
         {},
       )
 
+      warnSpy.mockRestore()
       expect(toJSON).toHaveBeenCalledOnce()
-      expect(response.status).toBe(status)
-      expect(response.body).toBeNull()
+      // The client decodes the envelope, so a bodyless helper status is
+      // ignored. Only HEAD drops the body.
+      expect(response.status).toBe(200)
       expect(response.headers.get('content-type')).toBe('application/json')
       expect(response.headers.get('location')).toBeNull()
       expect(response.headers.get('x-tss-serialized')).toBeNull()
@@ -1817,6 +1820,14 @@ describe('createStartHandler SSR cleanup ownership', () => {
       expect(response.headers.getSetCookie()).toEqual([
         'serialization=visited; Path=/',
       ])
+      if (hasBody) {
+        await expect(response.json()).resolves.toMatchObject({
+          href: '/safe',
+          isSerializedRedirect: true,
+        })
+      } else {
+        expect(response.body).toBeNull()
+      }
     },
   )
 

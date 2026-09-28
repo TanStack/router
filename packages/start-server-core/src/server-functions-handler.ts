@@ -23,8 +23,7 @@ import {
   getErrorStatus,
   getErrorStatusText,
   getParsedRequestUrl,
-  getRequest,
-  getResponse,
+  getSerializedResponseState,
   protectResponseHeaders,
   setProtectedResponseHeaders,
 } from './internal-request-response'
@@ -114,8 +113,7 @@ export async function createServerFnErrorResponse(
   error: unknown,
   serovalPlugins?: Array<SerovalPlugin<any, any>>,
 ) {
-  const request = getRequest()
-  const response = getResponse()
+  const response = getSerializedResponseState()
   if (isNotFound(error)) {
     return isNotFoundResponse(error)
   }
@@ -128,17 +126,15 @@ export async function createServerFnErrorResponse(
   headers.set('Content-Type', 'application/json')
   headers.set(X_TSS_SERIALIZED, 'true')
   headers.delete(X_TSS_RAW_RESPONSE)
-  const status = response.status ?? errorStatus ?? 500
-  const statusText = response.statusText ?? getErrorStatusText(error)
-  if (!canHaveBody(request.method, status)) {
-    const errorResponse = new Response(null, {
-      status,
-      statusText,
-      headers,
-    })
-    protectResponseHeaders(errorResponse, SERIALIZED_JSON_HEADERS)
-    return errorResponse
-  }
+  // The client decodes the serialized error, so it always needs a body.
+  const bodyErrorStatus =
+    errorStatus !== undefined && canHaveBody('GET', errorStatus)
+      ? errorStatus
+      : undefined
+  const status = response.status ?? bodyErrorStatus ?? 500
+  const statusText =
+    response.statusText ??
+    (bodyErrorStatus === errorStatus ? getErrorStatusText(error) : undefined)
 
   const serializedError = JSON.stringify(
     await toCrossJSONAsync(error, {
@@ -304,20 +300,7 @@ function serializeResult(
   request: Request,
   plugins: Array<SerovalPlugin<any, any>>,
 ): Response | DeferredResponse {
-  const alsResponse = getResponse()
-  const status = alsResponse.status ?? 200
-  if (!canHaveBody(request.method, status)) {
-    const response = new Response(null, {
-      status,
-      statusText: alsResponse.statusText,
-      headers: {
-        'Content-Type': 'application/json',
-        [X_TSS_SERIALIZED]: 'true',
-      },
-    })
-    protectResponseHeaders(response, SERIALIZED_JSON_HEADERS)
-    return response
-  }
+  const alsResponse = getSerializedResponseState()
   const signal = request.signal
   const initialRecords: Array<Uint8Array> = []
   let initialBytes = 0
