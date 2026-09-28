@@ -1199,6 +1199,37 @@ describe('server function throws reach the caller', () => {
     })
   })
 
+  it.each(['GET', 'POST'] as const)(
+    'ignores error and result keys a client adds to the %s payload',
+    async (method) => {
+      let received: unknown
+      defineServerFn(method, ((opts: { data: unknown }) => {
+        received = opts.data
+        return { ok: true }
+      }) as () => unknown)
+      const payload = JSON.stringify(
+        toJSON({ data: 'input', error: 'crafted', result: 'crafted' }),
+      )
+
+      const response = await createHandler()(
+        method === 'GET'
+          ? createServerFunctionRequest(
+              `http://localhost/_serverFn/test?payload=${encodeURIComponent(payload)}`,
+            )
+          : createServerFunctionRequest('http://localhost/_serverFn/test', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: payload,
+            }),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      expect(received).toBe('input')
+      expect(await response.text()).not.toContain('crafted')
+    },
+  )
+
   it('rejects a server-side call with a thrown 0', async () => {
     const outcome = await settleOnServer(() => {
       throw 0

@@ -247,31 +247,31 @@ export const handleServerAction = async ({
       }
 
       res = await action(params)
-    } else if (methodUpper === 'GET') {
-      // Get payload directly from searchParams
-      const payloadParam =
-        getParsedRequestUrl(request).searchParams.get('payload')
-      // Reject oversized payloads to prevent DoS
-      if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
-        throw new Error('Payload too large')
-      }
-      const payload: any = payloadParam
-        ? fromJSON(JSON.parse(payloadParam), {
-            plugins: getRequestSerovalPlugins(),
-          })
-        : {}
-      payload.context = safeObjectMerge(payload.context, context)
-      payload.method = methodUpper
-      res = await action(payload)
     } else {
-      const payload: any = contentType?.includes('application/json')
-        ? fromJSON(await request.json(), {
-            plugins: getRequestSerovalPlugins(),
-          })
-        : {}
-      payload.context = safeObjectMerge(payload.context, context)
-      payload.method = methodUpper
-      res = await action(payload)
+      let json: any
+      if (methodUpper === 'GET') {
+        // Get payload directly from searchParams
+        const payloadParam =
+          getParsedRequestUrl(request).searchParams.get('payload')
+        // Reject oversized payloads to prevent DoS
+        if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
+          throw new Error('Payload too large')
+        }
+        json = payloadParam ? JSON.parse(payloadParam) : undefined
+      } else if (contentType?.includes('application/json')) {
+        json = await request.json()
+      }
+      const payload: any =
+        json === undefined
+          ? {}
+          : fromJSON(json, { plugins: getRequestSerovalPlugins() })
+      // Pass only the fields a client sends, so a crafted `error` or
+      // `result` key cannot decide the outcome of the call.
+      res = await action({
+        data: payload.data,
+        context: safeObjectMerge(payload.context, context),
+        method: methodUpper,
+      })
     }
 
     const failed = 'error' in res
