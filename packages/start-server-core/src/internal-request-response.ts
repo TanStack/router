@@ -782,13 +782,15 @@ export function reconcileResponse(
   event: StartEvent,
   disposeBody?: (reason: string) => void,
 ): Response {
-  // Without helper writes, only a bodyless status could change the response.
-  // Router redirects still need destination resolution (or an RPC envelope),
-  // so they keep their identity until createStartHandler resolves them;
-  // response getters can already read the helper overlay on this snapshot.
+  // Without helper writes, only a bodyless status could change the response,
+  // and the response Start last published already satisfies it. Router
+  // redirects still need destination resolution (or an RPC envelope), so they
+  // keep their identity until createStartHandler resolves them; response
+  // getters can already read the helper overlay on this snapshot.
   if (
     (!event.responseState &&
-      canHaveBody(event.request.method, response.status)) ||
+      (response === event.currentResponse ||
+        canHaveBody(event.request.method, response.status))) ||
     isRedirect(response)
   ) {
     event.currentResponse = response
