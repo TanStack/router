@@ -589,12 +589,13 @@ function reconcileResponseWithEvent(
 ) {
   const protectedHeaders = getProtectedResponseHeaders(response)
   const serialized = isSerializedResponse(protectedHeaders)
-  // Fetch already enforces bodyless response statuses. Only HEAD or a helper
-  // status override can require dropping an existing body.
+  // Some runtimes, such as Bun, allow a body on a 204, 205, or 304 response,
+  // so check the response's own status too. Read the body last: the getter
+  // allocates a stream for responses that have not exposed one yet.
   const mustDropBody =
     !canHaveBody(
       event.request.method,
-      getHelperStatus(event.responseState, serialized) ?? 200,
+      getHelperStatus(event.responseState, serialized) ?? response.status,
     ) && response.body !== null
   if (mustDropBody) {
     const reason =
