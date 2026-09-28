@@ -812,9 +812,12 @@ export function createStartHandler<TRegister = Register>(
               }),
           )
       } else {
+        // Runs as the route pipeline's terminal, which waits on the request
+        // signal and disposes a result that settles after an abort.
         const executeRouter = async (
           serverContext: TODO,
-          matchedRoutes?: ReadonlyArray<AnyRoute>,
+          matchedRoutes: ReadonlyArray<AnyRoute>,
+          routerInstance: AnyRouter,
         ): Promise<SsrResponse> => {
           if (
             !/(^|,)\s*(\*\/\*|text\/html)/.test(
@@ -844,8 +847,6 @@ export function createStartHandler<TRegister = Register>(
           })
 
           earlyHints?.collectStatic({ manifest, matchedRoutes })
-
-          const routerInstance = await getRouter()
 
           attachRouterServerSsrUtils({
             router: routerInstance,
@@ -879,18 +880,13 @@ export function createStartHandler<TRegister = Register>(
           const responseHeaders = getStartResponseHeaders(routerInstance)
           earlyHints?.appendResponseHeaders(responseHeaders)
           signal.throwIfAborted()
-          const disposeLate = createLateResponseDisposer(signal)
-          const response = await waitForRequest(
-            cb({
+          return normalizeSsrResponse(
+            await cb({
               request,
               router: routerInstance,
               responseHeaders,
             }),
-            signal,
-            disposeLate,
-            disposeLate,
           )
-          return normalizeSsrResponse(response)
         }
 
         terminal = ({ context }) =>
@@ -917,16 +913,12 @@ export function createStartHandler<TRegister = Register>(
       let middlewareResponse: HandlerCallbackResult
       try {
         if (!isServerFnRequest && flattenedRequestMiddlewares.length === 0) {
-          // The route pipeline already reconciles responses and owns cleanup.
-          // An empty global pipeline has no additional middleware to run.
-          const disposeLate = createLateResponseDisposer(signal)
-          middlewareResponse = await waitForRequest(
-            // Only server-function terminals can defer JSON construction.
-            terminal(middlewareCtx) as Promise<HandlerCallbackResult>,
-            signal,
-            disposeLate,
-            disposeLate,
-          )
+          // An empty global pipeline has no additional middleware to run. The
+          // route pipeline already reconciles responses, owns cleanup, and
+          // waits on the request signal for every pending result.
+          middlewareResponse = await (terminal(
+            middlewareCtx,
+          ) as Promise<HandlerCallbackResult>)
         } else {
           middlewareResponse = await executeMiddleware(
             flattenedRequestMiddlewares.map((d) => d.options.server),
@@ -1142,7 +1134,8 @@ async function handleServerRoutes({
   url: URL
   executeRouter: (
     serverContext: any,
-    matchedRoutes?: ReadonlyArray<AnyRoute>,
+    matchedRoutes: ReadonlyArray<AnyRoute>,
+    router: AnyRouter,
   ) => Promise<SsrResponse>
   context: any
   executedRequestMiddlewares: Set<AnyRequestMiddleware>
@@ -1165,7 +1158,7 @@ async function handleServerRoutes({
   // Collect and dedupe route middlewares
   const routeMiddlewares: Array<AnyMiddlewareServerFn> = []
   let terminalHandler: TODO = (ctx: TODO) =>
-    executeRouter(ctx.context, matchedRoutes)
+    executeRouter(ctx.context, matchedRoutes, router)
   let terminalNext: TODO
 
   // Collect middleware from matched routes, filtering out those already executed
