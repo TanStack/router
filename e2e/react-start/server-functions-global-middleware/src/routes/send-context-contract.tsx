@@ -131,8 +131,18 @@ const accessors = createMiddleware({ type: 'function' })
     return result
   })
 
-const accessorFn = createServerFn()
+const observeServerReply = createMiddleware({ type: 'function' })
   .middleware([accessors])
+  .client(async ({ next }) => {
+    const result = await next()
+    if (result.context.value !== 'server') {
+      throw new Error('Server sendContext must reach the client result context')
+    }
+    return result
+  })
+
+const accessorFn = createServerFn()
+  .middleware([observeServerReply])
   .handler(() => 'accessors')
 
 async function verifyAll() {

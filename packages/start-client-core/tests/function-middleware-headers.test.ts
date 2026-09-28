@@ -120,3 +120,69 @@ test('client middleware can supply headers when the call supplied none', async (
 
   expect(new Headers(result.headers).get('x-next')).toBe('present')
 })
+
+test.each(['client', 'server'] as const)(
+  '%s executor reads initial middleware options in order without repeating accessors',
+  async (env) => {
+    const reads: Array<string> = []
+    const ignoredSendContext = Object.freeze({ selected: 'first read' })
+    const selectedSendContext = Object.freeze({ selected: 'second read' })
+    const context = Object.freeze({ request: 'preserved' })
+    const headers = new Headers({ 'x-initial': 'preserved' })
+    const fetch = async () => new Response('unused')
+    let sendContextReads = 0
+
+    const result = await runWithStartContext(
+      {
+        getRouter() {
+          throw new Error('Function middleware does not need a router')
+        },
+        request: new Request('http://localhost/_serverFn/accessor-test'),
+        startOptions: {},
+        contextAfterGlobalMiddlewares: {},
+        executedRequestMiddlewares: new Set(),
+        handlerType: 'serverFn',
+      },
+      () =>
+        executeMiddleware([], env, {
+          method: 'POST',
+          data: undefined,
+          serverFnMeta: { id: 'accessor-test' },
+          get headers() {
+            reads.push('headers')
+            return headers
+          },
+          get sendContext() {
+            reads.push('sendContext')
+            sendContextReads++
+            return sendContextReads === 1
+              ? ignoredSendContext
+              : selectedSendContext
+          },
+          get context() {
+            reads.push('context')
+            return context
+          },
+          get fetch() {
+            reads.push('fetch')
+            return fetch
+          },
+        }),
+    )
+
+    expect(reads).toEqual([
+      'headers',
+      'sendContext',
+      'context',
+      'fetch',
+      'headers',
+      'sendContext',
+      'context',
+      'fetch',
+    ])
+    expect(result.sendContext).toBe(selectedSendContext)
+    expect(result.context).toBe(context)
+    expect(result.headers).toBe(headers)
+    expect(result.fetch).toBe(fetch)
+  },
+)
