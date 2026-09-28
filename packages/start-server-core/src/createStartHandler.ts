@@ -32,8 +32,6 @@ import {
 import {
   createFinalizedResponse,
   finalizeResponse,
-  getParsedRequestUrl,
-  getStartEvent,
   reconcileResponse,
   restoreResponseProtocol,
   transferResponseProtocol,
@@ -63,7 +61,8 @@ import type {
   RouterEntry,
   StartEntry,
 } from '@tanstack/start-client-core'
-import type { RequestHandler } from './request-handler'
+import type { RequestHandler, RequestOptions } from './request-handler'
+import type { StartEvent } from './internal-request-response'
 import type {
   AnyRoute,
   AnyRouter,
@@ -328,6 +327,7 @@ async function executeMiddleware(
   terminal: TODO,
   ctx: PipelineContext,
   signal: AbortSignal,
+  event: StartEvent,
   terminalNext?: TODO,
 ): Promise<HandlerCallbackResult> {
   let index = -1
@@ -339,8 +339,6 @@ async function executeMiddleware(
   // winner of a `Promise.race`). A caller at depth `d` is therefore abandoned
   // when `returnedDepth <= d`, where this is the shallowest returned depth.
   let returnedDepth = Infinity
-  // The request event is fixed for the pipeline; look it up once.
-  const event = getStartEvent()
   const disposeAbandonedResult = createLateResponseDisposer(signal)
 
   const adoptResponse = (
@@ -535,7 +533,7 @@ async function executeMiddleware(
         // Cleanup may write response helpers. Construct only after it has run,
         // then publish without rechecking headers that no user has received.
         adoptResponse(undefined)
-        adoptResponse(result.createResponse())
+        adoptResponse(result.createResponse(event))
       }
       return ctx
     }
@@ -649,10 +647,11 @@ export function createStartHandler<TRegister = Register>(
     })
   }
 
-  const startRequestResolver: RequestHandler<Register> = async (
-    request,
-    requestOpts,
-  ) => {
+  const startRequestResolver = async (
+    request: Request,
+    requestOpts: RequestOptions<Register> | undefined,
+    event: StartEvent,
+  ): Promise<Response> => {
     const signal = request.signal
     let router: AnyRouter | undefined
     let routerPromise: Promise<AnyRouter> | undefined
@@ -663,7 +662,7 @@ export function createStartHandler<TRegister = Register>(
       signal.throwIfAborted()
       // The Start event already parsed and validated the request URL; reuse
       // it instead of re-parsing. The memoized URL must not be mutated.
-      const requestUrl = getParsedRequestUrl(request)
+      const requestUrl = event.requestUrl
       let url = requestUrl
       const pathname = url.pathname
       // Plain RPC paths need no routing normalization. Their payload is read
@@ -677,7 +676,7 @@ export function createStartHandler<TRegister = Register>(
         const normalized = getNormalizedURL(requestUrl)
         url = normalized.url
         if (normalized.handledProtocolRelativeURL) {
-          return finalizeResponse(Response.redirect(url, 308))
+          return finalizeResponse(Response.redirect(url, 308), event)
         }
       }
 
@@ -900,6 +899,8 @@ export function createStartHandler<TRegister = Register>(
                 executeRouter,
                 context,
                 executedRequestMiddlewares,
+                signal,
+                event,
               }),
           )
       }
@@ -925,6 +926,7 @@ export function createStartHandler<TRegister = Register>(
             terminal,
             middlewareCtx,
             signal,
+            event,
           )
         }
       } catch (error) {
@@ -932,7 +934,7 @@ export function createStartHandler<TRegister = Register>(
           throw error
         }
         if (error instanceof Response) {
-          middlewareResponse = reconcileResponse(error, getStartEvent())
+          middlewareResponse = reconcileResponse(error, event)
         } else if (!isServerFnRequest) {
           throw error
         } else {
@@ -950,10 +952,7 @@ export function createStartHandler<TRegister = Register>(
             disposeLate,
             disposeLate,
           )
-          middlewareResponse = reconcileResponse(
-            middlewareResponse,
-            getStartEvent(),
-          )
+          middlewareResponse = reconcileResponse(middlewareResponse, event)
         }
       }
 
@@ -967,6 +966,7 @@ export function createStartHandler<TRegister = Register>(
             signal,
             isServerFnRequest &&
               request.headers.get('x-tsr-serverFn') === 'true',
+            event,
           )
         }
       } catch (error) {
@@ -986,7 +986,7 @@ export function createStartHandler<TRegister = Register>(
         // boundary. Only live eager SSR state can still add response helpers.
         router.serverSsr.cleanup()
         if (response) {
-          response = finalizeResponse(response)
+          response = finalizeResponse(response, event)
         }
       }
       // `routerPromise` stays memoized: a streamed Suspense boundary or a late
@@ -1013,6 +1013,7 @@ async function handleRedirectResponse(
   getRouter: () => Promise<AnyRouter>,
   signal: AbortSignal,
   serializeRedirect: boolean,
+  event: StartEvent,
 ): Promise<SsrResponse> {
   signal.throwIfAborted()
   const redirect = ssrResponse.response
@@ -1086,12 +1087,13 @@ async function handleRedirectResponse(
         body,
         responseHeaders,
         SERIALIZED_REDIRECT_HEADERS,
+        event,
       ),
       serverSsrCleanup: 'none',
     }
   }
 
-  ssrResponse.response = finalizeResponse(redirect)
+  ssrResponse.response = finalizeResponse(redirect, event)
   return ssrResponse
 }
 
@@ -1128,6 +1130,8 @@ async function handleServerRoutes({
   executeRouter,
   context,
   executedRequestMiddlewares,
+  signal,
+  event,
 }: {
   getRouter: () => Promise<AnyRouter>
   request: Request
@@ -1139,6 +1143,8 @@ async function handleServerRoutes({
   ) => Promise<SsrResponse>
   context: any
   executedRequestMiddlewares: Set<AnyRequestMiddleware>
+  signal: AbortSignal
+  event: StartEvent
 }): Promise<SsrResponse> {
   const router = await getRouter()
   // Pass a clone to user rewrite code: `url` may be the request-scoped
@@ -1227,7 +1233,8 @@ async function handleServerRoutes({
       pathname,
       handlerType: 'router',
     },
-    request.signal,
+    signal,
+    event,
     terminalNext,
   )
 

@@ -19,6 +19,7 @@ import {
   handleServerAction,
 } from '../src/server-functions-handler'
 import { createServerEntry, setResponseStatus } from '../src/request-response'
+import { getStartEvent } from '../src/internal-request-response'
 import type * as StartClientCore from '@tanstack/start-client-core'
 
 const mocks = vi.hoisted(() => ({
@@ -48,7 +49,7 @@ function callServerAction(options: Parameters<typeof handleServerAction>[0]) {
     fetch: async () => {
       const result = await handleServerAction(options)
       return result instanceof DeferredResponse
-        ? result.createResponse()
+        ? result.createResponse(getStartEvent())
         : result
     },
   }).fetch(options.request)
