@@ -438,6 +438,74 @@ describe('response helpers through public Start request middleware', () => {
     expect(statuses).toEqual([404, 202])
     expect(response.status).toBe(202)
   })
+
+  it.each(['set', 'append', 'delete'] as const)(
+    'warns when the getResponseHeaders() snapshot is changed with %s',
+    async (method) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const app = handler(
+          createMiddleware().server(async ({ next }) => {
+            const result = await next()
+            setCookie('helper', 'one')
+            const snapshot = getResponseHeaders() as unknown as Headers
+            expect(snapshot.getSetCookie()).toEqual([
+              'returned=1; Path=/',
+              'helper=one; Path=/',
+            ])
+            expect(warnSpy).not.toHaveBeenCalled()
+            if (method === 'delete') {
+              snapshot.delete('vary')
+            } else {
+              snapshot[method]('x-snapshot', 'changed')
+            }
+            expect(warnSpy).toHaveBeenCalledOnce()
+            expect(warnSpy.mock.calls[0]![0]).toContain(
+              `getResponseHeaders().${method}()`,
+            )
+            return result
+          }),
+          createMiddleware().server(() => {
+            return new Response(null, {
+              headers: [
+                ['vary', 'Accept-Encoding'],
+                ['set-cookie', 'returned=1; Path=/'],
+              ],
+            })
+          }),
+        )
+
+        const response = await app(new Request('https://start.example/'), {})
+
+        expect(response.headers.get('x-snapshot')).toBeNull()
+        expect(response.headers.get('vary')).toBe('Accept-Encoding')
+      } finally {
+        warnSpy.mockRestore()
+      }
+    },
+  )
+
+  it('does not warn about getResponseHeaders() snapshot changes in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const app = handler(
+        createMiddleware().server(() => {
+          const snapshot = getResponseHeaders() as unknown as Headers
+          snapshot.set('x-snapshot', 'changed')
+          return new Response('ok')
+        }),
+      )
+
+      const response = await app(new Request('https://start.example/'), {})
+
+      expect(response.headers.get('x-snapshot')).toBeNull()
+      expect(warnSpy).not.toHaveBeenCalled()
+    } finally {
+      warnSpy.mockRestore()
+      vi.unstubAllEnvs()
+    }
+  })
 })
 
 describe('forwarded request URL helpers', () => {
