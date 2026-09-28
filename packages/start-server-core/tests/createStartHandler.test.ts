@@ -1638,12 +1638,15 @@ describe('createStartHandler SSR cleanup ownership', () => {
     await expect(response.text()).resolves.toBe('eager document')
   })
 
-  it.each(['GET', 'HEAD'])(
-    'serializes %s RPC redirect options before omitting a body',
-    async (method) => {
+  it.each([
+    { method: 'GET', status: 204 },
+    { method: 'HEAD', status: 200 },
+  ])(
+    'serializes $method RPC redirect options before omitting a body at status $status',
+    async ({ method, status }) => {
       const toJSON = vi.fn(() => {
         clearResponseHeaders()
-        setResponseStatus(204)
+        setResponseStatus(status)
         setResponseHeader('content-type', 'text/plain')
         setResponseHeader('location', '/ignored')
         setResponseHeader('x-tss-serialized', 'true')
@@ -1664,7 +1667,7 @@ describe('createStartHandler SSR cleanup ownership', () => {
       )
 
       expect(toJSON).toHaveBeenCalledOnce()
-      expect(response.status).toBe(204)
+      expect(response.status).toBe(status)
       expect(response.body).toBeNull()
       expect(response.headers.get('content-type')).toBe('application/json')
       expect(response.headers.get('location')).toBeNull()
@@ -1676,6 +1679,21 @@ describe('createStartHandler SSR cleanup ownership', () => {
       ])
     },
   )
+
+  it('rejects an RPC redirect whose options cannot be serialized as JSON', async () => {
+    const options = { href: '/safe', toJSON: () => undefined }
+    startMocks.serverFnResult = redirect(options)
+    const handler = createStartHandler(() => new Response('unused'))
+
+    await expect(
+      handler(
+        new Request('http://localhost/_serverFn/test', {
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      ),
+    ).rejects.toThrow('Value is not JSON serializable')
+  })
 
   it('does not duplicate helper cookies across repeated reconciliation', async () => {
     startMocks.serverFnResult = new Response('ok')
