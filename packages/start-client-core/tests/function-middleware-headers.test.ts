@@ -47,6 +47,52 @@ test('client next() provides headers when no headers were supplied', async () =>
   expect(result.headers).toBe(observedHeaders)
 })
 
+test.each([
+  ['client', 'omitted'],
+  ['server', 'omitted'],
+  ['client', 'empty'],
+  ['server', 'empty'],
+] as const)(
+  '%s next() preserves context with %s sendContext',
+  async (env, sendContext) => {
+    const options =
+      sendContext === 'omitted'
+        ? { context: { hop: 'kept' } }
+        : { context: { hop: 'kept' }, sendContext: {} }
+    const assertResult = (result: {
+      context?: unknown
+      sendContext?: unknown
+    }) => {
+      expect(result.context).toEqual({
+        request: 'request-context',
+        hop: 'kept',
+      })
+      if (sendContext === 'omitted') {
+        expect(result.sendContext).toBeUndefined()
+      } else {
+        expect(result.sendContext).toBeDefined()
+        expect(result.sendContext).toEqual({})
+      }
+    }
+    const middleware = createMiddleware({ type: 'function' })
+      .client(async ({ next }) => {
+        const result = await next(options)
+        assertResult(result)
+        return result
+      })
+      .server(async ({ next }) => {
+        const result = await next(options)
+        assertResult(result)
+        return result
+      })
+
+    const result = await runMiddleware([middleware], env)
+
+    expect(result.error).toBeUndefined()
+    assertResult(result)
+  },
+)
+
 test('server middleware preserves context and sendContext without headers', async () => {
   const first = createMiddleware({ type: 'function' }).server(({ next }) =>
     next({ context: { first: 'one' }, sendContext: { firstReply: 'one' } }),
