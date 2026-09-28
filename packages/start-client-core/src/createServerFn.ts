@@ -269,7 +269,12 @@ export async function executeMiddleware(
         validator = nextMiddleware.options.inputValidator
       }
 
-      if (validator && env === 'server') {
+      // Request middleware validators are slot-shaped ({ body, query, ... })
+      // and only apply to server routes.
+      const isRequestMiddleware =
+        (nextMiddleware.options as { type?: string }).type === 'request'
+
+      if (validator && env === 'server' && !isRequestMiddleware) {
         // Execute the middleware's input function
         ctx.data = await execValidator(validator as AnyValidator, ctx.data)
       }
