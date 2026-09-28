@@ -177,7 +177,7 @@ For OAuth authorization-code flow, generate a one-time `state` (CSRF defense) an
 // src/server/oauth.functions.ts
 import { createServerFn } from '@tanstack/react-start'
 import { redirect } from '@tanstack/react-router'
-import { getRequestHeader, setCookie } from '@tanstack/react-start/server'
+import { setCookie } from '@tanstack/react-start/server'
 import crypto from 'node:crypto'
 
 const OAUTH_STATE_COOKIE = '__Host-oauth' // expires fast; one-shot
