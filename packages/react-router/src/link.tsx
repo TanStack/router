@@ -7,9 +7,9 @@ import {
   functionalUpdate,
   getUrlScheme,
   isDangerousProtocol,
-  isRouteLeaving,
   preloadWarning,
   removeTrailingSlash,
+  rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -52,10 +52,18 @@ function getLinkLocationStore(router: AnyRouter, routeId: string) {
     source = createAtom(
       (previous?: LinkLocationSnapshot): LinkLocationSnapshot => {
         const location = stores.location.get()
+        const tx = router._tx
         // Keep settlement out of retained owners' dependencies, otherwise all
         // their Links are dirtied again when navigation completes.
         const activeLocation =
-          isRouteLeaving(router, location, routeId) &&
+          // HMR may replace membership without publishing another location.
+          process.env.NODE_ENV !== 'development' &&
+          tx &&
+          tx[2 /* location */] === location &&
+          !tx[0 /* controller */].signal.aborted &&
+          // Commit consumes the lane before incoming components read it.
+          tx[3 /* matches */].length &&
+          !tx[3 /* matches */].some((match) => match.routeId === routeId) &&
           stores.status.get() === 'pending'
             ? (previous?.[1] ?? stores.resolvedLocation.get() ?? location)
             : location
@@ -344,7 +352,6 @@ export function useLinkProps<
     let active: LinkState
     let presentationLocation: ParsedLocation | undefined
     let presentationIsActive = false
-    let presentationNext: ParsedLocation | undefined
     let presentationDest: any
 
     return (snapshot: LinkLocationSnapshot | ParsedLocation): LinkState => {
@@ -378,9 +385,9 @@ export function useLinkProps<
       // The owner store freezes only outgoing active presentation; hrefs
       // always follow the live location, including relative destinations.
       if (
+        activeLocation === location ||
         process.env.NODE_ENV === 'development' ||
-        presentationLocation !== activeLocation ||
-        (activeLocation === location && presentationNext !== next)
+        presentationLocation !== activeLocation
       ) {
         let activeNext = next
         if (activeLocation !== location) {
@@ -397,7 +404,6 @@ export function useLinkProps<
           isHydrated,
         )
         presentationLocation = activeLocation
-        presentationNext = activeNext
       }
       return presentationIsActive ? active : inactive
     }
@@ -405,7 +411,7 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = useSelector(
-    ownerRouteId !== undefined
+    ownerRouteId !== undefined && ownerRouteId !== rootRouteId
       ? getLinkLocationStore(router, ownerRouteId)
       : router.stores.location,
     selectLinkState,

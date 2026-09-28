@@ -485,5 +485,3 @@ export type {
 
 export { composeRewrites, executeRewriteInput } from './rewrite'
 export type { LocationRewrite, LocationRewriteFunction } from './router'
-
-export { isRouteLeaving } from './linkLocation'

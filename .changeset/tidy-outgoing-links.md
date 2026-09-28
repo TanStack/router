@@ -1,5 +1,4 @@
 ---
-'@tanstack/router-core': patch
 '@tanstack/react-router': patch
 ---
 
