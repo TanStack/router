@@ -514,13 +514,11 @@ function reconcileResponseWithEvent(
   event: StartEvent,
   disposeBody?: (reason: string) => void,
 ) {
-  let body = response.body
+  // Fetch already enforces bodyless response statuses. Only HEAD or a helper
+  // status override can require dropping an existing body.
   const mustDropBody =
-    body !== null &&
-    !canHaveBody(
-      event.request.method,
-      event.responseState?.status ?? response.status,
-    )
+    !canHaveBody(event.request.method, event.responseState?.status ?? 200) &&
+    response.body !== null
   if (mustDropBody) {
     const reason =
       event.request.method === 'HEAD'
@@ -531,10 +529,9 @@ function reconcileResponseWithEvent(
     } else {
       cancelDroppedBody(response, reason)
     }
-    // Cancellation/SSR cleanup can write helpers. Read their final state before
-    // applying headers or recording appends, and never reuse the canceled body.
-    body = null
   }
+  // Cancellation/SSR cleanup can write helpers. Read their final state before
+  // applying headers or recording appends, and never reuse a canceled body.
   const state = event.responseState
   const appliedHeaderAppends = event.responseHeaderAppends?.get(response)
   const protectedHeaders = getProtectedResponseHeaders(response)
@@ -587,7 +584,12 @@ function reconcileResponseWithEvent(
     statusTextChanged ||
     mustDropBody ||
     headers !== response.headers
-      ? createReconciledResponse(body, status, statusText, headers)
+      ? createReconciledResponse(
+          mustDropBody ? null : response.body,
+          status,
+          statusText,
+          headers,
+        )
       : response
   if (protectedHeaders && reconciled !== response) {
     installProtectedResponseHeaders(reconciled, protectedHeaders)

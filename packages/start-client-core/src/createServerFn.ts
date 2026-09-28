@@ -859,8 +859,11 @@ export interface ServerFnTypes<
 
 export function flattenMiddlewares<
   T extends AnyFunctionMiddleware | AnyRequestMiddleware,
->(middlewares: Array<T>, maxDepth: number = 100): Array<T> {
-  const seen = new Set<T>()
+>(
+  middlewares: Array<T>,
+  maxDepth: number = 100,
+  seen: Set<T> = new Set<T>(),
+): Array<T> {
   const flattened: Array<T> = []
 
   const recurse = (middleware: Array<T>, depth: number) => {
