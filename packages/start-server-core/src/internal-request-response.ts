@@ -701,18 +701,24 @@ export function finalizeResponse(response: Response): Response {
 
 /** Build a Start-owned body with already normalized protocol headers. */
 export function createFinalizedResponse(
-  body: string,
-  headers: Headers,
+  body: string | Uint8Array,
+  headers: HeadersInit,
   protectedHeaders: ProtectedHeaders,
 ): Response {
   const event = eventStorage.getStore()
   const state = event?.responseState
   const status = state?.status ?? 200
   if (state && hasHeaderState(state)) {
-    headers = applyHeaderState(headers, state, protectedHeaders)
+    headers = applyHeaderState(
+      headers instanceof Headers ? headers : new Headers(headers),
+      state,
+      protectedHeaders,
+    )
   }
   const response = new Response(
-    event && !canHaveBody(event.request.method, status) ? null : body,
+    event && !canHaveBody(event.request.method, status)
+      ? null
+      : (body as BodyInit),
     { status, statusText: state?.statusText ?? '', headers },
   )
   protectResponseHeaders(response, protectedHeaders)

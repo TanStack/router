@@ -86,23 +86,28 @@ vi.mock('#tanstack-router-entry', () => ({
   getRouter: () => startMocks.routerFactory?.() ?? startMocks.router,
 }))
 
-vi.mock('../src/server-functions-handler', () => ({
-  createServerFnErrorResponse: () => {
-    return new Response(JSON.stringify({ message: 'middleware failed' }), {
-      status: 500,
-      headers: {
-        'content-type': 'application/json',
-        'x-tss-serialized': 'true',
-      },
-    })
-  },
-  handleServerAction: (opts: { context?: unknown; serverFnId: string }) => {
-    startMocks.serverFnCalls.push({ context: opts.context })
-    return startMocks.serverFnHandler
-      ? startMocks.serverFnHandler(opts)
-      : startMocks.serverFnResult
-  },
-}))
+vi.mock('../src/server-functions-handler', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../src/server-functions-handler')>()
+  return {
+    ...actual,
+    createServerFnErrorResponse: () => {
+      return new Response(JSON.stringify({ message: 'middleware failed' }), {
+        status: 500,
+        headers: {
+          'content-type': 'application/json',
+          'x-tss-serialized': 'true',
+        },
+      })
+    },
+    handleServerAction: (opts: { context?: unknown; serverFnId: string }) => {
+      startMocks.serverFnCalls.push({ context: opts.context })
+      return startMocks.serverFnHandler
+        ? startMocks.serverFnHandler(opts)
+        : startMocks.serverFnResult
+    },
+  }
+})
 
 function createTestStartHandler(
   options: Parameters<typeof createStartHandler>[0],

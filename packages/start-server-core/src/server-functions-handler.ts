@@ -18,6 +18,7 @@ import {
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import {
   canHaveBody,
+  createFinalizedResponse,
   getErrorHeaders,
   getErrorStatus,
   getErrorStatusText,
@@ -46,6 +47,24 @@ const SERIALIZED_JSON_HEADERS: ReadonlyMap<string, string | null> = new Map([
   [X_TSS_SERIALIZED, 'true'],
   [X_TSS_RAW_RESPONSE, null],
 ])
+const SERIALIZED_JSON_HEADER_INIT: HeadersInit = {
+  'Content-Type': 'application/json',
+  [X_TSS_SERIALIZED]: 'true',
+}
+
+/** Completed bytes own no stream until the request pipeline accepts them. */
+export class DeferredResponse {
+  constructor(private readonly body: Uint8Array) {}
+
+  createResponse(): Response {
+    return createFinalizedResponse(
+      this.body,
+      SERIALIZED_JSON_HEADER_INIT,
+      SERIALIZED_JSON_HEADERS,
+    )
+  }
+}
+
 const SERIALIZED_FRAMED_HEADERS: ReadonlyMap<string, string | null> = new Map([
   ['content-type', TSS_CONTENT_TYPE_FRAMED_VERSIONED],
   [X_TSS_SERIALIZED, 'true'],
@@ -284,7 +303,7 @@ function serializeResult(
   res: unknown,
   request: Request,
   plugins: Array<SerovalPlugin<any, any>>,
-): Response {
+): Response | DeferredResponse {
   const alsResponse = getResponse()
   const status = alsResponse.status ?? 200
   if (!canHaveBody(request.method, status)) {
@@ -384,17 +403,7 @@ function serializeResult(
   }
 
   if (done && pendingRawStreams.length === 0 && initialRecords.length === 1) {
-    // TextEncoder always creates an ArrayBuffer-backed Uint8Array.
-    const response = new Response(initialRecords[0]! as BodyInit, {
-      status: alsResponse.status,
-      statusText: alsResponse.statusText,
-      headers: {
-        'Content-Type': 'application/json',
-        [X_TSS_SERIALIZED]: 'true',
-      },
-    })
-    protectResponseHeaders(response, SERIALIZED_JSON_HEADERS)
-    return response
+    return new DeferredResponse(initialRecords[0]!)
   }
 
   if (done && initialRecords.length === 1) {
