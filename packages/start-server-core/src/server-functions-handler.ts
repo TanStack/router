@@ -80,6 +80,10 @@ const NOT_FOUND_HEADERS: ReadonlyMap<string, string | null> = new Map([
 const RAW_RESPONSE_HEADERS: ReadonlyMap<string, string | null> = new Map([
   [X_TSS_RAW_RESPONSE, 'true'],
 ])
+// A Response the server function threw. The client rethrows it.
+const THROWN_RESPONSE_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  [X_TSS_RAW_RESPONSE, 'thrown'],
+])
 
 // Maximum payload size for GET requests (1MB)
 const MAX_PAYLOAD_SIZE = 1_000_000
@@ -251,7 +255,8 @@ export const handleServerAction = async ({
       res = await action(payload)
     }
 
-    const unwrapped = 'error' in res ? res.error : res.result
+    const failed = 'error' in res
+    const unwrapped = failed ? res.error : res.result
 
     if (isNotFound(res)) {
       res = isNotFoundResponse(res)
@@ -265,7 +270,10 @@ export const handleServerAction = async ({
       if (isRedirect(unwrapped)) {
         return unwrapped
       }
-      return setProtectedResponseHeaders(unwrapped, RAW_RESPONSE_HEADERS)
+      return setProtectedResponseHeaders(
+        unwrapped,
+        failed ? THROWN_RESPONSE_HEADERS : RAW_RESPONSE_HEADERS,
+      )
     }
 
     return serializeResult(res, request, getRequestSerovalPlugins())

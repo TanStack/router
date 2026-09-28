@@ -243,8 +243,13 @@ async function getResponse(fn: () => Promise<Response>) {
     }
   }
 
-  if (response.headers.get(X_TSS_RAW_RESPONSE) === 'true') {
+  const raw = response.headers.get(X_TSS_RAW_RESPONSE)
+  if (raw === 'true') {
     return response
+  }
+  // The server function threw this Response, so the call rejects with it.
+  if (raw === 'thrown') {
+    throw response
   }
 
   const contentType = response.headers.get('content-type')

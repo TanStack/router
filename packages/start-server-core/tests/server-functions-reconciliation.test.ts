@@ -1205,4 +1205,60 @@ describe('server function throws reach the caller', () => {
 
     expect(outcome).toEqual({ rejected: 0 })
   })
+  describe.each(['GET', 'POST'] as const)(
+    'thrown Responses over %s',
+    (method) => {
+      it('rejects with a thrown Response and keeps its status and body', async () => {
+        const { call, response } = defineServerFn(method, () => {
+          throw new Response('teapot', { status: 418 })
+        })
+
+        const outcome = await settle(call())
+
+        expect(outcome.rejected).toBeInstanceOf(Response)
+        const thrown = outcome.rejected as Response
+        expect(thrown.status).toBe(418)
+        await expect(thrown.text()).resolves.toBe('teapot')
+        expect(response().status).toBe(418)
+      })
+
+      it('rejects with a Response thrown by function middleware', async () => {
+        const { call } = defineServerFn(method, () => ({ ok: true }), [
+          createMiddleware({ type: 'function' }).server(() => {
+            throw Response.json({ denied: true }, { status: 403 })
+          }),
+        ])
+
+        const outcome = await settle(call())
+
+        expect(outcome.rejected).toBeInstanceOf(Response)
+        const thrown = outcome.rejected as Response
+        expect(thrown.status).toBe(403)
+        await expect(thrown.json()).resolves.toEqual({ denied: true })
+      })
+
+      it('still resolves with a returned Response', async () => {
+        const { call } = defineServerFn(
+          method,
+          () => new Response('returned', { status: 202 }),
+        )
+
+        const outcome = await settle(call())
+
+        expect(outcome.resolved).toBeInstanceOf(Response)
+        const returned = outcome.resolved as Response
+        expect(returned.status).toBe(202)
+        await expect(returned.text()).resolves.toBe('returned')
+      })
+    },
+  )
+
+  it('rejects a server-side call with a thrown Response', async () => {
+    const outcome = await settleOnServer(() => {
+      throw new Response('server-side', { status: 409 })
+    })
+
+    expect(outcome.rejected).toBeInstanceOf(Response)
+    expect((outcome.rejected as Response).status).toBe(409)
+  })
 })

@@ -174,6 +174,10 @@ const throwZeroFn = createServerFn().handler(() => {
   throw 0
 })
 
+const throwResponseFn = createServerFn().handler(() => {
+  throw new Response('teapot', { status: 418 })
+})
+
 const helperLocationFn = createServerFn().handler(() => {
   setResponseStatus(302)
   setResponseHeader('location', '/api/base')
@@ -222,6 +226,7 @@ function ServerFunctions() {
       <ServerFunctionButton name="bodylessStatus" fn={bodylessStatusFn} />
       <ServerFunctionButton name="helperLocation" fn={helperLocationFn} />
       <ServerFunctionButton name="throwZero" fn={throwZeroFn} />
+      <ServerFunctionButton name="throwResponse" fn={throwResponseFn} />
     </main>
   )
 }
@@ -251,11 +256,15 @@ function ServerFunctionButton({
               setResult(JSON.stringify(value))
             }
           } catch (error) {
-            setResult(
-              error instanceof Error
-                ? error.message
-                : `thrown:${JSON.stringify(error) ?? String(error)}`,
-            )
+            if (error instanceof Response) {
+              setResult(`thrown ${error.status}:${await error.text()}`)
+            } else {
+              setResult(
+                error instanceof Error
+                  ? error.message
+                  : `thrown:${JSON.stringify(error) ?? String(error)}`,
+              )
+            }
           }
         }}
       >

@@ -669,10 +669,24 @@ test.describe('server functions', () => {
   test.describe('expected error responses', () => {
     test.use({
       // A second RegExp would make Playwright read the array as a fixture
-      // tuple, so both expected statuses share one pattern.
+      // tuple, so all expected statuses share one pattern.
       whitelistErrors: [
-        /Failed to load resource: the server responded with a status of (401 \(Unauthorized\)|500 \([^)]*\)|502 \([^)]*\))/,
+        /Failed to load resource: the server responded with a status of (401 \(Unauthorized\)|418 \([^)]*\)|500 \([^)]*\)|502 \([^)]*\))/,
       ],
+    })
+
+    test('a server function that throws a Response rejects with it on the client', async ({
+      page,
+    }) => {
+      const response = await invokeServerFunction(page, 'throwResponse')
+
+      expect(response.status()).toBe(418)
+      expect(header(response, 'x-tss-raw')).toBe('thrown')
+      await expectServerFunctionResult(
+        page,
+        'throwResponse',
+        'thrown 418:teapot',
+      )
     })
 
     test('server function thrown errors preserve explicit response status', async ({
