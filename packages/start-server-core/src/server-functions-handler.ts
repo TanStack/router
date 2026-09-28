@@ -34,11 +34,6 @@ import type {
 import type { Plugin as SerovalPlugin } from 'seroval'
 import type { StartEvent } from './internal-request-response'
 
-// Known FormData 'Content-Type' header values - module-level constant
-const FORM_DATA_CONTENT_TYPES = [
-  'multipart/form-data',
-  'application/x-www-form-urlencoded',
-]
 // Serialized replies are decoded by the client from their body. With a
 // helper-selected 3xx status, a Location would let fetch follow it first.
 const SERIALIZED_JSON_HEADERS: ReadonlyMap<string, string | null> = new Map([
@@ -202,19 +197,20 @@ export const handleServerAction = async ({
     )
   }
 
-  const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
+  const headers = request.headers
+  const isServerFn = headers.get('x-tsr-serverfn') === 'true'
   let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined
   const getRequestSerovalPlugins = () => {
     return (serovalPlugins ??= getSerovalPlugins(routerDefaultSerovalPlugins))
   }
-  const contentType = request.headers.get('Content-Type')
+  const contentType = headers.get('content-type')
 
   try {
     let res: any
     if (
-      FORM_DATA_CONTENT_TYPES.some(
-        (type) => contentType && contentType.includes(type),
-      )
+      contentType &&
+      (contentType.includes('multipart/form-data') ||
+        contentType.includes('application/x-www-form-urlencoded'))
     ) {
       // We don't support GET requests with FormData payloads... that seems impossible
       if (methodUpper === 'GET') {
@@ -282,10 +278,6 @@ export const handleServerAction = async ({
     const failed = 'error' in res
     const unwrapped = failed ? res.error : res.result
 
-    if (isNotFound(res)) {
-      res = isNotFoundResponse(res)
-    }
-
     if (!isServerFn) {
       return unwrapped
     }
@@ -325,7 +317,6 @@ function serializeResult(
   request: Request,
   plugins: Array<SerovalPlugin<any, any>>,
 ): Response | DeferredResponse {
-  const signal = request.signal
   const initialRecords: Array<Uint8Array> = []
   let initialBytes = 0
   const pendingRawStreams: Array<LateStreamRegistration> = []
@@ -441,7 +432,7 @@ function serializeResult(
           }
         },
       }),
-      { signal },
+      { signal: request.signal },
     )
   }
 
@@ -567,32 +558,32 @@ function serializeResult(
   })
 
   return createFramedResponse(readable, {
-    signal: AbortSignal.any([recordAbortController.signal, signal]),
+    signal: AbortSignal.any([recordAbortController.signal, request.signal]),
     onCancel: abortRecordStream,
   })
+}
 
-  function createFramedResponse(
-    records: ReadableStream<MultiplexedStreamRecord>,
-    options: MultiplexedStreamOptions,
-  ) {
-    const multiplexedStream = createMultiplexedStream(records, options)
-    // Completed JSON reads helper state later, when the pipeline accepts it.
-    const { status, statusText } = getSerializedResponseState()
-    try {
-      const response = new Response(multiplexedStream, {
-        status,
-        statusText,
-        headers: {
-          'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
-          [X_TSS_SERIALIZED]: 'true',
-        },
-      })
-      protectResponseHeaders(response, SERIALIZED_FRAMED_HEADERS)
-      return response
-    } catch (error) {
-      cancelRawStream(multiplexedStream, error)
-      throw error
-    }
+function createFramedResponse(
+  records: ReadableStream<MultiplexedStreamRecord>,
+  options: MultiplexedStreamOptions,
+) {
+  const multiplexedStream = createMultiplexedStream(records, options)
+  // Completed JSON reads helper state later, when the pipeline accepts it.
+  const { status, statusText } = getSerializedResponseState()
+  try {
+    const response = new Response(multiplexedStream, {
+      status,
+      statusText,
+      headers: {
+        'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+        [X_TSS_SERIALIZED]: 'true',
+      },
+    })
+    protectResponseHeaders(response, SERIALIZED_FRAMED_HEADERS)
+    return response
+  } catch (error) {
+    cancelRawStream(multiplexedStream, error)
+    throw error
   }
 }
 
