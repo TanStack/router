@@ -1613,6 +1613,70 @@ describe('createStartHandler SSR cleanup ownership', () => {
     await expect(response.text()).resolves.toBe('eager document')
   })
 
+  it('preserves helper appends when an eager renderer cleans up before returning', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const handler = createTestStartHandler(({ router: requestRouter }) => {
+      requestRouter.serverSsr!.onCleanup(() => {
+        setResponseStatus(202, 'Accepted')
+        appendResponseHeader('x-steps', 'cleanup')
+        setCookie('cleanup', 'visited')
+      })
+      requestRouter.serverSsr!.cleanup()
+      return new Response('eager document', {
+        headers: { 'x-steps': 'render' },
+      })
+    })
+
+    const response = await handler(new Request('http://localhost/'), {})
+
+    expect(router.serverSsr).toBeUndefined()
+    expect(response.status).toBe(202)
+    expect(response.statusText).toBe('Accepted')
+    expect(response.headers.get('x-steps')).toBe('render, cleanup')
+    expect(response.headers.getSetCookie()).toEqual(['cleanup=visited; Path=/'])
+    await expect(response.text()).resolves.toBe('eager document')
+  })
+
+  it.each(['GET', 'HEAD'])(
+    'serializes %s RPC redirect options before omitting a body',
+    async (method) => {
+      const toJSON = vi.fn(() => {
+        clearResponseHeaders()
+        setResponseStatus(204)
+        setResponseHeader('content-type', 'text/plain')
+        setResponseHeader('location', '/ignored')
+        setResponseHeader('x-tss-serialized', 'true')
+        setResponseHeader('x-tss-raw', 'true')
+        appendResponseHeader('x-steps', 'serialized')
+        setCookie('serialization', 'visited')
+        return { serialized: true }
+      })
+      startMocks.serverFnResult = redirect({ href: '/safe', state: { toJSON } })
+      const handler = createTestStartHandler(() => new Response('unused'))
+
+      const response = await handler(
+        new Request('http://localhost/_serverFn/test', {
+          method,
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      )
+
+      expect(toJSON).toHaveBeenCalledOnce()
+      expect(response.status).toBe(204)
+      expect(response.body).toBeNull()
+      expect(response.headers.get('content-type')).toBe('application/json')
+      expect(response.headers.get('location')).toBeNull()
+      expect(response.headers.get('x-tss-serialized')).toBeNull()
+      expect(response.headers.get('x-tss-raw')).toBeNull()
+      expect(response.headers.get('x-steps')).toBe('serialized')
+      expect(response.headers.getSetCookie()).toEqual([
+        'serialization=visited; Path=/',
+      ])
+    },
+  )
+
   it('does not duplicate helper cookies across repeated reconciliation', async () => {
     startMocks.serverFnResult = new Response('ok')
     startMocks.requestMiddleware = [
