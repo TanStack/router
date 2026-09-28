@@ -48,7 +48,7 @@ import {
   setResponseStatus,
 } from '../src/internal-request-response'
 import {
-  getStaticHandlerInlineCssDefault,
+  getStaticInlineCss,
   resolveInlineCssForRequest,
 } from '../src/inlineCss'
 import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
@@ -4485,10 +4485,12 @@ describe('createStartHandler inlineCss option', () => {
   })
 
   it('returns a static inline CSS default only for non-callback options', () => {
-    expect(getStaticHandlerInlineCssDefault(undefined)).toBe(true)
-    expect(getStaticHandlerInlineCssDefault(true)).toBe(true)
-    expect(getStaticHandlerInlineCssDefault(false)).toBe(false)
-    expect(getStaticHandlerInlineCssDefault(() => true)).toBe(undefined)
+    expect(getStaticInlineCss(undefined, undefined)).toBe(true)
+    expect(getStaticInlineCss(undefined, true)).toBe(true)
+    expect(getStaticInlineCss(undefined, false)).toBe(false)
+    expect(getStaticInlineCss(undefined, () => true)).toBe(undefined)
+    expect(getStaticInlineCss(false, () => true)).toBe(false)
+    expect(getStaticInlineCss(true, false)).toBe(true)
   })
 })
 

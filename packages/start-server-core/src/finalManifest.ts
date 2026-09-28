@@ -3,10 +3,7 @@ import {
   resolveTransformAssetsConfig,
   transformManifestAssets,
 } from './transformAssetUrls'
-import {
-  getStaticHandlerInlineCssDefault,
-  resolveInlineCssForRequest,
-} from './inlineCss'
+import { getStaticInlineCss, resolveInlineCssForRequest } from './inlineCss'
 import type { ServerManifest } from '@tanstack/router-core'
 import type { HandlerInlineCssOption } from './inlineCss'
 import type {
@@ -150,9 +147,7 @@ export function createFinalManifestResolver(
     opts.transformAssets,
     { cacheCreateTransform: opts.cacheCreateTransform },
   )
-  const handlerDefaultInlineCss = getStaticHandlerInlineCssDefault(
-    opts.inlineCss,
-  )
+  const handlerDefaultInlineCss = getStaticInlineCss(undefined, opts.inlineCss)
 
   const getRequestManifestOptions = async (
     requestOpts: FinalManifestRequestOptions,
@@ -199,13 +194,12 @@ export function createFinalManifestResolver(
       }),
     resolveCached: (requestOpts) => {
       // With a cached transform, the entry for the request's inline-CSS choice
-      // is the manifest resolveRequest would produce. This repeats the rules of
-      // resolveInlineCssForRequest and resolveFinalManifest for the common case
-      // where neither needs a per-request callback.
-      const inlineCss =
-        requestOpts.requestInlineCss !== undefined
-          ? requestOpts.requestInlineCss
-          : handlerDefaultInlineCss
+      // is the manifest resolveRequest would produce, unless a handler
+      // callback still has to make that choice.
+      const inlineCss = getStaticInlineCss(
+        requestOpts.requestInlineCss,
+        opts.inlineCss,
+      )
       if (transformResolver.cache && inlineCss !== undefined) {
         const cached = finalManifestCache.get(
           getFinalManifestCacheKey(inlineCss),
@@ -225,45 +219,41 @@ function getFinalManifestCacheKey(inlineCss: boolean): FinalManifestCacheKey {
 }
 
 function cacheFinalManifestPromise(
-  cachedFinalManifestPromises: FinalManifestCache,
+  finalManifestCache: FinalManifestCache,
   cacheKey: FinalManifestCacheKey,
   promise: Promise<ServerManifest>,
 ): Promise<ServerManifest> {
-  const cachedFinalManifestPromise = promise.then(
+  const cachedPromise = promise.then(
     (manifest) => {
-      if (
-        cachedFinalManifestPromises.get(cacheKey) === cachedFinalManifestPromise
-      ) {
-        cachedFinalManifestPromises.set(cacheKey, manifest)
+      if (finalManifestCache.get(cacheKey) === cachedPromise) {
+        finalManifestCache.set(cacheKey, manifest)
       }
       return manifest
     },
     (error) => {
-      if (
-        cachedFinalManifestPromises.get(cacheKey) === cachedFinalManifestPromise
-      ) {
-        cachedFinalManifestPromises.delete(cacheKey)
+      if (finalManifestCache.get(cacheKey) === cachedPromise) {
+        finalManifestCache.delete(cacheKey)
       }
       throw error
     },
   )
 
-  cachedFinalManifestPromises.set(cacheKey, cachedFinalManifestPromise)
-  return cachedFinalManifestPromise
+  finalManifestCache.set(cacheKey, cachedPromise)
+  return cachedPromise
 }
 
-function getOrCreateCachedFinalManifestPromise(
-  cachedFinalManifestPromises: FinalManifestCache,
+function getOrCreateCachedFinalManifest(
+  finalManifestCache: FinalManifestCache,
   cacheKey: FinalManifestCacheKey,
   computeFinalManifest: () => Promise<ServerManifest>,
 ): ServerManifest | Promise<ServerManifest> {
-  const cachedFinalManifestPromise = cachedFinalManifestPromises.get(cacheKey)
-  if (cachedFinalManifestPromise) {
-    return cachedFinalManifestPromise
+  const cached = finalManifestCache.get(cacheKey)
+  if (cached) {
+    return cached
   }
 
   return cacheFinalManifestPromise(
-    cachedFinalManifestPromises,
+    finalManifestCache,
     cacheKey,
     Promise.resolve().then(computeFinalManifest),
   )
@@ -297,7 +287,7 @@ async function resolveFinalManifest(opts: {
   }
 
   if (opts.finalManifestCache && (!opts.transformFn || opts.cache)) {
-    return getOrCreateCachedFinalManifestPromise(
+    return getOrCreateCachedFinalManifest(
       opts.finalManifestCache,
       getFinalManifestCacheKey(opts.inlineCss),
       computeFinalManifest,
