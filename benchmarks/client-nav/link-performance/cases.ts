@@ -1,5 +1,17 @@
 export const LINK_CASES = [
   {
+    id: 'owner-outgoing-fixed',
+    label: 'Outgoing owner with fixed destinations',
+    description:
+      '1,000 route-owned Links depart and remount across sibling navigation.',
+  },
+  {
+    id: 'owner-outgoing-relative',
+    label: 'Outgoing owner with relative destinations',
+    description:
+      '1,000 outgoing Links derive live relative hrefs and inherited search.',
+  },
+  {
     id: 'shared-params',
     label: 'Shared string params',
     description: '200 persistent Links reuse 40 string parameter values.',
@@ -73,6 +85,13 @@ export const LINK_CASES = [
 export type LinkCaseId = (typeof LINK_CASES)[number]['id']
 
 export const LINK_COUNT = 200
+export const OWNER_LINK_COUNT = 1_000
+
+export function isOutgoingCase(caseId: LinkCaseId) {
+  return (
+    caseId === 'owner-outgoing-fixed' || caseId === 'owner-outgoing-relative'
+  )
+}
 export const NAVIGATION_STATES = [1, 2, 3, 0] as const
 export const LOCALES = ['en', 'fr', 'de', 'es'] as const
 
@@ -101,6 +120,8 @@ export function sourceSearch(
   stateIndex: number,
 ): Partial<LinkSearch> {
   switch (caseId) {
+    case 'owner-outgoing-fixed':
+    case 'owner-outgoing-relative':
     case 'location-updaters':
     case 'relative':
     case 'middleware':
@@ -156,6 +177,9 @@ function url(pathname: string, search: Partial<LinkSearch> = {}, hash = '') {
 
 function sourcePath(caseId: LinkCaseId, stateIndex: number) {
   switch (caseId) {
+    case 'owner-outgoing-fixed':
+    case 'owner-outgoing-relative':
+      return stateIndex % 2 === 0 ? '/owner-table' : '/owner-detail'
     case 'relative':
       return `/teams/team-${stateIndex}/item-${stateIndex}`
     case 'numeric-params':
@@ -194,6 +218,15 @@ export function getSourceUrl(caseId: LinkCaseId, stateIndex: number): string {
 function expectedHref(caseId: LinkCaseId, stateIndex: number, index: number) {
   const itemId = `item-${index % 40}`
   switch (caseId) {
+    case 'owner-outgoing-fixed':
+      return url(index % 2 === 0 ? '/owner-table' : '/owner-detail', {
+        page: index % 5,
+      })
+    case 'owner-outgoing-relative':
+      return url(sourcePath(caseId, stateIndex), {
+        ...sourceSearch(caseId, stateIndex),
+        page: stateIndex + 1 + (index % 5),
+      })
     case 'shared-params':
       return `/items/${itemId}`
     case 'unique-params':
@@ -296,6 +329,7 @@ export function assertScenario(
   caseId: LinkCaseId,
   stateIndex: number,
   root: ParentNode,
+  outgoing = false,
 ): void {
   const source = root.querySelector('[data-testid="source-path"]')
   if (source?.textContent !== sourcePath(caseId, stateIndex)) {
@@ -304,9 +338,14 @@ export function assertScenario(
     )
   }
   const links = root.querySelectorAll<HTMLAnchorElement>('a[data-perf-link]')
-  if (links.length !== LINK_COUNT) {
+  const expectedCount = isOutgoingCase(caseId)
+    ? stateIndex % 2 === 0 || outgoing
+      ? OWNER_LINK_COUNT
+      : 0
+    : LINK_COUNT
+  if (links.length !== expectedCount) {
     throw new Error(
-      `${caseId}: expected ${LINK_COUNT} Links, got ${links.length}`,
+      `${caseId}: expected ${expectedCount} Links, got ${links.length}`,
     )
   }
   for (const [index, link] of links.entries()) {
@@ -320,7 +359,9 @@ export function assertScenario(
       label,
     )
     let active: boolean | undefined
-    if (caseId === 'shared-params') {
+    if (isOutgoingCase(caseId) && !outgoing) {
+      active = caseId === 'owner-outgoing-relative' || index % 2 === 0
+    } else if (caseId === 'shared-params') {
       active = index % 40 === stateIndex
     } else if (caseId === 'unique-params') {
       active = index === stateIndex

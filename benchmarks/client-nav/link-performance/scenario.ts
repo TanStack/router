@@ -1,7 +1,12 @@
 import { JSDOM } from 'jsdom'
 import { createScenarioSetup } from '../scenarios/harness'
 import { ticksPerIteration } from '../scenarios/links/shared'
-import { NAVIGATION_STATES, assertScenario, getSourceUrl } from './cases'
+import {
+  NAVIGATION_STATES,
+  assertScenario,
+  getSourceUrl,
+  isOutgoingCase,
+} from './cases'
 import type { LinkCaseId } from './cases'
 import type * as ClientApp from './src/client'
 import type * as SsrApp from './src/ssr'
@@ -48,9 +53,10 @@ export function createClientScenario(
   return {
     async setup() {
       await test.before()
-      if (!container) {
+      if (!container || !mounted) {
         throw new Error('Link benchmark container was not created')
       }
+      await mounted.verifyOutgoing()
       anchors = [...container.querySelectorAll('a[data-perf-link]')]
     },
     async batch() {
@@ -69,8 +75,17 @@ export function createClientScenario(
         throw new Error('Link benchmark history must remain bounded')
       }
       const current = container.querySelectorAll('a[data-perf-link]')
-      if (anchors.some((anchor, index) => current[index] !== anchor)) {
+      if (
+        !isOutgoingCase(id) &&
+        anchors.some((anchor, index) => current[index] !== anchor)
+      ) {
         throw new Error('Measured Links must stay mounted across navigations')
+      }
+      if (
+        isOutgoingCase(id) &&
+        anchors.some((anchor, index) => current[index] === anchor)
+      ) {
+        throw new Error('Outgoing Links must remount on a route revisit')
       }
     },
     teardown: test.after,

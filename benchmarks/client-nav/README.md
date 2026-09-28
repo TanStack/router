@@ -233,11 +233,23 @@ those separate workloads.
   hrefs and active state during its untimed warm-up lap. Control navigations
   replace the history entry, keeping history size constant. Post-measurement
   assertions also check that the measured anchors stayed mounted.
+- **Outgoing owners:** `owner-outgoing-fixed` and `owner-outgoing-relative`
+  use 1,000 Links inside a table route, alternating with a sibling detail route.
+  Eight navigations include four departures and four revisits, covering owner
+  store reuse and Link remount cost. Fixed destinations alternate between the
+  table and detail; relative destinations inherit live search through an updater.
+  An untimed setup check holds the detail loader and verifies live hrefs and
+  original anchor identity before releasing it, then checks departure and revisit.
+  Timed detail loaders yield a resolved promise; no counters or assertions run in
+  the timed loop. These cases include mounting/unmounting and should be compared
+  with their own baseline, not the persistent cases' absolute timings.
 - **SSR:** four fresh-router requests per timed batch, each rendering 200
   measured Links through `RouterProvider` and `renderToString`. Router creation,
   `router.load()`, rendering, and history cleanup are included. This isolates
   Router SSR Link work, not Start HTTP handling, dehydration, or streaming.
-  HTML assertions run outside the timed batch.
+  HTML assertions run outside the timed batch. Outgoing-owner cases render 1,000
+  Links on the two table requests and zero on the two detail requests; server
+  timing covers those route shapes, not outgoing client selection.
 - Both use the same code-based workload definitions and production JSX/library
   builds. The regular Vitest entry points use at least 100 warm-up iterations,
   one second of warm-up time, and five-second measurement windows. The client
