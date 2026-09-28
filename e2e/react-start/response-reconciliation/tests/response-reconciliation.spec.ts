@@ -297,7 +297,7 @@ test.describe('server routes', () => {
     })
   })
 
-  test('errors caused by an upstream response do not copy its framing or cookies', async ({
+  test('errors caused by an upstream response adopt only its status', async ({
     request,
   }) => {
     const response = await request.get(
@@ -306,7 +306,7 @@ test.describe('server routes', () => {
     const body = await response.body()
 
     expect(response.status()).toBe(502)
-    expect(header(response, 'x-upstream')).toBe('yes')
+    expect(header(response, 'x-upstream')).toBeNull()
     expect(header(response, 'content-type')).toContain('application/json')
     expect(header(response, 'content-encoding')).toBeNull()
     const contentLength = header(response, 'content-length')
@@ -687,7 +687,7 @@ test.describe('server functions', () => {
       await expectServerFunctionResult(page, 'throwAfterStatus', /Unauthorized/)
     })
 
-    test('server function request middleware errors caused by an upstream response do not copy its framing or cookies', async ({
+    test('server function request middleware errors caused by an upstream response adopt only its status', async ({
       page,
       context,
     }) => {
@@ -698,7 +698,7 @@ test.describe('server functions', () => {
       )
 
       expect(response.status()).toBe(502)
-      expect(header(response, 'x-upstream')).toBe('yes')
+      expect(header(response, 'x-upstream')).toBeNull()
       expect(header(response, 'content-type')).toContain('application/json')
       expect(header(response, 'content-encoding')).toBeNull()
       expect(await setCookieValues(response)).toEqual([])

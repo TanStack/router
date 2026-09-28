@@ -840,7 +840,7 @@ describe('createStartHandler response reconciliation', () => {
     }
   })
 
-  it('does not copy an upstream Response cause body framing, cookies, or media type', async () => {
+  it('adopts only the status of an upstream Response cause', async () => {
     const handler = createResponseHandler(() => {
       throw new Error('upstream failed', {
         cause: new Response('<p>upstream</p>', {
@@ -862,12 +862,39 @@ describe('createStartHandler response reconciliation', () => {
     )
 
     expect(response.status).toBe(502)
-    expect(response.headers.get('x-upstream')).toBe('yes')
+    expect(response.headers.get('x-upstream')).toBeNull()
     expect(response.headers.get('content-type')).toBe('application/json')
     expect(response.headers.get('content-encoding')).toBeNull()
     expect(response.headers.get('content-length')).toBeNull()
     expect(response.headers.getSetCookie()).toEqual([])
     await expect(response.json()).resolves.toMatchObject({ status: 502 })
+  })
+
+  it('adopts no headers from a Response cause of another fetch implementation', async () => {
+    // npm undici, node-fetch, or another realm: not an instance of the global
+    // Response, but tagged as one.
+    class ForeignResponse {
+      readonly [Symbol.toStringTag] = 'Response'
+      readonly status = 502
+      readonly headers = new Headers({
+        'content-type': 'text/html',
+        'set-cookie': 'upstream=1; Path=/',
+        'www-authenticate': 'Basic realm="upstream"',
+      })
+    }
+    const handler = createResponseHandler(() => {
+      throw new Error('upstream failed', { cause: new ForeignResponse() })
+    })
+
+    const response = await createServerEntry({ fetch: handler }).fetch(
+      new Request('http://localhost/'),
+      {},
+    )
+
+    expect(response.status).toBe(502)
+    expect(response.headers.get('content-type')).toBe('application/json')
+    expect(response.headers.get('www-authenticate')).toBeNull()
+    expect(response.headers.getSetCookie()).toEqual([])
   })
 
   it('strips body framing headers from explicit error headers', async () => {
@@ -897,12 +924,13 @@ describe('createStartHandler response reconciliation', () => {
       'connection',
       'content-encoding',
       'content-length',
-      'content-range',
       'keep-alive',
       'transfer-encoding',
     ]) {
       expect(response.headers.get(name)).toBeNull()
     }
+    // Headers an application writes for its own error status still apply.
+    expect(response.headers.get('content-range')).toBe('bytes 0-0/1')
     expect(response.headers.get('www-authenticate')).toBe('Bearer')
     expect(response.headers.getSetCookie()).toEqual(['explicit=1; Path=/'])
     await expect(response.json()).resolves.toMatchObject({ status: 401 })
