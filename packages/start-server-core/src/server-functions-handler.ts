@@ -19,10 +19,10 @@ import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import {
   createFinalizedResponse,
   getErrorHeaders,
-  getErrorResponseStatus,
   getParsedRequestUrl,
   getSerializedResponseState,
   protectResponseHeaders,
+  resolveErrorResponseStatus,
   setProtectedResponseHeaders,
 } from './internal-request-response'
 import { getServerFnById } from './getServerFnById'
@@ -123,7 +123,7 @@ export async function createServerFnErrorResponse(
   // Header getters and reporting hooks can write helpers before the status
   // is resolved. Error statuses are always body-bearing, as the client needs.
   const headers = getErrorHeaders(error) ?? new Headers()
-  const { status, statusText } = getErrorResponseStatus(error)
+  const { status, statusText } = resolveErrorResponseStatus(error)
   headers.set('Content-Type', 'application/json')
   headers.set(X_TSS_SERIALIZED, 'true')
   headers.delete(X_TSS_RAW_RESPONSE)

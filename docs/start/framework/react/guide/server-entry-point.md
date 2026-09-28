@@ -100,7 +100,7 @@ export default createServerEntry({
 
 The built-in entry uses `createServerEntry` to catch errors that escape the Start handler and call `handleStartError(error)` inside the active request context. This works without a custom `src/server.ts`. Response helpers such as `setResponseStatus`, `setResponseHeader`, and `setCookie` are applied to the error response.
 
-For an uncaught error, Start returns a generic JSON error body with status `500` unless a response helper or HTTP-style error property supplies an error status. A thrown `Response` keeps its body and response metadata, with response helpers applied. Bodies are removed for `HEAD` requests.
+For an uncaught error, Start returns a generic JSON error body with status `500` unless a response helper or HTTP-style error property supplies an error status. A thrown `Response` keeps its body and response metadata, with response helpers applied, and loses its body for `HEAD` requests and for statuses `204`, `205`, and `304`, including one selected by a helper. The generic error body Start generates always uses an error status, so only `HEAD` removes it.
 
 For example, a request to this server route returns `401` with a `WWW-Authenticate` header:
 

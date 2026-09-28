@@ -191,7 +191,7 @@ function getStatusCodeProperty(
   return undefined
 }
 
-export function getErrorStatus(error: unknown): number | undefined {
+function getErrorStatus(error: unknown): number | undefined {
   const cause = getObjectProperty(error, 'cause')
   return sanitizeStatusCode(
     getStatusCodeProperty(error, 'status') ??
@@ -201,7 +201,7 @@ export function getErrorStatus(error: unknown): number | undefined {
   )
 }
 
-export function getErrorStatusText(error: unknown): string | undefined {
+function getErrorStatusText(error: unknown): string | undefined {
   const cause = getObjectProperty(error, 'cause')
   const statusText =
     getObjectProperty(error, 'statusText') ??
@@ -525,7 +525,7 @@ function hasHeaderState(state: ResponseState): boolean {
   )
 }
 
-export function canHaveBody(method: string, status: number): boolean {
+function canHaveBody(method: string, status: number): boolean {
   return (
     method !== 'HEAD' &&
     status !== 101 &&
@@ -741,8 +741,12 @@ function resolveErrorStatus(
   return { status, statusText }
 }
 
-/** Internal: status and status text for a serialized server-function error. */
-export function getErrorResponseStatus(error: unknown): {
+/**
+ * Internal: status and status text for a serialized server-function error.
+ * Logs the error and discards a non-error helper status, like any error
+ * response Start builds.
+ */
+export function resolveErrorResponseStatus(error: unknown): {
   status: number
   statusText: string
 } {
