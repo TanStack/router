@@ -92,8 +92,53 @@ const nonemptyFn = createServerFn()
   .middleware([second])
   .handler(() => 'nonempty')
 
+const accessors = createMiddleware({ type: 'function' })
+  .client(async ({ next }) => {
+    const source = Object.freeze({ value: 'client' })
+    const reads: Array<string> = []
+    const result = await next({
+      get sendContext() {
+        reads.push('sendContext')
+        return source
+      },
+      get headers() {
+        reads.push('headers')
+        return { 'x-context-accessor': 'preserved' }
+      },
+    })
+    if (reads.join(',') !== 'sendContext,headers,sendContext,headers') {
+      throw new Error(`Client middleware accessor order changed: ${reads}`)
+    }
+    verifyCopy(source, result.sendContext, { value: 'client' })
+    if (new Headers(result.headers).get('x-context-accessor') !== 'preserved') {
+      throw new Error('Client middleware header was not preserved')
+    }
+    return result
+  })
+  .server(async ({ next }) => {
+    const source = Object.freeze({ value: 'server' })
+    let reads = 0
+    const result = await next({
+      get sendContext() {
+        reads++
+        return source
+      },
+    })
+    if (reads !== 2) {
+      throw new Error(`Server middleware accessor read ${reads} times`)
+    }
+    verifyCopy(source, result.sendContext, { value: 'server' })
+    return result
+  })
+
+const accessorFn = createServerFn()
+  .middleware([accessors])
+  .handler(() => 'accessors')
+
 async function verifyAll() {
-  return (await Promise.all([absentFn(), emptyFn(), nonemptyFn()])).join(',')
+  return (
+    await Promise.all([absentFn(), emptyFn(), nonemptyFn(), accessorFn()])
+  ).join(',')
 }
 
 export const Route = createFileRoute('/send-context-contract')({

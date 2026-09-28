@@ -6,10 +6,10 @@ test('preserves absent and explicit sendContext through SSR and client calls', a
 }) => {
   await page.goto('/send-context-contract')
   await expect(page.getByTestId('send-context-loader')).toHaveText(
-    'absent,empty,nonempty',
+    'absent,empty,nonempty,accessors',
   )
   await page.getByTestId('invoke-send-context-contract').click()
   await expect(page.getByTestId('send-context-client')).toHaveText(
-    'absent,empty,nonempty',
+    'absent,empty,nonempty,accessors',
   )
 })
