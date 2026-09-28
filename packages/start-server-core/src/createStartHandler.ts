@@ -266,18 +266,14 @@ export function transferResponseBodyOwnership<TResponse extends Response>(
   return response
 }
 
-function hasResponseBody(value: unknown): value is ResponseWithBody {
-  return value instanceof Response && value.body !== null
-}
-
 function inheritsResponseOwnership(
   ownership: MiddlewareResponseOwnership,
-  candidate: unknown,
-): candidate is ResponseWithBody {
+  candidate: Response,
+  body: ResponseBody,
+): boolean {
   return (
-    hasResponseBody(candidate) &&
-    (candidate.body === ownership.response.body ||
-      responseBodySources.get(candidate) === ownership.response)
+    body === ownership.response.body ||
+    responseBodySources.get(candidate) === ownership.response
   )
 }
 
@@ -346,37 +342,36 @@ async function executeMiddleware(
     streamResponse?: StreamSsrResponse,
   ) => {
     const current = responseOwnership
-    if (
-      streamResponse &&
-      !exposed?.body &&
-      streamResponse !== current?.streamResponse
-    ) {
+    // Read the body once: the getter can allocate a stream for a response
+    // that has not exposed one yet.
+    const body = exposed instanceof Response ? exposed.body : null
+    // `exposed` is a Response with this body whenever `body` is set.
+    const response = exposed as ResponseWithBody
+    if (streamResponse && !body && streamResponse !== current?.streamResponse) {
       streamResponse.dispose('Response body dropped by Start reconciliation')
     }
     if (current && current.response === exposed) {
       current.streamResponse ??= streamResponse
-    } else if (current && inheritsResponseOwnership(current, exposed)) {
+    } else if (
+      current &&
+      body &&
+      inheritsResponseOwnership(current, response, body)
+    ) {
       // A wrapper around the same body stream carries the same encoded bytes,
       // so it keeps the transport requirements that decode them.
-      if (exposed.body === current.response.body) {
-        transferResponseProtocol(current.response, exposed)
+      if (body === current.response.body) {
+        transferResponseProtocol(current.response, response)
       }
-      current.response = exposed
+      current.response = response
       current.streamResponse ??= streamResponse
     } else {
       if (current) {
         responseOwnership = undefined
         disposeResponseOwnership(current, 'middleware response replaced')
       }
-      if (hasResponseBody(exposed)) {
-        responseOwnership = {
-          response: exposed,
-          sourceBody: exposed.body,
-          streamResponse,
-        }
-      } else {
-        responseOwnership = undefined
-      }
+      responseOwnership = body
+        ? { response, sourceBody: body, streamResponse }
+        : undefined
     }
     ctx.response = exposed
   }
