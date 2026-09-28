@@ -1385,6 +1385,40 @@ describe('public preload lane contracts', () => {
     })
   })
 
+  test('limits inferred same-origin absolute redirects during preload', async () => {
+    const origin = 'https://example.com'
+    const beforeLoad = vi.fn(({ params }) => {
+      const hop = Number(params.hop)
+      if (hop < 21) {
+        throw redirect({ href: `${origin}/hop/${hop + 1}` })
+      }
+    })
+    const rootRoute = new BaseRootRoute({})
+    const hopRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hop/$hop',
+      beforeLoad,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([hopRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      origin,
+      isServer: false,
+    })
+
+    const matches = await router.preloadRoute({
+      to: '/hop/$hop',
+      params: { hop: '0' },
+    } as any)
+
+    expect(beforeLoad).toHaveBeenCalledTimes(21)
+    expect(matches?.find((match) => match.status !== 'success')).toMatchObject({
+      routeId: rootRoute.id,
+      status: 'error',
+      error: expect.objectContaining({ message: 'Too many redirects' }),
+    })
+  })
+
   test('forwards a document redirect at the redirect limit', async () => {
     const beforeLoad = vi.fn(({ params }) => {
       const hop = Number(params.hop)

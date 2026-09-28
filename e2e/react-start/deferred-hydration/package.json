@@ -42,6 +42,12 @@
     "targets": {
       "test:e2e": {
         "parallelism": false
+      },
+      "build": {
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-vite-ssr"
+        ]
       }
     },
     "metadata": {

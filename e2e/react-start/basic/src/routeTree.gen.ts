@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as AsyncScriptsRouteImport } from './routes/async-scripts'
+import { Route as AuthDocsRouteImport } from './routes/auth-docs'
 import { Route as ClientOnlyRouteImport } from './routes/client-only'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
@@ -29,6 +30,7 @@ import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexpor
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
+import { Route as AuthDocsPrivateRouteImport } from './routes/auth-docs.private'
 import { Route as Issue6221DashboardRouteImport } from './routes/issue-6221.dashboard'
 import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-cookie-redirect/index'
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
@@ -94,6 +96,11 @@ const LayoutRoute = LayoutRouteImport.update({
 const AsyncScriptsRoute = AsyncScriptsRouteImport.update({
   id: '/async-scripts',
   path: '/async-scripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDocsRoute = AuthDocsRouteImport.update({
+  id: '/auth-docs',
+  path: '/auth-docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientOnlyRoute = ClientOnlyRouteImport.update({
@@ -180,6 +187,11 @@ const ApiUsersRoute = ApiUsersRouteImport.update({
   id: '/api/users',
   path: '/api/users',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDocsPrivateRoute = AuthDocsPrivateRouteImport.update({
+  id: '/private',
+  path: '/private',
+  getParentRoute: () => AuthDocsRoute,
 } as any)
 const Issue6221DashboardRoute = Issue6221DashboardRouteImport.update({
   id: '/issue-6221/dashboard',
@@ -464,6 +476,7 @@ export interface FileRoutesByFullPath {
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/async-scripts': typeof AsyncScriptsRoute
+  '/auth-docs': typeof AuthDocsRouteWithChildren
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
@@ -480,6 +493,7 @@ export interface FileRoutesByFullPath {
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/auth-docs/private': typeof AuthDocsPrivateRoute
   '/issue-6221/dashboard': typeof Issue6221DashboardRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
@@ -534,6 +548,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/async-scripts': typeof AsyncScriptsRoute
+  '/auth-docs': typeof AuthDocsRouteWithChildren
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
@@ -545,6 +560,7 @@ export interface FileRoutesByTo {
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/auth-docs/private': typeof AuthDocsPrivateRoute
   '/issue-6221/dashboard': typeof Issue6221DashboardRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
@@ -601,6 +617,7 @@ export interface FileRoutesById {
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/async-scripts': typeof AsyncScriptsRoute
+  '/auth-docs': typeof AuthDocsRouteWithChildren
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
@@ -618,6 +635,7 @@ export interface FileRoutesById {
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/auth-docs/private': typeof AuthDocsPrivateRoute
   '/issue-6221/dashboard': typeof Issue6221DashboardRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
@@ -676,6 +694,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/specialChars'
     | '/async-scripts'
+    | '/auth-docs'
     | '/client-only'
     | '/deferred'
     | '/inline-scripts'
@@ -692,6 +711,7 @@ export interface FileRouteTypes {
     | '/not-found/parent-boundary'
     | '/specialChars/malformed'
     | '/api/users'
+    | '/auth-docs/private'
     | '/issue-6221/dashboard'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
@@ -746,6 +766,7 @@ export interface FileRouteTypes {
     | '/'
     | '/specialChars'
     | '/async-scripts'
+    | '/auth-docs'
     | '/client-only'
     | '/deferred'
     | '/inline-scripts'
@@ -757,6 +778,7 @@ export interface FileRouteTypes {
     | '/type-only-reexport'
     | '/specialChars/malformed'
     | '/api/users'
+    | '/auth-docs/private'
     | '/issue-6221/dashboard'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
@@ -812,6 +834,7 @@ export interface FileRouteTypes {
     | '/specialChars'
     | '/_layout'
     | '/async-scripts'
+    | '/auth-docs'
     | '/client-only'
     | '/deferred'
     | '/inline-scripts'
@@ -829,6 +852,7 @@ export interface FileRouteTypes {
     | '/specialChars/malformed'
     | '/_layout/_layout-2'
     | '/api/users'
+    | '/auth-docs/private'
     | '/issue-6221/dashboard'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
@@ -887,6 +911,7 @@ export interface RootRouteChildren {
   SpecialCharsRouteRoute: typeof SpecialCharsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AsyncScriptsRoute: typeof AsyncScriptsRoute
+  AuthDocsRoute: typeof AuthDocsRouteWithChildren
   ClientOnlyRoute: typeof ClientOnlyRoute
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
@@ -931,6 +956,13 @@ declare module '@tanstack/react-router' {
       path: '/async-scripts'
       fullPath: '/async-scripts'
       preLoaderRoute: typeof AsyncScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth-docs': {
+      id: '/auth-docs'
+      path: '/auth-docs'
+      fullPath: '/auth-docs'
+      preLoaderRoute: typeof AuthDocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/client-only': {
@@ -1051,6 +1083,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/users'
       preLoaderRoute: typeof ApiUsersRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/auth-docs/private': {
+      id: '/auth-docs/private'
+      path: '/private'
+      fullPath: '/auth-docs/private'
+      preLoaderRoute: typeof AuthDocsPrivateRouteImport
+      parentRoute: typeof AuthDocsRoute
     }
     '/issue-6221/dashboard': {
       id: '/issue-6221/dashboard'
@@ -1570,6 +1609,18 @@ const LayoutRouteChildren: LayoutRouteChildren = {
 const LayoutRouteWithChildren =
   LayoutRoute._addFileChildren(LayoutRouteChildren)
 
+interface AuthDocsRouteChildren {
+  AuthDocsPrivateRoute: typeof AuthDocsPrivateRoute
+}
+
+const AuthDocsRouteChildren: AuthDocsRouteChildren = {
+  AuthDocsPrivateRoute: AuthDocsPrivateRoute,
+}
+
+const AuthDocsRouteWithChildren = AuthDocsRoute._addFileChildren(
+  AuthDocsRouteChildren,
+)
+
 interface PostsRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute
   PostsIndexRoute: typeof PostsIndexRoute
@@ -1675,6 +1726,7 @@ const rootRouteChildren: RootRouteChildren = {
   SpecialCharsRouteRoute: SpecialCharsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AsyncScriptsRoute: AsyncScriptsRoute,
+  AuthDocsRoute: AuthDocsRouteWithChildren,
   ClientOnlyRoute: ClientOnlyRoute,
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,

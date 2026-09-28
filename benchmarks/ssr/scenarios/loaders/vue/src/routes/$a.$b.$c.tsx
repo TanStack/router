@@ -1,5 +1,23 @@
+import { defineComponent } from 'vue'
 import { createFileRoute } from '@tanstack/vue-router'
 import { makeLevelData } from '../../../shared-data'
+
+const LevelCComponent = defineComponent({
+  setup() {
+    const data = Route.useLoaderData()
+
+    return () => (
+      <section>
+        <h2>{data.value.meta.label}</h2>
+        <ul>
+          {data.value.items.slice(0, 10).map((item) => (
+            <li key={item.id}>{item.name}</li>
+          ))}
+        </ul>
+      </section>
+    )
+  },
+})
 
 export const Route = createFileRoute('/$a/$b/$c')({
   beforeLoad: ({ params, context }) => {
@@ -15,18 +33,3 @@ export const Route = createFileRoute('/$a/$b/$c')({
   },
   component: LevelCComponent,
 })
-
-function LevelCComponent() {
-  const data = Route.useLoaderData()
-
-  return (
-    <section>
-      <h2>{data.value.meta.label}</h2>
-      <ul>
-        {data.value.items.slice(0, 10).map((item) => (
-          <li key={item.id}>{item.name}</li>
-        ))}
-      </ul>
-    </section>
-  )
-}

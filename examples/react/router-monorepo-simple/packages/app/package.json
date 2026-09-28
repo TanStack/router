@@ -15,7 +15,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@tanstack/react-router-devtools": "^1.167.1",
+    "@tanstack/react-router-devtools": "^1.167.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
@@ -31,6 +31,12 @@
       "dev": {
         "dependsOn": [
           "^build"
+        ]
+      },
+      "build": {
+        "inputs": [
+          "...",
+          "{workspaceRoot}/examples/react/router-monorepo-simple/.gitignore"
         ]
       }
     }

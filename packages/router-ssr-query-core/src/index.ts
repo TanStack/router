@@ -225,35 +225,39 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   }
   const originalHydrate = router.options.hydrate
   router.options.hydrate = async (dehydrated: DehydratedRouterQueryState) => {
-    await originalHydrate?.(dehydrated)
-
     const query = dehydrated.query
-    if (query.initial) {
-      hydrateQueryClient(
-        queryClient,
-        { queries: query.initial },
-        hydrateOptions,
-      )
+    try {
+      await originalHydrate?.(dehydrated)
+
+      if (query.initial) {
+        hydrateQueryClient(
+          queryClient,
+          { queries: query.initial },
+          hydrateOptions,
+        )
+      }
+    } catch (error) {
+      void query.stream.cancel(error).catch(() => {})
+      throw error
     }
 
     const reader = query.stream.getReader()
-    reader
-      .read()
-      .then(function handle({
-        done,
-        value,
-      }: ReadableStreamReadResult<
-        Array<DehydratedQuery>
-      >): void | Promise<void> {
-        if (done) {
-          return
+    void (async () => {
+      try {
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) {
+            return
+          }
+          hydrateQueryClient(queryClient, { queries: value }, hydrateOptions)
         }
-        hydrateQueryClient(queryClient, { queries: value }, hydrateOptions)
-        return reader.read().then(handle)
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error('Error reading query stream:', error)
-      })
+        void reader.cancel(error).catch(() => {})
+      } finally {
+        reader.releaseLock()
+      }
+    })()
   }
   if (handleRedirects) {
     const originalMutationCacheConfig = queryClient.getMutationCache().config

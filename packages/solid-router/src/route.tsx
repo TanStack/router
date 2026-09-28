@@ -49,6 +49,10 @@ import type { UseRouteContextRoute } from './useRouteContext'
 import type { LinkComponentRoute } from './link'
 
 declare module '@tanstack/router-core' {
+  export interface ErrorBoundaryTypes {
+    error: Error
+  }
+
   export interface UpdatableRouteOptionsExtensions {
     component?: RouteComponent
     errorComponent?: false | null | undefined | ErrorRouteComponent

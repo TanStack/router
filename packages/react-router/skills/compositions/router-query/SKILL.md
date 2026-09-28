@@ -313,7 +313,7 @@ function PostsErrorComponent({
   error,
   reset,
 }: {
-  error: Error
+  error: unknown
   reset: () => void
 }) {
   const router = useRouter()
@@ -325,7 +325,7 @@ function PostsErrorComponent({
 
   return (
     <div>
-      <p>{error.message}</p>
+      <p>{error instanceof Error ? error.message : String(error)}</p>
       <button onClick={() => router.invalidate()}>Retry</button>
     </div>
   )

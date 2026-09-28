@@ -1,6 +1,8 @@
 import { clsx as cx } from 'clsx'
 import {
+  getRouteSegments,
   hasKeys,
+  hasMissingPathParams,
   interpolatePath,
   rootRouteId,
   trimPath,
@@ -179,19 +181,19 @@ function RouteComp({
     // flatten all params in the router state, into a single object
     const allParams = Object.assign({}, ...matches().map((m) => m.params))
 
-    // interpolatePath is used by router-core to generate the `to`
-    // path for the navigate function in the router
-    const interpolated = interpolatePath({
-      path: route.fullPath,
-      params: allParams,
-      decoder: router().pathParamsDecoder,
-    })
+    const segments = getRouteSegments(route)
+    const pathname = segments
+      ? interpolatePath(
+          route.fullPath,
+          segments,
+          allParams,
+          router().pathParamsDecoder,
+        )
+      : route.fullPath
 
-    // only if `interpolated` is not missing params, return the path since this
-    // means that all the params are present for a successful navigation
-    return !interpolated.isMissingParams
-      ? interpolated.interpolatedPath
-      : undefined
+    return segments && hasMissingPathParams(segments, allParams)
+      ? undefined
+      : pathname
   })
 
   return (

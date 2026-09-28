@@ -61,7 +61,7 @@ export type RouterProps<
     TRouter['history'],
     TDehydrated
   >,
-  'context'
+  'context' | 'pathParamsAllowedCharacters'
 > & {
   router: TRouter
   context?: Partial<

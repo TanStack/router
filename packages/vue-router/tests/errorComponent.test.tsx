@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import { defineComponent, ref } from 'vue'
 import { createControlledPromise } from '@tanstack/router-core'
 
 import {
+  CatchBoundary,
+  ErrorComponent,
   Link,
   Outlet,
   RouterProvider,
@@ -14,7 +17,11 @@ import {
 import type { ErrorComponentProps } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
-  return <div>Error: {props.error.message}</div>
+  return <div>Error: {getErrorMessage(props.error)}</div>
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }
 
 async function asyncToThrowFn() {
@@ -167,6 +174,19 @@ test('global catch boundary resets when a background child generation recovers',
   const refresh = createControlledPromise<number>()
   let loaderCalls = 0
   const rootRoute = createRootRoute({ component: Outlet })
+  const ChildComponent = defineComponent({
+    setup() {
+      const revision = childRoute.useLoaderData()
+      return () => {
+        if (revision.value === 1) {
+          throw new Error('stale child render failed')
+        }
+
+        return <div>Recovered child revision {revision.value}</div>
+      }
+    },
+  })
+
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
@@ -174,13 +194,7 @@ test('global catch boundary resets when a background child generation recovers',
       staleReloadMode: 'background',
       handler: () => (++loaderCalls === 1 ? 1 : refresh),
     },
-    component: () => {
-      const revision = childRoute.useLoaderData()
-      if (revision.value === 1) {
-        throw new Error('stale child render failed')
-      }
-      return <div>Recovered child revision {revision.value}</div>
-    },
+    component: ChildComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([childRoute]),
@@ -213,8 +227,23 @@ test('ancestor route errorComponent resets when a background child generation re
   let loaderCalls = 0
   const rootRoute = createRootRoute({
     component: Outlet,
-    errorComponent: ({ error }) => <div>Ancestor error: {error.message}</div>,
+    errorComponent: ({ error }) => (
+      <div>Ancestor error: {getErrorMessage(error)}</div>
+    ),
   })
+  const ChildComponent = defineComponent({
+    setup() {
+      const revision = childRoute.useLoaderData()
+      return () => {
+        if (revision.value === 1) {
+          throw new Error('stale child render failed')
+        }
+
+        return <div>Recovered child revision {revision.value}</div>
+      }
+    },
+  })
+
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
@@ -222,13 +251,7 @@ test('ancestor route errorComponent resets when a background child generation re
       staleReloadMode: 'background',
       handler: () => (++loaderCalls === 1 ? 1 : refresh),
     },
-    component: () => {
-      const revision = childRoute.useLoaderData()
-      if (revision.value === 1) {
-        throw new Error('stale child render failed')
-      }
-      return <div>Recovered child revision {revision.value}</div>
-    },
+    component: ChildComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([childRoute]),
@@ -263,3 +286,103 @@ test('ancestor route errorComponent resets when a background child generation re
     }
   }
 })
+
+test.each([
+  ['false', false],
+  ['zero', 0],
+  ['negative zero', -0],
+  ['bigint zero', 0n],
+  ['empty string', ''],
+  ['null', null],
+  ['undefined', undefined],
+  ['NaN', NaN],
+] as const)(
+  'CatchBoundary renders falsy thrown value %s',
+  async (_, thrown) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let caught: unknown
+
+    function ThrowFalsy(): never {
+      throw thrown
+    }
+
+    const rootRoute = createRootRoute({
+      component: ThrowFalsy,
+      errorComponent: ({ error }) => (
+        <div>{Object.is(error, thrown) ? 'Caught value' : 'Wrong value'}</div>
+      ),
+      onCatch: (error) => {
+        caught = error
+      },
+    })
+    const router = createRouter({ routeTree: rootRoute })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Caught value')).toBeInTheDocument()
+    expect(screen.queryByText('Wrong value')).not.toBeInTheDocument()
+    expect(Object.is(caught, thrown)).toBe(true)
+  },
+)
+
+test.each([
+  [new Error('Error message'), 'Error message'],
+  [{ message: 'Serialized message' }, 'Serialized message'],
+  [{ message: 0 }, undefined],
+  ['Thrown string', undefined],
+  [false, undefined],
+  [0, undefined],
+  [0n, undefined],
+  ['', undefined],
+  [null, undefined],
+  [undefined, undefined],
+  [NaN, undefined],
+  [Symbol('error'), undefined],
+  [Object.create(null), undefined],
+])('default error details render %s', (error, expected) => {
+  const { container } = render(<ErrorComponent error={error} />)
+
+  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
+  expect(container.querySelector('code')?.textContent).toBe(expected)
+})
+
+test.each([false, 0, -0, 0n, '', null, undefined, NaN, { message: 'object' }])(
+  'CatchBoundary retains the original value and resets after throwing %s',
+  async (thrown) => {
+    const shouldThrow = ref(true)
+    const resetKey = ref(0)
+    const onCatch = vi.fn()
+    const Child = defineComponent(() => () => {
+      if (shouldThrow.value) {
+        throw thrown
+      }
+      return <div>Recovered child</div>
+    })
+    const App = defineComponent(() => () => (
+      <CatchBoundary
+        getResetKey={() => resetKey.value}
+        onCatch={onCatch}
+        errorComponent={({ error, reset }: ErrorComponentProps) => (
+          <button onClick={reset}>
+            {Object.is(error, thrown) ? 'Reset' : 'Wrong value'}
+          </button>
+        )}
+        children={<Child />}
+      />
+    ))
+
+    render(<App />)
+    await screen.findByText('Reset')
+    shouldThrow.value = false
+    await fireEvent.click(screen.getByText('Reset'))
+    expect(await screen.findByText('Recovered child')).toBeInTheDocument()
+
+    shouldThrow.value = true
+    await screen.findByText('Reset')
+    shouldThrow.value = false
+    resetKey.value++
+    expect(await screen.findByText('Recovered child')).toBeInTheDocument()
+    expect(onCatch).toHaveBeenCalledTimes(2)
+    expect(onCatch).toHaveBeenLastCalledWith(thrown)
+  },
+)

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react'
+import React, { useEffect, useLayoutEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Link,
@@ -8,6 +8,8 @@ import {
   createRoute,
   createRouter,
   useElementScrollRestoration,
+  useNavigate,
+  useSearch,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -32,6 +34,9 @@ function RootComponent() {
         </Link>
         <Link to="/by-element" className="[&.active]:font-bold">
           By-Element
+        </Link>
+        <Link to="/results" search={{ color: undefined }}>
+          Results
         </Link>
       </div>
       <Outlet />
@@ -255,12 +260,50 @@ function BarComponent() {
   )
 }
 
+const resultsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/results',
+  validateSearch: (search: Record<string, unknown>) => ({
+    color: typeof search.color === 'string' ? search.color : undefined,
+  }),
+  component: ResultsComponent,
+})
+
+function ResultsComponent() {
+  const navigate = useNavigate({ from: '/results' })
+  const { color } = useSearch({ from: '/results' })
+
+  useEffect(() => {
+    if (color) {
+      return
+    }
+
+    void navigate({
+      replace: true,
+      resetScroll: false,
+      search: { color: 'blue' },
+    })
+  }, [color, navigate])
+
+  return (
+    <div data-testid="results-route-component">
+      Results
+      {Array.from({ length: 50 }).map((_, index) => (
+        <div key={index} className="h-[100px]">
+          Result {index + 1}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   aboutRoute,
   byElementRoute,
   fooRoute,
   barRoute,
+  resultsRoute,
 ])
 
 const router = createRouter({

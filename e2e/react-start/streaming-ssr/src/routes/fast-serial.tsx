@@ -1,26 +1,23 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import {
+  fastSerialStaticData,
+  makeFastSerialSmallData,
+  sourceMarker,
+} from '../../../../streaming-ssr-fixtures'
 
-// Server function that returns immediately with minimal data
-const getSmallData = createServerFn({ method: 'GET' }).handler(() => {
-  return {
-    value: 'small-data',
-    timestamp: Date.now(),
-    // Track where this data came from - should always be 'server' if SSR works
-    source: 'server' as const,
-  }
-})
+const getSmallData = createServerFn({ method: 'GET' }).handler(() =>
+  makeFastSerialSmallData(),
+)
 
 export const Route = createFileRoute('/fast-serial')({
   loader: async () => {
-    // All data is awaited immediately - serialization should complete quickly
     const data = await getSmallData()
     return {
       serverData: data,
-      staticData: 'This is static data',
+      staticData: fastSerialStaticData,
       timestamp: Date.now(),
-      // Track where loader ran - should always be 'server' if SSR works
-      loaderSource: typeof window === 'undefined' ? 'server' : 'client',
+      loaderSource: sourceMarker(),
     }
   },
   component: FastSerial,

@@ -6,20 +6,23 @@ import {
   buildStartManifest,
   createChunkCssAssetCollector,
   createManifestAssetResolvers,
-  serializeStartManifest,
   scanClientChunks,
-  type StartManifest,
+  serializeStartManifest,
 } from '../../src/start-manifest-plugin/manifestBuilder'
-import type { ManifestCssLink } from '@tanstack/router-core'
-import type { Rollup } from 'vite'
 import {
   getRouteFilePathsFromModuleIds,
   normalizeViteClientBuild,
   normalizeViteClientChunk,
 } from '../../src/vite/start-manifest-plugin/normalized-client-build'
+import type { StartManifest } from '../../src/start-manifest-plugin/manifestBuilder'
+import type { ManifestCssLink } from '@tanstack/router-core'
+import type { Rollup } from 'vite'
 
-function normalizeTestBuild(bundle: Rollup.OutputBundle) {
-  return normalizeViteClientBuild(bundle)
+function normalizeTestBuild(
+  bundle: Rollup.OutputBundle,
+  inlineCssEnabled = false,
+) {
+  return normalizeViteClientBuild(bundle, inlineCssEnabled)
 }
 
 function normalizeTestChunk(chunk: Rollup.OutputChunk) {
@@ -27,7 +30,7 @@ function normalizeTestChunk(chunk: Rollup.OutputChunk) {
 }
 
 function deserializeSerializedManifest(serialized: string): StartManifest {
-  return deserialize(serialized) as StartManifest
+  return deserialize(serialized)
 }
 
 function makeChunk(options: {
@@ -327,15 +330,18 @@ describe('buildStartManifest', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBuild: normalizeTestBuild({
-        'entry.js': entryChunk,
-        'dashboard.js': routeChunk,
-        'root.css': makeCssAsset('root.css', '.root{color:red}'),
-        'dashboard.css': makeCssAsset(
-          'dashboard.css',
-          '.card{background:url("./dot.svg")}',
-        ),
-      }),
+      clientBuild: normalizeTestBuild(
+        {
+          'entry.js': entryChunk,
+          'dashboard.js': routeChunk,
+          'root.css': makeCssAsset('root.css', '.root{color:red}'),
+          'dashboard.css': makeCssAsset(
+            'dashboard.css',
+            '.card{background:url("./dot.svg")}',
+          ),
+        },
+        true,
+      ),
       routeTreeRoutes: {
         __root__: {},
         '/dashboard': { filePath: '/routes/dashboard.tsx' },
@@ -360,13 +366,16 @@ describe('buildStartManifest', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBuild: normalizeTestBuild({
-        'entry.js': entryChunk,
-        'root.css': makeCssAsset(
-          'root.css',
-          '@import "./theme.css" screen;.card{background:url("./dot.svg")} .skip{background:url(data:image/svg+xml,foo)}',
-        ),
-      }),
+      clientBuild: normalizeTestBuild(
+        {
+          'entry.js': entryChunk,
+          'root.css': makeCssAsset(
+            'root.css',
+            '@import "./theme.css" screen;.card{background:url("./dot.svg")} .skip{background:url(data:image/svg+xml,foo)}',
+          ),
+        },
+        true,
+      ),
       routeTreeRoutes: {
         __root__: {},
       },
@@ -396,9 +405,12 @@ describe('buildStartManifest', () => {
 
     expect(() =>
       buildStartManifest({
-        clientBuild: normalizeTestBuild({
-          'entry.js': entryChunk,
-        }),
+        clientBuild: normalizeTestBuild(
+          {
+            'entry.js': entryChunk,
+          },
+          true,
+        ),
         routeTreeRoutes: {
           __root__: {},
         },

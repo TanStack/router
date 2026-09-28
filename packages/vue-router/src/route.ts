@@ -51,7 +51,7 @@ import type { LinkComponentRoute } from './link'
 // Structural type for Vue SFC components (.vue files)
 // Uses structural matching to accept Vue components without breaking
 // TypeScript inference for inline function components
-type VueSFC = {
+export type VueSFC = {
   readonly __name?: string
   setup?: (...args: Array<any>) => any
   render?: Function

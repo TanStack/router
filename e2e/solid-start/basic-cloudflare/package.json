@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "cf-typegen": "wrangler types",
     "postinstall": "WRANGLER_LOG=warn npm run --silent cf-typegen",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
@@ -30,5 +30,15 @@
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11",
     "wrangler": "^4.74.0"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "outputs": [
+          "...",
+          "{projectRoot}/.wrangler/deploy"
+        ]
+      }
+    }
   }
 }

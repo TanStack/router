@@ -7,13 +7,13 @@ import { load, media, visible } from '@tanstack/react-start/hydration';
 export function Page() {
   return <>
       <Hydrate when={load()} h="0_21aa371e0f">
-      {<_H />}
-    </Hydrate>
+{<_H />}
+</Hydrate>
       <Hydrate when={visible()} h="1_21aa371e0f">
-      {<_H2 />}
-    </Hydrate>
+{<_H2 />}
+</Hydrate>
       <Hydrate when={media('(min-width: 800px)')} h="2_21aa371e0f">
-      {<_H3 />}
-    </Hydrate>
+{<_H3 />}
+</Hydrate>
     </>;
 }

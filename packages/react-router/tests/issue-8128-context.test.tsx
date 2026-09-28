@@ -10,6 +10,7 @@ import {
   createRouter,
 } from '../src'
 import { hydrate } from '../src/ssr/client'
+import type { DehydratedMatch } from '@tanstack/router-core/ssr/client'
 
 test('#8128: leaving a hydrated root not-found page preserves beforeLoad context', async () => {
   const rootRenders: Array<string | undefined> = []
@@ -58,21 +59,20 @@ test('#8128: leaving a hydrated root not-found page preserves beforeLoad context
     defaultPendingMinMs: 0,
   })
   const rootMatch = router.matchRoutes(router.latestLocation)[0]!
-  // Model the public server bootstrap for a hydrated root-level not-found.
+  // Model the server bootstrap for a hydrated root-level not-found.
+  const dehydratedMatch: DehydratedMatch & { b: Record<string, unknown> } = {
+    i: dehydrateSsrMatchId(rootMatch.id),
+    b: { locale: 'en' },
+    u: Date.now(),
+    s: 'success',
+    ssr: true,
+    g: true,
+  }
   window.$_TSR = {
     router: {
       manifest: { routes: {} },
       dehydratedData: {},
-      matches: [
-        {
-          i: dehydrateSsrMatchId(rootMatch.id),
-          b: { locale: 'en' },
-          u: Date.now(),
-          s: 'success',
-          ssr: true,
-          g: true,
-        },
-      ],
+      matches: [dehydratedMatch],
     },
     h: vi.fn(),
     e: vi.fn(),

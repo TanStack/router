@@ -1,5 +1,4 @@
 import { isServer } from '@tanstack/router-core/isServer'
-import { resetScrollStateKey } from './history'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
 
@@ -36,21 +35,6 @@ function createScrollRestorationCache() {
   } catch {
     // ignore invalid session storage payloads
     return {}
-  }
-}
-
-function persistScrollRestorationCache() {
-  try {
-    safeSessionStorage?.setItem(
-      storageKey,
-      JSON.stringify(scrollRestorationCache),
-    )
-  } catch {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn(
-        '[ts-router] Could not persist scroll restoration state to sessionStorage.',
-      )
-    }
   }
 }
 
@@ -170,7 +154,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   const scroll = router._scroll
 
   if (shouldSetupScrollRestoration) {
-    scroll.restoring = true
+    scroll.e = true
   }
 
   if (isServer ?? router.isServer) {
@@ -198,8 +182,8 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     }
   }
 
-  if (shouldSetupScrollRestoration && !scroll.restoration) {
-    scroll.restoration = true
+  if (shouldSetupScrollRestoration && !scroll.s) {
+    scroll.s = true
     ignoreScroll = false
 
     history.scrollRestoration = 'manual'
@@ -221,33 +205,58 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       trackedScrollTargets.clear()
     })
     addEventListener('pagehide', () => {
+      // Allow native restoration on reload or a later return to this entry.
+      // Reset even when entering BFCache: the cached document may be evicted.
+      // Do this first so a failing getKey/snapshot cannot leave it in manual mode.
+      history.scrollRestoration = 'auto'
+
+      // Save positions for our own restoration if a new document loads.
       snapshotCurrentScrollTargets(
         getKey(
           router.stores.resolvedLocation.get() ?? router.stores.location.get(),
         ),
       )
-      persistScrollRestorationCache()
+      try {
+        safeSessionStorage?.setItem(
+          storageKey,
+          JSON.stringify(scrollRestorationCache),
+        )
+      } catch {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            '[ts-router] Could not persist scroll restoration state to sessionStorage.',
+          )
+        }
+      }
+    })
+
+    addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        // BFCache resumes the existing document without rerunning router setup.
+        // Reclaim restoration so the browser and router don't both control it.
+        // Fresh documents already set manual mode during setup.
+        history.scrollRestoration = 'manual'
+      }
     })
   }
 
-  if (scroll.reset) {
+  if (scroll.r) {
     return
   }
 
-  scroll.reset = true
+  scroll.r = true
 
   // Restore destination scroll after the new route has rendered.
   router.subscribe('onRendered', (event) => {
     const behavior = router.options.scrollRestorationBehavior
     const scrollToTopSelectors = router.options.scrollToTopSelectors
-    const shouldResetScroll =
-      event.toLocation.state[resetScrollStateKey] ?? scroll.next
-    const hashNavigation = scroll.hash
+    const shouldResetScroll = scroll.n
+    const hashNavigation = scroll.h
     let scrollToTopElements: Set<Element> | undefined
     trackedScrollTargets.clear()
-    scroll.next = true
-    scroll.hash = false
-    scroll.pending = false
+    scroll.n = true
+    scroll.p = false
+    scroll.h = false
 
     if (
       typeof router.options.scrollRestoration === 'function' &&
@@ -259,7 +268,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     const cacheKey = getKey(event.toLocation)
     const fromCacheKey = event.fromLocation && getKey(event.fromLocation)
 
-    if (scroll.restoring && fromCacheKey && fromCacheKey !== cacheKey) {
+    if (scroll.e && fromCacheKey && fromCacheKey !== cacheKey) {
       const fromElementEntries = scrollRestorationCache[fromCacheKey]
 
       if (fromElementEntries) {
@@ -312,7 +321,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
         const skipWindowRestore =
           hash && hashScrollIntoViewOptions && hashNavigation
 
-        const elementEntries = scroll.restoring
+        const elementEntries = scroll.e
           ? scrollRestorationCache[cacheKey]
           : undefined
 

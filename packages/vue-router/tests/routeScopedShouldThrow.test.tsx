@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { afterEach, expect, test } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/vue'
 import {
@@ -28,43 +29,52 @@ test('route-scoped hooks render undefined for an inactive route when shouldThrow
   const postsRouteApi = getRouteApi('/posts/$postId')
   const lazyPostsRoute = createLazyRoute('/posts/$postId')({})
 
-  function IndexComponent() {
-    const routeMatch = postsRoute.useMatch({ shouldThrow: false })
-    const routeSearch = postsRoute.useSearch({ shouldThrow: false })
-    const routeParams = postsRoute.useParams({ shouldThrow: false })
-    const routeApiMatch = postsRouteApi.useMatch({ shouldThrow: false })
-    const routeApiSearch = postsRouteApi.useSearch({ shouldThrow: false })
-    const routeApiParams = postsRouteApi.useParams({ shouldThrow: false })
-    const lazyRouteMatch = lazyPostsRoute.useMatch({ shouldThrow: false })
-    const lazyRouteSearch = lazyPostsRoute.useSearch({ shouldThrow: false })
-    const lazyRouteParams = lazyPostsRoute.useParams({ shouldThrow: false })
+  const IndexComponent = defineComponent({
+    setup() {
+      const routeMatch = postsRoute.useMatch({ shouldThrow: false })
 
-    return (
-      <>
-        <div data-testid="route-use-match">{String(routeMatch.value)}</div>
-        <div data-testid="route-use-search">{String(routeSearch.value)}</div>
-        <div data-testid="route-use-params">{String(routeParams.value)}</div>
-        <div data-testid="route-api-use-match">
-          {String(routeApiMatch.value)}
-        </div>
-        <div data-testid="route-api-use-search">
-          {String(routeApiSearch.value)}
-        </div>
-        <div data-testid="route-api-use-params">
-          {String(routeApiParams.value)}
-        </div>
-        <div data-testid="lazy-route-use-match">
-          {String(lazyRouteMatch.value)}
-        </div>
-        <div data-testid="lazy-route-use-search">
-          {String(lazyRouteSearch.value)}
-        </div>
-        <div data-testid="lazy-route-use-params">
-          {String(lazyRouteParams.value)}
-        </div>
-      </>
-    )
-  }
+      const routeSearch = postsRoute.useSearch({ shouldThrow: false })
+
+      const routeParams = postsRoute.useParams({ shouldThrow: false })
+
+      const routeApiMatch = postsRouteApi.useMatch({ shouldThrow: false })
+
+      const routeApiSearch = postsRouteApi.useSearch({ shouldThrow: false })
+
+      const routeApiParams = postsRouteApi.useParams({ shouldThrow: false })
+
+      const lazyRouteMatch = lazyPostsRoute.useMatch({ shouldThrow: false })
+
+      const lazyRouteSearch = lazyPostsRoute.useSearch({ shouldThrow: false })
+
+      const lazyRouteParams = lazyPostsRoute.useParams({ shouldThrow: false })
+      return () => (
+        <>
+          <div data-testid="route-use-match">{String(routeMatch.value)}</div>
+          <div data-testid="route-use-search">{String(routeSearch.value)}</div>
+          <div data-testid="route-use-params">{String(routeParams.value)}</div>
+          <div data-testid="route-api-use-match">
+            {String(routeApiMatch.value)}
+          </div>
+          <div data-testid="route-api-use-search">
+            {String(routeApiSearch.value)}
+          </div>
+          <div data-testid="route-api-use-params">
+            {String(routeApiParams.value)}
+          </div>
+          <div data-testid="lazy-route-use-match">
+            {String(lazyRouteMatch.value)}
+          </div>
+          <div data-testid="lazy-route-use-search">
+            {String(lazyRouteSearch.value)}
+          </div>
+          <div data-testid="lazy-route-use-params">
+            {String(lazyRouteParams.value)}
+          </div>
+        </>
+      )
+    },
+  })
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,

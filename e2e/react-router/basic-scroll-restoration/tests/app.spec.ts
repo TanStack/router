@@ -115,3 +115,36 @@ test('scroll to top when not scrolled, regression test for #4782', async ({
   const restoredScrollPosition = await page.evaluate(() => window.scrollY)
   expect(restoredScrollPosition).toBe(0)
 })
+
+test('preserves a page reset when the destination patches its URL', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(page.getByText('Home Item 50')).toBeVisible()
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+
+  await page.getByRole('link', { name: 'Results' }).click()
+  await expect(page).toHaveURL('/results?color=blue')
+  await expect(page.getByTestId('results-route-component')).toBeVisible()
+
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+})
+
+test('does not reuse resetScroll false after history traversal', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(page.getByText('Home Item 50')).toBeVisible()
+
+  await page.getByRole('link', { name: 'About (No Reset)' }).click()
+  await expect(page).toHaveURL('/about')
+  await expect(page.getByText('About Item 50')).toBeVisible()
+
+  await page.evaluate(() => window.scrollTo(0, 500))
+  await page.getByRole('link', { name: 'Home' }).click()
+  await expect(page).toHaveURL('/')
+  await page.goBack()
+  await expect(page).toHaveURL('/about')
+  expect(await page.evaluate(() => window.scrollY)).toBe(500)
+})

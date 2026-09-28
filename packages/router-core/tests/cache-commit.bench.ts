@@ -5,12 +5,17 @@ import type { LoaderFlight, LoadTransaction } from '../src/load-client'
 
 type Match = AnyRouteMatch & { _flight?: LoaderFlight }
 
+const workloads = [0, 4, 10, 100, 1000, 5000].flatMap((size) => [
+  [size, 4],
+  [size, 16],
+])
+
 // Run each family separately with -t to keep GC from other workloads out of
 // short operations. This measures commit/cache maintenance, not navigation.
 for (const family of ['snapshots', 'mixed flights', 'preload flights']) {
-  describe.each([0, 4, 10, 100, 1000, 5000])(
-    `${family}: %i cached matches`,
-    (size) => {
+  describe.each(workloads)(
+    `${family}: %i cached matches, %i active matches`,
+    (size, activeCount) => {
       for (const retainedFraction of [1, 0.5, 0]) {
         const retainedCount = Math.floor(size * retainedFraction)
         let aborts = 0
@@ -47,7 +52,7 @@ for (const family of ['snapshots', 'mixed flights', 'preload flights']) {
         const departing = entries.filter(
           (entry) => !entry.retained && entry.flight,
         )
-        const matches = Array.from({ length: 4 }, (_, index) => ({
+        const matches = Array.from({ length: activeCount }, (_, index) => ({
           id: `active-${index}`,
           routeId: 'retained',
           status: 'success',

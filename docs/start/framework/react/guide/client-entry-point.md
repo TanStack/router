@@ -3,8 +3,6 @@ id: client-entry-point
 title: Client Entry Point
 ---
 
-# Client Entry Point
-
 > [!NOTE]
 > The client entry point is **optional** out of the box. If not provided, TanStack Start will automatically handle the client entry point for you using the below as a default.
 

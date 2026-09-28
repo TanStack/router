@@ -25,6 +25,13 @@ describe('public presentation lane contracts', () => {
     let attempt = 0
 
     const rootRoute = createRootRoute({ component: () => <Outlet /> })
+    const PageComponent = defineComponent({
+      setup() {
+        const loaderData = pageRoute.useLoaderData()
+        return () => <div>{loaderData.value}</div>
+      },
+    })
+
     const pageRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/page',
@@ -39,10 +46,7 @@ describe('public presentation lane contracts', () => {
         return retry
       },
       errorComponent: () => <div>Page failed</div>,
-      component: () => {
-        const loaderData = pageRoute.useLoaderData()
-        return <div>{loaderData.value}</div>
-      },
+      component: PageComponent,
     })
     const router = createRouter({
       routeTree: rootRoute.addChildren([pageRoute]),
@@ -81,6 +85,13 @@ describe('public presentation lane contracts', () => {
       path: '/',
       component: () => <div>Home</div>,
     })
+    const PageComponent = defineComponent({
+      setup() {
+        const search = pageRoute.useSearch()
+        return () => <div>Page revision {search.value.revision}</div>
+      },
+    })
+
     const pageRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/page',
@@ -92,10 +103,7 @@ describe('public presentation lane contracts', () => {
       pendingComponent: () => <div>Loading page</div>,
       beforeLoad: ({ search }) =>
         search.revision === 1 ? firstGate : secondGate,
-      component: () => {
-        const search = pageRoute.useSearch()
-        return <div>Page revision {search.value.revision}</div>
-      },
+      component: PageComponent,
     })
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, pageRoute]),
@@ -193,6 +201,13 @@ describe('public presentation lane contracts', () => {
       },
       component: () => <Outlet />,
     })
+    const ChildComponent = defineComponent({
+      setup() {
+        const search = childRoute.useSearch()
+        return () => <div>Child revision {search.value.revision}</div>
+      },
+    })
+
     const childRoute = createRoute({
       getParentRoute: () => parentRoute,
       path: '/child',
@@ -209,10 +224,7 @@ describe('public presentation lane contracts', () => {
           return undefined
         },
       },
-      component: () => {
-        const search = childRoute.useSearch()
-        return <div>Child revision {search.value.revision}</div>
-      },
+      component: ChildComponent,
     })
     const router = createRouter({
       routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
@@ -282,6 +294,18 @@ describe('public presentation lane contracts', () => {
     const secondPageStarted = createControlledPromise<void>()
     const secondPage = createControlledPromise<void>()
 
+    const RootComponent = defineComponent({
+      setup() {
+        const context = rootRoute.useRouteContext()
+        return () => (
+          <div>
+            <div>Root revision {context.value.rootRevision}</div>
+            <Outlet />
+          </div>
+        )
+      },
+    })
+
     const rootRoute = createRootRoute({
       validateSearch: (search: Record<string, unknown>) => ({
         revision: Number(search.revision) || 0,
@@ -293,21 +317,20 @@ describe('public presentation lane contracts', () => {
         }
         return { rootRevision: search.revision }
       },
-      component: () => {
-        const context = rootRoute.useRouteContext()
-        return (
-          <div>
-            <div>Root revision {context.value.rootRevision}</div>
-            <Outlet />
-          </div>
-        )
-      },
+      component: RootComponent,
     })
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => <div>Home</div>,
     })
+    const PageComponent = defineComponent({
+      setup() {
+        const search = pageRoute.useSearch()
+        return () => <div>Page revision {search.value.revision}</div>
+      },
+    })
+
     const pageRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/page',
@@ -321,10 +344,7 @@ describe('public presentation lane contracts', () => {
         secondPageStarted.resolve()
         return secondPage
       },
-      component: () => {
-        const search = pageRoute.useSearch()
-        return <div>Page revision {search.value.revision}</div>
-      },
+      component: PageComponent,
     })
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, pageRoute]),

@@ -28,6 +28,10 @@ import type { RouterHistory } from '../src'
 
 let history: RouterHistory
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
 beforeEach(() => {
   history = createBrowserHistory()
   expect(window.location.pathname).toBe('/')
@@ -95,7 +99,7 @@ describe('redirect', () => {
           })
         },
         errorComponent: ({ error }) => (
-          <div data-testid="source-error">{error.message}</div>
+          <div data-testid="source-error">{getErrorMessage(error)}</div>
         ),
       })
       const targetRoute = createRoute({
@@ -132,7 +136,7 @@ describe('redirect', () => {
       })
       const rootRoute = createRootRoute({
         errorComponent: ({ error }) => (
-          <div data-testid="root-error">Root: {error.message}</div>
+          <div data-testid="root-error">Root: {getErrorMessage(error)}</div>
         ),
       })
       const indexRoute = createRoute({
@@ -140,7 +144,7 @@ describe('redirect', () => {
         path: '/',
         loader,
         errorComponent: ({ error }) => (
-          <div data-testid="index-error">Index: {error.message}</div>
+          <div data-testid="index-error">Index: {getErrorMessage(error)}</div>
         ),
       })
       const router = createRouter({
@@ -168,7 +172,7 @@ describe('redirect', () => {
       })
       const rootRoute = createRootRoute({
         errorComponent: ({ error }) => (
-          <div data-testid="root-error">Root: {error.message}</div>
+          <div data-testid="root-error">Root: {getErrorMessage(error)}</div>
         ),
       })
       const indexRoute = createRoute({
@@ -176,7 +180,7 @@ describe('redirect', () => {
         path: '/',
         loader: indexLoader,
         errorComponent: ({ error }) => (
-          <div data-testid="index-error">Index: {error.message}</div>
+          <div data-testid="index-error">Index: {getErrorMessage(error)}</div>
         ),
       })
       const otherRoute = createRoute({
@@ -184,7 +188,7 @@ describe('redirect', () => {
         path: '/other',
         loader: otherLoader,
         errorComponent: ({ error }) => (
-          <div data-testid="other-error">Other: {error.message}</div>
+          <div data-testid="other-error">Other: {getErrorMessage(error)}</div>
         ),
       })
       const router = createRouter({

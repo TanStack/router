@@ -646,6 +646,8 @@ export function startCompilerPlugin(
         return generateServerFnResolverModule({
           serverFnsById,
           includeClientReferencedCheck: !ssrIsProvider,
+          // Only production builds reach this branch.
+          memoizeModules: true,
         })
       },
     }),

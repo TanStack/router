@@ -1,7 +1,21 @@
+import { defineComponent } from 'vue'
 import { createFileRoute } from '@tanstack/vue-router'
 
 import { ErrorComponent } from '@tanstack/vue-router'
 import { fetchPost } from '../posts'
+
+const PostComponent = defineComponent({
+  setup() {
+    const post = Route.useLoaderData()
+
+    return () => (
+      <div class="space-y-2">
+        <h4 class="text-xl font-bold underline">{post.value.title}</h4>
+        <div class="text-sm">{post.value.body}</div>
+      </div>
+    )
+  },
+})
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId } }) => fetchPost(postId),
@@ -14,15 +28,4 @@ export const Route = createFileRoute('/posts/$postId')({
 
 export function PostErrorComponent({ error }) {
   return <ErrorComponent error={error} />
-}
-
-function PostComponent() {
-  const post = Route.useLoaderData()
-
-  return (
-    <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{post.value.title}</h4>
-      <div class="text-sm">{post.value.body}</div>
-    </div>
-  )
 }

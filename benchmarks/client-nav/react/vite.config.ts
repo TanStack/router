@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import codspeedPlugin from '@codspeed/vitest-plugin'
+import { cpuSimulationExecArgv } from '../../cpu-simulation'
 
 // Anchor the project root to the package directory so this config resolves
 // identically when run directly and as part of an aggregate `projects` config.
@@ -28,6 +29,7 @@ export default defineConfig({
     },
   },
   test: {
+    execArgv: cpuSimulationExecArgv(),
     name: '@benchmarks/client-nav (react)',
     watch: false,
     environment: 'jsdom',

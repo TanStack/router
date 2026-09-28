@@ -11,16 +11,16 @@ const spreadProps = {
 export function Page() {
   return <>
       <Hydrate when={visible()} fallback={<div data-testid="direct-fallback">Direct</div>} h="0_7f4dc3aa80">
-      {<_H />}
-    </Hydrate>
+{<_H />}
+</Hydrate>
       <Hydrate {...{
       when: idle(),
       fallback: <div data-testid="inline-spread-fallback">Inline</div>
     }} h="1_7f4dc3aa80">
-      {<_H2 />}
-    </Hydrate>
+{<_H2 />}
+</Hydrate>
       <Hydrate {...spreadProps} h="2_7f4dc3aa80">
-      {<_H3 />}
-    </Hydrate>
+{<_H3 />}
+</Hydrate>
     </>;
 }

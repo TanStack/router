@@ -11,8 +11,9 @@ An instance of the `Router` has the following properties and methods:
 
 ### `.update` method
 
-- Type: `(newOptions: RouterOptions) => void`
+- Type: `(newOptions: Omit<RouterOptions, 'pathParamsAllowedCharacters'>) => void`
 - Updates the router instance with new options.
+- Initialization-only options such as `pathParamsAllowedCharacters` cannot be updated. Create a new router instance to change them.
 
 ### `state` property
 
