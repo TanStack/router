@@ -724,6 +724,17 @@ test.describe('server functions', () => {
     })
   })
 
+  test('serialized server function replies keep their body when a helper selects 204', async ({
+    page,
+  }) => {
+    const response = await invokeJsonServerFunction(page, 'bodylessStatus')
+
+    expect(response.status()).toBe(200)
+    expect(header(response, 'x-bodyless-status')).toBe('ignored')
+    expect(header(response, 'x-tss-serialized')).toBe('true')
+    await expectServerFunctionResult(page, 'bodylessStatus', '{"ok":true}')
+  })
+
   test('transport headers win over user helpers while user headers persist', async ({
     page,
   }) => {
