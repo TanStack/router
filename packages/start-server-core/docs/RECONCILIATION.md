@@ -128,7 +128,7 @@ Reconciliation drops bodies for response shapes that cannot carry one:
 - status `205`
 - status `304`
 
-`setResponseStatus` ignores codes outside the `200`-`599` range, such as informational `101`, because Fetch responses cannot carry them. The call changes neither status nor status text, so the returned or error status stays in effect, and Start logs a warning outside production.
+`setResponseStatus` ignores codes that are not integers from `200` to `599`, such as informational `101`, `0`, or `NaN`, because Fetch responses cannot carry them. The call changes neither status nor status text: an earlier helper status, or otherwise the returned or error status, stays in effect, and Start logs a warning outside production. Call `setResponseStatus(undefined, text)` to set only the status text.
 
 Server-function replies that Start serializes are the exception. Their protected content type describes a body that the client must decode, so reconciliation never applies a helper-selected `204`, `205`, or `304` to them, together with that call's status text. Serialized errors ignore these statuses from error metadata too. `setResponseStatus` logs a warning outside production when such a status is set during a server-function RPC call. A raw `Response` returned by a server function is not serialized and still follows the rules above.
 
