@@ -43,7 +43,7 @@ Start response helpers mutate event-owned state, not `h3` state:
 - `setCookie`
 - `deleteCookie`
 
-Response state is created lazily on the first helper write. Requests that never call a response helper skip response-state allocation. Reconciliation still enforces protocol headers and bodyless response rules when applicable.
+Response state is created lazily on the first helper write. Requests that never call a response helper skip response-state allocation. Reconciliation still enforces bodyless response rules, and Start restores protocol headers when a server-function reply leaves the request middleware pipeline.
 
 `getResponseHeader` and `getResponseHeaders` read the current returned response plus helper overlay. Helper writes are visible immediately, even before a final `Response` exists. `getResponseHeaders()` returns a detached snapshot with a read-only TypeScript interface. Its `forEach` callback also receives that read-only interface. Casting the snapshot to `Headers` and mutating it does not change outgoing response state; outside production, `set`, `append`, and `delete` on the snapshot log a warning that lists the helpers to use instead. Use `setResponseHeader`, `setResponseHeaders`, `appendResponseHeader`, `removeResponseHeader`, or `clearResponseHeaders` for writes. Use `getSetCookie()` on the snapshot when all individual cookie values are needed.
 
@@ -119,6 +119,8 @@ Server function protocol responses protect required header values and required a
 Every serialized reply (JSON and framed results, errors, not-found envelopes, and RPC redirect envelopes) also requires `Location` to be absent, whether it comes from a helper, from error metadata, or from `notFound({ headers })`. The client decodes these replies from their body. Error replies always use an error status, but a helper can still select a 3xx status for other serialized replies, and an HTTP `Location` would then make fetch follow the redirect before the client decodes the reply. For redirect envelopes, the client reads the destination from the JSON `href`. Native form and document redirects still use `Location`. Helper status and status text control HTTP metadata, while the redirect's own `statusCode` remains in its Router navigation options.
 
 Other helper headers and cookies still reconcile onto server function responses. Replacing, removing, or clearing headers through the helpers cannot change protected protocol requirements.
+
+Middleware can also change protocol headers directly on `result.response`, including from a callback attached to the `next()` promise it returns. Start restores the protocol headers once, when the reply leaves the request middleware pipeline, so the client always receives them. Until then, outer middleware reading `result.response.headers` sees such a direct change, while `getResponseHeader` and `getResponseHeaders` always report the protocol values. Without request middleware, only Start has handled the reply, so nothing is checked. Start does not check at every middleware boundary because `Headers.get` validates each header name on every call, which made the check a measurable share of each server-function request.
 
 ## Null Body Responses
 

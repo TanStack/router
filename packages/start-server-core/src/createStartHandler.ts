@@ -35,6 +35,7 @@ import {
   getParsedRequestUrl,
   getStartEvent,
   reconcileResponse,
+  restoreResponseProtocol,
   transferResponseProtocol,
   withStartRequest,
 } from './internal-request-response'
@@ -391,9 +392,11 @@ async function executeMiddleware(
   }
 
   const setResponse = (response: TODO, caller: number) => {
-    const ssrResponse = isSsrResponse(response) ? response : undefined
-    const streamResponse =
-      ssrResponse?.serverSsrCleanup === 'stream' ? ssrResponse : undefined
+    // The owned response is already adopted; only helper state can still
+    // change it.
+    const owned =
+      response !== undefined && response === responseOwnership?.response
+    const ssrResponse = !owned && isSsrResponse(response) ? response : undefined
     const exposed: Response | undefined = ssrResponse
       ? ssrResponse.response
       : response
@@ -404,38 +407,30 @@ async function executeMiddleware(
       }
       return
     }
-    // Dispose a replaced body before reading helper state: cancellation and
-    // SSR cleanup callbacks may set headers on the response that replaces it.
-    adoptResponse(exposed, streamResponse)
+    if (!owned) {
+      // Dispose a replaced body before reading helper state: cancellation and
+      // SSR cleanup callbacks may set headers on the response that replaces it.
+      adoptResponse(
+        exposed,
+        ssrResponse?.serverSsrCleanup === 'stream' ? ssrResponse : undefined,
+      )
+    }
     if (exposed instanceof Response) {
-      reconcileExposed(exposed)
-    }
-  }
-
-  const reconcileExposed = (exposed: Response) => {
-    const reconciled = reconcileResponse(exposed, event, disposeCurrentBody)
-    if (reconciled !== exposed) {
-      const source = responseBodySources.get(exposed)
-      if (source && reconciled.body) {
-        responseBodySources.set(reconciled, source)
+      const reconciled = reconcileResponse(exposed, event, disposeCurrentBody)
+      if (reconciled !== exposed) {
+        adoptRebuilt(exposed, reconciled)
       }
-      adoptResponse(reconciled)
     }
   }
 
-  const reconcileCtxResponse = (caller: number) => {
-    const response = ctx.response
-    // The owned response is already adopted; only helper state and protocol
-    // repair can still change it.
-    if (
-      response !== undefined &&
-      response === responseOwnership?.response &&
-      returnedDepth > caller
-    ) {
-      reconcileExposed(response)
-    } else {
-      setResponse(response, caller)
+  // Start may rebuild a response around the same body; the rebuilt response
+  // takes over its ownership.
+  const adoptRebuilt = (exposed: Response, rebuilt: Response) => {
+    const source = responseBodySources.get(exposed)
+    if (source && rebuilt.body) {
+      responseBodySources.set(rebuilt, source)
     }
+    adoptResponse(rebuilt)
   }
 
   let nextPromise: Promise<TODO> | undefined
@@ -552,7 +547,7 @@ async function executeMiddleware(
       if (response !== undefined) {
         setResponse(response, caller)
       } else {
-        reconcileCtxResponse(caller)
+        setResponse(ctx.response, caller)
       }
       if (
         returnedDepth > caller &&
@@ -563,7 +558,7 @@ async function executeMiddleware(
         ctx.context = safeObjectMerge(ctx.context, result.context)
       }
     } else {
-      reconcileCtxResponse(caller)
+      setResponse(ctx.response, caller)
     }
 
     return ctx
@@ -571,7 +566,7 @@ async function executeMiddleware(
 
   try {
     await runNext(-1)
-    const response = ctx.response
+    let response = ctx.response
     if (!response) {
       throwRouteHandlerError()
     }
@@ -579,6 +574,16 @@ async function executeMiddleware(
       throw signal.reason
     }
     returnedDepth = -1
+    // Middleware can change protocol headers directly on a server-function
+    // reply, the only response that has them. Restore them once, as the reply
+    // leaves the pipeline; without middleware only Start has handled it.
+    if (middlewares.length && ctx.handlerType === 'serverFn') {
+      const restored = restoreResponseProtocol(response, event)
+      if (restored !== response) {
+        adoptRebuilt(response, restored)
+        response = restored
+      }
+    }
     return responseOwnership ? getOwnedResponse(responseOwnership) : response
   } catch (err) {
     returnedDepth = -1
