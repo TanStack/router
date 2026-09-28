@@ -1,6 +1,6 @@
 import { afterAll, bench, describe, expect, vi } from 'vitest'
 import { fromCrossJSON } from 'seroval'
-import { notFound } from '@tanstack/router-core'
+import { notFound, redirect } from '@tanstack/router-core'
 import {
   createCsrfMiddleware,
   createMiddleware,
@@ -11,6 +11,7 @@ import {
   appendResponseHeader,
   setCookie,
   setResponseHeader,
+  setResponseStatus,
 } from '../src/request-response'
 
 const fixture = vi.hoisted(() => {
@@ -146,8 +147,55 @@ const notFoundScenarios = [
     },
   },
 ]
+const redirectHref = '/redirect-target'
+const redirectHeaders = new Headers({
+  'content-type': 'text/plain',
+  'x-tss-serialized': 'true',
+  'x-tss-raw': 'true',
+  'x-redirect': 'preserved',
+  'x-helper': 'caller',
+  'x-steps': 'source',
+})
+for (const cookie of cookies) {
+  redirectHeaders.append('set-cookie', cookie)
+}
+const originalRedirectHeaders = Array.from(redirectHeaders)
+const redirectScenarios = [
+  {
+    id: 'redirect-without-helpers',
+    name: 'RPC href redirect without helper writes',
+    status: 200,
+    statusText: '',
+    headers: undefined,
+    action: () => {
+      throw redirect({ href: redirectHref })
+    },
+  },
+  {
+    id: 'redirect-with-headers-and-helpers',
+    name: 'RPC href redirect with supplied headers, three cookies and helper writes',
+    status: 202,
+    statusText: 'Accepted',
+    headers: redirectHeaders,
+    action: () => {
+      // Keep these writes out of the shared middleware so the established
+      // eleven workloads remain unchanged.
+      setResponseStatus(202, 'Accepted')
+      setResponseHeader('x-helper', 'complete')
+      setResponseHeader('content-type', 'text/plain')
+      setResponseHeader('location', '/ignored')
+      setResponseHeader('x-tss-serialized', 'true')
+      setResponseHeader('x-tss-raw', 'true')
+      appendResponseHeader('x-steps', 'before')
+      appendResponseHeader('x-steps', 'after')
+      setCookie('first', 'updated')
+      setCookie('helper', 'added')
+      throw redirect({ href: redirectHref, headers: redirectHeaders })
+    },
+  },
+]
 const actions = new Map(
-  [...scenarios, ...notFoundScenarios].map((scenario) => [
+  [...scenarios, ...notFoundScenarios, ...redirectScenarios].map((scenario) => [
     scenario.id,
     scenario.action,
   ]),
@@ -217,6 +265,41 @@ for (const scenario of notFoundScenarios) {
   expect(await response.json()).toEqual({ isNotFound: true })
 }
 
+for (const scenario of redirectScenarios) {
+  const response = await handler.fetch(requestFor(scenario.id, 0))
+  expect(response.status).toBe(scenario.status)
+  expect(response.statusText).toBe(scenario.statusText)
+  expect(response.headers.get('content-type')).toBe('application/json')
+  expect(response.headers.get('location')).toBeNull()
+  expect(response.headers.get('x-tss-serialized')).toBeNull()
+  expect(response.headers.get('x-tss-raw')).toBeNull()
+  expect(response.headers.get('x-redirect')).toBe(
+    scenario.headers ? 'preserved' : null,
+  )
+  expect(response.headers.get('x-helper')).toBe(
+    scenario.headers ? 'complete' : null,
+  )
+  expect(response.headers.get('x-steps')).toBe(
+    scenario.headers ? 'source, before, after' : null,
+  )
+  expect(response.headers.getSetCookie()).toEqual(
+    scenario.headers
+      ? [
+          'second=two; Path=/',
+          'third=three; Path=/',
+          'first=updated; Path=/',
+          'helper=added; Path=/',
+        ]
+      : [],
+  )
+  expect(Array.from(redirectHeaders)).toEqual(originalRedirectHeaders)
+  expect(await response.json()).toEqual({
+    href: redirectHref,
+    statusCode: 307,
+    isSerializedRedirect: true,
+  })
+}
+
 function validateNotFoundResponse(response: Response) {
   if (response.status !== 404) {
     throw new Error(`Expected not-found response, received ${response.status}`)
@@ -257,6 +340,27 @@ describe('response reconciliation', () => {
           buildRequest: (random) =>
             requestFor(scenario.id, Math.floor(random() * 1_000_000)),
           validateResponse: validateNotFoundResponse,
+        }),
+      { warmupIterations: 100, time: 5_000, throws: true },
+    )
+  }
+  for (const scenario of redirectScenarios) {
+    bench(
+      scenario.name,
+      () =>
+        runRequestLoop(handler, {
+          seed: 0xdecafbad,
+          concurrency: 8,
+          totalRequests: 160,
+          buildRequest: (random) =>
+            requestFor(scenario.id, Math.floor(random() * 1_000_000)),
+          validateResponse: (response) => {
+            if (response.status !== scenario.status) {
+              throw new Error(
+                `Expected redirect envelope status ${scenario.status}, received ${response.status}`,
+              )
+            }
+          },
         }),
       { warmupIterations: 100, time: 5_000, throws: true },
     )
