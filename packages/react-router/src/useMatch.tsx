@@ -145,7 +145,7 @@ export function useMatch<
   const router = useRouter<TRouter>()
   const nearestRouteId = React.useContext(
     opts.from ? dummyMatchContext : matchContext,
-  )
+  )?.[0]
 
   const routeId = opts.from ?? nearestRouteId
   const matchStore = router.stores.getMatchStore(routeId!)

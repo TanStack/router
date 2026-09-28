@@ -1191,7 +1191,8 @@ export class RouterCore<
   // options object a Link owns. Links pass a new object when their values change.
   // Client only: server renders never repeat an options object, so server
   // bundles fold `isServer` and drop the cache entirely.
-  private staticLocations: WeakMap<object, ParsedLocation> | undefined
+  /** Location-independent builds, shared internally with Link subscription selection. */
+  _staticLocations: WeakMap<object, ParsedLocation> | undefined
   isServer!: boolean
   readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1269,7 +1270,7 @@ export class RouterCore<
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
     // `isServer` is a per-bundle constant, so server builds drop the cache.
     if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
+      this._staticLocations = new WeakMap()
     }
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
@@ -1403,7 +1404,7 @@ export class RouterCore<
     Object.assign(this, caches)
     this.lightweightCache = new WeakMap()
     if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
+      this._staticLocations = new WeakMap()
     }
 
     const notFoundRoute = this.options.notFoundRoute
@@ -1886,7 +1887,7 @@ export class RouterCore<
    */
   buildLocation: BuildLocationFn = (opts) => {
     if (!(isServer ?? this.isServer)) {
-      const cached = this.staticLocations!.get(opts)
+      const cached = this._staticLocations!.get(opts)
       if (cached) {
         return cached
       }
@@ -2213,7 +2214,7 @@ export class RouterCore<
       opts._fromLocation &&
       !next.maskedLocation
     ) {
-      this.staticLocations!.set(opts, next)
+      this._staticLocations!.set(opts, next)
     }
 
     return next

@@ -115,6 +115,9 @@ export function normalizeProtocolRelative(url: string): string {
   return match ? '/' + url.slice(match[0].length) : url
 }
 
+// Internal identity used to recognize location-independent built-in formatters.
+export { normalizeHref as _normalizeHref }
+
 function normalizeHref(href: string): string {
   // eslint-disable-next-line no-control-regex
   if (/[\x00-\x1f\x7f]/.test(href)) {
@@ -583,6 +586,11 @@ export function createBrowserHistory(opts?: {
     }
   }
 
+  // An options object can acquire a custom formatter after construction.
+  if (!opts) {
+    history.createHref = normalizeHref
+  }
+
   win.addEventListener(beforeUnloadEvent, onBeforeUnload, { capture: true })
   win.addEventListener(popStateEvent, onPushPopEvent)
 
@@ -655,7 +663,7 @@ export function createMemoryHistory(
   const _setBlockers = (newBlockers: Array<NavigationBlocker>) =>
     (blockers = newBlockers)
 
-  return createHistory({
+  const history = createHistory({
     getLocation,
     getLength: () => entries.length,
     pushState: (path, state) => {
@@ -685,6 +693,8 @@ export function createMemoryHistory(
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
   })
+  history.createHref = normalizeHref
+  return history
 }
 
 const noop = () => {}

@@ -8,6 +8,7 @@ import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
+import { createLinkOwner } from './linkLocation'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
@@ -15,6 +16,7 @@ import {
   nonRouteComponentContext,
   wrapInNonRouteComponentContext,
 } from './nonRouteComponentContext'
+import type { MatchContext } from './matchContext'
 import type {
   AnyRoute,
   AnyRouteMatch,
@@ -68,21 +70,39 @@ export const Match = React.memo(function MatchImpl({
 
   if (isServer ?? router.isServer) {
     const match = router.stores.byRoute.get(routeId)!.get()!
-    return <MatchView router={router} match={match} />
+    return <MatchView router={router} match={match} context={[routeId]} />
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useSelector(matchStore)
-  return <MatchView router={router} match={match!} />
+  // A presentation snapshot belongs to this mounted Match, not its route ID.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const context = React.useMemo(
+    () =>
+      [
+        routeId,
+        routeId === rootRouteId ? undefined : createLinkOwner(router, routeId),
+      ] as const,
+    [router, routeId],
+  )
+  // Observe even when this visit has no Links yet. A later first Link must see
+  // this visit's presentation, including navigation within the retained route.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  React.useLayoutEffect(() => {
+    return context[1]?.connect()
+  }, [context])
+  return <MatchView router={router} match={match!} context={context} />
 })
 
 function MatchView({
   router,
   match,
+  context,
 }: {
   router: ReturnType<typeof useRouter>
   match: AnyRouteMatch
+  context: MatchContext
 }) {
   const route: AnyRoute = router.routesById[match.routeId]
 
@@ -175,7 +195,7 @@ function MatchView({
 
   // The shell and route boundaries must share this match's context.
   return (
-    <matchContext.Provider value={match.routeId}>
+    <matchContext.Provider value={context}>
       {ShellComponent ? (
         <ShellComponent>
           {content}
@@ -281,7 +301,7 @@ export const Outlet = React.memo(function OutletImpl() {
   }
 
   const router = useRouter()
-  const routeId = React.useContext(matchContext)!
+  const routeId = React.useContext(matchContext)![0]
 
   let parentGlobalNotFound: boolean
   let parentNotFoundError: unknown

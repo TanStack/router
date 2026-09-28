@@ -184,13 +184,20 @@ test('a Link-free owner remembers a retained pending location before departure',
 
 test('matched fixed Links hydrate in place and suppress outgoing selections', async () => {
   const gate = createControlledPromise<void>()
+  let selections = 0
+  const activeOptions = {
+    get exact() {
+      selections++
+      return true
+    },
+  }
   const makeRouter = (isServer: boolean) => {
     const root = createRootRoute({ component: Outlet })
     const table = createRoute({
       getParentRoute: () => root,
       path: '/table',
       component: () => (
-        <Link to="/detail" data-probe="hydrated">
+        <Link to="/detail" data-probe="hydrated" activeOptions={activeOptions}>
           detail link
         </Link>
       ),
@@ -246,12 +253,14 @@ test('matched fixed Links hydrate in place and suppress outgoing selections', as
     })
     expect(container.querySelector('a')).toBe(anchor)
     expect(onRecoverableError).not.toHaveBeenCalled()
+    selections = 0
     const builds = vi.spyOn(router, 'buildLocation')
     await act(async () => {
       navigation = router.navigate({ to: '/detail' })
     })
     expect(container.querySelector('a')).toBe(anchor)
     expect(anchor).not.toHaveAttribute('aria-current')
+    expect(selections).toBe(0)
     expect(
       builds.mock.calls.filter(
         ([options]) =>

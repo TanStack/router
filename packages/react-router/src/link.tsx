@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { createAtom, useSelector } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import {
   deepEqual,
   functionalUpdate,
@@ -9,7 +9,6 @@ import {
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
-  rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -24,58 +23,12 @@ import type {
   ParsedLocation,
   RegisteredRouter,
   RoutePaths,
-  RouterReadableStore,
 } from '@tanstack/router-core'
 import type { ReactNode } from 'react'
 import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
-
-type LinkLocationSnapshot = [
-  location: ParsedLocation,
-  activeLocation: ParsedLocation,
-]
-
-// Match atoms are stable per Router/route. Weak keys release the presentation
-// cache with its Router, without adding React state to shared route definitions.
-const linkLocations = new WeakMap<
-  object,
-  RouterReadableStore<LinkLocationSnapshot>
->()
-
-function getLinkLocationStore(router: AnyRouter, routeId: string) {
-  const stores = router.stores
-  const owner = stores.getMatchStore(routeId)
-  let source = linkLocations.get(owner)
-  if (!source) {
-    source = createAtom(
-      (previous?: LinkLocationSnapshot): LinkLocationSnapshot => {
-        const location = stores.location.get()
-        const tx = router._tx
-        // Keep settlement out of retained owners' dependencies, otherwise all
-        // their Links are dirtied again when navigation completes.
-        const activeLocation =
-          // HMR may replace membership without publishing another location.
-          process.env.NODE_ENV !== 'development' &&
-          tx &&
-          tx[2 /* location */] === location &&
-          !tx[0 /* controller */].signal.aborted &&
-          // Commit consumes the lane before incoming components read it.
-          tx[3 /* matches */].length &&
-          !tx[3 /* matches */].some((match) => match.routeId === routeId) &&
-          stores.status.get() === 'pending'
-            ? (previous?.[1] ?? stores.resolvedLocation.get() ?? location)
-            : location
-        return previous?.[0] === location && previous[1] === activeLocation
-          ? previous
-          : [location, activeLocation]
-      },
-    )
-    linkLocations.set(owner, source)
-  }
-  return source
-}
 
 // Undefined active state marks an external or blocked link.
 // Keep that classification with the href instead of parsing it again on render.
@@ -307,7 +260,7 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated(!!activeOptions?.includeHash)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const ownerRouteId = React.useContext(matchContext)
+  const owner = React.useContext(matchContext)?.[1]
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
@@ -340,32 +293,37 @@ export function useLinkProps<
   // the subscription instead re-renders every link on every navigation, because
   // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectLinkState = React.useMemo(() => {
+  const [selectLinkState, fixed] = React.useMemo(() => {
     // Direct destinations and the router's allowlist are stable for this selector.
     const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
     if (directExternalLink !== undefined) {
       const state: LinkState = [directExternalLink ?? undefined]
-      return () => state
+      return [() => state, undefined] as const
     }
 
+    const location = router.stores.location.get()
+    dest._fromLocation = _options._fromLocation ?? location
+    const next = router.buildLocation(dest)
+    const cache = router._staticLocations!
+    const fixed = cache.get(dest)
+    let initial: readonly [ParsedLocation, ParsedLocation] | undefined = [
+      location,
+      next,
+    ]
     let inactive: LinkState | undefined
     let active: LinkState
-    let presentationLocation: ParsedLocation | undefined
-    let presentationIsActive = false
-    let presentationDest: any
 
-    return (snapshot: LinkLocationSnapshot | ParsedLocation): LinkState => {
-      let location: ParsedLocation
-      let activeLocation: ParsedLocation
-      if (Array.isArray(snapshot)) {
-        ;[location, activeLocation] = snapshot
-      } else {
-        location = activeLocation = snapshot
-      }
+    const select = (location: ParsedLocation): LinkState => {
       if (!_options._fromLocation) {
         dest._fromLocation = location
       }
-      const next = router.buildLocation(dest)
+      // The first selection reuses the build that classified the destination.
+      // Fixed destinations stay reusable until router options invalidate the cache.
+      const next =
+        (cache === router._staticLocations &&
+          (fixed ?? (initial?.[0] === location ? initial[1] : undefined))) ||
+        router.buildLocation(dest)
+      initial = undefined
 
       // History formatters can depend on the current browser URL (hash history).
       // Reuse classification and immutable results until the formatted href changes.
@@ -378,42 +336,23 @@ export function useLinkProps<
         ]
         active = [href, true]
       }
-      if (inactive[1] === undefined) {
-        return inactive
-      }
-
-      // The owner store freezes only outgoing active presentation; hrefs
-      // always follow the live location, including relative destinations.
-      if (
-        activeLocation === location ||
-        process.env.NODE_ENV === 'development' ||
-        presentationLocation !== activeLocation
-      ) {
-        let activeNext = next
-        if (activeLocation !== location) {
-          presentationDest ??= { ..._options }
-          presentationDest._fromLocation =
-            _options._fromLocation ?? activeLocation
-          activeNext = router.buildLocation(presentationDest)
-        }
-        presentationIsActive = resolveIsActive(
-          activeLocation,
-          activeNext,
+      return inactive[1] !== undefined &&
+        resolveIsActive(
+          location,
+          next,
           stableActiveOptions,
           router.basepath,
           isHydrated,
         )
-        presentationLocation = activeLocation
-      }
-      return presentationIsActive ? active : inactive
+        ? active
+        : inactive
     }
+    return [select, fixed] as const
   }, [stableActiveOptions, disabled, isHydrated, _options, dest, router, to])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = useSelector(
-    ownerRouteId !== undefined && ownerRouteId !== rootRouteId
-      ? getLinkLocationStore(router, ownerRouteId)
-      : router.stores.location,
+    fixed && owner ? owner : router.stores.location,
     selectLinkState,
     LINK_SELECTOR_OPTIONS,
   )
