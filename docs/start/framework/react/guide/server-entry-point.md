@@ -136,7 +136,7 @@ Error conversion preserves:
 - Cookies from `setCookie` and `appendResponseHeader('set-cookie', ...)`, including multiple `Set-Cookie` headers
 - HTTP-style error metadata such as `error.status`, `error.statusText`, `error.headers`, and `error.cause.headers`
 
-Start builds a new JSON body for an error, so it never copies headers that describe another body or connection from error metadata: `Content-Length`, `Content-Encoding`, `Content-Range`, `Transfer-Encoding`, `Trailer`, `Connection`, `Keep-Alive`, `Proxy-Connection`, `TE`, and `Upgrade`. When `error.cause` is a `Response`, such as a failed upstream `fetch`, its `Set-Cookie` and `Content-Type` headers are not copied either.
+Start builds a new JSON body for an error, so it never copies the framing and connection headers `Content-Length`, `Content-Encoding`, `Transfer-Encoding`, `Trailer`, `Connection`, `Keep-Alive`, `Proxy-Connection`, and `TE` from error metadata. When `error.cause` is a `Response`, such as a failed upstream `fetch` from any fetch implementation, Start uses its status and status text but none of its headers, because they were written for that upstream reply.
 
 Explicit helper error statuses, their status text, and header operations take precedence over error metadata. An error response only uses an error status (`400`-`599`). A status set with `setResponseStatus` before the error applies only when it is an error status. A success, redirect, or bodyless status such as `200`, `201`, `302`, or `204` describes the response that the failure replaced, so Start discards it together with its status text and uses the error's own status or `500`. Error metadata such as `error.status` or `error.statusCode` likewise applies only when it is `400` or higher.
 

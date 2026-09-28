@@ -608,7 +608,7 @@ describe('server function response reconciliation', () => {
     await expect(call).rejects.toThrow('upstream failed')
     expect(action).not.toHaveBeenCalled()
     expect(response!.status).toBe(502)
-    expect(response!.headers.get('x-upstream')).toBe('yes')
+    expect(response!.headers.get('x-upstream')).toBeNull()
     expect(response!.headers.get('content-type')).toBe('application/json')
     expect(response!.headers.get('content-encoding')).toBeNull()
     expect(response!.headers.get('content-length')).toBeNull()
