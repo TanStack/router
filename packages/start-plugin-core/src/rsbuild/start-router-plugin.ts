@@ -7,10 +7,13 @@ import {
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
+import { pruneServerOnlySubtrees } from '../start-router-plugin/pruneServerOnlySubtrees'
+import { normalizePath } from '../utils'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI } from '@rsbuild/core'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
 import type { TanStackStartRsbuildInputConfig } from './schema'
+import type { Generator, GeneratorPlugin } from '@tanstack/router-generator'
 
 /**
  * Registers the TanStack Router generator and code-splitter plugins
@@ -29,6 +32,22 @@ export function registerRouterPlugins(
   },
 ): void {
   const routerPluginContext = createRouterPluginContext()
+  let generatorInstance: Generator | null = null
+  const clientTreeGeneratorPlugin: GeneratorPlugin = {
+    name: 'start-client-tree-plugin',
+    init({ generator }) {
+      generatorInstance = generator
+    },
+  }
+  const getGeneratedRouteTreePath = () => {
+    const { startConfig, resolvedStartConfig } = opts.getConfig()
+    return normalizePath(
+      path.resolve(
+        resolvedStartConfig.root,
+        startConfig.router.generatedRouteTree,
+      ),
+    )
+  }
 
   api.modifyRspackConfig((config, utils) => {
     const envName = utils.environment.name
@@ -51,6 +70,7 @@ export function registerRouterPlugins(
             })
           },
           plugins: [
+            clientTreeGeneratorPlugin,
             routesManifestPlugin(),
             ...(opts.startPluginOpts.prerender?.enabled === true
               ? [prerenderRoutesPlugin()]
@@ -82,4 +102,36 @@ export function registerRouterPlugins(
       utils.appendPlugins(splitterPlugin)
     }
   })
+  api.transform(
+    {
+      test: (resource) =>
+        opts.getConfig().startConfig.router.enableRouteGeneration !== false &&
+        normalizePath(resource) === getGeneratedRouteTreePath(),
+      environments: [RSBUILD_ENVIRONMENT_NAMES.client],
+      order: 'pre',
+    },
+    async () => {
+      if (!generatorInstance) {
+        throw new Error('Generator instance not initialized')
+      }
+      const crawlingResult = await generatorInstance.getCrawlingResult()
+      if (!crawlingResult) {
+        throw new Error('Crawling result not available')
+      }
+      const buildResult = generatorInstance.buildRouteTree({
+        ...crawlingResult,
+        acc: {
+          ...crawlingResult.acc,
+          ...pruneServerOnlySubtrees(crawlingResult),
+        },
+        config: {
+          disableTypes: true,
+          enableRouteTreeFormatting: false,
+          routeTreeFileHeader: [],
+          routeTreeFileFooter: [],
+        },
+      })
+      return { code: buildResult.routeTreeContent, map: null }
+    },
+  )
 }
