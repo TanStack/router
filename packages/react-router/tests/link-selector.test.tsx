@@ -1,5 +1,11 @@
 import React from 'react'
-import { act, cleanup, render, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
   Link,
@@ -17,7 +23,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function setup(trailingSlash: 'never' | 'preserve' = 'never') {
+async function setup(trailingSlash: 'always' | 'never' | 'preserve' = 'never') {
   const root = createRootRoute()
   const router = createRouter({
     routeTree: root.addChildren([
@@ -54,6 +60,42 @@ test('a fixed href follows active, inactive and active-again locations', async (
   }
 })
 
+test('unrelated navigation does not rebuild a fixed inactive Link', async () => {
+  const router = await setup()
+  const build = vi.spyOn(router, 'buildLocation')
+  const view = render(
+    <RouterContextProvider router={router}>
+      <Link to="/posts/1" search={{}}>
+        Fixed
+      </Link>
+    </RouterContextProvider>,
+  )
+  const link = view.getByText('Fixed')
+  const fixedBuilds = () =>
+    build.mock.calls.filter(([options]) => options.to === '/posts/1').length
+  await act(() => router.navigate({ to: '/posts/2', search: { page: 1 } }))
+  const initialBuilds = fixedBuilds()
+  await act(() => router.navigate({ to: '/posts/3', search: { page: 2 } }))
+
+  expect(link).toHaveAttribute('href', '/posts/1')
+  expect(link).not.toHaveAttribute('aria-current')
+  expect(fixedBuilds()).toBe(initialBuilds)
+})
+
+test('router options refresh a fixed Link without changing location', async () => {
+  const router = await setup()
+  const view = render(
+    <RouterContextProvider router={router}>
+      <Link to="/posts/1">Fixed</Link>
+    </RouterContextProvider>,
+  )
+  const link = view.getByText('Fixed')
+  expect(link).toHaveAttribute('href', '/posts/1')
+
+  await act(() => router.update({ trailingSlash: 'always' }))
+  expect(link).toHaveAttribute('href', '/posts/1/')
+})
+
 test('changed destination, active options and disabled props replace prepared state', async () => {
   const router = await setup()
   function tree(id: string, disabled = false, includeSearch = true) {
@@ -84,6 +126,25 @@ test('changed destination, active options and disabled props replace prepared st
   expect(link).not.toHaveAttribute('aria-current')
   await act(() => router.navigate({ to: '/posts/$id', params: { id: '2' } }))
   expect(link).toHaveAttribute('aria-current', 'page')
+})
+
+test('click uses updated navigation options when destination stays the same', async () => {
+  const router = await setup()
+  const link = (replace: boolean) => (
+    <RouterContextProvider router={router}>
+      <Link to="/posts/2" replace={replace}>
+        Post
+      </Link>
+    </RouterContextProvider>
+  )
+  const view = render(link(false))
+  view.rerender(link(true))
+
+  fireEvent.click(view.getByText('Post'))
+  await waitFor(() => {
+    expect(router.history.location.pathname).toBe('/posts/2')
+  })
+  expect(router.history.canGoBack()).toBe(false)
 })
 
 test('hash history refreshes a cached destination after the outer URL changes', async () => {

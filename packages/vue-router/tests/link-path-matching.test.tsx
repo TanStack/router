@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { cleanup, render } from '@testing-library/vue'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import {
   Link,
   RouterContextProvider,
@@ -11,6 +11,106 @@ import {
 } from '../src'
 
 afterEach(cleanup)
+
+test('unrelated navigation does not rebuild a fixed inactive Link', async () => {
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory({ initialEntries: ['/posts/1'] }),
+    isServer: false,
+  })
+  const build = vi.spyOn(router, 'buildLocation')
+  const { container } = render(
+    Vue.h(RouterContextProvider, { router }, () =>
+      Vue.h(Link, { to: '/posts/1' }, () => 'Fixed'),
+    ),
+  )
+  const link = container.querySelector('a')!
+  const fixedBuilds = () =>
+    build.mock.calls.filter(([options]) => options.to === '/posts/1').length
+
+  await router.navigate({ to: '/posts/2' })
+  await Vue.nextTick()
+  expect(link.getAttribute('aria-current')).toBeNull()
+  const initialBuilds = fixedBuilds()
+  await router.navigate({ to: '/posts/3' })
+  await Vue.nextTick()
+
+  expect(link.getAttribute('href')).toBe('/posts/1')
+  expect(link.getAttribute('aria-current')).toBeNull()
+  expect(fixedBuilds()).toBe(initialBuilds)
+})
+
+test('router options update a fixed Link without changing location', async () => {
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory({ initialEntries: ['/posts/1'] }),
+    trailingSlash: 'never' as 'never' | 'always',
+    isServer: false,
+  })
+  const { container } = render(
+    Vue.h(RouterContextProvider, { router }, () =>
+      Vue.h(Link, { to: '/posts/1' }, () => 'Fixed'),
+    ),
+  )
+  const link = container.querySelector('a')!
+  expect(link.getAttribute('href')).toBe('/posts/1')
+
+  router.update({ trailingSlash: 'always' })
+  await Vue.nextTick()
+  expect(link.getAttribute('href')).toBe('/posts/1/')
+})
+
+test('ancestor Link follows descendant navigation without matching a sibling', async () => {
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory({ initialEntries: ['/posts/item'] }),
+    isServer: false,
+  })
+  const { container } = render(
+    Vue.h(RouterContextProvider, { router }, () =>
+      Vue.h(Link, { to: '/posts' }, () => 'Posts'),
+    ),
+  )
+  const link = container.querySelector('a')!
+  expect(link.getAttribute('aria-current')).toBe('page')
+
+  await router.navigate({ to: '/posts-other' })
+  await Vue.nextTick()
+  expect(link.getAttribute('aria-current')).toBeNull()
+
+  await router.navigate({ to: '/posts/item' })
+  await Vue.nextTick()
+  expect(link.getAttribute('aria-current')).toBe('page')
+})
+
+test('reactive internal destination follows its new pathname', async () => {
+  const to = Vue.ref('/posts/1')
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory({ initialEntries: ['/posts/1'] }),
+    isServer: false,
+  })
+  const { container } = render(
+    Vue.h(RouterContextProvider, { router }, () =>
+      Vue.h(Link, { to: to.value }, () => 'Post'),
+    ),
+  )
+  const link = container.querySelector('a')!
+  expect(link.getAttribute('aria-current')).toBe('page')
+
+  to.value = '/posts/2'
+  await Vue.nextTick()
+  expect(link.getAttribute('href')).toBe('/posts/2')
+  expect(link.getAttribute('aria-current')).toBeNull()
+
+  await router.navigate({ to: '/posts/2' })
+  await Vue.nextTick()
+  expect(link.getAttribute('aria-current')).toBe('page')
+
+  await router.navigate({ to: '/posts/1' })
+  await Vue.nextTick()
+  expect(link.getAttribute('aria-current')).toBeNull()
+})
 
 const cases = [
   { current: '/', to: '/', exact: true, active: true },
