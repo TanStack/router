@@ -5,4 +5,4 @@
 '@tanstack/vue-router': patch
 ---
 
-Reduce the bundle cost of centralized Link state handling by separating shared operations from per-link state, simplifying result storage, and reusing core link classification in the Solid binding.
+Reduce the bundle cost of centralized Link state handling by sharing state publication, simplifying result storage, and removing redundant navigation option copies in React and Solid.

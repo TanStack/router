@@ -38,6 +38,30 @@ test.each([
   },
 )
 
+test('deferred Link settlement publishes every snapshot before notifying the first subscriber', () => {
+  expect(runProbe('atomic-settlement')).toEqual({
+    href: '/target?marker=after',
+    notifications: 1,
+    navigationError: null,
+    unhandled: [],
+    atomicHref: '/target?marker=after',
+    siblingNotifications: 1,
+  })
+})
+
+test('a replacement Link subscription remains current when an older navigation settles', () => {
+  expect(runProbe('registry-replacement')).toEqual({
+    href: '/target?marker=latest',
+    notifications: 0,
+    navigationError: null,
+    unhandled: [],
+    hrefAtSettlement: '/target?marker=after',
+    notificationsAtSettlement: 0,
+    replacementNotifications: 1,
+    derivationsAfterDisposal: 0,
+  })
+})
+
 function runProbe(mode: string) {
   const child = spawnSync(
     process.execPath,
