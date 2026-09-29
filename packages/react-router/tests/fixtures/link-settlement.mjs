@@ -90,7 +90,7 @@ let siblingNotifications = 0
 /** @type {(() => void) | undefined} */
 let unsubscribeSibling
 let notifications = 0
-const unsubscribe = record.subscribe(() => {
+const unsubscribe = record[3 /* subscribe */](() => {
   notifications++
   if (mode === 'atomic-settlement') {
     atomicHref = sibling?.read()[0]
@@ -108,7 +108,7 @@ if (mode === 'atomic-settlement') {
   sibling = createView(siblingStore, { to: '/target', search: true }, home.id)
   sibling.read()
   sibling.commit()
-  unsubscribeSibling = siblingStore.subscribe(() => {
+  unsubscribeSibling = siblingStore[3 /* subscribe */](() => {
     siblingNotifications++
   })
 }
@@ -117,7 +117,7 @@ if (mode === 'publication-error') {
   const persistent = core.createLinkStore(router)
   const persistentView = createView(persistent, options, root.id)
   persistentView.commit()
-  unsubscribePersistent = persistent.subscribe(() => {
+  unsubscribePersistent = persistent[3 /* subscribe */](() => {
     throw new Error('publication failed')
   })
 }
@@ -146,7 +146,7 @@ try {
     )
     replacement.read()
     replacement.commit()
-    unsubscribeReplacement = replacementStore.subscribe(() => {
+    unsubscribeReplacement = replacementStore[3 /* subscribe */](() => {
       replacementNotifications++
     })
     loaderGate.resolve(undefined)
@@ -212,11 +212,21 @@ function standaloneRoute(route) {
  * @param {string} owner
  */
 function createView(record, options, owner) {
-  if (core.renderLinkView) {
-    const view = core.renderLinkView(record, options, owner)
+  if (core.readLinkSnapshot) {
+    /** @type {core.LinkView} */
+    const view = [
+      record,
+      options,
+      owner,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]
     return {
       read: () => core.readLinkSnapshot(view),
-      commit: () => core.commitLinkView(view),
+      commit: () => core.refreshLink(view, true),
     }
   }
   const legacy = /** @type {LegacyLinkStore} */ (

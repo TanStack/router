@@ -3,14 +3,13 @@ import * as Solid from 'solid-js'
 import { mergeRefs } from '@solid-primitives/refs'
 
 import {
-  commitLinkView,
   createLinkStore,
   functionalUpdate,
   hasKeys,
   preloadWarning,
   readLinkSnapshot,
   readLinkState,
-  renderLinkView,
+  refreshLink,
 } from '@tanstack/router-core'
 
 import { isServer } from '@tanstack/router-core/isServer'
@@ -118,7 +117,7 @@ export function useLinkProps<
     // Read before publishing so failures never replace a valid snapshot.
     const update = () =>
       Solid.runWithOwner(componentOwner, () =>
-        setSnapshot(readLinkSnapshot(store.current!)),
+        setSnapshot(readLinkSnapshot(store[1 /* current */]!)),
       )
     // Destination inputs replace the view while the registration stays mounted.
     // Element styling and handlers do not rebuild the destination.
@@ -140,13 +139,23 @@ export function useLinkProps<
       const owner = nearestMatch[0]()
       const activeHash = hasHydrated() ? undefined : ''
       Solid.untrack(() => {
-        commitLinkView(
-          renderLinkView(store, destination as any, owner, activeHash),
+        refreshLink(
+          [
+            store,
+            destination as any,
+            owner,
+            activeHash,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+          ],
+          true,
         )
         update()
       })
     })
-    const unsubscribe = store.subscribe(update)
+    const unsubscribe = store[3 /* subscribe */](update)
     Solid.onCleanup(unsubscribe)
     linkState = snapshot
   }

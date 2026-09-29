@@ -2,13 +2,13 @@
 
 import * as React from 'react'
 import {
-  commitLinkView,
   createLinkStore,
   deepEqual,
   functionalUpdate,
   preloadWarning,
+  readLinkSnapshot,
   readLinkState,
-  renderLinkView,
+  refreshLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -19,6 +19,7 @@ import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  LinkView,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -199,13 +200,19 @@ export function useLinkProps<
   const linkStore = React.useMemo(() => createLinkStore(router), [router])
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const linkView = React.useMemo(
-    () =>
-      renderLinkView(
+    () => {
+      const view: LinkView = [
         linkStore,
         { ...options, activeOptions: stableActiveOptions, disabled } as any,
         ownerRouteId,
         isHydrated ? undefined : false,
-      ),
+        undefined,
+        undefined,
+        undefined,
+        () => readLinkSnapshot(view),
+      ]
+      return view
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       linkStore,
@@ -226,12 +233,14 @@ export function useLinkProps<
     ],
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  React.useLayoutEffect(() => commitLinkView(linkView), [linkView])
+  React.useLayoutEffect(() => {
+    refreshLink(linkView, true)
+  }, [linkView])
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = React.useSyncExternalStore(
-    linkStore.subscribe,
-    linkView.getSnapshot,
-    linkView.getSnapshot,
+    linkStore[3 /* subscribe */],
+    linkView[7 /* getSnapshot */]!,
+    linkView[7 /* getSnapshot */],
   )
   const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined
