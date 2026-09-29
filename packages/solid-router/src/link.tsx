@@ -3,11 +3,14 @@ import * as Solid from 'solid-js'
 import { mergeRefs } from '@solid-primitives/refs'
 
 import {
+  commitLinkView,
   createLinkStore,
   functionalUpdate,
   hasKeys,
   preloadWarning,
+  readLinkSnapshot,
   readLinkState,
+  renderLinkView,
 } from '@tanstack/router-core'
 
 import { isServer } from '@tanstack/router-core/isServer'
@@ -114,10 +117,9 @@ export function useLinkProps<
     // Native ownership routes a failed derivation to this Link's boundary.
     // Read before publishing so failures never replace a valid snapshot.
     const update = () =>
-      Solid.runWithOwner(componentOwner, () => setSnapshot(store.getSnapshot()))
-    const unsubscribe = store.subscribe(update)
-    Solid.onCleanup(unsubscribe)
-
+      Solid.runWithOwner(componentOwner, () =>
+        setSnapshot(readLinkSnapshot(store.current!)),
+      )
     // Destination inputs replace the view while the registration stays mounted.
     // Element styling and handlers do not rebuild the destination.
     Solid.createComputed(() => {
@@ -138,18 +140,19 @@ export function useLinkProps<
       const owner = nearestMatch[0]()
       const activeHash = hasHydrated() ? undefined : ''
       Solid.untrack(() => {
-        store.render(destination as any, owner, activeHash).commit()
+        commitLinkView(
+          renderLinkView(store, destination as any, owner, activeHash),
+        )
         update()
       })
     })
+    const unsubscribe = store.subscribe(update)
+    Solid.onCleanup(unsubscribe)
     linkState = snapshot
   }
 
   const hrefOption = () => linkState()[0]
-  const externalLink = () => {
-    const snapshot = linkState()
-    return snapshot[1] === undefined ? (snapshot[0] ?? null) : undefined
-  }
+  const externalLink = () => linkState()[1] === undefined
   const isActive = () => !!linkState()[1]
   const simpleStyling = () =>
     local.activeProps === STATIC_ACTIVE_PROPS_GET &&
@@ -204,8 +207,8 @@ export function useLinkProps<
 
   // Keep the guard inline so browser builds can drop the server return.
   if (isServer ?? router.isServer) {
-    const external = externalLink()
-    const disabled = local.disabled || external === null
+    const href = hrefOption()
+    const disabled = local.disabled || href === undefined
     const props = resolveLinkStateProps({
       onClick: local.onClick,
       onBlur: local.onBlur,
@@ -215,7 +218,7 @@ export function useLinkProps<
       onMouseOut: local.onMouseOut,
       onMouseOver: local.onMouseOver,
       onTouchStart: local.onTouchStart,
-      href: external === null ? undefined : external || hrefOption(),
+      href,
       ref: options.ref,
       disabled,
       target: local.target,
@@ -233,11 +236,7 @@ export function useLinkProps<
   let hasRenderFetched = false
 
   const preload = Solid.createMemo(() => {
-    if (
-      options.reloadDocument ||
-      externalLink() !== undefined ||
-      local.disabled
-    ) {
+    if (options.reloadDocument || externalLink() || local.disabled) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -320,7 +319,7 @@ export function useLinkProps<
 
     if (
       !local.disabled &&
-      externalLink() === undefined &&
+      !externalLink() &&
       !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
@@ -375,11 +374,11 @@ export function useLinkProps<
   )
 
   const resolvedProps = Solid.createMemo(() => {
-    const external = externalLink()
-    const disabled = local.disabled || external === null
+    const href = hrefOption()
+    const disabled = local.disabled || href === undefined
 
     const base = {
-      href: external === null ? undefined : external || hrefOption(),
+      href,
       ref: mergeRefs(setRef, options.ref),
       onClick,
       onBlur,

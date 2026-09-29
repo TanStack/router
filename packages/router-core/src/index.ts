@@ -4,7 +4,15 @@ export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { invariant } from './invariant'
 export { preloadWarning } from './link'
-export { createLinkStore, readLinkState } from './link-state'
+export {
+  commitLinkView,
+  createLinkStore,
+  getLinkLocation,
+  invalidateLink,
+  readLinkSnapshot,
+  readLinkState,
+  renderLinkView,
+} from './link-state'
 export type {
   LinkState,
   LinkStateOptions,

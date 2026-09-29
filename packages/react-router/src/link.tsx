@@ -2,11 +2,13 @@
 
 import * as React from 'react'
 import {
+  commitLinkView,
   createLinkStore,
   deepEqual,
   functionalUpdate,
   preloadWarning,
   readLinkState,
+  renderLinkView,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -204,7 +206,8 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const linkView = React.useMemo(
     () =>
-      linkStore.render(
+      renderLinkView(
+        linkStore,
         { ...options, activeOptions: stableActiveOptions, disabled } as any,
         ownerRouteId,
         isHydrated ? undefined : false,
@@ -229,7 +232,7 @@ export function useLinkProps<
     ],
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  React.useLayoutEffect(() => linkView.commit(), [linkView])
+  React.useLayoutEffect(() => commitLinkView(linkView), [linkView])
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = React.useSyncExternalStore(
     linkStore.subscribe,

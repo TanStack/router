@@ -14,21 +14,22 @@ export type LinkStateOptions = BuildNextOptions & {
 export type LinkState = readonly [href: string | undefined, isActive?: boolean]
 
 export interface LinkView {
+  record: LinkStore
+  options: LinkStateOptions
+  owner: string | undefined
+  activeHash: false | string | undefined
+  evaluate: (<T>(read: () => T) => T) | undefined
+  value: LinkValue | undefined
+  // Only speculative or unsubscribed views retain their source for catchup.
+  source: ParsedLocation | undefined
   getSnapshot: () => LinkState
-  commit: () => void
 }
 
 export interface LinkStore {
-  render: (
-    options: LinkStateOptions,
-    ownerRouteId?: string,
-    activeHash?: false | string,
-    evaluate?: <T>(read: () => T) => T,
-  ) => LinkView
-  getSnapshot: () => LinkState
+  router: AnyRouter
+  current: LinkView | undefined
+  listener: (() => void) | undefined
   subscribe: (listener: () => void) => () => void
-  getLocation: () => ParsedLocation | undefined
-  invalidate: () => void
 }
 
 /** Actual build reads, kept separate from public location objects. */
@@ -146,11 +147,12 @@ export function readLinkState(
   )
 }
 
-type LinkResult = [state: LinkState] | [state: undefined, error: unknown]
-
 type LinkValue = {
-  view: LinkViewState
-  result: LinkResult
+  view: LinkView
+  // Missing result means derivation failed, even if the thrown value is undefined.
+  // A blocked destination succeeds with [undefined].
+  result: LinkState | undefined
+  error: unknown
   destination: ParsedLocation | undefined
   dependencies: number
   direct: string | null | undefined
@@ -158,504 +160,485 @@ type LinkValue = {
   configuration: object
 }
 
-/** An immutable set of render inputs; only commit adopts it into the registry. */
-class LinkViewState implements LinkView {
-  value: LinkValue | undefined
-  // Speculative and unsubscribed views need source identity for catchup. An
-  // indexed view relies on its registry and must not retain historical state.
-  private source: ParsedLocation | undefined
-
-  constructor(
-    readonly record: LinkRecord,
-    readonly options: LinkStateOptions,
-    readonly owner: string | undefined,
-    readonly activeHash: false | string | undefined,
-    readonly evaluate?: <T>(read: () => T) => T,
-  ) {}
-
-  getSnapshot = (): LinkState => {
-    const result = this.refresh(false)!.result
-    if (!result[0]) {
-      throw result[1]
-    }
-    return result[0]
+/** Immutable render inputs remain unregistered until their component commits. */
+export function renderLinkView(
+  record: LinkStore,
+  options: LinkStateOptions,
+  owner?: string,
+  activeHash?: false | string,
+  evaluate?: <T>(read: () => T) => T,
+): LinkView {
+  const view: LinkView = {
+    record,
+    options,
+    owner,
+    activeHash,
+    evaluate,
+    value: undefined,
+    source: undefined,
+    getSnapshot: () => readLinkSnapshot(view),
   }
+  return view
+}
 
-  commit() {
-    this.refresh(true)
+export function readLinkSnapshot(view: LinkView): LinkState {
+  const value = refreshLink(view, false)!
+  if (!value.result) {
+    throw value.error
   }
+  return value.result
+}
 
-  private refresh(adopt: boolean) {
-    const record = this.record
-    const router = record.router
-    const previous = record.current
-    for (;;) {
-      const location = router.stores.location.get()
-      const configuration = router._linkOptions
-      let value = this.value
-      const ready =
-        value &&
-        value.configuration === configuration &&
-        ((record.current === this && record.listener) ||
-          this.source === location)
-      if (ready && !adopt) {
-        return value
-      }
-      if (!ready) {
-        value = this.prepare(location, true)
-      }
-      // A render may catch up its own speculative view. A commit must also
-      // retain the accepted owner it started with, or leave its successor alone.
-      if (adopt && record.current !== previous) {
-        return
-      }
-      if (
-        router.stores.location.get() !== location ||
-        router._linkOptions !== configuration
-      ) {
-        continue
-      }
-      if (adopt || (record.current === this && record.listener)) {
-        record.adopt(this, value!)
-      } else {
-        this.value = value
-        this.source = location
-      }
-      if (adopt) {
-        this.source = record.listener ? undefined : location
-        router._links?.accept(record)
-      }
+export function commitLinkView(view: LinkView) {
+  refreshLink(view, true)
+}
+
+function refreshLink(view: LinkView, adopt: boolean) {
+  const record = view.record
+  const router = record.router
+  const previous = record.current
+  for (;;) {
+    const location = router.stores.location.get()
+    const configuration = router._linkOptions
+    let value = view.value
+    const ready =
+      value &&
+      value.configuration === configuration &&
+      ((record.current === view && record.listener) || view.source === location)
+    if (ready && !adopt) {
       return value
     }
+    if (!ready) {
+      value = prepareLink(view, location, true)
+    }
+    // A render may catch up its own speculative view. A commit must also
+    // retain the accepted owner it started with, or leave its successor alone.
+    if (adopt && record.current !== previous) {
+      return
+    }
+    if (
+      router.stores.location.get() !== location ||
+      router._linkOptions !== configuration
+    ) {
+      continue
+    }
+    if (adopt || (record.current === view && record.listener)) {
+      adoptLink(record, view, value!)
+    } else {
+      view.value = value
+      view.source = location
+    }
+    if (adopt) {
+      // A native adapter can subscribe before its first successful view.
+      if (!previous && record.listener) {
+        const registry = (router._links ??= createLinkRegistry(router))
+        addLink(registry, record)
+      }
+      view.source = record.listener ? undefined : location
+      router._links?.deferred.delete(record)
+    }
+    return value
   }
+}
 
-  releaseSource() {
-    this.source = undefined
+function prepareLink(
+  view: LinkView,
+  location: ParsedLocation,
+  rebuild: boolean,
+): LinkValue {
+  const router = view.record.router
+  const previous = view.value
+  const configuration = router._linkOptions
+  let direct = previous?.direct
+  let destination = previous?.destination
+  const reads: LinkBuildTracking = {
+    dependencies: rebuild ? 0 : previous!.dependencies,
+    location,
   }
-
-  prepare(location: ParsedLocation, rebuild: boolean): LinkValue {
-    const router = this.record.router
-    const previous = this.value
-    const configuration = router._linkOptions
-    let direct = previous?.direct
-    let destination = previous?.destination
-    const reads: LinkBuildTracking = {
-      dependencies: rebuild ? 0 : previous!.dependencies,
+  let result: LinkState | undefined
+  let error: unknown
+  try {
+    if (rebuild) {
+      direct = directHref(router, view.options.to)
+      // A full retarget also clears native callback dependencies when the
+      // new destination is external. Active-only reads keep those intact.
+      destination = view.evaluate
+        ? view.evaluate(() =>
+            direct === undefined
+              ? router._buildLocation(view.options, reads)
+              : undefined,
+          )
+        : direct === undefined
+          ? router._buildLocation(view.options, reads)
+          : undefined
+    }
+    result = stateFor(
+      router,
+      view.options,
       location,
-    }
-    let result: LinkResult
-    try {
-      if (rebuild) {
-        direct = directHref(router, this.options.to)
-        // A full retarget also clears native callback dependencies when the
-        // new destination is external. Active-only reads keep those intact.
-        destination = this.evaluate
-          ? this.evaluate(() =>
-              direct === undefined
-                ? router._buildLocation(this.options, reads)
-                : undefined,
-            )
-          : direct === undefined
-            ? router._buildLocation(this.options, reads)
-            : undefined
-      }
-      result = [
-        stateFor(
-          router,
-          this.options,
-          location,
-          destination,
-          direct,
-          this.activeHash,
-        ),
-      ]
-    } catch (error) {
-      // Errors belong to the component reading this view, not to navigation.
-      result = [undefined, error]
-      reads.dependencies |= previous?.dependencies ?? 0
-    }
-    // Canonicalize before a render can observe this snapshot. Adoption must
-    // preserve that exposed identity, including when another view was current.
-    const previousResult =
-      previous?.result ?? this.record.current?.value?.result
-    if (previousResult) {
-      const oldState = previousResult[0]
-      const nextState = result[0]
-      if (
-        oldState && nextState
-          ? oldState[0] === nextState[0] && oldState[1] === nextState[1]
-          : oldState === nextState && previousResult[1] === result[1]
-      ) {
-        result = previousResult
-      }
-    }
-    const activeDependencies =
-      1 |
-      ((this.options.activeOptions?.includeSearch ?? true) ? 2 : 0) |
-      (this.options.activeOptions?.includeHash ? 4 : 0)
-    return {
-      view: this,
-      result,
       destination,
-      dependencies: reads.dependencies,
       direct,
-      // These dependencies already select every active-relevant source change.
-      path:
-        destination &&
-        (reads.dependencies & activeDependencies) !== activeDependencies
-          ? removeTrailingSlash(destination.pathname, router.basepath)
-          : undefined,
-      configuration,
-    }
+      view.activeHash,
+    )
+  } catch (cause) {
+    // Errors belong to the component reading this view, not to navigation.
+    error = cause
+    reads.dependencies |= previous?.dependencies ?? 0
   }
+  // Canonicalize before a render can observe this snapshot. Adoption must
+  // preserve that exposed identity, including when another view was current.
+  const previousResult = (previous ?? view.record.current?.value)?.result
+  if (
+    result &&
+    previousResult &&
+    result[0] === previousResult[0] &&
+    result[1] === previousResult[1]
+  ) {
+    result = previousResult
+  }
+  const activeDependencies =
+    1 |
+    ((view.options.activeOptions?.includeSearch ?? true) ? 2 : 0) |
+    (view.options.activeOptions?.includeHash ? 4 : 0)
+  return {
+    view,
+    result,
+    error,
+    destination,
+    dependencies: reads.dependencies,
+    direct,
+    // These dependencies already select every active-relevant source change.
+    path:
+      destination &&
+      (reads.dependencies & activeDependencies) !== activeDependencies
+        ? removeTrailingSlash(destination.pathname, router.basepath)
+        : undefined,
+    configuration,
+  }
+}
+
+function adoptLink(record: LinkStore, view: LinkView, value: LinkValue) {
+  const previous = record.current?.value
+  const changed =
+    !previous ||
+    previous.result !== value.result ||
+    previous.error !== value.error
+  const reindex =
+    previous &&
+    (previous.path !== value.path ||
+      previous.dependencies !== value.dependencies)
+  const registry = record.listener ? record.router._links : undefined
+  if (reindex && registry) {
+    unindexLink(registry, record)
+  }
+  view.value = value
+  record.current = view
+  if (reindex && registry) {
+    indexLink(registry, record)
+  }
+  return changed || previous?.destination?.href !== value.destination?.href
 }
 
 /** One subscription and index identity for the component's committed lifetime. */
-class LinkRecord implements LinkStore {
-  current: LinkViewState | undefined
-  listener: (() => void) | undefined
-
-  constructor(readonly router: AnyRouter) {}
-
-  get value() {
-    return this.current!.value!
-  }
-
-  get owner() {
-    return this.current!.owner
-  }
-
-  render(
-    options: LinkStateOptions,
-    ownerRouteId?: string,
-    activeHash?: false | string,
-    evaluate?: <T>(read: () => T) => T,
-  ): LinkView {
-    return new LinkViewState(this, options, ownerRouteId, activeHash, evaluate)
-  }
-
-  getSnapshot() {
-    return this.current!.getSnapshot()
-  }
-
-  getLocation() {
-    this.getSnapshot()
-    return this.value.destination
-  }
-
-  subscribe = (listener: () => void) => {
-    if (isServer ?? this.router.isServer) {
-      return () => {}
-    }
-    if (!this.listener && this.current) {
-      this.current.commit()
-      this.listener = listener
-      const registry = (this.router._links ??= new LinkRegistry(this.router))
-      registry.add(this)
-      this.current.releaseSource()
-    } else {
-      this.listener = listener
-    }
-    return () => {
-      if (this.listener === listener) {
-        this.listener = undefined
-        if (this.current) {
-          this.current.releaseSource()
-          this.router._links?.remove(this)
-        }
-      }
-    }
-  }
-
-  invalidate() {
-    this.router._links?.invalidate(this)
-  }
-
-  prepare(location: ParsedLocation, rebuild: boolean) {
-    return this.current!.prepare(location, rebuild)
-  }
-
-  apply(value: LinkValue) {
-    // Another candidate's user callback may have retargeted this component.
-    if (this.current !== value.view) {
-      return false
-    }
-    return this.adopt(value.view, value)
-  }
-
-  adopt(view: LinkViewState, value: LinkValue) {
-    const previous = this.current?.value
-    const changed = previous?.result !== value.result
-    const reindex =
-      previous &&
-      (previous.path !== value.path ||
-        previous.dependencies !== value.dependencies)
-    const registry = this.listener ? this.router._links : undefined
-    if (reindex) {
-      registry?.unindex(this)
-    }
-    view.value = value
-    this.current = view
-    if (!previous && this.listener) {
-      const initialRegistry = (this.router._links ??= new LinkRegistry(
-        this.router,
-      ))
-      initialRegistry.add(this)
-    } else if (reindex) {
-      registry?.index(this)
-    }
-    return changed || previous?.destination?.href !== value.destination?.href
-  }
-
-  notify() {
-    this.listener?.()
-  }
-}
-
-/** Render views remain unregistered until their component commits. */
 export function createLinkStore(router: AnyRouter): LinkStore {
-  return new LinkRecord(router)
-}
-
-/** Indexes outputs and actual build reads rather than broadcasting location. */
-export class LinkRegistry {
-  private records = new Set<LinkRecord>()
-  private paths = new Map<string, Set<LinkRecord>>()
-  // Four source fields form at most 15 nonempty masks: one membership per Link.
-  private dependencies: Array<Set<LinkRecord> | undefined> = []
-  private deferred = new Set<LinkRecord>()
-  private waiting: LoadTransaction | undefined
-  private location: ParsedLocation
-  private configuration: object
-  private hrefSource: unknown
-
-  constructor(private router: AnyRouter) {
-    this.location = router.stores.location.get()
-    this.configuration = router._linkOptions
-    this.hrefSource = router.history._hrefSource?.read()
-    router.stores._onLocationChange = this.update
-  }
-
-  add(record: LinkRecord) {
-    this.records.add(record)
-    this.index(record)
-  }
-
-  accept(record: LinkRecord) {
-    this.deferred.delete(record)
-  }
-
-  remove(record: LinkRecord) {
-    this.records.delete(record)
-    this.deferred.delete(record)
-    this.unindex(record)
-    if (!this.records.size) {
-      this.router.stores._onLocationChange = undefined
-      this.router._links = undefined
-    }
-  }
-
-  index(record: LinkRecord) {
-    if (record.value.path !== undefined) {
-      let path = this.paths.get(record.value.path)
-      if (!path) {
-        this.paths.set(record.value.path, (path = new Set()))
+  const record: LinkStore = {
+    router,
+    current: undefined,
+    listener: undefined,
+    subscribe: (listener) => {
+      if (isServer ?? record.router.isServer) {
+        return () => {}
       }
-      path.add(record)
-    }
-    const mask = record.value.dependencies
-    if (mask) {
-      const group = (this.dependencies[mask] ??= new Set())
-      group.add(record)
-    }
-  }
-
-  unindex(record: LinkRecord) {
-    if (record.value.path !== undefined) {
-      const path = this.paths.get(record.value.path)
-      path?.delete(record)
-      if (!path?.size) {
-        this.paths.delete(record.value.path)
+      if (!record.listener && record.current) {
+        commitLinkView(record.current)
+        record.listener = listener
+        const registry = (record.router._links ??= createLinkRegistry(
+          record.router,
+        ))
+        addLink(registry, record)
+        record.current.source = undefined
+      } else {
+        record.listener = listener
       }
-    }
-    this.dependencies[record.value.dependencies]?.delete(record)
-  }
-
-  private candidates(pathname: string, result: Set<LinkRecord>) {
-    let path = removeTrailingSlash(pathname, this.router.basepath)
-    for (;;) {
-      this.paths.get(path)?.forEach((record) => result.add(record))
-      const slash = path.lastIndexOf('/')
-      // '/' only matches itself or a double-slash prefix, not ordinary paths.
-      if (slash <= 0) {
-        return
-      }
-      path = path.slice(0, slash)
-    }
-  }
-
-  private update = () => {
-    const router = this.router
-    const location = router.stores.location.get()
-    const previous = this.location
-    const configuration = router._linkOptions
-    const force = configuration !== this.configuration
-    const changed =
-      (previous.pathname !== location.pathname ? 1 : 0) |
-      (previous.search !== location.search ? 2 : 0) |
-      (previous.hash !== location.hash ? 4 : 0) |
-      (previous.state !== location.state ? 8 : 0)
-    const formatting = router.history._hrefSource
-    const hrefSource = formatting?.read()
-    const formatChanged =
-      !formatting ||
-      formatting.createHref !== router.history.createHref ||
-      hrefSource !== this.hrefSource
-    const candidates = new Set<LinkRecord>()
-    if (force) {
-      this.records.forEach((record) => candidates.add(record))
-    } else {
-      if (changed & 7) {
-        this.candidates(previous.pathname, candidates)
-        this.candidates(location.pathname, candidates)
-      }
-      for (let mask = 1; mask < this.dependencies.length; mask++) {
-        if (changed & mask) {
-          this.dependencies[mask]?.forEach((record) => candidates.add(record))
-        }
-      }
-      if (formatChanged) {
-        for (const record of this.records) {
-          if (record.value.destination) {
-            candidates.add(record)
+      return () => {
+        if (record.listener === listener) {
+          record.listener = undefined
+          if (record.current) {
+            record.current.source = undefined
+            const registry = record.router._links
+            if (registry) {
+              removeLink(registry, record)
+            }
           }
         }
       }
-    }
-    const owner = router._tx
-    const pending =
-      owner?.[2 /* location */] === location &&
-      router.stores.status.get() === 'pending'
-        ? owner
-        : undefined
-    const retained = pending
-      ? new Set(pending[3 /* matches */].map((match) => match.routeId))
-      : undefined
-    this.deferred.forEach((record) => {
-      if (!record.owner || !retained || retained.has(record.owner)) {
-        candidates.add(record)
-      }
-    })
-    const prepared: Array<[LinkValue, LinkValue]> = []
-    const departing: Array<LinkRecord> = []
-    for (const record of candidates) {
-      if (!this.records.has(record)) {
-        continue
-      }
-      if (record.owner && retained && !retained.has(record.owner)) {
-        departing.push(record)
-        continue
-      }
-      const previousValue = record.value
-      const value = record.prepare(
-        location,
-        force ||
-          this.deferred.has(record) ||
-          !!(previousValue.dependencies & changed),
-      )
-      // A build updater may navigate. Its successor prepares against the last
-      // complete publication, and this obsolete preparation publishes nothing.
-      if (router.stores.location.get() !== location || router._tx !== owner) {
-        return
-      }
-      prepared.push([previousValue, value])
-    }
-    for (const record of departing) {
-      // A later updater may synchronously unmount an earlier candidate.
-      if (this.records.has(record)) {
-        this.deferred.add(record)
-      }
-    }
-    const notifications = this.apply(prepared)
-    this.location = location
-    this.configuration = configuration
-    this.hrefSource = hrefSource
-    if (pending && this.deferred.size && this.waiting !== pending) {
-      this.waiting = pending
-      pending[5 /* done */].then(
-        () => this.settle(pending),
-        () => this.settle(pending),
-      )
-    }
-    // All outputs and indexes agree before callbacks can navigate. Continue
-    // notifying surviving subscribers after reentry: they read the newest
-    // snapshot, including an earlier change their successor did not alter.
-    this.notify(notifications)
+    },
   }
+  return record
+}
 
-  /** Native callback inputs use the same publication path as location inputs. */
-  invalidate(record: LinkRecord) {
-    if (!this.records.has(record)) {
+/** Vue reads the destination in addition to the published href and active state. */
+export function getLinkLocation(store: LinkStore) {
+  const record = store
+  readLinkSnapshot(record.current!)
+  return record.current!.value!.destination
+}
+
+/** Native callback inputs use the same publication path as location inputs. */
+export function invalidateLink(store: LinkStore) {
+  const record = store
+  const router = record.router
+  const registry = router._links
+  if (!registry?.records.has(record)) {
+    return
+  }
+  const location = router.stores.location.get()
+  const owner = router._tx
+  const previousValue = record.current!.value!
+  const value = prepareLink(record.current!, location, true)
+  if (router.stores.location.get() === location && router._tx === owner) {
+    notifyLinks(registry, applyLinks(registry, [[previousValue, value]]))
+  }
+}
+/** Indexes outputs and actual build reads rather than broadcasting location. */
+export interface LinkRegistry {
+  router: AnyRouter
+  records: Set<LinkStore>
+  paths: Map<string, Set<LinkStore>>
+  dependencies: Array<Set<LinkStore> | undefined>
+  deferred: Set<LinkStore>
+  waiting: LoadTransaction | undefined
+  location: ParsedLocation
+  configuration: object
+  hrefSource: unknown
+}
+
+function createLinkRegistry(router: AnyRouter): LinkRegistry {
+  const registry: LinkRegistry = {
+    router,
+    records: new Set(),
+    paths: new Map(),
+    dependencies: [],
+    deferred: new Set(),
+    waiting: undefined,
+    location: router.stores.location.get(),
+    configuration: router._linkOptions,
+    hrefSource: router.history._hrefSource?.read(),
+  }
+  router.stores._onLocationChange = () => updateLinks(registry)
+  return registry
+}
+
+function addLink(registry: LinkRegistry, record: LinkStore) {
+  registry.records.add(record)
+  indexLink(registry, record)
+}
+
+function removeLink(registry: LinkRegistry, record: LinkStore) {
+  registry.records.delete(record)
+  registry.deferred.delete(record)
+  unindexLink(registry, record)
+  if (!registry.records.size) {
+    registry.router.stores._onLocationChange = undefined
+    registry.router._links = undefined
+  }
+}
+
+function indexLink(registry: LinkRegistry, record: LinkStore) {
+  const value = record.current!.value!
+  if (value.path !== undefined) {
+    let path = registry.paths.get(value.path)
+    if (!path) {
+      registry.paths.set(value.path, (path = new Set()))
+    }
+    path.add(record)
+  }
+  const mask = value.dependencies
+  if (mask) {
+    const group = (registry.dependencies[mask] ??= new Set())
+    group.add(record)
+  }
+}
+
+function unindexLink(registry: LinkRegistry, record: LinkStore) {
+  const value = record.current!.value!
+  if (value.path !== undefined) {
+    const path = registry.paths.get(value.path)
+    path?.delete(record)
+    if (!path?.size) {
+      registry.paths.delete(value.path)
+    }
+  }
+  registry.dependencies[value.dependencies]?.delete(record)
+}
+
+function collectCandidates(
+  registry: LinkRegistry,
+  pathname: string,
+  result: Set<LinkStore>,
+) {
+  let path = removeTrailingSlash(pathname, registry.router.basepath)
+  for (;;) {
+    registry.paths.get(path)?.forEach((record) => result.add(record))
+    const slash = path.lastIndexOf('/')
+    // '/' only matches itself or a double-slash prefix, not ordinary paths.
+    if (slash <= 0) {
       return
     }
-    const location = this.router.stores.location.get()
-    const owner = this.router._tx
-    const previousValue = record.value
-    const value = record.prepare(location, true)
-    if (
-      this.router.stores.location.get() === location &&
-      this.router._tx === owner
-    ) {
-      this.notify(this.apply([[previousValue, value]]))
-    }
+    path = path.slice(0, slash)
   }
+}
 
-  private apply(prepared: Array<[LinkValue, LinkValue]>) {
-    const notifications: Array<LinkRecord> = []
-    for (const [previousValue, value] of prepared) {
-      const record = value.view.record
-      // A sibling updater can publish newer native inputs without changing
-      // the location or view. Only replace the value we prepared against.
-      if (
-        this.records.has(record) &&
-        record.current === value.view &&
-        record.value === previousValue
-      ) {
-        this.deferred.delete(record)
-        if (record.apply(value)) {
-          notifications.push(record)
+function updateLinks(registry: LinkRegistry) {
+  const router = registry.router
+  const location = router.stores.location.get()
+  const previous = registry.location
+  const configuration = router._linkOptions
+  const force = configuration !== registry.configuration
+  const changed =
+    (previous.pathname !== location.pathname ? 1 : 0) |
+    (previous.search !== location.search ? 2 : 0) |
+    (previous.hash !== location.hash ? 4 : 0) |
+    (previous.state !== location.state ? 8 : 0)
+  const formatting = router.history._hrefSource
+  const hrefSource = formatting?.read()
+  const formatChanged =
+    !formatting ||
+    formatting.createHref !== router.history.createHref ||
+    hrefSource !== registry.hrefSource
+  const candidates = new Set<LinkStore>()
+  if (force) {
+    registry.records.forEach((record) => candidates.add(record))
+  } else {
+    if (changed & 7) {
+      collectCandidates(registry, previous.pathname, candidates)
+      collectCandidates(registry, location.pathname, candidates)
+    }
+    for (let mask = 1; mask < registry.dependencies.length; mask++) {
+      if (changed & mask) {
+        registry.dependencies[mask]?.forEach((record) => candidates.add(record))
+      }
+    }
+    if (formatChanged) {
+      for (const record of registry.records) {
+        if (record.current!.value!.destination) {
+          candidates.add(record)
         }
       }
     }
-    return notifications
   }
-
-  private notify(records: Array<LinkRecord>) {
-    for (const record of records) {
-      if (this.records.has(record)) {
-        record.notify()
-      }
+  const owner = router._tx
+  const pending =
+    owner?.[2 /* location */] === location &&
+    router.stores.status.get() === 'pending'
+      ? owner
+      : undefined
+  const retained = pending
+    ? new Set(pending[3 /* matches */].map((match) => match.routeId))
+    : undefined
+  registry.deferred.forEach((record) => {
+    const ownerRouteId = record.current!.owner
+    if (!ownerRouteId || !retained || retained.has(ownerRouteId)) {
+      candidates.add(record)
     }
-  }
-
-  private settle(owner: LoadTransaction) {
-    const router = this.router
-    if (this.waiting === owner) {
-      this.waiting = undefined
+  })
+  const prepared: Array<[LinkValue, LinkValue]> = []
+  const departing: Array<LinkStore> = []
+  for (const record of candidates) {
+    if (!registry.records.has(record)) {
+      continue
     }
-    if (router._tx !== owner || router._links !== this) {
+    const ownerRouteId = record.current!.owner
+    if (ownerRouteId && retained && !retained.has(ownerRouteId)) {
+      departing.push(record)
+      continue
+    }
+    const previousValue = record.current!.value!
+    const value = prepareLink(
+      record.current!,
+      location,
+      force ||
+        registry.deferred.has(record) ||
+        !!(previousValue.dependencies & changed),
+    )
+    // A build updater may navigate. Its successor prepares against the last
+    // complete publication, and this obsolete preparation publishes nothing.
+    if (router.stores.location.get() !== location || router._tx !== owner) {
       return
     }
-    const location = router.stores.location.get()
-    const prepared: Array<[LinkValue, LinkValue]> = []
-    for (const record of this.deferred) {
-      const previousValue = record.value
-      const value = record.prepare(location, true)
-      if (router._tx !== owner || router.stores.location.get() !== location) {
-        return
-      }
-      prepared.push([previousValue, value])
-    }
-    router.batch(() => this.notify(this.apply(prepared)))
+    prepared.push([previousValue, value])
   }
+  for (const record of departing) {
+    // A later updater may synchronously unmount an earlier candidate.
+    if (registry.records.has(record)) {
+      registry.deferred.add(record)
+    }
+  }
+  const notifications = applyLinks(registry, prepared)
+  registry.location = location
+  registry.configuration = configuration
+  registry.hrefSource = hrefSource
+  if (pending && registry.deferred.size && registry.waiting !== pending) {
+    registry.waiting = pending
+    pending[5 /* done */].then(
+      () => settleLinks(registry, pending),
+      () => settleLinks(registry, pending),
+    )
+  }
+  // All outputs and indexes agree before callbacks can navigate. Continue
+  // notifying surviving subscribers after reentry: they read the newest
+  // snapshot, including an earlier change their successor did not alter.
+  notifyLinks(registry, notifications)
+}
+
+function applyLinks(
+  registry: LinkRegistry,
+  prepared: Array<[LinkValue, LinkValue]>,
+) {
+  const notifications: Array<LinkStore> = []
+  for (const [previousValue, value] of prepared) {
+    const record = value.view.record
+    // A sibling updater can publish newer native inputs without changing
+    // the location or view. Only replace the value we prepared against.
+    if (
+      registry.records.has(record) &&
+      record.current === value.view &&
+      record.current.value === previousValue
+    ) {
+      registry.deferred.delete(record)
+      if (adoptLink(record, value.view, value)) {
+        notifications.push(record)
+      }
+    }
+  }
+  return notifications
+}
+
+function notifyLinks(registry: LinkRegistry, records: Array<LinkStore>) {
+  for (const record of records) {
+    if (registry.records.has(record)) {
+      record.listener?.()
+    }
+  }
+}
+
+function settleLinks(registry: LinkRegistry, owner: LoadTransaction) {
+  const router = registry.router
+  if (registry.waiting === owner) {
+    registry.waiting = undefined
+  }
+  if (router._tx !== owner || router._links !== registry) {
+    return
+  }
+  const location = router.stores.location.get()
+  const prepared: Array<[LinkValue, LinkValue]> = []
+  for (const record of registry.deferred) {
+    const previousValue = record.current!.value!
+    const value = prepareLink(record.current!, location, true)
+    if (router._tx !== owner || router.stores.location.get() !== location) {
+      return
+    }
+    prepared.push([previousValue, value])
+  }
+  router.batch(() => notifyLinks(registry, applyLinks(registry, prepared)))
 }
