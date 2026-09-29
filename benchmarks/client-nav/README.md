@@ -233,6 +233,10 @@ those separate workloads.
   hrefs and active state during its untimed warm-up lap. Control navigations
   replace the history entry, keeping history size constant. Post-measurement
   assertions also check that the measured anchors stayed mounted.
+- **Owner publication:** `persistent-1000` and `departing-1000` each render
+  1,000 unique destinations. Persistent anchors survive all eight navigations;
+  departing anchors are replaced by the incoming route. Both include render
+  settlement and validate hrefs and active state after the timed batch.
 - **SSR:** four fresh-router requests per timed batch, each rendering 200
   measured Links through `RouterProvider` and `renderToString`. Router creation,
   `router.load()`, rendering, and history cleanup are included. This isolates

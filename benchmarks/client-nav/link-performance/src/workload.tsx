@@ -11,6 +11,7 @@ import {
 } from '@tanstack/react-router'
 import {
   LINK_COUNT,
+  linkCount,
   LOCALES,
   encodedValue,
   optionalCategory,
@@ -133,7 +134,17 @@ const publicRoute = createRoute({
   path: 'public/$itemId',
 })
 
+const controls = [0, 1, 2, 3] as const
+const departingRoutes = controls.map((state) =>
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: `page-${state}`,
+    component: MeasuredLinks,
+  }),
+)
+
 const routeTree = rootRoute.addChildren([
+  ...departingRoutes,
   itemsRoute.addChildren([detailsRoute]),
   teamRoute.addChildren([teamItemRoute.addChildren([teamDetailsRoute])]),
   filteredRoute,
@@ -237,6 +248,11 @@ function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
     state: { linkPerfState: stateIndex + 10 },
   }
   switch (caseId) {
+    case 'departing-1000':
+      return linkOptions({
+        ...common,
+        to: `/page-${stateIndex}` as `/page-${0 | 1 | 2 | 3}`,
+      })
     case 'relative':
       return linkOptions({
         ...common,
@@ -282,8 +298,7 @@ function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
   }
 }
 
-const indexes = Array.from({ length: LINK_COUNT }, (_, index) => index)
-const controls = [0, 1, 2, 3] as const
+const indexes = Array.from({ length: 1000 }, (_, index) => index)
 
 function SourcePath() {
   const pathname = useLocation({ select: (location) => location.pathname })
@@ -310,11 +325,20 @@ function RootLayout() {
         ))}
       </nav>
       <SourcePath />
-      <section aria-label="Measured Links">
-        {indexes.map((index) => measuredLink(context, index))}
-      </section>
+      {context.caseId !== 'departing-1000' && <MeasuredLinks />}
       <Outlet />
     </>
+  )
+}
+
+function MeasuredLinks() {
+  const context = rootRoute.useRouteContext()
+  return (
+    <section aria-label="Measured Links">
+      {indexes
+        .slice(0, linkCount(context.caseId))
+        .map((index) => measuredLink(context, index))}
+    </section>
   )
 }
 
@@ -332,12 +356,14 @@ function measuredLink(
   switch (caseId) {
     case 'shared-params':
     case 'unique-params':
+    case 'persistent-1000':
+    case 'departing-1000':
       return (
         <Link
           {...common}
           to="/items/$itemId"
           params={{
-            itemId: caseId === 'unique-params' ? `item-${index}` : itemId,
+            itemId: caseId === 'shared-params' ? itemId : `item-${index}`,
           }}
         />
       )

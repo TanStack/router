@@ -1,5 +1,16 @@
 export const LINK_CASES = [
   {
+    id: 'persistent-1000',
+    label: '1,000 persistent unique Links',
+    description: 'Flat activity rejection across a persistent root owner.',
+  },
+  {
+    id: 'departing-1000',
+    label: '1,000 departing unique Links',
+    description:
+      'Owner publication skips outgoing Links; includes remount and settlement.',
+  },
+  {
     id: 'shared-params',
     label: 'Shared string params',
     description: '200 persistent Links reuse 40 string parameter values.',
@@ -73,6 +84,9 @@ export const LINK_CASES = [
 export type LinkCaseId = (typeof LINK_CASES)[number]['id']
 
 export const LINK_COUNT = 200
+export function linkCount(id: LinkCaseId) {
+  return id === 'persistent-1000' || id === 'departing-1000' ? 1000 : LINK_COUNT
+}
 export const NAVIGATION_STATES = [1, 2, 3, 0] as const
 export const LOCALES = ['en', 'fr', 'de', 'es'] as const
 
@@ -156,6 +170,8 @@ function url(pathname: string, search: Partial<LinkSearch> = {}, hash = '') {
 
 function sourcePath(caseId: LinkCaseId, stateIndex: number) {
   switch (caseId) {
+    case 'departing-1000':
+      return `/page-${stateIndex}`
     case 'relative':
       return `/teams/team-${stateIndex}/item-${stateIndex}`
     case 'numeric-params':
@@ -197,6 +213,8 @@ function expectedHref(caseId: LinkCaseId, stateIndex: number, index: number) {
     case 'shared-params':
       return `/items/${itemId}`
     case 'unique-params':
+    case 'persistent-1000':
+    case 'departing-1000':
       return `/items/item-${index}`
     case 'param-updaters':
       return `/items/item-${stateIndex}-related-${index % 40}`
@@ -304,9 +322,9 @@ export function assertScenario(
     )
   }
   const links = root.querySelectorAll<HTMLAnchorElement>('a[data-perf-link]')
-  if (links.length !== LINK_COUNT) {
+  if (links.length !== linkCount(caseId)) {
     throw new Error(
-      `${caseId}: expected ${LINK_COUNT} Links, got ${links.length}`,
+      `${caseId}: expected ${linkCount(caseId)} Links, got ${links.length}`,
     )
   }
   for (const [index, link] of links.entries()) {
@@ -322,8 +340,10 @@ export function assertScenario(
     let active: boolean | undefined
     if (caseId === 'shared-params') {
       active = index % 40 === stateIndex
-    } else if (caseId === 'unique-params') {
+    } else if (caseId === 'unique-params' || caseId === 'persistent-1000') {
       active = index === stateIndex
+    } else if (caseId === 'departing-1000') {
+      active = false
     } else if (caseId === 'active') {
       active =
         Math.floor(index / 5) === stateIndex && [0, 2, 3].includes(index % 5)
