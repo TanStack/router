@@ -437,6 +437,9 @@ export type {
   ScrollRestorationEntry,
 } from './scroll-restoration'
 
+export { setupRouteAnnouncer } from './route-announcer'
+export type { RouteAnnouncerOptions } from './route-announcer'
+
 export type {
   ValidateFromPath,
   ValidateToPath,
