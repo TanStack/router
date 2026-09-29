@@ -1934,7 +1934,7 @@ export class RouterCore<
       // We allow the caller to override the current location
       const currentLocation =
         dest._fromLocation ||
-        tracking?.location ||
+        tracking?.[1 /* location */] ||
         this._pendingLocation ||
         this.latestLocation
 
@@ -1944,13 +1944,13 @@ export class RouterCore<
       let lightweight: LightweightRouteMatchResult | undefined
       const current = (dependency: number) => {
         if (tracking && !dest._fromLocation) {
-          tracking.dependencies |= dependency
+          tracking[0 /* dependencies */] |= dependency
         }
         return currentLocation
       }
       const currentMatch = (dependency: number) => {
         if (tracking && !dest._fromLocation) {
-          tracking.dependencies |= dependency
+          tracking[0 /* dependencies */] |= dependency
         }
         return (lightweight ??= this.matchRoutesLightweight(currentLocation))
       }

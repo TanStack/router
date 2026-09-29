@@ -183,3 +183,26 @@ test('changing href cancels old intent work and preloads and navigates to the cu
   expect(link).toHaveAttribute('aria-current', 'page')
   expect(oldLoader).not.toHaveBeenCalled()
 })
+
+test('render preloading remains once per mounted Link when its router changes', async () => {
+  const first = await setup()
+  const second = await setup()
+  const firstPreload = vi.spyOn(first, 'preloadRoute')
+  const secondPreload = vi.spyOn(second, 'preloadRoute')
+  const view = render(
+    <RouterContextProvider router={first}>
+      <Link to="/b" preload="render">
+        Target
+      </Link>
+    </RouterContextProvider>,
+  )
+  expect(firstPreload).toHaveBeenCalledTimes(1)
+  view.rerender(
+    <RouterContextProvider router={second}>
+      <Link to="/b" preload="render">
+        Target
+      </Link>
+    </RouterContextProvider>,
+  )
+  expect(secondPreload).not.toHaveBeenCalled()
+})

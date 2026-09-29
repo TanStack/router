@@ -6,7 +6,9 @@ import {
   deepEqual,
   functionalUpdate,
   preloadWarning,
+  readLinkSnapshot,
   readLinkState,
+  refreshLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -17,6 +19,7 @@ import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  LinkView,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -144,8 +147,8 @@ export function useLinkProps<
   // 3. In client bundles, `isServer` is `false`, so the early return never executes
   // ==========================================================================
 
-  // The link's own ref: the element for the viewport observer and the key
-  // of a pending intent timer. A forwarded ref is filled alongside it by one
+  // The link's own ref holds the element for the viewport observer.
+  // A forwarded ref is filled alongside it by one
   // callback, memoized on the forwarded ref so React re-attaches it (and
   // notifies the consumer) only when their ref changes, not on every render.
   // A cleanup returned by a consumer callback is passed through to React.
@@ -170,12 +173,6 @@ export function useLinkProps<
     activeOptions,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
-    hashScrollIntoView,
-    replace,
-    startTransition,
-    resetScroll,
-    viewTransition,
-    ignoreBlocker,
     disabled,
     target,
     onClick,
@@ -203,12 +200,19 @@ export function useLinkProps<
   const linkStore = React.useMemo(() => createLinkStore(router), [router])
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const linkView = React.useMemo(
-    () =>
-      linkStore.render(
-        { ...options, activeOptions: stableActiveOptions, disabled } as any,
+    () => {
+      const view: LinkView = [
+        linkStore,
+        options as any,
         ownerRouteId,
         isHydrated ? undefined : false,
-      ),
+        undefined,
+        undefined,
+        undefined,
+        () => readLinkSnapshot(view),
+      ]
+      return view
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       linkStore,
@@ -229,18 +233,22 @@ export function useLinkProps<
     ],
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  React.useLayoutEffect(() => linkView.commit(), [linkView])
+  React.useLayoutEffect(() => {
+    refreshLink(linkView, true)
+  }, [linkView])
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = React.useSyncExternalStore(
-    linkStore.subscribe,
-    linkView.getSnapshot,
-    linkView.getSnapshot,
+    linkStore[3 /* subscribe */],
+    linkView[7 /* getSnapshot */]!,
+    linkView[7 /* getSnapshot */],
   )
   const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const hasRenderFetched = React.useRef(false)
+  const preloadState = React.useRef<
+    [renderFetched: boolean, timeout: ReturnType<typeof setTimeout> | undefined]
+  >([false, undefined]).current
 
   const preload =
     options.reloadDocument || externalLink || linkDisabled
@@ -258,7 +266,7 @@ export function useLinkProps<
         ?.isIntersecting
       if (!(isIntersecting ?? preload === 'intent')) {
         if (isIntersecting === false) {
-          cancelPreload(innerRef)
+          cancelPreload(preloadState)
         }
         return
       }
@@ -268,17 +276,14 @@ export function useLinkProps<
         return
       }
 
-      if (timeoutMap.has(innerRef)) {
+      if (preloadState[1 /* timeout */] !== undefined) {
         return
       }
 
-      timeoutMap.set(
-        innerRef,
-        setTimeout(() => {
-          timeoutMap.delete(innerRef)
-          preloadLink(router, options)
-        }, preloadDelay),
-      )
+      preloadState[1 /* timeout */] = setTimeout(() => {
+        preloadState[1 /* timeout */] = undefined
+        preloadLink(router, options)
+      }, preloadDelay)
     },
     // Destination changes refresh the captured preload options. View-only
     // changes leave pending intent timers and viewport observers intact.
@@ -309,8 +314,8 @@ export function useLinkProps<
     if (!preload) {
       return
     }
-    if (preload === 'render' && !hasRenderFetched.current) {
-      hasRenderFetched.current = true
+    if (preload === 'render' && !preloadState[0 /* renderFetched */]) {
+      preloadState[0 /* renderFetched */] = true
       preloadLink(router, options)
     }
     let active = true
@@ -334,7 +339,7 @@ export function useLinkProps<
     return () => {
       active = false
       observer?.disconnect()
-      cancelPreload(innerRef)
+      cancelPreload(preloadState)
     }
     // enqueuePreload changes for every destination or preload-option change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -368,15 +373,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ...options,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
-      })
+      router.navigate(options as any)
     }
   }
 
@@ -388,7 +385,7 @@ export function useLinkProps<
 
   const handleLeave = () => {
     if (preload === 'intent') {
-      cancelPreload(innerRef)
+      cancelPreload(preloadState)
     }
   }
 
@@ -531,10 +528,14 @@ function getServerLinkProps(
   )
 }
 
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
-const cancelPreload = (eventTarget: object) => {
-  clearTimeout(timeoutMap.get(eventTarget))
-  timeoutMap.delete(eventTarget)
+function cancelPreload(
+  state: [
+    renderFetched: boolean,
+    timeout: ReturnType<typeof setTimeout> | undefined,
+  ],
+) {
+  clearTimeout(state[1 /* timeout */])
+  state[1 /* timeout */] = undefined
 }
 
 export const composeHandlers = (

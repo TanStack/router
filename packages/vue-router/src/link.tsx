@@ -1,11 +1,15 @@
 import * as Vue from 'vue'
 import {
   createLinkStore,
+  getLinkLocation,
   getUrlScheme,
   hasKeys,
+  invalidateLink,
   isDangerousProtocol,
   preloadWarning,
+  readLinkSnapshot,
   readLinkState,
+  refreshLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
@@ -168,7 +172,7 @@ function useLinkPropsImpl(
     // Each core build replaces the reactive dependencies of user callbacks.
     // Start with an empty read so a failed derivation does not stop the effect.
     runner ??= Vue.effect(() => read?.(), {
-      scheduler: () => store.invalidate(),
+      scheduler: () => invalidateLink(store),
     })
     read = callback
     try {
@@ -180,22 +184,15 @@ function useLinkPropsImpl(
   const update = () => {
     // Evaluate in the consuming computation, where Vue can capture errors.
     readSnapshot.value = () => {
-      const state = store.getSnapshot()
-      return [state[0], state[1], store.getLocation()?.href]
+      const state = readLinkSnapshot(store[1 /* current */]!)
+      return [state[0], state[1], getLinkLocation(store)?.href]
     }
   }
-  const unsubscribe = store.subscribe(update)
-  Vue.onScopeDispose(() => {
-    unsubscribe()
-    if (runner) {
-      Vue.stop(runner)
-    }
-  })
-
   Vue.watchEffect(() => {
     const options = getDestinationOptions()
-    store
-      .render(
+    refreshLink(
+      [
+        store,
         {
           to: options.to,
           href: options.href,
@@ -213,9 +210,21 @@ function useLinkPropsImpl(
         owner,
         undefined,
         evaluate,
-      )
-      .commit()
+        undefined,
+        undefined,
+        undefined,
+      ],
+      true,
+    )
     update()
+  })
+
+  const unsubscribe = store[3 /* subscribe */](update)
+  Vue.onScopeDispose(() => {
+    unsubscribe()
+    if (runner) {
+      Vue.stop(runner)
+    }
   })
 
   const isExternal = () => !!getUrlScheme(`${getOptions().to}`)
@@ -352,15 +361,7 @@ function useLinkPropsImpl(
       e.preventDefault()
 
       // All is well? Navigate!
-      router.navigate({
-        ...options,
-        replace: options.replace,
-        resetScroll: options.resetScroll,
-        hashScrollIntoView: options.hashScrollIntoView,
-        startTransition: options.startTransition,
-        viewTransition: options.viewTransition,
-        ignoreBlocker: options.ignoreBlocker,
-      })
+      router.navigate(options as any)
     }
   }
 

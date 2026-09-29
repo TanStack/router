@@ -322,3 +322,43 @@ test('an initially failing link releases its work when its boundary removes it',
   expect(screen.getByText('Initial link failed')).toBeInTheDocument()
   expect(derive).not.toHaveBeenCalled()
 })
+
+test('an initially throwing destination prop reaches its boundary and releases the link', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const readDestination = vi.fn((): string => {
+    throw new Error('Initial destination failure')
+  })
+  const root = createRootRoute({
+    component: () => (
+      <>
+        <Solid.ErrorBoundary
+          fallback={(error) => <p>Destination failed: {error.message}</p>}
+        >
+          <Link to={readDestination()}>Broken destination</Link>
+        </Solid.ErrorBoundary>
+        <Outlet />
+      </>
+    ),
+  })
+  const history = createMemoryHistory({ initialEntries: ['/a'] })
+  histories.push(history)
+  const router = createRouter({
+    routeTree: root.addChildren([
+      createRoute({ getParentRoute: () => root, path: '/a' }),
+      createRoute({ getParentRoute: () => root, path: '/b' }),
+    ]),
+    history,
+  })
+  render(() => <RouterProvider router={router} />)
+  await screen.findByText('Destination failed: Initial destination failure')
+  await waitFor(() => expect(router.state.status).toBe('idle'))
+  expect(
+    screen.queryByRole('link', { name: 'Broken destination' }),
+  ).not.toBeInTheDocument()
+  readDestination.mockClear()
+  await router.navigate({ to: '/b' })
+  expect(
+    screen.getByText('Destination failed: Initial destination failure'),
+  ).toBeInTheDocument()
+  expect(readDestination).not.toHaveBeenCalled()
+})
