@@ -1135,9 +1135,9 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const clickedPostsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    await act(() => fireEvent.click(postsLink))
+    await act(() => fireEvent.click(clickedPostsLink))
 
     const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
     expect(postsHeading).toBeInTheDocument()
@@ -1145,8 +1145,10 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/posts')
 
     const indexLink = await screen.findByRole('link', { name: 'Index' })
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
     expect(window.location.pathname).toBe('/posts')
+    expect(clickedPostsLink).not.toBeInTheDocument()
     expect(indexLink).not.toHaveAttribute('aria-current', 'page')
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
@@ -1197,16 +1199,18 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const clickedPostsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    await act(() => fireEvent.click(postsLink))
+    await act(() => fireEvent.click(clickedPostsLink))
 
     const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
     expect(postsHeading).toBeInTheDocument()
 
     const indexLink = await screen.findByRole('link', { name: 'Index' })
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
     expect(window.location.pathname).toBe('/app/posts')
+    expect(clickedPostsLink).not.toBeInTheDocument()
     expect(indexLink).not.toHaveAttribute('aria-current', 'page')
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/app/')
@@ -6922,11 +6926,11 @@ describe('splat routes with empty splat', () => {
         fireEvent.click(splatLinkWithEmptySplat)
       })
 
-      expect(splatLinkWithEmptySplat).toHaveClass('active')
-      expect(splatLinkWithUndefinedSplat).toHaveClass('active')
-      expect(splatLinkWithNoSplat).toHaveClass('active')
       expect(window.location.pathname).toBe(`/splat${tail}`)
       expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      expect(splatLinkWithEmptySplat).not.toBeInTheDocument()
+      expect(splatLinkWithUndefinedSplat).not.toBeInTheDocument()
+      expect(splatLinkWithNoSplat).not.toBeInTheDocument()
     },
   )
 })

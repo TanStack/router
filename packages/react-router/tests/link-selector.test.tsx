@@ -9,6 +9,7 @@ import {
 import { afterEach, expect, test, vi } from 'vitest'
 import {
   Link,
+  Outlet,
   RouterContextProvider,
   RouterProvider,
   createHashHistory,
@@ -80,6 +81,93 @@ test('unrelated navigation does not rebuild a fixed inactive Link', async () => 
   expect(link).toHaveAttribute('href', '/posts/1')
   expect(link).not.toHaveAttribute('aria-current')
   expect(fixedBuilds()).toBe(initialBuilds)
+})
+
+test('a departing route does not render its Link for a pending destination', async () => {
+  let finishDetail!: () => void
+  const detailReady = new Promise<void>((resolve) => {
+    finishDetail = resolve
+  })
+  let linkRenders = 0
+  const root = createRootRoute({ component: Outlet })
+  const index = createRoute({
+    getParentRoute: () => root,
+    path: '/',
+    component: () => (
+      <Link to="/detail" data-testid="detail-link">
+        {() => {
+          linkRenders++
+          return 'Detail'
+        }}
+      </Link>
+    ),
+  })
+  const detail = createRoute({
+    getParentRoute: () => root,
+    path: '/detail',
+    loader: () => detailReady,
+    component: () => <p>Detail page</p>,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([index, detail]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  const view = render(<RouterProvider router={router} />)
+  const link = await view.findByTestId('detail-link')
+  const before = linkRenders
+
+  fireEvent.click(link)
+  await waitFor(() => {
+    expect(router.state.location.pathname).toBe('/detail')
+  })
+  expect(linkRenders).toBe(before)
+
+  await act(async () => {
+    finishDetail()
+    await detailReady
+  })
+  await view.findByText('Detail page')
+})
+
+test('a deferred Link catches up when a later navigation retains its route', async () => {
+  const detailReady = new Promise<void>(() => {})
+  const root = createRootRoute({ component: Outlet })
+  const current = createRoute({
+    getParentRoute: () => root,
+    path: '/current',
+    component: () => (
+      <>
+        <Link to="/detail">Detail</Link>
+        <Link
+          to="/current"
+          search={{ page: 2 }}
+          activeOptions={{ includeSearch: true }}
+        >
+          Page 2
+        </Link>
+      </>
+    ),
+  })
+  const detail = createRoute({
+    getParentRoute: () => root,
+    path: '/detail',
+    loader: () => detailReady,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([current, detail]),
+    history: createMemoryHistory({ initialEntries: ['/current?page=1'] }),
+  })
+  const view = render(<RouterProvider router={router} />)
+  const pageLink = await view.findByText('Page 2')
+  expect(pageLink).not.toHaveAttribute('aria-current')
+
+  fireEvent.click(view.getByText('Detail'))
+  await waitFor(() => {
+    expect(router.state.location.pathname).toBe('/detail')
+  })
+  await act(() => router.navigate({ to: '/current', search: { page: 2 } }))
+
+  expect(pageLink).toHaveAttribute('aria-current', 'page')
 })
 
 test('router options refresh a fixed Link without changing location', async () => {
