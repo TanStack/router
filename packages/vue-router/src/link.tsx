@@ -9,7 +9,6 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { useSelector } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
 
@@ -28,8 +27,6 @@ import type {
 } from './typePrimitives'
 
 type EventHandler<TEvent = Event> = (e: TEvent) => void
-
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
 
 type DataAttributes = {
   [K in `data-${string}`]?: unknown
@@ -161,40 +158,52 @@ function useLinkPropsImpl(
   // server renders do not allocate a computed wrapper for every link.
   const isExternal = Vue.computed(() => !!getUrlScheme(`${getOptions().to}`))
 
-  const currentLocation: Vue.Ref<
-    ReturnType<typeof router.stores.location.get>
-  > = isExternal.value
-    ? Vue.shallowRef(router.stores.location.get())
-    : (useSelector(router.stores.location, (l) => l, {
-        compare: (prev, next) => prev.href === next.href,
-      }) as Vue.Ref<ReturnType<typeof router.stores.location.get>>)
+  const stores = router.stores
+  const interest: { path?: string; dynamic?: boolean } = { dynamic: true }
+  const currentLocation = Vue.shallowRef(stores.getLinkLocationSnapshot())
+  let updateInterest = () => {}
 
-  // Links that start external skip useSelector above. Subscribe if they later
-  // become internal so active state follows subsequent location changes.
-  if (isExternal.value) {
-    Vue.watchEffect((onCleanup) => {
-      if (isExternal.value) {
+  // External Links need no location subscription, but may become internal.
+  Vue.watch(
+    isExternal,
+    (external, _previous, onCleanup) => {
+      if (external) {
         return
       }
-
-      const store = router.stores.location
-      // Catch up on navigations while this external link was unsubscribed.
-      currentLocation.value = store.get()
-      const subscription = store.subscribe((location) => {
-        if (currentLocation.value.href !== location.href) {
-          currentLocation.value = location
-        }
+      currentLocation.value = stores.getLinkLocationSnapshot()
+      const subscription = stores.subscribeLinkLocation(
+        interest,
+        (snapshot) => {
+          currentLocation.value = snapshot
+        },
+      )
+      updateInterest = subscription.update
+      onCleanup(() => {
+        updateInterest = () => {}
+        subscription.unsubscribe()
       })
-      onCleanup(() => subscription.unsubscribe())
-    })
-  }
+    },
+    { immediate: true },
+  )
 
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
 
     const options = getOptions()
-    const opts = { _fromLocation: currentLocation.value, ...options }
-    return router.buildLocation(opts)
+    const opts = { _fromLocation: currentLocation.value.location, ...options }
+    const built = router.buildLocation(opts)
+    const dynamic =
+      typeof options.params === 'function' ||
+      typeof options.search === 'function' ||
+      typeof options.hash === 'function' ||
+      typeof options.state === 'function' ||
+      !router._isStaticLocation(opts)
+    interest.dynamic = dynamic
+    interest.path = dynamic
+      ? undefined
+      : removeTrailingSlash(built.pathname, router.basepath)
+    updateInterest()
+    return built
   })
 
   const href = Vue.computed(() => {
@@ -230,7 +239,7 @@ function useLinkPropsImpl(
       return false
     }
     return getIsActive(
-      currentLocation.value,
+      currentLocation.value.location,
       next.value,
       options.activeOptions,
       router,
@@ -248,13 +257,14 @@ function useLinkPropsImpl(
   }
 
   let pendingPreload: 'intent' | 'viewport' | undefined
+  let preloadTimeout: ReturnType<typeof setTimeout> | undefined
 
   const enqueuePreload = (
     e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
     if (!e) {
-      clearTimeout(timeoutMap.get(ref))
-      timeoutMap.delete(ref)
+      clearTimeout(preloadTimeout)
+      preloadTimeout = undefined
       pendingPreload = undefined
       return
     }
@@ -263,8 +273,8 @@ function useLinkPropsImpl(
     const preloadMode = isIntersecting === undefined ? 'intent' : 'viewport'
     if (preload.value !== preloadMode || isIntersecting === false) {
       if (isIntersecting === false && pendingPreload === 'viewport') {
-        clearTimeout(timeoutMap.get(ref))
-        timeoutMap.delete(ref)
+        clearTimeout(preloadTimeout)
+        preloadTimeout = undefined
         pendingPreload = undefined
       }
       return
@@ -275,22 +285,19 @@ function useLinkPropsImpl(
       return
     }
 
-    if (!timeoutMap.has(ref)) {
+    if (preloadTimeout === undefined) {
       const scheduledHref = next.value.href
       pendingPreload = preloadMode
-      timeoutMap.set(
-        ref,
-        setTimeout(() => {
-          timeoutMap.delete(ref)
-          pendingPreload = undefined
-          if (
-            preload.value === preloadMode &&
-            next.value.href === scheduledHref
-          ) {
-            doPreload()
-          }
-        }, preloadDelay.value),
-      )
+      preloadTimeout = setTimeout(() => {
+        preloadTimeout = undefined
+        pendingPreload = undefined
+        if (
+          preload.value === preloadMode &&
+          next.value.href === scheduledHref
+        ) {
+          doPreload()
+        }
+      }, preloadDelay.value)
     }
   }
 
@@ -347,15 +354,7 @@ function useLinkPropsImpl(
       e.preventDefault()
 
       // All is well? Navigate!
-      router.navigate({
-        ...options,
-        replace: options.replace,
-        resetScroll: options.resetScroll,
-        hashScrollIntoView: options.hashScrollIntoView,
-        startTransition: options.startTransition,
-        viewTransition: options.viewTransition,
-        ignoreBlocker: options.ignoreBlocker,
-      })
+      router.navigate(options)
     }
   }
 
@@ -367,8 +366,8 @@ function useLinkPropsImpl(
 
   const handleLeave = () => {
     if (pendingPreload === 'intent') {
-      clearTimeout(timeoutMap.get(ref))
-      timeoutMap.delete(ref)
+      clearTimeout(preloadTimeout)
+      preloadTimeout = undefined
       pendingPreload = undefined
     }
   }

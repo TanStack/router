@@ -1264,6 +1264,24 @@ export class RouterCore<
       ...prevOptions,
       ...newOptions,
     }
+    const linkConfigurationChanged =
+      this.stores &&
+      prevOptions &&
+      [
+        'basepath',
+        'rewrite',
+        'origin',
+        'trailingSlash',
+        'caseSensitive',
+        'parseSearch',
+        'stringifySearch',
+        'search',
+        'history',
+        'protocolAllowlist',
+        'routeMasks',
+        'routeTree',
+        'notFoundRoute',
+      ].some((key) => (prevOptions as any)[key] !== (this.options as any)[key])
 
     this.isServer =
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
@@ -1357,14 +1375,25 @@ export class RouterCore<
           }
         }
       }
-      this.setRoutes(processRouteTreeResult)
+      this.setRoutes(processRouteTreeResult, false)
     }
 
     if (!this.stores) {
       if (this.latestLocation) {
         const config = this.getStoreConfig(this)
         this.batch = config.batch
-        this.stores = createRouterStores(this.latestLocation, config)
+        this.stores = createRouterStores(
+          this.latestLocation,
+          config,
+          () => {
+            const source = this.history._hrefSource
+            return source?.[0] === this.history.createHref
+              ? [source[0], source[1]()]
+              : undefined
+          },
+          () => this.basepath,
+          this,
+        )
 
         if (!(isServer ?? this.isServer)) {
           setupScrollRestoration(this)
@@ -1373,6 +1402,9 @@ export class RouterCore<
     } else if (rewriteChanged) {
       // Existing stores hold the location parsed with the previous rewrite.
       this.stores.location.set(this.latestLocation)
+    }
+    if (linkConfigurationChanged) {
+      this.stores.invalidateLinkLocations()
     }
   }
 
@@ -1399,7 +1431,7 @@ export class RouterCore<
     }
   }
 
-  setRoutes(caches: RouteTreeCaches<TRouteTree>) {
+  setRoutes(caches: RouteTreeCaches<TRouteTree>, notifyLinks = true) {
     Object.assign(this, caches)
     this.lightweightCache = new WeakMap()
     if (!(isServer ?? this.isServer)) {
@@ -1415,6 +1447,9 @@ export class RouterCore<
         notFoundRoute._interpolation = parseSegments(false, notFoundRoute, 0)
       }
       this.routesById[notFoundRoute.id] = notFoundRoute
+    }
+    if (notifyLinks) {
+      this.stores?.invalidateLinkLocations()
     }
   }
 
@@ -2218,6 +2253,10 @@ export class RouterCore<
 
     return next
   }
+
+  /** Whether a Link's last canonical build avoided source-location reads. */
+  _isStaticLocation = (options: object) =>
+    this.staticLocations?.has(options) ?? false
 
   _commitPromise: (Promise<void> & { resolve: () => void }) | undefined
 
