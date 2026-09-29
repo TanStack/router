@@ -84,9 +84,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
     routeId: string,
   ) => RouterReadableStore<AnyRouteMatch | undefined>
 
-  /** @internal Lazily allocated by Link active-state readers. */
-  _linkLocations?: Map<string, RouterWritableStore<ParsedLocation>>
-
   setMatches: (nextMatches: Array<AnyRouteMatch>) => void
 }
 

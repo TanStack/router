@@ -1151,10 +1151,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/posts')
+    // The index route's Link has left; assert the destination's mounted Link.
+    const mountedPostsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(postsLink).not.toBeInTheDocument()
+    expect(mountedPostsLink).toHaveAttribute('data-status', 'active')
+    expect(mountedPostsLink).toHaveAttribute('aria-current', 'page')
+    expect(mountedPostsLink).toHaveClass('active')
+    expect(mountedPostsLink).toHaveAttribute('href', '/posts')
   })
 
   test('when navigating to /posts with a base url', async () => {
@@ -1211,10 +1214,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/app/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/app/posts')
+    // The index route's Link has left; assert the destination's mounted Link.
+    const mountedPostsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(postsLink).not.toBeInTheDocument()
+    expect(mountedPostsLink).toHaveAttribute('data-status', 'active')
+    expect(mountedPostsLink).toHaveAttribute('aria-current', 'page')
+    expect(mountedPostsLink).toHaveClass('active')
+    expect(mountedPostsLink).toHaveAttribute('href', '/app/posts')
   })
 
   test('when navigating to /posts with search', async () => {
@@ -6878,9 +6884,10 @@ describe('splat routes with empty splat', () => {
         fireEvent.click(splatLinkWithEmptySplat)
       })
 
-      expect(splatLinkWithEmptySplat).toHaveClass('active')
-      expect(splatLinkWithUndefinedSplat).toHaveClass('active')
-      expect(splatLinkWithNoSplat).toHaveClass('active')
+      // Departing Links need not recompute active state before unmounting.
+      expect(splatLinkWithEmptySplat).not.toBeInTheDocument()
+      expect(splatLinkWithUndefinedSplat).not.toBeInTheDocument()
+      expect(splatLinkWithNoSplat).not.toBeInTheDocument()
       expect(window.location.pathname).toBe(`/splat${tail}`)
       expect(await screen.findByText('Splat Route')).toBeInTheDocument()
     },

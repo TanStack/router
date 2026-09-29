@@ -1,6 +1,7 @@
 ---
+'@tanstack/history': patch
 '@tanstack/router-core': patch
 '@tanstack/react-router': patch
 ---
 
-Defer React Link active-state updates for predicted departing route owners using shared location snapshots. Keep href resolution live, preserve the existing location builder cache, and repair surviving owners after transaction settlement. Fix href-only destination changes and reloadDocument-only click updates without introducing per-Link dependency indexes.
+Keep one React Link subscription and selectively notify fixed destinations through a pathname index. Reuse the canonical builder's existing independence cache; keep source-dependent destinations live and conservatively broadcast after configuration or formatter changes. Defer only fixed-destination notifications owned by departing routes, then reconcile surviving subscriptions with the existing navigation transaction. Preserve href-only and reloadDocument-only prop updates.

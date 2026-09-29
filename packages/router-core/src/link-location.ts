@@ -1,80 +1,156 @@
 import { isServer } from '@tanstack/router-core/isServer'
-import { functionalUpdate } from './utils'
-import type { AnyRouter } from './router'
+import { removeTrailingSlash } from './path'
 import type { ParsedLocation } from './location'
-import type { MutableStoreFactory, RouterReadableStore } from './stores'
+import type { AnyRouter } from './router'
+
+type Subscription = { unsubscribe: () => void }
+type LocationSource = {
+  get: () => ParsedLocation
+  subscribe: (listener: () => void) => Subscription
+}
+type Listener = [notify: (() => void) | undefined, owner: string | undefined]
+type Registry = {
+  paths: Map<string, Set<Listener>>
+  deferred: Set<Listener>
+  subscription: Subscription
+}
+
+// The existing builder cache proves independence from the current location.
+// Keying by its generation lets configuration changes conservatively fall back
+// to a broadcast until the old subscriptions are disposed.
+const registries = new WeakMap<object, Registry>()
 
 /**
- * Share active-state publications by owning route, without owning Link
- * derivation or subscriptions. Destinations and history formatting stay live.
+ * Narrow notifications, not snapshots or Link computations. React still reads
+ * the authoritative location during render and owns derivation/error handling.
+ * Source-dependent destinations retain the ordinary live subscription.
  * @internal
  */
 export function getLinkLocationStore(
   router: AnyRouter,
-  routeId: string | undefined,
-  createMutableStore: MutableStoreFactory,
-): RouterReadableStore<ParsedLocation> {
-  const { location, status } = router.stores
-  const batch = router.batch
-  let linkLocations = router.stores._linkLocations
-  if (isServer ?? router.isServer) {
-    return location
-  }
-  if (!routeId) {
-    return location
-  }
-  if (!linkLocations) {
-    linkLocations = router.stores._linkLocations = new Map()
-    let waiting: AnyRouter['_tx']
-    const setLocation = location.set
-    const publish = (settled?: AnyRouter['_tx']) => {
-      if (settled) {
-        if (waiting === settled) {
-          waiting = undefined
-        }
-        if (router._tx !== settled) {
-          return
-        }
+  options: object,
+  owner: string | undefined,
+): { get: () => ParsedLocation; subscribe: (notify: () => void) => () => void } {
+  const source = router.stores.location as LocationSource
+  return {
+    get: source.get,
+    subscribe: (notify) => {
+      if (isServer ?? router.isServer) {
+        return () => {}
       }
-      const current = location.get()
-      const tx = router._tx
-      const pending =
-        !settled && status.get() === 'pending' && tx?.[2] === current
-          ? tx
-          : undefined
-      // A publication has its own identity, even when cancellation restores
-      // the same location object. Render-local active selectors can then
-      // discard the live-location baseline captured by a prop change.
-      const snapshot = { ...current }
-      batch(() => {
-        let deferred = false
-        for (const [id, source] of linkLocations!) {
-          if (pending && !pending[3].some((match) => match.routeId === id)) {
-            deferred = true
-          } else {
-            source.set(snapshot)
+      // React reads the snapshot before subscribing, populating this cache.
+      const cache: WeakMap<object, ParsedLocation> | undefined =
+        router['staticLocations']
+      const next = cache?.get(options)
+      if (!next) {
+        return source.subscribe(notify).unsubscribe
+      }
+      let registry = registries.get(cache!)
+      if (!registry) {
+        const paths = new Map<string, Set<Listener>>()
+        const deferred = new Set<Listener>()
+        let previous = source.get()
+        let hrefSource = router.history._hrefSource?.[1]()
+        let waiting: AnyRouter['_tx']
+        const publish = (settled?: AnyRouter['_tx']) => {
+          if (settled) {
+            if (waiting === settled) {
+              waiting = undefined
+            }
+            if (router._tx !== settled) {
+              return
+            }
+          }
+          const location = source.get()
+          const tx = router._tx
+          const formatting = router.history._hrefSource
+          const nextHrefSource = formatting?.[1]()
+          const broadcast =
+            cache !== router['staticLocations'] ||
+            !formatting ||
+            formatting[0] !== router.history.createHref ||
+            nextHrefSource !== hrefSource
+          const candidates = new Set(deferred)
+          if (!settled) {
+            const add = (group: Set<Listener>) => {
+              group.forEach((listener) => candidates.add(listener))
+            }
+            if (broadcast) {
+              paths.forEach(add)
+            } else {
+              for (const current of [previous, location]) {
+                let path = removeTrailingSlash(current.pathname, router.basepath)
+                for (;;) {
+                  const group = paths.get(path)
+                  if (group) {
+                    add(group)
+                  }
+                  const slash = path.lastIndexOf('/')
+                  if (slash <= 0) {
+                    break
+                  }
+                  path = path.slice(0, slash)
+                }
+              }
+            }
+            // Install the source before any notification can reenter.
+            previous = location
+            hrefSource = nextHrefSource
+          }
+          for (const listener of candidates) {
+            if (!listener[0]) {
+              continue
+            }
+            if (
+              !settled &&
+              !broadcast &&
+              router._tx === tx &&
+              source.get() === location &&
+              router.stores.status.get() === 'pending' &&
+              tx?.[2] === location &&
+              listener[1] &&
+              !tx[3].some((match) => match.routeId === listener[1])
+            ) {
+              deferred.add(listener)
+              if (waiting !== tx) {
+                waiting = tx
+                const finish = publish.bind(null, tx)
+                tx[5].then(finish, finish)
+              }
+            } else {
+              deferred.delete(listener)
+              // Read the latest location even after a sibling reenters. Do not
+              // abandon old-path deactivations missing from the successor's set.
+              listener[0]()
+            }
           }
         }
-        if (deferred && waiting !== pending) {
-          waiting = pending
-          // Do not chain delivery failures into the navigation's promise.
-          // Bind only the transaction, not a departing location or its Links.
-          const finish = publish.bind(null, pending)
-          pending![5].then(finish, finish)
+        registry = {
+          paths,
+          deferred,
+          subscription: source.subscribe(() => publish()),
         }
-      })
-    }
-    location.set = (next) => {
-      batch(() => {
-        setLocation(functionalUpdate(next, location.get()))
-        publish()
-      })
-    }
+        registries.set(cache!, registry)
+      }
+      const path = removeTrailingSlash(next.pathname, router.basepath)
+      let group = registry.paths.get(path)
+      if (!group) {
+        registry.paths.set(path, (group = new Set()))
+      }
+      const listener: Listener = [notify, owner]
+      group.add(listener)
+      return () => {
+        listener[0] = undefined
+        group!.delete(listener)
+        registry!.deferred.delete(listener)
+        if (!group!.size) {
+          registry!.paths.delete(path)
+        }
+        if (!registry!.paths.size) {
+          registry!.subscription.unsubscribe()
+          registries.delete(cache!)
+        }
+      }
+    },
   }
-  let source = linkLocations.get(routeId)
-  if (!source) {
-    source = createMutableStore<ParsedLocation>({ ...location.get() })
-    linkLocations.set(routeId, source)
-  }
-  return source
 }

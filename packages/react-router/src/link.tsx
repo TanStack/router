@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import { createAtom, useSelector } from '@tanstack/react-store'
 import {
   deepEqual,
   functionalUpdate,
@@ -31,9 +30,9 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
-// Missing destination marks an external or blocked link. The destination
-// channel remains live even while the owner's active-state channel is held.
-type LinkDestination = [href: string | undefined, next?: ParsedLocation]
+// Undefined active state marks an external or blocked link.
+// Keep that classification with the href instead of parsing it again on render.
+type LinkState = [href: string | undefined, isActive?: boolean]
 
 // Keep referentially stable values while their contents are equal. Links
 // routinely pass inline `params` / `search` object literals, which would
@@ -66,15 +65,6 @@ function preloadLink(router: AnyRouter, options: unknown) {
     console.warn(err)
     console.warn(preloadWarning)
   })
-}
-
-const LINK_SELECTOR_OPTIONS = {
-  compare: (a: LinkDestination, b: LinkDestination) =>
-    a[0] === b[0] &&
-    (a[1] === b[1] ||
-      (a[1]?.pathname === b[1]?.pathname &&
-        a[1]?.hash === b[1]?.hash &&
-        deepEqual(a[1]?.search, b[1]?.search, false, true))),
 }
 
 function resolveExternalLink(
@@ -210,14 +200,8 @@ export function useLinkProps<
   // ==========================================================================
   // CLIENT-ONLY CODE
   // Everything below this point only runs on the client. The `isServer` check
-  // above is a compile-time constant that bundlers use for dead code elimination,
-  // so this entire section is removed from server bundles.
-  //
-  // We disable the rules-of-hooks lint rule because these hooks appear after
-  // an early return. This is safe because:
-  // 1. `isServer` is a compile-time constant from conditional exports
-  // 2. In server bundles, this code is completely eliminated by the bundler
-  // 3. In client bundles, `isServer` is `false`, so the early return never executes
+  // above is a compile-time constant from conditional exports, so this entire
+  // section is removed from server bundles.
   // ==========================================================================
 
   // The link's own ref: the element for the viewport observer and the key
@@ -288,62 +272,69 @@ export function useLinkProps<
     ],
   )
 
-  // Destination construction and history formatting always observe the live
-  // location. In particular, an outgoing relative Link remains safe to open
-  // in a new tab while navigation is pending.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectDestination = React.useMemo(() => {
-    const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
-    if (directExternalLink !== undefined) {
-      const state: LinkDestination = [directExternalLink ?? undefined]
-      return () => state
-    }
-
-    let selected: LinkDestination | undefined
-    return (location: ParsedLocation): LinkDestination => {
-      if (!_options._fromLocation) {
-        dest._fromLocation = location
-      }
-      const next = router.buildLocation(dest)
-      const href = getHrefOption(next, router, disabled)
-      const internal = disabled || (href && !getUrlScheme(href))
-      const destination = internal ? next : undefined
-      if (!selected || selected[0] !== href || selected[1] !== destination) {
-        selected = [href, destination]
-      }
-      return selected
-    }
-  }, [disabled, _options, dest, router, to])
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [href, next] = useSelector(
-    router.stores.location,
-    selectDestination,
-    LINK_SELECTOR_OPTIONS,
-  )
+  // One subscription and one derived snapshot. Only the notification routing
+  // is shared; React retains speculative inputs and error-boundary ownership.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const owner = React.useContext(matchContext)
-  const activeLocation = getLinkLocationStore(router, owner, createAtom)
-  // Each changed destination/active option gets a live baseline. This closure
-  // belongs to the render, not to a mutable registration, so abandoned renders
-  // cannot retarget a mounted Link. Later owner publications supersede it.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectIsActive = React.useMemo(() => {
-    const initial = activeLocation.get()
-    const current = router.stores.location.get()
-    return (published: ParsedLocation) =>
-      next &&
-      resolveIsActive(
-        published === initial ? current : published,
-        next,
-        stableActiveOptions,
-        router.basepath,
-        isHydrated,
-      )
-  }, [activeLocation, next, stableActiveOptions, isHydrated, router])
+  const [subscribe, getSnapshot] = React.useMemo(() => {
+    const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
+    if (directExternalLink !== undefined) {
+      const state: LinkState = [directExternalLink ?? undefined]
+      return [() => () => {}, () => state] as const
+    }
+    const source = getLinkLocationStore(router, dest, owner)
+
+    let previous: ParsedLocation | undefined
+    let selected: LinkState
+    let inactive: LinkState | undefined
+    let active: LinkState
+
+    return [
+      source.subscribe,
+      (): LinkState => {
+        const location = source.get()
+        if (previous === location) {
+          return selected
+        }
+        if (!_options._fromLocation) {
+          dest._fromLocation = location
+        }
+        const next = router.buildLocation(dest)
+        const href = getHrefOption(next, router, disabled)
+        if (!inactive || inactive[0] !== href) {
+          inactive = [
+            href,
+            !(disabled || (href && !getUrlScheme(href))) && undefined,
+          ]
+          active = [href, true]
+        }
+        const state =
+          inactive[1] !== undefined &&
+          resolveIsActive(
+            location,
+            next,
+            stableActiveOptions,
+            router.basepath,
+            isHydrated,
+          )
+            ? active
+            : inactive
+        // A throwing or reentrant derivation must not poison the cache.
+        previous = location
+        selected = state
+        return state
+      },
+    ] as const
+  }, [stableActiveOptions, disabled, isHydrated, _options, dest, router, to, owner])
+
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isActive = useSelector(activeLocation, selectIsActive)
-  const externalLink = next === undefined && href
+  const [href, isActive] = React.useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getSnapshot,
+  )
+  const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -701,7 +692,7 @@ export type UseLinkPropsOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string | undefined = '.',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
   UseLinkReactProps<'a'>
@@ -831,8 +822,7 @@ export function createLink<const TComp>(
 
 /**
  * A strongly-typed anchor component for declarative navigation.
- * Handles path, search, hash and state updates with optional route preloading
- * and active-state styling.
+ * Handles path, search, hash and state updates with optional route preloading.
  *
  * Props:
  * - `preload`: Controls route preloading (eg. 'intent', 'render', 'viewport', true/false)
