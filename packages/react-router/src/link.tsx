@@ -1,10 +1,11 @@
 'use client'
 
 import * as React from 'react'
-import { useSelector } from '@tanstack/react-store'
+import { createAtom, useSelector } from '@tanstack/react-store'
 import {
   deepEqual,
   functionalUpdate,
+  getLinkLocationStore,
   getUrlScheme,
   isDangerousProtocol,
   preloadWarning,
@@ -12,6 +13,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import { matchContext } from './matchContext'
 
 import { useHydrated } from './ClientOnly'
 import type {
@@ -29,9 +31,9 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
-// Undefined active state marks an external or blocked link.
-// Keep that classification with the href instead of parsing it again on render.
-type LinkState = [href: string | undefined, isActive?: boolean]
+// Missing destination marks an external or blocked link. The destination
+// channel remains live even while the owner's active-state channel is held.
+type LinkDestination = [href: string | undefined, next?: ParsedLocation]
 
 // Keep referentially stable values while their contents are equal. Links
 // routinely pass inline `params` / `search` object literals, which would
@@ -67,7 +69,12 @@ function preloadLink(router: AnyRouter, options: unknown) {
 }
 
 const LINK_SELECTOR_OPTIONS = {
-  compare: (a: LinkState, b: LinkState) => a[0] === b[0] && a[1] === b[1],
+  compare: (a: LinkDestination, b: LinkDestination) =>
+    a[0] === b[0] &&
+    (a[1] === b[1] ||
+      (a[1]?.pathname === b[1]?.pathname &&
+        a[1]?.hash === b[1]?.hash &&
+        deepEqual(a[1]?.search, b[1]?.search, false, true))),
 }
 
 function resolveExternalLink(
@@ -240,12 +247,6 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
-    hashScrollIntoView,
-    replace,
-    startTransition,
-    resetScroll,
-    viewTransition,
-    ignoreBlocker,
     disabled,
     target,
     onClick,
@@ -278,6 +279,7 @@ export function useLinkProps<
       options._fromLocation,
       options.hash,
       options.to,
+      options.href,
       stableSearch,
       stableParams,
       options.state,
@@ -286,58 +288,62 @@ export function useLinkProps<
     ],
   )
 
-  // Derive inside the selector so `compareLinkState` can bail out. Deriving after
-  // the subscription instead re-renders every link on every navigation, because
-  // the comparator only sees the location, not whether this link's output moved.
+  // Destination construction and history formatting always observe the live
+  // location. In particular, an outgoing relative Link remains safe to open
+  // in a new tab while navigation is pending.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectLinkState = React.useMemo(() => {
-    // Direct destinations and the router's allowlist are stable for this selector.
+  const selectDestination = React.useMemo(() => {
     const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
     if (directExternalLink !== undefined) {
-      const state: LinkState = [directExternalLink ?? undefined]
+      const state: LinkDestination = [directExternalLink ?? undefined]
       return () => state
     }
 
-    let inactive: LinkState | undefined
-    let active: LinkState
-
-    return (location: ParsedLocation): LinkState => {
+    let selected: LinkDestination | undefined
+    return (location: ParsedLocation): LinkDestination => {
       if (!_options._fromLocation) {
         dest._fromLocation = location
       }
       const next = router.buildLocation(dest)
-
-      // History formatters can depend on the current browser URL (hash history).
-      // Reuse classification and immutable results until the formatted href changes.
       const href = getHrefOption(next, router, disabled)
-      if (!inactive || inactive[0] !== href) {
-        inactive = [
-          href,
-          // Internal/disabled links use false; external/blocked links use undefined.
-          !(disabled || (href && !getUrlScheme(href))) && undefined,
-        ]
-        active = [href, true]
+      const internal = disabled || (href && !getUrlScheme(href))
+      const destination = internal ? next : undefined
+      if (!selected || selected[0] !== href || selected[1] !== destination) {
+        selected = [href, destination]
       }
-      return inactive[1] !== undefined &&
-        resolveIsActive(
-          location,
-          next,
-          stableActiveOptions,
-          router.basepath,
-          isHydrated,
-        )
-        ? active
-        : inactive
+      return selected
     }
-  }, [stableActiveOptions, disabled, isHydrated, _options, dest, router, to])
+  }, [disabled, _options, dest, router, to])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [href, isActive] = useSelector(
+  const [href, next] = useSelector(
     router.stores.location,
-    selectLinkState,
+    selectDestination,
     LINK_SELECTOR_OPTIONS,
   )
-  const externalLink = isActive === undefined && href
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const owner = React.useContext(matchContext)
+  const activeLocation = getLinkLocationStore(router, owner, createAtom)
+  // Each changed destination/active option gets a live baseline. This closure
+  // belongs to the render, not to a mutable registration, so abandoned renders
+  // cannot retarget a mounted Link. Later owner publications supersede it.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const selectIsActive = React.useMemo(() => {
+    const initial = activeLocation.get()
+    const current = router.stores.location.get()
+    return (published: ParsedLocation) =>
+      next &&
+      resolveIsActive(
+        published === initial ? current : published,
+        next,
+        stableActiveOptions,
+        router.basepath,
+        isHydrated,
+      )
+  }, [activeLocation, next, stableActiveOptions, isHydrated, router])
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const isActive = useSelector(activeLocation, selectIsActive)
+  const externalLink = next === undefined && href
   const linkDisabled = disabled || href === undefined
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -449,15 +455,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ..._options,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
-      })
+      router.navigate(options as any)
     }
   }
 
