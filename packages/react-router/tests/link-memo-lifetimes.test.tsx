@@ -117,7 +117,9 @@ test('changing href updates the displayed target and activity', async () => {
     return (
       <>
         <button onClick={() => setChanged(true)}>Change href</button>
-        <Link href={changed ? '/b' : '/a'}>Target</Link>
+        <Link to="/a" href={changed ? '/b' : '/a'}>
+          Target
+        </Link>
       </>
     )
   }
@@ -144,7 +146,7 @@ test('changing href cancels old intent work and preloads and navigates to the cu
     return (
       <>
         <button onClick={() => setHref('/c')}>Retarget href</button>
-        <Link href={href} preload="intent" preloadDelay={50}>
+        <Link to="/a" href={href} preload="intent" preloadDelay={50}>
           Current target
         </Link>
       </>
