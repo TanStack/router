@@ -361,15 +361,7 @@ function useLinkPropsImpl(
       e.preventDefault()
 
       // All is well? Navigate!
-      router.navigate({
-        ...options,
-        replace: options.replace,
-        resetScroll: options.resetScroll,
-        hashScrollIntoView: options.hashScrollIntoView,
-        startTransition: options.startTransition,
-        viewTransition: options.viewTransition,
-        ignoreBlocker: options.ignoreBlocker,
-      })
+      router.navigate(options as any)
     }
   }
 

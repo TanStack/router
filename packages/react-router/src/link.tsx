@@ -147,8 +147,8 @@ export function useLinkProps<
   // 3. In client bundles, `isServer` is `false`, so the early return never executes
   // ==========================================================================
 
-  // The link's own ref: the element for the viewport observer and the key
-  // of a pending intent timer. A forwarded ref is filled alongside it by one
+  // The link's own ref holds the element for the viewport observer.
+  // A forwarded ref is filled alongside it by one
   // callback, memoized on the forwarded ref so React re-attaches it (and
   // notifies the consumer) only when their ref changes, not on every render.
   // A cleanup returned by a consumer callback is passed through to React.
@@ -203,7 +203,7 @@ export function useLinkProps<
     () => {
       const view: LinkView = [
         linkStore,
-        { ...options, activeOptions: stableActiveOptions, disabled } as any,
+        options as any,
         ownerRouteId,
         isHydrated ? undefined : false,
         undefined,
@@ -246,7 +246,9 @@ export function useLinkProps<
   const linkDisabled = disabled || href === undefined
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const hasRenderFetched = React.useRef(false)
+  const preloadState = React.useRef<
+    [renderFetched: boolean, timeout: ReturnType<typeof setTimeout> | undefined]
+  >([false, undefined]).current
 
   const preload =
     options.reloadDocument || externalLink || linkDisabled
@@ -264,7 +266,7 @@ export function useLinkProps<
         ?.isIntersecting
       if (!(isIntersecting ?? preload === 'intent')) {
         if (isIntersecting === false) {
-          cancelPreload(innerRef)
+          cancelPreload(preloadState)
         }
         return
       }
@@ -274,17 +276,14 @@ export function useLinkProps<
         return
       }
 
-      if (timeoutMap.has(innerRef)) {
+      if (preloadState[1 /* timeout */] !== undefined) {
         return
       }
 
-      timeoutMap.set(
-        innerRef,
-        setTimeout(() => {
-          timeoutMap.delete(innerRef)
-          preloadLink(router, options)
-        }, preloadDelay),
-      )
+      preloadState[1 /* timeout */] = setTimeout(() => {
+        preloadState[1 /* timeout */] = undefined
+        preloadLink(router, options)
+      }, preloadDelay)
     },
     // Destination changes refresh the captured preload options. View-only
     // changes leave pending intent timers and viewport observers intact.
@@ -315,8 +314,8 @@ export function useLinkProps<
     if (!preload) {
       return
     }
-    if (preload === 'render' && !hasRenderFetched.current) {
-      hasRenderFetched.current = true
+    if (preload === 'render' && !preloadState[0 /* renderFetched */]) {
+      preloadState[0 /* renderFetched */] = true
       preloadLink(router, options)
     }
     let active = true
@@ -340,7 +339,7 @@ export function useLinkProps<
     return () => {
       active = false
       observer?.disconnect()
-      cancelPreload(innerRef)
+      cancelPreload(preloadState)
     }
     // enqueuePreload changes for every destination or preload-option change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -386,7 +385,7 @@ export function useLinkProps<
 
   const handleLeave = () => {
     if (preload === 'intent') {
-      cancelPreload(innerRef)
+      cancelPreload(preloadState)
     }
   }
 
@@ -529,10 +528,14 @@ function getServerLinkProps(
   )
 }
 
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
-const cancelPreload = (eventTarget: object) => {
-  clearTimeout(timeoutMap.get(eventTarget))
-  timeoutMap.delete(eventTarget)
+function cancelPreload(
+  state: [
+    renderFetched: boolean,
+    timeout: ReturnType<typeof setTimeout> | undefined,
+  ],
+) {
+  clearTimeout(state[1 /* timeout */])
+  state[1 /* timeout */] = undefined
 }
 
 export const composeHandlers = (
