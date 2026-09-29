@@ -1,9 +1,8 @@
 import React from 'react'
 import {
-  commitLinkView,
   createLinkStore,
   readLinkSnapshot,
-  renderLinkView,
+  refreshLink,
 } from '@tanstack/router-core'
 import {
   act,
@@ -24,6 +23,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
+import type { LinkView } from '@tanstack/router-core'
 import type { HistoryState } from '../src'
 
 // Object liveness assertions need an exposed, full GC. These are not native
@@ -71,47 +71,64 @@ describe.runIf(enabled)('mounted Link retention', () => {
     const persistent = createLinkStore(router)
     function mountCapturedView() {
       const payload = { marker: 'captured', values: Array(4096).fill(1) }
-      commitLinkView(
-        renderLinkView(
+      refreshLink(
+        [
           persistent,
           {
             to: '/target',
             search: () => ({ marker: payload.marker }),
           },
           root.id,
-        ),
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+        ],
+        true,
       )
       return new WeakRef(payload)
     }
     const reference = mountCapturedView()
-    const unsubscribePersistent = persistent.subscribe(() => {})
+    const unsubscribePersistent = persistent[3 /* subscribe */](() => {})
     const departing = createLinkStore(router)
-    commitLinkView(
-      renderLinkView(
+    refreshLink(
+      [
         departing,
         {
           to: '/target',
           search: (previous: Record<string, unknown>) => previous,
         },
         home.id,
-      ),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      ],
+      true,
     )
-    const unsubscribeDeparting = departing.subscribe(() => {})
+    const unsubscribeDeparting = departing[3 /* subscribe */](() => {})
     const navigation = router.navigate({
       to: '/away',
       search: { pending: 'navigation' } as any,
     })
     try {
       await waitFor(() => expect(router.state.status).toBe('pending'))
-      const replacement = renderLinkView(
+      const replacement: LinkView = [
         persistent,
         {
           to: '/target',
           search: () => ({ marker: 'current' }),
         },
         root.id,
-      )
-      commitLinkView(replacement)
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      ]
+      refreshLink(replacement, true)
       expect(readLinkSnapshot(replacement)[0]).toBe('/target?marker=current')
       await collectReleasedObjects()
       expect(router.state.status).toBe('pending')

@@ -5,13 +5,12 @@ export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { invariant } from './invariant'
 export { preloadWarning } from './link'
 export {
-  commitLinkView,
+  refreshLink,
   createLinkStore,
   getLinkLocation,
   invalidateLink,
   readLinkSnapshot,
   readLinkState,
-  renderLinkView,
 } from './link-state'
 export type {
   LinkState,

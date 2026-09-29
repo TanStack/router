@@ -1,6 +1,5 @@
 import * as Vue from 'vue'
 import {
-  commitLinkView,
   createLinkStore,
   getLinkLocation,
   getUrlScheme,
@@ -10,7 +9,7 @@ import {
   preloadWarning,
   readLinkSnapshot,
   readLinkState,
-  renderLinkView,
+  refreshLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
@@ -185,14 +184,14 @@ function useLinkPropsImpl(
   const update = () => {
     // Evaluate in the consuming computation, where Vue can capture errors.
     readSnapshot.value = () => {
-      const state = readLinkSnapshot(store.current!)
+      const state = readLinkSnapshot(store[1 /* current */]!)
       return [state[0], state[1], getLinkLocation(store)?.href]
     }
   }
   Vue.watchEffect(() => {
     const options = getDestinationOptions()
-    commitLinkView(
-      renderLinkView(
+    refreshLink(
+      [
         store,
         {
           to: options.to,
@@ -211,12 +210,16 @@ function useLinkPropsImpl(
         owner,
         undefined,
         evaluate,
-      ),
+        undefined,
+        undefined,
+        undefined,
+      ],
+      true,
     )
     update()
   })
 
-  const unsubscribe = store.subscribe(update)
+  const unsubscribe = store[3 /* subscribe */](update)
   Vue.onScopeDispose(() => {
     unsubscribe()
     if (runner) {
@@ -358,15 +361,7 @@ function useLinkPropsImpl(
       e.preventDefault()
 
       // All is well? Navigate!
-      router.navigate({
-        ...options,
-        replace: options.replace,
-        resetScroll: options.resetScroll,
-        hashScrollIntoView: options.hashScrollIntoView,
-        startTransition: options.startTransition,
-        viewTransition: options.viewTransition,
-        ignoreBlocker: options.ignoreBlocker,
-      })
+      router.navigate(options as any)
     }
   }
 
