@@ -80,6 +80,13 @@ describe('server history', () => {
     expect(blockerFn).not.toHaveBeenCalled()
   })
 
+  test('marks itself as server history', () => {
+    expect(createServerHistory('/').isServerHistory).toBe(true)
+    expect(createMemoryHistory({ initialEntries: ['/'] }).isServerHistory).toBe(
+      undefined,
+    )
+  })
+
   test('isolates state and exposed collections between requests', () => {
     const first = createServerHistory('/first')
     const second = createServerHistory('/second')

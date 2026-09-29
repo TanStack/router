@@ -34,6 +34,46 @@ test.each([false, true])(
   },
 )
 
+test('memory history navigations commit without an isServer option', async () => {
+  const root = new BaseRootRoute()
+  const router = createTestRouter({
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    routeTree: root.addChildren([
+      new BaseRoute({ getParentRoute: () => root, path: '/' }),
+      new BaseRoute({ getParentRoute: () => root, path: '/target' }),
+    ]),
+  })
+  await router.load()
+
+  const built = router.buildLocation({ to: '/target' })
+  await router.commitLocation({ ...built, replace: true })
+
+  expect(router.history.location.pathname).toBe('/target')
+  expect(router.latestLocation.pathname).toBe('/target')
+  expect(router.state.location.pathname).toBe('/target')
+
+  await router.navigate({ to: '/' })
+  expect(router.history.location.pathname).toBe('/')
+  expect(router.latestLocation.pathname).toBe('/')
+  expect(router.state.location.pathname).toBe('/')
+})
+
+test('server history navigations stay no-ops without an isServer option', async () => {
+  const router = createTestRouter({
+    history: createServerHistory('/'),
+    routeTree: new BaseRootRoute(),
+  })
+  const location = router.buildLocation({ to: '/' })
+  const load = vi.spyOn(router, 'load')
+
+  await router.navigate({ to: '/' })
+  await router.buildAndCommitLocation({ to: '/' })
+  await router.commitLocation(location)
+
+  expect(load).not.toHaveBeenCalled()
+  expect(router._commitPromise).toBeUndefined()
+})
+
 test('server navigation entry points resolve without building or loading', async () => {
   const router = createTestRouter({
     isServer: true,

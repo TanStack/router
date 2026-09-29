@@ -39,6 +39,11 @@ export interface RouterHistory {
   _getBlockers: () => Array<NavigationBlocker>
   _ignoreSubscribers?: boolean
   _ignoreNextBeforeUnload?: (href: string) => void
+  /**
+   * True for histories created by `createServerHistory()`.
+   * Those histories keep a fixed request URL and no-op navigation.
+   */
+  isServerHistory?: boolean
 }
 
 export interface HistoryLocation extends ParsedPath {
@@ -690,6 +695,7 @@ export function createMemoryHistory(
 const noop = () => {}
 
 class ServerHistory implements RouterHistory {
+  readonly isServerHistory = true as const
   declare private _subscribers?: RouterHistory['subscribers']
 
   constructor(public location: HistoryLocation) {}

@@ -62,7 +62,7 @@ To implement non-streaming SSR with TanStack Router, you will need the following
 
 On the client, Router defaults to using an instance of `createBrowserHistory`. On the server, the Router SSR request handler and TanStack Start automatically create a lightweight history containing only the request URL. This history does not keep a navigation stack or respond to `push`, `replace`, `go`, `back`, or `forward` calls.
 
-Server-side calls to `router.navigate()` and `router.commitLocation()` are also no-ops: their promises resolve without changing the request location or running another load. To redirect a request, use the dedicated [redirect API](../api/router/redirectFunction.md), such as `throw redirect({ to: '/login' })` in `beforeLoad` or a loader.
+Calls to `router.navigate()` and `router.commitLocation()` are no-ops when the router uses `createServerHistory()` or is created with `isServer: true`. Their promises resolve without changing the request location or running another load. Routers that use memory or browser history still commit locations, including when they run in Node. To redirect a request, use the dedicated [redirect API](../api/router/redirectFunction.md), such as `throw redirect({ to: '/login' })` in `beforeLoad` or a loader.
 
 ### Automatic Loader Dehydration/Hydration
 
