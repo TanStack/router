@@ -15,10 +15,176 @@ import {
   createMemoryHistory,
   createRootRoute,
   createRoute,
+  createRouteMask,
   createRouter,
 } from '../src'
 
 afterEach(cleanup)
+
+test.each([
+  { mask: 'explicit', operation: 'click' },
+  { mask: 'explicit', operation: 'preload' },
+  { mask: 'configured', operation: 'click' },
+  { mask: 'configured', operation: 'preload' },
+] as const)(
+  'departing Link $operation preserves its $mask mask source',
+  async ({ mask, operation }) => {
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const maskSearch = vi.fn((previous) => previous)
+    const root = createRootRoute({
+      component: Outlet,
+      validateSearch: (search) => ({ value: String(search.value ?? '') }),
+    })
+    const a = createRoute({
+      getParentRoute: () => root,
+      path: '/a',
+      component: () => (
+        <Link
+          to="/target"
+          search={{ value: 'destination' }}
+          mask={
+            mask === 'explicit'
+              ? { to: '/visible', search: maskSearch }
+              : undefined
+          }
+          preload="intent"
+          preloadDelay={0}
+          data-testid="masked-source"
+        />
+      ),
+    })
+    const b = createRoute({
+      getParentRoute: () => root,
+      path: '/b',
+      loader: () => pending,
+    })
+    const target = createRoute({ getParentRoute: () => root, path: '/target' })
+    const visible = createRoute({
+      getParentRoute: () => root,
+      path: '/visible',
+    })
+    const routeTree = root.addChildren([a, b, target, visible])
+    const routeMask = createRouteMask({
+      routeTree,
+      from: '/target',
+      to: '/visible',
+      search: maskSearch,
+    })
+    const history = createMemoryHistory({ initialEntries: ['/a?value=old'] })
+    const router = createRouter({
+      routeTree,
+      routeMasks: mask === 'configured' ? [routeMask] : undefined,
+      history,
+      defaultPendingMs: Infinity,
+    })
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('masked-source')
+    expect(link).toHaveAttribute('href', '/visible?value=old')
+    let navigation!: Promise<void>
+    try {
+      act(() => {
+        navigation = router.navigate({
+          to: '/b',
+          search: { value: 'new' },
+        })
+      })
+      await waitFor(() => expect(router.state.location.pathname).toBe('/b'))
+      const displayedHref = link.getAttribute('href')
+      expect(displayedHref).toBe('/visible?value=old')
+      maskSearch.mockClear()
+      await act(async () => {
+        fireEvent[operation === 'click' ? 'click' : 'mouseEnter'](link)
+      })
+      await waitFor(() => expect(maskSearch).toHaveBeenCalled())
+      for (const [source] of maskSearch.mock.calls) {
+        expect(source).toEqual({ value: 'old' })
+      }
+      if (operation === 'click') {
+        await waitFor(() => {
+          expect(router.state.location.pathname).toBe('/target')
+          expect(history.location.href).toBe(displayedHref)
+        })
+      } else {
+        expect(history.location.pathname).toBe('/b')
+      }
+    } finally {
+      release()
+      await act(() => navigation)
+      history.destroy()
+    }
+  },
+)
+
+test.each(['click', 'preload'] as const)(
+  'departing Link %s resolves from its displayed source',
+  async (operation) => {
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const search = vi.fn((previous) => previous)
+    const root = createRootRoute({
+      component: Outlet,
+      validateSearch: (search) => ({ value: String(search.value ?? '') }),
+    })
+    const a = createRoute({
+      getParentRoute: () => root,
+      path: '/a',
+      component: () => (
+        <Link
+          to="/a"
+          search={search}
+          preload="intent"
+          preloadDelay={0}
+          data-testid="source"
+        />
+      ),
+    })
+    const b = createRoute({
+      getParentRoute: () => root,
+      path: '/b',
+      loader: () => pending,
+    })
+    const history = createMemoryHistory({ initialEntries: ['/a?value=old'] })
+    const router = createRouter({
+      routeTree: root.addChildren([a, b]),
+      history,
+      defaultPendingMs: Infinity,
+    })
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('source')
+    let navigation!: Promise<void>
+    try {
+      act(() => {
+        navigation = router.navigate({
+          to: '/b',
+          search: { value: 'new' },
+        } as any)
+      })
+      await waitFor(() => expect(router.state.location.pathname).toBe('/b'))
+      expect(link).toHaveAttribute('href', '/a?value=old')
+      search.mockClear()
+      await act(async () => {
+        fireEvent[operation === 'click' ? 'click' : 'mouseEnter'](link)
+      })
+      await waitFor(() => expect(search).toHaveBeenCalled())
+      expect(search).toHaveBeenLastCalledWith({ value: 'old' })
+      if (operation === 'click') {
+        await waitFor(() => {
+          expect(router.state.location.pathname).toBe('/a')
+          expect(router.state.location.search.value).toBe('old')
+        })
+      }
+    } finally {
+      release()
+      await act(() => navigation)
+      history.destroy()
+    }
+  },
+)
 
 test('mounted external Links observe protocol allowlist changes', async () => {
   const root = createRootRoute({

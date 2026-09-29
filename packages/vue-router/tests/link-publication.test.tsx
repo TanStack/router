@@ -1,5 +1,11 @@
 import * as Vue from 'vue'
-import { cleanup, render, screen, waitFor } from '@testing-library/vue'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/vue'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
   Link,
@@ -12,6 +18,70 @@ import {
 } from '../src'
 
 afterEach(cleanup)
+
+test.each(['click', 'preload'] as const)(
+  'departing Link %s resolves from its displayed source',
+  async (operation) => {
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const search = vi.fn((previous) => previous)
+    const root = createRootRoute({
+      component: Outlet,
+      validateSearch: (search) => ({ value: String(search.value ?? '') }),
+    })
+    const a = createRoute({
+      getParentRoute: () => root,
+      path: '/a',
+      component: () => (
+        <Link
+          to="/a"
+          search={search}
+          preload="intent"
+          preloadDelay={0}
+          data-testid="source"
+        />
+      ),
+    })
+    const b = createRoute({
+      getParentRoute: () => root,
+      path: '/b',
+      loader: () => pending,
+    })
+    const history = createMemoryHistory({ initialEntries: ['/a?value=old'] })
+    const router = createRouter({
+      routeTree: root.addChildren([a, b]),
+      history,
+      defaultPendingMs: Infinity,
+    })
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('source')
+    let navigation!: Promise<void>
+    try {
+      navigation = router.navigate({
+        to: '/b',
+        search: { value: 'new' },
+      } as any)
+      await waitFor(() => expect(router.state.location.pathname).toBe('/b'))
+      expect(link).toHaveAttribute('href', '/a?value=old')
+      search.mockClear()
+      await fireEvent[operation === 'click' ? 'click' : 'mouseEnter'](link)
+      await waitFor(() => expect(search).toHaveBeenCalled())
+      expect(search).toHaveBeenLastCalledWith({ value: 'old' })
+      if (operation === 'click') {
+        await waitFor(() => {
+          expect(router.state.location.pathname).toBe('/a')
+          expect(router.state.location.search.value).toBe('old')
+        })
+      }
+    } finally {
+      release()
+      await navigation
+      history.destroy()
+    }
+  },
+)
 
 test('mounted external Links observe protocol allowlist changes', async () => {
   const root = createRootRoute({

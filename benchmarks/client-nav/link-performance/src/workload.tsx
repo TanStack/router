@@ -139,7 +139,8 @@ const departingRoutes = controls.map((state) =>
   createRoute({
     getParentRoute: () => rootRoute,
     path: `page-${state}`,
-    component: MeasuredLinks,
+    // Distinct component identities force the departing owner to unmount.
+    component: () => <MeasuredLinks />,
   }),
 )
 

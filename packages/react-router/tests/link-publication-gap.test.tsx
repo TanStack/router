@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { flushSync } from 'react-dom'
 import {
   act,
   cleanup,
@@ -16,9 +17,71 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from '../src'
 
 afterEach(cleanup)
+
+test('a cold outgoing Link mounted during redirect transfer retains its source', async () => {
+  let mountLink!: () => void
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const root = createRootRoute({
+    validateSearch: (search) => ({ value: String(search.value ?? '') }),
+    component: Outlet,
+  })
+  const a = createRoute({
+    getParentRoute: () => root,
+    path: '/a',
+    component: function A() {
+      const [show, setShow] = React.useState(false)
+      mountLink = () => setShow(true)
+      return show ? (
+        <Link to="/a" search={true} data-testid="cold" />
+      ) : (
+        <div>A</div>
+      )
+    },
+  })
+  const b = createRoute({
+    getParentRoute: () => root,
+    path: '/b',
+    beforeLoad: () => {
+      throw redirect({ to: '/c', search: { value: 'c' } })
+    },
+  })
+  const c = createRoute({
+    getParentRoute: () => root,
+    path: '/c',
+    loader: () => pending,
+  })
+  const history = createMemoryHistory({ initialEntries: ['/a?value=a'] })
+  const router = createRouter({
+    routeTree: root.addChildren([a, b, c]),
+    history,
+    defaultPendingMs: Infinity,
+  })
+  render(<RouterProvider router={router} />)
+  await screen.findByText('A')
+  const unsubscribe = router.subscribe('onBeforeNavigate', ({ toLocation }) => {
+    if (toLocation.pathname === '/c') {
+      flushSync(mountLink)
+    }
+  })
+  let navigation!: Promise<void>
+  act(() => {
+    navigation = router.navigate({ to: '/b', search: { value: 'b' } })
+  })
+  const link = await screen.findByTestId('cold')
+  await waitFor(() => expect(router.state.location.pathname).toBe('/c'))
+  expect(link).toHaveAttribute('href', '/a?value=a')
+  release()
+  await act(() => navigation)
+  unsubscribe()
+  history.destroy()
+})
 
 test('a navigation from a Link callback stops the obsolete publication', async () => {
   let navigate: (() => void) | undefined
