@@ -1,5 +1,10 @@
 import React from 'react'
 import {
+  createLinkStore,
+  readLinkSnapshot,
+  refreshLink,
+} from '@tanstack/router-core'
+import {
   act,
   cleanup,
   fireEvent,
@@ -18,6 +23,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
+import type { LinkView } from '@tanstack/router-core'
 import type { HistoryState } from '../src'
 
 // Object liveness assertions need an exposed, full GC. These are not native
@@ -46,6 +52,95 @@ async function collectReleasedObjects() {
 afterEach(cleanup)
 
 describe.runIf(enabled)('mounted Link retention', () => {
+  test('retargeted links release previous callback captures while navigation is pending', async () => {
+    const gate = createControlledPromise<void>()
+    const root = createRootRoute()
+    const home = createRoute({ getParentRoute: () => root, path: '/home' })
+    const away = createRoute({
+      getParentRoute: () => root,
+      path: '/away',
+      loader: () => gate,
+    })
+    const target = createRoute({ getParentRoute: () => root, path: '/target' })
+    const router = createRouter({
+      routeTree: root.addChildren([home, away, target]),
+      history: createMemoryHistory({ initialEntries: ['/home'] }),
+      defaultPendingMs: 60_000,
+    })
+    await router.load()
+    const persistent = createLinkStore(router)
+    function mountCapturedView() {
+      const payload = { marker: 'captured', values: Array(4096).fill(1) }
+      refreshLink(
+        [
+          persistent,
+          {
+            to: '/target',
+            search: () => ({ marker: payload.marker }),
+          },
+          root.id,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+        ],
+        true,
+      )
+      return new WeakRef(payload)
+    }
+    const reference = mountCapturedView()
+    const unsubscribePersistent = persistent[3 /* subscribe */](() => {})
+    const departing = createLinkStore(router)
+    refreshLink(
+      [
+        departing,
+        {
+          to: '/target',
+          search: (previous: Record<string, unknown>) => previous,
+        },
+        home.id,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      ],
+      true,
+    )
+    const unsubscribeDeparting = departing[3 /* subscribe */](() => {})
+    const navigation = router.navigate({
+      to: '/away',
+      search: { pending: 'navigation' } as any,
+    })
+    try {
+      await waitFor(() => expect(router.state.status).toBe('pending'))
+      const replacement: LinkView = [
+        persistent,
+        {
+          to: '/target',
+          search: () => ({ marker: 'current' }),
+        },
+        root.id,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      ]
+      refreshLink(replacement, true)
+      expect(readLinkSnapshot(replacement)[0]).toBe('/target?marker=current')
+      await collectReleasedObjects()
+      expect(router.state.status).toBe('pending')
+      expect(reference.deref()).toBeUndefined()
+    } finally {
+      unsubscribePersistent()
+      unsubscribeDeparting()
+      gate.resolve()
+      await navigation
+    }
+  })
+
   test('static links do not retain the history states at their individual mount times', async () => {
     let appendLink!: React.Dispatch<React.SetStateAction<Array<number>>>
     function LinkGrid() {

@@ -2,6 +2,8 @@ import * as core from '@tanstack/router-core'
 import { createMemoryHistory } from '@tanstack/history'
 
 const mode = process.env.LINK_SETTLEMENT_CASE
+const loaderStarted = core.createControlledPromise()
+const loaderGate = core.createControlledPromise()
 /** @type {Array<string>} */
 const unhandled = []
 process.on('unhandledRejection', (error) => {
@@ -25,7 +27,17 @@ const home = standaloneRoute(
   }),
 )
 const away = standaloneRoute(
-  new core.BaseRoute({ getParentRoute: () => root, path: '/away' }),
+  new core.BaseRoute({
+    getParentRoute: () => root,
+    path: '/away',
+    loader: () => {
+      if (mode === 'registry-replacement') {
+        loaderStarted.resolve(undefined)
+        return loaderGate
+      }
+      return undefined
+    },
+  }),
 )
 const target = standaloneRoute(
   new core.BaseRoute({
@@ -53,10 +65,12 @@ const record = core.createLinkStore(router)
 // from methods to exports. Exercise the same public adapter contract on both.
 /** @type {Promise<void> | undefined} */
 let successor
+let originalDerivations = 0
 /** @type {core.LinkStateOptions} */
 const options = {
   to: '/target',
   search: (/** @type {Record<string, unknown>} */ search) => {
+    originalDerivations++
     if (mode === 'prepare-reentry' && search.marker === 'after') {
       history.push('/home?marker=successor')
       successor = router.load()
@@ -68,9 +82,19 @@ const view = createView(record, options, home.id)
 const read = view.read
 read()
 view.commit()
+/** @type {ReturnType<typeof createView> | undefined} */
+let sibling
+/** @type {string | undefined} */
+let atomicHref
+let siblingNotifications = 0
+/** @type {(() => void) | undefined} */
+let unsubscribeSibling
 let notifications = 0
-const unsubscribe = record.subscribe(() => {
+const unsubscribe = record[3 /* subscribe */](() => {
   notifications++
+  if (mode === 'atomic-settlement') {
+    atomicHref = sibling?.read()[0]
+  }
   if (mode === 'reentry' && notifications === 1) {
     history.push('/home?marker=successor')
     successor = router.load()
@@ -79,34 +103,89 @@ const unsubscribe = record.subscribe(() => {
     throw new Error('subscriber failed')
   }
 })
+if (mode === 'atomic-settlement') {
+  const siblingStore = core.createLinkStore(router)
+  sibling = createView(siblingStore, { to: '/target', search: true }, home.id)
+  sibling.read()
+  sibling.commit()
+  unsubscribeSibling = siblingStore[3 /* subscribe */](() => {
+    siblingNotifications++
+  })
+}
 let unsubscribePersistent
 if (mode === 'publication-error') {
   const persistent = core.createLinkStore(router)
   const persistentView = createView(persistent, options, root.id)
   persistentView.commit()
-  unsubscribePersistent = persistent.subscribe(() => {
+  unsubscribePersistent = persistent[3 /* subscribe */](() => {
     throw new Error('publication failed')
   })
 }
+/** @type {ReturnType<typeof createView> | undefined} */
+let replacement
+/** @type {(() => void) | undefined} */
+let unsubscribeReplacement
+let replacementNotifications = 0
+let derivationsAtDisposal = 0
+/** @type {string | undefined} */
+let hrefAtSettlement
+let notificationsAtSettlement = 0
 history.push('/away?marker=after')
 let navigationError
 try {
-  await router.load()
+  const navigation = router.load()
+  if (mode === 'registry-replacement') {
+    await loaderStarted
+    unsubscribe()
+    derivationsAtDisposal = originalDerivations
+    const replacementStore = core.createLinkStore(router)
+    replacement = createView(
+      replacementStore,
+      { to: '/target', search: true },
+      root.id,
+    )
+    replacement.read()
+    replacement.commit()
+    unsubscribeReplacement = replacementStore[3 /* subscribe */](() => {
+      replacementNotifications++
+    })
+    loaderGate.resolve(undefined)
+  }
+  await navigation
 } catch (error) {
   navigationError = error instanceof Error ? error.message : String(error)
 }
 await successor
 await new Promise(setImmediate)
+if (replacement) {
+  hrefAtSettlement = replacement.read()[0]
+  notificationsAtSettlement = replacementNotifications
+  history.push('/away?marker=latest')
+  await router.load()
+  await new Promise(setImmediate)
+}
 console.log(
   JSON.stringify({
-    href: read()[0],
+    href: replacement ? replacement.read()[0] : read()[0],
     notifications,
     navigationError: navigationError ?? null,
     unhandled,
+    ...(mode === 'atomic-settlement' && {
+      atomicHref,
+      siblingNotifications,
+    }),
+    ...(replacement && {
+      hrefAtSettlement,
+      notificationsAtSettlement,
+      replacementNotifications,
+      derivationsAfterDisposal: originalDerivations - derivationsAtDisposal,
+    }),
   }),
 )
 unsubscribe()
 unsubscribePersistent?.()
+unsubscribeSibling?.()
+unsubscribeReplacement?.()
 history.destroy()
 
 // This child imports core only. The surrounding React test project augments
@@ -133,11 +212,21 @@ function standaloneRoute(route) {
  * @param {string} owner
  */
 function createView(record, options, owner) {
-  if (core.renderLinkView) {
-    const view = core.renderLinkView(record, options, owner)
+  if (core.readLinkSnapshot) {
+    /** @type {core.LinkView} */
+    const view = [
+      record,
+      options,
+      owner,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]
     return {
       read: () => core.readLinkSnapshot(view),
-      commit: () => core.commitLinkView(view),
+      commit: () => core.refreshLink(view, true),
     }
   }
   const legacy = /** @type {LegacyLinkStore} */ (
