@@ -33,12 +33,6 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
-const cancelPreload = (eventTarget: object) => {
-  clearTimeout(timeoutMap.get(eventTarget))
-  timeoutMap.delete(eventTarget)
-}
-
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -49,44 +43,33 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
-  const [local, rest] = Solid.splitProps(
-    Solid.mergeProps(
-      {
-        activeProps: STATIC_ACTIVE_PROPS_GET,
-        inactiveProps: STATIC_INACTIVE_PROPS_GET,
-      },
-      options,
-    ),
-    [
-      'activeProps',
-      'inactiveProps',
-      'activeOptions',
-      'to',
-      'preload',
-      'preloadDelay',
-      'preloadIntentProximity',
-      'hashScrollIntoView',
-      'replace',
-      'startTransition',
-      'resetScroll',
-      'viewTransition',
-      'target',
-      'disabled',
-      'style',
-      'class',
-      'onClick',
-      'onBlur',
-      'onFocus',
-      'onMouseEnter',
-      'onMouseLeave',
-      'onMouseOver',
-      'onMouseOut',
-      'onTouchStart',
-      'ignoreBlocker',
-    ],
-  )
-
-  const [_, propsSafeToSpread] = Solid.splitProps(rest, [
+  const local = options
+  const [_, propsSafeToSpread] = Solid.splitProps(options, [
+    'activeProps',
+    'inactiveProps',
+    'activeOptions',
+    'to',
+    'preload',
+    'preloadDelay',
+    'preloadIntentProximity',
+    'hashScrollIntoView',
+    'replace',
+    'startTransition',
+    'resetScroll',
+    'viewTransition',
+    'target',
+    'disabled',
+    'style',
+    'class',
+    'onClick',
+    'onBlur',
+    'onFocus',
+    'onMouseEnter',
+    'onMouseLeave',
+    'onMouseOver',
+    'onMouseOut',
+    'onTouchStart',
+    'ignoreBlocker',
     'params',
     'search',
     'hash',
@@ -164,8 +147,8 @@ export function useLinkProps<
   const externalLink = () => linkState()[1] === undefined
   const isActive = () => !!linkState()[1]
   const simpleStyling = () =>
-    local.activeProps === STATIC_ACTIVE_PROPS_GET &&
-    local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
+    local.activeProps === undefined &&
+    local.inactiveProps === undefined &&
     local.class === undefined &&
     local.style === undefined
 
@@ -185,9 +168,13 @@ export function useLinkProps<
       }
     }
 
+    const selectedProps = active ? local.activeProps : local.inactiveProps
     const stateProps: ResolvedLinkStateProps =
-      functionalUpdate(active ? local.activeProps : local.inactiveProps, {}) ??
-      EMPTY_OBJECT
+      selectedProps === undefined
+        ? active
+          ? STATIC_ACTIVE_PROPS
+          : EMPTY_OBJECT
+        : (functionalUpdate(selectedProps, {}) ?? EMPTY_OBJECT)
     const baseStyle = local.style
     const stateStyle = stateProps.style
     // Snapshot reactive style properties so in-place updates remain observable.
@@ -242,6 +229,12 @@ export function useLinkProps<
     return Solid.mergeProps(propsSafeToSpread, props) as any
   }
 
+  let preloadTimeout: ReturnType<typeof setTimeout> | undefined
+  const cancelPreload = () => {
+    clearTimeout(preloadTimeout)
+    preloadTimeout = undefined
+  }
+
   let hasRenderFetched = false
 
   const preload = Solid.createMemo(() => {
@@ -267,7 +260,7 @@ export function useLinkProps<
     e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
     if (!e) {
-      cancelPreload(ref)
+      cancelPreload()
       return
     }
 
@@ -278,7 +271,7 @@ export function useLinkProps<
       )
     ) {
       if ((e as IntersectionObserverEntry).isIntersecting === false) {
-        cancelPreload(ref)
+        cancelPreload()
       }
       return
     }
@@ -288,24 +281,15 @@ export function useLinkProps<
       return
     }
 
-    if (!timeoutMap.has(ref)) {
-      timeoutMap.set(
-        ref,
-        setTimeout(() => {
-          timeoutMap.delete(ref)
-          doPreload()
-        }, preloadDelay()),
-      )
+    if (preloadTimeout === undefined) {
+      preloadTimeout = setTimeout(() => {
+        preloadTimeout = undefined
+        doPreload()
+      }, preloadDelay())
     }
   }
 
-  useIntersectionObserver(
-    ref,
-    enqueuePreload,
-    () => preload() !== 'viewport',
-    // Intent preloading still needs timer cleanup without an observer.
-    () => !!preload(),
-  )
+  useIntersectionObserver(ref, enqueuePreload, preload)
 
   Solid.createEffect(() => {
     if (hasRenderFetched) {
@@ -349,7 +333,7 @@ export function useLinkProps<
 
   const handleLeave = () => {
     if (preload() === 'intent') {
-      cancelPreload(ref)
+      cancelPreload()
     }
   }
 
@@ -411,9 +395,7 @@ const STATIC_EVENT_PROPS = [
   'onTouchStart',
 ] as const
 const STATIC_ACTIVE_PROPS = { class: 'active' }
-const STATIC_ACTIVE_PROPS_GET = () => STATIC_ACTIVE_PROPS
 const EMPTY_OBJECT = {}
-const STATIC_INACTIVE_PROPS_GET = () => EMPTY_OBJECT
 const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
   class: 'active',
   'data-status': 'active',
@@ -428,26 +410,22 @@ const STATIC_ACTIVE_ATTRIBUTES = {
   'aria-current': 'page',
 }
 
-/** Call a JSX.EventHandlerUnion with the event. */
-function callHandler<T, TEvent extends Event>(
-  event: TEvent & { currentTarget: T; target: Element },
-  handler: Solid.JSX.EventHandlerUnion<T, TEvent>,
-) {
-  if (typeof handler === 'function') {
-    handler(event)
-  } else {
-    handler[0](handler[1], event)
-  }
-  return event.defaultPrevented
-}
-
 function createComposedHandler<T, TEvent extends Event>(
   getHandler: () => Solid.JSX.EventHandlerUnion<T, TEvent> | undefined,
   fallback: (event: TEvent) => void,
 ) {
   return (event: TEvent & { currentTarget: T; target: Element }) => {
     const handler = getHandler()
-    if (!handler || !callHandler(event, handler)) fallback(event)
+    if (handler) {
+      if (typeof handler === 'function') {
+        handler(event)
+      } else {
+        handler[0](handler[1], event)
+      }
+    }
+    if (!handler || !event.defaultPrevented) {
+      fallback(event)
+    }
   }
 }
 

@@ -33,7 +33,7 @@ export interface RouterHistory {
   canGoBack: () => boolean
   createHref: (href: string) => string
   /** Built-in formatter source; absent custom formatters are conservatively dynamic. */
-  _hrefSource?: { createHref: RouterHistory['createHref']; read: () => unknown }
+  _hrefSource?: [createHref: RouterHistory['createHref'], read: () => unknown]
   block: (blocker: NavigationBlocker) => () => void
   flush: () => void
   destroy: () => void
@@ -267,9 +267,7 @@ export function createHistory(opts: {
     },
     canGoBack: () => location.state[stateIndexKey] !== 0,
     createHref,
-    _hrefSource: opts._hrefSource
-      ? { createHref, read: opts._hrefSource }
-      : undefined,
+    _hrefSource: opts._hrefSource ? [createHref, opts._hrefSource] : undefined,
     block: (blocker) => {
       if (!opts.setBlockers) return () => {}
       const blockers = opts.getBlockers?.() ?? []

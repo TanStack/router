@@ -211,7 +211,7 @@ export function refreshLink(view: LinkView, adopt: boolean) {
         addLink(registry, record)
       }
       view[6 /* source */] = record[2 /* listener */] ? undefined : location
-      router._links?.[4 /* deferred */].delete(record)
+      router._links?.[3 /* deferred */].delete(record)
     }
     return value
   }
@@ -307,7 +307,7 @@ function adoptLink(record: LinkStore, view: LinkView, value: LinkValue) {
     ? record[0 /* router */]._links
     : undefined
   if (reindex && registry) {
-    unindexLink(registry, record)
+    indexLink(registry, record, true)
   }
   view[5 /* value */] = value
   record[1 /* current */] = view
@@ -376,8 +376,7 @@ export function invalidateLink(record: LinkStore) {
 export type LinkRegistry = [
   router: AnyRouter,
   records: Set<LinkStore>,
-  paths: Map<string, Set<LinkStore>>,
-  dependencies: Array<Set<LinkStore> | undefined>,
+  buckets: Map<string | number, Set<LinkStore>>,
   deferred: Set<LinkStore>,
   waiting: LoadTransaction | undefined,
   location: ParsedLocation,
@@ -390,12 +389,11 @@ function createLinkRegistry(router: AnyRouter): LinkRegistry {
     router,
     new Set(),
     new Map(),
-    [],
     new Set(),
     undefined,
     router.stores.location.get(),
     router._linkOptions,
-    router.history._hrefSource?.read(),
+    router.history._hrefSource?.[1 /* read */](),
   ]
   router.stores._onLocationChange = () => updateLinks(registry)
   return registry
@@ -408,40 +406,37 @@ function addLink(registry: LinkRegistry, record: LinkStore) {
 
 function removeLink(registry: LinkRegistry, record: LinkStore) {
   registry[1 /* records */].delete(record)
-  registry[4 /* deferred */].delete(record)
-  unindexLink(registry, record)
+  registry[3 /* deferred */].delete(record)
+  indexLink(registry, record, true)
   if (!registry[1 /* records */].size) {
     registry[0 /* router */].stores._onLocationChange = undefined
     registry[0 /* router */]._links = undefined
   }
 }
 
-function indexLink(registry: LinkRegistry, record: LinkStore) {
+function indexLink(registry: LinkRegistry, record: LinkStore, remove = false) {
   const value = record[1 /* current */]![5 /* value */]!
-  if (value[6 /* path */] !== undefined) {
-    let path = registry[2 /* paths */].get(value[6 /* path */])
-    if (!path) {
-      registry[2 /* paths */].set(value[6 /* path */], (path = new Set()))
+  // String keys select active paths; numeric keys select actual build reads.
+  for (const key of [
+    value[6 /* path */],
+    value[4 /* dependencies */] || undefined,
+  ]) {
+    if (key === undefined) {
+      continue
     }
-    path.add(record)
-  }
-  const mask = value[4 /* dependencies */]
-  if (mask) {
-    const group = (registry[3 /* dependencies */][mask] ??= new Set())
-    group.add(record)
-  }
-}
-
-function unindexLink(registry: LinkRegistry, record: LinkStore) {
-  const value = record[1 /* current */]![5 /* value */]!
-  if (value[6 /* path */] !== undefined) {
-    const path = registry[2 /* paths */].get(value[6 /* path */])
-    path?.delete(record)
-    if (!path?.size) {
-      registry[2 /* paths */].delete(value[6 /* path */])
+    let group = registry[2 /* buckets */].get(key)
+    if (remove) {
+      group?.delete(record)
+      if (!group?.size) {
+        registry[2 /* buckets */].delete(key)
+      }
+    } else {
+      if (!group) {
+        registry[2 /* buckets */].set(key, (group = new Set()))
+      }
+      group.add(record)
     }
   }
-  registry[3 /* dependencies */][value[4 /* dependencies */]]?.delete(record)
 }
 
 function collectCandidates(
@@ -451,7 +446,7 @@ function collectCandidates(
 ) {
   let path = removeTrailingSlash(pathname, registry[0 /* router */].basepath)
   for (;;) {
-    registry[2 /* paths */].get(path)?.forEach((record) => result.add(record))
+    registry[2 /* buckets */].get(path)?.forEach((record) => result.add(record))
     const slash = path.lastIndexOf('/')
     // '/' only matches itself or a double-slash prefix, not ordinary paths.
     if (slash <= 0) {
@@ -469,8 +464,8 @@ function updateLinks(
   const router = registry[0 /* router */]
   const locationChange = !selected
   if (settled) {
-    if (registry[5 /* waiting */] === settled) {
-      registry[5 /* waiting */] = undefined
+    if (registry[4 /* waiting */] === settled) {
+      registry[4 /* waiting */] = undefined
     }
     if (router._tx !== settled || router._links !== registry) {
       return
@@ -485,19 +480,19 @@ function updateLinks(
   let pending: LoadTransaction | undefined
   let retained: Set<string> | undefined
   if (!selected) {
-    const previous = registry[6 /* location */]
-    force = configuration !== registry[7 /* configuration */]
+    const previous = registry[5 /* location */]
+    force = configuration !== registry[6 /* configuration */]
     changed =
       (previous.pathname !== location.pathname ? 1 : 0) |
       (previous.search !== location.search ? 2 : 0) |
       (previous.hash !== location.hash ? 4 : 0) |
       (previous.state !== location.state ? 8 : 0)
     const formatting = router.history._hrefSource
-    hrefSource = formatting?.read()
+    hrefSource = formatting?.[1 /* read */]()
     const formatChanged =
       !formatting ||
-      formatting.createHref !== router.history.createHref ||
-      hrefSource !== registry[8 /* hrefSource */]
+      formatting[0 /* createHref */] !== router.history.createHref ||
+      hrefSource !== registry[7 /* hrefSource */]
     const candidates = new Set<LinkStore>()
     if (force) {
       registry[1 /* records */].forEach((record) => candidates.add(record))
@@ -506,11 +501,11 @@ function updateLinks(
         collectCandidates(registry, previous.pathname, candidates)
         collectCandidates(registry, location.pathname, candidates)
       }
-      for (let mask = 1; mask < registry[3 /* dependencies */].length; mask++) {
+      for (let mask = 1; mask < 16; mask++) {
         if (changed & mask) {
-          registry[3 /* dependencies */][mask]?.forEach((record) =>
-            candidates.add(record),
-          )
+          registry[2 /* buckets */]
+            .get(mask)
+            ?.forEach((record) => candidates.add(record))
         }
       }
       if (formatChanged) {
@@ -529,7 +524,7 @@ function updateLinks(
     retained = pending
       ? new Set(pending[3 /* matches */].map((match) => match.routeId))
       : undefined
-    registry[4 /* deferred */].forEach((record) => {
+    registry[3 /* deferred */].forEach((record) => {
       const ownerRouteId = record[1 /* current */]![2 /* owner */]
       if (!ownerRouteId || !retained || retained.has(ownerRouteId)) {
         candidates.add(record)
@@ -553,7 +548,7 @@ function updateLinks(
       record[1 /* current */]!,
       location,
       force ||
-        registry[4 /* deferred */].has(record) ||
+        registry[3 /* deferred */].has(record) ||
         !!(previousValue[4 /* dependencies */] & changed),
     )
     // Every cause stages against the same source and accepted value. A
@@ -566,7 +561,7 @@ function updateLinks(
   const publish = () => {
     for (const record of departing) {
       if (registry[1 /* records */].has(record)) {
-        registry[4 /* deferred */].add(record)
+        registry[3 /* deferred */].add(record)
       }
     }
     const notifications: Array<LinkStore> = []
@@ -576,31 +571,30 @@ function updateLinks(
       // view or location. Only publish the exact value that was prepared.
       if (
         registry[1 /* records */].has(record) &&
-        record[1 /* current */] === value[0 /* view */] &&
-        record[1 /* current */][5 /* value */] === previousValue
+        record[1 /* current */]![5 /* value */] === previousValue
       ) {
-        registry[4 /* deferred */].delete(record)
+        registry[3 /* deferred */].delete(record)
         if (adoptLink(record, value[0 /* view */], value)) {
           notifications.push(record)
         }
       }
     }
     if (locationChange) {
-      registry[6 /* location */] = location
-      registry[7 /* configuration */] = configuration
-      registry[8 /* hrefSource */] = hrefSource
+      registry[5 /* location */] = location
+      registry[6 /* configuration */] = configuration
+      registry[7 /* hrefSource */] = hrefSource
     }
     if (
       pending &&
-      registry[4 /* deferred */].size &&
-      registry[5 /* waiting */] !== pending
+      registry[3 /* deferred */].size &&
+      registry[4 /* waiting */] !== pending
     ) {
-      registry[5 /* waiting */] = pending
+      registry[4 /* waiting */] = pending
       // Bind only settlement inputs; a closure here retains prepared views.
       const settle = updateLinks.bind(
         null,
         registry,
-        registry[4 /* deferred */],
+        registry[3 /* deferred */],
         pending,
       )
       pending[5 /* done */].then(settle, settle)
