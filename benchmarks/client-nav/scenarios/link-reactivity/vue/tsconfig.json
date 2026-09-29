@@ -1,0 +1,16 @@
+{
+  "extends": "../../../../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vite/client", "vitest/globals"]
+  },
+  "include": [
+    "speed.bench.ts",
+    "setup.ts",
+    "vite.reactivity.config.ts",
+    "../../../vitest.setup.ts",
+    "./src/**/*"
+  ]
+}
