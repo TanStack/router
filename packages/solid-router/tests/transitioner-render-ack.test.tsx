@@ -273,6 +273,92 @@ test('a superseded suspended generation does not emit onRendered', async () => {
   expect(renderedRevisions).toEqual([2])
 })
 
+test('a suspending all-success successor ignores stale resource resolution', async () => {
+  const firstRenderStarted = createControlledPromise<void>()
+  const firstRenderGate = createControlledPromise<void>()
+  const secondRenderStarted = createControlledPromise<void>()
+  const secondRenderGate = createControlledPromise<void>()
+  const rootRoute = createRootRoute({
+    validateSearch: (search: Record<string, unknown>) => ({
+      revision: Number(search.revision ?? 0),
+    }),
+    component: () => {
+      const search = rootRoute.useSearch()
+      const [revision] = Solid.createResource(
+        () => search().revision,
+        async (nextRevision) => {
+          if (nextRevision === 1) {
+            firstRenderStarted.resolve()
+            await firstRenderGate
+          } else if (nextRevision === 2) {
+            secondRenderStarted.resolve()
+            await secondRenderGate
+          }
+          return nextRevision
+        },
+      )
+      return <div>Root revision {revision()}</div>
+    },
+  })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/?revision=0'] }),
+  })
+
+  render(() => <RouterProvider router={router} />)
+  expect(await screen.findByText('Root revision 0')).toBeInTheDocument()
+  await waitFor(() => expect(router.state.status).toBe('idle'))
+
+  const renderedRevisions: Array<number> = []
+  const unsubscribe = router.subscribe('onRendered', (event) => {
+    renderedRevisions.push(
+      Number((event.toLocation.search as Record<string, unknown>).revision),
+    )
+  })
+  const navigations: Array<Promise<void>> = []
+  onTestFinished(async () => {
+    unsubscribe()
+    firstRenderGate.resolve()
+    secondRenderGate.resolve()
+    await Promise.allSettled(navigations)
+  })
+
+  const firstNavigation = router.navigate({
+    to: '/',
+    search: { revision: 1 },
+  })
+  navigations.push(firstNavigation)
+  await firstRenderStarted
+
+  const secondNavigation = router.navigate({
+    to: '/',
+    search: { revision: 2 },
+  })
+  navigations.push(secondNavigation)
+  await secondRenderStarted
+
+  let successorSettled = false
+  void secondNavigation.then(() => {
+    successorSettled = true
+  })
+  await Promise.resolve()
+  expect(successorSettled).toBe(false)
+  expect(renderedRevisions).toEqual([])
+
+  firstRenderGate.resolve()
+  await Promise.resolve()
+  expect(successorSettled).toBe(false)
+  expect(screen.queryByText('Root revision 1')).not.toBeInTheDocument()
+  expect(renderedRevisions).toEqual([])
+
+  secondRenderGate.resolve()
+  await Promise.all([firstNavigation, secondNavigation])
+
+  expect(await screen.findByText('Root revision 2')).toBeInTheDocument()
+  expect(screen.queryByText('Root revision 1')).not.toBeInTheDocument()
+  expect(renderedRevisions).toEqual([2])
+})
+
 test('an older rendered destination cannot resolve a superseding navigation', async () => {
   const nextLoader = createControlledPromise<void>()
   const rootRoute = createRootRoute({ component: () => <Outlet /> })

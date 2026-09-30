@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { dummyMatchContext, matchContext } from './matchContext'
@@ -79,17 +79,18 @@ export type UseMatchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
+  TThrow extends boolean = true,
 >(
   opts?: UseMatchBaseOptions<
     TRouter,
     TFrom,
     true,
-    true,
+    TThrow,
     TSelected,
     TStructuralSharing
   > &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-) => UseMatchResult<TRouter, TFrom, true, TSelected>
+) => ThrowOrOptional<UseMatchResult<TRouter, TFrom, true, TSelected>, TThrow>
 
 export type UseMatchOptions<
   TRouter extends AnyRouter,
@@ -173,7 +174,7 @@ export function useMatch<
     useStructuralSharing(opts, router)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const matchSelection = useStore(matchStore, (match) =>
+  const matchSelection = useSelector(matchStore, (match) =>
     match ? selector(match as any) : dummyMatch,
   )
 

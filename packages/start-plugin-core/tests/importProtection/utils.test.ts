@@ -150,8 +150,9 @@ describe('buildResolutionCandidates', () => {
 
 describe('canonicalizeResolvedId', () => {
   test('normalizes and resolves non-absolute ids against root', () => {
-    expect(canonicalizeResolvedId('src/a.ts?x=1', '/app', (id) => id)).toBe(
-      '/app/src/a.ts',
+    const root = process.cwd().replaceAll('\\', '/')
+    expect(canonicalizeResolvedId('src/a.ts?x=1', root, (id) => id)).toBe(
+      `${root}/src/a.ts`,
     )
   })
 

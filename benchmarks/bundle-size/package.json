@@ -3,17 +3,34 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs --skip-package-builds",
-    "test:unit": "node --test ../../scripts/benchmarks/bundle-size/pr-report.test.mjs"
+    "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs --skip-package-builds --measurements-only",
+    "test:unit": "node --test ../../scripts/benchmarks/bundle-size/pr-report.test.mjs ../../scripts/benchmarks/bundle-size/run.test.mjs ../../scripts/benchmarks/bundle-size/report.test.mjs ../../scripts/benchmarks/bundle-size/build.test.mjs ../../scripts/benchmarks/bundle-size/compress.test.mjs ../../scripts/benchmarks/bundle-size/timings.test.mjs"
   },
   "nx": {
     "targets": {
       "build": {
-        "cache": false,
+        "inputs": [
+          "buildProduction",
+          "^buildProduction",
+          "dependentTaskOutputs",
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/measure.mjs",
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/compress.mjs",
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/timings.mjs",
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/report.mjs",
+          {
+            "runtime": "node --version"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/dist",
+          "{projectRoot}/results/measurements.json",
+          "{projectRoot}/results/benchmark-action.json"
+        ],
         "dependsOn": [
           {
             "projects": [
               "@tanstack/react-router",
+              "@tanstack/react-router-ssr-query",
               "@tanstack/react-start",
               "@tanstack/router-plugin",
               "@tanstack/solid-router",
@@ -26,22 +43,24 @@
         ]
       },
       "test:unit": {
+        "dependsOn": [],
         "inputs": [
           "default",
           "^production",
-          "{workspaceRoot}/scripts/benchmarks/bundle-size/pr-report.mjs",
-          "{workspaceRoot}/scripts/benchmarks/bundle-size/pr-report.test.mjs"
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/*.mjs"
         ]
       }
     }
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-router-ssr-query": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/react-start": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
+    "@tanstack/react-query": "catalog:",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "solid-js": "^1.9.10",

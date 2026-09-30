@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
@@ -71,20 +72,12 @@ describe('context function', () => {
           )
         },
       })
-      const detailRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/detail/$id',
-        params: {
-          parse: (p) => z.object({ id: z.coerce.number() }).parse(p),
-          stringify: (p) => ({ id: `${p.id}` }),
-        },
-        context: (args) => {
-          mockContextFn(args.params)
-        },
-        component: () => {
+      const DetailComponent = defineComponent({
+        setup() {
           const id = detailRoute.useParams({ select: (params) => params.id })
+
           const navigate = detailRoute.useNavigate()
-          return (
+          return () => (
             <div>
               <h1>Detail page: {id.value}</h1>
               <button
@@ -100,6 +93,19 @@ describe('context function', () => {
             </div>
           )
         },
+      })
+
+      const detailRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/detail/$id',
+        params: {
+          parse: (p) => z.object({ id: z.coerce.number() }).parse(p),
+          stringify: (p) => ({ id: `${p.id}` }),
+        },
+        context: (args) => {
+          mockContextFn(args.params)
+        },
+        component: DetailComponent,
       })
 
       const routeTree = rootRoute.addChildren([indexRoute, detailRoute])
@@ -135,23 +141,14 @@ describe('context function', () => {
       const mockContextFn = vi.fn()
 
       const rootRoute = createRootRoute()
-      const indexRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        validateSearch: z.object({
-          foo: z.string().optional(),
-          bar: z.string().optional(),
-        }),
-        path: '/',
-        loaderDeps: ({ search }) => ({ foo: search.foo }),
-        context: ({ deps }) => {
-          mockContextFn(deps)
-        },
-        component: () => {
+      const IndexComponent = defineComponent({
+        setup() {
           const navigate = indexRoute.useNavigate()
-          return (
+          const search = indexRoute.useSearch()
+          return () => (
             <div>
               <h1>Index page</h1>
-              <h2>search: {JSON.stringify(indexRoute.useSearch().value)}</h2>
+              <h2>search: {JSON.stringify(search.value)}</h2>
               <button
                 onClick={() => {
                   navigate({ search: (p: any) => ({ ...p, foo: 'foo-1' }) })
@@ -190,6 +187,20 @@ describe('context function', () => {
             </div>
           )
         },
+      })
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        validateSearch: z.object({
+          foo: z.string().optional(),
+          bar: z.string().optional(),
+        }),
+        path: '/',
+        loaderDeps: ({ search }) => ({ foo: search.foo }),
+        context: ({ deps }) => {
+          mockContextFn(deps)
+        },
+        component: IndexComponent,
       })
 
       const routeTree = rootRoute.addChildren([indexRoute])
@@ -1409,6 +1420,18 @@ describe('beforeLoad in the route definition', () => {
         }
       },
     })
+    const IndexComponent = defineComponent({
+      setup() {
+        const context = indexRoute.useRouteContext()
+        return () => (
+          <div>
+            <span data-testid="index-page">Index page</span>
+            <span data-testid="counter">{context.value.counter}</span>
+          </div>
+        )
+      },
+    })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
@@ -1418,15 +1441,7 @@ describe('beforeLoad in the route definition', () => {
           counter: context.counter,
         }
       },
-      component: () => {
-        const context = indexRoute.useRouteContext()
-        return (
-          <div>
-            <span data-testid="index-page">Index page</span>
-            <span data-testid="counter">{context.value.counter}</span>
-          </div>
-        )
-      },
+      component: IndexComponent,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, history })
@@ -2354,11 +2369,15 @@ describe('loader in the route definition', () => {
 describe('useRouteContext in the component', () => {
   // Present at the root route
   test('route context, present in the root route', async () => {
-    const rootRoute = createRootRoute({
-      component: () => {
+    const RootComponent = defineComponent({
+      setup() {
         const context = rootRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
+        return () => <div>{JSON.stringify(context.value)}</div>
       },
+    })
+
+    const rootRoute = createRootRoute({
+      component: RootComponent,
     })
     const routeTree = rootRoute.addChildren([])
     const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
@@ -2371,14 +2390,18 @@ describe('useRouteContext in the component', () => {
   })
 
   test('route context (sleep in beforeLoad), present in the root route', async () => {
+    const RootComponent = defineComponent({
+      setup() {
+        const context = rootRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const rootRoute = createRootRoute({
       beforeLoad: async () => {
         await sleep(WAIT_TIME)
       },
-      component: () => {
-        const context = rootRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: RootComponent,
     })
     const routeTree = rootRoute.addChildren([])
     const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
@@ -2391,14 +2414,18 @@ describe('useRouteContext in the component', () => {
   })
 
   test('route context (sleep in loader), present root route', async () => {
+    const RootComponent = defineComponent({
+      setup() {
+        const context = rootRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const rootRoute = createRootRoute({
       loader: async () => {
         await sleep(WAIT_TIME)
       },
-      component: () => {
-        const context = rootRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: RootComponent,
     })
     const routeTree = rootRoute.addChildren([])
     const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
@@ -2413,17 +2440,23 @@ describe('useRouteContext in the component', () => {
   // Present at the index route
   test('route context, present in the index route', async () => {
     const rootRoute = createRootRoute({})
+    const IndexComponent = defineComponent({
+      setup() {
+        const context = indexRoute.useRouteContext()
+        return () => {
+          if (context === undefined) {
+            throw new Error('context is undefined')
+          }
+
+          return <div>{JSON.stringify(context.value)}</div>
+        }
+      },
+    })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        const context = indexRoute.useRouteContext()
-
-        if (context === undefined) {
-          throw new Error('context is undefined')
-        }
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: IndexComponent,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
@@ -2437,16 +2470,20 @@ describe('useRouteContext in the component', () => {
 
   test('route context (sleep in beforeLoad), present in the index route', async () => {
     const rootRoute = createRootRoute({})
+    const IndexComponent = defineComponent({
+      setup() {
+        const context = indexRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
       beforeLoad: async () => {
         await sleep(WAIT_TIME)
       },
-      component: () => {
-        const context = indexRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: IndexComponent,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
@@ -2460,16 +2497,20 @@ describe('useRouteContext in the component', () => {
 
   test('route context (sleep in loader), present in the index route', async () => {
     const rootRoute = createRootRoute({})
+    const IndexComponent = defineComponent({
+      setup() {
+        const context = indexRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
       loader: async () => {
         await sleep(WAIT_TIME)
       },
-      component: () => {
-        const context = indexRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: IndexComponent,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
@@ -2483,6 +2524,13 @@ describe('useRouteContext in the component', () => {
 
   // Check if context that is updated at the root, is the same in the root route
   test('modified route context, present in the root route', async () => {
+    const RootComponent = defineComponent({
+      setup() {
+        const context = rootRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const rootRoute = createRootRoute({
       beforeLoad: async ({ context }) => {
         await sleep(WAIT_TIME)
@@ -2491,10 +2539,7 @@ describe('useRouteContext in the component', () => {
           foo: 'sean',
         }
       },
-      component: () => {
-        const context = rootRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: RootComponent,
     })
 
     const routeTree = rootRoute.addChildren([])
@@ -2518,13 +2563,17 @@ describe('useRouteContext in the component', () => {
         }
       },
     })
+    const IndexComponent = defineComponent({
+      setup() {
+        const context = indexRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        const context = indexRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: IndexComponent,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
@@ -2547,13 +2596,17 @@ describe('useRouteContext in the component', () => {
         throw redirect({ to: '/about' })
       },
     })
+    const AboutComponent = defineComponent({
+      setup() {
+        const context = aboutRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/about',
-      component: () => {
-        const context = aboutRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: AboutComponent,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
@@ -2578,13 +2631,17 @@ describe('useRouteContext in the component', () => {
         throw redirect({ to: '/about' })
       },
     })
+    const AboutComponent = defineComponent({
+      setup() {
+        const context = aboutRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/about',
-      component: () => {
-        const context = aboutRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: AboutComponent,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
@@ -2622,13 +2679,17 @@ describe('useRouteContext in the component', () => {
         throw redirect({ to: '/person' })
       },
     })
+    const PersonComponent = defineComponent({
+      setup() {
+        const context = personRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const personRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/person',
-      component: () => {
-        const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: PersonComponent,
     })
     const routeTree = rootRoute.addChildren([
       personRoute,
@@ -2674,13 +2735,17 @@ describe('useRouteContext in the component', () => {
         throw redirect({ to: '/person' })
       },
     })
+    const PersonComponent = defineComponent({
+      setup() {
+        const context = personRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const personRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/person',
-      component: () => {
-        const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: PersonComponent,
     })
     const routeTree = rootRoute.addChildren([
       personRoute,
@@ -2728,13 +2793,17 @@ describe('useRouteContext in the component', () => {
       },
       component: () => <Outlet />,
     })
+    const AboutComponent = defineComponent({
+      setup() {
+        const context = aboutRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const aboutRoute = createRoute({
       getParentRoute: () => nestedRoute,
       path: '/about',
-      component: () => {
-        const context = aboutRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: AboutComponent,
     })
     const routeTree = rootRoute.addChildren([
       nestedRoute.addChildren([aboutRoute]),
@@ -2793,13 +2862,17 @@ describe('useRouteContext in the component', () => {
       },
       component: () => <Outlet />,
     })
+    const PersonComponent = defineComponent({
+      setup() {
+        const context = personRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const personRoute = createRoute({
       getParentRoute: () => nestedRoute,
       path: '/person',
-      component: () => {
-        const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: PersonComponent,
     })
     const routeTree = rootRoute.addChildren([
       nestedRoute.addChildren([personRoute]),
@@ -2857,13 +2930,17 @@ describe('useRouteContext in the component', () => {
       },
       component: () => <Outlet />,
     })
+    const PersonComponent = defineComponent({
+      setup() {
+        const context = personRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const personRoute = createRoute({
       getParentRoute: () => nestedRoute,
       path: '/person',
-      component: () => {
-        const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: PersonComponent,
     })
     const routeTree = rootRoute.addChildren([
       nestedRoute.addChildren([personRoute]),
@@ -2902,13 +2979,17 @@ describe('useRouteContext in the component', () => {
       },
       component: () => <Outlet />,
     })
+    const IndexComponent = defineComponent({
+      setup() {
+        const context = indexRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const indexRoute = createRoute({
       getParentRoute: () => layoutRoute,
       path: '/',
-      component: () => {
-        const context = indexRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: IndexComponent,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([indexRoute]),
@@ -2951,13 +3032,17 @@ describe('useRouteContext in the component', () => {
       },
       component: () => <Outlet />,
     })
+    const AboutComponent = defineComponent({
+      setup() {
+        const context = aboutRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const aboutRoute = createRoute({
       getParentRoute: () => layoutRoute,
       path: '/about',
-      component: () => {
-        const context = aboutRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: AboutComponent,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([aboutRoute]),
@@ -3015,13 +3100,17 @@ describe('useRouteContext in the component', () => {
       },
       component: () => <Outlet />,
     })
+    const PersonComponent = defineComponent({
+      setup() {
+        const context = personRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const personRoute = createRoute({
       getParentRoute: () => layoutRoute,
       path: '/person',
-      component: () => {
-        const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: PersonComponent,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([personRoute]),
@@ -3079,13 +3168,17 @@ describe('useRouteContext in the component', () => {
       },
       component: () => <Outlet />,
     })
+    const PersonComponent = defineComponent({
+      setup() {
+        const context = personRoute.useRouteContext()
+        return () => <div>{JSON.stringify(context.value)}</div>
+      },
+    })
+
     const personRoute = createRoute({
       getParentRoute: () => layoutRoute,
       path: '/person',
-      component: () => {
-        const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context.value)}</div>
-      },
+      component: PersonComponent,
     })
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([personRoute]),

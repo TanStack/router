@@ -10,7 +10,7 @@
     "start": "node prod-server.js",
     "test:e2e:dev": "MODE=dev playwright test --project=chromium",
     "test:e2e:prod": "playwright test --project=chromium",
-    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:dev && pnpm run test:e2e:prod"
+    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

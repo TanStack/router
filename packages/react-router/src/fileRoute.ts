@@ -218,11 +218,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.options.id,
-      structuralSharing: opts?.structuralSharing,
-    } as any) as any
+    return useMatch({ ...opts, from: this.options.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
@@ -230,21 +226,11 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useSearch({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.options.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.options.id } as any)
   }
 
   useParams: UseParamsRoute<TRoute['id']> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useParams({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.options.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.options.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {

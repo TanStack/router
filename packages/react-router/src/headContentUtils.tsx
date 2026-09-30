@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import {
   _getAssetMatches,
   appendUniqueUserTags,
@@ -212,5 +212,5 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     [assetCrossOrigin, nonce, router],
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  return useStore(router.stores.matches, selectTags, deepEqual)
+  return useSelector(router.stores.matches, selectTags, { compare: deepEqual })
 }

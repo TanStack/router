@@ -1,14 +1,13 @@
 'use client'
 
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import { isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
-import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
@@ -74,7 +73,7 @@ export const Match = React.memo(function MatchImpl({
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value)
+  const match = useSelector(matchStore)
   return <MatchView router={router} match={match!} />
 })
 
@@ -103,81 +102,92 @@ function MatchView({
   const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
   // A root component may render the document itself. Only place its Suspense
   // boundary in pure CSR, inside an explicit shell, or when explicitly opted in.
-  const ResolvedSuspenseBoundary =
+  const wrapInSuspense =
     canWrapInSuspense(router, route, match.ssr) &&
     (route.options.wrapInSuspense ??
       pendingElement ??
       ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
-      ? React.Suspense
-      : SafeFragment
 
-  const ResolvedCatchBoundary = routeErrorComponent
-    ? CatchBoundary
-    : SafeFragment
+  let content = <MatchInner match={match} />
+  if (resolvedNoSsr) {
+    content = <ClientOnly fallback={pendingElement}>{content}</ClientOnly>
+  }
+  if (routeNotFoundComponent) {
+    content = (
+      <CatchNotFound
+        fallback={(error) => {
+          error.routeId ??= match.routeId
+          if (error.routeId !== match.routeId) {
+            throw error
+          }
+          const notFoundElement = React.createElement(
+            routeNotFoundComponent,
+            error as any,
+          )
+          return process.env.NODE_ENV !== 'production'
+            ? wrapInNonRouteComponentContext(
+                notFoundElement,
+                'notFoundComponent',
+              )
+            : notFoundElement
+        }}
+      >
+        {content}
+      </CatchNotFound>
+    )
+  }
+  if (routeErrorComponent) {
+    content = (
+      <CatchBoundary
+        getResetKey={() => match}
+        errorComponent={routeErrorComponent as any}
+        onCatch={(error, errorInfo) => {
+          // Not-found errors belong to the enclosing not-found boundary.
+          if (isNotFound(error)) {
+            error.routeId ??= match.routeId
+            throw error
+          }
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(`Warning: Error in route match: ${match.id}`)
+          }
+          routeOnCatch?.(error, errorInfo)
+        }}
+      >
+        {content}
+      </CatchBoundary>
+    )
+  }
+  if (wrapInSuspense) {
+    content = (
+      <React.Suspense fallback={pendingElement}>{content}</React.Suspense>
+    )
+  }
 
-  const ResolvedNotFoundBoundary = routeNotFoundComponent
-    ? CatchNotFound
-    : SafeFragment
-
+  const scrollRestoration =
+    (isServer ?? router.isServer) &&
+    route.parentRoute?.id === rootRouteId &&
+    router.options.scrollRestoration ? (
+      <ScrollRestoration />
+    ) : null
   const ShellComponent = route.isRoot
-    ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
-    : SafeFragment
+    ? (route.options as RootRouteOptions).shellComponent
+    : undefined
+
+  // The shell and route boundaries must share this match's context.
   return (
-    <ShellComponent>
-      <matchContext.Provider value={match.routeId}>
-        <ResolvedSuspenseBoundary fallback={pendingElement}>
-          <ResolvedCatchBoundary
-            getResetKey={() => match}
-            errorComponent={routeErrorComponent as any}
-            onCatch={(error, errorInfo) => {
-              // Forward not found errors (we don't want to show the error component for these)
-              if (isNotFound(error)) {
-                error.routeId ??= match.routeId
-                throw error
-              }
-              if (process.env.NODE_ENV !== 'production') {
-                console.warn(`Warning: Error in route match: ${match.id}`)
-              }
-              routeOnCatch?.(error, errorInfo)
-            }}
-          >
-            <ResolvedNotFoundBoundary
-              fallback={(error) => {
-                error.routeId ??= match.routeId
-
-                if (error.routeId !== match.routeId) {
-                  throw error
-                }
-
-                const notFoundElement = React.createElement(
-                  routeNotFoundComponent!,
-                  error as any,
-                )
-                return process.env.NODE_ENV !== 'production'
-                  ? wrapInNonRouteComponentContext(
-                      notFoundElement,
-                      'notFoundComponent',
-                    )
-                  : notFoundElement
-              }}
-            >
-              {resolvedNoSsr ? (
-                <ClientOnly fallback={pendingElement}>
-                  <MatchInner match={match} />
-                </ClientOnly>
-              ) : (
-                <MatchInner match={match} />
-              )}
-            </ResolvedNotFoundBoundary>
-          </ResolvedCatchBoundary>
-        </ResolvedSuspenseBoundary>
-      </matchContext.Provider>
-      {(isServer ?? router.isServer) &&
-      route.parentRoute?.id === rootRouteId &&
-      router.options.scrollRestoration ? (
-        <ScrollRestoration />
-      ) : null}
-    </ShellComponent>
+    <matchContext.Provider value={match.routeId}>
+      {ShellComponent ? (
+        <ShellComponent>
+          {content}
+          {scrollRestoration}
+        </ShellComponent>
+      ) : (
+        <>
+          {content}
+          {scrollRestoration}
+        </>
+      )}
+    </matchContext.Provider>
   )
 }
 
@@ -236,7 +246,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         ErrorComponent
       const errorElement = (
         <RouteErrorComponent
-          error={match.error as any}
+          error={match.error}
           reset={undefined as any}
           info={{
             componentStack: '',
@@ -288,14 +298,14 @@ export const Outlet = React.memo(function OutletImpl() {
     const parentMatchStore = router.stores.getMatchStore(routeId)
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    ;[parentGlobalNotFound, parentNotFoundError] = useStore(
+    ;[parentGlobalNotFound, parentNotFoundError] = useSelector(
       parentMatchStore,
       (match): OutletMatchSelection => [!!match!._notFound, match!.error],
-      outletMatchSelectionEqual,
+      { compare: outletMatchSelectionEqual },
     )
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    childRouteId = useStore(router.stores.ids, (ids) => {
+    childRouteId = useSelector(router.stores.ids, (ids) => {
       return ids[ids.indexOf(routeId) + 1]
     })
   }

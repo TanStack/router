@@ -1,9 +1,25 @@
+import { defineComponent } from 'vue'
 import { createFileRoute } from '@tanstack/vue-router'
 import { ErrorComponent, useRouter } from '@tanstack/vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { PostNotFoundError } from '../posts'
 import { postQueryOptions } from '../postQueryOptions'
 import type { ErrorComponentProps } from '@tanstack/vue-router'
+
+const PostComponent = defineComponent({
+  setup() {
+    const params = Route.useParams()
+    useQuery(() => postQueryOptions(params.value.postId))
+    const post = Route.useLoaderData()
+
+    return () => (
+      <div class="space-y-2">
+        <h4 class="text-xl font-bold underline">{post.value.title}</h4>
+        <div class="text-sm">{post.value.body}</div>
+      </div>
+    )
+  },
+})
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: ({ context: { queryClient }, params: { postId } }) => {
@@ -29,19 +45,6 @@ export function PostErrorComponent({ error }: ErrorComponentProps) {
         retry
       </button>
       <ErrorComponent error={error} />
-    </div>
-  )
-}
-
-function PostComponent() {
-  const postId = Route.useParams().value.postId
-  useQuery(postQueryOptions(postId))
-  const post = Route.useLoaderData()
-
-  return (
-    <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{post.value.title}</h4>
-      <div class="text-sm">{post.value.body}</div>
     </div>
   )
 }

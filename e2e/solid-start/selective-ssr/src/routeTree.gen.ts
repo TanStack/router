@@ -9,20 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SsrFalsePendingMinRouteImport } from './routes/ssr-false-pending-min'
-import { Route as PostsRouteImport } from './routes/posts'
-import { Route as DataOnlyPendingComponentRouteImport } from './routes/data-only-pending-component'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DataOnlyPendingComponentRouteImport } from './routes/data-only-pending-component'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as SsrFalsePendingMinRouteImport } from './routes/ssr-false-pending-min'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
-const SsrFalsePendingMinRoute = SsrFalsePendingMinRouteImport.update({
-  id: '/ssr-false-pending-min',
-  path: '/ssr-false-pending-min',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PostsRoute = PostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DataOnlyPendingComponentRoute =
@@ -31,9 +26,14 @@ const DataOnlyPendingComponentRoute =
     path: '/data-only-pending-component',
     getParentRoute: () => rootRouteImport,
   } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const PostsRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SsrFalsePendingMinRoute = SsrFalsePendingMinRouteImport.update({
+  id: '/ssr-false-pending-min',
+  path: '/ssr-false-pending-min',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
@@ -97,18 +97,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/ssr-false-pending-min': {
-      id: '/ssr-false-pending-min'
-      path: '/ssr-false-pending-min'
-      fullPath: '/ssr-false-pending-min'
-      preLoaderRoute: typeof SsrFalsePendingMinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/data-only-pending-component': {
@@ -118,11 +111,18 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof DataOnlyPendingComponentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ssr-false-pending-min': {
+      id: '/ssr-false-pending-min'
+      path: '/ssr-false-pending-min'
+      fullPath: '/ssr-false-pending-min'
+      preLoaderRoute: typeof SsrFalsePendingMinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts/$postId': {

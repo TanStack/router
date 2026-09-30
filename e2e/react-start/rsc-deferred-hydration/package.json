@@ -22,6 +22,14 @@
           "shards": 1
         }
       ]
+    },
+    "targets": {
+      "test:e2e--vite-ssr": {
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-vite-ssr"
+        ]
+      }
     }
   },
   "dependencies": {

@@ -5,11 +5,12 @@ async function expectNoBlankFrame(
   page: Page,
   pendingSource: 'default' | 'route',
 ) {
-  await expect(
-    page.locator(
-      `[data-state="pending"][data-pending-source="${pendingSource}"]`,
-    ),
-  ).toBeVisible()
+  const pending = page.locator(
+    `[data-state="pending"][data-pending-source="${pendingSource}"]`,
+  )
+  await expect(pending).toBeVisible()
+  await expect(pending).toHaveAttribute('data-locale', 'en')
+  await expect(page.locator('[data-root-locale="en"]')).toBeVisible()
 
   const paintStates = await page.evaluate(
     () =>

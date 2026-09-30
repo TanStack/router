@@ -7,15 +7,6 @@ import type { NitroConfig } from 'nitropack'
 let ssrBundle: Rollup.OutputBundle
 let ssrEntryFile: string
 
-function isFullUrl(str: string): boolean {
-  try {
-    new URL(str)
-    return true
-  } catch {
-    return false
-  }
-}
-
 export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
   let resolvedConfig: ResolvedConfig
   return [
@@ -94,7 +85,7 @@ export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
               await builder.build(server)
 
               const virtualEntry = '#tanstack/start/entry'
-              const baseURL = !isFullUrl(resolvedConfig.base)
+              const baseURL = !URL.canParse(resolvedConfig.base)
                 ? resolvedConfig.base
                 : undefined
               const config: NitroConfig = {

@@ -204,8 +204,8 @@ const adapter = createSerializationAdapter({
       : {}
 
     const slotUsagesStream =
-      kind === 'composite' &&
       process.env.NODE_ENV === 'development' &&
+      kind === 'composite' &&
       RSC_SLOT_USAGES_STREAM in component
         ? ((component as any)[RSC_SLOT_USAGES_STREAM] as unknown as
             | ReadableStream<any>

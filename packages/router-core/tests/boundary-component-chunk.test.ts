@@ -138,8 +138,60 @@ describe('route boundary component preloads', () => {
     expect(match?.error).toBe(routeError)
   })
 
+  test('an ancestor error boundary ignores a hidden descendant component failure', async () => {
+    const componentGate = createControlledPromise<void>()
+    const routeError = new Error('parent loader failed')
+    const componentError = new Error('child component chunk failed')
+    const childOnError = vi.fn()
+    pendingGates.push(componentGate)
+
+    const HiddenComponent = Object.assign(() => null, {
+      preload: () => componentGate,
+    })
+
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      loader: () => {
+        throw routeError
+      },
+      errorComponent: () => null,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      component: HiddenComponent as any,
+      onError: childOnError,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+    })
+
+    const loading = router.load()
+    pendingLoads.push(loading)
+    await loading
+
+    expect(router.state.matches[1]).toMatchObject({
+      routeId: parentRoute.id,
+      status: 'error',
+      error: routeError,
+    })
+    expect(componentGate.status).toBe('pending')
+
+    componentGate.reject(componentError)
+    await expect(componentGate).rejects.toBe(componentError)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(childOnError).not.toHaveBeenCalled()
+    expect(router.state.matches[1]?.error).toBe(routeError)
+  })
+
   test('global notFound does not wait for component chunks below its boundary', async () => {
     const hiddenComponentGate = createControlledPromise<void>()
+    const componentError = new Error('hidden component chunk failed')
+    const hiddenOnError = vi.fn()
     const notFoundPreload = vi.fn(() => Promise.resolve())
     pendingGates.push(hiddenComponentGate)
 
@@ -160,6 +212,7 @@ describe('route boundary component preloads', () => {
       getParentRoute: () => layoutRoute,
       path: '/child',
       component: HiddenComponent as any,
+      onError: hiddenOnError,
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([layoutRoute.addChildren([childRoute])]),
@@ -178,6 +231,61 @@ describe('route boundary component preloads', () => {
     expect(router.state.matches.find((match) => match._notFound)?.routeId).toBe(
       layoutRoute.id,
     )
+
+    hiddenComponentGate.reject(componentError)
+    await expect(hiddenComponentGate).rejects.toBe(componentError)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(hiddenOnError).not.toHaveBeenCalled()
+  })
+
+  test('a root not-found boundary ignores a late root component failure', async () => {
+    const componentGate = createControlledPromise<void>()
+    const notFoundGate = createControlledPromise<void>()
+    const componentError = new Error('root component chunk failed')
+    const onError = vi.fn()
+    const notFoundPreload = vi.fn(() => notFoundGate)
+    pendingGates.push(componentGate, notFoundGate)
+
+    const RootComponent = Object.assign(() => null, {
+      preload: () => componentGate,
+    })
+    const NotFoundBoundary = Object.assign(() => null, {
+      preload: notFoundPreload,
+    })
+    const rootRoute = new BaseRootRoute({
+      component: RootComponent as any,
+      notFoundComponent: NotFoundBoundary as any,
+      onError,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      beforeLoad: () => {
+        throw notFound({ routeId: rootRoute.id })
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+    })
+
+    const loading = router.load()
+    pendingLoads.push(loading)
+    await vi.waitFor(() => expect(notFoundPreload).toHaveBeenCalledOnce())
+    notFoundGate.resolve()
+    await loading
+
+    expect(router.state.matches[0]).toMatchObject({
+      status: 'success',
+      _notFound: true,
+    })
+
+    componentGate.reject(componentError)
+    await expect(componentGate).rejects.toBe(componentError)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(onError).not.toHaveBeenCalled()
   })
 
   test('a late normal component chunk cannot replace a selected not-found boundary', async () => {

@@ -31,19 +31,7 @@ export function Await<T>(
   },
 ) {
   if (!('fallback' in props)) {
-    const [resource] = Solid.createResource(
-      () => defer(props.promise),
-      (p) => p,
-      {
-        deferStream: true,
-      },
-    )
-
-    return (
-      <Solid.Show when={resource()}>
-        {(data) => props.children(data())}
-      </Solid.Show>
-    )
+    return <AwaitInner {...props} />
   }
 
   return (
@@ -61,8 +49,12 @@ function AwaitInner<T>(
 ) {
   const [resource] = Solid.createResource(
     () => defer(props.promise),
-    (p) => p,
+    async (promise) => ({ value: await promise }),
   )
 
-  return props.children(resource() as T)
+  return (
+    <Solid.Show when={resource()}>
+      {(result) => props.children(result().value)}
+    </Solid.Show>
+  )
 }

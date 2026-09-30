@@ -12,5 +12,9 @@ export const Route = createFileRoute('/broken')({
 })
 
 function BrokenError(props: ErrorComponentProps) {
-  return <div data-testid="error-state">{props.error.message}</div>
+  return (
+    <div data-testid="error-state">
+      {props.error instanceof Error ? props.error.message : String(props.error)}
+    </div>
+  )
 }

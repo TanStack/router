@@ -8,7 +8,7 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "vite",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -29,5 +29,23 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "outputs": [
+          "...",
+          "{projectRoot}/src/paraglide",
+          "{projectRoot}/project.inlang/cache"
+        ]
+      },
+      "test:e2e": {
+        "outputs": [
+          "...",
+          "{projectRoot}/src/paraglide",
+          "{projectRoot}/project.inlang/cache"
+        ]
+      }
+    }
   }
 }
