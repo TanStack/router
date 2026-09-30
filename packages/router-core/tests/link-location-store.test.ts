@@ -78,7 +78,7 @@ test('fixed destinations share one subscription and select only old/new path can
   const f = fixture('/items/1')
   const calls = new Array<number>(1000).fill(0)
   const stop = calls.map((_, index) =>
-    f.subscribe(`/items/${index}`, () => { calls[index]++ }),
+    f.subscribe(`/items/${index}`, () => { calls[index]!++ }),
   )
   expect(f.listeners.size).toBe(1)
   f.publish('/items/2')
