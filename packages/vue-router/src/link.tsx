@@ -1,6 +1,7 @@
 import * as Vue from 'vue'
 import {
   createLinkStore,
+  deepEqual,
   getLinkLocation,
   getUrlScheme,
   hasKeys,
@@ -19,6 +20,7 @@ import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  LinkStore,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -163,58 +165,63 @@ function useLinkPropsImpl(
     const value = preparedSnapshot.value
     return typeof value === 'function' ? value() : value
   }
-  // The watcher owns immutable destination inputs, the native callback effect
-  // and the subscription. Replacing inputs disposes all three together.
-  Vue.watchEffect((onCleanup) => {
-    const options = getDestinationOptions()
-    let read: (() => unknown) | undefined
-    let runner: Vue.ReactiveEffectRunner | undefined
-    const store = createLinkStore(
-      router,
-      {
-        to: options.to,
-        href: options.href,
-        from: options.from,
-        _fromLocation: options._fromLocation,
-        params: options.params,
-        search: options.search,
-        hash: options.hash,
-        state: options.state,
-        mask: options.mask,
-        unsafeRelative: options.unsafeRelative,
-        disabled: options.disabled,
-        activeOptions: options.activeOptions && { ...options.activeOptions },
-      } as any,
-      owner,
-      undefined,
-      <T,>(callback: () => T): T => {
-        // Replace callback dependencies on each build, including after errors.
-        runner ??= Vue.effect(() => read?.(), {
-          scheduler: () => invalidateLink(store),
-        })
-        read = callback
-        try {
-          return runner() as T
-        } finally {
-          read = undefined
-        }
-      },
-    )
-    const update = () => {
-      // Evaluate in the consuming computation, where Vue can capture errors.
-      readSnapshot.value = () => {
-        const state = store[9 /* getSnapshot */]()
-        return [state[0], state[1], getLinkLocation(store)?.href]
-      }
-    }
-    const unsubscribe = store[8 /* subscribe */](update)
-    update()
-    onCleanup(() => {
-      unsubscribe()
-      if (runner) {
-        Vue.stop(runner)
-      }
+  let store: LinkStore | undefined
+  let unsubscribe: (() => void) | undefined
+  let read: (() => unknown) | undefined
+  let runner: Vue.ReactiveEffectRunner | undefined
+  const evaluate = <T,>(callback: () => T): T => {
+    // Keep one native dependency collector for this component. Each build
+    // replaces its tracked callback inputs, including after a failed build.
+    runner ??= Vue.effect(() => read?.(), {
+      scheduler: () => store && invalidateLink(store),
     })
+    read = callback
+    try {
+      return runner() as T
+    } finally {
+      read = undefined
+    }
+  }
+  const update = () => {
+    const current = store!
+    // Capture the accepted descriptor, not a mutable input object.
+    readSnapshot.value = () => {
+      const state = current[9 /* getSnapshot */]()
+      return [state[0], state[1], getLinkLocation(current)?.href]
+    }
+  }
+  Vue.watchEffect(() => {
+    const options = getDestinationOptions()
+    const destination = {
+      to: options.to,
+      href: options.href,
+      from: options.from,
+      _fromLocation: options._fromLocation,
+      params: options.params,
+      search: options.search,
+      hash: options.hash,
+      state: options.state,
+      mask: options.mask,
+      unsafeRelative: options.unsafeRelative,
+      disabled: options.disabled,
+      activeOptions: options.activeOptions && { ...options.activeOptions },
+    }
+    // Parent renders routinely replace equal params/search objects. Native
+    // callback dependencies invalidate through the collector independently.
+    // Explicit undefined must remain distinct from an absent option.
+    if (store && deepEqual(store[1 /* options */], destination, false, true)) {
+      return
+    }
+    unsubscribe?.()
+    store = createLinkStore(router, destination as any, owner, undefined, evaluate)
+    unsubscribe = store[8 /* subscribe */](update)
+    update()
+  })
+  Vue.onScopeDispose(() => {
+    unsubscribe?.()
+    if (runner) {
+      Vue.stop(runner)
+    }
   })
 
   const isExternal = () => !!getUrlScheme(`${getOptions().to}`)
