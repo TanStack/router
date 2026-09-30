@@ -58,9 +58,10 @@ catalog:
 
 overrides:
   # @rsbuild/plugin-solid@2.0.0-rc.0 hard-pins the rc.6 compiler, whose delegated-event
-  # key (`$$click`) the solid-js rc.9 runtime no longer reads (`_$$click`).
-  '@rsbuild/plugin-solid>@solidjs/compiler': 2.0.0-rc.9
-  '@rsbuild/plugin-solid>@solidjs/babel-plugin': 2.0.0-rc.9
+  # key (`$$click`) the solid-js 2.0 RC runtime no longer reads (`_$$click`); keep its
+  # compiler on the same RC as the runtime.
+  '@rsbuild/plugin-solid>@solidjs/compiler': 2.0.0-rc.13
+  '@rsbuild/plugin-solid>@solidjs/babel-plugin': 2.0.0-rc.13
   '@types/babel__traverse': '^7.28.0'
   vite-plugin-dts: 4.2.3
   react: 'catalog:'

@@ -1,4 +1,5 @@
-import * as Solid from 'solid-js'
+import { isHydratable } from 'solid-js'
+import { getHydrationWriter, takeHydrationValue } from '@solidjs/web'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 
 /**
@@ -9,7 +10,7 @@ import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
  * derive the same key from the same URL), the identical mechanism
  * solid-query v6 ships query payloads through (`sq:<queryHash>`).
  *
- * Server half: while the render's serialization context is live, the
+ * Server half: while the render takes values (`getHydrationWriter`), the
  * provider writes each settled match's transferable state. Client half: the
  * hydration-claiming boot — matching is synchronous, so the provider primes
  * match state from the registry and commits before rendering, without
@@ -42,17 +43,10 @@ type MatchWithBeforeLoadContext = AnyRouteMatch & {
   __beforeLoadContext?: Record<string, unknown>
 }
 
-interface SerializationContext {
-  noHydrate?: boolean
-  serialize: (key: string, value: unknown) => void
-}
-
 export function serializeMatchTransfer(router: AnyRouter): void {
   if (router.serverSsr) return
-  const ctx = (
-    Solid.sharedConfig as unknown as { context?: SerializationContext }
-  ).context
-  if (!ctx || typeof ctx.serialize !== 'function' || ctx.noHydrate) return
+  const writer = getHydrationWriter()
+  if (!writer || !isHydratable()) return
 
   for (const match of router.stores.matches.get()) {
     // Pending matches are skipped, not deferred: this core has no per-match
@@ -73,7 +67,7 @@ export function serializeMatchTransfer(router: AnyRouter): void {
     if (beforeLoadContext !== undefined)
       entry.beforeLoadContext = beforeLoadContext
     if (match.ssr !== undefined) entry.ssr = match.ssr
-    ctx.serialize(MATCH_KEY_PREFIX + match.id, entry)
+    writer.write(MATCH_KEY_PREFIX + match.id, entry)
   }
 }
 
@@ -81,48 +75,29 @@ export function serializeMatchTransfer(router: AnyRouter): void {
  * The hydration-claiming boot. Returns true when every synchronously
  * matched route found its registry entry and the matches were committed;
  * false falls back to the caller's existing behavior (no entries — a
- * non-registry server, `noHydrate`, or a pending match the server skipped).
+ * non-registry server, `<NoHydration>`, or a pending match the server
+ * skipped).
  *
- * Reads the raw registry rather than sharedConfig's accessors: entries
- * arrive as inline scripts that execute at document parse, so they are
- * complete before any client code runs — and the boot must commit BEFORE
- * the hydration render (store writes inside it are owned-scope writes).
+ * Entries arrive as inline scripts that execute at document parse, so they
+ * are complete before any client code runs and `takeHydrationValue` reads
+ * them before `hydrate()` — the boot must commit BEFORE the hydration
+ * render (store writes inside it are owned-scope writes). Each matched
+ * route takes its own key: a page without entries (SPA, or Start's own
+ * channel) falls through at the first match.
  */
 export function primeRouterFromRegistry(router: AnyRouter): boolean {
   if (router.stores.matches.get().length > 0) return false
-  const registry = (
-    globalThis as unknown as { _$HY?: { r: Record<string, unknown> } }
-  )._$HY?.r
-  if (!registry) return false
-  // A page with no match entries (SPA, or Start's own channel) skips before
-  // paying for a match pass.
-  let hasMatchEntries = false
-  for (const key in registry) {
-    if (key.startsWith(MATCH_KEY_PREFIX)) {
-      hasMatchEntries = true
-      break
-    }
-  }
-  if (!hasMatchEntries) return false
 
   const matches = router.matchRoutes(router.latestLocation)
   if (matches.length === 0) return false
 
   const primed: Array<AnyRouteMatch> = []
   for (const match of matches) {
-    const key = MATCH_KEY_PREFIX + match.id
-    if (!(key in registry)) return false
-    const raw = registry[key] as
-      | TransferredMatch
-      | { s: number; v?: TransferredMatch }
-      | null
-    delete registry[key]
-    // Settled serialization refs are stamped `s`/`v`; sync-serialized
-    // entries are the value itself.
-    const entry =
-      raw != null && typeof raw === 'object' && 's' in raw && raw.s === 1
-        ? raw.v
-        : (raw as TransferredMatch | null)
+    const taken = takeHydrationValue<TransferredMatch | null>(
+      MATCH_KEY_PREFIX + match.id,
+    )
+    if (taken?.status !== 'resolved') return false
+    const entry = taken.value
     if (!entry || typeof entry.status !== 'string') return false
     primed.push(applyTransferredMatch(match, entry))
   }

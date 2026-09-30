@@ -1,4 +1,4 @@
-import { hydrate } from 'solid-js/web'
+import { hydrate, takeHydrationValue } from 'solid-js/web'
 import { RouterProvider } from '../src'
 import { createAppRouter, loaderRuns } from './app.shared'
 import { MATCH_KEY_PREFIX } from '../src/registryTransfer'
@@ -38,23 +38,18 @@ async function main() {
   const root = document.getElementById('root')!
   const serverNode = document.getElementById('home')
 
-  // The registry entries the server's RouterProvider wrote, populated at
-  // document parse — createRouter's boot consumes (and deletes) them, so
-  // sample before construction.
-  const hasMatchEntries = () =>
-    Object.keys((window as any)._$HY?.r ?? {}).some((key) =>
-      key.startsWith(MATCH_KEY_PREFIX),
-    )
-  results.registryHadMatchEntries = hasMatchEntries()
-
   const { router, resolveAboutChunk } = createAppRouter()
   results.loaderRunsBeforeHydrate = loaderRuns.count
-  // Phase 1 boot happened at router creation: entries consumed, matches
-  // committed, zero loader runs — nothing left for the app to wire.
+  // Phase 1 boot happened at router creation: the server's entries taken,
+  // matches committed, zero loader runs — nothing left for the app to wire.
+  // The boot commits only when every match took its entry, so a committed
+  // match whose key is gone was primed from the registry.
+  const committed = router.stores.matches.get()
   results.registryPrimed =
-    results.registryHadMatchEntries &&
-    !hasMatchEntries() &&
-    router.stores.matches.get().length > 0
+    committed.length > 0 &&
+    committed.every(
+      (match) => takeHydrationValue(MATCH_KEY_PREFIX + match.id) === undefined,
+    )
 
   results.htmlBeforeHydrate = root.innerHTML
   hydrate(() => <RouterProvider router={router} />, root)
