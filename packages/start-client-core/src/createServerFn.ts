@@ -1,6 +1,7 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { isRedirect, parseRedirect } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
@@ -164,12 +165,11 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             context: createNullProtoObject(),
           })
 
-          const redirect = parseRedirect(result.error)
-          if (redirect) {
-            throw redirect
+          // Only a failed call has an `error` key. Its value is whatever was
+          // thrown, so a thrown undefined or 0 still rejects the call.
+          if ('error' in result) {
+            throw parseRedirect(result.error) ?? result.error
           }
-
-          if (result.error) throw result.error
           return result.result
         },
         {
@@ -179,39 +179,45 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           // can reject mismatched methods before parsing payloads
           method: resolvedOptions.method,
           // The extracted function on the server-side calls
-          // this function
-          __executeServer: async (opts: any) => {
-            const startContext = getStartContextServerOnly()
-            const serverContextAfterGlobalMiddlewares =
-              startContext.contextAfterGlobalMiddlewares
-            const ctx = {
-              ...extractedFn,
-              ...opts,
-              // Ensure we use the full serverFnMeta from the provider file's extractedFn
-              // (which has id, name, filename) rather than the partial one from SSR/client
-              // callers (which only has id)
-              serverFnMeta: extractedFn.serverFnMeta,
-              // Merge client context first so trusted server middleware context wins.
-              context: safeObjectMerge(
-                opts.context,
-                serverContextAfterGlobalMiddlewares,
-              ),
-              request: startContext.request,
-            }
+          // this function. Browsers never execute a server function.
+          __executeServer:
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- isServer is only known outside development
+            (isServer ?? typeof window === 'undefined')
+              ? async (opts: any) => {
+                  const startContext = getStartContextServerOnly()
+                  const serverContextAfterGlobalMiddlewares =
+                    startContext.contextAfterGlobalMiddlewares
+                  // Assign after the spreads: an object literal with properties
+                  // after a second spread defines each of them through a slow
+                  // runtime call.
+                  const ctx = { ...extractedFn, ...opts }
+                  // Ensure we use the full serverFnMeta from the provider file's extractedFn
+                  // (which has id, name, filename) rather than the partial one from SSR/client
+                  // callers (which only has id)
+                  ctx.serverFnMeta = extractedFn.serverFnMeta
+                  // Merge client context first so trusted server middleware context wins.
+                  ctx.context = safeObjectMerge(
+                    opts.context,
+                    serverContextAfterGlobalMiddlewares,
+                  )
+                  ctx.request = startContext.request
 
-            const result = await executeMiddleware(
-              resolvedMiddleware,
-              'server',
-              ctx,
-            ).then((d) => ({
-              // Only send the result and sendContext back to the client
-              result: d.result,
-              error: d.error,
-              context: d.sendContext,
-            }))
+                  const result = await executeMiddleware(
+                    resolvedMiddleware,
+                    'server',
+                    ctx,
+                  )
 
-            return result
-          },
+                  // Only send the result and sendContext back to the client. A
+                  // failed call sends only its thrown value, under an `error` key.
+                  if ('error' in result) {
+                    return { error: result.error }
+                  }
+                  return result.sendContext === undefined
+                    ? { result: result.result }
+                    : { result: result.result, context: result.sendContext }
+                }
+              : undefined,
         },
       ) as any
     },
@@ -226,147 +232,137 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
   return Object.assign(fun, res) as any
 }
 
+function mergeOptionalSendContext(
+  target: Record<string, unknown> | undefined,
+  source: Record<string, unknown> | null | undefined,
+) {
+  return target === undefined && source === undefined
+    ? undefined
+    : safeObjectMerge(target, source)
+}
+
+function mergeOptionalHeaders(
+  target: HeadersInit | undefined,
+  source: HeadersInit | undefined,
+) {
+  return target || source ? mergeHeaders(target, source) : undefined
+}
+
 export async function executeMiddleware(
   middlewares: Array<AnyFunctionMiddleware | AnyRequestMiddleware>,
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
-  const globalMiddlewares = getStartOptions()?.functionMiddleware || []
-  let flattenedMiddlewares = flattenMiddlewares([
-    ...globalMiddlewares,
-    ...middlewares,
-  ])
+  const globalMiddlewares: Array<AnyFunctionMiddleware | AnyRequestMiddleware> =
+    getStartOptions()?.functionMiddleware || []
+  // On the server, flattening skips middlewares that already executed in the
+  // request phase to prevent duplicate execution (issue #5239)
+  const flattenedMiddlewares = flattenMiddlewares(
+    globalMiddlewares.concat(middlewares),
+    undefined,
+    env === 'server'
+      ? new Set(
+          getStartContextServerOnly({ throwIfNotFound: false })
+            ?.executedRequestMiddlewares,
+        )
+      : undefined,
+  )
 
-  // On server, filter out middlewares that already executed in the request phase
-  // to prevent duplicate execution (issue #5239)
-  if (env === 'server') {
-    const startContext = getStartContextServerOnly({ throwIfNotFound: false })
-    if (startContext?.executedRequestMiddlewares) {
-      flattenedMiddlewares = flattenedMiddlewares.filter(
-        (m) => !startContext.executedRequestMiddlewares.has(m),
+  let index = 0
+
+  // Runs the remaining middlewares. A middleware's next() continues with its
+  // context merged with what it passed. Failures reject every pending next()
+  // up to the top, where they become `{ error }`.
+  const callNextMiddleware = async (
+    callerCtx: ServerFnMiddlewareResult,
+    userCtx?: ServerFnMiddlewareResult,
+  ): Promise<ServerFnMiddlewareResult> => {
+    let ctx = callerCtx
+    if (userCtx !== undefined) {
+      // Assign after the spreads: an object literal with properties after a
+      // second spread defines each of them through a slow runtime call.
+      ctx = { ...callerCtx, ...userCtx }
+      // Use safeObjectMerge for context objects to prevent prototype pollution
+      ctx.context = safeObjectMerge(callerCtx.context, userCtx.context)
+      ctx.sendContext = mergeOptionalSendContext(
+        callerCtx.sendContext,
+        userCtx.sendContext,
       )
+      ctx.headers = mergeOptionalHeaders(callerCtx.headers, userCtx.headers)
+      ctx._callSiteFetch = callerCtx._callSiteFetch
+      ctx.fetch = callerCtx._callSiteFetch ?? userCtx.fetch ?? callerCtx.fetch
+      ctx.result =
+        userCtx.result !== undefined
+          ? userCtx.result
+          : userCtx instanceof Response
+            ? userCtx
+            : callerCtx.result
     }
-  }
 
-  const callNextMiddleware: NextFn = async (ctx) => {
-    // Get the next middleware
-    const nextMiddleware = flattenedMiddlewares.shift()
-
-    // If there are no more middlewares, return the context
-    if (!nextMiddleware) {
-      return ctx
-    }
-
-    // Execute the middleware
-    try {
-      let validator =
-        'validator' in nextMiddleware.options
-          ? nextMiddleware.options.validator
-          : undefined
-
-      // TODO remove upon stable
-      if (!validator && 'inputValidator' in nextMiddleware.options) {
-        validator = nextMiddleware.options.inputValidator
+    let result = ctx
+    // Middleware without a function for this environment only validates.
+    while (index < flattenedMiddlewares.length) {
+      const options = flattenedMiddlewares[index++]!.options as {
+        validator?: AnyValidator
+        // TODO remove upon stable
+        inputValidator?: AnyValidator
+        client?: MiddlewareFn
+        server?: MiddlewareFn
       }
-
+      const validator = options.validator || options.inputValidator
       if (validator && env === 'server') {
         // Execute the middleware's input function
-        ctx.data = await execValidator(validator as AnyValidator, ctx.data)
+        ctx.data = await execValidator(validator, ctx.data)
       }
 
-      let middlewareFn: MiddlewareFn | undefined = undefined
-      if (env === 'client') {
-        if ('client' in nextMiddleware.options) {
-          middlewareFn = nextMiddleware.options.client as
-            | MiddlewareFn
-            | undefined
-        }
-      }
-      // env === 'server'
-      else if ('server' in nextMiddleware.options) {
-        middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
-      }
-
+      const middlewareFn = env === 'client' ? options.client : options.server
       if (middlewareFn) {
-        const userNext = async (
-          userCtx: ServerFnMiddlewareResult | undefined = {} as any,
-        ) => {
-          // Return the next middleware
-          // Use safeObjectMerge for context objects to prevent prototype pollution
-          const nextCtx = {
-            ...ctx,
-            ...userCtx,
-            context: safeObjectMerge(ctx.context, userCtx.context),
-            sendContext: safeObjectMerge(ctx.sendContext, userCtx.sendContext),
-            headers: mergeHeaders(ctx.headers, userCtx.headers),
-            _callSiteFetch: ctx._callSiteFetch,
-            fetch: ctx._callSiteFetch ?? userCtx.fetch ?? ctx.fetch,
-            result:
-              userCtx.result !== undefined
-                ? userCtx.result
-                : userCtx instanceof Response
-                  ? userCtx
-                  : (ctx as any).result,
-            error: userCtx.error ?? (ctx as any).error,
-          }
-
-          const result = await callNextMiddleware(nextCtx)
-
-          if (result.error) {
-            throw result.error
-          }
-
-          return result
-        }
-
-        // Execute the middleware
-        const result = await middlewareFn({
+        result = await middlewareFn({
           ...ctx,
-          next: userNext,
+          next: (nextCtx = {} as ServerFnMiddlewareResult) =>
+            callNextMiddleware(ctx, nextCtx),
         })
 
-        // If result is NOT a ctx object, we need to return it as
-        // the { result }
-        if (isRedirect(result)) {
-          return {
-            ...ctx,
-            error: result,
-          }
-        }
-
         if (result instanceof Response) {
-          return {
-            ...ctx,
-            result,
+          // A returned redirect fails the call; any other Response is its
+          // result.
+          if (isRedirect(result)) {
+            throw result
           }
-        }
-
-        if (!(result as any)) {
+          result = { ...ctx, result }
+        } else if (!(result as any)) {
           throw new Error(
             'User middleware returned undefined. You must call next() or return a result in your middlewares.',
           )
         }
-
-        return result
-      }
-
-      return callNextMiddleware(ctx)
-    } catch (error: any) {
-      return {
-        ...ctx,
-        error,
+        break
       }
     }
+
+    if ('error' in result) {
+      throw result.error
+    }
+    return result
   }
 
   // Start the middleware chain
-  return callNextMiddleware({
+  const initialCtx = {
     ...opts,
-    headers: opts.headers || {},
-    sendContext: opts.sendContext || {},
+    // Client next() results always expose HeadersInit. Server middleware does
+    // not require a headers value unless one was explicitly supplied.
+    headers: opts.headers || (env === 'client' ? {} : undefined),
+    sendContext: opts.sendContext,
     context: opts.context || createNullProtoObject(),
     _callSiteFetch: opts.fetch,
-  })
+  }
+  if (initialCtx.sendContext !== undefined) {
+    initialCtx.sendContext ||= {}
+  }
+  try {
+    return await callNextMiddleware(initialCtx)
+  } catch (error) {
+    return { ...initialCtx, error }
+  }
 }
 
 export type CompiledFetcherFnOptions = {
@@ -834,10 +830,15 @@ export interface ServerFnTypes<
 
 export function flattenMiddlewares<
   T extends AnyFunctionMiddleware | AnyRequestMiddleware,
->(middlewares: Array<T>, maxDepth: number = 100): Array<T> {
-  const seen = new Set<T>()
+>(
+  middlewares: Array<T>,
+  maxDepth: number = 100,
+  seen: Set<T> = new Set<T>(),
+): Array<T> {
   const flattened: Array<T> = []
 
+  // forEach skips holes, and a list that is not an array throws instead of
+  // silently dropping its middleware.
   const recurse = (middleware: Array<T>, depth: number) => {
     if (depth > maxDepth) {
       throw new Error(
@@ -876,6 +877,7 @@ export type ServerFnMiddlewareOptions = {
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
   result?: unknown
+  /** Present only when the call failed. Holds the thrown value, even `undefined`. */
   error?: unknown
 }
 
@@ -940,15 +942,18 @@ function serverFnBaseToMiddleware(
 
         return next(res)
       },
-      server: async ({ next, ...ctx }) => {
-        // Execute the server function
-        const result = await options.serverFn?.(ctx)
+      // Always the last middleware, so it returns the result instead of
+      // passing it through next(). Browsers never execute a server function.
+      server:
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- isServer is only known outside development
+        (isServer ?? typeof window === 'undefined')
+          ? async ({ next: _next, ...ctx }) => {
+              // Execute the server function
+              const result = await options.serverFn?.(ctx)
 
-        return next({
-          ...ctx,
-          result,
-        } as any)
-      },
+              return { ...ctx, result } as any
+            }
+          : undefined,
     },
   }
 }

@@ -9,14 +9,21 @@ import {
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
   getSerovalPlugins,
-  safeObjectMerge,
 } from '@tanstack/start-client-core'
 import {
   MAX_FRAMED_STREAMS,
   MAX_FRAME_PAYLOAD_SIZE,
 } from '@tanstack/start-client-core/client-rpc'
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
-import { getResponse } from './request-response'
+import {
+  createFinalizedResponse,
+  getErrorHeaders,
+  getParsedRequestUrl,
+  getSerializedResponseState,
+  protectResponseHeaders,
+  resolveErrorResponseStatus,
+  setProtectedResponseHeaders,
+} from './internal-request-response'
 import { getServerFnById } from './getServerFnById'
 import { createMultiplexedStream } from './frame-protocol'
 import type {
@@ -25,15 +32,55 @@ import type {
   MultiplexedStreamRecord,
 } from './frame-protocol'
 import type { Plugin as SerovalPlugin } from 'seroval'
+import type { StartEvent } from './internal-request-response'
 
-// Cache serovalPlugins at module level to avoid repeated calls
-let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined = undefined
+// Serialized replies are decoded by the client from their body. With a
+// helper-selected 3xx status, a Location would let fetch follow it first.
+const SERIALIZED_JSON_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  ['content-type', 'application/json'],
+  [X_TSS_SERIALIZED, 'true'],
+  [X_TSS_RAW_RESPONSE, null],
+  ['location', null],
+])
+// A shared template the Response constructor copies. Never mutate it.
+const SERIALIZED_JSON_HEADER_INIT = new Headers({
+  'content-type': 'application/json',
+  [X_TSS_SERIALIZED]: 'true',
+})
 
-// Known FormData 'Content-Type' header values - module-level constant
-const FORM_DATA_CONTENT_TYPES = [
-  'multipart/form-data',
-  'application/x-www-form-urlencoded',
-]
+/** Completed bytes own no stream until the request pipeline accepts them. */
+export class DeferredResponse {
+  constructor(private readonly body: Uint8Array) {}
+
+  createResponse(event: StartEvent): Response {
+    return createFinalizedResponse(
+      this.body,
+      SERIALIZED_JSON_HEADER_INIT,
+      SERIALIZED_JSON_HEADERS,
+      event,
+    )
+  }
+}
+
+const SERIALIZED_FRAMED_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  ['content-type', TSS_CONTENT_TYPE_FRAMED_VERSIONED],
+  [X_TSS_SERIALIZED, 'true'],
+  [X_TSS_RAW_RESPONSE, null],
+  ['location', null],
+])
+const NOT_FOUND_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  ['content-type', 'application/json'],
+  [X_TSS_SERIALIZED, null],
+  [X_TSS_RAW_RESPONSE, null],
+  ['location', null],
+])
+const RAW_RESPONSE_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  [X_TSS_RAW_RESPONSE, 'true'],
+])
+// A Response the server function threw. The client rethrows it.
+const THROWN_RESPONSE_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  [X_TSS_RAW_RESPONSE, 'thrown'],
+])
 
 // Maximum payload size for GET requests (1MB)
 const MAX_PAYLOAD_SIZE = 1_000_000
@@ -66,18 +113,74 @@ function cancelRawStream(stream: ReadableStream<Uint8Array>, reason?: unknown) {
   void stream.cancel(reason).catch(() => {})
 }
 
+/**
+ * Marks a Response thrown during a server-function request so the client
+ * rejects the call with it. Redirects keep their own protocol.
+ */
+export function toThrownServerFnResponse(response: Response): Response {
+  return isRedirect(response)
+    ? response
+    : setProtectedResponseHeaders(response, THROWN_RESPONSE_HEADERS)
+}
+
+/**
+ * Builds the reply for a server-function request that failed outside the
+ * function, such as in request middleware. Like a failed call, it carries
+ * only the thrown value under an `error` key, so the client rethrows it.
+ */
+export async function createServerFnErrorResponse(
+  error: unknown,
+  serovalPlugins?: Array<SerovalPlugin<any, any>>,
+) {
+  if (isNotFound(error)) {
+    return isNotFoundResponse(error)
+  }
+
+  // Header getters and reporting hooks can write helpers before the status
+  // is resolved. Error statuses are always body-bearing, as the client needs.
+  const headers = getErrorHeaders(error) ?? new Headers()
+  const { status, statusText } = resolveErrorResponseStatus(error)
+  headers.set('Content-Type', 'application/json')
+  headers.set(X_TSS_SERIALIZED, 'true')
+  headers.delete(X_TSS_RAW_RESPONSE)
+  headers.delete('location')
+
+  const plugins =
+    serovalPlugins ?? getSerovalPlugins(routerDefaultSerovalPlugins)
+  let serializedError: string
+  try {
+    serializedError = JSON.stringify(
+      await toCrossJSONAsync({ error }, { refs: new Map(), plugins }),
+    )
+  } catch (serializationError) {
+    // Like a result that cannot be serialized, the call rejects with the
+    // serialization error instead of the value it could not send.
+    serializedError = JSON.stringify(
+      await toCrossJSONAsync(
+        { error: serializationError },
+        { refs: new Map(), plugins },
+      ),
+    )
+  }
+  const errorResponse = new Response(serializedError, {
+    status,
+    statusText,
+    headers,
+  })
+  protectResponseHeaders(errorResponse, SERIALIZED_JSON_HEADERS)
+  return errorResponse
+}
+
+// The action merges the client context with the trusted server context
+// (__executeServer), so the client context is passed through unmerged.
 export const handleServerAction = async ({
   request,
-  context,
   serverFnId,
 }: {
   request: Request
-  context: any
   serverFnId: string
 }) => {
   const methodUpper = request.method.toUpperCase()
-  const url = new URL(request.url)
-
   const action = await getServerFnById(serverFnId, { origin: 'client' })
 
   // Early method check: reject mismatched HTTP methods before parsing
@@ -94,17 +197,20 @@ export const handleServerAction = async ({
     )
   }
 
-  const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
-  // Initialize serovalPlugins lazily (cached at module level)
-  serovalPlugins ??= getSerovalPlugins(routerDefaultSerovalPlugins)
-  const contentType = request.headers.get('Content-Type')
+  const headers = request.headers
+  const isServerFn = headers.get('x-tsr-serverfn') === 'true'
+  let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined
+  const getRequestSerovalPlugins = () => {
+    return (serovalPlugins ??= getSerovalPlugins(routerDefaultSerovalPlugins))
+  }
+  const contentType = headers.get('content-type')
 
   try {
     let res: any
     if (
-      FORM_DATA_CONTENT_TYPES.some(
-        (type) => contentType && contentType.includes(type),
-      )
+      contentType &&
+      (contentType.includes('multipart/form-data') ||
+        contentType.includes('application/x-www-form-urlencoded'))
     ) {
       // We don't support GET requests with FormData payloads... that seems impossible
       if (methodUpper === 'GET') {
@@ -120,8 +226,7 @@ export const handleServerAction = async ({
       const serializedContext = formData.get(TSS_FORMDATA_CONTEXT)
       formData.delete(TSS_FORMDATA_CONTEXT)
 
-      const params = {
-        context,
+      const params: { context?: unknown; data: FormData; method: string } = {
         data: formData,
         method: methodUpper,
       }
@@ -129,13 +234,10 @@ export const handleServerAction = async ({
         try {
           const parsedContext = JSON.parse(serializedContext)
           const deserializedContext = fromJSON(parsedContext, {
-            plugins: serovalPlugins,
+            plugins: getRequestSerovalPlugins(),
           })
           if (typeof deserializedContext === 'object' && deserializedContext) {
-            params.context = safeObjectMerge(
-              deserializedContext as Record<string, unknown>,
-              context,
-            )
+            params.context = deserializedContext
           }
         } catch (e) {
           // Log warning for debugging but don't expose to client
@@ -146,47 +248,51 @@ export const handleServerAction = async ({
       }
 
       res = await action(params)
-    } else if (methodUpper === 'GET') {
-      // Get payload directly from searchParams
-      const payloadParam = url.searchParams.get('payload')
-      // Reject oversized payloads to prevent DoS
-      if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
-        throw new Error('Payload too large')
-      }
-      const payload: any = payloadParam
-        ? fromJSON(JSON.parse(payloadParam), { plugins: serovalPlugins })
-        : {}
-      payload.context = safeObjectMerge(payload.context, context)
-      payload.method = methodUpper
-      res = await action(payload)
     } else {
-      const payload: any = contentType?.includes('application/json')
-        ? fromJSON(await request.json(), { plugins: serovalPlugins })
-        : {}
-      payload.context = safeObjectMerge(payload.context, context)
-      payload.method = methodUpper
-      res = await action(payload)
+      let json: any
+      if (methodUpper === 'GET') {
+        // Get payload directly from searchParams
+        const payloadParam =
+          getParsedRequestUrl(request).searchParams.get('payload')
+        // Reject oversized payloads to prevent DoS
+        if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
+          throw new Error('Payload too large')
+        }
+        json = payloadParam ? JSON.parse(payloadParam) : undefined
+      } else if (contentType?.includes('application/json')) {
+        json = await request.json()
+      }
+      const payload: any =
+        json === undefined
+          ? {}
+          : fromJSON(json, { plugins: getRequestSerovalPlugins() })
+      // Pass only the fields a client sends, so a crafted `error` or
+      // `result` key cannot decide the outcome of the call.
+      res = await action({
+        data: payload.data,
+        context: payload.context,
+        method: methodUpper,
+      })
     }
 
-    const unwrapped = res.result !== undefined ? res.result : res.error
-
-    if (isNotFound(res)) {
-      res = isNotFoundResponse(res)
-    }
+    const failed = 'error' in res
+    const unwrapped = failed ? res.error : res.result
 
     if (!isServerFn) {
       return unwrapped
     }
 
     if (unwrapped instanceof Response) {
+      if (failed) {
+        return toThrownServerFnResponse(unwrapped)
+      }
       if (isRedirect(unwrapped)) {
         return unwrapped
       }
-      unwrapped.headers.set(X_TSS_RAW_RESPONSE, 'true')
-      return unwrapped
+      return setProtectedResponseHeaders(unwrapped, RAW_RESPONSE_HEADERS)
     }
 
-    return serializeResult(res, request.signal, serovalPlugins)
+    return serializeResult(res, request, getRequestSerovalPlugins())
   } catch (error: any) {
     if (error instanceof Response) {
       return error
@@ -197,36 +303,7 @@ export const handleServerAction = async ({
     // The client will check for __redirect and __notFound keys,
     // and if they exist, it will handle them appropriately.
 
-    if (isNotFound(error)) {
-      return isNotFoundResponse(error)
-    }
-
-    console.error('Server Fn Error!', error)
-
-    const serializedError = JSON.stringify(
-      await toCrossJSONAsync(error, {
-        refs: new Map(),
-        plugins: serovalPlugins,
-      }),
-    )
-    const response = getResponse()
-    const headers = {
-      'Content-Type': 'application/json',
-      [X_TSS_SERIALIZED]: 'true',
-    }
-    try {
-      return new Response(serializedError, {
-        status: response.status ?? 500,
-        statusText: response.statusText,
-        headers,
-      })
-    } catch {
-      return new Response(serializedError, {
-        status: 500,
-        statusText: '',
-        headers,
-      })
-    }
+    return createServerFnErrorResponse(error, serovalPlugins)
   }
 }
 
@@ -237,10 +314,9 @@ export const handleServerAction = async ({
  */
 function serializeResult(
   res: unknown,
-  signal: AbortSignal,
+  request: Request,
   plugins: Array<SerovalPlugin<any, any>>,
-): Response {
-  const alsResponse = getResponse()
+): Response | DeferredResponse {
   const initialRecords: Array<Uint8Array> = []
   let initialBytes = 0
   const pendingRawStreams: Array<LateStreamRegistration> = []
@@ -325,15 +401,7 @@ function serializeResult(
   }
 
   if (done && pendingRawStreams.length === 0 && initialRecords.length === 1) {
-    // TextEncoder always creates an ArrayBuffer-backed Uint8Array.
-    return new Response(initialRecords[0]! as BodyInit, {
-      status: alsResponse.status,
-      statusText: alsResponse.statusText,
-      headers: {
-        'Content-Type': 'application/json',
-        [X_TSS_SERIALIZED]: 'true',
-      },
-    })
+    return new DeferredResponse(initialRecords[0]!)
   }
 
   if (done && initialRecords.length === 1) {
@@ -364,7 +432,7 @@ function serializeResult(
           }
         },
       }),
-      { signal },
+      { signal: request.signal },
     )
   }
 
@@ -490,39 +558,54 @@ function serializeResult(
   })
 
   return createFramedResponse(readable, {
-    signal: AbortSignal.any([recordAbortController.signal, signal]),
+    signal: AbortSignal.any([recordAbortController.signal, request.signal]),
     onCancel: abortRecordStream,
   })
+}
 
-  function createFramedResponse(
-    records: ReadableStream<MultiplexedStreamRecord>,
-    options: MultiplexedStreamOptions,
-  ) {
-    const multiplexedStream = createMultiplexedStream(records, options)
-    try {
-      return new Response(multiplexedStream, {
-        status: alsResponse.status,
-        statusText: alsResponse.statusText,
-        headers: {
-          'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
-          [X_TSS_SERIALIZED]: 'true',
-        },
-      })
-    } catch (error) {
-      cancelRawStream(multiplexedStream, error)
-      throw error
-    }
+function createFramedResponse(
+  records: ReadableStream<MultiplexedStreamRecord>,
+  options: MultiplexedStreamOptions,
+) {
+  const multiplexedStream = createMultiplexedStream(records, options)
+  // Completed JSON reads helper state later, when the pipeline accepts it.
+  const { status, statusText } = getSerializedResponseState()
+  try {
+    const response = new Response(multiplexedStream, {
+      status,
+      statusText,
+      headers: {
+        'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+        [X_TSS_SERIALIZED]: 'true',
+      },
+    })
+    protectResponseHeaders(response, SERIALIZED_FRAMED_HEADERS)
+    return response
+  } catch (error) {
+    cancelRawStream(multiplexedStream, error)
+    throw error
   }
 }
 
 function isNotFoundResponse(error: any) {
   const { headers, ...rest } = error
+  let responseHeaders: HeadersInit
+  if (headers) {
+    // Snapshot caller headers before serialization can run user callbacks.
+    const copiedHeaders = new Headers(headers)
+    copiedHeaders.set('Content-Type', 'application/json')
+    copiedHeaders.delete(X_TSS_SERIALIZED)
+    copiedHeaders.delete(X_TSS_RAW_RESPONSE)
+    copiedHeaders.delete('location')
+    responseHeaders = copiedHeaders
+  } else {
+    responseHeaders = { 'Content-Type': 'application/json' }
+  }
 
-  return new Response(JSON.stringify(rest), {
+  const response = new Response(JSON.stringify(rest), {
     status: 404,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(headers || {}),
-    },
+    headers: responseHeaders,
   })
+  protectResponseHeaders(response, NOT_FOUND_HEADERS)
+  return response
 }

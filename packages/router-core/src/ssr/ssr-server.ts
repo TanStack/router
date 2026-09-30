@@ -673,12 +673,10 @@ export function getOrigin(request: Request) {
 // new URLSearchParams() encodes "|" while new URL() does not, and in this instance
 // chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
 export function getNormalizedURL(url: string | URL, base?: string | URL) {
-  // ensure backslashes are encoded correctly in the URL
-  if (typeof url === 'string') {
-    url = url.replace('\\', '%5C')
-  }
-
-  const rawUrl = new URL(url, base)
+  // Encode backslashes in a string URL. A URL object is already parsed and is
+  // only read here.
+  const rawUrl =
+    typeof url === 'string' ? new URL(url.replace('\\', '%5C'), base) : url
   // URL parsing has already handled backslashes and ignored controls. A pathname
   // like "//evil.example" would become a protocol-relative URL when rebuilt below.
   const handledProtocolRelativeURL = rawUrl.pathname.startsWith('//')

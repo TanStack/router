@@ -70,3 +70,13 @@ pnpm dev
 
 > [!WARNING]
 > You will need to update the `docs/config.json` file (in the project's repo) if you add a new doc page!
+
+## Session configuration
+
+This example uses [iron-session](https://github.com/vvo/iron-session) through Start's `getCookie` and `setCookie` helpers. Set `SESSION_PASSWORD` to a random secret of at least 32 characters before starting the app, for example:
+
+```sh
+export SESSION_PASSWORD="$(openssl rand -base64 32)"
+```
+
+Keep the same secret across instances and deployments that must read the same sessions. The cookie requires HTTPS in production. Each handler reads its own session, then awaits `session.save()` before redirecting or returning.

@@ -3,10 +3,7 @@ import {
   resolveTransformAssetsConfig,
   transformManifestAssets,
 } from './transformAssetUrls'
-import {
-  getStaticHandlerInlineCssDefault,
-  resolveInlineCssForRequest,
-} from './inlineCss'
+import { getStaticInlineCss, resolveInlineCssForRequest } from './inlineCss'
 import type { ServerManifest } from '@tanstack/router-core'
 import type { HandlerInlineCssOption } from './inlineCss'
 import type {
@@ -40,7 +37,12 @@ export interface FinalManifestOptions {
 }
 
 type FinalManifestCacheKey = 'inline-css' | 'linked-css'
-type FinalManifestCache = Map<FinalManifestCacheKey, Promise<ServerManifest>>
+// An entry holds the pending manifest, then the manifest itself once it
+// resolves, so later requests read it without waiting.
+type FinalManifestCache = Map<
+  FinalManifestCacheKey,
+  ServerManifest | Promise<ServerManifest>
+>
 export type GetBaseManifest = () => Promise<ServerManifest>
 
 export interface FinalManifestRequestOptions {
@@ -62,7 +64,9 @@ export interface FinalManifestResolver {
   warmup: (opts: {
     getBaseManifest: GetBaseManifest
   }) => Promise<ServerManifest> | undefined
-  resolveCached: (opts: FinalManifestRequestOptions) => Promise<ServerManifest>
+  resolveCached: (
+    opts: FinalManifestRequestOptions,
+  ) => ServerManifest | Promise<ServerManifest>
   resolveUncached: (
     opts: FinalManifestRequestOptions,
   ) => Promise<ServerManifest>
@@ -143,9 +147,7 @@ export function createFinalManifestResolver(
     opts.transformAssets,
     { cacheCreateTransform: opts.cacheCreateTransform },
   )
-  const handlerDefaultInlineCss = getStaticHandlerInlineCssDefault(
-    opts.inlineCss,
-  )
+  const handlerDefaultInlineCss = getStaticInlineCss(undefined, opts.inlineCss)
 
   const getRequestManifestOptions = async (
     requestOpts: FinalManifestRequestOptions,
@@ -190,8 +192,24 @@ export function createFinalManifestResolver(
           transformResolver.getTransformFn({ warmup: true }),
         onError: transformResolver.clearCachedCreateTransform,
       }),
-    resolveCached: (requestOpts) =>
-      resolveRequest(requestOpts, finalManifestCache),
+    resolveCached: (requestOpts) => {
+      // With a cached transform, the entry for the request's inline-CSS choice
+      // is the manifest resolveRequest would produce, unless a handler
+      // callback still has to make that choice.
+      const inlineCss = getStaticInlineCss(
+        requestOpts.requestInlineCss,
+        opts.inlineCss,
+      )
+      if (transformResolver.cache && inlineCss !== undefined) {
+        const cached = finalManifestCache.get(
+          getFinalManifestCacheKey(inlineCss),
+        )
+        if (cached) {
+          return cached
+        }
+      }
+      return resolveRequest(requestOpts, finalManifestCache)
+    },
     resolveUncached: (requestOpts) => resolveRequest(requestOpts, undefined),
   }
 }
@@ -201,35 +219,41 @@ function getFinalManifestCacheKey(inlineCss: boolean): FinalManifestCacheKey {
 }
 
 function cacheFinalManifestPromise(
-  cachedFinalManifestPromises: FinalManifestCache,
+  finalManifestCache: FinalManifestCache,
   cacheKey: FinalManifestCacheKey,
   promise: Promise<ServerManifest>,
 ): Promise<ServerManifest> {
-  const cachedFinalManifestPromise = promise.catch((error) => {
-    if (
-      cachedFinalManifestPromises.get(cacheKey) === cachedFinalManifestPromise
-    ) {
-      cachedFinalManifestPromises.delete(cacheKey)
-    }
-    throw error
-  })
+  const cachedPromise = promise.then(
+    (manifest) => {
+      if (finalManifestCache.get(cacheKey) === cachedPromise) {
+        finalManifestCache.set(cacheKey, manifest)
+      }
+      return manifest
+    },
+    (error) => {
+      if (finalManifestCache.get(cacheKey) === cachedPromise) {
+        finalManifestCache.delete(cacheKey)
+      }
+      throw error
+    },
+  )
 
-  cachedFinalManifestPromises.set(cacheKey, cachedFinalManifestPromise)
-  return cachedFinalManifestPromise
+  finalManifestCache.set(cacheKey, cachedPromise)
+  return cachedPromise
 }
 
-function getOrCreateCachedFinalManifestPromise(
-  cachedFinalManifestPromises: FinalManifestCache,
+function getOrCreateCachedFinalManifest(
+  finalManifestCache: FinalManifestCache,
   cacheKey: FinalManifestCacheKey,
   computeFinalManifest: () => Promise<ServerManifest>,
-): Promise<ServerManifest> {
-  const cachedFinalManifestPromise = cachedFinalManifestPromises.get(cacheKey)
-  if (cachedFinalManifestPromise) {
-    return cachedFinalManifestPromise
+): ServerManifest | Promise<ServerManifest> {
+  const cached = finalManifestCache.get(cacheKey)
+  if (cached) {
+    return cached
   }
 
   return cacheFinalManifestPromise(
-    cachedFinalManifestPromises,
+    finalManifestCache,
     cacheKey,
     Promise.resolve().then(computeFinalManifest),
   )
@@ -263,7 +287,7 @@ async function resolveFinalManifest(opts: {
   }
 
   if (opts.finalManifestCache && (!opts.transformFn || opts.cache)) {
-    return getOrCreateCachedFinalManifestPromise(
+    return getOrCreateCachedFinalManifest(
       opts.finalManifestCache,
       getFinalManifestCacheKey(opts.inlineCss),
       computeFinalManifest,
@@ -290,11 +314,13 @@ function warmupFinalManifest(opts: {
     return undefined
   }
 
+  // Warmup runs when the handler is created, before any request fills the
+  // cache.
   const inlineCss = opts.handlerDefaultInlineCss
-  const warmupPromise = getOrCreateCachedFinalManifestPromise(
+  const warmupPromise = cacheFinalManifestPromise(
     opts.finalManifestCache,
     getFinalManifestCacheKey(inlineCss),
-    async () => {
+    Promise.resolve().then(async () => {
       const [base, transformFn] = await Promise.all([
         opts.getBaseManifest(),
         opts.getTransformFn(),
@@ -305,7 +331,7 @@ function warmupFinalManifest(opts: {
         transformFn,
         inlineCss,
       })
-    },
+    }),
   )
 
   if (opts.onError) {

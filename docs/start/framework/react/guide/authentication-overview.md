@@ -116,7 +116,7 @@ Build your own authentication system using TanStack Start's server functions and
 
 - **Full Control**: Complete customization over authentication flow
 - **Server Primitives**: Sessions, OAuth, CSRF, rate limiting — see [Authentication Server Primitives](./authentication-server-primitives.md)
-- **Session Management**: HTTP-only cookies via `setResponseHeader`, read with `getRequestHeader`
+- **Session Management**: HTTP-only cookies written with `setCookie`, read with `getCookie`
 - **Type Safety**: End-to-end type safety for authentication state
 
 ### 🌐 Other Excellent Options
