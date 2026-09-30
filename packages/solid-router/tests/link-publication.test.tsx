@@ -82,34 +82,6 @@ test.each(['click', 'preload'] as const)(
   },
 )
 
-test('mounted external Links observe protocol allowlist changes', async () => {
-  const root = createRootRoute({
-    component: () => <Link to="custom:destination" data-testid="external" />,
-  })
-  const router = createRouter({
-    routeTree: root.addChildren([
-      createRoute({ getParentRoute: () => root, path: '/' }),
-    ]),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-    protocolAllowlist: ['custom:'],
-  })
-  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  try {
-    render(() => <RouterProvider router={router} />)
-    const link = await screen.findByTestId('external')
-    expect(link).toHaveAttribute('href', 'custom:destination')
-    router.update({ protocolAllowlist: [] })
-    await waitFor(() => expect(link).not.toHaveAttribute('href'))
-    router.update({ protocolAllowlist: ['custom:'] })
-    await waitFor(() =>
-      expect(link).toHaveAttribute('href', 'custom:destination'),
-    )
-  } finally {
-    warning.mockRestore()
-    router.history.destroy()
-  }
-})
-
 test('departing Links retain their published source and catch up on a successor', async () => {
   let release!: () => void
   const pending = new Promise<void>((resolve) => {

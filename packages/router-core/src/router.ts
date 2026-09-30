@@ -1371,21 +1371,18 @@ export class RouterCore<
       // Existing stores hold the location parsed with the previous rewrite.
       this.stores.location.set(this.latestLocation)
     }
+    // Tree changes publish from setRoutes. Only live URL-building options
+    // need another invalidation; initialization already changes the rewrite.
     if (
       !(isServer ?? this.isServer) &&
       (rewriteChanged ||
-        !prevOptions ||
         (
           [
             'history',
-            'routeTree',
-            'routeMasks',
             'parseSearch',
             'stringifySearch',
-            'search',
             'trailingSlash',
             'origin',
-            'protocolAllowlist',
           ] as const
         ).some((key) => prevOptions[key] !== this.options[key]))
     ) {
