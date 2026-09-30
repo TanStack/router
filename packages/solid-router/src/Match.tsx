@@ -200,7 +200,7 @@ export const MatchInner = (): any => {
   const nearestMatch = Solid.useContext(nearestMatchContext)
   const match = nearestMatch[1 /* match */]
   const routeId = nearestMatch[0 /* route id */]
-  const route = router.routesById[routeId()!]!
+  const route = router.routesById[routeId()]!
   const currentMatch = () => match()!
 
   const componentKey = () => {
@@ -211,7 +211,7 @@ export const MatchInner = (): any => {
       return routeId()
     }
     const deps = remount({
-      routeId: routeId()!,
+      routeId: routeId(),
       loaderDeps: current.loaderDeps,
       params: current._strictParams,
       search: current._strictSearch,
@@ -303,14 +303,14 @@ export const Outlet = () => {
   const nearestParentMatch = Solid.useContext(nearestMatchContext)
   const parentMatch = nearestParentMatch[1 /* match */]
   const routeId = nearestParentMatch[0 /* route id */]
-  const route = router.routesById[routeId()!]!
+  const route = router.routesById[routeId()]!
 
   const childRouteId = () => {
     if (parentMatch()!._notFound) {
       return
     }
     const ids = router.stores.ids.get()
-    return ids[ids.indexOf(routeId()!) + 1]
+    return ids[ids.indexOf(routeId()) + 1]
   }
 
   return (

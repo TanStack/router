@@ -281,7 +281,7 @@ export const Outlet = React.memo(function OutletImpl() {
   }
 
   const router = useRouter()
-  const routeId = React.useContext(matchContext)!
+  const routeId = React.useContext(matchContext)
 
   let parentGlobalNotFound: boolean
   let parentNotFoundError: unknown
