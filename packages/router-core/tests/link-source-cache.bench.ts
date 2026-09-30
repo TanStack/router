@@ -2,6 +2,7 @@ import { bench, describe, expect } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
+import type { TrailingSlashOption } from '../src'
 
 const LINKS = 1000
 
@@ -10,11 +11,12 @@ describe('inherited Link sources across configuration updates', () => {
     const root = new BaseRootRoute({
       validateSearch: (search) => ({ page: Number(search.page ?? 1) }),
     })
-    const router = createTestRouter({
-      routeTree: root.addChildren([
-        new BaseRoute({ getParentRoute: () => root, path: '/source' }),
-        new BaseRoute({ getParentRoute: () => root, path: '/target' }),
-      ]),
+    const routeTree = root.addChildren([
+      new BaseRoute({ getParentRoute: () => root, path: '/source' }),
+      new BaseRoute({ getParentRoute: () => root, path: '/target' }),
+    ])
+    const router = createTestRouter<typeof routeTree, TrailingSlashOption>({
+      routeTree,
       history: createMemoryHistory({ initialEntries: ['/source?page=2'] }),
       scrollRestoration: false,
     })

@@ -4,9 +4,21 @@ import { BaseRootRoute, BaseRoute } from '../src'
 import * as routeTreeUtils from '../src/new-process-route-tree'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
 import { createTestRouter } from './routerTestUtils'
-import type { AnyRoute, AnyRouter } from '../src'
+import type { AnyRoute, AnyRouter, ParsedLocation } from '../src'
 
 const disposers: Array<() => void> = []
+
+// Read the match cache on both source planes of the implementation-stash
+// comparison, without adding an obsolete alias to the production Router.
+function lightweightCache(router: AnyRouter) {
+  const caches = router as unknown as {
+    lightweightCache?: WeakMap<ParsedLocation, unknown>
+    _linkConfig?: WeakMap<ParsedLocation, unknown>
+  }
+  const cache = caches.lightweightCache ?? caches._linkConfig
+  expect(cache).toBeInstanceOf(WeakMap)
+  return cache!
+}
 
 beforeEach(() => {
   vi.stubEnv('NODE_ENV', 'production')
@@ -87,7 +99,7 @@ test('reuses server caches after request cleanup without sharing match state', a
   expect(await (await request()).text()).toBe('/items/one%20two')
   const branch = item._branch
   const firstLocation = routers[0]!.latestLocation
-  const lightweightResult = routers[0]!['lightweightCache'].get(firstLocation)
+  const lightweightResult = lightweightCache(routers[0]!).get(firstLocation)
   expect(branch).toEqual([root, item])
   expect(lightweightResult).toBeDefined()
 
@@ -95,10 +107,8 @@ test('reuses server caches after request cleanup without sharing match state', a
   expect(item._branch).toBe(branch)
   expect(routers[0]).not.toBe(routers[1])
   expect(routers[0]!.resolvePathCache).toBe(routers[1]!.resolvePathCache)
-  expect(routers[0]!['lightweightCache']).not.toBe(
-    routers[1]!['lightweightCache'],
-  )
-  expect(routers[1]!['lightweightCache'].get(firstLocation)).toBeUndefined()
+  expect(lightweightCache(routers[0]!)).not.toBe(lightweightCache(routers[1]!))
+  expect(lightweightCache(routers[1]!).get(firstLocation)).toBeUndefined()
   expect(routers[1]!.latestLocation).not.toBe(firstLocation)
   expect(routers[0]!._cache).not.toBe(routers[1]!._cache)
 })
@@ -121,7 +131,7 @@ test.each([
       isServer,
     })
     expect(first.resolvePathCache).not.toBe(second.resolvePathCache)
-    expect(first['lightweightCache']).not.toBe(second['lightweightCache'])
+    expect(lightweightCache(first)).not.toBe(lightweightCache(second))
     expect(globalThis.__TSR_CACHE__).toBeUndefined()
   },
 )
@@ -157,7 +167,7 @@ test.each(['production', 'development'])(
       })
       const previousTree = router.processedTree
       const previousResolve = router.resolvePathCache
-      const previousLightweight = router['lightweightCache']
+      const previousLightweight = lightweightCache(router)
       expect(previousTree.matchCache.get('/ITEMS/one')).toBeDefined()
       expect(previousLightweight.get(router.latestLocation)).toBeDefined()
 
@@ -165,7 +175,7 @@ test.each(['production', 'development'])(
 
       expect(router.processedTree).not.toBe(previousTree)
       expect(router.resolvePathCache).not.toBe(previousResolve)
-      expect(router['lightweightCache']).not.toBe(previousLightweight)
+      expect(lightweightCache(router)).not.toBe(previousLightweight)
       expect(router.getMatchedRoutes('/ITEMS/one')[2] === item).toBe(
         !caseSensitive,
       )
@@ -267,12 +277,12 @@ test('keeps different route objects independent and resets derived caches when r
   expect(firstTree.item._interpolation).not.toBe(secondTree.item._interpolation)
 
   const previousResolve = first.resolvePathCache
-  const previousLightweight = first['lightweightCache']
+  const previousLightweight = lightweightCache(first)
   const previousBranch = firstTree.item._branch
   const previousInterpolation = firstTree.item._interpolation
   first.setRoutes(first.buildRouteTree())
   expect(first.resolvePathCache).not.toBe(previousResolve)
-  expect(first['lightweightCache']).not.toBe(previousLightweight)
+  expect(lightweightCache(first)).not.toBe(previousLightweight)
   expect(firstTree.item._branch).toBeUndefined()
   expect(firstTree.item._interpolation).not.toBe(previousInterpolation)
   expect([...firstTree.item._interpolation!]).toEqual([
