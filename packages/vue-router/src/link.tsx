@@ -7,9 +7,7 @@ import {
   invalidateLink,
   isDangerousProtocol,
   preloadWarning,
-  readLinkSnapshot,
   readLinkState,
-  refreshLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
@@ -165,66 +163,58 @@ function useLinkPropsImpl(
     const value = preparedSnapshot.value
     return typeof value === 'function' ? value() : value
   }
-  const store = createLinkStore(router)
-  let read: (() => unknown) | undefined
-  let runner: Vue.ReactiveEffectRunner | undefined
-  const evaluate = <T,>(callback: () => T): T => {
-    // Each core build replaces the reactive dependencies of user callbacks.
-    // Start with an empty read so a failed derivation does not stop the effect.
-    runner ??= Vue.effect(() => read?.(), {
-      scheduler: () => invalidateLink(store),
-    })
-    read = callback
-    try {
-      return runner() as T
-    } finally {
-      read = undefined
-    }
-  }
-  const update = () => {
-    // Evaluate in the consuming computation, where Vue can capture errors.
-    readSnapshot.value = () => {
-      const state = readLinkSnapshot(store[1 /* current */]!)
-      return [state[0], state[1], getLinkLocation(store)?.href]
-    }
-  }
-  Vue.watchEffect(() => {
+  // The watcher owns immutable destination inputs, the native callback effect
+  // and the subscription. Replacing inputs disposes all three together.
+  Vue.watchEffect((onCleanup) => {
     const options = getDestinationOptions()
-    refreshLink(
-      [
-        store,
-        {
-          to: options.to,
-          href: options.href,
-          from: options.from,
-          _fromLocation: options._fromLocation,
-          params: options.params,
-          search: options.search,
-          hash: options.hash,
-          state: options.state,
-          mask: options.mask,
-          unsafeRelative: options.unsafeRelative,
-          disabled: options.disabled,
-          activeOptions: options.activeOptions && { ...options.activeOptions },
-        } as any,
-        owner,
-        undefined,
-        evaluate,
-        undefined,
-        undefined,
-        undefined,
-      ],
-      true,
+    let read: (() => unknown) | undefined
+    let runner: Vue.ReactiveEffectRunner | undefined
+    const store = createLinkStore(
+      router,
+      {
+        to: options.to,
+        href: options.href,
+        from: options.from,
+        _fromLocation: options._fromLocation,
+        params: options.params,
+        search: options.search,
+        hash: options.hash,
+        state: options.state,
+        mask: options.mask,
+        unsafeRelative: options.unsafeRelative,
+        disabled: options.disabled,
+        activeOptions: options.activeOptions && { ...options.activeOptions },
+      } as any,
+      owner,
+      undefined,
+      <T,>(callback: () => T): T => {
+        // Replace callback dependencies on each build, including after errors.
+        runner ??= Vue.effect(() => read?.(), {
+          scheduler: () => invalidateLink(store),
+        })
+        read = callback
+        try {
+          return runner() as T
+        } finally {
+          read = undefined
+        }
+      },
     )
-    update()
-  })
-
-  const unsubscribe = store[3 /* subscribe */](update)
-  Vue.onScopeDispose(() => {
-    unsubscribe()
-    if (runner) {
-      Vue.stop(runner)
+    const update = () => {
+      // Evaluate in the consuming computation, where Vue can capture errors.
+      readSnapshot.value = () => {
+        const state = store[9 /* getSnapshot */]()
+        return [state[0], state[1], getLinkLocation(store)?.href]
+      }
     }
+    const unsubscribe = store[8 /* subscribe */](update)
+    update()
+    onCleanup(() => {
+      unsubscribe()
+      if (runner) {
+        Vue.stop(runner)
+      }
+    })
   })
 
   const isExternal = () => !!getUrlScheme(`${getOptions().to}`)

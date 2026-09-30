@@ -1,9 +1,5 @@
 import React from 'react'
-import {
-  createLinkStore,
-  readLinkSnapshot,
-  refreshLink,
-} from '@tanstack/router-core'
+import { createLinkStore, readLinkSnapshot } from '@tanstack/router-core'
 import {
   act,
   cleanup,
@@ -23,7 +19,6 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import type { LinkView } from '@tanstack/router-core'
 import type { HistoryState } from '../src'
 
 // Object liveness assertions need an exposed, full GC. These are not native
@@ -68,67 +63,48 @@ describe.runIf(enabled)('mounted Link retention', () => {
       defaultPendingMs: 60_000,
     })
     await router.load()
-    const persistent = createLinkStore(router)
+    let unsubscribePersistent = () => {}
     function mountCapturedView() {
       const payload = { marker: 'captured', values: Array(4096).fill(1) }
-      refreshLink(
-        [
-          persistent,
-          {
-            to: '/target',
-            search: () => ({ marker: payload.marker }),
-          },
-          root.id,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-        ],
-        true,
+      const persistent = createLinkStore(
+        router,
+        {
+          to: '/target',
+          search: () => ({ marker: payload.marker }),
+        },
+        root.id,
       )
+      unsubscribePersistent = persistent[8 /* subscribe */](() => {})
       return new WeakRef(payload)
     }
     const reference = mountCapturedView()
-    const unsubscribePersistent = persistent[3 /* subscribe */](() => {})
-    const departing = createLinkStore(router)
-    refreshLink(
-      [
-        departing,
-        {
-          to: '/target',
-          search: (previous: Record<string, unknown>) => previous,
-        },
-        home.id,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-      ],
-      true,
+    const departing = createLinkStore(
+      router,
+      {
+        to: '/target',
+        search: (previous: Record<string, unknown>) => previous,
+      },
+      home.id,
     )
-    const unsubscribeDeparting = departing[3 /* subscribe */](() => {})
+    const unsubscribeDeparting = departing[8 /* subscribe */](() => {})
     const navigation = router.navigate({
       to: '/away',
       search: { pending: 'navigation' } as any,
     })
     try {
       await waitFor(() => expect(router.state.status).toBe('pending'))
-      const replacement: LinkView = [
-        persistent,
+      // Input replacement replaces the subscription instead of mutating a
+      // committed view. Do not retain the disposed descriptor in the fixture.
+      unsubscribePersistent()
+      const replacement = createLinkStore(
+        router,
         {
           to: '/target',
           search: () => ({ marker: 'current' }),
         },
         root.id,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-      ]
-      refreshLink(replacement, true)
+      )
+      unsubscribePersistent = replacement[8 /* subscribe */](() => {})
       expect(readLinkSnapshot(replacement)[0]).toBe('/target?marker=current')
       await collectReleasedObjects()
       expect(router.state.status).toBe('pending')

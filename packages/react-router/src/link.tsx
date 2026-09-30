@@ -6,9 +6,7 @@ import {
   deepEqual,
   functionalUpdate,
   preloadWarning,
-  readLinkSnapshot,
   readLinkState,
-  refreshLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -19,7 +17,6 @@ import type {
   AnyRouter,
   Constrain,
   LinkOptions,
-  LinkView,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -192,30 +189,24 @@ export function useLinkProps<
     options.params,
     activeOptions,
   )
-  // Registration belongs to the mounted Link; destination views belong to
-  // individual renders so abandoned work cannot replace its committed options.
+  // A descriptor's inputs never change. Only subscription registers it, so
+  // abandoned renders cannot replace the mounted descriptor's destination.
+  // useSyncExternalStore owns both registration and replacement; no separate
+  // layout-effect adoption is needed.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const ownerRouteId = React.useContext(matchContext)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const linkStore = React.useMemo(() => createLinkStore(router), [router])
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const linkView = React.useMemo(
-    () => {
-      const view: LinkView = [
-        linkStore,
+  const linkStore = React.useMemo(
+    () =>
+      createLinkStore(
+        router,
         options as any,
         ownerRouteId,
         isHydrated ? undefined : false,
-        undefined,
-        undefined,
-        undefined,
-        () => readLinkSnapshot(view),
-      ]
-      return view
-    },
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      linkStore,
+      router,
       options.from,
       options._fromLocation,
       options.hash,
@@ -233,14 +224,10 @@ export function useLinkProps<
     ],
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  React.useLayoutEffect(() => {
-    refreshLink(linkView, true)
-  }, [linkView])
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = React.useSyncExternalStore(
-    linkStore[3 /* subscribe */],
-    linkView[7 /* getSnapshot */]!,
-    linkView[7 /* getSnapshot */],
+    linkStore[8 /* subscribe */],
+    linkStore[9 /* getSnapshot */],
+    linkStore[9 /* getSnapshot */],
   )
   const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined

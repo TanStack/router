@@ -60,9 +60,6 @@ const router = new core.RouterCore(
   }),
 )
 await router.load()
-const record = core.createLinkStore(router)
-// The PR experiments keep subscription identity while moving view operations
-// from methods to exports. Exercise the same public adapter contract on both.
 /** @type {Promise<void> | undefined} */
 let successor
 let originalDerivations = 0
@@ -78,11 +75,12 @@ const options = {
     return search
   },
 }
-const view = createView(record, options, home.id)
-const read = view.read
+// Inputs and subscription now share one immutable descriptor. Keep the same
+// navigation/error scenarios, including observers that never read a snapshot.
+const record = core.createLinkStore(router, options, home.id)
+const read = record[9 /* getSnapshot */]
 read()
-view.commit()
-/** @type {ReturnType<typeof createView> | undefined} */
+/** @type {core.LinkStore | undefined} */
 let sibling
 /** @type {string | undefined} */
 let atomicHref
@@ -90,10 +88,10 @@ let siblingNotifications = 0
 /** @type {(() => void) | undefined} */
 let unsubscribeSibling
 let notifications = 0
-const unsubscribe = record[3 /* subscribe */](() => {
+const unsubscribe = record[8 /* subscribe */](() => {
   notifications++
   if (mode === 'atomic-settlement') {
-    atomicHref = sibling?.read()[0]
+    atomicHref = sibling?.[9 /* getSnapshot */]()[0]
   }
   if (mode === 'reentry' && notifications === 1) {
     history.push('/home?marker=successor')
@@ -104,24 +102,24 @@ const unsubscribe = record[3 /* subscribe */](() => {
   }
 })
 if (mode === 'atomic-settlement') {
-  const siblingStore = core.createLinkStore(router)
-  sibling = createView(siblingStore, { to: '/target', search: true }, home.id)
-  sibling.read()
-  sibling.commit()
-  unsubscribeSibling = siblingStore[3 /* subscribe */](() => {
+  sibling = core.createLinkStore(
+    router,
+    { to: '/target', search: true },
+    home.id,
+  )
+  sibling[9 /* getSnapshot */]()
+  unsubscribeSibling = sibling[8 /* subscribe */](() => {
     siblingNotifications++
   })
 }
 let unsubscribePersistent
 if (mode === 'publication-error') {
-  const persistent = core.createLinkStore(router)
-  const persistentView = createView(persistent, options, root.id)
-  persistentView.commit()
-  unsubscribePersistent = persistent[3 /* subscribe */](() => {
+  const persistent = core.createLinkStore(router, options, root.id)
+  unsubscribePersistent = persistent[8 /* subscribe */](() => {
     throw new Error('publication failed')
   })
 }
-/** @type {ReturnType<typeof createView> | undefined} */
+/** @type {core.LinkStore | undefined} */
 let replacement
 /** @type {(() => void) | undefined} */
 let unsubscribeReplacement
@@ -138,15 +136,13 @@ try {
     await loaderStarted
     unsubscribe()
     derivationsAtDisposal = originalDerivations
-    const replacementStore = core.createLinkStore(router)
-    replacement = createView(
-      replacementStore,
+    replacement = core.createLinkStore(
+      router,
       { to: '/target', search: true },
       root.id,
     )
-    replacement.read()
-    replacement.commit()
-    unsubscribeReplacement = replacementStore[3 /* subscribe */](() => {
+    replacement[9 /* getSnapshot */]()
+    unsubscribeReplacement = replacement[8 /* subscribe */](() => {
       replacementNotifications++
     })
     loaderGate.resolve(undefined)
@@ -158,7 +154,7 @@ try {
 await successor
 await new Promise(setImmediate)
 if (replacement) {
-  hrefAtSettlement = replacement.read()[0]
+  hrefAtSettlement = replacement[9 /* getSnapshot */]()[0]
   notificationsAtSettlement = replacementNotifications
   history.push('/away?marker=latest')
   await router.load()
@@ -166,7 +162,7 @@ if (replacement) {
 }
 console.log(
   JSON.stringify({
-    href: replacement ? replacement.read()[0] : read()[0],
+    href: replacement ? replacement[9 /* getSnapshot */]()[0] : read()[0],
     notifications,
     navigationError: navigationError ?? null,
     unhandled,
@@ -196,45 +192,4 @@ history.destroy()
  */
 function standaloneRoute(route) {
   return /** @type {core.AnyRoute} */ (route)
-}
-
-/**
- * @typedef {{getSnapshot: () => core.LinkState, commit: () => void}} LegacyLinkView
- * @typedef {{render: (options: core.LinkStateOptions, owner: string) => LegacyLinkView}} LegacyLinkStore
- */
-
-/**
- * Keep the same fixture usable with both public custom-adapter APIs. The cast
- * is confined to the legacy branch, whose methods moved to exports in the
- * candidate. Both branches perform the same reads and commits at the call site.
- * @param {ReturnType<typeof core.createLinkStore>} record
- * @param {core.LinkStateOptions} options
- * @param {string} owner
- */
-function createView(record, options, owner) {
-  if (core.readLinkSnapshot) {
-    /** @type {core.LinkView} */
-    const view = [
-      record,
-      options,
-      owner,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-    ]
-    return {
-      read: () => core.readLinkSnapshot(view),
-      commit: () => core.refreshLink(view, true),
-    }
-  }
-  const legacy = /** @type {LegacyLinkStore} */ (
-    /** @type {unknown} */ (record)
-  )
-  const view = legacy.render(options, owner)
-  return {
-    read: () => view.getSnapshot(),
-    commit: () => view.commit(),
-  }
 }

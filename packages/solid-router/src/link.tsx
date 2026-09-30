@@ -7,9 +7,7 @@ import {
   functionalUpdate,
   hasKeys,
   preloadWarning,
-  readLinkSnapshot,
   readLinkState,
-  refreshLink,
 } from '@tanstack/router-core'
 
 import { isServer } from '@tanstack/router-core/isServer'
@@ -95,15 +93,8 @@ export function useLinkProps<
     const hasHydrated = shouldHydrateHash ? useHydrated() : () => true
     const componentOwner = Solid.getOwner()
     const [snapshot, setSnapshot] = Solid.createSignal<LinkState>([undefined])
-    const store = createLinkStore(router)
-    // Native ownership routes a failed derivation to this Link's boundary.
-    // Read before publishing so failures never replace a valid snapshot.
-    const update = () =>
-      Solid.runWithOwner(componentOwner, () =>
-        setSnapshot(readLinkSnapshot(store[1 /* current */]!)),
-      )
-    // Destination inputs replace the view while the registration stays mounted.
-    // Element styling and handlers do not rebuild the destination.
+    // The computation owns one immutable descriptor and its subscription.
+    // Replacement cleans up the previous index before subscribing the new one.
     Solid.createComputed(() => {
       const destination = {
         to: options.to,
@@ -119,27 +110,22 @@ export function useLinkProps<
         disabled: options.disabled,
         activeOptions: options.activeOptions && { ...options.activeOptions },
       }
-      const owner = nearestMatch[0]()
-      const activeHash = hasHydrated() ? undefined : ''
+      const store = createLinkStore(
+        router,
+        destination as any,
+        nearestMatch[0](),
+        hasHydrated() ? undefined : '',
+      )
       Solid.untrack(() => {
-        refreshLink(
-          [
-            store,
-            destination as any,
-            owner,
-            activeHash,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-          ],
-          true,
-        )
+        // Native ownership routes failures to this Link's error boundary.
+        const update = () =>
+          Solid.runWithOwner(componentOwner, () =>
+            setSnapshot(store[9 /* getSnapshot */]()),
+          )
         update()
+        Solid.onCleanup(store[8 /* subscribe */](update))
       })
     })
-    const unsubscribe = store[3 /* subscribe */](update)
-    Solid.onCleanup(unsubscribe)
     linkState = snapshot
   }
 
