@@ -77,14 +77,14 @@
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
-    "@solidjs/vite-plugin": "^3.0.0-next.44",
-    "@solidjs/web": "^2.0.0-rc.9",
+    "@solidjs/vite-plugin": "^3.0.0-next.46",
+    "@solidjs/web": "^2.0.0-rc.13",
     "@testing-library/jest-dom": "^6.6.3",
-    "solid-js": "^2.0.0-rc.9",
+    "solid-js": "^2.0.0-rc.13",
     "vite": "*"
   },
   "peerDependencies": {
-    "@solidjs/web": ">=2.0.0-0 <3.0.0",
-    "solid-js": ">=2.0.0-0 <3.0.0"
+    "@solidjs/web": ">=2.0.0-rc.13 <3.0.0",
+    "solid-js": ">=2.0.0-rc.13 <3.0.0"
   }
 }
