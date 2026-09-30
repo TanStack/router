@@ -2,9 +2,9 @@ import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
-import { describeNavigation } from './observe'
+import { describeInitial, describeNavigation } from './observe'
 import type { NavigationRequest } from './observe'
-import type { AnyRouteMatch } from '@tanstack/router-core'
+import type { AnyRouteMatch, ParsedLocation } from '@tanstack/router-core'
 
 /** The history change was the arrival's own canonicalization, not a request. */
 const ARRIVAL = Symbol()
@@ -45,6 +45,8 @@ export function Transitioner() {
   // canonicalized (below): the initial declaration already covers it.
   let request: NavigationRequest | typeof ARRIVAL | undefined
   let canonicalizing = false
+  // The location the initial declaration names: the arrival, canonical.
+  let arrival: ParsedLocation | undefined
 
   // Ack when the commit's transition settles (the atomic swap), not when the
   // flush parks it; superseded or rolled-back commits resolve false.
@@ -118,39 +120,54 @@ export function Transitioner() {
       queueMicrotask(() => router.load().catch(console.error))
     })
 
-    // The URL may have changed synchronously between render and settlement.
-    router.updateLatestLocation()
-    const nextLocation = router.buildLocation({
-      to: router.latestLocation.pathname,
-      search: true,
-      params: true,
-      hash: true,
-      state: true,
-      _includeValidateSearch: true,
-    })
+    // The route the document arrived on is declared around establishing it,
+    // canonicalization included, as `@solidjs/router` does: the record
+    // names the canonical location, and the commit is the arrival's.
+    const establish = () => {
+      // The URL may have changed synchronously between render and settlement.
+      router.updateLatestLocation()
+      const nextLocation = router.buildLocation({
+        to: router.latestLocation.pathname,
+        search: true,
+        params: true,
+        hash: true,
+        state: true,
+        _includeValidateSearch: true,
+      })
 
-    if (
-      trimPathRight(router.latestLocation.publicHref) !==
-      trimPathRight(nextLocation.publicHref)
-    ) {
-      // The history notifies synchronously inside the commit (no blocker to
-      // await), so the subscriber above sees the flag.
-      canonicalizing = true
-      try {
-        router.commitLocation({
-          ...nextLocation,
-          replace: true,
-          ignoreBlocker: true,
-        })
-      } finally {
-        canonicalizing = false
+      if (
+        trimPathRight(router.latestLocation.publicHref) !==
+        trimPathRight(nextLocation.publicHref)
+      ) {
+        arrival = nextLocation
+        // The history notifies synchronously inside the commit (no blocker
+        // to await), so the subscriber above sees the flag.
+        canonicalizing = true
+        try {
+          router.commitLocation({
+            ...nextLocation,
+            replace: true,
+            ignoreBlocker: true,
+          })
+        } finally {
+          canonicalizing = false
+        }
+        return
       }
-      return unsub
+
+      arrival = router.latestLocation
+      if (!getResolvedLocation(router) && !router._tx) {
+        queueMicrotask(() => router.load().catch(console.error))
+      }
     }
 
-    if (!getResolvedLocation(router) && !router._tx) {
-      queueMicrotask(() => router.load().catch(console.error))
-    }
+    const observe = Solid.OBSERVE
+    if (observe !== undefined) {
+      observe.attribution.withOrigin(
+        describeInitial(router, () => arrival ?? router.latestLocation),
+        establish,
+      )
+    } else establish()
 
     return unsub
   })
