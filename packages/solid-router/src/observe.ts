@@ -1,3 +1,4 @@
+import * as Solid from 'solid-js'
 import type { NavigationRef } from 'solid-js'
 import type { AnyRouter, ParsedLocation } from '@tanstack/router-core'
 
@@ -16,6 +17,52 @@ export interface NavigationRequest {
   at: number
   /** Required: `undefined` declares that the request was for no interaction. */
   interaction: NavigationRef['interaction']
+}
+
+const requests = new WeakMap<AnyRouter, NavigationRequest>()
+const held = new WeakSet<AnyRouter>()
+
+/**
+ * Records the navigation being requested now — a `commitLocation`, or a
+ * blocker's `proceed` — for the history change it causes to answer. The
+ * history may notify after awaiting its blockers, the interaction gone from
+ * the stack by then; a later request replaces this one.
+ */
+export function noteRequest(router: AnyRouter): void {
+  const observe = Solid.OBSERVE
+  if (observe === undefined) return
+  held.delete(router)
+  requests.set(router, {
+    at: performance.now(),
+    interaction: observe.attribution.currentOrigin(),
+  })
+}
+
+/** A blocker is deciding on the noted request: keep it past the commit. */
+export function holdRequest(router: AnyRouter): void {
+  if (requests.has(router)) held.add(router)
+}
+
+/**
+ * The commit that noted the request has returned. Without a blocker
+ * holding it, the history has notified by then — or never will: the same
+ * location reloads without a history change.
+ */
+export function releaseRequest(router: AnyRouter): void {
+  if (!held.has(router)) requests.delete(router)
+}
+
+/** Forgets the noted request: a blocker stopped the navigation it made. */
+export function dropRequest(router: AnyRouter): void {
+  held.delete(router)
+  requests.delete(router)
+}
+
+/** The request noted for the history change being notified, if any. */
+export function takeRequest(router: AnyRouter): NavigationRequest | undefined {
+  const request = requests.get(router)
+  dropRequest(router)
+  return request
 }
 
 /**
@@ -40,9 +87,9 @@ function describeRoute(
  * The navigation a match publish lands: the latest location, from `from`
  * (the location shown, or the arrival while the first page is still
  * loading). Nothing when the publish reloads the location it came from.
- * `request` dates it from the history change and joins it to the interaction
- * that asked, both gone by the time the loaders resolve and the publish
- * runs; the key's presence declares the interaction, `undefined` included.
+ * `request` dates it from the request and joins it to the interaction that
+ * asked, both gone by the time the loaders resolve and the publish runs; the
+ * key's presence declares the interaction, `undefined` included.
  */
 export function describeNavigation(
   router: AnyRouter,
