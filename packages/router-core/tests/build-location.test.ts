@@ -12,6 +12,43 @@ import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
 import type { SearchMiddleware } from '../src'
 
+test('a reentrant route-tree update does not cache the previous search validator', () => {
+  let rebuild = false
+  const createTree = (version: string, onValidate?: () => void) => {
+    const root = new BaseRootRoute({
+      validateSearch: (search) => {
+        onValidate?.()
+        return { ...search, version }
+      },
+    })
+    return root.addChildren([
+      new BaseRoute({ getParentRoute: () => root, path: '/source' }),
+      new BaseRoute({ getParentRoute: () => root, path: '/target' }),
+    ])
+  }
+  const nextTree = createTree('new')
+  const routeTree = createTree('old', () => {
+    if (rebuild) {
+      rebuild = false
+      router.update({ routeTree: nextTree })
+    }
+  })
+  const router = createTestRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/source'] }),
+  })
+  const source = router.state.location
+  rebuild = true
+  router.buildLocation({ to: '/target', search: true, _fromLocation: source })
+  expect(rebuild).toBe(false)
+  expect(
+    router.buildLocation({ to: '/target', search: true, _fromLocation: source })
+      .search,
+  ).toEqual({
+    version: 'new',
+  })
+})
+
 test('buildLocation stays bound when passed directly to array callbacks', async () => {
   const root = new BaseRootRoute({})
   const source = new BaseRoute({ getParentRoute: () => root, path: '/source' })
