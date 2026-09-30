@@ -2,9 +2,13 @@ import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
-import { describeInitial, describeNavigation } from './observe'
+import { describeInitial, describeNavigation, takeRequest } from './observe'
 import type { NavigationRequest } from './observe'
+import type { RouterHistory } from '@tanstack/history'
 import type { AnyRouteMatch, ParsedLocation } from '@tanstack/router-core'
+
+/** What the history tells its subscribers. */
+type HistoryChange = Parameters<Parameters<RouterHistory['subscribe']>[0]>[0]
 
 /** The history change was the arrival's own canonicalization, not a request. */
 const ARRIVAL = Symbol()
@@ -123,11 +127,18 @@ export function Transitioner() {
   )
 
   Solid.onSettled(() => {
-    const unsub = router.history.subscribe(() => {
+    const unsub = router.history.subscribe(({ action }: HistoryChange) => {
       if (Solid.OBSERVE !== undefined) {
+        // A push or replace was requested through `commitLocation`, maybe
+        // before an `await` on the blockers; anything else is the browser
+        // moving, requested now.
+        const noted =
+          action.type === 'PUSH' || action.type === 'REPLACE'
+            ? takeRequest(router)
+            : undefined
         if (canonicalizing) request ??= ARRIVAL
         else if (request === undefined || request === ARRIVAL) {
-          request = {
+          request = noted ?? {
             at: performance.now(),
             interaction: Solid.OBSERVE.attribution.currentOrigin(),
           }

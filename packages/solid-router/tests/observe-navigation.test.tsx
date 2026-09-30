@@ -25,7 +25,9 @@ import {
   createRoute,
   createRouter,
   redirect,
+  useBlocker,
 } from '../src'
+import type { BlockerResolver } from '../src'
 
 beforeEach(() => attribution.enable({ log: false }))
 afterEach(() => {
@@ -38,14 +40,26 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const navigations = () =>
   attribution.history('navigation').filter((nav) => !nav.initial)
 
+const click = (target: string, fn: () => void) =>
+  OBSERVE!.attribution.withInteraction({ type: 'click', target }, fn)
+
+let resolver: (() => BlockerResolver) | undefined
+let blocking = false
+
+function Guard() {
+  resolver = useBlocker({ shouldBlockFn: () => blocking, withResolver: true })
+  return null
+}
+
 function makeRouter(
   loaderMs: number,
   initialEntry = '/',
-  options: { pendingComponent?: boolean } = {},
+  options: { guard?: boolean; pendingComponent?: boolean } = {},
 ) {
   const rootRoute = createRootRoute({
     component: () => (
       <>
+        {options.guard ? <Guard /> : null}
         <Link to="/users/$id" params={{ id: '7' }} data-testid="link">
           User 7
         </Link>
@@ -208,7 +222,7 @@ test('the initial declaration is not a row in feedback().navigations', async () 
   expect(rows[0]!.navigations).toBe(1)
 })
 
-test('the match publish is declared as the navigation, dated from the history change', async () => {
+test('the match publish is declared as the navigation, dated from the request', async () => {
   const router = makeRouter(30)
   render(() => <RouterProvider router={router} />)
   await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
@@ -231,8 +245,8 @@ test('the match publish is declared as the navigation, dated from the history ch
   expect(nav.outcome).toBe('committed')
   // Not requested inside an interaction, and declared so.
   expect(nav.interaction).toBeUndefined()
-  // `at` is the history change inside navigate(), before the loader ran:
-  // the record spans the loader wait even though the publish came after it.
+  // `at` is the request inside navigate(), before the loader ran: the
+  // record spans the loader wait even though the publish came after it.
   expect(nav.at).toBeGreaterThanOrEqual(requested)
   expect(nav.at).toBeLessThan(requested + 30)
   expect(nav.settledMs!).toBeGreaterThanOrEqual(30)
@@ -286,11 +300,11 @@ test('a navigation requested in an interaction joins it, though the publish runs
   render(() => <RouterProvider router={router} />)
   await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
 
-  let click: ReturnType<
+  let origin: ReturnType<
     NonNullable<typeof OBSERVE>['attribution']['currentOrigin']
   >
-  OBSERVE!.attribution.withInteraction({ type: 'click', target: 'a' }, () => {
-    click = OBSERVE!.attribution.currentOrigin()
+  click('a', () => {
+    origin = OBSERVE!.attribution.currentOrigin()
     void router.navigate({ to: '/users/$id', params: { id: '42' } })
   })
   await waitFor(() => expect(screen.getByTestId('user')).toBeTruthy())
@@ -298,8 +312,8 @@ test('a navigation requested in an interaction joins it, though the publish runs
 
   const navs = navigations()
   expect(navs).toHaveLength(1)
-  expect(click).toMatchObject({ kind: 'interaction', name: 'click' })
-  expect(navs[0]!.interaction).toBe(click)
+  expect(origin).toMatchObject({ kind: 'interaction', name: 'click' })
+  expect(navs[0]!.interaction).toBe(origin)
   expect(navs[0]!.settledMs!).toBeGreaterThanOrEqual(30)
 })
 
@@ -319,6 +333,85 @@ test('a <Link> click is the interaction its navigation joins', async () => {
     kind: 'interaction',
     name: 'click',
   })
+})
+
+test('a blocker that lets the navigation through keeps its interaction; one that holds it gives it the interaction that proceeds', async () => {
+  blocking = false
+  const router = makeRouter(0, '/', { guard: true })
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+  // The blocker is consulted after an `await` even when it lets the
+  // navigation through; the request is still the click's, as in
+  // `@solidjs/router`, whose leave guard runs inside the navigation.
+  click('a#allowed', () => void router.navigate({ to: '/about' }))
+  await waitFor(() => expect(screen.getByTestId('about')).toBeTruthy())
+  await sleep(0)
+
+  // Held until the user confirms: the navigation happens in the confirm,
+  // as `@solidjs/router`'s `retry()` makes it.
+  blocking = true
+  click(
+    'a#held',
+    () => void router.navigate({ to: '/posts/$postId', params: { postId: 5 } }),
+  )
+  await waitFor(() => expect(resolver!().status).toBe('blocked'))
+  await sleep(5)
+  const proceeded = performance.now()
+  click('button#confirm', () => resolver!().proceed!())
+  await waitFor(() => expect(screen.getByTestId('post')).toBeTruthy())
+  await sleep(0)
+
+  const navs = navigations()
+  expect(navs.map((nav) => [nav.name, nav.interaction?.target])).toEqual([
+    ['/about', 'a#allowed'],
+    ['/posts/$postId', 'button#confirm'],
+  ])
+  expect(navs[1]!.at).toBeGreaterThanOrEqual(proceeded)
+  blocking = false
+})
+
+test('a blocked navigation the user resets leaves no request behind', async () => {
+  blocking = true
+  const router = makeRouter(0, '/', { guard: true })
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+  click('a#held', () => void router.navigate({ to: '/about' }))
+  await waitFor(() => expect(resolver!().status).toBe('blocked'))
+  resolver!().reset!()
+  await sleep(0)
+  blocking = false
+
+  const requested = performance.now()
+  await router.navigate({ to: '/login' })
+  await waitFor(() => expect(screen.getByTestId('login')).toBeTruthy())
+  await sleep(0)
+
+  const navs = navigations()
+  expect(navs).toHaveLength(1)
+  expect(navs[0]!.name).toBe('/login')
+  expect(navs[0]!.interaction).toBeUndefined()
+  expect(navs[0]!.at).toBeGreaterThanOrEqual(requested)
+})
+
+test('a request that changed no history leaves none behind', async () => {
+  const router = makeRouter(0)
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+  // The same location reloads without a history change.
+  click('a#same', () => void router.navigate({ to: '/' }))
+  await sleep(0)
+  const requested = performance.now()
+  router.history.push('/login')
+  await waitFor(() => expect(screen.getByTestId('login')).toBeTruthy())
+  await sleep(0)
+
+  const navs = navigations()
+  expect(navs).toHaveLength(1)
+  expect(navs[0]!.interaction).toBeUndefined()
+  expect(navs[0]!.at).toBeGreaterThanOrEqual(requested)
 })
 
 test('a not-found is named by its pathname, not by the route above it', async () => {
