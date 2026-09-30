@@ -255,9 +255,7 @@ function hoist(
     schema.$defs ?? schema.definitions
   if (defs) {
     for (const [name, def] of Object.entries(defs)) {
-      if (!(name in components.schemas)) {
-        components.schemas[name] = rewriteRefs(stripDefs(def))
-      }
+      addComponent(components, name, rewriteRefs(stripDefs(def)))
     }
   }
 
@@ -267,11 +265,29 @@ function hoist(
   if (id) {
     const name = componentNameFromId(id)
     delete cleaned.$id
-    if (!(name in components.schemas)) components.schemas[name] = cleaned
+    addComponent(components, name, cleaned)
     return { $ref: `#/components/schemas/${name}` }
   }
 
   return cleaned
+}
+
+function addComponent(
+  components: { schemas: Record<string, JSONSchema> },
+  name: string,
+  schema: JSONSchema,
+) {
+  const existing = components.schemas[name]
+  if (existing === undefined) {
+    components.schemas[name] = schema
+    return
+  }
+  if (JSON.stringify(existing) !== JSON.stringify(schema)) {
+    throw new Error(
+      `[start-openapi] Two different schemas share the component name "${name}". ` +
+        'Give them distinct `$id`s / definition names. A schema whose input and output shapes differ (e.g. defaults or transforms) also needs distinct names for request and response use.',
+    )
+  }
 }
 
 function stripDefs(schema: JSONSchema): JSONSchema {

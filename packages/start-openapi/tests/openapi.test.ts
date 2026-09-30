@@ -178,6 +178,30 @@ describe('buildOpenApiDocument (emitter)', () => {
     })
     expect(schema.$defs).toBeUndefined()
   })
+
+  it('throws when two different schemas hoist to the same component name', async () => {
+    const withInner = (x: string) =>
+      fake({
+        type: 'object',
+        properties: { inner: { $ref: '#/$defs/Inner' } },
+        $defs: { Inner: { type: 'object', properties: { [x]: {} } } },
+      })
+    const build = (a: string, b: string) =>
+      buildOpenApiDocument(
+        {
+          operations: [
+            { method: 'post', path: '/a', request: { body: [withInner(a)] } },
+            { method: 'post', path: '/b', request: { body: [withInner(b)] } },
+          ],
+          securitySchemes: [],
+        },
+        { info, toJSONSchema: fakeConverter },
+      )
+
+    await expect(build('x', 'y')).rejects.toThrow('"Inner"')
+    // The same definition shared by several schemas is fine.
+    await expect(build('x', 'x')).resolves.toBeDefined()
+  })
 })
 
 describe('collectFromRouteTree (collector)', () => {
@@ -254,6 +278,37 @@ describe('collectFromRouteTree (collector)', () => {
         name: 'bearerAuth',
         scheme: { type: 'http', scheme: 'bearer' },
       },
+    ])
+  })
+  it('expands an ANY handler into each method without its own handler', () => {
+    const tree = {
+      fullPath: '/',
+      children: [
+        {
+          fullPath: '/api/echo',
+          options: {
+            server: {
+              handlers: ({ createHandlers }: any) =>
+                createHandlers({
+                  ANY: { summary: 'any', handler: () => new Response() },
+                  GET: { summary: 'get', handler: () => new Response() },
+                }),
+            },
+          },
+        },
+      ],
+    }
+
+    const manifest = collectFromRouteTree(tree)
+
+    expect(
+      manifest.operations.map((o) => [o.method, o.summary, o.operationId]),
+    ).toEqual([
+      ['get', 'get', defaultOperationId('get', '/api/echo')],
+      ['post', 'any', defaultOperationId('post', '/api/echo')],
+      ['put', 'any', defaultOperationId('put', '/api/echo')],
+      ['patch', 'any', defaultOperationId('patch', '/api/echo')],
+      ['delete', 'any', defaultOperationId('delete', '/api/echo')],
     ])
   })
 })
