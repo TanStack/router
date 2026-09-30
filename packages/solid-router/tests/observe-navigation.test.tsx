@@ -1,10 +1,14 @@
 // Solid's observe tier: the match publish inside `startTransition` is
 // declared to the attribution engine as the navigation, so the holds and
 // re-runs it causes are named after the route and the record spans from
-// the history change that started the load; the route the document arrived
-// on is declared when the Transitioner establishes the initial match.
-// `OBSERVE` is defined on the dev build the tests resolve; in production it
-// is undefined and the declarations fold out.
+// the request that started the load; the route the document arrived on is
+// declared when the Transitioner establishes the initial match. The records
+// follow `@solidjs/router`'s: `to`/`from` are the location's path, search
+// and hash; a redirect or navigation while another is pending is a hop of
+// it (`redirects`), keeping its request; a redirect while the first page
+// loads is a navigation from it. `OBSERVE` is defined on the dev build the
+// tests resolve; in production it is undefined and the declarations fold
+// out.
 import {
   cleanup,
   fireEvent,
@@ -274,15 +278,24 @@ test('`to` and `from` are the path, search and hash, as `@solidjs/router` gives 
   ])
 })
 
-test('a navigation superseded before it published leaves one record for the destination that showed', async () => {
+test('a navigation requested while another is pending is a hop of it, as `@solidjs/router` folds one', async () => {
+  // `@solidjs/router` folds a navigation issued while the previous one is
+  // still pending onto it as a redirect hop: the record keeps the user's
+  // request time and interaction, lands on the final destination, and keeps
+  // the abandoned one in `redirects`.
   const router = makeRouter(30)
   render(() => <RouterProvider router={router} />)
   await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
 
   const requested = performance.now()
-  void router.navigate({ to: '/users/$id', params: { id: '1' } })
+  click('a#one', () => {
+    void router.navigate({ to: '/users/$id', params: { id: '1' } })
+  })
   await sleep(5)
-  await router.navigate({ to: '/users/$id', params: { id: '2' } })
+  const sentOn = performance.now()
+  click('a#two', () => {
+    void router.navigate({ to: '/users/$id', params: { id: '2' } })
+  })
   await waitFor(() =>
     expect(screen.getByTestId('user').textContent).toBe('user 2'),
   )
@@ -291,8 +304,67 @@ test('a navigation superseded before it published leaves one record for the dest
   const navs = navigations()
   expect(navs).toHaveLength(1)
   expect(navs[0]!.to).toBe('/users/2')
-  // Dated from the first request: that is when the user started waiting.
+  expect(navs[0]!.params).toEqual({ id: '2' })
+  expect(navs[0]!.from).toBe('/')
   expect(navs[0]!.at).toBeLessThan(requested + 5)
+  expect(navs[0]!.interaction).toMatchObject({ target: 'a#one' })
+  expect(navs[0]!.redirects).toEqual([
+    {
+      name: '/users/$id',
+      to: '/users/1',
+      params: { id: '1' },
+      at: expect.any(Number),
+    },
+  ])
+  expect(navs[0]!.redirects![0]!.at).toBeGreaterThanOrEqual(sentOn)
+})
+
+test('a redirect while a navigation is pending is a hop of it, keeping the request', async () => {
+  const router = makeRouter(0)
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+  const requested = performance.now()
+  click('a#dashboard', () => void router.navigate({ to: '/dashboard' }))
+  await waitFor(() => expect(screen.getByTestId('login')).toBeTruthy())
+  await sleep(0)
+
+  const navs = navigations()
+  expect(navs.map((nav) => [nav.name, nav.to, nav.from])).toEqual([
+    ['/login', '/login', '/'],
+  ])
+  expect(navs[0]!.interaction).toMatchObject({ target: 'a#dashboard' })
+  expect(navs[0]!.at).toBeGreaterThanOrEqual(requested)
+  expect(navs[0]!.redirects?.map((hop) => [hop.name, hop.to])).toEqual([
+    ['/dashboard', '/dashboard'],
+  ])
+})
+
+test('the browser moving while a navigation is pending supersedes it, not a hop', async () => {
+  const router = makeRouter(30)
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+  await router.navigate({ to: '/login' })
+  await waitFor(() => expect(screen.getByTestId('login')).toBeTruthy())
+  await sleep(0)
+
+  click('a#user', () => {
+    void router.navigate({ to: '/users/$id', params: { id: '1' } })
+  })
+  await sleep(5)
+  const moved = performance.now()
+  router.history.go(-2)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+  await sleep(40)
+
+  const navs = navigations()
+  expect(navs.map((nav) => [nav.name, nav.to, nav.from])).toEqual([
+    ['/login', '/login', '/'],
+    ['/', '/', '/login'],
+  ])
+  expect(navs[1]!.redirects).toBeUndefined()
+  expect(navs[1]!.interaction).toBeUndefined()
+  expect(navs[1]!.at).toBeGreaterThanOrEqual(moved)
 })
 
 test('a navigation requested in an interaction joins it, though the publish runs after the loader', async () => {

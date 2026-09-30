@@ -3,8 +3,8 @@ import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { describeInitial, describeNavigation, takeRequest } from './observe'
-import type { NavigationRequest } from './observe'
-import type { RouterHistory } from '@tanstack/history'
+import type { NavigationHop, NavigationRequest } from './observe'
+import type { HistoryLocation, RouterHistory } from '@tanstack/history'
 import type { AnyRouteMatch, ParsedLocation } from '@tanstack/router-core'
 
 /** What the history tells its subscribers. */
@@ -12,6 +12,14 @@ type HistoryChange = Parameters<Parameters<RouterHistory['subscribe']>[0]>[0]
 
 /** The history change was the arrival's own canonicalization, not a request. */
 const ARRIVAL = Symbol()
+
+/** A navigation requested and not yet published. */
+interface PendingNavigation extends NavigationRequest {
+  /** Where it is headed now. */
+  location: HistoryLocation
+  /** The destinations it was sent on from, in order. */
+  hops: Array<NavigationHop>
+}
 
 /**
  * `offerPending`'s publish: a match still `pending` at or above the
@@ -59,9 +67,11 @@ export function Transitioner() {
   // the loaders — and describe the request, which predates it. The first
   // history change since the last publish is that request: when the user
   // asked, and the interaction they asked in, gone from the stack by the time
-  // the publish runs. `ARRIVAL` when the change was the arrival being
-  // canonicalized (below): the initial declaration already covers it.
-  let request: NavigationRequest | typeof ARRIVAL | undefined
+  // the publish runs. A push or replace while it is pending (a redirect, or
+  // another navigation) sends it elsewhere, as `@solidjs/router` folds one:
+  // a hop. `ARRIVAL` when the change was the arrival being canonicalized
+  // (below): the initial declaration already covers it.
+  let request: PendingNavigation | typeof ARRIVAL | undefined
   let canonicalizing = false
   // The location the initial declaration names, canonical: what a navigation
   // is from until the first publish resolves one (a redirect while it loads).
@@ -84,17 +94,21 @@ export function Transitioner() {
       if (Solid.OBSERVE !== undefined && !isPendingOffer(expectedMatches)) {
         const answered = request
         request = undefined
-        const ref =
+        const refs =
           answered === undefined || answered === ARRIVAL
             ? undefined
             : describeNavigation(
                 router,
                 answered,
                 router.stores.resolvedLocation.get() ?? arrival,
+                answered.hops,
               )
-        if (ref !== undefined) {
+        if (refs !== undefined) {
           const observe = Solid.OBSERVE
-          publish = () => observe.attribution.withOrigin(ref, fn)
+          publish = refs.reduceRight<() => void>(
+            (inner, ref) => () => observe.attribution.withOrigin(ref, inner),
+            fn,
+          )
         }
       }
       Solid.runWithOwner(null, publish)
@@ -127,25 +141,37 @@ export function Transitioner() {
   )
 
   Solid.onSettled(() => {
-    const unsub = router.history.subscribe(({ action }: HistoryChange) => {
-      if (Solid.OBSERVE !== undefined) {
-        // A push or replace was requested through `commitLocation`, maybe
-        // before an `await` on the blockers; anything else is the browser
-        // moving, requested now.
-        const noted =
-          action.type === 'PUSH' || action.type === 'REPLACE'
-            ? takeRequest(router)
-            : undefined
-        if (canonicalizing) request ??= ARRIVAL
-        else if (request === undefined || request === ARRIVAL) {
-          request = noted ?? {
-            at: performance.now(),
-            interaction: Solid.OBSERVE.attribution.currentOrigin(),
+    const unsub = router.history.subscribe(
+      ({ location, action }: HistoryChange) => {
+        if (Solid.OBSERVE !== undefined) {
+          // A push or replace was requested through `commitLocation`, maybe
+          // before an `await` on the blockers; anything else is the browser
+          // moving, requested now.
+          const write = action.type === 'PUSH' || action.type === 'REPLACE'
+          const noted = write ? takeRequest(router) : undefined
+          if (canonicalizing) request ??= ARRIVAL
+          else if (write && request !== undefined && request !== ARRIVAL) {
+            request.hops.push({
+              location: router.parseLocation(request.location),
+              at: noted?.at ?? performance.now(),
+            })
+            request.location = location
+          } else {
+            // A new request: the browser moving (back, forward) supersedes a
+            // pending one rather than redirecting it, as in `@solidjs/router`.
+            request = {
+              ...(noted ?? {
+                at: performance.now(),
+                interaction: Solid.OBSERVE.attribution.currentOrigin(),
+              }),
+              location,
+              hops: [],
+            }
           }
         }
-      }
-      queueMicrotask(() => router.load().catch(console.error))
-    })
+        queueMicrotask(() => router.load().catch(console.error))
+      },
+    )
 
     // The route the document arrived on is declared around establishing it,
     // canonicalization included, as `@solidjs/router` does: the record

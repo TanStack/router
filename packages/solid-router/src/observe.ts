@@ -83,6 +83,12 @@ function describeRoute(
     : { name: route.fullPath }
 }
 
+/** A destination a pending navigation was sent on from, and when. */
+export interface NavigationHop {
+  location: ParsedLocation
+  at: number
+}
+
 /**
  * The navigation a match publish lands: the latest location, from `from`
  * (the location shown, or the arrival while the first page is still
@@ -90,22 +96,39 @@ function describeRoute(
  * `request` dates it from the request and joins it to the interaction that
  * asked, both gone by the time the loaders resolve and the publish runs; the
  * key's presence declares the interaction, `undefined` included.
+ *
+ * One ref per destination, to be opened nested, as `@solidjs/router`
+ * declares a navigation sent elsewhere while pending (a redirect, or
+ * another navigation): the first names the destination requested, and each
+ * `hops` entry is abandoned by a `redirect: n` ref the engine folds onto it,
+ * keeping the request's time and interaction and listing the abandoned
+ * destinations in `redirects`.
  */
 export function describeNavigation(
   router: AnyRouter,
   request: NavigationRequest,
   from: ParsedLocation | undefined,
-): NavigationRef | undefined {
+  hops: ReadonlyArray<NavigationHop>,
+): Array<NavigationRef> | undefined {
   const to = router.latestLocation
-  if (!from || from.href === to.href) return
-  return {
-    kind: 'navigation',
-    ...describeRoute(router, to.pathname),
-    to: to.href,
-    from: from.href,
-    at: request.at,
-    interaction: request.interaction,
-  }
+  if (!from || (from.href === to.href && !hops.length)) return
+  const destinations = [...hops.map((hop) => hop.location), to]
+  return destinations.map((location, index) => {
+    const ref: NavigationRef = {
+      kind: 'navigation',
+      ...describeRoute(router, location.pathname),
+      to: location.href,
+    }
+    if (index) {
+      ref.redirect = index
+      ref.at = hops[index - 1]!.at
+    } else {
+      ref.from = from.href
+      ref.at = request.at
+      ref.interaction = request.interaction
+    }
+    return ref
+  })
 }
 
 /**
