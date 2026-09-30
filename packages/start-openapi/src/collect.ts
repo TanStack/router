@@ -133,9 +133,18 @@ export function collectFromRouteTree(
     const handlers = resolveHandlers(server.handlers)
     const openApiPath = toOpenApiPath(fullPath)
 
-    for (const [methodKey, entry] of Object.entries(handlers)) {
-      const method = methodKey.toLowerCase() as OpenApiMethod
-      if (!methods.has(method)) continue
+    const byMethod = new Map(
+      Object.entries(handlers).map(([key, entry]) => [
+        key.toLowerCase(),
+        entry,
+      ]),
+    )
+    // Start serves `ANY` for every method without its own handler.
+    const anyEntry = byMethod.get('any')
+
+    for (const method of methods) {
+      const entry = byMethod.get(method) ?? anyEntry
+      if (entry === undefined) continue
 
       const builder = isBuilderOptions(entry) ? entry : undefined
       const chain = flatten([...middleware, ...(builder?.middleware ?? [])])
