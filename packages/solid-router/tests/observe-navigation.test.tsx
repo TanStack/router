@@ -24,6 +24,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from '../src'
 
 beforeEach(() => attribution.enable({ log: false }))
@@ -80,11 +81,26 @@ function makeRouter(loaderMs: number, initialEntry = '/') {
     },
     component: () => <div data-testid="post">Post</div>,
   })
+  const dashboardRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/dashboard',
+    beforeLoad: () => {
+      throw redirect({ to: '/login' })
+    },
+    component: () => <div data-testid="dashboard">Dashboard</div>,
+  })
+  const loginRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/login',
+    component: () => <div data-testid="login">Login</div>,
+  })
   const routeTree = rootRoute.addChildren([
     indexRoute,
     aboutRoute,
     userRoute,
     postRoute,
+    dashboardRoute,
+    loginRoute,
   ])
   return createRouter({
     routeTree,
@@ -151,6 +167,25 @@ test.each([false, true])(
     expect(navigations()[0]!.at).toBeGreaterThanOrEqual(requested)
   },
 )
+
+test('a redirect while the first page loads is a navigation from the arrival', async () => {
+  // As `@solidjs/router` records one: the arrival is declared and settled,
+  // so the redirect is a navigation of its own, from it, not a hop.
+  const router = makeRouter(0, '/dashboard')
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('login')).toBeTruthy())
+  await sleep(0)
+
+  const navs = attribution.history('navigation')
+  expect(navs.map((nav) => [nav.initial, nav.name, nav.to, nav.from])).toEqual([
+    [true, '/dashboard', '/dashboard', undefined],
+    [undefined, '/login', '/login', '/dashboard'],
+  ])
+  // The guard redirected on its own: no interaction asked for it.
+  expect(navs[1]!.interaction).toBeUndefined()
+  expect(navs[1]!.redirects).toBeUndefined()
+  expect(navs[1]!.outcome).toBe('committed')
+})
 
 test('the initial declaration is not a row in feedback().navigations', async () => {
   const router = makeRouter(0)
