@@ -25,7 +25,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function fixture(Home: React.ComponentType, redirectBack = false) {
+function fixture(Home: () => React.JSX.Element, redirectBack = false) {
   const started = createControlledPromise<void>()
   const gate = createControlledPromise<void>()
   const root = createRootRoute({
@@ -219,7 +219,7 @@ test('changing only href updates both the anchor and subsequent navigation', asy
   const { router } = fixture(function Home() {
     const [href, setHref] = React.useState('/home')
     retarget = () => setHref('/target')
-    return <Link href={href}>Href link</Link>
+    return <Link to="/home" href={href}>Href link</Link>
   })
   await ready(router)
   act(() => retarget())

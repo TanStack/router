@@ -143,13 +143,13 @@ export function getLinkLocationStore(
       group.add(listener)
       return () => {
         listener[0] = undefined
-        group!.delete(listener)
-        registry!.deferred.delete(listener)
-        if (!group!.size) {
-          registry!.paths.delete(path)
+        group.delete(listener)
+        registry.deferred.delete(listener)
+        if (!group.size) {
+          registry.paths.delete(path)
         }
-        if (!registry!.paths.size) {
-          registry!.subscription.unsubscribe()
+        if (!registry.paths.size) {
+          registry.subscription.unsubscribe()
           registries.delete(cache!)
         }
       }
