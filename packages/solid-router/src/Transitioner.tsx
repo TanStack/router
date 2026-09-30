@@ -3,6 +3,7 @@ import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { describeNavigation } from './observe'
+import type { NavigationRequest } from './observe'
 import type { AnyRouteMatch } from '@tanstack/router-core'
 
 /** The history change was the arrival's own canonicalization, not a request. */
@@ -37,12 +38,12 @@ export function Transitioner() {
   // Solid's observe tier attributes what the user waited on to the
   // navigation that caused it: wrap the write whose landing is the
   // destination showing — here the match publish, after router-core awaited
-  // the loaders — and pass `at`, since the request predates it. The first
-  // history change since the last publish is that request: the moment the
-  // user asked, which is where the navigation's wait starts. `ARRIVAL` when
-  // the change was the arrival being canonicalized (below): the initial
-  // declaration already covers it.
-  let requestedAt: number | typeof ARRIVAL | undefined
+  // the loaders — and describe the request, which predates it. The first
+  // history change since the last publish is that request: when the user
+  // asked, and the interaction they asked in, gone from the stack by the time
+  // the publish runs. `ARRIVAL` when the change was the arrival being
+  // canonicalized (below): the initial declaration already covers it.
+  let request: NavigationRequest | typeof ARRIVAL | undefined
   let canonicalizing = false
 
   // Ack when the commit's transition settles (the atomic swap), not when the
@@ -63,8 +64,8 @@ export function Transitioner() {
         Solid.OBSERVE !== undefined &&
         !expectedMatches.some((match) => match.status === 'pending')
       ) {
-        const answered = requestedAt
-        requestedAt = undefined
+        const answered = request
+        request = undefined
         const ref =
           answered === ARRIVAL
             ? undefined
@@ -105,9 +106,14 @@ export function Transitioner() {
 
   Solid.onSettled(() => {
     const unsub = router.history.subscribe(() => {
-      if (canonicalizing) requestedAt ??= ARRIVAL
-      else if (requestedAt === undefined || requestedAt === ARRIVAL) {
-        requestedAt = performance.now()
+      if (Solid.OBSERVE !== undefined) {
+        if (canonicalizing) request ??= ARRIVAL
+        else if (request === undefined || request === ARRIVAL) {
+          request = {
+            at: performance.now(),
+            interaction: Solid.OBSERVE.attribution.currentOrigin(),
+          }
+        }
       }
       queueMicrotask(() => router.load().catch(console.error))
     })
