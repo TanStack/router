@@ -43,7 +43,7 @@ test('a Link keeps its source when search formatting navigates before inherited 
       },
       mask: {
         to: '/visible',
-        search: (search) => {
+        search: (search: Record<string, unknown>) => {
           if (armed) {
             maskSources.push(String(search.value))
           }
