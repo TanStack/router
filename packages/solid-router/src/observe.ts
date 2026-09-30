@@ -28,9 +28,9 @@ function describeRoute(
 
 /**
  * The navigation a match publish lands: the latest location, from the one
- * shown. Nothing when nothing is shown yet (the initial load) or the publish
- * reloads what is shown. `at` dates it from the history change that started
- * the load.
+ * shown. Nothing when nothing is shown yet (the initial load — declared by
+ * `describeInitial`) or the publish reloads what is shown. `at` dates it
+ * from the history change that started the load.
  */
 export function describeNavigation(
   router: AnyRouter,
@@ -47,4 +47,31 @@ export function describeNavigation(
   }
   if (at !== undefined) ref.at = at
   return ref
+}
+
+/**
+ * The route the document arrived on, declared around the work that
+ * establishes the router's initial match, since a fresh document has no
+ * publish to wrap. On the client the engine opens it at the time origin and
+ * settles it as that work returns (the first `"navigation"` record,
+ * `initial: true`); on the server the same call names the request's
+ * `"render"` record (`RenderEvent.route`). The fields are getters read at
+ * settle, so a server render whose provider ran the load names the location
+ * the load resolved.
+ */
+export function describeInitial(router: AnyRouter): NavigationRef {
+  const pathname = () => router.latestLocation.pathname
+  return {
+    kind: 'navigation',
+    initial: true,
+    get to() {
+      return pathname()
+    },
+    get name() {
+      return describeRoute(router, pathname()).name
+    },
+    get params() {
+      return describeRoute(router, pathname()).params
+    },
+  }
 }
