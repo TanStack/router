@@ -71,9 +71,11 @@ describe("observe tier, server: RenderEvent.route from the provider's initial ma
       ))
       expect(html).toContain('user 7')
       expect(seen).toHaveLength(1)
+      // The path and search, as `@solidjs/router` names a render (a request
+      // carries no hash).
       expect(seen[0]!.route).toEqual({
         name: '/users/$id',
-        to: '/users/7',
+        to: '/users/7?tab=posts',
         params: { id: '7' },
       })
     },
