@@ -1144,13 +1144,13 @@ export class RouterCore<
     Math.random() * 10000000,
   )}`
   _scroll: {
-    next: boolean
+    n: boolean // Reset scroll on the next render.
     // True until the current PUSH/REPLACE renders, so its hash owns window scroll.
-    hash?: boolean
-    restoring?: boolean
-    restoration?: boolean
-    reset?: boolean
-  } = { next: true }
+    h?: boolean
+    e?: boolean // Restoration enabled.
+    s?: boolean // Snapshot/lifecycle listeners installed.
+    r?: boolean // Render listener installed.
+  } = { n: true }
   subscribers = new Set<RouterListener<RouterEvent>>()
   /** Accepted off-screen loader generations keyed by match ID. */
   _cache = new Map<string, AnyRouteMatch>()
@@ -2328,7 +2328,7 @@ export class RouterCore<
       }
     }
 
-    this._scroll.next = next.resetScroll ?? true
+    this._scroll.n = next.resetScroll ?? true
 
     return this._commitPromise
   }
@@ -2430,7 +2430,7 @@ export class RouterCore<
 
     this.updateLatestLocation()
     if (opts?.action) {
-      this._scroll.hash =
+      this._scroll.h =
         opts.action.type === 'PUSH' || opts.action.type === 'REPLACE'
     }
     await loadClientRoute(this, opts)
