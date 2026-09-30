@@ -1,12 +1,13 @@
 // Solid's observe tier: the match publish inside `startTransition` is
 // declared to the attribution engine as the navigation, so the holds and
 // re-runs it causes are named after the route and the record spans from
-// the history change that started the load. `OBSERVE` is defined on the
-// dev build the tests resolve; in production it is undefined and the
-// declaration folds out.
+// the history change that started the load; the route the document arrived
+// on is declared when the provider establishes its initial match. `OBSERVE`
+// is defined on the dev build the tests resolve; in production it is
+// undefined and the declarations fold out.
 import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { attribution } from 'solid-js/attribution'
+import { attribution, feedback } from 'solid-js/attribution'
 import { z } from 'zod'
 import {
   Outlet,
@@ -24,6 +25,9 @@ afterEach(() => {
 })
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const navigations = () =>
+  attribution.history('navigation').filter((nav) => !nav.initial)
 
 function makeRouter(loaderMs: number, initialEntry = '/') {
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
@@ -71,13 +75,80 @@ function makeRouter(loaderMs: number, initialEntry = '/') {
   })
 }
 
+test('mounting declares the route the document arrived on — the first record, initial', async () => {
+  const router = makeRouter(30, '/users/42?tab=posts')
+  render(() => <RouterProvider router={router} />)
+  // Delivered as the provider established its initial match: nothing to
+  // wait for, so the record settled before the loader ran.
+  expect(attribution.history('navigation')).toHaveLength(1)
+  const nav = attribution.history('navigation')[0]!
+  expect(nav.initial).toBe(true)
+  expect(nav.name).toBe('/users/$id')
+  expect(nav.to).toBe('/users/42')
+  expect(nav.params).toEqual({ id: '42' })
+  expect(nav.from).toBeUndefined()
+  expect(nav.interaction).toBeUndefined()
+  // The document's own navigation start on the performance clock.
+  expect(nav.at).toBe(0)
+  expect(nav.writes).toBe(0)
+  expect(nav.outcome).toBe('committed')
+
+  // The initial load publishes matches for the location already shown: not
+  // a navigation.
+  await waitFor(() => expect(screen.getByTestId('user')).toBeTruthy())
+  await sleep(0)
+  expect(attribution.history('navigation')).toHaveLength(1)
+})
+
+test.each([false, true])(
+  'an arrival the router canonicalizes is the one initial record, not a navigation (loaded before mount: %s)',
+  async (preloaded) => {
+    // `/about` validates to `/about?tab=info`; the Transitioner commits the
+    // canonical location once mounted. That write is the arrival's.
+    const router = makeRouter(0, '/about')
+    if (preloaded) await router.load()
+    render(() => <RouterProvider router={router} />)
+    await waitFor(() => expect(screen.getByTestId('about')).toBeTruthy())
+    await waitFor(() =>
+      expect(router.stores.resolvedLocation.get()?.href).toBe(
+        '/about?tab=info',
+      ),
+    )
+    await sleep(0)
+    const navs = attribution.history('navigation')
+    expect(navs).toHaveLength(1)
+    expect(navs[0]!.initial).toBe(true)
+    expect(navs[0]!.name).toBe('/about')
+
+    // The next navigation is dated from its own request, not the arrival's.
+    const requested = performance.now()
+    await router.navigate({ to: '/' })
+    await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+    await sleep(0)
+    expect(navigations()).toHaveLength(1)
+    expect(navigations()[0]!.name).toBe('/')
+    expect(navigations()[0]!.at).toBeGreaterThanOrEqual(requested)
+  },
+)
+
+test('the initial declaration is not a row in feedback().navigations', async () => {
+  const router = makeRouter(0)
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+  expect(attribution.history('navigation').at(-1)!.initial).toBe(true)
+  await router.navigate({ to: '/users/$id', params: { id: '1' } })
+  await waitFor(() => expect(screen.getByTestId('user')).toBeTruthy())
+  await sleep(0)
+  const rows = feedback().navigations
+  expect(rows.map((row) => row.name)).toEqual(['/users/$id'])
+  expect(rows[0]!.navigations).toBe(1)
+})
+
 test('the match publish is declared as the navigation, dated from the history change', async () => {
   const router = makeRouter(30)
   render(() => <RouterProvider router={router} />)
   await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
-  // The initial load publishes matches for the location already shown: not
-  // a navigation.
-  expect(attribution.history('navigation')).toHaveLength(0)
+  expect(navigations()).toHaveLength(0)
 
   const requested = performance.now()
   await router.navigate({ to: '/users/$id', params: { id: '42' } })
@@ -86,7 +157,7 @@ test('the match publish is declared as the navigation, dated from the history ch
 
   // One record for the navigation — the pending offer (a match with
   // `status: 'pending'`) is published undeclared.
-  const navs = attribution.history('navigation')
+  const navs = navigations()
   expect(navs).toHaveLength(1)
   const nav = navs[0]!
   expect(nav.name).toBe('/users/$id')
@@ -115,7 +186,7 @@ test('a navigation superseded before it published leaves one record for the dest
   )
   await sleep(0)
 
-  const navs = attribution.history('navigation')
+  const navs = navigations()
   expect(navs).toHaveLength(1)
   expect(navs[0]!.to).toBe('/users/2')
   // Dated from the first request: that is when the user started waiting.
@@ -134,7 +205,7 @@ test('a not-found is named by its pathname, not by the route above it', async ()
   await router.navigate({ to: '/about/nope' as any })
   await sleep(10)
 
-  const navs = attribution.history('navigation')
+  const navs = navigations()
   expect(navs.map((nav) => [nav.name, nav.params])).toEqual([
     ['/nope/deeper', undefined],
     ['/about/nope', undefined],
@@ -150,8 +221,6 @@ test('params are the strings the path bound, before `params.parse`', async () =>
   await waitFor(() => expect(screen.getByTestId('post')).toBeTruthy())
   await sleep(0)
 
-  expect(attribution.history('navigation')[0]!.name).toBe('/posts/$postId')
-  expect(attribution.history('navigation')[0]!.params).toEqual({
-    postId: '5',
-  })
+  expect(navigations()[0]!.name).toBe('/posts/$postId')
+  expect(navigations()[0]!.params).toEqual({ postId: '5' })
 })

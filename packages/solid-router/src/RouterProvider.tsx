@@ -5,6 +5,7 @@ import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
 import { serializeMatchTransfer } from './registryTransfer'
 import { setupFlightDataConsumer } from './flightData'
+import { describeInitial } from './observe'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -49,11 +50,18 @@ export function RouterContextProvider<
   // on the client it resolves immediately and the boot is handled by the
   // registry priming in the Router constructor plus Transitioner's
   // settled-time load.
-  const ready = Solid.createMemo(() =>
-    (isServer ?? router.isServer) && !router._serverResult
-      ? router.load().then(() => true)
-      : true,
-  )
+  const establish = () =>
+    Solid.createMemo(() =>
+      (isServer ?? router.isServer) && !router._serverResult
+        ? router.load().then(() => true)
+        : true,
+    )
+  // The route the document arrived on, declared to Solid's observe tier
+  // around the work that establishes the initial match (see
+  // `describeInitial`); folded out of production with `OBSERVE`.
+  const ready = Solid.OBSERVE
+    ? Solid.OBSERVE.attribution.withOrigin(describeInitial(router), establish)
+    : establish()
 
   // Client-side, the provider is where the router meets Solid's
   // server-function transport: it consumes the response metadata mutations
