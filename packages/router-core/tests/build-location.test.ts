@@ -288,7 +288,7 @@ test('buildLocation keeps one source snapshot when a search updater navigates sy
     await router.load()
     const location = router.buildLocation({
       to: '/target',
-      search: (search) => {
+      search: (search: Record<string, unknown>) => {
         navigation = router.navigate({
           to: '/b',
           search: { value: 'b' },
