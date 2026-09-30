@@ -37,31 +37,28 @@ function describeRoute(
 }
 
 /**
- * The navigation a match publish lands: the latest location, from the one
- * shown. Nothing when nothing is shown yet (the initial load — declared by
- * `describeInitial`) or the publish reloads what is shown. `request` dates it
- * from the history change and joins it to the interaction that asked, both
- * gone by the time the loaders resolve and the publish runs; the key's
- * presence declares the interaction, `undefined` included.
+ * The navigation a match publish lands: the latest location, from `from`
+ * (the location shown, or the arrival while the first page is still
+ * loading). Nothing when the publish reloads the location it came from.
+ * `request` dates it from the history change and joins it to the interaction
+ * that asked, both gone by the time the loaders resolve and the publish
+ * runs; the key's presence declares the interaction, `undefined` included.
  */
 export function describeNavigation(
   router: AnyRouter,
-  request: NavigationRequest | undefined,
+  request: NavigationRequest,
+  from: ParsedLocation | undefined,
 ): NavigationRef | undefined {
   const to = router.latestLocation
-  const from = router.stores.resolvedLocation.get()
   if (!from || from.href === to.href) return
-  const ref: NavigationRef = {
+  return {
     kind: 'navigation',
     ...describeRoute(router, to.pathname),
     to: to.href,
     from: from.href,
+    at: request.at,
+    interaction: request.interaction,
   }
-  if (request) {
-    ref.at = request.at
-    ref.interaction = request.interaction
-  }
-  return ref
 }
 
 /**

@@ -45,7 +45,8 @@ export function Transitioner() {
   // canonicalized (below): the initial declaration already covers it.
   let request: NavigationRequest | typeof ARRIVAL | undefined
   let canonicalizing = false
-  // The location the initial declaration names: the arrival, canonical.
+  // The location the initial declaration names, canonical: what a navigation
+  // is from until the first publish resolves one (a redirect while it loads).
   let arrival: ParsedLocation | undefined
 
   // Ack when the commit's transition settles (the atomic swap), not when the
@@ -69,9 +70,13 @@ export function Transitioner() {
         const answered = request
         request = undefined
         const ref =
-          answered === ARRIVAL
+          answered === undefined || answered === ARRIVAL
             ? undefined
-            : describeNavigation(router, answered)
+            : describeNavigation(
+                router,
+                answered,
+                router.stores.resolvedLocation.get() ?? arrival,
+              )
         if (ref !== undefined) {
           const observe = Solid.OBSERVE
           publish = () => observe.attribution.withOrigin(ref, fn)
