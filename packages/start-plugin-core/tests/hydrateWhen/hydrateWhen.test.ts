@@ -1,4 +1,5 @@
 import { readFile, readdir } from 'node:fs/promises'
+import { traverse } from '@babel/core'
 import * as t from '@babel/types'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import path from 'pathe'
@@ -146,6 +147,63 @@ describe('Hydrate compiler transform fixtures', async () => {
         normalizeSnapshotCode(result?.code ?? 'no-transform'),
       ).toMatchFileSnapshot(`./snapshots/server/${filename}`)
     })
+  })
+
+  test('generated lazy names do not shadow existing global references', () => {
+    const code = `import { Hydrate } from '@tanstack/react-start'; export const before = _H0; export function Page() { return <Hydrate><div /></Hydrate> }`
+    const compiled = compile({
+      env: 'client',
+      code,
+      id: fixtureId('global.tsx'),
+    })!
+    const output = parseAst({ code: compiled.code })
+    const globalReferences: Array<string> = []
+    traverse(output, {
+      ReferencedIdentifier(path) {
+        if (path.node.name === '_H0' && !path.scope.hasBinding('_H0', true)) {
+          globalReferences.push(path.node.name)
+        }
+      },
+    })
+    expect(globalReferences).toEqual(['_H0'])
+  })
+
+  test('retains captured local components and values across extraction', async () => {
+    const code = `
+      import { Hydrate } from '@tanstack/react-start'
+      export function Page({ name }) {
+        const count = 1
+        const Local = () => <b>{name}</b>
+        return <Hydrate><Local count={count}/><span>{name}</span></Hydrate>
+      }
+    `
+    const id = fixtureId('captured.tsx')
+    const compiled = compile({ env: 'client', code, id })!
+    expect(compiled.code).toContain('Local={Local}')
+    expect(compiled.code).toContain('count={count}')
+    expect(compiled.code).toContain('name={name}')
+    expect(compiled.code).toContain('const count = 1')
+    expect(compiled.code).toContain('const Local')
+    const loaded = await loadVirtualHydrateModule({
+      code,
+      id: virtualHydrateId(id, compiled.boundaries[0]!),
+      root: fixtureRoot,
+    })
+    expect(loaded).toBeTruthy()
+    const output = parseAst({ code: loaded!.code })
+    const capturedReferences = new Set<string>()
+    traverse(output, {
+      Program(path) {
+        expect(path.scope.getBinding('Page')).toBeUndefined()
+      },
+      ReferencedIdentifier(path) {
+        if (['Local', 'count', 'name'].includes(path.node.name)) {
+          capturedReferences.add(path.node.name)
+          expect(path.scope.hasBinding(path.node.name, true)).toBe(true)
+        }
+      },
+    })
+    expect([...capturedReferences].sort()).toEqual(['Local', 'count', 'name'])
   })
 
   test('should extract virtual modules and keep nested ids stable', async () => {
