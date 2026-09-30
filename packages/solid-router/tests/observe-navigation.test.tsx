@@ -38,7 +38,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const navigations = () =>
   attribution.history('navigation').filter((nav) => !nav.initial)
 
-function makeRouter(loaderMs: number, initialEntry = '/') {
+function makeRouter(
+  loaderMs: number,
+  initialEntry = '/',
+  options: { pendingComponent?: boolean } = {},
+) {
   const rootRoute = createRootRoute({
     component: () => (
       <>
@@ -105,6 +109,10 @@ function makeRouter(loaderMs: number, initialEntry = '/') {
   return createRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
+    ...(options.pendingComponent && {
+      defaultPendingComponent: () => <p>pending</p>,
+      defaultPendingMs: 0,
+    }),
   })
 }
 
@@ -331,6 +339,29 @@ test('a not-found is named by its pathname, not by the route above it', async ()
     ['/about/nope', undefined],
   ])
 })
+
+test.each([false, true])(
+  'a not-found under a route with a loader is declared, its unloaded match below the boundary notwithstanding (pending component: %s)',
+  async (pendingComponent) => {
+    // The not-found boundary renders above `/users/$id`, whose loader never
+    // runs: its match stays `pending` in the publish that lands. With a
+    // pending component the offer publishes the same matches first, and
+    // already shows the destination — the not-found, from above the pending
+    // match — so it is the publish declared.
+    const router = makeRouter(0, '/', { pendingComponent })
+    render(() => <RouterProvider router={router} />)
+    await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+    await router.navigate({ to: '/users/2/nope' as any })
+    await sleep(20)
+
+    const navs = navigations()
+    expect(navs.map((nav) => [nav.name, nav.to, nav.from])).toEqual([
+      ['/users/2/nope', '/users/2/nope', '/'],
+    ])
+    expect(navs[0]!.outcome).toBe('committed')
+  },
+)
 
 test('params are the strings the path bound, before `params.parse`', async () => {
   const router = makeRouter(0)
