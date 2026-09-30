@@ -266,6 +266,50 @@ describe('buildLocation - params function receives parsed params', () => {
   })
 })
 
+test('buildLocation keeps one source snapshot when a search updater navigates synchronously', async () => {
+  const rootRoute = new BaseRootRoute({
+    validateSearch: (search) => ({ value: String(search.value ?? '') }),
+  })
+  const aRoute = new BaseRoute({ getParentRoute: () => rootRoute, path: '/a' })
+  const bRoute = new BaseRoute({ getParentRoute: () => rootRoute, path: '/b' })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+  })
+  const history = createMemoryHistory({ initialEntries: ['/a?value=a#old'] })
+  history.replace('/a?value=a#old', { source: 'a' })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([aRoute, bRoute, targetRoute]),
+    history,
+    isServer: false,
+  })
+  let navigation: Promise<void> | undefined
+  try {
+    await router.load()
+    const location = router.buildLocation({
+      to: '/target',
+      search: (search) => {
+        navigation = router.navigate({
+          to: '/b',
+          search: { value: 'b' },
+          hash: 'new',
+          state: { source: 'b' } as any,
+        })
+        return search
+      },
+      hash: true,
+      state: true,
+    })
+    expect(location.href).toBe('/target?value=a#old')
+    expect(location.search).toEqual({ value: 'a' })
+    expect(location.hash).toBe('old')
+    expect(location.state).toMatchObject({ source: 'a' })
+  } finally {
+    await navigation
+    history.destroy()
+  }
+})
+
 describe('buildLocation - search params', () => {
   test('collects updated middleware options from the whole route branch', () => {
     const rootRoute = new BaseRootRoute({
