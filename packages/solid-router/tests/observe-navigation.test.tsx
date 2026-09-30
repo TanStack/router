@@ -5,11 +5,19 @@
 // on is declared when the provider establishes its initial match. `OBSERVE`
 // is defined on the dev build the tests resolve; in production it is
 // undefined and the declarations fold out.
-import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 import { afterEach, beforeEach, expect, test } from 'vitest'
+import { OBSERVE } from 'solid-js'
 import { attribution, feedback } from 'solid-js/attribution'
 import { z } from 'zod'
 import {
+  Link,
   Outlet,
   RouterProvider,
   createMemoryHistory,
@@ -30,7 +38,16 @@ const navigations = () =>
   attribution.history('navigation').filter((nav) => !nav.initial)
 
 function makeRouter(loaderMs: number, initialEntry = '/') {
-  const rootRoute = createRootRoute({ component: () => <Outlet /> })
+  const rootRoute = createRootRoute({
+    component: () => (
+      <>
+        <Link to="/users/$id" params={{ id: '7' }} data-testid="link">
+          User 7
+        </Link>
+        <Outlet />
+      </>
+    ),
+  })
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
@@ -165,6 +182,8 @@ test('the match publish is declared as the navigation, dated from the history ch
   expect(nav.from).toBe('/')
   expect(nav.params).toEqual({ id: '42' })
   expect(nav.outcome).toBe('committed')
+  // Not requested inside an interaction, and declared so.
+  expect(nav.interaction).toBeUndefined()
   // `at` is the history change inside navigate(), before the loader ran:
   // the record spans the loader wait even though the publish came after it.
   expect(nav.at).toBeGreaterThanOrEqual(requested)
@@ -191,6 +210,46 @@ test('a navigation superseded before it published leaves one record for the dest
   expect(navs[0]!.to).toBe('/users/2')
   // Dated from the first request: that is when the user started waiting.
   expect(navs[0]!.at).toBeLessThan(requested + 5)
+})
+
+test('a navigation requested in an interaction joins it, though the publish runs after the loader', async () => {
+  const router = makeRouter(30)
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+  let click: ReturnType<
+    NonNullable<typeof OBSERVE>['attribution']['currentOrigin']
+  >
+  OBSERVE!.attribution.withInteraction({ type: 'click', target: 'a' }, () => {
+    click = OBSERVE!.attribution.currentOrigin()
+    void router.navigate({ to: '/users/$id', params: { id: '42' } })
+  })
+  await waitFor(() => expect(screen.getByTestId('user')).toBeTruthy())
+  await sleep(0)
+
+  const navs = navigations()
+  expect(navs).toHaveLength(1)
+  expect(click).toMatchObject({ kind: 'interaction', name: 'click' })
+  expect(navs[0]!.interaction).toBe(click)
+  expect(navs[0]!.settledMs!).toBeGreaterThanOrEqual(30)
+})
+
+test('a <Link> click is the interaction its navigation joins', async () => {
+  const router = makeRouter(10)
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+  fireEvent.click(screen.getByTestId('link'))
+  await waitFor(() => expect(screen.getByTestId('user')).toBeTruthy())
+  await sleep(0)
+
+  const navs = navigations()
+  expect(navs).toHaveLength(1)
+  expect(navs[0]!.name).toBe('/users/$id')
+  expect(navs[0]!.interaction).toMatchObject({
+    kind: 'interaction',
+    name: 'click',
+  })
 })
 
 test('a not-found is named by its pathname, not by the route above it', async () => {
