@@ -2,43 +2,8 @@ import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
-import type { NavigationRef } from 'solid-js'
+import { describeNavigation } from './observe'
 import type { AnyRouteMatch } from '@tanstack/router-core'
-
-/**
- * Solid's observe tier (`OBSERVE` is defined on the dev and observe builds,
- * undefined in production) attributes what the user waited on to the
- * navigation that caused it. The rule for every router is the same: wrap the
- * write whose landing is the destination showing, and pass `at` when the
- * request predates that write. Here that write is the match publish inside
- * `startTransition` — the loaders were awaited in router-core before it —
- * so the ref names the destination route from the expected matches and
- * dates from the history change that started the load. The pending offer
- * (`offerPending`, a match with `status: 'pending'`) is not the destination
- * and is published undeclared; the initial load and a same-location reload
- * are not navigations.
- */
-function describeNavigation(
-  router: ReturnType<typeof useRouter>,
-  expected: Array<AnyRouteMatch>,
-  at: number | undefined,
-): NavigationRef | undefined {
-  if (expected.some((match) => match.status === 'pending')) return
-  const to = router.latestLocation
-  const from = router.stores.resolvedLocation.get()
-  // Nothing shown yet (the initial load), or a reload of what is shown.
-  if (!from || from.href === to.href) return
-  const leaf = expected[expected.length - 1]
-  const ref: NavigationRef = {
-    kind: 'navigation',
-    name: leaf?.fullPath || to.pathname,
-    to: to.pathname,
-    from: from.pathname,
-  }
-  if (leaf && Object.keys(leaf.params).length) ref.params = leaf.params
-  if (at !== undefined) ref.at = at
-  return ref
-}
 
 function getResolvedLocation(router: ReturnType<typeof useRouter>) {
   const resolvedLocation = router.stores.resolvedLocation.get()
@@ -66,8 +31,12 @@ export function Transitioner() {
     committed.length === expected.length &&
     expected.every((match, index) => committed![index] === match)
 
-  // When the history changed since the last declared publish: the moment
-  // the user asked, which is where the navigation's wait starts.
+  // Solid's observe tier attributes what the user waited on to the
+  // navigation that caused it: wrap the write whose landing is the
+  // destination showing — here the match publish, after router-core awaited
+  // the loaders — and pass `at`, since the request predates it. The first
+  // history change since the last declared publish is that request: the
+  // moment the user asked, which is where the navigation's wait starts.
   let requestedAt: number | undefined
 
   // Ack when the commit's transition settles (the atomic swap), not when the
@@ -81,8 +50,13 @@ export function Transitioner() {
       const ack: Ack = [expectedMatches, resolve]
       acks.push(ack)
       let publish = fn
-      if (Solid.OBSERVE !== undefined) {
-        const ref = describeNavigation(router, expectedMatches, requestedAt)
+      // The pending offer (`offerPending`, a match with `status: 'pending'`)
+      // is not the destination: published undeclared.
+      if (
+        Solid.OBSERVE !== undefined &&
+        !expectedMatches.some((match) => match.status === 'pending')
+      ) {
+        const ref = describeNavigation(router, requestedAt)
         if (ref !== undefined) {
           requestedAt = undefined
           const observe = Solid.OBSERVE

@@ -7,6 +7,7 @@
 import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { attribution } from 'solid-js/attribution'
+import { z } from 'zod'
 import {
   Outlet,
   RouterProvider,
@@ -24,12 +25,18 @@ afterEach(() => {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-function makeRouter(loaderMs: number) {
+function makeRouter(loaderMs: number, initialEntry = '/') {
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
     component: () => <div data-testid="home">Home</div>,
+  })
+  const aboutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/about',
+    validateSearch: z.object({ tab: z.string().default('info') }),
+    component: () => <div data-testid="about">About</div>,
   })
   const userRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -43,10 +50,24 @@ function makeRouter(loaderMs: number) {
       return <div data-testid="user">{data().name}</div>
     },
   })
-  const routeTree = rootRoute.addChildren([indexRoute, userRoute])
+  const postRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts/$postId',
+    params: {
+      parse: ({ postId }) => ({ postId: Number(postId) }),
+      stringify: ({ postId }) => ({ postId: String(postId) }),
+    },
+    component: () => <div data-testid="post">Post</div>,
+  })
+  const routeTree = rootRoute.addChildren([
+    indexRoute,
+    aboutRoute,
+    userRoute,
+    postRoute,
+  ])
   return createRouter({
     routeTree,
-    history: createMemoryHistory({ initialEntries: ['/'] }),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
   })
 }
 
@@ -99,4 +120,38 @@ test('a navigation superseded before it published leaves one record for the dest
   expect(navs[0]!.to).toBe('/users/2')
   // Dated from the first request: that is when the user started waiting.
   expect(navs[0]!.at).toBeLessThan(requested + 5)
+})
+
+test('a not-found is named by its pathname, not by the route above it', async () => {
+  const router = makeRouter(0)
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+  // Nothing matches; and a path that runs past `/about`, which only matches
+  // fuzzily (the not-found renders under it).
+  await router.navigate({ to: '/nope/deeper' as any })
+  await sleep(10)
+  await router.navigate({ to: '/about/nope' as any })
+  await sleep(10)
+
+  const navs = attribution.history('navigation')
+  expect(navs.map((nav) => [nav.name, nav.params])).toEqual([
+    ['/nope/deeper', undefined],
+    ['/about/nope', undefined],
+  ])
+})
+
+test('params are the strings the path bound, before `params.parse`', async () => {
+  const router = makeRouter(0)
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+  await router.navigate({ to: '/posts/$postId', params: { postId: 5 } })
+  await waitFor(() => expect(screen.getByTestId('post')).toBeTruthy())
+  await sleep(0)
+
+  expect(attribution.history('navigation')[0]!.name).toBe('/posts/$postId')
+  expect(attribution.history('navigation')[0]!.params).toEqual({
+    postId: '5',
+  })
 })
