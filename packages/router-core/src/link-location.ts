@@ -31,7 +31,9 @@ export function getLinkLocationStore(
   options: object,
   owner: string | undefined,
 ): { get: () => ParsedLocation; subscribe: (notify: () => void) => () => void } {
-  const source = router.stores.location as LocationSource
+  // Only the React adapter calls this bridge. Core's framework-neutral store
+  // contract intentionally omits the adapter's subscription API.
+  const source = router.stores.location as unknown as LocationSource
   return {
     get: source.get,
     subscribe: (notify) => {
