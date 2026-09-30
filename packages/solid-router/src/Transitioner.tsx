@@ -9,6 +9,20 @@ import type { AnyRouteMatch, ParsedLocation } from '@tanstack/router-core'
 /** The history change was the arrival's own canonicalization, not a request. */
 const ARRIVAL = Symbol()
 
+/**
+ * `offerPending`'s publish: a match still `pending` at or above the
+ * not-found boundary. The matches below a not-found never load, and stay
+ * `pending` in the publish that lands; an offer whose pending match is
+ * below one already shows the destination, the not-found.
+ */
+function isPendingOffer(matches: Array<AnyRouteMatch>) {
+  for (const match of matches) {
+    if (match.status === 'pending') return true
+    if (match._notFound) return false
+  }
+  return false
+}
+
 function getResolvedLocation(router: ReturnType<typeof useRouter>) {
   const resolvedLocation = router.stores.resolvedLocation.get()
   if (
@@ -60,13 +74,10 @@ export function Transitioner() {
       const ack: Ack = [expectedMatches, resolve]
       acks.push(ack)
       let publish = fn
-      // The pending offer (`offerPending`, a match with `status: 'pending'`)
-      // is not the destination: published undeclared, the request kept for
-      // the publish that lands. Every other publish answers the request.
-      if (
-        Solid.OBSERVE !== undefined &&
-        !expectedMatches.some((match) => match.status === 'pending')
-      ) {
+      // The pending offer (`offerPending`) is not the destination: published
+      // undeclared, the request kept for the publish that lands. Every other
+      // publish answers the request.
+      if (Solid.OBSERVE !== undefined && !isPendingOffer(expectedMatches)) {
         const answered = request
         request = undefined
         const ref =
