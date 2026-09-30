@@ -1,5 +1,5 @@
 import type { NavigationRef } from 'solid-js'
-import type { AnyRouter } from '@tanstack/router-core'
+import type { AnyRouter, ParsedLocation } from '@tanstack/router-core'
 
 /**
  * What the router says about its navigations to Solid's observe tier
@@ -70,23 +70,25 @@ export function describeNavigation(
  * publish to wrap. On the client the engine opens it at the time origin and
  * settles it as that work returns (the first `"navigation"` record,
  * `initial: true`); on the server the same call names the request's
- * `"render"` record (`RenderEvent.route`). The fields are getters read at
- * settle, so a server render whose provider ran the load names the location
- * the load resolved.
+ * `"render"` record (`RenderEvent.route`). The fields are getters of
+ * `location`, read at settle: the canonical location the client committed,
+ * or the one a server load resolved.
  */
-export function describeInitial(router: AnyRouter): NavigationRef {
-  const pathname = () => router.latestLocation.pathname
+export function describeInitial(
+  router: AnyRouter,
+  location: () => ParsedLocation,
+): NavigationRef {
   return {
     kind: 'navigation',
     initial: true,
     get to() {
-      return router.latestLocation.href
+      return location().href
     },
     get name() {
-      return describeRoute(router, pathname()).name
+      return describeRoute(router, location().pathname).name
     },
     get params() {
-      return describeRoute(router, pathname()).params
+      return describeRoute(router, location().pathname).params
     },
   }
 }

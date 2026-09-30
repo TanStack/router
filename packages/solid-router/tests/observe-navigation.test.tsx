@@ -2,9 +2,9 @@
 // declared to the attribution engine as the navigation, so the holds and
 // re-runs it causes are named after the route and the record spans from
 // the history change that started the load; the route the document arrived
-// on is declared when the provider establishes its initial match. `OBSERVE`
-// is defined on the dev build the tests resolve; in production it is
-// undefined and the declarations fold out.
+// on is declared when the Transitioner establishes the initial match.
+// `OBSERVE` is defined on the dev build the tests resolve; in production it
+// is undefined and the declarations fold out.
 import {
   cleanup,
   fireEvent,
@@ -95,7 +95,7 @@ function makeRouter(loaderMs: number, initialEntry = '/') {
 test('mounting declares the route the document arrived on — the first record, initial', async () => {
   const router = makeRouter(30, '/users/42?tab=posts')
   render(() => <RouterProvider router={router} />)
-  // Delivered as the provider established its initial match: nothing to
+  // Delivered as the Transitioner established the initial match: nothing to
   // wait for, so the record settled before the loader ran.
   expect(attribution.history('navigation')).toHaveLength(1)
   const nav = attribution.history('navigation')[0]!
@@ -118,10 +118,12 @@ test('mounting declares the route the document arrived on — the first record, 
 })
 
 test.each([false, true])(
-  'an arrival the router canonicalizes is the one initial record, not a navigation (loaded before mount: %s)',
+  'an arrival the router canonicalizes is the one initial record, naming the canonical location (loaded before mount: %s)',
   async (preloaded) => {
     // `/about` validates to `/about?tab=info`; the Transitioner commits the
-    // canonical location once mounted. That write is the arrival's.
+    // canonical location as it establishes the initial match. That write is
+    // the arrival's, as `@solidjs/router`'s normalization of an empty
+    // arrival is.
     const router = makeRouter(0, '/about')
     if (preloaded) await router.load()
     render(() => <RouterProvider router={router} />)
@@ -136,6 +138,7 @@ test.each([false, true])(
     expect(navs).toHaveLength(1)
     expect(navs[0]!.initial).toBe(true)
     expect(navs[0]!.name).toBe('/about')
+    expect(navs[0]!.to).toBe('/about?tab=info')
 
     // The next navigation is dated from its own request, not the arrival's.
     const requested = performance.now()
@@ -144,6 +147,7 @@ test.each([false, true])(
     await sleep(0)
     expect(navigations()).toHaveLength(1)
     expect(navigations()[0]!.name).toBe('/')
+    expect(navigations()[0]!.from).toBe('/about?tab=info')
     expect(navigations()[0]!.at).toBeGreaterThanOrEqual(requested)
   },
 )

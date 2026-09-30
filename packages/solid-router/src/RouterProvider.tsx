@@ -56,12 +56,17 @@ export function RouterContextProvider<
         ? router.load().then(() => true)
         : true,
     )
-  // The route the document arrived on, declared to Solid's observe tier
-  // around the work that establishes the initial match (see
-  // `describeInitial`); folded out of production with `OBSERVE`.
-  const ready = Solid.OBSERVE
-    ? Solid.OBSERVE.attribution.withOrigin(describeInitial(router), establish)
-    : establish()
+  // The route the request is for, declared to Solid's observe tier around
+  // the load that establishes it — the render's route (see
+  // `describeInitial`); the client declares its arrival in Transitioner.
+  // Folded out of production with `OBSERVE`.
+  const ready =
+    Solid.OBSERVE && (isServer ?? router.isServer)
+      ? Solid.OBSERVE.attribution.withOrigin(
+          describeInitial(router, () => router.latestLocation),
+          establish,
+        )
+      : establish()
 
   // Client-side, the provider is where the router meets Solid's
   // server-function transport: it consumes the response metadata mutations
