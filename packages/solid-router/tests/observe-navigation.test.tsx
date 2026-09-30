@@ -101,7 +101,7 @@ test('mounting declares the route the document arrived on — the first record, 
   const nav = attribution.history('navigation')[0]!
   expect(nav.initial).toBe(true)
   expect(nav.name).toBe('/users/$id')
-  expect(nav.to).toBe('/users/42')
+  expect(nav.to).toBe('/users/42?tab=posts')
   expect(nav.params).toEqual({ id: '42' })
   expect(nav.from).toBeUndefined()
   expect(nav.interaction).toBeUndefined()
@@ -189,6 +189,28 @@ test('the match publish is declared as the navigation, dated from the history ch
   expect(nav.at).toBeGreaterThanOrEqual(requested)
   expect(nav.at).toBeLessThan(requested + 30)
   expect(nav.settledMs!).toBeGreaterThanOrEqual(30)
+})
+
+test('`to` and `from` are the path, search and hash, as `@solidjs/router` gives them', async () => {
+  const router = makeRouter(0)
+  render(() => <RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
+
+  await router.navigate({
+    to: '/users/$id',
+    params: { id: '42' },
+    search: { tab: 'posts' } as any,
+    hash: 'bio',
+  })
+  await waitFor(() => expect(screen.getByTestId('user')).toBeTruthy())
+  await router.navigate({ to: '/about' })
+  await waitFor(() => expect(screen.getByTestId('about')).toBeTruthy())
+  await sleep(0)
+
+  expect(navigations().map((nav) => [nav.name, nav.to, nav.from])).toEqual([
+    ['/users/$id', '/users/42?tab=posts#bio', '/'],
+    ['/about', '/about?tab=info', '/users/42?tab=posts#bio'],
+  ])
 })
 
 test('a navigation superseded before it published leaves one record for the destination that showed', async () => {

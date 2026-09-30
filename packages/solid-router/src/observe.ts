@@ -5,7 +5,10 @@ import type { AnyRouter } from '@tanstack/router-core'
  * What the router says about its navigations to Solid's observe tier
  * (`OBSERVE.attribution.withOrigin`; `OBSERVE` is defined on the dev and
  * observe builds, undefined in production). A navigation is named by the
- * route pattern its pathname matches, so occurrences fold together.
+ * route pattern its pathname matches, so occurrences fold together; `to` and
+ * `from` are the location's `href` — path, search and hash, as
+ * `@solidjs/router` gives them, in the router's own path space (`name`'s,
+ * before a basepath or rewrite is applied).
  */
 
 /** When a navigation was requested, and the interaction it was requested in. */
@@ -51,8 +54,8 @@ export function describeNavigation(
   const ref: NavigationRef = {
     kind: 'navigation',
     ...describeRoute(router, to.pathname),
-    to: to.pathname,
-    from: from.pathname,
+    to: to.href,
+    from: from.href,
   }
   if (request) {
     ref.at = request.at
@@ -77,7 +80,7 @@ export function describeInitial(router: AnyRouter): NavigationRef {
     kind: 'navigation',
     initial: true,
     get to() {
-      return pathname()
+      return router.latestLocation.href
     },
     get name() {
       return describeRoute(router, pathname()).name
