@@ -17,9 +17,176 @@ import {
   createRoute,
   createRouteMask,
   createRouter,
+  defaultStringifySearch,
+  useLinkProps,
 } from '../src'
 
 afterEach(cleanup)
+
+test('a Link keeps its source when search formatting navigates before inherited fields are read', async () => {
+  const states: Array<string> = []
+  const maskSources: Array<string> = []
+  const hrefs: Array<string | undefined> = []
+  let navigation: Promise<void> | undefined
+  let triggered = false
+  function SourceLink() {
+    const [armed, setArmed] = React.useState(false)
+    const props = useLinkProps({
+      to: '/target',
+      search: { value: armed ? 'trigger' : 'initial' },
+      hash: true,
+      state: (state: any) => {
+        if (armed) {
+          states.push(state.source)
+        }
+        return state
+      },
+      mask: {
+        to: '/visible',
+        search: (search) => {
+          if (armed) {
+            maskSources.push(String(search.value))
+          }
+          return search
+        },
+        hash: true,
+        state: true,
+      },
+    })
+    if (armed) {
+      hrefs.push(props.href)
+    }
+    return (
+      <>
+        <button onClick={() => setArmed(true)}>Rebuild source</button>
+        <a {...props}>Target</a>
+      </>
+    )
+  }
+  const root = createRootRoute({
+    validateSearch: (search) => ({ value: String(search.value ?? '') }),
+    component: () => (
+      <>
+        <SourceLink />
+        <Outlet />
+      </>
+    ),
+  })
+  const routes = ['/a', '/b', '/target', '/visible'].map((path) =>
+    createRoute({ getParentRoute: () => root, path }),
+  )
+  const history = createMemoryHistory({ initialEntries: ['/a?value=a#old'] })
+  history.replace('/a?value=a#old', { source: 'a' } as any)
+  const router = createRouter({
+    routeTree: root.addChildren(routes),
+    history,
+    stringifySearch: (search) => {
+      if (search.value === 'trigger' && !triggered) {
+        triggered = true
+        navigation = router.navigate({
+          to: '/b',
+          search: { value: 'b' },
+          hash: 'new',
+          state: { source: 'b' } as any,
+        })
+      }
+      return defaultStringifySearch(search)
+    },
+  })
+  try {
+    render(<RouterProvider router={router} />)
+    await screen.findByRole('link', { name: 'Target' })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Rebuild source' }))
+    })
+    expect(triggered).toBe(true)
+    expect(states[0]).toBe('a')
+    expect(maskSources[0]).toBe('a')
+    expect(hrefs).toContain('/visible?value=a#old')
+  } finally {
+    await act(async () => navigation)
+    history.destroy()
+  }
+})
+
+test('click uses current navigation options when the destination is unchanged', async () => {
+  const root = createRootRoute({ component: Outlet })
+  const index = createRoute({
+    getParentRoute: () => root,
+    path: '/',
+    component: function Index() {
+      const [replace, setReplace] = React.useState(false)
+      return (
+        <>
+          <button onClick={() => setReplace(true)}>Replace on click</button>
+          <Link to="/target" replace={replace}>
+            Target
+          </Link>
+        </>
+      )
+    },
+  })
+  const target = createRoute({ getParentRoute: () => root, path: '/target' })
+  const history = createMemoryHistory()
+  const router = createRouter({
+    routeTree: root.addChildren([index, target]),
+    history,
+  })
+  render(<RouterProvider router={router} />)
+  const link = await screen.findByRole('link', { name: 'Target' })
+  fireEvent.click(screen.getByRole('button', { name: 'Replace on click' }))
+  await act(async () => {
+    fireEvent.click(link)
+  })
+  expect(history.location.pathname).toBe('/target')
+  expect(history.length).toBe(1)
+})
+
+test('departing Links cancel only scheduled intent preloads', async () => {
+  const loader = vi.fn(() => null)
+  const root = createRootRoute({ component: Outlet })
+  const index = createRoute({
+    getParentRoute: () => root,
+    path: '/',
+    component: () => (
+      <>
+        {Array.from({ length: 1000 }, (_, i) => (
+          <Link key={i} to="/target" preload="intent" preloadDelay={50}>
+            Target {i}
+          </Link>
+        ))}
+      </>
+    ),
+  })
+  const target = createRoute({
+    getParentRoute: () => root,
+    path: '/target',
+    loader,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([index, target]),
+    history: createMemoryHistory(),
+  })
+  const view = render(<RouterProvider router={router} />)
+  const link = await screen.findByRole('link', { name: 'Target 0' })
+  vi.useFakeTimers()
+  const cancel = vi.spyOn(globalThis, 'clearTimeout')
+  try {
+    fireEvent.mouseEnter(link)
+    view.unmount()
+    expect(
+      cancel.mock.calls.filter(([timer]) => timer === undefined),
+    ).toHaveLength(0)
+    expect(
+      cancel.mock.calls.filter(([timer]) => timer !== undefined),
+    ).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(loader).not.toHaveBeenCalled()
+  } finally {
+    cancel.mockRestore()
+    vi.useRealTimers()
+  }
+})
 
 test.each([
   { mask: 'explicit', operation: 'click' },

@@ -12,6 +12,31 @@ import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
 import type { SearchMiddleware } from '../src'
 
+test('buildLocation stays bound when passed directly to array callbacks', async () => {
+  const root = new BaseRootRoute({})
+  const source = new BaseRoute({ getParentRoute: () => root, path: '/source' })
+  const target = new BaseRoute({ getParentRoute: () => root, path: '/target' })
+  const router = createTestRouter({
+    routeTree: root.addChildren([source, target]),
+    history: createMemoryHistory({
+      initialEntries: ['/source?keep=value#hash'],
+    }),
+  })
+  await router.load()
+  const options = [
+    { to: '/target', search: true as const, hash: true as const },
+    { to: '/target', search: true as const, hash: true as const },
+  ]
+  expect(
+    options.map(router.buildLocation).map((location) => location.href),
+  ).toEqual(['/target?keep=value#hash', '/target?keep=value#hash'])
+  expect(Object.keys(options)).toEqual(['0', '1'])
+  expect(options).toEqual([
+    { to: '/target', search: true, hash: true },
+    { to: '/target', search: true, hash: true },
+  ])
+})
+
 test('_getUserHistoryState removes volatile router bookkeeping but keeps mask payloads', () => {
   expect(
     _getUserHistoryState({
