@@ -1,5 +1,8 @@
 import * as Vue from 'vue'
 import {
+  _getLinkScope,
+  _matchesLinkPath,
+  _subscribeLink,
   deepEqual,
   getUrlScheme,
   hasKeys,
@@ -9,14 +12,16 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { useSelector } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
+import { routeIdContext } from './matchContext'
 import { useIntersectionObserver } from './utils'
 
 import type {
   AnyRouter,
   Constrain,
+  LinkBuilder,
   LinkOptions,
+  LinkSubscription,
   ParsedLocation,
   RegisteredRouter,
   RoutePaths,
@@ -110,19 +115,15 @@ function useLinkPropsImpl(
   // Ensure router is defined before proceeding
   if (!router) {
     console.warn('useRouter must be used inside a <RouterProvider> component!')
-    return Vue.computed(() => ({})) as unknown as LinkHTMLAttributes
+    return {} as LinkHTMLAttributes
   }
-
-  const ref = Vue.ref<Element | null>(null)
 
   // During SSR we render exactly once and do not need reactivity.
   // Avoid store subscriptions, effects and observers on the server.
   if (isServer ?? router.isServer) {
     const options = getOptions()
     if (getUrlScheme(`${options.to}`)) {
-      return Vue.ref(
-        getExternalLinkProps(options, router, ref),
-      ) as unknown as LinkHTMLAttributes
+      return getExternalLinkProps(options, router, undefined)
     }
 
     const next = router.buildLocation(options as any)
@@ -152,52 +153,71 @@ function useLinkPropsImpl(
       resolvedStyle,
     })
 
-    return Vue.ref(
-      result as LinkHTMLAttributes,
-    ) as unknown as LinkHTMLAttributes
+    return result as LinkHTMLAttributes
   }
 
+  const ref = Vue.ref<Element | null>(null)
   // Determine if the link is external or internal. This is client-only so
   // server renders do not allocate a computed wrapper for every link.
   const isExternal = Vue.computed(() => !!getUrlScheme(`${getOptions().to}`))
 
-  const currentLocation: Vue.Ref<
-    ReturnType<typeof router.stores.location.get>
-  > = isExternal.value
-    ? Vue.shallowRef(router.stores.location.get())
-    : (useSelector(router.stores.location, (l) => l, {
-        compare: (prev, next) => prev.href === next.href,
-      }) as Vue.Ref<ReturnType<typeof router.stores.location.get>>)
-
-  // Links that start external skip useSelector above. Subscribe if they later
-  // become internal so active state follows subsequent location changes.
-  if (isExternal.value) {
-    Vue.watchEffect((onCleanup) => {
-      if (isExternal.value) {
-        return
-      }
-
-      const store = router.stores.location
-      // Catch up on navigations while this external link was unsubscribed.
-      currentLocation.value = store.get()
-      const subscription = store.subscribe((location) => {
-        if (currentLocation.value.href !== location.href) {
-          currentLocation.value = location
-        }
-      })
-      onCleanup(() => subscription.unsubscribe())
-    })
+  const owner = Vue.inject(routeIdContext, undefined)
+  const revision = Vue.shallowRef<unknown>()
+  const subscription: LinkSubscription = [
+    _getLinkScope(router, owner),
+    () => {
+      revision.value = {}
+    },
+  ]
+  Vue.onScopeDispose(_subscribeLink(router, owner, subscription))
+  const currentLocation = () => {
+    revision.value
+    return subscription[0 /* scope */][0 /* location */]
   }
-
-  const next = Vue.computed(() => {
-    // Rebuild when inherited search/hash or the current route context changes.
-
+  const destinationOptions = Vue.computed(() => {
     const options = getOptions()
-    const opts = { _fromLocation: currentLocation.value, ...options }
-    return router.buildLocation(opts)
+    return {
+      href: (options as any).href,
+      to: options.to,
+      from: options.from,
+      params: options.params,
+      search: options.search,
+      hash: options.hash,
+      state: options.state,
+      mask: options.mask,
+      unsafeRelative: options.unsafeRelative,
+      _fromLocation: (options as any)._fromLocation,
+    }
+  })
+  const configuration = Vue.computed(() => {
+    revision.value
+    return router._linkConfig
+  })
+  const next = Vue.computed(() => {
+    configuration.value
+    const dest = destinationOptions.value
+    const built = (router.buildLocation as LinkBuilder)(
+      dest as any,
+      currentLocation,
+      subscription,
+    )
+    const active = getOptions().activeOptions
+    subscription[3 /* pathname */] = removeTrailingSlash(
+      built.pathname,
+      router.basepath,
+    )
+    subscription[4 /* exact */] = active?.exact
+    subscription[5 /* activity */] =
+      1 |
+      ((active?.includeSearch ?? true) ? 2 : 0) |
+      (active?.includeHash ? 4 : 0)
+    return built
   })
 
   const href = Vue.computed(() => {
+    if (router.history.createHref !== router.history._hrefIndependent) {
+      revision.value
+    }
     const options = getOptions()
     return getHref(options, router, next.value)
   })
@@ -230,7 +250,7 @@ function useLinkPropsImpl(
       return false
     }
     return getIsActive(
-      currentLocation.value,
+      currentLocation(),
       next.value,
       options.activeOptions,
       router,
@@ -240,7 +260,12 @@ function useLinkPropsImpl(
   const doPreload = () => {
     const options = getOptions()
     return router
-      .preloadRoute(options as Parameters<typeof router.preloadRoute>[0])
+      .preloadRoute({
+        ...options,
+        _fromLocation:
+          (options as any)._fromLocation ??
+          subscription[0 /* scope */][0 /* location */],
+      } as Parameters<typeof router.preloadRoute>[0])
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -349,6 +374,9 @@ function useLinkPropsImpl(
       // All is well? Navigate!
       router.navigate({
         ...options,
+        _fromLocation:
+          (options as any)._fromLocation ??
+          subscription[0 /* scope */][0 /* location */],
         replace: options.replace,
         resetScroll: options.resetScroll,
         hashScrollIntoView: options.hashScrollIntoView,
@@ -419,6 +447,7 @@ function useLinkPropsImpl(
   // Compute all props synchronously to avoid hydration mismatches
   // Using Vue.computed ensures props are calculated at render time, not after
   const computedProps = Vue.computed<LinkHTMLAttributes>(() => {
+    configuration.value
     const options = getOptions()
     if (isExternal.value) {
       return getExternalLinkProps(options, router, ref, staticEventHandlers)
@@ -539,7 +568,7 @@ function combineResultProps({
 function getExternalLinkProps(
   options: AnyLinkPropsOptions,
   router: AnyRouter,
-  ref: Vue.Ref<Element | null>,
+  ref: Vue.Ref<Element | null> | undefined,
   staticEventHandlers?: LinkEventHandlers,
 ): LinkHTMLAttributes {
   const dangerous = isDangerousProtocol(
@@ -669,16 +698,7 @@ function getIsActive(
   const currentPath = removeTrailingSlash(loc.pathname, router.basepath)
   const nextPath = removeTrailingSlash(nextLoc.pathname, router.basepath)
 
-  // Both modes compare normalized paths; fuzzy matches need a segment boundary.
-  if (
-    activeOptions?.exact
-      ? currentPath !== nextPath
-      : !(
-          currentPath.startsWith(nextPath) &&
-          (currentPath.length === nextPath.length ||
-            currentPath[nextPath.length] === '/')
-        )
-  ) {
+  if (!_matchesLinkPath(currentPath, nextPath, activeOptions?.exact)) {
     return false
   }
 
@@ -887,25 +907,28 @@ const LinkImpl = Vue.defineComponent({
     'target',
   ],
   setup(props, { attrs, slots }) {
-    const attrsSnapshot = Vue.shallowRef({ ...attrs })
-    Vue.onBeforeUpdate(() => {
-      const keys = Object.keys(attrs)
-      const previous = attrsSnapshot.value
-      if (
-        keys.length !== Object.keys(previous).length ||
-        keys.some((key) => !Object.is(attrs[key], previous[key]))
-      ) {
-        attrsSnapshot.value = { ...attrs }
-      }
-    })
-
-    // Keep a plain cached snapshot so location-only updates do not repeatedly
-    // cross Vue's props and attrs proxies for every link computation.
-    const allProps = Vue.computed(() => ({
-      ...props,
-      ...attrsSnapshot.value,
-    }))
-    const linkPropsSource = useLinkPropsImpl(() => allProps.value) as
+    const router = useRouter()
+    let getOptions = () => ({ ...props, ...attrs }) as AnyLinkPropsOptions
+    if (!(isServer ?? router.isServer)) {
+      const attrsSnapshot = Vue.shallowRef({ ...attrs })
+      Vue.onBeforeUpdate(() => {
+        const keys = Object.keys(attrs)
+        const previous = attrsSnapshot.value
+        if (
+          keys.length !== Object.keys(previous).length ||
+          keys.some((key) => !Object.is(attrs[key], previous[key]))
+        ) {
+          attrsSnapshot.value = { ...attrs }
+        }
+      })
+      // Location-only updates reuse this native props/attrs snapshot.
+      const allProps = Vue.computed(() => ({
+        ...props,
+        ...attrsSnapshot.value,
+      }))
+      getOptions = () => allProps.value as AnyLinkPropsOptions
+    }
+    const linkPropsSource = useLinkPropsImpl(getOptions) as
       | LinkHTMLAttributes
       | Vue.ComputedRef<LinkHTMLAttributes>
 

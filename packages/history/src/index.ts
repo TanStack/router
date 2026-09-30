@@ -32,6 +32,8 @@ export interface RouterHistory {
   forward: (navigateOpts?: NavigateOptions) => void
   canGoBack: () => boolean
   createHref: (href: string) => string
+  /** Internal identity of a built-in formatter independent of browser location. */
+  _hrefIndependent?: RouterHistory['createHref']
   block: (blocker: NavigationBlocker) => () => void
   flush: () => void
   destroy: () => void
@@ -156,27 +158,24 @@ export function createHistory(opts: {
     else location = opts.getLocation()
   }
 
-  const tryNavigation = async ({
-    task,
-    navigateOpts,
-    ...actionInfo
-  }: TryNavigateArgs) => {
-    const ignoreBlocker = navigateOpts?.ignoreBlocker ?? false
-    if (ignoreBlocker) {
-      task()
+  const tryNavigation = async (args: TryNavigateArgs) => {
+    if (args.navigateOpts?.ignoreBlocker) {
+      args.task()
       return
     }
 
-    const blockers = opts.getBlockers?.() ?? []
-    const isPushOrReplace =
-      actionInfo.type === 'PUSH' || actionInfo.type === 'REPLACE'
-    if (typeof document !== 'undefined' && blockers.length && isPushOrReplace) {
+    const blockers = opts.getBlockers?.()
+    if (
+      typeof document !== 'undefined' &&
+      blockers?.length &&
+      (args.type === 'PUSH' || args.type === 'REPLACE')
+    ) {
       for (const blocker of blockers) {
-        const nextLocation = parseHref(actionInfo.path, actionInfo.state)
+        const nextLocation = parseHref(args.path, args.state)
         const isBlocked = await blocker.blockerFn({
           currentLocation: location,
           nextLocation,
-          action: actionInfo.type,
+          action: args.type,
         })
         if (isBlocked) {
           opts.onBlocked?.()
@@ -185,7 +184,7 @@ export function createHistory(opts: {
       }
     }
 
-    task()
+    args.task()
   }
 
   return {
@@ -598,6 +597,9 @@ export function createBrowserHistory(opts?: {
     return res
   }
 
+  if (!opts?.createHref) {
+    history._hrefIndependent = history.createHref
+  }
   return history
 }
 
@@ -655,7 +657,7 @@ export function createMemoryHistory(
   const _setBlockers = (newBlockers: Array<NavigationBlocker>) =>
     (blockers = newBlockers)
 
-  return createHistory({
+  const history = createHistory({
     getLocation,
     getLength: () => entries.length,
     pushState: (path, state) => {
@@ -685,6 +687,8 @@ export function createMemoryHistory(
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
   })
+  history._hrefIndependent = history.createHref
+  return history
 }
 
 const noop = () => {}

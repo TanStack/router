@@ -4,6 +4,12 @@ export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { invariant } from './invariant'
 export { preloadWarning } from './link'
+export {
+  _getLinkScope,
+  _subscribeLink,
+  _matchesLinkPath,
+} from './link-subscriptions'
+export type { LinkScope, LinkSubscription } from './link-subscriptions'
 export type {
   IsRequiredParams,
   AddTrailingSlash,
@@ -296,6 +302,7 @@ export type {
   CommitLocationOptions,
   NavigateFn,
   BuildLocationFn,
+  LinkBuilder,
 } from './RouterProvider'
 
 export { retainSearchParams, stripSearchParams } from './searchMiddleware'

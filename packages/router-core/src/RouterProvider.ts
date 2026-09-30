@@ -1,5 +1,6 @@
 import type { NavigateOptions, ToOptions } from './link'
 import type { ParsedLocation } from './location'
+import type { LinkSubscription } from './link-subscriptions'
 import type { RoutePaths } from './routeInfo'
 import type { RegisteredRouter, ViewTransitionOptions } from './router'
 
@@ -32,7 +33,7 @@ export type NavigateFn = <
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Promise<void>
 
-export type BuildLocationFn = <
+type PublicBuildLocationFn = <
   TRouter extends RegisteredRouter,
   TTo extends string | undefined,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -45,3 +46,15 @@ export type BuildLocationFn = <
     _isNavigate?: boolean
   },
 ) => ParsedLocation
+
+/** Adapter-owned source and dependency classification; no runtime wrapper. */
+export type LinkBuilder = (
+  opts: Parameters<PublicBuildLocationFn>[0],
+  source: () => ParsedLocation,
+  dependency?: LinkSubscription,
+) => ParsedLocation
+
+export interface BuildLocationFn extends PublicBuildLocationFn {
+  /** @internal */
+  (...args: Parameters<LinkBuilder>): ParsedLocation
+}
