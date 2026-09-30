@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { sharedConfig } from 'solid-js'
 import { cleanup, render, screen } from '@solidjs/testing-library'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
@@ -13,7 +12,6 @@ import {
 import { lazyRouteComponent } from '../src/lazyRouteComponent'
 
 afterEach(() => {
-  sharedConfig.hydrating = false
   delete (window as any).$_TSR
   vi.restoreAllMocks()
   cleanup()

@@ -107,6 +107,10 @@ for (const key of [
   'Request',
   'Headers',
   'fetch',
+  // @solidjs/web's server-function protocol module encodes its event-stream
+  // heartbeat at module scope; jsdom has no encoding globals.
+  'TextEncoder',
+  'TextDecoder',
 ]) {
   if (dom.window[key] === undefined && globalThis[key] !== undefined) {
     dom.window[key] = globalThis[key]
@@ -135,6 +139,8 @@ if (results.pendingFlashDuringHydrate === true)
   failures.push('pending UI flashed during hydration')
 if (results.serverNodeReused !== true)
   failures.push('server-rendered node was NOT reused (mismatch re-render)')
+if (!chunks[0]?.includes('tsr:'))
+  failures.push('server wrote no match entries into the shell chunk')
 if (results.registryPrimed !== true)
   failures.push('registry transfer did not prime the router (fell through)')
 if (results.loaderRunsAfterHydrate !== 0)

@@ -61,7 +61,7 @@ let globalHydrated = false
 
 export function useHydrated(): Solid.Accessor<boolean> {
   const [hydrated, setHydrated] = Solid.createSignal(
-    globalHydrated && !Solid.sharedConfig.hydrating,
+    globalHydrated && !Solid.isHydrating(),
   )
 
   Solid.createEffect(
