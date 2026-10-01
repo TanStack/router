@@ -26,10 +26,7 @@ describe('hydration component chunks', () => {
     vi.unstubAllGlobals()
   })
 
-  async function setup(
-    configurePage: (route: any) => any,
-    withoutChunks = true,
-  ) {
+  async function setup(configurePage: (route: any) => any) {
     const makeRouteTree = (configure: (route: any) => any) => {
       const rootRoute = new BaseRootRoute({})
       const pageRoute = configure(
@@ -48,13 +45,11 @@ describe('hydration component chunks', () => {
     mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, {
       routes: {},
     })
-    const router = createTestRouter({
+    return createTestRouter({
       routeTree: makeRouteTree(configurePage),
       history: createMemoryHistory({ initialEntries: ['/page'] }),
       isServer: false,
     })
-    router._hydrateWithoutComponentChunks = withoutChunks
-    return router
   }
 
   function deferred<T>() {
@@ -64,21 +59,6 @@ describe('hydration component chunks', () => {
     })
     return { promise, resolve }
   }
-
-  test('without _hydrateWithoutComponentChunks waits for a component chunk', async () => {
-    const chunk = deferred<void>()
-    const router = await setup((route) => {
-      route.options.component = Object.assign(() => null, {
-        preload: () => chunk.promise,
-      })
-      return route
-    }, false)
-
-    const hydration = hydrate(router)
-    expect(await settleWithin(hydration, 50)).toBe('waiting')
-    chunk.resolve()
-    expect(await settleWithin(hydration, 50)).toBe('hydrated')
-  })
 
   test('starts a component chunk but does not wait for it', async () => {
     const chunk = deferred<void>()

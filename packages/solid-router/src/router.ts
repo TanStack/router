@@ -100,8 +100,5 @@ export class Router<
     >,
   ) {
     super(options, getStoreFactory)
-    // Solid's `lazy` keeps the server DOM while a `lazyRouteComponent` chunk
-    // loads and hydrates it on arrival, so hydration need not wait for it.
-    this._hydrateWithoutComponentChunks = true
   }
 }

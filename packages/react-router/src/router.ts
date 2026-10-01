@@ -115,8 +115,5 @@ export class Router<
     >,
   ) {
     super(options, getStoreFactory)
-    // React keeps a dehydrated Suspense boundary's server HTML while a
-    // `lazyRouteComponent` suspends, so hydration need not wait for its chunk.
-    this._hydrateWithoutComponentChunks = true
   }
 }

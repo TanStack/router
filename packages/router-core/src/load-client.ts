@@ -2365,14 +2365,10 @@ export async function hydrate(router: AnyRouter): Promise<void> {
                 ? 'notFoundComponent'
                 : undefined,
           )
-      if (router._hydrateWithoutComponentChunks) {
-        // Component chunks suspend through hydration; unmerged lazy options
-        // would render `<Outlet />` in place of the server component.
-        load?.catch(() => {})
-        await loadRouteChunk(route, false)
-      } else {
-        await load
-      }
+      // Component chunks suspend through hydration; unmerged lazy options would
+      // render `<Outlet />` in place of the server component.
+      load?.catch(() => {})
+      await loadRouteChunk(route, false)
       return true
     } catch {
       return false

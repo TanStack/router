@@ -101,8 +101,5 @@ export class Router<
     >,
   ) {
     super(options, getStoreFactory)
-    // Vue hydrates a pending `lazyRouteComponent` (an async component) only
-    // once its chunk arrives, so hydration need not wait for it.
-    this._hydrateWithoutComponentChunks = true
   }
 }
