@@ -37,6 +37,18 @@ const cancelPreload = (eventTarget: object) => {
   timeoutMap.delete(eventTarget)
 }
 
+// Store proxies and custom JSON values can change without changing their reference.
+function hasMutableInput(value: any, seen: Set<object>): boolean {
+  if (!value || typeof value !== 'object' || seen.has(value)) {
+    return false
+  }
+  if (value[Solid.$PROXY] || 'toJSON' in value) {
+    return true
+  }
+  seen.add(value)
+  return Object.values(value).some((child) => hasMutableInput(child, seen))
+}
+
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -47,7 +59,7 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
-  const [local, rest] = Solid.splitProps(
+  const [local, propsSafeToSpread] = Solid.splitProps(
     Solid.mergeProps(
       {
         activeProps: STATIC_ACTIVE_PROPS_GET,
@@ -81,6 +93,15 @@ export function useLinkProps<
       'onMouseOut',
       'onTouchStart',
       'ignoreBlocker',
+      'params',
+      'search',
+      'hash',
+      'state',
+      'mask',
+      'reloadDocument',
+      'unsafeRelative',
+      'from',
+      'href',
     ],
   )
 
@@ -112,33 +133,39 @@ export function useLinkProps<
   //   ...rest
   // } = options
 
-  const [_, propsSafeToSpread] = Solid.splitProps(rest, [
-    'params',
-    'search',
-    'hash',
-    'state',
-    'mask',
-    'reloadDocument',
-    'unsafeRelative',
-    'from',
-    'href',
-  ])
-
   const currentLocation = Solid.createMemo(
     () => router.stores.location.get(),
     undefined,
     { equals: (prev, next) => prev.href === next.href },
   )
 
+  // Own the cache key; mutable payloads keep rebuilding on navigation.
+  const getNextOptions = () => {
+    const dest = { ...options } as any
+    const mutable =
+      !(isServer ?? router.isServer) &&
+      hasMutableInput([dest.params, dest.search], new Set())
+    return [dest, mutable] as const
+  }
+  const nextOptions =
+    (isServer ?? router.isServer)
+      ? getNextOptions
+      : Solid.createMemo(getNextOptions)
+
   const next = Solid.createMemo(() => {
-    // Rebuild when inherited search/hash or the current route context changes.
-    const _fromLocation = currentLocation()
-    const nextOptions = { _fromLocation, ...options } as any
-    // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(nextOptions))
+    const location = currentLocation()
+    const [dest, mutable] = nextOptions()
+    if (!options._fromLocation) {
+      dest._fromLocation = location
+    }
+    return Solid.untrack(() =>
+      router.buildLocation(mutable ? { ...dest } : dest),
+    )
   })
 
   const hrefOption = Solid.createMemo(() => {
+    // History formatting can change even when the built destination is cached.
+    currentLocation()
     if (options.disabled) return undefined
     // Use publicHref - it contains the correct href for display
     // When a rewrite changes the origin, publicHref is the full URL
