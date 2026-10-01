@@ -136,6 +136,53 @@ describe('Link', () => {
     ).toBe(true)
   })
 
+  test('revalidates external protocols after router options and only styling change', async () => {
+    const style = Vue.ref({ color: 'red' })
+    const rootRoute = createRootRoute({
+      component: () => (
+        <Link
+          to="https://example.com/destination"
+          style={style.value}
+          data-testid="updated-protocol-link"
+        >
+          External destination
+        </Link>
+      ),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      protocolAllowlist: ['https:'],
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('updated-protocol-link')
+    expect(link).toHaveAttribute('href', 'https://example.com/destination')
+    expect(link.style.color).toBe('red')
+
+    router.update({ protocolAllowlist: ['mailto:'] })
+    style.value = { color: 'blue' }
+    await waitFor(() => {
+      expect(link.style.color).toBe('blue')
+      expect(link).not.toHaveAttribute('href')
+      expect(link).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    router.update({ protocolAllowlist: ['https:'] })
+    style.value = { color: 'green' }
+    await waitFor(() => {
+      expect(link.style.color).toBe('green')
+      expect(link).toHaveAttribute('href', 'https://example.com/destination')
+      expect(link).not.toHaveAttribute('aria-disabled')
+    })
+    expect(screen.getByTestId('updated-protocol-link')).toBe(link)
+  })
+
   test('blocks a dangerous final href produced by custom history', async () => {
     const customHistory = createBrowserHistory({
       createHref: () => 'javascript:alert(1)',
@@ -1547,10 +1594,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/posts')
+    expect(postsLink).not.toBeInTheDocument()
+    const currentPostsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    expect(currentPostsLink).toHaveAttribute('data-status', 'active')
+    expect(currentPostsLink).toHaveAttribute('aria-current', 'page')
+    expect(currentPostsLink).toHaveClass('active')
+    expect(currentPostsLink).toHaveAttribute('href', '/posts')
   })
 
   test('when navigating to /posts with a base url', async () => {
@@ -1606,10 +1656,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/app/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/app/posts')
+    expect(postsLink).not.toBeInTheDocument()
+    const currentPostsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    expect(currentPostsLink).toHaveAttribute('data-status', 'active')
+    expect(currentPostsLink).toHaveAttribute('aria-current', 'page')
+    expect(currentPostsLink).toHaveClass('active')
+    expect(currentPostsLink).toHaveAttribute('href', '/app/posts')
   })
 
   test('when navigating to /posts with search', async () => {
@@ -5929,6 +5982,122 @@ describe('Link', () => {
     expect(link).toHaveAttribute('href', '/about')
   })
 
+  test('render preloading follows inherited search behind an unchanged mask', async () => {
+    const loadTarget = vi.fn((version: string) => version)
+    const rootRoute = createRootRoute({
+      validateSearch: (search) => ({
+        version: String(search.version || 'one'),
+      }),
+      component: () => (
+        <Link
+          to="/target"
+          search={true}
+          mask={{ to: '/preview', search: {} }}
+          preload="render"
+        >
+          Masked render preload
+        </Link>
+      ),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const targetRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      loaderDeps: ({ search }) => ({ version: search.version }),
+      loader: ({ deps }) => loadTarget(deps.version),
+    })
+    const previewRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/preview',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, targetRoute, previewRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByRole('link', {
+      name: 'Masked render preload',
+    })
+    await waitFor(() => expect(loadTarget).toHaveBeenCalledWith('one'))
+    expect(link).toHaveAttribute('href', '/preview')
+    expect(link).not.toHaveAttribute('aria-current')
+
+    await router.navigate({ to: '/', search: { version: 'two' } })
+    await waitFor(() => expect(loadTarget).toHaveBeenCalledWith('two'))
+    expect(link).toHaveAttribute('href', '/preview')
+    expect(link).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Masked render preload' })).toBe(
+      link,
+    )
+  })
+
+  test('delayed intent preloading discards a retargeted destination behind an unchanged mask', async () => {
+    const id = Vue.ref('one')
+    const loadTarget = vi.fn((targetId: string) => targetId)
+    const rootRoute = createRootRoute({
+      component: () => (
+        <Link
+          to="/target/$id"
+          params={{ id: id.value }}
+          mask={{ to: '/preview' }}
+          preload="intent"
+          preloadDelay={50}
+        >
+          Masked intent preload
+        </Link>
+      ),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const targetRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target/$id',
+      loader: ({ params }) => loadTarget(params.id),
+    })
+    const previewRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/preview',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, targetRoute, previewRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByRole('link', {
+      name: 'Masked intent preload',
+    })
+    expect(link).toHaveAttribute('href', '/preview')
+    expect(link).not.toHaveAttribute('aria-current')
+    vi.useFakeTimers()
+
+    await fireEvent.mouseEnter(link)
+    id.value = 'two'
+    await Vue.nextTick()
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    expect(loadTarget).not.toHaveBeenCalled()
+    expect(link).toHaveAttribute('href', '/preview')
+    expect(link).not.toHaveAttribute('aria-current')
+
+    await fireEvent.mouseLeave(link)
+    await fireEvent.mouseEnter(link)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+    expect(loadTarget).toHaveBeenCalledOnce()
+    expect(loadTarget).toHaveBeenCalledWith('two')
+    expect(screen.getByRole('link', { name: 'Masked intent preload' })).toBe(
+      link,
+    )
+  })
+
   test('cancels stale delayed preloads after link inputs change', async () => {
     const to = Vue.ref('/posts')
     const disabled = Vue.ref(false)
@@ -7389,9 +7558,9 @@ describe('splat routes with empty splat', () => {
       fireEvent.click(splatLinkWithEmptySplat)
 
       await waitFor(async () => {
-        expect(splatLinkWithEmptySplat).toHaveClass('active')
-        expect(splatLinkWithUndefinedSplat).toHaveClass('active')
-        expect(splatLinkWithNoSplat).toHaveClass('active')
+        expect(splatLinkWithEmptySplat).not.toBeInTheDocument()
+        expect(splatLinkWithUndefinedSplat).not.toBeInTheDocument()
+        expect(splatLinkWithNoSplat).not.toBeInTheDocument()
         expect(window.location.pathname).toBe(`/splat${tail}`)
         expect(await screen.findByText('Splat Route')).toBeInTheDocument()
       })

@@ -1,23 +1,26 @@
 import * as Vue from 'vue'
 import {
-  deepEqual,
+  createLinkStore,
+  getLinkLocation,
   getUrlScheme,
   hasKeys,
+  invalidateLink,
   isDangerousProtocol,
   preloadWarning,
-  removeTrailingSlash,
+  readLinkSnapshot,
+  readLinkState,
+  refreshLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { useSelector } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
+import { routeIdContext } from './matchContext'
 import { useIntersectionObserver } from './utils'
 
 import type {
   AnyRouter,
   Constrain,
   LinkOptions,
-  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -103,111 +106,138 @@ export function useLinkProps<
 
 function useLinkPropsImpl(
   getOptions: () => AnyLinkPropsOptions,
+  router: AnyRouter = useRouter(),
+  getDestinationOptions = getOptions,
 ): LinkHTMLAttributes {
-  const router = useRouter()
   let renderFetchedHref: string | undefined
 
   // Ensure router is defined before proceeding
   if (!router) {
     console.warn('useRouter must be used inside a <RouterProvider> component!')
-    return Vue.computed(() => ({})) as unknown as LinkHTMLAttributes
+    return {}
   }
-
-  const ref = Vue.ref<Element | null>(null)
 
   // During SSR we render exactly once and do not need reactivity.
   // Avoid store subscriptions, effects and observers on the server.
   if (isServer ?? router.isServer) {
     const options = getOptions()
     if (getUrlScheme(`${options.to}`)) {
-      return Vue.ref(
-        getExternalLinkProps(options, router, ref),
-      ) as unknown as LinkHTMLAttributes
+      const props = getExternalLinkProps(options, router)
+      return Vue.toRef(() => props) as unknown as LinkHTMLAttributes
     }
 
-    const next = router.buildLocation(options as any)
-    const href = getHref(options, router, next)
-
-    const isActive =
-      !options.disabled && (href === undefined || !!getUrlScheme(href))
-        ? false
-        : getIsActive(
-            router.stores.location.get(),
-            next,
-            options.activeOptions,
-            router,
-          )
-
+    const [href, isActive] = readLinkState(router, options as any)
     const { resolvedProps, resolvedClass, resolvedStyle } = resolveStyleProps(
       options,
-      isActive,
+      !!isActive,
     )
-
-    const result = combineResultProps({
+    const props = combineResultProps({
       href,
       options,
-      isActive,
+      isActive: !!isActive,
       resolvedProps,
       resolvedClass,
       resolvedStyle,
-    })
-
-    return Vue.ref(
-      result as LinkHTMLAttributes,
-    ) as unknown as LinkHTMLAttributes
+    }) as LinkHTMLAttributes
+    // Getter refs preserve the hook shape without a reactive dependency graph.
+    return Vue.toRef(() => props) as unknown as LinkHTMLAttributes
   }
 
-  // Determine if the link is external or internal. This is client-only so
-  // server renders do not allocate a computed wrapper for every link.
-  const isExternal = Vue.computed(() => !!getUrlScheme(`${getOptions().to}`))
-
-  const currentLocation: Vue.Ref<
-    ReturnType<typeof router.stores.location.get>
-  > = isExternal.value
-    ? Vue.shallowRef(router.stores.location.get())
-    : (useSelector(router.stores.location, (l) => l, {
-        compare: (prev, next) => prev.href === next.href,
-      }) as Vue.Ref<ReturnType<typeof router.stores.location.get>>)
-
-  // Links that start external skip useSelector above. Subscribe if they later
-  // become internal so active state follows subsequent location changes.
-  if (isExternal.value) {
-    Vue.watchEffect((onCleanup) => {
-      if (isExternal.value) {
-        return
-      }
-
-      const store = router.stores.location
-      // Catch up on navigations while this external link was unsubscribed.
-      currentLocation.value = store.get()
-      const subscription = store.subscribe((location) => {
-        if (currentLocation.value.href !== location.href) {
-          currentLocation.value = location
-        }
-      })
-      onCleanup(() => subscription.unsubscribe())
-    })
+  const ref = Vue.ref<Element | null>(null)
+  const owner = Vue.inject(routeIdContext, undefined)
+  const readSnapshot = Vue.shallowRef<
+    () => readonly [
+      href: string | undefined,
+      isActive?: boolean,
+      internalHref?: string,
+    ]
+  >(() => [undefined])
+  const preparedSnapshot = Vue.computed(() => {
+    const read = readSnapshot.value
+    try {
+      return read()
+    } catch {
+      // Keep the core reader as the failure value, without caching a second error.
+      return read
+    }
+  })
+  const snapshot = () => {
+    const value = preparedSnapshot.value
+    return typeof value === 'function' ? value() : value
   }
-
-  const next = Vue.computed(() => {
-    // Rebuild when inherited search/hash or the current route context changes.
-
-    const options = getOptions()
-    const opts = { _fromLocation: currentLocation.value, ...options }
-    return router.buildLocation(opts)
+  const store = createLinkStore(router)
+  let read: (() => unknown) | undefined
+  let runner: Vue.ReactiveEffectRunner | undefined
+  const evaluate = <T,>(callback: () => T): T => {
+    // Each core build replaces the reactive dependencies of user callbacks.
+    // Start with an empty read so a failed derivation does not stop the effect.
+    runner ??= Vue.effect(() => read?.(), {
+      scheduler: () => invalidateLink(store),
+    })
+    read = callback
+    try {
+      return runner() as T
+    } finally {
+      read = undefined
+    }
+  }
+  const update = () => {
+    // Evaluate in the consuming computation, where Vue can capture errors.
+    readSnapshot.value = () => {
+      const state = readLinkSnapshot(store[1 /* current */]!)
+      return [state[0], state[1], getLinkLocation(store)?.href]
+    }
+  }
+  Vue.watchEffect(() => {
+    const options = getDestinationOptions()
+    refreshLink(
+      [
+        store,
+        {
+          to: options.to,
+          href: options.href,
+          from: options.from,
+          _fromLocation: options._fromLocation,
+          params: options.params,
+          search: options.search,
+          hash: options.hash,
+          state: options.state,
+          mask: options.mask,
+          unsafeRelative: options.unsafeRelative,
+          disabled: options.disabled,
+          activeOptions: options.activeOptions && { ...options.activeOptions },
+        } as any,
+        owner,
+        undefined,
+        evaluate,
+        undefined,
+        undefined,
+        undefined,
+      ],
+      true,
+    )
+    update()
   })
 
-  const href = Vue.computed(() => {
-    const options = getOptions()
-    return getHref(options, router, next.value)
+  const unsubscribe = store[3 /* subscribe */](update)
+  Vue.onScopeDispose(() => {
+    unsubscribe()
+    if (runner) {
+      Vue.stop(runner)
+    }
   })
+
+  const isExternal = () => !!getUrlScheme(`${getOptions().to}`)
+  const href = () => snapshot()[0]
+  const isActive = () => !!snapshot()[1]
 
   const preload = Vue.computed(() => {
     const options = getOptions()
+    const currentHref = href()
     if (
-      isExternal.value ||
+      isExternal() ||
       (!options.disabled &&
-        (href.value === undefined || !!getUrlScheme(href.value))) ||
+        (currentHref === undefined || !!getUrlScheme(currentHref))) ||
       options.reloadDocument ||
       options.disabled
     ) {
@@ -219,23 +249,6 @@ function useLinkPropsImpl(
   const preloadDelay = Vue.computed(
     () => getOptions().preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
   )
-
-  const isActive = Vue.computed(() => {
-    const options = getOptions()
-    if (
-      isExternal.value ||
-      (!options.disabled &&
-        (href.value === undefined || !!getUrlScheme(href.value)))
-    ) {
-      return false
-    }
-    return getIsActive(
-      currentLocation.value,
-      next.value,
-      options.activeOptions,
-      router,
-    )
-  })
 
   const doPreload = () => {
     const options = getOptions()
@@ -276,7 +289,7 @@ function useLinkPropsImpl(
     }
 
     if (!timeoutMap.has(ref)) {
-      const scheduledHref = next.value.href
+      const scheduledHref = snapshot()[2]
       pendingPreload = preloadMode
       timeoutMap.set(
         ref,
@@ -285,7 +298,7 @@ function useLinkPropsImpl(
           pendingPreload = undefined
           if (
             preload.value === preloadMode &&
-            next.value.href === scheduledHref
+            snapshot()[2] === scheduledHref
           ) {
             doPreload()
           }
@@ -307,7 +320,7 @@ function useLinkPropsImpl(
       return
     }
 
-    const nextHref = next.value.href
+    const nextHref = snapshot()[2]
     if (nextHref && renderFetchedHref !== nextHref) {
       renderFetchedHref = nextHref
       doPreload()
@@ -317,10 +330,11 @@ function useLinkPropsImpl(
   // The click handler
   const handleClick = (e: PointerEvent): void => {
     const options = getOptions()
+    const currentHref = href()
     if (
-      isExternal.value ||
+      isExternal() ||
       (!options.disabled &&
-        (href.value === undefined || !!getUrlScheme(href.value)))
+        (currentHref === undefined || !!getUrlScheme(currentHref)))
     ) {
       return
     }
@@ -348,15 +362,7 @@ function useLinkPropsImpl(
       enqueuePreload()
 
       // All is well? Navigate!
-      router.navigate({
-        ...options,
-        replace: options.replace,
-        resetScroll: options.resetScroll,
-        hashScrollIntoView: options.hashScrollIntoView,
-        startTransition: options.startTransition,
-        viewTransition: options.viewTransition,
-        ignoreBlocker: options.ignoreBlocker,
-      })
+      router.navigate(options as any)
     }
   }
 
@@ -387,7 +393,7 @@ function useLinkPropsImpl(
   // Get the active and inactive props
   const resolvedStyleProps = Vue.computed(() => {
     const options = getOptions()
-    return resolveStyleProps(options, isActive.value)
+    return resolveStyleProps(options, isActive())
   })
 
   // Create static event handlers that don't change between renders
@@ -421,26 +427,30 @@ function useLinkPropsImpl(
   // Using Vue.computed ensures props are calculated at render time, not after
   const computedProps = Vue.computed<LinkHTMLAttributes>(() => {
     const options = getOptions()
-    if (isExternal.value) {
+    if (isExternal()) {
       return getExternalLinkProps(options, router, ref, staticEventHandlers)
     }
 
     const { resolvedProps, resolvedClass, resolvedStyle } =
       resolvedStyleProps.value
     return combineResultProps({
-      href: href.value,
+      href: href(),
       options,
       ref,
       staticEventHandlers,
-      isActive: isActive.value,
+      isActive: isActive(),
       resolvedProps,
       resolvedClass,
       resolvedStyle,
     })
   })
 
-  // Return the computed ref itself - callers should access .value
-  return computedProps as unknown as LinkHTMLAttributes
+  // Check the core read before cached prop computations. Vue caches a failed
+  // computed's empty value; reading here preserves the original boundary error.
+  return Vue.toRef(() => {
+    snapshot()
+    return computedProps.value
+  }) as unknown as LinkHTMLAttributes
 }
 
 function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
@@ -540,7 +550,7 @@ function combineResultProps({
 function getExternalLinkProps(
   options: AnyLinkPropsOptions,
   router: AnyRouter,
-  ref: Vue.Ref<Element | null>,
+  ref?: Vue.Ref<Element | null>,
   staticEventHandlers?: LinkEventHandlers,
 ): LinkHTMLAttributes {
   const dangerous = isDangerousProtocol(
@@ -651,87 +661,6 @@ const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
   }
 
   return propsSafeToSpread
-}
-
-function getIsActive(
-  loc: {
-    pathname: string
-    search: any
-    hash: string
-  },
-  nextLoc: {
-    pathname: string
-    search: any
-    hash: string
-  },
-  activeOptions: LinkOptions['activeOptions'],
-  router: AnyRouter,
-) {
-  const currentPath = removeTrailingSlash(loc.pathname, router.basepath)
-  const nextPath = removeTrailingSlash(nextLoc.pathname, router.basepath)
-
-  // Both modes compare normalized paths; fuzzy matches need a segment boundary.
-  if (
-    activeOptions?.exact
-      ? currentPath !== nextPath
-      : !(
-          currentPath.startsWith(nextPath) &&
-          (currentPath.length === nextPath.length ||
-            currentPath[nextPath.length] === '/')
-        )
-  ) {
-    return false
-  }
-
-  if (activeOptions?.includeSearch ?? true) {
-    const searchTest = deepEqual(
-      loc.search,
-      nextLoc.search,
-      !activeOptions?.exact,
-      activeOptions?.explicitUndefined,
-    )
-    if (!searchTest) {
-      return false
-    }
-  }
-
-  if (activeOptions?.includeHash) {
-    return loc.hash === nextLoc.hash
-  }
-  return true
-}
-
-function getHref(
-  options: AnyLinkPropsOptions,
-  router: AnyRouter,
-  nextLocation?: ParsedLocation,
-) {
-  if (options.disabled) {
-    return undefined
-  }
-  const location = nextLocation?.maskedLocation ?? nextLocation
-
-  // Use publicHref - it contains the correct href for display
-  // When a rewrite changes the origin, publicHref is the full URL
-  // Otherwise it's the origin-stripped path
-  // This avoids constructing URL objects in the hot path
-  const publicHref = location?.publicHref
-  if (!publicHref) return undefined
-
-  const href = location?.external
-    ? publicHref
-    : router.history.createHref(publicHref) || '/'
-  if (
-    (location?.external || href !== publicHref) &&
-    isDangerousProtocol(href, router.protocolAllowlist)
-  ) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn(`Blocked Link with dangerous protocol: ${href}`)
-    }
-    return undefined
-  }
-
-  return href
 }
 
 // Type definitions
@@ -864,6 +793,9 @@ const LinkImpl = Vue.defineComponent({
   props: [
     '_asChild',
     'to',
+    'href',
+    '_fromLocation',
+    'unsafeRelative',
     'preload',
     'preloadDelay',
     'preloadIntentProximity',
@@ -888,27 +820,33 @@ const LinkImpl = Vue.defineComponent({
     'target',
   ],
   setup(props, { attrs, slots }) {
-    const attrsSnapshot = Vue.shallowRef({ ...attrs })
-    Vue.onBeforeUpdate(() => {
-      const keys = Object.keys(attrs)
-      const previous = attrsSnapshot.value
-      if (
-        keys.length !== Object.keys(previous).length ||
-        keys.some((key) => !Object.is(attrs[key], previous[key]))
-      ) {
-        attrsSnapshot.value = { ...attrs }
-      }
-    })
-
-    // Keep a plain cached snapshot so location-only updates do not repeatedly
-    // cross Vue's props and attrs proxies for every link computation.
-    const allProps = Vue.computed(() => ({
-      ...props,
-      ...attrsSnapshot.value,
-    }))
-    const linkPropsSource = useLinkPropsImpl(() => allProps.value) as
-      | LinkHTMLAttributes
-      | Vue.ComputedRef<LinkHTMLAttributes>
+    const router = useRouter()
+    let getOptions: () => AnyLinkPropsOptions
+    if (isServer ?? router.isServer) {
+      getOptions = () => ({ ...props, ...attrs }) as AnyLinkPropsOptions
+    } else {
+      const attrsSnapshot = Vue.shallowRef({ ...attrs })
+      Vue.onBeforeUpdate(() => {
+        const keys = Object.keys(attrs)
+        const previous = attrsSnapshot.value
+        if (
+          keys.length !== Object.keys(previous).length ||
+          keys.some((key) => !Object.is(attrs[key], previous[key]))
+        ) {
+          attrsSnapshot.value = { ...attrs }
+        }
+      })
+      const allProps = Vue.computed(() => ({
+        ...props,
+        ...attrsSnapshot.value,
+      }))
+      getOptions = () => allProps.value as AnyLinkPropsOptions
+    }
+    const linkPropsSource = useLinkPropsImpl(
+      getOptions,
+      router,
+      () => props as AnyLinkPropsOptions,
+    ) as LinkHTMLAttributes | Vue.ComputedRef<LinkHTMLAttributes>
 
     return () => {
       const Component = props._asChild || 'a'

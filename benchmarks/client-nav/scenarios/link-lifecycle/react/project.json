@@ -1,0 +1,35 @@
+{
+  "name": "@benchmarks/client-nav-link-lifecycle-react",
+  "projectType": "application",
+  "tags": ["optional-benchmark"],
+  "targets": {
+    "build:client": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        { "projects": ["@tanstack/react-router"], "target": "build" }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config {projectRoot}/vite.lifecycle.config.ts"
+      }
+    },
+    "test:perf": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["build:client"],
+      "options": {
+        "command": "NODE_ENV=production vitest bench --config ./scenarios/link-lifecycle/react/vite.lifecycle.config.ts",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "test:types:client": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        { "projects": ["@tanstack/react-router"], "target": "build" }
+      ],
+      "options": {
+        "command": "tsc -p {projectRoot}/tsconfig.json --noEmit"
+      }
+    }
+  }
+}
