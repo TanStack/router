@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import { useSelector } from '@tanstack/react-store'
 import {
   deepEqual,
   functionalUpdate,
@@ -12,6 +11,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import { matchContext } from './matchContext'
 
 import { useHydrated } from './ClientOnly'
 import type {
@@ -22,6 +22,7 @@ import type {
   ParsedLocation,
   RegisteredRouter,
   RoutePaths,
+  RouterReadableStore,
 } from '@tanstack/router-core'
 import type { ReactNode } from 'react'
 import type {
@@ -59,15 +60,20 @@ function useStableValues<T extends ReadonlyArray<unknown>>(...values: T): T {
   return ref.current as T
 }
 
-function preloadLink(router: AnyRouter, options: unknown) {
-  router.preloadRoute(options as any).catch((err) => {
-    console.warn(err)
-    console.warn(preloadWarning)
-  })
-}
-
-const LINK_SELECTOR_OPTIONS = {
-  compare: (a: LinkState, b: LinkState) => a[0] === b[0] && a[1] === b[1],
+function preloadLink(
+  router: AnyRouter,
+  options: { _fromLocation?: ParsedLocation },
+  source: RouterReadableStore<ParsedLocation>,
+) {
+  router
+    .preloadRoute({
+      ...options,
+      _fromLocation: options._fromLocation || source.get(),
+    } as any)
+    .catch((err) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
 }
 
 function resolveExternalLink(
@@ -240,12 +246,6 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
-    hashScrollIntoView,
-    replace,
-    startTransition,
-    resetScroll,
-    viewTransition,
-    ignoreBlocker,
     disabled,
     target,
     onClick,
@@ -286,9 +286,14 @@ export function useLinkProps<
     ],
   )
 
-  // Derive inside the selector so `compareLinkState` can bail out. Deriving after
-  // the subscription instead re-renders every link on every navigation, because
-  // the comparator only sees the location, not whether this link's output moved.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const routeId = React.useContext(matchContext)
+  const source = routeId
+    ? router.stores.getMatchStore(routeId).location
+    : router.stores.location
+
+  // Link's stable output is already a snapshot. Cache the source as well so
+  // React's consistency checks do not repeat destination callbacks.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const selectLinkState = React.useMemo(() => {
     // Direct destinations and the router's allowlist are stable for this selector.
@@ -300,8 +305,14 @@ export function useLinkProps<
 
     let inactive: LinkState | undefined
     let active: LinkState
+    let previousLocation: ParsedLocation | undefined
+    let previousState: LinkState
 
-    return (location: ParsedLocation): LinkState => {
+    return (): LinkState => {
+      const location = source.get()
+      if (location === previousLocation) {
+        return previousState
+      }
       if (!_options._fromLocation) {
         dest._fromLocation = location
       }
@@ -318,7 +329,8 @@ export function useLinkProps<
         ]
         active = [href, true]
       }
-      return inactive[1] !== undefined &&
+      const state =
+        inactive[1] !== undefined &&
         resolveIsActive(
           location,
           next,
@@ -326,16 +338,33 @@ export function useLinkProps<
           router.basepath,
           isHydrated,
         )
-        ? active
-        : inactive
+          ? active
+          : inactive
+      // Publish the pair after callbacks, which may synchronously navigate.
+      previousLocation = location
+      return (previousState = state)
     }
-  }, [stableActiveOptions, disabled, isHydrated, _options, dest, router, to])
+  }, [
+    stableActiveOptions,
+    disabled,
+    isHydrated,
+    _options,
+    dest,
+    router,
+    to,
+    source,
+  ])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [href, isActive] = useSelector(
-    router.stores.location,
+  const subscribe = React.useCallback(
+    (onChange: () => void) => source.subscribe(onChange).unsubscribe,
+    [source],
+  )
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [href, isActive] = React.useSyncExternalStore(
+    subscribe,
     selectLinkState,
-    LINK_SELECTOR_OPTIONS,
+    selectLinkState,
   )
   const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined
@@ -350,8 +379,6 @@ export function useLinkProps<
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  // `preloadRoute` builds the location itself and only reads the options, so
-  // `_options` goes through as-is.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const enqueuePreload = React.useCallback(
     (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
@@ -365,7 +392,7 @@ export function useLinkProps<
       }
 
       if (!preloadDelay) {
-        preloadLink(router, _options)
+        preloadLink(router, _options, source)
         return
       }
 
@@ -377,11 +404,11 @@ export function useLinkProps<
         innerRef,
         setTimeout(() => {
           timeoutMap.delete(innerRef)
-          preloadLink(router, _options)
+          preloadLink(router, _options, source)
         }, preloadDelay),
       )
     },
-    [router, _options, innerRef, preload, preloadDelay],
+    [router, _options, source, innerRef, preload, preloadDelay],
   )
 
   // Preload side effects: `render` preloads once per link, `viewport` watches
@@ -394,7 +421,7 @@ export function useLinkProps<
     }
     if (preload === 'render' && !hasRenderFetched.current) {
       hasRenderFetched.current = true
-      preloadLink(router, _options)
+      preloadLink(router, _options, source)
     }
     let active = true
     let observer: IntersectionObserver | undefined
@@ -419,7 +446,7 @@ export function useLinkProps<
       observer?.disconnect()
       cancelPreload(innerRef)
     }
-  }, [router, _options, preload, enqueuePreload, innerRef])
+  }, [router, _options, source, preload, enqueuePreload, innerRef])
 
   const props = collectElementProps(options, host)
   props.ref = forwardedRef ? mergedRef : innerRef
@@ -450,20 +477,15 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
-        ..._options,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
+        ...options,
+        _fromLocation: options._fromLocation || source.get(),
       })
     }
   }
 
   const handleTouchStart = () => {
     if (preload === 'intent') {
-      preloadLink(router, _options)
+      preloadLink(router, _options, source)
     }
   }
 
