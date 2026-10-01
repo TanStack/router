@@ -1,10 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
-import type {
-  RouteById,
-  RouteByPath,
-  RouterCore,
-} from '../src'
+import type { RouteById, RouteByPath, RouterCore } from '../src'
 import type { RouterHistory } from '@tanstack/history'
 
 // Build a route tree with a pathless (layout) route so that the nested route's
