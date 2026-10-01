@@ -26,52 +26,119 @@ describe('hydration component chunks', () => {
     vi.unstubAllGlobals()
   })
 
-  test.each([
-    { withoutChunks: undefined, before: 'waiting' },
-    { withoutChunks: true, before: 'hydrated' },
-  ] as const)(
-    'with _hydrateWithoutComponentChunks=$withoutChunks a pending component chunk leaves hydrate() $before',
-    async ({ withoutChunks, before }) => {
-      const makeRouteTree = (component?: unknown) => {
-        const rootRoute = new BaseRootRoute({})
-        const pageRoute = new BaseRoute({
+  async function setup(
+    configurePage: (route: any) => any,
+    withoutChunks = true,
+  ) {
+    const makeRouteTree = (configure: (route: any) => any) => {
+      const rootRoute = new BaseRootRoute({})
+      const pageRoute = configure(
+        new BaseRoute({
           getParentRoute: () => rootRoute,
           path: '/page',
-          component,
+        }),
+      )
+      return rootRoute.addChildren([pageRoute])
+    }
+    const serverRouter = createTestRouter({
+      routeTree: makeRouteTree((route) => route),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: true,
+    })
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, {
+      routes: {},
+    })
+    const router = createTestRouter({
+      routeTree: makeRouteTree(configurePage),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+    })
+    router._hydrateWithoutComponentChunks = withoutChunks
+    return router
+  }
+
+  function deferred<T>() {
+    let resolve!: (value: T) => void
+    const promise = new Promise<T>((r) => {
+      resolve = r
+    })
+    return { promise, resolve }
+  }
+
+  test('without _hydrateWithoutComponentChunks waits for a component chunk', async () => {
+    const chunk = deferred<void>()
+    const router = await setup((route) => {
+      route.options.component = Object.assign(() => null, {
+        preload: () => chunk.promise,
+      })
+      return route
+    }, false)
+
+    const hydration = hydrate(router)
+    expect(await settleWithin(hydration, 50)).toBe('waiting')
+    chunk.resolve()
+    expect(await settleWithin(hydration, 50)).toBe('hydrated')
+  })
+
+  test('starts a component chunk but does not wait for it', async () => {
+    const chunk = deferred<void>()
+    const preload = vi.fn(() => chunk.promise)
+    const router = await setup((route) => {
+      route.options.component = Object.assign(() => null, { preload })
+      return route
+    })
+
+    expect(await settleWithin(hydrate(router), 50)).toBe('hydrated')
+    expect(preload).toHaveBeenCalledTimes(1)
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      '__root__',
+      '/page',
+    ])
+    chunk.resolve()
+  })
+
+  test('waits for lazy route options but not the component chunk they name', async () => {
+    const lazyOptions = deferred<any>()
+    const chunk = deferred<void>()
+    const preload = vi.fn(() => chunk.promise)
+    const router = await setup((route) => route.lazy(() => lazyOptions.promise))
+
+    const hydration = hydrate(router)
+    expect(await settleWithin(hydration, 50)).toBe('waiting')
+
+    lazyOptions.resolve({
+      options: { component: Object.assign(() => null, { preload }) },
+    })
+    expect(await settleWithin(hydration, 50)).toBe('hydrated')
+    expect(preload).toHaveBeenCalledTimes(1)
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      '__root__',
+      '/page',
+    ])
+    chunk.resolve()
+  })
+
+  test('commits the server matches when a component preload rejects', async () => {
+    const onUnhandledRejection = vi.fn()
+    process.on('unhandledRejection', onUnhandledRejection)
+    try {
+      const router = await setup((route) => {
+        route.options.component = Object.assign(() => null, {
+          preload: () => Promise.reject(new Error('chunk failed')),
         })
-        return rootRoute.addChildren([pageRoute])
-      }
-      const serverRouter = createTestRouter({
-        routeTree: makeRouteTree(),
-        history: createMemoryHistory({ initialEntries: ['/page'] }),
-        isServer: true,
-      })
-      mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, {
-        routes: {},
+        return route
       })
 
-      let resolveChunk!: () => void
-      const chunk = new Promise<void>((resolve) => {
-        resolveChunk = resolve
-      })
-      const router = createTestRouter({
-        routeTree: makeRouteTree(
-          Object.assign(() => null, { preload: () => chunk }),
-        ),
-        history: createMemoryHistory({ initialEntries: ['/page'] }),
-        isServer: false,
-      })
-      router._hydrateWithoutComponentChunks = withoutChunks
+      await hydrate(router)
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
-      const hydration = hydrate(router)
-      expect(await settleWithin(hydration, 50)).toBe(before)
-
-      resolveChunk()
-      expect(await settleWithin(hydration, 50)).toBe('hydrated')
-      expect(router.state.matches.map((match) => match.routeId)).toEqual([
-        '__root__',
-        '/page',
+      expect(router.state.matches.map((match) => match.status)).toEqual([
+        'success',
+        'success',
       ])
-    },
-  )
+      expect(onUnhandledRejection).not.toHaveBeenCalled()
+    } finally {
+      process.off('unhandledRejection', onUnhandledRejection)
+    }
+  })
 })

@@ -2352,7 +2352,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   const chunks = committed.map(async (match) => {
     try {
       const route = getRoute(router, match)
-      await (match._notFound
+      const load = match._notFound
         ? Promise.all([
             loadRouteChunk(route),
             loadRouteChunk(route, 'notFoundComponent'),
@@ -2364,21 +2364,21 @@ export async function hydrate(router: AnyRouter): Promise<void> {
               : match.status === 'notFound'
                 ? 'notFoundComponent'
                 : undefined,
-          ))
+          )
+      if (router._hydrateWithoutComponentChunks) {
+        // Component chunks suspend through hydration; unmerged lazy options
+        // would render `<Outlet />` in place of the server component.
+        load?.catch(() => {})
+        await loadRouteChunk(route, false)
+      } else {
+        await load
+      }
       return true
     } catch {
       return false
     }
   })
-  // Unmerged lazy options would render `<Outlet />` in place of the server
-  // component, so their lane still waits for every chunk.
-  const awaitsChunks =
-    !router._hydrateWithoutComponentChunks ||
-    committed.some((match) => {
-      const route = getRoute(router, match)
-      return route.lazyFn && route._lazy !== true
-    })
-  let chunkFailure = awaitsChunks ? 0 : chunks.length
+  let chunkFailure = 0
   try {
     while (
       chunkFailure < chunks.length &&
