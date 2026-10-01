@@ -165,9 +165,9 @@ function useLinkPropsImpl(
     ReturnType<typeof router.stores.location.get>
   > = isExternal.value
     ? Vue.shallowRef(router.stores.location.get())
-    : (useSelector(router.stores.location, (l) => l, {
-        compare: (prev, next) => prev.href === next.href,
-      }) as Vue.Ref<ReturnType<typeof router.stores.location.get>>)
+    : (useSelector(router.stores.location, (l) => l) as Vue.Ref<
+        ReturnType<typeof router.stores.location.get>
+      >)
 
   // Links that start external skip useSelector above. Subscribe if they later
   // become internal so active state follows subsequent location changes.
@@ -181,7 +181,7 @@ function useLinkPropsImpl(
       // Catch up on navigations while this external link was unsubscribed.
       currentLocation.value = store.get()
       const subscription = store.subscribe((location) => {
-        if (currentLocation.value.href !== location.href) {
+        if (currentLocation.value !== location) {
           currentLocation.value = location
         }
       })
@@ -189,17 +189,45 @@ function useLinkPropsImpl(
     })
   }
 
-  const next = Vue.computed(() => {
-    // Rebuild when inherited search/hash or the current route context changes.
-
-    const options = getOptions()
-    const opts = { _fromLocation: currentLocation.value, ...options }
-    return router.buildLocation(opts)
+  // Navigation can expose imperative router/HMR updates. Returning the same
+  // configuration keeps fixed destinations cached when only the location moves.
+  const configuration = Vue.computed<{
+    options: typeof router.options
+    routeTree: typeof router.processedTree
+  }>((previous) => {
+    currentLocation.value
+    if (
+      previous &&
+      previous.options === router.options &&
+      previous.routeTree === router.processedTree &&
+      process.env.NODE_ENV !== 'development'
+    ) {
+      return previous
+    }
+    return { options: router.options, routeTree: router.processedTree }
   })
+
+  const destination = Vue.computed(() => {
+    configuration.value
+    const cache = {
+      dest: getOptions(),
+      built: undefined as ParsedLocation | undefined,
+      sourceDependent: false,
+    }
+    const source = cache.dest._fromLocation ?? router.stores.location.get()
+    cache.built = router._buildLocation(cache.dest, source, cache)
+    // Own all updater reads here, including dependencies selected by a new
+    // source. Vue then refreshes both the build and its reactive dependencies.
+    if (cache.sourceDependent && !cache.dest._fromLocation) {
+      currentLocation.value
+    }
+    return cache
+  })
+  const next = () => destination.value.built!
 
   const href = Vue.computed(() => {
     const options = getOptions()
-    return getHref(options, router, next.value)
+    return getHref(options, router, next())
   })
 
   const preload = Vue.computed(() => {
@@ -231,7 +259,7 @@ function useLinkPropsImpl(
     }
     return getIsActive(
       currentLocation.value,
-      next.value,
+      next(),
       options.activeOptions,
       router,
     )
@@ -276,17 +304,14 @@ function useLinkPropsImpl(
     }
 
     if (!timeoutMap.has(ref)) {
-      const scheduledHref = next.value.href
+      const scheduledHref = next().href
       pendingPreload = preloadMode
       timeoutMap.set(
         ref,
         setTimeout(() => {
           timeoutMap.delete(ref)
           pendingPreload = undefined
-          if (
-            preload.value === preloadMode &&
-            next.value.href === scheduledHref
-          ) {
+          if (preload.value === preloadMode && next().href === scheduledHref) {
             doPreload()
           }
         }, preloadDelay.value),
@@ -307,7 +332,7 @@ function useLinkPropsImpl(
       return
     }
 
-    const nextHref = next.value.href
+    const nextHref = next().href
     if (nextHref && renderFetchedHref !== nextHref) {
       renderFetchedHref = nextHref
       doPreload()
