@@ -1,6 +1,13 @@
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import {
   Link,
   Outlet,
@@ -12,12 +19,19 @@ import {
   retainSearchParams,
 } from '../src'
 
+declare module '@tanstack/history' {
+  interface HistoryState {
+    destinationTag?: string
+  }
+}
+
+afterEach(() => {
+  cleanup()
+  vi.unstubAllEnvs()
+})
+
 describe('Link destination updates', () => {
   beforeEach(() => vi.stubEnv('NODE_ENV', 'production'))
-  afterEach(() => {
-    cleanup()
-    vi.unstubAllEnvs()
-  })
 
   function setupFixedLink(
     params = { id: 'fixed' },
@@ -189,11 +203,17 @@ describe('Link destination updates', () => {
       getParentRoute: () => rootRoute,
       path: '/items/$source',
     })
+    const buildLocation = vi.fn()
     const router = createRouter({
       routeTree: rootRoute.addChildren([itemsRoute]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
+      rewrite: {
+        output: ({ url }) => {
+          buildLocation()
+          return url
+        },
+      },
     })
-    const buildLocation = vi.spyOn(router, 'buildLocation')
     render(<RouterProvider router={router} />)
 
     const link = await screen.findByTestId('nested-link')
@@ -229,7 +249,6 @@ describe('Link destination updates', () => {
       'href',
       '/items/one?filters=%7B%22page%22%3A2%7D&tags=%5B%22a%22%5D',
     )
-    buildLocation.mockRestore()
   })
 
   test('updates fixed params and hash when Link props change', async () => {
@@ -304,5 +323,116 @@ describe('Link destination updates', () => {
     expect(link).toHaveAttribute('href', '/items/two')
     expect(link).toHaveAttribute('data-status', 'active')
     expect(link).toHaveTextContent('Current item')
+  })
+})
+
+test.each([false, true])(
+  'updates inherited masks for a fixed destination (automatic: %s)',
+  async (automatic) => {
+    const root = createRootRoute({
+      component: () => (
+        <>
+          <Link
+            to="/target"
+            mask={
+              automatic
+                ? undefined
+                : { to: '/source/$id', params: true, search: true, hash: true }
+            }
+            data-testid="mask-link"
+          >
+            Target
+          </Link>
+          <Outlet />
+        </>
+      ),
+    })
+    const source = createRoute({
+      getParentRoute: () => root,
+      path: '/source/$id',
+    })
+    const target = createRoute({ getParentRoute: () => root, path: '/target' })
+    const routeTree = root.addChildren([source, target])
+    const router = createRouter({
+      routeTree,
+      routeMasks: automatic
+        ? [
+            {
+              routeTree,
+              from: '/target',
+              to: '/source/$id',
+              params: true,
+              search: true,
+              hash: true,
+            },
+          ]
+        : undefined,
+      history: createMemoryHistory({
+        initialEntries: ['/source/one?q=one#one'],
+      }),
+    })
+    await router.load()
+    const view = render(<RouterProvider router={router} />)
+    const link = await view.findByTestId('mask-link')
+    expect(link).toHaveAttribute('href', '/source/one?q=one#one')
+    await act(() =>
+      router.navigate({
+        to: '/source/$id',
+        params: { id: 'two' },
+        search: { q: 'two' },
+        hash: 'two',
+        state: { destinationTag: 'latest' },
+      }),
+    )
+    expect(link).toHaveAttribute('href', '/source/two?q=two#two')
+  },
+)
+
+test('updates inherited state after a navigation with the same href', async () => {
+  let sourceTag: string | undefined
+  const root = createRootRoute({
+    component: () => (
+      <>
+        <Link
+          to="/target"
+          state={(previous) => {
+            sourceTag = previous.destinationTag
+            return previous
+          }}
+          data-testid="state-link"
+        >
+          Target
+        </Link>
+        <Outlet />
+      </>
+    ),
+  })
+  const source = createRoute({
+    getParentRoute: () => root,
+    path: '/source/$id',
+  })
+  const target = createRoute({ getParentRoute: () => root, path: '/target' })
+  const router = createRouter({
+    routeTree: root.addChildren([source, target]),
+    history: createMemoryHistory({ initialEntries: ['/source/one?q=one#one'] }),
+  })
+  await router.load()
+  const view = render(<RouterProvider router={router} />)
+  const link = await view.findByTestId('state-link')
+  expect(link).toHaveAttribute('href', '/target')
+  await act(() =>
+    router.navigate({
+      to: '/source/$id',
+      params: { id: 'one' },
+      search: { q: 'one' },
+      hash: 'one',
+      state: { destinationTag: 'latest' },
+    }),
+  )
+  expect(sourceTag).toBe('latest')
+  fireEvent.click(link)
+  await waitFor(() => {
+    expect(router.state.location.pathname).toBe('/target')
+    expect(router.state.location.state.destinationTag).toBe('latest')
   })
 })
