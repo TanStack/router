@@ -9,7 +9,7 @@ import {
   getLocationChangeInfo,
   lifecycleEnd,
   runRouteLifecycle,
-} from './router'
+} from './route-lifecycle'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
