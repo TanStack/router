@@ -7,7 +7,7 @@ import type { Rspack } from '@rsbuild/core'
 import type { NormalizedClientBuild } from '../../src/types'
 
 export const FIXTURE_ROOT = fileURLToPath(
-  new URL('./fixtures/rspack-client-build/', import.meta.url),
+  new URL('./test-files/rspack-client-build/', import.meta.url),
 ).replace(/[\\/]$/, '')
 
 export type FixtureMode = 'development' | 'production'
@@ -19,6 +19,7 @@ export async function compileClientFixture<T>(
   const outputPath = await mkdtemp(join(tmpdir(), 'rspack-client-build-'))
   let compiler: Rspack.Compiler | undefined
   let result: T
+  let called = false
 
   try {
     compiler = rspack({
@@ -89,6 +90,7 @@ export async function compileClientFixture<T>(
                     stage: rspack.Compilation.PROCESS_ASSETS_STAGE_REPORT,
                   },
                   () => {
+                    called = true
                     result = inspect(compilation)
                   },
                 )
@@ -113,6 +115,8 @@ export async function compileClientFixture<T>(
               }) ?? 'Rspack did not return compilation stats',
             ),
           )
+        } else if (!called) {
+          reject(new Error('Client fixture inspection did not run'))
         } else {
           resolve(result)
         }
@@ -243,13 +247,13 @@ export function cssAssetOrder(compilation: Rspack.Compilation): Array<string> {
     .map((asset) => asset.name)
 }
 
-export function serializeClientBuild(build: NormalizedClientBuild): unknown {
+export function serializeClientBuild(build: NormalizedClientBuild) {
   const fixtureRoot = FIXTURE_ROOT.replace(/\\/g, '/')
   return {
     entryChunkFileName: build.entryChunkFileName,
     // Rspack's chunk and asset iteration order varies between compilations in one process.
     chunksByFileName: Array.from(build.chunksByFileName)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
       .map(([fileName, chunk]) => [
         fileName,
         {
@@ -261,7 +265,7 @@ export function serializeClientBuild(build: NormalizedClientBuild): unknown {
       ]),
     cssContentByFileName: build.cssContentByFileName
       ? Array.from(build.cssContentByFileName).sort(([left], [right]) =>
-          left.localeCompare(right),
+          left < right ? -1 : left > right ? 1 : 0,
         )
       : undefined,
   }
