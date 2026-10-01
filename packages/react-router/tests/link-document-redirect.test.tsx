@@ -24,7 +24,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('a cold outgoing Link retains its source after a document redirect is cancelled before unload', async () => {
+test('outgoing Links retain their source during a document redirect and catch up after cancelled unload', async () => {
   const root = createRootRoute({
     validateSearch: (search) => ({ value: String(search.value ?? '') }),
     component: Outlet,
@@ -36,6 +36,7 @@ test('a cold outgoing Link retains its source after a document redirect is cance
       const [show, setShow] = React.useState(false)
       return (
         <>
+          <Link to="/a" search={true} data-testid="existing" />
           <button
             onClick={() => {
               void router.navigate({ to: '/b', search: { value: 'b' } })
@@ -74,6 +75,7 @@ test('a cold outgoing Link retains its source after a document redirect is cance
   // Model the browser retaining this document when an independent native
   // beforeunload listener cancels the redirect. Router state remains untouched.
   const replace = vi.fn(() => {
+    expect(screen.getByTestId('existing')).toHaveAttribute('href', '/a?value=a')
     const event = new browserWindow.Event('beforeunload', { cancelable: true })
     expect(browserWindow.dispatchEvent(event)).toBe(false)
   })
@@ -98,7 +100,8 @@ test('a cold outgoing Link retains its source after a document redirect is cance
     expect(router.state.location.pathname).toBe('/b')
     expect(router.state.resolvedLocation?.pathname).toBe('/a')
     fireEvent.click(screen.getByRole('button', { name: 'Mount outgoing Link' }))
-    expect(screen.getByTestId('cold')).toHaveAttribute('href', '/a?value=a')
+    expect(screen.getByTestId('existing')).toHaveAttribute('href', '/a?value=b')
+    expect(screen.getByTestId('cold')).toHaveAttribute('href', '/a?value=b')
   } finally {
     browserWindow.removeEventListener('beforeunload', cancelUnload)
     history.destroy()
