@@ -137,6 +137,54 @@ export async function compileClientFixture<T>(
   }
 }
 
+export function countPropertyReads(
+  target: object,
+  names: ReadonlyArray<string>,
+): {
+  readsByReceiver: Map<object, Map<string, number>>
+  restore: () => void
+} {
+  const readsByReceiver = new Map<object, Map<string, number>>()
+  const originals = names.map((name) => {
+    let owner: object | null = Object.getPrototypeOf(target)
+    while (owner) {
+      const descriptor = Object.getOwnPropertyDescriptor(owner, name)
+      if (descriptor) {
+        if (!descriptor.get || !descriptor.configurable) {
+          throw new Error(`Expected a configurable getter for ${name}`)
+        }
+        return { owner, name, descriptor }
+      }
+      owner = Object.getPrototypeOf(owner)
+    }
+    throw new Error(`No prototype getter found for ${name}`)
+  })
+
+  for (const { owner, name, descriptor } of originals) {
+    Object.defineProperty(owner, name, {
+      ...descriptor,
+      get(this: object) {
+        let reads = readsByReceiver.get(this)
+        if (!reads) {
+          reads = new Map()
+          readsByReceiver.set(this, reads)
+        }
+        reads.set(name, (reads.get(name) ?? 0) + 1)
+        return descriptor.get!.call(this)
+      },
+    })
+  }
+
+  return {
+    readsByReceiver,
+    restore() {
+      for (const { owner, name, descriptor } of originals) {
+        Object.defineProperty(owner, name, descriptor)
+      }
+    },
+  }
+}
+
 export function expectedChunkFileOrder(
   compilation: Rspack.Compilation,
 ): Array<string> {

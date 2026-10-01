@@ -83,6 +83,31 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
 }
 
 describe('normalizeRspackClientBuild', () => {
+  test('keeps hot-update files out of entries and imports', () => {
+    const entryChunk = {
+      name: 'index',
+      files: new Set(['index.js', 'index.abc123.hot-update.js', 'root.css']),
+      auxiliaryFiles: new Set(),
+      groupsIterable: new Set(),
+    }
+    const compilation = {
+      entrypoints: new Map([['index', { chunks: [entryChunk] }]]),
+      chunks: new Set([entryChunk]),
+      chunkGraph: { getChunkModules: () => [] },
+    } as unknown as Rspack.Compilation
+
+    const clientBuild = normalizeRspackClientBuild(compilation)
+
+    expect(clientBuild.entryChunkFileName).toBe('index.js')
+    expect(
+      Array.from(clientBuild.chunksByFileName.keys()).some((file) =>
+        file.includes('.hot-update.'),
+      ),
+    ).toBe(false)
+    expect(clientBuild.chunksByFileName.get('index.js')?.isEntry).toBe(true)
+    expect(clientBuild.chunksByFileName.get('index.js')?.imports).toEqual([])
+  })
+
   test('keeps route stylesheet links with inline CSS disabled by default', () => {
     const compilation = makeCompilation(() => '.card{color:red}')
     const clientBuild = normalizeRspackClientBuild(compilation)

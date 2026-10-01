@@ -126,83 +126,91 @@ function isHotUpdateAsset(file: string): boolean {
  * Excludes HMR runtime patches.
  */
 function isManifestJsAsset(file: string): boolean {
-  if (!file.endsWith('.js') && !file.endsWith('.mjs')) return false
+  if (!file.endsWith('.js') && !file.endsWith('.mjs')) {
+    return false
+  }
   return !isHotUpdateAsset(file)
 }
 
-/**
- * Get all JS file names from a chunk.
- */
-function getChunkJsFiles(chunk: RspackCompilationChunk): Array<string> {
-  const jsFiles: Array<string> = []
-  for (const file of chunk.files) {
-    if (isManifestJsAsset(file)) {
-      jsFiles.push(file)
+function memoizeGraphRead<TTarget extends object, TValue>(
+  read: (target: TTarget) => Array<TValue>,
+): (target: TTarget) => Array<TValue> {
+  const cache = new Map<TTarget, Array<TValue>>()
+  return (target) => {
+    let value = cache.get(target)
+    if (!value) {
+      value = read(target)
+      cache.set(target, value)
     }
+    return value
   }
-  return jsFiles
 }
 
-/**
- * Compute dynamicImports for a chunk by traversing its chunk groups'
- * childrenIterable (async/dynamic import edges).
- *
- * In rspack, a chunk belongs to one or more ChunkGroups. Each ChunkGroup
- * has childrenIterable — child ChunkGroups representing dynamic import()
- * points. The JS files from those child groups' chunks are the
- * dynamicImports (analogous to Rollup's OutputChunk.dynamicImports).
- */
-function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
-  const dynamicImportFiles: Array<string> = []
-  const seen = new Set<string>()
-
-  for (const group of chunk.groupsIterable) {
-    for (const childGroup of group.childrenIterable) {
-      for (const childChunk of childGroup.chunks) {
-        for (const file of childChunk.files) {
-          if (isManifestJsAsset(file) && !seen.has(file)) {
-            seen.add(file)
-            dynamicImportFiles.push(file)
-          }
-        }
-      }
-    }
-  }
-
-  return dynamicImportFiles
-}
-
-/**
- * Compute static imports (sibling chunks) for an async chunk.
- *
- * In rspack/webpack, an async chunk's ChunkGroup contains ALL chunks needed to
- * satisfy that dynamic import — the async chunk itself plus any shared/vendor
- * chunks it statically imports. This is analogous to Rollup's
- * `OutputChunk.imports` for async chunks.
- *
- * We collect JS files from all sibling chunks in the group (excluding the
- * current chunk's own file) to populate the `imports` field.
- */
-function computeAsyncChunkImports(
-  chunk: RspackCompilationChunk,
-  currentFile: string,
+function mergeJsFiles(
+  fileLists: Array<Array<string>>,
+  currentFile?: string,
 ): Array<string> {
-  const imports: Array<string> = []
-  const seen = new Set<string>()
-  seen.add(currentFile)
-
-  for (const group of chunk.groupsIterable) {
-    for (const siblingChunk of group.chunks) {
-      for (const file of siblingChunk.files) {
-        if (isManifestJsAsset(file) && !seen.has(file)) {
-          seen.add(file)
-          imports.push(file)
-        }
+  const files: Array<string> = []
+  const seen = new Set(currentFile === undefined ? [] : [currentFile])
+  for (const list of fileLists) {
+    for (const file of list) {
+      if (!seen.has(file)) {
+        seen.add(file)
+        files.push(file)
       }
     }
   }
+  return files
+}
 
-  return imports
+/**
+ * Rspack's graph getters allocate collections on each read. Keep this cache local
+ * to one capture so rebuilds see fresh graph data.
+ */
+function createChunkGraphReader() {
+  const getFiles = memoizeGraphRead((chunk: RspackCompilationChunk) =>
+    Array.from(chunk.files),
+  )
+  const getAuxiliaryFiles = memoizeGraphRead((chunk: RspackCompilationChunk) =>
+    Array.from(chunk.auxiliaryFiles),
+  )
+  const getGroups = memoizeGraphRead((chunk: RspackCompilationChunk) =>
+    Array.from(chunk.groupsIterable),
+  )
+  const getGroupChunks = memoizeGraphRead((group: Rspack.ChunkGroup) =>
+    Array.from(group.chunks),
+  )
+  const getChildren = memoizeGraphRead((group: Rspack.ChunkGroup) =>
+    Array.from(group.childrenIterable),
+  )
+  const getChunkJsFiles = memoizeGraphRead((chunk: RspackCompilationChunk) =>
+    getFiles(chunk).filter(isManifestJsAsset),
+  )
+
+  // Each group supplies its sibling imports and its direct dynamic-import edges.
+  // Deduping within a group before merging preserves global first-occurrence order.
+  const getGroupJsFiles = memoizeGraphRead((group: Rspack.ChunkGroup) =>
+    mergeJsFiles(getGroupChunks(group).map(getChunkJsFiles)),
+  )
+  const getChildGroupJsFiles = memoizeGraphRead((group: Rspack.ChunkGroup) =>
+    mergeJsFiles(getChildren(group).map(getGroupJsFiles)),
+  )
+
+  return {
+    getFiles,
+    getAuxiliaryFiles,
+    getGroupChunks,
+    getChunkJsFiles,
+    computeDynamicImports(chunk: RspackCompilationChunk) {
+      return mergeJsFiles(getGroups(chunk).map(getChildGroupJsFiles))
+    },
+    computeAsyncChunkImports(
+      chunk: RspackCompilationChunk,
+      currentFile: string,
+    ) {
+      return mergeJsFiles(getGroups(chunk).map(getGroupJsFiles), currentFile)
+    },
+  }
 }
 
 /**
@@ -215,6 +223,14 @@ export function normalizeRspackClientBuild(
   compilation: RspackCompilation,
   inlineCssEnabled = false,
 ): NormalizedClientBuild {
+  const {
+    getFiles,
+    getAuxiliaryFiles,
+    getGroupChunks,
+    getChunkJsFiles,
+    computeDynamicImports,
+    computeAsyncChunkImports,
+  } = createChunkGraphReader()
   const chunksByFileName = new Map<string, NormalizedClientChunk>()
   let cssContentByFileName: Map<string, string> | undefined
   let entryChunkFileName: string | undefined
@@ -225,9 +241,9 @@ export function normalizeRspackClientBuild(
   const initialJsFileNames: Array<string> = []
   const entryChunkSet = new Set<RspackCompilationChunk>()
   if (entrypoint) {
-    for (const chunk of entrypoint.chunks) {
+    for (const chunk of getGroupChunks(entrypoint)) {
       entryChunkSet.add(chunk)
-      for (const file of chunk.files) {
+      for (const file of getFiles(chunk)) {
         if (isManifestJsAsset(file)) {
           initialJsFileNames.push(file)
         }
@@ -243,14 +259,14 @@ export function normalizeRspackClientBuild(
     const cssFiles: Array<string> = []
     const seenCssFiles = new Set<string>()
 
-    for (const auxFile of chunk.auxiliaryFiles) {
+    for (const auxFile of getAuxiliaryFiles(chunk)) {
       if (auxFile.endsWith('.css') && !seenCssFiles.has(auxFile)) {
         seenCssFiles.add(auxFile)
         cssFiles.push(auxFile)
       }
     }
 
-    for (const mainFile of chunk.files) {
+    for (const mainFile of getFiles(chunk)) {
       if (mainFile.endsWith('.css') && !seenCssFiles.has(mainFile)) {
         seenCssFiles.add(mainFile)
         cssFiles.push(mainFile)
@@ -261,7 +277,9 @@ export function normalizeRspackClientBuild(
     const isEntryChunk = chunk.name === 'index' && entryChunkSet.has(chunk)
 
     const jsFiles = getChunkJsFiles(chunk)
-    if (jsFiles.length === 0) continue
+    if (jsFiles.length === 0) {
+      continue
+    }
 
     // Compute dynamicImports from chunk group children
     const dynamicImports = computeDynamicImports(chunk)
@@ -332,8 +350,8 @@ export function normalizeRspackClientBuild(
   if (rscEntrypoint && entryChunkFileName) {
     const mainEntryChunk = chunksByFileName.get(entryChunkFileName)
     if (mainEntryChunk) {
-      for (const rscChunk of rscEntrypoint.chunks) {
-        const allFiles = [...rscChunk.files, ...rscChunk.auxiliaryFiles]
+      for (const rscChunk of getGroupChunks(rscEntrypoint)) {
+        const allFiles = [...getFiles(rscChunk), ...getAuxiliaryFiles(rscChunk)]
         for (const file of allFiles) {
           if (file.endsWith('.css') && !mainEntryChunk.css.includes(file)) {
             mainEntryChunk.css.push(file)

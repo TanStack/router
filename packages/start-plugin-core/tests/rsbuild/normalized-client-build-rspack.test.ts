@@ -4,6 +4,7 @@ import { buildStartManifest } from '../../src/start-manifest-plugin/manifestBuil
 import {
   FIXTURE_ROOT,
   compileClientFixture,
+  countPropertyReads,
   cssAssetOrder,
   expectedChunkFileOrder,
   fixtureRouteTreeRoutes,
@@ -127,6 +128,50 @@ test('matches the recorded client build with an rsc entry', async () => {
     },
   )
   expect(build).toMatchSnapshot()
+})
+
+describe.each<{ mode: FixtureMode; withRscEntry: boolean }>([
+  { mode: 'development', withRscEntry: false },
+  { mode: 'production', withRscEntry: false },
+  { mode: 'production', withRscEntry: true },
+])('$mode, rsc=$withRscEntry', (options) => {
+  test('reads each chunk and chunk group graph property at most once', async () => {
+    await compileClientFixture(options, (compilation) => {
+      const chunkReads = countPropertyReads(
+        compilation.chunks.values().next().value!,
+        ['files', 'auxiliaryFiles', 'groupsIterable'],
+      )
+      const groupReads = countPropertyReads(
+        compilation.entrypoints.get('index')!,
+        ['chunks', 'childrenIterable'],
+      )
+      try {
+        normalizeRspackClientBuild(compilation)
+      } finally {
+        groupReads.restore()
+        chunkReads.restore()
+      }
+
+      const maxReadsByProperty = new Map<string, number>()
+      for (const counter of [chunkReads, groupReads]) {
+        for (const reads of counter.readsByReceiver.values()) {
+          for (const [property, count] of reads) {
+            maxReadsByProperty.set(
+              property,
+              Math.max(maxReadsByProperty.get(property) ?? 0, count),
+            )
+          }
+        }
+      }
+      expect(maxReadsByProperty.size).toBe(5)
+      for (const [property, maxCount] of maxReadsByProperty) {
+        expect(
+          maxCount,
+          `${property}: max reads per receiver = ${maxCount}`,
+        ).toBeLessThanOrEqual(1)
+      }
+    })
+  })
 })
 
 test('matches the recorded client build with inline CSS', async () => {
