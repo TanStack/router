@@ -56,6 +56,7 @@ import {
   rewriteBasepath,
 } from './rewrite'
 import { createRouterStores } from './stores'
+import type { LinkBuildTracking, LinkRegistry } from './link-state'
 import type { SieveCache } from './sieve-cache'
 import type { RouteInterpolation } from './path'
 import type {
@@ -1187,11 +1188,10 @@ export class RouterCore<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
   >
-  // Locations built without reading the current location, keyed by the stable
-  // options object a Link owns. Links pass a new object when their values change.
-  // Client only: server renders never repeat an options object, so server
-  // bundles fold `isServer` and drop the cache entirely.
-  private staticLocations: WeakMap<object, ParsedLocation> | undefined
+  /** Client Link indexes; allocated only when a Link subscribes. */
+  _links?: LinkRegistry
+  /** Identity of the configuration used to derive Link destinations. */
+  _linkOptions: object = {}
   isServer!: boolean
   readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1267,9 +1267,28 @@ export class RouterCore<
 
     this.isServer =
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
-    // `isServer` is a per-bundle constant, so server builds drop the cache.
-    if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
+    if (
+      !(isServer ?? this.isServer) &&
+      (!prevOptions ||
+        [
+          'basepath',
+          'rewrite',
+          'origin',
+          'trailingSlash',
+          'caseSensitive',
+          'parseSearch',
+          'stringifySearch',
+          'search',
+          'history',
+          'protocolAllowlist',
+          'routeMasks',
+          'routeTree',
+          'notFoundRoute',
+        ].some(
+          (key) => (prevOptions as any)[key] !== (this.options as any)[key],
+        ))
+    ) {
+      this._linkOptions = {}
     }
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
@@ -1403,7 +1422,7 @@ export class RouterCore<
     Object.assign(this, caches)
     this.lightweightCache = new WeakMap()
     if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
+      this._linkOptions = {}
     }
 
     const notFoundRoute = this.options.notFoundRoute
@@ -1884,18 +1903,16 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
-  buildLocation: BuildLocationFn = (opts) => {
-    if (!(isServer ?? this.isServer)) {
-      const cached = this.staticLocations!.get(opts)
-      if (cached) {
-        return cached
-      }
-    }
+  buildLocation: BuildLocationFn = (opts) => this._buildLocation(opts)
 
-    // Set by `current()` whenever a build reads the current location. A
-    // location built without it depends only on `opts` and the route tree.
-    let usedCurrent = false
-
+  /** The canonical builder optionally reports actual source reads to Links. */
+  _buildLocation = (
+    opts: BuildNextOptions & {
+      leaveParams?: boolean
+      _includeValidateSearch?: boolean
+    },
+    tracking?: LinkBuildTracking,
+  ): ParsedLocation => {
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
@@ -1916,18 +1933,25 @@ export class RouterCore<
 
       // We allow the caller to override the current location
       const currentLocation =
-        dest._fromLocation || this._pendingLocation || this.latestLocation
+        dest._fromLocation ||
+        tracking?.[1 /* location */] ||
+        this._pendingLocation ||
+        this.latestLocation
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match
       // objects) is only computed when a build actually reads it.
       let lightweight: LightweightRouteMatchResult | undefined
-      const current = () => {
-        usedCurrent = true
+      const current = (dependency: number) => {
+        if (tracking && !dest._fromLocation) {
+          tracking[0 /* dependencies */] |= dependency
+        }
         return currentLocation
       }
-      const currentMatch = () => {
-        usedCurrent = true
+      const currentMatch = (dependency: number) => {
+        if (tracking && !dest._fromLocation) {
+          tracking[0 /* dependencies */] |= dependency
+        }
         return (lightweight ??= this.matchRoutesLightweight(currentLocation))
       }
 
@@ -1939,7 +1963,7 @@ export class RouterCore<
         dest._isNavigate
       ) {
         const [allFromMatches] = this.getMatchedRoutes(dest.from)
-        const [matchedRoutes, fullPath] = currentMatch()
+        const [matchedRoutes, fullPath] = currentMatch(1 /* pathname */)
 
         const matchedFrom = findLast(matchedRoutes, (d) => {
           return comparePaths(d.fullPath, dest.from!)
@@ -1962,8 +1986,8 @@ export class RouterCore<
         to[0] === '/'
           ? ''
           : dest.unsafeRelative === 'path'
-            ? current().pathname
-            : (dest.from ?? currentMatch()[1 /* fullPath */]),
+            ? current(1 /* pathname */).pathname
+            : (dest.from ?? currentMatch(1 /* pathname */)[1 /* fullPath */]),
         to,
         this.options.trailingSlash,
         this.resolvePathCache,
@@ -2006,7 +2030,7 @@ export class RouterCore<
           route.options.params?.stringify ?? route.options.stringifyParams
         if (fn) {
           // Stringifiers receive the merged params, so they always see inherited ones.
-          const fromParams = currentMatch()[3 /* params */]
+          const fromParams = currentMatch(1 /* pathname */)[3 /* params */]
           nextParams ??= resolveNextParams(dest.params, fromParams)
           if (!hasKeys(nextParams)) {
             break
@@ -2031,7 +2055,7 @@ export class RouterCore<
       nextParams ??= resolveNextParams(
         dest.params,
         needsInheritedParams(dest.params, interpolation)
-          ? currentMatch()[3 /* params */]
+          ? currentMatch(1 /* pathname */)[3 /* params */]
           : EMPTY_RECORD,
       )
 
@@ -2075,7 +2099,7 @@ export class RouterCore<
         opts._includeValidateSearch,
       )
       const fromSearch = () => {
-        let search = currentMatch()[2 /* search */]
+        let search = currentMatch(3 /* pathname and search */)[2 /* search */]
         if (opts._includeValidateSearch && this.options.search?.strict) {
           const validatedSearch = {}
           destRoutes.forEach((route) => {
@@ -2114,9 +2138,9 @@ export class RouterCore<
       // Resolve the next hash
       const hash =
         dest.hash === true
-          ? current().hash
+          ? current(4 /* hash */).hash
           : typeof dest.hash === 'function'
-            ? dest.hash(current().hash)
+            ? dest.hash(current(4 /* hash */).hash)
             : dest.hash || undefined
 
       // Resolve the next hash string
@@ -2127,9 +2151,9 @@ export class RouterCore<
       const nextState: HistoryState = !dest.state
         ? EMPTY_RECORD
         : dest.state === true
-          ? current().state
+          ? current(8 /* state */).state
           : typeof dest.state === 'function'
-            ? dest.state(current().state)
+            ? dest.state(current(8 /* state */).state)
             : dest.state
 
       // Create the full path of the location
@@ -2171,7 +2195,9 @@ export class RouterCore<
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
-        state: nextState as any,
+        // Link destinations retain presentation data only. Intent handlers
+        // build their navigation state afresh from the original options.
+        state: (tracking ? EMPTY_RECORD : nextState) as any,
         hash: hash ?? '',
         external,
         unmaskOnReload: dest.unmaskOnReload,
@@ -2204,16 +2230,6 @@ export class RouterCore<
           params: nextParams,
         })
       }
-    }
-
-    // Masked locations stay out: `opts.mask` is rebuilt from the current location.
-    if (
-      !(isServer ?? this.isServer) &&
-      !usedCurrent &&
-      opts._fromLocation &&
-      !next.maskedLocation
-    ) {
-      this.staticLocations!.set(opts, next)
     }
 
     return next
@@ -2796,6 +2812,7 @@ async function documentNavigation(
 if (process.env.NODE_ENV !== 'production') {
   RouterCore.prototype._replaceRouteChunk = replaceRouteChunk
   RouterCore.prototype._refreshRoute = async function () {
+    this._linkOptions = {}
     this._serverResult = undefined
     this.updateLatestLocation()
     await refreshClientRoute(this)

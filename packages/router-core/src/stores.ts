@@ -84,6 +84,8 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
     routeId: string,
   ) => RouterReadableStore<AnyRouteMatch | undefined>
 
+  /** Optional client Link invalidation, batched with the source publication. */
+  _onLocationChange?: () => void
   setMatches: (nextMatches: Array<AnyRouteMatch>) => void
 }
 
@@ -126,7 +128,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     return matchStore
   }
 
-  const store = {
+  const store: RouterStores<TRouteTree> = {
     // atoms
     status,
     location,
@@ -173,6 +175,20 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
           matchStore.set(nextMatch)
         }
       }
+    })
+  }
+
+  const setLocation = location.set as (
+    next:
+      | Parameters<typeof location.set>[0]
+      | ((
+          previous: ReturnType<typeof location.get>,
+        ) => ReturnType<typeof location.get>),
+  ) => void
+  location.set = (next) => {
+    batch(() => {
+      setLocation(next)
+      store._onLocationChange?.()
     })
   }
 

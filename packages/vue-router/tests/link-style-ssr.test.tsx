@@ -8,6 +8,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useLinkProps,
 } from '../src'
 
 test('preserves selected state props and styling during SSR', async () => {
@@ -76,6 +77,43 @@ test('preserves selected state props and styling during SSR', async () => {
     expect(links[3]!.className).toBe('')
     expect(active).toHaveBeenCalledWith()
     expect(unused).not.toHaveBeenCalled()
+  } finally {
+    history.destroy()
+  }
+})
+
+test('useLinkProps preserves its ref access contract during SSR', async () => {
+  let isRef = false
+  const HookLink = Vue.defineComponent({
+    setup() {
+      const props = useLinkProps({ to: '/target' }) as unknown as Vue.Ref<
+        Record<string, unknown>
+      >
+      isRef = Vue.isRef(props)
+      return () => Vue.h('a', props.value, 'Hook target')
+    },
+  })
+  const root = createRootRoute({ component: () => Vue.h(HookLink) })
+  const history = createMemoryHistory({ initialEntries: ['/target'] })
+  const router = createRouter({
+    routeTree: root.addChildren([
+      createRoute({ getParentRoute: () => root, path: '/target' }),
+    ]),
+    history,
+    isServer: true,
+  })
+  try {
+    await router.load()
+    const html = await renderToString(
+      Vue.createSSRApp(() => Vue.h(RouterProvider, { router })),
+    )
+    const container = document.createElement('div')
+    container.innerHTML = html
+    const link = container.querySelector('a')!
+    expect(isRef).toBe(true)
+    expect(link).toHaveAttribute('href', '/target')
+    expect(link).toHaveAttribute('aria-current', 'page')
+    expect(link).toHaveTextContent('Hook target')
   } finally {
     history.destroy()
   }

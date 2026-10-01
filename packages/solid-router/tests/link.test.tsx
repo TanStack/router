@@ -1406,10 +1406,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/posts')
+    expect(postsLink).not.toBeInTheDocument()
+    const currentPostsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    expect(currentPostsLink).toHaveAttribute('data-status', 'active')
+    expect(currentPostsLink).toHaveAttribute('aria-current', 'page')
+    expect(currentPostsLink).toHaveClass('active')
+    expect(currentPostsLink).toHaveAttribute('href', '/posts')
   })
 
   test('when navigating to /posts with a base url', async () => {
@@ -1465,10 +1468,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/app/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/app/posts')
+    expect(postsLink).not.toBeInTheDocument()
+    const currentPostsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    expect(currentPostsLink).toHaveAttribute('data-status', 'active')
+    expect(currentPostsLink).toHaveAttribute('aria-current', 'page')
+    expect(currentPostsLink).toHaveClass('active')
+    expect(currentPostsLink).toHaveAttribute('href', '/app/posts')
   })
 
   test('when navigating to /posts with search', async () => {
@@ -5292,28 +5298,21 @@ describe('Link', () => {
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
 
-  test.each([undefined, false, true])(
-    'disabled observers honor the cleanup condition (%s)',
-    (cleanupWhenDisabled) => {
+  test.each([undefined, false, 'intent', 'render'] as const)(
+    'non-viewport observers clean up only enabled preload modes (%s)',
+    (preload) => {
       const callback = vi.fn()
       const view = render(() => {
         const [element, setElement] = Solid.createSignal<Element | null>(null)
-        useIntersectionObserver(
-          element,
-          callback,
-          () => true,
-          cleanupWhenDisabled === undefined
-            ? undefined
-            : () => cleanupWhenDisabled,
-        )
+        useIntersectionObserver(element, callback, () => preload)
         return <div ref={setElement} />
       })
       callback.mockClear()
       view.unmount()
-      if (cleanupWhenDisabled === false) {
-        expect(callback).not.toHaveBeenCalled()
-      } else {
+      if (preload) {
         expect(callback).toHaveBeenCalledWith()
+      } else {
+        expect(callback).not.toHaveBeenCalled()
       }
     },
   )
@@ -6930,9 +6929,9 @@ describe('splat routes with empty splat', () => {
       fireEvent.click(splatLinkWithEmptySplat)
 
       await waitFor(async () => {
-        expect(splatLinkWithEmptySplat).toHaveClass('active')
-        expect(splatLinkWithUndefinedSplat).toHaveClass('active')
-        expect(splatLinkWithNoSplat).toHaveClass('active')
+        expect(splatLinkWithEmptySplat).not.toBeInTheDocument()
+        expect(splatLinkWithUndefinedSplat).not.toBeInTheDocument()
+        expect(splatLinkWithNoSplat).not.toBeInTheDocument()
         expect(window.location.pathname).toBe(`/splat${tail}`)
         expect(await screen.findByText('Splat Route')).toBeInTheDocument()
       })
