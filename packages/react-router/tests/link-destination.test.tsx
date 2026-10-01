@@ -9,6 +9,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  defaultStringifySearch,
   retainSearchParams,
 } from '../src'
 
@@ -189,11 +190,12 @@ describe('Link destination updates', () => {
       getParentRoute: () => rootRoute,
       path: '/items/$source',
     })
+    const stringifySearch = vi.fn(defaultStringifySearch)
     const router = createRouter({
       routeTree: rootRoute.addChildren([itemsRoute]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
+      stringifySearch,
     })
-    const buildLocation = vi.spyOn(router, 'buildLocation')
     render(<RouterProvider router={router} />)
 
     const link = await screen.findByTestId('nested-link')
@@ -204,11 +206,11 @@ describe('Link destination updates', () => {
 
     // Fresh literals with equal contents must not produce a new options
     // object, otherwise the router could never reuse the built location.
-    const builds = buildLocation.mock.calls.length
+    const builds = stringifySearch.mock.calls.length
     expect(builds).toBeGreaterThan(0)
     fireEvent.click(screen.getByRole('button', { name: 'Rerender' }))
     fireEvent.click(screen.getByRole('button', { name: 'Rerender' }))
-    expect(buildLocation).toHaveBeenCalledTimes(builds)
+    expect(stringifySearch).toHaveBeenCalledTimes(builds)
     expect(link).toHaveAttribute(
       'href',
       '/items/one?filters=%7B%22page%22%3A1%7D&tags=%5B%22a%22%5D',
@@ -229,7 +231,6 @@ describe('Link destination updates', () => {
       'href',
       '/items/one?filters=%7B%22page%22%3A2%7D&tags=%5B%22a%22%5D',
     )
-    buildLocation.mockRestore()
   })
 
   test('updates fixed params and hash when Link props change', async () => {

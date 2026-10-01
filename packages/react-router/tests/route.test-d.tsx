@@ -22,6 +22,10 @@ import type {
   ParsedLocation,
 } from '@tanstack/router-core'
 
+test('published buildLocation exposes only its public options argument', () => {
+  expectTypeOf<Parameters<BuildLocationFn>['length']>().toEqualTypeOf<1>()
+})
+
 test('when creating the root', () => {
   const rootRoute = createRootRoute()
 

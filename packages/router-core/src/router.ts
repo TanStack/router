@@ -1372,7 +1372,7 @@ export class RouterCore<
       }
     } else if (rewriteChanged) {
       // Existing stores hold the location parsed with the previous rewrite.
-      this.stores.location.set(this.latestLocation)
+      this.stores.setLocation(this.latestLocation)
     }
   }
 
@@ -1896,6 +1896,10 @@ export class RouterCore<
     // location built without it depends only on `opts` and the route tree.
     let usedCurrent = false
 
+    // A destination and its mask share one source, including when callbacks
+    // synchronously navigate while either location is being built.
+    const fromLocation =
+      opts._fromLocation || this._pendingLocation || this.latestLocation
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
@@ -1915,8 +1919,7 @@ export class RouterCore<
       }
 
       // We allow the caller to override the current location
-      const currentLocation =
-        dest._fromLocation || this._pendingLocation || this.latestLocation
+      const currentLocation = dest._fromLocation || fromLocation
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match

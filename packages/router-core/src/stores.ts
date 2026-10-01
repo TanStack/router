@@ -34,7 +34,9 @@ export type StoreConfig = {
   batch: RouterBatchFn
 }
 
-type MatchStore = RouterWritableStore<AnyRouteMatch | undefined>
+type MatchStore = RouterWritableStore<AnyRouteMatch | undefined> & {
+  location: RouterWritableStore<ParsedLocation>
+}
 type ReadableStore<TValue> = RouterReadableStore<TValue>
 
 /** SSR non-reactive createMutableStore */
@@ -80,11 +82,13 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
    * Get the stable atom for a route's presented match. The atom remains in the
    * pool when the route leaves and contains `undefined` until it re-enters.
    */
-  getMatchStore: (
-    routeId: string,
-  ) => RouterReadableStore<AnyRouteMatch | undefined>
+  getMatchStore: (routeId: string) => MatchStore
 
   setMatches: (nextMatches: Array<AnyRouteMatch>) => void
+  setLocation: (
+    next: ParsedLocation<FullSearchSchema<TRouteTree>>,
+    nextMatches?: Array<AnyRouteMatch>,
+  ) => void
 }
 
 export function createRouterStores<TRouteTree extends AnyRoute>(
@@ -120,7 +124,10 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   function getMatchStore(routeId: string): MatchStore {
     let matchStore = byRoute.get(routeId)
     if (!matchStore) {
-      matchStore = createMutableStore<AnyRouteMatch | undefined>(undefined)
+      matchStore = Object.assign(
+        createMutableStore<AnyRouteMatch | undefined>(undefined),
+        { location: createMutableStore<ParsedLocation>(location.get()) },
+      )
       byRoute.set(routeId, matchStore)
     }
     return matchStore
@@ -147,6 +154,22 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
 
     // methods
     setMatches,
+    setLocation,
+  }
+
+  function setLocation(
+    next: ParsedLocation<FullSearchSchema<TRouteTree>>,
+    nextMatches: Array<AnyRouteMatch> = matches.get(),
+  ) {
+    batch(() => {
+      // A presented route owns its source even before its first Link mounts.
+      // Only routes in the incoming/presented tree advance. Removed routes can
+      // still have subscribers while React finishes a suspended render.
+      for (const match of nextMatches) {
+        getMatchStore(match.routeId).location.set(next)
+      }
+      location.set(next)
+    })
   }
 
   // setters to update non-reactive utilities in sync with the reactive stores

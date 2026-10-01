@@ -161,7 +161,9 @@ describe("Store doesn't update *too many* times during navigation", () => {
   test('sync beforeLoad', async () => {
     const params = setup({
       beforeLoad: () => ({ foo: 'bar' }),
-      loader: () => resolveAfter(100, { hello: 'world' }),
+      // Resolve after the pending threshold, so equal timer deadlines cannot
+      // skip the pending publication this update-count assertion includes.
+      loader: () => resolveAfter(200, { hello: 'world' }),
       defaultPendingMs: 100,
       defaultPendingMinMs: 300,
     })

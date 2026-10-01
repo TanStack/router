@@ -12,6 +12,68 @@ import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
 import type { SearchMiddleware } from '../src'
 
+test('a reentrant route-tree update does not cache the previous search validator', () => {
+  let rebuild = false
+  const createTree = (version: string, onValidate?: () => void) => {
+    const root = new BaseRootRoute({
+      validateSearch: (search) => {
+        onValidate?.()
+        return { ...search, version }
+      },
+    })
+    return root.addChildren([
+      new BaseRoute({ getParentRoute: () => root, path: '/source' }),
+      new BaseRoute({ getParentRoute: () => root, path: '/target' }),
+    ])
+  }
+  const nextTree = createTree('new')
+  const routeTree = createTree('old', () => {
+    if (rebuild) {
+      rebuild = false
+      router.update({ routeTree: nextTree })
+    }
+  })
+  const router = createTestRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/source'] }),
+  })
+  const source = router.state.location
+  rebuild = true
+  router.buildLocation({ to: '/target', search: true, _fromLocation: source })
+  expect(rebuild).toBe(false)
+  expect(
+    router.buildLocation({ to: '/target', search: true, _fromLocation: source })
+      .search,
+  ).toEqual({
+    version: 'new',
+  })
+})
+
+test('buildLocation stays bound when passed directly to array callbacks', async () => {
+  const root = new BaseRootRoute({})
+  const source = new BaseRoute({ getParentRoute: () => root, path: '/source' })
+  const target = new BaseRoute({ getParentRoute: () => root, path: '/target' })
+  const router = createTestRouter({
+    routeTree: root.addChildren([source, target]),
+    history: createMemoryHistory({
+      initialEntries: ['/source?keep=value#hash'],
+    }),
+  })
+  await router.load()
+  const options = [
+    { to: '/target', search: true as const, hash: true as const },
+    { to: '/target', search: true as const, hash: true as const },
+  ]
+  expect(
+    options.map(router.buildLocation).map((location) => location.href),
+  ).toEqual(['/target?keep=value#hash', '/target?keep=value#hash'])
+  expect(Object.keys(options)).toEqual(['0', '1'])
+  expect(options).toEqual([
+    { to: '/target', search: true, hash: true },
+    { to: '/target', search: true, hash: true },
+  ])
+})
+
 test('_getUserHistoryState removes volatile router bookkeeping but keeps mask payloads', () => {
   expect(
     _getUserHistoryState({
@@ -264,6 +326,50 @@ describe('buildLocation - params function receives parsed params', () => {
     expect(updater).toHaveBeenCalledOnce()
     expect(updater).toHaveBeenCalledWith({ orgId: 42, teamSlug: 'engineering' })
   })
+})
+
+test('buildLocation keeps one source snapshot when a search updater navigates synchronously', async () => {
+  const rootRoute = new BaseRootRoute({
+    validateSearch: (search) => ({ value: String(search.value ?? '') }),
+  })
+  const aRoute = new BaseRoute({ getParentRoute: () => rootRoute, path: '/a' })
+  const bRoute = new BaseRoute({ getParentRoute: () => rootRoute, path: '/b' })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+  })
+  const history = createMemoryHistory({ initialEntries: ['/a?value=a#old'] })
+  history.replace('/a?value=a#old', { source: 'a' })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([aRoute, bRoute, targetRoute]),
+    history,
+    isServer: false,
+  })
+  let navigation: Promise<void> | undefined
+  try {
+    await router.load()
+    const location = router.buildLocation({
+      to: '/target',
+      search: (search: Record<string, unknown>) => {
+        navigation = router.navigate({
+          to: '/b',
+          search: { value: 'b' },
+          hash: 'new',
+          state: { source: 'b' } as any,
+        })
+        return search
+      },
+      hash: true,
+      state: true,
+    })
+    expect(location.href).toBe('/target?value=a#old')
+    expect(location.search).toEqual({ value: 'a' })
+    expect(location.hash).toBe('old')
+    expect(location.state).toMatchObject({ source: 'a' })
+  } finally {
+    await navigation
+    history.destroy()
+  }
 })
 
 describe('buildLocation - search params', () => {

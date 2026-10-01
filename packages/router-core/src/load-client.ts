@@ -1837,6 +1837,11 @@ async function runClientTransaction(
       router._refreshNextLoad = true
     }
     await followRedirect(router, tx, result)
+    // A native unload can be cancelled while this document remains mounted.
+    // Terminal redirects settle their sources through the same owner as loads.
+    if (router._tx === tx) {
+      router.stores.setLocation(tx[2 /* location */])
+    }
     return
   }
   const matches = result[1 /* matches */]
@@ -1899,6 +1904,7 @@ async function runClientTransaction(
       ).catch(console.error)
     }
     router.batch(() => {
+      router.stores.setLocation(toLocation)
       router.stores.resolvedLocation.set(toLocation)
       router.stores.status.set('idle')
       if (router._tx === tx) {
@@ -2036,7 +2042,7 @@ export async function loadClientRoute(
   }
   router.batch(() => {
     router.stores.status.set('pending')
-    router.stores.location.set(location)
+    router.stores.setLocation(location, matches)
   })
   // An unresolved cold root has no UI to retain. Provisional not-found waits
   // for lazy routes to place the final boundary.
@@ -2236,7 +2242,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     handoffHistoryState = historyLocation.state
     router.updateLatestLocation()
     location = router.latestLocation
-    router.stores.location.set(location)
+    router.stores.setLocation(location)
     candidates = router.matchRoutes(location, {
       _controller: controller,
     })
