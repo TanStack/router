@@ -4,9 +4,8 @@ import { BaseRootRoute, BaseRoute, retainSearchParams } from '../src'
 import { createTestRouter } from './routerTestUtils'
 import type { AnyRouter, ParsedLocation } from '../src'
 
-// Mirrors what `useLinkProps` does on every location publication: each link
-// owns one stable `dest` object, points `_fromLocation` at the new location
-// and calls `router.buildLocation(dest)` inside its store selector.
+// Use the same workload before and after the cache moves into the binding.
+// Select the revision's implementation once, outside the measured publication.
 
 const LINKS = 32
 
@@ -39,6 +38,8 @@ function createBenchRouter(withMiddleware: boolean) {
     ]),
     history,
     scrollRestoration: false,
+    isServer: false,
+    origin: 'http://localhost',
   })
   history.destroy()
   return router
@@ -46,15 +47,53 @@ function createBenchRouter(withMiddleware: boolean) {
 
 type Dest = Record<string, unknown> & { _fromLocation?: ParsedLocation }
 
-function publication(router: AnyRouter, dests: Array<Dest>) {
-  // A fresh location object per publication, like a committed navigation.
-  const location = { ...router.latestLocation }
-  let checksum = 0
-  for (const dest of dests) {
-    dest._fromLocation = location
-    checksum += router.buildLocation(dest as any).href.length
+function createPublication(
+  router: AnyRouter,
+  dests: Array<Dest>,
+  sameSource: boolean,
+) {
+  const internalBuild = (
+    router as AnyRouter & {
+      _buildLocation?: (
+        dest: any,
+        source: ParsedLocation,
+        dependency: { sourceDependent: boolean },
+      ) => ParsedLocation
+    }
+  )._buildLocation
+  const states = dests.map((dest) => ({
+    dest,
+    built: undefined as ParsedLocation | undefined,
+    sourceDependent: false,
+    scopeLocation: undefined as ParsedLocation | undefined,
+  }))
+  const source = router.latestLocation
+  if (internalBuild) {
+    return () => {
+      const location = sameSource ? source : { ...source }
+      let checksum = 0
+      for (const cache of states) {
+        if (
+          !cache.built ||
+          (cache.sourceDependent && cache.scopeLocation !== location)
+        ) {
+          cache.built = internalBuild(cache.dest, location, cache)
+          cache.scopeLocation = cache.sourceDependent ? location : undefined
+        }
+        checksum += cache.built.href.length
+      }
+      return checksum
+    }
   }
-  return checksum
+  return () => {
+    const location = sameSource ? source : { ...source }
+    let checksum = 0
+    for (const dest of dests) {
+      dest._fromLocation = location
+      checksum += router.buildLocation(dest as any).href.length
+    }
+    return checksum
+  }
 }
 
 function defineCase(
@@ -62,6 +101,7 @@ function defineCase(
   withMiddleware: boolean,
   makeDest: (index: number) => Dest,
   expectedHref: (index: number) => string,
+  sameSource = false,
 ) {
   const router = createBenchRouter(withMiddleware)
   const dests = Array.from({ length: LINKS }, (_, index) => makeDest(index))
@@ -69,16 +109,14 @@ function defineCase(
     (sum, _dest, index) => sum + expectedHref(index).length,
     0,
   )
-  // Correctness before timing: every link resolves to the expected href.
-  dests.forEach((dest, index) => {
-    dest._fromLocation = router.latestLocation
-    expect(router.buildLocation(dest as any).href).toBe(expectedHref(index))
-  })
+  const publication = createPublication(router, dests, sameSource)
+  expect(publication()).toBe(expected)
+  expect(publication()).toBe(expected)
   let checksum = 0
   bench(
     name,
     () => {
-      checksum = publication(router, dests)
+      checksum = publication()
     },
     {
       time: 1000,
@@ -93,7 +131,7 @@ function defineCase(
 
 describe(`buildLocation per publication (${LINKS} links)`, () => {
   defineCase(
-    'absolute to + literal params (static cache hit)',
+    'absolute to + literal params (binding cache hit)',
     false,
     (index) => ({ to: '/posts/$postId', params: { postId: String(index) } }),
     (index) => `/posts/${index}`,
@@ -148,5 +186,44 @@ describe(`buildLocation per publication (${LINKS} links)`, () => {
       mask: { to: '/posts' },
     }),
     (index) => `/posts/${index}?page=${index}`,
+  )
+  defineCase(
+    'mixed static and inherited destinations (24 static, 8 inherited)',
+    false,
+    (index) =>
+      index < 24
+        ? { to: '/posts/$postId', params: { postId: String(index) } }
+        : { to: '/posts/$postId', params: true },
+    (index) => `/posts/${index < 24 ? index : 1}`,
+  )
+  defineCase(
+    'fixed masked destination (binding cache hit)',
+    false,
+    (index) => ({
+      to: '/posts/$postId',
+      params: { postId: String(index) },
+      mask: { to: '/posts' },
+    }),
+    (index) => `/posts/${index}`,
+  )
+  defineCase(
+    'only the mask inherits source search',
+    false,
+    (index) => ({
+      to: '/posts/$postId',
+      params: { postId: String(index) },
+      mask: { to: '/posts', search: true },
+    }),
+    (index) => `/posts/${index}`,
+  )
+  defineCase(
+    'unchanged source identity with search updater',
+    false,
+    (index) => ({
+      to: '/posts',
+      search: (prev: Record<string, unknown>) => ({ ...prev, page: index }),
+    }),
+    (index) => `/posts?page=${index}`,
+    true,
   )
 })

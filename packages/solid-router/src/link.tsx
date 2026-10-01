@@ -23,6 +23,7 @@ import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -124,19 +125,63 @@ export function useLinkProps<
     'href',
   ])
 
-  const currentLocation = Solid.createMemo(
-    () => router.stores.location.get(),
-    undefined,
-    { equals: (prev, next) => prev.href === next.href },
-  )
+  const currentLocation =
+    (isServer ?? router.isServer)
+      ? () => router.stores.location.get()
+      : Solid.createMemo(() => router.stores.location.get())
 
-  const next = Solid.createMemo(() => {
-    // Rebuild when inherited search/hash or the current route context changes.
-    const _fromLocation = currentLocation()
-    const nextOptions = { _fromLocation, ...options } as any
-    // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(nextOptions))
-  })
+  const destination =
+    (isServer ?? router.isServer)
+      ? () => options
+      : Solid.createMemo(() => ({
+          to: options.to,
+          from: options.from,
+          params: options.params,
+          search: options.search,
+          hash: options.hash,
+          state: options.state,
+          mask: options.mask,
+          unsafeRelative: options.unsafeRelative,
+          href: options.href,
+          _fromLocation: options._fromLocation,
+        }))
+  const cache = {
+    dest: undefined as object | undefined,
+    built: undefined as ParsedLocation | undefined,
+    sourceDependent: false,
+  }
+  let scopeLocation: ParsedLocation | undefined
+  let routerOptions = router.options
+  let routeTree = router.processedTree
+
+  const buildNext = () => {
+    const dest = destination()
+    const location = currentLocation()
+    const source = dest._fromLocation ?? location
+    if (
+      cache.dest !== dest ||
+      (cache.sourceDependent && scopeLocation !== source) ||
+      routerOptions !== router.options ||
+      routeTree !== router.processedTree ||
+      process.env.NODE_ENV === 'development'
+    ) {
+      cache.dest = dest
+      cache.built = Solid.untrack(() =>
+        router._buildLocation(dest, source, cache),
+      )
+      scopeLocation = cache.sourceDependent ? source : undefined
+      routerOptions = router.options
+      routeTree = router.processedTree
+    }
+    return cache.built!
+  }
+  const next =
+    (isServer ?? router.isServer)
+      ? (() => {
+          const built = router.buildLocation(options as any)
+          return () => built
+        })()
+      : Solid.createMemo(buildNext)
 
   const hrefOption = Solid.createMemo(() => {
     if (options.disabled) return undefined

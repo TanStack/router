@@ -188,3 +188,137 @@ test.each(['onClick', 'onFocus', 'onMouseEnter', 'onTouchStart'] as const)(
     }
   },
 )
+
+test('preserves delayed intent preloads across equivalent destination renders', () => {
+  vi.useFakeTimers()
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory(),
+  })
+  const preload = vi.spyOn(router, 'preloadRoute').mockResolvedValue(undefined)
+  const content = (label: string) => (
+    <RouterContextProvider router={router}>
+      <Link
+        to="/target"
+        search={{ page: 1 }}
+        activeOptions={{ exact: label === 'After' }}
+        preload="intent"
+        preloadDelay={50}
+        className={label}
+      >
+        {label}
+      </Link>
+    </RouterContextProvider>
+  )
+  try {
+    const view = render(content('Before'))
+    fireEvent.mouseEnter(view.getByText('Before'))
+    view.rerender(content('After'))
+    act(() => vi.advanceTimersByTime(100))
+    expect(preload).toHaveBeenCalledOnce()
+    expect(preload).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/target', search: { page: 1 } }),
+    )
+  } finally {
+    cleanup()
+    vi.useRealTimers()
+    preload.mockRestore()
+  }
+})
+
+test('keeps viewport observers across equivalent destination renders', () => {
+  const observe = vi.fn()
+  const disconnect = vi.fn()
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe = observe
+      disconnect = disconnect
+    },
+  )
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory(),
+  })
+  const content = (label: string) => (
+    <RouterContextProvider router={router}>
+      <Link
+        to="/target"
+        params={{}}
+        activeOptions={{ exact: label === 'After' }}
+        preload="viewport"
+      >
+        {label}
+      </Link>
+    </RouterContextProvider>
+  )
+  try {
+    const view = render(content('Before'))
+    expect(observe).toHaveBeenCalledOnce()
+    view.rerender(content('After'))
+    expect(observe).toHaveBeenCalledOnce()
+    expect(disconnect).not.toHaveBeenCalled()
+    view.unmount()
+    expect(disconnect).toHaveBeenCalledOnce()
+  } finally {
+    cleanup()
+    vi.unstubAllGlobals()
+  }
+})
+
+test('preserves committed intent preloads after a destination transition suspends', async () => {
+  vi.useFakeTimers()
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory(),
+    isServer: false,
+  })
+  const preload = vi.spyOn(router, 'preloadRoute').mockResolvedValue(undefined)
+  const pending = new Promise<never>(() => {})
+  let setDestination!: React.Dispatch<React.SetStateAction<string>>
+  let setLabel!: React.Dispatch<React.SetStateAction<string>>
+  const suspended = vi.fn()
+  function Suspend({ destination }: { destination: string }) {
+    if (destination === '/pending') {
+      suspended()
+      throw pending
+    }
+    return null
+  }
+  function App() {
+    const [destination, updateDestination] = React.useState('/target')
+    const [label, updateLabel] = React.useState('Before')
+    setDestination = updateDestination
+    setLabel = updateLabel
+    return (
+      <React.Suspense fallback="Loading">
+        <Link to={destination} preload="intent" preloadDelay={50}>
+          {label}
+        </Link>
+        <Suspend destination={destination} />
+      </React.Suspense>
+    )
+  }
+  try {
+    const view = render(
+      <RouterContextProvider router={router}>
+        <App />
+      </RouterContextProvider>,
+    )
+    fireEvent.mouseEnter(view.getByText('Before'))
+    await act(async () => {
+      React.startTransition(() => setDestination('/pending'))
+    })
+    expect(suspended).toHaveBeenCalled()
+    act(() => setLabel('After'))
+    expect(view.getByText('After').getAttribute('href')).toBe('/target')
+    act(() => vi.advanceTimersByTime(100))
+    expect(preload).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ to: '/target' }),
+    )
+  } finally {
+    cleanup()
+    vi.useRealTimers()
+    preload.mockRestore()
+  }
+})

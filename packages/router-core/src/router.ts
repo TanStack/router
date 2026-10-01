@@ -1187,11 +1187,6 @@ export class RouterCore<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
   >
-  // Locations built without reading the current location, keyed by the stable
-  // options object a Link owns. Links pass a new object when their values change.
-  // Client only: server renders never repeat an options object, so server
-  // bundles fold `isServer` and drop the cache entirely.
-  private staticLocations: WeakMap<object, ParsedLocation> | undefined
   isServer!: boolean
   readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1267,10 +1262,6 @@ export class RouterCore<
 
     this.isServer =
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
-    // `isServer` is a per-bundle constant, so server builds drop the cache.
-    if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
-    }
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
 
@@ -1402,9 +1393,6 @@ export class RouterCore<
   setRoutes(caches: RouteTreeCaches<TRouteTree>) {
     Object.assign(this, caches)
     this.lightweightCache = new WeakMap()
-    if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
-    }
 
     const notFoundRoute = this.options.notFoundRoute
 
@@ -1875,23 +1863,15 @@ export class RouterCore<
     return result
   }
 
-  /**
-   * Build the next ParsedLocation from navigation options without committing.
-   * Resolves `to`/`from`, params/search/hash/state, applies search validation
-   * and middlewares, and returns a stringified location object. The built
-   * `search` and `state` are not structurally shared with the current
-   * location; `parseLocation` stabilizes them once the location is committed.
-   *
-   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
-   */
-  buildLocation: BuildLocationFn = (opts) => {
-    if (!(isServer ?? this.isServer)) {
-      const cached = this.staticLocations!.get(opts)
-      if (cached) {
-        return cached
-      }
-    }
-
+  // Internal build variant: reports source reads to the destination-owning binding.
+  _buildLocation = (
+    opts: BuildNextOptions & {
+      leaveParams?: boolean
+      _includeValidateSearch?: boolean
+    },
+    scopeLocation?: ParsedLocation,
+    dependency?: { sourceDependent: boolean },
+  ): ParsedLocation => {
     // Set by `current()` whenever a build reads the current location. A
     // location built without it depends only on `opts` and the route tree.
     let usedCurrent = false
@@ -1916,7 +1896,10 @@ export class RouterCore<
 
       // We allow the caller to override the current location
       const currentLocation =
-        dest._fromLocation || this._pendingLocation || this.latestLocation
+        dest._fromLocation ||
+        scopeLocation ||
+        this._pendingLocation ||
+        this.latestLocation
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match
@@ -2206,18 +2189,23 @@ export class RouterCore<
       }
     }
 
-    // Masked locations stay out: `opts.mask` is rebuilt from the current location.
-    if (
-      !(isServer ?? this.isServer) &&
-      !usedCurrent &&
-      opts._fromLocation &&
-      !next.maskedLocation
-    ) {
-      this.staticLocations!.set(opts, next)
+    if (dependency) {
+      dependency.sourceDependent = usedCurrent
     }
 
     return next
   }
+
+  /**
+   * Build the next ParsedLocation from navigation options without committing.
+   * Resolves `to`/`from`, params/search/hash/state, applies search validation
+   * and middlewares, and returns a stringified location object. The built
+   * `search` and `state` are not structurally shared with the current
+   * location; `parseLocation` stabilizes them once the location is committed.
+   *
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
+   */
+  buildLocation: BuildLocationFn = this._buildLocation
 
   _commitPromise: (Promise<void> & { resolve: () => void }) | undefined
 
