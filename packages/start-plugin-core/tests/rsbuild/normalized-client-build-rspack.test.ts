@@ -4,6 +4,8 @@ import { buildStartManifest } from '../../src/start-manifest-plugin/manifestBuil
 import {
   FIXTURE_ROOT,
   compileClientFixture,
+  cssAssetOrder,
+  expectedChunkFileOrder,
   fixtureRouteTreeRoutes,
   serializeClientBuild,
 } from './rspack-client-build-fixture'
@@ -18,9 +20,14 @@ function hasJsFile(chunk: Rspack.Chunk): boolean {
 
 describe.each<FixtureMode>(['development', 'production'])('%s', (mode) => {
   test('matches the recorded normalized client build', async () => {
-    const build = await compileClientFixture({ mode }, (compilation) =>
-      serializeClientBuild(normalizeRspackClientBuild(compilation)),
-    )
+    const build = await compileClientFixture({ mode }, (compilation) => {
+      const expectedOrder = expectedChunkFileOrder(compilation)
+      const clientBuild = normalizeRspackClientBuild(compilation)
+      expect(Array.from(clientBuild.chunksByFileName.keys())).toEqual(
+        expectedOrder,
+      )
+      return serializeClientBuild(clientBuild)
+    })
     expect(build).toMatchSnapshot()
   })
 
@@ -110,8 +117,14 @@ describe.each<FixtureMode>(['development', 'production'])('%s', (mode) => {
 test('matches the recorded client build with an rsc entry', async () => {
   const build = await compileClientFixture(
     { mode: 'production', withRscEntry: true },
-    (compilation) =>
-      serializeClientBuild(normalizeRspackClientBuild(compilation)),
+    (compilation) => {
+      const expectedOrder = expectedChunkFileOrder(compilation)
+      const clientBuild = normalizeRspackClientBuild(compilation)
+      expect(Array.from(clientBuild.chunksByFileName.keys())).toEqual(
+        expectedOrder,
+      )
+      return serializeClientBuild(clientBuild)
+    },
   )
   expect(build).toMatchSnapshot()
 })
@@ -119,8 +132,18 @@ test('matches the recorded client build with an rsc entry', async () => {
 test('matches the recorded client build with inline CSS', async () => {
   const build = await compileClientFixture(
     { mode: 'production' },
-    (compilation) =>
-      serializeClientBuild(normalizeRspackClientBuild(compilation, true)),
+    (compilation) => {
+      const expectedOrder = expectedChunkFileOrder(compilation)
+      const expectedCssOrder = cssAssetOrder(compilation)
+      const clientBuild = normalizeRspackClientBuild(compilation, true)
+      expect(Array.from(clientBuild.chunksByFileName.keys())).toEqual(
+        expectedOrder,
+      )
+      expect(Array.from(clientBuild.cssContentByFileName!.keys())).toEqual(
+        expectedCssOrder,
+      )
+      return serializeClientBuild(clientBuild)
+    },
   )
   expect(build).toMatchSnapshot()
 })

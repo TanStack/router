@@ -137,13 +137,38 @@ export async function compileClientFixture<T>(
   }
 }
 
+export function expectedChunkFileOrder(
+  compilation: Rspack.Compilation,
+): Array<string> {
+  const files: Array<string> = []
+  for (const chunk of compilation.chunks) {
+    for (const file of chunk.files) {
+      if (
+        (file.endsWith('.js') || file.endsWith('.mjs')) &&
+        !file.includes('.hot-update.')
+      ) {
+        files.push(file)
+      }
+    }
+  }
+  return files
+}
+
+export function cssAssetOrder(compilation: Rspack.Compilation): Array<string> {
+  return compilation
+    .getAssets()
+    .filter((asset) => asset.name.endsWith('.css'))
+    .map((asset) => asset.name)
+}
+
 export function serializeClientBuild(build: NormalizedClientBuild): unknown {
   const fixtureRoot = FIXTURE_ROOT.replace(/\\/g, '/')
   return {
     entryChunkFileName: build.entryChunkFileName,
-    chunksByFileName: Array.from(
-      build.chunksByFileName,
-      ([fileName, chunk]) => [
+    // Rspack's chunk and asset iteration order varies between compilations in one process.
+    chunksByFileName: Array.from(build.chunksByFileName)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([fileName, chunk]) => [
         fileName,
         {
           ...chunk,
@@ -151,10 +176,11 @@ export function serializeClientBuild(build: NormalizedClientBuild): unknown {
             filePath.replaceAll(fixtureRoot, '<fixture>'),
           ),
         },
-      ],
-    ),
+      ]),
     cssContentByFileName: build.cssContentByFileName
-      ? Array.from(build.cssContentByFileName)
+      ? Array.from(build.cssContentByFileName).sort(([left], [right]) =>
+          left.localeCompare(right),
+        )
       : undefined,
   }
 }

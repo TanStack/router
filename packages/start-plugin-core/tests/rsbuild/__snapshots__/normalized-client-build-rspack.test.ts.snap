@@ -4,6 +4,76 @@ exports[`development > matches the recorded normalized client build 1`] = `
 {
   "chunksByFileName": [
     [
+      "about.js",
+      {
+        "css": [
+          "assets/theme.css",
+        ],
+        "dynamicImports": [
+          "tooltip.js",
+        ],
+        "fileName": "about.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/about.js",
+        ],
+      },
+    ],
+    [
+      "big-shared.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "big-shared.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "post.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "chart.js",
+      {
+        "css": [
+          "chart.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "chart.js",
+        "hydrationIds": [
+          "chart",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "counter.js",
+      {
+        "css": [
+          "counter.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "counter.js",
+        "hydrationIds": [
+          "counter",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
       "index.js",
       {
         "css": [
@@ -27,68 +97,23 @@ exports[`development > matches the recorded normalized client build 1`] = `
       },
     ],
     [
-      "counter.js",
+      "notes.js",
       {
-        "css": [
-          "counter.css",
-        ],
+        "css": [],
         "dynamicImports": [],
-        "fileName": "counter.js",
-        "hydrationIds": [
-          "counter",
-        ],
+        "fileName": "notes.js",
+        "hydrationIds": [],
         "imports": [],
         "isEntry": false,
         "routeFilePaths": [],
       },
     ],
     [
-      "about.js",
-      {
-        "css": [
-          "assets/theme.css",
-        ],
-        "dynamicImports": [
-          "tooltip.js",
-        ],
-        "fileName": "about.js",
-        "hydrationIds": [],
-        "imports": [
-          "vendors.js",
-        ],
-        "isEntry": false,
-        "routeFilePaths": [
-          "<fixture>/src/routes/about.js",
-        ],
-      },
-    ],
-    [
-      "vendors.js",
-      {
-        "css": [],
-        "dynamicImports": [
-          "counter.js",
-          "tooltip.js",
-          "chart.js",
-        ],
-        "fileName": "vendors.js",
-        "hydrationIds": [],
-        "imports": [
-          "posts.js",
-          "big-shared.js",
-          "post.js",
-          "about.js",
-        ],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "notes.js",
+      "plain.js",
       {
         "css": [],
         "dynamicImports": [],
-        "fileName": "notes.js",
+        "fileName": "plain.js",
         "hydrationIds": [],
         "imports": [],
         "isEntry": false,
@@ -116,34 +141,6 @@ exports[`development > matches the recorded normalized client build 1`] = `
       },
     ],
     [
-      "chart.js",
-      {
-        "css": [
-          "chart.css",
-        ],
-        "dynamicImports": [],
-        "fileName": "chart.js",
-        "hydrationIds": [
-          "chart",
-        ],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "plain.js",
-      {
-        "css": [],
-        "dynamicImports": [],
-        "fileName": "plain.js",
-        "hydrationIds": [],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
       "posts.js",
       {
         "css": [
@@ -165,21 +162,19 @@ exports[`development > matches the recorded normalized client build 1`] = `
       },
     ],
     [
-      "big-shared.js",
+      "settings.js",
       {
-        "css": [],
-        "dynamicImports": [
-          "counter.js",
-          "chart.js",
+        "css": [
+          "settings.css",
         ],
-        "fileName": "big-shared.js",
+        "dynamicImports": [],
+        "fileName": "settings.js",
         "hydrationIds": [],
-        "imports": [
-          "vendors.js",
-          "post.js",
-        ],
+        "imports": [],
         "isEntry": false,
-        "routeFilePaths": [],
+        "routeFilePaths": [
+          "<fixture>/src/routes/settings.js",
+        ],
       },
     ],
     [
@@ -199,19 +194,24 @@ exports[`development > matches the recorded normalized client build 1`] = `
       },
     ],
     [
-      "settings.js",
+      "vendors.js",
       {
-        "css": [
-          "settings.css",
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+          "chart.js",
         ],
-        "dynamicImports": [],
-        "fileName": "settings.js",
+        "fileName": "vendors.js",
         "hydrationIds": [],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [
-          "<fixture>/src/routes/settings.js",
+        "imports": [
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
         ],
+        "isEntry": false,
+        "routeFilePaths": [],
       },
     ],
   ],
@@ -297,71 +297,22 @@ exports[`matches the recorded client build with an rsc entry 1`] = `
 {
   "chunksByFileName": [
     [
-      "post.js",
-      {
-        "css": [],
-        "dynamicImports": [
-          "counter.js",
-          "chart.js",
-        ],
-        "fileName": "post.js",
-        "hydrationIds": [],
-        "imports": [
-          "vendors.js",
-          "big-shared.js",
-        ],
-        "isEntry": false,
-        "routeFilePaths": [
-          "<fixture>/src/routes/post.js",
-        ],
-      },
-    ],
-    [
-      "chart.js",
+      "about.js",
       {
         "css": [
-          "chart.css",
-        ],
-        "dynamicImports": [],
-        "fileName": "chart.js",
-        "hydrationIds": [
-          "chart",
-        ],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "plain.js",
-      {
-        "css": [],
-        "dynamicImports": [],
-        "fileName": "plain.js",
-        "hydrationIds": [],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "posts.js",
-      {
-        "css": [
-          "posts.css",
+          "assets/theme.css",
         ],
         "dynamicImports": [
-          "counter.js",
           "tooltip.js",
         ],
-        "fileName": "posts.js",
+        "fileName": "about.js",
         "hydrationIds": [],
         "imports": [
           "vendors.js",
         ],
         "isEntry": false,
         "routeFilePaths": [
-          "<fixture>/src/routes/posts.js",
+          "<fixture>/src/routes/about.js",
         ],
       },
     ],
@@ -384,15 +335,15 @@ exports[`matches the recorded client build with an rsc entry 1`] = `
       },
     ],
     [
-      "tooltip.js",
+      "chart.js",
       {
         "css": [
-          "tooltip.css",
+          "chart.css",
         ],
         "dynamicImports": [],
-        "fileName": "tooltip.js",
+        "fileName": "chart.js",
         "hydrationIds": [
-          "tooltip",
+          "chart",
         ],
         "imports": [],
         "isEntry": false,
@@ -400,18 +351,107 @@ exports[`matches the recorded client build with an rsc entry 1`] = `
       },
     ],
     [
-      "settings.js",
+      "counter.js",
       {
         "css": [
-          "settings.css",
+          "counter.css",
         ],
         "dynamicImports": [],
-        "fileName": "settings.js",
+        "fileName": "counter.js",
+        "hydrationIds": [
+          "counter",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "index.js",
+      {
+        "css": [
+          "index.css",
+          "rsc.css",
+        ],
+        "dynamicImports": [
+          "vendors.js",
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+          "settings.js",
+          "plain.js",
+          "notes.js",
+        ],
+        "fileName": "index.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": true,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "notes.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "notes.js",
         "hydrationIds": [],
         "imports": [],
         "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "plain.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "plain.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "post.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "post.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "big-shared.js",
+        ],
+        "isEntry": false,
         "routeFilePaths": [
-          "<fixture>/src/routes/settings.js",
+          "<fixture>/src/routes/post.js",
+        ],
+      },
+    ],
+    [
+      "posts.js",
+      {
+        "css": [
+          "posts.css",
+        ],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+        ],
+        "fileName": "posts.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/posts.js",
         ],
       },
     ],
@@ -430,62 +470,34 @@ exports[`matches the recorded client build with an rsc entry 1`] = `
       },
     ],
     [
-      "counter.js",
+      "settings.js",
       {
         "css": [
-          "counter.css",
+          "settings.css",
         ],
         "dynamicImports": [],
-        "fileName": "counter.js",
-        "hydrationIds": [
-          "counter",
-        ],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "about.js",
-      {
-        "css": [
-          "assets/theme.css",
-        ],
-        "dynamicImports": [
-          "tooltip.js",
-        ],
-        "fileName": "about.js",
+        "fileName": "settings.js",
         "hydrationIds": [],
-        "imports": [
-          "vendors.js",
-        ],
+        "imports": [],
         "isEntry": false,
         "routeFilePaths": [
-          "<fixture>/src/routes/about.js",
+          "<fixture>/src/routes/settings.js",
         ],
       },
     ],
     [
-      "index.js",
+      "tooltip.js",
       {
         "css": [
-          "index.css",
-          "rsc.css",
+          "tooltip.css",
         ],
-        "dynamicImports": [
-          "vendors.js",
-          "posts.js",
-          "big-shared.js",
-          "post.js",
-          "about.js",
-          "settings.js",
-          "plain.js",
-          "notes.js",
+        "dynamicImports": [],
+        "fileName": "tooltip.js",
+        "hydrationIds": [
+          "tooltip",
         ],
-        "fileName": "index.js",
-        "hydrationIds": [],
         "imports": [],
-        "isEntry": true,
+        "isEntry": false,
         "routeFilePaths": [],
       },
     ],
@@ -506,18 +518,6 @@ exports[`matches the recorded client build with an rsc entry 1`] = `
           "post.js",
           "about.js",
         ],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "notes.js",
-      {
-        "css": [],
-        "dynamicImports": [],
-        "fileName": "notes.js",
-        "hydrationIds": [],
-        "imports": [],
         "isEntry": false,
         "routeFilePaths": [],
       },
@@ -532,6 +532,76 @@ exports[`matches the recorded client build with inline CSS 1`] = `
 {
   "chunksByFileName": [
     [
+      "about.js",
+      {
+        "css": [
+          "assets/theme.css",
+        ],
+        "dynamicImports": [
+          "tooltip.js",
+        ],
+        "fileName": "about.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/about.js",
+        ],
+      },
+    ],
+    [
+      "big-shared.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "big-shared.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "post.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "chart.js",
+      {
+        "css": [
+          "chart.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "chart.js",
+        "hydrationIds": [
+          "chart",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "counter.js",
+      {
+        "css": [
+          "counter.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "counter.js",
+        "hydrationIds": [
+          "counter",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
       "index.js",
       {
         "css": [
@@ -555,68 +625,23 @@ exports[`matches the recorded client build with inline CSS 1`] = `
       },
     ],
     [
-      "counter.js",
+      "notes.js",
       {
-        "css": [
-          "counter.css",
-        ],
+        "css": [],
         "dynamicImports": [],
-        "fileName": "counter.js",
-        "hydrationIds": [
-          "counter",
-        ],
+        "fileName": "notes.js",
+        "hydrationIds": [],
         "imports": [],
         "isEntry": false,
         "routeFilePaths": [],
       },
     ],
     [
-      "about.js",
-      {
-        "css": [
-          "assets/theme.css",
-        ],
-        "dynamicImports": [
-          "tooltip.js",
-        ],
-        "fileName": "about.js",
-        "hydrationIds": [],
-        "imports": [
-          "vendors.js",
-        ],
-        "isEntry": false,
-        "routeFilePaths": [
-          "<fixture>/src/routes/about.js",
-        ],
-      },
-    ],
-    [
-      "vendors.js",
-      {
-        "css": [],
-        "dynamicImports": [
-          "counter.js",
-          "tooltip.js",
-          "chart.js",
-        ],
-        "fileName": "vendors.js",
-        "hydrationIds": [],
-        "imports": [
-          "posts.js",
-          "big-shared.js",
-          "post.js",
-          "about.js",
-        ],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "notes.js",
+      "plain.js",
       {
         "css": [],
         "dynamicImports": [],
-        "fileName": "notes.js",
+        "fileName": "plain.js",
         "hydrationIds": [],
         "imports": [],
         "isEntry": false,
@@ -644,34 +669,6 @@ exports[`matches the recorded client build with inline CSS 1`] = `
       },
     ],
     [
-      "chart.js",
-      {
-        "css": [
-          "chart.css",
-        ],
-        "dynamicImports": [],
-        "fileName": "chart.js",
-        "hydrationIds": [
-          "chart",
-        ],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "plain.js",
-      {
-        "css": [],
-        "dynamicImports": [],
-        "fileName": "plain.js",
-        "hydrationIds": [],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
       "posts.js",
       {
         "css": [
@@ -693,6 +690,22 @@ exports[`matches the recorded client build with inline CSS 1`] = `
       },
     ],
     [
+      "settings.js",
+      {
+        "css": [
+          "settings.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "settings.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/settings.js",
+        ],
+      },
+    ],
+    [
       "tooltip.js",
       {
         "css": [
@@ -709,61 +722,47 @@ exports[`matches the recorded client build with inline CSS 1`] = `
       },
     ],
     [
-      "big-shared.js",
+      "vendors.js",
       {
         "css": [],
         "dynamicImports": [
           "counter.js",
+          "tooltip.js",
           "chart.js",
         ],
-        "fileName": "big-shared.js",
+        "fileName": "vendors.js",
         "hydrationIds": [],
         "imports": [
-          "vendors.js",
+          "posts.js",
+          "big-shared.js",
           "post.js",
+          "about.js",
         ],
         "isEntry": false,
         "routeFilePaths": [],
       },
     ],
-    [
-      "settings.js",
-      {
-        "css": [
-          "settings.css",
-        ],
-        "dynamicImports": [],
-        "fileName": "settings.js",
-        "hydrationIds": [],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [
-          "<fixture>/src/routes/settings.js",
-        ],
-      },
-    ],
   ],
   "cssContentByFileName": [
     [
-      "counter.css",
-      ".counter {
-  color: blue;
+      "assets/theme.css",
+      ".theme {
+  background: white;
 }
-
-",
-    ],
-    [
-      "tooltip.css",
-      ".tooltip {
-  color: gray;
-}
-
 ",
     ],
     [
       "chart.css",
       ".chart {
   color: orange;
+}
+
+",
+    ],
+    [
+      "counter.css",
+      ".counter {
+  color: blue;
 }
 
 ",
@@ -777,10 +776,11 @@ exports[`matches the recorded client build with inline CSS 1`] = `
 ",
     ],
     [
-      "assets/theme.css",
-      ".theme {
-  background: white;
+      "posts.css",
+      ".posts {
+  color: red;
 }
+
 ",
     ],
     [
@@ -800,9 +800,9 @@ exports[`matches the recorded client build with inline CSS 1`] = `
 ",
     ],
     [
-      "posts.css",
-      ".posts {
-  color: red;
+      "tooltip.css",
+      ".tooltip {
+  color: gray;
 }
 
 ",
@@ -816,52 +816,23 @@ exports[`production > matches the recorded normalized client build 1`] = `
 {
   "chunksByFileName": [
     [
-      "plain.js",
-      {
-        "css": [],
-        "dynamicImports": [],
-        "fileName": "plain.js",
-        "hydrationIds": [],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "posts.js",
+      "about.js",
       {
         "css": [
-          "posts.css",
+          "assets/theme.css",
         ],
         "dynamicImports": [
-          "counter.js",
           "tooltip.js",
         ],
-        "fileName": "posts.js",
+        "fileName": "about.js",
         "hydrationIds": [],
         "imports": [
           "vendors.js",
         ],
         "isEntry": false,
         "routeFilePaths": [
-          "<fixture>/src/routes/posts.js",
+          "<fixture>/src/routes/about.js",
         ],
-      },
-    ],
-    [
-      "tooltip.js",
-      {
-        "css": [
-          "tooltip.css",
-        ],
-        "dynamicImports": [],
-        "fileName": "tooltip.js",
-        "hydrationIds": [
-          "tooltip",
-        ],
-        "imports": [],
-        "isEntry": false,
-        "routeFilePaths": [],
       },
     ],
     [
@@ -883,19 +854,35 @@ exports[`production > matches the recorded normalized client build 1`] = `
       },
     ],
     [
-      "settings.js",
+      "chart.js",
       {
         "css": [
-          "settings.css",
+          "chart.css",
         ],
         "dynamicImports": [],
-        "fileName": "settings.js",
-        "hydrationIds": [],
+        "fileName": "chart.js",
+        "hydrationIds": [
+          "chart",
+        ],
         "imports": [],
         "isEntry": false,
-        "routeFilePaths": [
-          "<fixture>/src/routes/settings.js",
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "counter.js",
+      {
+        "css": [
+          "counter.css",
         ],
+        "dynamicImports": [],
+        "fileName": "counter.js",
+        "hydrationIds": [
+          "counter",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
       },
     ],
     [
@@ -922,68 +909,23 @@ exports[`production > matches the recorded normalized client build 1`] = `
       },
     ],
     [
-      "counter.js",
+      "notes.js",
       {
-        "css": [
-          "counter.css",
-        ],
+        "css": [],
         "dynamicImports": [],
-        "fileName": "counter.js",
-        "hydrationIds": [
-          "counter",
-        ],
+        "fileName": "notes.js",
+        "hydrationIds": [],
         "imports": [],
         "isEntry": false,
         "routeFilePaths": [],
       },
     ],
     [
-      "about.js",
-      {
-        "css": [
-          "assets/theme.css",
-        ],
-        "dynamicImports": [
-          "tooltip.js",
-        ],
-        "fileName": "about.js",
-        "hydrationIds": [],
-        "imports": [
-          "vendors.js",
-        ],
-        "isEntry": false,
-        "routeFilePaths": [
-          "<fixture>/src/routes/about.js",
-        ],
-      },
-    ],
-    [
-      "vendors.js",
-      {
-        "css": [],
-        "dynamicImports": [
-          "counter.js",
-          "tooltip.js",
-          "chart.js",
-        ],
-        "fileName": "vendors.js",
-        "hydrationIds": [],
-        "imports": [
-          "posts.js",
-          "big-shared.js",
-          "post.js",
-          "about.js",
-        ],
-        "isEntry": false,
-        "routeFilePaths": [],
-      },
-    ],
-    [
-      "notes.js",
+      "plain.js",
       {
         "css": [],
         "dynamicImports": [],
-        "fileName": "notes.js",
+        "fileName": "plain.js",
         "hydrationIds": [],
         "imports": [],
         "isEntry": false,
@@ -1011,17 +953,75 @@ exports[`production > matches the recorded normalized client build 1`] = `
       },
     ],
     [
-      "chart.js",
+      "posts.js",
       {
         "css": [
-          "chart.css",
+          "posts.css",
+        ],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+        ],
+        "fileName": "posts.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/posts.js",
+        ],
+      },
+    ],
+    [
+      "settings.js",
+      {
+        "css": [
+          "settings.css",
         ],
         "dynamicImports": [],
-        "fileName": "chart.js",
+        "fileName": "settings.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/settings.js",
+        ],
+      },
+    ],
+    [
+      "tooltip.js",
+      {
+        "css": [
+          "tooltip.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "tooltip.js",
         "hydrationIds": [
-          "chart",
+          "tooltip",
         ],
         "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "vendors.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+          "chart.js",
+        ],
+        "fileName": "vendors.js",
+        "hydrationIds": [],
+        "imports": [
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+        ],
         "isEntry": false,
         "routeFilePaths": [],
       },
