@@ -2,4 +2,4 @@
 '@tanstack/start-plugin-core': patch
 ---
 
-Speed up the Rsbuild client build capture on apps with many chunks by reading the Rspack chunk graph once per build.
+Speed up Start manifest generation for Rsbuild client builds with many chunks by caching Rspack chunk graph reads and only scanning chunks that contain route-split or hydration modules.

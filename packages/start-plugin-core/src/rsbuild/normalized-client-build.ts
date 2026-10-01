@@ -18,21 +18,6 @@ type RspackModule = Rspack.Module
 
 const backslashRegex = /\\/g
 
-function findTaggedChunks(
-  compilation: RspackCompilation,
-): Set<RspackCompilationChunk> {
-  const taggedChunks = new Set<RspackCompilationChunk>()
-  for (const mod of compilation.modules) {
-    const identifier = mod.identifier()
-    if (identifier.includes(tsrSplit) || identifier.includes(tssHydrate)) {
-      for (const chunk of compilation.chunkGraph.getModuleChunks(mod)) {
-        taggedChunks.add(chunk)
-      }
-    }
-  }
-  return taggedChunks
-}
-
 /**
  * Convert an OS native path to the POSIX form used by the generated route tree.
  */
@@ -127,6 +112,28 @@ function getHydrationIdsFromModules(
 }
 
 /**
+ * Substring checks admit a superset of chunks; the extractors still decide.
+ * Relies on every getChunkModules module (including a production ConcatenatedModule
+ * root) being in compilation.modules and reporting its chunk via getModuleChunks.
+ * Rspack must return the same chunk objects as compilation.chunks, as entryChunkSet
+ * already requires.
+ */
+function findRouteAndHydrationChunks(
+  compilation: RspackCompilation,
+): Set<RspackCompilationChunk> {
+  const routeAndHydrationChunks = new Set<RspackCompilationChunk>()
+  for (const mod of compilation.modules) {
+    const identifier = mod.identifier()
+    if (identifier.includes(tsrSplit) || identifier.includes(tssHydrate)) {
+      for (const chunk of compilation.chunkGraph.getModuleChunks(mod)) {
+        routeAndHydrationChunks.add(chunk)
+      }
+    }
+  }
+  return routeAndHydrationChunks
+}
+
+/**
  * Returns true for Rspack/webpack HMR runtime chunks that should never be
  * surfaced to the Start manifest. These files are emitted on every rebuild
  * (e.g. `index.<hash>.hot-update.mjs`) and must not be treated as the entry
@@ -216,9 +223,12 @@ function createChunkGraphReader() {
     getAuxiliaryFiles,
     getGroupChunks,
     getChunkJsFiles,
+    // Child groups are import() points; their chunks' JS is Rollup's dynamicImports.
     computeDynamicImports(chunk: RspackCompilationChunk) {
       return mergeJsFiles(getGroups(chunk).map(getChildGroupJsFiles))
     },
+    // A group holds every chunk needed for an import, so its other chunks are
+    // static imports, analogous to Rollup's imports.
     computeAsyncChunkImports(
       chunk: RspackCompilationChunk,
       currentFile: string,
@@ -258,19 +268,15 @@ export function normalizeRspackClientBuild(
   if (entrypoint) {
     for (const chunk of getGroupChunks(entrypoint)) {
       entryChunkSet.add(chunk)
-      for (const file of getFiles(chunk)) {
-        if (isManifestJsAsset(file)) {
-          initialJsFileNames.push(file)
-        }
-      }
+      initialJsFileNames.push(...getChunkJsFiles(chunk))
     }
   }
 
-  const taggedChunks = findTaggedChunks(compilation)
+  const routeAndHydrationChunks = findRouteAndHydrationChunks(compilation)
 
   // Iterate ALL chunks (initial + async) to capture route-split chunks
   for (const chunk of compilation.chunks) {
-    const modules = taggedChunks.has(chunk)
+    const modules = routeAndHydrationChunks.has(chunk)
       ? compilation.chunkGraph.getChunkModules(chunk)
       : undefined
     const routeFilePaths = modules ? getRouteFilePathsFromModules(modules) : []
