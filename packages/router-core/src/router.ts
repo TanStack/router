@@ -100,6 +100,7 @@ import type {
 import type {
   FullSearchSchema,
   RouteById,
+  RouteByPath,
   RoutePaths,
   RoutesById,
   RoutesByPath,
@@ -728,7 +729,7 @@ export type MatchRouteFn<
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
 > = <
-  TFrom extends RoutePaths<TRouteTree> = '/',
+  TFrom extends RoutePaths<TRouteTree> | string = '/',
   TTo extends string | undefined = undefined,
   TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
 >(
@@ -743,7 +744,9 @@ export type MatchRouteFn<
     TTo
   >,
   opts?: MatchRouteOptions,
-) => false | RouteById<TRouteTree, TResolved>['types']['allParams']
+) =>
+  | false
+  | RouteByPath<TRouteTree, Extract<TResolved, string>>['types']['allParams']
 
 export type UpdateFn<
   TRouteTree extends AnyRoute,
