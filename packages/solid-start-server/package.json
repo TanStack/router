@@ -63,15 +63,15 @@
     "@tanstack/start-server-core": "workspace:*"
   },
   "devDependencies": {
-    "@solidjs/vite-plugin": "^3.0.0-next.44",
-    "@solidjs/web": "^2.0.0-rc.9",
-    "solid-js": "^2.0.0-rc.9",
+    "@solidjs/vite-plugin": "^3.0.0-next.46",
+    "@solidjs/web": "^2.0.0-rc.13",
+    "solid-js": "^2.0.0-rc.13",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "*"
   },
   "peerDependencies": {
-    "@solidjs/web": ">=2.0.0-0 <3.0.0",
-    "solid-js": ">=2.0.0-0 <3.0.0"
+    "@solidjs/web": ">=2.0.0-rc.13 <3.0.0",
+    "solid-js": ">=2.0.0-rc.13 <3.0.0"
   }
 }

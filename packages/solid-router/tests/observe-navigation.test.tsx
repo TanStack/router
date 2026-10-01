@@ -56,7 +56,7 @@ test('the match publish is declared as the navigation, dated from the history ch
   await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy())
   // The initial load publishes matches for the location already shown: not
   // a navigation.
-  expect(attribution.navigations()).toHaveLength(0)
+  expect(attribution.history('navigation')).toHaveLength(0)
 
   const requested = performance.now()
   await router.navigate({ to: '/users/$id', params: { id: '42' } })
@@ -65,7 +65,7 @@ test('the match publish is declared as the navigation, dated from the history ch
 
   // One record for the navigation — the pending offer (a match with
   // `status: 'pending'`) is published undeclared.
-  const navs = attribution.navigations()
+  const navs = attribution.history('navigation')
   expect(navs).toHaveLength(1)
   const nav = navs[0]!
   expect(nav.name).toBe('/users/$id')
@@ -94,7 +94,7 @@ test('a navigation superseded before it published leaves one record for the dest
   )
   await sleep(0)
 
-  const navs = attribution.navigations()
+  const navs = attribution.history('navigation')
   expect(navs).toHaveLength(1)
   expect(navs[0]!.to).toBe('/users/2')
   // Dated from the first request: that is when the user started waiting.
