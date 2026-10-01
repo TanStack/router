@@ -345,6 +345,7 @@ function useLinkPropsImpl(
       }
 
       e.preventDefault()
+      enqueuePreload()
 
       // All is well? Navigate!
       router.navigate({
