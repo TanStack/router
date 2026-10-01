@@ -155,3 +155,70 @@ test('#2072: login invalidates the router with the fresh auth context', async ()
   expect(await screen.findByText('Private page')).toBeInTheDocument()
   expect(seen).toEqual([true])
 })
+
+// The original report awaits an API call before updating the auth state, so
+// the state update is not flushed before `invalidate()` starts its load.
+test('#2072: logout after an awaited request invalidates the router with the fresh auth context', async () => {
+  const seen: Array<boolean> = []
+  const rootRoute = createRootRouteWithContext<{
+    auth: { isAuthenticated: boolean }
+  }>()()
+  const loginRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/login',
+    component: () => <div>Login page</div>,
+  })
+  const authenticatedRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_authenticated',
+    beforeLoad: ({ context }) => {
+      seen.push(context.auth.isAuthenticated)
+      if (!context.auth.isAuthenticated) {
+        throw redirect({ to: '/login' })
+      }
+    },
+  })
+  const privateRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: '/private',
+    component: () => <div>Private page</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      loginRoute,
+      authenticatedRoute.addChildren([privateRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/private'] }),
+    context: { auth: { isAuthenticated: true } },
+  })
+
+  function App() {
+    const [isAuthenticated, setIsAuthenticated] = React.useState(true)
+    return (
+      <>
+        <button
+          onClick={async () => {
+            await new Promise((resolve) => setTimeout(resolve, 10))
+            setIsAuthenticated(false)
+            await router.invalidate()
+          }}
+        >
+          Logout
+        </button>
+        <RouterProvider
+          router={router}
+          context={{ auth: { isAuthenticated } }}
+        />
+      </>
+    )
+  }
+
+  render(<App />)
+  expect(await screen.findByText('Private page')).toBeInTheDocument()
+  expect(seen).toEqual([true])
+
+  fireEvent.click(screen.getByRole('button', { name: 'Logout' }))
+
+  expect(await screen.findByText('Login page')).toBeInTheDocument()
+  expect(seen).toEqual([true, false])
+})
