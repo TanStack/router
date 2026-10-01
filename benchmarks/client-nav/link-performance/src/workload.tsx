@@ -12,7 +12,9 @@ import {
 import {
   LINK_COUNT,
   LOCALES,
+  OWNER_LINK_COUNT,
   encodedValue,
+  isOutgoingCase,
   optionalCategory,
   sourceFilter,
   sourceSearch,
@@ -33,6 +35,7 @@ interface StateUpdates {
 interface WorkloadContext {
   caseId: LinkCaseId
   stateUpdates: StateUpdates
+  departure?: Promise<void>
 }
 
 function isFilter(value: unknown): value is Filter {
@@ -133,7 +136,22 @@ const publicRoute = createRoute({
   path: 'public/$itemId',
 })
 
+const ownerTableRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'owner-table',
+  component: OutgoingLinks,
+})
+const ownerDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'owner-detail',
+  shouldReload: true,
+  // The setup check can hold this loader; measured departures only yield once.
+  loader: ({ context }) => context.departure ?? Promise.resolve(),
+})
+
 const routeTree = rootRoute.addChildren([
+  ownerTableRoute,
+  ownerDetailRoute,
   itemsRoute.addChildren([detailsRoute]),
   teamRoute.addChildren([teamItemRoute.addChildren([teamDetailsRoute])]),
   filteredRoute,
@@ -185,6 +203,7 @@ export function createLinkRouter(
     context,
     scrollRestoration: false,
     defaultPreload: false,
+    ...(isOutgoingCase(caseId) ? { defaultPendingMs: 60_000 } : {}),
     trailingSlash: 'never',
     pathParamsAllowedCharacters:
       caseId === 'encoding' ? ['@', ':', '+'] : undefined,
@@ -229,7 +248,7 @@ export function assertStateUpdates(router: LinkRouter): void {
   stateUpdates.verifiedCalls = stateUpdates.calls
 }
 
-function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
+export function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
   const itemId = `item-${stateIndex}`
   const common = {
     search: sourceSearch(caseId, stateIndex),
@@ -237,6 +256,12 @@ function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
     state: { linkPerfState: stateIndex + 10 },
   }
   switch (caseId) {
+    case 'owner-outgoing-fixed':
+    case 'owner-outgoing-relative':
+      return linkOptions({
+        ...common,
+        to: stateIndex % 2 === 0 ? '/owner-table' : '/owner-detail',
+      })
     case 'relative':
       return linkOptions({
         ...common,
@@ -284,6 +309,10 @@ function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
 
 const indexes = Array.from({ length: LINK_COUNT }, (_, index) => index)
 const controls = [0, 1, 2, 3] as const
+const ownerIndexes = Array.from(
+  { length: OWNER_LINK_COUNT },
+  (_, index) => index,
+)
 
 function SourcePath() {
   const pathname = useLocation({ select: (location) => location.pathname })
@@ -310,11 +339,22 @@ function RootLayout() {
         ))}
       </nav>
       <SourcePath />
-      <section aria-label="Measured Links">
-        {indexes.map((index) => measuredLink(context, index))}
-      </section>
+      {!isOutgoingCase(context.caseId) && (
+        <section aria-label="Measured Links">
+          {indexes.map((index) => measuredLink(context, index))}
+        </section>
+      )}
       <Outlet />
     </>
+  )
+}
+
+function OutgoingLinks() {
+  const context = rootRoute.useRouteContext()
+  return (
+    <section aria-label="Measured Links">
+      {ownerIndexes.map((index) => measuredLink(context, index))}
+    </section>
   )
 }
 
@@ -330,6 +370,27 @@ function measuredLink(
   } as const
   const itemId = `item-${index % 40}`
   switch (caseId) {
+    case 'owner-outgoing-fixed':
+      return (
+        <Link
+          {...common}
+          to={index % 2 === 0 ? '/owner-table' : '/owner-detail'}
+          search={{ page: index % 5 }}
+          activeOptions={{ includeSearch: false }}
+        />
+      )
+    case 'owner-outgoing-relative':
+      return (
+        <Link
+          {...common}
+          to="."
+          search={(previous) => ({
+            ...previous,
+            page: (previous.page ?? 0) + (index % 5),
+          })}
+          activeOptions={{ includeSearch: false }}
+        />
+      )
     case 'shared-params':
     case 'unique-params':
       return (

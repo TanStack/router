@@ -292,7 +292,7 @@ export function useParentMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextRouteId = React.useContext(matchContext)
+  const contextRouteId = React.useContext(matchContext)?.[0]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
@@ -318,7 +318,7 @@ export function useChildMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextRouteId = React.useContext(matchContext)
+  const contextRouteId = React.useContext(matchContext)?.[0]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {

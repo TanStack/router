@@ -1,16 +1,82 @@
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { hydrateRoot } from 'react-dom/client'
-import { act } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import {
   Link,
+  Outlet,
   RouterContextProvider,
+  RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
+
+test('matched-route links update hash-sensitive active presentation during hash navigation', async () => {
+  const makeRouteTree = () => {
+    const rootRoute = createRootRoute({ component: Outlet })
+    const targetRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      component: () => (
+        <>
+          <Link to="/target" hash="other" data-testid="matched-ordinary">
+            {({ isActive }) => `ordinary:${isActive}`}
+          </Link>
+          <Link
+            to="/target"
+            hash="section"
+            activeOptions={{ includeHash: true }}
+            data-testid="matched-hash"
+          >
+            {({ isActive }) => `hash:${isActive}`}
+          </Link>
+          <Link
+            to="/target"
+            hash="other"
+            activeOptions={{ includeHash: true }}
+            data-testid="matched-other-hash"
+          >
+            {({ isActive }) => `other hash:${isActive}`}
+          </Link>
+        </>
+      ),
+    })
+    return rootRoute.addChildren([targetRoute])
+  }
+  const clientRouter = createRouter({
+    routeTree: makeRouteTree(),
+    history: createMemoryHistory({ initialEntries: ['/target#section'] }),
+  })
+  const view = render(<RouterProvider router={clientRouter} />)
+  try {
+    const ordinary = await view.findByTestId('matched-ordinary')
+    const hash = view.getByTestId('matched-hash')
+    const otherHash = view.getByTestId('matched-other-hash')
+    await waitFor(() => expect(clientRouter.state.status).toBe('idle'))
+    expect(ordinary).toHaveAttribute('aria-current', 'page')
+    expect(ordinary).toHaveTextContent('ordinary:true')
+    expect(hash).toHaveAttribute('aria-current', 'page')
+    expect(hash).toHaveTextContent('hash:true')
+    expect(otherHash).not.toHaveAttribute('aria-current')
+    expect(otherHash).toHaveTextContent('other hash:false')
+    await act(() => clientRouter.navigate({ to: '/target', hash: 'other' }))
+    expect(view.getByTestId('matched-ordinary')).toBe(ordinary)
+    expect(view.getByTestId('matched-hash')).toBe(hash)
+    expect(view.getByTestId('matched-other-hash')).toBe(otherHash)
+    expect(ordinary).toHaveAttribute('aria-current', 'page')
+    expect(ordinary).toHaveTextContent('ordinary:true')
+    expect(hash).not.toHaveAttribute('aria-current')
+    expect(hash).toHaveTextContent('hash:false')
+    expect(otherHash).toHaveAttribute('aria-current', 'page')
+    expect(otherHash).toHaveTextContent('other hash:true')
+  } finally {
+    view.unmount()
+    clientRouter.history.destroy()
+  }
+})
 
 test('only hash-sensitive links need a second hydration render', async () => {
   const rootRoute = createRootRoute()

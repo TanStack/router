@@ -12,6 +12,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import { matchContext } from './matchContext'
 
 import { useHydrated } from './ClientOnly'
 import type {
@@ -258,6 +259,8 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated(!!activeOptions?.includeHash)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const owner = React.useContext(matchContext)?.[1]
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
@@ -290,22 +293,37 @@ export function useLinkProps<
   // the subscription instead re-renders every link on every navigation, because
   // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectLinkState = React.useMemo(() => {
+  const [selectLinkState, fixed] = React.useMemo(() => {
     // Direct destinations and the router's allowlist are stable for this selector.
     const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
     if (directExternalLink !== undefined) {
       const state: LinkState = [directExternalLink ?? undefined]
-      return () => state
+      return [() => state, undefined] as const
     }
 
+    const location = router.stores.location.get()
+    dest._fromLocation = _options._fromLocation ?? location
+    const next = router.buildLocation(dest)
+    const cache = router._staticLocations!
+    const fixed = cache.get(dest)
+    let initial: readonly [ParsedLocation, ParsedLocation] | undefined = [
+      location,
+      next,
+    ]
     let inactive: LinkState | undefined
     let active: LinkState
 
-    return (location: ParsedLocation): LinkState => {
+    const select = (location: ParsedLocation): LinkState => {
       if (!_options._fromLocation) {
         dest._fromLocation = location
       }
-      const next = router.buildLocation(dest)
+      // The first selection reuses the build that classified the destination.
+      // Fixed destinations stay reusable until router options invalidate the cache.
+      const next =
+        (cache === router._staticLocations &&
+          (fixed ?? (initial?.[0] === location ? initial[1] : undefined))) ||
+        router.buildLocation(dest)
+      initial = undefined
 
       // History formatters can depend on the current browser URL (hash history).
       // Reuse classification and immutable results until the formatted href changes.
@@ -329,11 +347,12 @@ export function useLinkProps<
         ? active
         : inactive
     }
+    return [select, fixed] as const
   }, [stableActiveOptions, disabled, isHydrated, _options, dest, router, to])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = useSelector(
-    router.stores.location,
+    fixed && owner ? owner : router.stores.location,
     selectLinkState,
     LINK_SELECTOR_OPTIONS,
   )
