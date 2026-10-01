@@ -286,6 +286,47 @@ describe('createBrowserHistory', () => {
     history.destroy()
   })
 
+  test('stamps an entry the browser created before measuring a traversal', async () => {
+    const { history, replaceState, window } = createBrowserHistoryHarness()
+    replaceState.mockImplementation((state) => {
+      window.history.state = state
+    })
+    const blockerFn = vi.fn(() => true)
+    history.block({ blockerFn })
+
+    // A plain `<a href="#fragment">`: the browser pushes the entry itself.
+    window.location.hash = '#fragment'
+    ;(window.history as { state: unknown }).state = null
+    await window.dispatchEvent({ type: 'popstate' })
+
+    expect(replaceState).toHaveBeenCalledWith(
+      expect.objectContaining({ __TSR_index: 1 }),
+      '',
+    )
+    expect(blockerFn).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'FORWARD' }),
+    )
+    expect(window.history.go).toHaveBeenCalledWith(-1)
+    history.destroy()
+  })
+
+  test('keeps existing entry state when stamping it', async () => {
+    const { history, replaceState, window } = createBrowserHistoryHarness()
+    replaceState.mockImplementation((state) => {
+      window.history.state = state
+    })
+
+    // An entry another caller created with its own state but no router key.
+    ;(window.history as { state: unknown }).state = { draftId: '123' }
+    await window.dispatchEvent({ type: 'popstate' })
+
+    expect(window.history.state).toMatchObject({
+      draftId: '123',
+      __TSR_index: 1,
+    })
+    history.destroy()
+  })
+
   test('does not retain a beforeunload exemption after a same-document traversal', async () => {
     const { history, window } = createBrowserHistoryHarness()
     history.block({ blockerFn: vi.fn(), enableBeforeUnload: true })

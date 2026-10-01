@@ -441,6 +441,24 @@ export function createBrowserHistory(opts?: {
       return
     }
 
+    // The browser creates some same-document entries on its own, e.g. a
+    // fragment navigation from a plain `<a href="#…">`, without router state.
+    // Stamp such an entry with a key and the index one past the entry it was
+    // created from; unstamped, it parses as index 0, so every delta across it
+    // is wrong and undoing a blocked traversal can become `go(0)`, a reload.
+    // `assignKeyAndIndex` keeps the entry's own state, as it does for pushes;
+    // the original replaceState, so the stamp is not a navigation.
+    if (!win.history.state?.__TSR_key && !win.history.state?.key) {
+      originalReplaceState.call(
+        win.history,
+        assignKeyAndIndex(
+          currentLocation.state[stateIndexKey] + 1,
+          win.history.state,
+        ),
+        '',
+      )
+    }
+
     const nextLocation = parseLocation()
     const delta =
       nextLocation.state[stateIndexKey] - currentLocation.state[stateIndexKey]
