@@ -1,8 +1,15 @@
 import React from 'react'
-import { act, cleanup, render, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
   Link,
+  Outlet,
   RouterContextProvider,
   RouterProvider,
   createHashHistory,
@@ -17,7 +24,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function setup(trailingSlash: 'never' | 'preserve' = 'never') {
+async function setup(trailingSlash: 'always' | 'never' | 'preserve' = 'never') {
   const root = createRootRoute()
   const router = createRouter({
     routeTree: root.addChildren([
@@ -54,6 +61,129 @@ test('a fixed href follows active, inactive and active-again locations', async (
   }
 })
 
+test('unrelated navigation does not rebuild a fixed inactive Link', async () => {
+  const router = await setup()
+  const build = vi.spyOn(router, 'buildLocation')
+  const view = render(
+    <RouterContextProvider router={router}>
+      <Link to="/posts/1" search={{}}>
+        Fixed
+      </Link>
+    </RouterContextProvider>,
+  )
+  const link = view.getByText('Fixed')
+  const fixedBuilds = () =>
+    build.mock.calls.filter(([options]) => options.to === '/posts/1').length
+  await act(() => router.navigate({ to: '/posts/2', search: { page: 1 } }))
+  const initialBuilds = fixedBuilds()
+  await act(() => router.navigate({ to: '/posts/3', search: { page: 2 } }))
+
+  expect(link).toHaveAttribute('href', '/posts/1')
+  expect(link).not.toHaveAttribute('aria-current')
+  expect(fixedBuilds()).toBe(initialBuilds)
+})
+
+test('a departing route does not render its Link for a pending destination', async () => {
+  let finishDetail!: () => void
+  const detailReady = new Promise<void>((resolve) => {
+    finishDetail = resolve
+  })
+  let linkRenders = 0
+  const root = createRootRoute({ component: Outlet })
+  const index = createRoute({
+    getParentRoute: () => root,
+    path: '/',
+    component: () => (
+      <Link to="/detail" data-testid="detail-link">
+        {() => {
+          linkRenders++
+          return 'Detail'
+        }}
+      </Link>
+    ),
+  })
+  const detail = createRoute({
+    getParentRoute: () => root,
+    path: '/detail',
+    loader: () => detailReady,
+    component: () => <p>Detail page</p>,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([index, detail]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  const view = render(<RouterProvider router={router} />)
+  const link = await view.findByTestId('detail-link')
+  const before = linkRenders
+
+  fireEvent.click(link)
+  await waitFor(() => {
+    expect(router.state.location.pathname).toBe('/detail')
+  })
+  expect(linkRenders).toBe(before)
+
+  await act(async () => {
+    finishDetail()
+    await detailReady
+  })
+  await view.findByText('Detail page')
+})
+
+test('a deferred Link catches up when a later navigation retains its route', async () => {
+  const detailReady = new Promise<void>(() => {})
+  const root = createRootRoute({ component: Outlet })
+  const current = createRoute({
+    getParentRoute: () => root,
+    path: '/current',
+    component: () => (
+      <>
+        <Link to="/detail">Detail</Link>
+        <Link
+          to="/current"
+          search={{ page: 2 }}
+          activeOptions={{ includeSearch: true }}
+        >
+          Page 2
+        </Link>
+      </>
+    ),
+  })
+  const detail = createRoute({
+    getParentRoute: () => root,
+    path: '/detail',
+    loader: () => detailReady,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([current, detail]),
+    history: createMemoryHistory({ initialEntries: ['/current?page=1'] }),
+  })
+  const view = render(<RouterProvider router={router} />)
+  const pageLink = await view.findByText('Page 2')
+  expect(pageLink).not.toHaveAttribute('aria-current')
+
+  fireEvent.click(view.getByText('Detail'))
+  await waitFor(() => {
+    expect(router.state.location.pathname).toBe('/detail')
+  })
+  await act(() => router.navigate({ to: '/current', search: { page: 2 } }))
+
+  expect(pageLink).toHaveAttribute('aria-current', 'page')
+})
+
+test('router options refresh a fixed Link without changing location', async () => {
+  const router = await setup()
+  const view = render(
+    <RouterContextProvider router={router}>
+      <Link to="/posts/1">Fixed</Link>
+    </RouterContextProvider>,
+  )
+  const link = view.getByText('Fixed')
+  expect(link).toHaveAttribute('href', '/posts/1')
+
+  await act(() => router.update({ trailingSlash: 'always' }))
+  expect(link).toHaveAttribute('href', '/posts/1/')
+})
+
 test('changed destination, active options and disabled props replace prepared state', async () => {
   const router = await setup()
   function tree(id: string, disabled = false, includeSearch = true) {
@@ -84,6 +214,25 @@ test('changed destination, active options and disabled props replace prepared st
   expect(link).not.toHaveAttribute('aria-current')
   await act(() => router.navigate({ to: '/posts/$id', params: { id: '2' } }))
   expect(link).toHaveAttribute('aria-current', 'page')
+})
+
+test('click uses updated navigation options when destination stays the same', async () => {
+  const router = await setup()
+  const link = (replace: boolean) => (
+    <RouterContextProvider router={router}>
+      <Link to="/posts/2" replace={replace}>
+        Post
+      </Link>
+    </RouterContextProvider>
+  )
+  const view = render(link(false))
+  view.rerender(link(true))
+
+  fireEvent.click(view.getByText('Post'))
+  await waitFor(() => {
+    expect(router.history.location.pathname).toBe('/posts/2')
+  })
+  expect(router.history.canGoBack()).toBe(false)
 })
 
 test('hash history refreshes a cached destination after the outer URL changes', async () => {

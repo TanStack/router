@@ -16,13 +16,12 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { useRouter } from './useRouter'
 
-import { useIntersectionObserver } from './utils'
-
 import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -30,12 +29,6 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
-
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
-const cancelPreload = (eventTarget: object) => {
-  clearTimeout(timeoutMap.get(eventTarget))
-  timeoutMap.delete(eventTarget)
-}
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -47,72 +40,34 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
-  const [local, rest] = Solid.splitProps(
-    Solid.mergeProps(
-      {
-        activeProps: STATIC_ACTIVE_PROPS_GET,
-        inactiveProps: STATIC_INACTIVE_PROPS_GET,
-      },
-      options,
-    ),
-    [
-      'activeProps',
-      'inactiveProps',
-      'activeOptions',
-      'to',
-      'preload',
-      'preloadDelay',
-      'preloadIntentProximity',
-      'hashScrollIntoView',
-      'replace',
-      'startTransition',
-      'resetScroll',
-      'viewTransition',
-      'target',
-      'disabled',
-      'style',
-      'class',
-      'onClick',
-      'onBlur',
-      'onFocus',
-      'onMouseEnter',
-      'onMouseLeave',
-      'onMouseOver',
-      'onMouseOut',
-      'onTouchStart',
-      'ignoreBlocker',
-    ],
-  )
-
-  // const {
-  //   // custom props
-  //   activeProps = () => ({ class: 'active' }),
-  //   inactiveProps = () => ({}),
-  //   activeOptions,
-  //   to,
-  //   preload: userPreload,
-  //   preloadDelay: userPreloadDelay,
-  //   hashScrollIntoView,
-  //   replace,
-  //   startTransition,
-  //   resetScroll,
-  //   viewTransition,
-  //   // element props
-  //   children,
-  //   target,
-  //   disabled,
-  //   style,
-  //   class,
-  //   onClick,
-  //   onFocus,
-  //   onMouseEnter,
-  //   onMouseLeave,
-  //   onTouchStart,
-  //   ignoreBlocker,
-  //   ...rest
-  // } = options
-
-  const [_, propsSafeToSpread] = Solid.splitProps(rest, [
+  // Link behavior and DOM filtering read the same live props proxy.
+  const local = options
+  const [_, propsSafeToSpread] = Solid.splitProps(options, [
+    'activeProps',
+    'inactiveProps',
+    'activeOptions',
+    'to',
+    'preload',
+    'preloadDelay',
+    'preloadIntentProximity',
+    'hashScrollIntoView',
+    'replace',
+    'startTransition',
+    'resetScroll',
+    'viewTransition',
+    'target',
+    'disabled',
+    'style',
+    'class',
+    'onClick',
+    'onBlur',
+    'onFocus',
+    'onMouseEnter',
+    'onMouseLeave',
+    'onMouseOver',
+    'onMouseOut',
+    'onTouchStart',
+    'ignoreBlocker',
     'params',
     'search',
     'hash',
@@ -124,21 +79,53 @@ export function useLinkProps<
     'href',
   ])
 
-  const currentLocation = Solid.createMemo(
-    () => router.stores.location.get(),
-    undefined,
-    { equals: (prev, next) => prev.href === next.href },
-  )
+  const interest: { path?: string; dynamic?: boolean } = { dynamic: true }
+  let updateInterest = () => {}
+  let currentLocation: () => ParsedLocation
+  if (isServer ?? router.isServer) {
+    currentLocation = () => router.stores.location.get()
+  } else {
+    const stores = router.stores
+    const [sourceLocation, setSourceLocation] = Solid.createSignal(
+      stores.getLinkLocationSnapshot(),
+    )
+    currentLocation = () => sourceLocation().location
+    const subscription = stores.subscribeLinkLocation(
+      interest,
+      setSourceLocation,
+    )
+    updateInterest = subscription.update
+    Solid.onCleanup(subscription.unsubscribe)
+  }
 
-  const next = Solid.createMemo(() => {
+  const buildNext = () => {
     // Rebuild when inherited search/hash or the current route context changes.
     const _fromLocation = currentLocation()
     const nextOptions = { _fromLocation, ...options } as any
     // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(nextOptions))
-  })
+    const built = Solid.untrack(() => router.buildLocation(nextOptions))
+    if (!(isServer ?? router.isServer)) {
+      const dynamic =
+        typeof options.params === 'function' ||
+        typeof options.search === 'function' ||
+        typeof options.hash === 'function' ||
+        typeof options.state === 'function' ||
+        !router._isStaticLocation(nextOptions)
+      interest.dynamic = dynamic
+      interest.path = dynamic
+        ? undefined
+        : removeTrailingSlash(built.pathname, router.basepath)
+      updateInterest()
+    }
+    return built
+  }
+  let serverNext: ParsedLocation | undefined
+  const next =
+    (isServer ?? router.isServer)
+      ? () => (serverNext ??= buildNext())
+      : Solid.createMemo(buildNext)
 
-  const hrefOption = Solid.createMemo(() => {
+  const getHrefOption = () => {
     if (options.disabled) return undefined
     // Use publicHref - it contains the correct href for display
     // When a rewrite changes the origin, publicHref is the full URL
@@ -162,9 +149,21 @@ export function useLinkProps<
     }
 
     return href
-  })
+  }
+  let serverHrefOption: string | undefined
+  let hasServerHrefOption = false
+  const hrefOption =
+    (isServer ?? router.isServer)
+      ? () => {
+          if (!hasServerHrefOption) {
+            serverHrefOption = getHrefOption()
+            hasServerHrefOption = true
+          }
+          return serverHrefOption
+        }
+      : Solid.createMemo(getHrefOption)
 
-  const externalLink = Solid.createMemo(() => {
+  const getExternalLink = () => {
     const to = options.to
     const scheme = typeof to === 'string' && getUrlScheme(to)
     if (scheme) {
@@ -182,12 +181,24 @@ export function useLinkProps<
       return null
     }
     return _href && getUrlScheme(_href) ? _href : undefined
-  })
+  }
+  let serverExternalLink: string | null | undefined
+  let hasServerExternalLink = false
+  const externalLink =
+    (isServer ?? router.isServer)
+      ? () => {
+          if (!hasServerExternalLink) {
+            serverExternalLink = getExternalLink()
+            hasServerExternalLink = true
+          }
+          return serverExternalLink
+        }
+      : Solid.createMemo(getExternalLink)
 
   const shouldHydrateHash = !isServer && !!router.options.ssr
   const hasHydrated = (isServer ?? router.isServer) ? undefined : useHydrated()
 
-  const isActive = Solid.createMemo(() => {
+  const getIsActive = () => {
     if (externalLink() !== undefined) {
       return false
     }
@@ -229,15 +240,21 @@ export function useLinkProps<
       return currentHash === nextLocation.hash
     }
     return true
-  })
+  }
+  const isActive =
+    (isServer ?? router.isServer) ? getIsActive : Solid.createMemo(getIsActive)
 
-  const simpleStyling = Solid.createMemo(
-    () =>
-      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
-      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
-      local.class === undefined &&
-      local.style === undefined,
-  )
+  const getSimpleStyling = () =>
+    (local.activeProps ?? STATIC_ACTIVE_PROPS_GET) ===
+      STATIC_ACTIVE_PROPS_GET &&
+    (local.inactiveProps ?? STATIC_INACTIVE_PROPS_GET) ===
+      STATIC_INACTIVE_PROPS_GET &&
+    local.class === undefined &&
+    local.style === undefined
+  const simpleStyling =
+    (isServer ?? router.isServer)
+      ? getSimpleStyling
+      : Solid.createMemo(getSimpleStyling)
 
   type ResolvedLinkStateProps = Omit<Solid.ComponentProps<'a'>, 'style'> & {
     style?: Solid.JSX.CSSProperties
@@ -256,8 +273,12 @@ export function useLinkProps<
     }
 
     const stateProps: ResolvedLinkStateProps =
-      functionalUpdate(active ? local.activeProps : local.inactiveProps, {}) ??
-      EMPTY_OBJECT
+      functionalUpdate(
+        active
+          ? (local.activeProps ?? STATIC_ACTIVE_PROPS_GET)
+          : (local.inactiveProps ?? STATIC_INACTIVE_PROPS_GET),
+        {},
+      ) ?? EMPTY_OBJECT
     const baseStyle = local.style
     const stateStyle = stateProps.style
     // Snapshot reactive style properties so in-place updates remain observable.
@@ -336,12 +357,17 @@ export function useLinkProps<
       })
 
   const [ref, setRef] = Solid.createSignal<Element | null>(null)
+  let preloadTimer: ReturnType<typeof setTimeout> | undefined
+  const cancelPreload = () => {
+    clearTimeout(preloadTimer)
+    preloadTimer = undefined
+  }
 
   const enqueuePreload = (
     e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
     if (!e) {
-      cancelPreload(ref)
+      cancelPreload()
       return
     }
 
@@ -352,7 +378,7 @@ export function useLinkProps<
       )
     ) {
       if ((e as IntersectionObserverEntry).isIntersecting === false) {
-        cancelPreload(ref)
+        cancelPreload()
       }
       return
     }
@@ -362,24 +388,46 @@ export function useLinkProps<
       return
     }
 
-    if (!timeoutMap.has(ref)) {
-      timeoutMap.set(
-        ref,
-        setTimeout(() => {
-          timeoutMap.delete(ref)
-          doPreload()
-        }, preloadDelay()),
-      )
+    if (preloadTimer === undefined) {
+      preloadTimer = setTimeout(() => {
+        preloadTimer = undefined
+        doPreload()
+      }, preloadDelay())
     }
   }
 
-  useIntersectionObserver(
-    ref,
-    enqueuePreload,
-    () => preload() !== 'viewport',
-    // Intent preloading still needs timer cleanup without an observer.
-    () => !!preload(),
-  )
+  Solid.createEffect(() => {
+    const element = ref()
+    const mode = preload()
+    if (
+      mode !== 'viewport' ||
+      !element ||
+      typeof IntersectionObserver !== 'function'
+    ) {
+      // Intent preloading still needs timer cleanup without an observer.
+      if (mode) {
+        Solid.onCleanup(cancelPreload)
+      }
+      return
+    }
+
+    let active = true
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // A queued callback can arrive after cleanup.
+        if (active) {
+          enqueuePreload(entries.pop())
+        }
+      },
+      { rootMargin: '100px' },
+    )
+    observer.observe(element)
+    Solid.onCleanup(() => {
+      active = false
+      observer.disconnect()
+      cancelPreload()
+    })
+  })
 
   Solid.createEffect(() => {
     if (hasRenderFetched) {
@@ -413,15 +461,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ...options,
-        replace: local.replace,
-        resetScroll: local.resetScroll,
-        hashScrollIntoView: local.hashScrollIntoView,
-        startTransition: local.startTransition,
-        viewTransition: local.viewTransition,
-        ignoreBlocker: local.ignoreBlocker,
-      })
+      router.navigate(options)
     }
   }
 
@@ -432,7 +472,7 @@ export function useLinkProps<
 
   const handleLeave = () => {
     if (preload() === 'intent') {
-      cancelPreload(ref)
+      cancelPreload()
     }
   }
 
@@ -511,26 +551,22 @@ const STATIC_ACTIVE_ATTRIBUTES = {
   'aria-current': 'page',
 }
 
-/** Call a JSX.EventHandlerUnion with the event. */
-function callHandler<T, TEvent extends Event>(
-  event: TEvent & { currentTarget: T; target: Element },
-  handler: Solid.JSX.EventHandlerUnion<T, TEvent>,
-) {
-  if (typeof handler === 'function') {
-    handler(event)
-  } else {
-    handler[0](handler[1], event)
-  }
-  return event.defaultPrevented
-}
-
 function createComposedHandler<T, TEvent extends Event>(
   getHandler: () => Solid.JSX.EventHandlerUnion<T, TEvent> | undefined,
   fallback: (event: TEvent) => void,
 ) {
   return (event: TEvent & { currentTarget: T; target: Element }) => {
     const handler = getHandler()
-    if (!handler || !callHandler(event, handler)) fallback(event)
+    if (handler) {
+      if (typeof handler === 'function') {
+        handler(event)
+      } else {
+        handler[0](handler[1], event)
+      }
+    }
+    if (!event.defaultPrevented) {
+      fallback(event)
+    }
   }
 }
 

@@ -1135,9 +1135,9 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const clickedPostsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    await act(() => fireEvent.click(postsLink))
+    await act(() => fireEvent.click(clickedPostsLink))
 
     const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
     expect(postsHeading).toBeInTheDocument()
@@ -1145,8 +1145,10 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/posts')
 
     const indexLink = await screen.findByRole('link', { name: 'Index' })
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
     expect(window.location.pathname).toBe('/posts')
+    expect(clickedPostsLink).not.toBeInTheDocument()
     expect(indexLink).not.toHaveAttribute('aria-current', 'page')
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
@@ -1197,16 +1199,18 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const clickedPostsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    await act(() => fireEvent.click(postsLink))
+    await act(() => fireEvent.click(clickedPostsLink))
 
     const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
     expect(postsHeading).toBeInTheDocument()
 
     const indexLink = await screen.findByRole('link', { name: 'Index' })
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
     expect(window.location.pathname).toBe('/app/posts')
+    expect(clickedPostsLink).not.toBeInTheDocument()
     expect(indexLink).not.toHaveAttribute('aria-current', 'page')
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/app/')
@@ -5315,6 +5319,50 @@ describe('Link', () => {
     expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
   })
 
+  test('intent preload timers follow the mounted Link and its router', async () => {
+    const makeRouter = () => {
+      const root = createRootRoute()
+      return createRouter({
+        routeTree: root.addChildren([
+          createRoute({ getParentRoute: () => root, path: '/' }),
+          createRoute({ getParentRoute: () => root, path: '/about' }),
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+    }
+    const firstRouter = makeRouter()
+    const secondRouter = makeRouter()
+    await firstRouter.load()
+    await secondRouter.load()
+    const firstPreload = vi.spyOn(firstRouter, 'preloadRoute')
+    const secondPreload = vi.spyOn(secondRouter, 'preloadRoute')
+    const tree = (router: typeof firstRouter) => (
+      <RouterContextProvider router={router}>
+        <Link to="/about" preload="intent" preloadDelay={50}>
+          About
+        </Link>
+      </RouterContextProvider>
+    )
+    const view = render(tree(firstRouter))
+    vi.useFakeTimers()
+
+    fireEvent.mouseEnter(screen.getByRole('link', { name: 'About' }))
+    view.rerender(tree(secondRouter))
+    await vi.advanceTimersByTimeAsync(50)
+    expect(firstPreload).not.toHaveBeenCalled()
+
+    fireEvent.mouseEnter(screen.getByRole('link', { name: 'About' }))
+    view.unmount()
+    await vi.advanceTimersByTimeAsync(50)
+    expect(secondPreload).not.toHaveBeenCalled()
+
+    render(tree(secondRouter))
+    fireEvent.mouseEnter(screen.getByRole('link', { name: 'About' }))
+    fireEvent.mouseEnter(screen.getByRole('link', { name: 'About' }))
+    await vi.advanceTimersByTimeAsync(50)
+    expect(secondPreload).toHaveBeenCalledOnce()
+  })
+
   test('Link.preload="viewport" should cancel and use new link options after they change', async () => {
     const rootRoute = createRootRoute()
     const RouteComponent = () => {
@@ -6878,11 +6926,11 @@ describe('splat routes with empty splat', () => {
         fireEvent.click(splatLinkWithEmptySplat)
       })
 
-      expect(splatLinkWithEmptySplat).toHaveClass('active')
-      expect(splatLinkWithUndefinedSplat).toHaveClass('active')
-      expect(splatLinkWithNoSplat).toHaveClass('active')
       expect(window.location.pathname).toBe(`/splat${tail}`)
       expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      expect(splatLinkWithEmptySplat).not.toBeInTheDocument()
+      expect(splatLinkWithUndefinedSplat).not.toBeInTheDocument()
+      expect(splatLinkWithNoSplat).not.toBeInTheDocument()
     },
   )
 })

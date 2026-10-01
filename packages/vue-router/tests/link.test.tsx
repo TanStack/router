@@ -5997,6 +5997,54 @@ describe('Link', () => {
     expect(preloadRouteSpy).toHaveBeenCalledOnce()
   })
 
+  test('unmounting one Link cancels only its delayed preload', async () => {
+    const showFirst = Vue.ref(true)
+    const rootRoute = createRootRoute({
+      component: Vue.defineComponent({
+        setup: () => () => (
+          <>
+            {showFirst.value && (
+              <Link to="/first" preload="intent" preloadDelay={50}>
+                First
+              </Link>
+            )}
+            <Link to="/second" preload="intent" preloadDelay={50}>
+              Second
+            </Link>
+          </>
+        ),
+      }),
+    })
+    const firstRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/first',
+    })
+    const secondRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/second',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([firstRoute, secondRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+    render(<RouterProvider router={router} />)
+    const first = await screen.findByRole('link', { name: 'First' })
+    const second = await screen.findByRole('link', { name: 'Second' })
+    vi.useFakeTimers()
+
+    await fireEvent.mouseEnter(first)
+    await fireEvent.mouseEnter(second)
+    showFirst.value = false
+    await Vue.nextTick()
+    await vi.advanceTimersByTimeAsync(50)
+
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+    expect(preloadRouteSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/second' }),
+    )
+  })
+
   test.each([undefined, false, 'render', 'viewport'] as const)(
     'Link.preload="%s" should not preload on focus, hover, or touchstart',
     async (preloadMode) => {

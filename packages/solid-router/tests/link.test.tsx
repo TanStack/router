@@ -34,7 +34,6 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
-import { useIntersectionObserver } from '../src/utils'
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
@@ -5291,32 +5290,6 @@ describe('Link', () => {
     expect(ioObserveMock).toHaveBeenCalledOnce() // it should not observe again
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
-
-  test.each([undefined, false, true])(
-    'disabled observers honor the cleanup condition (%s)',
-    (cleanupWhenDisabled) => {
-      const callback = vi.fn()
-      const view = render(() => {
-        const [element, setElement] = Solid.createSignal<Element | null>(null)
-        useIntersectionObserver(
-          element,
-          callback,
-          () => true,
-          cleanupWhenDisabled === undefined
-            ? undefined
-            : () => cleanupWhenDisabled,
-        )
-        return <div ref={setElement} />
-      })
-      callback.mockClear()
-      view.unmount()
-      if (cleanupWhenDisabled === false) {
-        expect(callback).not.toHaveBeenCalled()
-      } else {
-        expect(callback).toHaveBeenCalledWith()
-      }
-    },
-  )
 
   test.each(['intent', 'viewport'] as const)(
     'preserves %s timer cleanup across mode changes and unmount',

@@ -11,6 +11,25 @@ import {
 } from '../../src'
 import type { JSX } from 'solid-js'
 
+test('server Link builds its destination once without reactive subscriptions', () => {
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory({ initialEntries: ['/posts/1'] }),
+    isServer: true,
+  })
+  const build = vi.spyOn(router, 'buildLocation')
+  const markup = renderToString(() => (
+    <RouterContextProvider router={router}>
+      {() => <Link to="/posts/1">Fixed</Link>}
+    </RouterContextProvider>
+  ))
+
+  expect(markup).toContain('href="/posts/1"')
+  expect(
+    build.mock.calls.filter(([options]) => options.to === '/posts/1'),
+  ).toHaveLength(1)
+})
+
 test.each([
   { to: '/', href: '/' },
   { to: '/internal', href: '/internal' },
