@@ -1,0 +1,1106 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`development > matches the recorded normalized client build 1`] = `
+{
+  "chunksByFileName": [
+    [
+      "index.js",
+      {
+        "css": [
+          "index.css",
+        ],
+        "dynamicImports": [
+          "vendors.js",
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+          "settings.js",
+          "plain.js",
+          "notes.js",
+        ],
+        "fileName": "index.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": true,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "counter.js",
+      {
+        "css": [
+          "counter.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "counter.js",
+        "hydrationIds": [
+          "counter",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "about.js",
+      {
+        "css": [
+          "assets/theme.css",
+        ],
+        "dynamicImports": [
+          "tooltip.js",
+        ],
+        "fileName": "about.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/about.js",
+        ],
+      },
+    ],
+    [
+      "vendors.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+          "chart.js",
+        ],
+        "fileName": "vendors.js",
+        "hydrationIds": [],
+        "imports": [
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "notes.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "notes.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "post.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "post.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "big-shared.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/post.js",
+        ],
+      },
+    ],
+    [
+      "chart.js",
+      {
+        "css": [
+          "chart.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "chart.js",
+        "hydrationIds": [
+          "chart",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "plain.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "plain.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "posts.js",
+      {
+        "css": [
+          "posts.css",
+        ],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+        ],
+        "fileName": "posts.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/posts.js",
+        ],
+      },
+    ],
+    [
+      "big-shared.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "big-shared.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "post.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "tooltip.js",
+      {
+        "css": [
+          "tooltip.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "tooltip.js",
+        "hydrationIds": [
+          "tooltip",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "settings.js",
+      {
+        "css": [
+          "settings.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "settings.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/settings.js",
+        ],
+      },
+    ],
+  ],
+  "cssContentByFileName": undefined,
+  "entryChunkFileName": "index.js",
+}
+`;
+
+exports[`development > matches the recorded start manifest 1`] = `
+{
+  "routes": {
+    "/about": {
+      "css": [
+        "/assets/assets/theme.css",
+        "/assets/counter.css",
+        "/assets/tooltip.css",
+        "/assets/chart.css",
+      ],
+      "filePath": "<fixture>/src/routes/about.js",
+      "preloads": [
+        "/assets/about.js",
+        "/assets/vendors.js",
+      ],
+    },
+    "/post": {
+      "css": [
+        "/assets/counter.css",
+        "/assets/tooltip.css",
+        "/assets/chart.css",
+      ],
+      "filePath": "<fixture>/src/routes/post.js",
+      "preloads": [
+        "/assets/post.js",
+        "/assets/vendors.js",
+        "/assets/big-shared.js",
+      ],
+    },
+    "/posts": {
+      "css": [
+        "/assets/assets/theme.css",
+        "/assets/posts.css",
+        "/assets/counter.css",
+        "/assets/chart.css",
+        "/assets/tooltip.css",
+      ],
+      "filePath": "<fixture>/src/routes/posts.js",
+      "preloads": [
+        "/assets/posts.js",
+        "/assets/vendors.js",
+      ],
+    },
+    "/settings": {
+      "css": [
+        "/assets/settings.css",
+      ],
+      "filePath": "<fixture>/src/routes/settings.js",
+      "preloads": [
+        "/assets/settings.js",
+      ],
+    },
+    "__root__": {
+      "css": [
+        "/assets/index.css",
+      ],
+      "preloads": [
+        "/assets/index.js",
+      ],
+      "scripts": [
+        {
+          "attrs": {
+            "async": true,
+            "src": "/assets/index.js",
+            "type": "module",
+          },
+        },
+      ],
+    },
+  },
+}
+`;
+
+exports[`matches the recorded client build with an rsc entry 1`] = `
+{
+  "chunksByFileName": [
+    [
+      "post.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "post.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "big-shared.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/post.js",
+        ],
+      },
+    ],
+    [
+      "chart.js",
+      {
+        "css": [
+          "chart.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "chart.js",
+        "hydrationIds": [
+          "chart",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "plain.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "plain.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "posts.js",
+      {
+        "css": [
+          "posts.css",
+        ],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+        ],
+        "fileName": "posts.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/posts.js",
+        ],
+      },
+    ],
+    [
+      "big-shared.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "big-shared.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "post.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "tooltip.js",
+      {
+        "css": [
+          "tooltip.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "tooltip.js",
+        "hydrationIds": [
+          "tooltip",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "settings.js",
+      {
+        "css": [
+          "settings.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "settings.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/settings.js",
+        ],
+      },
+    ],
+    [
+      "rsc.js",
+      {
+        "css": [
+          "rsc.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "rsc.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "counter.js",
+      {
+        "css": [
+          "counter.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "counter.js",
+        "hydrationIds": [
+          "counter",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "about.js",
+      {
+        "css": [
+          "assets/theme.css",
+        ],
+        "dynamicImports": [
+          "tooltip.js",
+        ],
+        "fileName": "about.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/about.js",
+        ],
+      },
+    ],
+    [
+      "index.js",
+      {
+        "css": [
+          "index.css",
+          "rsc.css",
+        ],
+        "dynamicImports": [
+          "vendors.js",
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+          "settings.js",
+          "plain.js",
+          "notes.js",
+        ],
+        "fileName": "index.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": true,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "vendors.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+          "chart.js",
+        ],
+        "fileName": "vendors.js",
+        "hydrationIds": [],
+        "imports": [
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "notes.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "notes.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+  ],
+  "cssContentByFileName": undefined,
+  "entryChunkFileName": "index.js",
+}
+`;
+
+exports[`matches the recorded client build with inline CSS 1`] = `
+{
+  "chunksByFileName": [
+    [
+      "index.js",
+      {
+        "css": [
+          "index.css",
+        ],
+        "dynamicImports": [
+          "vendors.js",
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+          "settings.js",
+          "plain.js",
+          "notes.js",
+        ],
+        "fileName": "index.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": true,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "counter.js",
+      {
+        "css": [
+          "counter.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "counter.js",
+        "hydrationIds": [
+          "counter",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "about.js",
+      {
+        "css": [
+          "assets/theme.css",
+        ],
+        "dynamicImports": [
+          "tooltip.js",
+        ],
+        "fileName": "about.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/about.js",
+        ],
+      },
+    ],
+    [
+      "vendors.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+          "chart.js",
+        ],
+        "fileName": "vendors.js",
+        "hydrationIds": [],
+        "imports": [
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "notes.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "notes.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "post.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "post.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "big-shared.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/post.js",
+        ],
+      },
+    ],
+    [
+      "chart.js",
+      {
+        "css": [
+          "chart.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "chart.js",
+        "hydrationIds": [
+          "chart",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "plain.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "plain.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "posts.js",
+      {
+        "css": [
+          "posts.css",
+        ],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+        ],
+        "fileName": "posts.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/posts.js",
+        ],
+      },
+    ],
+    [
+      "tooltip.js",
+      {
+        "css": [
+          "tooltip.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "tooltip.js",
+        "hydrationIds": [
+          "tooltip",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "big-shared.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "big-shared.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "post.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "settings.js",
+      {
+        "css": [
+          "settings.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "settings.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/settings.js",
+        ],
+      },
+    ],
+  ],
+  "cssContentByFileName": [
+    [
+      "counter.css",
+      ".counter {
+  color: blue;
+}
+
+",
+    ],
+    [
+      "tooltip.css",
+      ".tooltip {
+  color: gray;
+}
+
+",
+    ],
+    [
+      "chart.css",
+      ".chart {
+  color: orange;
+}
+
+",
+    ],
+    [
+      "index.css",
+      ".root {
+  color: black;
+}
+
+",
+    ],
+    [
+      "assets/theme.css",
+      ".theme {
+  background: white;
+}
+",
+    ],
+    [
+      "settings.css",
+      ".settings {
+  color: green;
+}
+
+",
+    ],
+    [
+      "shared-styles.css",
+      ".shared {
+  font-weight: bold;
+}
+
+",
+    ],
+    [
+      "posts.css",
+      ".posts {
+  color: red;
+}
+
+",
+    ],
+  ],
+  "entryChunkFileName": "index.js",
+}
+`;
+
+exports[`production > matches the recorded normalized client build 1`] = `
+{
+  "chunksByFileName": [
+    [
+      "plain.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "plain.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "posts.js",
+      {
+        "css": [
+          "posts.css",
+        ],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+        ],
+        "fileName": "posts.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/posts.js",
+        ],
+      },
+    ],
+    [
+      "tooltip.js",
+      {
+        "css": [
+          "tooltip.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "tooltip.js",
+        "hydrationIds": [
+          "tooltip",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "big-shared.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "big-shared.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "post.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "settings.js",
+      {
+        "css": [
+          "settings.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "settings.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/settings.js",
+        ],
+      },
+    ],
+    [
+      "index.js",
+      {
+        "css": [
+          "index.css",
+        ],
+        "dynamicImports": [
+          "vendors.js",
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+          "settings.js",
+          "plain.js",
+          "notes.js",
+        ],
+        "fileName": "index.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": true,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "counter.js",
+      {
+        "css": [
+          "counter.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "counter.js",
+        "hydrationIds": [
+          "counter",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "about.js",
+      {
+        "css": [
+          "assets/theme.css",
+        ],
+        "dynamicImports": [
+          "tooltip.js",
+        ],
+        "fileName": "about.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/about.js",
+        ],
+      },
+    ],
+    [
+      "vendors.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "tooltip.js",
+          "chart.js",
+        ],
+        "fileName": "vendors.js",
+        "hydrationIds": [],
+        "imports": [
+          "posts.js",
+          "big-shared.js",
+          "post.js",
+          "about.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "notes.js",
+      {
+        "css": [],
+        "dynamicImports": [],
+        "fileName": "notes.js",
+        "hydrationIds": [],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+    [
+      "post.js",
+      {
+        "css": [],
+        "dynamicImports": [
+          "counter.js",
+          "chart.js",
+        ],
+        "fileName": "post.js",
+        "hydrationIds": [],
+        "imports": [
+          "vendors.js",
+          "big-shared.js",
+        ],
+        "isEntry": false,
+        "routeFilePaths": [
+          "<fixture>/src/routes/post.js",
+        ],
+      },
+    ],
+    [
+      "chart.js",
+      {
+        "css": [
+          "chart.css",
+        ],
+        "dynamicImports": [],
+        "fileName": "chart.js",
+        "hydrationIds": [
+          "chart",
+        ],
+        "imports": [],
+        "isEntry": false,
+        "routeFilePaths": [],
+      },
+    ],
+  ],
+  "cssContentByFileName": undefined,
+  "entryChunkFileName": "index.js",
+}
+`;
+
+exports[`production > matches the recorded start manifest 1`] = `
+{
+  "routes": {
+    "/about": {
+      "css": [
+        "/assets/assets/theme.css",
+        "/assets/counter.css",
+        "/assets/tooltip.css",
+        "/assets/chart.css",
+      ],
+      "filePath": "<fixture>/src/routes/about.js",
+      "preloads": [
+        "/assets/about.js",
+        "/assets/vendors.js",
+      ],
+    },
+    "/post": {
+      "css": [
+        "/assets/counter.css",
+        "/assets/tooltip.css",
+        "/assets/chart.css",
+      ],
+      "filePath": "<fixture>/src/routes/post.js",
+      "preloads": [
+        "/assets/post.js",
+        "/assets/vendors.js",
+        "/assets/big-shared.js",
+      ],
+    },
+    "/posts": {
+      "css": [
+        "/assets/assets/theme.css",
+        "/assets/posts.css",
+        "/assets/counter.css",
+        "/assets/chart.css",
+        "/assets/tooltip.css",
+      ],
+      "filePath": "<fixture>/src/routes/posts.js",
+      "preloads": [
+        "/assets/posts.js",
+        "/assets/vendors.js",
+      ],
+    },
+    "/settings": {
+      "css": [
+        "/assets/settings.css",
+      ],
+      "filePath": "<fixture>/src/routes/settings.js",
+      "preloads": [
+        "/assets/settings.js",
+      ],
+    },
+    "__root__": {
+      "css": [
+        "/assets/index.css",
+      ],
+      "preloads": [
+        "/assets/index.js",
+      ],
+      "scripts": [
+        {
+          "attrs": {
+            "async": true,
+            "src": "/assets/index.js",
+            "type": "module",
+          },
+        },
+      ],
+    },
+  },
+}
+`;
