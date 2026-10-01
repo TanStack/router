@@ -38,6 +38,7 @@ afterEach(async () => {
 describe('a route that departs while its tree is still mounted', () => {
   test('navigating away before its dehydrated boundary hydrates renders the next route without errors', async () => {
     const gate: { pending?: Promise<never> } = {}
+    const commitA = vi.fn()
 
     function ClientGate() {
       if (gate.pending) {
@@ -60,6 +61,7 @@ describe('a route that departs while its tree is still mounted', () => {
         path: '/a',
         loader: () => 'A data',
         component: function A() {
+          React.useLayoutEffect(commitA, [])
           return (
             <section>
               <p>{aRoute.useLoaderData()}</p>
@@ -151,6 +153,9 @@ describe('a route that departs while its tree is still mounted', () => {
       await Promise.resolve()
     })
     expect(container).toHaveTextContent('A child of A data')
+    // React has not committed `/a` on the client: its boundary is still
+    // dehydrated when the navigation starts.
+    expect(commitA).not.toHaveBeenCalled()
 
     await act(async () => {
       fireEvent.click(screen.getByText('Go to B'))
