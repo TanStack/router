@@ -1,9 +1,11 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
+import { getRouterInstance } from '@tanstack/solid-start'
 import type { User } from '../utils/users'
 
 export const Route = createFileRoute('/users')({
   loader: async () => {
-    const res = await fetch('/api/users')
+    const router = await getRouterInstance()
+    const res = await fetch(new URL('/api/users', router.origin))
 
     if (!res.ok) {
       throw new Error('Unexpected status code')

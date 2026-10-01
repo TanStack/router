@@ -95,14 +95,14 @@ export const Route = createFileRoute('/users')({
   loader: () => {
     // This runs on BOTH server and client!
     const secret = process.env.SECRET // Exposed to client
-    return fetch(`/api/users?key=${secret}`)
+    return fetch(`https://api.example.com/api/users?key=${secret}`)
   },
 })
 
 // ✅ Use server function for server-only operations
 const getUsersSecurely = createServerFn().handler(() => {
   const secret = process.env.SECRET // Server-only
-  return fetch(`/api/users?key=${secret}`)
+  return fetch(`https://api.example.com/api/users?key=${secret}`)
 })
 
 export const Route = createFileRoute('/users')({
