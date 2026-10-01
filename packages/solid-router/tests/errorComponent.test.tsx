@@ -260,3 +260,34 @@ test('ancestor route errorComponent resets when a background child generation re
     await screen.findByText('Recovered child revision 2'),
   ).toBeInTheDocument()
 })
+
+test('route errorComponent updates when a loader fails again after invalidation', async () => {
+  let loaderCalls = 0
+  const onCatch = vi.fn()
+  const rootRoute = createRootRoute()
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: () => {
+      throw new Error(`loader failed ${++loaderCalls}`)
+    },
+    errorComponent: ({ error }) => <div>{error.message}</div>,
+    onCatch,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+  })
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+
+  render(() => <RouterProvider router={router} />)
+  expect(await screen.findByText('loader failed 1')).toBeInTheDocument()
+  expect(onCatch).toHaveBeenCalledTimes(1)
+  expect(onCatch).toHaveBeenLastCalledWith(expect.any(Error))
+
+  await router.invalidate()
+
+  expect(await screen.findByText('loader failed 2')).toBeInTheDocument()
+  expect(onCatch).toHaveBeenCalledTimes(2)
+  expect(onCatch).toHaveBeenLastCalledWith(expect.any(Error))
+})
