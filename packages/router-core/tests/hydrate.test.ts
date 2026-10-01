@@ -120,73 +120,106 @@ describe('hydrate', () => {
     expect(mockRouter._preflight).toBeUndefined()
   })
 
-  it('round-trips the manifest and matches without running client loaders', async () => {
-    const serverRootRoute = new BaseRootRoute({})
-    const serverProductRoute = new BaseRoute({
-      getParentRoute: () => serverRootRoute,
-      path: '/products/$productId',
-      loader: ({ params }) => ({
-        productId: params.productId,
+  it.each([
+    { segment: '_authenticated', legacy: false },
+    { segment: '~0~r\uFFFD😀', legacy: false },
+    { segment: '~0~r\uFFFD😀', legacy: true },
+  ])(
+    'round-trips manifest assets and loader data for $segment (legacy: $legacy)',
+    async ({ segment, legacy }) => {
+      const serverRootRoute = new BaseRootRoute({})
+      const serverLayoutRoute = new BaseRoute({
+        getParentRoute: () => serverRootRoute,
+        id: segment,
+      })
+      const serverProductRoute = new BaseRoute({
+        getParentRoute: () => serverLayoutRoute,
+        path: '/products/$productId',
+        loader: ({ params }) => ({
+          productId: params.productId,
+          source: 'server',
+        }),
+      })
+      const serverRouter = createTestRouter({
+        routeTree: serverRootRoute.addChildren([
+          serverLayoutRoute.addChildren([serverProductRoute]),
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/products/42'] }),
+        isServer: true,
+      })
+      const manifest: ServerManifest = {
+        routes: {
+          [serverRootRoute.id]: { preloads: ['/assets/root.js'] },
+          [serverLayoutRoute.id]: { preloads: ['/assets/layout.js'] },
+          [serverProductRoute.id]: { preloads: ['/assets/product.js'] },
+        },
+      }
+
+      mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, manifest)
+
+      expect(
+        Object.keys(mockWindow.$_TSR.router!.manifest!.routes).some(
+          (id) => id.includes('/') || id.includes('\0'),
+        ),
+      ).toBe(false)
+      expect(manifest.routes[serverProductRoute.id]?.preloads).toEqual([
+        '/assets/product.js',
+      ])
+
+      if (legacy) {
+        mockWindow.$_TSR.router!.manifest = manifest
+      }
+
+      const serverMatches = serverRouter.state.matches
+      const clientLoader = vi.fn(() => ({
+        productId: 'client',
+        source: 'client',
+      }))
+      const clientRootRoute = new BaseRootRoute({})
+      const clientLayoutRoute = new BaseRoute({
+        getParentRoute: () => clientRootRoute,
+        id: segment,
+      })
+      const clientProductRoute = new BaseRoute({
+        getParentRoute: () => clientLayoutRoute,
+        path: '/products/$productId',
+        loader: clientLoader,
+      })
+      const clientRouter = createTestRouter({
+        routeTree: clientRootRoute.addChildren([
+          clientLayoutRoute.addChildren([clientProductRoute]),
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/products/42'] }),
+        isServer: false,
+      })
+
+      await hydrate(clientRouter)
+
+      expect(clientRouter.ssr?.manifest).toEqual(manifest)
+      expect(
+        clientRouter.state.matches.map((match) => ({
+          id: match.id,
+          routeId: match.routeId,
+          status: match.status,
+          loaderData: match.loaderData,
+          ssr: match.ssr,
+        })),
+      ).toEqual(
+        serverMatches.map((match) => ({
+          id: match.id,
+          routeId: match.routeId,
+          status: match.status,
+          loaderData: match.loaderData,
+          ssr: match.ssr,
+        })),
+      )
+      expect(clientRouter.state.matches.at(-1)?.loaderData).toEqual({
+        productId: '42',
         source: 'server',
-      }),
-    })
-    const serverRouter = createTestRouter({
-      routeTree: serverRootRoute.addChildren([serverProductRoute]),
-      history: createMemoryHistory({ initialEntries: ['/products/42'] }),
-      isServer: true,
-    })
-    const manifest: ServerManifest = {
-      routes: {
-        [serverRootRoute.id]: { preloads: ['/assets/root.js'] },
-        [serverProductRoute.id]: { preloads: ['/assets/product.js'] },
-      },
-    }
-
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, manifest)
-
-    const serverMatches = serverRouter.state.matches
-    const clientLoader = vi.fn(() => ({
-      productId: 'client',
-      source: 'client',
-    }))
-    const clientRootRoute = new BaseRootRoute({})
-    const clientProductRoute = new BaseRoute({
-      getParentRoute: () => clientRootRoute,
-      path: '/products/$productId',
-      loader: clientLoader,
-    })
-    const clientRouter = createTestRouter({
-      routeTree: clientRootRoute.addChildren([clientProductRoute]),
-      history: createMemoryHistory({ initialEntries: ['/products/42'] }),
-      isServer: false,
-    })
-
-    await hydrate(clientRouter)
-
-    expect(clientRouter.ssr?.manifest).toEqual(manifest)
-    expect(
-      clientRouter.state.matches.map((match) => ({
-        id: match.id,
-        routeId: match.routeId,
-        status: match.status,
-        loaderData: match.loaderData,
-        ssr: match.ssr,
-      })),
-    ).toEqual(
-      serverMatches.map((match) => ({
-        id: match.id,
-        routeId: match.routeId,
-        status: match.status,
-        loaderData: match.loaderData,
-        ssr: match.ssr,
-      })),
-    )
-    expect(clientRouter.state.matches.at(-1)?.loaderData).toEqual({
-      productId: '42',
-      source: 'server',
-    })
-    expect(clientLoader).not.toHaveBeenCalled()
-  })
+      })
+      expect(clientLoader).not.toHaveBeenCalled()
+    },
+  )
 
   it('restores undefined loader data without serializing it', async () => {
     const serverRootRoute = new BaseRootRoute({})
