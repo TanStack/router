@@ -199,4 +199,34 @@ describe('hydrating with route chunks still downloading', () => {
     expect(container.innerHTML).toBe(serverHtml)
     expect(onRecoverableError.mock.calls).toEqual([])
   })
+  test('waits only for lazy route options, not the component chunk they name', async () => {
+    const serverHtml = await renderOnServer()
+    const lazyOptions =
+      deferred<ReturnType<ReturnType<typeof createLazyRoute>>>()
+    const pageModule = deferred<{ default: typeof Page }>()
+    const router = createClientRouter((route) =>
+      route.lazy(() => lazyOptions.promise),
+    )
+
+    const hydration = hydrate(router)
+    expect(await settleWithin(hydration, 50)).toBe('waiting')
+    lazyOptions.resolve(
+      createLazyRoute('/page')({
+        component: lazyRouteComponent(() => pageModule.promise),
+      }),
+    )
+    expect(await settleWithin(hydration, 50)).toBe('hydrated')
+
+    const { container, onRecoverableError } = await hydrateDocument(
+      router,
+      serverHtml,
+    )
+    expect(container.innerHTML).toBe(serverHtml)
+    await act(async () => {
+      pageModule.resolve({ default: Page })
+      await pageModule.promise
+    })
+    expect(container.innerHTML).toBe(serverHtml)
+    expect(onRecoverableError.mock.calls).toEqual([])
+  })
 })
