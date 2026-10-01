@@ -32,6 +32,8 @@ export interface RouterHistory {
   forward: (navigateOpts?: NavigateOptions) => void
   canGoBack: () => boolean
   createHref: (href: string) => string
+  /** Built-in formatter source; absent custom formatters are conservatively dynamic. */
+  _hrefSource?: [createHref: RouterHistory['createHref'], read: () => unknown]
   block: (blocker: NavigationBlocker) => () => void
   flush: () => void
   destroy: () => void
@@ -135,6 +137,7 @@ export function createHistory(opts: {
   back: (ignoreBlocker: boolean) => void
   forward: (ignoreBlocker: boolean) => void
   createHref: (path: string) => string
+  _hrefSource?: () => unknown
   flush?: () => void
   destroy?: () => void
   onBlocked?: () => void
@@ -145,6 +148,7 @@ export function createHistory(opts: {
 }): RouterHistory {
   let location = opts.getLocation()
   const subscribers = new Set<(opts: SubscriberArgs) => void>()
+  const createHref = (str: string) => opts.createHref(str)
 
   const notify = (action: SubscriberHistoryAction) => {
     location = opts.getLocation()
@@ -262,7 +266,8 @@ export function createHistory(opts: {
       })
     },
     canGoBack: () => location.state[stateIndexKey] !== 0,
-    createHref: (str) => opts.createHref(str),
+    createHref,
+    _hrefSource: opts._hrefSource ? [createHref, opts._hrefSource] : undefined,
     block: (blocker) => {
       if (!opts.setBlockers) return () => {}
       const blockers = opts.getBlockers?.() ?? []
@@ -309,6 +314,7 @@ function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
 export function createBrowserHistory(opts?: {
   parseLocation?: () => HistoryLocation
   createHref?: (path: string) => string
+  _hrefSource?: () => unknown
   window?: any
 }): RouterHistory {
   const win =
@@ -547,6 +553,7 @@ export function createBrowserHistory(opts?: {
       win.history.go(n)
     },
     createHref: (href) => createHref(href),
+    _hrefSource: opts?.createHref ? opts._hrefSource : () => '',
     flush,
     destroy: () => {
       win.history.pushState = originalPushState
@@ -624,6 +631,7 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
     },
     createHref: (href) =>
       `${win.location.pathname}${win.location.search}#${href}`,
+    _hrefSource: () => `${win.location.pathname}${win.location.search}`,
   })
 }
 
@@ -682,6 +690,7 @@ export function createMemoryHistory(
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
     createHref: normalizeHref,
+    _hrefSource: () => '',
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
   })
