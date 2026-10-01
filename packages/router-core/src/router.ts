@@ -56,6 +56,8 @@ import {
   rewriteBasepath,
 } from './rewrite'
 import { createRouterStores } from './stores'
+import { _publishLinks } from './link-subscriptions'
+import type { LinkScope, LinkSubscription } from './link-subscriptions'
 import type { SieveCache } from './sieve-cache'
 import type { RouteInterpolation } from './path'
 import type {
@@ -113,6 +115,7 @@ import type {
 import type {
   BuildLocationFn,
   CommitLocationOptions,
+  LinkBuilder,
   NavigateFn,
 } from './RouterProvider'
 import type { Manifest, ManifestRouteAssets } from './manifest'
@@ -1156,6 +1159,10 @@ export class RouterCore<
   _cache = new Map<string, AnyRouteMatch>()
   /** Accepted semantic lane, excluding temporary pending presentation. */
   _committed: Array<AnyRouteMatch> = []
+  /** Committed Link subscriptions, grouped by rendering owner. Client only. */
+  _linkScopes?: Map<string | undefined, LinkScope>
+  /** Configuration identity for adapter-local destination caches. */
+  _linkConfig?: object
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
@@ -1187,11 +1194,6 @@ export class RouterCore<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
   >
-  // Locations built without reading the current location, keyed by the stable
-  // options object a Link owns. Links pass a new object when their values change.
-  // Client only: server renders never repeat an options object, so server
-  // bundles fold `isServer` and drop the cache entirely.
-  private staticLocations: WeakMap<object, ParsedLocation> | undefined
   isServer!: boolean
   readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1267,11 +1269,6 @@ export class RouterCore<
 
     this.isServer =
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
-    // `isServer` is a per-bundle constant, so server builds drop the cache.
-    if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
-    }
-
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
 
     if (
@@ -1374,6 +1371,24 @@ export class RouterCore<
       // Existing stores hold the location parsed with the previous rewrite.
       this.stores.location.set(this.latestLocation)
     }
+    // Tree changes publish from setRoutes. Only live URL-building options
+    // need another invalidation; initialization already changes the rewrite.
+    if (
+      !(isServer ?? this.isServer) &&
+      (rewriteChanged ||
+        (
+          [
+            'history',
+            'parseSearch',
+            'stringifySearch',
+            'trailingSlash',
+            'origin',
+          ] as const
+        ).some((key) => prevOptions[key] !== this.options[key]))
+    ) {
+      this._linkConfig = {}
+      _publishLinks(this, false, true)
+    }
   }
 
   get state(): RouterState<TRouteTree> {
@@ -1402,10 +1417,6 @@ export class RouterCore<
   setRoutes(caches: RouteTreeCaches<TRouteTree>) {
     Object.assign(this, caches)
     this.lightweightCache = new WeakMap()
-    if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
-    }
-
     const notFoundRoute = this.options.notFoundRoute
 
     if (notFoundRoute) {
@@ -1415,6 +1426,10 @@ export class RouterCore<
         notFoundRoute._interpolation = parseSegments(false, notFoundRoute, 0)
       }
       this.routesById[notFoundRoute.id] = notFoundRoute
+    }
+    if (!(isServer ?? this.isServer)) {
+      this._linkConfig = {}
+      _publishLinks(this, false, true)
     }
   }
 
@@ -1812,8 +1827,15 @@ export class RouterCore<
       ? this.stores.byRoute.get(lastRouteId)!.get()
       : undefined
     const lastStateMatchId = lastStateMatch?.id
-    const cached = this.lightweightCache.get(location)
-    if (cached && cached[0 /* lastMatchId */] === lastStateMatchId) {
+    // Validation can replace the route tree. Finish into the cache that owns
+    // this computation so old results never enter the replacement cache.
+    const cache = this.lightweightCache
+    const cached = cache.get(location)
+    if (
+      process.env.NODE_ENV !== 'development' &&
+      cached &&
+      cached[0 /* lastMatchId */] === lastStateMatchId
+    ) {
       return cached[1 /* result */]
     }
 
@@ -1871,7 +1893,7 @@ export class RouterCore<
       accumulatedSearch,
       params,
     ]
-    this.lightweightCache.set(location, [lastStateMatchId, result])
+    cache.set(location, [lastStateMatchId, result])
     return result
   }
 
@@ -1884,17 +1906,18 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
-  buildLocation: BuildLocationFn = (opts) => {
-    if (!(isServer ?? this.isServer)) {
-      const cached = this.staticLocations!.get(opts)
-      if (cached) {
-        return cached
-      }
-    }
-
+  buildLocation: BuildLocationFn = (
+    opts: Parameters<LinkBuilder>[0],
+    source?: () => ParsedLocation,
+    dependency?: LinkSubscription,
+  ): ParsedLocation => {
+    // Public callbacks may receive an index/collection from Array methods.
+    // Only adapters supply a source reader and dependency classification.
+    source = typeof source === 'function' ? source : undefined
     // Set by `current()` whenever a build reads the current location. A
     // location built without it depends only on `opts` and the route tree.
     let usedCurrent = false
+    let readSource: ParsedLocation | undefined
 
     const build = (
       dest: BuildNextOptions & {
@@ -1914,22 +1937,27 @@ export class RouterCore<
         }
       }
 
-      // We allow the caller to override the current location
-      const currentLocation =
-        dest._fromLocation || this._pendingLocation || this.latestLocation
+      // Capture explicit/default sources before callbacks, as public builds
+      // always have. A supplied lazy source is read once, only when needed.
+      const fixedSource =
+        dest._fromLocation ||
+        (source === undefined
+          ? this._pendingLocation || this.latestLocation
+          : undefined)
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match
       // objects) is only computed when a build actually reads it.
       let lightweight: LightweightRouteMatchResult | undefined
       const current = () => {
-        usedCurrent = true
-        return currentLocation
+        if (!(isServer ?? this.isServer)) {
+          usedCurrent ||= !dest._fromLocation
+        }
+        return fixedSource || (readSource ??= source!())
       }
-      const currentMatch = () => {
-        usedCurrent = true
-        return (lightweight ??= this.matchRoutesLightweight(currentLocation))
-      }
+      // A fixed source needs no adapter dependency; lazy reads classify once.
+      const currentMatch = () =>
+        (lightweight ??= this.matchRoutesLightweight(fixedSource || current()))
 
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
@@ -2183,6 +2211,7 @@ export class RouterCore<
     if (opts.mask) {
       next.maskedLocation = build({
         from: opts.from,
+        _fromLocation: opts._fromLocation,
         ...opts.mask,
       })
     } else if (this.options.routeMasks) {
@@ -2200,20 +2229,15 @@ export class RouterCore<
 
         next.maskedLocation = build({
           from: opts.from,
+          _fromLocation: opts._fromLocation,
           ...maskProps,
           params: nextParams,
         })
       }
     }
 
-    // Masked locations stay out: `opts.mask` is rebuilt from the current location.
-    if (
-      !(isServer ?? this.isServer) &&
-      !usedCurrent &&
-      opts._fromLocation &&
-      !next.maskedLocation
-    ) {
-      this.staticLocations!.set(opts, next)
+    if (!(isServer ?? this.isServer) && source && dependency) {
+      dependency[2 /* dynamic */] = usedCurrent
     }
 
     return next
@@ -2797,6 +2821,10 @@ if (process.env.NODE_ENV !== 'production') {
   RouterCore.prototype._replaceRouteChunk = replaceRouteChunk
   RouterCore.prototype._refreshRoute = async function () {
     this._serverResult = undefined
+    // HMR replaces route code without changing its identity. Replace the
+    // configuration publication so adapter-local destination caches expire.
+    this._linkConfig = {}
+    _publishLinks(this, false, true)
     this.updateLatestLocation()
     await refreshClientRoute(this)
   }

@@ -1151,10 +1151,12 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/posts')
+    expect(postsLink).not.toBeInTheDocument()
+    const currentPostsLink = screen.getByRole('link', { name: 'Posts' })
+    expect(currentPostsLink).toHaveAttribute('data-status', 'active')
+    expect(currentPostsLink).toHaveAttribute('aria-current', 'page')
+    expect(currentPostsLink).toHaveClass('active')
+    expect(currentPostsLink).toHaveAttribute('href', '/posts')
   })
 
   test('when navigating to /posts with a base url', async () => {
@@ -1211,10 +1213,12 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/app/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/app/posts')
+    expect(postsLink).not.toBeInTheDocument()
+    const currentPostsLink = screen.getByRole('link', { name: 'Posts' })
+    expect(currentPostsLink).toHaveAttribute('data-status', 'active')
+    expect(currentPostsLink).toHaveAttribute('aria-current', 'page')
+    expect(currentPostsLink).toHaveClass('active')
+    expect(currentPostsLink).toHaveAttribute('href', '/app/posts')
   })
 
   test('when navigating to /posts with search', async () => {
@@ -6803,14 +6807,10 @@ describe('splat routes with empty splat', () => {
     async (trailingSlash) => {
       const tail = trailingSlash === 'always' ? '/' : ''
 
-      const rootRoute = createRootRoute()
-      const indexRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
+      const rootRoute = createRootRoute({
         component: () => {
           return (
             <>
-              <h1>Index Route</h1>
               <Link
                 data-testid="splat-link-with-empty-splat"
                 to="/splat/$"
@@ -6835,9 +6835,15 @@ describe('splat routes with empty splat', () => {
               >
                 Link to splat with no _splat at all
               </Link>
+              <Outlet />
             </>
           )
         },
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <h1>Index Route</h1>,
       })
 
       const splatRoute = createRoute({

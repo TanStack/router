@@ -1,6 +1,7 @@
 // Keep this filename free of a secondary extension so declaration generation
 // can rewrite relative imports for both ESM and CJS.
 import { isNotFound } from './not-found'
+import { _publishLinks } from './link-subscriptions'
 import { isRedirect } from './redirect'
 import {
   getLocationChangeInfo,
@@ -1825,18 +1826,33 @@ async function runClientTransaction(
       finishPending(router, tx)
     }
     transferMatchResources(router, tx[3 /* matches */])
-    tx[3 /* matches */] = []
     if (!follow) {
+      tx[3 /* matches */] = []
       return
     }
     if (router._tx !== tx) {
+      tx[3 /* matches */] = []
       finishPending(router, tx)
       return
     }
     if (process.env.NODE_ENV !== 'production' && tx[6 /* refresh */]) {
       router._refreshNextLoad = true
     }
-    await followRedirect(router, tx, result)
+    // Resource transfer does not retire semantic membership. A successor's
+    // preflight can synchronously render outgoing content before taking over.
+    try {
+      const following = followRedirect(router, tx, result)
+      if (router._tx !== tx) {
+        tx[3 /* matches */] = []
+      }
+      await following
+    } finally {
+      // A native beforeunload listener can cancel document navigation without
+      // a successor. Its outgoing content still needs this lane's membership.
+      if (router._tx !== tx && tx[3 /* matches */].length) {
+        tx[3 /* matches */] = []
+      }
+    }
     return
   }
   const matches = result[1 /* matches */]
@@ -1901,6 +1917,9 @@ async function runClientTransaction(
     router.batch(() => {
       router.stores.resolvedLocation.set(toLocation)
       router.stores.status.set('idle')
+      if (router._tx === tx) {
+        _publishLinks(router, true)
+      }
       if (router._tx === tx) {
         router.emit({ type: 'onResolved', ...changeInfo })
       }
@@ -2037,6 +2056,9 @@ export async function loadClientRoute(
   router.batch(() => {
     router.stores.status.set('pending')
     router.stores.location.set(location)
+    if (router._tx === tx) {
+      _publishLinks(router)
+    }
   })
   // An unresolved cold root has no UI to retain. Provisional not-found waits
   // for lazy routes to place the final boundary.

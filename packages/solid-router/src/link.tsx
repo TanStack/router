@@ -3,6 +3,9 @@ import * as Solid from 'solid-js'
 import { mergeRefs } from '@solid-primitives/refs'
 
 import {
+  _getLinkScope,
+  _matchesLinkPath,
+  _subscribeLink,
   deepEqual,
   functionalUpdate,
   getUrlScheme,
@@ -15,6 +18,7 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { useRouter } from './useRouter'
+import { nearestMatchContext } from './matchContext'
 
 import { useIntersectionObserver } from './utils'
 
@@ -22,7 +26,9 @@ import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
+  LinkBuilder,
   LinkOptions,
+  LinkSubscription,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -124,22 +130,90 @@ export function useLinkProps<
     'href',
   ])
 
-  const currentLocation = Solid.createMemo(
-    () => router.stores.location.get(),
-    undefined,
-    { equals: (prev, next) => prev.href === next.href },
-  )
-
-  const next = Solid.createMemo(() => {
-    // Rebuild when inherited search/hash or the current route context changes.
-    const _fromLocation = currentLocation()
-    const nextOptions = { _fromLocation, ...options } as any
-    // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(nextOptions))
+  // SSR uses direct readers; client computations belong to this Solid owner.
+  const memo = <T,>(read: () => T): (() => T) => {
+    if (isServer ?? router.isServer) {
+      const value = read()
+      return () => value
+    }
+    return Solid.createMemo(read)
+  }
+  let subscription: LinkSubscription | undefined
+  let currentLocation = () => router.stores.location.get()
+  if (!(isServer ?? router.isServer)) {
+    const nearest = Solid.useContext(nearestMatchContext)
+    const [revision, setRevision] = Solid.createSignal(0)
+    subscription = [
+      Solid.untrack(() => _getLinkScope(router, nearest[0]())),
+      () => setRevision((value) => value + 1),
+    ]
+    const link = subscription
+    Solid.createRenderEffect(() => {
+      const owner = nearest[0]()
+      const unsubscribe = Solid.untrack(() =>
+        _subscribeLink(router, owner, link),
+      )
+      Solid.onCleanup(unsubscribe)
+      link[1 /* notify */]()
+    })
+    currentLocation = () => {
+      revision()
+      return link[0 /* scope */][0 /* location */]
+    }
+  }
+  const destinationOptions = memo(() => ({
+    href: (options as any).href,
+    to: options.to,
+    from: options.from,
+    params: options.params,
+    search: options.search,
+    hash: options.hash,
+    state: options.state,
+    mask: options.mask,
+    unsafeRelative: options.unsafeRelative,
+    _fromLocation: (options as any)._fromLocation,
+  }))
+  const configuration = memo(() => {
+    currentLocation()
+    return router._linkConfig
+  })
+  const next = memo(() => {
+    configuration()
+    const dest = destinationOptions()
+    const built = Solid.untrack(() =>
+      (router.buildLocation as LinkBuilder)(
+        dest as any,
+        currentLocation,
+        subscription,
+      ),
+    )
+    // The canonical resolver classifies actual source reads. Only dynamic
+    // destinations acquire a moving-source dependency in this native memo.
+    if (subscription) {
+      if (subscription[2 /* dynamic */]) {
+        currentLocation()
+      }
+      const active = local.activeOptions
+      subscription[3 /* pathname */] = removeTrailingSlash(
+        built.pathname,
+        router.basepath,
+      )
+      subscription[4 /* exact */] = active?.exact
+      subscription[5 /* activity */] =
+        1 |
+        ((active?.includeSearch ?? true) ? 2 : 0) |
+        (active?.includeHash ? 4 : 0)
+    }
+    return built
   })
 
-  const hrefOption = Solid.createMemo(() => {
-    if (options.disabled) return undefined
+  const hrefOption = memo(() => {
+    if (router.history.createHref !== router.history._hrefIndependent) {
+      currentLocation()
+    }
+    if (options.disabled) {
+      return undefined
+    }
     // Use publicHref - it contains the correct href for display
     // When a rewrite changes the origin, publicHref is the full URL
     // Otherwise it's the origin-stripped path
@@ -164,7 +238,8 @@ export function useLinkProps<
     return href
   })
 
-  const externalLink = Solid.createMemo(() => {
+  const externalLink = memo(() => {
+    configuration()
     const to = options.to
     const scheme = typeof to === 'string' && getUrlScheme(to)
     if (scheme) {
@@ -187,7 +262,7 @@ export function useLinkProps<
   const shouldHydrateHash = !isServer && !!router.options.ssr
   const hasHydrated = (isServer ?? router.isServer) ? undefined : useHydrated()
 
-  const isActive = Solid.createMemo(() => {
+  const isActive = memo(() => {
     if (externalLink() !== undefined) {
       return false
     }
@@ -198,16 +273,7 @@ export function useLinkProps<
     const currentPath = removeTrailingSlash(current.pathname, router.basepath)
     const nextPath = removeTrailingSlash(nextLocation.pathname, router.basepath)
 
-    // Both modes compare normalized paths; fuzzy matches need a segment boundary.
-    if (
-      activeOptions?.exact
-        ? currentPath !== nextPath
-        : !(
-            currentPath.startsWith(nextPath) &&
-            (currentPath.length === nextPath.length ||
-              currentPath[nextPath.length] === '/')
-          )
-    ) {
+    if (!_matchesLinkPath(currentPath, nextPath, activeOptions?.exact)) {
       return false
     }
 
@@ -231,7 +297,7 @@ export function useLinkProps<
     return true
   })
 
-  const simpleStyling = Solid.createMemo(
+  const simpleStyling = memo(
     () =>
       local.activeProps === STATIC_ACTIVE_PROPS_GET &&
       local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
@@ -329,7 +395,12 @@ export function useLinkProps<
 
   const doPreload = () =>
     router
-      .preloadRoute(options as Parameters<typeof router.preloadRoute>[0])
+      .preloadRoute({
+        ...options,
+        _fromLocation:
+          (options as any)._fromLocation ??
+          subscription![0 /* scope */][0 /* location */],
+      } as Parameters<typeof router.preloadRoute>[0])
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -415,6 +486,9 @@ export function useLinkProps<
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
         ...options,
+        _fromLocation:
+          (options as any)._fromLocation ??
+          subscription![0 /* scope */][0 /* location */],
         replace: local.replace,
         resetScroll: local.resetScroll,
         hashScrollIntoView: local.hashScrollIntoView,
@@ -662,7 +736,7 @@ export const Link: LinkComponent<'a'> = (props) => {
     ['type'],
   )
 
-  const children = Solid.createMemo(() => {
+  const resolveChildren = () => {
     const ch = local.children
     if (typeof ch === 'function') {
       return ch({
@@ -673,7 +747,11 @@ export const Link: LinkComponent<'a'> = (props) => {
     }
 
     return ch satisfies Solid.JSX.Element
-  })
+  }
+  const children =
+    (isServer ?? useRouter().isServer)
+      ? resolveChildren
+      : Solid.createMemo(resolveChildren)
 
   if (local._asChild === 'svg') {
     const [_, svgLinkProps] = Solid.splitProps(linkProps, ['class'])

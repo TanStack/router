@@ -79,7 +79,7 @@ function MatchesInner() {
   const routeId = () => router.stores.ids.get()[0]
   const match = () =>
     routeId() ? router.stores.byRoute.get(routeId()!)?.get() : undefined
-  const nearestMatch = [routeId, match] as const
+  const nearestMatch = [() => routeId() ?? rootRouteId, match] as const
 
   const matchComponent = () => {
     return (

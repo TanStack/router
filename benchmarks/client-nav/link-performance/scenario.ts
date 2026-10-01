@@ -69,7 +69,16 @@ export function createClientScenario(
         throw new Error('Link benchmark history must remain bounded')
       }
       const current = container.querySelectorAll('a[data-perf-link]')
-      if (anchors.some((anchor, index) => current[index] !== anchor)) {
+      if (
+        id === 'departing-1000' &&
+        anchors.some((anchor, index) => current[index] === anchor)
+      ) {
+        throw new Error('Departing Links must remount across navigations')
+      }
+      if (
+        id !== 'departing-1000' &&
+        anchors.some((anchor, index) => current[index] !== anchor)
+      ) {
         throw new Error('Measured Links must stay mounted across navigations')
       }
     },
