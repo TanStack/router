@@ -77,7 +77,8 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   byRoute: Map<string, MatchStore>
 
   /**
-   * The route ids presented before the most recent change to `ids`.
+   * The route ids presented before the most recent change to `ids`. Written
+   * in the same batch that changes `ids`, so it is bounded by the route count.
    */
   previousIds: Array<string>
 
@@ -86,6 +87,11 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
    * framework tree that still renders a departed route (for example a
    * dehydrated Suspense boundary that React hydrates once before it applies
    * the navigation) reads it here instead of from the cleared match store.
+   *
+   * Written in the same batch that clears the departed match stores and
+   * cleared at the next change of `ids`, so it holds at most one entry per
+   * route. The entries are the match objects the stores last presented; no
+   * copies are made.
    */
   departed: Map<string, AnyRouteMatch>
 
