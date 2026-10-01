@@ -9,14 +9,14 @@
     "preview": "vite preview",
     "start": "vite",
     "test:e2e": "pnpm run test:e2e:default",
-    "test:e2e:default": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e:default": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.2.2",
     "zod": "^4.4.3"

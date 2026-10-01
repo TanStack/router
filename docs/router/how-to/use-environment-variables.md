@@ -164,7 +164,7 @@ const fetchPosts = async () => {
 export const Route = createFileRoute('/posts/')({
   loader: fetchPosts,
   errorComponent: ({ error }) => (
-    <div>Error loading posts: {error.message}</div>
+    <div>Error loading posts: {error instanceof Error ? error.message : String(error)}</div>
   ),
 })
 ```

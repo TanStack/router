@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import {
+  _getAssetMatches,
   appendUniqueUserTags,
   escapeHtml,
   getAssetCrossOrigin,
@@ -13,29 +14,27 @@ import type {
 } from '@tanstack/router-core'
 
 /**
- * Build the list of head/link/meta/script tags to render for active matches.
+ * Build the head/link/meta/script tags from the renderable presented prefix.
  * Used internally by `HeadContent`.
  */
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const activeMatches = Solid.createMemo(() => router.stores.matches.get())
-  const routeMeta = Solid.createMemo(() =>
-    activeMatches()
-      .map((match) => match.meta)
-      .filter((meta) => meta !== undefined),
-  )
-
-  const meta: Solid.Accessor<Array<RouterManagedTag>> = Solid.createMemo(() => {
+  return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
+    const matches = _getAssetMatches(router.stores.matches.get())
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
-    const routeMetasArray = routeMeta()
-    for (let i = routeMetasArray.length - 1; i >= 0; i--) {
-      const metas = routeMetasArray[i]!
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const metas = matches[i]!.meta
+      if (!metas) {
+        continue
+      }
       for (let j = metas.length - 1; j >= 0; j--) {
         const m = metas[j]
-        if (!m) continue
+        if (!m) {
+          continue
+        }
 
         if (m.title) {
           if (!title) {
@@ -95,126 +94,98 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     }
     resultMeta.reverse()
 
-    return resultMeta
-  })
-
-  const links = Solid.createMemo(() => {
-    const matches = activeMatches()
-    const constructed = matches
-      .flatMap((match) => match.links ?? [])
-      .filter((link) => link !== undefined)
-      .map((link) => ({
-        tag: 'link',
-        attrs: {
-          ...link,
-          nonce,
-        },
-      })) satisfies Array<RouterManagedTag>
-
-    return constructed
-  })
-
-  const manifestCssTags = Solid.createMemo(() => {
+    const next: Array<RouterManagedTag> = []
+    appendUniqueUserTags(next, resultMeta)
     const manifest = router.ssr?.manifest
-    const tags: Array<RouterManagedTag> = []
-
-    if (!manifest) {
-      return tags
-    }
-
-    for (const match of activeMatches()) {
-      manifest.routes[match.routeId]?.css?.forEach((link) => {
-        const resolvedLink = resolveManifestCssLink(link)
-        tags.push({
+    const preloads: Array<RouterManagedTag> = []
+    for (const match of matches) {
+      for (const preload of manifest?.routes[match.routeId]?.preloads ?? []) {
+        if (!preload) {
+          continue
+        }
+        preloads.push({
           tag: 'link',
           attrs: {
-            rel: 'stylesheet',
-            ...resolvedLink,
-            crossOrigin:
-              getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
-              resolvedLink.crossOrigin,
+            ...getScriptPreloadAttrs(manifest, preload, assetCrossOrigin),
             nonce,
           },
         })
-      })
+      }
     }
+    next.push(...preloads)
 
-    if (manifest.inlineStyle) {
-      tags.push({
-        tag: 'style',
-        attrs: {
-          ...manifest.inlineStyle.attrs,
-          nonce,
-        },
-        children: manifest.inlineStyle.children,
-        inlineCss: true,
-      })
+    const links: Array<RouterManagedTag> = []
+    for (const match of matches) {
+      for (const link of match.links ?? []) {
+        if (link === undefined) {
+          continue
+        }
+        links.push({ tag: 'link', attrs: { ...link, nonce } })
+      }
     }
+    appendUniqueUserTags(next, links)
 
-    return tags
-  })
-
-  const preloadLinks = Solid.createMemo(() => {
-    const matches = activeMatches()
-    const preloadLinks: Array<RouterManagedTag> = []
-
-    matches.forEach((match) =>
-      router.ssr?.manifest?.routes[match.routeId]?.preloads
-        ?.filter(Boolean)
-        .forEach((preload) => {
-          preloadLinks.push({
+    if (manifest) {
+      for (const match of matches) {
+        for (const link of manifest.routes[match.routeId]?.css ?? []) {
+          const resolvedLink = resolveManifestCssLink(link)
+          next.push({
             tag: 'link',
             attrs: {
-              ...getScriptPreloadAttrs(
-                router.ssr?.manifest,
-                preload,
-                assetCrossOrigin,
-              ),
+              rel: 'stylesheet',
+              ...resolvedLink,
+              crossOrigin:
+                getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+                resolvedLink.crossOrigin,
               nonce,
             },
           })
-        }),
-    )
+        }
+      }
+      if (manifest.inlineStyle) {
+        next.push({
+          tag: 'style',
+          attrs: {
+            ...manifest.inlineStyle.attrs,
+            nonce,
+          },
+          children: manifest.inlineStyle.children,
+          inlineCss: true,
+        })
+      }
+    }
 
-    return preloadLinks
-  })
-
-  const styles = Solid.createMemo(() => {
-    return activeMatches()
-      .flatMap((match) => match.styles ?? [])
-      .filter((style) => style !== undefined)
-      .map(({ children, ...style }) => ({
-        tag: 'style',
-        attrs: {
-          ...style,
-          nonce,
-        },
-        children: children as string | undefined,
-      })) satisfies Array<RouterManagedTag>
-  })
-
-  const headScripts = Solid.createMemo(() => {
-    return activeMatches()
-      .flatMap((match) => match.headScripts ?? [])
-      .filter((script) => script !== undefined)
-      .map(({ children, ...script }) => ({
-        tag: 'script',
-        attrs: {
-          ...script,
-          nonce,
-        },
-        children: children as string | undefined,
-      })) satisfies Array<RouterManagedTag>
-  })
-
-  return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
-    const next: Array<RouterManagedTag> = []
-    appendUniqueUserTags(next, meta())
-    next.push(...preloadLinks())
-    appendUniqueUserTags(next, links())
-    next.push(...manifestCssTags())
-    appendUniqueUserTags(next, styles())
-    appendUniqueUserTags(next, headScripts())
+    const styles: Array<RouterManagedTag> = []
+    const headScripts: Array<RouterManagedTag> = []
+    for (const match of matches) {
+      for (const style of match.styles ?? []) {
+        if (style === undefined) {
+          continue
+        }
+        const { children, ...attrs } = style
+        styles.push({
+          tag: 'style',
+          attrs: { ...attrs, nonce },
+          children: children as string | undefined,
+        })
+      }
+      for (const script of match.headScripts ?? []) {
+        if (script === undefined) {
+          continue
+        }
+        const { children, ...attrs } = script
+        headScripts.push({
+          tag: 'script',
+          attrs: {
+            ...attrs,
+            nonce,
+          },
+          children: children as string | undefined,
+        })
+      }
+    }
+    appendUniqueUserTags(next, styles)
+    appendUniqueUserTags(next, headScripts)
 
     if (prev === undefined) {
       return next

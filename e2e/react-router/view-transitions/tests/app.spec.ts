@@ -1,4 +1,4 @@
-import { test } from '@playwright/test'
+import { apiTest as test } from '@tanstack/router-e2e-utils'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')

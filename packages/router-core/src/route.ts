@@ -1,9 +1,10 @@
 import { invariant } from './invariant'
-import { joinPaths, trimPathLeft, trimPathRight } from './path'
+import { cleanPath, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
 import type { LazyRoute } from './fileRoute'
+import type { RouteInterpolation } from './path'
 import type { NotFoundError } from './not-found'
 import type { RedirectFnRoute } from './redirect'
 import type { NavigateOptions, ParsePathParams } from './link'
@@ -55,7 +56,7 @@ export type AnyContext = {}
 
 export interface RouteContext {}
 
-export type PreloadableObj = { preload?: () => Promise<void> }
+export type PreloadableObj = { preload?: () => Promise<void> | undefined }
 
 export type RoutePathOptions<TCustomId, TPath> =
   | {
@@ -700,10 +701,6 @@ export interface Route<
     THandlers
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
-  /** @internal */
-  _componentsPromise?: Promise<void>
-  /** @internal */
-  _componentsLoaded?: boolean
   lazyFn?: () => Promise<
     LazyRoute<
       Route<
@@ -729,12 +726,14 @@ export interface Route<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
+  _lazy?: Promise<void> | true
   /** @internal */
-  _lazyLoaded?: boolean
+  _branch?: ReadonlyArray<AnyRoute>
+  /** @internal */
+  _interpolation?: RouteInterpolation
   rank: number
   to: TrimPathRight<TFullPath>
-  init: (opts: { originalIndex: number }) => void
+  init: (originalIndex: number) => void
   update: (
     options: UpdatableRouteOptions<
       TParentRoute,
@@ -1304,7 +1303,7 @@ export interface UpdatableRouteOptions<
   postSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  onCatch?: (error: Error) => void
+  onCatch?: (error: ErrorBoundaryTypes['error']) => void
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
@@ -1607,7 +1606,14 @@ export type ErrorRouteProps = {
   reset: () => void
 }
 
-export type ErrorComponentProps<TError = Error> = {
+export interface DefaultErrorBoundaryTypes {
+  error: unknown
+}
+
+/** Frameworks can specialize the error exposed by boundary components and callbacks. */
+export interface ErrorBoundaryTypes extends DefaultErrorBoundaryTypes {}
+
+export type ErrorComponentProps<TError = ErrorBoundaryTypes['error']> = {
   error: TError
   info?: { componentStack: string }
   reset: () => void
@@ -1711,10 +1717,11 @@ export class BaseRoute<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
+  _lazy?: Promise<void> | true
   /** @internal */
-  _componentsPromise?: Promise<void>
-
+  _branch?: ReadonlyArray<AnyRoute>
+  /** @internal */
+  _interpolation?: RouteInterpolation
   constructor(
     options?: RouteOptions<
       TRegister,
@@ -1764,8 +1771,10 @@ export class BaseRoute<
     THandlers
   >
 
-  init = (opts: { originalIndex: number }): void => {
-    this.originalIndex = opts.originalIndex
+  init = (originalIndex: number): void => {
+    this.originalIndex = originalIndex
+    // Rebuilding a tree can change the ancestors of an existing route.
+    this._branch = undefined
 
     const options = this.options as
       | (RouteOptions<
@@ -1814,23 +1823,24 @@ export class BaseRoute<
     const customId = options?.id || path
 
     // Strip the parentId prefix from the first level of children
-    let id = isRoot
+    const id = isRoot
       ? rootRouteId
-      : joinPaths([
-          this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id,
-          customId,
-        ])
+      : cleanPath(
+          (this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id) +
+            '/' +
+            (customId ?? ''),
+        )
 
     if (path === rootRouteId) {
       path = '/'
     }
 
-    if (id !== rootRouteId) {
-      id = joinPaths(['/', id])
-    }
-
     const fullPath =
-      id === rootRouteId ? '/' : joinPaths([this.parentRoute.fullPath, path])
+      id === rootRouteId
+        ? '/'
+        : path === undefined
+          ? this.parentRoute.fullPath
+          : cleanPath(this.parentRoute.fullPath + '/' + path)
 
     this._path = path as TPath
     this._id = id as TId

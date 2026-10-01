@@ -20,7 +20,23 @@ describe('ssr match id codec', () => {
     expect(hydrateSsrMatchId(id)).toBe(id)
   })
 
+  it('round-trips reserved and browser-normalized characters', () => {
+    const id = '~/\0/\uFFFD/~0/~r'
+    const dehydratedId = dehydrateSsrMatchId(id)
+    const normalize = (value: string) => value.replaceAll('\0', '\uFFFD')
+
+    expect(hydrateSsrMatchId(normalize(dehydratedId))).toBe(id)
+    expect(normalize(dehydrateSsrMatchId('/r'))).not.toBe(
+      normalize(dehydrateSsrMatchId('\uFFFDr')),
+    )
+  })
+
   it('decodes browser-normalized replacement chars back to slashes', () => {
-    expect(hydrateSsrMatchId('\uFFFDposts\uFFFD1')).toBe('/posts/1')
+    const normalized = dehydrateSsrMatchId('/posts/1').replaceAll(
+      '\0',
+      '\uFFFD',
+    )
+
+    expect(hydrateSsrMatchId(normalized)).toBe('/posts/1')
   })
 })

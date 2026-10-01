@@ -1,5 +1,209 @@
 # @tanstack/start-static-server-functions
 
+## 1.167.39
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-start@1.168.60
+  - @tanstack/solid-start@1.168.57
+  - @tanstack/start-client-core@1.170.34
+
+## 1.167.38
+
+### Patch Changes
+
+- [#8297](https://github.com/TanStack/router/pull/8297) [`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f) - Update `seroval` and `seroval-plugins` from 1.6.2 to 1.6.7. This picks up the typed array length guard, the `maxBase64Length` and `compactArrayBufferViews` options, and the `isStream` export.
+
+- Updated dependencies [[`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f), [`76a7c0b`](https://github.com/TanStack/router/commit/76a7c0bfadb42d5f7fe7b9e1748acc7333178c91)]:
+  - @tanstack/start-client-core@1.170.33
+  - @tanstack/react-start@1.168.59
+  - @tanstack/solid-start@1.168.56
+
+## 1.167.37
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.32
+  - @tanstack/react-start@1.168.56
+  - @tanstack/solid-start@1.168.54
+
+## 1.167.36
+
+### Patch Changes
+
+- [#8204](https://github.com/TanStack/router/pull/8204) [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26) - Stream large deferred SSR hydration payloads through a backpressure-aware router transport, fail known setup errors before response creation, and close cancelled or expired transforms safely.
+
+  Start now cancels discarded middleware and HEAD response bodies, including plain streams and derived branches.
+
+  Server-function raw streams share one ordered response. Arbitrary or sequential consumption can require potentially unbounded buffering of unread data on the client. Cancelling one raw stream discards it locally, while aborting the whole call cancels the response and server work. Consume streams concurrently, cancel unused streams promptly, or use separate calls when independent backpressure is required. A raw stream that exceeds its unread-byte limit now fails alone; sibling streams and the JSON result keep flowing.
+
+  The JSON wire shape of a `RawStream` server-function argument changed. Clients and servers must run matching versions for requests that pass a `RawStream`.
+
+  The frame-protocol constants (`FRAME_TYPE_*`, `MAX_FRAME_PAYLOAD_SIZE`, `MAX_FRAMED_STREAMS`) moved from the `@tanstack/start-client-core` root to the `@tanstack/start-client-core/client-rpc` subpath.
+
+  Router requests whose `Accept` header allows neither `text/html` nor `*/*` now receive `406 Not Acceptable` instead of `500`.
+
+  Framework adapters share the body `<Scripts>` composition (`getSsrBodyScriptParts`, `composeSsrBodyScripts`) and the eager HTML response wrapper (`renderSsrHtmlResponse`) from `@tanstack/router-core`.
+
+  Solid SSR now emits one document type and renders late lazy errors through route boundaries. A Solid `<Await>` without a `fallback` no longer holds the streamed shell; it renders inside the nearest `<Suspense>` boundary like React and Vue, and now renders falsy resolved values.
+
+  Static server functions decode cached `RawStream` values with the client deserializer plugins.
+
+  SSR Query integrations now keep request cleanup and stream ownership aligned with the router lifecycle.
+
+- Updated dependencies [[`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26)]:
+  - @tanstack/start-client-core@1.170.31
+  - @tanstack/react-start@1.168.55
+  - @tanstack/solid-start@1.168.53
+
+## 1.167.35
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.30
+  - @tanstack/react-start@1.168.53
+  - @tanstack/solid-start@1.168.51
+
+## 1.167.34
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.29
+  - @tanstack/react-start@1.168.51
+  - @tanstack/solid-start@1.168.49
+
+## 1.167.33
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.28
+  - @tanstack/react-start@1.168.50
+  - @tanstack/solid-start@1.168.48
+
+## 1.167.32
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.27
+  - @tanstack/solid-start@1.168.47
+  - @tanstack/react-start@1.168.49
+
+## 1.167.31
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.26
+  - @tanstack/react-start@1.168.48
+  - @tanstack/solid-start@1.168.46
+
+## 1.167.30
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-start@1.168.47
+  - @tanstack/solid-start@1.168.45
+  - @tanstack/start-client-core@1.170.25
+
+## 1.167.29
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.24
+  - @tanstack/react-start@1.168.46
+  - @tanstack/solid-start@1.168.44
+
+## 1.167.28
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-start@1.168.45
+  - @tanstack/start-client-core@1.170.23
+  - @tanstack/solid-start@1.168.43
+
+## 1.167.27
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.22
+  - @tanstack/react-start@1.168.43
+  - @tanstack/solid-start@1.168.42
+
+## 1.167.26
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.21
+  - @tanstack/react-start@1.168.42
+  - @tanstack/solid-start@1.168.41
+
+## 1.167.25
+
+### Patch Changes
+
+- Updated dependencies [[`c59788c`](https://github.com/TanStack/router/commit/c59788ca20f2d2e7f264a859ebe01b7646ba3154)]:
+  - @tanstack/start-client-core@1.170.20
+  - @tanstack/react-start@1.168.41
+  - @tanstack/solid-start@1.168.40
+
+## 1.167.24
+
+### Patch Changes
+
+- Updated dependencies [[`2fbc99f`](https://github.com/TanStack/router/commit/2fbc99f2c262b057cb957e6ebba1ee073c655186), [`6bede65`](https://github.com/TanStack/router/commit/6bede65d7074dcd83455151b66b4574268bc782c)]:
+  - @tanstack/start-client-core@1.170.19
+  - @tanstack/react-start@1.168.40
+  - @tanstack/solid-start@1.168.39
+
+## 1.167.23
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-start@1.168.39
+  - @tanstack/start-client-core@1.170.18
+  - @tanstack/solid-start@1.168.38
+
+## 1.167.22
+
+### Patch Changes
+
+- Updated dependencies [[`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b)]:
+  - @tanstack/start-client-core@1.170.17
+  - @tanstack/react-start@1.168.38
+  - @tanstack/solid-start@1.168.37
+
+## 1.167.21
+
+### Patch Changes
+
+- [#7962](https://github.com/TanStack/router/pull/7962) [`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5) - Update Seroval dependencies to version 1.6.2.
+
+- Updated dependencies [[`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5)]:
+  - @tanstack/start-client-core@1.170.16
+  - @tanstack/react-start@1.168.37
+  - @tanstack/solid-start@1.168.36
+
+## 1.167.20
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.15
+  - @tanstack/react-start@1.168.36
+  - @tanstack/solid-start@1.168.35
+
 ## 1.167.19
 
 ### Patch Changes

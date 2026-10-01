@@ -4,10 +4,20 @@
 <tr>
 <td>
 
-<img
-src="./media/header_router.png"
-alt="TanStack Router"
-/>
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="https://tanstack.com/api/readme/router.png?theme=dark"
+  />
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="https://tanstack.com/api/readme/router.png"
+  />
+  <img
+    src="https://tanstack.com/api/readme/router.png"
+    alt="TanStack Router"
+  />
+</picture>
 
 ## TanStack Router
 
@@ -23,10 +33,20 @@ A modern router designed for type safety, data‑driven navigation, and seamless
 </td>
 <td>
 
-<img
-src="./media/header_start.png"
-alt="TanStack Start"
-/>
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="https://tanstack.com/api/readme/start.png?theme=dark"
+  />
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="https://tanstack.com/api/readme/start.png"
+  />
+  <img
+    src="https://tanstack.com/api/readme/start.png"
+    alt="TanStack Start"
+  />
+</picture>
 
 ## TanStack Start
 

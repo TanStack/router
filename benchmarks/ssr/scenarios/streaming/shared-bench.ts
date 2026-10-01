@@ -71,6 +71,8 @@ export const benchOptions = {
 export function runStreamingLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
+    concurrency: 16,
+    totalRequests: 16,
     buildRequest: buildStreamingRequest,
   })
 }

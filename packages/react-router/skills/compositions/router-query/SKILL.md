@@ -1,14 +1,15 @@
 ---
-name: compositions/router-query
+name: router-query
 description: >-
   Integrating TanStack Router with TanStack Query: queryClient
   in router context, ensureQueryData/prefetchQuery in loaders,
   useSuspenseQuery in components, defaultPreloadStaleTime: 0,
   setupRouterSsrQueryIntegration for SSR dehydration/hydration
   and streaming, per-request QueryClient isolation.
-type: composition
-library: tanstack-router
-library_version: '1.166.2'
+metadata:
+  type: composition
+  library: tanstack-router
+  library_version: '1.166.2'
 requires:
   - router-core
   - router-core/data-loading
@@ -312,7 +313,7 @@ function PostsErrorComponent({
   error,
   reset,
 }: {
-  error: Error
+  error: unknown
   reset: () => void
 }) {
   const router = useRouter()
@@ -324,7 +325,7 @@ function PostsErrorComponent({
 
   return (
     <div>
-      <p>{error.message}</p>
+      <p>{error instanceof Error ? error.message : String(error)}</p>
       <button onClick={() => router.invalidate()}>Retry</button>
     </div>
   )

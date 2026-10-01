@@ -1,5 +1,9 @@
-import { useStore } from '@tanstack/react-store'
-import { deepEqual } from '@tanstack/router-core'
+import { useSelector } from '@tanstack/react-store'
+import {
+  composeSsrBodyScripts,
+  deepEqual,
+  getSsrBodyScriptParts,
+} from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -9,99 +13,59 @@ type ScriptRenderAsset = RouterManagedTag & {
   preventScriptHoist?: boolean
 }
 
+const routeScriptAttrs = { suppressHydrationWarning: true }
+
 /**
  * Render body script tags collected from route matches and SSR manifests.
- * Should be placed near the end of the document body.
+ * During streaming SSR, `<Scripts>` marks where late hydration scripts may
+ * begin to be inserted.
  */
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
 
-  const getAssetScripts = (matches: Array<any>) => {
-    const assetScripts: Array<ScriptRenderAsset> = []
-    const manifest = router.ssr?.manifest
-
-    if (!manifest) {
-      return []
-    }
-
-    for (const match of matches) {
-      const scripts = manifest.routes[match.routeId]?.scripts
-
-      if (!scripts) {
-        continue
-      }
-
-      for (const asset of scripts) {
-        assetScripts.push({
-          tag: 'script',
-          attrs: { ...asset.attrs, nonce },
-          children: asset.children,
-          ...(typeof asset.attrs?.src === 'string'
-            ? { preventScriptHoist: true }
-            : {}),
-        })
+  const getParts = (matches: Array<any>) => {
+    const parts = getSsrBodyScriptParts(
+      matches,
+      router.ssr?.manifest,
+      nonce,
+      routeScriptAttrs,
+    )
+    for (const script of parts[1]) {
+      if (typeof script.attrs?.src === 'string') {
+        const scriptWithHoist = script as ScriptRenderAsset
+        scriptWithHoist.preventScriptHoist = true
       }
     }
-
-    return assetScripts
+    return parts
   }
 
-  const getScripts = (matches: Array<any>): Array<RouterManagedTag> =>
-    (
-      matches
-        .map((match) => match.scripts!)
-        .flat(1)
-        .filter(Boolean) as Array<RouterManagedTag>
-    ).map(
-      ({ children, ...script }) =>
-        ({
-          tag: 'script',
-          attrs: {
-            ...script,
-            suppressHydrationWarning: true,
-            nonce,
-          },
-          children,
-        }) satisfies RouterManagedTag,
-    )
+  const getScripts = (matches: Array<any>) => {
+    return composeSsrBodyScripts(getParts(matches))
+  }
 
   if (isServer ?? router.isServer) {
     const activeMatches = router.stores.matches.get()
-    const assetScripts = getAssetScripts(activeMatches)
-    const scripts = getScripts(activeMatches)
-    return renderScripts(router, scripts, assetScripts)
+    return renderScripts(
+      composeSsrBodyScripts(
+        getParts(activeMatches),
+        router.serverSsr?.takeInitialHydrationScriptTags(),
+      ),
+    )
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const assetScripts = useStore(
-    router.stores.matches,
-    getAssetScripts,
-    deepEqual,
-  )
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const scripts = useStore(router.stores.matches, getScripts, deepEqual)
+  const scripts = useSelector(router.stores.matches, getScripts, {
+    compare: deepEqual,
+  })
 
-  return renderScripts(router, scripts, assetScripts)
+  return renderScripts(scripts)
 }
 
-function renderScripts(
-  router: ReturnType<typeof useRouter>,
-  scripts: Array<RouterManagedTag>,
-  assetScripts: Array<ScriptRenderAsset>,
-) {
-  const allScripts = [...scripts, ...assetScripts] as Array<ScriptRenderAsset>
-
-  if ((isServer ?? router.isServer) && router.serverSsr) {
-    const serverBufferedScript = router.serverSsr.takeBufferedScripts()
-    if (serverBufferedScript) {
-      allScripts.unshift(serverBufferedScript)
-    }
-  }
-
+function renderScripts(scripts: Array<ScriptRenderAsset>) {
   return (
     <>
-      {allScripts.map((asset, i) => (
+      {scripts.map((asset, i) => (
         <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
       ))}
     </>

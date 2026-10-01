@@ -18,8 +18,16 @@ on:
   pull_request:
     paths:
       - 'packages/**'
+      - '!packages/**/tests/**'
+      - '!packages/**/__tests__/**'
+      - '!packages/**/*.test.*'
       - 'benchmarks/**'
   workflow_dispatch:
+
+concurrency:
+  group: client-nav-benchmarks-${{ github.ref }}
+  cancel-in-progress: false
+  queue: single
 
 permissions:
   contents: read # required for actions/checkout
@@ -72,7 +80,8 @@ jobs:
           @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
-        uses: CodSpeedHQ/action@9d332c4d90b43981c3e55ae8e38e68709996240f # v4.17.0
+        uses: CodSpeedHQ/action@373d6868929f444bc08d901fd0eb0ad52a8875ea # v5.2.1
+        timeout-minutes: 20
         with:
           mode: ${{ matrix.mode }}
           run: >-

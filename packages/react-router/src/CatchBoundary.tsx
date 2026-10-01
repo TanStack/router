@@ -1,79 +1,61 @@
 'use client'
 
 import * as React from 'react'
+import { wrapInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'
 
-export function CatchBoundary(props: {
-  getResetKey: () => number | string
+export class CatchBoundary extends React.Component<{
+  getResetKey: () => unknown
   children: React.ReactNode
   errorComponent?: ErrorRouteComponent
-  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
-}) {
-  const errorComponent = props.errorComponent ?? ErrorComponent
-
-  return (
-    <CatchBoundaryImpl
-      getResetKey={props.getResetKey}
-      onCatch={props.onCatch}
-      children={({ error, reset }) => {
-        if (error) {
-          return React.createElement(errorComponent, {
-            error,
-            reset,
-          })
-        }
-
-        return props.children
-      }}
-    />
-  )
-}
-
-class CatchBoundaryImpl extends React.Component<{
-  getResetKey: () => number | string
-  children: (props: {
-    error: Error | null
-    reset: () => void
-  }) => React.ReactNode
-  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
+  onCatch?: (error: unknown, errorInfo: ErrorInfo) => void
 }> {
-  state = { error: null } as { error: Error | null; resetKey?: string | number }
+  // Wrapping caught values keeps every possible thrown value truthy.
+  state = { error: 0 } as { error: [unknown] | 0; resetKey?: unknown }
 
   static getDerivedStateFromProps(
-    props: { getResetKey: () => string | number },
-    state: { resetKey?: string | number; error: Error | null },
+    props: { getResetKey: () => unknown },
+    state: { resetKey?: unknown; error: [unknown] | 0 },
   ) {
     const resetKey = props.getResetKey()
 
     if (state.error && state.resetKey !== resetKey) {
-      return { resetKey, error: null }
+      return { resetKey, error: 0 }
     }
 
     return { resetKey }
   }
-  static getDerivedStateFromError(error: Error) {
-    return { error }
+  static getDerivedStateFromError(error: unknown) {
+    return { error: [error] }
   }
-  reset() {
-    this.setState({ error: null })
+  reset = () => {
+    this.setState({ error: 0 })
   }
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (this.props.onCatch) {
-      this.props.onCatch(error, errorInfo)
-    }
+  componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
+    this.props.onCatch?.(error, errorInfo)
   }
   render() {
-    return this.props.children({
-      error: this.state.error,
-      reset: () => {
-        this.reset()
-      },
-    })
+    const error = this.state.error
+    if (error) {
+      const element = React.createElement(
+        this.props.errorComponent ?? ErrorComponent,
+        {
+          error: error[0],
+          reset: this.reset,
+        },
+      )
+
+      return process.env.NODE_ENV !== 'production'
+        ? wrapInNonRouteComponentContext(element, 'errorComponent')
+        : element
+    }
+
+    return this.props.children
   }
 }
 
-export function ErrorComponent({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: unknown }) {
   const [show, setShow] = React.useState(process.env.NODE_ENV !== 'production')
 
   return (
@@ -107,7 +89,9 @@ export function ErrorComponent({ error }: { error: any }) {
               overflow: 'auto',
             }}
           >
-            {error.message ? <code>{error.message}</code> : null}
+            {(error as { message?: string } | null)?.message ? (
+              <code>{(error as { message: string }).message}</code>
+            ) : null}
           </pre>
         </div>
       ) : null}

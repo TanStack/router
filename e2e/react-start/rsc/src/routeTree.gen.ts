@@ -51,6 +51,7 @@ import { Route as RscStreamingRouteImport } from './routes/rsc-streaming'
 import { Route as RscSuspenseRouteImport } from './routes/rsc-suspense'
 import { Route as RscTreeRouteImport } from './routes/rsc-tree'
 import { Route as RscUseServerFnRouteImport } from './routes/rsc-use-server-fn'
+import { Route as ApiRscBuildBoundaryRouteImport } from './routes/api.rsc-build-boundary'
 import { Route as ApiRscFlightRouteImport } from './routes/api.rsc-flight'
 import { Route as RscCssConditionalIndexRouteImport } from './routes/rsc-css-conditional.index'
 import { Route as RscCssConditionalBranchRouteImport } from './routes/rsc-css-conditional.$branch'
@@ -267,6 +268,11 @@ const RscUseServerFnRoute = RscUseServerFnRouteImport.update({
   path: '/rsc-use-server-fn',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRscBuildBoundaryRoute = ApiRscBuildBoundaryRouteImport.update({
+  id: '/api/rsc-build-boundary',
+  path: '/api/rsc-build-boundary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRscFlightRoute = ApiRscFlightRouteImport.update({
   id: '/api/rsc-flight',
   path: '/api/rsc-flight',
@@ -336,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/rsc-suspense': typeof RscSuspenseRoute
   '/rsc-tree': typeof RscTreeRoute
   '/rsc-use-server-fn': typeof RscUseServerFnRoute
+  '/api/rsc-build-boundary': typeof ApiRscBuildBoundaryRoute
   '/api/rsc-flight': typeof ApiRscFlightRoute
   '/rsc-css-conditional/$branch': typeof RscCssConditionalBranchRoute
   '/rsc-param/$id': typeof RscParamIdRoute
@@ -385,6 +392,7 @@ export interface FileRoutesByTo {
   '/rsc-suspense': typeof RscSuspenseRoute
   '/rsc-tree': typeof RscTreeRoute
   '/rsc-use-server-fn': typeof RscUseServerFnRoute
+  '/api/rsc-build-boundary': typeof ApiRscBuildBoundaryRoute
   '/api/rsc-flight': typeof ApiRscFlightRoute
   '/rsc-css-conditional/$branch': typeof RscCssConditionalBranchRoute
   '/rsc-param/$id': typeof RscParamIdRoute
@@ -435,6 +443,7 @@ export interface FileRoutesById {
   '/rsc-suspense': typeof RscSuspenseRoute
   '/rsc-tree': typeof RscTreeRoute
   '/rsc-use-server-fn': typeof RscUseServerFnRoute
+  '/api/rsc-build-boundary': typeof ApiRscBuildBoundaryRoute
   '/api/rsc-flight': typeof ApiRscFlightRoute
   '/rsc-css-conditional/$branch': typeof RscCssConditionalBranchRoute
   '/rsc-param/$id': typeof RscParamIdRoute
@@ -486,6 +495,7 @@ export interface FileRouteTypes {
     | '/rsc-suspense'
     | '/rsc-tree'
     | '/rsc-use-server-fn'
+    | '/api/rsc-build-boundary'
     | '/api/rsc-flight'
     | '/rsc-css-conditional/$branch'
     | '/rsc-param/$id'
@@ -535,6 +545,7 @@ export interface FileRouteTypes {
     | '/rsc-suspense'
     | '/rsc-tree'
     | '/rsc-use-server-fn'
+    | '/api/rsc-build-boundary'
     | '/api/rsc-flight'
     | '/rsc-css-conditional/$branch'
     | '/rsc-param/$id'
@@ -584,6 +595,7 @@ export interface FileRouteTypes {
     | '/rsc-suspense'
     | '/rsc-tree'
     | '/rsc-use-server-fn'
+    | '/api/rsc-build-boundary'
     | '/api/rsc-flight'
     | '/rsc-css-conditional/$branch'
     | '/rsc-param/$id'
@@ -634,6 +646,7 @@ export interface RootRouteChildren {
   RscSuspenseRoute: typeof RscSuspenseRoute
   RscTreeRoute: typeof RscTreeRoute
   RscUseServerFnRoute: typeof RscUseServerFnRoute
+  ApiRscBuildBoundaryRoute: typeof ApiRscBuildBoundaryRoute
   ApiRscFlightRoute: typeof ApiRscFlightRoute
   RscCssConditionalBranchRoute: typeof RscCssConditionalBranchRoute
   RscParamIdRoute: typeof RscParamIdRoute
@@ -937,6 +950,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RscUseServerFnRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/rsc-build-boundary': {
+      id: '/api/rsc-build-boundary'
+      path: '/api/rsc-build-boundary'
+      fullPath: '/api/rsc-build-boundary'
+      preLoaderRoute: typeof ApiRscBuildBoundaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/rsc-flight': {
       id: '/api/rsc-flight'
       path: '/api/rsc-flight'
@@ -1018,6 +1038,7 @@ const rootRouteChildren: RootRouteChildren = {
   RscSuspenseRoute: RscSuspenseRoute,
   RscTreeRoute: RscTreeRoute,
   RscUseServerFnRoute: RscUseServerFnRoute,
+  ApiRscBuildBoundaryRoute: ApiRscBuildBoundaryRoute,
   ApiRscFlightRoute: ApiRscFlightRoute,
   RscCssConditionalBranchRoute: RscCssConditionalBranchRoute,
   RscParamIdRoute: RscParamIdRoute,

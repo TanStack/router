@@ -1,3 +1,9 @@
+import {
+  createBrowserHistory,
+  createMemoryHistory,
+  type RouterHistory,
+} from '@tanstack/history'
+import { JSDOM } from 'jsdom'
 import { getRequiredLink, waitForRequiredLink } from '../setup-helpers'
 
 export interface ScenarioRouter {
@@ -76,6 +82,16 @@ async function settle(hops: number) {
 }
 
 const MAX_SETTLE_HOPS = 100
+const BATCH_SETTLE_HOPS = 4
+
+/**
+ * Close the batch at a deterministic macrotask boundary. Four fixed hops give
+ * framework passive effects and scheduler callbacks time to run without
+ * changing the amount of navigation work in the batch.
+ */
+async function finishBatch() {
+  await settle(BATCH_SETTLE_HOPS)
+}
 
 async function settleUntil(isSettled: () => boolean, label: string) {
   for (let i = 0; i < MAX_SETTLE_HOPS; i++) {
@@ -101,14 +117,19 @@ async function settleUntil(isSettled: () => boolean, label: string) {
  * conventions already forbid real-delay timers in measured code; non-zero
  * delays are passed through untouched.
  */
-function patchZeroDelayTimeouts() {
-  const originalSetTimeout = window.setTimeout.bind(window)
-  const originalClearTimeout = window.clearTimeout.bind(window)
+interface TimerWindow {
+  setTimeout: typeof window.setTimeout
+  clearTimeout: typeof window.clearTimeout
+}
+
+function patchZeroDelayTimeouts(targetWindow: TimerWindow) {
+  const originalSetTimeout = targetWindow.setTimeout.bind(targetWindow)
+  const originalClearTimeout = targetWindow.clearTimeout.bind(targetWindow)
   const immediates = new Map<number, NodeJS.Immediate>()
   // Negative ids cannot collide with real jsdom timer ids.
   let nextImmediateId = -2
 
-  window.setTimeout = ((
+  targetWindow.setTimeout = ((
     handler: (...handlerArgs: Array<any>) => void,
     delay?: number,
     ...args: Array<any>
@@ -125,9 +146,9 @@ function patchZeroDelayTimeouts() {
       return id
     }
     return originalSetTimeout(handler, delay, ...args)
-  }) as typeof window.setTimeout
+  }) as typeof targetWindow.setTimeout
 
-  window.clearTimeout = ((id: number) => {
+  targetWindow.clearTimeout = ((id: number) => {
     const immediate = immediates.get(id)
     if (immediate) {
       clearImmediate(immediate)
@@ -135,17 +156,119 @@ function patchZeroDelayTimeouts() {
       return
     }
     originalClearTimeout(id)
-  }) as typeof window.clearTimeout
+  }) as typeof targetWindow.clearTimeout
 
   return () => {
-    window.setTimeout = originalSetTimeout as typeof window.setTimeout
-    window.clearTimeout = originalClearTimeout as typeof window.clearTimeout
+    targetWindow.setTimeout =
+      originalSetTimeout as typeof targetWindow.setTimeout
+    targetWindow.clearTimeout =
+      originalClearTimeout as typeof targetWindow.clearTimeout
+  }
+}
+
+interface ListenerTarget {
+  addEventListener: (
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | AddEventListenerOptions,
+  ) => void
+  removeEventListener: (
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | EventListenerOptions,
+  ) => void
+}
+
+/**
+ * Scroll restoration installs page-lifetime listeners without a public router
+ * dispose operation. Capture just those listeners while the router is created
+ * so per-invocation routers do not remain reachable after teardown.
+ */
+function captureScrollRestorationListeners() {
+  const captured: Array<{
+    target: ListenerTarget
+    type: string
+    listener: EventListenerOrEventListenerObject | null
+    options?: boolean | AddEventListenerOptions
+  }> = []
+  const patches: Array<{
+    target: ListenerTarget
+    addEventListener: ListenerTarget['addEventListener']
+  }> = []
+
+  const patch = (target: ListenerTarget, capturedType: string) => {
+    const originalAddEventListener = target.addEventListener
+    patches.push({ target, addEventListener: originalAddEventListener })
+
+    target.addEventListener = function (type, listener, options) {
+      if (type === capturedType) {
+        captured.push({ target, type, listener, options })
+      }
+      originalAddEventListener.call(target, type, listener, options)
+    }
+  }
+
+  patch(document as unknown as ListenerTarget, 'scroll')
+  patch(globalThis as unknown as ListenerTarget, 'pagehide')
+
+  let stopped = false
+  const stop = () => {
+    if (stopped) {
+      return
+    }
+    stopped = true
+    for (const entry of patches) {
+      entry.target.addEventListener = entry.addEventListener
+    }
+  }
+
+  return {
+    stop,
+    cleanup() {
+      stop()
+      for (const { target, type, listener, options } of captured) {
+        target.removeEventListener(type, listener, options)
+      }
+    },
+  }
+}
+
+interface ScenarioHistoryResource {
+  history: RouterHistory
+  timeoutWindow?: TimerWindow
+  dispose: () => void
+}
+
+function createScenarioHistory(
+  mode: NonNullable<ScenarioSetupOptions['historyMode']>,
+  initialUrl: string,
+): ScenarioHistoryResource {
+  if (mode === 'browser') {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: new URL(initialUrl, 'http://localhost').href,
+    })
+    const history = createBrowserHistory({ window: dom.window })
+
+    return {
+      history,
+      timeoutWindow: dom.window as unknown as TimerWindow,
+      dispose() {
+        history.destroy()
+        dom.window.close()
+      },
+    }
+  }
+
+  const history = createMemoryHistory({ initialEntries: [initialUrl] })
+  return {
+    history,
+    dispose: history.destroy,
   }
 }
 
 export interface ScenarioSetupOptions {
   frameworkLabel: string
-  mount: (container: HTMLElement) => MountedScenarioApp
+  mount: (container: HTMLElement, history: RouterHistory) => MountedScenarioApp
   /**
    * Circular sequence of steps advanced by `tick()`. Link steps must target
    * links rendered from the start (e.g. in the root layout), no two
@@ -156,13 +279,22 @@ export interface ScenarioSetupOptions {
    */
   steps: ReadonlyArray<ScenarioStep>
   /** Sanity check run once per step during the warm-up lap in `before()`. */
-  assertAfterStep?: (stepIndex: number, container: HTMLElement) => void
+  assertAfterStep?: (
+    stepIndex: number,
+    container: HTMLElement,
+    history: RouterHistory,
+  ) => void
   /**
-   * URL the window is reset to before mounting (default '/'). Scenarios whose
-   * router uses a `basepath` or an input rewrite must start on an external
-   * URL that maps to their initial route.
+   * URL used to initialize the fresh history before mounting (default '/').
+   * Scenarios whose router uses a `basepath` or an input rewrite must start on
+   * an external URL that maps to their initial route.
    */
   initialUrl?: string
+  /**
+   * Browser history is reserved for the scenario that explicitly measures
+   * browser history traversal. All other scenarios use fresh memory history.
+   */
+  historyMode?: 'memory' | 'browser'
 }
 
 function warnAboutDevMode(frameworkLabel: string) {
@@ -185,18 +317,41 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
   let unmount: (() => void) | undefined = undefined
   let unsub = () => {}
   let restoreTimeouts = () => {}
+  let cleanupScrollRestorationListeners = () => {}
+  let historyResource: ScenarioHistoryResource | undefined = undefined
   let stepIndex = 0
   let next: () => Promise<void> = () =>
     Promise.reject(new Error('Benchmark not initialized'))
 
   async function before() {
     stepIndex = 0
-    restoreTimeouts = patchZeroDelayTimeouts()
-    window.history.replaceState(null, '', options.initialUrl ?? '/')
+    historyResource = createScenarioHistory(
+      options.historyMode ?? 'memory',
+      options.initialUrl ?? '/',
+    )
+
+    const restoreGlobalTimeouts = patchZeroDelayTimeouts(window)
+    const restoreHistoryTimeouts = historyResource.timeoutWindow
+      ? patchZeroDelayTimeouts(historyResource.timeoutWindow)
+      : () => {}
+    restoreTimeouts = () => {
+      restoreHistoryTimeouts()
+      restoreGlobalTimeouts()
+    }
+
     container = document.createElement('div')
     document.body.append(container)
 
-    const { router, unmount: dispose } = options.mount(container)
+    const capturedListeners = captureScrollRestorationListeners()
+    let mounted: MountedScenarioApp
+    try {
+      mounted = options.mount(container, historyResource.history)
+    } finally {
+      capturedListeners.stop()
+      cleanupScrollRestorationListeners = capturedListeners.cleanup
+    }
+
+    const { router, unmount: dispose } = mounted
     unmount = dispose
 
     let resolveRendered: () => void = () => {}
@@ -294,8 +449,9 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
     // ending back on the initial route so measurement starts from a known state.
     for (const [index, step] of options.steps.entries()) {
       await runStep(step)
-      options.assertAfterStep?.(index, container)
+      options.assertAfterStep?.(index, container, historyResource.history)
     }
+    await finishBatch()
 
     next = () => {
       const step = options.steps[stepIndex % options.steps.length]!
@@ -308,10 +464,14 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
     unmount?.()
     container?.remove()
     unsub()
+    cleanupScrollRestorationListeners()
     restoreTimeouts()
+    historyResource?.dispose()
     restoreTimeouts = () => {}
+    cleanupScrollRestorationListeners = () => {}
     unmount = undefined
     container = undefined
+    historyResource = undefined
   }
 
   function tick() {
@@ -321,13 +481,14 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
   return {
     before,
     tick,
+    finishBatch,
     after,
   }
 }
 
 export interface MountLoopSetupOptions {
   frameworkLabel: string
-  mount: (container: HTMLElement) => MountedScenarioApp
+  mount: (container: HTMLElement, history: RouterHistory) => MountedScenarioApp
   /** Test id that must appear in the container before a mount counts as done. */
   readyTestId: string
   assertReady?: (container: HTMLElement) => void
@@ -342,11 +503,11 @@ export function createMountLoopSetup(options: MountLoopSetupOptions) {
   warnAboutDevMode(options.frameworkLabel)
 
   async function tick() {
-    window.history.replaceState(null, '', '/')
     const container = document.createElement('div')
     document.body.append(container)
+    const history = createMemoryHistory({ initialEntries: ['/'] })
 
-    const { router, unmount } = options.mount(container)
+    const { router, unmount } = options.mount(container, history)
 
     try {
       await router.load()
@@ -359,6 +520,7 @@ export function createMountLoopSetup(options: MountLoopSetupOptions) {
       options.assertReady?.(container)
     } finally {
       unmount()
+      history.destroy()
       container.remove()
     }
   }
@@ -366,6 +528,7 @@ export function createMountLoopSetup(options: MountLoopSetupOptions) {
   return {
     before: async () => {},
     tick,
+    finishBatch,
     after: () => {},
   }
 }

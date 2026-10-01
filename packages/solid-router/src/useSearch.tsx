@@ -33,15 +33,18 @@ export type UseSearchOptions<
 export type UseSearchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TThrow extends boolean = true,
 >(
   opts?: UseSearchBaseOptions<
     TRouter,
     TFrom,
     /* TStrict */ true,
-    /* TThrow */ true,
+    TThrow,
     TSelected
   >,
-) => Accessor<UseSearchResult<TRouter, TFrom, true, TSelected>>
+) => Accessor<
+  ThrowOrOptional<UseSearchResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
 
 export function useSearch<
   TRouter extends AnyRouter = RegisteredRouter,

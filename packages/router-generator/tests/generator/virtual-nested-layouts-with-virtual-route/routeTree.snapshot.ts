@@ -60,9 +60,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/route-without-file/layout-a'
-    | '/route-without-file/layout-b'
+    '/' | '/route-without-file/layout-a' | '/route-without-file/layout-b'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/route-without-file/layout-a' | '/route-without-file/layout-b'
   id:

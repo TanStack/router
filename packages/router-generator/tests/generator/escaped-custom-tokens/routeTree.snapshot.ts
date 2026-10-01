@@ -71,12 +71,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/blog' | '/_1nd3x' | '/nested/_1nd3x' | '/posts/_r0ut3_'
   id:
-    | '__root__'
-    | '/'
-    | '/blog'
-    | '/_1nd3x'
-    | '/nested/_1nd3x'
-    | '/posts/_r0ut3_'
+    '__root__' | '/' | '/blog' | '/_1nd3x' | '/nested/_1nd3x' | '/posts/_r0ut3_'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {

@@ -9,7 +9,8 @@ export interface RunSsrRequestLoopOptions {
 
 export interface RunRequestLoopOptions {
   seed: number
-  iterations?: number
+  concurrency: number
+  totalRequests: number
   buildRequest: (random: () => number, index: number) => Request
   validateResponse?: (response: Response, request: Request) => void
 }
@@ -99,13 +100,18 @@ export async function runRequestLoop(
   handler: StartRequestHandler,
   {
     seed,
-    iterations = 10,
+    concurrency,
+    totalRequests,
     buildRequest,
     validateResponse,
   }: RunRequestLoopOptions,
 ) {
-  const random = createDeterministicRandom(seed)
-  const pendingBodyReads: Array<Promise<void>> = []
+  const requestSequences = buildRequestSequences({
+    seed,
+    concurrency,
+    totalRequests,
+    buildRequest,
+  })
   const validate =
     validateResponse ??
     ((response: Response, request: Request) => {
@@ -116,20 +122,84 @@ export async function runRequestLoop(
       }
     })
 
-  for (let index = 0; index < iterations; index++) {
-    const request = buildRequest(random, index)
-    const response = await handler.fetch(request)
+  let startWorkers = () => {}
+  const startBarrier = new Promise<void>((resolve) => {
+    startWorkers = resolve
+  })
 
-    try {
-      validate(response, request)
-    } catch (error) {
-      await Promise.allSettled(pendingBodyReads)
+  const workers = requestSequences.map(async (requests) => {
+    await startBarrier
 
-      throw error
+    for (const request of requests) {
+      const response = await handler.fetch(request)
+      let validationFailure: { error: unknown } | undefined
+
+      try {
+        validate(response, request)
+      } catch (error) {
+        validationFailure = { error }
+      }
+
+      await drainResponse(response)
+
+      if (validationFailure) {
+        throw validationFailure.error
+      }
     }
+  })
 
-    pendingBodyReads.push(drainResponse(response))
+  startWorkers()
+  const results = await Promise.allSettled(workers)
+  const failedWorker = results.find(
+    (result): result is PromiseRejectedResult => result.status === 'rejected',
+  )
+
+  if (failedWorker) {
+    throw failedWorker.reason
+  }
+}
+
+export type BuildRequestSequencesOptions = Pick<
+  RunRequestLoopOptions,
+  'seed' | 'concurrency' | 'totalRequests' | 'buildRequest'
+>
+
+/**
+ * Build the entire seeded workload before any request starts, then partition
+ * it round-robin so completion timing can never change a worker's next input.
+ */
+export function buildRequestSequences({
+  seed,
+  concurrency,
+  totalRequests,
+  buildRequest,
+}: BuildRequestSequencesOptions): Array<Array<Request>> {
+  assertPositiveInteger('concurrency', concurrency)
+  assertPositiveInteger('totalRequests', totalRequests)
+
+  if (concurrency > totalRequests) {
+    throw new RangeError(
+      `concurrency (${concurrency}) cannot exceed totalRequests (${totalRequests})`,
+    )
   }
 
-  await Promise.all(pendingBodyReads)
+  const random = createDeterministicRandom(seed)
+  const requestSequences = Array.from(
+    { length: concurrency },
+    () => new Array<Request>(),
+  )
+
+  for (let index = 0; index < totalRequests; index++) {
+    requestSequences[index % concurrency]!.push(buildRequest(random, index))
+  }
+
+  return requestSequences
+}
+
+function assertPositiveInteger(name: string, value: number) {
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new RangeError(
+      `${name} must be a positive integer; received ${value}`,
+    )
+  }
 }

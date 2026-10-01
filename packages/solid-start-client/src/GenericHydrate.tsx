@@ -34,15 +34,14 @@ type HydrationMarkerDynamicProps = DynamicProps<'div'> & {
   [key: `data-${string}`]: string | undefined
 }
 type PrefetchController = {
-  abortController: AbortController
-  hydrationRequested: boolean
-  hydrationListeners: Set<() => void>
-  hydrationResolvePending: boolean
+  abort: AbortController
+  requested: boolean
+  listeners: Set<() => void>
+  resolvePending: boolean
   started: boolean
   promise?: Promise<void>
 }
 
-const hydrateIdSelector = `[${hydrateIdAttribute}]`
 const dynamicType = 'dynamic'
 const dynamicHydrateStrategy = {
   _t: dynamicType,
@@ -107,10 +106,10 @@ export function GenericHydrate(props: InternalHydrateProps) {
   )
   const [prefetchError, setPrefetchError] = Solid.createSignal<unknown>()
   const controller: PrefetchController = {
-    abortController: new AbortController(),
-    hydrationRequested: false,
-    hydrationListeners: new Set<() => void>(),
-    hydrationResolvePending: false,
+    abort: new AbortController(),
+    requested: false,
+    listeners: new Set<() => void>(),
+    resolvePending: false,
     started: false,
   }
   let didPrefetch = false
@@ -127,35 +126,37 @@ export function GenericHydrate(props: InternalHydrateProps) {
   }
 
   const onHydrate = (listener: () => void) => {
-    if (controller.hydrationRequested) {
+    if (controller.requested) {
       listener()
       return () => {}
     }
 
-    controller.hydrationListeners.add(listener)
+    controller.listeners.add(listener)
     return () => {
-      controller.hydrationListeners.delete(listener)
+      controller.listeners.delete(listener)
     }
   }
 
   const requestHydration = () => {
-    if (!controller.hydrationRequested) {
-      controller.hydrationRequested = true
-      controller.hydrationListeners.forEach((listener) => listener())
-      controller.hydrationListeners.clear()
+    if (!controller.requested) {
+      controller.requested = true
+      controller.listeners.forEach((listener) => listener())
+      controller.listeners.clear()
     }
 
     if (!controller.promise) {
       resolveGate()
       return
     }
-    if (controller.hydrationResolvePending) return
-    controller.hydrationResolvePending = true
+    if (controller.resolvePending) {
+      return
+    }
+    controller.resolvePending = true
 
     controller.promise.then(
       () => resolveGate(),
       (error) => {
-        if (!controller.abortController.signal.aborted) {
+        if (!controller.abort.signal.aborted) {
           setPrefetchError(() => error)
         }
       },
@@ -168,14 +169,8 @@ export function GenericHydrate(props: InternalHydrateProps) {
     const currentPrefetchStrategy = prefetchStrategy()
     const currentHydrateType = currentHydrateStrategy._t!
     gate.when = currentHydrateType
-    for (const element of document.querySelectorAll<HTMLDivElement>(
-      hydrateIdSelector,
-    )) {
-      if (element.getAttribute(hydrateIdAttribute) === id) {
-        markerElement = element
-        saveFallbackHtml(id, element)
-        break
-      }
+    if (markerElement) {
+      saveFallbackHtml(id, markerElement)
     }
 
     if (
@@ -195,12 +190,12 @@ export function GenericHydrate(props: InternalHydrateProps) {
           .then(() =>
             currentPrefetchStrategy({
               element: markerElement ?? null,
-              signal: controller.abortController.signal,
+              signal: controller.abort.signal,
               preload,
               waitFor: (strategy) =>
                 waitForHydrationPrefetchStrategy(strategy, {
                   element: markerElement ?? null,
-                  signal: controller.abortController.signal,
+                  signal: controller.abort.signal,
                   onHydrate,
                 }),
             }),
@@ -209,7 +204,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
 
         controller.promise = promise
         promise.catch((error) => {
-          if (!controller.abortController.signal.aborted) {
+          if (!controller.abort.signal.aborted) {
             setPrefetchError(() => error)
           }
         })
@@ -267,8 +262,8 @@ export function GenericHydrate(props: InternalHydrateProps) {
     }
 
     Solid.onCleanup(() => {
-      controller.abortController.abort()
-      controller.hydrationListeners.clear()
+      controller.abort.abort()
+      controller.listeners.clear()
       cleanup()
       releaseGate(gate)
     })
@@ -327,6 +322,9 @@ export function GenericHydrate(props: InternalHydrateProps) {
       : initialHydrateStrategy._a?.()
   const markerProps: HydrationMarkerDynamicProps = {
     component: 'div',
+    ref: (element) => {
+      markerElement = element
+    },
     [hydrateIdAttribute]: id,
     [hydrateWhenAttribute]: markerHydrateType,
     ...markerAttributes,

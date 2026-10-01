@@ -22,9 +22,9 @@
     "test:e2e:prod:default": "MODE=prod playwright test --project=chromium",
     "test:e2e:prod": "pnpm run test:e2e:prod:default && pnpm run test:e2e:prod:css-code-split-false",
     "test:e2e:prod:css-code-split-false": "MODE=prod VITE_CSS_CODE_SPLIT=false playwright test tests/css.prod.spec.ts --project=chromium",
-    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:dev && pnpm run test:e2e:prod",
-    "test:e2e:nitro": "rm -rf port*.txt; pnpm run test:e2e:dev:nitro",
-    "test:e2e:basepath": "rm -rf port*.txt; pnpm run test:e2e:dev:basepath",
+    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
+    "test:e2e:nitro": "pnpm run test:e2e:dev:nitro",
+    "test:e2e:basepath": "pnpm run test:e2e:dev:basepath",
     "_test:e2e:cloudflare": "echo 'Cloudflare dev mode disabled - React duplication issues' && exit 0"
   },
   "dependencies": {
@@ -44,7 +44,8 @@
     "nitro": "^3.0.260311-beta",
     "sass": "^1.97.2",
     "srvx": "^0.11.9",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "wrangler": "^4.74.0"
   }

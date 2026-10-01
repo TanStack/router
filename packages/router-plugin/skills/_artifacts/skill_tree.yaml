@@ -1,6 +1,6 @@
 library:
   name: '@tanstack/router-plugin'
-  version: '1.166.2'
+  version: '1.168.23'
   repository: 'https://github.com/TanStack/router'
   description: >-
     Bundler plugin for route generation and automatic code splitting.

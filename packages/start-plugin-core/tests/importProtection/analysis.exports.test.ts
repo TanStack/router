@@ -4,6 +4,7 @@ import {
   isValidExportName,
   getMockExportNamesBySource,
   getNamedExports,
+  getImportSources,
 } from '../../src/import-protection/analysis'
 
 describe('isValidExportName', () => {
@@ -244,4 +245,17 @@ describe('collectNamedExports', () => {
     const code = [`const local = 1`, `export { local as "foo-bar" }`].join('\n')
     expect(getNamedExports(code)).toEqual(['foo-bar'])
   })
+})
+
+test('discovers mock exports through parenthesized namespace access', () => {
+  const exports = getMockExportNamesBySource(
+    `import * as denied from 'denied'; (denied).read(); (denied)['write']()`,
+  )
+  expect(exports.get('denied')).toEqual(['read', 'write'])
+})
+
+test('discovers parenthesized literal dynamic import sources', () => {
+  expect(getImportSources(`export const value = import(('denied'))`)).toEqual([
+    'denied',
+  ])
 })

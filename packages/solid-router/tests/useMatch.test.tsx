@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 import {
   Link,
   Outlet,
@@ -72,6 +78,151 @@ describe('useMatch', () => {
         expect(postsTitle).toBeInTheDocument()
       },
     )
+  })
+
+  test('tracks presentation generations across replacement and re-entry', async () => {
+    function RootComponent() {
+      const targetedRevision = useMatch({
+        from: '/item',
+        shouldThrow: false,
+        select: (match) => match.loaderData,
+      })
+
+      return (
+        <>
+          <div data-testid="targeted-match">
+            {targetedRevision() === undefined
+              ? 'Targeted absent'
+              : `Targeted revision ${targetedRevision()}`}
+          </div>
+          <Link to="/item" search={{ revision: 2 }}>
+            Revision 2
+          </Link>
+          <Link to="/item" search={{ revision: 3 }}>
+            Revision 3
+          </Link>
+          <Link to="/other">Other</Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    function ItemComponent() {
+      const nearestRevision = useMatch({
+        strict: false,
+        shouldThrow: false,
+        select: (match) => match.loaderData as number,
+      })
+      return <div>Nearest revision {nearestRevision()}</div>
+    }
+
+    const rootRoute = createRootRoute({ component: RootComponent })
+    const itemRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/item',
+      validateSearch: (search: Record<string, unknown>) => ({
+        revision: Number(search.revision),
+      }),
+      loaderDeps: ({ search }) => ({ revision: search.revision }),
+      loader: ({ deps }) => deps.revision,
+      component: ItemComponent,
+    })
+    const otherRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+      component: () => <div>Other route</div>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([itemRoute, otherRoute]),
+      history: createMemoryHistory({ initialEntries: ['/item?revision=1'] }),
+    })
+
+    render(() => <RouterProvider router={router} />)
+    expect(await screen.findByText('Nearest revision 1')).toBeInTheDocument()
+    expect(screen.getByTestId('targeted-match')).toHaveTextContent(
+      'Targeted revision 1',
+    )
+
+    await fireEvent.click(screen.getByText('Revision 2'))
+    expect(await screen.findByText('Nearest revision 2')).toBeInTheDocument()
+    expect(screen.getByTestId('targeted-match')).toHaveTextContent(
+      'Targeted revision 2',
+    )
+
+    await fireEvent.click(screen.getByText('Other'))
+    expect(await screen.findByText('Other route')).toBeInTheDocument()
+    expect(screen.getByTestId('targeted-match')).toHaveTextContent(
+      'Targeted absent',
+    )
+
+    await fireEvent.click(screen.getByText('Revision 3'))
+    expect(await screen.findByText('Nearest revision 3')).toBeInTheDocument()
+    expect(screen.getByTestId('targeted-match')).toHaveTextContent(
+      'Targeted revision 3',
+    )
+  })
+
+  test('renders a route generation that re-enters before an intermediate route renders', async () => {
+    function RootComponent() {
+      return (
+        <>
+          <Link to="/other">Other</Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    function ItemComponent() {
+      const revision = useMatch({
+        strict: false,
+        select: (match) => match.loaderData as number,
+      })
+      return <div>Item revision {revision()}</div>
+    }
+
+    const rootRoute = createRootRoute({ component: RootComponent })
+    const itemRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/item',
+      validateSearch: (search: Record<string, unknown>) => ({
+        revision: Number(search.revision),
+      }),
+      loaderDeps: ({ search }) => ({ revision: search.revision }),
+      loader: ({ deps }) => deps.revision,
+      component: ItemComponent,
+    })
+    const otherRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+      component: () => <div>Other route</div>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([itemRoute, otherRoute]),
+      history: createMemoryHistory({ initialEntries: ['/item?revision=1'] }),
+    })
+
+    render(() => <RouterProvider router={router} />)
+    expect(await screen.findByText('Item revision 1')).toBeInTheDocument()
+
+    let returnNavigation: Promise<void> | undefined
+    const unsubscribe = router.subscribe('onLoad', (event) => {
+      if (event.toLocation.pathname === '/other') {
+        returnNavigation = router.navigate({
+          to: '/item',
+          search: { revision: 2 },
+        })
+      }
+    })
+    try {
+      await fireEvent.click(screen.getByText('Other'))
+      await waitFor(() => expect(returnNavigation).toBeDefined())
+      await returnNavigation
+
+      expect(await screen.findByText('Item revision 2')).toBeInTheDocument()
+      expect(screen.queryByText('Other route')).not.toBeInTheDocument()
+    } finally {
+      unsubscribe()
+    }
   })
 
   describe('when match is not found', () => {

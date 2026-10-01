@@ -8,6 +8,7 @@
  * forward tail and the session history never grows past 4 entries.
  */
 import type { ScenarioStep } from '../harness'
+import type { RouterHistory } from '@tanstack/history'
 
 export const pageIds = ['1', '2', '3'] as const
 export const maskedPhotoId = '42'
@@ -27,7 +28,7 @@ interface HistoryStepExpectation {
   step: ScenarioStep
   /** Expected router location pathname (the REAL location, even when masked). */
   pathname: string
-  /** Expected window.location pathname when it differs (location masking). */
+  /** Expected browser-history pathname when it differs (location masking). */
   windowPathname?: string
   /** Marker test id that must be present in the container after the step. */
   marker?: string
@@ -52,7 +53,11 @@ export const stepExpectations: ReadonlyArray<HistoryStepExpectation> = [
 
 export const steps = stepExpectations.map((expectation) => expectation.step)
 
-export function assertStepResult(stepIndex: number, container: HTMLElement) {
+export function assertStepResult(
+  stepIndex: number,
+  container: HTMLElement,
+  history: RouterHistory,
+) {
   const expected = stepExpectations[stepIndex]!
 
   const loc = container.querySelector('[data-testid="loc"]')?.textContent
@@ -63,9 +68,9 @@ export function assertStepResult(stepIndex: number, container: HTMLElement) {
   }
 
   const windowPathname = expected.windowPathname ?? expected.pathname
-  if (window.location.pathname !== windowPathname) {
+  if (history.location.pathname !== windowPathname) {
     throw new Error(
-      `Expected window.location.pathname to be "${windowPathname}" after step ${stepIndex}, received "${window.location.pathname}"`,
+      `Expected history.location.pathname to be "${windowPathname}" after step ${stepIndex}, received "${history.location.pathname}"`,
     )
   }
 

@@ -21,6 +21,15 @@ export type Violation = {
   message?: string
 }
 
+export type ViolationArtifact = 'build' | 'dev' | 'dev.cold' | 'dev.warm'
+
+export function getViolationArtifactName(artifact: ViolationArtifact): string {
+  const modeKey = process.env.E2E_MODE_KEY
+  return modeKey
+    ? `violations.${modeKey}.${artifact}.json`
+    : `violations.${artifact}.json`
+}
+
 export function stripAnsi(input: string): string {
   // eslint-disable-next-line no-control-regex
   return input.replace(/\u001b\[[0-9;]*m/g, '')

@@ -65,8 +65,12 @@ type HeadersWithGetSetCookie = Headers & {
 
 type MaybePromise<T> = T | Promise<T>
 
-function isPromiseLike<T>(value: MaybePromise<T>): value is Promise<T> {
-  return typeof (value as Promise<T>).then === 'function'
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return (
+    (typeof value === 'object' || typeof value === 'function') &&
+    value !== null &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  )
 }
 
 function getSetCookieValues(headers: Headers): Array<string> {
@@ -98,24 +102,43 @@ function mergeEventResponseHeaders(response: Response, event: H3Event): void {
   }
 }
 
-function attachResponseHeaders<T>(
-  value: MaybePromise<T>,
+function finalizeResponse(value: unknown, event: H3Event): Response {
+  const response = ensureResponse(value)
+  mergeEventResponseHeaders(response, event)
+  return response
+}
+
+function finalizeMaybeResponse(
+  value: unknown,
   event: H3Event,
-): MaybePromise<T> {
+): MaybePromise<Response> {
   if (isPromiseLike(value)) {
-    return value.then((resolved) => {
-      if (resolved instanceof Response) {
-        mergeEventResponseHeaders(resolved, event)
-      }
-      return resolved
-    })
+    return Promise.resolve(value).then(
+      (resolved) => finalizeResponse(resolved, event),
+      (error) => finalizeResponse(handleResponseError(error), event),
+    )
   }
 
+  return finalizeResponse(value, event)
+}
+
+function ensureResponse(value: unknown): Response {
   if (value instanceof Response) {
-    mergeEventResponseHeaders(value, event)
+    return value
   }
 
-  return value
+  return new Response('Internal Server Error', { status: 500 })
+}
+
+function handleResponseError(error: unknown): Response {
+  if (error instanceof Response) {
+    return error
+  }
+  if (error instanceof Error) {
+    throw error
+  }
+
+  return new Response('Internal Server Error', { status: 500 })
 }
 
 export function requestHandler<TRegister = unknown>(
@@ -135,10 +158,15 @@ export function requestHandler<TRegister = unknown>(
       throw error
     }
 
-    const response = eventStorage.run({ h3Event }, () =>
-      handler(request, requestOpts),
-    )
-    return h3_toResponse(attachResponseHeaders(response, h3Event), h3Event)
+    let response: unknown
+    try {
+      response = eventStorage.run({ h3Event }, () =>
+        handler(request, requestOpts),
+      )
+    } catch (error) {
+      response = handleResponseError(error)
+    }
+    return h3_toResponse(finalizeMaybeResponse(response, h3Event), h3Event)
   }
 }
 
@@ -218,8 +246,14 @@ export function setResponseHeaders(
   headers: TypedHeaders<ResponseHeaderMap>,
 ): void {
   const event = getH3Event()
-  for (const [name, value] of Object.entries(headers)) {
-    event.res.headers.set(name, value)
+  if (event.res.headers === headers) {
+    return
+  }
+  let previousName = ''
+  // Headers iteration groups entries by name, including separate Set-Cookie values.
+  for (const [name, value] of headers) {
+    event.res.headers[name === previousName ? 'append' : 'set'](name, value)
+    previousName = name
   }
 }
 

@@ -5,7 +5,7 @@ import type { StartRequestHandler } from '../../bench-utils'
 export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
-const loadersLoopIterations = 15
+const loadersLoopTotalRequests = 16
 
 const requestInit = {
   method: 'GET',
@@ -68,7 +68,8 @@ export const benchOptions = {
 export function runLoadersLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: loadersLoopIterations,
+    concurrency: 16,
+    totalRequests: loadersLoopTotalRequests,
     buildRequest: buildLoaderRequest,
   })
 }

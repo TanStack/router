@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { DefaultGlobalNotFound } from './not-found'
+import { wrapInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
 
 /**
@@ -17,7 +18,12 @@ export function renderRouteNotFound(
 ) {
   if (!route.options.notFoundComponent) {
     if (router.options.defaultNotFoundComponent) {
-      return <router.options.defaultNotFoundComponent {...data} />
+      const notFoundElement = (
+        <router.options.defaultNotFoundComponent {...data} />
+      )
+      return process.env.NODE_ENV !== 'production'
+        ? wrapInNonRouteComponentContext(notFoundElement, 'notFoundComponent')
+        : notFoundElement
     }
 
     if (process.env.NODE_ENV !== 'production') {
@@ -31,5 +37,8 @@ export function renderRouteNotFound(
     return <DefaultGlobalNotFound />
   }
 
-  return <route.options.notFoundComponent {...data} />
+  const notFoundElement = <route.options.notFoundComponent {...data} />
+  return process.env.NODE_ENV !== 'production'
+    ? wrapInNonRouteComponentContext(notFoundElement, 'notFoundComponent')
+    : notFoundElement
 }

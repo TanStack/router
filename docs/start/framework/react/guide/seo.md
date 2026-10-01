@@ -1,6 +1,7 @@
 ---
 id: seo
 title: SEO
+description: Configure SEO in TanStack Start with page metadata, canonical URLs, structured data, server rendering, sitemaps, and robots.txt.
 ---
 
 > [!NOTE]

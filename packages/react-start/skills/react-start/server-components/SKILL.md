@@ -1,5 +1,5 @@
 ---
-name: react-start/server-components
+name: server-components
 description: >-
   Implement, review, debug, and refactor TanStack Start React Server
   Components in React 19 apps. Use when tasks mention
@@ -12,9 +12,10 @@ description: >-
   migration from Next App Router RSC patterns. Do not use for
   generic SSR or non-TanStack RSC frameworks except brief
   comparison.
-type: sub-skill
-library: tanstack-start
-library_version: '1.166.2'
+metadata:
+  type: sub-skill
+  library: tanstack-start
+  library_version: '1.168.32'
 requires:
   - react-start
   - start-core/server-functions

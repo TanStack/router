@@ -1,5 +1,19 @@
+import { defineComponent } from 'vue'
 import { Outlet, createFileRoute } from '@tanstack/vue-router'
 import '../styles/assets-a.css'
+
+const LevelAComponent = defineComponent({
+  setup() {
+    const params = Route.useParams()
+
+    return () => (
+      <section class="assets-level-a">
+        <p>assets-level-a-{params.value.x}</p>
+        <Outlet />
+      </section>
+    )
+  },
+})
 
 export const Route = createFileRoute('/a/$x')({
   head: ({ params }) => ({
@@ -12,14 +26,3 @@ export const Route = createFileRoute('/a/$x')({
   }),
   component: LevelAComponent,
 })
-
-function LevelAComponent() {
-  const params = Route.useParams()
-
-  return (
-    <section class="assets-level-a">
-      <p>assets-level-a-{params.value.x}</p>
-      <Outlet />
-    </section>
-  )
-}

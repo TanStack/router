@@ -6,7 +6,7 @@ const outDir = process.env.BUNDLE_SIZE_DIST_DIR ?? 'dist-rsbuild'
 
 export default defineConfig({
   logLevel: 'silent',
-  plugins: [pluginReact({ splitChunks: false }), tanstackStart()],
+  plugins: [pluginReact(), tanstackStart()],
   output: {
     distPath: {
       root: outDir,

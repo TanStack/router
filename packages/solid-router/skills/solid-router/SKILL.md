@@ -8,10 +8,11 @@ description: >-
   Outlet, CatchBoundary, ErrorComponent. Solid-specific patterns
   with Accessor<T> returns, createSignal/createMemo/createEffect,
   Show/Switch/Match/Dynamic, and @solidjs/meta for head management.
-type: framework
-library: tanstack-router
-library_version: '1.166.2'
-framework: solid
+metadata:
+  type: framework
+  library: tanstack-router
+  library_version: '1.166.2'
+  framework: solid
 requires:
   - router-core
 sources:
@@ -21,8 +22,6 @@ sources:
 # Solid Router (`@tanstack/solid-router`)
 
 This skill builds on router-core. Read [router-core](../../../router-core/skills/router-core/SKILL.md) first for foundational concepts.
-
-This skill covers the Solid-specific bindings, components, hooks, and setup for TanStack Router.
 
 > **CRITICAL**: TanStack Router types are FULLY INFERRED. Never cast, never annotate inferred values.
 > **CRITICAL**: TanStack Router is CLIENT-FIRST. Loaders run on the client by default, not on the server.

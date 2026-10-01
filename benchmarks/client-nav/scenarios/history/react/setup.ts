@@ -11,6 +11,7 @@ export function setup() {
   return createScenarioSetup({
     frameworkLabel: 'React',
     mount: mountTestApp,
+    historyMode: 'browser',
     steps,
     assertAfterStep: assertStepResult,
   })

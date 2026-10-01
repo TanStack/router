@@ -102,13 +102,14 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
 
       const newMiddleware = [...(resolvedOptions.middleware || [])]
-      middleware.map((m) => {
-        if (TSS_SERVER_FUNCTION_FACTORY in m) {
-          if (m.options.middleware) {
-            newMiddleware.push(...m.options.middleware)
+      // forEach skips holes and ignores items appended during iteration
+      middleware.forEach((item) => {
+        if (TSS_SERVER_FUNCTION_FACTORY in item) {
+          if (item.options.middleware) {
+            newMiddleware.push(...item.options.middleware)
           }
         } else {
-          newMiddleware.push(m)
+          newMiddleware.push(item)
         }
       })
 
@@ -185,7 +186,8 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               startContext.contextAfterGlobalMiddlewares
             const ctx = {
               ...extractedFn,
-              ...opts,
+              data: opts.data,
+              method: opts.method ?? resolvedOptions.method,
               // Ensure we use the full serverFnMeta from the provider file's extractedFn
               // (which has id, name, filename) rather than the partial one from SSR/client
               // callers (which only has id)

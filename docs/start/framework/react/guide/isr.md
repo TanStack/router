@@ -492,5 +492,5 @@ Track key metrics:
 - [Static Prerendering](./static-prerendering.md) - Build-time page generation
 - [Hosting](./hosting.md) - CDN deployment configurations
 - [Server Functions](./server-functions.md) - Creating dynamic data endpoints
-- [Data Loading](../../../../router/guide/data-loading.md) - Client-side cache control
+- [Data Loading](/router/latest/docs/guide/data-loading) - Client-side cache control
 - [Middleware](./middleware.md) - Request/response customization

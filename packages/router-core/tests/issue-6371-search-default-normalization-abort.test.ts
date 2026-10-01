@@ -9,17 +9,10 @@ import { createTestRouter } from './routerTestUtils'
  * Entering a route directly via URL without search params, while
  * validateSearch supplies defaults, makes the framework Transitioner commit a
  * canonical replace-navigation (URL with the defaulted search) right after
- * the mount load already started. That replace supersedes the first load
- * pass and aborts its match's abortController. A loader that forwarded that
- * signal to fetch() re-throws an AbortError ("signal is aborted without
- * reason"): it belongs to the abandoned pass and must not surface as a route
- * error; the follow-up canonical load must complete normally.
+ * the mount load already started. The canonical pass may reuse that loader
+ * generation, and the URL-only replacement must not abort it or surface an
+ * AbortError.
  */
-
-const waitForMacrotask = () =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, 0)
-  })
 
 describe('issue #6371: search default normalization aborts the mount load silently', () => {
   test('canonical replace after validateSearch defaults does not surface AbortError', async () => {
@@ -74,26 +67,20 @@ describe('issue #6371: search default normalization aborts the mount load silent
     // In core (no history subscribers) commitLocation starts the second load.
     void router.commitLocation({ ...nextLocation, replace: true } as any)
 
-    await vi.waitFor(() => expect(invocations.length).toBe(2))
-
-    // The superseded mount-load generation was aborted (its fetch canceled).
-    expect(invocations[0]!.signal.aborted).toBe(true)
-
-    // Give the aborted rejection time to (incorrectly) commit as an error.
-    await waitForMacrotask()
-    await waitForMacrotask()
+    await Promise.resolve()
+    expect(invocations).toHaveLength(1)
+    expect(invocations[0]!.signal.aborted).toBe(false)
 
     for (const match of router.state.matches) {
       expect(match.status).not.toBe('error')
       expect((match.error as Error | undefined)?.name).not.toBe('AbortError')
     }
 
-    invocations[1]!.resolve()
+    invocations[0]!.resolve()
     // Awaiting the superseded mount load also awaits the superseding chain.
     await initialLoad
 
-    // No runaway normalization loop: exactly one aborted + one canonical run.
-    expect(invocations.length).toBe(2)
+    expect(invocations).toHaveLength(1)
 
     const aboutMatch = router.state.matches.find(
       (match) => match.routeId === aboutRoute.id,

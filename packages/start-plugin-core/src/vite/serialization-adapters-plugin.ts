@@ -1,4 +1,4 @@
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { START_ENVIRONMENT_NAMES } from '../constants'
 import { createIdFilter } from '../utils'

@@ -8,6 +8,7 @@
  * parsing the committed location.
  */
 import type { ScenarioStep } from '../harness'
+import type { RouterHistory } from '@tanstack/history'
 
 export const basepath = '/app'
 export const defaultLocale = 'en'
@@ -51,7 +52,7 @@ interface StepDef {
   testId: string
   /** Internal router pathname expected after the step. */
   routerPath: string
-  /** External window.location pathname expected after the step. */
+  /** External history pathname expected after the step. */
   windowPath: string
 }
 
@@ -70,7 +71,11 @@ export const steps: ReadonlyArray<ScenarioStep> = stepDefs.map(
   (step) => step.testId,
 )
 
-export function assertStepResult(stepIndex: number, container: HTMLElement) {
+export function assertStepResult(
+  stepIndex: number,
+  container: HTMLElement,
+  history: RouterHistory,
+) {
   const expected = stepDefs[stepIndex]!
   const marker = container.querySelector('[data-testid="loc"]')
   const routerPath = marker?.textContent
@@ -81,9 +86,9 @@ export function assertStepResult(stepIndex: number, container: HTMLElement) {
     )
   }
 
-  if (window.location.pathname !== expected.windowPath) {
+  if (history.location.pathname !== expected.windowPath) {
     throw new Error(
-      `Expected window pathname "${expected.windowPath}" after step ${stepIndex}, received "${window.location.pathname}"`,
+      `Expected history pathname "${expected.windowPath}" after step ${stepIndex}, received "${history.location.pathname}"`,
     )
   }
 }

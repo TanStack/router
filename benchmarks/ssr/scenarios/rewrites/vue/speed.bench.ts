@@ -3,9 +3,8 @@ import {
   assertRewriteScenario,
   rewriteBenchOptions,
   runRewriteLocalizedLoop,
-  runRewritePassthroughLoop,
-  type StartRequestHandler,
 } from '../shared'
+import type { StartRequestHandler } from '../shared'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 
@@ -21,11 +20,6 @@ describe('ssr', () => {
   bench(
     'ssr rewrite localized (vue)',
     () => runRewriteLocalizedLoop(handler),
-    rewriteBenchOptions,
-  )
-  bench(
-    'ssr rewrite passthrough (vue)',
-    () => runRewritePassthroughLoop(handler),
     rewriteBenchOptions,
   )
 })

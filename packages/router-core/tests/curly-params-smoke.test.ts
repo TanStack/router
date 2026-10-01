@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
+import { findRouteMatch } from '../src/new-process-route-tree'
+import { processTestRouteTree as processRouteTree } from './routerTestUtils'
 
 const testCases = [
   {

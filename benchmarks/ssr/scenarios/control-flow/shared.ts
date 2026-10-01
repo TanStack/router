@@ -5,11 +5,11 @@ import type { StartRequestHandler } from '../../bench-utils'
 export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
-const redirectLoopIterations = 100
-const notFoundLoopIterations = 45
-const errorLoopIterations = 45
-const unmatchedLoopIterations = 60
-const routeHeadersLoopIterations = 50
+const redirectLoopTotalRequests = 112
+const notFoundLoopTotalRequests = 48
+const errorLoopTotalRequests = 48
+const unmatchedLoopTotalRequests = 64
+const routeHeadersLoopTotalRequests = 64
 
 // Pinned to the current built handler responses for these control-flow routes.
 const OK_STATUS = 200
@@ -124,7 +124,8 @@ function validateRouteHeadersResponse(response: Response, request: Request) {
 export function runRedirectLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: redirectLoopIterations,
+    concurrency: 16,
+    totalRequests: redirectLoopTotalRequests,
     buildRequest: buildRedirectRequest,
     validateResponse: validateRedirectResponse,
   })
@@ -133,7 +134,8 @@ export function runRedirectLoop(handler: StartRequestHandler) {
 export function runNotFoundLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: notFoundLoopIterations,
+    concurrency: 16,
+    totalRequests: notFoundLoopTotalRequests,
     buildRequest: buildNotFoundRequest,
     validateResponse: validateNotFoundResponse,
   })
@@ -142,7 +144,8 @@ export function runNotFoundLoop(handler: StartRequestHandler) {
 export function runErrorLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: errorLoopIterations,
+    concurrency: 16,
+    totalRequests: errorLoopTotalRequests,
     buildRequest: buildErrorRequest,
     validateResponse: validateErrorResponse,
   })
@@ -151,7 +154,8 @@ export function runErrorLoop(handler: StartRequestHandler) {
 export function runUnmatchedLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: unmatchedLoopIterations,
+    concurrency: 16,
+    totalRequests: unmatchedLoopTotalRequests,
     buildRequest: buildUnmatchedRequest,
     validateResponse: validateUnmatchedResponse,
   })
@@ -160,7 +164,8 @@ export function runUnmatchedLoop(handler: StartRequestHandler) {
 export function runRouteHeadersLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: routeHeadersLoopIterations,
+    concurrency: 16,
+    totalRequests: routeHeadersLoopTotalRequests,
     buildRequest: buildRouteHeadersRequest,
     validateResponse: validateRouteHeadersResponse,
   })
