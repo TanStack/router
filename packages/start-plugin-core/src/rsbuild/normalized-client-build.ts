@@ -18,6 +18,21 @@ type RspackModule = Rspack.Module
 
 const backslashRegex = /\\/g
 
+function findTaggedChunks(
+  compilation: RspackCompilation,
+): Set<RspackCompilationChunk> {
+  const taggedChunks = new Set<RspackCompilationChunk>()
+  for (const mod of compilation.modules) {
+    const identifier = mod.identifier()
+    if (identifier.includes(tsrSplit) || identifier.includes(tssHydrate)) {
+      for (const chunk of compilation.chunkGraph.getModuleChunks(mod)) {
+        taggedChunks.add(chunk)
+      }
+    }
+  }
+  return taggedChunks
+}
+
 /**
  * Convert an OS native path to the POSIX form used by the generated route tree.
  */
@@ -251,11 +266,15 @@ export function normalizeRspackClientBuild(
     }
   }
 
+  const taggedChunks = findTaggedChunks(compilation)
+
   // Iterate ALL chunks (initial + async) to capture route-split chunks
   for (const chunk of compilation.chunks) {
-    const modules = compilation.chunkGraph.getChunkModules(chunk)
-    const routeFilePaths = getRouteFilePathsFromModules(modules)
-    const hydrationIds = getHydrationIdsFromModules(modules)
+    const modules = taggedChunks.has(chunk)
+      ? compilation.chunkGraph.getChunkModules(chunk)
+      : undefined
+    const routeFilePaths = modules ? getRouteFilePathsFromModules(modules) : []
+    const hydrationIds = modules ? getHydrationIdsFromModules(modules) : []
     const cssFiles: Array<string> = []
     const seenCssFiles = new Set<string>()
 

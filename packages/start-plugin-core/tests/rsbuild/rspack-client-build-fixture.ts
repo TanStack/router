@@ -185,6 +185,40 @@ export function countPropertyReads(
   }
 }
 
+export function recordChunkModuleCalls(
+  chunkGraph: Rspack.Compilation['chunkGraph'],
+): {
+  chunks: Array<Rspack.Chunk>
+  restore: () => void
+} {
+  const chunks: Array<Rspack.Chunk> = []
+  let owner: object | null = Object.getPrototypeOf(chunkGraph)
+  while (owner) {
+    const descriptor = Object.getOwnPropertyDescriptor(owner, 'getChunkModules')
+    if (descriptor) {
+      if (typeof descriptor.value !== 'function' || !descriptor.configurable) {
+        throw new Error('Expected a configurable getChunkModules method')
+      }
+      const methodOwner = owner
+      Object.defineProperty(methodOwner, 'getChunkModules', {
+        ...descriptor,
+        value(this: Rspack.Compilation['chunkGraph'], chunk: Rspack.Chunk) {
+          chunks.push(chunk)
+          return descriptor.value.call(this, chunk)
+        },
+      })
+      return {
+        chunks,
+        restore() {
+          Object.defineProperty(methodOwner, 'getChunkModules', descriptor)
+        },
+      }
+    }
+    owner = Object.getPrototypeOf(owner)
+  }
+  throw new Error('No prototype method found for getChunkModules')
+}
+
 export function expectedChunkFileOrder(
   compilation: Rspack.Compilation,
 ): Array<string> {

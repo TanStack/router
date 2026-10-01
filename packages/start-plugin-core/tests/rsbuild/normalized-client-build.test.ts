@@ -23,19 +23,19 @@ function makeCompilation(readCss: () => string | Uint8Array) {
     { name: 'root.css', source: { source: readCss } },
     { name: 'posts.css', source: { source: readCss } },
   ]
+  const routeModule = {
+    identifier: () => '/routes/posts.tsx?tsr-split=component',
+    nameForCondition: () => '/routes/posts.tsx',
+  }
   const compilation = {
     entrypoints: new Map([['index', { chunks: [entryChunk] }]]),
     chunks: new Set([entryChunk, routeChunk]),
+    modules: new Set([routeModule]),
     chunkGraph: {
       getChunkModules: (chunk: unknown) =>
-        chunk === routeChunk
-          ? [
-              {
-                identifier: () => '/routes/posts.tsx?tsr-split=component',
-                nameForCondition: () => '/routes/posts.tsx',
-              },
-            ]
-          : [],
+        chunk === routeChunk ? [routeModule] : [],
+      getModuleChunks: (module: unknown) =>
+        module === routeModule ? [routeChunk] : [],
     },
     getAssets,
   } as unknown as Rspack.Compilation
@@ -62,20 +62,20 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
     { name: 'root.css', source: { source: readCss } },
     { name: 'posts.css', source: { source: readCss } },
   ]
+  const routeModule = {
+    identifier: () =>
+      'builtin:swc-loader??ruleSet[0]!C:\\app\\src\\routes\\posts.tsx?tsr-split=component',
+    nameForCondition: () => 'C:\\app\\src\\routes\\posts.tsx',
+  }
   const compilation = {
     entrypoints: new Map([['index', { chunks: [entryChunk] }]]),
     chunks: new Set([entryChunk, routeChunk]),
+    modules: new Set([routeModule]),
     chunkGraph: {
       getChunkModules: (chunk: unknown) =>
-        chunk === routeChunk
-          ? [
-              {
-                identifier: () =>
-                  'builtin:swc-loader??ruleSet[0]!C:\\app\\src\\routes\\posts.tsx?tsr-split=component',
-                nameForCondition: () => 'C:\\app\\src\\routes\\posts.tsx',
-              },
-            ]
-          : [],
+        chunk === routeChunk ? [routeModule] : [],
+      getModuleChunks: (module: unknown) =>
+        module === routeModule ? [routeChunk] : [],
     },
     getAssets,
   } as unknown as Rspack.Compilation
@@ -93,7 +93,11 @@ describe('normalizeRspackClientBuild', () => {
     const compilation = {
       entrypoints: new Map([['index', { chunks: [entryChunk] }]]),
       chunks: new Set([entryChunk]),
-      chunkGraph: { getChunkModules: () => [] },
+      modules: new Set(),
+      chunkGraph: {
+        getChunkModules: () => [],
+        getModuleChunks: () => [],
+      },
     } as unknown as Rspack.Compilation
 
     const clientBuild = normalizeRspackClientBuild(compilation)

@@ -8,6 +8,7 @@ import {
   cssAssetOrder,
   expectedChunkFileOrder,
   fixtureRouteTreeRoutes,
+  recordChunkModuleCalls,
   serializeClientBuild,
 } from './rspack-client-build-fixture'
 import type { Rspack } from '@rsbuild/core'
@@ -45,6 +46,37 @@ describe.each<FixtureMode>(['development', 'production'])('%s', (mode) => {
       '<fixture>',
     )
     expect(JSON.parse(serialized)).toMatchSnapshot()
+  })
+
+  test('lists chunk modules only for chunks that hold a route split or hydration module', async () => {
+    await compileClientFixture({ mode }, (compilation) => {
+      const taggedChunks = new Set(
+        Array.from(compilation.chunks).filter((chunk) =>
+          compilation.chunkGraph.getChunkModules(chunk).some((module) => {
+            const identifier = module.identifier()
+            return (
+              identifier.includes('tsr-split') ||
+              identifier.includes('tss-hydrate')
+            )
+          }),
+        ),
+      )
+      let calls: ReturnType<typeof recordChunkModuleCalls> | undefined
+      try {
+        calls = recordChunkModuleCalls(compilation.chunkGraph)
+        normalizeRspackClientBuild(compilation)
+      } finally {
+        calls?.restore()
+      }
+
+      const listedChunks = new Set(calls.chunks)
+      expect(listedChunks).toEqual(taggedChunks)
+      expect(listedChunks.size).toBe(taggedChunks.size)
+      expect(calls.chunks).toHaveLength(taggedChunks.size)
+      for (const chunk of calls.chunks) {
+        expect(taggedChunks.has(chunk)).toBe(true)
+      }
+    })
   })
 
   test('fixture exercises the shapes the normalizer must preserve', async () => {
