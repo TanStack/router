@@ -1,5 +1,9 @@
 import { makeLevelData } from '../loaders/shared-data'
-import { randomSegment, runRequestLoop } from '../../bench-utils'
+import {
+  findDehydrationMarkerIndex,
+  randomSegment,
+  runRequestLoop,
+} from '../../bench-utils'
 import type { StartRequestHandler } from '../../bench-utils'
 
 export type { StartRequestHandler }
@@ -60,7 +64,7 @@ export async function assertSelectiveSanity(handler: StartRequestHandler) {
     )
   }
 
-  const hydrationIndex = body.indexOf('$_TSR')
+  const hydrationIndex = findDehydrationMarkerIndex(body)
 
   if (hydrationIndex === -1) {
     throw new Error('Expected setup response to include the dehydration marker')

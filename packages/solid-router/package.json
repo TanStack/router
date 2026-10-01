@@ -89,7 +89,10 @@
     },
     "./package.json": "./package.json"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "**/ssr/server.js",
+    "**/ssr/server.cjs"
+  ],
   "files": [
     "dist",
     "src",
