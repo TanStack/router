@@ -14,20 +14,38 @@ export type SsrResponse =
 export type HandlerCallbackResult = Response | SsrResponse
 
 export function isSsrResponse(value: unknown): value is SsrResponse {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('response' in value) ||
+    !(value.response instanceof Response) ||
+    !('serverSsrCleanup' in value)
+  ) {
+    return false
+  }
+
+  if (value.serverSsrCleanup === 'none') {
+    return true
+  }
+
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    'response' in value &&
-    'serverSsrCleanup' in value
+    value.serverSsrCleanup === 'stream' &&
+    'dispose' in value &&
+    typeof value.dispose === 'function'
   )
 }
 
 export function normalizeSsrResponse(
   result: HandlerCallbackResult,
 ): SsrResponse {
-  return isSsrResponse(result)
-    ? result
-    : { response: result, serverSsrCleanup: 'none' }
+  if (result instanceof Response) {
+    return { response: result, serverSsrCleanup: 'none' }
+  }
+  if (isSsrResponse(result)) {
+    return result
+  }
+
+  throw new TypeError('Expected a Response from the SSR handler')
 }
 
 function cancelResponseBody(response: Response, reason?: unknown): void {

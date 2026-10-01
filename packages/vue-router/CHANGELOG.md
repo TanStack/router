@@ -1,5 +1,23 @@
 # @tanstack/vue-router
 
+## 1.170.37
+
+### Patch Changes
+
+- [#8568](https://github.com/TanStack/router/pull/8568) [`614bc27`](https://github.com/TanStack/router/commit/614bc27034c8ec98747bf305ed41d4a619640949) - Update TanStack Store to 0.11.2 to prevent unrelated atom reads inside subscription observers from triggering extra notifications.
+
+- Updated dependencies [[`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb)]:
+  - @tanstack/router-core@1.171.34
+
+## 1.170.36
+
+### Patch Changes
+
+- [#8436](https://github.com/TanStack/router/pull/8436) [`f5ffd38`](https://github.com/TanStack/router/commit/f5ffd3884ba26778a2a8ce53b379a5bded231676) - Skip unused Link preload cleanup when preloading is disabled and ignore queued viewport notifications after their effect has been cleaned up.
+
+- Updated dependencies [[`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f), [`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47), [`3cdd1af`](https://github.com/TanStack/router/commit/3cdd1af04b3e2d6f777797ee7bddf285318dd9d2)]:
+  - @tanstack/router-core@1.171.33
+
 ## 1.170.35
 
 ### Patch Changes

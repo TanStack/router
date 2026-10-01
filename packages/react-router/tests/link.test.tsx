@@ -5426,6 +5426,35 @@ describe('Link', () => {
     fireEvent.mouseLeave(viewportLink)
     await vi.advanceTimersByTimeAsync(50)
     expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    // An effect with preloading disabled owns no resources. Re-enabling it
+    // must still install cancellation for a newly scheduled intent timer.
+    fireEvent.click(screen.getByRole('button', { name: 'Use intent' }))
+    fireEvent.mouseEnter(viewportLink)
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Disable preload' }))
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use intent' }))
+    fireEvent.mouseEnter(viewportLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(1)
+
+    preloadRouteSpy.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Disable preload' }))
+    initialIoCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {

@@ -298,6 +298,8 @@ function useLinkPropsImpl(
     ref,
     enqueuePreload,
     () => preload.value !== 'viewport',
+    // Intent preloading still needs timer cleanup without an observer.
+    () => !!preload.value,
   )
 
   Vue.watchEffect(() => {
@@ -343,6 +345,7 @@ function useLinkPropsImpl(
       }
 
       e.preventDefault()
+      enqueuePreload()
 
       // All is well? Navigate!
       router.navigate({

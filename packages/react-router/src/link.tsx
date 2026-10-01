@@ -290,41 +290,46 @@ export function useLinkProps<
   // the subscription instead re-renders every link on every navigation, because
   // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectLinkState = React.useCallback(
-    (location: ParsedLocation): LinkState => {
-      const directExternalLink = resolveExternalLink(
-        to,
-        router.protocolAllowlist,
-      )
-      if (directExternalLink !== undefined) {
-        return [directExternalLink ?? undefined]
-      }
+  const selectLinkState = React.useMemo(() => {
+    // Direct destinations and the router's allowlist are stable for this selector.
+    const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
+    if (directExternalLink !== undefined) {
+      const state: LinkState = [directExternalLink ?? undefined]
+      return () => state
+    }
 
+    let inactive: LinkState | undefined
+    let active: LinkState
+
+    return (location: ParsedLocation): LinkState => {
       if (!_options._fromLocation) {
         dest._fromLocation = location
       }
       const next = router.buildLocation(dest)
 
-      // Use publicHref - it contains the correct href for display
-      // When a rewrite changes the origin, publicHref is the full URL
-      // Otherwise it's the origin-stripped path
-      // This avoids constructing URL objects in the hot path
-      const hrefOption = getHrefOption(next, router, disabled)
-      return [
-        hrefOption,
-        !disabled && (!hrefOption || getUrlScheme(hrefOption))
-          ? undefined
-          : resolveIsActive(
-              location,
-              next,
-              stableActiveOptions,
-              router.basepath,
-              isHydrated,
-            ),
-      ]
-    },
-    [stableActiveOptions, disabled, isHydrated, _options, dest, router, to],
-  )
+      // History formatters can depend on the current browser URL (hash history).
+      // Reuse classification and immutable results until the formatted href changes.
+      const href = getHrefOption(next, router, disabled)
+      if (!inactive || inactive[0] !== href) {
+        inactive = [
+          href,
+          // Internal/disabled links use false; external/blocked links use undefined.
+          !(disabled || (href && !getUrlScheme(href))) && undefined,
+        ]
+        active = [href, true]
+      }
+      return inactive[1] !== undefined &&
+        resolveIsActive(
+          location,
+          next,
+          stableActiveOptions,
+          router.basepath,
+          isHydrated,
+        )
+        ? active
+        : inactive
+    }
+  }, [stableActiveOptions, disabled, isHydrated, _options, dest, router, to])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = useSelector(
@@ -332,7 +337,7 @@ export function useLinkProps<
     selectLinkState,
     LINK_SELECTOR_OPTIONS,
   )
-  const externalLink = isActive === undefined ? href : undefined
+  const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -383,10 +388,15 @@ export function useLinkProps<
   // the element. The cleanup also cancels a pending intent timer.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   React.useEffect(() => {
+    // Disabled preloading creates neither an observer nor an intent timer.
+    if (!preload) {
+      return
+    }
     if (preload === 'render' && !hasRenderFetched.current) {
       hasRenderFetched.current = true
       preloadLink(router, _options)
     }
+    let active = true
     let observer: IntersectionObserver | undefined
     if (
       preload === 'viewport' &&
@@ -394,12 +404,18 @@ export function useLinkProps<
       typeof IntersectionObserver === 'function'
     ) {
       observer = new IntersectionObserver(
-        (entries) => enqueuePreload(entries.pop()),
+        (entries) => {
+          // A queued observer notification can arrive after disconnect().
+          if (active) {
+            enqueuePreload(entries.pop())
+          }
+        },
         { rootMargin: '100px' },
       )
       observer.observe(innerRef.current)
     }
     return () => {
+      active = false
       observer?.disconnect()
       cancelPreload(innerRef)
     }
@@ -430,6 +446,7 @@ export function useLinkProps<
       e.button === 0
     ) {
       e.preventDefault()
+      cancelPreload(innerRef)
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing

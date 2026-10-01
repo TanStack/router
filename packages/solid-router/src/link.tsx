@@ -373,7 +373,13 @@ export function useLinkProps<
     }
   }
 
-  useIntersectionObserver(ref, enqueuePreload, () => preload() !== 'viewport')
+  useIntersectionObserver(
+    ref,
+    enqueuePreload,
+    () => preload() !== 'viewport',
+    // Intent preloading still needs timer cleanup without an observer.
+    () => !!preload(),
+  )
 
   Solid.createEffect(() => {
     if (hasRenderFetched) {
@@ -403,6 +409,7 @@ export function useLinkProps<
       e.button === 0
     ) {
       e.preventDefault()
+      cancelPreload(ref)
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing

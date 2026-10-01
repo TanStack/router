@@ -1159,13 +1159,13 @@ export class RouterCore<
     Math.random() * 10000000,
   )}`
   _scroll: {
-    next: boolean
+    n: boolean // Reset scroll on the next render.
     // True until the current PUSH/REPLACE renders, so its hash owns window scroll.
-    hash?: boolean
-    restoring?: boolean
-    restoration?: boolean
-    reset?: boolean
-  } = { next: true }
+    h?: boolean
+    e?: boolean // Restoration enabled.
+    s?: boolean // Snapshot/lifecycle listeners installed.
+    r?: boolean // Render listener installed.
+  } = { n: true }
   subscribers = new Set<RouterListener<RouterEvent>>()
   /** Accepted off-screen loader generations keyed by match ID. */
   _cache = new Map<string, AnyRouteMatch>()
@@ -2341,7 +2341,7 @@ export class RouterCore<
       }
     }
 
-    this._scroll.next = next.resetScroll ?? true
+    this._scroll.n = next.resetScroll ?? true
 
     return this._commitPromise
   }
@@ -2443,7 +2443,7 @@ export class RouterCore<
 
     this.updateLatestLocation()
     if (opts?.action) {
-      this._scroll.hash =
+      this._scroll.h =
         opts.action.type === 'PUSH' || opts.action.type === 'REPLACE'
     }
     await loadClientRoute(this, opts)
@@ -2532,11 +2532,11 @@ export class RouterCore<
     this._cache.forEach(consider)
     preloads?.forEach((matches) => matches.forEach(consider))
     this._tx?.[3 /* matches */].forEach(consider)
-    const discardedPreloads: Array<AbortController> = []
+    const abort: Array<AbortController> = []
     for (const [controller, matches] of preloads ?? []) {
       if (matches.some((match) => invalidIds.has(match.id))) {
         preloads!.delete(controller)
-        discardedPreloads.push(controller)
+        abort.push(controller)
       }
     }
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
@@ -2573,9 +2573,14 @@ export class RouterCore<
     // The superseding load must not discover any same-ID generation selected
     // for replacement. Existing owners release it in their normal order.
     for (const id of invalidIds) {
+      const flight = this._flights?.get(id)
       this._flights?.delete(id)
+      // A reserved discovery has no remaining match owner to retire it later.
+      if (flight && !flight[2 /* leases */]) {
+        abort.push(flight[1 /* controller */])
+      }
     }
-    for (const controller of discardedPreloads) {
+    for (const controller of abort) {
       controller.abort()
     }
 

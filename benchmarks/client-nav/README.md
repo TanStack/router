@@ -9,10 +9,11 @@ Cross-framework client-side CPU benchmarks for:
 The benchmarks run in jsdom against production builds of real apps, and are
 tracked in CI by CodSpeed (simulation mode).
 
-> **Scope:** these benchmarks cover the standalone client router only. The
-> client side of TanStack Start (hydration of a server-rendered document,
-> streamed payload consumption, server-function calls from the client, ...) is
-> not covered here; the server side of Start is covered by `benchmarks/ssr`.
+> **Scope:** these benchmarks cover the client router. The hydration
+> scenarios also cover DOM hydration and the Router state-restoration path
+> used by Start. Start-specific entry-point initialization, streamed payload
+> arrival and client server-function calls are not included. Server request work
+> is covered by `benchmarks/ssr`.
 
 ## Layout
 
@@ -38,7 +39,7 @@ scenarios/<scenario>/<framework>/
     routes/
 ```
 
-Scenario apps use file-based routing (`@tanstack/router-plugin`) with a
+Navigation scenario apps use file-based routing (`@tanstack/router-plugin`) with a
 generated `routeTree.gen.ts`, like a regular user app. Each scenario uses one
 app per framework instead of sharing routes in the baseline app. This keeps
 route-tree size and router options isolated so one scenario cannot shift
@@ -57,9 +58,10 @@ be attributed to a specific feature area.
 | `control-flow`                           | Loader-thrown `redirect` (including a 2-hop chain), `notFound()` with `notFoundComponent`, loader errors with `errorComponent`, and boundary reset on recovery navigation.                                                                                                                                                           |
 | `head`                                   | `HeadContent` per-navigation work: nested route `head()` evaluation, title/meta/link dedupe across matches, and head tag DOM updates during navigation.                                                                                                                                                                              |
 | `history`                                | History push/replace/back/forward traversal, location masking, registered-but-never-blocking `useBlocker`, and `useCanGoBack`/`useLocation` subscriptions.                                                                                                                                                                           |
+| `hydration`                              | Initial DOM hydration: execute the SSR payload, restore `beforeLoad` context and loader data, and hydrate 192 ordinary and eight hash-sensitive Links through their follow-up effects in React and Solid.                                                                                                                            |
 | `links`                                  | Per-navigation cost of ~200 mounted `<Link>`s: link prop building, active-state recompute across `activeOptions` variants, `activeProps` swaps, and `useMatchRoute` probes (the `MatchRoute` component is avoided: vue-router's implementation leaks one subscription per render).                                                   |
 | `loaders`                                | Client loader dispatch: always-stale re-runs (`staleTime: 0`), cached revisits (re-run once per lap by the `invalidate` step), `loaderDeps`-keyed caching, `router.invalidate()`, and `useLoaderData` selectors.                                                                                                                     |
-| `mount`                                  | Cold start: `createRouter` (route-tree processing) + first render + initial `router.load()` + unmount, with a fresh router per mount. The only scenario measuring router creation.                                                                                                                                                   |
+| `mount`                                  | Cold start: `createRouter` (route-tree processing) + first render + initial `router.load()` + unmount, with a fresh router per mount.                                                                                                                                                                                                |
 | `nested-params`                          | Deep nesting (8 dynamic levels): per-level `params.parse`/`stringify`, `beforeLoad` context accumulation across matches, and per-level `useParams`/`useRouteContext` subscriptions. Param values include characters requiring percent-encoding (as do `route-tree-scale`'s), so segment encode/decode paths run on every navigation. |
 | `preload`                                | Intent preloading from hover events, programmatic `router.preloadRoute`, deterministic preload cache behavior (`defaultPreloadStaleTime: 0`), and commit-time cache maintenance.                                                                                                                                                     |
 | `rewrites`                               | Composed client-side location rewrites: router `basepath` plus a locale input/output rewrite pair, running on every href build and location parse (the client analog of the SSR `rewrites` scenario).                                                                                                                                |
@@ -67,6 +69,9 @@ be attributed to a specific feature area.
 | `search-params`                          | `validateSearch` execution, search middlewares (`retainSearchParams`/`stripSearchParams`), functional search updaters, structural sharing, and `useSearch` selector subscriptions.                                                                                                                                                   |
 
 ## Conventions
+
+The hydration scenario has the separate lifecycle described below. The other
+scenarios follow these navigation/mount conventions:
 
 - Apps are built with `NODE_ENV=production` (`minify: false`) into `dist/app.js`; benches import the built bundle, so production package builds and production JSX output are measured, not dev transforms.
 - Scenarios behave like a real user app: navigation happens through `<Link>` clicks dispatched on real anchor elements (unless a scenario specifically measures the imperative API), the router uses the default browser history, and `scrollRestoration` is enabled.
@@ -115,6 +120,70 @@ Typecheck benchmark sources (baseline + scenarios):
 ```bash
 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav:test:types --outputStyle=stream --skipRemoteCache
 ```
+
+## Hydration
+
+`scenarios/hydration/{react,solid}` provide the same initial-hydration
+workload: 192 ordinary Links, eight hash-sensitive Links, and three matched
+routes with three `beforeLoad` contexts and two loader results. The server URL
+has no fragment; the client URL has `#details`, matching half of the hash-sensitive Links.
+
+```bash
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav-hydration-react:test:perf --outputStyle=stream --skipRemoteCache
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav-hydration-react:test:unit --outputStyle=stream --skipRemoteCache
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav-hydration-react:test:types:client --outputStyle=stream --skipRemoteCache
+```
+
+Replace `react` with `solid` to run the other adapter.
+
+The build generates static HTML and its real Router SSR bootstrap scripts once
+with `createRequestHandler` and the adapter's streaming renderer. Generation
+fully consumes the response and runs outside the CodSpeed action. The measured
+worker only reads these artifacts; it does not import a server renderer or start a server.
+
+Each invocation uses a fresh jsdom window and a fresh evaluation of the complete
+production client bundle in that window's realm. HTML parsing, bundle evaluation,
+and the initial document lifecycle finish in untimed setup. This resets module
+state as well as the DOM, avoiding cached hydration promises and cross-realm
+payload objects. The bundle and bootstrap scripts are compiled once, so this
+measures a fresh application with warm code, not JavaScript download/parse cost.
+
+The timed region executes the serialized payload, creates the router and its
+small code-based route tree, calls the public client `hydrate` API, and hydrates
+the existing DOM with the framework's native renderer:
+
+- **React:** a separate completion component signals from its post-hydration
+  effect, after the same snapshot transition as hash-sensitive Links. The harness
+  awaits that signal and two idle React scheduler turns, then checks the expected
+  active links. Concurrent hydration can take as many turns as needed under CPU
+  instrumentation, with a 60-second failure watchdog.
+- **Solid:** execute the native hydration bootstrap and retain the server's
+  component/key hierarchy. Wait for mount, the router's rendered event, active-link
+  effects, and two idle turns. DOM identity assertions include every workload
+  element so template fallback cannot silently replace server nodes.
+
+Solid bounds settlement to 100 turns. Ending at the hydration call or the
+first mount would miss post-hydration Link updates.
+Timer turns use `setImmediate`; scrolling is a no-op
+because this is CPU simulation rather than browser layout/paint measurement.
+
+Untimed assertions verify restored contexts and every loader row, zero client
+`beforeLoad`/loader calls, expected hrefs/active state, original DOM-node identity,
+working event handlers, and absence of hydration errors. Root unmount, pending
+task cancellation, and window disposal also run outside measurement. Diagnostic
+tests count Link renders or reactive evaluations and check they stop before the
+measured region ends; counting is disabled in the timed workload.
+
+CodSpeed uses suite `beforeEach`/`afterEach` hooks. Ordinary Vitest instead
+installs Tinybench's public Task iteration hooks from its stage-level `setup`.
+Using only stage-level setup would let later iterations reuse an already
+hydrated document. The hydration unit tests cover fresh-state setup through
+both paths.
+
+Each scenario is included in its framework's aggregate build and CodSpeed run.
+Land the benchmark independently to establish main's baseline before comparing a
+hydration optimization. Regenerate each revision's artifacts with identical
+fixture data and dependencies; do not pin an old hydration wire format forever.
 
 ## Isolated route-tree construction
 
