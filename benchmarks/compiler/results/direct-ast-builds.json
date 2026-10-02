@@ -1,0 +1,672 @@
+[
+  {
+    "variant": "baseline",
+    "repetition": 0,
+    "result": {
+      "timestamp": "2026-09-27T16:58:53.930Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 944.4530839999999,
+        "minBuildMs": 944.4530839999999,
+        "maxBuildMs": 944.4530839999999,
+        "medianWallMs": 1086.842916,
+        "medianPeakRssMiB": 562.890625
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1086.842916,
+          "buildMs": 944.4530839999999,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 576400,
+          "before": {
+            "rss": 89112576,
+            "heapTotal": 24363008,
+            "heapUsed": 14197760,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 589840384,
+            "heapTotal": 249135104,
+            "heapUsed": 128762592,
+            "external": 17289534,
+            "arrayBuffers": 10895821
+          },
+          "retained": {
+            "rss": 584859648,
+            "heapTotal": 240386048,
+            "heapUsed": 57227096,
+            "external": 17289534,
+            "arrayBuffers": 54451
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1214426,
+          "hookTimings": {}
+        }
+      ]
+    }
+  },
+  {
+    "variant": "candidate",
+    "repetition": 0,
+    "result": {
+      "timestamp": "2026-09-27T16:58:55.053Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "ac852d5d9cc39288b083f877a57e775f90f1aba24d25fe23d04a367f39f15e4c",
+        "javascriptFiles": 125,
+        "sourceSha256": "df25df7620a45bb20b475ea383eebac0f4011e3722a97cf5c370f792eb367198",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 936.380833,
+        "minBuildMs": 936.380833,
+        "maxBuildMs": 936.380833,
+        "medianWallMs": 1066.944,
+        "medianPeakRssMiB": 510.171875
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1066.944,
+          "buildMs": 936.380833,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 522416,
+          "before": {
+            "rss": 88948736,
+            "heapTotal": 24887296,
+            "heapUsed": 14190584,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 532267008,
+            "heapTotal": 221511680,
+            "heapUsed": 79451024,
+            "external": 14609338,
+            "arrayBuffers": 3035981
+          },
+          "retained": {
+            "rss": 532512768,
+            "heapTotal": 204472320,
+            "heapUsed": 56928624,
+            "external": 9416802,
+            "arrayBuffers": 54451
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1213766,
+          "hookTimings": {}
+        }
+      ]
+    }
+  },
+  {
+    "variant": "candidate",
+    "repetition": 1,
+    "result": {
+      "timestamp": "2026-09-27T16:58:56.201Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "ac852d5d9cc39288b083f877a57e775f90f1aba24d25fe23d04a367f39f15e4c",
+        "javascriptFiles": 125,
+        "sourceSha256": "df25df7620a45bb20b475ea383eebac0f4011e3722a97cf5c370f792eb367198",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 965.969,
+        "minBuildMs": 965.969,
+        "maxBuildMs": 965.969,
+        "medianWallMs": 1098.056583,
+        "medianPeakRssMiB": 546.8125
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1098.056583,
+          "buildMs": 965.969,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 559936,
+          "before": {
+            "rss": 89128960,
+            "heapTotal": 24625152,
+            "heapUsed": 14190560,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 573308928,
+            "heapTotal": 225787904,
+            "heapUsed": 110186376,
+            "external": 14088679,
+            "arrayBuffers": 7669496
+          },
+          "retained": {
+            "rss": 571342848,
+            "heapTotal": 220545024,
+            "heapUsed": 60097912,
+            "external": 14088679,
+            "arrayBuffers": 1274627
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1213766,
+          "hookTimings": {}
+        }
+      ]
+    }
+  },
+  {
+    "variant": "baseline",
+    "repetition": 1,
+    "result": {
+      "timestamp": "2026-09-27T16:58:57.351Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 965.763541,
+        "minBuildMs": 965.763541,
+        "maxBuildMs": 965.763541,
+        "medianWallMs": 1100.735042,
+        "medianPeakRssMiB": 567.203125
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1100.735042,
+          "buildMs": 965.763541,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 580816,
+          "before": {
+            "rss": 88981504,
+            "heapTotal": 24100864,
+            "heapUsed": 14198032,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 594460672,
+            "heapTotal": 247447552,
+            "heapUsed": 73762744,
+            "external": 7690365,
+            "arrayBuffers": 1296652
+          },
+          "retained": {
+            "rss": 591183872,
+            "heapTotal": 204210176,
+            "heapUsed": 57070328,
+            "external": 7690365,
+            "arrayBuffers": 54451
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1214426,
+          "hookTimings": {}
+        }
+      ]
+    }
+  },
+  {
+    "variant": "baseline",
+    "repetition": 2,
+    "result": {
+      "timestamp": "2026-09-27T16:58:58.511Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 969.3667090000001,
+        "minBuildMs": 969.3667090000001,
+        "maxBuildMs": 969.3667090000001,
+        "medianWallMs": 1106.5188750000002,
+        "medianPeakRssMiB": 567.046875
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1106.5188750000002,
+          "buildMs": 969.3667090000001,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 580656,
+          "before": {
+            "rss": 88637440,
+            "heapTotal": 24625152,
+            "heapUsed": 14198000,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 594395136,
+            "heapTotal": 236404736,
+            "heapUsed": 136949416,
+            "external": 17606975,
+            "arrayBuffers": 11187792
+          },
+          "retained": {
+            "rss": 589152256,
+            "heapTotal": 228589568,
+            "heapUsed": 57221648,
+            "external": 17606975,
+            "arrayBuffers": 54451
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1214426,
+          "hookTimings": {}
+        }
+      ]
+    }
+  },
+  {
+    "variant": "candidate",
+    "repetition": 2,
+    "result": {
+      "timestamp": "2026-09-27T16:58:59.676Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "ac852d5d9cc39288b083f877a57e775f90f1aba24d25fe23d04a367f39f15e4c",
+        "javascriptFiles": 125,
+        "sourceSha256": "df25df7620a45bb20b475ea383eebac0f4011e3722a97cf5c370f792eb367198",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 964.3759170000001,
+        "minBuildMs": 964.3759170000001,
+        "maxBuildMs": 964.3759170000001,
+        "medianWallMs": 1108.447291,
+        "medianPeakRssMiB": 559.921875
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1108.447291,
+          "buildMs": 964.3759170000001,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 573360,
+          "before": {
+            "rss": 90619904,
+            "heapTotal": 25149440,
+            "heapUsed": 14173936,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 586694656,
+            "heapTotal": 250707968,
+            "heapUsed": 128411776,
+            "external": 17896431,
+            "arrayBuffers": 11498611
+          },
+          "retained": {
+            "rss": 581828608,
+            "heapTotal": 239599616,
+            "heapUsed": 57064176,
+            "external": 17896431,
+            "arrayBuffers": 54451
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1213766,
+          "hookTimings": {}
+        }
+      ]
+    }
+  },
+  {
+    "variant": "candidate",
+    "repetition": 3,
+    "result": {
+      "timestamp": "2026-09-27T16:59:00.801Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "ac852d5d9cc39288b083f877a57e775f90f1aba24d25fe23d04a367f39f15e4c",
+        "javascriptFiles": 125,
+        "sourceSha256": "df25df7620a45bb20b475ea383eebac0f4011e3722a97cf5c370f792eb367198",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 941.3070839999999,
+        "minBuildMs": 941.3070839999999,
+        "maxBuildMs": 941.3070839999999,
+        "medianWallMs": 1073.5699169999998,
+        "medianPeakRssMiB": 526.140625
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1073.5699169999998,
+          "buildMs": 941.3070839999999,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 538768,
+          "before": {
+            "rss": 89096192,
+            "heapTotal": 24887296,
+            "heapUsed": 14174200,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 551534592,
+            "heapTotal": 228540416,
+            "heapUsed": 102979864,
+            "external": 18619425,
+            "arrayBuffers": 7015348
+          },
+          "retained": {
+            "rss": 548798464,
+            "heapTotal": 223084544,
+            "heapUsed": 57029008,
+            "external": 13396169,
+            "arrayBuffers": 54451
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1213766,
+          "hookTimings": {}
+        }
+      ]
+    }
+  },
+  {
+    "variant": "baseline",
+    "repetition": 3,
+    "result": {
+      "timestamp": "2026-09-27T16:59:01.939Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 950.261125,
+        "minBuildMs": 950.261125,
+        "maxBuildMs": 950.261125,
+        "medianWallMs": 1085.607916,
+        "medianPeakRssMiB": 565.625
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1085.607916,
+          "buildMs": 950.261125,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 579200,
+          "before": {
+            "rss": 88768512,
+            "heapTotal": 24625152,
+            "heapUsed": 14197832,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 592871424,
+            "heapTotal": 236961792,
+            "heapUsed": 140867664,
+            "external": 18254723,
+            "arrayBuffers": 11835540
+          },
+          "retained": {
+            "rss": 587776000,
+            "heapTotal": 229113856,
+            "heapUsed": 57197232,
+            "external": 18254723,
+            "arrayBuffers": 54451
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1214426,
+          "hookTimings": {}
+        }
+      ]
+    }
+  },
+  {
+    "variant": "baseline",
+    "repetition": 4,
+    "result": {
+      "timestamp": "2026-09-27T16:59:03.075Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "e38b9d788cadeaa54fe80cfea32694389d6a37c2a2738e7a6c6901926a87733e",
+        "javascriptFiles": 125,
+        "sourceSha256": "faa87621d495321b6a85f2f71c4c09008d11d3ca6e4e22121c255411895ca0ff",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 946.4935409999999,
+        "minBuildMs": 946.4935409999999,
+        "maxBuildMs": 946.4935409999999,
+        "medianWallMs": 1083.031791,
+        "medianPeakRssMiB": 583.984375
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1083.031791,
+          "buildMs": 946.4935409999999,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 598000,
+          "before": {
+            "rss": 88539136,
+            "heapTotal": 24100864,
+            "heapUsed": 14197904,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 611909632,
+            "heapTotal": 248496128,
+            "heapUsed": 160378208,
+            "external": 21391179,
+            "arrayBuffers": 14967789
+          },
+          "retained": {
+            "rss": 607043584,
+            "heapTotal": 237764608,
+            "heapUsed": 57242176,
+            "external": 21391179,
+            "arrayBuffers": 54451
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1214426,
+          "hookTimings": {}
+        }
+      ]
+    }
+  },
+  {
+    "variant": "candidate",
+    "repetition": 4,
+    "result": {
+      "timestamp": "2026-09-27T16:59:04.218Z",
+      "compilerFingerprint": {
+        "commit": "6c228b37ad32b1cfa110c173caaea4ef8a12897b",
+        "sha256": "ac852d5d9cc39288b083f877a57e775f90f1aba24d25fe23d04a367f39f15e4c",
+        "javascriptFiles": 125,
+        "sourceSha256": "df25df7620a45bb20b475ea383eebac0f4011e3722a97cf5c370f792eb367198",
+        "sourceFiles": 137,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "node": "v24.8.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Max",
+      "app": "e2e/react-start/server-functions",
+      "repetitions": 1,
+      "profile": false,
+      "summary": {
+        "medianBuildMs": 962.539917,
+        "minBuildMs": 962.539917,
+        "maxBuildMs": 962.539917,
+        "medianWallMs": 1092.5161249999999,
+        "medianPeakRssMiB": 507.375
+      },
+      "samples": [
+        {
+          "repetition": 0,
+          "wallMs": 1092.5161249999999,
+          "buildMs": 962.539917,
+          "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+          "peakRssKiB": 519552,
+          "before": {
+            "rss": 88784896,
+            "heapTotal": 25149440,
+            "heapUsed": 14174200,
+            "external": 3832029,
+            "arrayBuffers": 36007
+          },
+          "after": {
+            "rss": 530972672,
+            "heapTotal": 222937088,
+            "heapUsed": 80003088,
+            "external": 14699282,
+            "arrayBuffers": 3125925
+          },
+          "retained": {
+            "rss": 530415616,
+            "heapTotal": 203423744,
+            "heapUsed": 56943176,
+            "external": 9506746,
+            "arrayBuffers": 54451
+          },
+          "emittedFiles": 163,
+          "emittedCodeBytes": 1213766,
+          "hookTimings": {}
+        }
+      ]
+    }
+  }
+]
