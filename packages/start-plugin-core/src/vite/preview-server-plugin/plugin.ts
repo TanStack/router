@@ -1,10 +1,9 @@
 import { pathToFileURL } from 'node:url'
-import { basename, extname, join } from 'pathe'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { joinURL } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { getServerOutputDirectory } from '../output-directory'
-import { getBundlerOptions } from '../../utils'
+import { resolveServerEntry } from './resolve-server-entry'
 import type { Plugin } from 'vite'
 
 export function previewServerPlugin(): Plugin {
@@ -24,20 +23,15 @@ export function previewServerPlugin(): Plugin {
             try {
               // Lazy load server build on first request
               if (!serverBuild) {
-                // Derive output filename from input
+                // Resolve the entry the build actually emitted, rather than
+                // reconstructing its name from the input and pinning `.js`.
                 const serverEnv =
                   server.config.environments[VITE_ENVIRONMENT_NAMES.server]
-                const serverInput =
-                  getBundlerOptions(serverEnv?.build)?.input ?? 'server'
-
-                if (typeof serverInput !== 'string') {
-                  throw new Error('Invalid server input. Expected a string.')
-                }
-
-                // Get basename without extension and add .js
-                const outputFilename = `${basename(serverInput, extname(serverInput))}.js`
                 const serverOutputDir = getServerOutputDirectory(server.config)
-                const serverEntryPath = join(serverOutputDir, outputFilename)
+                const serverEntryPath = resolveServerEntry(
+                  serverEnv?.build,
+                  serverOutputDir,
+                )
                 const imported = await import(
                   pathToFileURL(serverEntryPath).toString()
                 )
