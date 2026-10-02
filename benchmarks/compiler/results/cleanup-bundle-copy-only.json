@@ -1,0 +1,730 @@
+{
+  "schemaVersion": 1,
+  "benchmarkName": "Bundle Size (gzip)",
+  "measuredAt": "2026-09-27T21:28:20.918Z",
+  "status": {
+    "state": "success",
+    "command": "node scripts/benchmarks/bundle-size/measure.mjs --skip-package-builds",
+    "scenarioFilter": null,
+    "measuredScenarios": [
+      "react-router.minimal",
+      "react-router.full",
+      "solid-router.minimal",
+      "solid-router.full",
+      "vue-router.minimal",
+      "vue-router.full",
+      "react-start.minimal",
+      "react-start.query-integration",
+      "react-start.deferred-hydration",
+      "react-start.full",
+      "react-start.rsbuild.minimal",
+      "react-start.rsbuild.minimal-iife",
+      "react-start.rsbuild.full",
+      "solid-start.minimal",
+      "solid-start.deferred-hydration",
+      "solid-start.full",
+      "vue-start.minimal",
+      "vue-start.full"
+    ],
+    "packageBuildProjects": [
+      "@tanstack/react-router",
+      "@tanstack/react-router-ssr-query",
+      "@tanstack/react-start",
+      "@tanstack/router-plugin",
+      "@tanstack/solid-router",
+      "@tanstack/solid-start",
+      "@tanstack/vue-router",
+      "@tanstack/vue-start"
+    ],
+    "skipPackageBuilds": true,
+    "durationMs": 7250,
+    "git": {
+      "sha": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+      "branch": "",
+      "dirty": true
+    }
+  },
+  "metrics": [
+    {
+      "id": "react-router.minimal",
+      "scenarioDir": "react-router-minimal",
+      "outDir": "react-router-minimal",
+      "toolchain": "vite",
+      "framework": "react",
+      "packageName": "@tanstack/react-router",
+      "case": "minimal",
+      "entryKey": "index.html",
+      "manifestPath": ".vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/react-router-minimal",
+      "initialJsFiles": ["assets/index-DezmNzpH.js"],
+      "jsFiles": ["assets/index-DezmNzpH.js", "assets/routes-D_aSM7i5.js"],
+      "files": [
+        {
+          "file": "assets/index-DezmNzpH.js",
+          "rawBytes": 267514,
+          "gzipBytes": 85822,
+          "brotliBytes": 74819,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-D_aSM7i5.js",
+          "rawBytes": 134,
+          "gzipBytes": 139,
+          "brotliBytes": 100,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 267514,
+      "initialGzipBytes": 85822,
+      "initialBrotliBytes": 74819,
+      "rawBytes": 267648,
+      "gzipBytes": 85961,
+      "brotliBytes": 74919
+    },
+    {
+      "id": "react-router.full",
+      "scenarioDir": "react-router-full",
+      "outDir": "react-router-full",
+      "toolchain": "vite",
+      "framework": "react",
+      "packageName": "@tanstack/react-router",
+      "case": "full",
+      "entryKey": "index.html",
+      "manifestPath": ".vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/react-router-full",
+      "initialJsFiles": ["assets/index-DwqVWnpO.js"],
+      "jsFiles": ["assets/index-DwqVWnpO.js", "assets/routes-ChfrDZnF.js"],
+      "files": [
+        {
+          "file": "assets/index-DwqVWnpO.js",
+          "rawBytes": 279682,
+          "gzipBytes": 89469,
+          "brotliBytes": 78050,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-ChfrDZnF.js",
+          "rawBytes": 134,
+          "gzipBytes": 139,
+          "brotliBytes": 99,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 279682,
+      "initialGzipBytes": 89469,
+      "initialBrotliBytes": 78050,
+      "rawBytes": 279816,
+      "gzipBytes": 89608,
+      "brotliBytes": 78149
+    },
+    {
+      "id": "solid-router.minimal",
+      "scenarioDir": "solid-router-minimal",
+      "outDir": "solid-router-minimal",
+      "toolchain": "vite",
+      "framework": "solid",
+      "packageName": "@tanstack/solid-router",
+      "case": "minimal",
+      "entryKey": "index.html",
+      "manifestPath": ".vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/solid-router-minimal",
+      "initialJsFiles": ["assets/index-Dy_3Ox3l.js"],
+      "jsFiles": ["assets/index-Dy_3Ox3l.js", "assets/routes-D8hSF7ZI.js"],
+      "files": [
+        {
+          "file": "assets/index-Dy_3Ox3l.js",
+          "rawBytes": 98185,
+          "gzipBytes": 34213,
+          "brotliBytes": 30944,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-D8hSF7ZI.js",
+          "rawBytes": 115,
+          "gzipBytes": 126,
+          "brotliBytes": 114,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 98185,
+      "initialGzipBytes": 34213,
+      "initialBrotliBytes": 30944,
+      "rawBytes": 98300,
+      "gzipBytes": 34339,
+      "brotliBytes": 31058
+    },
+    {
+      "id": "solid-router.full",
+      "scenarioDir": "solid-router-full",
+      "outDir": "solid-router-full",
+      "toolchain": "vite",
+      "framework": "solid",
+      "packageName": "@tanstack/solid-router",
+      "case": "full",
+      "entryKey": "index.html",
+      "manifestPath": ".vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/solid-router-full",
+      "initialJsFiles": ["assets/index-D6Cf9lm3.js"],
+      "jsFiles": ["assets/index-D6Cf9lm3.js", "assets/routes-CefOHnPT.js"],
+      "files": [
+        {
+          "file": "assets/index-D6Cf9lm3.js",
+          "rawBytes": 113298,
+          "gzipBytes": 39216,
+          "brotliBytes": 35413,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-CefOHnPT.js",
+          "rawBytes": 115,
+          "gzipBytes": 126,
+          "brotliBytes": 89,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 113298,
+      "initialGzipBytes": 39216,
+      "initialBrotliBytes": 35413,
+      "rawBytes": 113413,
+      "gzipBytes": 39342,
+      "brotliBytes": 35502
+    },
+    {
+      "id": "vue-router.minimal",
+      "scenarioDir": "vue-router-minimal",
+      "outDir": "vue-router-minimal",
+      "toolchain": "vite",
+      "framework": "vue",
+      "packageName": "@tanstack/vue-router",
+      "case": "minimal",
+      "entryKey": "index.html",
+      "manifestPath": ".vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/vue-router-minimal",
+      "initialJsFiles": ["assets/index-mTVmRlrH.js"],
+      "jsFiles": ["assets/index-mTVmRlrH.js", "assets/routes-C7yO66tv.js"],
+      "files": [
+        {
+          "file": "assets/index-mTVmRlrH.js",
+          "rawBytes": 139933,
+          "gzipBytes": 50480,
+          "brotliBytes": 45706,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-C7yO66tv.js",
+          "rawBytes": 118,
+          "gzipBytes": 126,
+          "brotliBytes": 109,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 139933,
+      "initialGzipBytes": 50480,
+      "initialBrotliBytes": 45706,
+      "rawBytes": 140051,
+      "gzipBytes": 50606,
+      "brotliBytes": 45815
+    },
+    {
+      "id": "vue-router.full",
+      "scenarioDir": "vue-router-full",
+      "outDir": "vue-router-full",
+      "toolchain": "vite",
+      "framework": "vue",
+      "packageName": "@tanstack/vue-router",
+      "case": "full",
+      "entryKey": "index.html",
+      "manifestPath": ".vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/vue-router-full",
+      "initialJsFiles": ["assets/index-BWTd4vpu.js"],
+      "jsFiles": ["assets/index-BWTd4vpu.js", "assets/routes-Cawy44i-.js"],
+      "files": [
+        {
+          "file": "assets/index-BWTd4vpu.js",
+          "rawBytes": 158677,
+          "gzipBytes": 56230,
+          "brotliBytes": 50737,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-Cawy44i-.js",
+          "rawBytes": 118,
+          "gzipBytes": 127,
+          "brotliBytes": 106,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 158677,
+      "initialGzipBytes": 56230,
+      "initialBrotliBytes": 50737,
+      "rawBytes": 158795,
+      "gzipBytes": 56357,
+      "brotliBytes": 50843
+    },
+    {
+      "id": "react-start.minimal",
+      "scenarioDir": "react-start-minimal",
+      "outDir": "react-start-minimal",
+      "toolchain": "vite",
+      "framework": "react",
+      "packageName": "@tanstack/react-start",
+      "case": "minimal",
+      "entryKey": "../../../../packages/react-start/dist/plugin/default-entry/client.tsx",
+      "manifestPath": "client/.vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/react-start-minimal/client",
+      "initialJsFiles": ["assets/index-Ck3thpH5.js"],
+      "jsFiles": ["assets/index-Ck3thpH5.js", "assets/routes-TQHRe3aq.js"],
+      "files": [
+        {
+          "file": "assets/index-Ck3thpH5.js",
+          "rawBytes": 309473,
+          "gzipBytes": 98963,
+          "brotliBytes": 85976,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-TQHRe3aq.js",
+          "rawBytes": 134,
+          "gzipBytes": 139,
+          "brotliBytes": 99,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 309473,
+      "initialGzipBytes": 98963,
+      "initialBrotliBytes": 85976,
+      "rawBytes": 309607,
+      "gzipBytes": 99102,
+      "brotliBytes": 86075
+    },
+    {
+      "id": "react-start.query-integration",
+      "scenarioDir": "react-start-query-integration",
+      "outDir": "react-start-query-integration",
+      "toolchain": "vite",
+      "framework": "react",
+      "packageName": "@tanstack/react-start",
+      "case": "query-integration",
+      "entryKey": "../../../../packages/react-start/dist/plugin/default-entry/client.tsx",
+      "manifestPath": "client/.vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/react-start-query-integration/client",
+      "initialJsFiles": ["assets/index-SOeWYOIw.js"],
+      "jsFiles": ["assets/index-SOeWYOIw.js", "assets/routes-2MJ2Kim1.js"],
+      "files": [
+        {
+          "file": "assets/index-SOeWYOIw.js",
+          "rawBytes": 336722,
+          "gzipBytes": 106565,
+          "brotliBytes": 92577,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-2MJ2Kim1.js",
+          "rawBytes": 134,
+          "gzipBytes": 141,
+          "brotliBytes": 121,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 336722,
+      "initialGzipBytes": 106565,
+      "initialBrotliBytes": 92577,
+      "rawBytes": 336856,
+      "gzipBytes": 106706,
+      "brotliBytes": 92698
+    },
+    {
+      "id": "react-start.deferred-hydration",
+      "scenarioDir": "react-start-deferred-hydration",
+      "outDir": "react-start-deferred-hydration",
+      "toolchain": "vite",
+      "framework": "react",
+      "packageName": "@tanstack/react-start",
+      "case": "deferred-hydration",
+      "entryKey": "../../../../packages/react-start/dist/plugin/default-entry/client.tsx",
+      "manifestPath": "client/.vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/react-start-deferred-hydration/client",
+      "initialJsFiles": ["assets/index-vM0EXIJD.js"],
+      "jsFiles": [
+        "assets/index-vM0EXIJD.js",
+        "assets/routes-DL-MLbtK.js",
+        "assets/routes-Df4DJCJi.js"
+      ],
+      "files": [
+        {
+          "file": "assets/index-vM0EXIJD.js",
+          "rawBytes": 309511,
+          "gzipBytes": 98984,
+          "brotliBytes": 85979,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-DL-MLbtK.js",
+          "rawBytes": 1358,
+          "gzipBytes": 724,
+          "brotliBytes": 667,
+          "initial": false
+        },
+        {
+          "file": "assets/routes-Df4DJCJi.js",
+          "rawBytes": 127,
+          "gzipBytes": 136,
+          "brotliBytes": 104,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 309511,
+      "initialGzipBytes": 98984,
+      "initialBrotliBytes": 85979,
+      "rawBytes": 310996,
+      "gzipBytes": 99844,
+      "brotliBytes": 86750
+    },
+    {
+      "id": "react-start.full",
+      "scenarioDir": "react-start-full",
+      "outDir": "react-start-full",
+      "toolchain": "vite",
+      "framework": "react",
+      "packageName": "@tanstack/react-start",
+      "case": "full",
+      "entryKey": "../../../../packages/react-start/dist/plugin/default-entry/client.tsx",
+      "manifestPath": "client/.vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/react-start-full/client",
+      "initialJsFiles": ["assets/index-DReDPjAv.js"],
+      "jsFiles": ["assets/index-DReDPjAv.js", "assets/routes-DAHZpLCD.js"],
+      "files": [
+        {
+          "file": "assets/index-DReDPjAv.js",
+          "rawBytes": 319416,
+          "gzipBytes": 102178,
+          "brotliBytes": 88545,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-DAHZpLCD.js",
+          "rawBytes": 134,
+          "gzipBytes": 139,
+          "brotliBytes": 106,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 319416,
+      "initialGzipBytes": 102178,
+      "initialBrotliBytes": 88545,
+      "rawBytes": 319550,
+      "gzipBytes": 102317,
+      "brotliBytes": 88651
+    },
+    {
+      "id": "react-start.rsbuild.minimal",
+      "scenarioDir": "react-start-minimal",
+      "outDir": "react-start-rsbuild-minimal",
+      "toolchain": "rsbuild",
+      "framework": "react",
+      "packageName": "@tanstack/react-start",
+      "case": "minimal",
+      "entryKey": "index",
+      "manifestPath": "client/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/react-start-rsbuild-minimal/client",
+      "initialJsFiles": ["assets/js/index.eaa5bdd014.js"],
+      "jsFiles": [
+        "assets/js/async/589.b6964ce98f.js",
+        "assets/js/index.eaa5bdd014.js"
+      ],
+      "files": [
+        {
+          "file": "assets/js/async/589.b6964ce98f.js",
+          "rawBytes": 222,
+          "gzipBytes": 174,
+          "brotliBytes": 141,
+          "initial": false
+        },
+        {
+          "file": "assets/js/index.eaa5bdd014.js",
+          "rawBytes": 320684,
+          "gzipBytes": 102564,
+          "brotliBytes": 88627,
+          "initial": true
+        }
+      ],
+      "initialRawBytes": 320684,
+      "initialGzipBytes": 102564,
+      "initialBrotliBytes": 88627,
+      "rawBytes": 320906,
+      "gzipBytes": 102738,
+      "brotliBytes": 88768
+    },
+    {
+      "id": "react-start.rsbuild.minimal-iife",
+      "scenarioDir": "react-start-minimal",
+      "outDir": "react-start-rsbuild-minimal-iife",
+      "toolchain": "rsbuild",
+      "framework": "react",
+      "packageName": "@tanstack/react-start",
+      "case": "minimal-iife",
+      "entryKey": "index",
+      "manifestPath": "client/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/react-start-rsbuild-minimal-iife/client",
+      "initialJsFiles": ["assets/js/index.a6b243e2e0.js"],
+      "jsFiles": [
+        "assets/js/async/589.e7d5e2d0e2.js",
+        "assets/js/index.a6b243e2e0.js"
+      ],
+      "files": [
+        {
+          "file": "assets/js/async/589.e7d5e2d0e2.js",
+          "rawBytes": 187,
+          "gzipBytes": 169,
+          "brotliBytes": 150,
+          "initial": false
+        },
+        {
+          "file": "assets/js/index.a6b243e2e0.js",
+          "rawBytes": 321695,
+          "gzipBytes": 102988,
+          "brotliBytes": 88915,
+          "initial": true
+        }
+      ],
+      "initialRawBytes": 321695,
+      "initialGzipBytes": 102988,
+      "initialBrotliBytes": 88915,
+      "rawBytes": 321882,
+      "gzipBytes": 103157,
+      "brotliBytes": 89065
+    },
+    {
+      "id": "react-start.rsbuild.full",
+      "scenarioDir": "react-start-full",
+      "outDir": "react-start-rsbuild-full",
+      "toolchain": "rsbuild",
+      "framework": "react",
+      "packageName": "@tanstack/react-start",
+      "case": "full",
+      "entryKey": "index",
+      "manifestPath": "client/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/react-start-rsbuild-full/client",
+      "initialJsFiles": ["assets/js/index.0ddd0f5c20.js"],
+      "jsFiles": [
+        "assets/js/async/589.b6964ce98f.js",
+        "assets/js/index.0ddd0f5c20.js"
+      ],
+      "files": [
+        {
+          "file": "assets/js/async/589.b6964ce98f.js",
+          "rawBytes": 222,
+          "gzipBytes": 174,
+          "brotliBytes": 141,
+          "initial": false
+        },
+        {
+          "file": "assets/js/index.0ddd0f5c20.js",
+          "rawBytes": 331019,
+          "gzipBytes": 105875,
+          "brotliBytes": 91366,
+          "initial": true
+        }
+      ],
+      "initialRawBytes": 331019,
+      "initialGzipBytes": 105875,
+      "initialBrotliBytes": 91366,
+      "rawBytes": 331241,
+      "gzipBytes": 106049,
+      "brotliBytes": 91507
+    },
+    {
+      "id": "solid-start.minimal",
+      "scenarioDir": "solid-start-minimal",
+      "outDir": "solid-start-minimal",
+      "toolchain": "vite",
+      "framework": "solid",
+      "packageName": "@tanstack/solid-start",
+      "case": "minimal",
+      "entryKey": "../../../../packages/solid-start/dist/plugin/default-entry/client.tsx",
+      "manifestPath": "client/.vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/solid-start-minimal/client",
+      "initialJsFiles": ["assets/index-B0qjIHsX.js"],
+      "jsFiles": ["assets/index-B0qjIHsX.js", "assets/routes-BQFXEekx.js"],
+      "files": [
+        {
+          "file": "assets/index-B0qjIHsX.js",
+          "rawBytes": 138919,
+          "gzipBytes": 47373,
+          "brotliBytes": 42237,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-BQFXEekx.js",
+          "rawBytes": 118,
+          "gzipBytes": 129,
+          "brotliBytes": 119,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 138919,
+      "initialGzipBytes": 47373,
+      "initialBrotliBytes": 42237,
+      "rawBytes": 139037,
+      "gzipBytes": 47502,
+      "brotliBytes": 42356
+    },
+    {
+      "id": "solid-start.deferred-hydration",
+      "scenarioDir": "solid-start-deferred-hydration",
+      "outDir": "solid-start-deferred-hydration",
+      "toolchain": "vite",
+      "framework": "solid",
+      "packageName": "@tanstack/solid-start",
+      "case": "deferred-hydration",
+      "entryKey": "../../../../packages/solid-start/dist/plugin/default-entry/client.tsx",
+      "manifestPath": "client/.vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/solid-start-deferred-hydration/client",
+      "initialJsFiles": ["assets/index-BIBdV0Vn.js"],
+      "jsFiles": [
+        "assets/index-BIBdV0Vn.js",
+        "assets/routes-DuQdI2eu.js",
+        "assets/routes-TZDnLIP-.js"
+      ],
+      "files": [
+        {
+          "file": "assets/index-BIBdV0Vn.js",
+          "rawBytes": 139023,
+          "gzipBytes": 47440,
+          "brotliBytes": 42243,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-DuQdI2eu.js",
+          "rawBytes": 7442,
+          "gzipBytes": 3061,
+          "brotliBytes": 2797,
+          "initial": false
+        },
+        {
+          "file": "assets/routes-TZDnLIP-.js",
+          "rawBytes": 116,
+          "gzipBytes": 128,
+          "brotliBytes": 97,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 139023,
+      "initialGzipBytes": 47440,
+      "initialBrotliBytes": 42243,
+      "rawBytes": 146581,
+      "gzipBytes": 50629,
+      "brotliBytes": 45137
+    },
+    {
+      "id": "solid-start.full",
+      "scenarioDir": "solid-start-full",
+      "outDir": "solid-start-full",
+      "toolchain": "vite",
+      "framework": "solid",
+      "packageName": "@tanstack/solid-start",
+      "case": "full",
+      "entryKey": "../../../../packages/solid-start/dist/plugin/default-entry/client.tsx",
+      "manifestPath": "client/.vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/solid-start-full/client",
+      "initialJsFiles": ["assets/index-DXth79Aa.js"],
+      "jsFiles": ["assets/index-DXth79Aa.js", "assets/routes-DSCkGZ-I.js"],
+      "files": [
+        {
+          "file": "assets/index-DXth79Aa.js",
+          "rawBytes": 154634,
+          "gzipBytes": 52558,
+          "brotliBytes": 46582,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-DSCkGZ-I.js",
+          "rawBytes": 118,
+          "gzipBytes": 128,
+          "brotliBytes": 95,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 154634,
+      "initialGzipBytes": 52558,
+      "initialBrotliBytes": 46582,
+      "rawBytes": 154752,
+      "gzipBytes": 52686,
+      "brotliBytes": 46677
+    },
+    {
+      "id": "vue-start.minimal",
+      "scenarioDir": "vue-start-minimal",
+      "outDir": "vue-start-minimal",
+      "toolchain": "vite",
+      "framework": "vue",
+      "packageName": "@tanstack/vue-start",
+      "case": "minimal",
+      "entryKey": "../../../../packages/vue-start/dist/plugin/default-entry/client.tsx",
+      "manifestPath": "client/.vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/vue-start-minimal/client",
+      "initialJsFiles": ["assets/index-QUrTZhJK.js"],
+      "jsFiles": ["assets/index-QUrTZhJK.js", "assets/routes-B-T8eoIb.js"],
+      "files": [
+        {
+          "file": "assets/index-QUrTZhJK.js",
+          "rawBytes": 190578,
+          "gzipBytes": 66915,
+          "brotliBytes": 59739,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-B-T8eoIb.js",
+          "rawBytes": 118,
+          "gzipBytes": 127,
+          "brotliBytes": 102,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 190578,
+      "initialGzipBytes": 66915,
+      "initialBrotliBytes": 59739,
+      "rawBytes": 190696,
+      "gzipBytes": 67042,
+      "brotliBytes": 59841
+    },
+    {
+      "id": "vue-start.full",
+      "scenarioDir": "vue-start-full",
+      "outDir": "vue-start-full",
+      "toolchain": "vite",
+      "framework": "vue",
+      "packageName": "@tanstack/vue-start",
+      "case": "full",
+      "entryKey": "../../../../packages/vue-start/dist/plugin/default-entry/client.tsx",
+      "manifestPath": "client/.vite/manifest.json",
+      "manifestOutDir": "benchmarks/bundle-size/dist/vue-start-full/client",
+      "initialJsFiles": ["assets/index-DN9eru7X.js"],
+      "jsFiles": ["assets/index-DN9eru7X.js", "assets/routes-Sbm3s8Zr.js"],
+      "files": [
+        {
+          "file": "assets/index-DN9eru7X.js",
+          "rawBytes": 203186,
+          "gzipBytes": 70866,
+          "brotliBytes": 63154,
+          "initial": true
+        },
+        {
+          "file": "assets/routes-Sbm3s8Zr.js",
+          "rawBytes": 118,
+          "gzipBytes": 126,
+          "brotliBytes": 95,
+          "initial": false
+        }
+      ],
+      "initialRawBytes": 203186,
+      "initialGzipBytes": 70866,
+      "initialBrotliBytes": 63154,
+      "rawBytes": 203304,
+      "gzipBytes": 70992,
+      "brotliBytes": 63249
+    }
+  ],
+  "generatedAt": "2026-09-27T21:28:28.178Z",
+  "sha": "c6c33e22857cdefcad00e217201f05e5bcd39551"
+}

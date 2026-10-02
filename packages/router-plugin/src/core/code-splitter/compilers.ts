@@ -4,13 +4,13 @@ import {
   analyzeModule,
   cloneModuleAst,
   collectModuleReferences,
+  createBindingCleanup,
   createIdentifier,
   expandTransitively,
   generateModule,
   linkGeneratedReference,
   moduleDeclarationGraph,
   parseStatements,
-  removeUnusedBindings,
   unwrapExpression,
 } from '@tanstack/router-utils'
 import { tsrShared, tsrSplit } from '../constants'
@@ -84,6 +84,7 @@ export type RouteModuleAnalysis = {
   module: Module
   routes: Array<RouteDefinition>
   graph: ReturnType<typeof moduleDeclarationGraph>
+  cleanup: ReturnType<typeof createBindingCleanup>
   exported: Map<Symbol, Array<string>>
 }
 
@@ -162,7 +163,13 @@ export function analyzeRouteModule(
       exported.set(entry.local, names)
     }
   }
-  return { module, routes, graph: moduleDeclarationGraph(module), exported }
+  return {
+    module,
+    routes,
+    graph: moduleDeclarationGraph(module),
+    cleanup: createBindingCleanup(module),
+    exported,
+  }
 }
 
 function sourceAnalysis(options: SourceOptions) {
@@ -723,7 +730,7 @@ export function compileCodeSplitReferenceRoute(
       exports(sharedExports, addSharedSearchParamToFilename(options.filename)),
     )
   }
-  removeUnusedBindings(analysis.module, program, originalNodes)
+  analysis.cleanup(program, originalNodes)
   if (knownExported.size) {
     const message = createNotExportableMessage(options.filename, knownExported)
     console.warn(message)
@@ -850,7 +857,7 @@ export function compileCodeSplitVirtualRoute(
   }
   addSharedImports(program, options.sharedBindings, options.filename)
   program.body.push(...generatedExports)
-  removeUnusedBindings(analysis.module, program, originalNodes)
+  analysis.cleanup(program, originalNodes)
   stripUnownedExpressions(analysis.module, program, originalNodes)
   return generateModule(program, {
     source: options.code,
@@ -945,7 +952,7 @@ export function compileCodeSplitSharedRoute(
         .map((name) => ({ local: name, exported: name })),
     ),
   )
-  removeUnusedBindings(analysis.module, program, originalNodes, {
+  analysis.cleanup(program, originalNodes, {
     preserveInitiallyUnused: false,
   })
   return generateModule(program, {

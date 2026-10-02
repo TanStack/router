@@ -1,0 +1,1814 @@
+{
+  "samples": [
+    {
+      "variant": "baseline",
+      "repetition": 0,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4d610161c0bf0247e5ff49c756533d6c84a56ead53786a2349b7179efcbb2281",
+      "modules": 128,
+      "case": "route",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+        "javascriptFiles": 126,
+        "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63537152,
+        "heapTotal": 11632640,
+        "heapUsed": 6279544,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 65372160,
+        "heapTotal": 16613376,
+        "heapUsed": 7419960,
+        "external": 2834133,
+        "arrayBuffers": 544499
+      },
+      "populated": {
+        "rss": 77791232,
+        "heapTotal": 19759104,
+        "heapUsed": 9974432,
+        "external": 2824661,
+        "arrayBuffers": 574195
+      },
+      "released": {
+        "rss": 77824000,
+        "heapTotal": 18186240,
+        "heapUsed": 6917952,
+        "external": 2824661,
+        "arrayBuffers": 25515
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "baseline",
+      "repetition": 1,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4d610161c0bf0247e5ff49c756533d6c84a56ead53786a2349b7179efcbb2281",
+      "modules": 128,
+      "case": "route",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+        "javascriptFiles": 126,
+        "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63930368,
+        "heapTotal": 11894784,
+        "heapUsed": 6279424,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 65798144,
+        "heapTotal": 17137664,
+        "heapUsed": 7420032,
+        "external": 2834133,
+        "arrayBuffers": 544499
+      },
+      "populated": {
+        "rss": 77955072,
+        "heapTotal": 20283392,
+        "heapUsed": 9974344,
+        "external": 2824661,
+        "arrayBuffers": 574195
+      },
+      "released": {
+        "rss": 77987840,
+        "heapTotal": 18448384,
+        "heapUsed": 6917976,
+        "external": 2824661,
+        "arrayBuffers": 394279
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "baseline",
+      "repetition": 2,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4d610161c0bf0247e5ff49c756533d6c84a56ead53786a2349b7179efcbb2281",
+      "modules": 128,
+      "case": "route",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+        "javascriptFiles": 126,
+        "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63717376,
+        "heapTotal": 11632640,
+        "heapUsed": 6279408,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 65536000,
+        "heapTotal": 16875520,
+        "heapUsed": 7420032,
+        "external": 2834133,
+        "arrayBuffers": 544499
+      },
+      "populated": {
+        "rss": 77496320,
+        "heapTotal": 20021248,
+        "heapUsed": 9974088,
+        "external": 2824661,
+        "arrayBuffers": 574195
+      },
+      "released": {
+        "rss": 77529088,
+        "heapTotal": 18710528,
+        "heapUsed": 6917976,
+        "external": 2824661,
+        "arrayBuffers": 244059
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "baseline",
+      "repetition": 0,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4fc82213487476093877f5749f218fbda80ee1a6685918d8670eb8a9c42c133b",
+      "modules": 128,
+      "case": "nested",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+        "javascriptFiles": 126,
+        "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63733760,
+        "heapTotal": 11632640,
+        "heapUsed": 6289400,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 84672512,
+        "heapTotal": 18710528,
+        "heapUsed": 9307112,
+        "external": 19121401,
+        "arrayBuffers": 16458995
+      },
+      "populated": {
+        "rss": 240254976,
+        "heapTotal": 203522048,
+        "heapUsed": 66839600,
+        "external": 19677653,
+        "arrayBuffers": 17427187
+      },
+      "released": {
+        "rss": 240271360,
+        "heapTotal": 153714688,
+        "heapUsed": 7022320,
+        "external": 19677653,
+        "arrayBuffers": 11445123
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "baseline",
+      "repetition": 1,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4fc82213487476093877f5749f218fbda80ee1a6685918d8670eb8a9c42c133b",
+      "modules": 128,
+      "case": "nested",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+        "javascriptFiles": 126,
+        "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 64159744,
+        "heapTotal": 11632640,
+        "heapUsed": 6289400,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 85032960,
+        "heapTotal": 18710528,
+        "heapUsed": 9307112,
+        "external": 19121401,
+        "arrayBuffers": 16458995
+      },
+      "populated": {
+        "rss": 240599040,
+        "heapTotal": 202997760,
+        "heapUsed": 66839600,
+        "external": 19677653,
+        "arrayBuffers": 17427187
+      },
+      "released": {
+        "rss": 240599040,
+        "heapTotal": 155811840,
+        "heapUsed": 7022320,
+        "external": 19677653,
+        "arrayBuffers": 8741327
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "baseline",
+      "repetition": 2,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4fc82213487476093877f5749f218fbda80ee1a6685918d8670eb8a9c42c133b",
+      "modules": 128,
+      "case": "nested",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+        "javascriptFiles": 126,
+        "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63668224,
+        "heapTotal": 11632640,
+        "heapUsed": 6289592,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 84721664,
+        "heapTotal": 18972672,
+        "heapUsed": 9307112,
+        "external": 19121401,
+        "arrayBuffers": 16458995
+      },
+      "populated": {
+        "rss": 240828416,
+        "heapTotal": 202735616,
+        "heapUsed": 66839544,
+        "external": 19677653,
+        "arrayBuffers": 17427187
+      },
+      "released": {
+        "rss": 240828416,
+        "heapTotal": 157646848,
+        "heapUsed": 7022264,
+        "external": 19677653,
+        "arrayBuffers": 2722031
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "baseline",
+      "repetition": 0,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "3ce09d7a04930adb3aee1de4f50588a05281d4d2f91e82a684f0e4a1ef661a31",
+      "modules": 128,
+      "case": "wide",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+        "javascriptFiles": 126,
+        "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63946752,
+        "heapTotal": 11894784,
+        "heapUsed": 6327752,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 162873344,
+        "heapTotal": 35749888,
+        "heapUsed": 17042824,
+        "external": 86483169,
+        "arrayBuffers": 81749235
+      },
+      "populated": {
+        "rss": 592084992,
+        "heapTotal": 432111616,
+        "heapUsed": 292824824,
+        "external": 88818133,
+        "arrayBuffers": 86567667
+      },
+      "released": {
+        "rss": 556449792,
+        "heapTotal": 157122560,
+        "heapUsed": 7051136,
+        "external": 88818133,
+        "arrayBuffers": 24819
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "baseline",
+      "repetition": 1,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "3ce09d7a04930adb3aee1de4f50588a05281d4d2f91e82a684f0e4a1ef661a31",
+      "modules": 128,
+      "case": "wide",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+        "javascriptFiles": 126,
+        "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63963136,
+        "heapTotal": 11632640,
+        "heapUsed": 6327872,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 162299904,
+        "heapTotal": 35487744,
+        "heapUsed": 17042752,
+        "external": 87820421,
+        "arrayBuffers": 81749235
+      },
+      "populated": {
+        "rss": 594722816,
+        "heapTotal": 431849472,
+        "heapUsed": 292817592,
+        "external": 88818133,
+        "arrayBuffers": 86567667
+      },
+      "released": {
+        "rss": 558694400,
+        "heapTotal": 156073984,
+        "heapUsed": 7044208,
+        "external": 88818133,
+        "arrayBuffers": 24819
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "baseline",
+      "repetition": 2,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "3ce09d7a04930adb3aee1de4f50588a05281d4d2f91e82a684f0e4a1ef661a31",
+      "modules": 128,
+      "case": "wide",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+        "javascriptFiles": 126,
+        "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63815680,
+        "heapTotal": 11894784,
+        "heapUsed": 6327656,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 162103296,
+        "heapTotal": 35487744,
+        "heapUsed": 17042824,
+        "external": 87820421,
+        "arrayBuffers": 81749235
+      },
+      "populated": {
+        "rss": 592248832,
+        "heapTotal": 432373760,
+        "heapUsed": 292856512,
+        "external": 88818133,
+        "arrayBuffers": 86567667
+      },
+      "released": {
+        "rss": 556269568,
+        "heapTotal": 157122560,
+        "heapUsed": 7083000,
+        "external": 88818133,
+        "arrayBuffers": 24819
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "baseline",
+      "case": "splitter",
+      "result": {
+        "timestamp": "2026-09-27T21:18:12.080Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 1,
+        "diagnosticOnly": true,
+        "warmups": 0,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 106.22824999999999,
+            "minMsPerCorpus": 106.22824999999999,
+            "maxMsPerCorpus": 106.22824999999999,
+            "medianPeakRssMiB": 94.328125,
+            "medianRetainedHeapMiB": 7.956687927246094,
+            "medianWallMs": 175.414417,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 21.727506000000062,
+              "detectGroupings": 0.2717110000000389,
+              "sharedAnalysis": 2.5928750000002765,
+              "referenceCompile": 30.104423000000025,
+              "virtualCompile": 44.137695000000036,
+              "sharedCompile": 4.497747999999916
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 175.414417,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 106.22824999999999,
+            "phases": {
+              "parseAnalyze": 21.727506000000062,
+              "detectGroupings": 0.2717110000000389,
+              "sharedAnalysis": 2.5928750000002765,
+              "referenceCompile": 30.104423000000025,
+              "virtualCompile": 44.137695000000036,
+              "sharedCompile": 4.497747999999916
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 96592,
+            "before": {
+              "rss": 65536000,
+              "heapTotal": 16351232,
+              "heapUsed": 6717848,
+              "external": 2275281,
+              "arrayBuffers": 24819
+            },
+            "after": {
+              "rss": 98811904,
+              "heapTotal": 30916608,
+              "heapUsed": 16611528,
+              "external": 4300737,
+              "arrayBuffers": 2009997
+            },
+            "retained": {
+              "rss": 98910208,
+              "heapTotal": 30244864,
+              "heapUsed": 8343192,
+              "external": 4300737,
+              "arrayBuffers": 734703
+            },
+            "outputBytes": 148471,
+            "outputMapBytes": 540095,
+            "resolvedReferences": 0,
+            "outputDigest": "d2a65814695b37df7e700b343e1172d9523f30800334de79dfef6ac5653d6e95",
+            "diagnosticOnly": true
+          }
+        ]
+      }
+    },
+    {
+      "variant": "baseline",
+      "case": "live-cache",
+      "result": {
+        "timestamp": "2026-09-27T21:18:13.400Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "node": "v24.8.0",
+        "cpu": "Apple M3 Max",
+        "routes": 250,
+        "repetitions": 1,
+        "diagnosticOnly": true,
+        "summary": {
+          "medianBuildMs": 966.4904170000001,
+          "medianPeakRssMiB": 607.75,
+          "medianWallMs": 1273.3330839999999
+        },
+        "samples": [
+          {
+            "buildMs": 966.4904170000001,
+            "peakRssMiB": 607.75,
+            "sourceHash": "b4c8485827ae40187aaaf5fb7df6dd644e9cdf6f56aa9b1c65bd2267f2da7139",
+            "chunks": 751,
+            "emittedJsBytes": 722654,
+            "before": {
+              "rss": 132120576,
+              "heapTotal": 58802176,
+              "heapUsed": 23197776,
+              "external": 4398448,
+              "arrayBuffers": 44335
+            },
+            "after": {
+              "rss": 632487936,
+              "heapTotal": 247775232,
+              "heapUsed": 127628904,
+              "external": 5655806,
+              "arrayBuffers": 68485
+            },
+            "retained": {
+              "rss": 618954752,
+              "heapTotal": 203112448,
+              "heapUsed": 41848448,
+              "external": 5639422,
+              "arrayBuffers": 68485
+            },
+            "analyzerCalls": 751,
+            "analysesByFile": {
+              "routes/route-0002.tsx": 3,
+              "routes/__root.tsx": 1,
+              "routes/route-0001.tsx": 3,
+              "routes/route-0003.tsx": 3,
+              "routes/route-0006.tsx": 3,
+              "routes/route-0007.tsx": 3,
+              "routes/route-0008.tsx": 3,
+              "routes/route-0033.tsx": 3,
+              "routes/route-0004.tsx": 3,
+              "routes/route-0000.tsx": 3,
+              "routes/route-0027.tsx": 3,
+              "routes/route-0025.tsx": 3,
+              "routes/route-0009.tsx": 3,
+              "routes/route-0026.tsx": 3,
+              "routes/route-0005.tsx": 3,
+              "routes/route-0011.tsx": 3,
+              "routes/route-0028.tsx": 3,
+              "routes/route-0047.tsx": 3,
+              "routes/route-0010.tsx": 3,
+              "routes/route-0050.tsx": 3,
+              "routes/route-0030.tsx": 3,
+              "routes/route-0040.tsx": 3,
+              "routes/route-0041.tsx": 3,
+              "routes/route-0034.tsx": 3,
+              "routes/route-0048.tsx": 3,
+              "routes/route-0032.tsx": 3,
+              "routes/route-0031.tsx": 3,
+              "routes/route-0054.tsx": 3,
+              "routes/route-0035.tsx": 3,
+              "routes/route-0012.tsx": 3,
+              "routes/route-0049.tsx": 3,
+              "routes/route-0053.tsx": 3,
+              "routes/route-0036.tsx": 3,
+              "routes/route-0042.tsx": 3,
+              "routes/route-0043.tsx": 3,
+              "routes/route-0013.tsx": 3,
+              "routes/route-0052.tsx": 3,
+              "routes/route-0070.tsx": 3,
+              "routes/route-0044.tsx": 3,
+              "routes/route-0051.tsx": 3,
+              "routes/route-0014.tsx": 3,
+              "routes/route-0045.tsx": 3,
+              "routes/route-0029.tsx": 3,
+              "routes/route-0083.tsx": 3,
+              "routes/route-0046.tsx": 3,
+              "routes/route-0015.tsx": 3,
+              "routes/route-0095.tsx": 3,
+              "routes/route-0062.tsx": 3,
+              "routes/route-0055.tsx": 3,
+              "routes/route-0092.tsx": 3,
+              "routes/route-0016.tsx": 3,
+              "routes/route-0063.tsx": 3,
+              "routes/route-0056.tsx": 3,
+              "routes/route-0017.tsx": 3,
+              "routes/route-0093.tsx": 3,
+              "routes/route-0066.tsx": 3,
+              "routes/route-0071.tsx": 3,
+              "routes/route-0094.tsx": 3,
+              "routes/route-0018.tsx": 3,
+              "routes/route-0057.tsx": 3,
+              "routes/route-0064.tsx": 3,
+              "routes/route-0109.tsx": 3,
+              "routes/route-0019.tsx": 3,
+              "routes/route-0072.tsx": 3,
+              "routes/route-0067.tsx": 3,
+              "routes/route-0065.tsx": 3,
+              "routes/route-0020.tsx": 3,
+              "routes/route-0068.tsx": 3,
+              "routes/route-0069.tsx": 3,
+              "routes/route-0073.tsx": 3,
+              "routes/route-0021.tsx": 3,
+              "routes/route-0122.tsx": 3,
+              "routes/route-0037.tsx": 3,
+              "routes/route-0087.tsx": 3,
+              "routes/route-0074.tsx": 3,
+              "routes/route-0110.tsx": 3,
+              "routes/route-0078.tsx": 3,
+              "routes/route-0022.tsx": 3,
+              "routes/route-0091.tsx": 3,
+              "routes/route-0111.tsx": 3,
+              "routes/route-0079.tsx": 3,
+              "routes/route-0023.tsx": 3,
+              "routes/route-0038.tsx": 3,
+              "routes/route-0096.tsx": 3,
+              "routes/route-0112.tsx": 3,
+              "routes/route-0080.tsx": 3,
+              "routes/route-0024.tsx": 3,
+              "routes/route-0081.tsx": 3,
+              "routes/route-0039.tsx": 3,
+              "routes/route-0097.tsx": 3,
+              "routes/route-0113.tsx": 3,
+              "routes/route-0076.tsx": 3,
+              "routes/route-0082.tsx": 3,
+              "routes/route-0114.tsx": 3,
+              "routes/route-0085.tsx": 3,
+              "routes/route-0098.tsx": 3,
+              "routes/route-0115.tsx": 3,
+              "routes/route-0116.tsx": 3,
+              "routes/route-0086.tsx": 3,
+              "routes/route-0099.tsx": 3,
+              "routes/route-0089.tsx": 3,
+              "routes/route-0117.tsx": 3,
+              "routes/route-0141.tsx": 3,
+              "routes/route-0123.tsx": 3,
+              "routes/route-0118.tsx": 3,
+              "routes/route-0077.tsx": 3,
+              "routes/route-0100.tsx": 3,
+              "routes/route-0124.tsx": 3,
+              "routes/route-0119.tsx": 3,
+              "routes/route-0120.tsx": 3,
+              "routes/route-0105.tsx": 3,
+              "routes/route-0101.tsx": 3,
+              "routes/route-0125.tsx": 3,
+              "routes/route-0106.tsx": 3,
+              "routes/route-0090.tsx": 3,
+              "routes/route-0126.tsx": 3,
+              "routes/route-0107.tsx": 3,
+              "routes/route-0121.tsx": 3,
+              "routes/route-0059.tsx": 3,
+              "routes/route-0127.tsx": 3,
+              "routes/route-0058.tsx": 3,
+              "routes/route-0061.tsx": 3,
+              "routes/route-0088.tsx": 3,
+              "routes/route-0128.tsx": 3,
+              "routes/route-0103.tsx": 3,
+              "routes/route-0108.tsx": 3,
+              "routes/route-0172.tsx": 3,
+              "routes/route-0156.tsx": 3,
+              "routes/route-0104.tsx": 3,
+              "routes/route-0129.tsx": 3,
+              "routes/route-0148.tsx": 3,
+              "routes/route-0130.tsx": 3,
+              "routes/route-0146.tsx": 3,
+              "routes/route-0157.tsx": 3,
+              "routes/route-0152.tsx": 3,
+              "routes/route-0084.tsx": 3,
+              "routes/route-0147.tsx": 3,
+              "routes/route-0075.tsx": 3,
+              "routes/route-0158.tsx": 3,
+              "routes/route-0145.tsx": 3,
+              "routes/route-0150.tsx": 3,
+              "routes/route-0131.tsx": 3,
+              "routes/route-0201.tsx": 3,
+              "routes/route-0132.tsx": 3,
+              "routes/route-0154.tsx": 3,
+              "routes/route-0186.tsx": 3,
+              "routes/route-0133.tsx": 3,
+              "routes/route-0173.tsx": 3,
+              "routes/route-0153.tsx": 3,
+              "routes/route-0060.tsx": 3,
+              "routes/route-0102.tsx": 3,
+              "routes/route-0187.tsx": 3,
+              "routes/route-0249.tsx": 3,
+              "routes/route-0134.tsx": 3,
+              "routes/route-0149.tsx": 3,
+              "routes/route-0202.tsx": 3,
+              "routes/route-0144.tsx": 3,
+              "routes/route-0188.tsx": 3,
+              "routes/route-0177.tsx": 3,
+              "routes/route-0189.tsx": 3,
+              "routes/route-0203.tsx": 3,
+              "routes/route-0135.tsx": 3,
+              "routes/route-0178.tsx": 3,
+              "routes/route-0175.tsx": 3,
+              "routes/route-0155.tsx": 3,
+              "routes/route-0204.tsx": 3,
+              "routes/route-0151.tsx": 3,
+              "routes/route-0180.tsx": 3,
+              "routes/route-0159.tsx": 3,
+              "routes/route-0205.tsx": 3,
+              "routes/route-0179.tsx": 3,
+              "routes/route-0143.tsx": 3,
+              "routes/route-0160.tsx": 3,
+              "routes/route-0206.tsx": 3,
+              "routes/route-0195.tsx": 3,
+              "routes/route-0174.tsx": 3,
+              "routes/route-0169.tsx": 3,
+              "routes/route-0198.tsx": 3,
+              "routes/route-0196.tsx": 3,
+              "routes/route-0170.tsx": 3,
+              "routes/route-0207.tsx": 3,
+              "routes/route-0199.tsx": 3,
+              "routes/route-0181.tsx": 3,
+              "routes/route-0197.tsx": 3,
+              "routes/route-0167.tsx": 3,
+              "routes/route-0191.tsx": 3,
+              "routes/route-0208.tsx": 3,
+              "routes/route-0171.tsx": 3,
+              "routes/route-0163.tsx": 3,
+              "routes/route-0183.tsx": 3,
+              "routes/route-0184.tsx": 3,
+              "routes/route-0192.tsx": 3,
+              "routes/route-0176.tsx": 3,
+              "routes/route-0209.tsx": 3,
+              "routes/route-0200.tsx": 3,
+              "routes/route-0162.tsx": 3,
+              "routes/route-0185.tsx": 3,
+              "routes/route-0182.tsx": 3,
+              "routes/route-0161.tsx": 3,
+              "routes/route-0230.tsx": 3,
+              "routes/route-0193.tsx": 3,
+              "routes/route-0194.tsx": 3,
+              "routes/route-0139.tsx": 3,
+              "routes/route-0190.tsx": 3,
+              "routes/route-0142.tsx": 3,
+              "routes/route-0136.tsx": 3,
+              "routes/route-0211.tsx": 3,
+              "routes/route-0214.tsx": 3,
+              "routes/route-0240.tsx": 3,
+              "routes/route-0168.tsx": 3,
+              "routes/route-0224.tsx": 3,
+              "routes/route-0221.tsx": 3,
+              "routes/route-0140.tsx": 3,
+              "routes/route-0232.tsx": 3,
+              "routes/route-0212.tsx": 3,
+              "routes/route-0222.tsx": 3,
+              "routes/route-0220.tsx": 3,
+              "routes/route-0236.tsx": 3,
+              "routes/route-0210.tsx": 3,
+              "routes/route-0223.tsx": 3,
+              "routes/route-0213.tsx": 3,
+              "routes/route-0226.tsx": 3,
+              "routes/route-0235.tsx": 3,
+              "routes/route-0164.tsx": 3,
+              "routes/route-0239.tsx": 3,
+              "routes/route-0138.tsx": 3,
+              "routes/route-0234.tsx": 3,
+              "routes/route-0238.tsx": 3,
+              "routes/route-0233.tsx": 3,
+              "routes/route-0137.tsx": 3,
+              "routes/route-0245.tsx": 3,
+              "routes/route-0216.tsx": 3,
+              "routes/route-0244.tsx": 3,
+              "routes/route-0242.tsx": 3,
+              "routes/route-0241.tsx": 3,
+              "routes/route-0246.tsx": 3,
+              "routes/route-0215.tsx": 3,
+              "routes/route-0217.tsx": 3,
+              "routes/route-0247.tsx": 3,
+              "routes/route-0248.tsx": 3,
+              "routes/route-0227.tsx": 3,
+              "routes/route-0228.tsx": 3,
+              "routes/route-0165.tsx": 3,
+              "routes/route-0218.tsx": 3,
+              "routes/route-0231.tsx": 3,
+              "routes/route-0219.tsx": 3,
+              "routes/route-0166.tsx": 3,
+              "routes/route-0237.tsx": 3,
+              "routes/route-0225.tsx": 3,
+              "routes/route-0243.tsx": 3,
+              "routes/route-0229.tsx": 3
+            },
+            "liveCache": {
+              "entries": 128,
+              "beforeClear": {
+                "rss": 492978176,
+                "heapTotal": 212811776,
+                "heapUsed": 43343112,
+                "external": 13908570,
+                "arrayBuffers": 1809989
+              },
+              "afterClear": {
+                "rss": 492306432,
+                "heapTotal": 178733056,
+                "heapUsed": 35690672,
+                "external": 5636350,
+                "arrayBuffers": 1291757
+              }
+            },
+            "wallMs": 1273.3330839999999
+          }
+        ]
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 0,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4d610161c0bf0247e5ff49c756533d6c84a56ead53786a2349b7179efcbb2281",
+      "modules": 128,
+      "case": "route",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+        "javascriptFiles": 126,
+        "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63733760,
+        "heapTotal": 11632640,
+        "heapUsed": 6270752,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 65519616,
+        "heapTotal": 16613376,
+        "heapUsed": 7411168,
+        "external": 2834133,
+        "arrayBuffers": 544499
+      },
+      "populated": {
+        "rss": 77987840,
+        "heapTotal": 19759104,
+        "heapUsed": 10248016,
+        "external": 2824661,
+        "arrayBuffers": 574195
+      },
+      "released": {
+        "rss": 78004224,
+        "heapTotal": 18186240,
+        "heapUsed": 6909040,
+        "external": 2824661,
+        "arrayBuffers": 239999
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "candidate",
+      "repetition": 1,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4d610161c0bf0247e5ff49c756533d6c84a56ead53786a2349b7179efcbb2281",
+      "modules": 128,
+      "case": "route",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+        "javascriptFiles": 126,
+        "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63553536,
+        "heapTotal": 11632640,
+        "heapUsed": 6270896,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 65273856,
+        "heapTotal": 16613376,
+        "heapUsed": 7411312,
+        "external": 2834133,
+        "arrayBuffers": 544499
+      },
+      "populated": {
+        "rss": 78069760,
+        "heapTotal": 20021248,
+        "heapUsed": 10247912,
+        "external": 2824661,
+        "arrayBuffers": 574195
+      },
+      "released": {
+        "rss": 78069760,
+        "heapTotal": 17924096,
+        "heapUsed": 6909176,
+        "external": 2824661,
+        "arrayBuffers": 57299
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "candidate",
+      "repetition": 2,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4d610161c0bf0247e5ff49c756533d6c84a56ead53786a2349b7179efcbb2281",
+      "modules": 128,
+      "case": "route",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+        "javascriptFiles": 126,
+        "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63602688,
+        "heapTotal": 11632640,
+        "heapUsed": 6270752,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 65355776,
+        "heapTotal": 16875520,
+        "heapUsed": 7411168,
+        "external": 2834133,
+        "arrayBuffers": 544499
+      },
+      "populated": {
+        "rss": 78086144,
+        "heapTotal": 20021248,
+        "heapUsed": 10248168,
+        "external": 2824661,
+        "arrayBuffers": 574195
+      },
+      "released": {
+        "rss": 77987840,
+        "heapTotal": 18972672,
+        "heapUsed": 6909080,
+        "external": 2824661,
+        "arrayBuffers": 34331
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "candidate",
+      "repetition": 0,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4fc82213487476093877f5749f218fbda80ee1a6685918d8670eb8a9c42c133b",
+      "modules": 128,
+      "case": "nested",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+        "javascriptFiles": 126,
+        "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63881216,
+        "heapTotal": 11894784,
+        "heapUsed": 6280392,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 84819968,
+        "heapTotal": 19234816,
+        "heapUsed": 9298320,
+        "external": 19121401,
+        "arrayBuffers": 16458995
+      },
+      "populated": {
+        "rss": 261013504,
+        "heapTotal": 209289216,
+        "heapUsed": 73192096,
+        "external": 19677653,
+        "arrayBuffers": 17427187
+      },
+      "released": {
+        "rss": 261029888,
+        "heapTotal": 157122560,
+        "heapUsed": 7011480,
+        "external": 19677653,
+        "arrayBuffers": 629939
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "candidate",
+      "repetition": 1,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4fc82213487476093877f5749f218fbda80ee1a6685918d8670eb8a9c42c133b",
+      "modules": 128,
+      "case": "nested",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+        "javascriptFiles": 126,
+        "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63504384,
+        "heapTotal": 11632640,
+        "heapUsed": 6280608,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 84426752,
+        "heapTotal": 18710528,
+        "heapUsed": 9298320,
+        "external": 19121401,
+        "arrayBuffers": 16458995
+      },
+      "populated": {
+        "rss": 259309568,
+        "heapTotal": 209551360,
+        "heapUsed": 73191616,
+        "external": 19677653,
+        "arrayBuffers": 17427187
+      },
+      "released": {
+        "rss": 259325952,
+        "heapTotal": 155549696,
+        "heapUsed": 7011408,
+        "external": 19677653,
+        "arrayBuffers": 2940995
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "candidate",
+      "repetition": 2,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "4fc82213487476093877f5749f218fbda80ee1a6685918d8670eb8a9c42c133b",
+      "modules": 128,
+      "case": "nested",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+        "javascriptFiles": 126,
+        "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63504384,
+        "heapTotal": 11632640,
+        "heapUsed": 6280608,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 84443136,
+        "heapTotal": 18710528,
+        "heapUsed": 9298320,
+        "external": 19121401,
+        "arrayBuffers": 16458995
+      },
+      "populated": {
+        "rss": 259817472,
+        "heapTotal": 209551360,
+        "heapUsed": 73191560,
+        "external": 19677653,
+        "arrayBuffers": 17427187
+      },
+      "released": {
+        "rss": 259457024,
+        "heapTotal": 152403968,
+        "heapUsed": 7011352,
+        "external": 19677653,
+        "arrayBuffers": 493787
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "candidate",
+      "repetition": 0,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "3ce09d7a04930adb3aee1de4f50588a05281d4d2f91e82a684f0e4a1ef661a31",
+      "modules": 128,
+      "case": "wide",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+        "javascriptFiles": 126,
+        "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63291392,
+        "heapTotal": 11894784,
+        "heapUsed": 6334912,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 161415168,
+        "heapTotal": 35749888,
+        "heapUsed": 17049872,
+        "external": 87820421,
+        "arrayBuffers": 81749235
+      },
+      "populated": {
+        "rss": 624410624,
+        "heapTotal": 464093184,
+        "heapUsed": 325736688,
+        "external": 88818133,
+        "arrayBuffers": 86567667
+      },
+      "released": {
+        "rss": 588414976,
+        "heapTotal": 160268288,
+        "heapUsed": 7040200,
+        "external": 88818133,
+        "arrayBuffers": 24819
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "candidate",
+      "repetition": 1,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "3ce09d7a04930adb3aee1de4f50588a05281d4d2f91e82a684f0e4a1ef661a31",
+      "modules": 128,
+      "case": "wide",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+        "javascriptFiles": 126,
+        "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63979520,
+        "heapTotal": 11894784,
+        "heapUsed": 6318768,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 163676160,
+        "heapTotal": 35487744,
+        "heapUsed": 17033960,
+        "external": 84572809,
+        "arrayBuffers": 81749235
+      },
+      "populated": {
+        "rss": 631029760,
+        "heapTotal": 466190336,
+        "heapUsed": 325726472,
+        "external": 88818133,
+        "arrayBuffers": 86567667
+      },
+      "released": {
+        "rss": 595165184,
+        "heapTotal": 158433280,
+        "heapUsed": 7029720,
+        "external": 88818133,
+        "arrayBuffers": 24819
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "candidate",
+      "repetition": 2,
+      "diagnosticOnly": true,
+      "node": "v24.8.0",
+      "sourceSha256": "3ce09d7a04930adb3aee1de4f50588a05281d4d2f91e82a684f0e4a1ef661a31",
+      "modules": 128,
+      "case": "wide",
+      "compiler": {
+        "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+        "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+        "javascriptFiles": 126,
+        "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+        "sourceFiles": 138,
+        "dependencyVersions": {
+          "yuku-analyzer": "0.12.0",
+          "yuku-ast": "0.12.0",
+          "yuku-codegen": "0.12.0",
+          "@yuku-toolchain/types": "0.12.0"
+        }
+      },
+      "before": {
+        "rss": 63700992,
+        "heapTotal": 11370496,
+        "heapUsed": 6318888,
+        "external": 2275281,
+        "arrayBuffers": 24819
+      },
+      "analyzed": {
+        "rss": 163414016,
+        "heapTotal": 35225600,
+        "heapUsed": 17033960,
+        "external": 86769723,
+        "arrayBuffers": 81749235
+      },
+      "populated": {
+        "rss": 627392512,
+        "heapTotal": 467238912,
+        "heapUsed": 325726976,
+        "external": 88818133,
+        "arrayBuffers": 86567667
+      },
+      "released": {
+        "rss": 591396864,
+        "heapTotal": 158433280,
+        "heapUsed": 7030416,
+        "external": 88818133,
+        "arrayBuffers": 24819
+      },
+      "remainingModules": 0
+    },
+    {
+      "variant": "candidate",
+      "case": "splitter",
+      "result": {
+        "timestamp": "2026-09-27T21:18:19.722Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 1,
+        "diagnosticOnly": true,
+        "warmups": 0,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 97.63620899999998,
+            "minMsPerCorpus": 97.63620899999998,
+            "maxMsPerCorpus": 97.63620899999998,
+            "medianPeakRssMiB": 93.609375,
+            "medianRetainedHeapMiB": 7.948944091796875,
+            "medianWallMs": 156.921875,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 19.538374000000147,
+              "detectGroupings": 0.2414070000000379,
+              "sharedAnalysis": 2.297252999999955,
+              "referenceCompile": 27.525706999999898,
+              "virtualCompile": 40.794166000000274,
+              "sharedCompile": 4.518417000000056
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 156.921875,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 97.63620899999998,
+            "phases": {
+              "parseAnalyze": 19.538374000000147,
+              "detectGroupings": 0.2414070000000379,
+              "sharedAnalysis": 2.297252999999955,
+              "referenceCompile": 27.525706999999898,
+              "virtualCompile": 40.794166000000274,
+              "sharedCompile": 4.518417000000056
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 95856,
+            "before": {
+              "rss": 65404928,
+              "heapTotal": 16351232,
+              "heapUsed": 6543688,
+              "external": 2275281,
+              "arrayBuffers": 24819
+            },
+            "after": {
+              "rss": 98074624,
+              "heapTotal": 31178752,
+              "heapUsed": 13926544,
+              "external": 3665627,
+              "arrayBuffers": 1374887
+            },
+            "retained": {
+              "rss": 98156544,
+              "heapTotal": 30244864,
+              "heapUsed": 8335072,
+              "external": 3665627,
+              "arrayBuffers": 484619
+            },
+            "outputBytes": 148471,
+            "outputMapBytes": 540095,
+            "resolvedReferences": 0,
+            "outputDigest": "d2a65814695b37df7e700b343e1172d9523f30800334de79dfef6ac5653d6e95",
+            "diagnosticOnly": true
+          }
+        ]
+      }
+    },
+    {
+      "variant": "candidate",
+      "case": "live-cache",
+      "result": {
+        "timestamp": "2026-09-27T21:18:20.955Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "cpu": "Apple M3 Max",
+        "routes": 250,
+        "repetitions": 1,
+        "diagnosticOnly": true,
+        "summary": {
+          "medianBuildMs": 907.165,
+          "medianPeakRssMiB": 604.796875,
+          "medianWallMs": 1186.964708
+        },
+        "samples": [
+          {
+            "buildMs": 907.165,
+            "peakRssMiB": 604.796875,
+            "sourceHash": "b4c8485827ae40187aaaf5fb7df6dd644e9cdf6f56aa9b1c65bd2267f2da7139",
+            "chunks": 751,
+            "emittedJsBytes": 722654,
+            "before": {
+              "rss": 134414336,
+              "heapTotal": 59326464,
+              "heapUsed": 23151720,
+              "external": 4398448,
+              "arrayBuffers": 66319
+            },
+            "after": {
+              "rss": 629358592,
+              "heapTotal": 247742464,
+              "heapUsed": 127661120,
+              "external": 5655806,
+              "arrayBuffers": 68485
+            },
+            "retained": {
+              "rss": 615710720,
+              "heapTotal": 205996032,
+              "heapUsed": 41753832,
+              "external": 5639422,
+              "arrayBuffers": 68485
+            },
+            "analyzerCalls": 751,
+            "analysesByFile": {
+              "routes/route-0002.tsx": 3,
+              "routes/route-0000.tsx": 3,
+              "routes/route-0004.tsx": 3,
+              "routes/__root.tsx": 1,
+              "routes/route-0001.tsx": 3,
+              "routes/route-0005.tsx": 3,
+              "routes/route-0006.tsx": 3,
+              "routes/route-0009.tsx": 3,
+              "routes/route-0008.tsx": 3,
+              "routes/route-0003.tsx": 3,
+              "routes/route-0007.tsx": 3,
+              "routes/route-0012.tsx": 3,
+              "routes/route-0011.tsx": 3,
+              "routes/route-0014.tsx": 3,
+              "routes/route-0010.tsx": 3,
+              "routes/route-0017.tsx": 3,
+              "routes/route-0015.tsx": 3,
+              "routes/route-0028.tsx": 3,
+              "routes/route-0016.tsx": 3,
+              "routes/route-0022.tsx": 3,
+              "routes/route-0023.tsx": 3,
+              "routes/route-0018.tsx": 3,
+              "routes/route-0026.tsx": 3,
+              "routes/route-0025.tsx": 3,
+              "routes/route-0013.tsx": 3,
+              "routes/route-0019.tsx": 3,
+              "routes/route-0044.tsx": 3,
+              "routes/route-0027.tsx": 3,
+              "routes/route-0021.tsx": 3,
+              "routes/route-0036.tsx": 3,
+              "routes/route-0037.tsx": 3,
+              "routes/route-0029.tsx": 3,
+              "routes/route-0020.tsx": 3,
+              "routes/route-0038.tsx": 3,
+              "routes/route-0030.tsx": 3,
+              "routes/route-0039.tsx": 3,
+              "routes/route-0033.tsx": 3,
+              "routes/route-0041.tsx": 3,
+              "routes/route-0035.tsx": 3,
+              "routes/route-0034.tsx": 3,
+              "routes/route-0040.tsx": 3,
+              "routes/route-0031.tsx": 3,
+              "routes/route-0042.tsx": 3,
+              "routes/route-0043.tsx": 3,
+              "routes/route-0061.tsx": 3,
+              "routes/route-0072.tsx": 3,
+              "routes/route-0066.tsx": 3,
+              "routes/route-0063.tsx": 3,
+              "routes/route-0024.tsx": 3,
+              "routes/route-0032.tsx": 3,
+              "routes/route-0062.tsx": 3,
+              "routes/route-0045.tsx": 3,
+              "routes/route-0065.tsx": 3,
+              "routes/route-0067.tsx": 3,
+              "routes/route-0064.tsx": 3,
+              "routes/route-0046.tsx": 3,
+              "routes/route-0069.tsx": 3,
+              "routes/route-0068.tsx": 3,
+              "routes/route-0086.tsx": 3,
+              "routes/route-0071.tsx": 3,
+              "routes/route-0079.tsx": 3,
+              "routes/route-0070.tsx": 3,
+              "routes/route-0047.tsx": 3,
+              "routes/route-0080.tsx": 3,
+              "routes/route-0075.tsx": 3,
+              "routes/route-0081.tsx": 3,
+              "routes/route-0048.tsx": 3,
+              "routes/route-0073.tsx": 3,
+              "routes/route-0055.tsx": 3,
+              "routes/route-0054.tsx": 3,
+              "routes/route-0082.tsx": 3,
+              "routes/route-0083.tsx": 3,
+              "routes/route-0074.tsx": 3,
+              "routes/route-0056.tsx": 3,
+              "routes/route-0076.tsx": 3,
+              "routes/route-0084.tsx": 3,
+              "routes/route-0057.tsx": 3,
+              "routes/route-0049.tsx": 3,
+              "routes/route-0077.tsx": 3,
+              "routes/route-0051.tsx": 3,
+              "routes/route-0078.tsx": 3,
+              "routes/route-0085.tsx": 3,
+              "routes/route-0050.tsx": 3,
+              "routes/route-0058.tsx": 3,
+              "routes/route-0105.tsx": 3,
+              "routes/route-0052.tsx": 3,
+              "routes/route-0115.tsx": 3,
+              "routes/route-0095.tsx": 3,
+              "routes/route-0110.tsx": 3,
+              "routes/route-0096.tsx": 3,
+              "routes/route-0060.tsx": 3,
+              "routes/route-0113.tsx": 3,
+              "routes/route-0106.tsx": 3,
+              "routes/route-0097.tsx": 3,
+              "routes/route-0112.tsx": 3,
+              "routes/route-0107.tsx": 3,
+              "routes/route-0127.tsx": 3,
+              "routes/route-0114.tsx": 3,
+              "routes/route-0102.tsx": 3,
+              "routes/route-0111.tsx": 3,
+              "routes/route-0087.tsx": 3,
+              "routes/route-0108.tsx": 3,
+              "routes/route-0103.tsx": 3,
+              "routes/route-0116.tsx": 3,
+              "routes/route-0137.tsx": 3,
+              "routes/route-0101.tsx": 3,
+              "routes/route-0143.tsx": 3,
+              "routes/route-0117.tsx": 3,
+              "routes/route-0088.tsx": 3,
+              "routes/route-0109.tsx": 3,
+              "routes/route-0099.tsx": 3,
+              "routes/route-0138.tsx": 3,
+              "routes/route-0098.tsx": 3,
+              "routes/route-0139.tsx": 3,
+              "routes/route-0119.tsx": 3,
+              "routes/route-0140.tsx": 3,
+              "routes/route-0118.tsx": 3,
+              "routes/route-0125.tsx": 3,
+              "routes/route-0123.tsx": 3,
+              "routes/route-0089.tsx": 3,
+              "routes/route-0100.tsx": 3,
+              "routes/route-0092.tsx": 3,
+              "routes/route-0126.tsx": 3,
+              "routes/route-0120.tsx": 3,
+              "routes/route-0124.tsx": 3,
+              "routes/route-0121.tsx": 3,
+              "routes/route-0053.tsx": 3,
+              "routes/route-0094.tsx": 3,
+              "routes/route-0090.tsx": 3,
+              "routes/route-0132.tsx": 3,
+              "routes/route-0093.tsx": 3,
+              "routes/route-0134.tsx": 3,
+              "routes/route-0130.tsx": 3,
+              "routes/route-0122.tsx": 3,
+              "routes/route-0129.tsx": 3,
+              "routes/route-0133.tsx": 3,
+              "routes/route-0131.tsx": 3,
+              "routes/route-0135.tsx": 3,
+              "routes/route-0059.tsx": 3,
+              "routes/route-0181.tsx": 3,
+              "routes/route-0136.tsx": 3,
+              "routes/route-0168.tsx": 3,
+              "routes/route-0187.tsx": 3,
+              "routes/route-0155.tsx": 3,
+              "routes/route-0174.tsx": 3,
+              "routes/route-0156.tsx": 3,
+              "routes/route-0177.tsx": 3,
+              "routes/route-0142.tsx": 3,
+              "routes/route-0178.tsx": 3,
+              "routes/route-0144.tsx": 3,
+              "routes/route-0182.tsx": 3,
+              "routes/route-0179.tsx": 3,
+              "routes/route-0169.tsx": 3,
+              "routes/route-0157.tsx": 3,
+              "routes/route-0175.tsx": 3,
+              "routes/route-0184.tsx": 3,
+              "routes/route-0145.tsx": 3,
+              "routes/route-0180.tsx": 3,
+              "routes/route-0185.tsx": 3,
+              "routes/route-0128.tsx": 3,
+              "routes/route-0104.tsx": 3,
+              "routes/route-0163.tsx": 3,
+              "routes/route-0146.tsx": 3,
+              "routes/route-0151.tsx": 3,
+              "routes/route-0186.tsx": 3,
+              "routes/route-0183.tsx": 3,
+              "routes/route-0172.tsx": 3,
+              "routes/route-0176.tsx": 3,
+              "routes/route-0159.tsx": 3,
+              "routes/route-0152.tsx": 3,
+              "routes/route-0160.tsx": 3,
+              "routes/route-0171.tsx": 3,
+              "routes/route-0154.tsx": 3,
+              "routes/route-0161.tsx": 3,
+              "routes/route-0141.tsx": 3,
+              "routes/route-0162.tsx": 3,
+              "routes/route-0228.tsx": 3,
+              "routes/route-0148.tsx": 3,
+              "routes/route-0173.tsx": 3,
+              "routes/route-0147.tsx": 3,
+              "routes/route-0220.tsx": 3,
+              "routes/route-0224.tsx": 3,
+              "routes/route-0213.tsx": 3,
+              "routes/route-0165.tsx": 3,
+              "routes/route-0225.tsx": 3,
+              "routes/route-0214.tsx": 3,
+              "routes/route-0149.tsx": 3,
+              "routes/route-0226.tsx": 3,
+              "routes/route-0249.tsx": 3,
+              "routes/route-0164.tsx": 3,
+              "routes/route-0188.tsx": 3,
+              "routes/route-0221.tsx": 3,
+              "routes/route-0217.tsx": 3,
+              "routes/route-0227.tsx": 3,
+              "routes/route-0166.tsx": 3,
+              "routes/route-0229.tsx": 3,
+              "routes/route-0218.tsx": 3,
+              "routes/route-0215.tsx": 3,
+              "routes/route-0222.tsx": 3,
+              "routes/route-0201.tsx": 3,
+              "routes/route-0219.tsx": 3,
+              "routes/route-0189.tsx": 3,
+              "routes/route-0216.tsx": 3,
+              "routes/route-0230.tsx": 3,
+              "routes/route-0192.tsx": 3,
+              "routes/route-0091.tsx": 3,
+              "routes/route-0195.tsx": 3,
+              "routes/route-0196.tsx": 3,
+              "routes/route-0231.tsx": 3,
+              "routes/route-0199.tsx": 3,
+              "routes/route-0202.tsx": 3,
+              "routes/route-0200.tsx": 3,
+              "routes/route-0158.tsx": 3,
+              "routes/route-0190.tsx": 3,
+              "routes/route-0193.tsx": 3,
+              "routes/route-0170.tsx": 3,
+              "routes/route-0208.tsx": 3,
+              "routes/route-0194.tsx": 3,
+              "routes/route-0210.tsx": 3,
+              "routes/route-0167.tsx": 3,
+              "routes/route-0191.tsx": 3,
+              "routes/route-0232.tsx": 3,
+              "routes/route-0211.tsx": 3,
+              "routes/route-0150.tsx": 3,
+              "routes/route-0212.tsx": 3,
+              "routes/route-0205.tsx": 3,
+              "routes/route-0204.tsx": 3,
+              "routes/route-0203.tsx": 3,
+              "routes/route-0206.tsx": 3,
+              "routes/route-0239.tsx": 3,
+              "routes/route-0237.tsx": 3,
+              "routes/route-0197.tsx": 3,
+              "routes/route-0235.tsx": 3,
+              "routes/route-0240.tsx": 3,
+              "routes/route-0236.tsx": 3,
+              "routes/route-0241.tsx": 3,
+              "routes/route-0243.tsx": 3,
+              "routes/route-0247.tsx": 3,
+              "routes/route-0238.tsx": 3,
+              "routes/route-0244.tsx": 3,
+              "routes/route-0248.tsx": 3,
+              "routes/route-0153.tsx": 3,
+              "routes/route-0242.tsx": 3,
+              "routes/route-0223.tsx": 3,
+              "routes/route-0198.tsx": 3,
+              "routes/route-0233.tsx": 3,
+              "routes/route-0209.tsx": 3,
+              "routes/route-0234.tsx": 3,
+              "routes/route-0246.tsx": 3,
+              "routes/route-0245.tsx": 3,
+              "routes/route-0207.tsx": 3
+            },
+            "liveCache": {
+              "entries": 128,
+              "beforeClear": {
+                "rss": 492797952,
+                "heapTotal": 207568896,
+                "heapUsed": 43687072,
+                "external": 20355412,
+                "arrayBuffers": 1769349
+              },
+              "afterClear": {
+                "rss": 492044288,
+                "heapTotal": 180305920,
+                "heapUsed": 35622664,
+                "external": 5636350,
+                "arrayBuffers": 480413
+              }
+            },
+            "wallMs": 1186.964708
+          }
+        ]
+      }
+    }
+  ]
+}

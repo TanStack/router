@@ -1,0 +1,181 @@
+{
+  "method": "Eleven fresh alternating process pairs per batch. Delta is candidate / baseline - 1. Bootstrap interval resamples paired percentage deltas and takes the 2.5th/97.5th percentiles of their means; descriptive local uncertainty, not variation across applications.",
+  "bootstrapSeed": 8524,
+  "bootstrapResamples": 20000,
+  "results": [
+    {
+      "file": "cleanup-build-r192-h12-g4.json",
+      "routes": 192,
+      "helpers": 12,
+      "groups": 4,
+      "pairs": 11,
+      "baseline": {
+        "variant": "baseline",
+        "medianBuildMs": 5831.266292,
+        "meanBuildMs": 5981.871352181817,
+        "sdMs": 322.9846160855368,
+        "cvPercent": 5.399390877367029,
+        "medianGraphMs": 5071.4395,
+        "medianPeakRssMiB": 1614.515625
+      },
+      "candidate": {
+        "variant": "candidate",
+        "medianBuildMs": 5854.653375,
+        "meanBuildMs": 5825.262996454545,
+        "sdMs": 127.9351807194326,
+        "cvPercent": 2.1962129572055087,
+        "medianGraphMs": 5110.728542,
+        "medianPeakRssMiB": 1633.859375
+      },
+      "medianDeltaPercent": 0.4010635396995088,
+      "pairedMeanDeltaPercent": -2.421581769365042,
+      "pairedMeanBootstrap95": [-5.116824925249611, -0.12573773523994916],
+      "candidateFasterPairs": 6
+    },
+    {
+      "file": "cleanup-build-r64-h12-g1.json",
+      "routes": 64,
+      "helpers": 12,
+      "groups": 1,
+      "pairs": 11,
+      "baseline": {
+        "variant": "baseline",
+        "medianBuildMs": 1347.3220000000001,
+        "meanBuildMs": 1353.5294621818184,
+        "sdMs": 32.78752610789753,
+        "cvPercent": 2.4223725470331288,
+        "medianGraphMs": 1190.3657910000002,
+        "medianPeakRssMiB": 626.125
+      },
+      "candidate": {
+        "variant": "candidate",
+        "medianBuildMs": 1321.0070839999998,
+        "meanBuildMs": 1339.056807,
+        "sdMs": 61.07281670779201,
+        "cvPercent": 4.560883181992742,
+        "medianGraphMs": 1155.656917,
+        "medianPeakRssMiB": 638.03125
+      },
+      "medianDeltaPercent": -1.9531274632196505,
+      "pairedMeanDeltaPercent": -1.0923615162826774,
+      "pairedMeanBootstrap95": [-2.7300389586946117, 0.5697006057726415],
+      "candidateFasterPairs": 7
+    },
+    {
+      "file": "cleanup-build-r64-h12-g4-confirmation.json",
+      "routes": 64,
+      "helpers": 12,
+      "groups": 4,
+      "pairs": 11,
+      "baseline": {
+        "variant": "baseline",
+        "medianBuildMs": 2010.97675,
+        "meanBuildMs": 2084.9602727272727,
+        "sdMs": 210.51258224114167,
+        "cvPercent": 10.096719107543311,
+        "medianGraphMs": 1678.373083,
+        "medianPeakRssMiB": 716.109375
+      },
+      "candidate": {
+        "variant": "candidate",
+        "medianBuildMs": 1946.6159170000003,
+        "meanBuildMs": 1963.3957650909092,
+        "sdMs": 182.71150939657608,
+        "cvPercent": 9.305893016842488,
+        "medianGraphMs": 1589.813333,
+        "medianPeakRssMiB": 750.03125
+      },
+      "medianDeltaPercent": -3.2004762362369266,
+      "pairedMeanDeltaPercent": -5.521800395343868,
+      "pairedMeanBootstrap95": [-9.277564442072116, -0.9942520800623176],
+      "candidateFasterPairs": 10
+    },
+    {
+      "file": "cleanup-build-r64-h12-g4.json",
+      "routes": 64,
+      "helpers": 12,
+      "groups": 4,
+      "pairs": 11,
+      "baseline": {
+        "variant": "baseline",
+        "medianBuildMs": 1957.2515,
+        "meanBuildMs": 1961.9679886363635,
+        "sdMs": 36.69766516105534,
+        "cvPercent": 1.8704517797235574,
+        "medianGraphMs": 1628.149125,
+        "medianPeakRssMiB": 704.921875
+      },
+      "candidate": {
+        "variant": "candidate",
+        "medianBuildMs": 1883.694792,
+        "meanBuildMs": 1896.117178181818,
+        "sdMs": 47.82282725841747,
+        "cvPercent": 2.5221451400105273,
+        "medianGraphMs": 1566.317417,
+        "medianPeakRssMiB": 735.84375
+      },
+      "medianDeltaPercent": -3.7581633223936817,
+      "pairedMeanDeltaPercent": -3.3472054197675423,
+      "pairedMeanBootstrap95": [-4.541428549432033, -2.1031275746632367],
+      "candidateFasterPairs": 10
+    },
+    {
+      "file": "cleanup-build-r64-h2-g4.json",
+      "routes": 64,
+      "helpers": 2,
+      "groups": 4,
+      "pairs": 11,
+      "baseline": {
+        "variant": "baseline",
+        "medianBuildMs": 663.9409579999999,
+        "meanBuildMs": 667.1099166363637,
+        "sdMs": 14.191892824269738,
+        "cvPercent": 2.127369488948195,
+        "medianGraphMs": 456.453958,
+        "medianPeakRssMiB": 485.328125
+      },
+      "candidate": {
+        "variant": "candidate",
+        "medianBuildMs": 657.5430839999999,
+        "meanBuildMs": 668.3862615454545,
+        "sdMs": 32.89605516835101,
+        "cvPercent": 4.921713245913848,
+        "medianGraphMs": 450.32345799999996,
+        "medianPeakRssMiB": 481.21875
+      },
+      "medianDeltaPercent": -0.9636209248594096,
+      "pairedMeanDeltaPercent": 0.20879127077525592,
+      "pairedMeanBootstrap95": [-2.226728258747488, 3.305664910175799],
+      "candidateFasterPairs": 8
+    },
+    {
+      "file": "cleanup-build-r64-h48-g4.json",
+      "routes": 64,
+      "helpers": 48,
+      "groups": 4,
+      "pairs": 11,
+      "baseline": {
+        "variant": "baseline",
+        "medianBuildMs": 7017.427125,
+        "meanBuildMs": 7203.829700727272,
+        "sdMs": 671.6251876460708,
+        "cvPercent": 9.323168585985119,
+        "medianGraphMs": 6242.448084000001,
+        "medianPeakRssMiB": 1723.9375
+      },
+      "candidate": {
+        "variant": "candidate",
+        "medianBuildMs": 6572.9908749999995,
+        "meanBuildMs": 6852.943511363637,
+        "sdMs": 761.4884282397092,
+        "cvPercent": 11.111844523116227,
+        "medianGraphMs": 5776.621166,
+        "medianPeakRssMiB": 1748.46875
+      },
+      "medianDeltaPercent": -6.333321915330902,
+      "pairedMeanDeltaPercent": -4.4381003148051565,
+      "pairedMeanBootstrap95": [-10.362192848351462, 2.317589907145602],
+      "candidateFasterPairs": 9
+    }
+  ]
+}

@@ -1,0 +1,2225 @@
+{
+  "loader": "import assert from 'node:assert/strict'\nimport { registerHooks } from 'node:module'\nconst edits = {\n  'copy-only': ['const originalOwners = new Map(graph.declarationSymbols);', 'const originalOwners = graph.declarationSymbols;'],\n  'cache-only': ['const { byName, originallyExported, declarationSymbols: originalOwners } = graph;', 'const { byName, originallyExported } = graph; const originalOwners = new Map(graph.declarationSymbols);'],\n}\nregisterHooks({ load(url, context, nextLoad) {\n  const loaded = nextLoad(url, context)\n  if (!url.endsWith('/router-utils/dist/esm/compiler-helpers.js')) { return loaded }\n  const source = typeof loaded.source === 'string' ? loaded.source : Buffer.from(loaded.source).toString()\n  const [before, after] = edits[process.env.CLEANUP_ATTRIBUTION]\n  assert.ok(source.includes(before), 'Expected attribution hunk missing')\n  return { ...loaded, source: source.replace(before, after) }\n}})\n",
+  "samples": [
+    {
+      "variant": "baseline",
+      "repetition": 0,
+      "result": {
+        "timestamp": "2026-09-27T21:18:21.949Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 64.6065291,
+            "minMsPerCorpus": 64.6065291,
+            "maxMsPerCorpus": 64.6065291,
+            "medianPeakRssMiB": 272.515625,
+            "medianRetainedHeapMiB": 8.872474670410156,
+            "medianWallMs": 907.660917,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 9.99297899999957,
+              "detectGroupings": 0.11845209999991084,
+              "sharedAnalysis": 1.7146241000004125,
+              "referenceCompile": 18.246866599999883,
+              "virtualCompile": 30.624657300000433,
+              "sharedCompile": 2.7395824999999716
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 907.660917,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 646.065291,
+            "phases": {
+              "parseAnalyze": 99.9297899999957,
+              "detectGroupings": 1.1845209999991084,
+              "sharedAnalysis": 17.146241000004125,
+              "referenceCompile": 182.46866599999885,
+              "virtualCompile": 306.24657300000433,
+              "sharedCompile": 27.395824999999718
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 279056,
+            "before": {
+              "rss": 112181248,
+              "heapTotal": 47808512,
+              "heapUsed": 8784824,
+              "external": 4983415,
+              "arrayBuffers": 650639
+            },
+            "after": {
+              "rss": 285589504,
+              "heapTotal": 157384704,
+              "heapUsed": 24902368,
+              "external": 6296224,
+              "arrayBuffers": 4005484
+            },
+            "retained": {
+              "rss": 285605888,
+              "heapTotal": 146112512,
+              "heapUsed": 9303464,
+              "external": 6296224,
+              "arrayBuffers": 119579
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "copy-only",
+      "repetition": 0,
+      "result": {
+        "timestamp": "2026-09-27T21:18:22.957Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 65.9305875,
+            "minMsPerCorpus": 65.9305875,
+            "maxMsPerCorpus": 65.9305875,
+            "medianPeakRssMiB": 211.515625,
+            "medianRetainedHeapMiB": 8.265525817871094,
+            "medianWallMs": 952.153667,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 10.614944900000205,
+              "detectGroupings": 0.11282799999986537,
+              "sharedAnalysis": 1.8088774999999147,
+              "referenceCompile": 18.46983960000025,
+              "virtualCompile": 30.946567100000028,
+              "sharedCompile": 2.839574899999968
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 952.153667,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 659.305875,
+            "phases": {
+              "parseAnalyze": 106.14944900000205,
+              "detectGroupings": 1.1282799999986537,
+              "sharedAnalysis": 18.088774999999146,
+              "referenceCompile": 184.6983960000025,
+              "virtualCompile": 309.46567100000027,
+              "sharedCompile": 28.395748999999682
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 216592,
+            "before": {
+              "rss": 125173760,
+              "heapTotal": 47808512,
+              "heapUsed": 8644920,
+              "external": 4015867,
+              "arrayBuffers": 668923
+            },
+            "after": {
+              "rss": 221724672,
+              "heapTotal": 168804352,
+              "heapUsed": 43850960,
+              "external": 12604554,
+              "arrayBuffers": 10313814
+            },
+            "retained": {
+              "rss": 221003776,
+              "heapTotal": 158957568,
+              "heapUsed": 8667032,
+              "external": 12604554,
+              "arrayBuffers": 10040494
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "cache-only",
+      "repetition": 0,
+      "result": {
+        "timestamp": "2026-09-27T21:18:23.914Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 66.5025417,
+            "minMsPerCorpus": 66.5025417,
+            "maxMsPerCorpus": 66.5025417,
+            "medianPeakRssMiB": 269.71875,
+            "medianRetainedHeapMiB": 8.241897583007812,
+            "medianWallMs": 905.1332500000001,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 10.986054199999785,
+              "detectGroupings": 0.06732740000015838,
+              "sharedAnalysis": 1.8446294000002126,
+              "referenceCompile": 18.963067899999988,
+              "virtualCompile": 30.825649199999805,
+              "sharedCompile": 2.695584000000042
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 905.1332500000001,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 665.025417,
+            "phases": {
+              "parseAnalyze": 109.86054199999785,
+              "detectGroupings": 0.6732740000015838,
+              "sharedAnalysis": 18.446294000002126,
+              "referenceCompile": 189.63067899999987,
+              "virtualCompile": 308.25649199999805,
+              "sharedCompile": 26.95584000000042
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 276192,
+            "before": {
+              "rss": 109887488,
+              "heapTotal": 47022080,
+              "heapUsed": 8516176,
+              "external": 7323453,
+              "arrayBuffers": 1264243
+            },
+            "after": {
+              "rss": 282722304,
+              "heapTotal": 162627584,
+              "heapUsed": 79818784,
+              "external": 23212339,
+              "arrayBuffers": 20921599
+            },
+            "retained": {
+              "rss": 282738688,
+              "heapTotal": 155549696,
+              "heapUsed": 8642256,
+              "external": 23212339,
+              "arrayBuffers": 20529451
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 0,
+      "result": {
+        "timestamp": "2026-09-27T21:18:24.916Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 68.4943,
+            "minMsPerCorpus": 68.4943,
+            "maxMsPerCorpus": 68.4943,
+            "medianPeakRssMiB": 272.96875,
+            "medianRetainedHeapMiB": 8.224525451660156,
+            "medianWallMs": 944.0757920000001,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.48797430000011,
+              "detectGroupings": 0.19525040000030458,
+              "sharedAnalysis": 1.859150199999749,
+              "referenceCompile": 19.37525539999981,
+              "virtualCompile": 31.145054000000414,
+              "sharedCompile": 3.265844400000026
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 944.0757920000001,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 684.943,
+            "phases": {
+              "parseAnalyze": 114.8797430000011,
+              "detectGroupings": 1.9525040000030458,
+              "sharedAnalysis": 18.59150199999749,
+              "referenceCompile": 193.7525539999981,
+              "virtualCompile": 311.45054000000414,
+              "sharedCompile": 32.65844400000026
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 279520,
+            "before": {
+              "rss": 111640576,
+              "heapTotal": 46759936,
+              "heapUsed": 8506280,
+              "external": 7184656,
+              "arrayBuffers": 3850410
+            },
+            "after": {
+              "rss": 286064640,
+              "heapTotal": 156860416,
+              "heapUsed": 52430464,
+              "external": 13964589,
+              "arrayBuffers": 11673849
+            },
+            "retained": {
+              "rss": 286081024,
+              "heapTotal": 145850368,
+              "heapUsed": 8624040,
+              "external": 13964589,
+              "arrayBuffers": 9878874
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "copy-only",
+      "repetition": 1,
+      "result": {
+        "timestamp": "2026-09-27T21:18:25.915Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 71.48165420000001,
+            "minMsPerCorpus": 71.48165420000001,
+            "maxMsPerCorpus": 71.48165420000001,
+            "medianPeakRssMiB": 257.40625,
+            "medianRetainedHeapMiB": 8.249099731445312,
+            "medianWallMs": 949.6910839999999,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.911094200000582,
+              "detectGroupings": 0.07626830000033351,
+              "sharedAnalysis": 2.069788499999686,
+              "referenceCompile": 19.561716799999555,
+              "virtualCompile": 33.4938138999996,
+              "sharedCompile": 3.1137662999999636
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 949.6910839999999,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 714.816542,
+            "phases": {
+              "parseAnalyze": 119.11094200000582,
+              "detectGroupings": 0.7626830000033351,
+              "sharedAnalysis": 20.69788499999686,
+              "referenceCompile": 195.61716799999556,
+              "virtualCompile": 334.938138999996,
+              "sharedCompile": 31.137662999999634
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 263584,
+            "before": {
+              "rss": 118030336,
+              "heapTotal": 47022080,
+              "heapUsed": 8559624,
+              "external": 5840005,
+              "arrayBuffers": 787619
+            },
+            "after": {
+              "rss": 269893632,
+              "heapTotal": 163676160,
+              "heapUsed": 79734936,
+              "external": 22722584,
+              "arrayBuffers": 20431844
+            },
+            "retained": {
+              "rss": 269910016,
+              "heapTotal": 157646848,
+              "heapUsed": 8649808,
+              "external": 22722584,
+              "arrayBuffers": 19967933
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "cache-only",
+      "repetition": 1,
+      "result": {
+        "timestamp": "2026-09-27T21:18:26.934Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 69.8894583,
+            "minMsPerCorpus": 69.8894583,
+            "maxMsPerCorpus": 69.8894583,
+            "medianPeakRssMiB": 270.125,
+            "medianRetainedHeapMiB": 8.291519165039062,
+            "medianWallMs": 959.0091659999999,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 12.643751900000348,
+              "detectGroupings": 0.07550289999969664,
+              "sharedAnalysis": 1.8625998000000776,
+              "referenceCompile": 19.75887090000008,
+              "virtualCompile": 31.4224337999995,
+              "sharedCompile": 2.9265491000000905
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 959.0091659999999,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 698.894583,
+            "phases": {
+              "parseAnalyze": 126.43751900000348,
+              "detectGroupings": 0.7550289999969664,
+              "sharedAnalysis": 18.625998000000777,
+              "referenceCompile": 197.5887090000008,
+              "virtualCompile": 314.224337999995,
+              "sharedCompile": 29.265491000000907
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 276608,
+            "before": {
+              "rss": 113229824,
+              "heapTotal": 48070656,
+              "heapUsed": 8480464,
+              "external": 5488957,
+              "arrayBuffers": 1329991
+            },
+            "after": {
+              "rss": 283197440,
+              "heapTotal": 162775040,
+              "heapUsed": 94093872,
+              "external": 27863130,
+              "arrayBuffers": 25572390
+            },
+            "retained": {
+              "rss": 283246592,
+              "heapTotal": 156860416,
+              "heapUsed": 8694288,
+              "external": 27863130,
+              "arrayBuffers": 25065566
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 1,
+      "result": {
+        "timestamp": "2026-09-27T21:18:27.923Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 67.0996542,
+            "minMsPerCorpus": 67.0996542,
+            "maxMsPerCorpus": 67.0996542,
+            "medianPeakRssMiB": 230.28125,
+            "medianRetainedHeapMiB": 8.21234130859375,
+            "medianWallMs": 931.378208,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.724551700000154,
+              "detectGroupings": 0.07237239999972189,
+              "sharedAnalysis": 1.7400461999999948,
+              "referenceCompile": 19.014545599999735,
+              "virtualCompile": 30.43975529999931,
+              "sharedCompile": 2.7922081000001073
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 931.378208,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 670.996542,
+            "phases": {
+              "parseAnalyze": 117.24551700000154,
+              "detectGroupings": 0.7237239999972189,
+              "sharedAnalysis": 17.400461999999948,
+              "referenceCompile": 190.14545599999735,
+              "virtualCompile": 304.3975529999931,
+              "sharedCompile": 27.92208100000107
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 235808,
+            "before": {
+              "rss": 114163712,
+              "heapTotal": 46759936,
+              "heapUsed": 8745272,
+              "external": 5046143,
+              "arrayBuffers": 866739
+            },
+            "after": {
+              "rss": 241401856,
+              "heapTotal": 159744000,
+              "heapUsed": 12597984,
+              "external": 3201620,
+              "arrayBuffers": 910880
+            },
+            "retained": {
+              "rss": 240680960,
+              "heapTotal": 145588224,
+              "heapUsed": 8611264,
+              "external": 3201620,
+              "arrayBuffers": 24819
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 1,
+      "result": {
+        "timestamp": "2026-09-27T21:18:28.946Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 69.7287125,
+            "minMsPerCorpus": 69.7287125,
+            "maxMsPerCorpus": 69.7287125,
+            "medianPeakRssMiB": 273.09375,
+            "medianRetainedHeapMiB": 8.719657897949219,
+            "medianWallMs": 967.876459,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.29844109999982,
+              "detectGroupings": 0.07664079999979094,
+              "sharedAnalysis": 1.824035099999935,
+              "referenceCompile": 19.10792870000021,
+              "virtualCompile": 33.01781910000009,
+              "sharedCompile": 3.150121500000034
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 967.876459,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 697.2871250000001,
+            "phases": {
+              "parseAnalyze": 112.9844109999982,
+              "detectGroupings": 0.7664079999979094,
+              "sharedAnalysis": 18.24035099999935,
+              "referenceCompile": 191.07928700000207,
+              "virtualCompile": 330.1781910000009,
+              "sharedCompile": 31.501215000000343
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 279648,
+            "before": {
+              "rss": 113639424,
+              "heapTotal": 47284224,
+              "heapUsed": 8782120,
+              "external": 4878778,
+              "arrayBuffers": 1103974
+            },
+            "after": {
+              "rss": 286212096,
+              "heapTotal": 157122560,
+              "heapUsed": 24437256,
+              "external": 6230596,
+              "arrayBuffers": 3939856
+            },
+            "retained": {
+              "rss": 286228480,
+              "heapTotal": 145850368,
+              "heapUsed": 9143224,
+              "external": 6230596,
+              "arrayBuffers": 2282287
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "cache-only",
+      "repetition": 2,
+      "result": {
+        "timestamp": "2026-09-27T21:18:29.950Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 69.356675,
+            "minMsPerCorpus": 69.356675,
+            "maxMsPerCorpus": 69.356675,
+            "medianPeakRssMiB": 271.390625,
+            "medianRetainedHeapMiB": 8.241607666015625,
+            "medianWallMs": 947.518958,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.792539599999998,
+              "detectGroupings": 0.07816629999987298,
+              "sharedAnalysis": 1.9398553000000789,
+              "referenceCompile": 19.914015400000302,
+              "virtualCompile": 31.640469399999983,
+              "sharedCompile": 2.700220000000047
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 947.518958,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 693.56675,
+            "phases": {
+              "parseAnalyze": 117.92539599999998,
+              "detectGroupings": 0.7816629999987299,
+              "sharedAnalysis": 19.39855300000079,
+              "referenceCompile": 199.140154000003,
+              "virtualCompile": 316.40469399999984,
+              "sharedCompile": 27.00220000000047
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 277904,
+            "before": {
+              "rss": 111558656,
+              "heapTotal": 47546368,
+              "heapUsed": 8523080,
+              "external": 7323453,
+              "arrayBuffers": 3177923
+            },
+            "after": {
+              "rss": 284475392,
+              "heapTotal": 162627584,
+              "heapUsed": 80169056,
+              "external": 23415477,
+              "arrayBuffers": 21124737
+            },
+            "retained": {
+              "rss": 284508160,
+              "heapTotal": 155811840,
+              "heapUsed": 8641952,
+              "external": 23415477,
+              "arrayBuffers": 20665571
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 2,
+      "result": {
+        "timestamp": "2026-09-27T21:18:30.855Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 63.15383750000001,
+            "minMsPerCorpus": 63.15383750000001,
+            "maxMsPerCorpus": 63.15383750000001,
+            "medianPeakRssMiB": 272.1875,
+            "medianRetainedHeapMiB": 8.225807189941406,
+            "medianWallMs": 856.332042,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 10.295342800000082,
+              "detectGroupings": 0.0639047999999434,
+              "sharedAnalysis": 1.7315626000000974,
+              "referenceCompile": 18.250503899999945,
+              "virtualCompile": 29.15670169999971,
+              "sharedCompile": 2.594186400000001
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 856.332042,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 631.5383750000001,
+            "phases": {
+              "parseAnalyze": 102.95342800000083,
+              "detectGroupings": 0.6390479999994341,
+              "sharedAnalysis": 17.315626000000975,
+              "referenceCompile": 182.50503899999944,
+              "virtualCompile": 291.5670169999971,
+              "sharedCompile": 25.94186400000001
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 278720,
+            "before": {
+              "rss": 110804992,
+              "heapTotal": 47808512,
+              "heapUsed": 8506312,
+              "external": 7220048,
+              "arrayBuffers": 4825544
+            },
+            "after": {
+              "rss": 285245440,
+              "heapTotal": 158171136,
+              "heapUsed": 52786512,
+              "external": 14132925,
+              "arrayBuffers": 11842185
+            },
+            "retained": {
+              "rss": 285294592,
+              "heapTotal": 146112512,
+              "heapUsed": 8625384,
+              "external": 14132925,
+              "arrayBuffers": 9986735
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 2,
+      "result": {
+        "timestamp": "2026-09-27T21:18:31.784Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 64.5441916,
+            "minMsPerCorpus": 64.5441916,
+            "maxMsPerCorpus": 64.5441916,
+            "medianPeakRssMiB": 239.8125,
+            "medianRetainedHeapMiB": 8.238235473632812,
+            "medianWallMs": 879.8067920000001,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 10.598844300000087,
+              "detectGroupings": 0.06428290000031893,
+              "sharedAnalysis": 1.6980637999996815,
+              "referenceCompile": 17.895406300000037,
+              "virtualCompile": 30.38605620000079,
+              "sharedCompile": 2.8542080000001078
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 879.8067920000001,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 645.441916,
+            "phases": {
+              "parseAnalyze": 105.98844300000087,
+              "detectGroupings": 0.6428290000031893,
+              "sharedAnalysis": 16.980637999996816,
+              "referenceCompile": 178.95406300000036,
+              "virtualCompile": 303.8605620000079,
+              "sharedCompile": 28.54208000000108
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 245568,
+            "before": {
+              "rss": 118374400,
+              "heapTotal": 46235648,
+              "heapUsed": 8545800,
+              "external": 6130242,
+              "arrayBuffers": 1313387
+            },
+            "after": {
+              "rss": 251379712,
+              "heapTotal": 160006144,
+              "heapUsed": 35547472,
+              "external": 9605722,
+              "arrayBuffers": 7314982
+            },
+            "retained": {
+              "rss": 250904576,
+              "heapTotal": 145588224,
+              "heapUsed": 8638416,
+              "external": 9605722,
+              "arrayBuffers": 5970626
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "copy-only",
+      "repetition": 2,
+      "result": {
+        "timestamp": "2026-09-27T21:18:32.700Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 62.2886125,
+            "minMsPerCorpus": 62.2886125,
+            "maxMsPerCorpus": 62.2886125,
+            "medianPeakRssMiB": 270.921875,
+            "medianRetainedHeapMiB": 8.32611083984375,
+            "medianWallMs": 863.537959,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 9.674089499999889,
+              "detectGroupings": 0.06068389999960573,
+              "sharedAnalysis": 1.8099773999999456,
+              "referenceCompile": 17.01084599999988,
+              "virtualCompile": 30.0659532999995,
+              "sharedCompile": 2.572296499999868
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 863.537959,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 622.886125,
+            "phases": {
+              "parseAnalyze": 96.74089499999889,
+              "detectGroupings": 0.6068389999960573,
+              "sharedAnalysis": 18.099773999999456,
+              "referenceCompile": 170.1084599999988,
+              "virtualCompile": 300.659532999995,
+              "sharedCompile": 25.72296499999868
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 277424,
+            "before": {
+              "rss": 112672768,
+              "heapTotal": 47546368,
+              "heapUsed": 8814064,
+              "external": 4511935,
+              "arrayBuffers": 448131
+            },
+            "after": {
+              "rss": 283590656,
+              "heapTotal": 158695424,
+              "heapUsed": 47937744,
+              "external": 12734544,
+              "arrayBuffers": 10443804
+            },
+            "retained": {
+              "rss": 283607040,
+              "heapTotal": 146374656,
+              "heapUsed": 8730560,
+              "external": 12734544,
+              "arrayBuffers": 8902974
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 3,
+      "result": {
+        "timestamp": "2026-09-27T21:18:33.627Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 63.7196416,
+            "minMsPerCorpus": 63.7196416,
+            "maxMsPerCorpus": 63.7196416,
+            "medianPeakRssMiB": 272.359375,
+            "medianRetainedHeapMiB": 8.216354370117188,
+            "medianWallMs": 876.781333,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 10.498700000000076,
+              "detectGroupings": 0.06121730000024854,
+              "sharedAnalysis": 1.8419951999998034,
+              "referenceCompile": 18.017359499999998,
+              "virtualCompile": 29.568188899999644,
+              "sharedCompile": 2.6717085000000225
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 876.781333,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 637.196416,
+            "phases": {
+              "parseAnalyze": 104.98700000000076,
+              "detectGroupings": 0.6121730000024854,
+              "sharedAnalysis": 18.419951999998034,
+              "referenceCompile": 180.17359499999998,
+              "virtualCompile": 295.68188899999643,
+              "sharedCompile": 26.717085000000225
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 278896,
+            "before": {
+              "rss": 111853568,
+              "heapTotal": 47284224,
+              "heapUsed": 8506592,
+              "external": 7220048,
+              "arrayBuffers": 4215634
+            },
+            "after": {
+              "rss": 285425664,
+              "heapTotal": 156860416,
+              "heapUsed": 52774600,
+              "external": 14066217,
+              "arrayBuffers": 11775477
+            },
+            "retained": {
+              "rss": 285081600,
+              "heapTotal": 145326080,
+              "heapUsed": 8615472,
+              "external": 14066217,
+              "arrayBuffers": 10023483
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 3,
+      "result": {
+        "timestamp": "2026-09-27T21:18:34.560Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 64.6702625,
+            "minMsPerCorpus": 64.6702625,
+            "maxMsPerCorpus": 64.6702625,
+            "medianPeakRssMiB": 263.328125,
+            "medianRetainedHeapMiB": 8.248115539550781,
+            "medianWallMs": 884.972709,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 10.478164599999833,
+              "detectGroupings": 0.0639145000001804,
+              "sharedAnalysis": 1.6480485999998904,
+              "referenceCompile": 17.78995949999986,
+              "virtualCompile": 30.849528599999882,
+              "sharedCompile": 2.7813350999999558
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 884.972709,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 646.702625,
+            "phases": {
+              "parseAnalyze": 104.78164599999832,
+              "detectGroupings": 0.639145000001804,
+              "sharedAnalysis": 16.480485999998905,
+              "referenceCompile": 177.8995949999986,
+              "virtualCompile": 308.4952859999988,
+              "sharedCompile": 27.813350999999557
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 269648,
+            "before": {
+              "rss": 117997568,
+              "heapTotal": 46497792,
+              "heapUsed": 8545464,
+              "external": 6104794,
+              "arrayBuffers": 644131
+            },
+            "after": {
+              "rss": 276021248,
+              "heapTotal": 163446784,
+              "heapUsed": 88757088,
+              "external": 25712592,
+              "arrayBuffers": 23421852
+            },
+            "retained": {
+              "rss": 276119552,
+              "heapTotal": 157122560,
+              "heapUsed": 8648776,
+              "external": 25712592,
+              "arrayBuffers": 22858632
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "copy-only",
+      "repetition": 3,
+      "result": {
+        "timestamp": "2026-09-27T21:18:35.493Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 64.9130167,
+            "minMsPerCorpus": 64.9130167,
+            "maxMsPerCorpus": 64.9130167,
+            "medianPeakRssMiB": 273.640625,
+            "medianRetainedHeapMiB": 8.3134765625,
+            "medianWallMs": 881.3102919999999,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 10.2077207999998,
+              "detectGroupings": 0.06735990000019002,
+              "sharedAnalysis": 1.9407109000001697,
+              "referenceCompile": 17.978576400000087,
+              "virtualCompile": 30.886626499999796,
+              "sharedCompile": 2.7039529999999674
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 881.3102919999999,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 649.130167,
+            "phases": {
+              "parseAnalyze": 102.077207999998,
+              "detectGroupings": 0.6735990000019001,
+              "sharedAnalysis": 19.407109000001697,
+              "referenceCompile": 179.78576400000088,
+              "virtualCompile": 308.86626499999795,
+              "sharedCompile": 27.039529999999672
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 280208,
+            "before": {
+              "rss": 111624192,
+              "heapTotal": 47284224,
+              "heapUsed": 8799504,
+              "external": 4641453,
+              "arrayBuffers": 558151
+            },
+            "after": {
+              "rss": 286818304,
+              "heapTotal": 158695424,
+              "heapUsed": 16922224,
+              "external": 4186501,
+              "arrayBuffers": 1895761
+            },
+            "retained": {
+              "rss": 286834688,
+              "heapTotal": 146374656,
+              "heapUsed": 8717312,
+              "external": 4186501,
+              "arrayBuffers": 298123
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "cache-only",
+      "repetition": 3,
+      "result": {
+        "timestamp": "2026-09-27T21:18:36.493Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 68.18520409999999,
+            "minMsPerCorpus": 68.18520409999999,
+            "maxMsPerCorpus": 68.18520409999999,
+            "medianPeakRssMiB": 273.984375,
+            "medianRetainedHeapMiB": 8.306190490722656,
+            "medianWallMs": 943.1375409999999,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.14545220000008,
+              "detectGroupings": 0.07167840000047362,
+              "sharedAnalysis": 1.7877027999999655,
+              "referenceCompile": 19.03309869999989,
+              "virtualCompile": 32.174605900000095,
+              "sharedCompile": 2.7618417000000024
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 943.1375409999999,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 681.852041,
+            "phases": {
+              "parseAnalyze": 111.4545220000008,
+              "detectGroupings": 0.7167840000047363,
+              "sharedAnalysis": 17.877027999999655,
+              "referenceCompile": 190.3309869999989,
+              "virtualCompile": 321.74605900000097,
+              "sharedCompile": 27.618417000000022
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 280560,
+            "before": {
+              "rss": 113688576,
+              "heapTotal": 47693824,
+              "heapUsed": 8938056,
+              "external": 5488957,
+              "arrayBuffers": 1480139
+            },
+            "after": {
+              "rss": 287277056,
+              "heapTotal": 166035456,
+              "heapUsed": 33851120,
+              "external": 10355337,
+              "arrayBuffers": 8064597
+            },
+            "retained": {
+              "rss": 287293440,
+              "heapTotal": 145850368,
+              "heapUsed": 8709672,
+              "external": 2524359,
+              "arrayBuffers": 24819
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "baseline",
+      "repetition": 4,
+      "result": {
+        "timestamp": "2026-09-27T21:18:37.505Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 69.4363458,
+            "minMsPerCorpus": 69.4363458,
+            "maxMsPerCorpus": 69.4363458,
+            "medianPeakRssMiB": 239.03125,
+            "medianRetainedHeapMiB": 8.237533569335938,
+            "medianWallMs": 957.38125,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.669257300000027,
+              "detectGroupings": 0.07313490000011598,
+              "sharedAnalysis": 1.8747652999998308,
+              "referenceCompile": 18.982277499999828,
+              "virtualCompile": 32.585320800000055,
+              "sharedCompile": 2.942290300000036
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 957.38125,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 694.363458,
+            "phases": {
+              "parseAnalyze": 116.69257300000027,
+              "detectGroupings": 0.7313490000011598,
+              "sharedAnalysis": 18.74765299999831,
+              "referenceCompile": 189.82277499999827,
+              "virtualCompile": 325.85320800000056,
+              "sharedCompile": 29.42290300000036
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 244768,
+            "before": {
+              "rss": 119488512,
+              "heapTotal": 47022080,
+              "heapUsed": 8545448,
+              "external": 6087686,
+              "arrayBuffers": 2264891
+            },
+            "after": {
+              "rss": 250478592,
+              "heapTotal": 160006144,
+              "heapUsed": 35884760,
+              "external": 9471921,
+              "arrayBuffers": 7181181
+            },
+            "retained": {
+              "rss": 250068992,
+              "heapTotal": 145588224,
+              "heapUsed": 8637680,
+              "external": 9471921,
+              "arrayBuffers": 6043447
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "copy-only",
+      "repetition": 4,
+      "result": {
+        "timestamp": "2026-09-27T21:18:38.509Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "1203cc45d0e0844b8e452f4988613a17f0f0d875cd115a88cdd1cc2ea2287edb",
+          "javascriptFiles": 126,
+          "sourceSha256": "a9ce5c1db9a1b8753df11a5a6f150fc5208e995cf8ab9eef26125e6c44eefd29",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/cleanup-metadata-baseline/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 69.29727499999998,
+            "minMsPerCorpus": 69.29727499999998,
+            "maxMsPerCorpus": 69.29727499999998,
+            "medianPeakRssMiB": 258.359375,
+            "medianRetainedHeapMiB": 8.249900817871094,
+            "medianWallMs": 950.46,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.372471000000075,
+              "detectGroupings": 0.07164610000037328,
+              "sharedAnalysis": 1.785925199999906,
+              "referenceCompile": 19.278815899999824,
+              "virtualCompile": 32.681998700000364,
+              "sharedCompile": 2.858111100000008
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 950.46,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 692.9727499999999,
+            "phases": {
+              "parseAnalyze": 113.72471000000075,
+              "detectGroupings": 0.7164610000037328,
+              "sharedAnalysis": 17.85925199999906,
+              "referenceCompile": 192.78815899999825,
+              "virtualCompile": 326.8199870000036,
+              "sharedCompile": 28.581111000000078
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 264560,
+            "before": {
+              "rss": 119341056,
+              "heapTotal": 46759936,
+              "heapUsed": 8562808,
+              "external": 5724615,
+              "arrayBuffers": 1132067
+            },
+            "after": {
+              "rss": 270876672,
+              "heapTotal": 163414016,
+              "heapUsed": 80023424,
+              "external": 22847358,
+              "arrayBuffers": 20556618
+            },
+            "retained": {
+              "rss": 270909440,
+              "heapTotal": 155811840,
+              "heapUsed": 8650648,
+              "external": 22847358,
+              "arrayBuffers": 20079021
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "cache-only",
+      "repetition": 4,
+      "result": {
+        "timestamp": "2026-09-27T21:18:39.513Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 68.48567919999999,
+            "minMsPerCorpus": 68.48567919999999,
+            "maxMsPerCorpus": 68.48567919999999,
+            "medianPeakRssMiB": 271.234375,
+            "medianRetainedHeapMiB": 8.241226196289062,
+            "medianWallMs": 941.654542,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.491811599999778,
+              "detectGroupings": 0.07615860000017846,
+              "sharedAnalysis": 1.7956216000001404,
+              "referenceCompile": 19.815352300000086,
+              "virtualCompile": 31.350805999999682,
+              "sharedCompile": 2.751854000000003
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 941.654542,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 684.8567919999999,
+            "phases": {
+              "parseAnalyze": 114.91811599999778,
+              "detectGroupings": 0.7615860000017847,
+              "sharedAnalysis": 17.956216000001405,
+              "referenceCompile": 198.15352300000086,
+              "virtualCompile": 313.5080599999968,
+              "sharedCompile": 27.51854000000003
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 277744,
+            "before": {
+              "rss": 111919104,
+              "heapTotal": 46759936,
+              "heapUsed": 8521960,
+              "external": 7291325,
+              "arrayBuffers": 3511122
+            },
+            "after": {
+              "rss": 284295168,
+              "heapTotal": 162365440,
+              "heapUsed": 79099488,
+              "external": 22965013,
+              "arrayBuffers": 20674273
+            },
+            "retained": {
+              "rss": 283770880,
+              "heapTotal": 155549696,
+              "heapUsed": 8641552,
+              "external": 22965013,
+              "arrayBuffers": 20192091
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    },
+    {
+      "variant": "candidate",
+      "repetition": 4,
+      "result": {
+        "timestamp": "2026-09-27T21:18:40.507Z",
+        "compilerFingerprint": {
+          "commit": "c6c33e22857cdefcad00e217201f05e5bcd39551",
+          "sha256": "df5a561be42b002dd3b5771ff0905682499d23749b955ef3f291587efd9f53cd",
+          "javascriptFiles": 126,
+          "sourceSha256": "41e4f4b3baee1b70501c8df6a0687be7c9e1413382cd5df34a5412241412ef1f",
+          "sourceFiles": 138,
+          "dependencyVersions": {
+            "yuku-analyzer": "0.12.0",
+            "yuku-ast": "0.12.0",
+            "yuku-codegen": "0.12.0",
+            "@yuku-toolchain/types": "0.12.0"
+          }
+        },
+        "workspace": "/Users/Flo/.codex/worktrees/e33a/router",
+        "fixturesRoot": "/Users/Flo/.codex/worktrees/e33a/router",
+        "node": "v24.8.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M3 Max",
+        "corpus": {
+          "files": 56,
+          "bytes": 45603,
+          "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+        },
+        "repetitions": 1,
+        "iterations": 10,
+        "diagnosticOnly": false,
+        "warmups": 2,
+        "summary": {
+          "yuku-splitter": {
+            "medianMsPerCorpus": 67.9342583,
+            "minMsPerCorpus": 67.9342583,
+            "maxMsPerCorpus": 67.9342583,
+            "medianPeakRssMiB": 271.203125,
+            "medianRetainedHeapMiB": 8.236602783203125,
+            "medianWallMs": 933.096959,
+            "phasesMsPerCorpus": {
+              "parseAnalyze": 11.482638899999904,
+              "detectGroupings": 0.07109509999993406,
+              "sharedAnalysis": 1.8665958999999475,
+              "referenceCompile": 19.57188030000011,
+              "virtualCompile": 31.060616199999448,
+              "sharedCompile": 2.720491500000082
+            },
+            "countsPerCorpus": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            }
+          }
+        },
+        "samples": [
+          {
+            "repetition": 0,
+            "wallMs": 933.096959,
+            "mode": "yuku-splitter",
+            "corpus": {
+              "files": 56,
+              "bytes": 45603,
+              "sha256": "26ce92b0559a72c596601a4d4f284369f82c38fe57ea3e0b12a673094ad396c5"
+            },
+            "elapsedMs": 679.342583,
+            "phases": {
+              "parseAnalyze": 114.82638899999904,
+              "detectGroupings": 0.7109509999993406,
+              "sharedAnalysis": 18.665958999999475,
+              "referenceCompile": 195.71880300000112,
+              "virtualCompile": 310.60616199999447,
+              "sharedCompile": 27.204915000000824
+            },
+            "counts": {
+              "parses": 168,
+              "outputs": 567,
+              "sharedModules": 36,
+              "unchangedReferences": 29
+            },
+            "peakRssKiB": 277712,
+            "before": {
+              "rss": 116310016,
+              "heapTotal": 47022080,
+              "heapUsed": 8524464,
+              "external": 5544451,
+              "arrayBuffers": 1904697
+            },
+            "after": {
+              "rss": 284262400,
+              "heapTotal": 163561472,
+              "heapUsed": 87707440,
+              "external": 26187037,
+              "arrayBuffers": 23896297
+            },
+            "retained": {
+              "rss": 284377088,
+              "heapTotal": 155549696,
+              "heapUsed": 8636704,
+              "external": 26187037,
+              "arrayBuffers": 23315985
+            },
+            "outputBytes": 1781652,
+            "outputMapBytes": 6481140,
+            "resolvedReferences": 0
+          }
+        ]
+      }
+    }
+  ]
+}
