@@ -192,6 +192,9 @@ type LoaderOutcome = NonRedirectOutcome | RedirectOutcome
 
 type IndexedOutcome = [index: number, outcome: LoaderOutcome, boundary?: number]
 
+/** A settled lane failure, a completed frame, or the frame after the next await. */
+type LaneStep = IndexedOutcome | undefined | Promise<IndexedOutcome | undefined>
+
 export type LoaderFlight = [
   outcome: Promise<RawLoaderOutcome>,
   controller: AbortController,
@@ -287,6 +290,12 @@ export function waitFor<T>(
     return Promise.race([Promise.reject(signal), value])
   }
   return new Promise<T>((resolve, reject) => {
+    // A plain value cannot be interrupted, so it needs no abort listener. A
+    // throwing `then` getter rejects through the executor.
+    if (typeof (value as any)?.then !== 'function') {
+      resolve(value as T)
+      return
+    }
     const abort = () => reject(signal)
     signal.addEventListener('abort', abort, { once: true })
     Promise.resolve(value)
@@ -353,122 +362,145 @@ function normalizeLaneError(
   )
 }
 
-async function contextualize(
+function contextualize(
   router: AnyRouter,
   lane: MatchedLane,
   options: ExecuteLaneOptions,
   end: number,
   planSuccessfulLane: () => void,
   retainedEnd: number,
-): Promise<IndexedOutcome | undefined> {
+): LaneStep {
   const [location, matches] = lane
-  const signal = options[0 /* controller */].signal
+  const controller = options[0 /* controller */]
+  const signal = controller.signal
   const preload = !!options[3 /* preload */]
-  for (let index = options[6 /* resolvedPrefix */] ?? 0; index < end; index++) {
-    const match = matches[index]!
-    const route = getRoute(router, match)
+  let index = options[6 /* resolvedPrefix */] ?? 0
+  // Everything between two beforeLoad awaits runs synchronously, so a single
+  // batch publishes the frame's fetching transitions, pending presentation,
+  // and planned loaders as one store update.
+  const frame = (): LaneStep => {
+    for (; index < end; index++) {
+      const match = matches[index]!
+      const route = getRoute(router, match)
 
-    match.abortController = options[0 /* controller */]
-    // Contextualization is serial, so the previous match already contains the
-    // complete parent context for this route.
-    const parentContext =
-      matches[index - 1]?.context ?? router.options.context ?? {}
-    const common = {
-      params: match.params,
-      location,
-      navigate: (opts: any) =>
-        router.navigate({
-          ...opts,
-          _fromLocation: location,
-        }),
-      buildLocation: router.buildLocation,
-      cause: preload ? ('preload' as const) : match.cause,
-      abortController: options[0 /* controller */],
-      preload,
-      matches,
-      routeId: route.id,
-    }
-    try {
-      // Reuse the route's cached contribution while rebuilding its inheritance.
-      const routeContext = (match._ctx ||= route.options.context
-        ? route.options.context({
-            ...common,
-            deps: match.loaderDeps,
-            context: parentContext,
-          } satisfies RouteContextOptions<any, any, any, any, any>) || {}
-        : undefined)
-      match.context = {
-        ...parentContext,
-        ...routeContext,
+      match.abortController = controller
+      // Contextualization is serial, so the previous match already contains
+      // the complete parent context for this route.
+      const parentContext =
+        matches[index - 1]?.context ?? router.options.context ?? {}
+      const common = {
+        params: match.params,
+        location,
+        navigate: (opts: any) =>
+          router.navigate({
+            ...opts,
+            _fromLocation: location,
+          }),
+        buildLocation: router.buildLocation,
+        cause: preload ? ('preload' as const) : match.cause,
+        abortController: controller,
+        preload,
+        matches,
+        routeId: route.id,
       }
-    } catch (cause) {
-      releaseFlight(router, match)
-      return [index, normalizeLaneError(router, lane, route, cause, options)]
-    }
-    if (signal.aborted) {
-      return [index, CANCELED_OUTCOME]
-    }
-    const validationError = match.paramsError ?? match.searchError
-    if (validationError !== undefined) {
-      releaseFlight(router, match)
-      return [
-        index,
-        normalizeLaneError(router, lane, route, validationError, options),
-      ]
-    }
-    const beforeLoad = route.options.beforeLoad
-    if (!beforeLoad) {
-      continue
-    }
-
-    const previousStatus = match.status
-    if (index >= retainedEnd) {
-      match.status = 'pending'
-      options[7 /* onReady */]?.()
-    }
-    try {
-      setFetching(router, match, 'beforeLoad', options[0 /* controller */])
-      const value = beforeLoad({
-        ...common,
-        search: match.search,
-        context: match.context,
-        ...router.options.additionalContext,
-      })
-      // Always await to give a queued replacement navigation one microtask to
-      // kick in before checking cancellation, even for synchronous context.
-      const result = await (typeof value?.then === 'function'
-        ? waitFor(value, signal)
-        : value)
+      try {
+        // Reuse the route's cached contribution while rebuilding its
+        // inheritance.
+        const routeContext = (match._ctx ||= route.options.context
+          ? route.options.context({
+              ...common,
+              deps: match.loaderDeps,
+              context: parentContext,
+            } satisfies RouteContextOptions<any, any, any, any, any>) || {}
+          : undefined)
+        match.context = {
+          ...parentContext,
+          ...routeContext,
+        }
+      } catch (cause) {
+        releaseFlight(router, match)
+        return [index, normalizeLaneError(router, lane, route, cause, options)]
+      }
       if (signal.aborted) {
         return [index, CANCELED_OUTCOME]
       }
-      const outcome = materializeRedirect(
-        router,
-        lane,
-        route,
-        normalize(result, false, route.id),
-        options,
-      )
-      if (outcome[0 /* kind */] !== SUCCESS) {
+      const validationError = match.paramsError ?? match.searchError
+      if (validationError !== undefined) {
         releaseFlight(router, match)
-        return [index, outcome]
+        return [
+          index,
+          normalizeLaneError(router, lane, route, validationError, options),
+        ]
       }
-      match.context = {
-        ...match.context,
-        ...result,
+      const beforeLoad = route.options.beforeLoad
+      if (!beforeLoad) {
+        continue
       }
-    } catch (cause) {
-      releaseFlight(router, match)
-      return [index, normalizeLaneError(router, lane, route, cause, options)]
-    } finally {
-      match.status = previousStatus
-      setFetching(router, match, false, options[0 /* controller */])
+
+      const previousStatus = match.status
+      if (index >= retainedEnd) {
+        match.status = 'pending'
+        options[7 /* onReady */]?.()
+      }
+      setFetching(router, match, 'beforeLoad', controller)
+      // Applies the settled beforeLoad and continues the lane in one frame.
+      const settle = (value: any, rejected?: boolean): LaneStep => {
+        let next: LaneStep
+        router.batch(() => {
+          // The hook has ended, so `onError` and redirect resolution observe the
+          // restored status and cleared fetching state.
+          match.status = previousStatus
+          setFetching(router, match, false, controller)
+          const outcome = signal.aborted
+            ? CANCELED_OUTCOME
+            : materializeRedirect(
+                router,
+                lane,
+                route,
+                rejected
+                  ? normalizeError(route, value)
+                  : normalize(value, false, route.id),
+                options,
+              )
+          if (outcome[0 /* kind */] === SUCCESS) {
+            match.context = {
+              ...match.context,
+              ...value,
+            }
+            index++
+            next = frame()
+          } else {
+            // Releasing after a cancellation is a no-op: the superseding load
+            // already detached this lane's flights.
+            releaseFlight(router, match)
+            next = [index, outcome]
+          }
+        })
+        return next
+      }
+      let value: any
+      try {
+        value = beforeLoad({
+          ...common,
+          search: match.search,
+          context: match.context,
+          ...router.options.additionalContext,
+        })
+      } catch (cause) {
+        return settle(cause, true)
+      }
+      // Always await, even a synchronous value, to give a queued replacement
+      // navigation one microtask to kick in before cancellation is checked.
+      return waitFor(value, signal).then(settle, (cause) => settle(cause, true))
     }
+
+    // Let a synchronous lane claim predecessor flights before this frame
+    // yields.
+    planSuccessfulLane()
+    return
   }
 
-  // Let a synchronous lane claim predecessor flights before this frame yields.
-  planSuccessfulLane()
-  return
+  return frame()
 }
 
 function releaseOwnedFlight(
@@ -1344,22 +1376,24 @@ async function executeClientLane(
     let semanticParent = start
       ? Promise.resolve(matches[start - 1] as WorkMatch)
       : undefined
-    const planSuccessfulLane = () => {
-      for (let index = start; index < end; index++) {
-        if (signal.aborted) {
-          break
+    // Loader starts and pending presentation publish as one store update.
+    const planSuccessfulLane = () =>
+      router.batch(() => {
+        for (let index = start; index < end; index++) {
+          if (signal.aborted) {
+            break
+          }
+          semanticParent = createLoaderTask(
+            router,
+            matched as ContextualizedLane,
+            index,
+            tasks,
+            semanticParent,
+            options,
+            retainedEnd,
+          )
         }
-        semanticParent = createLoaderTask(
-          router,
-          matched as ContextualizedLane,
-          index,
-          tasks,
-          semanticParent,
-          options,
-          retainedEnd,
-        )
-      }
-    }
+      })
     // From here on `matched` is contextualized: `contextualize` communicates
     // through mutation plus a failure return, so the phase brand is asserted at
     // the two use sites below rather than granted by a (byte-costing) return.
@@ -2011,14 +2045,6 @@ export async function loadClientRoute(
   }
   router._tx = tx
   if (previousOwner) {
-    for (const match of router.stores.matches.get() as Array<WorkMatch>) {
-      if (router._tx !== tx) {
-        break
-      }
-      if (match.isFetching) {
-        setFetching(router, match, false)
-      }
-    }
     previousOwner[0 /* controller */].abort()
     transferMatchResources(
       router,
@@ -2035,6 +2061,13 @@ export async function loadClientRoute(
     return
   }
   router.batch(() => {
+    // A superseded lane can no longer publish, so clear the fetching state it
+    // left on the still-presented matches together with the new status.
+    for (const match of router.stores.matches.get() as Array<WorkMatch>) {
+      if (match.isFetching) {
+        setFetching(router, match, false)
+      }
+    }
     router.stores.status.set('pending')
     router.stores.location.set(location)
   })
