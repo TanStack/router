@@ -20,7 +20,7 @@ import {
   useSearch,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { z } from 'zod'
+import * as z from 'zod'
 import {
   fetchInvoiceById,
   fetchInvoices,

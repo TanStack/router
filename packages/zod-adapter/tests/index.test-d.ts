@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-router'
 import { test, expectTypeOf } from 'vitest'
 import { zodValidator } from '../src'
-import { z } from 'zod'
+import * as z from 'zod'
 
 test('when creating a route with zod validation', () => {
   const rootRoute = createRootRoute({

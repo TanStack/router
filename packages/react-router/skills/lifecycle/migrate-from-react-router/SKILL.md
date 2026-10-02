@@ -243,7 +243,7 @@ TanStack Router:
 ```tsx
 // In the route definition:
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 export const Route = createFileRoute('/posts')({
   validateSearch: z.object({

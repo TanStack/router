@@ -245,7 +245,7 @@ export const Route = createFileRoute('/_authenticated')({
 ```typescript
 // src/routes/search.tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const searchSchema = z.object({
   q: z.string().optional(),
@@ -361,7 +361,7 @@ Use Zod to validate environment variables at startup with fallbacks and optional
 
 ```typescript
 // src/config/env.ts
-import { z } from 'zod'
+import * as z from 'zod'
 
 const envSchema = z.object({
   // Required variables

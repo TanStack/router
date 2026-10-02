@@ -157,7 +157,7 @@ const clientLogger = createMiddleware({ type: 'function' })
 ## Input Validation in Middleware
 
 ```tsx
-import { z } from 'zod'
+import * as z from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 
 const workspaceMiddleware = createMiddleware({ type: 'function' })

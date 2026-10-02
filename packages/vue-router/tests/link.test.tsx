@@ -8,7 +8,7 @@ import {
   waitFor,
 } from '@testing-library/vue'
 
-import { z } from 'zod'
+import * as z from 'zod'
 
 import { trailingSlashOptions } from '@tanstack/router-core'
 import {

@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
@@ -11,37 +11,41 @@ import type {
 import type { CodeSplitGroupings } from './constants'
 import type { CodeSplitCompilerPlugin } from './code-splitter/plugins'
 
-export const splitGroupingsSchema = z
-  .array(
-    z.array(
-      z.union([
-        z.literal('loader'),
-        z.literal('component'),
-        z.literal('pendingComponent'),
-        z.literal('errorComponent'),
-        z.literal('notFoundComponent'),
-      ]),
-    ),
-    {
-      message:
-        "  Must be an Array of Arrays containing the split groupings. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]",
-    },
-  )
-  .superRefine((val, ctx) => {
-    const flattened = val.flat()
-    const unique = [...new Set(flattened)]
-
-    // Elements must be unique,
-    // ie. this shouldn't be allows [['component'], ['component', 'loader']]
-    if (unique.length !== flattened.length) {
-      ctx.addIssue({
-        code: 'custom',
+export const splitGroupingsSchema = z.compile(
+  z
+    .array(
+      z.array(
+        z.union([
+          z.literal('loader'),
+          z.literal('component'),
+          z.literal('pendingComponent'),
+          z.literal('errorComponent'),
+          z.literal('notFoundComponent'),
+        ]),
+      ),
+      {
         message:
-          "  Split groupings must be unique and not repeated. i.e. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]." +
-          `\n  You input was: ${JSON.stringify(val)}.`,
-      })
-    }
-  })
+          "  Must be an Array of Arrays containing the split groupings. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]",
+      },
+    )
+    .superRefine((val, ctx) => {
+      const seen = new Set<string>()
+      for (const group of val) {
+        for (const node of group) {
+          if (seen.has(node)) {
+            ctx.addIssue({
+              code: 'custom',
+              message:
+                "  Split groupings must be unique and not repeated. i.e. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]." +
+                `\n  You input was: ${JSON.stringify(val)}.`,
+            })
+            return
+          }
+          seen.add(node)
+        }
+      }
+    }),
+)
 
 export type CodeSplittingOptions = {
   /**

@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue'
 import { createFileRoute, getRouteApi, useSearch } from '@tanstack/vue-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const SubfolderInsideComponent = defineComponent({
   setup() {

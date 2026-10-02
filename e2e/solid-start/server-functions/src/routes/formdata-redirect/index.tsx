@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/solid-router'
 import { createServerFn, useServerFn } from '@tanstack/solid-start'
-import { z } from 'zod'
+import * as z from 'zod'
 
 export const Route = createFileRoute('/formdata-redirect/')({
   component: SubmitPostFormDataFn,
