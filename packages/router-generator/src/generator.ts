@@ -29,6 +29,7 @@ import {
   getImportForRouteNode,
   getResolvedRouteNodeVariableName,
   hasParentRoute,
+  isPlainTypeScriptFile,
   isSegmentPathless,
   mergeImportDeclarations,
   multiSortBy,
@@ -1038,6 +1039,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       shouldWriteTree = true
       // Creating a new lazy route file
       if (node._fsRouteType === 'lazy') {
+        const allowJsx = !isPlainTypeScriptFile(node.filePath)
         const tLazyRouteTemplate = this.targetTemplate.lazyRoute
         // Check by default check if the user has a specific lazy route template
         // If not, check if the user has a route template and use that instead
@@ -1045,7 +1047,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           this.config,
           (this.config.customScaffolding?.lazyRouteTemplate ||
             this.config.customScaffolding?.routeTemplate) ??
-            tLazyRouteTemplate.template(),
+            tLazyRouteTemplate.template({ allowJsx }),
           {
             tsrImports: tLazyRouteTemplate.imports.tsrImports(),
             tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
@@ -1069,11 +1071,12 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           ] satisfies Array<FsRouteType>
         ).every((d) => d !== node._fsRouteType)
       ) {
+        const allowJsx = !isPlainTypeScriptFile(node.filePath)
         const tRouteTemplate = this.targetTemplate.route
         updatedCacheEntry.fileContent = await fillTemplate(
           this.config,
           this.config.customScaffolding?.routeTemplate ??
-            tRouteTemplate.template(),
+            tRouteTemplate.template({ allowJsx }),
           {
             tsrImports: tRouteTemplate.imports.tsrImports(),
             tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
@@ -1351,12 +1354,13 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
     // scaffold the root route
     if (!rootNodeFile.fileContent) {
+      const allowJsx = !isPlainTypeScriptFile(node.filePath)
       const rootTemplate = this.targetTemplate.rootRoute
       const rootRouteContent = await fillTemplate(
         this.config,
-        rootTemplate.template(),
+        rootTemplate.template({ allowJsx }),
         {
-          tsrImports: rootTemplate.imports.tsrImports(),
+          tsrImports: rootTemplate.imports.tsrImports({ allowJsx }),
           tsrPath: rootPathId,
           tsrExportStart: rootTemplate.imports.tsrExportStart(),
           tsrExportEnd: rootTemplate.imports.tsrExportEnd(),

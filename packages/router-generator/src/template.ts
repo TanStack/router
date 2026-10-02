@@ -15,19 +15,23 @@ export function fillTemplate(
   return format(replaced, config)
 }
 
+type RouteTemplateOptions = {
+  allowJsx: boolean
+}
+
 export type TargetTemplate = {
   fullPkg: string
   subPkg: string
   rootRoute: {
-    template: () => string
+    template: (opts: RouteTemplateOptions) => string
     imports: {
-      tsrImports: () => string
+      tsrImports: (opts: RouteTemplateOptions) => string
       tsrExportStart: () => string
       tsrExportEnd: () => string
     }
   }
   route: {
-    template: () => string
+    template: (opts: RouteTemplateOptions) => string
     imports: {
       tsrImports: () => string
       tsrExportStart: (routePath: string) => string
@@ -35,7 +39,7 @@ export type TargetTemplate = {
     }
   }
   lazyRoute: {
-    template: () => string
+    template: (opts: RouteTemplateOptions) => string
     imports: {
       tsrImports: () => string
       tsrExportStart: (routePath: string) => string
@@ -48,6 +52,14 @@ function serializeRoutePath(routePath: string) {
   return JSON.stringify(routePath)
 }
 
+function plainTsRouteTemplate() {
+  return [
+    '%%tsrImports%%',
+    '\n\n',
+    '%%tsrExportStart%%{}%%tsrExportEnd%%\n',
+  ].join('')
+}
+
 export function getTargetTemplate(config: Config): TargetTemplate {
   const target = config.target
   switch (target) {
@@ -56,29 +68,39 @@ export function getTargetTemplate(config: Config): TargetTemplate {
         fullPkg: '@tanstack/react-router',
         subPkg: 'react-router',
         rootRoute: {
-          template: () =>
-            [
+          template: ({ allowJsx }) => {
+            if (!allowJsx) {
+              return plainTsRouteTemplate()
+            }
+
+            return [
               'import * as React from "react"\n',
               '%%tsrImports%%',
               '\n\n',
               '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
               'function RootComponent() { return (<React.Fragment><div>Hello "%%tsrPath%%"!</div><Outlet /></React.Fragment>) };\n',
-            ].join(''),
+            ].join('')
+          },
           imports: {
-            tsrImports: () =>
-              "import { Outlet, createRootRoute } from '@tanstack/react-router';",
+            tsrImports: ({ allowJsx }) =>
+              `import { ${allowJsx ? 'Outlet, ' : ''}createRootRoute } from '@tanstack/react-router';`,
             tsrExportStart: () => 'export const Route = createRootRoute(',
             tsrExportEnd: () => ');',
           },
         },
         route: {
-          template: () =>
-            [
+          template: ({ allowJsx }) => {
+            if (!allowJsx) {
+              return plainTsRouteTemplate()
+            }
+
+            return [
               '%%tsrImports%%',
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
-            ].join(''),
+            ].join('')
+          },
           imports: {
             tsrImports: () =>
               "import { createFileRoute } from '@tanstack/react-router';",
@@ -88,13 +110,18 @@ export function getTargetTemplate(config: Config): TargetTemplate {
           },
         },
         lazyRoute: {
-          template: () =>
-            [
+          template: ({ allowJsx }) => {
+            if (!allowJsx) {
+              return plainTsRouteTemplate()
+            }
+
+            return [
               '%%tsrImports%%',
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
-            ].join(''),
+            ].join('')
+          },
           imports: {
             tsrImports: () =>
               "import { createLazyFileRoute } from '@tanstack/react-router';",
@@ -109,29 +136,39 @@ export function getTargetTemplate(config: Config): TargetTemplate {
         fullPkg: '@tanstack/solid-router',
         subPkg: 'solid-router',
         rootRoute: {
-          template: () =>
-            [
+          template: ({ allowJsx }) => {
+            if (!allowJsx) {
+              return plainTsRouteTemplate()
+            }
+
+            return [
               'import * as Solid from "solid-js"\n',
               '%%tsrImports%%',
               '\n\n',
               '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
               'function RootComponent() { return (<><div>Hello "%%tsrPath%%"!</div><Outlet /></>) };\n',
-            ].join(''),
+            ].join('')
+          },
           imports: {
-            tsrImports: () =>
-              "import { Outlet, createRootRoute } from '@tanstack/solid-router';",
+            tsrImports: ({ allowJsx }) =>
+              `import { ${allowJsx ? 'Outlet, ' : ''}createRootRoute } from '@tanstack/solid-router';`,
             tsrExportStart: () => 'export const Route = createRootRoute(',
             tsrExportEnd: () => ');',
           },
         },
         route: {
-          template: () =>
-            [
+          template: ({ allowJsx }) => {
+            if (!allowJsx) {
+              return plainTsRouteTemplate()
+            }
+
+            return [
               '%%tsrImports%%',
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
-            ].join(''),
+            ].join('')
+          },
           imports: {
             tsrImports: () =>
               "import { createFileRoute } from '@tanstack/solid-router';",
@@ -141,13 +178,18 @@ export function getTargetTemplate(config: Config): TargetTemplate {
           },
         },
         lazyRoute: {
-          template: () =>
-            [
+          template: ({ allowJsx }) => {
+            if (!allowJsx) {
+              return plainTsRouteTemplate()
+            }
+
+            return [
               '%%tsrImports%%',
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
-            ].join(''),
+            ].join('')
+          },
           imports: {
             tsrImports: () =>
               "import { createLazyFileRoute } from '@tanstack/solid-router';",
