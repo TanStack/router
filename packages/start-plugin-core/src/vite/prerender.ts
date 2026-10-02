@@ -1,8 +1,9 @@
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { prerender } from '../prerender'
+import { startPrerenderPreview } from './prerender-preview'
 import type { PrerenderHandler } from '../prerender'
 import type { TanStackStartOutputConfig } from '../schema'
-import type { PreviewServer, ResolvedConfig, ViteBuilder } from 'vite'
+import type { ViteBuilder } from 'vite'
 
 export async function prerenderWithVite({
   startConfig,
@@ -28,11 +29,11 @@ export async function prerenderWithVite({
 
   const outputDir = clientEnv.config.build.outDir
 
-  process.env.TSS_PRERENDERING = 'true'
-  process.env.TSS_CLIENT_OUTPUT_DIR = outputDir
-
-  const previewServer = await startPreviewServer(serverEnv.config)
-  const baseUrl = getResolvedUrl(previewServer)
+  const previewServer = await startPrerenderPreview({
+    configFile: serverEnv.config.configFile,
+    outputDir,
+  })
+  const { baseUrl } = previewServer
 
   const handler: PrerenderHandler = {
     getClientOutputDirectory() {
@@ -48,46 +49,14 @@ export async function prerenderWithVite({
       }
       return fetch(new Request(url, options))
     },
-    close() {
-      return previewServer.close()
-    },
   }
-
-  return prerender({
-    startConfig,
-    handler,
-  })
-}
-
-async function startPreviewServer(
-  viteConfig: ResolvedConfig,
-): Promise<PreviewServer> {
-  const vite = await import('vite')
 
   try {
-    return await vite.preview({
-      configFile: viteConfig.configFile,
-      preview: {
-        port: 0,
-        open: false,
-      },
+    return await prerender({
+      startConfig,
+      handler,
     })
-  } catch (error) {
-    throw new Error(
-      'Failed to start the Vite preview server for prerendering',
-      {
-        cause: error,
-      },
-    )
+  } finally {
+    await previewServer.close()
   }
-}
-
-function getResolvedUrl(previewServer: PreviewServer): URL {
-  const baseUrl = previewServer.resolvedUrls?.local[0]
-
-  if (!baseUrl) {
-    throw new Error('No resolved URL is available from the Vite preview server')
-  }
-
-  return new URL(baseUrl)
 }
