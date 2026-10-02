@@ -23,6 +23,9 @@ import type {
   MakeDifferenceOptional,
   NoInfer,
   NonNullableUpdater,
+  ToObject,
+  UnObject,
+  UnionToIntersection,
   Updater,
 } from './utils'
 import type { ParsedLocation } from './location'
@@ -229,13 +232,27 @@ export type RelativeToPath<
       : ToPath<TRouter, TTo>)
   | `${RemoveTrailingSlashes<TTo>}/${InferDescendantToPaths<TRouter, RemoveTrailingSlashes<TResolvedPath>>}`
 
+
+type WrapRelativeToPathForIntersection<
+  TRouter extends AnyRouter,
+  TTo extends string,
+  TResolvedPath extends string,
+> = TResolvedPath extends any
+  ? ToObject<RelativeToPath<TRouter, TTo, TResolvedPath>>
+  : never
+
 export type RelativeToParentPath<
   TRouter extends AnyRouter,
   TFrom extends string,
   TTo extends string,
   TResolvedPath extends string = ResolveRelativePath<TFrom, TTo>,
 > =
-  | RelativeToPath<TRouter, TTo, TResolvedPath>
+  | UnObject<
+      UnionToIntersection<
+        WrapRelativeToPathForIntersection<TRouter, TTo, TResolvedPath>
+      >
+    >
+  // RelativeToPath<TRouter, TTo, TResolvedPath>
   | (TTo extends `${string}..` | `${string}../`
       ? TResolvedPath extends '/' | ''
         ? never
