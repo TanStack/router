@@ -363,13 +363,11 @@ function prepend(program: Program, ...statements: Array<ProgramStatement>) {
 }
 
 function createOutput(analysis: RouteModuleAnalysis) {
-  const { program, originalNodes } = cloneModuleAst(analysis.module)
-  const copies = new Map<Node, Node>()
-  walk(program, {
-    enter(node) {
-      copies.set(originalNodes.get(node)!, node)
-    },
-  })
+  const {
+    program,
+    originalNodes,
+    copiedNodes: copies,
+  } = cloneModuleAst(analysis.module)
   const renameBinding = (node: Node, name: string) => {
     const original = originalNodes.get(node)
     const symbol = original ? analysis.module.symbolOf(original) : null

@@ -391,6 +391,7 @@ test('shared widget CSS stays applied when navigating from lazy to static route'
 
   await page.getByTestId('nav-/lazy-css-static').click()
   await page.waitForURL('**/lazy-css-static')
+  await expect(page.getByTestId('lazy-css-static-hydrated')).toBeVisible()
 
   const widget = page.getByTestId('shared-widget')
   await expect(widget).toBeVisible()
