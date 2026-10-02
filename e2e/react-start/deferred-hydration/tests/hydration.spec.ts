@@ -815,10 +815,14 @@ test.describe('enhanced Hydrate API combinations', () => {
     await expect(page.getByTestId('enhanced-abort-status')).toHaveText(
       'listening',
     )
+    await page.getByTestId('enhanced-abort-button').click()
+    await expectRouteToStayUnhydrated(page, 'enhanced-abort-button')
+    await expect(page.getByTestId('enhanced-abort-count')).toHaveText('0')
     await page.getByTestId('enhanced-hide-abort').click()
     await expect(page.getByTestId('enhanced-abort-status')).toHaveText(
       'aborted',
     )
+    await expect(page.getByTestId('enhanced-abort-button')).toHaveCount(0)
   })
 
   test('nested dynamic interaction boundaries delegate through outer boundaries', async ({
