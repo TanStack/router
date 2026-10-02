@@ -10,7 +10,7 @@ function Footer() {
   return <footer>Footer</footer>;
 }
 export function Page() {
-  return <>
+  return (<>
       <Hydrate when={load()} h="0_21aa371e0f">
         <Summary />
       </Hydrate>
@@ -20,5 +20,5 @@ export function Page() {
       <Hydrate when={media('(min-width: 800px)')} h="2_21aa371e0f">
         <Footer />
       </Hydrate>
-    </>;
+    </>);
 }

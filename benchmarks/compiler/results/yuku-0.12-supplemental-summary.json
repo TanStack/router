@@ -1,0 +1,171 @@
+{
+  "primary": "yuku-0.12-alternating-summary.json",
+  "reuse": {
+    "yuku-splitter": {
+      "medianMsPerCorpus": 88.67385419999998,
+      "minMsPerCorpus": 87.4533875,
+      "maxMsPerCorpus": 93.64375829999999,
+      "medianPeakRssMiB": 246.203125,
+      "medianRetainedHeapMiB": 8.165191650390625,
+      "medianWallMs": 1171.7911670000012,
+      "phasesMsPerCorpus": {
+        "parseAnalyze": 9.426895200000013,
+        "detectGroupings": 0.06279249999975037,
+        "sharedAnalysis": 1.5275855000004412,
+        "referenceCompile": 25.037346899999967,
+        "virtualCompile": 48.80474889999989,
+        "sharedCompile": 2.8195128000000067
+      },
+      "countsPerCorpus": {
+        "parses": 156,
+        "outputs": 517,
+        "sharedModules": 26,
+        "unchangedReferences": 29
+      }
+    },
+    "yuku-splitter-no-reuse": {
+      "medianMsPerCorpus": 128.30125,
+      "minMsPerCorpus": 125.71783330000001,
+      "maxMsPerCorpus": 135.1545792,
+      "medianPeakRssMiB": 338.765625,
+      "medianRetainedHeapMiB": 8.20635986328125,
+      "medianWallMs": 1648.1356670000005,
+      "phasesMsPerCorpus": {
+        "detectGroupings": 8.246705000000224,
+        "sharedAnalysis": 9.75949469999964,
+        "referenceCompile": 33.771596599999654,
+        "virtualCompile": 71.98772480000068,
+        "sharedCompile": 3.9284588000000213
+      },
+      "countsPerCorpus": {
+        "parses": 858,
+        "outputs": 517,
+        "sharedModules": 26,
+        "unchangedReferences": 29
+      }
+    }
+  },
+  "stress": {
+    "hydrate500-client": {
+      "baseline": [
+        {
+          "boundaries": 500,
+          "medianCompileMs": 76.895,
+          "medianPeakRssMiB": 267.765625
+        }
+      ],
+      "candidate": [
+        {
+          "boundaries": 500,
+          "medianCompileMs": 60.566319666666665,
+          "medianPeakRssMiB": 164.109375
+        }
+      ]
+    },
+    "hydrate500-server": {
+      "baseline": [
+        {
+          "boundaries": 500,
+          "medianCompileMs": 53.705333333333336,
+          "medianPeakRssMiB": 204.53125
+        }
+      ],
+      "candidate": [
+        {
+          "boundaries": 500,
+          "medianCompileMs": 38.33855566666667,
+          "medianPeakRssMiB": 124.140625
+        }
+      ]
+    },
+    "bindings1000": {
+      "baseline": {
+        "babel-splitter": {
+          "medianMsPerCorpus": 3924.5038749999994,
+          "minMsPerCorpus": 3825.429521,
+          "maxMsPerCorpus": 3960.981875,
+          "medianPeakRssMiB": 364.1875,
+          "medianRetainedHeapMiB": 17.979019165039062,
+          "medianWallMs": 11939.389666999996,
+          "phasesMsPerCorpus": {
+            "detectGroupings": 34.9663744999998,
+            "sharedAnalysis": 2326.8609590000005,
+            "referenceCompile": 130.3901665000003,
+            "virtualCompile": 227.86893750000127,
+            "sharedCompile": 1204.2477084999991
+          },
+          "countsPerCorpus": {
+            "parses": 18,
+            "outputs": 12,
+            "sharedModules": 2
+          }
+        }
+      },
+      "candidate": {
+        "yuku-splitter": {
+          "medianMsPerCorpus": 183.04225000000002,
+          "minMsPerCorpus": 182.62875,
+          "maxMsPerCorpus": 196.52197950000001,
+          "medianPeakRssMiB": 173.9375,
+          "medianRetainedHeapMiB": 7.535003662109375,
+          "medianWallMs": 669.465708,
+          "phasesMsPerCorpus": {
+            "parseAnalyze": 12.66814549999998,
+            "detectGroupings": 0.022791499999982534,
+            "sharedAnalysis": 3.2249589999999557,
+            "referenceCompile": 40.93622899999997,
+            "virtualCompile": 83.73404149999999,
+            "sharedCompile": 42.323790999999915
+          },
+          "countsPerCorpus": {
+            "parses": 3,
+            "outputs": 12,
+            "sharedModules": 2
+          }
+        }
+      }
+    },
+    "routes750": {
+      "baseline": {
+        "medianBuildMs": 5004.047208,
+        "medianPeakRssMiB": 1296.3125,
+        "medianWallMs": 5580.367249999999
+      },
+      "candidate": {
+        "medianBuildMs": 2843.162583,
+        "medianPeakRssMiB": 1123.71875,
+        "medianWallMs": 3334.4851659999995
+      },
+      "emittedJsBytes": 1641651,
+      "chunks": 2251
+    }
+  },
+  "processTree": {
+    "routes-baseline": {
+      "peakTreeMiB": 755.6875,
+      "peakRootMiB": 755.6875,
+      "samples": 47,
+      "descendants": 0
+    },
+    "routes-candidate": {
+      "peakTreeMiB": 625.171875,
+      "peakRootMiB": 625.171875,
+      "samples": 28,
+      "descendants": 0
+    },
+    "start-baseline": {
+      "peakTreeMiB": 654.734375,
+      "peakRootMiB": 654.734375,
+      "samples": 37,
+      "descendants": 0
+    },
+    "start-candidate": {
+      "peakTreeMiB": 547.34375,
+      "peakRootMiB": 547.34375,
+      "samples": 27,
+      "descendants": 0
+    }
+  },
+  "outputDigest": "aafbde5591b2819a03c37b941ad348a026d4b0d0cb2ed679a64dd8f4e389a660",
+  "validation": "Identical corresponding input hashes; native reuse/no-reuse code and map digest identical; source/dist fingerprints unchanged throughout quiet window."
+}

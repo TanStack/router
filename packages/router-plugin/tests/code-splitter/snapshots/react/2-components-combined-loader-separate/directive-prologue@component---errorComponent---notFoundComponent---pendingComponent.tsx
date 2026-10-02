@@ -1,5 +1,4 @@
 'use client';
-
 const SplitComponent = () => {
   return <div>directive preserved</div>;
 };

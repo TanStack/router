@@ -1,7 +1,12 @@
 import { readFile, readdir } from 'node:fs/promises'
-import { traverse } from '@babel/core'
-import * as t from '@babel/types'
-import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import { walk } from 'yuku-ast'
+import {
+  analyzeModule,
+  cloneModuleAst,
+  generateModule,
+  parseExpression,
+  removeUnusedBindings,
+} from '@tanstack/router-utils'
 import path from 'pathe'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../../src/hydrate-when-transform'
@@ -73,9 +78,12 @@ function compile(opts: {
     root: opts.root ?? fixtureRoot,
   }
   const plugin = createHydrateCompilerPlugin()
-  const ast = parseAst({ code: options.code, sourceFilename: options.id })
+  const module = analyzeModule({ code: options.code, filename: options.id })
+  const { program: ast, originalNodes } = cloneModuleAst(module)
   const result = plugin.transformAst?.({
     ast,
+    module,
+    originalNodes,
     code: options.code,
     id: options.id,
     root: options.root,
@@ -84,14 +92,37 @@ function compile(opts: {
     mode: 'dev',
     framework: 'react',
     providerEnvName: 'ssr',
-    types: t,
-    parseExpression: (expressionCode) => t.identifier(expressionCode),
+    parseExpression,
+    replaceNode(node, replacement) {
+      walk(ast, {
+        enter(current, context) {
+          if (current === node) {
+            context.replace(replacement)
+            context.stop()
+          }
+        },
+      })
+    },
+    parentOf(node) {
+      let parent: import('@yuku-toolchain/types').Node | null = null
+      walk(ast, {
+        enter(current, context) {
+          if (current === node) {
+            parent = context.parent
+            context.stop()
+          }
+        },
+      })
+      return parent
+    },
   })
-  if (!result) return null
+  if (!result) {
+    return null
+  }
 
-  const generated = generateFromAst(ast, {
-    sourceMaps: true,
-    sourceFileName: options.id,
+  removeUnusedBindings(module, ast, originalNodes)
+  const generated = generateModule(ast, {
+    source: options.code,
     filename: options.id,
   })
 
@@ -156,55 +187,59 @@ describe('Hydrate compiler transform fixtures', async () => {
       code,
       id: fixtureId('global.tsx'),
     })!
-    const output = parseAst({ code: compiled.code })
-    const globalReferences: Array<string> = []
-    traverse(output, {
-      ReferencedIdentifier(path) {
-        if (path.node.name === '_H0' && !path.scope.hasBinding('_H0', true)) {
-          globalReferences.push(path.node.name)
-        }
-      },
-    })
-    expect(globalReferences).toEqual(['_H0'])
+    const output = analyzeModule({ code: compiled.code })
+    expect(
+      output.unresolvedReferences.filter(
+        (reference) => reference.name === '_H0',
+      ),
+    ).toHaveLength(1)
   })
 
-  test('retains captured local components and values across extraction', async () => {
-    const code = `
+  test.each(['Local', '_Local', '$Local', 'ÉLocal', '组件'])(
+    'retains captured local component %s and values across extraction',
+    async (componentName) => {
+      const code = `
       import { Hydrate } from '@tanstack/react-start'
       export function Page({ name }) {
         const count = 1
-        const Local = () => <b>{name}</b>
-        return <Hydrate><Local count={count}/><span>{name}</span></Hydrate>
+        const ${componentName} = () => <b>{name}</b>
+        return <Hydrate><${componentName} count={count}/><span>{name}</span></Hydrate>
       }
     `
-    const id = fixtureId('captured.tsx')
-    const compiled = compile({ env: 'client', code, id })!
-    expect(compiled.code).toContain('Local={Local}')
-    expect(compiled.code).toContain('count={count}')
-    expect(compiled.code).toContain('name={name}')
-    expect(compiled.code).toContain('const count = 1')
-    expect(compiled.code).toContain('const Local')
-    const loaded = await loadVirtualHydrateModule({
-      code,
-      id: virtualHydrateId(id, compiled.boundaries[0]!),
-      root: fixtureRoot,
-    })
-    expect(loaded).toBeTruthy()
-    const output = parseAst({ code: loaded!.code })
-    const capturedReferences = new Set<string>()
-    traverse(output, {
-      Program(path) {
-        expect(path.scope.getBinding('Page')).toBeUndefined()
-      },
-      ReferencedIdentifier(path) {
-        if (['Local', 'count', 'name'].includes(path.node.name)) {
-          capturedReferences.add(path.node.name)
-          expect(path.scope.hasBinding(path.node.name, true)).toBe(true)
-        }
-      },
-    })
-    expect([...capturedReferences].sort()).toEqual(['Local', 'count', 'name'])
-  })
+      const id = fixtureId('captured.tsx')
+      const compiled = compile({ env: 'client', code, id })!
+      expect(compiled.code).toContain(`${componentName}={${componentName}}`)
+      expect(compiled.code).toContain('count={count}')
+      expect(compiled.code).toContain('name={name}')
+      expect(compiled.code).toContain('const count = 1')
+      expect(compiled.code).toContain(`const ${componentName}`)
+      const loaded = await loadVirtualHydrateModule({
+        code,
+        id: virtualHydrateId(id, compiled.boundaries[0]!),
+        root: fixtureRoot,
+      })
+      expect(loaded).toBeTruthy()
+      const output = analyzeModule({ code: loaded!.code })
+      expect(output.rootScope.find('Page')).toBeNull()
+      const capturedNames = [componentName, 'count', 'name'].sort()
+      const capturedReferences = new Set<string>()
+      output.walk({
+        enter(node) {
+          const reference = output.referenceOf(node)
+          if (reference && capturedNames.includes(reference.name)) {
+            capturedReferences.add(reference.name)
+            expect(reference.symbol).toBeTruthy()
+          }
+        },
+      })
+      expect([...capturedReferences].sort()).toEqual(capturedNames)
+      expect(
+        output.unresolvedReferences.filter((reference) =>
+          capturedNames.includes(reference.name),
+        ),
+      ).toHaveLength(0)
+    },
+  )
 
   test('should extract virtual modules and keep nested ids stable', async () => {
     const filename = 'hydrateWhenNested.tsx'

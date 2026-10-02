@@ -1,0 +1,64 @@
+{
+  "testFile": "packages/router-plugin/tests/hmr-exports.test.ts",
+  "supportingCommits": [
+    "0ec43cd02c88574bc2d12a42a1f54ddcb00af3b7",
+    "f69eb7a5aa5a4cedc95c1d995339f7a3e9bf00fd"
+  ],
+  "baselineCompilerCommit": "bb4423e09872aee4f2544600d0eba3303fc7db56",
+  "before": {
+    "passed": 8,
+    "failed": 8,
+    "total": 16,
+    "log": "/tmp/yuku-before-contract-tests.log",
+    "failedWithAutoCodeSplitting": true,
+    "exportCases": [
+      "function",
+      "overloaded function",
+      "shared function",
+      "variable",
+      "multiple variables",
+      "default",
+      "class",
+      "explicit alias"
+    ],
+    "compilerFingerprint": {
+      "commit": "f69eb7a5aa5a4cedc95c1d995339f7a3e9bf00fd",
+      "sha256": "413ee3fb6fefb17f03a5050229c0a967298c197a07d2bdf33d8cf12ad5754519",
+      "javascriptFiles": 125,
+      "sourceSha256": "7da7629b973a535ed58b890f548a9eb317446ef0fc72d78c9cdc5350c420c595",
+      "sourceFiles": 137,
+      "dependencyVersions": {
+        "@babel/generator": "7.29.8",
+        "@babel/types": "7.29.8"
+      }
+    }
+  },
+  "after": {
+    "passed": 16,
+    "failed": 0,
+    "total": 16,
+    "log": "/tmp/yuku-after-contract-tests.log",
+    "compilerFingerprint": {
+      "commit": "f69eb7a5aa5a4cedc95c1d995339f7a3e9bf00fd",
+      "sha256": "9c8751495155f052d418d5aabd437317091a3dfef76e8d6dbc9cf90a42803fc5",
+      "javascriptFiles": 125,
+      "sourceSha256": "b194df1fe4ed7069df76ac9a4301a3b3de5b47b25ae180ac3173e76f606a6852",
+      "sourceFiles": 137,
+      "dependencyVersions": {
+        "yuku-analyzer": "0.11.0",
+        "yuku-ast": "0.11.0",
+        "yuku-codegen": "0.11.0",
+        "@yuku-toolchain/types": "0.11.0"
+      }
+    }
+  },
+  "interpretation": "The same intended public export contracts reveal preexisting Babel split-route deficiencies; these baseline failures are not Yuku regressions. All contracts pass after the native implementation is restored.",
+  "performanceSmoke": {
+    "freshProcesses": 1,
+    "warmups": 1,
+    "measuredPasses": 3,
+    "before": "workflow-before.json",
+    "after": "workflow-after.json",
+    "interpretation": "Workflow smoke only. Primary speed conclusions use the five alternating baseline/candidate pairs in final-alternating.json."
+  }
+}

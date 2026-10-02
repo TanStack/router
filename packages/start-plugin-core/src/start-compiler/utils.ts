@@ -1,39 +1,38 @@
-import { codeFrameColumns } from '@babel/code-frame'
-import * as t from '@babel/types'
-import type babel from '@babel/core'
+import { is, walk } from 'yuku-ast'
+import { unwrapExpression } from '@tanstack/router-utils'
+import type {
+  CallExpression,
+  Node,
+  Program,
+  VariableDeclarator,
+} from '@yuku-toolchain/types'
+import type { StartCompilerTransformContext } from '../types'
+
+export function sourcePosition(code: string, offset: number) {
+  const before = code.slice(0, offset)
+  const lines = before.split('\n')
+  return { line: lines.length, column: lines[lines.length - 1]!.length }
+}
 
 export function codeFrameError(
   code: string,
-  loc: {
-    start: { line: number; column: number }
-    end: { line: number; column: number }
-  },
+  node: Pick<Node, 'start' | 'end'>,
   message: string,
 ) {
-  const frame = codeFrameColumns(
-    code,
-    {
-      start: loc.start,
-      end: loc.end,
-    },
-    {
-      highlightCode: true,
-      message,
-    },
-  )
-
+  const start = sourcePosition(code, node.start)
+  const lines = code.split('\n')
+  const frame = lines
+    .slice(Math.max(0, start.line - 2), start.line + 1)
+    .map((line, index) => {
+      const number = Math.max(1, start.line - 1) + index
+      return `${number} | ${line}${number === start.line ? `\n  | ${' '.repeat(start.column)}^ ${message}` : ''}`
+    })
+    .join('\n')
   return new Error(frame)
 }
 
-/**
- * Converts a bundler module ID to its physical-file identity for diagnostics,
- * filesystem matching, and file-based invalidation.
- *
- * Do not use this for IDs passed to resolve/load hooks or as module cache keys:
- * virtual prefixes and queries can be part of the module's semantic identity.
- */
+/** Keep semantic module IDs intact; this is only for physical-file matching. */
 export function cleanId(id: string): string {
-  // Remove null byte prefix used by Vite/Rollup for virtual modules
   if (id.startsWith('\0')) {
     id = id.slice(1)
   }
@@ -41,19 +40,74 @@ export function cleanId(id: string): string {
   return queryIndex === -1 ? id : id.substring(0, queryIndex)
 }
 
-/**
- * Strips a method call by replacing it with its callee object.
- * E.g., `foo().bar()` -> `foo()`
- *
- * This is a common pattern used when removing method calls from chains
- * (e.g., removing .server() from middleware on client, or .validator() on client).
- *
- * @param callPath - The path to the CallExpression to strip
- */
+/** Output-tree edits use native node identity; semantic queries use the source module. */
+export function createAstEditor(ast: Program) {
+  const parents = new WeakMap<Node, { parent: Node; key: string }>()
+  function indexSubtree(root: Node) {
+    walk(root, {
+      enter(node, context) {
+        if (context.parent && context.key) {
+          parents.set(node, { parent: context.parent, key: context.key })
+        }
+      },
+    })
+  }
+  indexSubtree(ast)
+  return {
+    parentOf(node: Node): Node | null {
+      return parents.get(node)?.parent ?? null
+    },
+    replaceNode(node: Node, replacement: Node): void {
+      const position = parents.get(node)
+      if (!position) {
+        throw new Error('Cannot replace a node outside the output tree')
+      }
+      const record = position.parent as unknown as Record<string, unknown>
+      const field = record[position.key]
+      if (Array.isArray(field)) {
+        const index = field.indexOf(node)
+        if (index < 0) {
+          throw new Error('Cannot replace a detached output node')
+        }
+        field[index] = replacement
+      } else {
+        record[position.key] = replacement
+      }
+      parents.set(replacement, position)
+      indexSubtree(replacement)
+    },
+  }
+}
+
+export function getVariableDeclarator(
+  node: Node,
+  parentOf: (node: Node) => Node | null,
+): VariableDeclarator | null {
+  let parent = parentOf(node)
+  while (
+    parent &&
+    is.oneOf(parent, [
+      'ParenthesizedExpression',
+      'TSAsExpression',
+      'TSSatisfiesExpression',
+      'TSNonNullExpression',
+      'TSTypeAssertion',
+    ])
+  ) {
+    node = parent
+    parent = parentOf(node)
+  }
+  return is.VariableDeclarator(parent) && parent.init === node ? parent : null
+}
+
 export function stripMethodCall(
-  callPath: babel.NodePath<t.CallExpression>,
+  call: CallExpression,
+  context: StartCompilerTransformContext,
 ): void {
-  if (t.isMemberExpression(callPath.node.callee)) {
-    callPath.replaceWith(callPath.node.callee.object)
+  const callee = is.Expression(call.callee)
+    ? unwrapExpression(call.callee)
+    : call.callee
+  if (is.MemberExpression(callee)) {
+    context.replaceNode(call, callee.object)
   }
 }

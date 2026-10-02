@@ -1,27 +1,18 @@
-import * as t from '@babel/types'
-import { parseAst } from '@tanstack/router-utils'
-
-import { buildLineIndex } from './sourceLocation'
+import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
+import { bindingIdentifiers, is } from 'yuku-ast'
+import { buildLineIndex, indexToLineColumn } from './sourceLocation'
 import { getOrCreate } from './utils'
+import type * as t from '@yuku-toolchain/types'
+import type { Module, Symbol } from 'yuku-analyzer'
 import type { LineIndex, TransformResult } from './sourceLocation'
-import type { ParseAstResult } from '@tanstack/router-utils'
 
 export type UsagePos = { line: number; column0: number }
-
 type BoundaryEnv = 'client' | 'server'
-
-type ImportBindingInfo = {
-  importedLocalNames: Set<string>
-}
-
+type ImportBindingInfo = { importedLocalNames: Set<string> }
 type UsageCacheKey = `${BoundaryEnv | 'post'}::${string}`
 
-function mayContainImportOrExport(code: string): boolean {
-  return code.includes('import') || code.includes('export')
-}
-
 export type ImportAnalysis = {
-  ast: ParseAstResult
+  module: Module
   lineIndex: LineIndex
   importSourcesInOrder: Array<string>
   importSpecifierLocationIndex: Map<string, number>
@@ -31,38 +22,38 @@ export type ImportAnalysis = {
   usageByKey: Map<UsageCacheKey, UsagePos | null>
 }
 
+function mayContainImportOrExport(code: string): boolean {
+  return code.includes('import') || code.includes('export')
+}
+
 function makeTransientResult(
   code: string,
   filename?: string,
   perf?: TransformResult['perf'],
 ): TransformResult {
-  const result: TransformResult = {
+  return {
     code,
     filename,
     map: undefined,
     originalCode: undefined,
+    ...(perf ? { perf } : {}),
   }
-
-  if (perf) {
-    result.perf = perf
-  }
-
-  return result
 }
 
-function getOrParseAst(result: TransformResult): ParseAstResult {
-  if (result.parsedAst) {
+function getOrAnalyzeModule(result: TransformResult): Module {
+  if (result.analyzedModule) {
     result.perf?.count('analysis.parseAst.cached')
-    return result.parsedAst
+    return result.analyzedModule
   }
-
   const startedAt = result.perf ? performance.now() : 0
   result.perf?.count('analysis.parseAst.calls')
-
   try {
-    const ast = parseAst({ code: result.code, filename: result.filename })
-    result.parsedAst = ast
-    return ast
+    const module = analyzeModule({
+      code: result.code,
+      filename: result.filename,
+    })
+    result.analyzedModule = module
+    return module
   } finally {
     if (result.perf) {
       result.perf.time('analysis.parseAst', startedAt)
@@ -70,107 +61,52 @@ function getOrParseAst(result: TransformResult): ParseAstResult {
   }
 }
 
+function unwrapNode(node: t.Node): t.Node {
+  return is.Expression(node) ? unwrapExpression(node) : node
+}
+
 function getModuleExportName(node: t.Identifier | t.StringLiteral): string {
-  return t.isIdentifier(node) ? node.name : node.value
+  return is.Identifier(node) ? node.name : node.value
 }
 
 function getStringLiteralValueStart(node: t.StringLiteral): number {
-  if (node.start == null) {
-    return -1
-  }
-
-  const raw = node.extra?.raw
-  if (typeof raw === 'string' && (raw.startsWith("'") || raw.startsWith('"'))) {
-    return node.start + 1
-  }
-
-  return node.start
+  return node.start + 1
 }
 
 function isTypeOnlyImportDeclaration(node: t.ImportDeclaration): boolean {
-  if (node.importKind === 'type') return true
-  if (node.specifiers.length === 0) return false
-
-  return node.specifiers.every(
-    (specifier) =>
-      t.isImportSpecifier(specifier) && specifier.importKind === 'type',
+  return (
+    node.importKind === 'type' ||
+    (node.specifiers.length > 0 &&
+      node.specifiers.every(
+        (specifier) =>
+          is.ImportSpecifier(specifier) && specifier.importKind === 'type',
+      ))
   )
 }
 
 function isTypeOnlyExportNamedDeclaration(
   node: t.ExportNamedDeclaration,
 ): boolean {
-  if (node.exportKind === 'type') return true
-  if (!node.source || node.declaration || node.specifiers.length === 0) {
-    return false
-  }
-
-  return node.specifiers.every(
-    (specifier) =>
-      t.isExportSpecifier(specifier) && specifier.exportKind === 'type',
+  return (
+    node.exportKind === 'type' ||
+    (!!node.source &&
+      !node.declaration &&
+      node.specifiers.length > 0 &&
+      node.specifiers.every((specifier) => specifier.exportKind === 'type'))
   )
-}
-
-function collectIdentifiersFromPattern(
-  pattern: t.LVal,
-  add: (name: string) => void,
-): void {
-  if (t.isIdentifier(pattern)) {
-    add(pattern.name)
-  } else if (t.isObjectPattern(pattern)) {
-    for (const prop of pattern.properties) {
-      if (t.isRestElement(prop)) {
-        collectIdentifiersFromPattern(prop.argument as t.LVal, add)
-      } else {
-        collectIdentifiersFromPattern(prop.value as t.LVal, add)
-      }
-    }
-  } else if (t.isArrayPattern(pattern)) {
-    for (const elem of pattern.elements) {
-      if (elem) collectIdentifiersFromPattern(elem as t.LVal, add)
-    }
-  } else if (t.isAssignmentPattern(pattern)) {
-    collectIdentifiersFromPattern(pattern.left, add)
-  } else if (t.isRestElement(pattern)) {
-    collectIdentifiersFromPattern(pattern.argument as t.LVal, add)
-  }
 }
 
 export function isValidExportName(name: string): boolean {
-  if (name === 'default' || name.length === 0) return false
-  const first = name.charCodeAt(0)
-  if (
-    !(
-      (first >= 65 && first <= 90) ||
-      (first >= 97 && first <= 122) ||
-      first === 95 ||
-      first === 36
-    )
-  )
-    return false
-  for (let i = 1; i < name.length; i++) {
-    const ch = name.charCodeAt(i)
-    if (
-      !(
-        (ch >= 65 && ch <= 90) ||
-        (ch >= 97 && ch <= 122) ||
-        (ch >= 48 && ch <= 57) ||
-        ch === 95 ||
-        ch === 36
-      )
-    )
-      return false
-  }
-  return true
+  return name !== 'default' && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)
 }
 
 function buildImportAnalysis(result: TransformResult): ImportAnalysis {
-  const ast = getOrParseAst(result)
+  const module = getOrAnalyzeModule(result)
 
   const importSourcesInOrder: Array<string> = []
   const importSpecifierLocationIndex = new Map<string, number>()
   const importBindingsBySource = new Map<string, ImportBindingInfo>()
-  const memberBindingSources = new Map<string, Set<string>>()
+  const memberBindingSources = new Map<Symbol, Set<string>>()
   const mockNamesBySource = new Map<string, Set<string>>()
   const namedExports = new Set<string>()
 
@@ -183,10 +119,6 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
     importSourcesInOrder.push(node.value)
 
     const index = getStringLiteralValueStart(node)
-    if (index === -1) {
-      return
-    }
-
     const prev = importSpecifierLocationIndex.get(node.value)
     if (prev == null || index < prev) {
       importSpecifierLocationIndex.set(node.value, index)
@@ -194,14 +126,19 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
   }
 
   const addMockName = (source: string, name: string) => {
-    if (name === 'default' || name.length === 0) return
+    if (name === 'default' || name.length === 0) {
+      return
+    }
     getOrCreate(mockNamesBySource, source, () => new Set<string>()).add(name)
   }
 
   const addMemberBinding = (localName: string, source: string) => {
-    getOrCreate(memberBindingSources, localName, () => new Set<string>()).add(
-      source,
-    )
+    const symbol = module.rootScope.find(localName)
+    if (symbol) {
+      getOrCreate(memberBindingSources, symbol, () => new Set<string>()).add(
+        source,
+      )
+    }
   }
 
   const addNamedExport = (name: string) => {
@@ -211,27 +148,31 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
   }
 
   const visit = (node: t.Node): void => {
-    if (t.isImportDeclaration(node)) {
+    if (is.ImportDeclaration(node)) {
       const isTypeOnly = isTypeOnlyImportDeclaration(node)
       if (!isTypeOnly) {
         addSpecifierLocation(node.source)
         const source = node.source.value
         const bindingInfo = getBindingInfo(source)
         for (const specifier of node.specifiers) {
-          if (t.isImportNamespaceSpecifier(specifier)) {
+          if (is.ImportNamespaceSpecifier(specifier)) {
             bindingInfo.importedLocalNames.add(specifier.local.name)
             addMemberBinding(specifier.local.name, source)
             continue
           }
 
-          if (t.isImportDefaultSpecifier(specifier)) {
+          if (is.ImportDefaultSpecifier(specifier)) {
             bindingInfo.importedLocalNames.add(specifier.local.name)
             addMemberBinding(specifier.local.name, source)
             continue
           }
 
-          if (!t.isImportSpecifier(specifier)) continue
-          if (specifier.importKind === 'type') continue
+          if (!is.ImportSpecifier(specifier)) {
+            continue
+          }
+          if (specifier.importKind === 'type') {
+            continue
+          }
 
           bindingInfo.importedLocalNames.add(specifier.local.name)
           const importedName = getModuleExportName(specifier.imported)
@@ -240,17 +181,21 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
           }
         }
       }
-    } else if (t.isExportNamedDeclaration(node)) {
+    } else if (is.ExportNamedDeclaration(node)) {
       const isTypeOnly = isTypeOnlyExportNamedDeclaration(node)
-      if (!isTypeOnly && node.source && t.isStringLiteral(node.source)) {
+      if (!isTypeOnly && node.source && is.StringLiteral(node.source)) {
         addSpecifierLocation(node.source)
       }
 
       if (!isTypeOnly && node.source?.value) {
         const source = node.source.value
         for (const specifier of node.specifiers) {
-          if (!t.isExportSpecifier(specifier)) continue
-          if (specifier.exportKind === 'type') continue
+          if (!is.ExportSpecifier(specifier)) {
+            continue
+          }
+          if (specifier.exportKind === 'type') {
+            continue
+          }
           addMockName(source, getModuleExportName(specifier.local))
         }
       }
@@ -258,72 +203,56 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
       if (!isTypeOnly) {
         if (node.declaration) {
           const decl = node.declaration
-          if (t.isFunctionDeclaration(decl) || t.isClassDeclaration(decl)) {
-            if (decl.id?.name) addNamedExport(decl.id.name)
-          } else if (t.isVariableDeclaration(decl)) {
+          if (is.FunctionDeclaration(decl) || is.ClassDeclaration(decl)) {
+            if (decl.id?.name) {
+              addNamedExport(decl.id.name)
+            }
+          } else if (is.VariableDeclaration(decl)) {
             for (const d of decl.declarations) {
-              collectIdentifiersFromPattern(d.id as t.LVal, addNamedExport)
+              bindingIdentifiers(d.id).forEach((id) => addNamedExport(id.name))
             }
           }
         }
 
         for (const specifier of node.specifiers) {
-          if (!t.isExportSpecifier(specifier)) continue
-          if (specifier.exportKind === 'type') continue
+          if (!is.ExportSpecifier(specifier)) {
+            continue
+          }
+          if (specifier.exportKind === 'type') {
+            continue
+          }
           const exportedName = getModuleExportName(specifier.exported)
           addNamedExport(exportedName)
         }
       }
-    } else if (t.isExportAllDeclaration(node)) {
+    } else if (is.ExportAllDeclaration(node)) {
       if (node.exportKind !== 'type') {
         addSpecifierLocation(node.source)
       }
-    } else if (t.isImportExpression(node)) {
-      if (t.isStringLiteral(node.source)) {
-        addSpecifierLocation(node.source)
+    } else if (is.ImportExpression(node)) {
+      const source = unwrapNode(node.source)
+      if (is.StringLiteral(source)) {
+        addSpecifierLocation(source)
       }
-    } else if (t.isCallExpression(node) && t.isImport(node.callee)) {
-      const sourceNode = node.arguments[0]
-      if (t.isStringLiteral(sourceNode)) {
-        addSpecifierLocation(sourceNode)
-      }
-    } else if (
-      t.isMemberExpression(node) ||
-      t.isOptionalMemberExpression(node)
-    ) {
-      const object = node.object
-      if (t.isIdentifier(object)) {
-        const sources = memberBindingSources.get(object.name)
+    } else if (is.MemberExpression(node)) {
+      const object = unwrapNode(node.object)
+      if (is.Identifier(object)) {
+        const sources = memberBindingSources.get(module.symbolOf(object)!)
         if (sources) {
           const property = node.property
           for (const source of sources) {
-            if (!node.computed && t.isIdentifier(property)) {
+            if (!node.computed && is.Identifier(property)) {
               addMockName(source, property.name)
-            } else if (node.computed && t.isStringLiteral(property)) {
+            } else if (node.computed && is.StringLiteral(property)) {
               addMockName(source, property.value)
             }
           }
         }
       }
     }
-
-    const keys = t.VISITOR_KEYS[node.type]
-    if (!keys) return
-    for (const key of keys) {
-      const child = (node as unknown as Record<string, unknown>)[key]
-      if (Array.isArray(child)) {
-        for (const item of child) {
-          if (item && typeof item === 'object' && 'type' in item) {
-            visit(item as t.Node)
-          }
-        }
-      } else if (child && typeof child === 'object' && 'type' in child) {
-        visit(child as t.Node)
-      }
-    }
   }
 
-  visit(ast.program)
+  module.walk({ enter: visit })
 
   const mockExportNamesBySource = new Map<string, Array<string>>()
   for (const [source, names] of mockNamesBySource) {
@@ -334,7 +263,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
   result.lineIndex = lineIndex
 
   const analysis = {
-    ast,
+    module,
     lineIndex,
     importSourcesInOrder,
     importSpecifierLocationIndex,
@@ -418,27 +347,29 @@ export function getNamedExports(
 
 function isCompilerSafeBoundaryCall(
   call: t.CallExpression,
-  fnNode: t.Function,
+  fnNode: t.Function | t.ArrowFunctionExpression,
   envType: BoundaryEnv,
 ): boolean {
-  const directArgument = call.arguments.some((arg) => arg === fnNode)
+  const directArgument = call.arguments.some(
+    (arg) => unwrapNode(arg) === fnNode,
+  )
   if (!directArgument) {
     return false
   }
 
-  const callee = call.callee
+  const callee = unwrapNode(call.callee)
 
-  if (t.isIdentifier(callee)) {
+  if (is.Identifier(callee)) {
     return envType === 'client'
       ? callee.name === 'createServerOnlyFn'
       : callee.name === 'createClientOnlyFn'
   }
 
-  if (!t.isMemberExpression(callee) || callee.computed) {
+  if (!is.MemberExpression(callee) || callee.computed) {
     return false
   }
 
-  if (!t.isIdentifier(callee.property)) {
+  if (!is.Identifier(callee.property)) {
     return false
   }
 
@@ -468,235 +399,50 @@ function isCompilerSafeBoundaryCall(
   return false
 }
 
-function getCalleeRootName(
-  node: t.Expression | t.Super | t.V8IntrinsicIdentifier,
-): string | undefined {
-  if (t.isIdentifier(node)) {
+function getCalleeRootName(node: t.Node): string | undefined {
+  node = unwrapNode(node)
+  if (is.Identifier(node)) {
     return node.name
   }
 
-  if (t.isCallExpression(node)) {
+  if (is.CallExpression(node)) {
     return getCalleeRootName(node.callee)
   }
 
-  if (t.isMemberExpression(node)) {
+  if (is.MemberExpression(node)) {
     return getCalleeRootName(node.object)
   }
 
   return undefined
 }
 
-function getBoundNamesFromPattern(pattern: t.LVal, out: Set<string>): void {
-  if (t.isIdentifier(pattern)) {
-    out.add(pattern.name)
-  } else if (t.isObjectPattern(pattern)) {
-    for (const prop of pattern.properties) {
-      if (t.isRestElement(prop)) {
-        getBoundNamesFromPattern(prop.argument as t.LVal, out)
-      } else {
-        getBoundNamesFromPattern(prop.value as t.LVal, out)
-      }
-    }
-  } else if (t.isArrayPattern(pattern)) {
-    for (const elem of pattern.elements) {
-      if (elem) getBoundNamesFromPattern(elem as t.LVal, out)
-    }
-  } else if (t.isAssignmentPattern(pattern)) {
-    getBoundNamesFromPattern(pattern.left, out)
-  } else if (t.isRestElement(pattern)) {
-    getBoundNamesFromPattern(pattern.argument as t.LVal, out)
+function transparentParent(module: Module, node: t.Node) {
+  let parent = module.parentOf(node)
+  while (parent && unwrapNode(parent) === unwrapNode(node)) {
+    node = parent
+    parent = module.parentOf(node)
   }
+  return { node, parent }
 }
 
-function addPatternBindingsIfTracked(
-  pattern: t.LVal,
-  tracked: Set<string>,
-  out: Set<string>,
-): void {
-  const names = new Set<string>()
-  getBoundNamesFromPattern(pattern, names)
-  for (const name of names) {
-    if (tracked.has(name)) {
-      out.add(name)
-    }
-  }
-}
-
-function collectHoistedVarBindings(
+function isInsideCompilerSafeBoundary(
+  module: Module,
   node: t.Node,
-  tracked: Set<string>,
-  out: Set<string>,
-  isRoot = true,
-): void {
-  if (!isRoot && t.isFunction(node)) {
-    return
-  }
-
-  if (t.isVariableDeclaration(node) && node.kind === 'var') {
-    for (const decl of node.declarations) {
-      addPatternBindingsIfTracked(decl.id as t.LVal, tracked, out)
-    }
-  }
-
-  const keys = t.VISITOR_KEYS[node.type]
-  if (!keys) return
-  for (const key of keys) {
-    const child = (node as unknown as Record<string, unknown>)[key]
-    if (Array.isArray(child)) {
-      for (const item of child) {
-        if (item && typeof item === 'object' && 'type' in item) {
-          collectHoistedVarBindings(item as t.Node, tracked, out, false)
-        }
-      }
-    } else if (child && typeof child === 'object' && 'type' in child) {
-      collectHoistedVarBindings(child as t.Node, tracked, out, false)
-    }
-  }
-}
-
-function collectProgramBindings(
-  program: t.Program,
-  tracked: Set<string>,
-): Set<string> {
-  const bindings = new Set<string>()
-
-  for (const node of program.body) {
-    if (t.isVariableDeclaration(node)) {
-      for (const decl of node.declarations) {
-        addPatternBindingsIfTracked(decl.id as t.LVal, tracked, bindings)
-      }
-      continue
-    }
-
-    if (t.isFunctionDeclaration(node) || t.isClassDeclaration(node)) {
-      if (node.id && tracked.has(node.id.name)) {
-        bindings.add(node.id.name)
-      }
-    }
-  }
-
-  return bindings
-}
-
-function collectBlockBindings(
-  block: t.BlockStatement,
-  tracked: Set<string>,
-): Set<string> {
-  const bindings = new Set<string>()
-
-  for (const node of block.body) {
-    if (t.isVariableDeclaration(node) && node.kind !== 'var') {
-      for (const decl of node.declarations) {
-        addPatternBindingsIfTracked(decl.id as t.LVal, tracked, bindings)
-      }
-      continue
-    }
-
-    if (t.isFunctionDeclaration(node) || t.isClassDeclaration(node)) {
-      if (node.id && tracked.has(node.id.name)) {
-        bindings.add(node.id.name)
-      }
-    }
-  }
-
-  return bindings
-}
-
-function collectFunctionBindings(
-  fn: t.Function,
-  tracked: Set<string>,
-): Set<string> {
-  const bindings = new Set<string>()
-
-  if (
-    (t.isFunctionDeclaration(fn) || t.isFunctionExpression(fn)) &&
-    fn.id &&
-    tracked.has(fn.id.name)
-  ) {
-    bindings.add(fn.id.name)
-  }
-
-  for (const param of fn.params) {
-    addPatternBindingsIfTracked(param as t.LVal, tracked, bindings)
-  }
-
-  if (t.isBlockStatement(fn.body)) {
-    collectHoistedVarBindings(fn.body, tracked, bindings)
-  }
-
-  return bindings
-}
-
-type UsageWalkContext = {
-  parents: Array<t.Node>
-  scopeStack: Array<Set<string>>
-}
-
-function isShadowedByScope(
-  name: string,
-  scopeStack: Array<Set<string>>,
-): boolean {
-  for (let i = scopeStack.length - 1; i >= 0; i--) {
-    if (scopeStack[i]?.has(name)) {
-      return true
-    }
-  }
-  return false
-}
-
-function isBindingIdentifierInParent(
-  node: t.Identifier,
-  parent: t.Node | undefined,
-): boolean {
-  if (!parent) return false
-
-  if (t.isImportSpecifier(parent) || t.isImportDefaultSpecifier(parent)) {
-    return parent.local === node
-  }
-  if (t.isImportNamespaceSpecifier(parent)) {
-    return parent.local === node
-  }
-  if (t.isFunctionDeclaration(parent) || t.isFunctionExpression(parent)) {
-    return (
-      parent.id === node || parent.params.includes(node as unknown as t.Pattern)
-    )
-  }
-  if (t.isArrowFunctionExpression(parent)) {
-    return parent.params.includes(node as unknown as t.Pattern)
-  }
-  if (t.isClassDeclaration(parent) || t.isClassExpression(parent)) {
-    return parent.id === node
-  }
-  if (t.isVariableDeclarator(parent)) {
-    return parent.id === node
-  }
-  if (t.isCatchClause(parent)) {
-    return parent.param === node
-  }
-
-  return false
-}
-
-function isInsideCompilerSafeBoundaryNodes(
-  parents: Array<t.Node>,
   envType: BoundaryEnv,
 ): boolean {
-  for (let i = parents.length - 1; i >= 0; i--) {
-    const node = parents[i]!
-    if (!t.isFunction(node)) {
-      continue
+  let ancestor = module.parentOf(node)
+  while (ancestor) {
+    if (is.Function(ancestor)) {
+      const { parent: call } = transparentParent(module, ancestor)
+      if (
+        is.CallExpression(call) &&
+        isCompilerSafeBoundaryCall(call, ancestor, envType)
+      ) {
+        return true
+      }
     }
-
-    const call = parents[i - 1]
-    if (
-      call &&
-      t.isCallExpression(call) &&
-      isCompilerSafeBoundaryCall(call, node, envType)
-    ) {
-      return true
-    }
+    ancestor = module.parentOf(ancestor)
   }
-
   return false
 }
 
@@ -710,191 +456,46 @@ function findUsagePosInAnalysis(
   if (analysis.usageByKey.has(cacheKey)) {
     return analysis.usageByKey.get(cacheKey) ?? undefined
   }
-
+  const module = analysis.module
   const imported =
     analysis.importBindingsBySource.get(source)?.importedLocalNames
-  if (!imported || imported.size === 0) {
-    analysis.usageByKey.set(cacheKey, null)
-    return undefined
+  const symbols = new Set<Symbol>()
+  for (const name of imported ?? []) {
+    const symbol = module.rootScope.find(name)
+    if (symbol) {
+      symbols.add(symbol)
+    }
   }
-
   let preferred: UsagePos | undefined
   let anyUsage: UsagePos | undefined
-
-  const visit = (node: t.Node, ctx: UsageWalkContext): void => {
+  for (const reference of module.references) {
+    if (
+      !reference.symbol ||
+      !symbols.has(reference.symbol) ||
+      reference.inTypePosition
+    ) {
+      continue
+    }
+    const node = reference.node
+    if (envType && isInsideCompilerSafeBoundary(module, node, envType)) {
+      continue
+    }
+    const { node: expression, parent } = transparentParent(module, node)
+    const { line, column } = indexToLineColumn(analysis.lineIndex, node.start)
+    const pos = { line, column0: column - 1 }
+    const isPreferred =
+      ((is.CallExpression(parent) || is.NewExpression(parent)) &&
+        parent.callee === expression) ||
+      (is.MemberExpression(parent) && parent.object === expression)
+    if (isPreferred) {
+      preferred ??= pos
+    } else {
+      anyUsage ??= pos
+    }
     if (preferred && anyUsage) {
-      return
-    }
-
-    if (t.isProgram(node)) {
-      const nextCtx = {
-        parents: [...ctx.parents, node],
-        scopeStack: [...ctx.scopeStack, collectProgramBindings(node, imported)],
-      }
-      for (const child of node.body) {
-        visit(child, nextCtx)
-      }
-      return
-    }
-
-    if (t.isFunction(node)) {
-      const functionCtx = {
-        parents: [...ctx.parents, node],
-        scopeStack: [
-          ...ctx.scopeStack,
-          collectFunctionBindings(node, imported),
-        ],
-      }
-
-      visit(node.body, functionCtx)
-      return
-    }
-
-    if (t.isBlockStatement(node)) {
-      const nextCtx = {
-        parents: [...ctx.parents, node],
-        scopeStack: [...ctx.scopeStack, collectBlockBindings(node, imported)],
-      }
-      for (const child of node.body) {
-        visit(child, nextCtx)
-      }
-      return
-    }
-
-    if (t.isCatchClause(node)) {
-      const bindings = new Set<string>()
-      if (node.param) {
-        addPatternBindingsIfTracked(node.param as t.LVal, imported, bindings)
-      }
-      const nextCtx = {
-        parents: [...ctx.parents, node],
-        scopeStack: bindings.size
-          ? [...ctx.scopeStack, bindings]
-          : ctx.scopeStack,
-      }
-      visit(node.body, nextCtx)
-      return
-    }
-
-    if (
-      t.isForStatement(node) &&
-      t.isVariableDeclaration(node.init) &&
-      node.init.kind !== 'var'
-    ) {
-      const bindings = new Set<string>()
-      for (const decl of node.init.declarations) {
-        addPatternBindingsIfTracked(decl.id as t.LVal, imported, bindings)
-      }
-      const nextCtx = {
-        parents: [...ctx.parents, node],
-        scopeStack: bindings.size
-          ? [...ctx.scopeStack, bindings]
-          : ctx.scopeStack,
-      }
-      visit(node.init, nextCtx)
-      if (node.test) visit(node.test, nextCtx)
-      if (node.update) visit(node.update, nextCtx)
-      visit(node.body, nextCtx)
-      return
-    }
-
-    if (
-      (t.isForInStatement(node) || t.isForOfStatement(node)) &&
-      t.isVariableDeclaration(node.left) &&
-      node.left.kind !== 'var'
-    ) {
-      const bindings = new Set<string>()
-      for (const decl of node.left.declarations) {
-        addPatternBindingsIfTracked(decl.id as t.LVal, imported, bindings)
-      }
-      const nextCtx = {
-        parents: [...ctx.parents, node],
-        scopeStack: bindings.size
-          ? [...ctx.scopeStack, bindings]
-          : ctx.scopeStack,
-      }
-      visit(node.left, nextCtx)
-      visit(node.right, nextCtx)
-      visit(node.body, nextCtx)
-      return
-    }
-
-    const nextParents = [...ctx.parents, node]
-
-    if (t.isIdentifier(node)) {
-      const parent = ctx.parents[ctx.parents.length - 1]
-      if (imported.has(node.name)) {
-        if (!isBindingIdentifierInParent(node, parent)) {
-          if (
-            !(
-              t.isObjectProperty(parent) &&
-              parent.key === node &&
-              !parent.computed &&
-              !parent.shorthand
-            ) &&
-            !(
-              t.isObjectMethod(parent) &&
-              parent.key === node &&
-              !parent.computed
-            ) &&
-            !(t.isExportSpecifier(parent) && parent.exported === node) &&
-            !isShadowedByScope(node.name, ctx.scopeStack) &&
-            !(
-              envType && isInsideCompilerSafeBoundaryNodes(ctx.parents, envType)
-            )
-          ) {
-            const loc = node.loc?.start
-            if (loc) {
-              const pos: UsagePos = { line: loc.line, column0: loc.column }
-              const isPreferred =
-                (t.isCallExpression(parent) && parent.callee === node) ||
-                (t.isNewExpression(parent) && parent.callee === node) ||
-                ((t.isMemberExpression(parent) ||
-                  t.isOptionalMemberExpression(parent)) &&
-                  parent.object === node)
-
-              if (isPreferred) {
-                preferred ||= pos
-              } else {
-                anyUsage ||= pos
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (t.isImportDeclaration(node)) {
-      return
-    }
-
-    const keys = t.VISITOR_KEYS[node.type]
-    if (!keys) return
-    for (const key of keys) {
-      const child = (node as unknown as Record<string, unknown>)[key]
-      if (Array.isArray(child)) {
-        for (const item of child) {
-          if (item && typeof item === 'object' && 'type' in item) {
-            visit(item as t.Node, {
-              parents: nextParents,
-              scopeStack: ctx.scopeStack,
-            })
-          }
-        }
-      } else if (child && typeof child === 'object' && 'type' in child) {
-        visit(child as t.Node, {
-          parents: nextParents,
-          scopeStack: ctx.scopeStack,
-        })
-      }
+      break
     }
   }
-
-  visit(analysis.ast.program, {
-    parents: [],
-    scopeStack: [],
-  })
-
   const pos = preferred ?? anyUsage ?? null
   analysis.usageByKey.set(cacheKey, pos)
   return pos ?? undefined

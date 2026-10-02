@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-09-26T14:03:21.286Z",
+  "compilerFingerprint": {
+    "sha256": "413ee3fb6fefb17f03a5050229c0a967298c197a07d2bdf33d8cf12ad5754519",
+    "javascriptFiles": 125
+  },
+  "workspace": "/Users/Flo/.codex/worktrees/yuku-baseline/router",
+  "fixturesRoot": "/Users/Flo/.codex/worktrees/yuku-baseline/router",
+  "node": "v24.8.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M3 Max",
+  "corpus": {
+    "files": 1,
+    "bytes": 3779,
+    "sha256": "aa5dc6a57b94312699b7f6685db394a120c344e9d65a8ff29584bc6a9e9e91b8"
+  },
+  "repetitions": 1,
+  "iterations": 1,
+  "warmups": 0,
+  "summary": {
+    "babel-splitter": {
+      "medianMsPerCorpus": 139.009375,
+      "minMsPerCorpus": 139.009375,
+      "maxMsPerCorpus": 139.009375,
+      "medianPeakRssMiB": 144.125,
+      "medianRetainedHeapMiB": 15.9534912109375,
+      "medianWallMs": 335.36575,
+      "phasesMsPerCorpus": {
+        "detectGroupings": 15.701750000000004,
+        "sharedAnalysis": 36.067916999999966,
+        "referenceCompile": 23.784209000000033,
+        "virtualCompile": 34.964500000000044,
+        "sharedCompile": 28.15391599999998
+      },
+      "countsPerCorpus": {
+        "parses": 18,
+        "outputs": 12,
+        "sharedModules": 2
+      }
+    }
+  },
+  "samples": [
+    {
+      "repetition": 0,
+      "wallMs": 335.36575,
+      "mode": "babel-splitter",
+      "corpus": {
+        "files": 1,
+        "bytes": 3779,
+        "sha256": "aa5dc6a57b94312699b7f6685db394a120c344e9d65a8ff29584bc6a9e9e91b8"
+      },
+      "elapsedMs": 139.009375,
+      "phases": {
+        "detectGroupings": 15.701750000000004,
+        "sharedAnalysis": 36.067916999999966,
+        "referenceCompile": 23.784209000000033,
+        "virtualCompile": 34.964500000000044,
+        "sharedCompile": 28.15391599999998
+      },
+      "counts": {
+        "parses": 18,
+        "outputs": 12,
+        "sharedModules": 2
+      },
+      "peakRssKiB": 147584,
+      "before": {
+        "rss": 120258560,
+        "heapTotal": 49119232,
+        "heapUsed": 13264440,
+        "external": 2345029,
+        "arrayBuffers": 24947
+      },
+      "after": {
+        "rss": 150700032,
+        "heapTotal": 95141888,
+        "heapUsed": 30400592,
+        "external": 2388616,
+        "arrayBuffers": 41331
+      },
+      "retained": {
+        "rss": 151126016,
+        "heapTotal": 91209728,
+        "heapUsed": 16728448,
+        "external": 2350686,
+        "arrayBuffers": 41331
+      },
+      "outputBytes": 20639,
+      "outputMapBytes": 73889,
+      "resolvedReferences": 0
+    }
+  ]
+}

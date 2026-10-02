@@ -1,0 +1,83 @@
+{
+  "timestamp": "2026-09-26T13:03:17.738Z",
+  "node": "v24.8.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M3 Max",
+  "app": "e2e/react-router/basic-file-based-code-splitting",
+  "repetitions": 1,
+  "profile": true,
+  "summary": {
+    "medianBuildMs": 399.16337500000003,
+    "minBuildMs": 399.16337500000003,
+    "maxBuildMs": 399.16337500000003,
+    "medianWallMs": 522.097459,
+    "medianPeakRssMiB": 283.640625
+  },
+  "samples": [
+    {
+      "repetition": 0,
+      "wallMs": 522.097459,
+      "buildMs": 399.16337500000003,
+      "sourceHash": "0c64f15b88b9fd42d89c99640724c7aeb3cf677af7f9316e7784b45ee9f5a0eb",
+      "peakRssKiB": 290448,
+      "before": {
+        "rss": 89653248,
+        "heapTotal": 24100864,
+        "heapUsed": 14180760,
+        "external": 3823837,
+        "arrayBuffers": 36007
+      },
+      "after": {
+        "rss": 296239104,
+        "heapTotal": 130203648,
+        "heapUsed": 63776384,
+        "external": 5030243,
+        "arrayBuffers": 84508
+      },
+      "retained": {
+        "rss": 288178176,
+        "heapTotal": 117260288,
+        "heapUsed": 47292680,
+        "external": 5030243,
+        "arrayBuffers": 77577
+      },
+      "emittedFiles": 16,
+      "emittedCodeBytes": 277550,
+      "hookTimings": {
+        "tanstack:router-generator:buildStart": {
+          "calls": 1,
+          "ms": 0.039332999999999174
+        },
+        "tanstack-router:code-splitter:compile-reference-file:buildStart": {
+          "calls": 1,
+          "ms": 0.00925000000000864
+        },
+        "tanstack-router:code-splitter:compile-virtual-file:buildStart": {
+          "calls": 1,
+          "ms": 0.008249999999975444
+        },
+        "tanstack-router:code-splitter:compile-shared-file:buildStart": {
+          "calls": 1,
+          "ms": 0.007375000000024556
+        },
+        "tanstack:router-inline-css-defaults:buildStart": {
+          "calls": 1,
+          "ms": 0.008082999999999174
+        },
+        "tanstack-router:code-splitter:compile-reference-file:transform": {
+          "calls": 14,
+          "ms": 32.28116699999981
+        },
+        "tanstack-router:code-splitter:compile-virtual-file:transform": {
+          "calls": 13,
+          "ms": 13.803124000000025
+        },
+        "tanstack-router:code-splitter:compile-shared-file:transform": {
+          "calls": 1,
+          "ms": 2.099084000000005
+        }
+      }
+    }
+  ]
+}
