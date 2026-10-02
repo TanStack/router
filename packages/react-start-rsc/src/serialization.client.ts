@@ -32,9 +32,8 @@ const adapter = createSerializationAdapter({
     throw new Error('RSC cannot be serialized on client')
   },
   fromSerializable: (value: SerializedRsc): AnyCompositeComponent => {
-    // Rsbuild SSR sends asset deps with each serialized RSC so the client can
-    // preload only if that specific stream is rendered. When absent, decode
-    // starts eagerly and discovers assets from the Flight payload as before.
+    // Asset metadata lets rendered streams preload their dependencies before
+    // decoding. Streams without metadata discover dependencies during decode.
     const options = {
       cssHrefs: value.cssHrefs,
       jsPreloads: value.jsPreloads,
