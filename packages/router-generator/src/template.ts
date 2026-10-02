@@ -74,10 +74,10 @@ export function getTargetTemplate(config: Config): TargetTemplate {
         route: {
           template: () =>
             [
-              '%%tsrImports%%',
+              "import { Outlet, createFileRoute } from '@tanstack/react-router';",
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-              'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
+              'function RouteComponent() { return (<><div>Hello "%%tsrPath%%"!</div><Outlet /></>) };\n',
             ].join(''),
           imports: {
             tsrImports: () =>
@@ -127,10 +127,10 @@ export function getTargetTemplate(config: Config): TargetTemplate {
         route: {
           template: () =>
             [
-              '%%tsrImports%%',
+              "import { Outlet, createFileRoute } from '@tanstack/solid-router';",
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-              'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
+              'function RouteComponent() { return (<><div>Hello "%%tsrPath%%"!</div><Outlet /></>) };\n',
             ].join(''),
           imports: {
             tsrImports: () =>
@@ -183,10 +183,10 @@ export function getTargetTemplate(config: Config): TargetTemplate {
           template: () =>
             [
               'import { h } from "vue"\n',
-              '%%tsrImports%%',
+              "import { Outlet, createFileRoute } from '@tanstack/vue-router';",
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-              'function RouteComponent() { return h("div", {}, "Hello \\"%%tsrPath%%\\"!") };\n',
+              'function RouteComponent() { return h("div", {}, ["Hello \\"%%tsrPath%%\\"!", h(Outlet)]) };\n',
             ].join(''),
           imports: {
             tsrImports: () =>
