@@ -2,8 +2,10 @@
 
 import * as React from 'react'
 import { hasKeys } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Matches } from './Matches'
 import { routerContext } from './routerContext'
+import type { RouterContextValue } from './routerContext'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -36,10 +38,20 @@ export function RouterContextProvider<
     })
   }
 
+  let value: RouterContextValue
+  if (isServer ?? router.isServer) {
+    value = [router]
+  } else {
+    const source = router.stores.location
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    value = React.useMemo<RouterContextValue>(
+      () => [router, source],
+      [router, source],
+    )
+  }
+
   const provider = (
-    <routerContext.Provider value={router as AnyRouter}>
-      {children}
-    </routerContext.Provider>
+    <routerContext.Provider value={value}>{children}</routerContext.Provider>
   )
 
   if (router.options.Wrap) {

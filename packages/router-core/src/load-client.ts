@@ -24,6 +24,7 @@ import type { AnyRedirect } from './redirect'
 import type { AnyRouter, RouterCore, TrailingSlashOption } from './router'
 import type { RoutePaths } from './routeInfo'
 import type { RouterHistory } from '@tanstack/history'
+import type { RouterWritableStore } from './stores'
 
 type RouteComponentType =
   | 'component'
@@ -1527,7 +1528,11 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
     }))
     offered[index]!.status = 'pending'
     const ack = (session[4 /* ack */] = router
-      .startTransition(() => router.stores.setMatches(offered), offered)
+      .startTransition(() => {
+        if (router._tx === tx) {
+          router.stores.setMatches(offered, tx[2 /* location */])
+        }
+      }, offered)
       .then((rendered) => {
         if (
           rendered &&
@@ -1594,9 +1599,10 @@ async function awaitPendingMinimum(
 function publishMatches(
   router: CoordinatorRouter,
   matches: Array<AnyRouteMatch>,
+  location: ParsedLocation,
 ): void {
   router._committed = matches
-  router.stores.setMatches(matches)
+  router.stores.setMatches(matches, location)
 }
 
 export function commitMatches(
@@ -1662,7 +1668,7 @@ export function commitMatches(
   router._cache = cached
   // Publish lifecycle membership with its branch before observers can reenter.
   const nextEnd = (router._lifecycleEnd = lifecycleEnd(matches))
-  publishMatches(router, matches)
+  publishMatches(router, matches, tx[2 /* location */])
   // Retained cache objects keep their leases; only departing owners need handoff.
   const previousMatches = [...previousCached.values(), ...previous]
   transferMatchResources(
@@ -1791,7 +1797,7 @@ async function runBackground(
       releaseFlight(router, cached)
     }
   }
-  publishMatches(router, next)
+  publishMatches(router, next, tx[2 /* location */])
   transferMatchResources(router, base, next)
 }
 
@@ -2034,10 +2040,34 @@ export async function loadClientRoute(
     await awaitCurrent(router, tx)
     return
   }
+  const held: Array<RouterWritableStore<ParsedLocation>> = []
   router.batch(() => {
     router.stores.status.set('pending')
     router.stores.location.set(location)
+    for (const id of router.stores.ids.get()) {
+      if (router._tx !== tx) {
+        break
+      }
+      const source = router.stores.byRoute.get(id)!.location!
+      if (matches.some((match) => match.routeId === id)) {
+        source.set(location)
+      } else {
+        held.push(source)
+      }
+    }
   })
+  // Completion already follows superseding transactions. It is also the
+  // catch-up boundary when a redirected/document navigation leaves UI mounted.
+  if (held.length) {
+    const catchUp = () => {
+      router.batch(() => {
+        for (const source of held) {
+          source.set(router.stores.location.get())
+        }
+      })
+    }
+    void tx[5 /* done */].then(catchUp, catchUp)
+  }
   // An unresolved cold root has no UI to retain. Provisional not-found waits
   // for lazy routes to place the final boundary.
   if (
@@ -2542,7 +2572,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   router._handoff = handoff
   router._preflight = undefined
   router.batch(() => {
-    router.stores.setMatches(presented)
+    router.stores.setMatches(presented, location)
     router.stores.status.set('idle')
     if (!needsClientLoad) {
       router.stores.resolvedLocation.set(router.stores.location.get())

@@ -1,0 +1,27 @@
+{
+  "name": "@benchmarks/react-link-presentation-browser",
+  "projectType": "application",
+  "tags": ["optional-benchmark"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        { "projects": ["@tanstack/react-router"], "target": "build" }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
+      }
+    },
+    "build:no-links": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        { "projects": ["@tanstack/react-router"], "target": "build" }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config {projectRoot}/no-links.vite.config.ts"
+      }
+    }
+  }
+}

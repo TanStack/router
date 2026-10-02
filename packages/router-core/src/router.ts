@@ -1372,7 +1372,12 @@ export class RouterCore<
       }
     } else if (rewriteChanged) {
       // Existing stores hold the location parsed with the previous rewrite.
-      this.stores.location.set(this.latestLocation)
+      this.batch(() => {
+        this.stores.location.set(this.latestLocation)
+        for (const routeId of this.stores.ids.get()) {
+          this.stores.byRoute.get(routeId)!.location?.set(this.latestLocation)
+        }
+      })
     }
   }
 
@@ -1885,15 +1890,20 @@ export class RouterCore<
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
   buildLocation: BuildLocationFn = (opts) => {
-    if (!(isServer ?? this.isServer)) {
-      const cached = this.staticLocations!.get(opts)
-      if (cached) {
-        return cached
-      }
+    const cache =
+      !(isServer ?? this.isServer) &&
+      process.env.NODE_ENV !== 'development' &&
+      opts._fromLocation
+        ? this.staticLocations
+        : undefined
+    const cached = cache?.get(opts)
+    if (cached) {
+      return cached
     }
 
-    // Set by `current()` whenever a build reads the current location. A
-    // location built without it depends only on `opts` and the route tree.
+    // Capture once: an updater can synchronously navigate before masks build.
+    const sourceLocation =
+      opts._fromLocation || this._pendingLocation || this.latestLocation
     let usedCurrent = false
 
     const build = (
@@ -1915,8 +1925,7 @@ export class RouterCore<
       }
 
       // We allow the caller to override the current location
-      const currentLocation =
-        dest._fromLocation || this._pendingLocation || this.latestLocation
+      const currentLocation = dest._fromLocation || sourceLocation
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match
@@ -2206,14 +2215,15 @@ export class RouterCore<
       }
     }
 
-    // Masked locations stay out: `opts.mask` is rebuilt from the current location.
+    // Masked locations stay out. Callbacks can invalidate the captured cache
+    // through a reentrant configuration or route-tree update.
     if (
-      !(isServer ?? this.isServer) &&
+      cache &&
       !usedCurrent &&
-      opts._fromLocation &&
-      !next.maskedLocation
+      !next.maskedLocation &&
+      cache === this.staticLocations
     ) {
-      this.staticLocations!.set(opts, next)
+      cache.set(opts, next)
     }
 
     return next

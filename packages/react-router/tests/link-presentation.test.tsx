@@ -1,0 +1,444 @@
+import React from 'react'
+import { afterEach, expect, test, vi } from 'vitest'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import {
+  Link,
+  Outlet,
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  redirect,
+} from '../src'
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  cleanup()
+})
+
+test('a visible pending fallback inherits its destination source until a superseding revisit renders', async () => {
+  let releaseB!: () => void
+  let releaseA!: () => void
+  const pendingB = new Promise<void>((resolve) => {
+    releaseB = resolve
+  })
+  const returningA = new Promise<void>((resolve) => {
+    releaseA = resolve
+  })
+  const root = createRootRoute({
+    validateSearch: (search) => ({ visit: Number(search.visit) || 0 }),
+    component: Outlet,
+  })
+  const a = createRoute({
+    getParentRoute: () => root,
+    path: '/a/$id',
+    loader: ({ params }) => (params.id === 'return' ? returningA : undefined),
+    component: () => (
+      <Link to="/a/$id" params={true} search={true} data-testid="a-link">
+        a
+      </Link>
+    ),
+  })
+  const b = createRoute({
+    getParentRoute: () => root,
+    path: '/b/$id',
+    pendingMs: 0,
+    pendingMinMs: 0,
+    loader: () => pendingB,
+    pendingComponent: () => (
+      <Link to="/b/$id" params={true} search={true} data-testid="pending-link">
+        pending b
+      </Link>
+    ),
+    component: () => <div>completed b</div>,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([a, b]),
+    history: createMemoryHistory({ initialEntries: ['/a/source?visit=1'] }),
+    defaultPendingMs: 10_000,
+  })
+  render(<RouterProvider router={router} />)
+  expect((await screen.findByTestId('a-link')).getAttribute('href')).toBe(
+    '/a/source?visit=1',
+  )
+  let obsolete!: Promise<void>
+  await act(async () => {
+    obsolete = router.navigate({
+      to: '/b/$id',
+      params: { id: 'next' },
+      search: { visit: 2 },
+    })
+  })
+  const fallback = await screen.findByTestId('pending-link')
+  expect(fallback.getAttribute('href')).toBe('/b/next?visit=2')
+  expect(fallback.getAttribute('data-status')).toBe('active')
+
+  let revisit!: Promise<void>
+  await act(async () => {
+    revisit = router.navigate({
+      to: '/a/$id',
+      params: { id: 'return' },
+      search: { visit: 3 },
+    })
+  })
+  expect(router.state.location.href).toBe('/a/return?visit=3')
+  expect(screen.getByTestId('pending-link')).toBe(fallback)
+  expect(fallback.getAttribute('href')).toBe('/b/next?visit=2')
+  expect(fallback.getAttribute('data-status')).toBe('active')
+  await act(async () => {
+    releaseA()
+    await revisit
+  })
+  const returned = await screen.findByTestId('a-link')
+  expect(returned.getAttribute('href')).toBe('/a/return?visit=3')
+  expect(returned.getAttribute('data-status')).toBe('active')
+  expect(screen.queryByTestId('pending-link')).toBeNull()
+  await act(async () => {
+    releaseB()
+    await obsolete
+  })
+  expect(screen.getByTestId('a-link')).toBe(returned)
+  expect(returned.getAttribute('href')).toBe('/a/return?visit=3')
+  expect(screen.queryByText('completed b')).toBeNull()
+})
+
+test('mounted inherited Links follow an input rewrite update without navigation', async () => {
+  const inputFor =
+    (id: string) =>
+    ({ url }: { url: URL }) => {
+      if (url.pathname === '/public') {
+        url.pathname = `/items/${id}`
+      }
+      return url
+    }
+  const output = ({ url }: { url: URL }) => {
+    if (url.pathname.startsWith('/items/')) {
+      url.pathname = '/public'
+    }
+    return url
+  }
+  const root = createRootRoute({
+    validateSearch: (search) => ({ visit: Number(search.visit) || 0 }),
+    component: Outlet,
+  })
+  const item = createRoute({
+    getParentRoute: () => root,
+    path: '/items/$id',
+    component: () => (
+      <>
+        <Link
+          to="/inspect/$id"
+          params={true}
+          search={true}
+          data-testid="inherited"
+        >
+          inspect
+        </Link>
+        <Link
+          to="/items/$id"
+          params={{ id: 'source' }}
+          search={true}
+          data-testid="fixed-source"
+        >
+          source
+        </Link>
+      </>
+    ),
+  })
+  const inspect = createRoute({
+    getParentRoute: () => root,
+    path: '/inspect/$id',
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([item, inspect]),
+    history: createMemoryHistory({ initialEntries: ['/public?visit=1'] }),
+    rewrite: { input: inputFor('source'), output },
+  })
+  render(<RouterProvider router={router} />)
+  const inherited = await screen.findByTestId('inherited')
+  const fixed = screen.getByTestId('fixed-source')
+  expect(inherited.getAttribute('href')).toBe('/inspect/source?visit=1')
+  expect(inherited.getAttribute('data-status')).toBeNull()
+  expect(fixed.getAttribute('href')).toBe('/public?visit=1')
+  expect(fixed.getAttribute('data-status')).toBe('active')
+  act(() => {
+    router.update({ rewrite: { input: inputFor('next'), output } })
+  })
+  expect(router.history.location.href).toBe('/public?visit=1')
+  expect(router.state.location.pathname).toBe('/items/next')
+  expect(screen.getByTestId('inherited')).toBe(inherited)
+  expect(inherited.getAttribute('href')).toBe('/inspect/next?visit=1')
+  expect(inherited.getAttribute('data-status')).toBeNull()
+  expect(screen.getByTestId('fixed-source')).toBe(fixed)
+  expect(fixed.getAttribute('href')).toBe('/public?visit=1')
+  expect(fixed.getAttribute('data-status')).toBeNull()
+})
+
+function createFixture(
+  redirectBack: boolean | 'document' = false,
+  showOnReturn = false,
+) {
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const root = createRootRoute({
+    validateSearch: (search) => ({ visit: Number(search.visit) || 0 }),
+    component: () => (
+      <>
+        <Link to="/b" search={true} data-testid="staying">
+          staying
+        </Link>
+        <Outlet />
+      </>
+    ),
+  })
+  const a = createRoute({
+    getParentRoute: () => root,
+    path: '/a',
+    component: () => {
+      const { visit } = root.useSearch()
+      return showOnReturn && visit === 1 ? (
+        <div>no links</div>
+      ) : (
+        <Link to="/a" search={true} data-testid="departing">
+          departing
+        </Link>
+      )
+    },
+  })
+  const b = createRoute({
+    getParentRoute: () => root,
+    path: '/b',
+    loader: async () => {
+      await pending
+      if (redirectBack === 'document') {
+        throw redirect({
+          href: 'https://example.com/next',
+          reloadDocument: true,
+        })
+      }
+      if (redirectBack) {
+        throw redirect({ to: '/a', search: { visit: 4 } })
+      }
+    },
+    component: () => <div>destination</div>,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([a, b]),
+    history: createMemoryHistory({ initialEntries: ['/a?visit=1'] }),
+    defaultPendingMs: 10_000,
+  })
+  return { router, release }
+}
+
+test('updates staying Links urgently and retains departing Link hrefs until the destination renders', async () => {
+  const { router, release } = createFixture()
+  render(<RouterProvider router={router} />)
+  await screen.findByTestId('departing')
+  let navigation!: Promise<void>
+  await act(async () => {
+    navigation = router.navigate({ to: '/b', search: { visit: 2 } })
+  })
+  await waitFor(() => {
+    expect(screen.getByTestId('staying').getAttribute('href')).toBe(
+      '/b?visit=2',
+    )
+    expect(screen.getByTestId('staying').getAttribute('data-status')).toBe(
+      'active',
+    )
+  })
+  expect(screen.getByTestId('departing').getAttribute('href')).toBe(
+    '/a?visit=1',
+  )
+  await act(async () => {
+    release()
+    await navigation
+  })
+  expect(screen.getByText('destination')).toBeTruthy()
+})
+
+test('a departing Link catches up when the destination redirects back to its still-mounted route', async () => {
+  const { router, release } = createFixture(true)
+  render(<RouterProvider router={router} />)
+  const departing = await screen.findByTestId('departing')
+  let navigation!: Promise<void>
+  await act(async () => {
+    navigation = router.navigate({ to: '/b', search: { visit: 2 } })
+  })
+  expect(departing.getAttribute('href')).toBe('/a?visit=1')
+  await act(async () => {
+    release()
+    await navigation
+  })
+  expect(screen.getByTestId('departing')).toBe(departing)
+  expect(departing.getAttribute('href')).toBe('/a?visit=4')
+  expect(departing.getAttribute('data-status')).toBe('active')
+})
+
+test('a superseding navigation updates the still-mounted returning route without waiting for the obsolete loader', async () => {
+  const { router, release } = createFixture()
+  render(<RouterProvider router={router} />)
+  const departing = await screen.findByTestId('departing')
+  let obsolete!: Promise<void>
+  await act(async () => {
+    obsolete = router.navigate({ to: '/b', search: { visit: 2 } })
+  })
+  expect(departing.getAttribute('href')).toBe('/a?visit=1')
+  await act(async () => {
+    await router.navigate({ to: '/a', search: { visit: 3 } })
+  })
+  expect(screen.getByTestId('departing')).toBe(departing)
+  expect(departing.getAttribute('href')).toBe('/a?visit=3')
+  await act(async () => {
+    release()
+    await obsolete
+  })
+  expect(departing.getAttribute('href')).toBe('/a?visit=3')
+})
+
+test('a retained departing Link catches up after a document redirect leaves its route mounted', async () => {
+  const { router, release } = createFixture('document')
+  render(<RouterProvider router={router} />)
+  const departing = await screen.findByTestId('departing')
+  await act(async () => {
+    void router.navigate({ to: '/b', search: { visit: 2 } })
+  })
+  expect(departing.getAttribute('href')).toBe('/a?visit=1')
+  const replace = vi.fn()
+  const browserWindow = window
+  vi.stubGlobal(
+    'window',
+    new Proxy(browserWindow, {
+      get(target, key) {
+        return key === 'location'
+          ? { href: browserWindow.location.href, replace }
+          : Reflect.get(target, key, target)
+      },
+    }),
+  )
+  await act(async () => {
+    release()
+  })
+  await waitFor(() => {
+    expect(replace).toHaveBeenCalledWith('https://example.com/next')
+    expect(departing.getAttribute('href')).toBe('/a?visit=2')
+  })
+  expect(screen.getByTestId('departing')).toBe(departing)
+})
+
+test('clicking a retained departing Link navigates to its displayed href', async () => {
+  const { router, release } = createFixture()
+  render(<RouterProvider router={router} />)
+  const departing = await screen.findByTestId('departing')
+  let obsolete!: Promise<void>
+  await act(async () => {
+    obsolete = router.navigate({ to: '/b', search: { visit: 2 } })
+  })
+  expect(departing.getAttribute('href')).toBe('/a?visit=1')
+  await act(async () => {
+    fireEvent.click(departing)
+  })
+  await waitFor(() => {
+    expect(router.state.location.href).toBe('/a?visit=1')
+    expect(departing.getAttribute('href')).toBe('/a?visit=1')
+  })
+  await act(async () => {
+    release()
+    await obsolete
+  })
+})
+
+test('a route that previously rendered no Links gets a fresh source when revisited', async () => {
+  const { router, release } = createFixture(false, true)
+  render(<RouterProvider router={router} />)
+  await screen.findByText('no links')
+  await act(async () => {
+    release()
+    await router.navigate({ to: '/b', search: { visit: 2 } })
+  })
+  await screen.findByText('destination')
+  await act(async () => {
+    await router.navigate({ to: '/a', search: { visit: 3 } })
+  })
+  expect(screen.getByTestId('departing').getAttribute('href')).toBe(
+    '/a?visit=3',
+  )
+})
+
+test('retargeted and newly mounted departing Links use their most recent pending presentation location', async () => {
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const root = createRootRoute({
+    validateSearch: (search) => ({ visit: Number(search.visit) || 0 }),
+    component: Outlet,
+  })
+  const a = createRoute({
+    getParentRoute: () => root,
+    path: '/a',
+    loaderDeps: ({ search }) => ({ visit: search.visit }),
+    loader: ({ deps }) => (deps.visit === 1 ? undefined : pending),
+    component: () => {
+      const [retargeted, setRetargeted] = React.useState(false)
+      return (
+        <>
+          <button onClick={() => setRetargeted(true)}>retarget</button>
+          <Link
+            to={retargeted ? '/b' : '/a'}
+            search={true}
+            data-testid="retargeted"
+          >
+            retargeted
+          </Link>
+          {retargeted && (
+            <Link to="/a" search={true} data-testid="new">
+              new
+            </Link>
+          )}
+        </>
+      )
+    },
+  })
+  const b = createRoute({
+    getParentRoute: () => root,
+    path: '/b',
+    loader: () => pending,
+    component: () => <div>destination</div>,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([a, b]),
+    history: createMemoryHistory({ initialEntries: ['/a?visit=1'] }),
+    defaultPendingMs: 10_000,
+  })
+  render(<RouterProvider router={router} />)
+  const link = await screen.findByTestId('retargeted')
+  let previous!: Promise<void>
+  let navigation!: Promise<void>
+  await act(async () => {
+    previous = router.navigate({ to: '/a', search: { visit: 2 } })
+  })
+  expect(link.getAttribute('href')).toBe('/a?visit=2')
+  await act(async () => {
+    navigation = router.navigate({ to: '/b', search: { visit: 3 } })
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByText('retarget'))
+  })
+  expect(link.getAttribute('href')).toBe('/b?visit=2')
+  expect(screen.getByTestId('new').getAttribute('href')).toBe('/a?visit=2')
+  await act(async () => {
+    release()
+    await navigation
+    await previous
+  })
+})

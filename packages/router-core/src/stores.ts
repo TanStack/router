@@ -34,7 +34,9 @@ export type StoreConfig = {
   batch: RouterBatchFn
 }
 
-type MatchStore = RouterWritableStore<AnyRouteMatch | undefined>
+type MatchStore = RouterWritableStore<AnyRouteMatch | undefined> & {
+  location?: RouterWritableStore<ParsedLocation<any>>
+}
 type ReadableStore<TValue> = RouterReadableStore<TValue>
 
 /** SSR non-reactive createMutableStore */
@@ -84,7 +86,10 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
     routeId: string,
   ) => RouterReadableStore<AnyRouteMatch | undefined>
 
-  setMatches: (nextMatches: Array<AnyRouteMatch>) => void
+  setMatches: (
+    nextMatches: Array<AnyRouteMatch>,
+    presentationLocation?: ParsedLocation<any>,
+  ) => void
 }
 
 export function createRouterStores<TRouteTree extends AnyRoute>(
@@ -150,7 +155,10 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   }
 
   // setters to update non-reactive utilities in sync with the reactive stores
-  function setMatches(nextMatches: Array<AnyRouteMatch>) {
+  function setMatches(
+    nextMatches: Array<AnyRouteMatch>,
+    presentationLocation: ParsedLocation<any> = location.get(),
+  ) {
     const previousIds = ids.get()
     const nextIds = nextMatches.map((match) => match.routeId)
 
@@ -163,12 +171,16 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
 
       for (const id of previousIds) {
         if (!nextIds.includes(id)) {
+          delete byRoute.get(id)!.location
           byRoute.get(id)!.set(() => undefined)
         }
       }
 
       for (const nextMatch of nextMatches) {
         const matchStore = getMatchStore(nextMatch.routeId)
+        // The pooled match handle must not retain a departed visit's source.
+        // Suspended framework trees keep the source itself in their context.
+        matchStore.location ||= createMutableStore(presentationLocation)
         if (matchStore.get() !== nextMatch) {
           matchStore.set(nextMatch)
         }

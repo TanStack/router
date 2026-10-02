@@ -1,6 +1,16 @@
 'use client'
 
 import * as React from 'react'
-import type { AnyRouter } from '@tanstack/router-core'
+import type {
+  AnyRouter,
+  ParsedLocation,
+  RouterReadableStore,
+} from '@tanstack/router-core'
 
-export const routerContext = React.createContext<AnyRouter>(null!)
+export type RouterContextValue = readonly [
+  router: AnyRouter,
+  location?: RouterReadableStore<ParsedLocation>,
+  routeId?: string,
+]
+
+export const routerContext = React.createContext<RouterContextValue>(null!)

@@ -5,11 +5,10 @@ import { useSelector } from '@tanstack/react-store'
 import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary } from './CatchBoundary'
-import { useRouter } from './useRouter'
+import { useRouter, useRouterContext } from './useRouter'
 import { useStructuralSharing } from './useMatch'
 import { useLayoutEffect } from './utils'
 import { Transitioner, settleOwner } from './Transitioner'
-import { matchContext } from './matchContext'
 import { Match, renderPending } from './Match'
 import type {
   StructuralSharingOption,
@@ -262,6 +261,18 @@ export function useMatches<
 ): UseMatchesResult<TRouter, TSelected> {
   const router = useRouter<TRouter>()
 
+  return useMatchesImpl<TRouter, TSelected, TStructuralSharing>(router, opts)
+}
+
+function useMatchesImpl<
+  TRouter extends AnyRouter,
+  TSelected,
+  TStructuralSharing extends boolean,
+>(
+  router: TRouter,
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+): UseMatchesResult<TRouter, TSelected> {
   if (isServer ?? router.isServer) {
     const matches = router.stores.matches.get() as Array<
       MakeRouteMatchUnion<TRouter>
@@ -292,9 +303,11 @@ export function useParentMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextRouteId = React.useContext(matchContext)
+  const context = useRouterContext()
+  const router = context[0] as TRouter
+  const contextRouteId = context[2]
 
-  return useMatches({
+  return useMatchesImpl<TRouter, TSelected, TStructuralSharing>(router, {
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         0,
@@ -318,9 +331,11 @@ export function useChildMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextRouteId = React.useContext(matchContext)
+  const context = useRouterContext()
+  const router = context[0] as TRouter
+  const contextRouteId = context[2]
 
-  return useMatches({
+  return useMatchesImpl<TRouter, TSelected, TStructuralSharing>(router, {
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         matches.findIndex((d) => d.routeId === contextRouteId) + 1,

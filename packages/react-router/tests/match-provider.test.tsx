@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, expect, test } from 'vitest'
 import {
@@ -10,7 +10,11 @@ import {
   createRoute,
   createRouter,
   useMatch,
+  useChildMatches,
+  useParentMatches,
+  useRouter,
 } from '../src'
+import type { AnyRouter } from '../src'
 
 afterEach(cleanup)
 
@@ -87,4 +91,104 @@ test('server shell and nested component read their nearest match context', async
   expect(html).toContain('data-testid="shell-match">__root__')
   expect(html).toContain('data-testid="root-match">__root__')
   expect(html).toContain('data-testid="leaf-match">/first')
+})
+
+function MatchSelections({
+  name,
+  expectedRouter,
+}: {
+  name: string
+  expectedRouter: AnyRouter
+}) {
+  const router = useRouter()
+  const nearest = useMatch({ strict: false })
+  const parents = useParentMatches({
+    select: (matches) => matches.map((match) => match.routeId).join(','),
+  })
+  const children = useChildMatches({
+    select: (matches) => matches.map((match) => match.routeId).join(','),
+  })
+  return (
+    <output data-testid={name}>
+      {`${nearest.routeId}|${parents}|${children}|${String(nearest.loaderData)}|${router === expectedRouter ? 'exact' : 'wrong'}`}
+    </output>
+  )
+}
+
+test('route components read nearest, parent, child and Outlet selections', async () => {
+  let router!: AnyRouter
+  const root = createRootRoute({ component: Outlet })
+  const parent = createRoute({
+    getParentRoute: () => root,
+    path: '/parent',
+    loader: () => 'parent',
+    component: () => (
+      <>
+        <MatchSelections name="parent-selection" expectedRouter={router} />
+        <Outlet />
+      </>
+    ),
+  })
+  const child = createRoute({
+    getParentRoute: () => parent,
+    path: '/child',
+    loader: () => 'child',
+    component: () => (
+      <MatchSelections name="child-selection" expectedRouter={router} />
+    ),
+  })
+  router = createRouter({
+    routeTree: root.addChildren([parent.addChildren([child])]),
+    history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+  })
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByTestId('parent-selection')).toHaveTextContent(
+    '/parent|__root__|/parent/child|parent|exact',
+  )
+  expect(screen.getByTestId('child-selection')).toHaveTextContent(
+    '/parent/child|__root__,/parent||child|exact',
+  )
+})
+
+test('the same component can switch between an explicit match and its nearest match', async () => {
+  function Selection() {
+    const [explicit, setExplicit] = React.useState(true)
+    const [count, setCount] = React.useState(0)
+    const match = useMatch<AnyRouter, string, boolean>(
+      explicit ? { from: '/parent' } : { strict: false },
+    )
+    return (
+      <>
+        <output data-testid="selection">{match.routeId}</output>
+        <button onClick={() => setExplicit(!explicit)}>Toggle selection</button>
+        <button onClick={() => setCount(count + 1)}>Count {count}</button>
+      </>
+    )
+  }
+  const root = createRootRoute({ component: Outlet })
+  const parent = createRoute({
+    getParentRoute: () => root,
+    path: '/parent',
+    component: Outlet,
+  })
+  const child = createRoute({
+    getParentRoute: () => parent,
+    path: '/child',
+    component: Selection,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([parent.addChildren([child])]),
+    history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+  })
+  render(<RouterProvider router={router} />)
+  const selection = await screen.findByTestId('selection')
+  expect(selection).toHaveTextContent('/parent')
+  fireEvent.click(screen.getByRole('button', { name: 'Count 0' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Toggle selection' }))
+  expect(screen.getByTestId('selection')).toBe(selection)
+  expect(selection).toHaveTextContent('/parent/child')
+  expect(screen.getByRole('button', { name: 'Count 1' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Toggle selection' }))
+  expect(selection.textContent).toBe('/parent')
+  expect(screen.getByRole('button', { name: 'Count 1' })).toBeTruthy()
 })

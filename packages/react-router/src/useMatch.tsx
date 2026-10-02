@@ -4,8 +4,7 @@ import * as React from 'react'
 import { useSelector } from '@tanstack/react-store'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { dummyMatchContext, matchContext } from './matchContext'
-import { useRouter } from './useRouter'
+import { useRouterContext } from './useRouter'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -142,12 +141,9 @@ export function useMatch<
     TStructuralSharing
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
-  const router = useRouter<TRouter>()
-  const nearestRouteId = React.useContext(
-    opts.from ? dummyMatchContext : matchContext,
-  )
-
-  const routeId = opts.from ?? nearestRouteId
+  const context = useRouterContext()
+  const router = context[0] as TRouter
+  const routeId = opts.from ?? context[2]
   const matchStore = router.stores.getMatchStore(routeId!)
 
   if (isServer ?? router.isServer) {
