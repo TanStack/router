@@ -82,30 +82,45 @@ function getSetCookieValues(headers: Headers): Array<string> {
   return value ? [value] : []
 }
 
-function mergeEventResponseHeaders(response: Response, event: H3Event): void {
+function applyEventHeaders(target: Headers, eventHeaders: Headers): void {
+  for (const [name, value] of eventHeaders) {
+    if (name === 'set-cookie') {
+      continue
+    }
+    target.set(name, value)
+  }
+  for (const cookie of getSetCookieValues(eventHeaders)) {
+    target.append('set-cookie', cookie)
+  }
+}
+
+function mergeEventResponseHeaders(
+  response: Response,
+  event: H3Event,
+): Response {
   if (response.ok) {
-    return
+    // h3 merges the response context headers into 2xx responses itself.
+    return response
   }
 
-  const eventSetCookies = getSetCookieValues(event.res.headers)
-  if (eventSetCookies.length === 0) {
-    return
-  }
-
-  const responseSetCookies = getSetCookieValues(response.headers)
-  response.headers.delete('set-cookie')
-  for (const cookie of responseSetCookies) {
-    response.headers.append('set-cookie', cookie)
-  }
-  for (const cookie of eventSetCookies) {
-    response.headers.append('set-cookie', cookie)
+  const eventHeaders = event.res.headers
+  try {
+    applyEventHeaders(response.headers, eventHeaders)
+    return response
+  } catch {
+    // The headers of the response are immutable, so rebuild it instead.
+    const headers = new Headers(response.headers)
+    applyEventHeaders(headers, eventHeaders)
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    })
   }
 }
 
 function finalizeResponse(value: unknown, event: H3Event): Response {
-  const response = ensureResponse(value)
-  mergeEventResponseHeaders(response, event)
-  return response
+  return mergeEventResponseHeaders(ensureResponse(value), event)
 }
 
 function finalizeMaybeResponse(
