@@ -150,6 +150,11 @@ function isManifestJsAsset(file: string): boolean {
   return !isHotUpdateAsset(file)
 }
 
+/**
+ * Wraps a read of a chunk or chunk group property so it runs once per object.
+ * Later calls with the same object return the same array, so callers must not
+ * modify it.
+ */
 function memoizeGraphRead<TTarget extends object, TValue>(
   read: (target: TTarget) => Array<TValue>,
 ): (target: TTarget) => Array<TValue> {
@@ -164,6 +169,11 @@ function memoizeGraphRead<TTarget extends object, TValue>(
   }
 }
 
+/**
+ * Joins the file lists in order and drops duplicates, keeping the first
+ * occurrence. `currentFile` is left out, so a chunk does not list its own file
+ * as an import.
+ */
 function mergeJsFiles(
   fileLists: Array<Array<string>>,
   currentFile?: string,
