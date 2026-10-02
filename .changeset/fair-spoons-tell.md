@@ -8,3 +8,5 @@ Defer Link updates in departing route matches while keeping Links in retained ma
 Preserve current click options and source locations, including user event cancellation and state-prop overrides.
 
 Consolidate Link hydration snapshots and avoid unused per-match presentation stores during server rendering.
+
+Skip preload timer cancellation when no timer is pending, and catch up retained Link sources at the existing navigation completion boundary.

@@ -1,5 +1,7 @@
 # Consolidated React Link presentation sources
 
+Current state: **TC (H + timer guard + completion consolidation)** is selected and validated. See [the dated TC checkpoint](#current-tc-checkpoint-2026-10-03) for current hashes, focused/stock results and full18 sizes. The H sections below are preserved historical records; the new confirmation closes the old full-trace #8572 departure gap, while untraced latency intervals remain unresolved.
+
 ## Selected H composition — validated prototype with performance limits
 
 The selected implementation is **H + E3 + server-source omission + Match helper**, integrated over current PR control `b48cdee8b8d7b9f1ddf203a4fc84996996f7d80f`. Handler elision remains removed. Integrated package, affected consumer, browser, export, stock and full 18-scenario bundle validation are complete. This is a validated prototype whose performance goals are **not fully proven**: route-tree-scale and the remount comparison versus #8582 remain unresolved, and departure task time is slower than #8572. H is selected because J/K add remount cost. Full React adds 266 gzip bytes versus main, an explicit tradeoff against the approximate 250-byte budget. No commit or push is part of this selection.
@@ -955,3 +957,98 @@ The latest explicit user instruction supersedes the intervening restore choice: 
 The current comparison has unresolved intent timing and proven disabled cost versus with-elision; the user's selection is deliberate. No new original-baseline timing, eight-family rerun, optimization experiment or full clean suite is invented or needed for a byte-identical previously tested revision. The actual no-elision +225 minimal/+236 full byte deltas come from its full 18 rebuild, not subtraction of the independent +39-byte estimate.
 
 For review, [ELISION-COMPARISON.md](ELISION-COMPARISON.md), [paired-elision-comparison.js](paired-elision-comparison.js), and [the exact with-elision control patch](fixtures/with-elision-control.patch) reproduce the fixed 6-block comparison without committing large raw evidence. The Python cache is scoped out of Git and archived. Final formatting, exact runtime/shared-fixture hash comparison and git diff --check are the only new verification; this selected revision is prepared for commit and push.
+
+## Current TC checkpoint (2026-10-03)
+
+The current selected implementation is checkpoint H `36e0729ff0dee6ba37eca17e82c6a8dfebc4263b` plus **T + C**: React Link skips native cancellation when no preload timer exists, and core completion uses one `finally` owner instead of a local catch-up helper passed as both completion handlers. The lazy middleware candidate M is rejected. Final stock timing changes remain within uncertainty. The old #8572 full-trace departure gap closes, while the corresponding untraced intervals still cross zero; the trace result depends on instrumentation. This dated section supersedes the selection/performance state of the historical H sections above; their measurements remain preserved. No commit or push was made.
+
+Exact candidates, fixed designs, raw records, hashes, independent review ledger, setup corrections and reproduction scripts are retained in [artifacts/checkpoint-H-next-20261002](artifacts/checkpoint-H-next-20261002/). The selected runtime hashes are `link.tsx` `a78334881e37093f69e33df4a955a7a2bd021b480699a62ca3b39a2cfaf6c7ea` and `load-client.ts` `0030f08a810338e8a9afd13169363e0c23deeb4f8da62ee3cbe4211077e9560a`. Root exactly matches the tested and measured TC runtime.
+
+### Independent hunk screen and focused confirmation
+
+Before composition, T, C and M were each compared independently with source-identical H controls in six fixed AB/BA pairs, with public correctness gates and gzip attribution. T changes minimal gzip by +5 bytes; C by -11; their measured composition changes it by -5. M saves 4 gzip bytes and roughly 7 ns in the warmed validated-empty builder, with no demonstrated navigation benefit and remount uncertainty, so it is excluded. These compressed deltas are not additive.
+Full initial results and all 101 metrics are in [initial report](artifacts/checkpoint-H-next-20261002/report.md) and [metrics](artifacts/checkpoint-H-next-20261002/metrics.json).
+
+T removes no-op native calls. Full tracing amplifies their cost: without hover, task TimerRemove counts fall 1002→1; with real queued intents on 100/1000 rows they fall 1002→101/1001. Actual public mouseover events queue timers outside the timed interval. The trace improvement fades as timers become real, while these untraced departure intervals remain unresolved:
+
+| Real pending intent timers | Endpoint           | H (ms) | T (ms) | Paired change |     Nominal 95% CI |
+| -------------------------- | ------------------ | -----: | -----: | ------------: | -----------------: |
+| 0                          | renderMs           | 1.8708 | 1.7000 |        -6.22% |  [-15.35%, +3.90%] |
+| 0                          | timerOpportunityMs | 1.9083 | 1.7500 |        -5.30% |  [-15.46%, +6.08%] |
+| 100                        | renderMs           | 1.7750 | 1.7750 |        +4.37% | [-13.99%, +26.64%] |
+| 100                        | timerOpportunityMs | 1.7917 | 1.8000 |        +6.19% | [-11.54%, +27.48%] |
+| 1000                       | renderMs           | 2.2917 | 2.2375 |        -0.71% | [-15.40%, +16.53%] |
+| 1000                       | timerOpportunityMs | 2.3250 | 2.2792 |        -0.43% | [-14.97%, +16.59%] |
+
+Final composition confirmation used fresh H, TC and historical #8572 with the same fixtures: six balanced three-arm permutations, 64 untraced and 24 full-traced samples per page/round, plus 24 separate lean-traced dense-intent samples. Departures/remounts are separated. The actual 45 production gate records pass. Framework/dependency versions and all 17 external emitted runtime source contents match, as do all four fixture contents. Historical #8572 retains its faithful historical preparation and a distinct lock SHA; no whole-lock normalization was performed.
+
+TC closes the prior full-trace #8572 departure gap: H→TC task time falls 21.28% [95% -25.04, -17.32]; TC versus #8572 is -0.74% [-6.42, +5.29], which is unresolved rather than equivalence. H→TC untraced render is -2.36% [-7.37, +2.91] and timer opportunity -1.93% [-6.97, +3.39]. Those intervals cross zero, so a large actual latency gain and browser INP improvement are not established. Lean H→TC task time is -6.20% [-15.92, +4.64]; lean TC versus #8572 is -10.51% [-13.56, -7.35]. Full and lean tracing are distinct endpoints, never subtracted to estimate overhead. Lean omits devtools.timeline and reports timer-removal counts as null.
+
+Synthetic click render is a response proxy; the timer scheduled before dispatch measures first timer opportunity with a scheduling floor, not exact first yield. Remount and nonroot/deep retained-updater untraced comparisons remain unresolved. No memory or hydration ranking is part of this decision.
+All 78 final comparisons, absolute intervals, raw samples, traces and provenance are in [confirmation report](artifacts/checkpoint-H-next-20261002/confirmation/report.md), [metrics](artifacts/checkpoint-H-next-20261002/confirmation/metrics.json) and [frozen design](artifacts/checkpoint-H-next-20261002/confirmation/design.json). An independent audit recomputed all 78 metrics, 54 rows, 3456 untraced/1296 full/432 lean samples, 78 raw hashes, timer-event/task endpoints and source-map parity.
+
+### Fixed final stock checks
+
+The final H→TC stock scope is six React cases in six paired rounds, and Solid/Vue mixed, mount and control-flow in four paired rounds. All 28 fresh processes and 120 emitted scenario records pass. Each uses unchanged scenario options, 10-second windows, 100 warmups except links/preload 50, one worker, and fixed AB/BA order. All source/fixture/package/app inputs are verified before and after timing. Values below are medians of independent Tinybench round means per scenario batch, not per-navigation latency or INP. Percentage intervals use paired log ratios with nominal Student-t 95% intervals (df5 React, df3 Solid/Vue), with no multiplicity adjustment. All rounds are retained; no adaptive extension occurred.
+
+| Framework | Case             | H (ms) | TC (ms) | Δ mean medians (ms) | Paired change |           95% CI | Result     |
+| --------- | ---------------- | -----: | ------: | ------------------: | ------------: | ---------------: | ---------- |
+| react     | mixed            | 1.6772 |  1.6861 |             +0.0090 |        +0.34% | [-1.22%, +1.93%] | unresolved |
+| react     | mount            | 1.3068 |  1.3092 |             +0.0024 |        +0.18% | [-0.76%, +1.13%] | unresolved |
+| react     | route-tree-scale | 2.1625 |  2.1548 |             -0.0077 |        -0.30% | [-0.82%, +0.22%] | unresolved |
+| react     | links            | 1.6291 |  1.6315 |             +0.0024 |        -0.12% | [-1.78%, +1.56%] | unresolved |
+| react     | preload          | 2.6010 |  2.5941 |             -0.0069 |        -0.30% | [-0.87%, +0.26%] | unresolved |
+| react     | control-flow     | 3.2012 |  3.1738 |             -0.0274 |        -0.40% | [-0.97%, +0.17%] | unresolved |
+| solid     | mixed            | 6.1420 |  6.1709 |             +0.0289 |        +0.66% | [-2.50%, +3.93%] | unresolved |
+| solid     | mount            | 2.9842 |  2.9950 |             +0.0107 |        +0.19% | [-0.48%, +0.86%] | unresolved |
+| solid     | control-flow     | 3.9596 |  3.9528 |             -0.0068 |        +0.13% | [-5.28%, +5.85%] | unresolved |
+| vue       | mixed            | 2.9636 |  2.9307 |             -0.0329 |        -0.77% | [-3.45%, +1.97%] | unresolved |
+| vue       | mount            | 2.9792 |  2.9666 |             -0.0126 |        -0.15% | [-2.35%, +2.10%] | unresolved |
+| vue       | control-flow     | 1.9734 |  1.9755 |             +0.0022 |        -0.61% | [-2.71%, +1.54%] | unresolved |
+
+Full emitted statistics, sample counts, percentiles, absolute paired intervals and frozen inputs are in [stock report](artifacts/checkpoint-H-next-20261002/stock/report.md), [metrics](artifacts/checkpoint-H-next-20261002/stock/metrics.json) and [design](artifacts/checkpoint-H-next-20261002/stock/design.json). This H→TC comparison cannot establish that H’s original-main scale uncertainty is fixed. Vitest emits empty individual samples arrays; all emitted statistics and independent round means are retained.
+
+### Final correctness and full 18 bundle
+
+All four router packages pass unit/types/lint. Solid’s complete chained unit target covers browser and server. Public test coverage includes queued intent/viewport unmount/remount with and without StrictMode, empty modern middleware arrays/legacy precedence/live updates, canceled/rejected document navigation facades, and a previously held source following sync/microtask onRendered successors. The three complete basic Router Chromium app targets pass 348 cases (React 206, Solid 120, Vue 22). Exports are unchanged, so unrelated Start/export suites were not repeated. Five independent reviewers found no blocker.
+
+[Validation logs and target summaries](artifacts/checkpoint-H-next-20261002/final-validation.json) and [review ledger](artifacts/checkpoint-H-next-20261002/review-ledger.json) preserve the exact checks. The reference audit on intact H found 3 references; TC/root have no symbol. The pnpm wrapper failure and successful direct script proof are retained.
+
+The baseline family is the selected-H/original-main full 18 measurement from 2026-10-02, at `/private/tmp/router-h-full-bundle-20261002/results/runs/{main,H}-full18/current.json`. Original main is `1f0f20a3206a28365d74fd2485b9a8eedbf74dd0`; the H checkpoint control is `36e0729ff0dee6ba37eca17e82c6a8dfebc4263b`. Saved metrics retain their original pre-checkpoint Git metadata. Older historical Rsbuild tables use another fixture family and must not be mixed with these rows. The preserved [main metrics](artifacts/selected-H-full-bundle-20261002/results/runs/main-full18/current.json) and [H metrics](artifacts/selected-H-full-bundle-20261002/results/runs/H-full18/current.json) are the baselines for this section.
+
+The last emitted-code phase passes all 18 production bundle scenarios with package builds enabled and --analysis. Before reusing the original main/H baselines, 89 fixture/script files matched byte-for-byte, and the frozen lock and installed dependency versions matched. Source/chunk/DCE attribution and emitted hashes are retained; no new annotation, export, validation or diagnostic elision was added.
+
+React minimal is 86,208 gzip bytes, 5 fewer than H and 243 above original main. Every scenario improves gzip versus H by 2–20 bytes. Three full scenarios still exceed 250 bytes of growth versus main: React Router full +261, React Start full +256, and React Start Rsbuild full +253. Raw bytes rise by 5 in React scenarios and fall by 17 in shared Solid/Vue scenarios. Brotli deltas have mixed signs; Vue minimal rises by 94 bytes versus H. The result does not improve every compression metric.
+
+| Scenario                         | TC gzip | Δ H | Δ original main | Initial gzip | Δ H |    Raw | Δ H | Brotli |  Δ H |
+| -------------------------------- | ------: | --: | --------------: | -----------: | --: | -----: | --: | -----: | ---: |
+| react-router.minimal             |   86208 |  -5 |            +243 |        86067 |  -5 | 268395 |  +5 |  75159 |  -38 |
+| react-router.full                |   89869 |  -5 |            +261 |        89729 |  -5 | 280597 |  +5 |  78401 |  -13 |
+| solid-router.minimal             |   34561 |  -7 |            +222 |        34433 |  -9 |  98980 | -17 |  31239 |  -60 |
+| solid-router.full                |   39560 | -14 |            +215 |        39432 | -16 | 114088 | -17 |  35665 | -113 |
+| vue-router.minimal               |   50829 | -17 |            +214 |        50701 | -16 | 140740 | -17 |  46122 |  +94 |
+| vue-router.full                  |   56580 | -10 |            +214 |        56453 | -10 | 159484 | -17 |  51111 |  -28 |
+| react-start.minimal              |   99333 |  -7 |            +223 |        99195 |  -6 | 310364 |  +5 |  86245 |  -11 |
+| react-start.query-integration    |  106931 |  -5 |            +227 |       106791 |  -5 | 337611 |  +5 |  92813 |   +2 |
+| react-start.deferred-hydration   |  100068 | -13 |            +221 |        99213 |  -9 | 311753 |  +5 |  86958 |  +66 |
+| react-start.full                 |  102592 |  -6 |            +256 |       102452 |  -6 | 320366 |  +5 |  89102 |  -50 |
+| react-start.rsbuild.minimal      |  103059 |  -2 |            +234 |       102844 |  -2 | 321870 |  +5 |  88958 |  -82 |
+| react-start.rsbuild.minimal-iife |  103476 |  -5 |            +235 |       103267 |  -5 | 322846 |  +5 |  89366 |  +32 |
+| react-start.rsbuild.full         |  106406 |  -4 |            +253 |       106191 |  -4 | 332266 |  +5 |  91780 | -110 |
+| solid-start.minimal              |   47705 | -11 |            +201 |        47576 | -13 | 139714 | -17 |  42520 |  -39 |
+| solid-start.deferred-hydration   |   50836 | -20 |            +203 |        47647 | -17 | 147256 | -17 |  45400 |  +74 |
+| solid-start.full                 |   52908 | -10 |            +204 |        52777 | -13 | 155462 | -17 |  47009 |  +77 |
+| vue-start.minimal                |   67273 |  -8 |            +221 |        67143 | -11 | 191384 | -17 |  59971 | -114 |
+| vue-start.full                   |   71220 | -12 |            +207 |        71093 | -13 | 204029 | -17 |  63420 |  +30 |
+
+All 18 detailed comparisons, source-map raw-byte estimates, files/chunks and DCE checks are in [full 18 report](artifacts/checkpoint-H-next-20261002/final-bundle/report.md), [source attribution](artifacts/checkpoint-H-next-20261002/final-bundle/source-attribution.json) and [chunk/DCE proof](artifacts/checkpoint-H-next-20261002/final-bundle/chunk-dce-verification.json). Mapped raw estimates are not additive compressed contributions.
+
+### Preserved setup and assertion corrections
+
+The original held-source successor test incorrectly assumed navigate() stayed pending in the microtask case; H failed only that assertion while the retained DOM/href checks passed. It was replaced by observing the unchanged public router.load promise, with the original patch, source and failure log preserved. H/TC pass the revised cases. Unit document facades do not claim new native beforeunload behavior.
+
+The new M-specific builder fixture incorrectly demanded cross-mode object identity from historical #8572. Before any confirmation timing, all five builder gates were removed uniformly from H/TC/#8572; the original 55 pass / 5 fail setup record and source are preserved. Relevant navigation/cancellation/cache/pending and queued-intent gates remain. Frozen historical provenance still has its preflight-pending focusedCorrectness field; final gates.json and the independent audit establish its successful actual gates.
+
+Sandbox pnpm automatic dependency checks failed registry access during stock setup; the same pinned frozen installs and isolated preparation succeeded with escalation. No locks, stores or workspace trust/build policies were weakened. Failure excerpts and successful install/build logs are retained separately from timed rounds; the retry helper overwrote the original full format failure log, which is documented rather than presented as retained full evidence.
+
+No source runtime changes were made after the measured TC snapshot. All previous H/wave2/wave3 records above remain historical evidence.

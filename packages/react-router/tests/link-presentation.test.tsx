@@ -336,6 +336,71 @@ test('a retained departing Link catches up after a document redirect leaves its 
   expect(screen.getByTestId('departing')).toBe(departing)
 })
 
+test.each(['canceled', 'rejected'] as const)(
+  'a retained departing Link catches up when native document navigation is %s',
+  async (outcome) => {
+    const { router, release } = createFixture('document')
+    // Observe the real public load promise without replacing its work or result.
+    const load = router.load
+    let observedLoad: Promise<void> | undefined
+    vi.spyOn(router, 'load').mockImplementation((options) => {
+      const result = load(options)
+      observedLoad = result
+      void result.catch(() => {})
+      return result
+    })
+    render(<RouterProvider router={router} />)
+    const departing = await screen.findByTestId('departing')
+    await act(async () => {
+      void router.navigate({ to: '/b', search: { visit: 2 } })
+    })
+    expect(departing.getAttribute('href')).toBe('/a?visit=1')
+    const completion = observedLoad!
+    const failure = new DOMException(
+      'Document navigation rejected',
+      'SecurityError',
+    )
+    const beforeUnload = (event: Event) => event.preventDefault()
+    const browserWindow = window
+    const replace = vi.fn(() => {
+      if (outcome === 'rejected') {
+        throw failure
+      }
+      // Browser cancellation leaves the currently presented document mounted.
+      const event = new Event('beforeunload', { cancelable: true })
+      expect(browserWindow.dispatchEvent(event)).toBe(false)
+      expect(event.defaultPrevented).toBe(true)
+    })
+    browserWindow.addEventListener('beforeunload', beforeUnload)
+    vi.stubGlobal(
+      'window',
+      new Proxy(browserWindow, {
+        get(target, key) {
+          return key === 'location'
+            ? { href: browserWindow.location.href, replace }
+            : Reflect.get(target, key, target)
+        },
+      }),
+    )
+    try {
+      await act(async () => {
+        release()
+        if (outcome === 'rejected') {
+          await expect(completion).rejects.toBe(failure)
+        } else {
+          await completion
+        }
+      })
+      expect(replace).toHaveBeenCalledWith('https://example.com/next')
+      expect(router.history.location.href).toBe('/b?visit=2')
+      expect(screen.getByTestId('departing')).toBe(departing)
+      expect(departing.getAttribute('href')).toBe('/a?visit=2')
+    } finally {
+      browserWindow.removeEventListener('beforeunload', beforeUnload)
+    }
+  },
+)
+
 test('clicking a retained departing Link navigates to its displayed href', async () => {
   const { router, release } = createFixture()
   render(<RouterProvider router={router} />)
@@ -575,6 +640,113 @@ test('a fully retained nonroot Link does not recompute its updater at completion
   expect(link.getAttribute('href')).toBe('/items/next?visit=12')
   expect(calls).toBe(before + 1)
 })
+
+test.each(['synchronous', 'microtask'] as const)(
+  'a redirected held Link stays retained through a %s onRendered successor',
+  async (timing) => {
+    let releaseRedirect!: () => void
+    let releaseDestination!: () => void
+    const redirectReady = new Promise<void>((resolve) => {
+      releaseRedirect = resolve
+    })
+    const destinationReady = new Promise<void>((resolve) => {
+      releaseDestination = resolve
+    })
+    const root = createRootRoute({
+      validateSearch: (search) => ({ visit: Number(search.visit) || 0 }),
+      component: Outlet,
+    })
+    const a = createRoute({
+      getParentRoute: () => root,
+      path: '/a',
+      component: () => (
+        <Link to="/a" search={true} data-testid="redirected-held-link">
+          retained a
+        </Link>
+      ),
+    })
+    const b = createRoute({
+      getParentRoute: () => root,
+      path: '/b',
+      loaderDeps: ({ search }) => ({ visit: search.visit }),
+      loader: async ({ deps }) => {
+        if (deps.visit === 2) {
+          await redirectReady
+          throw redirect({ to: '/a', search: { visit: 4 } })
+        }
+        await destinationReady
+      },
+      component: () => <div>successor destination</div>,
+    })
+    const router = createRouter({
+      routeTree: root.addChildren([a, b]),
+      history: createMemoryHistory({ initialEntries: ['/a?visit=1'] }),
+      defaultPendingMs: 10_000,
+    })
+    // Observe the original public load completion without replacing its work.
+    const load = router.load
+    let departureLoad: Promise<void> | undefined
+    let departureLoadSettled = false
+    vi.spyOn(router, 'load').mockImplementation((options) => {
+      const href = router.history.location.href
+      const result = load(options)
+      if (href === '/b?visit=2' && !departureLoad) {
+        departureLoad = result
+        void result.then(
+          () => {
+            departureLoadSettled = true
+          },
+          () => {
+            departureLoadSettled = true
+          },
+        )
+      }
+      return result
+    })
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('redirected-held-link')
+    let successor: Promise<void> | undefined
+    let navigation!: Promise<void>
+    const unsubscribe = router.subscribe('onRendered', (event) => {
+      if (event.toLocation.href !== '/a?visit=4') {
+        return
+      }
+      const navigate = () => {
+        successor = router.navigate({ to: '/b', search: { visit: 5 } })
+      }
+      if (timing === 'microtask') {
+        queueMicrotask(navigate)
+      } else {
+        navigate()
+      }
+    })
+    try {
+      await act(async () => {
+        navigation = router.navigate({ to: '/b', search: { visit: 2 } })
+      })
+      expect(link.getAttribute('href')).toBe('/a?visit=1')
+      expect(departureLoad).toBeDefined()
+      await act(async () => {
+        releaseRedirect()
+      })
+      await waitFor(() => expect(router.state.location.href).toBe('/b?visit=5'))
+      expect(successor).toBeDefined()
+      expect(screen.getByTestId('redirected-held-link')).toBe(link)
+      expect(link.getAttribute('href')).toBe('/a?visit=4')
+      expect(link.getAttribute('data-status')).toBe('active')
+      expect(departureLoadSettled).toBe(false)
+    } finally {
+      unsubscribe()
+      await act(async () => {
+        releaseRedirect()
+        releaseDestination()
+        await Promise.all([navigation, successor, departureLoad])
+      })
+    }
+    expect(screen.getByText('successor destination')).toBeTruthy()
+    expect(departureLoadSettled).toBe(true)
+  },
+)
 
 test('an onRendered successor retains the nonroot Link source until its loader completes', async () => {
   const { router, release } = createFixture()

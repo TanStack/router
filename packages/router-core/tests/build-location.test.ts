@@ -306,6 +306,49 @@ describe('buildLocation - search params', () => {
     expect(buildSearch()).toEqual({})
   })
 
+  test.each([false, true])(
+    'empty configured middleware lists suppress legacy filters while preserving requested validation (%s)',
+    (includeValidateSearch) => {
+      const rootRoute = new BaseRootRoute({
+        validateSearch: (search: Record<string, unknown>) => ({
+          ...search,
+          validated: true,
+        }),
+        postSearchFilters: [(search) => ({ ...search, legacyRoot: true })],
+      })
+      const route = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        search: { middlewares: [] },
+        postSearchFilters: [(search) => ({ ...search, legacyLeaf: true })],
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([route]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+      const buildSearch = () =>
+        router.buildLocation(
+          { to: '/', search: { explicit: true } },
+          includeValidateSearch,
+        ).search
+      const expected = includeValidateSearch
+        ? { explicit: true, validated: true }
+        : { explicit: true }
+
+      expect(buildSearch()).toEqual({ ...expected, legacyRoot: true })
+      rootRoute.update({ search: { middlewares: [] } })
+      expect(buildSearch()).toEqual(expected)
+      route.update({
+        search: {
+          middlewares: [
+            ({ search, next }) => ({ ...next(search), modern: true }),
+          ],
+        },
+      })
+      expect(buildSearch()).toEqual({ ...expected, modern: true })
+    },
+  )
+
   test('only applies route validation when requested', async () => {
     const events: Array<string> = []
     const validateSearch = vi.fn((search: Record<string, unknown>) => {

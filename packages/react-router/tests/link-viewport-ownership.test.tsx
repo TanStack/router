@@ -413,3 +413,70 @@ test.each(['intent', 'viewport'] as const)(
     expect(router.state.location.href).toBe('/source?page=2')
   },
 )
+
+test.each([
+  { preload: 'intent', strict: false },
+  { preload: 'intent', strict: true },
+  { preload: 'viewport', strict: false },
+  { preload: 'viewport', strict: true },
+] as const)(
+  'unmount cancels a queued $preload preload and remount can preload again (StrictMode=$strict)',
+  async ({ preload, strict }) => {
+    const { router, preloads } = presentationFixture(preload, 'activeOptions')
+    const content = strict ? (
+      <React.StrictMode>
+        <RouterProvider router={router} />
+      </React.StrictMode>
+    ) : (
+      <RouterProvider router={router} />
+    )
+    const view = render(content)
+    await screen.findByText('source content')
+    const link = screen.getByTestId('destination')
+    const retiredObserver = observerCallback
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    act(() => {
+      if (preload === 'viewport') {
+        enterViewport(link, retiredObserver)
+      } else {
+        fireEvent.mouseEnter(link)
+      }
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(49)
+    })
+    expect(preloads).toEqual([])
+    view.unmount()
+    if (preload === 'viewport') {
+      act(() => enterViewport(link, retiredObserver))
+    }
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
+    })
+    expect(preloads).toEqual([])
+
+    vi.useRealTimers()
+    render(content)
+    await screen.findByText('source content')
+    const remountedLink = screen.getByTestId('destination')
+    expect(remountedLink).not.toBe(link)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    act(() => {
+      if (preload === 'viewport') {
+        enterViewport(remountedLink)
+      } else {
+        fireEvent.mouseEnter(remountedLink)
+      }
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(49)
+    })
+    expect(preloads).toEqual([])
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(preloads).toEqual([1])
+    expect(router.state.location.href).toBe('/source?page=1')
+  },
+)

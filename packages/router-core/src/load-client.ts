@@ -2056,18 +2056,6 @@ export async function loadClientRoute(
       }
     }
   })
-  // Completion already follows superseding transactions. It is also the
-  // catch-up boundary when a redirected/document navigation leaves UI mounted.
-  if (held.length) {
-    const catchUp = () => {
-      router.batch(() => {
-        for (const source of held) {
-          source[1]!.set(router.stores.location.get())
-        }
-      })
-    }
-    void tx[5 /* done */].then(catchUp, catchUp)
-  }
   // An unresolved cold root has no UI to retain. Provisional not-found waits
   // for lazy routes to place the final boundary.
   if (
@@ -2080,7 +2068,19 @@ export async function loadClientRoute(
   }
   // Let explicit synchronous loads publish ready pending work before paint.
   settle?.(run())
-  await tx[5 /* done */]
+  try {
+    await tx[5 /* done */]
+  } finally {
+    // Completion follows successors and catches up visits still presented after
+    // redirected, canceled document, or rejected navigation work.
+    if (held.length) {
+      router.batch(() => {
+        for (const source of held) {
+          source[1]!.set(router.stores.location.get())
+        }
+      })
+    }
+  }
 }
 
 export async function refreshClientRoute(

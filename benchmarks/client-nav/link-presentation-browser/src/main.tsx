@@ -31,6 +31,25 @@ const preloadLayout = (new URLSearchParams(location.search).get('preload') ??
 if (!['disabled', 'intent', 'mixed'].includes(preloadLayout)) {
   throw new Error(`Unknown row preload layout: ${preloadLayout}`)
 }
+const queuedParam = new URLSearchParams(location.search).get('queuedIntents')
+const queuedIntents = queuedParam === null ? null : Number(queuedParam)
+const queuedDelay = Number(
+  new URLSearchParams(location.search).get('preloadDelay') ?? 60000,
+)
+if (
+  queuedIntents !== null &&
+  (![0, 100, 1000].includes(queuedIntents) || workloadForQueue())
+) {
+  throw new Error(
+    'Queued intent control requires departing intent rows and 0/100/1000 intents',
+  )
+}
+function workloadForQueue() {
+  return caseName !== 'departing' || preloadLayout !== 'intent'
+}
+let observedPreloads = 0
+const queuedRowProps =
+  queuedIntents === null ? undefined : { preloadDelay: queuedDelay }
 const intentRowProps = { preload: 'intent' as const }
 const disabledRowProps = { preload: false as const }
 const retainedDepth = caseName.startsWith('deep-')
@@ -83,6 +102,7 @@ const Rows = memo(function Rows({
             }}
             activeOptions={{ includeSearch: false }}
             {...preloadProps}
+            {...queuedRowProps}
           >
             Link {index}
           </Link>
@@ -98,6 +118,7 @@ const Rows = memo(function Rows({
             }}
             activeOptions={{ includeSearch: false }}
             {...preloadProps}
+            {...queuedRowProps}
           >
             Link {index}
           </Link>
@@ -150,6 +171,15 @@ const rootRoute = createRootRoute({
 const itemsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'items/$id',
+  ...(queuedIntents === null
+    ? {}
+    : {
+        beforeLoad: ({ preload }: { preload: boolean }) => {
+          if (preload) {
+            observedPreloads++
+          }
+        },
+      }),
   component: () => {
     const { id } = itemsRoute.useParams()
     if (retainedDepth) {
@@ -361,6 +391,51 @@ async function preflight() {
   return { retainedDepth, updaterCounts }
 }
 
+function queuePendingIntents() {
+  if (queuedIntents === null || router.state.location.pathname !== '/source') {
+    return 0
+  }
+  const rows = Array.from(document.querySelectorAll('[data-row]'))
+  for (const row of rows.slice(0, queuedIntents)) {
+    row.dispatchEvent(
+      new MouseEvent('mouseover', { bubbles: true, relatedTarget: null }),
+    )
+  }
+  if (observedPreloads) {
+    throw new Error('A queued preload fired before the timed departure')
+  }
+  return queuedIntents
+}
+
+async function queuedIntentGate() {
+  if (queuedIntents === null || queuedDelay > 100) {
+    throw new Error('Gate requires queued fixture with short delay')
+  }
+  await preflight()
+  queuePendingIntents()
+  await sample()
+  await new Promise<void>((resolve) => setTimeout(resolve, queuedDelay + 30))
+  if (observedPreloads) {
+    throw new Error('A retired intent timer preloaded after departure')
+  }
+  await sample()
+  document
+    .querySelector('[data-row="0"]')!
+    .dispatchEvent(
+      new MouseEvent('mouseover', { bubbles: true, relatedTarget: null }),
+    )
+  await new Promise<void>((resolve) => setTimeout(resolve, queuedDelay + 30))
+  if (observedPreloads !== 1) {
+    throw new Error('A fresh remounted Link did not preload once')
+  }
+  return {
+    queuedIntents,
+    observedPreloads,
+    cancellation: 'pass',
+    remountPreload: 'pass',
+  }
+}
+
 async function sample() {
   await ready
   await task()
@@ -424,5 +499,12 @@ async function sample() {
 }
 
 Object.assign(window, {
-  linkPresentationBenchmark: { sample, inspect, ready, preflight },
+  linkPresentationBenchmark: {
+    sample,
+    inspect,
+    ready,
+    preflight,
+    queuePendingIntents,
+    queuedIntentGate,
+  },
 })
