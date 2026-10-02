@@ -1,8 +1,9 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import { arraysEqual, functionalUpdate } from './utils'
 import { rootRouteId } from './root'
 
 import type { AnyRoute } from './route'
-import type { RouterState } from './router'
+import type { AnyRouter, RouterCore, RouterState } from './router'
 import type { FullSearchSchema } from './routeInfo'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
@@ -35,8 +36,15 @@ export type StoreConfig = {
   batch: RouterBatchFn
 }
 
+// One presented visit owns the source and its framework-neutral context.
+export type RouterPresentationSource = readonly [
+  router: AnyRouter,
+  location?: RouterWritableStore<ParsedLocation<any>>,
+  routeId?: string,
+]
+
 type MatchStore = RouterWritableStore<AnyRouteMatch | undefined> & {
-  location?: RouterWritableStore<ParsedLocation<any>>
+  location?: RouterPresentationSource
 }
 type ReadableStore<TValue> = RouterReadableStore<TValue>
 
@@ -70,6 +78,7 @@ export function createNonReactiveReadonlyStore<TValue>(
 export interface RouterStores<in out TRouteTree extends AnyRoute> {
   status: RouterWritableStore<RouterState<TRouteTree>['status']>
   location: RouterWritableStore<ParsedLocation<FullSearchSchema<TRouteTree>>>
+  locationSource: RouterPresentationSource
   resolvedLocation: RouterWritableStore<
     ParsedLocation<FullSearchSchema<TRouteTree>> | undefined
   >
@@ -85,7 +94,8 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
    */
   getMatchStore: (
     routeId: string,
-  ) => RouterReadableStore<AnyRouteMatch | undefined>
+  ) => RouterReadableStore<AnyRouteMatch | undefined> &
+    Pick<MatchStore, 'location'>
 
   setMatches: (
     nextMatches: Array<AnyRouteMatch>,
@@ -94,9 +104,10 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
 }
 
 export function createRouterStores<TRouteTree extends AnyRoute>(
-  initialLocation: RouterState<TRouteTree>['location'],
+  router: RouterCore<TRouteTree, any, any, any, any>,
   config: StoreConfig,
 ): RouterStores<TRouteTree> {
+  const initialLocation = router.latestLocation
   const { createMutableStore, createReadonlyStore, batch } = config
 
   // non reactive utilities
@@ -105,6 +116,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   // atoms
   const status = createMutableStore<RouterState<TRouteTree>['status']>('idle')
   const location = createMutableStore(initialLocation)
+  const locationSource: RouterPresentationSource = [router, location]
   const resolvedLocation =
     createMutableStore<RouterState<TRouteTree>['resolvedLocation']>(undefined)
   const ids = createMutableStore<Array<string>>([])
@@ -136,6 +148,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     // atoms
     status,
     location,
+    locationSource,
     resolvedLocation,
     ids,
 
@@ -181,10 +194,15 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
         const matchStore = getMatchStore(nextMatch.routeId)
         // The pooled match handle must not retain a departed visit's source.
         // Suspended framework trees keep the source itself in their context.
-        matchStore.location ||=
-          nextMatch.routeId === rootRouteId
-            ? location
-            : createMutableStore(presentationLocation)
+        matchStore.location ||= [
+          router,
+          (isServer ?? router.isServer)
+            ? undefined
+            : nextMatch.routeId === rootRouteId
+              ? location
+              : createMutableStore(presentationLocation),
+          nextMatch.routeId,
+        ]
         if (matchStore.get() !== nextMatch) {
           matchStore.set(nextMatch)
         }

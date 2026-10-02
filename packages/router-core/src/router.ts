@@ -1364,7 +1364,7 @@ export class RouterCore<
       if (this.latestLocation) {
         const config = this.getStoreConfig(this)
         this.batch = config.batch
-        this.stores = createRouterStores(this.latestLocation, config)
+        this.stores = createRouterStores(this, config)
 
         if (!(isServer ?? this.isServer)) {
           setupScrollRestoration(this)
@@ -1375,7 +1375,9 @@ export class RouterCore<
       this.batch(() => {
         this.stores.location.set(this.latestLocation)
         for (const routeId of this.stores.ids.get()) {
-          this.stores.byRoute.get(routeId)!.location?.set(this.latestLocation)
+          this.stores.byRoute
+            .get(routeId)!
+            .location?.[1]?.set(this.latestLocation)
         }
       })
     }

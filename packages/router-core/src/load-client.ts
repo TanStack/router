@@ -24,7 +24,7 @@ import type { AnyRedirect } from './redirect'
 import type { AnyRouter, RouterCore, TrailingSlashOption } from './router'
 import type { RoutePaths } from './routeInfo'
 import type { RouterHistory } from '@tanstack/history'
-import type { RouterWritableStore } from './stores'
+import type { RouterPresentationSource } from './stores'
 
 type RouteComponentType =
   | 'component'
@@ -2040,7 +2040,7 @@ export async function loadClientRoute(
     await awaitCurrent(router, tx)
     return
   }
-  const held: Array<RouterWritableStore<ParsedLocation>> = []
+  const held: Array<RouterPresentationSource> = []
   router.batch(() => {
     router.stores.status.set('pending')
     router.stores.location.set(location)
@@ -2050,7 +2050,7 @@ export async function loadClientRoute(
       }
       const source = router.stores.byRoute.get(id)!.location!
       if (matches.some((match) => match.routeId === id)) {
-        source.set(location)
+        source[1]!.set(location)
       } else {
         held.push(source)
       }
@@ -2062,7 +2062,7 @@ export async function loadClientRoute(
     const catchUp = () => {
       router.batch(() => {
         for (const source of held) {
-          source.set(router.stores.location.get())
+          source[1]!.set(router.stores.location.get())
         }
       })
     }

@@ -2,3 +2,9 @@ dist-no-links/
 dist-cache-gate/
 dist-build-location/
 __pycache__/
+dist-presentation-props/
+artifacts/
+bundles/
+raw/
+buildlogs/
+sources/

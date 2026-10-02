@@ -1,0 +1,26 @@
+{
+  "main": {
+    "path": "runs/main-minimal/measurements.json"
+  },
+  "pr8587": {
+    "path": "runs/pr8587-minimal/measurements.json"
+  },
+  "pr8572": {
+    "path": "runs/pr8572-minimal/measurements.json"
+  },
+  "pr8582": {
+    "path": "runs/pr8582-minimal/measurements.json"
+  },
+  "H+E3+wrapper": {
+    "path": "runs/H-plus-E3-plus-wrapper-cleaned-minimal/measurements.json"
+  },
+  "J": {
+    "path": "runs/J-minimal/measurements.json"
+  },
+  "K": {
+    "path": "runs/K-minimal/measurements.json"
+  },
+  "main-repeat": {
+    "path": "runs/main-minimal/measurements.json"
+  }
+}

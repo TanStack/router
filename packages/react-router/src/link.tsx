@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import { useSelector } from '@tanstack/react-store'
 import {
   deepEqual,
   functionalUpdate,
@@ -13,7 +12,6 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouterContext } from './useRouter'
 
-import { useHydrated } from './ClientOnly'
 import type {
   ActiveOptions,
   AnyRouter,
@@ -37,7 +35,7 @@ type LinkState = [href: string | undefined, isActive?: boolean]
 // Keep referentially stable values while their contents are equal. Links
 // routinely pass inline `params` / `search` object literals, which would
 // otherwise change the destination identity on every parent render, rebuild the
-// store selector, and discard its memoized selection. One ref holds all of
+// snapshot binding, and discard its memoized selection. One ref holds all of
 // them; each entry is replaced only when its own contents change.
 //
 // The router reuses a built location for as long as it sees the same options
@@ -65,16 +63,12 @@ function preloadLink(
   dest: any,
   source: RouterReadableStore<ParsedLocation>,
 ) {
-  // Selectors can run for an uncommitted render. Read the event's source here.
+  // Snapshot getters can run for an uncommitted render. Read the event's source here.
   dest._fromLocation = source.get()
   router.preloadRoute(dest).catch((err) => {
     console.warn(err)
     console.warn(preloadWarning)
   })
-}
-
-const LINK_SELECTOR_OPTIONS = {
-  compare: (a: LinkState, b: LinkState) => a[0] === b[0] && a[1] === b[1],
 }
 
 function resolveExternalLink(
@@ -260,49 +254,35 @@ export function useLinkProps<
   } = options as typeof options & { to?: string }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isHydrated = useHydrated(!!activeOptions?.includeHash)
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
     options.search,
     options.params,
     activeOptions,
   )
-  // Caller props are borrowed. This copy belongs to the Link and keeps the
-  // destination identity stable for rendering and preloading.
+  // Derive inside the binding and reuse snapshot tuples while the Link output
+  // stays equal. React can then skip renders on unrelated source changes.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const dest = React.useMemo(
-    () => ({ ...options }) as any,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      options.from,
-      options.hash,
-      options.to,
-      options.href,
-      stableSearch,
-      stableParams,
-      options.state,
-      options.mask,
-      options.unsafeRelative,
-    ],
-  )
-
-  // Derive inside the selector so `compareLinkState` can bail out. Deriving after
-  // the subscription instead re-renders every link on every navigation, because
-  // the comparator only sees the location, not whether this link's output moved.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectLinkState = React.useMemo(() => {
-    // Direct destinations and the router's allowlist are stable for this selector.
+  const binding = React.useMemo(() => {
+    // Caller props are borrowed; this destination belongs to this input version.
+    const dest = { ...options } as any
+    // Direct destinations and the router's allowlist are stable for this binding.
     const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
     if (directExternalLink !== undefined) {
       const state: LinkState = [directExternalLink ?? undefined]
-      return () => state
+      const getSnapshot = () => state
+      return {
+        dest,
+        getSnapshot,
+        getServerSnapshot: getSnapshot,
+        subscribe: (notify: () => void) =>
+          locationStore.subscribe(notify).unsubscribe,
+      }
     }
 
     let inactive: LinkState | undefined
     let active: LinkState
 
-    return (location: ParsedLocation): LinkState => {
+    const select = (location: ParsedLocation): LinkState => {
       dest._fromLocation = location
       const next = router.buildLocation(dest)
 
@@ -323,18 +303,60 @@ export function useLinkProps<
           next,
           stableActiveOptions,
           router.basepath,
-          isHydrated,
+          true,
         )
         ? active
         : inactive
     }
-  }, [stableActiveOptions, disabled, isHydrated, dest, router, to])
+    // Cache selection by source identity: native snapshot consistency checks
+    // must not run destination updaters again for one source.
+    let readLocation: ParsedLocation | undefined
+    let snapshot: LinkState | undefined
+    const getSnapshot = () => {
+      const location = locationStore.get()
+      if (readLocation !== location) {
+        snapshot = select(location)
+        readLocation = location
+      }
+      return snapshot!
+    }
+    return {
+      dest,
+      getSnapshot,
+      // SSR never marks hash-sensitive links active. The native subscription
+      // replaces this stable inactive tuple with its normal client snapshot.
+      getServerSnapshot: stableActiveOptions?.includeHash
+        ? () => {
+            getSnapshot()
+            return inactive!
+          }
+        : getSnapshot,
+      subscribe: (notify: () => void) =>
+        locationStore.subscribe(notify).unsubscribe,
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    stableActiveOptions,
+    disabled,
+    router,
+    locationStore,
+    to,
+    options.from,
+    options.hash,
+    options.href,
+    stableSearch,
+    stableParams,
+    options.state,
+    options.mask,
+    options.unsafeRelative,
+  ])
+  const { dest } = binding
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [href, isActive] = useSelector(
-    locationStore,
-    selectLinkState,
-    LINK_SELECTOR_OPTIONS,
+  const [href, isActive] = React.useSyncExternalStore(
+    binding.subscribe,
+    binding.getSnapshot,
+    binding.getServerSnapshot,
   )
   const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined
@@ -350,7 +372,7 @@ export function useLinkProps<
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   // Event-time reads use the committed presentation source, even if React has
-  // started another render whose selector touches the owned destination.
+  // started another render whose snapshot getter touches the owned destination.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const enqueuePreload = React.useCallback(
     (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
@@ -380,7 +402,24 @@ export function useLinkProps<
         }, preloadDelay),
       )
     },
-    [router, dest, locationStore, innerRef, preload, preloadDelay],
+    // Equivalent destination bindings keep the same queued intent/observer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      router,
+      locationStore,
+      innerRef,
+      preload,
+      preloadDelay,
+      options.from,
+      options.hash,
+      to,
+      options.href,
+      stableSearch,
+      stableParams,
+      options.state,
+      options.mask,
+      options.unsafeRelative,
+    ],
   )
 
   // Preload side effects: `render` preloads once per link, `viewport` watches
@@ -418,7 +457,10 @@ export function useLinkProps<
       observer?.disconnect()
       cancelPreload(innerRef)
     }
-  }, [router, dest, locationStore, preload, enqueuePreload, innerRef])
+    // enqueuePreload changes with every destination field and preload control.
+    // Presentation-only bindings must retain the existing timer and observer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, locationStore, preload, enqueuePreload, innerRef])
 
   const props = collectElementProps(options, host)
   props.ref = forwardedRef ? mergedRef : innerRef

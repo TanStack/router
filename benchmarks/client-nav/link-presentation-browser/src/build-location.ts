@@ -8,7 +8,12 @@ import type { ParsedLocation } from '@tanstack/react-router'
 
 type BuildCase = 'fresh-build' | 'warm-hit' | 'validated-build'
 
-const batchSize = 1000
+const optionCount = 1000
+const callsPerBatch = {
+  'fresh-build': 10000,
+  'warm-hit': 1000000,
+  'validated-build': 10000,
+} as const
 const rootRoute = createRootRoute({
   validateSearch: (search: Record<string, unknown>) => ({
     page: Number(search.page ?? 0),
@@ -31,7 +36,7 @@ const router = createRouter({
 
 function destinations(kind: BuildCase) {
   const source = router.state.location
-  return Array.from({ length: batchSize }, (_, index) => ({
+  return Array.from({ length: optionCount }, (_, index) => ({
     // Match the fixed dense Rows props, including the Link-owned copy's fields.
     to: '/items/$id' as const,
     params: { id: String(index % 2) },
@@ -69,7 +74,7 @@ function checkOutputs(kind: BuildCase, outputs: Array<ParsedLocation>) {
     }
   }
   if (
-    outputs.length !== batchSize ||
+    outputs.length !== optionCount ||
     router.state.location.pathname !== '/source'
   ) {
     throw new Error(`${kind}: incorrect batch or changed source`)
@@ -79,7 +84,8 @@ function checkOutputs(kind: BuildCase, outputs: Array<ParsedLocation>) {
 Object.assign(window, {
   buildLocationBenchmark: {
     ready,
-    batchSize,
+    optionCount,
+    callsPerBatch,
     preflight() {
       const results = {}
       for (const kind of [
@@ -110,17 +116,28 @@ Object.assign(window, {
       return results
     },
     sample(kind: BuildCase) {
-      // Fresh destinations and result storage are allocated outside the timer.
-      // The measured region contains exactly 1,000 public builder calls.
-      const owned = kind === 'warm-hit' ? warm : destinations(kind)
-      const outputs = new Array<ParsedLocation>(batchSize)
+      // Allocate fresh inputs and result storage before the measured region.
+      // Warm hits cycle the same 1,000 owned options, preserving cache locality.
+      const calls = callsPerBatch[kind]
+      const repetitions = calls / optionCount
+      const batches = Array.from({ length: repetitions }, () =>
+        kind === 'warm-hit' ? warm : destinations(kind),
+      )
+      const outputs = Array.from(
+        { length: repetitions },
+        () => new Array<ParsedLocation>(optionCount),
+      )
       const started = performance.now()
-      for (let index = 0; index < batchSize; index++) {
-        outputs[index] = router.buildLocation(owned[index]!)
+      for (let batch = 0; batch < repetitions; batch++) {
+        for (let index = 0; index < optionCount; index++) {
+          outputs[batch]![index] = router.buildLocation(batches[batch]![index]!)
+        }
       }
-      const buildMs = performance.now() - started
-      checkOutputs(kind, outputs)
-      return { kind, buildMs, calls: batchSize }
+      const batchMs = performance.now() - started
+      for (const batch of outputs) {
+        checkOutputs(kind, batch)
+      }
+      return { kind, batchMs, buildMs: (batchMs * 1000) / calls, calls }
     },
   },
 })

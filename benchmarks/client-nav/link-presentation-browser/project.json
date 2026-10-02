@@ -7,7 +7,10 @@
       "executor": "nx:run-commands",
       "cache": false,
       "dependsOn": [
-        { "projects": ["@tanstack/react-router"], "target": "build" }
+        {
+          "projects": ["@tanstack/react-router"],
+          "target": "build"
+        }
       ],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
@@ -17,7 +20,10 @@
       "executor": "nx:run-commands",
       "cache": false,
       "dependsOn": [
-        { "projects": ["@tanstack/react-router"], "target": "build" }
+        {
+          "projects": ["@tanstack/react-router"],
+          "target": "build"
+        }
       ],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/cache-gate.vite.config.ts"
@@ -27,7 +33,10 @@
       "executor": "nx:run-commands",
       "cache": false,
       "dependsOn": [
-        { "projects": ["@tanstack/react-router"], "target": "build" }
+        {
+          "projects": ["@tanstack/react-router"],
+          "target": "build"
+        }
       ],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/build-location.vite.config.ts"
@@ -37,10 +46,26 @@
       "executor": "nx:run-commands",
       "cache": false,
       "dependsOn": [
-        { "projects": ["@tanstack/react-router"], "target": "build" }
+        {
+          "projects": ["@tanstack/react-router"],
+          "target": "build"
+        }
       ],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/no-links.vite.config.ts"
+      }
+    },
+    "build:presentation-props": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/react-router"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config {projectRoot}/presentation-props.vite.config.ts"
       }
     }
   }

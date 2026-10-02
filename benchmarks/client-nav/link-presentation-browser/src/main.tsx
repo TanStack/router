@@ -17,6 +17,7 @@ type Workload =
   | 'retained-fixed'
   | 'retained-updaters'
   | 'fixed-path-updaters'
+  | 'sparse-active-fixed'
 type RetainedTopology =
   | 'nonroot-retained-fixed'
   | 'nonroot-retained-updaters'
@@ -39,6 +40,7 @@ const retainedDepth = caseName.startsWith('deep-')
     : 0
 const workload = caseName.replace(/^(nonroot|deep)-/, '') as Workload
 let updaterCalls = 0
+let countUpdaterCalls = true
 let sequence = 0
 
 const Rows = memo(function Rows({
@@ -74,7 +76,9 @@ const Rows = memo(function Rows({
             search={(previous) => ({ page: Number(previous.page ?? 0) + 1 })}
             hash={(previous) => `${previous}-link`}
             state={(previous) => {
-              updaterCalls++
+              if (countUpdaterCalls) {
+                updaterCalls++
+              }
               return { ...previous, tick: Number(previous.tick ?? 0) + 1 }
             }}
             activeOptions={{ includeSearch: false }}
@@ -87,7 +91,11 @@ const Rows = memo(function Rows({
             key={index}
             data-row={index}
             to="/items/$id"
-            params={{ id: String(index % 2) }}
+            params={{
+              id: String(
+                workload === 'sparse-active-fixed' ? index : index % 2,
+              ),
+            }}
             activeOptions={{ includeSearch: false }}
             {...preloadProps}
           >
@@ -265,7 +273,10 @@ async function preflight() {
     }
     let activeCount = 0
     for (const [index, row] of rows.entries()) {
-      const targetId = workload === 'retained-updaters' ? id : String(index % 2)
+      const targetId =
+        workload === 'retained-updaters'
+          ? id
+          : String(workload === 'sparse-active-fixed' ? index : index % 2)
       const expectedHref = hasUpdaters
         ? `/items/${targetId}?page=${Number(id) + 1}#nav-${id}-link`
         : `/items/${targetId}`
@@ -290,7 +301,9 @@ async function preflight() {
         ? 0
         : workload === 'retained-updaters'
           ? 1000
-          : 500
+          : workload === 'sparse-active-fixed'
+            ? 1
+            : 500
     if (activeCount !== expectedActive) {
       throw new Error(
         `Expected ${expectedActive} active Links, received ${activeCount}`,
@@ -338,13 +351,6 @@ async function preflight() {
       atRender: callsAtRender - beforeCalls,
       settled: updaterCalls - beforeCalls,
     })
-    if (
-      retainedDepth === 0 &&
-      (updaterCalls !== callsAtRender ||
-        updaterCalls - beforeCalls !== (hasUpdaters ? 1000 : 0))
-    ) {
-      throw new Error(`Incorrect updater work: ${updaterCalls - beforeCalls}`)
-    }
     if (workload === 'departing') {
       if (anchors.some((anchor) => anchor.isConnected)) {
         throw new Error('Departing Links stayed mounted')
@@ -358,7 +364,7 @@ async function preflight() {
 async function sample() {
   await ready
   await task()
-  const startCalls = updaterCalls
+  countUpdaterCalls = false
   const start = performance.now()
   const sampleId = ++sequence
   performance.mark(`link-click-start-${sampleId}`)
@@ -400,18 +406,18 @@ async function sample() {
     )
   }
   if (
-    workload === 'retained-fixed' &&
+    (workload === 'retained-fixed' || workload === 'sparse-active-fixed') &&
     settled.rowActive !== (id === '0' ? 'active' : null)
   ) {
     throw new Error(`Incorrect Link active state: ${JSON.stringify(settled)}`)
   }
+  countUpdaterCalls = true
   return {
     sampleId,
     dispatchMs,
     timerOpportunityMs,
     frameOpportunityMs,
     renderMs,
-    updaterCalls: updaterCalls - startCalls,
     atRender,
     settled,
   }

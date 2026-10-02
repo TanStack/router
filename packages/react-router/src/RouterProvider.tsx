@@ -38,16 +38,8 @@ export function RouterContextProvider<
     })
   }
 
-  let value: RouterContextValue
-  if (isServer ?? router.isServer) {
-    value = [router]
-  } else {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    value = React.useMemo<RouterContextValue>(
-      () => [router, router.stores.location],
-      [router],
-    )
-  }
+  const value: RouterContextValue =
+    (isServer ?? router.isServer) ? [router] : router.stores.locationSource
 
   const provider = (
     <routerContext.Provider value={value}>{children}</routerContext.Provider>

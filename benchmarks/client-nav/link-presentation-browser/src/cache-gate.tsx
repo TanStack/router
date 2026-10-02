@@ -6,11 +6,109 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
   useLinkProps,
 } from '@tanstack/react-router'
 import type { AnyRouter } from '@tanstack/react-router'
 
 const turn = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+async function runResolvedRedirect() {
+  let validationCalls = 0
+  const root = createRootRoute({ component: Outlet })
+  const source = createRoute({
+    getParentRoute: () => root,
+    path: '/source',
+    component: () => <div>source</div>,
+  })
+  const target = createRoute({
+    getParentRoute: () => root,
+    path: '/target/$id',
+    validateSearch: (search: Record<string, unknown>) => {
+      validationCalls++
+      return { page: Number(search.page ?? 2) }
+    },
+    component: () => <div id="resolved-redirect-target">redirect target</div>,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([source, target]),
+    history: createMemoryHistory({ initialEntries: ['/source'] }),
+  })
+  const builds: Array<{
+    options: unknown
+    result: unknown
+    sourceSupplied: boolean
+  }> = []
+  const build = router.buildLocation
+  router.buildLocation = ((...args: any[]) => {
+    const result = (build as any)(...args)
+    builds.push({
+      options: args[0],
+      result,
+      sourceSupplied: !!args[0]?._fromLocation,
+    })
+    return result
+  }) as typeof router.buildLocation
+  const host = document.createElement('div')
+  document.getElementById('app')!.append(host)
+  const react = createRoot(host)
+  const rendered = () =>
+    new Promise<void>((resolve) => {
+      const stop = router.subscribe('onRendered', () => {
+        stop()
+        resolve()
+      })
+    })
+  try {
+    const initial = rendered()
+    react.render(<RouterProvider router={router} />)
+    await initial
+    builds.length = 0
+    // Actual Start/query adapter composition uses only public options. Do not
+    // manufacture an explicit source or internal cache markers for this gate.
+    const error = redirect({
+      to: '/target/$id',
+      params: { id: '1' },
+      search: {},
+    })
+    const resolved = router.resolveRedirect(error)
+    const resolutionBuilds = builds.slice()
+    const beforeValidation = validationCalls
+    const committed = rendered()
+    await router.navigate(resolved.options)
+    await committed
+    await turn()
+    if (
+      router.state.location.href !== '/target/1?page=2' ||
+      !host.querySelector('#resolved-redirect-target') ||
+      validationCalls <= beforeValidation
+    ) {
+      throw new Error(
+        `Resolved redirect skipped validated navigation: ${router.state.location.href}`,
+      )
+    }
+    const navigationBuilds = builds.slice(resolutionBuilds.length)
+    return {
+      resolvedHref: resolved.options.href,
+      committedHref: router.state.location.href,
+      validationCalls: validationCalls - beforeValidation,
+      resolutionBuilds: resolutionBuilds.length,
+      navigationBuilds: navigationBuilds.length,
+      sameOptionsPassedToNavigation: navigationBuilds.some(
+        (item) => item.options === resolved.options,
+      ),
+      sourceSupplied: builds.some((item) => item.sourceSupplied),
+      reusedResolutionResult: navigationBuilds.some((item) =>
+        resolutionBuilds.some((prior) => item.result === prior.result),
+      ),
+    }
+  } finally {
+    react.unmount()
+    host.remove()
+    router.history.destroy()
+    await turn()
+  }
+}
 
 async function runCase(
   kind: 'static' | 'validation' | 'middleware' | 'added-stringifier',
@@ -193,6 +291,7 @@ Object.assign(window, {
       ] as const) {
         Object.assign(results, { [kind]: await runCase(kind) })
       }
+      Object.assign(results, { resolvedRedirect: await runResolvedRedirect() })
       return results
     },
   },

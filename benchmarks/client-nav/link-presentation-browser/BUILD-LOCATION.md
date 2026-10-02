@@ -1,60 +1,23 @@
 # Public destination builder attribution
 
-This production browser fixture supplements the dense Link remount measurement.
-It isolates `router.buildLocation` from React rendering, source publication,
-navigation, route-tree construction, and destination allocation. It cannot
-establish that a builder optimization fixes the real remount regression.
+This production browser fixture isolates public `router.buildLocation` calls from React rendering, source publication, navigation, route-tree creation, and input/result-array allocation. It supplements navigation measurements; it cannot establish that a builder change fixes remount cost.
 
-Copy the identical fixture, config, project target, and paired runner into each
-isolated arm before building. Retain source hashes with each built artifact.
-Use the repository's Node and pnpm versions, run `pnpm format`, and build one arm
-at a time through Nx:
+Build through the repository Node/pnpm versions and Nx, one command at a time:
 
 ```sh
 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-presentation-browser:build:build-location --outputStyle=stream --skipRemoteCache
 ```
 
-The target depends on the arm's own React Router production package build and
-emits `dist-build-location/`. The default `main` and `pending` entries are unchanged.
-Serve that directory at
-`http://127.0.0.1:4180/<arm>/build-location/`, then run
-`paired-build-location.js` through the existing Playwright CLI workflow. The
-runner's `origin`, `armNames`, and `entry` are separate configuration constants;
-the default current PR label is `unified-root`.
+The target depends on the arm's React Router package build and emits `dist-build-location/`. Copy identical fixture sources into every isolated arm and preserve source hashes. See [MATRIX.md](MATRIX.md) for portable bundle layout and source-map verification.
 
-The fixture creates one Router with the dense fixture's root search validator,
-`items/$id` and `source` routes, and memory history initially at `/source`.
-It awaits public `router.load()` before timing. Every owned destination copies
-the fixed Rows props: absolute `to`, fresh `params` alternating IDs `0` and `1`,
-`activeOptions`, `data-row`, and child text. Its `_fromLocation` comes from public
-`router.state.location`; no private cache or state is written.
+The fixture creates one Router with a real root search validator, `items/$id` and `source` routes, and memory history initially at `/source`. Setup awaits public `router.load()`. One destination pool contains 1,000 options, alternating IDs 0 and 1, with explicit `_fromLocation` taken from public `router.state.location`. No private cache or router state is mutated.
 
-Each timed batch performs exactly 1,000 public builder calls and writes their
-results into an array allocated before the timer. Fresh destination objects,
-parameter objects, and the public source read are excluded from the interval.
-All 1,000 results are checked outside timing for pathname, href, public href,
-search, state, hash, and absence of a mask; the source must remain `/source`.
+Each fresh or validated batch performs **10,000 calls**. Each warm-hit batch performs **1,000,000 calls**, cycling the same 1,000 warmed destinations. Input and result-array allocation precedes the measured interval; every returned location is checked afterwards. `batchMs` retains total batch time; `buildMs` normalizes to milliseconds per 1,000 calls. The return value includes the actual `calls` count.
 
-- `fresh-build`: each batch owns 1,000 new destinations, each built once.
-  Expected output is `/items/0` or `/items/1`, with empty search and state.
-- `warm-hit`: repeated calls use 1,000 destinations built once during untimed
-  setup. Preflight reports public result identity reuse without asserting that
-  every arm has the same cache policy. Expected values match fresh builds.
-- `validated-build`: fresh destinations set the same legacy
-  `_includeValidateSearch: true` field in every arm. The real root validator
-  must produce `?page=0`, `{ page: 0 }` search, and empty state. This is a
-  validated builder case, not an actual click or reuse-across-mode comparison.
-  No new positional builder argument is used.
+- `fresh-build`: fresh destination pools, each destination built once. Expected output is `/items/0` or `/items/1`, with empty search and state.
+- `warm-hit`: the 1,000 warmed options are reused across repetitions. Untimed preflight reports public result identity without requiring every arm to share a cache policy.
+- `validated-build`: fresh options use `_includeValidateSearch: true` identically in every arm. The root validator produces `?page=0` and `{ page: 0 }` search. This is a builder invocation, not a click or a cross-mode reuse assertion.
 
-Each arm/case receives 24 untimed warmup batches, then 48 recorded batches.
-An untimed task yield separates batches. Each case loads a new document to
-avoid previous cases' JIT/cache history. The four-arm Williams order balances
-positions and immediate predecessors; repeating its complete four-block design
-twice gives eight independent paired blocks. Case order rotates by block.
-The raw return value includes every sample and the preflight outputs.
+The broad experiment uses 12 warmup and 24 measured batches per round for fresh/validated cases, and 6 warmup and 12 measured batches for warm hits. An untimed task yield separates batches. Each case loads a fresh document. Eight independent Williams rounds balance arm positions and immediate predecessors; case order rotates. Analyze paired round means, not individual correlated batches. Retain the clock probe, zeros, dispersion, batch durations, and call counts.
 
-Compare paired block means per case, with confidence intervals across the eight
-block pairs. `buildMs` is milliseconds per 1,000 calls; divide by 1,000 only when
-explicitly reporting per-call values. Inspect dispersion, timer-resolution zeros,
-and outliers, particularly in the warm-hit control. Do not pool all samples as
-independent replicates. Stop builds and other CPU-heavy work while timing.
+The final focused J/K matrix keeps these builders in its correctness gates but does **not** time them. Its five timed pages/six outcomes and embedded A/A calibration are documented in [MATRIX.md](MATRIX.md). Older `paired-*.js` scripts retain their historical sampling designs; do not substitute them for the frozen matrix runner.

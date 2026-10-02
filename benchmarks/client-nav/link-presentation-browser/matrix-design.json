@@ -1,0 +1,117 @@
+{
+  "rounds": 8,
+  "mainSentinel": "Embedded main-repeat identical A/A arm; no extra post-round sentinel",
+  "navigationWarmups": 16,
+  "navigationSamples": 24,
+  "navigationTraceSamples": 24,
+  "builderWarmups": 12,
+  "builderSamples": 24,
+  "warmHitBuilderWarmups": 6,
+  "warmHitBuilderSamples": 12,
+  "warmHitCallsPerBatch": 1000000,
+  "preloadLayout": "intent",
+  "arms": [
+    "main",
+    "pr8587",
+    "pr8572",
+    "pr8582",
+    "H+E3+wrapper",
+    "J",
+    "K",
+    "main-repeat"
+  ],
+  "cases": [
+    {
+      "group": "browser",
+      "workload": "departing",
+      "file": "index.html"
+    },
+    {
+      "group": "browser",
+      "workload": "nonroot-retained-updaters",
+      "file": "index.html"
+    },
+    {
+      "group": "browser",
+      "workload": "deep-retained-updaters",
+      "file": "index.html"
+    },
+    {
+      "group": "presentation-props",
+      "workload": "active-options",
+      "file": "presentation-props.html"
+    },
+    {
+      "group": "presentation-props",
+      "workload": "disabled-equivalent",
+      "file": "presentation-props.html"
+    }
+  ],
+  "gateCases": [
+    {
+      "group": "browser",
+      "workload": "departing",
+      "file": "index.html"
+    },
+    {
+      "group": "browser",
+      "workload": "retained-fixed",
+      "file": "index.html"
+    },
+    {
+      "group": "browser",
+      "workload": "retained-updaters",
+      "file": "index.html"
+    },
+    {
+      "group": "browser",
+      "workload": "fixed-path-updaters",
+      "file": "index.html"
+    },
+    {
+      "group": "browser",
+      "workload": "sparse-active-fixed",
+      "file": "index.html"
+    },
+    {
+      "group": "browser",
+      "workload": "nonroot-retained-updaters",
+      "file": "index.html"
+    },
+    {
+      "group": "browser",
+      "workload": "deep-retained-updaters",
+      "file": "index.html"
+    },
+    {
+      "group": "no-links",
+      "workload": "retained",
+      "file": "no-links.html"
+    },
+    {
+      "group": "build-location",
+      "workload": "fresh-build",
+      "file": "build-location.html"
+    },
+    {
+      "group": "build-location",
+      "workload": "warm-hit",
+      "file": "build-location.html"
+    },
+    {
+      "group": "build-location",
+      "workload": "validated-build",
+      "file": "build-location.html"
+    },
+    {
+      "group": "presentation-props",
+      "workload": "active-options",
+      "file": "presentation-props.html"
+    },
+    {
+      "group": "presentation-props",
+      "workload": "disabled-equivalent",
+      "file": "presentation-props.html"
+    }
+  ]
+}

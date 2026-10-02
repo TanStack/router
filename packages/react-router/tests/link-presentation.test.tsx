@@ -642,3 +642,80 @@ test('a microtask onRendered successor retains the nonroot Link source until its
   }
   expect(screen.getByText('destination')).toBeTruthy()
 })
+
+test('the first departing Link uses the latest retained presentation from a visit that had no Links', async () => {
+  let releaseA!: () => void
+  let releaseB!: () => void
+  const pendingA = new Promise<void>((resolve) => {
+    releaseA = resolve
+  })
+  const pendingB = new Promise<void>((resolve) => {
+    releaseB = resolve
+  })
+  const root = createRootRoute({
+    validateSearch: (search) => ({ visit: Number(search.visit) || 0 }),
+    component: Outlet,
+  })
+  const a = createRoute({
+    getParentRoute: () => root,
+    path: '/a',
+    loaderDeps: ({ search }) => ({ visit: search.visit }),
+    loader: ({ deps }) => (deps.visit === 1 ? undefined : pendingA),
+    component: function InitiallyWithoutLinks() {
+      const [show, setShow] = React.useState(false)
+      return (
+        <>
+          <button onClick={() => setShow(true)}>reveal first Link</button>
+          {show && (
+            <Link to="/a" search={true} data-testid="first-departing">
+              first departing Link
+            </Link>
+          )}
+        </>
+      )
+    },
+  })
+  const b = createRoute({
+    getParentRoute: () => root,
+    path: '/b',
+    loader: () => pendingB,
+    component: () => <div>destination</div>,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([a, b]),
+    history: createMemoryHistory({ initialEntries: ['/a?visit=1'] }),
+    defaultPendingMs: 10_000,
+  })
+  render(<RouterProvider router={router} />)
+  await screen.findByText('reveal first Link')
+  await waitFor(() => expect(router.state.status).toBe('idle'))
+  expect(screen.queryByTestId('first-departing')).toBeNull()
+
+  let retained: Promise<void> | undefined
+  let departing: Promise<void> | undefined
+  try {
+    await act(async () => {
+      retained = router.navigate({ to: '/a', search: { visit: 2 } })
+    })
+    expect(router.state.location.href).toBe('/a?visit=2')
+    expect(screen.queryByTestId('first-departing')).toBeNull()
+    await act(async () => {
+      departing = router.navigate({ to: '/b', search: { visit: 3 } })
+    })
+    expect(router.state.location.href).toBe('/b?visit=3')
+    act(() => {
+      fireEvent.click(screen.getByText('reveal first Link'))
+    })
+    const link = screen.getByTestId('first-departing')
+    expect(link.getAttribute('href')).toBe('/a?visit=2')
+    expect(link.getAttribute('data-status')).toBe('active')
+  } finally {
+    await act(async () => {
+      releaseA()
+      releaseB()
+      await Promise.all([retained, departing])
+    })
+  }
+  expect(screen.getByText('destination')).toBeTruthy()
+  expect(screen.queryByTestId('first-departing')).toBeNull()
+})

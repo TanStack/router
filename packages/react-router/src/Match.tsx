@@ -68,38 +68,23 @@ export const Match = React.memo(function MatchImpl({
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
-    const match = router.stores.byRoute.get(routeId)!.get()!
-    return (
-      <MatchView
-        router={router}
-        match={match}
-        contextValue={[router, undefined, routeId]}
-      />
-    )
+    const matchStore = router.stores.byRoute.get(routeId)!
+    return renderMatch(router, matchStore.get()!, matchStore.location!)
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useSelector(matchStore)
-  const source = router.stores.byRoute.get(routeId)!.location!
-  // Capture this visit's actual source; route ID alone survives leave/re-entry.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const value = React.useMemo<RouterContextValue>(
-    () => [router, source, routeId],
-    [router, source, routeId],
-  )
-  return <MatchView router={router} match={match!} contextValue={value} />
+  // The same pooled handle owns this visit's source and stable context.
+  return renderMatch(router, match!, matchStore.location!)
 })
 
-function MatchView({
-  router,
-  match,
-  contextValue,
-}: {
-  router: ReturnType<typeof useRouter>
-  match: AnyRouteMatch
-  contextValue: RouterContextValue
-}) {
+// Rendering uses no hooks or component state; the Match owns this boundary.
+function renderMatch(
+  router: ReturnType<typeof useRouter>,
+  match: AnyRouteMatch,
+  contextValue: RouterContextValue,
+) {
   const route: AnyRoute = router.routesById[match.routeId]
 
   const pendingElement = renderPending(router, route)
