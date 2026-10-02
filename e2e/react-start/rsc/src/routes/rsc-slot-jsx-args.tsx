@@ -17,16 +17,30 @@ import {
 // SLOT ARGS: Passing JSX as a slot argument
 // ============================================================================
 
+type CampaignMeta = {
+  campaignId: string
+  primary: { label: string }
+  secondary: { label: string }
+  self?: CampaignMeta
+}
+
 const getPromoServerComponent = createServerFn({ method: 'GET' })
   .validator((data: { headline: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
+    const shared = { label: 'shared' }
+    const meta: CampaignMeta = {
+      campaignId: 'CMP-123',
+      primary: shared,
+      secondary: shared,
+    }
+    meta.self = meta
 
     return createCompositeComponent(
       (props: {
         renderCta?: (
           cta: React.ReactElement,
-          meta: { campaignId: string },
+          meta: CampaignMeta,
         ) => React.ReactNode
       }) => {
         return (
@@ -52,7 +66,7 @@ const getPromoServerComponent = createServerFn({ method: 'GET' })
             >
               {props.renderCta?.(
                 <strong data-testid="promo-cta-jsx">Limited offer</strong>,
-                { campaignId: 'CMP-123' },
+                meta,
               )}
             </div>
           </div>
@@ -85,7 +99,7 @@ function RscSlotJsxArgsPage() {
 
       <CompositeComponent
         src={Server}
-        renderCta={(cta: React.ReactElement, meta: { campaignId: string }) => (
+        renderCta={(cta: React.ReactElement, meta: CampaignMeta) => (
           <div style={clientStyles.container} data-testid="rsc-jsx-args-client">
             <div style={clientStyles.header}>
               <span style={clientStyles.badge}>CLIENT CTA</span>
@@ -97,6 +111,11 @@ function RscSlotJsxArgsPage() {
               style={{ marginTop: '8px', fontSize: '12px', color: '#166534' }}
             >
               campaign: {meta.campaignId}
+            </div>
+            <div data-testid="rsc-jsx-args-references">
+              {meta.self === meta && meta.primary === meta.secondary
+                ? 'Shared references and cycle preserved'
+                : 'References changed'}
             </div>
           </div>
         )}
