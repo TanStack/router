@@ -35,6 +35,8 @@ export default defineConfig({
 })
 ```
 
+`serverFns.base` defaults to `/_serverFn`. Start appends it to `router.basepath` to form the server-function URL prefix, so the configuration above uses `/app/_serverFn`.
+
 This configuration produces URLs with the following responsibilities:
 
 | URL                  | Prefix source                          |
