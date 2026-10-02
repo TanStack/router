@@ -2514,6 +2514,36 @@ describe('createStartHandler request cancellation', () => {
     })
     expect(router.serverSsr).toBeUndefined()
   })
+
+  it('does not report an aborted route loader as an unhandled error', async () => {
+    let notifyStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      notifyStarted = resolve
+    })
+    const router = makeRouterWithRouteWork({
+      loader: ({ abortController }) => {
+        notifyStarted()
+        return waitForAbortOrRelease(abortController.signal)
+      },
+    })
+    startMocks.router = router
+    const requestController = new AbortController()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const handler = createStartHandler(() => new Response('must not render'))
+    const response = handler(
+      new Request('http://localhost/work', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await started
+    requestController.abort(new Error('request disconnected'))
+
+    expect((await response).status).toBe(500)
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
 })
 
 describe('createStartHandler inlineCss option', () => {
