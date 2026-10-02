@@ -5,7 +5,10 @@ import { createTestRouter } from './routerTestUtils'
 import type { RouteMask } from '../src'
 
 describe('buildLocation - route masks', () => {
-  const setup = (routeMasks?: Array<RouteMask<any>>) => {
+  const setup = (
+    routeMasks?: Array<RouteMask<any>>,
+    initialEntries: Array<string> = ['/'],
+  ) => {
     const rootRoute = new BaseRootRoute({})
     const photoRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -39,7 +42,7 @@ describe('buildLocation - route masks', () => {
 
     const router = createTestRouter({
       routeTree,
-      history: createMemoryHistory(),
+      history: createMemoryHistory({ initialEntries }),
       routeMasks,
     })
 
@@ -332,6 +335,65 @@ describe('buildLocation - route masks', () => {
     expect(location.maskedLocation!.hash).toBe('section1')
     expect(location.maskedLocation!.href).toContain('#section1')
     expect(location.maskedLocation!.state).toEqual({ modal: true })
+  })
+
+  test('should resolve configured mask search from the destination search', () => {
+    const routeMasks: Array<RouteMask<any>> = [
+      {
+        routeTree: null as any,
+        from: '/photos/$photoId/modal',
+        to: '/photos/$photoId',
+        params: true,
+        search: (prev: Record<string, unknown>) => prev,
+      },
+    ]
+
+    const router = setup(routeMasks, ['/photos/123/modal?page=1'])
+
+    const location = router.buildLocation({
+      to: '/photos/$photoId/modal',
+      params: { photoId: '123' },
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        page: 2,
+      }),
+    })
+
+    expect(location.search).toEqual({
+      page: 2,
+    })
+
+    expect(location.maskedLocation?.search).toEqual({
+      page: 2,
+    })
+  })
+
+  test('should resolve explicit mask search from the destination search', () => {
+    const router = setup(undefined, ['/photos/123/modal?page=1'])
+
+    const location = router.buildLocation({
+      to: '/photos/$photoId/modal',
+      params: { photoId: '123' },
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        page: 2,
+      }),
+      mask: {
+        to: '/photos/$photoId',
+        params: {
+          photoId: '123',
+        },
+        search: (prev: Record<string, unknown>) => prev,
+      },
+    })
+
+    expect(location.search).toEqual({
+      page: 2,
+    })
+
+    expect(location.maskedLocation?.search).toEqual({
+      page: 2,
+    })
   })
 
   test('should handle mask with function params that receives matched params', () => {
