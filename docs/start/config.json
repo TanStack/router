@@ -91,6 +91,10 @@
               "to": "framework/react/guide/environment-variables"
             },
             {
+              "label": "Request Lifecycle",
+              "to": "framework/react/guide/request-lifecycle"
+            },
+            {
               "label": "Server Functions",
               "to": "framework/react/guide/server-functions"
             },
