@@ -155,6 +155,37 @@ test('should show pendingComponent of root route', async () => {
   expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
 })
 
+test('wrapInSuspense false prevents route pendingComponent suspense fallback', async () => {
+  const gate = createControlledPromise<void>()
+  const history = createMemoryHistory({ initialEntries: ['/posts'] })
+  const root = createRootRoute({
+    component: () => <Outlet />,
+  })
+  const postsRoute = createRoute({
+    getParentRoute: () => root,
+    path: '/posts',
+    wrapInSuspense: false,
+    pendingComponent: () => <div data-testid="posts-pending">Loading</div>,
+    loader: () => gate,
+    component: () => <div>Posts content</div>,
+  })
+
+  const router = createRouter({
+    routeTree: root.addChildren([postsRoute]),
+    history,
+    defaultPendingMs: 0,
+  })
+
+  render(() => <RouterProvider router={router} />)
+
+  await waitFor(() => expect(router.state.status).toBe('pending'))
+  expect(screen.queryByTestId('posts-pending')).not.toBeInTheDocument()
+
+  gate.resolve()
+
+  expect(await screen.findByText('Posts content')).toBeInTheDocument()
+})
+
 test('useMatchRoute follows superseding pending locations', async () => {
   const aGate = createControlledPromise<void>()
   const bGate = createControlledPromise<void>()
