@@ -21,7 +21,6 @@ export {
   createRequestHandler,
   defineHandlerCallback,
   transformReadableStreamWithRouter,
-  transformPipeableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
 export type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 

@@ -21,7 +21,6 @@ import {
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import {
   transformHtmlStringWithRouter,
-  transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
 } from '../src/ssr/transformStreamWithRouter'
 import {
@@ -29,8 +28,26 @@ import {
   SCRIPT_CLOSE,
 } from '../src/ssr/htmlBoundaryScanner'
 import { createTestRouter } from './routerTestUtils'
+import type { TransformStreamWithRouterOptions } from '../src/ssr/transformStreamWithRouter'
+import type { AnyRouter } from '../src/router'
+import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import type { RouterManagedTag } from '../src/manifest'
 import type { HydrationScriptOutput } from '../src/ssr/hydrationScripts'
+
+// Node interoperability belongs at the caller boundary, not in the shared SSR module.
+function transformPipeableStreamWithRouter(
+  router: AnyRouter,
+  stream: Readable,
+  opts?: TransformStreamWithRouterOptions,
+) {
+  return Readable.fromWeb(
+    transformReadableStreamWithRouter(
+      router,
+      Readable.toWeb(stream) as ReadableStream<Uint8Array | string>,
+      opts,
+    ) as NodeReadableStream<Uint8Array>,
+  )
+}
 
 const decoder = new TextDecoder()
 const DOCUMENT_CLOSE = decoder.decode(DOCUMENT_CLOSE_BYTES)

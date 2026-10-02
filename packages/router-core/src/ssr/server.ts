@@ -17,7 +17,6 @@ export type {
   SsrResponse,
 } from './handlerCallback'
 export {
-  transformPipeableStreamWithRouter,
   transformHtmlStringWithRouter,
   transformReadableStreamWithRouter,
 } from './transformStreamWithRouter'
