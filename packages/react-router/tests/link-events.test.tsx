@@ -188,3 +188,94 @@ test.each(['onClick', 'onFocus', 'onMouseEnter', 'onTouchStart'] as const)(
     }
   },
 )
+
+test.each([false, 'render', 'viewport'] as const)(
+  'non-intent callbacks preserve cancellation and selected state overrides (preload=%s)',
+  (preloadMode) => {
+    const router = createRouter({
+      routeTree: createRootRoute(),
+      history: createMemoryHistory(),
+      isServer: false,
+    })
+    const preload = vi
+      .spyOn(router, 'preloadRoute')
+      .mockResolvedValue(undefined)
+    const userHandler = vi.fn()
+    const stateHandler = vi.fn()
+    let stateOverride = false
+    const { result, rerender } = renderHook(
+      () =>
+        useLinkProps({
+          to: '/target',
+          preload: preloadMode,
+          onBlur: userHandler,
+          onFocus: userHandler,
+          onMouseEnter: userHandler,
+          onMouseLeave: userHandler,
+          onTouchStart: userHandler,
+          inactiveProps: stateOverride
+            ? {
+                onBlur: stateHandler,
+                onFocus: stateHandler,
+                onMouseEnter: stateHandler,
+                onMouseLeave: stateHandler,
+                onTouchStart: stateHandler,
+              }
+            : undefined,
+        }),
+      {
+        wrapper: ({ children }) => (
+          <RouterContextProvider router={router}>
+            {children}
+          </RouterContextProvider>
+        ),
+      },
+    )
+    const eventNames = [
+      'onBlur',
+      'onFocus',
+      'onMouseEnter',
+      'onMouseLeave',
+      'onTouchStart',
+    ] as const
+    const anchor = document.createElement('a')
+    try {
+      preload.mockClear()
+      for (const eventName of eventNames) {
+        for (const initiallyPrevented of [true, false]) {
+          userHandler.mockClear()
+          const event = {
+            defaultPrevented: initiallyPrevented,
+            currentTarget: anchor,
+          }
+          result.current[eventName]!(
+            event as unknown as React.MouseEvent<HTMLAnchorElement> &
+              React.TouchEvent<HTMLAnchorElement> &
+              React.FocusEvent<HTMLAnchorElement>,
+          )
+          expect(userHandler).toHaveBeenCalledTimes(initiallyPrevented ? 0 : 1)
+          expect(preload).not.toHaveBeenCalled()
+        }
+      }
+
+      stateOverride = true
+      rerender()
+      userHandler.mockClear()
+      for (const eventName of eventNames) {
+        stateHandler.mockClear()
+        result.current[eventName]!({
+          defaultPrevented: true,
+          currentTarget: anchor,
+        } as unknown as React.MouseEvent<HTMLAnchorElement> &
+          React.TouchEvent<HTMLAnchorElement> &
+          React.FocusEvent<HTMLAnchorElement>)
+        expect(stateHandler).toHaveBeenCalledOnce()
+        expect(userHandler).not.toHaveBeenCalled()
+        expect(preload).not.toHaveBeenCalled()
+      }
+    } finally {
+      cleanup()
+      preload.mockRestore()
+    }
+  },
+)

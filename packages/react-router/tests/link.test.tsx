@@ -1135,12 +1135,16 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const departingPostsLink = await screen.findByRole('link', {
+      name: 'Posts',
+    })
 
-    await act(() => fireEvent.click(postsLink))
+    await act(() => fireEvent.click(departingPostsLink))
 
     const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
     expect(postsHeading).toBeInTheDocument()
+    expect(departingPostsLink).not.toBeInTheDocument()
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
     expect(window.location.pathname).toBe('/posts')
 
@@ -1197,12 +1201,16 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const departingPostsLink = await screen.findByRole('link', {
+      name: 'Posts',
+    })
 
-    await act(() => fireEvent.click(postsLink))
+    await act(() => fireEvent.click(departingPostsLink))
 
     const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
     expect(postsHeading).toBeInTheDocument()
+    expect(departingPostsLink).not.toBeInTheDocument()
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
     const indexLink = await screen.findByRole('link', { name: 'Index' })
 
@@ -6803,14 +6811,11 @@ describe('splat routes with empty splat', () => {
     async (trailingSlash) => {
       const tail = trailingSlash === 'always' ? '/' : ''
 
-      const rootRoute = createRootRoute()
-      const indexRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
+      const rootRoute = createRootRoute({
         component: () => {
           return (
             <>
-              <h1>Index Route</h1>
+              <Outlet />
               <Link
                 data-testid="splat-link-with-empty-splat"
                 to="/splat/$"
@@ -6838,6 +6843,11 @@ describe('splat routes with empty splat', () => {
             </>
           )
         },
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <h1>Index Route</h1>,
       })
 
       const splatRoute = createRoute({

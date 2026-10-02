@@ -13,6 +13,26 @@
         "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
       }
     },
+    "build:cache-gate": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        { "projects": ["@tanstack/react-router"], "target": "build" }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config {projectRoot}/cache-gate.vite.config.ts"
+      }
+    },
+    "build:build-location": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        { "projects": ["@tanstack/react-router"], "target": "build" }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config {projectRoot}/build-location.vite.config.ts"
+      }
+    },
     "build:no-links": {
       "executor": "nx:run-commands",
       "cache": false,

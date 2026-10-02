@@ -42,11 +42,10 @@ export function RouterContextProvider<
   if (isServer ?? router.isServer) {
     value = [router]
   } else {
-    const source = router.stores.location
     // eslint-disable-next-line react-hooks/rules-of-hooks
     value = React.useMemo<RouterContextValue>(
-      () => [router, source],
-      [router, source],
+      () => [router, router.stores.location],
+      [router],
     )
   }
 

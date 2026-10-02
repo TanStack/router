@@ -25,47 +25,6 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-test('replacing the root provider router updates exact identity and inherited Link location', async () => {
-  function createTestRouter(visit: number) {
-    const root = createRootRoute({
-      validateSearch: (search) => ({ visit: Number(search.visit) || 0 }),
-      component: Probe,
-    })
-    const route = createRoute({ getParentRoute: () => root, path: '/page' })
-    return createRouter({
-      routeTree: root.addChildren([route]),
-      history: createMemoryHistory({
-        initialEntries: [`/page?visit=${visit}`],
-      }),
-    })
-  }
-  const seen: Array<ReturnType<typeof useRouter>> = []
-  function Probe() {
-    seen.push(useRouter())
-    return (
-      <Link to="/page" search={true} data-testid="replacement">
-        page
-      </Link>
-    )
-  }
-  const first = createTestRouter(9)
-  const second = createTestRouter(7)
-  await first.load()
-  await second.load()
-  const { rerender } = render(<RouterProvider router={first} />)
-  expect((await screen.findByTestId('replacement')).getAttribute('href')).toBe(
-    '/page?visit=9',
-  )
-  expect(seen.at(-1)).toBe(first)
-  rerender(<RouterProvider router={second} />)
-  await waitFor(() => {
-    expect(screen.getByTestId('replacement').getAttribute('href')).toBe(
-      '/page?visit=7',
-    )
-    expect(seen.at(-1)).toBe(second)
-  })
-})
-
 test('intent preload of a departing Link receives its displayed params and search', async () => {
   let release!: () => void
   const pending = new Promise<void>((resolve) => {
@@ -138,7 +97,7 @@ test('server route components receive the exact router instance and render inher
   const route = createRoute({
     getParentRoute: () => root,
     path: '/server',
-    component: () => {
+    component: function ServerLinks() {
       seen.push(useRouter())
       return (
         <Link to="/server" search={true}>

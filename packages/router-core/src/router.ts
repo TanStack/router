@@ -1889,28 +1889,33 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
-  buildLocation: BuildLocationFn = (opts) => {
-    const cache =
+  buildLocation: BuildLocationFn = (
+    opts,
+    includeValidateSearch,
+    isNavigate,
+  ) => {
+    includeValidateSearch ??= opts._includeValidateSearch
+    let cache =
       !(isServer ?? this.isServer) &&
       process.env.NODE_ENV !== 'development' &&
       opts._fromLocation
         ? this.staticLocations
         : undefined
     const cached = cache?.get(opts)
-    if (cached) {
+    if (cached && !includeValidateSearch) {
       return cached
     }
 
     // Capture once: an updater can synchronously navigate before masks build.
     const sourceLocation =
       opts._fromLocation || this._pendingLocation || this.latestLocation
-    let usedCurrent = false
 
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
       } = {},
     ): ParsedLocation => {
+      const isMain = dest === opts
       if (dest.href) {
         const parsed = parseHref(dest.href, {} as ParsedHistoryState)
         dest = {
@@ -1924,19 +1929,22 @@ export class RouterCore<
         }
       }
 
-      // We allow the caller to override the current location
-      const currentLocation = dest._fromLocation || sourceLocation
+      // Main builds keep the source captured before callbacks; masks may
+      // override it with their own explicit source.
+      const currentLocation = isMain
+        ? sourceLocation
+        : dest._fromLocation || sourceLocation
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match
       // objects) is only computed when a build actually reads it.
       let lightweight: LightweightRouteMatchResult | undefined
       const current = () => {
-        usedCurrent = true
+        cache = undefined
         return currentLocation
       }
       const currentMatch = () => {
-        usedCurrent = true
+        cache = undefined
         return (lightweight ??= this.matchRoutesLightweight(currentLocation))
       }
 
@@ -1945,7 +1953,7 @@ export class RouterCore<
       if (
         process.env.NODE_ENV !== 'production' &&
         dest.from &&
-        dest._isNavigate
+        (isMain ? (isNavigate ?? dest._isNavigate) : dest._isNavigate)
       ) {
         const [allFromMatches] = this.getMatchedRoutes(dest.from)
         const [matchedRoutes, fullPath] = currentMatch()
@@ -2044,6 +2052,23 @@ export class RouterCore<
           : EMPTY_RECORD,
       )
 
+      // Read search configuration after params callbacks have completed.
+      const middlewares = getSearchMiddlewares(
+        destRoutes,
+        includeValidateSearch,
+      )
+      // Stringifiers and inherited params already record a source read. Only
+      // independent results with no live search callbacks can cross modes.
+      if (
+        cached &&
+        isMain &&
+        cache &&
+        !middlewares.length &&
+        cache === this.staticLocations
+      ) {
+        return cached
+      }
+
       const nextPathname = opts.leaveParams
         ? // Keep path params uninterpolated for matchRoute/template matching.
           nextTo
@@ -2079,13 +2104,9 @@ export class RouterCore<
       }
 
       // Resolve the next search
-      const middlewares = getSearchMiddlewares(
-        destRoutes,
-        opts._includeValidateSearch,
-      )
       const fromSearch = () => {
         let search = currentMatch()[2 /* search */]
-        if (opts._includeValidateSearch && this.options.search?.strict) {
+        if (includeValidateSearch && this.options.search?.strict) {
           const validatedSearch = {}
           destRoutes.forEach((route) => {
             if (route.options.validateSearch) {
@@ -2217,12 +2238,7 @@ export class RouterCore<
 
     // Masked locations stay out. Callbacks can invalidate the captured cache
     // through a reentrant configuration or route-tree update.
-    if (
-      cache &&
-      !usedCurrent &&
-      !next.maskedLocation &&
-      cache === this.staticLocations
-    ) {
+    if (cache && !next.maskedLocation && cache === this.staticLocations) {
       cache.set(opts, next)
     }
 
@@ -2341,22 +2357,23 @@ export class RouterCore<
   }
 
   /** Convenience helper: build a location from options, then commit it. */
-  buildAndCommitLocation = ({
-    replace,
-    resetScroll,
-    hashScrollIntoView,
-    viewTransition,
-    ignoreBlocker,
-    ...rest
-  }: BuildNextOptions & CommitLocationOptions = {}): Promise<void> => {
+  buildAndCommitLocation = (
+    opts: BuildNextOptions & CommitLocationOptions = {},
+    isNavigate?: boolean,
+    destination: BuildNextOptions = opts,
+  ): Promise<void> => {
     if (isServer ?? this.isServer) {
       return Promise.resolve()
     }
 
-    const location = this.buildLocation({
-      ...(rest as any),
-      _includeValidateSearch: true,
-    })
+    const {
+      replace,
+      resetScroll,
+      hashScrollIntoView,
+      viewTransition,
+      ignoreBlocker,
+    } = opts
+    const location = this.buildLocation(destination as any, true, isNavigate)
 
     this._pendingLocation = location as ParsedLocation<
       FullSearchSchema<TRouteTree>
@@ -2389,26 +2406,29 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType
    */
-  navigate: NavigateFn = async ({
-    to,
-    reloadDocument,
-    href,
-    publicHref,
-    ...rest
-  }) => {
+  navigate: NavigateFn = async (opts, destination = opts) => {
     if (isServer ?? this.isServer) {
       return
     }
 
+    const { to, reloadDocument } = opts
+    let { href, publicHref } = opts
     const hrefScheme = href ? getUrlScheme(href) : undefined
 
     if (hrefScheme || reloadDocument) {
+      // Snapshot controls before location callbacks or asynchronous blockers.
+      const { replace, ignoreBlocker } = opts
       // When to is provided, always build a location to get the proper publicHref
       // (this handles redirects where href might be an internal path from resolveRedirect)
       // When only href is provided (no to), use it directly as it should already
       // be a complete path (possibly with basepath)
       if (to !== undefined || !href) {
-        const location = this.buildLocation({ to, ...rest } as any)
+        const {
+          href: _href,
+          publicHref: _publicHref,
+          ...buildOpts
+        } = destination
+        const location = this.buildLocation({ ...buildOpts, to } as any)
         const publicLocation = location.maskedLocation ?? location
         // Use publicHref which contains the path (origin-stripped is fine for reload)
         href ??= publicLocation.publicHref
@@ -2419,15 +2439,10 @@ export class RouterCore<
       // otherwise use href directly (which may already include basepath)
       const reloadHref = !hrefScheme && publicHref ? publicHref : href
 
-      return documentNavigation(this, reloadHref, rest)
+      return documentNavigation(this, reloadHref, { replace, ignoreBlocker })
     }
 
-    return this.buildAndCommitLocation({
-      ...rest,
-      href,
-      to: to as string,
-      _isNavigate: true,
-    })
+    return this.buildAndCommitLocation(opts, true, destination)
   }
 
   load: LoadFn = async (opts): Promise<void> => {

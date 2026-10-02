@@ -10,23 +10,57 @@ import {
   createRouter,
   useLocation,
 } from '@tanstack/react-router'
+import type { AnyRoute } from '@tanstack/react-router'
 
 type Workload =
   | 'departing'
   | 'retained-fixed'
   | 'retained-updaters'
   | 'fixed-path-updaters'
-const workload = (new URLSearchParams(location.search).get('case') ??
-  'departing') as Workload
+type RetainedTopology =
+  | 'nonroot-retained-fixed'
+  | 'nonroot-retained-updaters'
+  | 'deep-retained-fixed'
+  | 'deep-retained-updaters'
+const caseName = (new URLSearchParams(location.search).get('case') ??
+  'departing') as Workload | RetainedTopology
+type PreloadLayout = 'disabled' | 'intent' | 'mixed'
+const preloadLayout = (new URLSearchParams(location.search).get('preload') ??
+  'disabled') as PreloadLayout
+if (!['disabled', 'intent', 'mixed'].includes(preloadLayout)) {
+  throw new Error(`Unknown row preload layout: ${preloadLayout}`)
+}
+const intentRowProps = { preload: 'intent' as const }
+const disabledRowProps = { preload: false as const }
+const retainedDepth = caseName.startsWith('deep-')
+  ? 8
+  : caseName.startsWith('nonroot-')
+    ? 1
+    : 0
+const workload = caseName.replace(/^(nonroot|deep)-/, '') as Workload
 let updaterCalls = 0
 let sequence = 0
 
-const Rows = memo(function Rows() {
+const Rows = memo(function Rows({
+  offset = 0,
+  count = 1000,
+}: {
+  offset?: number
+  count?: number
+}) {
   return (
-    <div id="rows">
-      {Array.from({ length: 1000 }, (_, index) =>
-        workload === 'retained-updaters' ||
-        workload === 'fixed-path-updaters' ? (
+    <div id={offset === 0 ? 'rows' : undefined}>
+      {Array.from({ length: count }, (_, row) => {
+        const index = offset + row
+        // The default keeps the original props; enabled layouts only add preload.
+        const preloadProps =
+          preloadLayout === 'disabled'
+            ? undefined
+            : preloadLayout === 'intent' || index % 2 === 0
+              ? intentRowProps
+              : disabledRowProps
+        return workload === 'retained-updaters' ||
+          workload === 'fixed-path-updaters' ? (
           <Link
             key={index}
             data-row={index}
@@ -44,6 +78,7 @@ const Rows = memo(function Rows() {
               return { ...previous, tick: Number(previous.tick ?? 0) + 1 }
             }}
             activeOptions={{ includeSearch: false }}
+            {...preloadProps}
           >
             Link {index}
           </Link>
@@ -54,11 +89,12 @@ const Rows = memo(function Rows() {
             to="/items/$id"
             params={{ id: String(index % 2) }}
             activeOptions={{ includeSearch: false }}
+            {...preloadProps}
           >
             Link {index}
           </Link>
-        ),
-      )}
+        )
+      })}
     </div>
   )
 })
@@ -98,7 +134,7 @@ const rootRoute = createRootRoute({
   component: () => (
     <>
       <Controls />
-      {workload !== 'departing' && <Rows />}
+      {workload !== 'departing' && retainedDepth === 0 && <Rows />}
       <Outlet />
     </>
   ),
@@ -108,6 +144,15 @@ const itemsRoute = createRoute({
   path: 'items/$id',
   component: () => {
     const { id } = itemsRoute.useParams()
+    if (retainedDepth) {
+      return (
+        <section data-retained-level="0">
+          <div id="content">{id}</div>
+          <Rows count={1000 / retainedDepth} />
+          {retainedDepth > 1 && <Outlet />}
+        </section>
+      )
+    }
     return <div id="content">{id}</div>
   },
 })
@@ -121,8 +166,29 @@ const sourceRoute = createRoute({
     </div>
   ),
 })
+function retainedChild(parent: AnyRoute, level: number): AnyRoute {
+  const route = createRoute({
+    getParentRoute: () => parent,
+    ...(level === 7 ? { path: '/' } : { id: `retained-${level}` }),
+    component: () => (
+      <section data-retained-level={level}>
+        <Rows offset={level * 125} count={125} />
+        {level < 7 && <Outlet />}
+      </section>
+    ),
+  })
+  if (level < 7) {
+    return route.addChildren([retainedChild(route, level + 1)])
+  }
+  return route
+}
 const router = createRouter({
-  routeTree: rootRoute.addChildren([itemsRoute, sourceRoute]),
+  routeTree: rootRoute.addChildren([
+    retainedDepth === 8
+      ? itemsRoute.addChildren([retainedChild(itemsRoute, 1)])
+      : itemsRoute,
+    sourceRoute,
+  ]),
   history: createMemoryHistory({
     initialEntries: [
       workload === 'departing' ? '/source' : '/items/0?page=0#nav-0',
@@ -174,8 +240,14 @@ async function preflight() {
   await task()
   await nextPaint()
   let anchors = Array.from(document.querySelectorAll('[data-row]'))
+  if (
+    document.querySelectorAll('[data-retained-level]').length !== retainedDepth
+  ) {
+    throw new Error(`Expected ${retainedDepth} retained nonroot route levels`)
+  }
   const hasUpdaters =
     workload === 'retained-updaters' || workload === 'fixed-path-updaters'
+  const updaterCounts = []
 
   function assertDOM(pathname: string, id: string) {
     const rows = Array.from(
@@ -262,9 +334,14 @@ async function preflight() {
     await task()
     await nextPaint()
     assertDOM(pathname, id)
+    updaterCounts.push({
+      atRender: callsAtRender - beforeCalls,
+      settled: updaterCalls - beforeCalls,
+    })
     if (
-      updaterCalls !== callsAtRender ||
-      updaterCalls - beforeCalls !== (hasUpdaters ? 1000 : 0)
+      retainedDepth === 0 &&
+      (updaterCalls !== callsAtRender ||
+        updaterCalls - beforeCalls !== (hasUpdaters ? 1000 : 0))
     ) {
       throw new Error(`Incorrect updater work: ${updaterCalls - beforeCalls}`)
     }
@@ -275,6 +352,7 @@ async function preflight() {
       anchors = Array.from(document.querySelectorAll('[data-row]'))
     }
   }
+  return { retainedDepth, updaterCounts }
 }
 
 async function sample() {

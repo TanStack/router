@@ -1,4 +1,5 @@
 import { arraysEqual, functionalUpdate } from './utils'
+import { rootRouteId } from './root'
 
 import type { AnyRoute } from './route'
 import type { RouterState } from './router'
@@ -180,7 +181,10 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
         const matchStore = getMatchStore(nextMatch.routeId)
         // The pooled match handle must not retain a departed visit's source.
         // Suspended framework trees keep the source itself in their context.
-        matchStore.location ||= createMutableStore(presentationLocation)
+        matchStore.location ||=
+          nextMatch.routeId === rootRouteId
+            ? location
+            : createMutableStore(presentationLocation)
         if (matchStore.get() !== nextMatch) {
           matchStore.set(nextMatch)
         }

@@ -77,7 +77,7 @@ def summarize(data):
                     ratios = [math.log(value / baseline) for value, baseline in zip(blocks, means["baseline"][metric])]
                     mean_ratio = statistics.mean(ratios)
                     # Paired log ratios across alternating blocks, Student t 95% interval.
-                    critical = {3: 4.302652729911275, 6: 2.570581835636305, 12: 2.200985160082949}.get(len(ratios))
+                    critical = {3: 4.302652729911275, 6: 2.570581835636305, 8: 2.364624251010299, 12: 2.200985160082949}.get(len(ratios))
                     error = critical * statistics.stdev(ratios) / math.sqrt(len(ratios)) if critical else None
                     summary[name][arm][metric] = {
                         "meanMs": statistics.mean(blocks),

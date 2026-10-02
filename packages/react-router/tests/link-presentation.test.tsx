@@ -21,6 +21,7 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   cleanup()
 })
 
@@ -388,7 +389,7 @@ test('retargeted and newly mounted departing Links use their most recent pending
     path: '/a',
     loaderDeps: ({ search }) => ({ visit: search.visit }),
     loader: ({ deps }) => (deps.visit === 1 ? undefined : pending),
-    component: () => {
+    component: function RetargetedLinks() {
       const [retargeted, setRetargeted] = React.useState(false)
       return (
         <>
@@ -441,4 +442,203 @@ test('retargeted and newly mounted departing Links use their most recent pending
     await navigation
     await previous
   })
+})
+
+test('a legacy fallback Link updates urgently across different ancestry and depth', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const root = createRootRoute({
+    validateSearch: (search) => ({ visit: Number(search.visit) || 0 }),
+    component: Outlet,
+  })
+  const one = createRoute({
+    getParentRoute: () => root,
+    path: '/one',
+    component: Outlet,
+  })
+  const two = createRoute({
+    getParentRoute: () => root,
+    path: '/two',
+    component: Outlet,
+  })
+  const deep = createRoute({
+    getParentRoute: () => two,
+    path: '/deep',
+    loader: () => pending,
+    component: Outlet,
+  })
+  const inspect = createRoute({ getParentRoute: () => root, path: '/inspect' })
+  const legacy = createRoute({
+    getParentRoute: () => root,
+    path: '/404',
+    component: () => (
+      <Link to="/inspect" search={true} data-testid="fallback-link">
+        inspect
+      </Link>
+    ),
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([one, two.addChildren([deep]), inspect]),
+    notFoundRoute: legacy,
+    history: createMemoryHistory({ initialEntries: ['/one/missing?visit=1'] }),
+    defaultPendingMs: 10_000,
+  })
+  render(<RouterProvider router={router} />)
+  const link = await screen.findByTestId('fallback-link')
+  expect(link.getAttribute('href')).toBe('/inspect?visit=1')
+  let navigation!: Promise<void>
+  try {
+    await act(async () => {
+      navigation = router.navigate({ href: '/two/deep/missing?visit=2' })
+    })
+    expect(router.state.location.href).toBe('/two/deep/missing?visit=2')
+    expect(screen.getByTestId('fallback-link')).toBe(link)
+    expect(link.getAttribute('href')).toBe('/inspect?visit=2')
+  } finally {
+    await act(async () => {
+      release()
+      await navigation
+    })
+    vi.restoreAllMocks()
+  }
+  expect(screen.getByTestId('fallback-link').getAttribute('href')).toBe(
+    '/inspect?visit=2',
+  )
+})
+
+test('a fully retained nonroot Link does not recompute its updater at completion', async () => {
+  let calls = 0
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const updateSearch = (previous: { visit: number }) => {
+    calls++
+    return { visit: previous.visit + 10 }
+  }
+  const root = createRootRoute({
+    validateSearch: (search) => ({ visit: Number(search.visit) || 0 }),
+    component: Outlet,
+  })
+  const items = createRoute({
+    getParentRoute: () => root,
+    path: '/items/$id',
+    loaderDeps: ({ search }) => ({ visit: search.visit }),
+    loader: ({ deps }) => (deps.visit === 1 ? undefined : pending),
+    component: React.memo(function Retained() {
+      return (
+        <Link
+          from="/items/$id"
+          to="."
+          params={true}
+          search={updateSearch}
+          data-testid="retained-updater"
+        >
+          retained
+        </Link>
+      )
+    }),
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([items]),
+    history: createMemoryHistory({ initialEntries: ['/items/first?visit=1'] }),
+    defaultPendingMs: 10_000,
+  })
+  render(<RouterProvider router={router} />)
+  const link = await screen.findByTestId('retained-updater')
+  await waitFor(() => expect(router.state.status).toBe('idle'))
+  expect(link.getAttribute('href')).toBe('/items/first?visit=11')
+  const before = calls
+  let navigation!: Promise<void>
+  try {
+    await act(async () => {
+      navigation = router.navigate({
+        to: '/items/$id',
+        params: { id: 'next' },
+        search: { visit: 2 },
+      })
+    })
+    expect(screen.getByTestId('retained-updater')).toBe(link)
+    expect(link.getAttribute('href')).toBe('/items/next?visit=12')
+    expect(calls).toBe(before + 1)
+  } finally {
+    await act(async () => {
+      release()
+      await navigation
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    })
+  }
+  expect(screen.getByTestId('retained-updater')).toBe(link)
+  expect(link.getAttribute('href')).toBe('/items/next?visit=12')
+  expect(calls).toBe(before + 1)
+})
+
+test('an onRendered successor retains the nonroot Link source until its loader completes', async () => {
+  const { router, release } = createFixture()
+  render(<RouterProvider router={router} />)
+  const link = await screen.findByTestId('departing')
+  let successor: Promise<void> | undefined
+  let navigation!: Promise<void>
+  const unsubscribe = router.subscribe('onRendered', (event) => {
+    if (event.toLocation.href === '/a?visit=2') {
+      successor = router.navigate({ to: '/b', search: { visit: 3 } })
+    }
+  })
+  try {
+    await act(async () => {
+      navigation = router.navigate({ to: '/a', search: { visit: 2 } })
+    })
+    await waitFor(() => expect(router.state.location.href).toBe('/b?visit=3'))
+    expect(successor).toBeDefined()
+    expect(screen.getByTestId('departing')).toBe(link)
+    expect(link.getAttribute('href')).toBe('/a?visit=2')
+    expect(screen.getByTestId('staying').getAttribute('href')).toBe(
+      '/b?visit=3',
+    )
+  } finally {
+    unsubscribe()
+    await act(async () => {
+      release()
+      await Promise.all([navigation, successor])
+    })
+  }
+  expect(screen.getByText('destination')).toBeTruthy()
+})
+
+test('a microtask onRendered successor retains the nonroot Link source until its loader completes', async () => {
+  const { router, release } = createFixture()
+  render(<RouterProvider router={router} />)
+  const link = await screen.findByTestId('departing')
+  let successor: Promise<void> | undefined
+  let navigation!: Promise<void>
+  const unsubscribe = router.subscribe('onRendered', (event) => {
+    if (event.toLocation.href === '/a?visit=2') {
+      queueMicrotask(() => {
+        successor = router.navigate({ to: '/b', search: { visit: 3 } })
+      })
+    }
+  })
+  try {
+    await act(async () => {
+      navigation = router.navigate({ to: '/a', search: { visit: 2 } })
+    })
+    await waitFor(() => expect(router.state.location.href).toBe('/b?visit=3'))
+    expect(successor).toBeDefined()
+    expect(screen.getByTestId('departing')).toBe(link)
+    expect(link.getAttribute('href')).toBe('/a?visit=2')
+    expect(link.getAttribute('data-status')).toBe('active')
+    expect(screen.getByTestId('staying').getAttribute('href')).toBe(
+      '/b?visit=3',
+    )
+  } finally {
+    unsubscribe()
+    await act(async () => {
+      release()
+      await Promise.all([navigation, successor])
+    })
+  }
+  expect(screen.getByText('destination')).toBeTruthy()
 })

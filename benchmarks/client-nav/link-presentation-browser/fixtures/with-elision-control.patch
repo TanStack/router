@@ -1,0 +1,59 @@
+--- a/packages/react-router/src/link.tsx
++++ b/packages/react-router/src/link.tsx
+@@ -457,12 +456,0 @@
+-  const handleTouchStart = () => {
+-    if (preload === 'intent') {
+-      preloadLink(router, dest, locationStore)
+-    }
+-  }
+-
+-  const handleLeave = () => {
+-    if (preload === 'intent') {
+-      cancelPreload(innerRef)
+-    }
+-  }
+-
+@@ -470,5 +458,38 @@
+-  props.onBlur = composeHandlers(onBlur, handleLeave)
+-  props.onFocus = composeHandlers(onFocus, enqueuePreload)
+-  props.onMouseEnter = composeHandlers(onMouseEnter, enqueuePreload)
+-  props.onMouseLeave = composeHandlers(onMouseLeave, handleLeave)
+-  props.onTouchStart = composeHandlers(onTouchStart, handleTouchStart)
++  const intent = preload === 'intent'
++  // Only intent preloading needs these handlers; supplied callbacks still keep their cancellation guards.
++  if (
++    intent ||
++    onBlur ||
++    onFocus ||
++    onMouseEnter ||
++    onMouseLeave ||
++    onTouchStart
++  ) {
++    const handleTouchStart = () => {
++      if (intent) {
++        preloadLink(router, dest, locationStore)
++      }
++    }
++
++    const handleLeave = () => {
++      if (intent) {
++        cancelPreload(innerRef)
++      }
++    }
++
++    if (intent || onBlur) {
++      props.onBlur = composeHandlers(onBlur, handleLeave)
++    }
++    if (intent || onFocus) {
++      props.onFocus = composeHandlers(onFocus, enqueuePreload)
++    }
++    if (intent || onMouseEnter) {
++      props.onMouseEnter = composeHandlers(onMouseEnter, enqueuePreload)
++    }
++    if (intent || onMouseLeave) {
++      props.onMouseLeave = composeHandlers(onMouseLeave, handleLeave)
++    }
++    if (intent || onTouchStart) {
++      props.onTouchStart = composeHandlers(onTouchStart, handleTouchStart)
++    }
++  }

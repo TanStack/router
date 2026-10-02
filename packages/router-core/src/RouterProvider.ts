@@ -30,6 +30,8 @@ export type NavigateFn = <
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  /** @internal Stable destination identity; invocation controls remain in opts. */
+  destination?: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Promise<void>
 
 export type BuildLocationFn = <
@@ -44,4 +46,8 @@ export type BuildLocationFn = <
     _includeValidateSearch?: boolean
     _isNavigate?: boolean
   },
+  /** @internal Invocation mode does not change destination identity. */
+  includeValidateSearch?: boolean,
+  /** @internal Validate the main navigation's `from` path. */
+  isNavigate?: boolean,
 ) => ParsedLocation

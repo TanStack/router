@@ -9,8 +9,8 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  useMatch,
   useChildMatches,
+  useMatch,
   useParentMatches,
   useRouter,
 } from '../src'
@@ -116,7 +116,6 @@ function MatchSelections({
 }
 
 test('route components read nearest, parent, child and Outlet selections', async () => {
-  let router!: AnyRouter
   const root = createRootRoute({ component: Outlet })
   const parent = createRoute({
     getParentRoute: () => root,
@@ -137,7 +136,7 @@ test('route components read nearest, parent, child and Outlet selections', async
       <MatchSelections name="child-selection" expectedRouter={router} />
     ),
   })
-  router = createRouter({
+  const router: AnyRouter = createRouter({
     routeTree: root.addChildren([parent.addChildren([child])]),
     history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
   })

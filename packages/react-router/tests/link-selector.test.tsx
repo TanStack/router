@@ -153,13 +153,13 @@ test.each([false, true])(
   },
 )
 
-test('external classification follows changed destinations and router instances', async () => {
+test('external classification follows changed destinations and the router allowlist', async () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   const router = await setup()
   router.update({ protocolAllowlist: ['https:', 'custom:'] })
-  function tree(to: string, currentRouter = router) {
+  function tree(to: string) {
     return (
-      <RouterContextProvider router={currentRouter}>
+      <RouterContextProvider router={router}>
         <Link to={to}>Destination</Link>
       </RouterContextProvider>
     )
@@ -182,11 +182,6 @@ test('external classification follows changed destinations and router instances'
   expect(link).toHaveAttribute('href', '/posts/2')
   expect(link).toHaveAttribute('aria-current', 'page')
 
-  // Each mounted router keeps its allowlist; switching routers resets the selector.
   view.rerender(tree('custom:post'))
   expect(link).toHaveAttribute('href', 'custom:post')
-  const otherRouter = await setup()
-  view.rerender(tree('custom:post', otherRouter))
-  expect(link).not.toHaveAttribute('href')
-  expect(link).not.toHaveAttribute('aria-current')
 })

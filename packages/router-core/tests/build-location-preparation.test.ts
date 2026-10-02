@@ -56,6 +56,33 @@ test('evaluates params callbacks against each source', () => {
   expect(params).toHaveBeenCalledTimes(2)
 })
 
+test('a params updater can update search middleware before the destination search builds', () => {
+  const root = new BaseRootRoute({})
+  const item = new BaseRoute({
+    getParentRoute: () => root,
+    path: '/items/$id',
+  })
+  const router = createTestRouter({
+    routeTree: root.addChildren([item]),
+    history: createMemoryHistory({ initialEntries: ['/items/source'] }),
+  })
+  const result = router.buildLocation({
+    to: '/items/$id',
+    params: () => {
+      item.update({
+        search: {
+          middlewares: [
+            ({ search, next }) => ({ ...next(search), added: 'yes' }),
+          ],
+        },
+      })
+      return { id: 'target' }
+    },
+    search: {},
+  })
+  expect(result.href).toBe('/items/target?added=yes')
+})
+
 test('destination and mask use the same captured source after a callback updates history', () => {
   const router = setup()
   const result = router.buildLocation({
@@ -72,37 +99,63 @@ test('destination and mask use the same captured source after a callback updates
   expect(result.maskedLocation?.href).toBe('/items/source?page=1')
 })
 
-test('href parsing callbacks preserve the original source for destination state and mask inheritance', () => {
+test('href parsing callbacks preserve the original source for destination state and mask inheritance', async () => {
   const router = setup()
   router.history.replace('/items/source?page=1', { user: 'original' })
-  router.updateLatestLocation()
+  await router.load()
+  expect(router.state.location.href).toBe('/items/source?page=1')
+  expect(router.state.location.state).toMatchObject({ user: 'original' })
+  const stop = router.history.subscribe(() => {
+    void router.load()
+  })
   let updateHistory = false
-  router.update({
-    parseSearch: (search) => {
-      if (updateHistory) {
-        updateHistory = false
-        router.history.push('/items/second?page=7', { user: 'changed' })
-        router.updateLatestLocation()
-      }
-      return defaultParseSearch(search)
-    },
-  })
-  updateHistory = true
-  const result = router.buildLocation({
-    href: '/items/target?fresh=1',
-    state: true,
-    mask: {
-      to: '/items/$id',
-      params: true,
-      search: true,
+  let reentrantNavigation: Promise<void> | undefined
+  let interveningHref: string | undefined
+  try {
+    router.update({
+      parseSearch: (search) => {
+        if (updateHistory) {
+          updateHistory = false
+          reentrantNavigation = router.navigate({
+            to: '/items/$id',
+            params: { id: 'second' },
+            search: { page: 7 },
+            state: (previous) => ({ ...previous, user: 'changed' }),
+          })
+          interveningHref = router.history.location.href
+        }
+        return defaultParseSearch(search)
+      },
+    })
+    updateHistory = true
+    const navigation = router.navigate({
+      href: '/items/target?fresh=1',
       state: true,
-    },
-  })
-  expect(router.history.location.href).toBe('/items/second?page=7')
-  expect(result.href).toBe('/items/target?fresh=1')
-  expect(result.state).toMatchObject({ user: 'original' })
-  expect(result.maskedLocation?.href).toBe('/items/source?page=1')
-  expect(result.maskedLocation?.state).toMatchObject({ user: 'original' })
+      mask: {
+        to: '/items/$id',
+        params: true,
+        search: true,
+        state: true,
+      },
+    })
+    await Promise.all([navigation, reentrantNavigation])
+    expect(reentrantNavigation).toBeDefined()
+    expect(interveningHref).toBe('/items/second?page=7')
+    expect(router.state.location.href).toBe('/items/target?fresh=1')
+    expect(router.state.location.state).toMatchObject({ user: 'original' })
+    expect(router.state.matches.at(-1)?.params).toEqual({ id: 'target' })
+    expect(router.state.location.maskedLocation?.href).toBe(
+      '/items/source?page=1',
+    )
+    expect(router.state.location.maskedLocation?.state).toMatchObject({
+      user: 'original',
+    })
+    expect(router.history.location.href).toBe('/items/source?page=1')
+    expect(router.history.location.state).toMatchObject({ user: 'original' })
+  } finally {
+    stop()
+    router.history.destroy()
+  }
 })
 
 test('a fixed destination continues to evaluate inherited mask params and search', () => {
