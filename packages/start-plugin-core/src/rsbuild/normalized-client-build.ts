@@ -112,7 +112,8 @@ function getHydrationIdsFromModules(
 }
 
 /**
- * Returns the chunks that contain a route-split or hydration module.
+ * Returns the chunks with a module whose identifier contains `tsr-split` or
+ * `tss-hydrate`. The extractors check each module's query exactly.
  */
 function findRouteAndHydrationChunks(
   compilation: RspackCompilation,
@@ -144,16 +145,13 @@ function isHotUpdateAsset(file: string): boolean {
  * Excludes HMR runtime patches.
  */
 function isManifestJsAsset(file: string): boolean {
-  if (!file.endsWith('.js') && !file.endsWith('.mjs')) {
-    return false
-  }
+  if (!file.endsWith('.js') && !file.endsWith('.mjs')) return false
   return !isHotUpdateAsset(file)
 }
 
 /**
- * Wraps a read of a chunk or chunk group property so it runs once per object.
- * Later calls with the same object return the same array, so callers must not
- * modify it.
+ * Caches the result of `read` for each chunk or chunk group. Later calls with
+ * the same object return the same array, so callers must not modify it.
  */
 function memoizeGraphRead<TTarget extends object, TValue>(
   read: (target: TTarget) => Array<TValue>,
@@ -192,8 +190,9 @@ function mergeJsFiles(
 }
 
 /**
- * Reads each chunk and chunk group property once per normalizeRspackClientBuild
- * call. Rspack builds a new collection every time one of these properties is read.
+ * Reads each chunk and chunk group property at most once per
+ * normalizeRspackClientBuild call, because Rspack builds a new collection on
+ * every read. Also caches the merged JS files of each group.
  */
 function createChunkGraphReader() {
   const getFiles = memoizeGraphRead((chunk: RspackCompilationChunk) =>
@@ -208,9 +207,6 @@ function createChunkGraphReader() {
   const getGroupChunks = memoizeGraphRead((group: Rspack.ChunkGroup) =>
     Array.from(group.chunks),
   )
-  const getChildren = memoizeGraphRead((group: Rspack.ChunkGroup) =>
-    Array.from(group.childrenIterable),
-  )
   const getChunkJsFiles = memoizeGraphRead((chunk: RspackCompilationChunk) =>
     getFiles(chunk).filter(isManifestJsAsset),
   )
@@ -221,7 +217,7 @@ function createChunkGraphReader() {
   )
   // JS files of all chunks in a group's child groups, without duplicates.
   const getChildGroupJsFiles = memoizeGraphRead((group: Rspack.ChunkGroup) =>
-    mergeJsFiles(getChildren(group).map(getGroupJsFiles)),
+    mergeJsFiles(Array.from(group.childrenIterable).map(getGroupJsFiles)),
   )
 
   return {

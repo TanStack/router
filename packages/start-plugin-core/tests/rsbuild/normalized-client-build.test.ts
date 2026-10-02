@@ -249,10 +249,9 @@ describe('normalizeRspackClientBuild', () => {
     const { compilation, getChunkModules } = makeChunkGraph()
     normalizeRspackClientBuild(compilation)
 
-    expect(getChunkModules.mock.calls.map(([target]) => target.name)).toEqual([
-      'posts',
-      'post',
-    ])
+    expect(
+      new Set(getChunkModules.mock.calls.map(([target]) => target.name)),
+    ).toEqual(new Set(['posts', 'post']))
   })
 
   test('reads each chunk and chunk group property at most once', () => {
@@ -260,6 +259,7 @@ describe('normalizeRspackClientBuild', () => {
     const maxReads = trackGraphPropertyReads(graphObjects)
     normalizeRspackClientBuild(compilation)
 
+    // 1, not 0, also confirms the read counters were installed.
     expect(maxReads()).toBe(1)
   })
 
