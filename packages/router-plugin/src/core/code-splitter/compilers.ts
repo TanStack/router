@@ -140,6 +140,52 @@ const allCreateRouteFns = [
 ]
 
 /**
+ * Returns the property as is when it is an object property.
+ * When the property is an object method, returns an object property
+ * with a function expression instead.
+ * I.e. `loader() {}` becomes `loader: function () {}`.
+ */
+function getRouteProp(
+  property: t.ObjectExpression['properties'][number],
+): t.ObjectProperty | undefined {
+  if (t.isObjectProperty(property)) {
+    return property
+  }
+
+  // ignore spread elements
+  // also check `kind` to ignore getters/setters
+  if (!t.isObjectMethod(property) || property.kind !== 'method') {
+    return undefined
+  }
+
+  // while `super` is allowed in methods, it is a SyntaxError in functions
+  // so we bail early and skip that edge case
+  const usesSuper = t.traverseFast(property, (node) =>
+    t.isSuper(node) ? t.traverseFast.stop : undefined,
+  )
+
+  if (usesSuper) {
+    return undefined
+  }
+
+  const value = t.functionExpression(
+    null,
+    property.params,
+    property.body,
+    property.generator,
+    property.async,
+  )
+  value.typeParameters = property.typeParameters
+  value.returnType = property.returnType
+
+  const prop = t.objectProperty(property.key, value, property.computed)
+  // Keep the location so comments are printed as in the source
+  prop.loc = property.loc
+
+  return t.inheritsComments(prop, property)
+}
+
+/**
  * Computes module-level bindings that are shared between split and non-split
  * route properties. These bindings need to be extracted into a shared virtual
  * module to avoid double-initialization.
@@ -205,8 +251,9 @@ export function computeSharedBindings(opts: {
   // nothing can be shared and we can skip the rest of the work.
   const splitGroupsPresent = new Set<number>()
   let hasNonSplit = false
-  for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop)) continue
+  for (const property of routeOptions.properties) {
+    const prop = getRouteProp(property)
+    if (!prop) continue
     const key = getObjectPropertyKeyName(prop)
     if (!key) continue
     if (key === 'codeSplitGroupings') continue
@@ -243,8 +290,9 @@ export function computeSharedBindings(opts: {
   // are correctly attributed.
   const refsByGroup = new Map<string, Set<number>>()
 
-  for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop)) continue
+  for (const property of routeOptions.properties) {
+    const prop = getRouteProp(property)
+    if (!prop) continue
     const key = getObjectPropertyKeyName(prop)
     if (!key) continue
 
@@ -483,7 +531,7 @@ export function compileCodeSplitReferenceRoute(
                 if (opts.deleteNodes && opts.deleteNodes.size > 0) {
                   routeOptions.properties = routeOptions.properties.filter(
                     (prop) => {
-                      if (t.isObjectProperty(prop)) {
+                      if (t.isObjectProperty(prop) || t.isObjectMethod(prop)) {
                         const key = getObjectPropertyKeyName(prop)
                         if (key && opts.deleteNodes!.has(key as any)) {
                           modified = true
@@ -515,8 +563,9 @@ export function compileCodeSplitReferenceRoute(
                   // exit traversal so this route is not split
                   return programPath.stop()
                 }
-                routeOptions.properties.forEach((prop) => {
-                  if (t.isObjectProperty(prop)) {
+                routeOptions.properties.forEach((property, index) => {
+                  const prop = getRouteProp(property)
+                  if (prop) {
                     const key = getObjectPropertyKeyName(prop)
 
                     if (key) {
@@ -552,6 +601,10 @@ export function compileCodeSplitReferenceRoute(
                       ) {
                         return
                       }
+
+                      // A method is replaced by its property form, whose value
+                      // becomes the lazy import below
+                      routeOptions.properties[index] = prop
 
                       const splitNodeMeta = SPLIT_NODES_CONFIG.get(key as any)!
 
@@ -922,8 +975,9 @@ export function compileCodeSplitVirtualRoute(
 
             function babelHandleVirtual(options: t.Node | undefined) {
               if (t.isObjectExpression(options)) {
-                options.properties.forEach((prop) => {
-                  if (t.isObjectProperty(prop)) {
+                options.properties.forEach((property) => {
+                  const prop = getRouteProp(property)
+                  if (prop) {
                     // do not use `intendedSplitNodes` here
                     // since we have special considerations that need
                     // to be accounted for like (not splitting exported identifiers)
