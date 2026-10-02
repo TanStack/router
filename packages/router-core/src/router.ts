@@ -117,6 +117,7 @@ import type {
 } from './RouterProvider'
 import type { Manifest, ManifestRouteAssets } from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
+import { formatStandardSchemaIssues } from './standardSchemaIssues'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type {
   AnySerializationAdapter,
@@ -2853,7 +2854,7 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
       throw new SearchParamError('Async validation not supported')
 
     if (result.issues)
-      throw new SearchParamError(JSON.stringify(result.issues, undefined, 2), {
+      throw new SearchParamError(formatStandardSchemaIssues(result.issues), {
         cause: result,
       })
 
