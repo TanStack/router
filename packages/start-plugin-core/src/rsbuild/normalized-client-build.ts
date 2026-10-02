@@ -112,11 +112,7 @@ function getHydrationIdsFromModules(
 }
 
 /**
- * Substring checks admit a superset of chunks; the extractors still decide.
- * Relies on every getChunkModules module (including a production ConcatenatedModule
- * root) being in compilation.modules and reporting its chunk via getModuleChunks.
- * Rspack must return the same chunk objects as compilation.chunks, as entryChunkSet
- * already requires.
+ * Returns the chunks that contain a route-split or hydration module.
  */
 function findRouteAndHydrationChunks(
   compilation: RspackCompilation,
@@ -186,8 +182,8 @@ function mergeJsFiles(
 }
 
 /**
- * Rspack's graph getters allocate collections on each read. Keep this cache local
- * to one capture so rebuilds see fresh graph data.
+ * Reads each chunk and chunk group property once per normalizeRspackClientBuild
+ * call. Rspack builds a new collection every time one of these properties is read.
  */
 function createChunkGraphReader() {
   const getFiles = memoizeGraphRead((chunk: RspackCompilationChunk) =>
@@ -209,11 +205,11 @@ function createChunkGraphReader() {
     getFiles(chunk).filter(isManifestJsAsset),
   )
 
-  // Each group supplies its sibling imports and its direct dynamic-import edges.
-  // Deduping within a group before merging preserves global first-occurrence order.
+  // JS files of all chunks in a group, without duplicates.
   const getGroupJsFiles = memoizeGraphRead((group: Rspack.ChunkGroup) =>
     mergeJsFiles(getGroupChunks(group).map(getChunkJsFiles)),
   )
+  // JS files of all chunks in a group's child groups, without duplicates.
   const getChildGroupJsFiles = memoizeGraphRead((group: Rspack.ChunkGroup) =>
     mergeJsFiles(getChildren(group).map(getGroupJsFiles)),
   )
@@ -223,12 +219,13 @@ function createChunkGraphReader() {
     getAuxiliaryFiles,
     getGroupChunks,
     getChunkJsFiles,
-    // Child groups are import() points; their chunks' JS is Rollup's dynamicImports.
+    // Child groups are dynamic import() points, so their JS files are the
+    // chunk's dynamic imports.
     computeDynamicImports(chunk: RspackCompilationChunk) {
       return mergeJsFiles(getGroups(chunk).map(getChildGroupJsFiles))
     },
-    // A group holds every chunk needed for an import, so its other chunks are
-    // static imports, analogous to Rollup's imports.
+    // A group holds every chunk an import needs, so the other chunks in the
+    // chunk's groups are its static imports.
     computeAsyncChunkImports(
       chunk: RspackCompilationChunk,
       currentFile: string,
