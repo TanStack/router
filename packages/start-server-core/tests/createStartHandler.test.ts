@@ -582,6 +582,219 @@ describe('createStartHandler redirect safety', () => {
   )
 })
 
+describe('createStartHandler request location reuse', () => {
+  it.each(
+    ['plain', 'café'].flatMap((path) =>
+      [false, true].map((renderApp) => ({ path, renderApp })),
+    ),
+  )(
+    'rewrites once for $path (renderApp=$renderApp)',
+    async ({ path, renderApp }) => {
+      const input = vi.fn(({ url }: { url: URL }) => {
+        url.pathname = url.pathname.replace('/public/', '/')
+        return url
+      })
+      const middlewarePathnames: Array<string> = []
+      const routeMiddleware = createMiddleware().server(
+        ({ pathname, next }) => {
+          middlewarePathnames.push(pathname)
+          return next()
+        },
+      )
+      const serverHandler = vi.fn()
+      const rootRoute = new BaseRootRoute({})
+      const route = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path,
+        component: () => null,
+        server: {
+          middleware: [routeMiddleware],
+          handlers: {
+            GET: ({ pathname, next }) => {
+              serverHandler(pathname)
+              return renderApp ? next() : new Response('server response')
+            },
+          },
+        },
+      })
+      const router = new RouterCore(
+        {
+          history: createMemoryHistory({ initialEntries: ['/'] }),
+          routeTree: rootRoute.addChildren([route]),
+          rewrite: {
+            input,
+            output: ({ url }) => {
+              url.pathname = `/public${url.pathname}`
+              return url
+            },
+          },
+        },
+        getStoreConfig,
+      )
+      router.isServer = true
+      startMocks.router = router
+      input.mockClear()
+      const getMatchedRoutes = vi.spyOn(router, 'getMatchedRoutes')
+      const render = vi.fn(() => new Response('app response'))
+      const handler = createStartHandler(render)
+
+      const response = await handler(
+        new Request(
+          `http://localhost/public/${encodeURIComponent(path)}?view=full#section`,
+        ),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      expect(await response.text()).toBe(
+        renderApp ? 'app response' : 'server response',
+      )
+      expect(input).toHaveBeenCalledOnce()
+      expect(serverHandler).toHaveBeenCalledExactlyOnceWith(
+        `/${encodeURIComponent(path)}`,
+      )
+      expect(middlewarePathnames).toEqual([`/${encodeURIComponent(path)}`])
+      expect(render).toHaveBeenCalledTimes(renderApp ? 1 : 0)
+      expect(
+        getMatchedRoutes.mock.calls.every(
+          ([pathname]) => pathname === `/${path}`,
+        ),
+      ).toBe(true)
+      if (renderApp) {
+        expect(router.state.matches.at(-1)?.routeId).toBe(route.id)
+      }
+    },
+  )
+
+  it('uses the configured origin for server route rewrites', async () => {
+    const input = vi.fn(({ url }: { url: URL }) => {
+      url.pathname =
+        url.hostname === 'public.example' ? '/work' : '/wrong-origin'
+      return url
+    })
+    const router = makeRouterWithRouteWork({})
+    router.update({
+      origin: 'https://public.example',
+      rewrite: {
+        input,
+        output: ({ url }) => {
+          url.pathname = '/public'
+          return url
+        },
+      },
+    })
+    const serverHandler = vi.fn(() => new Response('server response'))
+    router.routesById['/work']!.options.server = {
+      handlers: { GET: serverHandler },
+    }
+    startMocks.router = router
+    input.mockClear()
+    const handler = createStartHandler(() => new Response('app response'))
+
+    const response = await handler(
+      new Request('http://internal.example/public'),
+      {},
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('server response')
+    expect(serverHandler).toHaveBeenCalledOnce()
+    expect(input).toHaveBeenCalledOnce()
+  })
+
+  it('reuses search parsed after route middleware updates the router', async () => {
+    const parseSearch = vi.fn((search: string) =>
+      Object.fromEntries(new URLSearchParams(search)),
+    )
+    const middleware = createMiddleware().server(({ next }) => {
+      startMocks.router!.update({
+        parseSearch,
+        stringifySearch: (search) =>
+          `?${new URLSearchParams(search).toString()}`,
+      })
+      return next()
+    })
+    const root = new BaseRootRoute()
+    const route = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/work',
+      component: () => null,
+      loader: ({ location }) => location.search,
+      server: { middleware: [middleware] },
+    })
+    startMocks.router = new RouterCore(
+      { isServer: true, routeTree: root.addChildren([route]) },
+      getStoreConfig,
+    )
+    const handler = createStartHandler(({ router }) =>
+      Response.json({
+        search: router.state.location.search,
+        loaderData: router.state.matches.at(-1)?.loaderData,
+      }),
+    )
+
+    const response = await handler(
+      new Request('http://localhost/work?page=2'),
+      {},
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      search: { page: '2' },
+      loaderData: { page: '2' },
+    })
+    expect(parseSearch).toHaveBeenCalledExactlyOnceWith('?page=2')
+  })
+
+  it.each(['a/b', 'a%b', 'a b', 'a?b', 'a#b'])(
+    'preserves encoded params %j when a server handler continues to SSR',
+    async (value) => {
+      const handlerParams: Array<string> = []
+      const handlerPathnames: Array<string> = []
+      const root = new BaseRootRoute()
+      const route = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/params/$value',
+        component: () => null,
+        loader: ({ params }) => params.value,
+        server: {
+          handlers: {
+            GET: ({ params, pathname, next }) => {
+              handlerParams.push(params.value)
+              handlerPathnames.push(pathname)
+              params.value = 'changed by server handler'
+              return next()
+            },
+          },
+        },
+      })
+      startMocks.router = new RouterCore(
+        { isServer: true, routeTree: root.addChildren([route]) },
+        getStoreConfig,
+      )
+      const handler = createStartHandler(({ router }) =>
+        Response.json({
+          params: router.state.matches.at(-1)?.params,
+          loaderData: router.state.matches.at(-1)?.loaderData,
+        }),
+      )
+
+      const response = await handler(
+        new Request(`http://localhost/params/${encodeURIComponent(value)}`),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      expect(handlerParams).toEqual([value])
+      expect(handlerPathnames).toEqual([`/params/${encodeURIComponent(value)}`])
+      expect(await response.json()).toEqual({
+        params: { value },
+        loaderData: value,
+      })
+    },
+  )
+})
+
 it('keeps the request URL when server code attempts navigation', async () => {
   const loader = vi.fn(async () => {
     const router = startMocks.router!
