@@ -201,7 +201,7 @@ function Script({
         }
 
         const sType = el.getAttribute('type') ?? 'text/javascript'
-        const sNonce = el.getAttribute('nonce') ?? undefined
+        const sNonce = el.nonce || undefined
         if (
           el.textContent === children &&
           sType === typeAttr &&

@@ -124,7 +124,7 @@ function Script({
       ).find((el) => {
         if (!(el instanceof HTMLScriptElement)) return false
         const sType = el.getAttribute('type') ?? 'text/javascript'
-        const sNonce = el.getAttribute('nonce') ?? undefined
+        const sNonce = el.nonce || undefined
         return (
           el.textContent === children &&
           sType === typeAttr &&
