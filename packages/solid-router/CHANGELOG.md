@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 1.170.39
+
+### Patch Changes
+
+- [#8579](https://github.com/TanStack/router/pull/8579) [`d35aab4`](https://github.com/TanStack/router/commit/d35aab425b07b46e222a507c0f0239644669757b) - Cancel pending link preload timers when starting navigation to avoid redundant preloading while the destination is loading.
+
 ## 1.170.38
 
 ### Patch Changes
