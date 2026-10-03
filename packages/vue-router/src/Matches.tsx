@@ -2,9 +2,8 @@ import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
-import { useRouter } from './useRouter'
+import { useRouter, useRouterContext } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
-import { routeIdContext } from './matchContext'
 import { Match } from './Match'
 import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type {
@@ -91,8 +90,14 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const matches = useSelector(router.stores.matches)
-    const routeId = Vue.computed(() => matches.value[0]?.routeId)
+    const matches =
+      (isServer ?? router.isServer)
+        ? Vue.toRef(() => router.stores.matches.get())
+        : useSelector(router.stores.matches)
+    const routeId =
+      (isServer ?? router.isServer)
+        ? Vue.toRef(() => matches.value[0]?.routeId)
+        : Vue.computed(() => matches.value[0]?.routeId)
 
     return () => {
       // Generate a placeholder element if routeId.value is not present
@@ -137,6 +142,30 @@ export type UseMatchRouteOptions<
 
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
+
+  if (isServer ?? router.isServer) {
+    return <
+      const TFrom extends string = string,
+      const TTo extends string | undefined = undefined,
+      const TMaskFrom extends string = TFrom,
+      const TMaskTo extends string = '',
+    >(
+      opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+    ): Vue.Ref<
+      false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
+    > =>
+      Vue.toRef(() => {
+        const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
+        return router.matchRoute(rest as any, {
+          pending,
+          caseSensitive,
+          fuzzy,
+          includeSearch,
+        })
+      }) as Vue.Ref<
+        false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
+      >
+  }
 
   const location = useSelector(router.stores.location, (value) => value.href)
   const resolvedLocation = useSelector(
@@ -276,6 +305,15 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
+  if (isServer ?? router.isServer) {
+    const matches = router.stores.matches.get() as Array<
+      MakeRouteMatchUnion<TRouter>
+    >
+    const selected = opts?.select ? opts.select(matches) : matches
+    return Vue.toRef(() => selected) as Vue.Ref<
+      UseMatchesResult<TRouter, TSelected>
+    >
+  }
   return useSelector(router.stores.matches, (matches) => {
     return opts?.select
       ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
@@ -289,7 +327,7 @@ export function useParentMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
-  const contextRouteId = Vue.inject(routeIdContext)
+  const contextRouteId = useRouterContext()?.[2]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
@@ -308,7 +346,7 @@ export function useChildMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
-  const contextRouteId = Vue.inject(routeIdContext)
+  const contextRouteId = useRouterContext()?.[2]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {

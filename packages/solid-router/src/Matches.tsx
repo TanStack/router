@@ -2,9 +2,8 @@ import * as Solid from 'solid-js'
 import { replaceEqualDeep, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
-import { useRouter } from './useRouter'
+import { useRouter, useRouterContext } from './useRouter'
 import { Rendered, Transitioner } from './Transitioner'
-import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
 import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
@@ -79,7 +78,6 @@ function MatchesInner() {
   const routeId = () => router.stores.ids.get()[0]
   const match = () =>
     routeId() ? router.stores.byRoute.get(routeId()!)?.get() : undefined
-  const nearestMatch = [routeId, match] as const
 
   const matchComponent = () => {
     return (
@@ -89,29 +87,25 @@ function MatchesInner() {
     )
   }
 
-  return (
-    <nearestMatchContext.Provider value={nearestMatch}>
-      {router.options.disableGlobalCatchBoundary ? (
-        matchComponent()
-      ) : (
-        <CatchBoundary
-          getResetKey={match}
-          errorComponent={ErrorComponent}
-          onCatch={
-            process.env.NODE_ENV !== 'production'
-              ? (error) => {
-                  console.warn(
-                    `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-                  )
-                  console.warn(`Warning: ${error.message || error.toString()}`)
-                }
-              : undefined
-          }
-        >
-          {matchComponent()}
-        </CatchBoundary>
-      )}
-    </nearestMatchContext.Provider>
+  return router.options.disableGlobalCatchBoundary ? (
+    matchComponent()
+  ) : (
+    <CatchBoundary
+      getResetKey={match}
+      errorComponent={ErrorComponent}
+      onCatch={
+        process.env.NODE_ENV !== 'production'
+          ? (error) => {
+              console.warn(
+                `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+              )
+              console.warn(`Warning: ${error.message || error.toString()}`)
+            }
+          : undefined
+      }
+    >
+      {matchComponent()}
+    </CatchBoundary>
   )
 }
 
@@ -140,7 +134,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   ): Solid.Accessor<
     false | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']>
   > => {
-    return Solid.createMemo(() => {
+    const select = () => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       router.stores.location.get()
@@ -152,7 +146,12 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
         fuzzy,
         includeSearch,
       })
-    })
+    }
+    if (isServer ?? router.isServer) {
+      const selected = select()
+      return () => selected
+    }
+    return Solid.createMemo(select)
   }
 }
 
@@ -183,7 +182,7 @@ export function MatchRoute<
   const matchRoute = useMatchRoute()
   const params = matchRoute(props as any)
 
-  const renderedChild = Solid.createMemo(() => {
+  const renderChild = () => {
     const matchedParams = params()
     const child = props.children
 
@@ -192,8 +191,11 @@ export function MatchRoute<
     }
 
     return matchedParams ? child : null
-  })
-
+  }
+  if (isServer ?? useRouter().isServer) {
+    return <>{renderChild()}</>
+  }
+  const renderedChild = Solid.createMemo(renderChild)
   return <>{renderedChild()}</>
 }
 
@@ -213,12 +215,23 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
+  if (isServer ?? router.isServer) {
+    const matches = router.stores.matches.get() as Array<
+      MakeRouteMatchUnion<TRouter>
+    >
+    const selected = opts?.select ? opts.select(matches) : matches
+    return (() => selected) as Solid.Accessor<
+      UseMatchesResult<TRouter, TSelected>
+    >
+  }
   return Solid.createMemo((prev: TSelected | undefined) => {
     const matches = router.stores.matches.get() as Array<
       MakeRouteMatchUnion<TRouter>
     >
     const res = opts?.select ? opts.select(matches) : matches
-    if (prev === undefined) return res
+    if (prev === undefined) {
+      return res
+    }
     return replaceEqualDeep(prev, res) as any
   }) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 }
@@ -229,13 +242,13 @@ export function useParentMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextRouteId = Solid.useContext(nearestMatchContext)[0 /* route id */]
+  const contextRouteId = useRouterContext()?.[2 /* route id */]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         0,
-        matches.findIndex((d) => d.routeId === contextRouteId()),
+        matches.findIndex((d) => d.routeId === contextRouteId),
       )
       return opts?.select ? opts.select(matches) : matches
     },
@@ -248,12 +261,12 @@ export function useChildMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextRouteId = Solid.useContext(nearestMatchContext)[0 /* route id */]
+  const contextRouteId = useRouterContext()?.[2 /* route id */]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
-        matches.findIndex((d) => d.routeId === contextRouteId()) + 1,
+        matches.findIndex((d) => d.routeId === contextRouteId) + 1,
       )
       return opts?.select ? opts.select(matches) : matches
     },

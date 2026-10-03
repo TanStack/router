@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import { routerContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
@@ -28,11 +29,16 @@ export function RouterContextProvider<
     },
   })
 
+  const value =
+    (isServer ?? router.isServer)
+      ? ([router] as const)
+      : router.stores.locationSource
+
   const OptionalWrapper = router.options.Wrap || SafeFragment
 
   return (
     <OptionalWrapper>
-      <routerContext.Provider value={router as AnyRouter}>
+      <routerContext.Provider value={value}>
         {children()}
       </routerContext.Provider>
     </OptionalWrapper>

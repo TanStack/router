@@ -17,11 +17,17 @@ import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
 export function useRouter<TRouter extends AnyRouter = RegisteredRouter>(opts?: {
   warn?: boolean
 }): TRouter {
+  const value = useRouterContext(opts)
+  return (value && value[0]) as any
+}
+
+// Router and presentation source share one context dependency for Links.
+export function useRouterContext(opts?: { warn?: boolean }) {
   const value = React.useContext(routerContext)
   if (!value) {
     warnMissingRouter(opts)
   }
-  return value as any
+  return value
 }
 
 // Kept out of the hook body: this dev-only branch runs for every Link and

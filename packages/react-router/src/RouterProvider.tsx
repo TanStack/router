@@ -2,8 +2,10 @@
 
 import * as React from 'react'
 import { hasKeys } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Matches } from './Matches'
 import { routerContext } from './routerContext'
+import type { RouterContextValue } from './routerContext'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -36,10 +38,11 @@ export function RouterContextProvider<
     })
   }
 
+  const value: RouterContextValue =
+    (isServer ?? router.isServer) ? [router] : router.stores.locationSource
+
   const provider = (
-    <routerContext.Provider value={router as AnyRouter}>
-      {children}
-    </routerContext.Provider>
+    <routerContext.Provider value={value}>{children}</routerContext.Provider>
   )
 
   if (router.options.Wrap) {

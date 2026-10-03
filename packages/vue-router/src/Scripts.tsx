@@ -18,6 +18,19 @@ export const Scripts = Vue.defineComponent({
   setup() {
     const router = useRouter()
     const nonce = router.options.ssr?.nonce
+    if (isServer ?? router.isServer) {
+      return () =>
+        renderScripts(
+          router,
+          getSsrBodyScriptParts(
+            router.stores.matches.get(),
+            router.ssr?.manifest,
+            nonce,
+          ),
+          false,
+          nonce,
+        )
+    }
     const matches = useSelector(router.stores.matches, (value) => value)
 
     const scripts = Vue.computed(() =>

@@ -5,6 +5,10 @@ import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
 export function useRouter<TRouter extends AnyRouter = RegisteredRouter>(opts?: {
   warn?: boolean
 }): TRouter {
+  return useRouterContext(opts)?.[0] as TRouter
+}
+
+export function useRouterContext(opts?: { warn?: boolean }) {
   const value = Vue.inject(routerContext, null)
   if (process.env.NODE_ENV !== 'production') {
     if ((opts?.warn ?? true) && !value) {
@@ -13,5 +17,5 @@ export function useRouter<TRouter extends AnyRouter = RegisteredRouter>(opts?: {
       )
     }
   }
-  return value as TRouter
+  return value
 }

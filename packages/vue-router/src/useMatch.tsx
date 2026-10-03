@@ -2,8 +2,7 @@ import * as Vue from 'vue'
 import { invariant } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useSelector } from '@tanstack/vue-store'
-import { routeIdContext } from './matchContext'
-import { useRouter } from './useRouter'
+import { useRouter, useRouterContext } from './useRouter'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -79,7 +78,7 @@ export function useMatch<
   // During SSR we render exactly once and do not need reactivity.
   // Avoid store subscriptions and pending/transition bookkeeping on the server.
   if (isServer ?? router.isServer) {
-    const nearestRouteId = opts.from ? undefined : Vue.inject(routeIdContext)
+    const nearestRouteId = opts.from ? undefined : useRouterContext()?.[2]
     const matchStore =
       (opts.from ?? nearestRouteId)
         ? router.stores.getMatchStore(opts.from ?? nearestRouteId!)
@@ -97,7 +96,7 @@ export function useMatch<
     }
 
     if (match === undefined) {
-      return Vue.ref(undefined) as Vue.Ref<
+      return Vue.toRef(() => undefined) as Vue.Ref<
         ThrowOrOptional<
           UseMatchResult<TRouter, TFrom, TStrict, TSelected>,
           TThrow
@@ -105,7 +104,8 @@ export function useMatch<
       >
     }
 
-    return Vue.ref(opts.select ? opts.select(match) : match) as Vue.Ref<
+    const selected = opts.select ? opts.select(match) : match
+    return Vue.toRef(() => selected) as Vue.Ref<
       ThrowOrOptional<
         UseMatchResult<TRouter, TFrom, TStrict, TSelected>,
         TThrow
@@ -115,7 +115,7 @@ export function useMatch<
 
   // Set up reactive match value based on lookup strategy.
   let match: Readonly<Vue.Ref<any>>
-  const nearestRouteId = Vue.inject(routeIdContext)
+  const nearestRouteId = useRouterContext()?.[2]
 
   if (opts.from) {
     // routeId case: subscribe to the stable per-route presentation atom.

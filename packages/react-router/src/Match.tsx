@@ -5,9 +5,9 @@ import { useSelector } from '@tanstack/react-store'
 import { isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
-import { useRouter } from './useRouter'
+import { useRouter, useRouterContext } from './useRouter'
 import { CatchNotFound } from './not-found'
-import { matchContext } from './matchContext'
+import { routerContext } from './routerContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
@@ -20,6 +20,7 @@ import type {
   AnyRouteMatch,
   RootRouteOptions,
 } from '@tanstack/router-core'
+import type { RouterContextValue } from './routerContext'
 
 export function renderPending(
   router: ReturnType<typeof useRouter>,
@@ -67,23 +68,23 @@ export const Match = React.memo(function MatchImpl({
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
-    const match = router.stores.byRoute.get(routeId)!.get()!
-    return <MatchView router={router} match={match} />
+    const matchStore = router.stores.byRoute.get(routeId)!
+    return renderMatch(router, matchStore.get()!, matchStore.location!)
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useSelector(matchStore)
-  return <MatchView router={router} match={match!} />
+  // The same pooled handle owns this visit's source and stable context.
+  return renderMatch(router, match!, matchStore.location!)
 })
 
-function MatchView({
-  router,
-  match,
-}: {
-  router: ReturnType<typeof useRouter>
-  match: AnyRouteMatch
-}) {
+// Rendering uses no hooks or component state; the Match owns this boundary.
+function renderMatch(
+  router: ReturnType<typeof useRouter>,
+  match: AnyRouteMatch,
+  contextValue: RouterContextValue,
+) {
   const route: AnyRoute = router.routesById[match.routeId]
 
   const pendingElement = renderPending(router, route)
@@ -175,7 +176,7 @@ function MatchView({
 
   // The shell and route boundaries must share this match's context.
   return (
-    <matchContext.Provider value={match.routeId}>
+    <routerContext.Provider value={contextValue}>
       {ShellComponent ? (
         <ShellComponent>
           {content}
@@ -187,7 +188,7 @@ function MatchView({
           {scrollRestoration}
         </>
       )}
-    </matchContext.Provider>
+    </routerContext.Provider>
   )
 }
 
@@ -280,8 +281,9 @@ export const Outlet = React.memo(function OutletImpl() {
     }
   }
 
-  const router = useRouter()
-  const routeId = React.useContext(matchContext)!
+  const context = useRouterContext()
+  const router = context[0]
+  const routeId = context[2]!
 
   let parentGlobalNotFound: boolean
   let parentNotFoundError: unknown

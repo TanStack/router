@@ -1,4 +1,6 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
+import { routerContext } from './routerContext'
 
 export interface ClientOnlyProps {
   /**
@@ -67,6 +69,13 @@ export const ClientOnly = Vue.defineComponent({
  * @returns True if the JS has been hydrated already, false otherwise.
  */
 export function useHydrated(): Vue.Ref<boolean> {
+  if (
+    isServer ??
+    Vue.inject(routerContext, null)?.[0].isServer ??
+    typeof window === 'undefined'
+  ) {
+    return Vue.toRef(() => false)
+  }
   const hydrated = Vue.ref(false)
   Vue.onMounted(() => {
     hydrated.value = true

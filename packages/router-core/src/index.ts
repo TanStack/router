@@ -236,6 +236,7 @@ export {
 export type {
   RouterBatchFn,
   RouterReadableStore,
+  RouterPresentationSource,
   GetStoreConfig,
   RouterStores,
   RouterWritableStore,
