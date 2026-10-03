@@ -131,7 +131,7 @@ TanStack Router builds on concepts and patterns popularized by many other OSS pr
 
 - [TRPC](https://trpc.io/)
 - [Remix](https://remix.run)
-- [Chicane](https://swan-io.github.io/chicane/)
+- [Chicane](https://github.com/swan-io/chicane) (the chicane docs site at swan-io.github.io/chicane is no longer deployed; the GitHub repo is the canonical home)
 - [Next.js](https://nextjs.org)
 
 We acknowledge the investment, risk and research that went into their development, but are excited to push the bar they have set even higher.
