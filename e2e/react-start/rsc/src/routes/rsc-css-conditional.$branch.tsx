@@ -1,9 +1,12 @@
-import { ClientOnly, createFileRoute, Link } from '@tanstack/react-router'
+import { ClientOnly, Link, createFileRoute } from '@tanstack/react-router'
 import { getConditionalCssServerComponent } from '~/utils/conditionalCssServerComponent'
 import { pageStyles } from '~/utils/styles'
 
 export const Route = createFileRoute('/rsc-css-conditional/$branch')({
   loader: async ({ params: { branch } }) => {
+    if (branch === 'none') {
+      return { Server: null, branch: 'none' }
+    }
     const activeBranch = branch === 'violet' ? 'violet' : 'orange'
     const Server = await getConditionalCssServerComponent({
       data: { branch: activeBranch },
