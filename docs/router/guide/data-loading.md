@@ -83,9 +83,9 @@ The `loader` function receives a single object with the following properties:
 
 - `abortController` - The controller for this shareable loader invocation. A preload and navigation can share the same in-flight loader work. Its signal is cancelled after the invocation becomes outdated and no consumer still needs it.
 - `cause` - The cause of the current route match. Can be either one of the following:
-  - `enter` - When the route is matched and loaded after not being matched in the previous location.
+  - `enter` - When the route ID enters the active route tree after not being active in the previous location. For example, loading `/somepath/hello%20world` directly causes `/somepath/$param` to `enter`.
   - `preload` - When the route is being preloaded.
-  - `stay` - When the route is matched and loaded after being matched in the previous location.
+  - `stay` - When the route ID remains in the active route tree from the previous location, including when path params or `loaderDeps` change. For example, navigating from `/somepath/one` to `/somepath/hello%20world` causes `/somepath/$param` to `stay`, even though the path param and match ID change.
 - `context` - The route's context object, which is a merged union of:
   - Parent route context
   - This route's context as provided by the `beforeLoad` option
