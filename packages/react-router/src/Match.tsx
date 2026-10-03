@@ -68,22 +68,16 @@ export const Match = React.memo(function MatchImpl({
 
   if (isServer ?? router.isServer) {
     const match = router.stores.byRoute.get(routeId)!.get()!
-    return <MatchView router={router} match={match} />
+    return matchView(router, match)
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useSelector(matchStore)
-  return <MatchView router={router} match={match!} />
+  const match = useSelector(matchStore)!
+  return matchView(router, match)
 })
 
-function MatchView({
-  router,
-  match,
-}: {
-  router: ReturnType<typeof useRouter>
-  match: AnyRouteMatch
-}) {
+function matchView(router: ReturnType<typeof useRouter>, match: AnyRouteMatch) {
   const route: AnyRoute = router.routesById[match.routeId]
 
   const pendingElement = renderPending(router, route)
@@ -162,31 +156,28 @@ function MatchView({
       <React.Suspense fallback={pendingElement}>{content}</React.Suspense>
     )
   }
-
-  const scrollRestoration =
+  if (
     (isServer ?? router.isServer) &&
     route.parentRoute?.id === rootRouteId &&
-    router.options.scrollRestoration ? (
-      <ScrollRestoration />
-    ) : null
-  const ShellComponent = route.isRoot
-    ? (route.options as RootRouteOptions).shellComponent
-    : undefined
+    router.options.scrollRestoration
+  ) {
+    content = (
+      <>
+        {content}
+        <ScrollRestoration />
+      </>
+    )
+  }
+  const ShellComponent =
+    route.isRoot && (route.options as RootRouteOptions).shellComponent
+  if (ShellComponent) {
+    content = <ShellComponent>{content}</ShellComponent>
+  }
 
-  // The shell and route boundaries must share this match's context.
   return (
+    // The shell and route boundaries must share this match's context.
     <matchContext.Provider value={match.routeId}>
-      {ShellComponent ? (
-        <ShellComponent>
-          {content}
-          {scrollRestoration}
-        </ShellComponent>
-      ) : (
-        <>
-          {content}
-          {scrollRestoration}
-        </>
-      )}
+      {content}
     </matchContext.Provider>
   )
 }
