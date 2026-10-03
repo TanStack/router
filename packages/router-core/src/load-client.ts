@@ -6,7 +6,7 @@ import {
   getLocationChangeInfo,
   lifecycleEnd,
   runRouteLifecycle,
-} from './router'
+} from './route-lifecycle'
 import { hydrateSsrMatchId } from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { TsrSsrGlobal } from './ssr/types'
