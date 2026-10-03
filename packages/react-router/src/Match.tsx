@@ -156,28 +156,29 @@ function matchView(router: ReturnType<typeof useRouter>, match: AnyRouteMatch) {
       <React.Suspense fallback={pendingElement}>{content}</React.Suspense>
     )
   }
-  if (
+
+  const scrollRestoration =
     (isServer ?? router.isServer) &&
     route.parentRoute?.id === rootRouteId &&
-    router.options.scrollRestoration
-  ) {
-    content = (
-      <>
-        {content}
-        <ScrollRestoration />
-      </>
-    )
-  }
+    router.options.scrollRestoration ? (
+      <ScrollRestoration />
+    ) : null
+
   const ShellComponent =
     route.isRoot && (route.options as RootRouteOptions).shellComponent
-  if (ShellComponent) {
-    content = <ShellComponent>{content}</ShellComponent>
-  }
 
-  return (
+  return ShellComponent ? (
     // The shell and route boundaries must share this match's context.
     <matchContext.Provider value={match.routeId}>
+      <ShellComponent>
+        {content}
+        {scrollRestoration}
+      </ShellComponent>
+    </matchContext.Provider>
+  ) : (
+    <matchContext.Provider value={match.routeId}>
       {content}
+      {scrollRestoration}
     </matchContext.Provider>
   )
 }
