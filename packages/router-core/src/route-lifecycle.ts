@@ -21,6 +21,7 @@ export function getLocationChangeInfo(
   }
 }
 
+/** Return the end of the active match branch, including its first fallback. */
 export function lifecycleEnd(matches: Array<AnyRouteMatch>) {
   return (
     matches.findIndex(

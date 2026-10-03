@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { lifecycleEnd, runRouteLifecycle } from '../src/router'
+import { lifecycleEnd, runRouteLifecycle } from '../src/route-lifecycle'
 import type { AnyRouteMatch, AnyRouter } from '../src'
 import type { LoadTransaction } from '../src/load-client'
 

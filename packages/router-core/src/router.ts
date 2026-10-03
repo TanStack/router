@@ -942,12 +942,6 @@ export const trailingSlashOptions = {
 export type TrailingSlashOption =
   (typeof trailingSlashOptions)[keyof typeof trailingSlashOptions]
 
-export {
-  getLocationChangeInfo,
-  lifecycleEnd,
-  runRouteLifecycle,
-} from './route-lifecycle'
-
 /**
  * Return only state owned by the application, excluding volatile history
  * bookkeeping. Mask payloads (`__tempLocation`/`__tempKey`) are kept: they
