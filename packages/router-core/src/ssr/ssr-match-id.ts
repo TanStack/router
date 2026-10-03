@@ -3,7 +3,7 @@ export function dehydrateSsrMatchId(id: string): string {
     .replaceAll('~', '~~')
     .replaceAll('\0', '~0')
     .replaceAll('\uFFFD', '~r')
-    .replaceAll('/', '\0')
+    .replaceAll('/', '\uFFFD')
 }
 
 export function hydrateSsrMatchId(id: string): string {
