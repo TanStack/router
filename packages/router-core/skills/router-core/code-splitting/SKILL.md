@@ -32,12 +32,14 @@ TanStack Router separates route code into **critical** (required to match and st
 - Route context, static data
 - Links, scripts, styles
 
-## What Gets Split (Non-Critical)
+## What Can Be Split (Non-Critical)
 
 - `component`
 - `errorComponent`
 - `pendingComponent`
 - `notFoundComponent`
+
+> With `autoCodeSplitting`, the default split groupings are `[['component'], ['errorComponent'], ['notFoundComponent']]`. The `pendingComponent` stays in the route's main chunk unless you add it to `codeSplitGroupings` or the plugin's `codeSplittingOptions.defaultBehavior`.
 
 > The `loader` is NOT split by default. It is already async, so splitting it adds a double async cost: fetch the chunk, then execute the loader. Only split the loader if you have a specific reason.
 
