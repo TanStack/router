@@ -1,6 +1,7 @@
 import { useNavigate, createFileRoute } from '@tanstack/solid-router'
 import { type } from 'arktype'
 import { Suspense } from 'solid-js'
+import { noop } from '@tanstack/solid-query'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
 import { Content } from '../../components/Content'
@@ -34,9 +35,9 @@ export const Route = createFileRoute('/users/arktype/')({
   validateSearch: search,
   loaderDeps: (opt) => ({ search: opt.search }),
   loader: (opt) => {
-    opt.context.queryClient.ensureQueryData(
-      usersQueryOptions(opt.deps.search.search),
-    )
+    void opt.context.queryClient
+      .query(usersQueryOptions(opt.deps.search.search))
+      .catch(noop)
   },
   component: ArkType,
 })

@@ -73,10 +73,13 @@ const postQueryOptions = (postId: string) => ({
 })
 ```
 
-For SSR reuse, prefetch in the route loader:
+For SSR reuse, run a static query in the route loader so cached data is reused without a stale refetch:
 
 ```tsx
-await context.queryClient.ensureQueryData(postQueryOptions(params.postId))
+await context.queryClient.query({
+  ...postQueryOptions(params.postId),
+  staleTime: 'static',
+})
 ```
 
 Then read it with `useSuspenseQuery` in the component.
