@@ -301,3 +301,43 @@ intervals should contain zero before trusting similarly sized A/B differences.
 Shared-machine contention can still make small changes unresolved. Do not
 interpret a point estimate alone, or an inconclusive result, as proof that
 a workload is unchanged.
+
+## Opt-in React default Outlet performance suite
+
+`default-outlet/` measures eight nested routing hops with implicit outlets,
+alternating implicit and custom components rendering Outlet, or custom
+components rendering Outlet throughout.
+The cases include ordinary routing and router default pending/error boundaries.
+Each batch completes four laps through two leaf parameter values, a
+componentless terminal route, and home. Link navigation replaces the history
+entry, keeping history size bounded. The warm-up lap checks the rendered output
+and reports committed React fiber counts outside measurement.
+
+```bash
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-default-outlet-performance:test:perf:client --outputStyle=stream --skipRemoteCache -- --run
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-default-outlet-performance:test:perf:ssr --outputStyle=stream --skipRemoteCache -- --run
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-default-outlet-performance:test:types --outputStyle=stream --skipRemoteCache
+```
+
+Use the same fixture files and case selection in the baseline and candidate
+checkouts. Run noisy cases separately with `-t implicit-plain`,
+`-t implicit-default-boundaries`, `-t mixed-default-boundaries`, or
+`-t explicit-default-boundaries`. The suite uses production package and JSX
+builds and remains separate from the existing aggregate benchmark names.
+
+The client suite also includes short `pending to success smoke` cases for each
+mode with default boundaries. Each batch makes one pending-to-success/home lap.
+A blocking controlled loader resolves from the first pending component's
+committed effect; setup verifies that pending UI committed and the successful
+child replaced it. A five-second watchdog reports public match statuses and DOM
+when progress stops. Use `-t 'pending to success'` separately from success
+navigation; these smoke cases include React's Suspense scheduling delay and do
+not provide rendering CPU evidence.
+
+The SSR `render only` suite prepares three loaded routers outside timing: first
+leaf, second leaf, and the componentless terminal route. Each batch renders all
+three four times. Setup and teardown verify every loaded logical match, the
+leaf's nearest match context, and identical HTML across implicit, mixed, custom,
+and repeated renders. It uses production server conditional exports and measures
+rendering without router construction, loading, or Start request/streaming
+overhead.
