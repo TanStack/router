@@ -113,3 +113,13 @@ CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:ss
 
 These cases are excluded from this directory's aggregate projects and normal
 CodSpeed dependency graph; they only run through the dedicated target above.
+
+The [default Outlet suite](../client-nav/README.md#opt-in-react-default-outlet-performance-suite)
+also covers standalone SSR of eight nested implicit, mixed, and custom Outlet
+routes, including a componentless terminal route. It verifies identical HTML
+and logical match context before and after timing repeated renders of three
+prepared, loaded routers. Router construction and loading stay outside timing.
+
+```bash
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-default-outlet-performance:test:perf:ssr --outputStyle=stream --skipRemoteCache -- --run
+```

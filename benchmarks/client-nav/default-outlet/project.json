@@ -1,0 +1,64 @@
+{
+  "name": "@benchmarks/react-default-outlet-performance",
+  "projectType": "application",
+  "tags": ["optional-benchmark"],
+  "targets": {
+    "build:client": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        { "projects": ["@tanstack/react-router"], "target": "build" }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config ./default-outlet/vite.config.ts",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "test:perf:client": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["build:client"],
+      "options": {
+        "command": "NODE_ENV=production vitest bench --config ./default-outlet/vite.config.ts",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "build:ssr": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        { "projects": ["@tanstack/react-router"], "target": "build" }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config ./default-outlet/vite.ssr.config.ts",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "test:perf:ssr": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["build:ssr"],
+      "options": {
+        "command": "NODE_ENV=production vitest bench --config ./default-outlet/vite.ssr.config.ts",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "inputs": [
+        "...",
+        "{workspaceRoot}/benchmarks/client-nav/scenarios/harness.ts",
+        "{workspaceRoot}/benchmarks/client-nav/setup-helpers.ts",
+        "{workspaceRoot}/benchmarks/client-nav/tsconfig.json",
+        "{workspaceRoot}/benchmarks/client-nav/vitest.setup.ts"
+      ],
+      "dependsOn": [
+        { "projects": ["@tanstack/react-router"], "target": "build" }
+      ],
+      "options": {
+        "command": "tsc -p ./default-outlet/tsconfig.json --noEmit",
+        "cwd": "benchmarks/client-nav"
+      }
+    }
+  }
+}

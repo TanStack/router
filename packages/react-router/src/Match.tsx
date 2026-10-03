@@ -20,6 +20,7 @@ import type {
   AnyRouteMatch,
   RootRouteOptions,
 } from '@tanstack/router-core'
+import type { RouteComponent } from './route'
 
 export function renderPending(
   router: ReturnType<typeof useRouter>,
@@ -68,22 +69,19 @@ export const Match = React.memo(function MatchImpl({
 
   if (isServer ?? router.isServer) {
     const match = router.stores.byRoute.get(routeId)!.get()!
-    return <MatchView router={router} match={match} />
+    return renderMatchView(router, match)
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useSelector(matchStore)
-  return <MatchView router={router} match={match!} />
+  return renderMatchView(router, match!)
 })
 
-function MatchView({
-  router,
-  match,
-}: {
-  router: ReturnType<typeof useRouter>
-  match: AnyRouteMatch
-}) {
+function renderMatchView(
+  router: ReturnType<typeof useRouter>,
+  match: AnyRouteMatch,
+) {
   const route: AnyRoute = router.routesById[match.routeId]
 
   const pendingElement = renderPending(router, route)
@@ -93,11 +91,9 @@ function MatchView({
 
   const routeOnCatch = route.options.onCatch ?? router.options.defaultOnCatch
 
-  const routeNotFoundComponent = route.isRoot
-    ? // If it's the root route, use the _notFound option, with fallback to the notFoundRoute's component
-      (route.options.notFoundComponent ??
-      router.options.notFoundRoute?.options.component)
-    : route.options.notFoundComponent
+  const routeNotFoundComponent =
+    route.options.notFoundComponent ??
+    (route.isRoot ? router.options.notFoundRoute?.options.component : undefined)
 
   const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
   // A root component may render the document itself. Only place its Suspense
@@ -108,7 +104,12 @@ function MatchView({
       pendingElement ??
       ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
 
-  let content = <MatchInner match={match} />
+  const Component = route.options.component ?? router.options.defaultComponent
+  let content = Component ? (
+    <MatchInner match={match} component={Component} />
+  ) : (
+    <DefaultOutletInner match={match} />
+  )
   if (resolvedNoSsr) {
     content = <ClientOnly fallback={pendingElement}>{content}</ClientOnly>
   }
@@ -169,36 +170,32 @@ function MatchView({
     router.options.scrollRestoration ? (
       <ScrollRestoration />
     ) : null
-  const ShellComponent = route.isRoot
-    ? (route.options as RootRouteOptions).shellComponent
-    : undefined
+  const ShellComponent =
+    (route.isRoot
+      ? (route.options as RootRouteOptions).shellComponent
+      : undefined) || React.Fragment
 
   // The shell and route boundaries must share this match's context.
   return (
     <matchContext.Provider value={match.routeId}>
-      {ShellComponent ? (
-        <ShellComponent>
-          {content}
-          {scrollRestoration}
-        </ShellComponent>
-      ) : (
-        <>
-          {content}
-          {scrollRestoration}
-        </>
-      )}
+      <ShellComponent>
+        {content}
+        {scrollRestoration}
+      </ShellComponent>
     </matchContext.Provider>
   )
 }
 
 export const MatchInner = React.memo(function MatchInnerImpl({
   match,
+  component: Component,
 }: {
   match: AnyRouteMatch
+  component: RouteComponent
 }): any {
   const router = useRouter()
+  const route = router.routesById[match.routeId] as AnyRoute
   const routeId = match.routeId
-  const route = router.routesById[routeId] as AnyRoute
   const key = React.useMemo(() => {
     const remountFn =
       route.options.remountDeps ?? router.options.defaultRemountDeps
@@ -217,16 +214,42 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     route.options.remountDeps,
     router.options.defaultRemountDeps,
   ])
-  const out = React.useMemo(() => {
-    const Comp = route.options.component ?? router.options.defaultComponent
-    return Comp ? <Comp key={key} /> : <Outlet />
-  }, [key, route.options.component, router.options.defaultComponent])
+  const out = React.useMemo(() => <Component key={key} />, [key, Component])
 
+  const status = renderMatchStatus(router, match, route)
+  return status === undefined ? out : status
+})
+
+const DefaultOutletInner = React.memo(function DefaultOutletInner({
+  match,
+}: {
+  match: AnyRouteMatch
+}) {
+  const router = useRouter()
+  const route = router.routesById[match.routeId] as AnyRoute
+  const childRouteId = useChildRouteId(router, match.routeId)
+  const status = renderMatchStatus(router, match, route)
+  return status === undefined
+    ? renderOutlet(
+        router,
+        match.routeId,
+        !!match._notFound,
+        match.error,
+        childRouteId,
+      )
+    : status
+})
+
+function renderMatchStatus(
+  router: ReturnType<typeof useRouter>,
+  match: AnyRouteMatch,
+  route: AnyRoute,
+) {
   if (match.status === 'pending') {
     if (router.ssr && !canWrapInSuspense(router, route, match.ssr)) {
       // Replacing an SSR document root with pending UI would remove <html>.
       // Hydrated matches retain their prior data, so keep rendering it.
-      return out
+      return undefined
     }
     if (router._tx) {
       throw router._tx[5]
@@ -259,9 +282,22 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     }
     throw match.error
   }
+  return undefined
+}
 
-  return out
-})
+function useChildRouteId(
+  router: ReturnType<typeof useRouter>,
+  routeId: string,
+) {
+  if (isServer ?? router.isServer) {
+    const matches = router.stores.matches.get()
+    return matches[matches.findIndex((match) => match.routeId === routeId) + 1]
+      ?.routeId
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  return useSelector(router.stores.ids, (ids) => ids[ids.indexOf(routeId) + 1])
+}
 
 /**
  * Render the next child match in the route tree. Typically used inside
@@ -285,15 +321,11 @@ export const Outlet = React.memo(function OutletImpl() {
 
   let parentGlobalNotFound: boolean
   let parentNotFoundError: unknown
-  let childRouteId: string | undefined
 
   if (isServer ?? router.isServer) {
-    const matches = router.stores.matches.get()
-    const parentIndex = matches.findIndex((match) => match.routeId === routeId)
-    const parentMatch = matches[parentIndex]!
+    const parentMatch = router.stores.byRoute.get(routeId)!.get()!
     parentGlobalNotFound = !!parentMatch._notFound
     parentNotFoundError = parentMatch.error
-    childRouteId = matches[parentIndex + 1]?.routeId
   } else {
     const parentMatchStore = router.stores.getMatchStore(routeId)
 
@@ -303,13 +335,25 @@ export const Outlet = React.memo(function OutletImpl() {
       (match): OutletMatchSelection => [!!match!._notFound, match!.error],
       { compare: outletMatchSelectionEqual },
     )
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    childRouteId = useSelector(router.stores.ids, (ids) => {
-      return ids[ids.indexOf(routeId) + 1]
-    })
   }
 
+  const childRouteId = useChildRouteId(router, routeId)
+  return renderOutlet(
+    router,
+    routeId,
+    parentGlobalNotFound,
+    parentNotFoundError,
+    childRouteId,
+  )
+})
+
+function renderOutlet(
+  router: ReturnType<typeof useRouter>,
+  routeId: string,
+  parentGlobalNotFound: boolean,
+  parentNotFoundError: unknown,
+  childRouteId: string | undefined,
+) {
   if (parentGlobalNotFound) {
     return renderRouteNotFound(
       router,
@@ -333,4 +377,4 @@ export const Outlet = React.memo(function OutletImpl() {
   }
 
   return nextMatch
-})
+}
