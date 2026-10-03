@@ -1,8 +1,14 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { parseAst } from '@tanstack/router-utils'
 
-import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
+import {
+  compileCodeSplitReferenceRoute,
+  compileCodeSplitReferenceRouteFromAst,
+  computeSharedBindingsFromAst,
+  detectCodeSplitGroupingsFromAst,
+} from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { createRouteHmrStatement } from '../src/core/hmr'
@@ -12,6 +18,27 @@ function getFrameworkDir(framework: string) {
   const files = path.resolve(__dirname, `./add-hmr/test-files/${framework}`)
   const snapshots = path.resolve(__dirname, `./add-hmr/snapshots/${framework}`)
   return { files, snapshots }
+}
+
+function compileWithRootParity(
+  opts: Parameters<typeof compileCodeSplitReferenceRoute>[0],
+) {
+  const result = compileCodeSplitReferenceRoute(opts)
+  if (opts.filename.startsWith('createRootRoute')) {
+    // Reuse root snapshots for both paths, including WithContext/type arguments
+    // and the addHmr:false null-result path. Roots must never be extracted.
+    const ast = parseAst(opts)
+    expect(detectCodeSplitGroupingsFromAst(ast).groupings).toBeUndefined()
+    expect(
+      computeSharedBindingsFromAst(ast, opts.codeSplitGroupings).size,
+    ).toBe(0)
+    const parsedResult = compileCodeSplitReferenceRouteFromAst(ast, opts)
+    expect(parsedResult === null).toBe(result === null)
+    expect(parsedResult?.code).toBe(result?.code)
+    expect(parsedResult?.map).toEqual(result?.map)
+    return parsedResult
+  }
+  return result
 }
 
 describe('add-hmr works', () => {
@@ -25,7 +52,7 @@ describe('add-hmr works', () => {
         const file = await readFile(path.join(dirs.files, filename))
         const code = file.toString()
 
-        const compileResult = compileCodeSplitReferenceRoute({
+        const compileResult = compileWithRootParity({
           code,
           filename,
           id: filename,
@@ -49,7 +76,7 @@ describe('add-hmr works', () => {
         const file = await readFile(path.join(dirs.files, filename))
         const code = file.toString()
 
-        const compileResult = compileCodeSplitReferenceRoute({
+        const compileResult = compileWithRootParity({
           code,
           filename,
           id: filename,
