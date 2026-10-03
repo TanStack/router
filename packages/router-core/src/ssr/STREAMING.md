@@ -288,6 +288,19 @@ It uses the end of that record as a safe point.
 An internal 64 KiB encoding chunk is not a record end.
 The safe point occurs only after the complete source record drains.
 
+Solid also serializes its own resources and errors. When a custom Router adapter
+is used, the Solid integration defers those native serialization statements
+through Router's adapter-ready queue. A native script can precede Router's
+bootstrap, so the bootstrap adopts an existing queue. Solid's fragment replacement
+calls and their function declaration stay outside the queue: streamed HTML must
+remain visible while application JavaScript loads. The integration parses the
+native task script to distinguish those statements from serialized user data.
+It does not rewrite application scripts or copy Solid's fragment replacement code.
+
+Solid's client integration acknowledges hydration only after document parsing
+finishes. Router serialization can finish before the last Solid resource script;
+the custom adapter registry must remain available to those later scripts.
+
 ### Vue
 
 The Vue adapter does not treat renderer record ends as safe points.
@@ -601,7 +614,8 @@ Adapter tests make sure that React, Solid, and Vue select the documented safe-po
 Real-renderer tests cover React 19 script closes and Solid record ends.
 
 React and Solid browser suites cover CSP for ordinary SSR output.
-No browser CSP test forces a late dynamic hydration record.
+Solid's serialization-adapter browser tests cover buffered native resource scripts
+under nonce-based CSP, delayed application JavaScript, and multiple late resources.
 Vue has no equivalent browser CSP suite.
 
 Normal unit tests cover backpressure correctness and lost-record prevention.
