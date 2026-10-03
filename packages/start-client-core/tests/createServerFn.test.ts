@@ -1,6 +1,11 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { createMiddleware } from '../src/createMiddleware'
-import { createServerFn } from '../src/createServerFn'
+import { createServerFn, executeMiddleware } from '../src/createServerFn'
+
+vi.mock('../src/getStartOptions', () => ({ getStartOptions: () => undefined }))
+vi.mock('../src/getStartContextServerOnly', () => ({
+  getStartContextServerOnly: () => undefined,
+}))
 
 test('appends factory middleware in order without changing source builders', () => {
   const first = createMiddleware({ type: 'function' })
@@ -51,4 +56,26 @@ test('does not register middleware appended while reading the input', () => {
     first,
   ])
   expect(middlewares).toHaveLength(2)
+})
+
+test('request middleware slot validators are not run as server function validators', async () => {
+  const schema = {
+    '~standard': {
+      version: 1 as const,
+      vendor: 'test',
+      validate: () => ({ issues: [{ message: 'must not run' }] }),
+    },
+  }
+  const middleware = createMiddleware({ type: 'request' })
+    .validator({ query: schema })
+    .server(({ next }) => next())
+
+  const result = await executeMiddleware([middleware], 'server', {
+    method: 'POST',
+    data: { input: 1 },
+    context: {},
+  } as any)
+
+  expect(result.error).toBeUndefined()
+  expect(result.data).toEqual({ input: 1 })
 })

@@ -60,6 +60,8 @@ export {
   type RequestServerNextFn,
   type RequestServerNextFnOptions,
   type RequestServerResult,
+  type RequestValidatorSlots,
+  type ResolveRequestData,
 } from './createMiddleware'
 export type {
   CompiledFetcherFnOptions,

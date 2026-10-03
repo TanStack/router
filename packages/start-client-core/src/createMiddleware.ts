@@ -8,6 +8,7 @@ import type {
 import type { ClientFnMeta, ServerFnMeta } from './constants'
 import type {
   AnyContext,
+  AnyStandardSchemaValidator,
   Assign,
   Constrain,
   Expand,
@@ -717,35 +718,74 @@ export interface FunctionMiddlewareAfterValidator<
 
 export interface RequestMiddleware<
   TRegister,
-> extends RequestMiddlewareAfterMiddleware<TRegister, undefined> {
+> extends RequestMiddlewareAfterMiddleware<TRegister, undefined, undefined> {
   middleware: <const TMiddlewares = undefined>(
     middlewares: Constrain<TMiddlewares, ReadonlyArray<AnyRequestMiddleware>>,
-  ) => RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares>
+  ) => RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares, undefined>
 }
 
-export type AnyRequestMiddleware = RequestMiddlewareWithTypes<any, any, any>
+export type AnyRequestMiddleware = RequestMiddlewareWithTypes<
+  any,
+  any,
+  any,
+  any
+>
+
+/**
+ * Slot-shaped request validator. Each slot maps to an HTTP (and OpenAPI)
+ * location, which the single-schema server function validator cannot express.
+ */
+export interface RequestValidatorSlots {
+  body?: AnyStandardSchemaValidator
+  query?: AnyStandardSchemaValidator
+  path?: AnyStandardSchemaValidator
+  headers?: AnyStandardSchemaValidator
+}
+
+/** The validated `data` a slot validator produces, keyed by slot. */
+export type ResolveRequestData<TValidator> = unknown extends TValidator
+  ? TValidator
+  : TValidator extends RequestValidatorSlots
+    ? {
+        [TSlot in keyof TValidator]: ResolveValidatorOutput<TValidator[TSlot]>
+      }
+    : undefined
 
 export interface RequestMiddlewareWithTypes<
   TRegister,
   TMiddlewares,
   TServerContext,
+  TValidator = undefined,
 > {
-  '~types': RequestMiddlewareTypes<TRegister, TMiddlewares, TServerContext>
-  options: RequestMiddlewareOptions<TRegister, TMiddlewares, TServerContext>
+  '~types': RequestMiddlewareTypes<
+    TRegister,
+    TMiddlewares,
+    TServerContext,
+    TValidator
+  >
+  options: RequestMiddlewareOptions<
+    TRegister,
+    TMiddlewares,
+    TServerContext,
+    TValidator
+  >
 }
 
 export interface RequestMiddlewareOptions<
   in out TRegister,
   in out TMiddlewares,
   in out TServerContext,
+  in out TValidator = undefined,
 > {
   middleware?: TMiddlewares
+  validator?: TValidator
   server?: RequestServerFn<TRegister, TMiddlewares, TServerContext>
 }
 export interface RequestMiddlewareTypes<
   TRegister,
   TMiddlewares,
   TServerContext,
+  TValidator = undefined,
 > {
   type: 'request'
   // this only exists so we can use request middlewares in server functions
@@ -753,6 +793,11 @@ export interface RequestMiddlewareTypes<
   // this only exists so we can use request middlewares in server functions
   allOutput: undefined
   middlewares: TMiddlewares
+  validator: TValidator
+  allData: IntersectAssign<
+    IntersectAllMiddleware<TMiddlewares, 'allData'>,
+    ResolveRequestData<TValidator>
+  >
   serverContext: TServerContext
   allServerContext: AssignAllServerRequestContext<
     TRegister,
@@ -762,15 +807,32 @@ export interface RequestMiddlewareTypes<
   >
 }
 
-export interface RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares>
+export interface RequestMiddlewareAfterMiddleware<
+  TRegister,
+  TMiddlewares,
+  TValidator = undefined,
+>
   extends
-    RequestMiddlewareWithTypes<TRegister, TMiddlewares, undefined>,
-    RequestMiddlewareServer<TRegister, TMiddlewares> {}
+    RequestMiddlewareWithTypes<TRegister, TMiddlewares, undefined, TValidator>,
+    RequestMiddlewareServer<TRegister, TMiddlewares, TValidator> {
+  validator: <TNewValidator extends RequestValidatorSlots>(
+    validator: TNewValidator,
+  ) => RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares, TNewValidator>
+}
 
-export interface RequestMiddlewareServer<TRegister, TMiddlewares> {
+export interface RequestMiddlewareServer<
+  TRegister,
+  TMiddlewares,
+  TValidator = undefined,
+> {
   server: <TServerContext = undefined>(
     fn: RequestServerFn<TRegister, TMiddlewares, TServerContext>,
-  ) => RequestMiddlewareAfterServer<TRegister, TMiddlewares, TServerContext>
+  ) => RequestMiddlewareAfterServer<
+    TRegister,
+    TMiddlewares,
+    TServerContext,
+    TValidator
+  >
 }
 
 export type RequestServerFn<TRegister, TMiddlewares, TServerContext> = (
@@ -837,4 +899,10 @@ export interface RequestMiddlewareAfterServer<
   TRegister,
   TMiddlewares,
   TServerContext,
-> extends RequestMiddlewareWithTypes<TRegister, TMiddlewares, TServerContext> {}
+  TValidator = undefined,
+> extends RequestMiddlewareWithTypes<
+  TRegister,
+  TMiddlewares,
+  TServerContext,
+  TValidator
+> {}
