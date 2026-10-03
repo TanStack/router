@@ -91,11 +91,9 @@ function renderMatchView(
 
   const routeOnCatch = route.options.onCatch ?? router.options.defaultOnCatch
 
-  const routeNotFoundComponent = route.isRoot
-    ? // If it's the root route, use the _notFound option, with fallback to the notFoundRoute's component
-      (route.options.notFoundComponent ??
-      router.options.notFoundRoute?.options.component)
-    : route.options.notFoundComponent
+  const routeNotFoundComponent =
+    route.options.notFoundComponent ??
+    (route.isRoot ? router.options.notFoundRoute?.options.component : undefined)
 
   const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
   // A root component may render the document itself. Only place its Suspense
@@ -107,9 +105,11 @@ function renderMatchView(
       ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
 
   const Component = route.options.component ?? router.options.defaultComponent
-  const Inner =
-    Component && Component !== Outlet ? MatchInner : DefaultOutletInner
-  let content = <Inner match={match} component={Component!} />
+  let content = Component ? (
+    <MatchInner match={match} component={Component} />
+  ) : (
+    <DefaultOutletInner match={match} />
+  )
   if (resolvedNoSsr) {
     content = <ClientOnly fallback={pendingElement}>{content}</ClientOnly>
   }
@@ -170,35 +170,33 @@ function renderMatchView(
     router.options.scrollRestoration ? (
       <ScrollRestoration />
     ) : null
-  const ShellComponent = route.isRoot
-    ? (route.options as RootRouteOptions).shellComponent
-    : undefined
+  const ShellComponent =
+    (route.isRoot
+      ? (route.options as RootRouteOptions).shellComponent
+      : undefined) || React.Fragment
 
   // The shell and route boundaries must share this match's context.
   return (
     <matchContext.Provider value={match.routeId}>
-      {ShellComponent ? (
-        <ShellComponent>
-          {content}
-          {scrollRestoration}
-        </ShellComponent>
-      ) : (
-        <>
-          {content}
-          {scrollRestoration}
-        </>
-      )}
+      <ShellComponent>
+        {content}
+        {scrollRestoration}
+      </ShellComponent>
     </matchContext.Provider>
   )
 }
 
-function useRemountKey(
-  router: ReturnType<typeof useRouter>,
-  match: AnyRouteMatch,
-  route: AnyRoute,
-) {
+export const MatchInner = React.memo(function MatchInnerImpl({
+  match,
+  component: Component,
+}: {
+  match: AnyRouteMatch
+  component: RouteComponent
+}): any {
+  const router = useRouter()
+  const route = router.routesById[match.routeId] as AnyRoute
   const routeId = match.routeId
-  return React.useMemo(() => {
+  const key = React.useMemo(() => {
     const remountFn =
       route.options.remountDeps ?? router.options.defaultRemountDeps
     const remountDeps = remountFn?.({
@@ -216,18 +214,6 @@ function useRemountKey(
     route.options.remountDeps,
     router.options.defaultRemountDeps,
   ])
-}
-
-export const MatchInner = React.memo(function MatchInnerImpl({
-  match,
-  component: Component,
-}: {
-  match: AnyRouteMatch
-  component: RouteComponent
-}): any {
-  const router = useRouter()
-  const route = router.routesById[match.routeId] as AnyRoute
-  const key = useRemountKey(router, match, route)
   const out = React.useMemo(() => <Component key={key} />, [key, Component])
 
   const status = renderMatchStatus(router, match, route)
@@ -236,30 +222,22 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
 const DefaultOutletInner = React.memo(function DefaultOutletInner({
   match,
-  component: Component,
 }: {
   match: AnyRouteMatch
-  component?: RouteComponent
 }) {
   const router = useRouter()
   const route = router.routesById[match.routeId] as AnyRoute
-  const key = useRemountKey(router, match, route)
   const childRouteId = useChildRouteId(router, match.routeId)
   const status = renderMatchStatus(router, match, route)
-  // Built-in and implicit Outlets share one subtree; only the former uses a key.
-  return status === undefined ? (
-    <React.Fragment key={Component ? key : undefined}>
-      {renderOutlet(
+  return status === undefined
+    ? renderOutlet(
         router,
         match.routeId,
         !!match._notFound,
         match.error,
         childRouteId,
-      )}
-    </React.Fragment>
-  ) : (
-    status
-  )
+      )
+    : status
 })
 
 function renderMatchStatus(

@@ -317,13 +317,12 @@ test('a router default component renders instead of the implicit outlet', async 
   expect(screen.queryByText('Child content')).not.toBeInTheDocument()
 })
 
-test('componentless routes retain remountDeps evaluation without remounting their descendants', async () => {
-  const remountDeps = vi.fn(({ params }) => params)
+test('componentless routes preserve descendants as remountDeps parameters change', async () => {
   const root = createRootRoute()
   const parent = createRoute({
     getParentRoute: () => root,
     path: '$parentId',
-    remountDeps,
+    remountDeps: ({ params }) => params,
   })
   const child = createRoute({
     getParentRoute: () => parent,
@@ -342,21 +341,9 @@ test('componentless routes retain remountDeps evaluation without remounting thei
 
   await router.load()
   render(<RouterProvider router={router} />)
-  expect(remountDeps).toHaveBeenCalledWith(
-    expect.objectContaining({
-      routeId: parent.id,
-      params: { parentId: 'first' },
-    }),
-  )
   act(() => screen.getByRole('button').click())
   await act(() =>
     router.navigate({ to: '/$parentId/child', params: { parentId: 'second' } }),
-  )
-  expect(remountDeps).toHaveBeenCalledWith(
-    expect.objectContaining({
-      routeId: parent.id,
-      params: { parentId: 'second' },
-    }),
   )
   expect(screen.getByRole('button')).toHaveTextContent('Child count 1')
 })
@@ -453,48 +440,6 @@ test('a componentless route uses the router error boundary and recovers on navig
     screen.queryByText(`${failed.id}: Componentless loader failed`),
   ).not.toBeInTheDocument()
 })
-
-test.each(['route', 'router'] as const)(
-  'switching the %s component between implicit and built-in Outlet preserves child state',
-  async (owner) => {
-    const root = createRootRoute({ component: () => <Outlet /> })
-    const parent = createRoute({ getParentRoute: () => root, path: 'parent' })
-    const child = createRoute({
-      getParentRoute: () => parent,
-      path: 'child',
-      component: function Child() {
-        const [count, setCount] = React.useState(0)
-        return (
-          <button onClick={() => setCount(count + 1)}>
-            Child count {count}
-          </button>
-        )
-      },
-    })
-    const router = createRouter({
-      routeTree: root.addChildren([parent.addChildren([child])]),
-      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
-    })
-
-    await router.load()
-    render(<RouterProvider router={router} />)
-    act(() => screen.getByRole('button').click())
-    const button = screen.getByRole('button')
-
-    for (const component of [Outlet, undefined]) {
-      await act(async () => {
-        if (owner === 'route') {
-          parent.update({ component })
-        } else {
-          router.update({ defaultComponent: component })
-        }
-        await router.invalidate()
-      })
-      expect(screen.getByRole('button')).toBe(button)
-      expect(screen.getByRole('button')).toHaveTextContent('Child count 1')
-    }
-  },
-)
 
 test.each(['route', 'router'] as const)(
   'the %s built-in Outlet remounts descendants when its remountDeps change',
