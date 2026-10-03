@@ -1830,10 +1830,13 @@ export class RouterCore<
     // })
 
     // Accumulate search validation through route chain
-    const accumulatedSearch = { ...location.search }
+    let accumulatedSearch = { ...location.search }
     for (const route of matchedRoutes) {
+      if (!route.options.validateSearch) {
+        continue
+      }
       try {
-        Object.assign(
+        accumulatedSearch = assignSearch(
           accumulatedSearch,
           validateSearch(route.options.validateSearch, accumulatedSearch),
         )
@@ -2077,11 +2080,11 @@ export class RouterCore<
       const fromSearch = () => {
         let search = currentMatch()[2 /* search */]
         if (opts._includeValidateSearch && this.options.search?.strict) {
-          const validatedSearch = {}
+          let validatedSearch = {}
           destRoutes.forEach((route) => {
             if (route.options.validateSearch) {
               try {
-                Object.assign(
+                validatedSearch = assignSearch(
                   validatedSearch,
                   validateSearch(route.options.validateSearch, {
                     ...validatedSearch,
@@ -2841,6 +2844,13 @@ export function getInitialRouterState(
     location,
     matches: [],
   }
+}
+
+function assignSearch(target: Record<string, unknown>, source: unknown) {
+  // Only an own __proto__ key needs a copy that bypasses the inherited setter.
+  return source && hasOwn.call(source, '__proto__')
+    ? { ...target, ...(source as Record<string, unknown>) }
+    : Object.assign(target, source)
 }
 
 function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
