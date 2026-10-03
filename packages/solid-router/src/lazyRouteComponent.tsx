@@ -7,12 +7,11 @@ import type { AsyncRouteComponent } from './route'
 export function lazyRouteComponent<
   T extends Record<string, any>,
   TKey extends keyof T = 'default',
+  TProps = T[TKey] extends (props: infer P) => any ? P : unknown,
 >(
   importer: () => Promise<T>,
   exportName?: TKey,
-): T[TKey] extends (props: infer TProps) => any
-  ? AsyncRouteComponent<TProps>
-  : never {
+): AsyncRouteComponent<TProps> {
   let loadPromise: Promise<any> | undefined
   let comp: T[TKey] | T['default']
   let error: any
