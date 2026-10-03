@@ -39,4 +39,12 @@ describe('ssr match id codec', () => {
 
     expect(hydrateSsrMatchId(normalized)).toBe('/posts/1')
   })
+
+  it('dehydrates ids longer than the cache length limit', () => {
+    const id = `/${'a'.repeat(5000)}/posts`
+    const dehydratedId = dehydrateSsrMatchId(id)
+
+    expect(dehydratedId).not.toContain('/')
+    expect(hydrateSsrMatchId(dehydratedId)).toBe(id)
+  })
 })
