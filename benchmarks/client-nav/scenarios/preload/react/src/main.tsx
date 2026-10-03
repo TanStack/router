@@ -38,3 +38,5 @@ export function mountTestApp(container: HTMLElement, history: RouterHistory) {
     },
   }
 }
+
+export { mountIntentLinks } from './intent-links'
