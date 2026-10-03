@@ -82,6 +82,8 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   resolvedLocation: RouterWritableStore<
     ParsedLocation<FullSearchSchema<TRouteTree>> | undefined
   >
+  /** Canonical published membership; `ids` is its framework-reactive projection. */
+  presentationIds: Array<string>
   ids: RouterWritableStore<Array<string>>
   matches: ReadableStore<Array<AnyRouteMatch>>
   __store: RouterReadableStore<RouterState<TRouteTree>>
@@ -150,6 +152,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     location,
     locationSource,
     resolvedLocation,
+    presentationIds: ids.get(),
     ids,
 
     // derived
@@ -173,10 +176,12 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     nextMatches: Array<AnyRouteMatch>,
     presentationLocation: ParsedLocation<any> = location.get(),
   ) {
-    const previousIds = ids.get()
+    const previousIds = store.presentationIds
     const nextIds = nextMatches.map((match) => match.routeId)
 
     batch(() => {
+      // Native transitions can stage `ids` while plain visit ownership advances.
+      store.presentationIds = nextIds
       // Publish lane membership first so framework trees reconcile departures
       // before observers of a leaving route receive its tombstone.
       if (!arraysEqual(previousIds, nextIds)) {

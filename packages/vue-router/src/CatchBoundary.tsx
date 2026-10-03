@@ -1,4 +1,6 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
+import { routerContext } from './routerContext'
 import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 
@@ -18,20 +20,33 @@ const VueErrorBoundary = Vue.defineComponent({
     errorComponent: null,
   },
   setup(props) {
-    const error = Vue.shallowRef<[unknown] | 0>(0)
+    const error =
+      (isServer ??
+      Vue.inject(routerContext, null)?.[0].isServer ??
+      typeof window === 'undefined')
+        ? { value: 0 as [unknown] | 0 }
+        : Vue.shallowRef<[unknown] | 0>(0)
 
     const reset = () => {
       error.value = 0
     }
 
-    Vue.watch(
-      () => props.resetKey,
-      () => {
-        if (error.value) {
-          reset()
-        }
-      },
-    )
+    if (
+      !(
+        isServer ??
+        Vue.inject(routerContext, null)?.[0].isServer ??
+        typeof window === 'undefined'
+      )
+    ) {
+      Vue.watch(
+        () => props.resetKey,
+        () => {
+          if (error.value) {
+            reset()
+          }
+        },
+      )
+    }
 
     Vue.onErrorCaptured((err: unknown) => {
       if (
@@ -90,7 +105,12 @@ export const ErrorComponent = Vue.defineComponent({
     reset: Function,
   },
   setup(props) {
-    const show = Vue.ref(process.env.NODE_ENV !== 'production')
+    const show =
+      (isServer ??
+      Vue.inject(routerContext, null)?.[0].isServer ??
+      typeof window === 'undefined')
+        ? { value: process.env.NODE_ENV !== 'production' }
+        : Vue.ref(process.env.NODE_ENV !== 'production')
 
     const toggleShow = () => {
       show.value = !show.value

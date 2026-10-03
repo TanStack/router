@@ -3,9 +3,9 @@ import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
-import { useRouter } from './useRouter'
+import { useRouter, useRouterContext } from './useRouter'
 import { CatchNotFound, getNotFound } from './not-found'
-import { nearestMatchContext } from './matchContext'
+import { routerContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
@@ -14,8 +14,10 @@ import {
   nonRouteComponentContext,
   renderInNonRouteComponentContext,
 } from './nonRouteComponentContext'
+import type { RouterContextValue } from './routerContext'
 import type {
   AnyRoute,
+  AnyRouteMatch,
   AnyRouter,
   RootRouteOptions,
 } from '@tanstack/router-core'
@@ -34,11 +36,16 @@ const renderScrollRestoration =
 export const Match = (props: { routeId: string }) => {
   const router = useRouter()
 
-  const currentMatch = Solid.createMemo(
-    () => router.stores.byRoute.get(props.routeId)!.get()!,
-  )
-
-  const nearestMatch = [() => props.routeId, currentMatch] as const
+  const matchStore = router.stores.getMatchStore(props.routeId)
+  let currentMatch: Solid.Accessor<AnyRouteMatch>
+  if (isServer ?? router.isServer) {
+    const match = matchStore.get()!
+    currentMatch = () => match
+  } else {
+    currentMatch = Solid.createMemo(() => matchStore.get()!)
+  }
+  // Match lifetime owns this visit's core source, including retained outgoing UI.
+  const context: RouterContextValue = [...matchStore.location!, currentMatch]
 
   const route: AnyRoute = router.routesById[props.routeId]
 
@@ -95,8 +102,8 @@ export const Match = (props: { routeId: string }) => {
   )
 
   return (
-    <ShellComponent>
-      <nearestMatchContext.Provider value={nearestMatch}>
+    <routerContext.Provider value={context}>
+      <ShellComponent>
         <Solid.Suspense
           fallback={(() => {
             // Data-only SSR renders the inner fallback on the server, so
@@ -188,18 +195,17 @@ export const Match = (props: { routeId: string }) => {
             </Dynamic>
           </Dynamic>
         </Solid.Suspense>
-      </nearestMatchContext.Provider>
-
-      {renderScrollRestoration?.(router, route)}
-    </ShellComponent>
+        {renderScrollRestoration?.(router, route)}
+      </ShellComponent>
+    </routerContext.Provider>
   )
 }
 
 export const MatchInner = (): any => {
   const router = useRouter()
-  const nearestMatch = Solid.useContext(nearestMatchContext)
-  const match = nearestMatch[1 /* match */]
-  const routeId = nearestMatch[0 /* route id */]
+  const context = useRouterContext()
+  const match = context[3 /* match */]!
+  const routeId = () => context[2 /* route id */]
   const route = router.routesById[routeId()!]!
   const currentMatch = () => match()!
 
@@ -300,9 +306,9 @@ export const Outlet = () => {
   }
 
   const router = useRouter()
-  const nearestParentMatch = Solid.useContext(nearestMatchContext)
-  const parentMatch = nearestParentMatch[1 /* match */]
-  const routeId = nearestParentMatch[0 /* route id */]
+  const context = useRouterContext()
+  const parentMatch = context[3 /* match */]!
+  const routeId = () => context[2 /* route id */]
   const route = router.routesById[routeId()!]!
 
   const childRouteId = () => {

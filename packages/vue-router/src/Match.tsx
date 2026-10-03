@@ -4,9 +4,9 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
-import { useRouter } from './useRouter'
+import { useRouter, useRouterContext } from './useRouter'
 import { CatchNotFound } from './not-found'
-import { routeIdContext } from './matchContext'
+import { routerContext } from './routerContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import {
@@ -29,14 +29,13 @@ export const Match = Vue.defineComponent({
 
     const routeId = props.routeId
 
-    const activeMatch = useSelector(
-      router.stores.getMatchStore(routeId),
-      (value) => value,
-      { compare: Object.is },
-    )
-    // Provide routeId context (stable string) for children.
-    // MatchInner, Outlet, and useMatch all consume this.
-    Vue.provide(routeIdContext, routeId)
+    const matchStore = router.stores.getMatchStore(routeId)
+    const activeMatch =
+      (isServer ?? router.isServer)
+        ? Vue.toRef(() => matchStore.get())
+        : useSelector(matchStore, (value) => value, { compare: Object.is })
+    // Shell, fallback and route children share this keyed visit's source.
+    Vue.provide(routerContext, matchStore.location!)
 
     return (): VNode => {
       const match = activeMatch.value
@@ -154,13 +153,16 @@ export const MatchInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    // Use routeId from context (provided by parent Match) — stable string.
-    const routeId = Vue.inject(routeIdContext)!
-    const activeMatch = useSelector(router.stores.getMatchStore(routeId))
+    const routeId = useRouterContext()![2]!
+    const matchStore = router.stores.getMatchStore(routeId)
+    const activeMatch =
+      (isServer ?? router.isServer)
+        ? Vue.toRef(() => matchStore.get())
+        : useSelector(matchStore)
 
     // Combined selector for match state AND remount key
     // This ensures both are computed in the same selector call with consistent data
-    const combinedState = Vue.computed(() => {
+    const getCombinedState = () => {
       const match = activeMatch.value
       if (!match) {
         // Route no longer exists - truly navigating away
@@ -186,7 +188,11 @@ export const MatchInner = Vue.defineComponent({
         : undefined
 
       return [match, remountKey] as const
-    })
+    }
+    const combinedState =
+      (isServer ?? router.isServer)
+        ? Vue.toRef(getCombinedState)
+        : Vue.computed(getCombinedState)
 
     return (): VNode | null => {
       // If match doesn't exist, return null (component is being unmounted or not ready)
@@ -275,7 +281,11 @@ export const MatchInner = Vue.defineComponent({
 export const Outlet = Vue.defineComponent({
   name: 'Outlet',
   setup() {
-    if (process.env.NODE_ENV !== 'production') {
+    const router = useRouter()
+    if (
+      !(isServer ?? router.isServer) &&
+      process.env.NODE_ENV !== 'production'
+    ) {
       const nonRouteComponent = Vue.inject(nonRouteComponentContext!, undefined)
       if (nonRouteComponent) {
         Vue.watch(
@@ -290,19 +300,28 @@ export const Outlet = Vue.defineComponent({
       }
     }
 
-    const router = useRouter()
-    const parentRouteId = Vue.inject(routeIdContext)!
+    const parentRouteId = useRouterContext()![2]!
 
-    const parentMatch = useSelector(router.stores.getMatchStore(parentRouteId))
+    const parentStore = router.stores.getMatchStore(parentRouteId)
+    const parentMatch =
+      (isServer ?? router.isServer)
+        ? Vue.toRef(() => parentStore.get())
+        : useSelector(parentStore)
 
     const route = router.routesById[parentRouteId]!
 
-    const childRouteId = useSelector(router.stores.matches, (matches) => {
+    const selectChildRouteId = (
+      matches: ReturnType<typeof router.stores.matches.get>,
+    ) => {
       const index = matches.findIndex(
         (match) => match.routeId === parentRouteId,
       )
       return matches[index + 1]?.routeId
-    })
+    }
+    const childRouteId =
+      (isServer ?? router.isServer)
+        ? Vue.toRef(() => selectChildRouteId(router.stores.matches.get()))
+        : useSelector(router.stores.matches, selectChildRouteId)
 
     return (): VNode | null => {
       if (parentMatch.value?._notFound) {

@@ -2044,7 +2044,7 @@ export async function loadClientRoute(
   router.batch(() => {
     router.stores.status.set('pending')
     router.stores.location.set(location)
-    for (const id of router.stores.ids.get()) {
+    for (const id of router.stores.presentationIds) {
       if (router._tx !== tx) {
         break
       }

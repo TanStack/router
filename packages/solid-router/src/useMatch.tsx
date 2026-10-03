@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'
-import { nearestMatchContext } from './matchContext'
-import { useRouter } from './useRouter'
+import { isServer } from '@tanstack/router-core/isServer'
+import { useRouterContext } from './useRouter'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -72,16 +72,27 @@ export function useMatch<
 ): Solid.Accessor<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  const router = useRouter<TRouter>()
-  const contextMatch = Solid.useContext(nearestMatchContext)
-  const nearestMatch = opts.from ? undefined : contextMatch
+  const context = useRouterContext()
+  const router = context[0] as TRouter
+  const nearestMatch = opts.from ? undefined : context[3 /* match */]
 
   const match = () => {
     if (opts.from) {
       return router.stores.getMatchStore(opts.from).get()
     }
 
-    return nearestMatch?.[1 /* match */]()
+    return nearestMatch?.()
+  }
+
+  if (isServer ?? router.isServer) {
+    const selectedMatch = match()
+    const selected =
+      selectedMatch === undefined
+        ? undefined
+        : opts.select
+          ? opts.select(selectedMatch)
+          : selectedMatch
+    return (() => selected) as any
   }
 
   Solid.createEffect(() => {
@@ -108,7 +119,9 @@ export function useMatch<
     }
 
     const res = opts.select ? opts.select(selectedMatch) : selectedMatch
-    if (prev === undefined) return res as TSelected
+    if (prev === undefined) {
+      return res as TSelected
+    }
     return replaceEqualDeep(prev, res) as TSelected
   }) as any
 }

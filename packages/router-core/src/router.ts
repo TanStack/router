@@ -1374,7 +1374,7 @@ export class RouterCore<
       // Existing stores hold the location parsed with the previous rewrite.
       this.batch(() => {
         this.stores.location.set(this.latestLocation)
-        for (const routeId of this.stores.ids.get()) {
+        for (const routeId of this.stores.presentationIds) {
           this.stores.byRoute
             .get(routeId)!
             .location?.[1]?.set(this.latestLocation)

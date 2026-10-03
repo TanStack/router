@@ -14,15 +14,17 @@ import {
 
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
-import { useRouter } from './useRouter'
+import { useRouterContext } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
 import { useHydrated } from './ClientOnly'
 import type {
+  ActiveOptions,
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -46,7 +48,7 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
-  const router = useRouter()
+  const [router, source] = useRouterContext()
   const [local, rest] = Solid.splitProps(
     Solid.mergeProps(
       {
@@ -124,111 +126,44 @@ export function useLinkProps<
     'href',
   ])
 
-  const currentLocation = Solid.createMemo(
-    () => router.stores.location.get(),
-    undefined,
-    { equals: (prev, next) => prev.href === next.href },
-  )
+  // Server rendering uses direct snapshots before any native reactive setup.
+  if (isServer ?? router.isServer) {
+    return getServerLinkProps(router, options, local, propsSafeToSpread)
+  }
 
+  const currentLocation = () => source!.get()
   const next = Solid.createMemo(() => {
-    // Rebuild when inherited search/hash or the current route context changes.
     const _fromLocation = currentLocation()
-    const nextOptions = { _fromLocation, ...options } as any
-    // untrack because router-core will also access stores, which are signals in solid
+    const nextOptions = { ...options, _fromLocation } as any
+    // Core store reads and user updaters are not incidental Solid dependencies.
     return Solid.untrack(() => router.buildLocation(nextOptions))
   })
 
-  const hrefOption = Solid.createMemo(() => {
-    if (options.disabled) return undefined
-    // Use publicHref - it contains the correct href for display
-    // When a rewrite changes the origin, publicHref is the full URL
-    // Otherwise it's the origin-stripped path
-    // This avoids constructing URL objects in the hot path
-    const location = next().maskedLocation ?? next()
-    const publicHref = location.publicHref
-    const external = location.external
-
-    const href = external
-      ? publicHref
-      : router.history.createHref(publicHref) || '/'
-    if (
-      (external || href !== publicHref) &&
-      isDangerousProtocol(href, router.protocolAllowlist)
-    ) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn(`Blocked Link with dangerous protocol: ${href}`)
-      }
-      return undefined
-    }
-
-    return href
-  })
-
-  const externalLink = Solid.createMemo(() => {
-    const to = options.to
-    const scheme = typeof to === 'string' && getUrlScheme(to)
-    if (scheme) {
-      if (!router.protocolAllowlist.has(scheme)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Blocked Link with dangerous protocol: ${to}`)
-        }
-        return null
-      }
-      return to
-    }
-
-    const _href = hrefOption()
-    if (!_href && !options.disabled) {
-      return null
-    }
-    return _href && getUrlScheme(_href) ? _href : undefined
-  })
-
+  const hrefOption = Solid.createMemo(() =>
+    getHrefOption(next(), router, local.disabled),
+  )
+  const externalLink = Solid.createMemo(() =>
+    resolveExternalLink(
+      local.to as string | undefined,
+      hrefOption(),
+      local.disabled,
+      router,
+    ),
+  )
   const shouldHydrateHash = !isServer && !!router.options.ssr
-  const hasHydrated = (isServer ?? router.isServer) ? undefined : useHydrated()
-
+  const hasHydrated = useHydrated()
   const isActive = Solid.createMemo(() => {
     if (externalLink() !== undefined) {
       return false
     }
     const activeOptions = local.activeOptions
-    const current = currentLocation()
-    const nextLocation = next()
-
-    const currentPath = removeTrailingSlash(current.pathname, router.basepath)
-    const nextPath = removeTrailingSlash(nextLocation.pathname, router.basepath)
-
-    // Both modes compare normalized paths; fuzzy matches need a segment boundary.
-    if (
-      activeOptions?.exact
-        ? currentPath !== nextPath
-        : !(
-            currentPath.startsWith(nextPath) &&
-            (currentPath.length === nextPath.length ||
-              currentPath[nextPath.length] === '/')
-          )
-    ) {
-      return false
-    }
-
-    if (activeOptions?.includeSearch ?? true) {
-      const searchTest = deepEqual(
-        current.search,
-        nextLocation.search,
-        !activeOptions?.exact,
-        activeOptions?.explicitUndefined,
-      )
-      if (!searchTest) {
-        return false
-      }
-    }
-
-    if (activeOptions?.includeHash) {
-      const currentHash =
-        shouldHydrateHash && !hasHydrated?.() ? '' : current.hash
-      return currentHash === nextLocation.hash
-    }
-    return true
+    return resolveIsActive(
+      currentLocation(),
+      next(),
+      activeOptions,
+      router.basepath,
+      !activeOptions?.includeHash || !shouldHydrateHash || hasHydrated(),
+    )
   })
 
   const simpleStyling = Solid.createMemo(
@@ -238,79 +173,6 @@ export function useLinkProps<
       local.class === undefined &&
       local.style === undefined,
   )
-
-  type ResolvedLinkStateProps = Omit<Solid.ComponentProps<'a'>, 'style'> & {
-    style?: Solid.JSX.CSSProperties
-  }
-
-  const resolveLinkStateProps = (
-    base: Solid.ComponentProps<'a'> & { disabled?: boolean },
-  ) => {
-    const active = isActive()
-
-    if (simpleStyling()) {
-      return {
-        ...base,
-        ...(active && STATIC_DEFAULT_ACTIVE_ATTRIBUTES),
-      }
-    }
-
-    const stateProps: ResolvedLinkStateProps =
-      functionalUpdate(active ? local.activeProps : local.inactiveProps, {}) ??
-      EMPTY_OBJECT
-    const baseStyle = local.style
-    const stateStyle = stateProps.style
-    // Snapshot reactive style properties so in-place updates remain observable.
-    const style =
-      baseStyle || stateStyle ? { ...baseStyle, ...stateStyle } : undefined
-    const baseClass = local.class
-    const stateClass = stateProps.class
-    const className = baseClass
-      ? stateClass
-        ? `${baseClass} ${stateClass}`
-        : baseClass
-      : stateClass
-
-    return {
-      ...base,
-      ...stateProps,
-      // State props can override element props, but not routing options.
-      href: base.href,
-      disabled: base.disabled,
-      target: base.target,
-      ...(style && hasKeys(style) && { style }),
-      ...(className && { class: className }),
-      ...(active && STATIC_ACTIVE_ATTRIBUTES),
-    } as ResolvedLinkStateProps
-  }
-
-  // Keep the guard inline so browser builds can drop the server return.
-  if (isServer ?? router.isServer) {
-    const external = externalLink()
-    const disabled = local.disabled || external === null
-    const props = resolveLinkStateProps({
-      onClick: local.onClick,
-      onBlur: local.onBlur,
-      onFocus: local.onFocus,
-      onMouseEnter: local.onMouseEnter,
-      onMouseLeave: local.onMouseLeave,
-      onMouseOut: local.onMouseOut,
-      onMouseOver: local.onMouseOver,
-      onTouchStart: local.onTouchStart,
-      href: external === null ? undefined : external || hrefOption(),
-      ref: options.ref,
-      disabled,
-      target: local.target,
-      ...(disabled && STATIC_DISABLED_PROPS),
-    })
-    // Avoid creating merged-prop getters for absent server event handlers.
-    for (const key of STATIC_EVENT_PROPS) {
-      if (props[key] === undefined) {
-        delete props[key]
-      }
-    }
-    return Solid.mergeProps(propsSafeToSpread, props) as any
-  }
 
   let hasRenderFetched = false
 
@@ -329,7 +191,10 @@ export function useLinkProps<
 
   const doPreload = () =>
     router
-      .preloadRoute(options as Parameters<typeof router.preloadRoute>[0])
+      .preloadRoute({
+        ...options,
+        _fromLocation: currentLocation(),
+      } as Parameters<typeof router.preloadRoute>[0])
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -415,6 +280,7 @@ export function useLinkProps<
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
         ...options,
+        _fromLocation: currentLocation(),
         replace: local.replace,
         resetScroll: local.resetScroll,
         hashScrollIntoView: local.hashScrollIntoView,
@@ -426,7 +292,9 @@ export function useLinkProps<
   }
 
   const handleTouchStart = () => {
-    if (preload() !== 'intent') return
+    if (preload() !== 'intent') {
+      return
+    }
     doPreload()
   }
 
@@ -477,10 +345,214 @@ export function useLinkProps<
       ...(disabled && STATIC_DISABLED_PROPS),
     }
 
-    return resolveLinkStateProps(base)
+    return resolveLinkStateProps(base, local, isActive(), simpleStyling())
   })
 
   return Solid.mergeProps(propsSafeToSpread, resolvedProps) as any
+}
+
+type RuntimeLinkOptions = Omit<Solid.ComponentProps<'a'>, 'style'> &
+  ActiveLinkOptionProps<'a'> & {
+    style?: Solid.JSX.CSSProperties
+    to?: string
+    disabled?: boolean
+    activeOptions?: ActiveOptions
+  }
+
+type ResolvedLinkStateProps = Omit<Solid.ComponentProps<'a'>, 'style'> & {
+  style?: Solid.JSX.CSSProperties
+}
+
+function resolveLinkStateProps(
+  base: Solid.ComponentProps<'a'> & { disabled?: boolean },
+  options: Pick<
+    RuntimeLinkOptions,
+    'activeProps' | 'inactiveProps' | 'class' | 'style'
+  >,
+  active: boolean,
+  simpleStyling = options.activeProps === STATIC_ACTIVE_PROPS_GET &&
+    options.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
+    options.class === undefined &&
+    options.style === undefined,
+) {
+  if (simpleStyling) {
+    return { ...base, ...(active && STATIC_DEFAULT_ACTIVE_ATTRIBUTES) }
+  }
+  const stateProps: ResolvedLinkStateProps =
+    functionalUpdate(
+      active ? options.activeProps : options.inactiveProps,
+      {},
+    ) ?? EMPTY_OBJECT
+  const baseStyle = options.style
+  const stateStyle = stateProps.style
+  // Snapshot reactive style properties so in-place updates remain observable.
+  const style =
+    baseStyle || stateStyle ? { ...baseStyle, ...stateStyle } : undefined
+  const baseClass = options.class
+  const stateClass = stateProps.class
+  const className = baseClass
+    ? stateClass
+      ? `${baseClass} ${stateClass}`
+      : baseClass
+    : stateClass
+
+  return {
+    ...base,
+    ...stateProps,
+    // State props can override element props, but not routing options.
+    href: base.href,
+    disabled: base.disabled,
+    target: base.target,
+    ...(style && hasKeys(style) && { style }),
+    ...(className && { class: className }),
+    ...(active && STATIC_ACTIVE_ATTRIBUTES),
+  } as ResolvedLinkStateProps
+}
+
+function getHrefOption(
+  location: ParsedLocation,
+  router: AnyRouter,
+  disabled?: boolean,
+) {
+  if (disabled) {
+    return undefined
+  }
+  const next = location.maskedLocation ?? location
+  const publicHref = next.publicHref
+  const href = next.external
+    ? publicHref
+    : router.history.createHref(publicHref) || '/'
+  if (
+    (next.external || href !== publicHref) &&
+    isDangerousProtocol(href, router.protocolAllowlist)
+  ) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`Blocked Link with dangerous protocol: ${href}`)
+    }
+    return undefined
+  }
+  return href
+}
+
+function resolveExternalLink(
+  to: string | undefined,
+  href: string | undefined,
+  disabled: boolean | undefined,
+  router: AnyRouter,
+) {
+  const scheme = typeof to === 'string' && getUrlScheme(to)
+  if (scheme) {
+    if (!router.protocolAllowlist.has(scheme)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${to}`)
+      }
+      return null
+    }
+    return to
+  }
+  if (!href && !disabled) {
+    return null
+  }
+  return href && getUrlScheme(href) ? href : undefined
+}
+
+function resolveIsActive(
+  current: ParsedLocation,
+  next: ParsedLocation,
+  activeOptions: ActiveOptions | undefined,
+  basepath: string,
+  hashHydrated: boolean,
+) {
+  const currentPath = removeTrailingSlash(current.pathname, basepath)
+  const nextPath = removeTrailingSlash(next.pathname, basepath)
+  if (
+    activeOptions?.exact
+      ? currentPath !== nextPath
+      : !(
+          currentPath.startsWith(nextPath) &&
+          (currentPath.length === nextPath.length ||
+            currentPath[nextPath.length] === '/')
+        )
+  ) {
+    return false
+  }
+  if (
+    (activeOptions?.includeSearch ?? true) &&
+    !deepEqual(
+      current.search,
+      next.search,
+      !activeOptions?.exact,
+      activeOptions?.explicitUndefined,
+    )
+  ) {
+    return false
+  }
+  if (activeOptions?.includeHash) {
+    return (hashHydrated ? current.hash : '') === next.hash
+  }
+  return true
+}
+
+function getServerLinkProps(
+  router: AnyRouter,
+  options: RuntimeLinkOptions,
+  local: Pick<
+    RuntimeLinkOptions,
+    | 'to'
+    | 'disabled'
+    | 'activeOptions'
+    | 'target'
+    | 'activeProps'
+    | 'inactiveProps'
+    | 'class'
+    | 'style'
+    | (typeof STATIC_EVENT_PROPS)[number]
+  >,
+  propsSafeToSpread: Solid.ComponentProps<'a'>,
+) {
+  const current = router.stores.location.get()
+  const next = router.buildLocation({
+    ...options,
+    _fromLocation: current,
+  } as any)
+  const href = getHrefOption(next, router, local.disabled)
+  const external = resolveExternalLink(local.to, href, local.disabled, router)
+  const disabled = local.disabled || external === null
+  const active =
+    external === undefined &&
+    resolveIsActive(
+      current,
+      next,
+      local.activeOptions,
+      router.basepath,
+      !(!isServer && !!router.options.ssr),
+    )
+  const props = resolveLinkStateProps(
+    {
+      onClick: local.onClick,
+      onBlur: local.onBlur,
+      onFocus: local.onFocus,
+      onMouseEnter: local.onMouseEnter,
+      onMouseLeave: local.onMouseLeave,
+      onMouseOut: local.onMouseOut,
+      onMouseOver: local.onMouseOver,
+      onTouchStart: local.onTouchStart,
+      href: external === null ? undefined : external || href,
+      ref: options.ref,
+      disabled,
+      target: local.target,
+      ...(disabled && STATIC_DISABLED_PROPS),
+    },
+    local,
+    active,
+  )
+  // Preserve the existing absent-handler server prop shape.
+  for (const key of STATIC_EVENT_PROPS) {
+    if (props[key] === undefined) {
+      delete props[key]
+    }
+  }
+  return Solid.mergeProps(propsSafeToSpread, props) as any
 }
 
 const STATIC_EVENT_PROPS = [
@@ -530,7 +602,9 @@ function createComposedHandler<T, TEvent extends Event>(
 ) {
   return (event: TEvent & { currentTarget: T; target: Element }) => {
     const handler = getHandler()
-    if (!handler || !callHandler(event, handler)) fallback(event)
+    if (!handler || !callHandler(event, handler)) {
+      fallback(event)
+    }
   }
 }
 

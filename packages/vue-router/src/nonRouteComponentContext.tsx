@@ -1,4 +1,6 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
+import { routerContext } from './routerContext'
 
 export type NonRouteComponent =
   | 'pendingComponent'
@@ -8,7 +10,7 @@ export type NonRouteComponent =
 export const nonRouteComponentContext =
   process.env.NODE_ENV !== 'production'
     ? (Symbol('nonRouteComponentContext') as Vue.InjectionKey<
-        Vue.ComputedRef<NonRouteComponent>
+        Readonly<Vue.Ref<NonRouteComponent>>
       >)
     : undefined
 
@@ -25,7 +27,11 @@ const NonRouteComponentContextProvider =
         setup(props, { slots }) {
           Vue.provide(
             nonRouteComponentContext!,
-            Vue.computed(() => props.value),
+            (isServer ??
+              Vue.inject(routerContext, null)?.[0].isServer ??
+              typeof window === 'undefined')
+              ? Vue.toRef(() => props.value)
+              : Vue.computed(() => props.value),
           )
           return () => slots.default?.()
         },
