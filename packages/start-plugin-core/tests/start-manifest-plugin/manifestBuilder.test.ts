@@ -735,6 +735,62 @@ describe('buildStartManifest', () => {
     ])
   })
 
+  test('preloads the transitive static imports of route and entry chunks', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      imports: ['runtime.js'],
+    })
+    const runtimeChunk = makeChunk({
+      fileName: 'runtime.js',
+      imports: ['react.js'],
+    })
+    const reactChunk = makeChunk({ fileName: 'react.js' })
+    const aboutRouteChunk = makeChunk({
+      fileName: 'about.js',
+      imports: ['list.js', 'runtime.js'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+    const listChunk = makeChunk({
+      fileName: 'list.js',
+      imports: ['query.js', 'runtime.js'],
+      dynamicImports: ['lazy.js'],
+    })
+    const queryChunk = makeChunk({
+      fileName: 'query.js',
+      imports: ['list.js'],
+    })
+    const lazyChunk = makeChunk({ fileName: 'lazy.js' })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'runtime.js': runtimeChunk,
+        'react.js': reactChunk,
+        'about.js': aboutRouteChunk,
+        'list.js': listChunk,
+        'query.js': queryChunk,
+        'lazy.js': lazyChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes.__root__!.preloads).toEqual([
+      '/assets/entry.js',
+      '/assets/runtime.js',
+      '/assets/react.js',
+    ])
+    expect(manifest.routes['/about']!.preloads).toEqual([
+      '/assets/about.js',
+      '/assets/list.js',
+      '/assets/query.js',
+    ])
+  })
+
   test('does not add unrelated Hydrate CSS from the global entry graph to root', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
