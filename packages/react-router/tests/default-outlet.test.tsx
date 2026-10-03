@@ -155,12 +155,13 @@ test.each([true, false, 'data-only'] as const)(
     let root: ReturnType<typeof hydrateRoot> | undefined
     try {
       await hydrate(clientRouter)
-      await act(async () => {
+      await act(() => {
         root = hydrateRoot(
           container,
           <RouterProvider router={clientRouter} />,
           { onRecoverableError },
         )
+        return Promise.resolve()
       })
       await waitFor(() =>
         expect(
