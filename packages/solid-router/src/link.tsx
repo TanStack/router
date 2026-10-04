@@ -15,6 +15,7 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { useRouter } from './useRouter'
+import { nearestMatchContext } from './matchContext'
 
 import { useIntersectionObserver } from './utils'
 
@@ -124,11 +125,14 @@ export function useLinkProps<
     'href',
   ])
 
-  const currentLocation = Solid.createMemo(
-    () => router.stores.location.get(),
-    undefined,
-    { equals: (prev, next) => prev.href === next.href },
-  )
+  // Links build from the location their match presents, or else the live one.
+  const source =
+    Solid.useContext(nearestMatchContext)[2 /* link location */] ??
+    router.stores.location.get
+
+  const currentLocation = Solid.createMemo(source, undefined, {
+    equals: (prev, next) => prev.href === next.href,
+  })
 
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.
@@ -329,7 +333,10 @@ export function useLinkProps<
 
   const doPreload = () =>
     router
-      .preloadRoute(options as Parameters<typeof router.preloadRoute>[0])
+      .preloadRoute({
+        _fromLocation: source(),
+        ...options,
+      } as Parameters<typeof router.preloadRoute>[0])
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -414,6 +421,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
+        _fromLocation: source(),
         ...options,
         replace: local.replace,
         resetScroll: local.resetScroll,
