@@ -30,6 +30,10 @@ function laneLinkCounts(caseId: LaneCase): [layout: number, leaf: number] {
   }
 }
 
+// Measured Links opt out of preloading unless the router preloads on intent
+// (`mountLaneApp(..., { preload: 'intent' })`), the usual app configuration.
+let linkPreload: false | undefined = false
+
 const indexes = Array.from({ length: 1_000 }, (_, index) => index)
 
 function laneLink(caseId: LaneCase, index: number) {
@@ -48,7 +52,7 @@ function laneLink(caseId: LaneCase, index: number) {
         data-perf-link
         to="."
         search={search as any}
-        preload={false}
+        preload={linkPreload}
       >
         {label}
       </Link>
@@ -59,7 +63,7 @@ function laneLink(caseId: LaneCase, index: number) {
         to="/items/$itemId"
         params={{ itemId }}
         search={search as any}
-        preload={false}
+        preload={linkPreload}
       >
         {label}
       </Link>
@@ -69,7 +73,7 @@ function laneLink(caseId: LaneCase, index: number) {
   const target =
     index % 50 === 0 ? '/lane/a' : index % 50 === 1 ? '/lane/b' : undefined
   return target ? (
-    <Link key={index} data-perf-link to={target} preload={false}>
+    <Link key={index} data-perf-link to={target} preload={linkPreload}>
       {label}
     </Link>
   ) : (
@@ -78,7 +82,7 @@ function laneLink(caseId: LaneCase, index: number) {
       data-perf-link
       to="/items/$itemId"
       params={{ itemId }}
-      preload={false}
+      preload={linkPreload}
     >
       {label}
     </Link>
@@ -141,10 +145,16 @@ function createLaneRouter(caseId: LaneCase) {
       itemsRoute,
     ]),
     history: createMemoryHistory({ initialEntries: ['/lane/a'] }),
+    defaultPreload: linkPreload === false ? undefined : 'intent',
   })
 }
 
-export function mountLaneApp(container: HTMLElement, caseId: LaneCase) {
+export function mountLaneApp(
+  container: HTMLElement,
+  caseId: LaneCase,
+  options: { preload?: 'intent' } = {},
+) {
+  linkPreload = options.preload ? undefined : false
   const router = createLaneRouter(caseId)
   const app = Vue.createApp({
     render: () => <RouterProvider router={router} />,
