@@ -136,8 +136,11 @@ export function useLinkProps<
     return _href && getUrlScheme(_href) ? _href : undefined
   })
 
-  const shouldHydrateHash = !isServer && !!router.options.ssr
-  const hasHydrated = (isServer ?? router.isServer) ? undefined : useHydrated()
+  // Only a hydrating client renders the server's hash-less active state first.
+  const hasHydrated =
+    !(isServer ?? router.isServer) && router.options.ssr
+      ? useHydrated()
+      : undefined
 
   const isActive = Solid.createMemo(() => {
     if (externalLink() !== undefined) {
@@ -176,8 +179,7 @@ export function useLinkProps<
     }
 
     if (activeOptions?.includeHash) {
-      const currentHash =
-        shouldHydrateHash && !hasHydrated?.() ? '' : current.hash
+      const currentHash = hasHydrated && !hasHydrated() ? '' : current.hash
       return currentHash === nextLocation.hash
     }
     return true
