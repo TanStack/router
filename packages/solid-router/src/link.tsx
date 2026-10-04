@@ -50,67 +50,10 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
-  const [local, rest] = Solid.splitProps(
-    Solid.mergeProps(
-      {
-        activeProps: STATIC_ACTIVE_PROPS_GET,
-        inactiveProps: STATIC_INACTIVE_PROPS_GET,
-      },
-      options,
-    ),
-    [
-      'activeProps',
-      'inactiveProps',
-      'activeOptions',
-      'preload',
-      'preloadDelay',
-      'preloadIntentProximity',
-      'target',
-      'disabled',
-      'style',
-      'class',
-      'onClick',
-      'onBlur',
-      'onFocus',
-      'onMouseEnter',
-      'onMouseLeave',
-      'onMouseOver',
-      'onMouseOut',
-      'onTouchStart',
-    ],
-  )
-
-  // const {
-  //   // custom props
-  //   activeProps = () => ({ class: 'active' }),
-  //   inactiveProps = () => ({}),
-  //   activeOptions,
-  //   to,
-  //   preload: userPreload,
-  //   preloadDelay: userPreloadDelay,
-  //   hashScrollIntoView,
-  //   replace,
-  //   startTransition,
-  //   resetScroll,
-  //   viewTransition,
-  //   // element props
-  //   children,
-  //   target,
-  //   disabled,
-  //   style,
-  //   class,
-  //   onClick,
-  //   onFocus,
-  //   onMouseEnter,
-  //   onMouseLeave,
-  //   onTouchStart,
-  //   ignoreBlocker,
-  //   ...rest
-  // } = options
-
-  const [_, propsSafeToSpread] = Solid.splitProps(
-    rest,
-    NAVIGATION_KEYS as unknown as Array<keyof typeof rest>,
+  // Options are read directly: one props proxy, no merged-default getters.
+  const [, propsSafeToSpread] = Solid.splitProps(
+    options,
+    LINK_OPTION_KEYS as unknown as Array<keyof typeof options>,
   )
 
   // A live match never changes route, so read it once without tracking.
@@ -206,7 +149,7 @@ export function useLinkProps<
     if (externalLink() !== undefined) {
       return false
     }
-    const activeOptions = local.activeOptions
+    const activeOptions = options.activeOptions
     const current = currentLocation()
     const nextLocation = next()
 
@@ -248,10 +191,10 @@ export function useLinkProps<
 
   const simpleStyling = Solid.createMemo(
     () =>
-      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
-      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
-      local.class === undefined &&
-      local.style === undefined,
+      options.activeProps === undefined &&
+      options.inactiveProps === undefined &&
+      options.class === undefined &&
+      options.style === undefined,
   )
 
   type ResolvedLinkStateProps = Omit<Solid.ComponentProps<'a'>, 'style'> & {
@@ -271,14 +214,17 @@ export function useLinkProps<
     }
 
     const stateProps: ResolvedLinkStateProps =
-      functionalUpdate(active ? local.activeProps : local.inactiveProps, {}) ??
-      EMPTY_OBJECT
-    const baseStyle = local.style
+      functionalUpdate(
+        (active ? options.activeProps : options.inactiveProps) ??
+          (active ? STATIC_ACTIVE_PROPS : EMPTY_OBJECT),
+        {},
+      ) ?? EMPTY_OBJECT
+    const baseStyle = options.style
     const stateStyle = stateProps.style
     // Snapshot reactive style properties so in-place updates remain observable.
     const style =
       baseStyle || stateStyle ? { ...baseStyle, ...stateStyle } : undefined
-    const baseClass = local.class
+    const baseClass = options.class
     const stateClass = stateProps.class
     const className = baseClass
       ? stateClass
@@ -302,20 +248,20 @@ export function useLinkProps<
   // Keep the guard inline so browser builds can drop the server return.
   if (isServer ?? router.isServer) {
     const external = externalLink()
-    const disabled = local.disabled || external === null
+    const disabled = options.disabled || external === null
     const props = resolveLinkStateProps({
-      onClick: local.onClick,
-      onBlur: local.onBlur,
-      onFocus: local.onFocus,
-      onMouseEnter: local.onMouseEnter,
-      onMouseLeave: local.onMouseLeave,
-      onMouseOut: local.onMouseOut,
-      onMouseOver: local.onMouseOver,
-      onTouchStart: local.onTouchStart,
+      onClick: options.onClick,
+      onBlur: options.onBlur,
+      onFocus: options.onFocus,
+      onMouseEnter: options.onMouseEnter,
+      onMouseLeave: options.onMouseLeave,
+      onMouseOut: options.onMouseOut,
+      onMouseOver: options.onMouseOver,
+      onTouchStart: options.onTouchStart,
       href: external === null ? undefined : external || hrefOption(),
       ref: options.ref,
       disabled,
-      target: local.target,
+      target: options.target,
       ...(disabled && STATIC_DISABLED_PROPS),
     })
     // Avoid creating merged-prop getters for absent server event handlers.
@@ -333,14 +279,14 @@ export function useLinkProps<
     if (
       options.reloadDocument ||
       externalLink() !== undefined ||
-      local.disabled
+      options.disabled
     ) {
       return false
     }
-    return local.preload ?? router.options.defaultPreload
+    return options.preload ?? router.options.defaultPreload
   })
   const preloadDelay = () =>
-    local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
+    options.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const doPreload = () =>
     router.preloadRoute(dest()).catch((err: any) => {
@@ -411,10 +357,10 @@ export function useLinkProps<
       e.currentTarget as HTMLAnchorElement | SVGAElement
     ).getAttribute('target')
     const effectiveTarget =
-      local.target !== undefined ? local.target : elementTarget
+      options.target !== undefined ? options.target : elementTarget
 
     if (
-      !local.disabled &&
+      !options.disabled &&
       externalLink() === undefined &&
       !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
@@ -441,30 +387,33 @@ export function useLinkProps<
     }
   }
 
-  const onClick = createComposedHandler(() => local.onClick, handleClick)
-  const onBlur = createComposedHandler(() => local.onBlur, handleLeave)
-  const onFocus = createComposedHandler(() => local.onFocus, enqueuePreload)
+  const onClick = createComposedHandler(() => options.onClick, handleClick)
+  const onBlur = createComposedHandler(() => options.onBlur, handleLeave)
+  const onFocus = createComposedHandler(() => options.onFocus, enqueuePreload)
   const onMouseEnter = createComposedHandler(
-    () => local.onMouseEnter,
+    () => options.onMouseEnter,
     enqueuePreload,
   )
   const onMouseOver = createComposedHandler(
-    () => local.onMouseOver,
+    () => options.onMouseOver,
     enqueuePreload,
   )
   const onMouseLeave = createComposedHandler(
-    () => local.onMouseLeave,
+    () => options.onMouseLeave,
     handleLeave,
   )
-  const onMouseOut = createComposedHandler(() => local.onMouseOut, handleLeave)
+  const onMouseOut = createComposedHandler(
+    () => options.onMouseOut,
+    handleLeave,
+  )
   const onTouchStart = createComposedHandler(
-    () => local.onTouchStart,
+    () => options.onTouchStart,
     handleTouchStart,
   )
 
   const resolvedProps = Solid.createMemo(() => {
     const external = externalLink()
-    const disabled = local.disabled || external === null
+    const disabled = options.disabled || external === null
 
     const base = {
       href: external === null ? undefined : external || hrefOption(),
@@ -478,7 +427,7 @@ export function useLinkProps<
       onMouseOut,
       onTouchStart,
       disabled,
-      target: local.target,
+      target: options.target,
       ...(disabled && STATIC_DISABLED_PROPS),
     }
 
@@ -507,6 +456,28 @@ const NAVIGATION_KEYS = [
   'from',
   'href',
 ] as const
+// Options the Link consumes; every other option is an element prop.
+const LINK_OPTION_KEYS = [
+  ...NAVIGATION_KEYS,
+  'activeProps',
+  'inactiveProps',
+  'activeOptions',
+  'preload',
+  'preloadDelay',
+  'preloadIntentProximity',
+  'target',
+  'disabled',
+  'style',
+  'class',
+  'onClick',
+  'onBlur',
+  'onFocus',
+  'onMouseEnter',
+  'onMouseLeave',
+  'onMouseOver',
+  'onMouseOut',
+  'onTouchStart',
+]
 const STATIC_EVENT_PROPS = [
   'onClick',
   'onBlur',
@@ -518,9 +489,7 @@ const STATIC_EVENT_PROPS = [
   'onTouchStart',
 ] as const
 const STATIC_ACTIVE_PROPS = { class: 'active' }
-const STATIC_ACTIVE_PROPS_GET = () => STATIC_ACTIVE_PROPS
 const EMPTY_OBJECT = {}
-const STATIC_INACTIVE_PROPS_GET = () => EMPTY_OBJECT
 const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
   class: 'active',
   'data-status': 'active',
