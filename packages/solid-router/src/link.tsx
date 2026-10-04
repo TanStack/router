@@ -62,15 +62,9 @@ export function useLinkProps<
       'activeProps',
       'inactiveProps',
       'activeOptions',
-      'to',
       'preload',
       'preloadDelay',
       'preloadIntentProximity',
-      'hashScrollIntoView',
-      'replace',
-      'startTransition',
-      'resetScroll',
-      'viewTransition',
       'target',
       'disabled',
       'style',
@@ -83,7 +77,6 @@ export function useLinkProps<
       'onMouseOver',
       'onMouseOut',
       'onTouchStart',
-      'ignoreBlocker',
     ],
   )
 
@@ -433,15 +426,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ...dest(),
-        replace: local.replace,
-        resetScroll: local.resetScroll,
-        hashScrollIntoView: local.hashScrollIntoView,
-        startTransition: local.startTransition,
-        viewTransition: local.viewTransition,
-        ignoreBlocker: local.ignoreBlocker,
-      })
+      router.navigate(dest())
     }
   }
 
@@ -507,6 +492,12 @@ export function useLinkProps<
 const NAVIGATION_KEYS = [
   'to',
   'reloadDocument',
+  'replace',
+  'resetScroll',
+  'hashScrollIntoView',
+  'startTransition',
+  'viewTransition',
+  'ignoreBlocker',
   'params',
   'search',
   'hash',
