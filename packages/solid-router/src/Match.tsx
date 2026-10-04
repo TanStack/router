@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { _isRouteDeparting, rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -17,7 +17,6 @@ import {
 import type {
   AnyRoute,
   AnyRouter,
-  ParsedLocation,
   RootRouteOptions,
 } from '@tanstack/router-core'
 
@@ -39,24 +38,9 @@ export const Match = (props: { routeId: string }) => {
     () => router.stores.byRoute.get(props.routeId)!.get()!,
   )
 
-  const route: AnyRoute = router.routesById[props.routeId]
+  const nearestMatch = [() => props.routeId, currentMatch] as const
 
-  const nearestMatch = [
-    () => props.routeId,
-    currentMatch,
-    // A location publication whose navigation leaves this route keeps the
-    // location the route still presents, so its links do no work. The route
-    // unmounts when that navigation commits, and any other outcome publishes
-    // a newer location. Server links read the live location.
-    (isServer ?? router.isServer)
-      ? undefined
-      : Solid.createMemo((prev?: ParsedLocation) => {
-          const location = router.stores.location.get()
-          return prev && _isRouteDeparting(router, route.id, location)
-            ? prev
-            : location
-        }),
-  ] as const
+  const route: AnyRoute = router.routesById[props.routeId]
 
   // Lazy route option mutations become observable with the next client match
   // publication. Server stores are non-reactive and options load before render.

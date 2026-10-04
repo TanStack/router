@@ -372,7 +372,7 @@ describe('links in a departing match', () => {
     expect(t.isActive('a-self')).toBe(true)
   })
 
-  test('links mounting or changing in a departing match build from its held location', async () => {
+  test('links changing in a departing match keep its held location, links mounting in it read the pending one', async () => {
     const t = setup()
     await screen.findByText('A page')
     expect(t.href('a-dot')).toBe('/a')
@@ -381,9 +381,10 @@ describe('links in a departing match', () => {
 
     t.controls.setHash!('h')
     t.controls.setExtra!(true)
-    // Both build from the location the rest of the match still presents.
+    // A changing link builds from the location it held; a link mounting in a
+    // departing match has nothing to hold and reads the pending location.
     expect(t.href('a-dot')).toBe('/a#h')
-    expect(t.href('a-extra')).toBe('/a')
+    expect(t.href('a-extra')).toBe('/b')
     expect(t.isActive('a-self')).toBe(true)
 
     await t.start({ to: '/a', search: { x: 'one' } })
@@ -396,7 +397,7 @@ describe('links in a departing match', () => {
     expect(t.isActive('a-extra')).toBe(true)
   })
 
-  test('For churn in a departing match keeps building from its held location', async () => {
+  test('For churn in a departing match derives only the new link, from the pending location', async () => {
     const t = setup({ initial: '/a?x=one' })
     await screen.findByText('A page')
     expect(t.href('a-list-one')).toBe('/a?x=one&item=one')
@@ -406,10 +407,10 @@ describe('links in a departing match', () => {
     const list = t.counts.listUpdater
     t.controls.setList!(['two', 'three'])
     expect(screen.queryByTestId('a-list-one')).toBeNull()
-    // Only the new link derives, from the held location.
+    // Only the new link derives; it mounts without a held location.
     expect(t.counts.listUpdater).toBe(list + 1)
     expect(t.href('a-list-two')).toBe('/a?x=one&item=two')
-    expect(t.href('a-list-three')).toBe('/a?x=one&item=three')
+    expect(t.href('a-list-three')).toBe('/a?item=three')
 
     await t.release('b')
     await screen.findByText('B page')
@@ -521,6 +522,7 @@ describe('links in a departing match', () => {
   )
 
   test('a render preload of a link mounting in a departing match loads the location it displays', async () => {
+    // A link mounting in a departing match displays the pending location.
     const t = setup({ initial: '/a?x=one' })
     await screen.findByText('A page')
     t.gates.b = deferred()
@@ -529,8 +531,8 @@ describe('links in a departing match', () => {
 
     t.controls.setRenderPreload!(true)
     await tick()
-    expect(t.href('a-render')).toBe('/a?x=one-render')
-    expect(t.aLoads).toEqual(['one-render'])
+    expect(t.href('a-render')).toBe('/a?x=undefined-render')
+    expect(t.aLoads).toEqual(['undefined-render'])
     await t.release('b')
     await screen.findByText('B page')
   })
@@ -584,19 +586,19 @@ describe('links in a departing match', () => {
     expect(t.router.state.status).toBe('pending')
     expect(t.counts.aUpdater).toBe(updater)
     t.controls.setExtra!(true)
-    // The new link holds this visit's location, not the previous visit's.
-    expect(t.href('a-extra')).toBe('/a?x=two')
+    // The new link reads the pending location, never the previous visit's,
+    // while the mounted links keep this visit's.
+    expect(t.href('a-extra')).toBe('/items/1')
     expect(t.href('a-next')).toBe('/a?x=two-next')
     expect(t.isActive('root-b')).toBe(false)
 
-    fireEvent.click(t.link('a-extra'))
+    fireEvent.click(t.link('a-next'))
     await tick()
-    expect(t.router.latestLocation.href).toBe('/a?x=two')
+    expect(t.router.latestLocation.href).toBe('/a?x=two-next')
     t.gates.items.resolve()
     await t.settle()
-    expect(t.router.state.location.href).toBe('/a?x=two')
-    expect(t.isActive('a-extra')).toBe(true)
-    expect(t.href('a-next')).toBe('/a?x=two-next')
+    expect(t.router.state.location.href).toBe('/a?x=two-next')
+    expect(t.href('a-next')).toBe('/a?x=two-next-next')
   })
 
   test('a document redirect from the destination does not break later navigations', async () => {

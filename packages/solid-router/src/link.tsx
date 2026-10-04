@@ -3,6 +3,7 @@ import * as Solid from 'solid-js'
 import { mergeRefs } from '@solid-primitives/refs'
 
 import {
+  _isRouteDeparting,
   deepEqual,
   functionalUpdate,
   getUrlScheme,
@@ -24,6 +25,7 @@ import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -125,14 +127,23 @@ export function useLinkProps<
     'href',
   ])
 
-  // Links build from the location their match presents, or else the live one.
-  const source =
-    Solid.useContext(nearestMatchContext)[2 /* link location */] ??
-    router.stores.location.get
+  // A live match never changes route, so read it once without tracking.
+  const routeId = Solid.useContext(nearestMatchContext)[0]()
 
-  const currentLocation = Solid.createMemo(source, undefined, {
-    equals: (prev, next) => prev.href === next.href,
-  })
+  // While a publishing navigation leaves the Link's route, keep the location
+  // the route still presents so the Link does no work. The route unmounts
+  // when that navigation commits, and any other outcome publishes a newer
+  // location.
+  const currentLocation = Solid.createMemo(
+    (prev?: ParsedLocation) => {
+      const location = router.stores.location.get()
+      return prev && _isRouteDeparting(router, routeId, location)
+        ? prev
+        : location
+    },
+    undefined,
+    { equals: (prev, next) => prev.href === next.href },
+  )
 
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.
@@ -334,7 +345,7 @@ export function useLinkProps<
   const doPreload = () =>
     router
       .preloadRoute({
-        _fromLocation: source(),
+        _fromLocation: currentLocation(),
         ...options,
       } as Parameters<typeof router.preloadRoute>[0])
       .catch((err: any) => {
@@ -421,7 +432,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
-        _fromLocation: source(),
+        _fromLocation: currentLocation(),
         ...options,
         replace: local.replace,
         resetScroll: local.resetScroll,
