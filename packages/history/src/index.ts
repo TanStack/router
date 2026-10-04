@@ -613,14 +613,17 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
   return createBrowserHistory({
     window: win,
     parseLocation: () => {
-      const hashSplit = win.location.hash.split('#').slice(1)
-      const pathPart = hashSplit[0] ?? '/'
-      const searchPart = win.location.search
-      const hashEntries = hashSplit.slice(1)
-      const hashPart =
-        hashEntries.length === 0 ? '' : `#${hashEntries.join('#')}`
-      const hashHref = `${pathPart}${searchPart}${hashPart}`
-      return parseHref(hashHref, win.history.state)
+      // `#/path?query#fragment`: the router's own fragment starts at the
+      // second '#'. A non-empty `location.hash` always starts with '#'.
+      const hash = win.location.hash
+      let hashIndex = hash.indexOf('#', 1)
+      if (hashIndex < 0) {
+        hashIndex = hash.length
+      }
+      return parseHref(
+        `${hash ? hash.slice(1, hashIndex) : '/'}${win.location.search}${hash.slice(hashIndex)}`,
+        win.history.state,
+      )
     },
     createHref: (href) =>
       `${win.location.pathname}${win.location.search}#${href}`,
