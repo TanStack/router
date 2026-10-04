@@ -315,6 +315,33 @@ test('never mutates frozen caller options, and a caller source wins', async () =
   )
 })
 
+test.each([
+  ['inherited state', true],
+  ['a state updater', (prev: any) => ({ label: `${prev.label}!` })],
+])(
+  'a click after a same-href, state-only navigation uses the new state (%s)',
+  async (_, state) => {
+    const { router, go } = setup(() => (
+      <Link
+        to="/target/$id"
+        params={{ id: 'fixed' }}
+        state={state as any}
+        data-testid="link"
+      />
+    ))
+    const link = await screen.findByTestId('link')
+    await go('one', { state: { label: 'next' } })
+    expect(router.state.location.state).toMatchObject({ label: 'next' })
+    fireEvent.click(link)
+    await vi.waitFor(() =>
+      expect(router.state.location.pathname).toBe('/target/fixed'),
+    )
+    expect(router.state.location.state).toMatchObject({
+      label: state === true ? 'next' : 'next!',
+    })
+  },
+)
+
 test('refreshes history formatting even when the destination is reused', async () => {
   let suffix = 'old'
   const root = createRootRoute({
