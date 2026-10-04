@@ -756,7 +756,7 @@ export function parseHref(
 
   return {
     href: sanitizedHref,
-    pathname: sanitizedHref.substring(
+    pathname: sanitizedHref.slice(
       0,
       hashIndex > -1
         ? searchIndex > -1
@@ -766,7 +766,7 @@ export function parseHref(
           ? searchIndex
           : sanitizedHref.length,
     ),
-    hash: hashIndex > -1 ? sanitizedHref.substring(hashIndex) : '',
+    hash: hashIndex > -1 ? sanitizedHref.slice(hashIndex) : '',
     search:
       searchIndex > -1
         ? sanitizedHref.slice(
@@ -780,5 +780,5 @@ export function parseHref(
 
 // Thanks co-pilot!
 function createRandomKey() {
-  return (Math.random() + 1).toString(36).substring(7)
+  return (Math.random() + 1).toString(36).slice(7)
 }
