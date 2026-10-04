@@ -790,3 +790,42 @@ describe('params.parse route selection', () => {
     })
   })
 })
+
+describe('raw params ownership', () => {
+  it('keeps matching independent of params returned by getMatchedRoutes', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/$postId',
+      params: {
+        parse: ({ postId }: { postId: string }) => ({
+          postId: Number(postId),
+        }),
+        stringify: ({ postId }: { postId: number }) => ({
+          postId: String(postId),
+        }),
+      },
+    })
+    const otherRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([postRoute, otherRoute]),
+      history: createMemoryHistory({ initialEntries: ['/posts/1'] }),
+    })
+    await router.load()
+    expect(router.state.matches.at(-1)?.params).toEqual({ postId: 1 })
+
+    const [, rawParams] = router.getMatchedRoutes('/posts/1')
+    expect(rawParams).toEqual({ postId: '1' })
+    rawParams.postId = 'mutated'
+
+    expect(router.buildLocation({ to: '/posts/1' }).pathname).toBe('/posts/1')
+    await router.navigate({ to: '/other' })
+    await router.navigate({ to: '/posts/1' })
+    expect(router.state.matches.at(-1)?.params).toEqual({ postId: 1 })
+    expect(router.state.matches.at(-1)?.pathname).toBe('/posts/1')
+    expect(router.getMatchedRoutes('/posts/1')[1]).toEqual({ postId: '1' })
+  })
+})

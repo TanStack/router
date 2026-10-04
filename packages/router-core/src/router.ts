@@ -775,7 +775,11 @@ export type ParseLocationFn<TRouteTree extends AnyRoute> = (
   previousLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>,
 ) => ParsedLocation<FullSearchSchema<TRouteTree>>
 
-export type GetMatchRoutesFn = (pathname: string) => [
+export type GetMatchRoutesFn = (
+  pathname: string,
+  /** @internal Return the matcher's shared raw params; the caller must not mutate them. */
+  readOnly?: boolean,
+) => [
   matchedRoutes: ReadonlyArray<AnyRoute>,
   /** exhaustive params, still in their string form */
   rawParams: Record<string, string>,
@@ -1554,6 +1558,7 @@ export class RouterCore<
   ): Array<AnyRouteMatch> {
     const [initialMatchedRoutes, rawParams, foundRoute] = this.getMatchedRoutes(
       next.pathname,
+      true,
     )
     let matchedRoutes = initialMatchedRoutes
     let isGlobalNotFound = false
@@ -1782,19 +1787,18 @@ export class RouterCore<
     return matches
   }
 
-  getMatchedRoutes: GetMatchRoutesFn = (pathname) => {
-    const rawParams: Record<string, string> = Object.create(null)
+  getMatchedRoutes: GetMatchRoutesFn = (pathname, readOnly) => {
     const match = findRouteMatch(
       trimPathRight(pathname),
       this.processedTree,
       true,
     )
-    if (match) {
-      Object.assign(rawParams, match.rawParams)
-    }
     return [
       match?.branch || [this.routesById[rootRouteId]!],
-      rawParams,
+      // Callers own the params unless they only read the matcher's cached record.
+      match && readOnly
+        ? match.rawParams
+        : Object.assign(createNull(), match?.rawParams),
       match?.route,
     ]
   }
@@ -1982,8 +1986,10 @@ export class RouterCore<
         // typed destination mismatch, not a concrete URL to route-match.
         destRoutes = []
       } else {
-        const [matchedRoutes, rawParams, foundRoute] =
-          this.getMatchedRoutes(nextTo)
+        const [matchedRoutes, rawParams, foundRoute] = this.getMatchedRoutes(
+          nextTo,
+          true,
+        )
         destRoutes = matchedRoutes
 
         if (
