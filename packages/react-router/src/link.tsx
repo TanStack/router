@@ -231,12 +231,6 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
-    hashScrollIntoView,
-    replace,
-    startTransition,
-    resetScroll,
-    viewTransition,
-    ignoreBlocker,
     disabled,
     target,
     onClick,
@@ -331,6 +325,7 @@ export function useLinkProps<
     options.from,
     options._fromLocation,
     options.hash,
+    options.href,
     to,
     stableSearch,
     stableParams,
@@ -458,17 +453,10 @@ export function useLinkProps<
       e.preventDefault()
       cancelPreload(innerRef)
 
-      // All is well? Navigate!
-      // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ...dest,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
-      })
+      // The current options carry the navigation controls; `dest` only
+      // contributes the location the link displays. Navigation builds again
+      // to run `validateSearch` before committing.
+      router.navigate({ ...options, _fromLocation: dest._fromLocation })
     }
   }
 
