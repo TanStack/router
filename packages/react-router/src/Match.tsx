@@ -15,7 +15,6 @@ import {
   nonRouteComponentContext,
   wrapInNonRouteComponentContext,
 } from './nonRouteComponentContext'
-import type { MatchContext } from './matchContext'
 import type {
   AnyRoute,
   AnyRouteMatch,
@@ -66,25 +65,19 @@ export const Match = React.memo(function MatchImpl({
   routeId: string
 }) {
   const router = useRouter()
-  // One value per route id: an Outlet reuses its Match across route ids.
-  const context = React.useMemo((): MatchContext => [routeId], [routeId])
 
   if (isServer ?? router.isServer) {
     const match = router.stores.byRoute.get(routeId)!.get()!
-    return matchView(router, match, context)
+    return matchView(router, match)
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useSelector(matchStore)!
-  return matchView(router, match, context)
+  return matchView(router, match)
 })
 
-function matchView(
-  router: ReturnType<typeof useRouter>,
-  match: AnyRouteMatch,
-  context: MatchContext,
-) {
+function matchView(router: ReturnType<typeof useRouter>, match: AnyRouteMatch) {
   const route: AnyRoute = router.routesById[match.routeId]
 
   const pendingElement = renderPending(router, route)
@@ -176,14 +169,14 @@ function matchView(
 
   return ShellComponent ? (
     // The shell and route boundaries must share this match's context.
-    <matchContext.Provider value={context}>
+    <matchContext.Provider value={match.routeId}>
       <ShellComponent>
         {content}
         {scrollRestoration}
       </ShellComponent>
     </matchContext.Provider>
   ) : (
-    <matchContext.Provider value={context}>
+    <matchContext.Provider value={match.routeId}>
       {content}
       {scrollRestoration}
     </matchContext.Provider>
@@ -280,7 +273,7 @@ export const Outlet = React.memo(function OutletImpl() {
   }
 
   const router = useRouter()
-  const routeId = React.useContext(matchContext)![0]!
+  const routeId = React.useContext(matchContext)!
 
   let parentGlobalNotFound: boolean
   let parentNotFoundError: unknown

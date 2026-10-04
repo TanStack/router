@@ -4,27 +4,16 @@ import * as React from 'react'
 import { _isRouteDeparting } from '@tanstack/router-core'
 import type { AnyRoute, AnyRouter, ParsedLocation } from '@tanstack/router-core'
 
-/**
- * The nearest match's route id, and the link scope its links share once one
- * renders. A match provides one value per route id.
- */
-export type MatchContext = [routeId?: string, linkScope?: LinkScope]
-
-export const matchContext = React.createContext<MatchContext | undefined>(
-  undefined,
-)
-
-// N.B. this only exists so we can conditionally call useContext on it when we are not interested in the nearest match
-export const dummyMatchContext = React.createContext<MatchContext | undefined>(
-  undefined,
-)
-
 declare module '@tanstack/router-core' {
   // Declaration merging requires the original type parameters.
   // eslint-disable-next-line unused-imports/no-unused-vars
   interface RouterStores<in out TRouteTree extends AnyRoute> {
-    /** The holder of the link scope of links outside every match. */
-    _linkScope?: MatchContext
+    /**
+     * The link scope of each route id that rendered links, keyed `undefined`
+     * for links outside every match (route ids start with `/` or are the
+     * root id). A scope without links holds no location.
+     */
+    _linkScopes?: Record<string, LinkScope>
   }
 }
 
@@ -79,3 +68,10 @@ export function createLinkScope(
     },
   ]
 }
+
+export const matchContext = React.createContext<string | undefined>(undefined)
+
+// N.B. this only exists so we can conditionally call useContext on it when we are not interested in the nearest match
+export const dummyMatchContext = React.createContext<string | undefined>(
+  undefined,
+)

@@ -261,12 +261,12 @@ export function useLinkProps<
     options.params,
     activeOptions,
   )
-  // Links share their match's location source. Links outside every match
-  // share one per router that never departs.
+  // The links of a route share its location source. Links outside every
+  // match share one that never departs.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const nearest = React.useContext(matchContext)
-  const context = nearest ?? (router.stores._linkScope ??= [])
-  const scope = (context[1] ??= createLinkScope(router, context[0]))
+  const routeId = React.useContext(matchContext)
+  const scope = ((router.stores._linkScopes ??= {})[routeId!] ??=
+    createLinkScope(router, routeId))
 
   // `dest` is the link's own copy of the options from the render that last
   // changed the link: one stable object per link lets the router reuse
