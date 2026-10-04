@@ -1914,9 +1914,10 @@ export class RouterCore<
         }
       }
 
-      // We allow the caller to override the current location
+      // We allow the caller to override the current location. Masks build
+      // from the same location as the destination they mask.
       const currentLocation =
-        dest._fromLocation || this._pendingLocation || this.latestLocation
+        opts._fromLocation || this._pendingLocation || this.latestLocation
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match

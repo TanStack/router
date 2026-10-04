@@ -143,11 +143,9 @@ export function useMatch<
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
   const router = useRouter<TRouter>()
-  const nearestRouteId = React.useContext(
-    opts.from ? dummyMatchContext : matchContext,
-  )
+  const nearest = React.useContext(opts.from ? dummyMatchContext : matchContext)
 
-  const routeId = opts.from ?? nearestRouteId
+  const routeId = opts.from ?? nearest?.[0]
   const matchStore = router.stores.getMatchStore(routeId!)
 
   if (isServer ?? router.isServer) {

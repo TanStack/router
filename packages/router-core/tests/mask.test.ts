@@ -645,3 +645,56 @@ describe('buildLocation - route masks', () => {
     )
   })
 })
+
+describe('buildLocation - masks and _fromLocation', () => {
+  test.each(['mask', 'routeMasks'] as const)(
+    'the %s location builds from _fromLocation like the destination',
+    async (kind) => {
+      const rootRoute = new BaseRootRoute({})
+      const postsRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+      })
+      const photoRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/photo',
+      })
+      const routeTree = rootRoute.addChildren([postsRoute, photoRoute])
+      const router = createTestRouter({
+        routeTree,
+        history: createMemoryHistory({
+          initialEntries: ['/posts?page=1#live'],
+        }),
+        routeMasks:
+          kind === 'routeMasks'
+            ? [
+                {
+                  routeTree: null as any,
+                  from: '/photo',
+                  to: '.',
+                  search: true,
+                  hash: true,
+                },
+              ]
+            : undefined,
+      })
+      await router.load()
+      const held = router.buildLocation({
+        to: '/posts',
+        search: { page: 5 },
+        hash: 'held',
+      })
+
+      const location = router.buildLocation({
+        to: '/photo',
+        search: true,
+        mask:
+          kind === 'mask' ? { to: '.', search: true, hash: true } : undefined,
+        _fromLocation: held,
+      } as any)
+
+      expect(location.href).toBe('/photo?page=5')
+      expect(location.maskedLocation?.href).toBe('/posts?page=5#held')
+    },
+  )
+})

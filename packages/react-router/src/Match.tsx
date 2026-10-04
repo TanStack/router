@@ -15,6 +15,7 @@ import {
   nonRouteComponentContext,
   wrapInNonRouteComponentContext,
 } from './nonRouteComponentContext'
+import type { MatchContext } from './matchContext'
 import type {
   AnyRoute,
   AnyRouteMatch,
@@ -85,6 +86,11 @@ function MatchView({
   match: AnyRouteMatch
 }) {
   const route: AnyRoute = router.routesById[match.routeId]
+  // One value per route id: an Outlet reuses its Match across route ids.
+  const context = React.useMemo(
+    (): MatchContext => [match.routeId],
+    [match.routeId],
+  )
 
   const pendingElement = renderPending(router, route)
 
@@ -175,7 +181,7 @@ function MatchView({
 
   // The shell and route boundaries must share this match's context.
   return (
-    <matchContext.Provider value={match.routeId}>
+    <matchContext.Provider value={context}>
       {ShellComponent ? (
         <ShellComponent>
           {content}
@@ -281,7 +287,7 @@ export const Outlet = React.memo(function OutletImpl() {
   }
 
   const router = useRouter()
-  const routeId = React.useContext(matchContext)!
+  const routeId = React.useContext(matchContext)![0]!
 
   let parentGlobalNotFound: boolean
   let parentNotFoundError: unknown
