@@ -157,9 +157,7 @@ function useLinkPropsImpl(
     ) as unknown as LinkHTMLAttributes
   }
 
-  // Determine if the link is external or internal. This is client-only so
-  // server renders do not allocate a computed wrapper for every link.
-  const isExternal = Vue.computed(() => !!getUrlScheme(`${getOptions().to}`))
+  const isExternal = () => !!getUrlScheme(`${getOptions().to}`)
 
   // Links build from the location their match presents, or the router's live
   // one outside every match. External links never read it.
@@ -190,13 +188,6 @@ function useLinkPropsImpl(
     return same ? prev! : dest
   })
 
-  const next = Vue.computed(() => {
-    // Rebuild when inherited search/hash or the current route context changes.
-    const options = dest.value
-    options._fromLocation = getOptions()._fromLocation || currentLocation.value
-    return router.buildLocation(options as any)
-  })
-
   // Clicks and preloads build from the latest location the Link's match
   // presents. A caller source wins.
   const navigateOptions = () => {
@@ -205,45 +196,56 @@ function useLinkPropsImpl(
     return options as any
   }
 
-  const href = Vue.computed(() => {
+  // [href, active] of an internal Link, derived in one computation. An
+  // unchanged result keeps its identity, so a navigation that leaves the Link
+  // as it was notifies nothing downstream.
+  const retry = Vue.shallowRef(0)
+  const state = Vue.computed((prev?: LinkState): LinkState => {
+    retry.value
     const options = getOptions()
-    return getHref(options, router, next.value)
+    const destOptions = dest.value
+    const latest = router.latestLocation
+    // Rebuild when inherited search/hash or the current route context changes.
+    destOptions._fromLocation = options._fromLocation || currentLocation.value
+    const next = router.buildLocation(destOptions as any)
+    // A destination updater can navigate while the Link derives, which can
+    // happen inside its render: derive again for the newer location.
+    if (router.latestLocation !== latest) {
+      Promise.resolve().then(() => retry.value++)
+    }
+    const href = getHref(options, router, next)
+    const isActive =
+      !options.disabled && (href === undefined || !!getUrlScheme(href))
+        ? false
+        : getIsActive(
+            currentLocation.value,
+            next,
+            options.activeOptions,
+            router,
+          )
+    return prev && prev[0] === href && prev[1] === isActive
+      ? prev
+      : [href, isActive]
   })
 
-  const preload = Vue.computed(() => {
+  // The requested mode does not depend on the location, so the preload
+  // effects do not run on navigations.
+  const preloadMode = Vue.computed(() => {
     const options = getOptions()
-    if (
-      isExternal.value ||
-      (!options.disabled &&
-        (href.value === undefined || !!getUrlScheme(href.value))) ||
-      options.reloadDocument ||
-      options.disabled
-    ) {
-      return false
-    }
-    return options.preload ?? router.options.defaultPreload
-  })
-
-  const preloadDelay = Vue.computed(
-    () => getOptions().preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
-  )
-
-  const isActive = Vue.computed(() => {
-    const options = getOptions()
-    if (
-      isExternal.value ||
-      (!options.disabled &&
-        (href.value === undefined || !!getUrlScheme(href.value)))
-    ) {
-      return false
-    }
-    return getIsActive(
-      currentLocation.value,
-      next.value,
-      options.activeOptions,
-      router,
+    return (
+      !isExternal() &&
+      !options.reloadDocument &&
+      !options.disabled &&
+      (options.preload ?? router.options.defaultPreload)
     )
   })
+  const preload = () => {
+    const href = !isExternal() && state.value[0]
+    return !!href && !getUrlScheme(href) && preloadMode.value
+  }
+
+  const preloadDelay = () =>
+    getOptions().preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const doPreload = () => {
     return router.preloadRoute(navigateOptions()).catch((err: any) => {
@@ -266,7 +268,7 @@ function useLinkPropsImpl(
 
     const isIntersecting = (e as IntersectionObserverEntry).isIntersecting
     const preloadMode = isIntersecting === undefined ? 'intent' : 'viewport'
-    if (preload.value !== preloadMode || isIntersecting === false) {
+    if (preload() !== preloadMode || isIntersecting === false) {
       if (isIntersecting === false && pendingPreload === 'viewport') {
         clearTimeout(timeoutMap.get(ref))
         timeoutMap.delete(ref)
@@ -275,26 +277,23 @@ function useLinkPropsImpl(
       return
     }
 
-    if (!preloadDelay.value) {
+    if (!preloadDelay()) {
       doPreload()
       return
     }
 
     if (!timeoutMap.has(ref)) {
-      const scheduledHref = next.value.href
+      const scheduledHref = state.value[0]
       pendingPreload = preloadMode
       timeoutMap.set(
         ref,
         setTimeout(() => {
           timeoutMap.delete(ref)
           pendingPreload = undefined
-          if (
-            preload.value === preloadMode &&
-            next.value.href === scheduledHref
-          ) {
+          if (preload() === preloadMode && state.value[0] === scheduledHref) {
             doPreload()
           }
-        }, preloadDelay.value),
+        }, preloadDelay()),
       )
     }
   }
@@ -302,17 +301,17 @@ function useLinkPropsImpl(
   useIntersectionObserver(
     ref,
     enqueuePreload,
-    () => preload.value !== 'viewport',
+    () => preloadMode.value !== 'viewport',
     // Intent preloading still needs timer cleanup without an observer.
-    () => !!preload.value,
+    () => !!preloadMode.value,
   )
 
   Vue.watchEffect(() => {
-    if (preload.value !== 'render') {
+    if (preloadMode.value !== 'render' || !preload()) {
       return
     }
 
-    const nextHref = next.value.href
+    const nextHref = state.value[0]
     if (nextHref && renderFetchedHref !== nextHref) {
       renderFetchedHref = nextHref
       doPreload()
@@ -322,11 +321,8 @@ function useLinkPropsImpl(
   // The click handler
   const handleClick = (e: PointerEvent): void => {
     const options = getOptions()
-    if (
-      isExternal.value ||
-      (!options.disabled &&
-        (href.value === undefined || !!getUrlScheme(href.value)))
-    ) {
+    const href = !isExternal() && state.value[0]
+    if (!options.disabled && (!href || getUrlScheme(href))) {
       return
     }
 
@@ -358,7 +354,7 @@ function useLinkPropsImpl(
   }
 
   const handleTouchStart = () => {
-    if (preload.value === 'intent') {
+    if (preload() === 'intent') {
       doPreload()
     }
   }
@@ -380,12 +376,6 @@ function useLinkPropsImpl(
       handler(event)
     }
   }
-
-  // Get the active and inactive props
-  const resolvedStyleProps = Vue.computed(() => {
-    const options = getOptions()
-    return resolveStyleProps(options, isActive.value)
-  })
 
   // Create static event handlers that don't change between renders
   const staticEventHandlers: LinkEventHandlers = {
@@ -418,18 +408,21 @@ function useLinkPropsImpl(
   // Using Vue.computed ensures props are calculated at render time, not after
   const computedProps = Vue.computed<LinkHTMLAttributes>(() => {
     const options = getOptions()
-    if (isExternal.value) {
+    if (isExternal()) {
       return getExternalLinkProps(options, router, ref, staticEventHandlers)
     }
 
-    const { resolvedProps, resolvedClass, resolvedStyle } =
-      resolvedStyleProps.value
+    const [href, isActive] = state.value
+    const { resolvedProps, resolvedClass, resolvedStyle } = resolveStyleProps(
+      options,
+      isActive,
+    )
     return combineResultProps({
-      href: href.value,
+      href,
       options,
       ref,
       staticEventHandlers,
-      isActive: isActive.value,
+      isActive,
       resolvedProps,
       resolvedClass,
       resolvedStyle,
@@ -439,6 +432,9 @@ function useLinkPropsImpl(
   // Return the computed ref itself - callers should access .value
   return computedProps as unknown as LinkHTMLAttributes
 }
+
+// [href, active] of an internal Link.
+type LinkState = [href: string | undefined, isActive: boolean]
 
 // Options that decide where and how a Link navigates.
 const NAVIGATION_KEYS = [
