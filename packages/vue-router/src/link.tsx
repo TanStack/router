@@ -191,10 +191,10 @@ function useLinkPropsImpl(
   })
 
   // Clicks and preloads build from the latest location the Link's match
-  // presents. A caller source wins.
+  // presents.
   const navigateOptions = () => {
     const options = dest.value
-    options._fromLocation = getOptions()._fromLocation || source.value
+    options._fromLocation = source.value
     return options as any
   }
 
@@ -205,7 +205,7 @@ function useLinkPropsImpl(
     const options = getOptions()
     const destOptions = dest.value
     // Rebuild when inherited search/hash or the current route context changes.
-    destOptions._fromLocation = options._fromLocation || currentLocation.value
+    destOptions._fromLocation = currentLocation.value
     const next = router.buildLocation(destOptions as any)
     const href = getHref(options, router, next)
     const isActive =

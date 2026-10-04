@@ -771,51 +771,6 @@ describe('links in a departing match', () => {
     await screen.findByText('B page')
     expect(t.isActive('wrap-b')).toBe(true)
   })
-
-  test('a user-provided _fromLocation still decides where a held link goes', async () => {
-    const root = createRootRoute()
-    const held: { own?: any; gate?: Deferred } = {}
-    const ownSearch = (prev: any) => ({ ...prev, n: 1 })
-    const a = createRoute({
-      getParentRoute: () => root,
-      path: '/a',
-      component: () => (
-        <Link
-          to="."
-          search={ownSearch}
-          _fromLocation={held.own}
-          data-testid="own"
-        >
-          own
-        </Link>
-      ),
-    })
-    const b = createRoute({
-      getParentRoute: () => root,
-      path: '/b',
-      loader: () => held.gate?.promise,
-      component: () => <h1>B page</h1>,
-    })
-    const router = createRouter({
-      routeTree: root.addChildren([a, b]),
-      history: createMemoryHistory({ initialEntries: ['/a?x=one'] }),
-    })
-    held.own = router.buildLocation({ to: '/a', search: { x: 'own' } } as any)
-    render(<RouterProvider router={router} />)
-    const link = await screen.findByTestId('own')
-    expect(link).toHaveAttribute('href', '/a?x=own&n=1')
-
-    const gate = (held.gate = deferred())
-    void router.navigate({ to: '/b' })
-    await tick()
-    expect(router.state.status).toBe('pending')
-    await fireEvent.click(link)
-    await tick()
-    expect(router.latestLocation.href).toBe('/a?x=own&n=1')
-    gate.resolve()
-    await waitFor(() => expect(router.state.status).toBe('idle'))
-    expect(router.state.location.href).toBe('/a?x=own&n=1')
-  })
 })
 
 describe('pending and failing destinations', () => {
