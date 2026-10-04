@@ -115,17 +115,10 @@ export function useLinkProps<
   //   ...rest
   // } = options
 
-  const [_, propsSafeToSpread] = Solid.splitProps(rest, [
-    'params',
-    'search',
-    'hash',
-    'state',
-    'mask',
-    'reloadDocument',
-    'unsafeRelative',
-    'from',
-    'href',
-  ])
+  const [_, propsSafeToSpread] = Solid.splitProps(
+    rest,
+    NAVIGATION_KEYS as unknown as Array<keyof typeof rest>,
+  )
 
   // A live match never changes route, so read it once without tracking.
   const routeId = Solid.useContext(nearestMatchContext)[0]()
@@ -141,15 +134,33 @@ export function useLinkProps<
       : location
   })
 
+  // The Link's own destination options, replaced only when a destination prop
+  // changes: the router reuses a location built from the same object without
+  // reading the current location. A Solid store changes in place, so a store
+  // prop value (checked one level deep, not nested) gets a fresh object per
+  // location instead, re-reading the store at each navigation as before.
+  const dest = Solid.createMemo(() => {
+    const dest: any = {}
+    for (const key of NAVIGATION_KEYS) {
+      if ((dest[key] = (options as any)[key])?.[Solid.$PROXY]) {
+        currentLocation()
+      }
+    }
+    return dest
+  })
+
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.
-    const _fromLocation = currentLocation()
-    const nextOptions = { _fromLocation, ...options } as any
+    // Clicks and preloads go where the href points. A caller source wins.
+    dest()._fromLocation = options._fromLocation || currentLocation()
     // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(nextOptions))
+    return Solid.untrack(() => router.buildLocation(dest()))
   })
 
   const hrefOption = Solid.createMemo(() => {
+    // History formatting can depend on the current URL even when the built
+    // destination is reused.
+    currentLocation()
     if (options.disabled) return undefined
     // Use publicHref - it contains the correct href for display
     // When a rewrite changes the origin, publicHref is the full URL
@@ -339,15 +350,10 @@ export function useLinkProps<
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const doPreload = () =>
-    router
-      .preloadRoute({
-        _fromLocation: currentLocation(),
-        ...options,
-      } as Parameters<typeof router.preloadRoute>[0])
-      .catch((err: any) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+    router.preloadRoute(dest()).catch((err: any) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
 
   const [ref, setRef] = Solid.createSignal<Element | null>(null)
 
@@ -428,8 +434,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
-        _fromLocation: currentLocation(),
-        ...options,
+        ...dest(),
         replace: local.replace,
         resetScroll: local.resetScroll,
         hashScrollIntoView: local.hashScrollIntoView,
@@ -498,6 +503,19 @@ export function useLinkProps<
   return Solid.mergeProps(propsSafeToSpread, resolvedProps) as any
 }
 
+// Props that decide where and how a Link navigates.
+const NAVIGATION_KEYS = [
+  'to',
+  'reloadDocument',
+  'params',
+  'search',
+  'hash',
+  'state',
+  'mask',
+  'unsafeRelative',
+  'from',
+  'href',
+] as const
 const STATIC_EVENT_PROPS = [
   'onClick',
   'onBlur',
