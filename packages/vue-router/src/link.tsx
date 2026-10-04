@@ -108,7 +108,7 @@ function useLinkPropsImpl(
   // Ensure router is defined before proceeding
   if (!router) {
     console.warn('useRouter must be used inside a <RouterProvider> component!')
-    return Vue.computed(() => ({})) as unknown as LinkHTMLAttributes
+    return {}
   }
 
   const ref = Vue.ref<Element | null>(null)
