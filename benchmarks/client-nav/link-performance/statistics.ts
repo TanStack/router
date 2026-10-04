@@ -35,20 +35,6 @@ export function summarizeRatios(ratios: ReadonlyArray<number>) {
   }
 }
 
-/** Mean and 95% t-interval of 2-11 independent process-replica values. */
-export function summarizeValues(values: ReadonlyArray<number>) {
-  if (values.length < 2 || values.length > 11) {
-    throw new Error('Expected 2-11 independent process-replica values')
-  }
-  const center = mean(values)
-  const variance =
-    values.reduce((sum, value) => sum + (value - center) ** 2, 0) /
-    (values.length - 1)
-  const margin =
-    critical95[values.length - 2]! * Math.sqrt(variance / values.length)
-  return { mean: center, low95: center - margin, high95: center + margin }
-}
-
 export function classify(
   cpu: ReturnType<typeof summarizeRatios>,
   wall: ReturnType<typeof summarizeRatios>,

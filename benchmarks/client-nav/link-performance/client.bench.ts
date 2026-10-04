@@ -11,7 +11,7 @@ if (app.serverEnvironment !== false) {
 
 for (const { id, label } of LINK_CASES) {
   describe(label, () => {
-    const scenario = createClientScenario(app, id, true)
+    const scenario = createClientScenario(app, id)
     function finish() {
       try {
         scenario.check()
