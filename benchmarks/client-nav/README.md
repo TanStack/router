@@ -22,7 +22,6 @@ tracked in CI by CodSpeed (simulation mode).
 - `scenarios/harness.ts` - shared scenario runner (mount, link-click steps, `onRendered` synchronization)
 - `scenarios/<scenario>/shared.ts` - framework-agnostic scenario definition (workload data, step sequence, assertions, bench options)
 - `scenarios/<scenario>/<framework>/` - isolated scenario apps
-- `link-inp-browser/` - opt-in headless Chromium comparison of Link click cost (Event Timing, frame and click-task times) between a baseline checkout and the current one; see its README
 
 Scenario app layout:
 
