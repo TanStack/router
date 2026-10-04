@@ -698,3 +698,148 @@ describe('buildLocation - masks and _fromLocation', () => {
     },
   )
 })
+
+describe('buildLocation - masked locations and the static location cache', () => {
+  const setup = (routeMasks?: Array<RouteMask<any>>) => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const photoRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/photo',
+    })
+    const photosRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/photos/$photoId',
+    })
+    const routeTree = rootRoute.addChildren([
+      postsRoute,
+      photoRoute,
+      photosRoute,
+    ])
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/posts'] }),
+      routeMasks,
+    })
+    // Two sources a Link can display, as the router builds them.
+    const sources = [1, 2].map((n) =>
+      router.buildLocation({
+        to: '/photos/$photoId',
+        params: { photoId: `${n}` },
+        search: { page: n },
+        hash: n === 1 ? 'one' : 'two',
+        state: { n } as any,
+      }),
+    )
+    // Builds one options object from each source in turn, the way a Link
+    // rebuilds its destination when its displayed location changes.
+    const buildFromEachSource = (opts: Record<string, unknown>) =>
+      sources.map((source) =>
+        router.buildLocation(
+          Object.assign(opts, { _fromLocation: source }) as any,
+        ),
+      )
+    return { router, routeTree, buildFromEachSource }
+  }
+
+  test('reuses the location of a fixed mask across sources', () => {
+    const { buildFromEachSource } = setup()
+    const [first, second] = buildFromEachSource({
+      to: '/photo',
+      search: { id: 1 },
+      mask: { to: '/posts', search: { from: 'photo' } },
+    })
+    expect(first!.maskedLocation!.href).toBe('/posts?from=photo')
+    expect(second).toBe(first)
+  })
+
+  test('reuses the location of a fixed route mask across sources', () => {
+    const { buildFromEachSource } = setup([
+      { routeTree: null as any, from: '/photo', to: '/posts' },
+    ])
+    const [first, second] = buildFromEachSource({ to: '/photo' })
+    expect(first!.maskedLocation!.href).toBe('/posts')
+    expect(second).toBe(first)
+  })
+
+  test.each([
+    ['a relative target', { to: '.' }, ['/photos/1', '/photos/2']],
+    [
+      'inherited params',
+      { to: '/photos/$photoId' },
+      ['/photos/1', '/photos/2'],
+    ],
+    [
+      'the current search',
+      { to: '/posts', search: true },
+      ['/posts?page=1', '/posts?page=2'],
+    ],
+    [
+      'a search updater',
+      { to: '/posts', search: (prev: any) => ({ p: prev.page }) },
+      ['/posts?p=1', '/posts?p=2'],
+    ],
+    [
+      'the current hash',
+      { to: '/posts', hash: true },
+      ['/posts#one', '/posts#two'],
+    ],
+  ] as const)(
+    'rebuilds a mask that reads %s for each source',
+    (_, mask, expected) => {
+      const { buildFromEachSource } = setup()
+      const locations = buildFromEachSource({ to: '/photo', mask })
+      expect(locations[1]).not.toBe(locations[0])
+      expect(
+        locations.map((location) => location.maskedLocation!.href),
+      ).toEqual(expected)
+    },
+  )
+
+  test('rebuilds a mask that reads the current state for each source', () => {
+    const { buildFromEachSource } = setup()
+    const locations = buildFromEachSource({
+      to: '/photo',
+      mask: { to: '/posts', state: true },
+    })
+    expect(locations[1]).not.toBe(locations[0])
+    expect(
+      locations.map((location) => (location.maskedLocation!.state as any).n),
+    ).toEqual([1, 2])
+  })
+
+  test('rebuilds a route mask that reads the current location for each source', () => {
+    const { buildFromEachSource } = setup([
+      {
+        routeTree: null as any,
+        from: '/photo',
+        to: '/posts',
+        search: true,
+        hash: true,
+      },
+    ])
+    const locations = buildFromEachSource({ to: '/photo' })
+    expect(locations[1]).not.toBe(locations[0])
+    expect(locations.map((location) => location.maskedLocation!.href)).toEqual([
+      '/posts?page=1#one',
+      '/posts?page=2#two',
+    ])
+  })
+
+  test('drops a cached route mask when the router is updated', () => {
+    const { router, buildFromEachSource } = setup([
+      { routeTree: null as any, from: '/photo', to: '/posts' },
+    ])
+    const opts = { to: '/photo' }
+    const [first] = buildFromEachSource(opts)
+    expect(first!.maskedLocation!.href).toBe('/posts')
+
+    router.update({ ...router.options, routeMasks: undefined })
+    const [afterUpdate] = buildFromEachSource(opts)
+    expect(afterUpdate).not.toBe(first)
+    expect(afterUpdate!.maskedLocation).toBeUndefined()
+  })
+})
