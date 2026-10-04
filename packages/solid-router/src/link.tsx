@@ -133,17 +133,13 @@ export function useLinkProps<
   // While a publishing navigation leaves the Link's route, keep the location
   // the route still presents so the Link does no work. The route unmounts
   // when that navigation commits, and any other outcome publishes a newer
-  // location.
-  const currentLocation = Solid.createMemo(
-    (prev?: ParsedLocation) => {
-      const location = router.stores.location.get()
-      return prev && _isRouteDeparting(router, routeId, location)
-        ? prev
-        : location
-    },
-    undefined,
-    { equals: (prev, next) => prev.href === next.href },
-  )
+  // location. Compare by identity: a same-href navigation can change state.
+  const currentLocation = Solid.createMemo((prev?: ParsedLocation) => {
+    const location = router.stores.location.get()
+    return prev && _isRouteDeparting(router, routeId, location)
+      ? prev
+      : location
+  })
 
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.

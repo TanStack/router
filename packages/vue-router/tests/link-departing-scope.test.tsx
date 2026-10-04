@@ -1118,3 +1118,85 @@ describe('link location retention', () => {
     },
   )
 })
+
+describe('links after a same-href navigation that changes history state', () => {
+  function renderStateApp() {
+    // The `tag` state of every `/b` load, preloads included.
+    const bLoads: Array<unknown> = []
+    const root = createRootRoute({ component: () => <Outlet /> })
+    const a = createRoute({
+      getParentRoute: () => root,
+      path: '/a',
+      component: () => (
+        <>
+          <h1>A page</h1>
+          <Link
+            to="/b"
+            state={true}
+            preload="intent"
+            preloadDelay={0}
+            data-testid="inherit"
+          >
+            inherit
+          </Link>
+          <Link
+            to="/b"
+            state={(prev: any) => ({ tag: `${prev.tag}-updated` }) as any}
+            data-testid="updater"
+          >
+            updater
+          </Link>
+        </>
+      ),
+    })
+    const b = createRoute({
+      getParentRoute: () => root,
+      path: '/b',
+      loader: ({ location }) => {
+        bLoads.push((location.state as any).tag)
+      },
+      component: () => <h1>B page</h1>,
+    })
+    const router = createRouter({
+      routeTree: root.addChildren([a, b]),
+      history: createMemoryHistory({ initialEntries: ['/a'] }),
+    })
+    render(<RouterProvider router={router} />)
+    return { router, bLoads }
+  }
+
+  async function changeState(router: any) {
+    await screen.findByText('A page')
+    await router.navigate({
+      to: '/a',
+      state: { tag: 'latest' } as any,
+      replace: true,
+    })
+    expect(router.state.location.href).toBe('/a')
+    expect(router.state.location.state.tag).toBe('latest')
+  }
+
+  test.each([
+    ['inherit', 'latest'],
+    ['updater', 'latest-updated'],
+  ])(
+    'clicking link %s derives its state from the latest location',
+    async (id, tag) => {
+      const { router } = renderStateApp()
+      await changeState(router)
+
+      await fireEvent.click(screen.getByTestId(id))
+      await screen.findByText('B page')
+      expect(router.state.location.pathname).toBe('/b')
+      expect((router.state.location.state as any).tag).toBe(tag)
+    },
+  )
+
+  test('preloading derives its state from the latest location', async () => {
+    const { router, bLoads } = renderStateApp()
+    await changeState(router)
+
+    await fireEvent.mouseEnter(screen.getByTestId('inherit'))
+    await waitFor(() => expect(bLoads).toEqual(['latest']))
+  })
+})
