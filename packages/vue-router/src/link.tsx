@@ -170,13 +170,40 @@ function useLinkPropsImpl(
     prev?.href === source.value.href ? prev : source.value,
   )
 
+  // The Link's own destination options, replaced only when a navigation
+  // option changes identity: the router reuses a location built from the same
+  // object without reading the current location. A reactive value changes in
+  // place, so a reactive option value (checked one level deep, not nested)
+  // gets a fresh object per location instead, re-read at each navigation.
+  const dest = Vue.computed((prev?: Record<string, any>) => {
+    const options = getOptions() as Record<string, any>
+    const dest: Record<string, any> = {}
+    let same = !!prev
+    for (const key of NAVIGATION_KEYS) {
+      const value = (dest[key] = options[key])
+      if (Vue.isProxy(value)) {
+        // Track the location: a reactive value is re-read at each one.
+        same = !currentLocation.value
+      }
+      same &&= prev![key] === value
+    }
+    return same ? prev! : dest
+  })
+
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
-
-    const options = getOptions()
-    const opts = { _fromLocation: currentLocation.value, ...options }
-    return router.buildLocation(opts)
+    const options = dest.value
+    options._fromLocation = getOptions()._fromLocation || currentLocation.value
+    return router.buildLocation(options as any)
   })
+
+  // Clicks and preloads build from the latest location the Link's match
+  // presents. A caller source wins.
+  const navigateOptions = () => {
+    const options = dest.value
+    options._fromLocation = getOptions()._fromLocation || source.value
+    return options as any
+  }
 
   const href = Vue.computed(() => {
     const options = getOptions()
@@ -219,16 +246,10 @@ function useLinkPropsImpl(
   })
 
   const doPreload = () => {
-    const options = getOptions()
-    return router
-      .preloadRoute({
-        _fromLocation: source.value,
-        ...options,
-      } as Parameters<typeof router.preloadRoute>[0])
-      .catch((err: any) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+    return router.preloadRoute(navigateOptions()).catch((err: any) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
   }
 
   let pendingPreload: 'intent' | 'viewport' | undefined
@@ -332,16 +353,7 @@ function useLinkPropsImpl(
       enqueuePreload()
 
       // All is well? Navigate!
-      router.navigate({
-        _fromLocation: source.value,
-        ...options,
-        replace: options.replace,
-        resetScroll: options.resetScroll,
-        hashScrollIntoView: options.hashScrollIntoView,
-        startTransition: options.startTransition,
-        viewTransition: options.viewTransition,
-        ignoreBlocker: options.ignoreBlocker,
-      })
+      router.navigate(navigateOptions())
     }
   }
 
@@ -427,6 +439,25 @@ function useLinkPropsImpl(
   // Return the computed ref itself - callers should access .value
   return computedProps as unknown as LinkHTMLAttributes
 }
+
+// Options that decide where and how a Link navigates.
+const NAVIGATION_KEYS = [
+  'to',
+  'replace',
+  'resetScroll',
+  'hashScrollIntoView',
+  'startTransition',
+  'viewTransition',
+  'ignoreBlocker',
+  'params',
+  'search',
+  'hash',
+  'state',
+  'mask',
+  'unsafeRelative',
+  'from',
+  'href',
+] as const
 
 function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
   const props =
