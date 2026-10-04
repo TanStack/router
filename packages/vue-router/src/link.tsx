@@ -197,20 +197,12 @@ function useLinkPropsImpl(
   // [href, active] of an internal Link, derived in one computation. An
   // unchanged result keeps its identity, so a navigation that leaves the Link
   // as it was notifies nothing downstream.
-  const retry = Vue.shallowRef(0)
   const state = Vue.computed((prev?: LinkState): LinkState => {
-    retry.value
     const options = getOptions()
     const destOptions = dest.value
-    const latest = router.latestLocation
     // Rebuild when inherited search/hash or the current route context changes.
     destOptions._fromLocation = options._fromLocation || currentLocation.value
     const next = router.buildLocation(destOptions as any)
-    // A destination updater can navigate while the Link derives, which can
-    // happen inside its render: derive again for the newer location.
-    if (router.latestLocation !== latest) {
-      Promise.resolve().then(() => retry.value++)
-    }
     const href = getHref(options, router, next)
     const isActive =
       !options.disabled && (href === undefined || !!getUrlScheme(href))
