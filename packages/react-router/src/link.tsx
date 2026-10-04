@@ -13,7 +13,6 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { createLinkScope, matchContext } from './matchContext'
 
-import { useHydrated } from './ClientOnly'
 import type {
   ActiveOptions,
   AnyRouter,
@@ -88,7 +87,6 @@ function resolveIsActive(
   next: ParsedLocation,
   activeOptions: ActiveOptions | undefined,
   basepath: string,
-  isHydrated: boolean,
 ): boolean {
   const currentPath = removeTrailingSlash(location.pathname, basepath)
   const nextPath = removeTrailingSlash(next.pathname, basepath)
@@ -118,10 +116,7 @@ function resolveIsActive(
     }
   }
 
-  if (activeOptions?.includeHash) {
-    return isHydrated && location.hash === next.hash
-  }
-  return true
+  return !activeOptions?.includeHash || location.hash === next.hash
 }
 
 /**
@@ -253,9 +248,6 @@ export function useLinkProps<
   } = options as typeof options & { to?: string }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isHydrated = useHydrated(!!activeOptions?.includeHash)
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
     options.search,
     options.params,
@@ -276,7 +268,7 @@ export function useLinkProps<
   // location so React can bail out on an unchanged state, and derives eagerly
   // inside the scope's notification.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [dest, getLinkState] = React.useMemo(() => {
+  const [dest, getLinkState, getHydrationState] = React.useMemo(() => {
     // Direct destinations and the router's allowlist are stable for this snapshot.
     const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
     if (directExternalLink !== undefined) {
@@ -287,41 +279,50 @@ export function useLinkProps<
     const dest = { ...options } as any
     let source: ParsedLocation | undefined
     let state: LinkState
+    let hydrationState: LinkState | undefined
+
+    const getLinkState = (): LinkState => {
+      // Read the location first: a derivation that throws or publishes a
+      // new location reentrantly must not cache its state for another one.
+      const location = scope[0]()
+      if (location !== source) {
+        if (!options._fromLocation) {
+          dest._fromLocation = location
+        }
+        const next = router.buildLocation(dest)
+
+        // History formatters can depend on the current browser URL (hash history).
+        const href = getHrefOption(next, router, disabled)
+        // Internal and disabled links can be active; external and blocked
+        // links have no active state.
+        const isActive =
+          disabled || (href && !getUrlScheme(href))
+            ? resolveIsActive(
+                location,
+                next,
+                stableActiveOptions,
+                router.basepath,
+              )
+            : undefined
+        // Keep the state while it is equal so React can bail out.
+        if (!state || state[0] !== href || state[1] !== isActive) {
+          state = [href, isActive]
+        }
+        source = location
+      }
+      return state
+    }
 
     return [
       dest,
-      (): LinkState => {
-        // Read the location first: a derivation that throws or publishes a
-        // new location reentrantly must not cache its state for another one.
-        const location = scope[0]()
-        if (location !== source) {
-          if (!options._fromLocation) {
-            dest._fromLocation = location
-          }
-          const next = router.buildLocation(dest)
-
-          // History formatters can depend on the current browser URL (hash history).
-          const href = getHrefOption(next, router, disabled)
-          // Internal and disabled links can be active; external and blocked
-          // links have no active state.
-          const isActive =
-            disabled || (href && !getUrlScheme(href))
-              ? resolveIsActive(
-                  location,
-                  next,
-                  stableActiveOptions,
-                  router.basepath,
-                  isHydrated,
-                )
-              : undefined
-          // Keep the state while it is equal so React can bail out.
-          if (!state || state[0] !== href || state[1] !== isActive) {
-            state = [href, isActive]
-          }
-          source = location
-        }
-        return state
-      },
+      getLinkState,
+      // Hydration renders the server's markup, which has no hash, so an active
+      // hash-sensitive link hydrates inactive and React rerenders it after.
+      stableActiveOptions?.includeHash &&
+        ((): LinkState => {
+          const state = getLinkState()
+          return state[1] ? (hydrationState ??= [state[0], false]) : state
+        }),
     ] as const
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -338,14 +339,13 @@ export function useLinkProps<
     options.unsafeRelative,
     stableActiveOptions,
     disabled,
-    isHydrated,
   ])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = React.useSyncExternalStore(
     scope[1],
     getLinkState,
-    getLinkState,
+    getHydrationState || getLinkState,
   )
   const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined
@@ -636,16 +636,16 @@ function getServerLinkProps(
   }
 
   const blockedLink = !disabled && !hrefOption
-  // Hash is not available on the server, so it never counts as hydrated.
+  // Hash is not available on the server: hash-sensitive links are inactive.
   const isActive =
     !!next &&
     !blockedLink &&
+    !activeOptions?.includeHash &&
     resolveIsActive(
       router.stores.location.get(),
       next,
       activeOptions,
       router.basepath,
-      false,
     )
   return applyLinkState(
     props,
