@@ -66,31 +66,26 @@ export const Match = React.memo(function MatchImpl({
   routeId: string
 }) {
   const router = useRouter()
+  // One value per route id: an Outlet reuses its Match across route ids.
+  const context = React.useMemo((): MatchContext => [routeId], [routeId])
 
   if (isServer ?? router.isServer) {
     const match = router.stores.byRoute.get(routeId)!.get()!
-    return <MatchView router={router} match={match} />
+    return matchView(router, match, context)
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useSelector(matchStore)
-  return <MatchView router={router} match={match!} />
+  const match = useSelector(matchStore)!
+  return matchView(router, match, context)
 })
 
-function MatchView({
-  router,
-  match,
-}: {
-  router: ReturnType<typeof useRouter>
-  match: AnyRouteMatch
-}) {
+function matchView(
+  router: ReturnType<typeof useRouter>,
+  match: AnyRouteMatch,
+  context: MatchContext,
+) {
   const route: AnyRoute = router.routesById[match.routeId]
-  // One value per route id: an Outlet reuses its Match across route ids.
-  const context = React.useMemo(
-    (): MatchContext => [match.routeId],
-    [match.routeId],
-  )
 
   const pendingElement = renderPending(router, route)
 
@@ -175,24 +170,22 @@ function MatchView({
     router.options.scrollRestoration ? (
       <ScrollRestoration />
     ) : null
-  const ShellComponent = route.isRoot
-    ? (route.options as RootRouteOptions).shellComponent
-    : undefined
 
-  // The shell and route boundaries must share this match's context.
-  return (
+  const ShellComponent =
+    route.isRoot && (route.options as RootRouteOptions).shellComponent
+
+  return ShellComponent ? (
+    // The shell and route boundaries must share this match's context.
     <matchContext.Provider value={context}>
-      {ShellComponent ? (
-        <ShellComponent>
-          {content}
-          {scrollRestoration}
-        </ShellComponent>
-      ) : (
-        <>
-          {content}
-          {scrollRestoration}
-        </>
-      )}
+      <ShellComponent>
+        {content}
+        {scrollRestoration}
+      </ShellComponent>
+    </matchContext.Provider>
+  ) : (
+    <matchContext.Provider value={context}>
+      {content}
+      {scrollRestoration}
     </matchContext.Provider>
   )
 }
