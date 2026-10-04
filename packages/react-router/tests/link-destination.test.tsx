@@ -306,6 +306,56 @@ describe('Link destination updates', () => {
     expect(link).toHaveAttribute('data-status', 'active')
     expect(link).toHaveTextContent('Current item')
   })
+
+  test('masked destinations follow their inputs', async () => {
+    // A stable mask object that inherits params, and a mask prop that changes.
+    const inheritedMask = { to: '/visible/$id', params: true } as const
+    const rootRoute = createRootRoute({
+      component: function Root() {
+        const [id, setId] = React.useState('one')
+        return (
+          <>
+            <button onClick={() => setId('two')}>Change mask</button>
+            <Link
+              to="/target/$id"
+              params={{ id: 'fixed' }}
+              mask={{ to: '/visible/$id', params: { id } }}
+              data-testid="prop-mask"
+            />
+            <Link
+              to="/target/$id"
+              params={{ id: 'fixed' }}
+              mask={inheritedMask as any}
+              data-testid="inherited-mask"
+            />
+            <Outlet />
+          </>
+        )
+      },
+    })
+    const routes = ['/source/$id', '/target/$id', '/visible/$id'].map((path) =>
+      createRoute({ getParentRoute: () => rootRoute, path }),
+    )
+    const router = createRouter({
+      routeTree: rootRoute.addChildren(routes),
+      history: createMemoryHistory({ initialEntries: ['/source/one'] }),
+    })
+    render(<RouterProvider router={router} />)
+
+    const propMask = await screen.findByTestId('prop-mask')
+    const inherited = screen.getByTestId('inherited-mask')
+    expect(propMask).toHaveAttribute('href', '/visible/one')
+    expect(inherited).toHaveAttribute('href', '/visible/one')
+
+    await act(() =>
+      router.navigate({ to: '/source/$id', params: { id: 'two' } } as any),
+    )
+    expect(inherited).toHaveAttribute('href', '/visible/two')
+    expect(propMask).toHaveAttribute('href', '/visible/one')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change mask' }))
+    expect(propMask).toHaveAttribute('href', '/visible/two')
+  })
 })
 
 describe('Link props that change without a destination prop', () => {

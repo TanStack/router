@@ -78,11 +78,16 @@ function createLinkProps(
   // changes: the router reuses a location built from the same object without
   // reading the current location. A Solid store changes in place, so a store
   // prop value (checked one level deep, not nested) gets a fresh object per
-  // location instead, re-reading the store at each navigation as before.
+  // location instead, re-reading the store at each navigation as before. A
+  // mask holds destination options of its own, so its values are checked too.
   const getDest = () => {
     const dest: any = {}
     for (const key of NAVIGATION_KEYS) {
-      if ((dest[key] = (options as any)[key])?.[Solid.$PROXY]) {
+      const value = (dest[key] = (options as any)[key])
+      if (
+        isStore(value) ||
+        (key === 'mask' && value && Object.values(value).some(isStore))
+      ) {
         currentLocation()
       }
     }
@@ -435,6 +440,8 @@ type LinkState = [
   external: string | null | undefined,
   active: boolean,
 ]
+
+const isStore = (value: any): boolean => !!value?.[Solid.$PROXY]
 
 const NAVIGATION_KEYS = [
   'to',

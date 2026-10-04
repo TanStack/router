@@ -170,14 +170,18 @@ function useLinkPropsImpl(
   // option changes identity: the router reuses a location built from the same
   // object without reading the current location. A reactive value changes in
   // place, so a reactive option value (checked one level deep, not nested)
-  // gets a fresh object per location instead, re-read at each navigation.
+  // gets a fresh object per location instead, re-read at each navigation. A
+  // mask holds destination options of its own, so its values are checked too.
   const dest = Vue.computed((prev?: Record<string, any>) => {
     const options = getOptions() as Record<string, any>
     const dest: Record<string, any> = {}
     let same = !!prev
     for (const key of NAVIGATION_KEYS) {
       const value = (dest[key] = options[key])
-      if (Vue.isProxy(value)) {
+      if (
+        Vue.isProxy(value) ||
+        (key === 'mask' && value && Object.values(value).some(Vue.isProxy))
+      ) {
         // Track the location: a reactive value is re-read at each one.
         same = !currentLocation.value
       }
