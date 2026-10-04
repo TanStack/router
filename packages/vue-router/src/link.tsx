@@ -111,15 +111,13 @@ function useLinkPropsImpl(
     return {}
   }
 
-  const ref = Vue.ref<Element | null>(null)
-
   // During SSR we render exactly once and do not need reactivity.
   // Avoid store subscriptions, effects and observers on the server.
   if (isServer ?? router.isServer) {
     const options = getOptions()
     if (getUrlScheme(`${options.to}`)) {
-      return Vue.ref(
-        getExternalLinkProps(options, router, ref),
+      return Vue.shallowRef(
+        getExternalLinkProps(options, router),
       ) as unknown as LinkHTMLAttributes
     }
 
@@ -150,10 +148,12 @@ function useLinkPropsImpl(
       resolvedStyle,
     })
 
-    return Vue.ref(
+    return Vue.shallowRef(
       result as LinkHTMLAttributes,
     ) as unknown as LinkHTMLAttributes
   }
+
+  const ref = Vue.ref<Element | null>(null)
 
   const isExternal = () => !!getUrlScheme(`${getOptions().to}`)
 
@@ -545,7 +545,7 @@ function combineResultProps({
 function getExternalLinkProps(
   options: AnyLinkPropsOptions,
   router: AnyRouter,
-  ref: Vue.Ref<Element | null>,
+  ref?: Vue.Ref<Element | null>,
   staticEventHandlers?: LinkEventHandlers,
 ): LinkHTMLAttributes {
   const dangerous = isDangerousProtocol(
@@ -852,6 +852,34 @@ export function createLink<const TComp>(
   }) as any
 }
 
+function useLinkPropsSnapshot(
+  props: Record<string, unknown>,
+  attrs: Record<string, unknown>,
+) {
+  const attrsSnapshot = Vue.shallowRef({ ...attrs })
+  Vue.onBeforeUpdate(() => {
+    const keys = Object.keys(attrs)
+    const previous = attrsSnapshot.value
+    if (
+      keys.length !== Object.keys(previous).length ||
+      keys.some((key) => !Object.is(attrs[key], previous[key]))
+    ) {
+      attrsSnapshot.value = { ...attrs }
+    }
+  })
+
+  // Keep a plain cached snapshot so location-only updates do not repeatedly
+  // cross Vue's props and attrs proxies for every link computation.
+  const allProps = Vue.computed(
+    () =>
+      ({
+        ...props,
+        ...attrsSnapshot.value,
+      }) as AnyLinkPropsOptions,
+  )
+  return () => allProps.value
+}
+
 const LinkImpl = Vue.defineComponent({
   name: 'Link',
   inheritAttrs: false,
@@ -882,27 +910,12 @@ const LinkImpl = Vue.defineComponent({
     'target',
   ],
   setup(props, { attrs, slots }) {
-    const attrsSnapshot = Vue.shallowRef({ ...attrs })
-    Vue.onBeforeUpdate(() => {
-      const keys = Object.keys(attrs)
-      const previous = attrsSnapshot.value
-      if (
-        keys.length !== Object.keys(previous).length ||
-        keys.some((key) => !Object.is(attrs[key], previous[key]))
-      ) {
-        attrsSnapshot.value = { ...attrs }
-      }
-    })
-
-    // Keep a plain cached snapshot so location-only updates do not repeatedly
-    // cross Vue's props and attrs proxies for every link computation.
-    const allProps = Vue.computed(() => ({
-      ...props,
-      ...attrsSnapshot.value,
-    }))
-    const linkPropsSource = useLinkPropsImpl(() => allProps.value) as
-      | LinkHTMLAttributes
-      | Vue.ComputedRef<LinkHTMLAttributes>
+    // The server renders once: read the props directly.
+    const linkPropsSource = useLinkPropsImpl(
+      (isServer ?? useRouter()?.isServer)
+        ? () => ({ ...props, ...attrs })
+        : useLinkPropsSnapshot(props, attrs),
+    ) as LinkHTMLAttributes | Vue.ComputedRef<LinkHTMLAttributes>
 
     return () => {
       const Component = props._asChild || 'a'
