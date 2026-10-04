@@ -41,11 +41,19 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
+  return createLinkProps(options as any, LINK_OPTION_KEYS)
+}
+
+// `ownKeys` are the options that never reach the element.
+function createLinkProps(
+  options: UseLinkPropsOptions,
+  ownKeys: ReadonlyArray<string>,
+): Solid.ComponentProps<'a'> {
   const router = useRouter()
   // Options are read directly: one props proxy, no merged-default getters.
   const [, propsSafeToSpread] = Solid.splitProps(
     options,
-    LINK_OPTION_KEYS as unknown as Array<keyof typeof options>,
+    ownKeys as Array<keyof typeof options>,
   )
 
   // A live match never changes route, so read it once without tracking.
@@ -468,6 +476,8 @@ const LINK_OPTION_KEYS = [
   'onMouseOut',
   'onTouchStart',
 ]
+// A Link also consumes its children and component, and drops `type`.
+const LINK_ELEMENT_KEYS = [...LINK_OPTION_KEYS, '_asChild', 'children', 'type']
 const STATIC_EVENT_PROPS = [
   'onClick',
   'onBlur',
@@ -635,15 +645,9 @@ export function createLink<const TComp>(
 }
 
 export const Link: LinkComponent<'a'> = (props) => {
-  const [local, rest] = Solid.splitProps(
-    props as typeof props & { _asChild: any },
-    ['_asChild', 'children'],
-  )
-
-  const [_, linkProps] = Solid.splitProps(
-    useLinkProps(rest as unknown as any),
-    ['type'],
-  )
+  const local = props as typeof props & { _asChild: any }
+  // One props proxy between the element and the Link's props.
+  const linkProps = createLinkProps(props as any, LINK_ELEMENT_KEYS)
 
   // Element insertion tracks this itself; only a custom component, which may
   // read its children more than once, gets a memo.
