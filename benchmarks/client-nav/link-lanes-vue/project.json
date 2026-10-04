@@ -1,0 +1,43 @@
+{
+  "name": "@benchmarks/vue-link-lanes",
+  "projectType": "application",
+  "tags": ["optional-benchmark"],
+  "targets": {
+    "build:client": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/vue-router"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config ./link-lanes-vue/vite.config.ts",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "test:perf": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["build:client"],
+      "options": {
+        "command": "node ./link-lanes-solid/run.ts measure-all ./link-lanes-vue/dist/app.js",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/vue-router"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "tsc -p ./link-lanes-vue/tsconfig.json --noEmit",
+        "cwd": "benchmarks/client-nav"
+      }
+    }
+  }
+}
