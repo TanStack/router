@@ -1,7 +1,5 @@
 import * as Solid from 'solid-js'
 
-import { mergeRefs } from '@solid-primitives/refs'
-
 import {
   _isRouteDeparting,
   deepEqual,
@@ -402,13 +400,22 @@ export function useLinkProps<
     handleTouchStart,
   )
 
+  // One ref callback per element. The selected state props' ref, else the
+  // Link's own, receives the element once; a state change does not re-call it.
+  const linkRef = (el: Element) => {
+    setRef(el)
+    const ref = Solid.untrack(resolvedProps).ref ?? options.ref
+    if (typeof ref === 'function') {
+      ref(el as HTMLAnchorElement)
+    }
+  }
+
   const resolvedProps = Solid.createMemo(() => {
     const external = externalLink()
     const disabled = options.disabled || external === null
 
     const base = {
       href: external === null ? undefined : external || hrefOption(),
-      ref: mergeRefs(setRef, options.ref),
       onClick,
       onBlur,
       onFocus,
@@ -425,7 +432,11 @@ export function useLinkProps<
     return resolveLinkStateProps(base)
   })
 
-  return Solid.mergeProps(propsSafeToSpread, resolvedProps) as any
+  // The ref sits after the memo so reading it does not track the memo: the
+  // element's ref effect then runs once.
+  return Solid.mergeProps(propsSafeToSpread, resolvedProps, {
+    ref: linkRef,
+  }) as any
 }
 
 // Props that decide where and how a Link navigates.

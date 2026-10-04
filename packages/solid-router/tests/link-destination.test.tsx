@@ -362,6 +362,26 @@ test('function children render once per active state change', async () => {
   expect(calls).toEqual([false, true])
 })
 
+test('calls a user ref once per element across state changes', async () => {
+  const refs: Array<Element> = []
+  const [id, setId] = createSignal('one')
+  const { go } = setup(() => (
+    <Link
+      to="/target/$id"
+      params={{ id: id() } as any}
+      ref={(el: HTMLAnchorElement) => refs.push(el)}
+      data-testid="link"
+    />
+  ))
+  const link = await screen.findByTestId('link')
+  setId('two')
+  expect(link).toHaveAttribute('href', '/target/two')
+  await go('two')
+  fireEvent.click(link)
+  await vi.waitFor(() => expect(link).toHaveAttribute('data-status', 'active'))
+  expect(refs).toEqual([link])
+})
+
 test('refreshes history formatting even when the destination is reused', async () => {
   let suffix = 'old'
   const root = createRootRoute({
