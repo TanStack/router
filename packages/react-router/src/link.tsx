@@ -490,7 +490,6 @@ const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   'mask',
   'from',
   'unsafeRelative',
-  '_fromLocation',
   'reloadDocument',
   'preload',
   'preloadDelay',
