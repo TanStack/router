@@ -342,6 +342,26 @@ test.each([
   },
 )
 
+test('function children render once per active state change', async () => {
+  const calls: Array<boolean> = []
+  const { go } = setup(() => (
+    <Link to="/target/$id" params={{ id: 'fixed' }} data-testid="link">
+      {({ isActive }) => {
+        calls.push(isActive)
+        return isActive ? 'active' : 'inactive'
+      }}
+    </Link>
+  ))
+  const link = await screen.findByTestId('link')
+  expect(link).toHaveTextContent('inactive')
+  await go('two')
+  await go('three')
+  expect(calls).toEqual([false])
+  fireEvent.click(link)
+  await vi.waitFor(() => expect(link).toHaveTextContent(/^active$/))
+  expect(calls).toEqual([false, true])
+})
+
 test('refreshes history formatting even when the destination is reused', async () => {
   let suffix = 'old'
   const root = createRootRoute({

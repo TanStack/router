@@ -646,7 +646,9 @@ export const Link: LinkComponent<'a'> = (props) => {
     ['type'],
   )
 
-  const children = Solid.createMemo(() => {
+  // Element insertion tracks this itself; only a custom component, which may
+  // read its children more than once, gets a memo.
+  const children = () => {
     const ch = local.children
     if (typeof ch === 'function') {
       return ch({
@@ -657,7 +659,7 @@ export const Link: LinkComponent<'a'> = (props) => {
     }
 
     return ch satisfies Solid.JSX.Element
-  })
+  }
 
   if (local._asChild === 'svg') {
     const [_, svgLinkProps] = Solid.splitProps(linkProps, ['class'])
@@ -672,9 +674,10 @@ export const Link: LinkComponent<'a'> = (props) => {
     return <a {...linkProps}>{children()}</a>
   }
 
+  const memo = Solid.createMemo(children)
   return (
     <Dynamic component={local._asChild as Solid.ValidComponent} {...linkProps}>
-      {children()}
+      {memo()}
     </Dynamic>
   )
 }
