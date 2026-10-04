@@ -11,9 +11,9 @@
 import type { ScenarioStep } from '../harness'
 
 // Layout (staying) Links: HUB_ITEM_COUNT ids x 5 variants.
-export const HUB_ITEM_COUNT = 3
+export const HUB_ITEM_COUNT = 12
 // List leaf (departing) Links: LIST_ITEM_COUNT ids x 5 variants.
-export const LIST_ITEM_COUNT = 9
+export const LIST_ITEM_COUNT = 40
 
 const ids = (count: number) =>
   Array.from({ length: count }, (_, index) => String(index + 1))
