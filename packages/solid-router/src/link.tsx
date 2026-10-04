@@ -327,13 +327,7 @@ export function useLinkProps<
     }, preloadDelay())
   }
 
-  useIntersectionObserver(
-    ref,
-    enqueuePreload,
-    () => preload() !== 'viewport',
-    // Intent preloading still needs timer cleanup without an observer.
-    () => !!preload(),
-  )
+  useIntersectionObserver(ref, enqueuePreload, preload)
 
   Solid.createEffect(() => {
     if (hasRenderFetched) {

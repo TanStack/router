@@ -5298,28 +5298,24 @@ describe('Link', () => {
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
 
-  test.each([undefined, false, true])(
-    'disabled observers honor the cleanup condition (%s)',
-    (cleanupWhenDisabled) => {
+  test.each([
+    ['intent', true],
+    [false, false],
+  ] as const)(
+    'observers without viewport preloading clean up only while preloading (%s)',
+    (mode, cleansUp) => {
       const callback = vi.fn()
       const view = render(() => {
         const [element, setElement] = Solid.createSignal<Element | null>(null)
-        useIntersectionObserver(
-          element,
-          callback,
-          () => true,
-          cleanupWhenDisabled === undefined
-            ? undefined
-            : () => cleanupWhenDisabled,
-        )
+        useIntersectionObserver(element, callback, () => mode)
         return <div ref={setElement} />
       })
       callback.mockClear()
       view.unmount()
-      if (cleanupWhenDisabled === false) {
-        expect(callback).not.toHaveBeenCalled()
-      } else {
+      if (cleansUp) {
         expect(callback).toHaveBeenCalledWith()
+      } else {
+        expect(callback).not.toHaveBeenCalled()
       }
     },
   )
