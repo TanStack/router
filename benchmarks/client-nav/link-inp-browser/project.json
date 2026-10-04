@@ -1,0 +1,56 @@
+{
+  "name": "@benchmarks/link-inp-browser",
+  "projectType": "application",
+  "tags": ["optional-benchmark"],
+  "targets": {
+    "build:candidate": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/react-router", "@tanstack/solid-router"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "node ./link-inp-browser/build.ts candidate",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "build:baseline": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node ./link-inp-browser/build.ts baseline",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "test:perf": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["build:baseline", "build:candidate"],
+      "options": {
+        "command": "node ./link-inp-browser/run.ts",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/react-router", "@tanstack/solid-router"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "commands": [
+          "tsc -p ./link-inp-browser/tsconfig.json --noEmit",
+          "tsc -p ./link-inp-browser/react/tsconfig.json --noEmit",
+          "tsc -p ./link-inp-browser/solid/tsconfig.json --noEmit"
+        ],
+        "parallel": false,
+        "cwd": "benchmarks/client-nav"
+      }
+    }
+  }
+}
