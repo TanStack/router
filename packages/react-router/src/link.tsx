@@ -204,13 +204,13 @@ export function useLinkProps<
   // 3. In client bundles, `isServer` is `false`, so the early return never executes
   // ==========================================================================
 
-  // The link's own ref: the element for the viewport observer and the key
+  // The link's own ref: the element for the viewport observer and the holder
   // of a pending intent timer. A forwarded ref is filled alongside it by one
   // callback, memoized on the forwarded ref so React re-attaches it (and
   // notifies the consumer) only when their ref changes, not on every render.
   // A cleanup returned by a consumer callback is passed through to React.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const innerRef = React.useRef<Element>(null)
+  const innerRef: LinkRef = React.useRef<Element>(null)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const mergedRef = React.useCallback(
     (element: Element | null) => {
@@ -374,17 +374,10 @@ export function useLinkProps<
         return
       }
 
-      if (timeoutMap.has(innerRef)) {
-        return
-      }
-
-      timeoutMap.set(
-        innerRef,
-        setTimeout(() => {
-          timeoutMap.delete(innerRef)
-          preloadLink(router, dest)
-        }, preloadDelay),
-      )
+      innerRef.t ??= setTimeout(() => {
+        innerRef.t = undefined
+        preloadLink(router, dest)
+      }, preloadDelay)
     },
     [router, dest, innerRef, preload, preloadDelay],
   )
@@ -645,10 +638,13 @@ function getServerLinkProps(
   )
 }
 
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
-const cancelPreload = (eventTarget: object) => {
-  clearTimeout(timeoutMap.get(eventTarget))
-  timeoutMap.delete(eventTarget)
+// A Link's own ref also holds its pending intent preload timer.
+type LinkRef = React.RefObject<Element | null> & {
+  t?: ReturnType<typeof setTimeout>
+}
+const cancelPreload = (ref: LinkRef) => {
+  clearTimeout(ref.t)
+  ref.t = undefined
 }
 
 export const composeHandlers = (
