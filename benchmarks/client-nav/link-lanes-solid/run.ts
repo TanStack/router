@@ -6,6 +6,10 @@
  *   node run.ts measure-all <bundle>
  *   node run.ts compare <baseline bundle> <candidate bundle> [rounds]
  *
+ * `LANE_PRELOAD=intent` measures with `defaultPreload: 'intent'` (the usual app
+ * configuration) instead of Links that opt out of preloading, and
+ * `LANE_CASES=a,b` limits the cases.
+ *
  * Each sample is a fresh process that warms up, then times navigations from a
  * settled, garbage-collected app: `syncMs` ends at the first macrotask after
  * the click (INP processing), `totalMs` at `onRendered`. Without loaders a
@@ -22,7 +26,7 @@ type Sample = Record<'a->b' | 'b->a', Phase>
 
 const WARMUP = 50
 const MEASURED = 100
-const CASES = [
+const CASES = process.env.LANE_CASES?.split(',') ?? [
   'lane-departing',
   'lane-retained',
   'lane-retained-updaters',
@@ -34,7 +38,9 @@ async function measure(bundle: string, caseId: string): Promise<Sample> {
   const app = await import(pathToFileURL(resolve(bundle)).href)
   const container = document.createElement('div')
   document.body.append(container)
-  const { router, unmount } = app.mountLaneApp(container, caseId)
+  const { router, unmount } = app.mountLaneApp(container, caseId, {
+    preload: process.env.LANE_PRELOAD,
+  })
   await router.load()
   let resolveRendered = () => {}
   router.subscribe('onRendered', () => resolveRendered())
