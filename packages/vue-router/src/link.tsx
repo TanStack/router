@@ -9,8 +9,8 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { useSelector } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
+import { linkLocationContext } from './matchContext'
 import { useIntersectionObserver } from './utils'
 
 import type {
@@ -161,33 +161,14 @@ function useLinkPropsImpl(
   // server renders do not allocate a computed wrapper for every link.
   const isExternal = Vue.computed(() => !!getUrlScheme(`${getOptions().to}`))
 
-  const currentLocation: Vue.Ref<
-    ReturnType<typeof router.stores.location.get>
-  > = isExternal.value
-    ? Vue.shallowRef(router.stores.location.get())
-    : (useSelector(router.stores.location, (l) => l, {
-        compare: (prev, next) => prev.href === next.href,
-      }) as Vue.Ref<ReturnType<typeof router.stores.location.get>>)
+  // Links build from the location their match presents, or the router's live
+  // one outside every match. External links never read it.
+  const source = Vue.inject(linkLocationContext)!
 
-  // Links that start external skip useSelector above. Subscribe if they later
-  // become internal so active state follows subsequent location changes.
-  if (isExternal.value) {
-    Vue.watchEffect((onCleanup) => {
-      if (isExternal.value) {
-        return
-      }
-
-      const store = router.stores.location
-      // Catch up on navigations while this external link was unsubscribed.
-      currentLocation.value = store.get()
-      const subscription = store.subscribe((location) => {
-        if (currentLocation.value.href !== location.href) {
-          currentLocation.value = location
-        }
-      })
-      onCleanup(() => subscription.unsubscribe())
-    })
-  }
+  // Rebuild only when the href moves.
+  const currentLocation = Vue.computed((prev?: ParsedLocation) =>
+    prev?.href === source.value.href ? prev : source.value,
+  )
 
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
@@ -240,7 +221,10 @@ function useLinkPropsImpl(
   const doPreload = () => {
     const options = getOptions()
     return router
-      .preloadRoute(options as Parameters<typeof router.preloadRoute>[0])
+      .preloadRoute({
+        _fromLocation: source.value,
+        ...options,
+      } as Parameters<typeof router.preloadRoute>[0])
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -349,6 +333,7 @@ function useLinkPropsImpl(
 
       // All is well? Navigate!
       router.navigate({
+        _fromLocation: source.value,
         ...options,
         replace: options.replace,
         resetScroll: options.resetScroll,
