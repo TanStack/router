@@ -25,6 +25,32 @@ describe('createHashHistory', () => {
     },
   )
 
+  test('reads a hash route that starts with a query without leaking it into the pathname', () => {
+    const window = {
+      location: { pathname: '/', search: '', hash: '#?x=1' },
+      history: {
+        state: { __TSR_index: 0, __TSR_key: 'initial' },
+        length: 1,
+        pushState: vi.fn(),
+        replaceState: vi.fn(),
+        back: vi.fn(),
+        forward: vi.fn(),
+        go: vi.fn(),
+      },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }
+    const history = createHashHistory({ window })
+
+    expect(history.location).toMatchObject({
+      href: '?x=1',
+      pathname: '',
+      search: '?x=1',
+      hash: '',
+    })
+    history.destroy()
+  })
+
   test('normalizes the final browser href without changing the logical hash location', async () => {
     const pushState = vi.fn()
     const window = {
