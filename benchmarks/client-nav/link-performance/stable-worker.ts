@@ -36,7 +36,12 @@ async function handle(request: WorkerRequest) {
       if (app.serverEnvironment !== false) {
         throw new Error('Expected a production client bundle')
       }
-      scenario = createClientScenario(app, request.caseId)
+      // Only the current bundle must skip departing Links' work.
+      scenario = createClientScenario(
+        app,
+        request.caseId,
+        request.variant === 1,
+      )
     } else {
       const app: typeof SsrApp = await import(bundleUrl.href)
       if (app.serverEnvironment !== true) {
@@ -67,6 +72,7 @@ async function handle(request: WorkerRequest) {
     if (!Number.isInteger(request.iterations) || request.iterations < 1) {
       throw new Error('Expected a positive batch count')
     }
+    scenario.takePhases?.()
     const cpuStart = process.threadCpuUsage()
     const processStart = process.cpuUsage()
     const start = performance.now()
@@ -76,6 +82,7 @@ async function handle(request: WorkerRequest) {
     const wallMs = performance.now() - start
     const cpu = process.threadCpuUsage(cpuStart)
     const processCpu = process.cpuUsage(processStart)
+    const phases = scenario.takePhases?.()
     reply({
       kind: 'sample',
       sample: {
@@ -84,6 +91,7 @@ async function handle(request: WorkerRequest) {
         cpuMs: (cpu.user + cpu.system) / 1_000 / request.iterations,
         processCpuMs:
           (processCpu.user + processCpu.system) / 1_000 / request.iterations,
+        phases,
       },
     })
     return

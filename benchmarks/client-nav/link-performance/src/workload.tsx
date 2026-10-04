@@ -8,11 +8,15 @@ import {
   retainSearchParams,
   stripSearchParams,
   useLocation,
+  useRouter,
 } from '@tanstack/react-router'
 import {
   LINK_COUNT,
   LOCALES,
   encodedValue,
+  isLaneUpdaterCase,
+  laneFixedTarget,
+  laneLinkCounts,
   optionalCategory,
   sourceFilter,
   sourceSearch,
@@ -133,7 +137,23 @@ const publicRoute = createRoute({
   path: 'public/$itemId',
 })
 
+const laneRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'lane',
+  component: LaneLayout,
+})
+const laneARoute = createRoute({
+  getParentRoute: () => laneRoute,
+  path: 'a',
+  component: LaneLeaf,
+})
+const laneBRoute = createRoute({
+  getParentRoute: () => laneRoute,
+  path: 'b',
+})
+
 const routeTree = rootRoute.addChildren([
+  laneRoute.addChildren([laneARoute, laneBRoute]),
   itemsRoute.addChildren([detailsRoute]),
   teamRoute.addChildren([teamItemRoute.addChildren([teamDetailsRoute])]),
   filteredRoute,
@@ -236,6 +256,12 @@ function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
     hash: caseId === 'location-updaters' ? `source-${stateIndex}` : '',
     state: { linkPerfState: stateIndex + 10 },
   }
+  if (laneLinkCounts(caseId)) {
+    return linkOptions({
+      ...common,
+      to: stateIndex % 2 === 0 ? '/lane/a' : '/lane/b',
+    })
+  }
   switch (caseId) {
     case 'relative':
       return linkOptions({
@@ -283,6 +309,7 @@ function sourceOptions(caseId: LinkCaseId, stateIndex: number) {
 }
 
 const indexes = Array.from({ length: LINK_COUNT }, (_, index) => index)
+const laneIndexes = Array.from({ length: 1_000 }, (_, index) => index)
 const controls = [0, 1, 2, 3] as const
 
 function SourcePath() {
@@ -310,11 +337,91 @@ function RootLayout() {
         ))}
       </nav>
       <SourcePath />
-      <section aria-label="Measured Links">
-        {indexes.map((index) => measuredLink(context, index))}
+      {!laneLinkCounts(context.caseId) && (
+        <section aria-label="Measured Links">
+          {indexes.map((index) => measuredLink(context, index))}
+        </section>
+      )}
+      <Outlet />
+    </>
+  )
+}
+
+// Lane components read the case without subscribing (the root context is
+// rebuilt per navigation), so only the Links' own subscriptions re-render them.
+function LaneLayout() {
+  const { caseId } = useRouter().options.context
+  const [layout] = laneLinkCounts(caseId) ?? [0]
+  return (
+    <>
+      <section data-owner="layout">
+        {laneIndexes
+          .slice(0, layout)
+          .map((index) => laneLink(caseId, index, false))}
       </section>
       <Outlet />
     </>
+  )
+}
+
+function LaneLeaf() {
+  const { caseId } = useRouter().options.context
+  const [layout, leaf] = laneLinkCounts(caseId) ?? [0, 0]
+  return (
+    <section data-owner="leaf">
+      {laneIndexes
+        .slice(layout, layout + leaf)
+        .map((index) => laneLink(caseId, index, true))}
+    </section>
+  )
+}
+
+/**
+ * Work done by the Links of the `/lane/a` leaf: renders of fixed Links and
+ * search-updater calls of updater Links. A departing leaf's Links do none
+ * while a navigation leaves it.
+ */
+export const laneLeafWork = { count: 0 }
+
+function laneLink(caseId: LinkCaseId, index: number, leaf: boolean) {
+  const label = `Link ${index}`
+  const common = {
+    key: index,
+    'data-perf-link': index,
+    preload: false,
+    children: leaf
+      ? () => {
+          laneLeafWork.count++
+          return label
+        }
+      : label,
+  } as const
+  const itemId = `item-${index % 40}`
+  if (isLaneUpdaterCase(caseId)) {
+    const search = (previous: LinkSearch) => {
+      if (leaf) {
+        laneLeafWork.count++
+      }
+      return { ...previous, page: (index % 5) + 1 }
+    }
+    // Both forms read the current location, so neither is cached statically:
+    // even hrefs follow the current path, odd hrefs stay unchanged.
+    return index % 2 === 0 ? (
+      <Link {...common} to="." search={search} />
+    ) : (
+      <Link
+        {...common}
+        to="/items/$itemId"
+        params={{ itemId }}
+        search={search}
+      />
+    )
+  }
+  const target = laneFixedTarget(index)
+  return target ? (
+    <Link {...common} to={target} />
+  ) : (
+    <Link {...common} to="/items/$itemId" params={{ itemId }} />
   )
 }
 
@@ -502,5 +609,8 @@ function measuredLink(
         </Link>
       )
     }
+    default:
+      // `lane-*` cases render their Links from the lane routes instead.
+      return null
   }
 }

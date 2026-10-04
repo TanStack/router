@@ -233,6 +233,22 @@ those separate workloads.
   hrefs and active state during its untimed warm-up lap. Control navigations
   replace the history entry, keeping history size constant. Post-measurement
   assertions also check that the measured anchors stayed mounted.
+- **Link ownership (`lane-*`, client):** 1,000 Links split between a staying
+  `/lane` layout and a departing `/lane/a` leaf; navigation alternates between
+  `/lane/a` and `/lane/b`, which renders no Links. `lane-departing` puts all
+  1,000 in the leaf, `lane-retained` all in the layout, and `lane-mixed` 500 in
+  each. `lane-departing-updaters` puts 1,000 search-updater Links in the leaf.
+  Leaf Links count their renders and updater calls; the current bundle must do
+  none of that work during `a->b`, while a baseline bundle only records it. These fixed destinations hit the static location cache, and 40 per
+  1,000 flip active state each navigation. `lane-retained-updaters` puts 1,000
+  search-updater Links in the layout: even ones use `to="."`, so their hrefs
+  follow the path, while odd hrefs stay stable. Lane routes have no loaders,
+  and their components read the case without subscribing. Each navigation
+  starts settled and records three times from its click. `syncMs` ends in a
+  macrotask queued before the click, approximating INP processing. `onLoadMs`
+  ends at `onLoad`, where the match commit starts, and `totalMs` ends at
+  `onRendered`. The stable runner reports these per direction (`a->b`
+  departs `/lane/a`), with paired changes and absolute 95% intervals.
 - **SSR:** four fresh-router requests per timed batch, each rendering 200
   measured Links through `RouterProvider` and `renderToString`. Router creation,
   `router.load()`, rendering, and history cleanup are included. This isolates

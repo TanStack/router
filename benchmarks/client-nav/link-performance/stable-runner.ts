@@ -12,11 +12,13 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { LINK_CASES } from './cases'
 import { createStagingDirectory } from './staging'
-import { classify, mean, summarizeRatios } from './statistics'
+import { classify, mean, summarizeRatios, summarizeValues } from './statistics'
+import { PHASE_METRICS } from './worker-protocol'
 import type { LinkCaseId } from './cases'
 import type {
   BlockSample,
   Mode,
+  PhaseMetric,
   Variant,
   WorkerRequest,
   WorkerResponse,
@@ -99,6 +101,7 @@ async function sampleReplica(
   const worker = startWorker()
   const samples: Array<Array<BlockSample>> = [[], []]
   const ratios: Array<{ cpu: number; wall: number }> = []
+  const phaseRatios: Record<string, Record<PhaseMetric, Array<number>>> = {}
   try {
     const starts: Array<number> = []
     // Balance module initialization and which variant finishes warming last.
@@ -141,17 +144,50 @@ async function sampleReplica(
           mean(block[1]!.map((s) => s.wallMs)) /
           mean(block[0]!.map((s) => s.wallMs)),
       })
+      for (const label of Object.keys(block[0]![0]!.phases ?? {})) {
+        const entry = (phaseRatios[label] ??= {
+          syncMs: [],
+          onLoadMs: [],
+          totalMs: [],
+        })
+        for (const metric of PHASE_METRICS) {
+          const phaseMean = (index: Variant) =>
+            mean(block[index]!.map((s) => s.phases![label]![metric]))
+          entry[metric].push(phaseMean(1) / phaseMean(0))
+        }
+      }
     }
     const response = await worker.request({ kind: 'stop' })
     if (response.kind !== 'stopped') {
       throw new Error('Expected successful post-measurement assertions')
     }
+    const geometricMean = (values: Array<number>) =>
+      Math.exp(mean(values.map(Math.log)))
+    const phases: Record<
+      string,
+      Record<PhaseMetric, { ratio: number; baseline: number; current: number }>
+    > = {}
+    for (const [label, entry] of Object.entries(phaseRatios)) {
+      const phaseMean = (index: Variant, metric: PhaseMetric) =>
+        mean(samples[index]!.map((s) => s.phases![label]![metric]))
+      phases[label] = Object.fromEntries(
+        PHASE_METRICS.map((metric) => [
+          metric,
+          {
+            ratio: geometricMean(entry[metric]),
+            baseline: phaseMean(0, metric),
+            current: phaseMean(1, metric),
+          },
+        ]),
+      ) as (typeof phases)[string]
+    }
     return {
       iterations,
       baseline: samples[0]!,
       current: samples[1]!,
-      cpuRatio: Math.exp(mean(ratios.map((r) => Math.log(r.cpu)))),
-      wallRatio: Math.exp(mean(ratios.map((r) => Math.log(r.wall)))),
+      cpuRatio: geometricMean(ratios.map((r) => r.cpu)),
+      wallRatio: geometricMean(ratios.map((r) => r.wall)),
+      phases,
     }
   } finally {
     worker.kill()
@@ -209,6 +245,7 @@ async function main() {
       cpu: ReturnType<typeof summarizeRatios>
       wall: ReturnType<typeof summarizeRatios>
       verdict: ReturnType<typeof classify>
+      phases: Record<string, unknown>
     }>
   } = {
     protocol:
@@ -243,6 +280,23 @@ async function main() {
         const cpu = summarizeRatios(replicas.map((r) => r.cpuRatio))
         const wall = summarizeRatios(replicas.map((r) => r.wallRatio))
         const verdict = classify(cpu, wall)
+        const phases: Record<string, unknown> = {}
+        for (const label of Object.keys(replicas[0]!.phases)) {
+          const summary: Record<string, unknown> = {}
+          for (const metric of PHASE_METRICS) {
+            const values = replicas.map((r) => r.phases[label]![metric])
+            const change = summarizeRatios(values.map((v) => v.ratio))
+            const baselineMs = summarizeValues(values.map((v) => v.baseline))
+            const currentMs = summarizeValues(values.map((v) => v.current))
+            summary[metric] = { change, baselineMs, currentMs }
+            const ms = (value: typeof baselineMs) =>
+              `${value.mean.toFixed(3)} [${value.low95.toFixed(3)}, ${value.high95.toFixed(3)}]`
+            console.log(
+              `${mode} ${id} ${label} ${metric}: ${ms(baselineMs)} -> ${ms(currentMs)}, ${change.changePercent.toFixed(2)}% [${change.low95.toFixed(2)}, ${change.high95.toFixed(2)}]`,
+            )
+          }
+          phases[label] = summary
+        }
         report.results.push({
           mode,
           caseId: id,
@@ -252,6 +306,7 @@ async function main() {
           cpu,
           wall,
           verdict,
+          phases,
         })
         writeFileSync(output, JSON.stringify(report, null, 2))
         console.log(

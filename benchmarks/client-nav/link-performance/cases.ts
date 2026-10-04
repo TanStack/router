@@ -68,11 +68,76 @@ export const LINK_CASES = [
     description:
       'Exact, fuzzy and search matching with props and render children.',
   },
+  {
+    id: 'lane-departing',
+    label: 'Departing leaf owner',
+    description:
+      '1,000 fixed Links in leaf /lane/a; it departs on every other navigation.',
+  },
+  {
+    id: 'lane-departing-updaters',
+    label: 'Departing leaf owner with updaters',
+    description:
+      '1,000 search-updater Links in leaf /lane/a; it departs on every other navigation.',
+  },
+  {
+    id: 'lane-retained',
+    label: 'Retained layout owner',
+    description:
+      '1,000 fixed Links in the staying /lane layout; 40 flip active per navigation.',
+  },
+  {
+    id: 'lane-retained-updaters',
+    label: 'Retained layout owner with updaters',
+    description:
+      '1,000 location-dependent Links in the staying /lane layout bypass the static cache.',
+  },
+  {
+    id: 'lane-mixed',
+    label: 'Mixed retained and departing owners',
+    description:
+      '500 fixed Links in the staying /lane layout and 500 in departing /lane/a.',
+  },
 ] as const
 
 export type LinkCaseId = (typeof LINK_CASES)[number]['id']
 
 export const LINK_COUNT = 200
+
+/**
+ * Measured Links of the `lane-*` cases, rendered by the staying `/lane` layout
+ * and the `/lane/a` leaf. Even states visit `/lane/a`, odd states `/lane/b`
+ * (which renders no Links), so `/lane/a` departs on every other navigation.
+ */
+export function laneLinkCounts(
+  caseId: LinkCaseId,
+): [layout: number, leaf: number] | undefined {
+  switch (caseId) {
+    case 'lane-departing':
+    case 'lane-departing-updaters':
+      return [0, 1_000]
+    case 'lane-retained':
+    case 'lane-retained-updaters':
+      return [1_000, 0]
+    case 'lane-mixed':
+      return [500, 500]
+    default:
+      return undefined
+  }
+}
+
+/** Lane cases whose Links derive search from the current location. */
+export function isLaneUpdaterCase(caseId: LinkCaseId) {
+  return (
+    caseId === 'lane-retained-updaters' || caseId === 'lane-departing-updaters'
+  )
+}
+
+// Fixed lane destinations: 20 Links per 1,000 target each leaf, so 40 flip
+// active per navigation; the rest target never-visited item routes.
+export function laneFixedTarget(index: number) {
+  return index % 50 === 0 ? '/lane/a' : index % 50 === 1 ? '/lane/b' : undefined
+}
 export const NAVIGATION_STATES = [1, 2, 3, 0] as const
 export const LOCALES = ['en', 'fr', 'de', 'es'] as const
 
@@ -155,6 +220,9 @@ function url(pathname: string, search: Partial<LinkSearch> = {}, hash = '') {
 }
 
 function sourcePath(caseId: LinkCaseId, stateIndex: number) {
+  if (laneLinkCounts(caseId)) {
+    return stateIndex % 2 === 0 ? '/lane/a' : '/lane/b'
+  }
   switch (caseId) {
     case 'relative':
       return `/teams/team-${stateIndex}/item-${stateIndex}`
@@ -194,6 +262,16 @@ export function getSourceUrl(caseId: LinkCaseId, stateIndex: number): string {
 function expectedHref(caseId: LinkCaseId, stateIndex: number, index: number) {
   const itemId = `item-${index % 40}`
   switch (caseId) {
+    case 'lane-departing':
+    case 'lane-retained':
+    case 'lane-mixed':
+      return laneFixedTarget(index) ?? `/items/${itemId}`
+    case 'lane-retained-updaters':
+    case 'lane-departing-updaters':
+      return url(
+        index % 2 === 0 ? sourcePath(caseId, stateIndex) : `/items/${itemId}`,
+        { page: (index % 5) + 1 },
+      )
     case 'shared-params':
       return `/items/${itemId}`
     case 'unique-params':
@@ -304,10 +382,20 @@ export function assertScenario(
     )
   }
   const links = root.querySelectorAll<HTMLAnchorElement>('a[data-perf-link]')
-  if (links.length !== LINK_COUNT) {
+  const lane = laneLinkCounts(caseId)
+  const leafCount = lane && stateIndex % 2 === 0 ? lane[1] : 0
+  const expectedCount = lane ? lane[0] + leafCount : LINK_COUNT
+  if (links.length !== expectedCount) {
     throw new Error(
-      `${caseId}: expected ${LINK_COUNT} Links, got ${links.length}`,
+      `${caseId}: expected ${expectedCount} Links, got ${links.length}`,
     )
+  }
+  if (
+    lane &&
+    root.querySelectorAll('[data-owner="leaf"] a[data-perf-link]').length !==
+      leafCount
+  ) {
+    throw new Error(`${caseId}/${stateIndex}: leaf Links are misplaced`)
   }
   for (const [index, link] of links.entries()) {
     const label = `${caseId}/${stateIndex}/link-${index}`
@@ -320,7 +408,9 @@ export function assertScenario(
       label,
     )
     let active: boolean | undefined
-    if (caseId === 'shared-params') {
+    if (lane && !isLaneUpdaterCase(caseId)) {
+      active = laneFixedTarget(index) === sourcePath(caseId, stateIndex)
+    } else if (caseId === 'shared-params') {
       active = index % 40 === stateIndex
     } else if (caseId === 'unique-params') {
       active = index === stateIndex

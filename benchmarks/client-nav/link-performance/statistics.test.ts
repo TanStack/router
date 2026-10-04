@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { classify, mean, summarizeRatios } from './statistics'
+import { classify, mean, summarizeRatios, summarizeValues } from './statistics'
 
 test('summarizes multiplicative paired changes across process replicas', () => {
   const result = summarizeRatios([0.9, 0.9, 0.9, 0.9])
@@ -33,4 +33,12 @@ test('rejects incomplete or invalid sampling data', () => {
   expect(() => summarizeRatios([NaN, 1])).toThrow()
   expect(() => mean([])).toThrow()
   expect(() => mean([Infinity])).toThrow()
+})
+
+test('summarizes absolute replica values with a t-interval', () => {
+  const result = summarizeValues([1, 2, 3])
+  expect(result.mean).toBeCloseTo(2)
+  expect(result.low95).toBeCloseTo(2 - 4.3027 / Math.sqrt(3))
+  expect(result.high95).toBeCloseTo(2 + 4.3027 / Math.sqrt(3))
+  expect(() => summarizeValues([1])).toThrow()
 })
