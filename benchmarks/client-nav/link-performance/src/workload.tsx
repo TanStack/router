@@ -183,6 +183,12 @@ const localeRewrite = {
   },
 }
 
+// `LINK_PERF_PRELOAD=intent` runs the lane cases with intent preloading, the
+// configuration most apps use. Read at run time so one bundle serves both.
+const laneIntentPreload =
+  (globalThis as { process?: { env: Record<string, string | undefined> } })
+    .process?.env.LINK_PERF_PRELOAD === 'intent'
+
 export function createLinkRouter(
   caseId: LinkCaseId,
   history: RouterHistory,
@@ -204,7 +210,7 @@ export function createLinkRouter(
     isServer,
     context,
     scrollRestoration: false,
-    defaultPreload: false,
+    defaultPreload: laneIntentPreload ? 'intent' : false,
     trailingSlash: 'never',
     pathParamsAllowedCharacters:
       caseId === 'encoding' ? ['@', ':', '+'] : undefined,
@@ -388,7 +394,7 @@ function laneLink(caseId: LinkCaseId, index: number, leaf: boolean) {
   const common = {
     key: index,
     'data-perf-link': index,
-    preload: false,
+    preload: laneIntentPreload ? undefined : false,
     children: leaf
       ? () => {
           laneLeafWork.count++
