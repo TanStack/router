@@ -156,27 +156,21 @@ export function createHistory(opts: {
     else location = opts.getLocation()
   }
 
-  const tryNavigation = async ({
-    task,
-    navigateOpts,
-    ...actionInfo
-  }: TryNavigateArgs) => {
-    const ignoreBlocker = navigateOpts?.ignoreBlocker ?? false
-    if (ignoreBlocker) {
-      task()
-      return
-    }
-
-    const blockers = opts.getBlockers?.() ?? []
-    const isPushOrReplace =
-      actionInfo.type === 'PUSH' || actionInfo.type === 'REPLACE'
-    if (typeof document !== 'undefined' && blockers.length && isPushOrReplace) {
+  const tryNavigation = async (args: TryNavigateArgs) => {
+    const blockers = args.navigateOpts?.ignoreBlocker
+      ? undefined
+      : opts.getBlockers?.()
+    if (
+      typeof document !== 'undefined' &&
+      blockers?.length &&
+      (args.type === 'PUSH' || args.type === 'REPLACE')
+    ) {
       for (const blocker of blockers) {
-        const nextLocation = parseHref(actionInfo.path, actionInfo.state)
+        const nextLocation = parseHref(args.path, args.state)
         const isBlocked = await blocker.blockerFn({
           currentLocation: location,
           nextLocation,
-          action: actionInfo.type,
+          action: args.type,
         })
         if (isBlocked) {
           opts.onBlocked?.()
@@ -185,7 +179,7 @@ export function createHistory(opts: {
       }
     }
 
-    task()
+    args.task()
   }
 
   return {
