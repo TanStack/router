@@ -39,15 +39,12 @@ export function createLinkScope(
   const listeners = new Set<() => void>()
   let source: ParsedLocation | undefined
   let unsubscribe: () => void
+  // Defined outside `subscribe` so the store's subscription does not share a
+  // closure with, and retain, the first listener after it unsubscribes.
   const update = (location: ParsedLocation) => {
     if (!_isRouteDeparting(router, routeId, location)) {
       source = location
       listeners.forEach((listener) => listener())
-      // A listener can navigate while deriving. The store does not rerun the
-      // subscription that is notifying for that nested publication.
-      if (store.get() !== location) {
-        update(store.get())
-      }
     }
   }
   return [

@@ -291,8 +291,8 @@ export function useLinkProps<
     return [
       dest,
       (): LinkState => {
-        // Read the location first: a derivation that throws or publishes a
-        // new location reentrantly must not cache its state for another one.
+        // Read the location once and record it only after deriving: a
+        // derivation that throws is retried instead of caching its state.
         const location = scope[0]()
         if (location !== source) {
           if (!options._fromLocation) {

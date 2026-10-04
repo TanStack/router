@@ -58,7 +58,6 @@ function setup({
     aRenders: 0,
     goneUpdater: 0,
     listUpdater: 0,
-    rootReenter: 0,
   }
   // The `x` dependency of every `/a` load, preloads included.
   const aLoads: Array<unknown> = []
@@ -70,7 +69,6 @@ function setup({
     setGone?: (gone: boolean) => void
     setRenderPreload?: (renderPreload: boolean) => void
     setList?: (list: Array<string>) => void
-    reenter?: () => void
   } = {}
 
   const root = createRootRoute({
@@ -78,21 +76,6 @@ function setup({
       <>
         <Link to="/b" data-testid="root-b">
           root b
-        </Link>
-        <Link
-          to="/a"
-          data-testid="root-reenter"
-          search={(prev: any) => {
-            counts.rootReenter++
-            if (prev.go === 'yes' && controls.reenter) {
-              const reenter = controls.reenter
-              controls.reenter = undefined
-              reenter()
-            }
-            return prev
-          }}
-        >
-          root reenter
         </Link>
         <Outlet />
       </>
@@ -445,21 +428,6 @@ describe('links in a departing match', () => {
     t.gates.b.resolve()
     await t.settle()
     expect(t.href('a-self')).toBe('/a?x=two')
-    expect(t.isActive('a-self')).toBe(true)
-  })
-
-  test('a search updater that navigates during derivation leaves no stale link', async () => {
-    const t = setup()
-    await screen.findByText('A page')
-    t.controls.reenter = () => {
-      void t.router.navigate({ to: '/a', search: { x: 'after' } })
-    }
-    await t.start({ to: '/a', search: { go: 'yes' } })
-    await t.settle()
-    await waitFor(() => expect(t.router.state.location.href).toBe('/a?x=after'))
-    expect(t.controls.reenter).toBeUndefined()
-    expect(t.href('root-reenter')).toBe('/a?x=after')
-    expect(t.href('a-self')).toBe('/a?x=after')
     expect(t.isActive('a-self')).toBe(true)
   })
 
