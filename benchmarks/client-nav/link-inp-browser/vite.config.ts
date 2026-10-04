@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
+import vueJsx from '@vitejs/plugin-vue-jsx'
 import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import type { Plugin } from 'vite'
@@ -10,8 +11,8 @@ const harnessDir = fileURLToPath(new URL('.', import.meta.url))
 const repoRoot = resolve(harnessDir, '../../..')
 
 const framework = process.env.LINK_INP_FRAMEWORK
-if (framework !== 'react' && framework !== 'solid') {
-  throw new Error('Set LINK_INP_FRAMEWORK to react or solid')
+if (framework !== 'react' && framework !== 'solid' && framework !== 'vue') {
+  throw new Error('Set LINK_INP_FRAMEWORK to react, solid or vue')
 }
 // Repository checkout whose built packages the app links against.
 const packagesRoot = resolve(process.env.LINK_INP_PACKAGES_ROOT ?? repoRoot)
@@ -54,7 +55,11 @@ export default defineConfig({
   },
   plugins: [
     packagesRootPlugin(),
-    framework === 'react' ? react() : solid({ hot: false, dev: false }),
+    framework === 'react'
+      ? react()
+      : framework === 'solid'
+        ? solid({ hot: false, dev: false })
+        : vueJsx(),
   ],
   build: {
     outDir,

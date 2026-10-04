@@ -1,7 +1,7 @@
 /**
  * Real-browser Link click cost, baseline vs candidate (see README.md).
  *
- *   node run.ts [--frameworks react,solid] [--cases lane-departing,...]
+ *   node run.ts [--frameworks react,solid,vue] [--cases lane-departing,...]
  *     [--loaders 0,50] [--throttle 1,4] [--rounds 6] [--warmup 10]
  *     [--navigations 40] [--out results/<name>]
  *
@@ -32,11 +32,11 @@ import type { Leaf, ProbeSample } from './shared/probe.ts'
 const harnessDir = import.meta.dirname
 const ARMS = ['baseline', 'candidate'] as const
 type Arm = (typeof ARMS)[number]
-type Framework = 'react' | 'solid'
+type Framework = 'react' | 'solid' | 'vue'
 
 const { values: args } = parseArgs({
   options: {
-    frameworks: { type: 'string', default: 'react,solid' },
+    frameworks: { type: 'string', default: 'react,solid,vue' },
     cases: { type: 'string', default: CASES.join(',') },
     loaders: { type: 'string', default: '0,50' },
     throttle: { type: 'string', default: '1,4' },

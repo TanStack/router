@@ -1,5 +1,5 @@
 /**
- * Workloads shared by the React and Solid apps. They mirror the `lane-*` cases
+ * Workloads shared by the React, Solid and Vue apps. They mirror the `lane-*` cases
  * of `../link-performance/cases.ts`: 1,000 measured Links rendered by the
  * staying `/lane` layout and/or the `/lane/a` leaf, while a control Link
  * navigates `/lane/a` <-> `/lane/b` (`/lane/b` renders no Links), so `/lane/a`

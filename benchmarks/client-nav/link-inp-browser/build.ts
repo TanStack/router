@@ -1,5 +1,5 @@
 /**
- * Builds both apps (React, Solid) for one arm into `dist/<arm>/<framework>`.
+ * Builds the apps (React, Solid, Vue) for one arm into `dist/<arm>/<framework>`.
  *
  *   node build.ts candidate
  *     Links against this checkout's packages (built by Nx beforehand).
@@ -24,11 +24,12 @@ import { join, resolve } from 'node:path'
 
 const harnessDir = import.meta.dirname
 const repoRoot = resolve(harnessDir, '../../..')
-const frameworks = ['react', 'solid'] as const
+const frameworks = ['react', 'solid', 'vue'] as const
 const routerSources = [
   'packages/router-core/src',
   'packages/react-router/src',
   'packages/solid-router/src',
+  'packages/vue-router/src',
 ]
 
 function run(command: string, args: Array<string>, cwd: string) {
@@ -67,6 +68,7 @@ function prepareBaseline(ref: string) {
       '-p',
       '@tanstack/react-router',
       '@tanstack/solid-router',
+      '@tanstack/vue-router',
       '--outputStyle=stream',
       '--skipRemoteCache',
     ],

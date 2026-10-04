@@ -8,7 +8,11 @@
       "cache": false,
       "dependsOn": [
         {
-          "projects": ["@tanstack/react-router", "@tanstack/solid-router"],
+          "projects": [
+            "@tanstack/react-router",
+            "@tanstack/solid-router",
+            "@tanstack/vue-router"
+          ],
           "target": "build"
         }
       ],
@@ -38,7 +42,11 @@
       "executor": "nx:run-commands",
       "dependsOn": [
         {
-          "projects": ["@tanstack/react-router", "@tanstack/solid-router"],
+          "projects": [
+            "@tanstack/react-router",
+            "@tanstack/solid-router",
+            "@tanstack/vue-router"
+          ],
           "target": "build"
         }
       ],
@@ -46,7 +54,8 @@
         "commands": [
           "tsc -p ./link-inp-browser/tsconfig.json --noEmit",
           "tsc -p ./link-inp-browser/react/tsconfig.json --noEmit",
-          "tsc -p ./link-inp-browser/solid/tsconfig.json --noEmit"
+          "tsc -p ./link-inp-browser/solid/tsconfig.json --noEmit",
+          "tsc -p ./link-inp-browser/vue/tsconfig.json --noEmit"
         ],
         "parallel": false,
         "cwd": "benchmarks/client-nav"

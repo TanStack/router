@@ -3,12 +3,13 @@
 Opt-in harness (`@benchmarks/link-inp-browser`, not part of any CodSpeed
 aggregate) that measures what clicking a Link costs in headless Chromium,
 comparing a baseline build of the router packages with the current checkout.
-It complements the jsdom `lane-*` cases of `../link-performance` (React) and
-`../link-lanes-solid` (Solid) with Event Timing and frame timing.
+It complements the jsdom `lane-*` cases of `../link-performance` (React),
+`../link-lanes-solid` (Solid) and `../link-lanes-vue` (Vue) with Event Timing
+and frame timing.
 
 ## Workloads
 
-`react/main.tsx` and `solid/main.tsx` build the same app: a root with two
+`react/main.tsx`, `solid/main.tsx` and `vue/main.tsx` build the same app: a root with two
 control Links (`/lane/a`, `/lane/b`), a staying `/lane` layout and two leaves.
 `/lane/b` renders no Links. Cases (`shared/cases.ts`):
 
@@ -27,7 +28,7 @@ renders in a later task.
 
 ## Arms
 
-- `build:candidate` builds this checkout's packages with Nx, then the two apps
+- `build:candidate` builds this checkout's packages with Nx, then the three apps
   into `dist/candidate/<framework>`.
 - `build:baseline` checks out `git merge-base HEAD origin/main` (override with
   `LINK_INP_BASELINE_REF`) in a detached worktree at
@@ -81,7 +82,7 @@ CI=1 NX_DAEMON=false pnpm nx run @benchmarks/link-inp-browser:test:perf --output
 ```
 
 `test:perf` builds both arms first. Options (defaults): `--frameworks
-react+solid`, `--cases` (all), `--loaders 0+50`, `--throttle 1+4`, `--rounds
+react+solid+vue`, `--cases` (all), `--loaders 0+50`, `--throttle 1+4`, `--rounds
 6`, `--warmup 10` (round trips), `--navigations 40`, `--out
 results/<timestamp>`, `--channel chromium` (full browser in new headless mode
 instead of the headless shell), `--chrome-args a+b`, `--aa` and `--from
