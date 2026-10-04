@@ -22,6 +22,18 @@ describe('parseHref', () => {
   })
 
   test.each([
+    ['?x=1', { pathname: '', search: '?x=1', hash: '' }],
+    ['#top', { pathname: '', search: '', hash: '#top' }],
+    ['?x=1#top', { pathname: '', search: '?x=1', hash: '#top' }],
+    ['#top?x=1', { pathname: '', search: '', hash: '#top?x=1' }],
+  ])(
+    'keeps a leading query or fragment out of the pathname: %j',
+    (href, expected) => {
+      expect(parseHref(href, undefined)).toMatchObject({ href, ...expected })
+    },
+  )
+
+  test.each([
     { __TSR_index: 2 },
     { __TSR_index: 2, key: 'legacy-key', __TSR_key: 'current-key' },
   ])('preserves supplied state %j', (state) => {
