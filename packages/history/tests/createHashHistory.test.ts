@@ -59,6 +59,78 @@ describe('createHashHistory', () => {
     history.destroy()
   })
 
+  test.each([
+    [
+      '/?shell=1#/hello#section#tail',
+      {
+        href: '/hello?shell=1#section#tail',
+        pathname: '/hello',
+        search: '?shell=1',
+        hash: '#section#tail',
+      },
+    ],
+    [
+      '/?shell=1#/hello?route=2#section',
+      {
+        href: '/hello?route=2?shell=1#section',
+        pathname: '/hello',
+        search: '?route=2?shell=1',
+        hash: '#section',
+      },
+    ],
+    [
+      '/#/hello##tail#',
+      {
+        href: '/hello##tail#',
+        pathname: '/hello',
+        search: '',
+        hash: '##tail#',
+      },
+    ],
+    [
+      '/#/hello%23nested?value=%23#anchor%23tail',
+      {
+        href: '/hello%23nested?value=%23#anchor%23tail',
+        pathname: '/hello%23nested',
+        search: '?value=%23',
+        hash: '#anchor%23tail',
+      },
+    ],
+    [
+      '/?shell=1#//evil.example/path#fragment',
+      {
+        href: '/evil.example/path?shell=1#fragment',
+        pathname: '/evil.example/path',
+        search: '?shell=1',
+        hash: '#fragment',
+      },
+    ],
+    [
+      '/?shell=1#',
+      {
+        href: '/?shell=1',
+        pathname: '/',
+        search: '?shell=1',
+        hash: '',
+      },
+    ],
+  ])('preserves the logical URL when reading %s', (href, expected) => {
+    const originalHref = window.location.href
+    const originalState = window.history.state
+    window.history.replaceState(null, '', href)
+    const history = createHashHistory()
+
+    try {
+      expect(history.location).toMatchObject(expected)
+      window.history.replaceState(window.history.state, '', '/shell')
+      window.history.pushState(window.history.state, '', href)
+      expect(history.location).toMatchObject(expected)
+    } finally {
+      history.destroy()
+      window.history.replaceState(originalState, '', originalHref)
+    }
+  })
+
   describe('parseLocation', () => {
     describe.each([
       ['/', { pathname: '/', search: '' }, 'neither search params nor hash'],
