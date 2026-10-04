@@ -29,8 +29,6 @@ import type {
 
 type EventHandler<TEvent = Event> = (e: TEvent) => void
 
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
-
 type DataAttributes = {
   [K in `data-${string}`]?: unknown
 }
@@ -255,14 +253,17 @@ function useLinkPropsImpl(
   }
 
   let pendingPreload: 'intent' | 'viewport' | undefined
+  let preloadTimeout: ReturnType<typeof setTimeout> | undefined
+  const cancelPreload = () => {
+    clearTimeout(preloadTimeout)
+    preloadTimeout = pendingPreload = undefined
+  }
 
   const enqueuePreload = (
     e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
     if (!e) {
-      clearTimeout(timeoutMap.get(ref))
-      timeoutMap.delete(ref)
-      pendingPreload = undefined
+      cancelPreload()
       return
     }
 
@@ -270,9 +271,7 @@ function useLinkPropsImpl(
     const preloadMode = isIntersecting === undefined ? 'intent' : 'viewport'
     if (preload() !== preloadMode || isIntersecting === false) {
       if (isIntersecting === false && pendingPreload === 'viewport') {
-        clearTimeout(timeoutMap.get(ref))
-        timeoutMap.delete(ref)
-        pendingPreload = undefined
+        cancelPreload()
       }
       return
     }
@@ -282,19 +281,15 @@ function useLinkPropsImpl(
       return
     }
 
-    if (!timeoutMap.has(ref)) {
+    if (!preloadTimeout) {
       const scheduledHref = state.value[0]
       pendingPreload = preloadMode
-      timeoutMap.set(
-        ref,
-        setTimeout(() => {
-          timeoutMap.delete(ref)
-          pendingPreload = undefined
-          if (preload() === preloadMode && state.value[0] === scheduledHref) {
-            doPreload()
-          }
-        }, preloadDelay()),
-      )
+      preloadTimeout = setTimeout(() => {
+        preloadTimeout = pendingPreload = undefined
+        if (preload() === preloadMode && state.value[0] === scheduledHref) {
+          doPreload()
+        }
+      }, preloadDelay())
     }
   }
 
@@ -361,9 +356,7 @@ function useLinkPropsImpl(
 
   const handleLeave = () => {
     if (pendingPreload === 'intent') {
-      clearTimeout(timeoutMap.get(ref))
-      timeoutMap.delete(ref)
-      pendingPreload = undefined
+      cancelPreload()
     }
   }
 
