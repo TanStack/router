@@ -616,56 +616,45 @@ function getLinkEventHandlers(
   }
 }
 
-const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
-  const {
-    activeProps: _activeProps,
-    inactiveProps: _inactiveProps,
-    activeOptions: _activeOptions,
-    to: _to,
-    preload: _preload,
-    preloadDelay: _preloadDelay,
-    preloadIntentProximity: _preloadIntentProximity,
-    hashScrollIntoView: _hashScrollIntoView,
-    replace: _replace,
-    startTransition: _startTransition,
-    resetScroll: _resetScroll,
-    viewTransition: _viewTransition,
-    children: _children,
-    target: _target,
-    disabled: _disabled,
-    style: _style,
-    class: _class,
-    onClick: _onClick,
-    onBlur: _onBlur,
-    onFocus: _onFocus,
-    onMouseEnter: _onMouseEnter,
-    onMouseenter: _onMouseenter,
-    onMouseLeave: _onMouseLeave,
-    onMouseleave: _onMouseleave,
-    onMouseOver: _onMouseOver,
-    onMouseover: _onMouseover,
-    onMouseOut: _onMouseOut,
-    onMouseout: _onMouseout,
-    onTouchStart: _onTouchStart,
-    onTouchstart: _onTouchstart,
-    ignoreBlocker: _ignoreBlocker,
-    params: _params,
-    search: _search,
-    hash: _hash,
-    state: _state,
-    mask: _mask,
-    reloadDocument: _reloadDocument,
-    unsafeRelative: _unsafeRelative,
-    _asChild: __asChild,
-    from: _from,
-    additionalProps: _additionalProps,
-    ...propsSafeToSpread
-  } = options as AnyLinkPropsOptions & {
-    additionalProps?: unknown
-    children?: unknown
-    _asChild?: unknown
-  }
+// Options the Link consumes; every other option is an element prop.
+const LINK_OPTION_KEYS = new Set<string>([
+  ...NAVIGATION_KEYS,
+  'activeProps',
+  'inactiveProps',
+  'activeOptions',
+  'preload',
+  'preloadDelay',
+  'preloadIntentProximity',
+  'children',
+  'target',
+  'disabled',
+  'style',
+  'class',
+  'onClick',
+  'onBlur',
+  'onFocus',
+  'onMouseEnter',
+  'onMouseenter',
+  'onMouseLeave',
+  'onMouseleave',
+  'onMouseOver',
+  'onMouseover',
+  'onMouseOut',
+  'onMouseout',
+  'onTouchStart',
+  'onTouchstart',
+  'reloadDocument',
+  '_asChild',
+  'additionalProps',
+])
 
+const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
+  const propsSafeToSpread: Record<string, unknown> = {}
+  for (const key in options) {
+    if (!LINK_OPTION_KEYS.has(key)) {
+      propsSafeToSpread[key] = (options as Record<string, unknown>)[key]
+    }
+  }
   return propsSafeToSpread
 }
 
