@@ -125,8 +125,8 @@ function createLinkProps(
       }
     } else {
       const options_ = dest()
-      // Clicks and preloads go where the href points. A caller source wins.
-      options_._fromLocation = options._fromLocation || location
+      // Clicks and preloads go where the href points.
+      options_._fromLocation = location
       // untrack because router-core will also access stores, which are signals in solid
       const next = Solid.untrack(() => router.buildLocation(options_))
       if (!disabled) {

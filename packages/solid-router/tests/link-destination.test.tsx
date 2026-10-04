@@ -263,8 +263,7 @@ test('switches a mounted Link between plain and store-backed inputs', async () =
   expect(link).toHaveAttribute('href', '/target/three?build=2')
 })
 
-test('never mutates frozen caller options, and a caller source wins', async () => {
-  const holder: { router?: ReturnType<typeof setup>['router'] } = {}
+test('never mutates frozen caller options', async () => {
   const params = Object.freeze({ id: 'fixed' })
   const options = Object.freeze({
     to: '/target/$id',
@@ -272,35 +271,15 @@ test('never mutates frozen caller options, and a caller source wins', async () =
     search: Object.freeze({ build: 1 }),
     'data-testid': 'frozen',
   })
-  const sourced = () =>
-    Object.freeze({
-      to: '/target/$id',
-      params: true,
-      _fromLocation: holder.router!.buildLocation({
-        to: '/source/$id',
-        params: { id: 'explicit' },
-      } as any),
-      'data-testid': 'sourced',
-    })
   const Links = () => {
     const frozen = useLinkProps(options as any)
-    const explicit = useLinkProps(sourced() as any)
-    return (
-      <>
-        <a {...frozen} />
-        <a {...explicit} />
-      </>
-    )
+    return <a {...frozen} />
   }
   const result = setup(() => <Links />)
-  holder.router = result.router
   const frozen = await screen.findByTestId('frozen')
-  const explicit = screen.getByTestId('sourced')
   expect(frozen).toHaveAttribute('href', '/target/fixed?build=1')
-  expect(explicit).toHaveAttribute('href', '/target/explicit')
   await result.go('two')
   expect(frozen).toHaveAttribute('href', '/target/fixed?build=1')
-  expect(explicit).toHaveAttribute('href', '/target/explicit')
   expect(Object.keys(options)).toEqual([
     'to',
     'params',
@@ -309,9 +288,9 @@ test('never mutates frozen caller options, and a caller source wins', async () =
   ])
   expect(Object.keys(params)).toEqual(['id'])
 
-  fireEvent.click(explicit)
+  fireEvent.click(frozen)
   await vi.waitFor(() =>
-    expect(result.router.state.location.pathname).toBe('/target/explicit'),
+    expect(result.router.state.location.pathname).toBe('/target/fixed'),
   )
 })
 
