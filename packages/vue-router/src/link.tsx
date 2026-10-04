@@ -217,7 +217,9 @@ function useLinkPropsImpl(
             options.activeOptions,
             router,
           )
-    return prev && prev[0] === href && prev[1] === isActive
+    return prev &&
+      prev[0 /* href */] === href &&
+      prev[1 /* isActive */] === isActive
       ? prev
       : [href, isActive]
   })
@@ -234,7 +236,7 @@ function useLinkPropsImpl(
     )
   })
   const preload = () => {
-    const href = !isExternal() && state.value[0]
+    const href = !isExternal() && state.value[0 /* href */]
     return !!href && !getUrlScheme(href) && preloadMode.value
   }
 
@@ -278,11 +280,14 @@ function useLinkPropsImpl(
     }
 
     if (!preloadTimeout) {
-      const scheduledHref = state.value[0]
+      const scheduledHref = state.value[0 /* href */]
       pendingPreload = preloadMode
       preloadTimeout = setTimeout(() => {
         preloadTimeout = pendingPreload = undefined
-        if (preload() === preloadMode && state.value[0] === scheduledHref) {
+        if (
+          preload() === preloadMode &&
+          state.value[0 /* href */] === scheduledHref
+        ) {
           doPreload()
         }
       }, preloadDelay())
@@ -302,7 +307,7 @@ function useLinkPropsImpl(
       return
     }
 
-    const nextHref = state.value[0]
+    const nextHref = state.value[0 /* href */]
     if (nextHref && renderFetchedHref !== nextHref) {
       renderFetchedHref = nextHref
       doPreload()
@@ -312,7 +317,7 @@ function useLinkPropsImpl(
   // The click handler
   const handleClick = (e: PointerEvent): void => {
     const options = getOptions()
-    const href = !isExternal() && state.value[0]
+    const href = !isExternal() && state.value[0 /* href */]
     if (!options.disabled && (!href || getUrlScheme(href))) {
       return
     }

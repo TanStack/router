@@ -57,7 +57,7 @@ function createLinkProps(
   )
 
   // A live match never changes route, so read it once without tracking.
-  const routeId = Solid.useContext(nearestMatchContext)[0]()
+  const routeId = Solid.useContext(nearestMatchContext)[0 /* routeId */]()
 
   // While a publishing navigation leaves the Link's route, keep the location
   // the route still presents so the Link does no work. The route unmounts
@@ -183,9 +183,9 @@ function createLinkProps(
     }
     href = external === null ? undefined : external || href
     return prev &&
-      prev[0] === href &&
-      prev[1] === external &&
-      prev[2] === active
+      prev[0 /* href */] === href &&
+      prev[1 /* external */] === external &&
+      prev[2 /* active */] === active
       ? prev
       : [href, external, active]
   }
@@ -279,7 +279,7 @@ function createLinkProps(
 
   const preload = () =>
     !options.reloadDocument &&
-    linkState()[1] === undefined &&
+    linkState()[1 /* external */] === undefined &&
     !options.disabled &&
     (options.preload ?? router.options.defaultPreload)
   const preloadDelay = () =>
@@ -353,7 +353,7 @@ function createLinkProps(
 
     if (
       !options.disabled &&
-      linkState()[1] === undefined &&
+      linkState()[1 /* external */] === undefined &&
       !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
@@ -433,7 +433,6 @@ function createLinkProps(
   }) as any
 }
 
-// Props that decide where and how a Link navigates.
 // [element href, external href (null when blocked), active]
 type LinkState = [
   href: string | undefined,
@@ -443,6 +442,7 @@ type LinkState = [
 
 const isStore = (value: any): boolean => !!value?.[Solid.$PROXY]
 
+// Props that decide where and how a Link navigates.
 const NAVIGATION_KEYS = [
   'to',
   'reloadDocument',

@@ -278,7 +278,7 @@ export function useLinkProps<
     const getLinkState = (): LinkState => {
       // Read the location once and record it only after deriving: a
       // derivation that throws is retried instead of caching its state.
-      const location = scope[0]()
+      const location = scope[0 /* getSource */]()
       if (location !== source) {
         if (!options._fromLocation) {
           dest._fromLocation = location
@@ -299,7 +299,11 @@ export function useLinkProps<
               )
             : undefined
         // Keep the state while it is equal so React can bail out.
-        if (!state || state[0] !== href || state[1] !== isActive) {
+        if (
+          !state ||
+          state[0 /* href */] !== href ||
+          state[1 /* isActive */] !== isActive
+        ) {
           state = [href, isActive]
         }
         source = location
@@ -315,7 +319,9 @@ export function useLinkProps<
       stableActiveOptions?.includeHash &&
         ((): LinkState => {
           const state = getLinkState()
-          return state[1] ? (hydrationState ??= [state[0], false]) : state
+          return state[1 /* isActive */]
+            ? (hydrationState ??= [state[0 /* href */], false])
+            : state
         }),
     ] as const
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -338,7 +344,7 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = React.useSyncExternalStore(
-    scope[1],
+    scope[1 /* subscribe */],
     getLinkState,
     getHydrationState || getLinkState,
   )
