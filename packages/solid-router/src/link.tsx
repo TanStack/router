@@ -34,12 +34,6 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
-const cancelPreload = (eventTarget: object) => {
-  clearTimeout(timeoutMap.get(eventTarget))
-  timeoutMap.delete(eventTarget)
-}
-
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -296,11 +290,17 @@ export function useLinkProps<
 
   const [ref, setRef] = Solid.createSignal<Element | null>(null)
 
+  let preloadTimeout: ReturnType<typeof setTimeout> | undefined
+  const cancelPreload = () => {
+    clearTimeout(preloadTimeout)
+    preloadTimeout = undefined
+  }
+
   const enqueuePreload = (
     e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
     if (!e) {
-      cancelPreload(ref)
+      cancelPreload()
       return
     }
 
@@ -311,7 +311,7 @@ export function useLinkProps<
       )
     ) {
       if ((e as IntersectionObserverEntry).isIntersecting === false) {
-        cancelPreload(ref)
+        cancelPreload()
       }
       return
     }
@@ -321,15 +321,10 @@ export function useLinkProps<
       return
     }
 
-    if (!timeoutMap.has(ref)) {
-      timeoutMap.set(
-        ref,
-        setTimeout(() => {
-          timeoutMap.delete(ref)
-          doPreload()
-        }, preloadDelay()),
-      )
-    }
+    preloadTimeout ??= setTimeout(() => {
+      preloadTimeout = undefined
+      doPreload()
+    }, preloadDelay())
   }
 
   useIntersectionObserver(
@@ -368,7 +363,7 @@ export function useLinkProps<
       e.button === 0
     ) {
       e.preventDefault()
-      cancelPreload(ref)
+      cancelPreload()
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
@@ -383,7 +378,7 @@ export function useLinkProps<
 
   const handleLeave = () => {
     if (preload() === 'intent') {
-      cancelPreload(ref)
+      cancelPreload()
     }
   }
 
