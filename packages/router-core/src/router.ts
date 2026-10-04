@@ -1926,10 +1926,8 @@ export class RouterCore<
         usedCurrent = true
         return currentLocation
       }
-      const currentMatch = () => {
-        usedCurrent = true
-        return (lightweight ??= this.matchRoutesLightweight(currentLocation))
-      }
+      const currentMatch = () =>
+        (lightweight ??= this.matchRoutesLightweight(current()))
 
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development

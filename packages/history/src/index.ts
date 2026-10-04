@@ -546,7 +546,7 @@ export function createBrowserHistory(opts?: {
       }
       win.history.go(n)
     },
-    createHref: (href) => createHref(href),
+    createHref,
     flush,
     destroy: () => {
       win.history.pushState = originalPushState
