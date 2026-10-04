@@ -280,9 +280,7 @@ export function useLinkProps<
       // derivation that throws is retried instead of caching its state.
       const location = scope[0 /* getSource */]()
       if (location !== source) {
-        if (!options._fromLocation) {
-          dest._fromLocation = location
-        }
+        dest._fromLocation = location
         const next = router.buildLocation(dest)
 
         // History formatters can depend on the current browser URL (hash history).
@@ -329,7 +327,6 @@ export function useLinkProps<
     router,
     scope,
     options.from,
-    options._fromLocation,
     options.hash,
     options.href,
     to,
