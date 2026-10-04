@@ -13,7 +13,6 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { createLinkScope, matchContext } from './matchContext'
 
-import { useHydrated } from './ClientOnly'
 import type {
   ActiveOptions,
   AnyRouter,
@@ -88,7 +87,6 @@ function resolveIsActive(
   next: ParsedLocation,
   activeOptions: ActiveOptions | undefined,
   basepath: string,
-  isHydrated: boolean,
 ): boolean {
   const currentPath = removeTrailingSlash(location.pathname, basepath)
   const nextPath = removeTrailingSlash(next.pathname, basepath)
@@ -118,10 +116,7 @@ function resolveIsActive(
     }
   }
 
-  if (activeOptions?.includeHash) {
-    return isHydrated && location.hash === next.hash
-  }
-  return true
+  return !activeOptions?.includeHash || location.hash === next.hash
 }
 
 /**
@@ -209,13 +204,13 @@ export function useLinkProps<
   // 3. In client bundles, `isServer` is `false`, so the early return never executes
   // ==========================================================================
 
-  // The link's own ref: the element for the viewport observer and the key
+  // The link's own ref: the element for the viewport observer and the holder
   // of a pending intent timer. A forwarded ref is filled alongside it by one
   // callback, memoized on the forwarded ref so React re-attaches it (and
   // notifies the consumer) only when their ref changes, not on every render.
   // A cleanup returned by a consumer callback is passed through to React.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const innerRef = React.useRef<Element>(null)
+  const innerRef: LinkRef = React.useRef<Element>(null)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const mergedRef = React.useCallback(
     (element: Element | null) => {
@@ -236,12 +231,6 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
-    hashScrollIntoView,
-    replace,
-    startTransition,
-    resetScroll,
-    viewTransition,
-    ignoreBlocker,
     disabled,
     target,
     onClick,
@@ -251,9 +240,6 @@ export function useLinkProps<
     onMouseLeave,
     onTouchStart,
   } = options as typeof options & { to?: string }
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isHydrated = useHydrated(!!activeOptions?.includeHash)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
@@ -276,7 +262,7 @@ export function useLinkProps<
   // location so React can bail out on an unchanged state, and derives eagerly
   // inside the scope's notification.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [dest, getLinkState] = React.useMemo(() => {
+  const [dest, getLinkState, getHydrationState] = React.useMemo(() => {
     // Direct destinations and the router's allowlist are stable for this snapshot.
     const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
     if (directExternalLink !== undefined) {
@@ -287,41 +273,50 @@ export function useLinkProps<
     const dest = { ...options } as any
     let source: ParsedLocation | undefined
     let state: LinkState
+    let hydrationState: LinkState | undefined
+
+    const getLinkState = (): LinkState => {
+      // Read the location once and record it only after deriving: a
+      // derivation that throws is retried instead of caching its state.
+      const location = scope[0]()
+      if (location !== source) {
+        if (!options._fromLocation) {
+          dest._fromLocation = location
+        }
+        const next = router.buildLocation(dest)
+
+        // History formatters can depend on the current browser URL (hash history).
+        const href = getHrefOption(next, router, disabled)
+        // Internal and disabled links can be active; external and blocked
+        // links have no active state.
+        const isActive =
+          disabled || (href && !getUrlScheme(href))
+            ? resolveIsActive(
+                location,
+                next,
+                stableActiveOptions,
+                router.basepath,
+              )
+            : undefined
+        // Keep the state while it is equal so React can bail out.
+        if (!state || state[0] !== href || state[1] !== isActive) {
+          state = [href, isActive]
+        }
+        source = location
+      }
+      return state
+    }
 
     return [
       dest,
-      (): LinkState => {
-        // Read the location once and record it only after deriving: a
-        // derivation that throws is retried instead of caching its state.
-        const location = scope[0]()
-        if (location !== source) {
-          if (!options._fromLocation) {
-            dest._fromLocation = location
-          }
-          const next = router.buildLocation(dest)
-
-          // History formatters can depend on the current browser URL (hash history).
-          const href = getHrefOption(next, router, disabled)
-          // Internal and disabled links can be active; external and blocked
-          // links have no active state.
-          const isActive =
-            disabled || (href && !getUrlScheme(href))
-              ? resolveIsActive(
-                  location,
-                  next,
-                  stableActiveOptions,
-                  router.basepath,
-                  isHydrated,
-                )
-              : undefined
-          // Keep the state while it is equal so React can bail out.
-          if (!state || state[0] !== href || state[1] !== isActive) {
-            state = [href, isActive]
-          }
-          source = location
-        }
-        return state
-      },
+      getLinkState,
+      // Hydration renders the server's markup, which has no hash, so an active
+      // hash-sensitive link hydrates inactive and React rerenders it after.
+      stableActiveOptions?.includeHash &&
+        ((): LinkState => {
+          const state = getLinkState()
+          return state[1] ? (hydrationState ??= [state[0], false]) : state
+        }),
     ] as const
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -330,6 +325,7 @@ export function useLinkProps<
     options.from,
     options._fromLocation,
     options.hash,
+    options.href,
     to,
     stableSearch,
     stableParams,
@@ -338,14 +334,13 @@ export function useLinkProps<
     options.unsafeRelative,
     stableActiveOptions,
     disabled,
-    isHydrated,
   ])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [href, isActive] = React.useSyncExternalStore(
     scope[1],
     getLinkState,
-    getLinkState,
+    getHydrationState || getLinkState,
   )
   const externalLink = isActive === undefined && href
   const linkDisabled = disabled || href === undefined
@@ -379,17 +374,10 @@ export function useLinkProps<
         return
       }
 
-      if (timeoutMap.has(innerRef)) {
-        return
-      }
-
-      timeoutMap.set(
-        innerRef,
-        setTimeout(() => {
-          timeoutMap.delete(innerRef)
-          preloadLink(router, dest)
-        }, preloadDelay),
-      )
+      innerRef.t ??= setTimeout(() => {
+        innerRef.t = undefined
+        preloadLink(router, dest)
+      }, preloadDelay)
     },
     [router, dest, innerRef, preload, preloadDelay],
   )
@@ -458,17 +446,10 @@ export function useLinkProps<
       e.preventDefault()
       cancelPreload(innerRef)
 
-      // All is well? Navigate!
-      // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ...dest,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
-      })
+      // The current options carry the navigation controls; `dest` only
+      // contributes the location the link displays. Navigation builds again
+      // to run `validateSearch` before committing.
+      router.navigate({ ...options, _fromLocation: dest._fromLocation })
     }
   }
 
@@ -636,16 +617,16 @@ function getServerLinkProps(
   }
 
   const blockedLink = !disabled && !hrefOption
-  // Hash is not available on the server, so it never counts as hydrated.
+  // Hash is not available on the server: hash-sensitive links are inactive.
   const isActive =
     !!next &&
     !blockedLink &&
+    !activeOptions?.includeHash &&
     resolveIsActive(
       router.stores.location.get(),
       next,
       activeOptions,
       router.basepath,
-      false,
     )
   return applyLinkState(
     props,
@@ -657,10 +638,13 @@ function getServerLinkProps(
   )
 }
 
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
-const cancelPreload = (eventTarget: object) => {
-  clearTimeout(timeoutMap.get(eventTarget))
-  timeoutMap.delete(eventTarget)
+// A Link's own ref also holds its pending intent preload timer.
+type LinkRef = React.RefObject<Element | null> & {
+  t?: ReturnType<typeof setTimeout>
+}
+const cancelPreload = (ref: LinkRef) => {
+  clearTimeout(ref.t)
+  ref.t = undefined
 }
 
 export const composeHandlers = (

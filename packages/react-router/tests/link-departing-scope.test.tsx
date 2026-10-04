@@ -921,6 +921,82 @@ describe('masked links in a departing match', () => {
       expect(router.history.location.href).toBe('/a?x=one#h')
     },
   )
+
+  test.each(['mask', 'routeMasks'] as const)(
+    'a link with a fixed %s builds its location once and does not rerender across navigations',
+    async (kind) => {
+      // Every location the router builds for the masked link passes through
+      // the output rewrite.
+      let maskedBuilds = 0
+      let renders = 0
+      const root = createRootRoute({
+        component: () => (
+          <>
+            <Link
+              to="/photo"
+              search={{ id: 1 }}
+              mask={
+                kind === 'mask'
+                  ? ({ to: '/posts', search: { from: 'photo' } } as any)
+                  : undefined
+              }
+              data-testid="masked"
+            >
+              {() => {
+                renders++
+                return 'masked'
+              }}
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+      const routes = ['a', 'b', 'photo', 'posts'].map((path) =>
+        createRoute({
+          getParentRoute: () => root,
+          path: `/${path}`,
+          component: () => <h1>{path} page</h1>,
+        }),
+      )
+      const routeTree = root.addChildren(routes)
+      const router = createRouter({
+        routeTree,
+        history: createMemoryHistory({ initialEntries: ['/a'] }),
+        rewrite: {
+          output: ({ url }) => {
+            if (url.pathname === '/photo' || url.pathname === '/posts') {
+              maskedBuilds++
+            }
+            return url
+          },
+        },
+        routeMasks:
+          kind === 'routeMasks'
+            ? [
+                createRouteMask({
+                  routeTree,
+                  from: '/photo',
+                  to: '/posts',
+                  search: { from: 'photo' },
+                } as any),
+              ]
+            : undefined,
+      })
+      render(<RouterProvider router={router} />)
+      const link = await screen.findByTestId('masked')
+      expect(link).toHaveAttribute('href', '/posts?from=photo')
+      const buildsAfterMount = maskedBuilds
+      const rendersAfterMount = renders
+
+      for (const to of ['/b', '/a', '/b']) {
+        await act(() => router.navigate({ to }))
+        await screen.findByText(`${to.slice(1)} page`)
+      }
+      expect(link).toHaveAttribute('href', '/posts?from=photo')
+      expect(maskedBuilds).toBe(buildsAfterMount)
+      expect(renders).toBe(rendersAfterMount)
+    },
+  )
 })
 
 describe('link scope retention', () => {

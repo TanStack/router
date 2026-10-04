@@ -2205,13 +2205,10 @@ export class RouterCore<
       }
     }
 
-    // Masked locations stay out: `opts.mask` is rebuilt from the current location.
-    if (
-      !(isServer ?? this.isServer) &&
-      !usedCurrent &&
-      opts._fromLocation &&
-      !next.maskedLocation
-    ) {
+    // A mask that reads the current location marks the whole result through
+    // `usedCurrent`. Route masks belong to the route tree and options, whose
+    // updates replace the cache.
+    if (!(isServer ?? this.isServer) && !usedCurrent && opts._fromLocation) {
       this.staticLocations!.set(opts, next)
     }
 
