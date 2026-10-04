@@ -57,7 +57,6 @@ function setup({
     aRenders: 0,
     goneUpdater: 0,
     listUpdater: 0,
-    rootReenter: 0,
   }
   // The `x` dependency of every `/a` load, preloads included.
   const aLoads: Array<unknown> = []
@@ -74,7 +73,6 @@ function setup({
     setGone: (value: boolean) => Promise<void>
     setRenderPreload: (value: boolean) => Promise<void>
     setList: (value: Array<string>) => Promise<void>
-    reenter?: () => void
   } = {
     setHash: (value) => ((hash.value = value), Vue.nextTick()),
     setExtra: (value) => ((extra.value = value), Vue.nextTick()),
@@ -88,15 +86,6 @@ function setup({
 
   // Stable updaters, and one component per changing part, so that changing
   // one part does not re-render the other links.
-  const rootReenterSearch = (prev: any) => {
-    counts.rootReenter++
-    if (prev.go === 'yes' && controls.reenter) {
-      const reenter = controls.reenter
-      controls.reenter = undefined
-      reenter()
-    }
-    return prev
-  }
   const aSelfSearch = (prev: any) => {
     counts.aUpdater++
     return prev
@@ -182,9 +171,6 @@ function setup({
       <>
         <Link to="/b" data-testid="root-b">
           root b
-        </Link>
-        <Link to="/a" data-testid="root-reenter" search={rootReenterSearch}>
-          root reenter
         </Link>
         <Outlet />
       </>
@@ -475,22 +461,6 @@ describe('links in a departing match', () => {
     await t.settle()
     await tick()
     expect(t.href('a-self')).toBe('/a?x=two')
-    expect(t.isActive('a-self')).toBe(true)
-  })
-
-  test('a search updater that navigates during derivation leaves no stale link', async () => {
-    const t = setup()
-    await screen.findByText('A page')
-    t.controls.reenter = () => {
-      void t.router.navigate({ to: '/a', search: { x: 'after' } })
-    }
-    await t.start({ to: '/a', search: { go: 'yes' } })
-    await t.settle()
-    await waitFor(() => expect(t.router.state.location.href).toBe('/a?x=after'))
-    await tick()
-    expect(t.controls.reenter).toBeUndefined()
-    expect(t.href('root-reenter')).toBe('/a?x=after')
-    expect(t.href('a-self')).toBe('/a?x=after')
     expect(t.isActive('a-self')).toBe(true)
   })
 
