@@ -99,8 +99,12 @@ function stats(values: Array<number>) {
     values.reduce((a, b) => a + (b - mean) ** 2, 0) /
       Math.max(1, values.length - 1),
   )
-  // Two-sided 95% t quantile for 9 degrees of freedom (10 rounds).
-  return { mean, sd, ci95: (2.262 * sd) / Math.sqrt(values.length) }
+  // Two-sided 95% t quantile for n - 1 degrees of freedom.
+  const t =
+    [12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262][
+      values.length - 2
+    ] ?? 2.262
+  return { mean, sd, ci95: (t * sd) / Math.sqrt(values.length) }
 }
 
 const [mode, ...args] = process.argv.slice(2)
