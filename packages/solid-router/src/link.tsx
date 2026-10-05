@@ -787,7 +787,8 @@ export const Link: LinkComponent<'a'> = (props) => {
     )
   }
 
-  if (!local._asChild) {
+  // A client anchor returned above.
+  if ((isServer ?? router.isServer) && !local._asChild) {
     return <a {...linkProps}>{children()}</a>
   }
 
