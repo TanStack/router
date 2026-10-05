@@ -3,13 +3,13 @@ import { getStartOptions } from '../getStartOptions'
 import { serverFnFetcher } from './serverFnFetcher'
 import type { ClientFnMeta } from '../constants'
 
-export function createClientRpc(functionId: string) {
+export function createClientRpc(functionId: string, unwrapResult = false) {
   const url = process.env.TSS_SERVER_FN_BASE + functionId
   const serverFnMeta: ClientFnMeta = { id: functionId }
 
   const clientFn = (...args: Array<any>) => {
     const startFetch = getStartOptions()?.serverFns?.fetch
-    return serverFnFetcher(url, args, startFetch ?? fetch)
+    return serverFnFetcher(url, args, startFetch ?? fetch, unwrapResult)
   }
 
   return Object.assign(clientFn, {

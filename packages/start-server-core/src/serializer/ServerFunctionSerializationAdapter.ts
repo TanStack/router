@@ -26,7 +26,7 @@ export const ServerFunctionSerializationAdapter = createSerializationAdapter({
         },
         signal,
       )
-      if (result.error !== undefined) {
+      if (result.errorCaught || result.error) {
         throw result.error
       }
       return result.result

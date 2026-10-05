@@ -7,6 +7,7 @@ import {
 import { createRawStreamDeserializePlugin } from '@tanstack/router-core/ssr/client'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
+import { extractServerFnResult } from '../createServerFn'
 import {
   TSS_CONTENT_TYPE_FRAMED,
   TSS_FORMDATA_CONTEXT,
@@ -117,6 +118,7 @@ export async function serverFnFetcher(
   url: string,
   args: Array<any>,
   handler: (url: string, requestInit: RequestInit) => Promise<Response>,
+  unwrapResult = false,
 ) {
   if (!serovalPlugins) {
     serovalPlugins = getDefaultSerovalPlugins()
@@ -167,13 +169,15 @@ export async function serverFnFetcher(
     }
   }
 
-  return getResponse(() =>
-    fetchImpl(url, {
-      method: first.method,
-      headers,
-      signal: first.signal,
-      body,
-    }),
+  return getResponse(
+    () =>
+      fetchImpl(url, {
+        method: first.method,
+        headers,
+        signal: first.signal,
+        body,
+      }),
+    unwrapResult,
   )
 }
 
@@ -231,7 +235,7 @@ async function getFetchBody(
  * @returns The processed response from the function.
  * @throws If the response is invalid or an error occurs during processing.
  */
-async function getResponse(fn: () => Promise<Response>) {
+async function getResponse(fn: () => Promise<Response>, unwrapResult: boolean) {
   let response: Response
   try {
     response = await fn() // client => server => fn => server => client
@@ -308,7 +312,7 @@ async function getResponse(fn: () => Promise<Response>) {
       throw result
     }
 
-    return result
+    return unwrapResult ? extractServerFnResult(result) : result
   }
 
   // If it wasn't processed by the start serializer, check
