@@ -100,7 +100,11 @@ export type NavigationBlocker = {
 function isBlockerAsyncGenerator(
   value: unknown,
 ): value is AsyncGeneratorBlockerFnResult {
-  return typeof (value as AsyncGenerator)?.[Symbol.asyncIterator] === 'function'
+  return (
+    value != null &&
+    typeof (value as AsyncGeneratorBlockerFnResult)[Symbol.asyncIterator] ===
+      'function'
+  )
 }
 
 async function runBlockerGenerator(
@@ -111,6 +115,7 @@ async function runBlockerGenerator(
   let blockNotified = false
   let proceedAllCalled = false
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
     const { value, done } = await generator.next()
 
