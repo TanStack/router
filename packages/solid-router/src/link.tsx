@@ -721,9 +721,7 @@ export const Link: LinkComponent<'a'> = (props) => {
       if (
         hasStateProps ||
         Solid.$PROXY in elementProps ||
-        Object.values(Object.getOwnPropertyDescriptors(elementProps)).some(
-          (descriptor) => descriptor.get,
-        )
+        hasKeys(elementProps as Record<string, unknown>)
       ) {
         const prev = {}
         Solid.createRenderEffect(() => {
@@ -741,8 +739,6 @@ export const Link: LinkComponent<'a'> = (props) => {
           }
           assign(el, otherProps, false, true, prev, true)
         })
-      } else {
-        assign(el, elementProps, false, true, {}, true)
       }
     }
     return (
