@@ -12,7 +12,7 @@ import {
 } from '@tanstack/router-core'
 
 import { isServer } from '@tanstack/router-core/isServer'
-import { Dynamic } from 'solid-js/web'
+import { Dynamic, assign } from 'solid-js/web'
 import { useRouter } from './useRouter'
 import { nearestMatchContext } from './matchContext'
 
@@ -41,15 +41,36 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
-  return createLinkProps(options as any, LINK_OPTION_KEYS)
+  return mergeLinkParts(
+    createLinkProps(options as any, LINK_OPTION_KEYS, useRouter()),
+  )
 }
+
+type ResolvedLinkStateProps = Omit<Solid.ComponentProps<'a'>, 'style'> & {
+  style?: Solid.JSX.CSSProperties
+}
+
+// [element props, Link props, ref, the Link's own handlers]: the server
+// resolves everything into the element props.
+type LinkParts = [
+  elementProps: Solid.ComponentProps<'a'>,
+  linkProps?: () => ResolvedLinkStateProps,
+  ref?: (el: Element) => void,
+  handlers?: LinkHandlers,
+]
+
+// Link props override element props they define; the ref is the Link's own.
+const mergeLinkParts = ([elementProps, linkProps, ref]: LinkParts) =>
+  (linkProps
+    ? Solid.mergeProps(elementProps, linkProps, { ref })
+    : elementProps) as Solid.ComponentProps<'a'>
 
 // `ownKeys` are the options that never reach the element.
 function createLinkProps(
   options: UseLinkPropsOptions,
   ownKeys: ReadonlyArray<string>,
-): Solid.ComponentProps<'a'> {
-  const router = useRouter()
+  router: AnyRouter,
+): LinkParts {
   // Options are read directly: one props proxy, no merged-default getters.
   const [, propsSafeToSpread] = Solid.splitProps(
     options,
@@ -194,10 +215,6 @@ function createLinkProps(
       ? getLinkState
       : Solid.createMemo(getLinkState)
 
-  type ResolvedLinkStateProps = Omit<Solid.ComponentProps<'a'>, 'style'> & {
-    style?: Solid.JSX.CSSProperties
-  }
-
   const resolveLinkStateProps = (
     [href, external, active]: LinkState,
     base: Solid.ComponentProps<'a'> & { disabled?: boolean },
@@ -272,7 +289,7 @@ function createLinkProps(
         delete props[key]
       }
     }
-    return Solid.mergeProps(propsSafeToSpread, props) as any
+    return [Solid.mergeProps(propsSafeToSpread, props) as any]
   }
 
   let hasRenderFetched = false
@@ -379,29 +396,39 @@ function createLinkProps(
     }
   }
 
-  const onClick = createComposedHandler(() => options.onClick, handleClick)
-  const onBlur = createComposedHandler(() => options.onBlur, handleLeave)
-  const onFocus = createComposedHandler(() => options.onFocus, enqueuePreload)
-  const onMouseEnter = createComposedHandler(
-    () => options.onMouseEnter,
-    enqueuePreload,
-  )
-  const onMouseOver = createComposedHandler(
-    () => options.onMouseOver,
-    enqueuePreload,
-  )
-  const onMouseLeave = createComposedHandler(
-    () => options.onMouseLeave,
-    handleLeave,
-  )
-  const onMouseOut = createComposedHandler(
-    () => options.onMouseOut,
-    handleLeave,
-  )
-  const onTouchStart = createComposedHandler(
-    () => options.onTouchStart,
-    handleTouchStart,
-  )
+  // The user's handler runs first and can prevent the Link's own. A handler
+  // from the selected state props replaces both, also where the Link binds
+  // its handlers to the element directly.
+  const composeHandler = (
+    key: (typeof STATIC_EVENT_PROPS)[number],
+    fallback: (event: any) => void,
+  ) => {
+    const handler = (event: any) => {
+      const current = resolvedProps()[key] as any
+      if (current !== handler) {
+        if (current) {
+          callHandler(event, current)
+        }
+        return
+      }
+      const own = options[key] as any
+      if (!own || !callHandler(event, own)) {
+        fallback(event)
+      }
+    }
+    return handler
+  }
+
+  const handlers: LinkHandlers = {
+    onClick: composeHandler('onClick', handleClick),
+    onBlur: composeHandler('onBlur', handleLeave),
+    onFocus: composeHandler('onFocus', enqueuePreload),
+    onMouseEnter: composeHandler('onMouseEnter', enqueuePreload),
+    onMouseOver: composeHandler('onMouseOver', enqueuePreload),
+    onMouseLeave: composeHandler('onMouseLeave', handleLeave),
+    onMouseOut: composeHandler('onMouseOut', handleLeave),
+    onTouchStart: composeHandler('onTouchStart', handleTouchStart),
+  }
 
   // One ref callback per element. The selected state props' ref, else the
   // Link's own, receives the element once; a state change does not re-call it.
@@ -414,24 +441,16 @@ function createLinkProps(
   }
 
   const resolvedProps = Solid.createMemo(() =>
-    resolveLinkStateProps(linkState(), {
-      onClick,
-      onBlur,
-      onFocus,
-      onMouseEnter,
-      onMouseOver,
-      onMouseLeave,
-      onMouseOut,
-      onTouchStart,
-    }),
+    resolveLinkStateProps(linkState(), { ...handlers }),
   )
 
-  // The ref sits after the memo so reading it does not track the memo: the
-  // element's ref effect then runs once.
-  return Solid.mergeProps(propsSafeToSpread, resolvedProps, {
-    ref: linkRef,
-  }) as any
+  return [propsSafeToSpread, resolvedProps as any, linkRef, handlers]
 }
+
+type LinkHandlers = Record<
+  (typeof STATIC_EVENT_PROPS)[number],
+  (event: any) => void
+>
 
 // [element href, external href (null when blocked), active]
 type LinkState = [
@@ -495,6 +514,26 @@ const STATIC_EVENT_PROPS = [
   'onMouseOver',
   'onTouchStart',
 ] as const
+// Attributes a client anchor binds itself: an element prop of the same name
+// applies where the Link leaves one unset, as when merged.
+const LINK_ATTRIBUTE_KEYS = [
+  'ref',
+  'role',
+  'aria-disabled',
+  'data-status',
+  'aria-current',
+]
+const LINK_ANCHOR_KEYS = [...LINK_ELEMENT_KEYS, ...LINK_ATTRIBUTE_KEYS]
+// Every Link prop a client anchor binds itself.
+const LINK_BOUND_KEYS = new Set<string>([
+  ...STATIC_EVENT_PROPS,
+  ...LINK_ATTRIBUTE_KEYS,
+  'href',
+  'disabled',
+  'target',
+  'class',
+  'style',
+])
 const STATIC_ACTIVE_PROPS = { class: 'active' }
 const EMPTY_OBJECT = {}
 const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
@@ -522,16 +561,6 @@ function callHandler<T, TEvent extends Event>(
     handler[0](handler[1], event)
   }
   return event.defaultPrevented
-}
-
-function createComposedHandler<T, TEvent extends Event>(
-  getHandler: () => Solid.JSX.EventHandlerUnion<T, TEvent> | undefined,
-  fallback: (event: TEvent) => void,
-) {
-  return (event: TEvent & { currentTarget: T; target: Element }) => {
-    const handler = getHandler()
-    if (!handler || !callHandler(event, handler)) fallback(event)
-  }
 }
 
 export type UseLinkPropsOptions<
@@ -653,8 +682,8 @@ export function createLink<const TComp>(
 
 export const Link: LinkComponent<'a'> = (props) => {
   const local = props as typeof props & { _asChild: any }
-  // One props proxy between the element and the Link's props.
-  const linkProps = createLinkProps(props as any, LINK_ELEMENT_KEYS)
+  const router = useRouter()
+  let status: () => unknown
 
   // Element insertion tracks this itself; only a custom component, which may
   // read its children more than once, gets a memo.
@@ -663,13 +692,91 @@ export const Link: LinkComponent<'a'> = (props) => {
     if (typeof ch === 'function') {
       return ch({
         get isActive() {
-          return (linkProps as any)['data-status'] === 'active'
+          return status() === 'active'
         },
       })
     }
 
     return ch satisfies Solid.JSX.Element
   }
+
+  // A client anchor binds the Link's own attributes and handlers directly
+  // instead of spreading them: only the other element props, and other keys
+  // of the selected state props, are assigned as a spread assigns them.
+  if (!(isServer ?? router.isServer) && !local._asChild) {
+    const [elementProps, linkProps, linkRef, handlers] = createLinkProps(
+      props as any,
+      LINK_ANCHOR_KEYS,
+      router,
+    ) as Required<LinkParts>
+    const attribute = (key: string) => {
+      const value = (linkProps() as any)[key]
+      return value !== undefined ? value : (props as any)[key]
+    }
+    status = () => attribute('data-status')
+    const hasStateProps = 'activeProps' in props || 'inactiveProps' in props
+    const ref = (el: Element) => {
+      linkRef(el)
+      // The other props apply before the Link's own, as in a merged spread.
+      if (
+        hasStateProps ||
+        Solid.$PROXY in elementProps ||
+        Object.values(Object.getOwnPropertyDescriptors(elementProps)).some(
+          (descriptor) => descriptor.get,
+        )
+      ) {
+        const prev = {}
+        Solid.createRenderEffect(() => {
+          const otherProps: Record<string, unknown> = { ...elementProps }
+          const state: Record<string, unknown> = hasStateProps
+            ? linkProps()
+            : EMPTY_OBJECT
+          for (const key in state) {
+            if (
+              !LINK_BOUND_KEYS.has(key) &&
+              (state[key] !== undefined || !(key in otherProps))
+            ) {
+              otherProps[key] = state[key]
+            }
+          }
+          assign(el, otherProps, false, true, prev, true)
+        })
+      } else {
+        assign(el, elementProps, false, true, {}, true)
+      }
+    }
+    return (
+      <a
+        ref={ref}
+        href={linkProps().href}
+        // @ts-expect-error A disabled Link sets the element's `disabled` property, as a spread does.
+        disabled={linkProps().disabled}
+        target={linkProps().target}
+        role={attribute('role')}
+        aria-disabled={attribute('aria-disabled')}
+        style={linkProps().style}
+        class={linkProps().class}
+        data-status={status()}
+        aria-current={attribute('aria-current')}
+        onClick={handlers.onClick}
+        onBlur={handlers.onBlur}
+        onFocus={handlers.onFocus}
+        onMouseEnter={handlers.onMouseEnter}
+        onMouseOver={handlers.onMouseOver}
+        onMouseLeave={handlers.onMouseLeave}
+        onMouseOut={handlers.onMouseOut}
+        onTouchStart={handlers.onTouchStart}
+      >
+        {children()}
+      </a>
+    )
+  }
+
+  // One props proxy between the element and the Link's props.
+  const linkProps = mergeLinkParts(
+    createLinkProps(props as any, LINK_ELEMENT_KEYS, router),
+  )
+  status = () => (linkProps as any)['data-status']
 
   if (local._asChild === 'svg') {
     const [_, svgLinkProps] = Solid.splitProps(linkProps, ['class'])
