@@ -401,3 +401,42 @@ test('a custom component receives the element props, state and handlers', async 
     expect(link).toHaveAttribute('data-on', '')
   })
 })
+
+test('state props added later through a spread apply their extra props', async () => {
+  const [extra, setExtra] = Solid.createSignal<Record<string, unknown>>({})
+  const router = renderLinks(() => (
+    <Link to="/target" data-testid="late" {...extra()}>
+      Late
+    </Link>
+  ))
+  const link = await screen.findByTestId('late')
+  await router.navigate({ to: '/target' })
+  await waitFor(() => expect(link).toHaveAttribute('data-status', 'active'))
+  setExtra({ activeProps: { title: 'active title', 'data-active': 'yes' } })
+  await waitFor(() => {
+    expect(link).toHaveAttribute('title', 'active title')
+    expect(link).toHaveAttribute('data-active', 'yes')
+  })
+})
+
+test("the Link's handlers follow the element's own listeners", async () => {
+  const log: Array<string> = []
+  const onclick = vi.fn()
+  const router = renderLinks(() => (
+    <Link
+      to="/target"
+      onFocus={() => log.push('link')}
+      on:focus={() => log.push('element')}
+      onclick={onclick}
+    >
+      Target
+    </Link>
+  ))
+  const link = await screen.findByRole('link', { name: 'Target' })
+  fireEvent.focus(link)
+  expect(log).toEqual(['element', 'link'])
+  // A lowercase delegated handler is replaced by the Link's own.
+  fireEvent.click(link)
+  await waitFor(() => expect(router.state.location.pathname).toBe('/target'))
+  expect(onclick).not.toHaveBeenCalled()
+})

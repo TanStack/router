@@ -12,7 +12,7 @@ import {
 } from '@tanstack/router-core'
 
 import { isServer } from '@tanstack/router-core/isServer'
-import { Dynamic, assign } from 'solid-js/web'
+import { Dynamic, addEventListener, assign, delegateEvents } from 'solid-js/web'
 import { useRouter } from './useRouter'
 import { nearestMatchContext } from './matchContext'
 
@@ -536,6 +536,7 @@ const LINK_BOUND_KEYS = new Set<string>([
   'class',
   'style',
 ])
+const DELEGATED_LINK_EVENTS = ['click', 'mouseover', 'mouseout', 'touchstart']
 const STATIC_ACTIVE_PROPS = { class: 'active' }
 const EMPTY_OBJECT = {}
 const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
@@ -716,19 +717,22 @@ export const Link: LinkComponent<'a'> = (props) => {
       return value !== undefined ? value : (props as any)[key]
     }
     status = () => attribute('data-status')
-    const hasStateProps = 'activeProps' in props || 'inactiveProps' in props
+    // A spread into the Link can add state props later.
+    const hasStateProps = () =>
+      'activeProps' in props || 'inactiveProps' in props
     const ref = (el: Element) => {
       linkRef(el)
-      // The other props apply before the Link's own, as in a merged spread.
+      // As in a merged spread, the other props apply first, then the Link's
+      // handlers, then its attributes.
       if (
-        hasStateProps ||
         Solid.$PROXY in elementProps ||
+        hasStateProps() ||
         hasKeys(elementProps as Record<string, unknown>)
       ) {
         const prev = {}
         Solid.createRenderEffect(() => {
           const otherProps: Record<string, unknown> = { ...elementProps }
-          const state: Record<string, unknown> = hasStateProps
+          const state: Record<string, unknown> = hasStateProps()
             ? linkProps()
             : EMPTY_OBJECT
           for (const key in state) {
@@ -742,6 +746,16 @@ export const Link: LinkComponent<'a'> = (props) => {
           assign(el, otherProps, false, true, prev, true)
         })
       }
+      // Delegated like Solid's own `onClick`; the others listen natively.
+      addEventListener(el, 'click', handlers.onClick, true)
+      addEventListener(el, 'blur', handlers.onBlur, false)
+      addEventListener(el, 'focus', handlers.onFocus, false)
+      addEventListener(el, 'mouseenter', handlers.onMouseEnter, false)
+      addEventListener(el, 'mouseover', handlers.onMouseOver, true)
+      addEventListener(el, 'mouseleave', handlers.onMouseLeave, false)
+      addEventListener(el, 'mouseout', handlers.onMouseOut, true)
+      addEventListener(el, 'touchstart', handlers.onTouchStart, true)
+      delegateEvents(DELEGATED_LINK_EVENTS)
     }
     return (
       <a
@@ -756,14 +770,6 @@ export const Link: LinkComponent<'a'> = (props) => {
         class={linkProps().class}
         data-status={status()}
         aria-current={attribute('aria-current')}
-        onClick={handlers.onClick}
-        onBlur={handlers.onBlur}
-        onFocus={handlers.onFocus}
-        onMouseEnter={handlers.onMouseEnter}
-        onMouseOver={handlers.onMouseOver}
-        onMouseLeave={handlers.onMouseLeave}
-        onMouseOut={handlers.onMouseOut}
-        onTouchStart={handlers.onTouchStart}
       >
         {children()}
       </a>
