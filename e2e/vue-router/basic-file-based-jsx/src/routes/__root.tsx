@@ -92,6 +92,12 @@ const RootComponent = defineComponent({
           >
             This Route Does Not Exist
           </Link>
+          <Link
+            to="/global-blocker/single-blocker"
+            activeProps={{ class: 'font-bold' }}
+          >
+            Global Blocker
+          </Link>
         </div>
         <hr />
         <Outlet />

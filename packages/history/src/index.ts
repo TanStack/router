@@ -14,8 +14,17 @@ type SubscriberHistoryAction =
       type: 'GO'
       index: number
     }
+  | {
+      type: 'BLOCK'
+      proceedAll: () => void
+      proceed: () => void
+      reset: () => void
+    }
+  | {
+      type: 'DISMISS_BLOCK'
+    }
 
-type SubscriberArgs = {
+export type SubscriberArgs = {
   location: HistoryLocation
   action: SubscriberHistoryAction
 }
@@ -70,13 +79,64 @@ export type BlockerFnArgs = {
   action: HistoryAction
 }
 
+export type AsyncGeneratorBlockerFnResult = AsyncGenerator<
+  (value: boolean) => void,
+  ShouldAllowNavigation,
+  unknown
+>
+
 export type BlockerFn = (
   args: BlockerFnArgs,
-) => Promise<ShouldAllowNavigation> | ShouldAllowNavigation
+) =>
+  | Promise<ShouldAllowNavigation>
+  | ShouldAllowNavigation
+  | AsyncGeneratorBlockerFnResult
 
 export type NavigationBlocker = {
   blockerFn: BlockerFn
   enableBeforeUnload?: (() => boolean) | boolean
+}
+
+function isBlockerAsyncGenerator(
+  value: unknown,
+): value is AsyncGeneratorBlockerFnResult {
+  return typeof (value as AsyncGenerator)?.[Symbol.asyncIterator] === 'function'
+}
+
+async function runBlockerGenerator(
+  generator: AsyncGeneratorBlockerFnResult,
+  notify: (action: SubscriberHistoryAction) => void,
+): Promise<{ isBlocked: boolean; proceedAllCalled: boolean }> {
+  let isBlocked = false
+  let blockNotified = false
+  let proceedAllCalled = false
+
+  while (true) {
+    const { value, done } = await generator.next()
+
+    if (!done) {
+      const resolver = value
+      notify({
+        type: 'BLOCK',
+        proceed: () => resolver(false),
+        reset: () => resolver(true),
+        proceedAll: () => {
+          proceedAllCalled = true
+          resolver(false)
+        },
+      })
+      blockNotified = true
+      continue
+    }
+
+    isBlocked = value
+    if (blockNotified) {
+      notify({ type: 'DISMISS_BLOCK' })
+    }
+    break
+  }
+
+  return { isBlocked, proceedAllCalled }
 }
 
 type TryNavigateArgs = {
@@ -167,11 +227,24 @@ export function createHistory(opts: {
     ) {
       for (const blocker of blockers) {
         const nextLocation = parseHref(args.path, args.state)
-        const isBlocked = await blocker.blockerFn({
+
+        const result = blocker.blockerFn({
           currentLocation: location,
           nextLocation,
           action: args.type,
         })
+
+        let isBlocked: boolean
+        if (isBlockerAsyncGenerator(result)) {
+          const outcome = await runBlockerGenerator(result, notify)
+          if (outcome.proceedAllCalled) {
+            break
+          }
+          isBlocked = outcome.isBlocked
+        } else {
+          isBlocked = await result
+        }
+
         if (isBlocked) {
           opts.onBlocked?.()
           return
@@ -459,11 +532,23 @@ export function createBrowserHistory(opts?: {
       const blockers = _getBlockers()
       if (typeof document !== 'undefined' && blockers.length) {
         for (const blocker of blockers) {
-          const isBlocked = await blocker.blockerFn({
+          const result = blocker.blockerFn({
             currentLocation,
             nextLocation,
             action,
           })
+
+          let isBlocked: boolean
+          if (isBlockerAsyncGenerator(result)) {
+            const outcome = await runBlockerGenerator(result, history.notify)
+            if (outcome.proceedAllCalled) {
+              break
+            }
+            isBlocked = outcome.isBlocked
+          } else {
+            isBlocked = await result
+          }
+
           if (isBlocked) {
             ignoreNextPop = true
             win.history.go(-delta)

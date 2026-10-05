@@ -25,12 +25,15 @@ import { Route as groupLayoutRouteImport } from './routes/(group)/_layout'
 import { Route as groupInsideRouteImport } from './routes/(group)/inside'
 import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as GlobalBlockerLayoutRouteImport } from './routes/global-blocker/_layout'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as GlobalBlockerLayoutMultiBlockersRouteImport } from './routes/global-blocker/_layout.multi-blockers'
+import { Route as GlobalBlockerLayoutSingleBlockerRouteImport } from './routes/global-blocker/_layout.single-blocker'
 import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -107,6 +110,11 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
+const GlobalBlockerLayoutRoute = GlobalBlockerLayoutRouteImport.update({
+  id: '/global-blocker/_layout',
+  path: '/global-blocker',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -137,6 +145,18 @@ const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
+const GlobalBlockerLayoutMultiBlockersRoute =
+  GlobalBlockerLayoutMultiBlockersRouteImport.update({
+    id: '/multi-blockers',
+    path: '/multi-blockers',
+    getParentRoute: () => GlobalBlockerLayoutRoute,
+  } as any)
+const GlobalBlockerLayoutSingleBlockerRoute =
+  GlobalBlockerLayoutSingleBlockerRouteImport.update({
+    id: '/single-blocker',
+    path: '/single-blocker',
+    getParentRoute: () => GlobalBlockerLayoutRoute,
+  } as any)
 const PostsPostIdEditRoute = PostsPostIdEditRouteImport.update({
   id: '/posts_/$postId/edit',
   path: '/posts/$postId/edit',
@@ -155,12 +175,15 @@ export interface FileRoutesByFullPath {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/global-blocker': typeof GlobalBlockerLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/global-blocker/multi-blockers': typeof GlobalBlockerLayoutMultiBlockersRoute
+  '/global-blocker/single-blocker': typeof GlobalBlockerLayoutSingleBlockerRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -174,12 +197,15 @@ export interface FileRoutesByTo {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/global-blocker': typeof GlobalBlockerLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts': typeof PostsIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/global-blocker/multi-blockers': typeof GlobalBlockerLayoutMultiBlockersRoute
+  '/global-blocker/single-blocker': typeof GlobalBlockerLayoutSingleBlockerRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
 }
 export interface FileRoutesById {
@@ -198,12 +224,15 @@ export interface FileRoutesById {
   '/(group)/inside': typeof groupInsideRoute
   '/(group)/lazyinside': typeof groupLazyinsideRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/global-blocker/_layout': typeof GlobalBlockerLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/global-blocker/_layout/multi-blockers': typeof GlobalBlockerLayoutMultiBlockersRoute
+  '/global-blocker/_layout/single-blocker': typeof GlobalBlockerLayoutSingleBlockerRoute
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
 }
 export interface FileRouteTypes {
@@ -220,12 +249,15 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/global-blocker'
     | '/posts/$postId'
     | '/posts/'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/global-blocker/multi-blockers'
+    | '/global-blocker/single-blocker'
     | '/posts/$postId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -239,12 +271,15 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/global-blocker'
     | '/posts/$postId'
     | '/posts'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/global-blocker/multi-blockers'
+    | '/global-blocker/single-blocker'
     | '/posts/$postId/edit'
   id:
     | '__root__'
@@ -262,12 +297,15 @@ export interface FileRouteTypes {
     | '/(group)/inside'
     | '/(group)/lazyinside'
     | '/_layout/_layout-2'
+    | '/global-blocker/_layout'
     | '/posts/$postId'
     | '/posts/'
     | '/(group)/_layout/insidelayout'
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/global-blocker/_layout/multi-blockers'
+    | '/global-blocker/_layout/single-blocker'
     | '/posts_/$postId/edit'
   fileRoutesById: FileRoutesById
 }
@@ -285,6 +323,7 @@ export interface RootRouteChildren {
   groupLayoutRoute: typeof groupLayoutRouteWithChildren
   groupInsideRoute: typeof groupInsideRoute
   groupLazyinsideRoute: typeof groupLazyinsideRoute
+  GlobalBlockerLayoutRoute: typeof GlobalBlockerLayoutRouteWithChildren
   groupSubfolderInsideRoute: typeof groupSubfolderInsideRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
 }
@@ -389,6 +428,13 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/global-blocker/_layout': {
+      id: '/global-blocker/_layout'
+      path: '/global-blocker'
+      fullPath: '/global-blocker'
+      preLoaderRoute: typeof GlobalBlockerLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts/': {
       id: '/posts/'
       path: '/'
@@ -430,6 +476,20 @@ declare module '@tanstack/vue-router' {
       fullPath: '/layout-b'
       preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
       parentRoute: typeof LayoutLayout2Route
+    }
+    '/global-blocker/_layout/multi-blockers': {
+      id: '/global-blocker/_layout/multi-blockers'
+      path: '/multi-blockers'
+      fullPath: '/global-blocker/multi-blockers'
+      preLoaderRoute: typeof GlobalBlockerLayoutMultiBlockersRouteImport
+      parentRoute: typeof GlobalBlockerLayoutRoute
+    }
+    '/global-blocker/_layout/single-blocker': {
+      id: '/global-blocker/_layout/single-blocker'
+      path: '/single-blocker'
+      fullPath: '/global-blocker/single-blocker'
+      preLoaderRoute: typeof GlobalBlockerLayoutSingleBlockerRouteImport
+      parentRoute: typeof GlobalBlockerLayoutRoute
     }
     '/posts_/$postId/edit': {
       id: '/posts_/$postId/edit'
@@ -490,6 +550,19 @@ const groupLayoutRouteWithChildren = groupLayoutRoute._addFileChildren(
   groupLayoutRouteChildren,
 )
 
+interface GlobalBlockerLayoutRouteChildren {
+  GlobalBlockerLayoutMultiBlockersRoute: typeof GlobalBlockerLayoutMultiBlockersRoute
+  GlobalBlockerLayoutSingleBlockerRoute: typeof GlobalBlockerLayoutSingleBlockerRoute
+}
+
+const GlobalBlockerLayoutRouteChildren: GlobalBlockerLayoutRouteChildren = {
+  GlobalBlockerLayoutMultiBlockersRoute: GlobalBlockerLayoutMultiBlockersRoute,
+  GlobalBlockerLayoutSingleBlockerRoute: GlobalBlockerLayoutSingleBlockerRoute,
+}
+
+const GlobalBlockerLayoutRouteWithChildren =
+  GlobalBlockerLayoutRoute._addFileChildren(GlobalBlockerLayoutRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
@@ -505,6 +578,7 @@ const rootRouteChildren: RootRouteChildren = {
   groupLayoutRoute: groupLayoutRouteWithChildren,
   groupInsideRoute: groupInsideRoute,
   groupLazyinsideRoute: groupLazyinsideRoute,
+  GlobalBlockerLayoutRoute: GlobalBlockerLayoutRouteWithChildren,
   groupSubfolderInsideRoute: groupSubfolderInsideRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
 }

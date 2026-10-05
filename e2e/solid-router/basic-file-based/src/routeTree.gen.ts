@@ -28,6 +28,7 @@ import { Route as groupLayoutRouteImport } from './routes/(group)/_layout'
 import { Route as groupInsideRouteImport } from './routes/(group)/inside'
 import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as GlobalBlockerLayoutRouteImport } from './routes/global-blocker/_layout'
 import { Route as NonNestedDeepRouteRouteImport } from './routes/non-nested/deep/route'
 import { Route as NonNestedNamedRouteRouteImport } from './routes/non-nested/named/route'
 import { Route as NonNestedPathRouteRouteImport } from './routes/non-nested/path/route'
@@ -48,6 +49,8 @@ import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_l
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as GlobalBlockerLayoutMultiBlockersRouteImport } from './routes/global-blocker/_layout.multi-blockers'
+import { Route as GlobalBlockerLayoutSingleBlockerRouteImport } from './routes/global-blocker/_layout.single-blocker'
 import { Route as MasksAdminUserIdRouteImport } from './routes/masks.admin.$userId'
 import { Route as MasksPublicUsernameRouteImport } from './routes/masks.public.$username'
 import { Route as NonNestedDeepBazRouteRouteImport } from './routes/non-nested/deep/$baz.route'
@@ -211,6 +214,11 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
+const GlobalBlockerLayoutRoute = GlobalBlockerLayoutRouteImport.update({
+  id: '/global-blocker/_layout',
+  path: '/global-blocker',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NonNestedDeepRouteRoute = NonNestedDeepRouteRouteImport.update({
   id: '/deep',
   path: '/deep',
@@ -312,6 +320,18 @@ const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
+const GlobalBlockerLayoutMultiBlockersRoute =
+  GlobalBlockerLayoutMultiBlockersRouteImport.update({
+    id: '/multi-blockers',
+    path: '/multi-blockers',
+    getParentRoute: () => GlobalBlockerLayoutRoute,
+  } as any)
+const GlobalBlockerLayoutSingleBlockerRoute =
+  GlobalBlockerLayoutSingleBlockerRouteImport.update({
+    id: '/single-blocker',
+    path: '/single-blocker',
+    getParentRoute: () => GlobalBlockerLayoutRoute,
+  } as any)
 const MasksAdminUserIdRoute = MasksAdminUserIdRouteImport.update({
   id: '/admin/$userId',
   path: '/admin/$userId',
@@ -706,6 +726,7 @@ export interface FileRoutesByFullPath {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/global-blocker': typeof GlobalBlockerLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -725,6 +746,8 @@ export interface FileRoutesByFullPath {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/global-blocker/multi-blockers': typeof GlobalBlockerLayoutMultiBlockersRoute
+  '/global-blocker/single-blocker': typeof GlobalBlockerLayoutSingleBlockerRoute
   '/masks/admin/$userId': typeof MasksAdminUserIdRoute
   '/masks/public/$username': typeof MasksPublicUsernameRoute
   '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
@@ -808,6 +831,7 @@ export interface FileRoutesByTo {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/global-blocker': typeof GlobalBlockerLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/params-ps': typeof ParamsPsIndexRoute
@@ -821,6 +845,8 @@ export interface FileRoutesByTo {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/global-blocker/multi-blockers': typeof GlobalBlockerLayoutMultiBlockersRoute
+  '/global-blocker/single-blocker': typeof GlobalBlockerLayoutSingleBlockerRoute
   '/masks/admin/$userId': typeof MasksAdminUserIdRoute
   '/masks/public/$username': typeof MasksPublicUsernameRoute
   '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
@@ -908,6 +934,7 @@ export interface FileRoutesById {
   '/(group)/inside': typeof groupInsideRoute
   '/(group)/lazyinside': typeof groupLazyinsideRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/global-blocker/_layout': typeof GlobalBlockerLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -927,6 +954,8 @@ export interface FileRoutesById {
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/global-blocker/_layout/multi-blockers': typeof GlobalBlockerLayoutMultiBlockersRoute
+  '/global-blocker/_layout/single-blocker': typeof GlobalBlockerLayoutSingleBlockerRoute
   '/masks/admin/$userId': typeof MasksAdminUserIdRoute
   '/masks/public/$username': typeof MasksPublicUsernameRoute
   '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
@@ -1014,6 +1043,7 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/global-blocker'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -1033,6 +1063,8 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/global-blocker/multi-blockers'
+    | '/global-blocker/single-blocker'
     | '/masks/admin/$userId'
     | '/masks/public/$username'
     | '/params-ps/named/prefix{$foo}'
@@ -1116,6 +1148,7 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/global-blocker'
     | '/posts/$postId'
     | '/search-params/default'
     | '/params-ps'
@@ -1129,6 +1162,8 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/global-blocker/multi-blockers'
+    | '/global-blocker/single-blocker'
     | '/masks/admin/$userId'
     | '/masks/public/$username'
     | '/params-ps/named/prefix{$foo}'
@@ -1215,6 +1250,7 @@ export interface FileRouteTypes {
     | '/(group)/inside'
     | '/(group)/lazyinside'
     | '/_layout/_layout-2'
+    | '/global-blocker/_layout'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -1234,6 +1270,8 @@ export interface FileRouteTypes {
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/global-blocker/_layout/multi-blockers'
+    | '/global-blocker/_layout/single-blocker'
     | '/masks/admin/$userId'
     | '/masks/public/$username'
     | '/params-ps/named/prefix{$foo}'
@@ -1317,6 +1355,7 @@ export interface RootRouteChildren {
   groupLayoutRoute: typeof groupLayoutRouteWithChildren
   groupInsideRoute: typeof groupInsideRoute
   groupLazyinsideRoute: typeof groupLazyinsideRoute
+  GlobalBlockerLayoutRoute: typeof GlobalBlockerLayoutRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
@@ -1476,6 +1515,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/global-blocker/_layout': {
+      id: '/global-blocker/_layout'
+      path: '/global-blocker'
+      fullPath: '/global-blocker'
+      preLoaderRoute: typeof GlobalBlockerLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/non-nested/deep': {
       id: '/non-nested/deep'
       path: '/deep'
@@ -1615,6 +1661,20 @@ declare module '@tanstack/solid-router' {
       fullPath: '/layout-b'
       preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
       parentRoute: typeof LayoutLayout2Route
+    }
+    '/global-blocker/_layout/multi-blockers': {
+      id: '/global-blocker/_layout/multi-blockers'
+      path: '/multi-blockers'
+      fullPath: '/global-blocker/multi-blockers'
+      preLoaderRoute: typeof GlobalBlockerLayoutMultiBlockersRouteImport
+      parentRoute: typeof GlobalBlockerLayoutRoute
+    }
+    '/global-blocker/_layout/single-blocker': {
+      id: '/global-blocker/_layout/single-blocker'
+      path: '/single-blocker'
+      fullPath: '/global-blocker/single-blocker'
+      preLoaderRoute: typeof GlobalBlockerLayoutSingleBlockerRouteImport
+      parentRoute: typeof GlobalBlockerLayoutRoute
     }
     '/masks/admin/$userId': {
       id: '/masks/admin/$userId'
@@ -2459,6 +2519,19 @@ const groupLayoutRouteWithChildren = groupLayoutRoute._addFileChildren(
   groupLayoutRouteChildren,
 )
 
+interface GlobalBlockerLayoutRouteChildren {
+  GlobalBlockerLayoutMultiBlockersRoute: typeof GlobalBlockerLayoutMultiBlockersRoute
+  GlobalBlockerLayoutSingleBlockerRoute: typeof GlobalBlockerLayoutSingleBlockerRoute
+}
+
+const GlobalBlockerLayoutRouteChildren: GlobalBlockerLayoutRouteChildren = {
+  GlobalBlockerLayoutMultiBlockersRoute: GlobalBlockerLayoutMultiBlockersRoute,
+  GlobalBlockerLayoutSingleBlockerRoute: GlobalBlockerLayoutSingleBlockerRoute,
+}
+
+const GlobalBlockerLayoutRouteWithChildren =
+  GlobalBlockerLayoutRoute._addFileChildren(GlobalBlockerLayoutRouteChildren)
+
 interface RedirectTargetRouteChildren {
   RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
   RedirectTargetViaLoaderRoute: typeof RedirectTargetViaLoaderRoute
@@ -2525,6 +2598,7 @@ const rootRouteChildren: RootRouteChildren = {
   groupLayoutRoute: groupLayoutRouteWithChildren,
   groupInsideRoute: groupInsideRoute,
   groupLazyinsideRoute: groupLazyinsideRoute,
+  GlobalBlockerLayoutRoute: GlobalBlockerLayoutRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   ParamsPsIndexRoute: ParamsPsIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
