@@ -2227,7 +2227,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       controller.signal,
     )
     if (!isCurrent()) {
-      return
+      return await awaitCurrent(router)
     }
     // Hydration trusts transported context and beforeLoad. The raw history
     // entry owns the handoff; route structure is verified after rematching.
@@ -2250,7 +2250,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     }
   }
   if (!isCurrent()) {
-    return
+    return await awaitCurrent(router)
   }
   const committed: Array<AnyRouteMatch> = []
   let pendingBoundary: number | undefined
@@ -2379,10 +2379,10 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       chunkFailure++
     }
   } catch {
-    return
+    return await awaitCurrent(router)
   }
   if (!isCurrent()) {
-    return
+    return await awaitCurrent(router)
   }
   if (chunkFailure < committed.length) {
     retryFrom(chunkFailure)
@@ -2426,7 +2426,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           }) || {}
       } catch {
         if (!isCurrent()) {
-          return
+          return await awaitCurrent(router)
         }
         if (
           match.status !== 'error' &&
@@ -2440,7 +2440,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         }
       }
       if (!isCurrent()) {
-        return
+        return await awaitCurrent(router)
       }
     }
     match.context = {
@@ -2458,7 +2458,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     verifiedAssetEnd,
   )
   if (!isCurrent()) {
-    return
+    return await awaitCurrent(router)
   }
   const needsClientLoad =
     pendingBoundary !== undefined || committed.length < shared
