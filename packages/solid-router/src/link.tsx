@@ -766,8 +766,8 @@ export const Link: LinkComponent<'a'> = (props) => {
         target={linkProps().target}
         role={attribute('role')}
         aria-disabled={attribute('aria-disabled')}
-        style={linkProps().style}
         class={linkProps().class}
+        style={linkProps().style}
         data-status={status()}
         aria-current={attribute('aria-current')}
       >
