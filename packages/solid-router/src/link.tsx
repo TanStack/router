@@ -60,10 +60,12 @@ type LinkParts = [
 ]
 
 // Link props override element props they define; the ref is the Link's own.
-const mergeLinkParts = ([elementProps, linkProps, ref]: LinkParts) =>
-  (linkProps
-    ? Solid.mergeProps(elementProps, linkProps, { ref })
-    : elementProps) as Solid.ComponentProps<'a'>
+const mergeLinkParts = ([
+  elementProps,
+  linkProps,
+  ref,
+]: LinkParts): Solid.ComponentProps<'a'> =>
+  linkProps ? Solid.mergeProps(elementProps, linkProps, { ref }) : elementProps
 
 // `ownKeys` are the options that never reach the element.
 function createLinkProps(
