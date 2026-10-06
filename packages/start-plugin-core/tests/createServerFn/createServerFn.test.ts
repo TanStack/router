@@ -877,5 +877,23 @@ describe('createServerFn declared below module top level', () => {
         )
       },
     )
+
+    // Leaving these untransformed would ship the server handler to the client.
+    describe.each(
+      Object.entries({
+        'a default export': `export default createServerFn().handler(async () => 'body')`,
+        'an object property': `export const fns = { a: createServerFn().handler(async () => 'body') }`,
+        'a function return value': `export function make() {
+  return createServerFn().handler(async () => 'body')
+}`,
+        'a call argument': `register(createServerFn().handler(async () => 'body'))`,
+      }),
+    )('not assigned to a variable, as %s', (__, unassigned) => {
+      test.each(runtimes)('fails the build (%s)', async (runtime) => {
+        await expect(
+          compileFor(runtime, [imports, unassigned, other].join('\n')),
+        ).rejects.toThrow('createServerFn must be assigned to a variable!')
+      })
+    })
   })
 })
