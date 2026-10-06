@@ -916,9 +916,11 @@ export function compileCodeSplitVirtualRoute(
  * User exports, including the Route singleton, that a split module imports from
  * the reference module instead of initializing a second copy. Imports keep their
  * source, a destructuring that also declares private bindings stays whole, and
- * shared bindings come from the shared module. An export that depends on a
- * private binding the split module declares itself is declared alongside it,
- * so that both observe one module state.
+ * shared bindings come from the shared module. Exported variables are always
+ * imported, as on main, so that every module sees one context or store
+ * instance. An exported function or class that depends on a private binding the
+ * split module declares itself is declared alongside it, so that both observe
+ * one module state.
  */
 function exportsImportedBySplitModule(
   analysis: RouteModuleAnalysis,
@@ -955,6 +957,10 @@ function exportsImportedBySplitModule(
       ),
     )
     for (const binding of imported) {
+      // Every module reads one instance of an exported variable
+      if (is.VariableDeclarator(graph.declarations.get(binding))) {
+        continue
+      }
       const dependencies = expandTransitively(
         chunkDependencies.get(binding) ?? new Set<Binding>(),
         privateDependencies,
