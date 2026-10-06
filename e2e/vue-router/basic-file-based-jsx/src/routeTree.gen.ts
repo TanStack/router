@@ -33,6 +33,7 @@ import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfo
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as GlobalBlockerLayoutMultiBlockersRouteImport } from './routes/global-blocker/_layout.multi-blockers'
+import { Route as GlobalBlockerLayoutPopstateRouteImport } from './routes/global-blocker/_layout.popstate'
 import { Route as GlobalBlockerLayoutSingleBlockerRouteImport } from './routes/global-blocker/_layout.single-blocker'
 import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
 
@@ -151,6 +152,12 @@ const GlobalBlockerLayoutMultiBlockersRoute =
     path: '/multi-blockers',
     getParentRoute: () => GlobalBlockerLayoutRoute,
   } as any)
+const GlobalBlockerLayoutPopstateRoute =
+  GlobalBlockerLayoutPopstateRouteImport.update({
+    id: '/popstate',
+    path: '/popstate',
+    getParentRoute: () => GlobalBlockerLayoutRoute,
+  } as any)
 const GlobalBlockerLayoutSingleBlockerRoute =
   GlobalBlockerLayoutSingleBlockerRouteImport.update({
     id: '/single-blocker',
@@ -183,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/global-blocker/multi-blockers': typeof GlobalBlockerLayoutMultiBlockersRoute
+  '/global-blocker/popstate': typeof GlobalBlockerLayoutPopstateRoute
   '/global-blocker/single-blocker': typeof GlobalBlockerLayoutSingleBlockerRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
 }
@@ -205,6 +213,7 @@ export interface FileRoutesByTo {
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/global-blocker/multi-blockers': typeof GlobalBlockerLayoutMultiBlockersRoute
+  '/global-blocker/popstate': typeof GlobalBlockerLayoutPopstateRoute
   '/global-blocker/single-blocker': typeof GlobalBlockerLayoutSingleBlockerRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
 }
@@ -232,6 +241,7 @@ export interface FileRoutesById {
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/global-blocker/_layout/multi-blockers': typeof GlobalBlockerLayoutMultiBlockersRoute
+  '/global-blocker/_layout/popstate': typeof GlobalBlockerLayoutPopstateRoute
   '/global-blocker/_layout/single-blocker': typeof GlobalBlockerLayoutSingleBlockerRoute
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
 }
@@ -257,6 +267,7 @@ export interface FileRouteTypes {
     | '/layout-a'
     | '/layout-b'
     | '/global-blocker/multi-blockers'
+    | '/global-blocker/popstate'
     | '/global-blocker/single-blocker'
     | '/posts/$postId/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -279,6 +290,7 @@ export interface FileRouteTypes {
     | '/layout-a'
     | '/layout-b'
     | '/global-blocker/multi-blockers'
+    | '/global-blocker/popstate'
     | '/global-blocker/single-blocker'
     | '/posts/$postId/edit'
   id:
@@ -305,6 +317,7 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
     | '/global-blocker/_layout/multi-blockers'
+    | '/global-blocker/_layout/popstate'
     | '/global-blocker/_layout/single-blocker'
     | '/posts_/$postId/edit'
   fileRoutesById: FileRoutesById
@@ -484,6 +497,13 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof GlobalBlockerLayoutMultiBlockersRouteImport
       parentRoute: typeof GlobalBlockerLayoutRoute
     }
+    '/global-blocker/_layout/popstate': {
+      id: '/global-blocker/_layout/popstate'
+      path: '/popstate'
+      fullPath: '/global-blocker/popstate'
+      preLoaderRoute: typeof GlobalBlockerLayoutPopstateRouteImport
+      parentRoute: typeof GlobalBlockerLayoutRoute
+    }
     '/global-blocker/_layout/single-blocker': {
       id: '/global-blocker/_layout/single-blocker'
       path: '/single-blocker'
@@ -552,11 +572,13 @@ const groupLayoutRouteWithChildren = groupLayoutRoute._addFileChildren(
 
 interface GlobalBlockerLayoutRouteChildren {
   GlobalBlockerLayoutMultiBlockersRoute: typeof GlobalBlockerLayoutMultiBlockersRoute
+  GlobalBlockerLayoutPopstateRoute: typeof GlobalBlockerLayoutPopstateRoute
   GlobalBlockerLayoutSingleBlockerRoute: typeof GlobalBlockerLayoutSingleBlockerRoute
 }
 
 const GlobalBlockerLayoutRouteChildren: GlobalBlockerLayoutRouteChildren = {
   GlobalBlockerLayoutMultiBlockersRoute: GlobalBlockerLayoutMultiBlockersRoute,
+  GlobalBlockerLayoutPopstateRoute: GlobalBlockerLayoutPopstateRoute,
   GlobalBlockerLayoutSingleBlockerRoute: GlobalBlockerLayoutSingleBlockerRoute,
 }
 

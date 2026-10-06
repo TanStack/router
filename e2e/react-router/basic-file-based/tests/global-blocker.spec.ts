@@ -212,6 +212,52 @@ test('useBlockerState: blocks browser back navigation and proceed resolves it', 
   ).toBeVisible()
 })
 
+test('useBlockerState: blocks browser forward navigation and proceed resolves it', async ({
+  page,
+}) => {
+  await page.goto('/global-blocker/popstate')
+
+  await page.getByTestId('add-entry').click()
+  await expect(page).toHaveURL(/#s/)
+
+  await page.evaluate(() => window.history.back())
+  await expect(page.getByTestId('global-blocker-status')).toHaveText(
+    'global status is blocked',
+  )
+  await page.getByRole('button', { name: 'Proceed', exact: true }).click()
+  await expect(page.getByTestId('global-blocker-status')).toHaveText(
+    'global status is idle',
+  )
+
+  await page.evaluate(() => window.history.forward())
+  await expect(page.getByTestId('global-blocker-status')).toHaveText(
+    'global status is blocked',
+  )
+  await page.getByRole('button', { name: 'Proceed', exact: true }).click()
+  await expect(page.getByTestId('global-blocker-status')).toHaveText(
+    'global status is idle',
+  )
+  await expect(page).toHaveURL(/#s/)
+})
+
+test('useBlockerState: blocks history go(delta) and reset keeps position', async ({
+  page,
+}) => {
+  await page.goto('/global-blocker/popstate')
+  await page.getByTestId('add-entry').click()
+  await expect(page).toHaveURL(/#s/)
+
+  await page.evaluate(() => window.history.go(-1))
+  await expect(page.getByTestId('global-blocker-status')).toHaveText(
+    'global status is blocked',
+  )
+
+  await page.getByRole('button', { name: 'Reset' }).click()
+  await expect(page.getByTestId('global-blocker-status')).toHaveText(
+    'global status is idle',
+  )
+})
+
 test('useBlockerState: blocker is cleaned up after navigating away', async ({
   page,
 }) => {
