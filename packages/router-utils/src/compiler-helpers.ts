@@ -192,11 +192,6 @@ export function stripTypeExports(program: Program): void {
 
 export interface RemoveUnusedBindingsOptions {
   roots?: Iterable<Binding | string>
-  /**
-   * Preserve user declarations that nothing used before the transform,
-   * including self-referencing and mutually-referencing side effects.
-   */
-  preserveInitiallyUnused?: boolean
 }
 
 type DeclarationIndex = ReturnType<typeof declarationIndex>
@@ -222,14 +217,15 @@ function addEdge(
   edges.set(from, targets)
 }
 
-/** `originOf` maps a traced node to its source node, if it has one. */
+/**
+ * Runtime uses only: TypeScript erases types, so they neither use a declaration
+ * nor keep it alive. `originOf` maps a traced node to its source node, if any.
+ */
 function collectBindingUses(
   module: Module,
   program: Program,
   index: DeclarationIndex,
   originOf: (node: Node) => Node | undefined,
-  /** Type-only uses make a source declaration used, never an output one. */
-  typeReferences: boolean,
 ): BindingUses {
   const byName = new Map(
     module.rootScope.bindings.map((binding) => [binding.name, binding]),
@@ -304,9 +300,7 @@ function collectBindingUses(
       }
       const reference = original ? module.referenceOf(original) : null
       let binding =
-        reference && (typeReferences || !reference.inTypePosition)
-          ? reference.binding
-          : null
+        reference && !reference.inTypePosition ? reference.binding : null
       const generated = generatedReferenceOf(node)
       if (!original && generated) {
         binding =
@@ -327,8 +321,10 @@ function collectBindingUses(
 }
 
 /**
- * Declarations that nothing outside their own reference cycle uses, such as
- * `const stop = subscribe(() => stop())`. They exist for their side effects.
+ * Declarations that nothing outside their own reference cycle uses at runtime,
+ * such as `const stop = subscribe(() => stop())`. They exist for their side
+ * effects, or for the TypeScript transform to erase, as imports only used in
+ * types (except a classic JSX runtime's `React`, which JSX needs).
  */
 function findInitiallyUnused({ present, roots, uses }: BindingUses) {
   // Tarjan's strongly connected components, iterative to bound stack depth
@@ -407,7 +403,7 @@ function initiallyUnused(module: Module, index: DeclarationIndex) {
   let unused = initiallyUnusedBindings.get(module)
   if (!unused) {
     unused = findInitiallyUnused(
-      collectBindingUses(module, module.ast, index, (node) => node, true),
+      collectBindingUses(module, module.ast, index, (node) => node),
     )
     initiallyUnusedBindings.set(module, unused)
   }
@@ -417,28 +413,21 @@ function initiallyUnused(module: Module, index: DeclarationIndex) {
 /**
  * Rebuild liveness from surviving nodes, using original binding identity. This
  * removes dependencies of erased route options without reparsing generated code.
+ * Only declarations the source used, and whose uses the transform erased, are
+ * removed: initially unused ones survive wherever their enclosing code does.
  * Callers decide output ownership before invoking this lexical binding cleanup.
  */
 export function removeUnusedBindings(
   module: Module,
   program: Program,
   originalNodes: WeakMap<Node, Node>,
-  {
-    roots = [],
-    preserveInitiallyUnused = true,
-  }: RemoveUnusedBindingsOptions = {},
+  { roots = [] }: RemoveUnusedBindingsOptions = {},
 ): void {
   stripTypeExports(program)
   const index = declarationIndex(module, module.bindings)
-  const preserved = preserveInitiallyUnused
-    ? initiallyUnused(module, index)
-    : new Set<Binding>()
-  const output = collectBindingUses(
-    module,
-    program,
-    index,
-    (node) => originalNodes.get(node),
-    false,
+  const preserved = initiallyUnused(module, index)
+  const output = collectBindingUses(module, program, index, (node) =>
+    originalNodes.get(node),
   )
   const byName = new Map(
     module.rootScope.bindings.map((binding) => [binding.name, binding]),

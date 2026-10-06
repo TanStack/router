@@ -1052,9 +1052,7 @@ export function compileCodeSplitSharedRoute(
         .map((name) => ({ local: name, exported: name })),
     ),
   )
-  removeUnusedBindings(analysis.module, program, originalNodes, {
-    preserveInitiallyUnused: false,
-  })
+  removeUnusedBindings(analysis.module, program, originalNodes)
   return generateModule(program, {
     source: options.code,
     filename: options.filename,

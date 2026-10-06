@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { createRootRoute } from '@tanstack/react-router';
 export const Route = createRootRoute({ shellComponent: TSRShellComponent, pendingComponent: TSRPendingComponent, errorComponent: TSRErrorComponent, component: TSRComponent });
 function TSRShellComponent({ children }: {

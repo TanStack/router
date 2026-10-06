@@ -154,9 +154,7 @@ describe('semantic dependency analysis', () => {
       ),
     ).toHaveLength(2)
     const { program, originalNodes } = cloneModuleAst(module)
-    removeUnusedBindings(module, program, originalNodes, {
-      preserveInitiallyUnused: false,
-    })
+    removeUnusedBindings(module, program, originalNodes)
     const output = generateModule(program).code
     expect(output).toContain('return dep + value')
     expect(output).toContain('const b = another')
@@ -221,15 +219,16 @@ describe('output liveness', () => {
   })
 
   test.each([true, false])(
-    'executes whole destructured initializers only when a sibling is live: %s',
+    'executes whole destructured initializers only when a binding is live: %s',
     (used) => {
       const module = analyzeModule({
-        code: `const { first, middle, last } = initialize(); ${used ? 'globalThis.result = last' : ''}`,
+        code: `const { first, middle, last } = initialize(); globalThis.result = [first, middle, last][2]`,
       })
       const { program, originalNodes } = cloneModuleAst(module)
-      removeUnusedBindings(module, program, originalNodes, {
-        preserveInitiallyUnused: false,
-      })
+      if (!used) {
+        program.body.pop()
+      }
+      removeUnusedBindings(module, program, originalNodes)
       const events: Array<string> = []
       const context = {
         result: undefined,
@@ -326,21 +325,54 @@ describe('output liveness', () => {
       code: `namespace Labels { export const component = 'count' } export { Labels }`,
     })
     const { program, originalNodes } = cloneModuleAst(module)
-    removeUnusedBindings(module, program, originalNodes, {
-      preserveInitiallyUnused: false,
-    })
+    removeUnusedBindings(module, program, originalNodes)
     expect(generateModule(program).code).toContain(
       "export const component = 'count'",
     )
   })
 
-  test('does not retain a runtime import used only in erased type positions', () => {
-    const module = analyzeModule({
-      code: `import { Framework } from './server-only'; export const value = (): Framework => null as Framework`,
-    })
-    const { program, originalNodes } = cloneModuleAst(module)
-    removeUnusedBindings(module, program, originalNodes)
-    expect(generateModule(program).code).not.toContain('./server-only')
+  test('does not retain a runtime import that only types still reference', () => {
+    const output = cleanup(
+      `
+      import { server } from './server-only'
+      type Server = typeof server
+      export const Route = createRoute({ loader: () => server() })
+    `,
+      'loader',
+    )
+    expect(output).not.toContain('./server-only')
+  })
+
+  // Types are erased, so they neither use a declaration nor keep it alive
+  test('keeps declarations only referenced from types for their side effects', () => {
+    const output = cleanup(
+      `
+      import { registerAnalytics } from './analytics'
+      const analytics = registerAnalytics()
+      declare global {
+        interface Window { analytics: typeof analytics }
+      }
+      export const Route = createRoute({ loader: () => 1 })
+    `,
+      'loader',
+    )
+    expect(output).toContain('const analytics = registerAnalytics()')
+    expect(output).toContain("from './analytics'")
+  })
+
+  // The TypeScript transform erases them, except a classic JSX factory import
+  test('keeps imports that surviving code only references from types', () => {
+    const output = cleanup(
+      `
+      import * as React from 'react'
+      function Layout({ children }: { children: React.ReactNode }) {
+        return <main>{children}</main>
+      }
+      export const Route = createRoute({ component: Layout, loader: () => 1 })
+    `,
+      'loader',
+    )
+    expect(output).toContain("import * as React from 'react'")
   })
 
   test.each([
@@ -424,9 +456,7 @@ export const Route = createRoute({ component: () => <ThemeContext.Provider />, l
     const module = analyzeModule({ code: 'const value = 1;' })
     const { program, originalNodes } = cloneModuleAst(module)
     program.body.push(...parseStatements('export const result = value'))
-    removeUnusedBindings(module, program, originalNodes, {
-      preserveInitiallyUnused: false,
-    })
+    removeUnusedBindings(module, program, originalNodes)
     expect(generateModule(program).code).toContain('const value = 1')
   })
 
@@ -437,9 +467,7 @@ export const Route = createRoute({ component: () => <ThemeContext.Provider />, l
       'export const result = (() => ({ read: () => value + 1 }))().read()',
     )[0]!
     program.body.push(cloneGeneratedNode(generated))
-    removeUnusedBindings(module, program, originalNodes, {
-      preserveInitiallyUnused: false,
-    })
+    removeUnusedBindings(module, program, originalNodes)
     const output = generateModule(program).code
     expect(output).toContain('const value = 41')
     const evaluated = await import(

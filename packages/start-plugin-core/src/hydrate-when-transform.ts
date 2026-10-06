@@ -675,9 +675,7 @@ function loadHydrateVirtualModule(options: {
   const component = output.declaration as t.FunctionDeclaration
   component.body!.body.push(b.ReturnStatement({ argument: expression }))
   ast.body.push(output)
-  removeUnusedBindings(module, ast, originalNodes, {
-    preserveInitiallyUnused: false,
-  })
+  removeUnusedBindings(module, ast, originalNodes)
   return generateModule(ast, { source: options.code, filename: options.id })
 }
 export function createHydrateCompilerPlugin(): StartCompilerPlugin {

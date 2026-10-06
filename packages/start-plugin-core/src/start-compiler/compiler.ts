@@ -1046,9 +1046,7 @@ export class StartCompiler {
       return null
     }
     // One liveness pass after every transform: AST plugins also orphan bindings.
-    removeUnusedBindings(module, ast, originalNodes, {
-      preserveInitiallyUnused: true,
-    })
+    removeUnusedBindings(module, ast, originalNodes)
     return this.generateResultFromAst(ast, code, id)
   }
 
