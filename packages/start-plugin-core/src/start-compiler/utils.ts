@@ -1,6 +1,7 @@
 import { is, walk } from 'yuku-ast'
 import { unwrapExpression } from '@tanstack/router-utils'
 import type {
+  AttachedComment,
   CallExpression,
   Node,
   Program,
@@ -79,6 +80,47 @@ export function createAstEditor(ast: Program) {
       indexSubtree(replacement)
     },
   }
+}
+
+/** `@jsx`, `@jsxFrag`, `@jsxImportSource`, and `@jsxRuntime` file pragmas. */
+const jsxPragma = /@jsx(?:Frag|ImportSource|Runtime)?\b/
+
+function fileJsxPragmas(program: Program): Array<AttachedComment> {
+  return program.body.flatMap(
+    (statement) =>
+      statement.comments?.filter((comment) => jsxPragma.test(comment.value)) ??
+      [],
+  )
+}
+
+/**
+ * JSX pragma comments configure the bundler's JSX transform for the whole
+ * file, and that transform runs after the Start compiler. Oxc only reads them
+ * from the comments that lead the file, so the source's top-level pragmas must
+ * lead the output: removing a statement drops the comments attached to it,
+ * and inserted imports and declarations would otherwise land above them.
+ */
+export function keepJsxPragmas(source: Program, output: Program): void {
+  const pragmas = fileJsxPragmas(source)
+  const first = output.body[0]
+  if (!pragmas.length || !first) {
+    return
+  }
+  for (const statement of output.body) {
+    if (statement.comments) {
+      statement.comments = statement.comments.filter(
+        (comment) => !jsxPragma.test(comment.value),
+      )
+    }
+  }
+  first.comments = [
+    ...pragmas.map((comment) => ({
+      ...comment,
+      position: 'before' as const,
+      sameLine: false,
+    })),
+    ...(first.comments ?? []),
+  ]
 }
 
 export function getVariableDeclarator(
