@@ -5,6 +5,7 @@ import {
   cloneModuleAst,
   extractModuleInfo,
   generateModule,
+  keepFilePragmas,
   parseExpression,
   removeUnusedBindings,
   unwrapExpression,
@@ -14,12 +15,7 @@ import { handleCreateMiddleware } from './handleCreateMiddleware'
 import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
-import {
-  cleanId,
-  createAstEditor,
-  getVariableDeclarator,
-  keepJsxPragmas,
-} from './utils'
+import { cleanId, createAstEditor, getVariableDeclarator } from './utils'
 import type * as t from '@yuku-toolchain/types'
 import type { Module } from 'yuku-analyzer'
 import type {
@@ -1052,7 +1048,7 @@ export class StartCompiler {
     }
     // One liveness pass after every transform: AST plugins also orphan bindings.
     removeUnusedBindings(module, ast, originalNodes)
-    keepJsxPragmas(module.ast, ast)
+    keepFilePragmas(module.ast, ast)
     return this.generateResultFromAst(ast, code, id)
   }
 

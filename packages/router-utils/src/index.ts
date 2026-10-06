@@ -1,6 +1,7 @@
 export {
   analyzeModule,
   generateModule,
+  keepFilePragmas,
   cloneModuleAst,
   cloneGeneratedNode,
   parseStatements,

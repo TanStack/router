@@ -87,6 +87,43 @@ export function analyzeModule({
 }
 
 /** Print an output tree without modifying the source model or its semantic tables. */
+/** File-level pragmas: JSX transform configuration and `@refresh reset`. */
+const filePragma = /@jsx(?:Frag|ImportSource|Runtime)?\b|@refresh reset\b/
+
+/**
+ * Pragma comments configure transforms that run after these compilers for the
+ * whole file, and Oxc only reads them from the comments that lead the file. So
+ * an output must start with the source's top-level pragmas: removing a
+ * statement drops the comments attached to it, and inserted statements would
+ * otherwise land above them.
+ */
+export function keepFilePragmas(source: Program, output: Program): void {
+  const first = output.body[0]
+  const pragmas = source.body.flatMap(
+    (statement) =>
+      statement.comments?.filter((comment) => filePragma.test(comment.value)) ??
+      [],
+  )
+  if (!pragmas.length || !first) {
+    return
+  }
+  for (const statement of output.body) {
+    if (statement.comments) {
+      statement.comments = statement.comments.filter(
+        (comment) => !filePragma.test(comment.value),
+      )
+    }
+  }
+  first.comments = [
+    ...pragmas.map((comment) => ({
+      ...comment,
+      position: 'before' as const,
+      sameLine: false,
+    })),
+    ...(first.comments ?? []),
+  ]
+}
+
 export function generateModule(
   program: Program,
   options?: { source: string; filename: string },

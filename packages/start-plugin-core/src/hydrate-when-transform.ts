@@ -7,6 +7,7 @@ import {
   collectModuleReferences,
   expandTransitively,
   generateModule,
+  keepFilePragmas,
   moduleDeclarationGraph,
   parseExpression,
   parseStatements,
@@ -14,7 +15,7 @@ import {
   unwrapExpression,
 } from '@tanstack/router-utils'
 import { tssHydrate } from './hydration-constants'
-import { cleanId, codeFrameError, keepJsxPragmas } from './start-compiler/utils'
+import { cleanId, codeFrameError } from './start-compiler/utils'
 import type { Binding, Module } from 'yuku-analyzer'
 import type * as t from '@yuku-toolchain/types'
 import type {
@@ -676,7 +677,7 @@ function loadHydrateVirtualModule(options: {
   component.body!.body.push(b.ReturnStatement({ argument: expression }))
   ast.body.push(output)
   removeUnusedBindings(module, ast, originalNodes)
-  keepJsxPragmas(module.ast, ast)
+  keepFilePragmas(module.ast, ast)
   return generateModule(ast, { source: options.code, filename: options.id })
 }
 export function createHydrateCompilerPlugin(): StartCompilerPlugin {
