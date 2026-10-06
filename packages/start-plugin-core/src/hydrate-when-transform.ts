@@ -320,6 +320,56 @@ function getMeaningfulChildren(children: t.JSXElement['children']) {
   )
 }
 
+function setChildren(node: t.JSXElement, children: t.JSXElement['children']) {
+  node.children = children
+  if (node.openingElement.selfClosing) {
+    node.openingElement.selfClosing = false
+    node.closingElement = b.JSXClosingElement({
+      name: { ...node.openingElement.name },
+    })
+  }
+}
+
+/**
+ * Moves a boundary's `children` prop into its JSX children, so
+ * `<Hydrate children={content} />` splits like `<Hydrate>{content}</Hydrate>`.
+ *
+ * @returns false when props may still provide the children (e.g. a spread
+ * after the `children` prop), which cannot be split.
+ */
+function moveChildrenPropIntoChildren(node: t.JSXElement) {
+  if (getMeaningfulChildren(node.children).length) {
+    // JSX children take precedence over a children prop.
+    return true
+  }
+  // The last spread or children prop determines the children.
+  const attributes = node.openingElement.attributes
+  let index = attributes.length - 1
+  for (; index >= 0; index--) {
+    const attribute = attributes[index]!
+    if (
+      is.JSXSpreadAttribute(attribute) ||
+      (is.JSXIdentifier(attribute.name) && attribute.name.name === 'children')
+    ) {
+      break
+    }
+  }
+  const attribute = attributes[index]
+  if (!attribute) {
+    return true
+  }
+  if (
+    is.JSXSpreadAttribute(attribute) ||
+    !attribute.value ||
+    is.StringLiteral(attribute.value)
+  ) {
+    return false
+  }
+  attributes.splice(index, 1)
+  setChildren(node, [attribute.value])
+  return true
+}
+
 function transformHydrateAst(
   options: HydrateAst & {
     code: string
@@ -405,6 +455,7 @@ function transformHydrateAst(
       if (getBooleanProp(node.openingElement, 'split') === false) {
         return
       }
+      const splittable = moveChildrenPropIntoChildren(node)
       const inspection = inspectSplitBoundary(options, node, {
         code: options.code,
         validate: true,
@@ -434,7 +485,7 @@ function transformHydrateAst(
         )
       }
       transformation.modified = true
-      if (options.env === 'server') {
+      if (options.env === 'server' || !splittable) {
         return
       }
       const needsPreload = node.openingElement.attributes.some((attribute) => {
@@ -489,7 +540,7 @@ function transformHydrateAst(
         .map((name) => `${name}={${name}}`)
         .join(' ')
       const child = parseExpression(`<${componentName} ${props} />`)
-      node.children = [b.JSXExpressionContainer({ expression: child })]
+      setChildren(node, [b.JSXExpressionContainer({ expression: child })])
       visitor.skip()
     },
   })
@@ -535,7 +586,10 @@ function loadHydrateVirtualModule(options: {
         return
       }
       if (index === boundaryIndex) {
-        if (getBoundaryId(index) === splitId) {
+        if (
+          getBoundaryId(index) === splitId &&
+          moveChildrenPropIntoChildren(node)
+        ) {
           target = node
           captures = inspectSplitBoundary(context, node, {
             code: options.code,
@@ -616,13 +670,10 @@ function loadHydrateVirtualModule(options: {
   })
   const params = captures.length ? `{ ${captures.join(', ')} }` : ''
   const output = parseStatements(
-    `export function H${boundaryIndex}(${params}) { return null; }`,
-  )[0]!
-  walk(output, {
-    ReturnStatement(node) {
-      node.argument = expression
-    },
-  })
+    `export function H${boundaryIndex}(${params}) {}`,
+  )[0] as t.ExportNamedDeclaration
+  const component = output.declaration as t.FunctionDeclaration
+  component.body!.body.push(b.ReturnStatement({ argument: expression }))
   ast.body.push(output)
   removeUnusedBindings(module, ast, originalNodes, {
     preserveInitiallyUnused: false,

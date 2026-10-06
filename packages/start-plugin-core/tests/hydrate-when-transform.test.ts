@@ -821,6 +821,99 @@ export function Page() { return <Hydrate><Chart /></Hydrate> }
     expect(chunk.code).toMatch(/^'use client';\s*'use strict';\s*import /)
   })
 
+  async function compileWithChunks(env: 'client' | 'server', code: string) {
+    const { plugin, compiler } = createPipeline(env)
+    const parent = (await compiler.compile({ code, id }))!.code
+    const chunks = [...parent.matchAll(/import\("([^"]+)"\)/g)].map(
+      ([, virtualId]) =>
+        (
+          plugin.loadVirtualModule!({
+            id: virtualId!,
+            root,
+            env,
+            envName: env,
+            code: undefined,
+          }) as { code: string }
+        ).code,
+    )
+    // Throws on invalid syntax, like the bundler would.
+    for (const module of [parent, ...chunks]) {
+      await transformWithOxc(module, id, { jsx: { runtime: 'automatic' } })
+    }
+    return { parent, chunks }
+  }
+
+  test('keeps return statements nested in split children', async () => {
+    const { chunks } = await compileWithChunks(
+      'client',
+      `import { Hydrate } from '@tanstack/react-start'
+export function Page({ items }) {
+  return (
+    <Hydrate>
+      <ul onClick={() => { return 'click' }}>
+        {items.map((item) => { return <li>{item}</li> })}
+        {(function () { return 'iife' })()}
+      </ul>
+    </Hydrate>
+  )
+}
+`,
+    )
+    expect(chunks).toHaveLength(1)
+    expect(chunks[0]).toMatch(
+      /export function H0\(\{ items \}\) \{\s*return <ul/,
+    )
+    expect(chunks[0]).toContain(`return 'click'`)
+    expect(chunks[0]).toContain('return <li>{item}</li>')
+    expect(chunks[0]).toContain(`return 'iife'`)
+  })
+
+  test('splits a children prop like JSX children', async () => {
+    const code = `import { Hydrate } from '@tanstack/react-start'
+import { Chart } from './chart'
+export function Page({ title }) {
+  return <section><Hydrate when={true} children={<Chart title={title} />} /></section>
+}
+`
+    const client = await compileWithChunks('client', code)
+    expect(client.parent).not.toMatch(/\bChart\b/)
+    expect(client.parent).toMatch(
+      /<section><Hydrate when=\{true\} h="[^"]+">\{<_H0 title=\{title\} \/>\}<\/Hydrate><\/section>/,
+    )
+    expect(client.chunks).toHaveLength(1)
+    expect(client.chunks[0]).toContain('return <Chart title={title} />')
+
+    const server = await compileWithChunks('server', code)
+    expect(server.parent).toMatch(
+      /<Hydrate when=\{true\} h="[^"]+">\{<Chart title=\{title\} \/>\}<\/Hydrate>/,
+    )
+  })
+
+  test('keeps children that props may provide in place', async () => {
+    const { parent, chunks } = await compileWithChunks(
+      'client',
+      `import { Hydrate } from '@tanstack/react-start'
+export function Page(props) {
+  return <section><Hydrate {...props} /><Hydrate children="text" /></section>
+}
+`,
+    )
+    expect(chunks).toHaveLength(0)
+    expect(parent).toMatch(/<Hydrate \{\.\.\.props\} h="0_[^"]+" \/>/)
+    expect(parent).toMatch(/<Hydrate children="text" h="1_[^"]+" \/>/)
+  })
+
+  test('splits an empty self-closing boundary into a valid element', async () => {
+    const { parent, chunks } = await compileWithChunks(
+      'client',
+      `import { Hydrate } from '@tanstack/react-start'
+export function Page() { return <Hydrate /> }
+`,
+    )
+    expect(parent).toMatch(/<Hydrate h="[^"]+">\{<_H0 \/>\}<\/Hydrate>/)
+    expect(chunks[0]).toMatch(/return null/)
+  })
+
   test.each([
     ['entities', 'Fish &amp; Chips &copy; &#169; &#xA9;', 'Fish & Chips © © ©'],
     [
