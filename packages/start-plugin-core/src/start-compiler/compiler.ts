@@ -320,6 +320,27 @@ function isDirectCallCandidateForKind(
   return getLookupSetup(kind, externalLookupSetup)?.type === 'directCall'
 }
 
+/**
+ * Where the variable initialized by `node` is declared: `module` for a
+ * declaration directly in the module body, `nested` for any other, and
+ * `undefined` when `node` does not initialize a variable.
+ */
+function getDeclarationLevel(
+  node: t.Node,
+  parentOf: (node: t.Node) => t.Node | null,
+): 'module' | 'nested' | undefined {
+  const declarator = getVariableDeclarator(node, parentOf)
+  if (!declarator) {
+    return undefined
+  }
+  const declaration = parentOf(declarator)
+  const parent = declaration && parentOf(declaration)
+  return is.Program(parent) ||
+    (is.ExportNamedDeclaration(parent) && is.Program(parentOf(parent)))
+    ? 'module'
+    : 'nested'
+}
+
 export class StartCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
@@ -847,13 +868,7 @@ export class StartCompiler {
             : null
         const simpleDirectCall =
           is.Identifier(callee) || is.Identifier(receiver)
-        const declarator = getVariableDeclarator(node, editor.parentOf)
-        const declaration = declarator && editor.parentOf(declarator)
-        const parent = declaration && editor.parentOf(declaration)
-        const topLevel =
-          is.Program(parent) ||
-          (is.ExportNamedDeclaration(parent) &&
-            is.Program(editor.parentOf(parent)))
+        const topLevel = getDeclarationLevel(node, editor.parentOf) === 'module'
         // External transforms are bound to configured imports. Their known kind
         // must take precedence over generic built-in alias tracing.
         const root = is.Identifier(callee)
@@ -953,6 +968,15 @@ export class StartCompiler {
         !isLookupKind(kind) ||
         kind === 'ClientOnlyJSX' ||
         !candidateKinds.has(kind)
+      ) {
+        continue
+      }
+      // The provider module exports each server function's extracted handler,
+      // so only module-level declarations can be split. Nested declarations
+      // are left untransformed in every environment.
+      if (
+        kind === 'ServerFn' &&
+        getDeclarationLevel(node, editor.parentOf) === 'nested'
       ) {
         continue
       }

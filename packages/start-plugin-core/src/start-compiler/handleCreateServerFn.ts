@@ -8,7 +8,11 @@ import {
   sourcePosition,
   stripMethodCall,
 } from './utils'
-import type { Program, ProgramStatement } from '@yuku-toolchain/types'
+import type {
+  Program,
+  ProgramStatement,
+  VariableDeclaration,
+} from '@yuku-toolchain/types'
 import type { CompilationContext, RewriteCandidate, ServerFn } from './types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
@@ -119,20 +123,10 @@ export function handleCreateServerFn(
       )
       continue
     }
-    const declaration = context.parentOf(declarator)
-    if (!is.VariableDeclaration(declaration)) {
-      throw new Error('Expected createServerFn to be in a VariableDeclaration')
-    }
+    // The compiler only passes server functions declared at module level.
+    const declaration = context.parentOf(declarator) as VariableDeclaration
     const parent = context.parentOf(declaration)
     const statement = is.ExportNamedDeclaration(parent) ? parent : declaration
-    const container = is.ExportNamedDeclaration(parent)
-      ? context.parentOf(parent)
-      : parent
-    if (!is.Program(container) && !is.BlockStatement(container)) {
-      throw new Error('Expected createServerFn declaration in a statement list')
-    }
-    const statements: Array<ProgramStatement> = container.body
-    const statementIndex = statements.indexOf(statement)
     const metadata = JSON.stringify({
       id: functionId,
       name: variableName,
@@ -141,7 +135,7 @@ export function handleCreateServerFn(
     const extracted = parseStatements(
       `const ${functionName} = createServerRpc(${metadata}, (opts) => ${variableName}.__executeServer(opts));`,
     )[0]!
-    statements.splice(statementIndex, 0, extracted)
+    context.ast.body.splice(context.ast.body.indexOf(statement), 0, extracted)
     // Move the existing handler node; its source-binding identity remains intact.
     handler.call.arguments = [parseExpression(functionName), handler.firstArg]
     exportNames.add(functionName)

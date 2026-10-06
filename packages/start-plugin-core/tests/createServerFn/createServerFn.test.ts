@@ -1,7 +1,12 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
-import { StartCompiler } from '../../src/start-compiler/compiler'
+import {
+  StartCompiler,
+  detectKindsInCode,
+  getLookupKindsForEnv,
+} from '../../src/start-compiler/compiler'
+import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -752,5 +757,125 @@ describe('createServerFn compiles correctly', async () => {
     expect(result).not.toBeNull()
     expect(result!.code).toContain('createClientRpc')
     expect(result!.code).not.toContain('server-only-value')
+  })
+})
+
+describe('createServerFn declared below module top level', () => {
+  type Runtime = 'client' | 'ssr' | 'provider'
+
+  async function compileFor(runtime: Runtime, code: string) {
+    const env = runtime === 'client' ? 'client' : 'server'
+    const registered: Array<string> = []
+    const compiler = new StartCompiler({
+      env,
+      ...getDefaultTestOptions(env),
+      mode: 'build',
+      lookupKinds: getLookupKindsForEnv(env),
+      lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (fns) => {
+        registered.push(...Object.values(fns).map((fn) => fn.functionName))
+      },
+      loadModule: async () => {},
+      resolveId: async (id) => (id.startsWith('@tanstack/') ? id : null),
+    })
+    const result = await compiler.compile({
+      code,
+      id: `/test/src/nested.ts${runtime === 'provider' ? `?${TSS_SERVERFN_SPLIT_PARAM}` : ''}`,
+      detectedKinds: detectKindsInCode(code, env),
+    })
+    return { code: result?.code ?? null, registered }
+  }
+
+  /** Names exported by `export { ... }` without a module-level declaration. */
+  function undeclaredExports(code: string) {
+    return [...code.matchAll(/^export \{([^}]*)\}/gm)]
+      .flatMap((match) => match[1]!.split(',').map((name) => name.trim()))
+      .filter(
+        (name) =>
+          !new RegExp(`^(?:const|let|var|function) ${name}\\b`, 'm').test(code),
+      )
+  }
+
+  const imports = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'`
+  const top = `export const top = createServerFn().handler(async () => 'top-body')`
+  const nestedDeclarations = {
+    'a function body': `export function make() {
+  const inner = createServerFn().handler(async () => 'inner-body')
+  return inner
+}`,
+    'a switch case inside a function': `export function pick(key: string) {
+  switch (key) {
+    case 'a':
+      const inner = createServerFn().handler(async () => 'inner-body')
+      return inner
+  }
+}`,
+    'a module-level switch case': `switch (import.meta.env.MODE) {
+  case 'test':
+    const inner = createServerFn().handler(async () => 'inner-body')
+}`,
+    'a module-level block': `{
+  const inner = createServerFn().handler(async () => 'inner-body')
+}`,
+  }
+  const otherFactories = {
+    'no other factory': '',
+    'another Start factory': `export const only = createServerOnlyFn(() => 'server-only')`,
+  }
+  const runtimes: Array<Runtime> = ['client', 'ssr', 'provider']
+
+  describe.each(Object.entries(otherFactories))('with %s', (_, other) => {
+    describe.each(Object.entries(nestedDeclarations))(
+      'inside %s',
+      (__, nested) => {
+        test.each(runtimes)(
+          'keeps the module-level server function working (%s)',
+          async (runtime) => {
+            const result = await compileFor(
+              runtime,
+              [imports, top, nested, other].join('\n'),
+            )
+
+            expect(result.code).not.toBeNull()
+            if (runtime === 'provider') {
+              expect(undeclaredExports(result.code!)).toEqual([])
+              expect(result.code).toContain(
+                'export { top_createServerFn_handler };',
+              )
+              expect(result.code).toContain('top-body')
+            } else {
+              // Only module-level declarations can be extracted to the provider.
+              expect(result.code).toContain('inner-body')
+              expect(result.registered).toEqual(['top_createServerFn_handler'])
+              expect(result.code).not.toContain('top-body')
+              expect(
+                result.code!.match(/create(?:Client|Ssr)Rpc\(/g),
+              ).toHaveLength(1)
+            }
+          },
+        )
+
+        test.each(runtimes)(
+          'leaves a lone nested server function untransformed (%s)',
+          async (runtime) => {
+            const result = await compileFor(
+              runtime,
+              [imports, nested, other].join('\n'),
+            )
+
+            expect(result.registered).toEqual([])
+            if (!other) {
+              expect(result.code).toBeNull()
+              return
+            }
+            expect(result.code).toContain('inner-body')
+            expect(result.code).not.toMatch(
+              /create(?:Server|Client|Ssr)Rpc|_createServerFn_handler/,
+            )
+          },
+        )
+      },
+    )
   })
 })
