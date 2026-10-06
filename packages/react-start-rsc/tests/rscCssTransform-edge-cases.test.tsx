@@ -1,52 +1,8 @@
-import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
-  StartCompiler,
-  detectKindsInCode,
-  getLookupKindsForEnv,
-} from '../../start-plugin-core/src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../../start-plugin-core/src/start-compiler/config'
-import { createRscCssCompilerTransforms } from '../src/plugin/rscCssTransform'
-
-async function compileWithRscCssTransform(code: string) {
-  const compilerTransforms = createRscCssCompilerTransforms({
-    loadCssExpression: 'import.meta.viteRsc.loadCss()',
-  })
-  const compiler = new StartCompiler({
-    env: 'server',
-    envName: 'rsc',
-    root: '/test',
-    framework: 'react',
-    providerEnvName: 'rsc',
-    mode: 'build',
-    lookupKinds: getLookupKindsForEnv('server', { compilerTransforms }),
-    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react', {
-      compilerTransforms,
-    }),
-    compilerTransforms,
-    getKnownServerFns: () => ({}),
-    loadModule: async () => {},
-    resolveId: async (id) => id,
-  })
-  const result = await compiler.compile({
-    id: '/test/src/route.tsx',
-    code,
-    detectedKinds: detectKindsInCode(code, 'server', { compilerTransforms }),
-  })
-  return result?.code ?? null
-}
-
-/** Erase TypeScript and parse the output as a JavaScript module. */
-async function getModuleErrors(code: string) {
-  const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
-    jsx: 'preserve',
-    typescript: { onlyRemoveTypeImports: true },
-  })
-  return parseSync('module.jsx', javascript, {
-    sourceType: 'module',
-    showSemanticErrors: true,
-  }).errors.map((error) => error.message)
-}
+  compileWithRscCssTransform,
+  getModuleErrors,
+} from './regression-helpers'
 
 const optionsCount = (code: string) =>
   code.match(/__tanstackStartRscCss:\s*import\.meta\.viteRsc\.loadCss\(\)/g)
