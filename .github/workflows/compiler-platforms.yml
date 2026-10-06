@@ -59,8 +59,11 @@ jobs:
         shell: sh
         run: apk add --no-cache bash git
       - name: Keep LF line endings
-        # Snapshots are stored with LF; Windows runners check out CRLF by default
-        run: git config --global core.autocrlf false
+        # Snapshots are stored with LF. Windows runners check out CRLF by default,
+        # and with `* text=auto` disabling autocrlf alone still uses the native eol
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
