@@ -398,6 +398,43 @@ function prepend(program: Program, ...statements: Array<ProgramStatement>) {
   )
 }
 
+const pragma = /@jsx(?:ImportSource|Runtime|Frag)?\b|@refresh reset\b/
+
+/**
+ * Print a module emitted for a route file. File-level pragmas (`@jsx`,
+ * `@jsxImportSource`, `@refresh reset`, ...) configure the transforms of each
+ * whole module, so every non-empty module starts with the route file's
+ * pragmas, whichever statement they were attached to.
+ */
+function generateRouteModule(
+  analysis: RouteModuleAnalysis,
+  program: Program,
+  filename: string,
+) {
+  const [first] = program.body
+  if (first) {
+    for (const statement of program.body) {
+      statement.comments = statement.comments?.filter(
+        (comment) => !pragma.test(comment.value),
+      )
+    }
+    const pragmas = analysis.module.ast.body.flatMap((statement) =>
+      (statement.comments ?? [])
+        .filter((comment) => pragma.test(comment.value))
+        .map((comment) => ({
+          ...comment,
+          position: 'before' as const,
+          sameLine: false,
+        })),
+    )
+    first.comments = [...pragmas, ...(first.comments ?? [])]
+  }
+  return generateModule(program, {
+    source: analysis.module.source,
+    filename,
+  })
+}
+
 function createOutput(analysis: RouteModuleAnalysis) {
   const { program, originalNodes } = cloneModuleAst(analysis.module)
   const copies = new Map<Node, Node>()
@@ -797,10 +834,7 @@ export function compileCodeSplitReferenceRoute(
       )
     }
   }
-  return generateModule(program, {
-    source: options.code,
-    filename: options.filename,
-  })
+  return generateRouteModule(analysis, program, options.filename)
 }
 
 export function compileCodeSplitVirtualRoute(
@@ -815,10 +849,7 @@ export function compileCodeSplitVirtualRoute(
   const { program, originalNodes, copies, renameBinding } =
     createOutput(analysis)
   if (!analysis.routes.some((route) => route.factory === 'createFileRoute')) {
-    return generateModule(program, {
-      source: options.code,
-      filename: options.filename,
-    })
+    return generateRouteModule(analysis, program, options.filename)
   }
   const generatedExports: Array<ProgramStatement> = []
   const splitReferences = new Set<Binding>()
@@ -908,10 +939,7 @@ export function compileCodeSplitVirtualRoute(
   program.body.push(...generatedExports)
   removeUnusedBindings(analysis.module, program, originalNodes)
   stripUnownedExpressions(analysis.module, program, originalNodes)
-  return generateModule(program, {
-    source: options.code,
-    filename: options.filename,
-  })
+  return generateRouteModule(analysis, program, options.filename)
 }
 
 /**
@@ -1061,10 +1089,7 @@ export function compileCodeSplitSharedRoute(
     ),
   )
   removeUnusedBindings(analysis.module, program, originalNodes)
-  return generateModule(program, {
-    source: options.code,
-    filename: options.filename,
-  })
+  return generateRouteModule(analysis, program, options.filename)
 }
 
 export function detectCodeSplitGroupingsFromRoute(options: SourceOptions): {
