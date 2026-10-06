@@ -458,6 +458,28 @@ function createOutput(analysis: RouteModuleAnalysis) {
   return { program, originalNodes, copies, renameBinding }
 }
 
+/** Split modules export only their own split values; keep local declarations. */
+function withoutExportSyntax(
+  statement: ProgramStatement,
+): Array<ProgramStatement> {
+  if (is.ExportNamedDeclaration(statement)) {
+    return statement.declaration ? [statement.declaration] : []
+  }
+  if (is.ExportDefaultDeclaration(statement)) {
+    const { declaration } = statement
+    // An anonymous default declaration has no binding that could be used here
+    return (is.FunctionDeclaration(declaration) ||
+      is.ClassDeclaration(declaration)) &&
+      declaration.id
+      ? [declaration]
+      : []
+  }
+  if (is.ExportAllDeclaration(statement)) {
+    return []
+  }
+  return [statement]
+}
+
 function removeDeclarations(program: Program, names: Set<string>) {
   const removedDefaultExports = new Set<Node>()
   walk(program, {
@@ -819,27 +841,26 @@ export function compileCodeSplitVirtualRoute(
     ;(copies.get(route.options) as ObjectExpression).properties = []
   }
   // A split module imports user exports, including the Route singleton, from the
-  // reference module instead of initializing a second copy.
-  const userExports = new Set(
-    [...analysis.exported.keys()].map((binding) => binding.name),
-  )
-  program.body = program.body.flatMap((statement): Array<ProgramStatement> => {
-    if (is.ExportNamedDeclaration(statement)) {
-      return statement.declaration ? [statement.declaration] : []
+  // reference module instead of initializing a second copy. Imports keep their
+  // source, and a destructuring that also declares private bindings stays whole.
+  const ownedExports = [...analysis.exported].filter(([binding]) => {
+    if (binding.has(BindingFlags.Import)) {
+      return false
     }
-    if (is.ExportDefaultDeclaration(statement)) {
-      return is.FunctionDeclaration(statement.declaration) ||
-        is.ClassDeclaration(statement.declaration)
-        ? [statement.declaration]
-        : []
-    }
-    if (is.ExportAllDeclaration(statement)) {
-      return []
-    }
-    return [statement]
+    const declaration = analysis.graph.declarations.get(binding)
+    const siblings = declaration
+      ? analysis.graph.declarationSymbols.get(declaration)
+      : undefined
+    return [...(siblings ?? [])].every((sibling) =>
+      analysis.exported.has(sibling),
+    )
   })
-  removeDeclarations(program, userExports)
-  const retainedExports = [...analysis.exported].filter(
+  program.body = program.body.flatMap(withoutExportSyntax)
+  removeDeclarations(
+    program,
+    new Set(ownedExports.map(([binding]) => binding.name)),
+  )
+  const retainedExports = ownedExports.filter(
     ([binding]) => !options.sharedBindings?.has(binding.name),
   )
   if (retainedExports.length) {
@@ -921,28 +942,14 @@ export function compileCodeSplitSharedRoute(
       .filter((binding) => !names.has(binding.name))
       .map((binding) => binding.name),
   )
-  program.body = program.body.flatMap((statement): Array<ProgramStatement> => {
-    if (is.ExportNamedDeclaration(statement)) {
-      return statement.declaration ? [statement.declaration] : []
-    }
-    if (is.ExportDefaultDeclaration(statement)) {
-      return is.FunctionDeclaration(statement.declaration) ||
-        is.ClassDeclaration(statement.declaration)
-        ? [statement.declaration]
-        : []
-    }
-    if (is.ExportAllDeclaration(statement)) {
-      return []
-    }
-    if (
-      !is.Declaration(statement) &&
-      !is.ImportDeclaration(statement) &&
-      !is.Directive(statement)
-    ) {
-      return []
-    }
-    return [statement]
-  })
+  program.body = program.body
+    .flatMap(withoutExportSyntax)
+    .filter(
+      (statement) =>
+        is.Declaration(statement) ||
+        is.ImportDeclaration(statement) ||
+        is.Directive(statement),
+    )
   removeDeclarations(program, remove)
   program.body.push(
     exports(
