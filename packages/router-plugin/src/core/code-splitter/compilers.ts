@@ -597,11 +597,14 @@ export function compileCodeSplitReferenceRoute(
       createRouteFn: route.factory,
       opts: options,
       insertBefore(nodes) {
-        program.body.splice(
-          program.body.indexOf(insertionStatement),
-          0,
-          ...nodes,
+        // renameBinding unwraps an `export` declaration it renames
+        const index = program.body.findIndex(
+          (statement) =>
+            statement === insertionStatement ||
+            (is.ExportNamedDeclaration(insertionStatement) &&
+              statement === insertionStatement.declaration),
         )
+        program.body.splice(index, 0, ...nodes)
       },
     }
     for (const plugin of options.compilerPlugins ?? []) {
