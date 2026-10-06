@@ -157,6 +157,40 @@ return [...loaded, await entry.render(entry.Route.options.component)]`,
     30_000,
   )
 
+  // Bug: a top-level binding that reads a `var` declared inside a block (`if`,
+  // `try`, a `for` head) is moved to the shared module when the loader and a
+  // split component both use it, but the nested `var` is not, so the shared
+  // module reads an undeclared name. Impact: calling it throws a ReferenceError
+  // as soon as the route loads. Remove `.fails` once fixed.
+  test.fails.each([
+    { name: 'an if block', declaration: 'if (globalThis) { var flag = 1 }' },
+    { name: 'a try block', declaration: 'try { var flag = 1 } catch {}' },
+    {
+      name: 'a for head',
+      declaration: 'for (var flag = 0; flag < 1; flag++) {}',
+    },
+  ])(
+    'a shared helper keeps reading a var declared in $name',
+    async ({ declaration }) => {
+      const result = await buildAndRun({
+        groupings: [['component']],
+        files: {
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${declaration}
+const read = () => flag
+export const Route = createFileRoute('/')({
+  loader: () => read(),
+  component: () => <p>{read()}</p>,
+})`,
+          'entry.ts': renderEntry,
+        },
+        script: `return [await entry.Route.options.loader({}), await entry.render(entry.Route.options.component)]`,
+      })
+      expect(result).toEqual([1, '<p>1</p>'])
+    },
+    30_000,
+  )
+
   // Bug: with several `createFileRoute(...)` calls in one route file, main
   // points every route at one split chunk (the first route renders the last
   // route's component); the Yuku PR emits a chunk with a duplicated
