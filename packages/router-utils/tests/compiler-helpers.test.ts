@@ -209,13 +209,62 @@ describe('output liveness', () => {
     expect(output).toContain('initialize()')
   })
 
-  test('retains destructuring as a whole when one binding is needed', () => {
+  test('drops the destructuring elements of erased bindings', () => {
     const output = cleanup(
       `const { a, b } = initialize(); export const Route = createRoute({ loader: () => a, component: () => b })`,
       'loader',
     )
-    expect(output).toContain('a, b')
+    expect(output).toContain('const { b } = initialize()')
     expect(output.match(/initialize\(\)/g)).toHaveLength(1)
+  })
+
+  test.each([
+    [
+      'an object pattern default',
+      'const { erased = readSecret(), kept } = config',
+    ],
+    [
+      'an array pattern default',
+      'const [erased = readSecret(), kept] = config',
+    ],
+    ['a computed key', 'const { [readSecret()]: erased, kept } = config'],
+    [
+      'a nested pattern default',
+      'const { db: { erased = readSecret() } = {}, kept } = config',
+    ],
+    [
+      'a function default',
+      'const { erased = () => readSecret(), kept } = config',
+    ],
+  ])(
+    'removes the dependencies of %s of an erased binding',
+    (_, declaration) => {
+      const output = cleanup(
+        `
+      import { readSecret } from './server'
+      import { config } from './config'
+      ${declaration}
+      export const Route = createRoute({ loader: () => erased, component: () => kept })
+    `,
+        'loader',
+      )
+      expect(output).not.toContain('./server')
+      expect(output).not.toContain('erased')
+      expect(output).toMatch(/\bkept\b[^]*= config/)
+    },
+  )
+
+  test('keeps the elements that an object rest binding excludes', () => {
+    const output = cleanup(
+      `
+      import { readSecret } from './server'
+      const { secret = readSecret(), ...rest } = config
+      export const Route = createRoute({ loader: () => secret, component: () => rest })
+    `,
+      'loader',
+    )
+    expect(output).toContain('secret = readSecret(), ...rest')
+    expect(output).toContain('./server')
   })
 
   test.each([true, false])(

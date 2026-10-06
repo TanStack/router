@@ -87,12 +87,35 @@ function declarationOf(
   return undefined
 }
 
+interface DeclarationIndex extends Pick<
+  ModuleDeclarationGraph,
+  'declarations' | 'declarationSymbols'
+> {
+  /**
+   * Destructuring elements that can be dropped on their own, with the bindings
+   * each declares: array pattern elements, and properties of object patterns
+   * without a rest element (dropping one would change what the rest collects).
+   */
+  patternElements: Map<Node, Set<Binding>>
+}
+
+function addOwner(
+  owners: Map<Node, Set<Binding>>,
+  node: Node,
+  binding: Binding,
+) {
+  const bindings = owners.get(node) ?? new Set<Binding>()
+  bindings.add(binding)
+  owners.set(node, bindings)
+}
+
 function declarationIndex(
   module: Module,
   bindings: Array<Binding>,
-): Pick<ModuleDeclarationGraph, 'declarations' | 'declarationSymbols'> {
+): DeclarationIndex {
   const declarations = new Map<Binding, Node>()
   const declarationSymbols = new Map<Node, Set<Binding>>()
+  const patternElements = new Map<Node, Set<Binding>>()
   for (const binding of bindings) {
     // Parameters belong to their function or signature, never to a statement,
     // even when a signature sits in a declaration's type arguments
@@ -111,19 +134,34 @@ function declarationIndex(
       ) {
         declarations.set(binding, declaration)
       }
-      const siblings = declarationSymbols.get(declaration) ?? new Set<Binding>()
-      siblings.add(binding)
-      declarationSymbols.set(declaration, siblings)
+      addOwner(declarationSymbols, declaration, binding)
+      if (is.VariableDeclarator(declaration)) {
+        let element: Node = identifier
+        while (element !== declaration.id) {
+          const pattern = module.parentOf(element)!
+          if (
+            is.ArrayPattern(pattern) ||
+            (is.ObjectPattern(pattern) &&
+              !pattern.properties.some((property) => is.RestElement(property)))
+          ) {
+            addOwner(patternElements, element, binding)
+          }
+          element = pattern
+        }
+      }
     }
   }
-  return { declarations, declarationSymbols }
+  return { declarations, declarationSymbols, patternElements }
 }
 
 /** Bindings sharing a declarator are one initialization unit. */
 export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
-  const index = declarationIndex(module, module.rootScope.bindings)
+  const { declarations, declarationSymbols } = declarationIndex(
+    module,
+    module.rootScope.bindings,
+  )
   const dependencies = new Map<Binding, Set<Binding>>()
-  for (const [declaration, owners] of index.declarationSymbols) {
+  for (const [declaration, owners] of declarationSymbols) {
     const references = collectModuleReferences(module, declaration)
     for (const binding of owners) {
       const combined = dependencies.get(binding) ?? new Set<Binding>()
@@ -135,7 +173,7 @@ export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
       dependencies.set(binding, combined)
     }
   }
-  return { ...index, dependencies }
+  return { declarations, declarationSymbols, dependencies }
 }
 
 export function expandTransitively<T>(
@@ -194,8 +232,6 @@ export interface RemoveUnusedBindingsOptions {
   roots?: Iterable<Binding | string>
 }
 
-type DeclarationIndex = ReturnType<typeof declarationIndex>
-
 interface BindingUses {
   /** Declarations present in the traced program. */
   present: Set<Binding>
@@ -252,7 +288,12 @@ function collectBindingUses(
       const original = originOf(node)
       const own = original ? index.declarationSymbols.get(original) : undefined
       const parentOwner = ownerStack.at(-1) ?? null
-      const owner = own ?? parentOwner
+      // A destructuring element's default value and computed key evaluate for
+      // its own bindings; the initializer evaluates for all of them.
+      const owner =
+        own ??
+        (original ? index.patternElements.get(original) : undefined) ??
+        parentOwner
       ownerStack.push(owner)
       const scope = original
         ? module.scopeOf(original)
@@ -460,31 +501,31 @@ export function removeUnusedBindings(
       live.add(binding)
     }
   }
-  // Destructuring must initialize once in its entirety if any sibling is live.
-  for (const siblings of index.declarationSymbols.values()) {
-    const representative = siblings.values().next().value
-    if (!representative) {
-      continue
-    }
-    for (const binding of siblings) {
-      if (binding !== representative) {
-        addEdge(dependencies, representative, binding)
-        addEdge(dependencies, binding, representative)
-      }
-    }
-  }
   const retained = expandTransitively(live, dependencies)
   const removable = new Set(
     [...output.present].filter((binding) => !retained.has(binding)),
   )
+  const isRemovable = (node: Node | null) => {
+    const original = node && originalNodes.get(node)
+    const owners =
+      original &&
+      (index.declarationSymbols.get(original) ??
+        index.patternElements.get(original))
+    return !!owners && [...owners].every((binding) => removable.has(binding))
+  }
   walk(program, {
     enter(node, context) {
-      const original = originalNodes.get(node)
-      const owners = original
-        ? index.declarationSymbols.get(original)
-        : undefined
-      if (owners && [...owners].every((binding) => removable.has(binding))) {
+      if (isRemovable(node)) {
         context.remove()
+      } else if (is.ObjectPattern(node)) {
+        node.properties = node.properties.filter(
+          (property) => !isRemovable(property),
+        )
+      } else if (is.ArrayPattern(node)) {
+        // Holes keep the positions of the remaining elements
+        node.elements = node.elements.map((element) =>
+          isRemovable(element) ? null : element,
+        )
       }
     },
     leave(node, context) {
