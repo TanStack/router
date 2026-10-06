@@ -218,8 +218,9 @@ export function computeSharedBindings(
   const analysis = sourceAnalysis(options)
   const { module, graph, chunkDependencies } = analysis
   const groupsByBinding = new Map<Binding, Set<number>>()
+  // Only a top-level declaration can move to the shared module
   const locals = new Set(
-    module.rootScope.bindings.filter(
+    [...graph.declarations.keys()].filter(
       (binding) =>
         binding.name !== 'Route' && !binding.has(BindingFlags.Import),
     ),
@@ -869,8 +870,9 @@ export function compileCodeSplitVirtualRoute(
     const siblings = declaration
       ? analysis.graph.declarationSymbols.get(declaration)
       : undefined
-    return [...(siblings ?? [])].every((sibling) =>
-      analysis.exported.has(sibling),
+    return (
+      !!siblings &&
+      [...siblings].every((sibling) => analysis.exported.has(sibling))
     )
   })
   program.body = program.body.flatMap(withoutExportSyntax)

@@ -34,7 +34,11 @@ export function collectModuleReferences(
   return references
 }
 
-function declarationOf(module: Module, identifier: Node): Node | undefined {
+function declarationOf(
+  module: Module,
+  binding: Binding,
+  identifier: Node,
+): Node | undefined {
   let current: Node | null = identifier
   while (current) {
     if (is.VariableDeclarator(current)) {
@@ -44,6 +48,15 @@ function declarationOf(module: Module, identifier: Node): Node | undefined {
         is.ForInStatement(parent) ||
         is.ForOfStatement(parent) ||
         is.ForStatement(parent)
+      ) {
+        return undefined
+      }
+      // A `var` hoisted out of a nested block initializes as part of that
+      // block's statement, not as a declaration of its function or module
+      const scope = module.scopeOf(current)
+      if (
+        binding.scope !== scope &&
+        !(scope.kind === 'functionBody' && binding.scope === scope.parent)
       ) {
         return undefined
       }
@@ -87,7 +100,7 @@ function declarationIndex(
       continue
     }
     for (const identifier of binding.declarations) {
-      const declaration = declarationOf(module, identifier)
+      const declaration = declarationOf(module, binding, identifier)
       if (!declaration) {
         continue
       }
