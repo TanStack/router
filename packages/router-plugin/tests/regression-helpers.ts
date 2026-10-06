@@ -130,11 +130,14 @@ const sharedPluginName = 'tanstack-router:code-splitter:compile-shared-file'
 
 /**
  * Drives the three code-splitter transforms the way a bundler does, for the
- * given route files (absolute path to route id).
+ * given route files (absolute path to route id). `configPlugins` are the
+ * plugins of the resolved Vite config; by default the code splitter itself,
+ * so its plugin-order check runs.
  */
 export async function createCodeSplitterTransforms(
   options: Partial<Config>,
   routes: Record<string, string>,
+  configPlugins: Array<{ name: string }> = [{ name: referencePluginName }],
 ) {
   const context = createRouterPluginContext()
   for (const [file, routeId] of Object.entries(routes)) {
@@ -156,7 +159,7 @@ export async function createCodeSplitterTransforms(
   const config = {
     root: process.cwd(),
     command: 'build',
-    plugins: [{ name: referencePluginName }],
+    plugins: configPlugins,
   } as never
   if (typeof hook === 'function') {
     await hook.call({} as never, config)

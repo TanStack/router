@@ -58,7 +58,13 @@ return { html, after: entry.store.count }`,
 
 /** Drives the code-splitter transforms the way a bundler does for one file. */
 async function splitThroughPlugin(file: string, code: string) {
-  const splitter = await createCodeSplitterTransforms({}, { [file]: '/route' })
+  // A resolved config that does not list the router plugin skips the
+  // plugin-order check.
+  const splitter = await createCodeSplitterTransforms(
+    {},
+    { [file]: '/route' },
+    [],
+  )
   const referenceCode = splitter.reference(code, file)!
   const modules: Record<string, string> = { reference: referenceCode }
   const pending = [...referenceCode.matchAll(/\?(tsr-[^"'`]+)["'`]/g)]
