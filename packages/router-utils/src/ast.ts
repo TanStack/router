@@ -22,7 +22,7 @@ function getCore(): Core {
       // compiles it to `{}`, and `node -e` defines a global `__filename` in ESM
       const require = createRequire(
         // @ts-ignore TS1470: `import.meta` is only read in the ESM build
-        import.meta.url ?? __filename,
+        import.meta.url ?? __filename, // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- `{}.url` in the CJS build
       )
       core = loadWasmCore(
         readFileSync(require.resolve('@yuku-core/wasm/yuku-core.wasm')),
