@@ -1,141 +1,10 @@
-import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { promisify } from 'node:util'
-import { build } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { tanstackRouter } from '../src/vite'
-import { declarationOf, getModuleErrors } from './validate-module'
-import type { CodeSplitGroupings } from '../src/core/constants'
-
-const filename = 'route.tsx'
-const runNode = promisify(execFile)
-
-/** Compiles a route file into every module the code splitter emits for it. */
-function compileRouteModules(
-  code: string,
-  groupings: CodeSplitGroupings = defaultCodeSplitGroupings,
-) {
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: groupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const reference = compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: false,
-    codeSplitGroupings: groupings,
-    targetFramework: 'react',
-    sharedBindings: shared,
-  })
-  const modules: Record<string, string> = {
-    reference: reference?.code ?? code,
-  }
-  for (const targets of groupings) {
-    const split = targets.join('-')
-    modules[`virtual ${split}`] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  if (shared) {
-    modules.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings: shared,
-      filename: `${filename}?tsr-shared=1`,
-    }).code
-  }
-  return { modules, sharedBindings }
-}
-
-async function getErrorsByModule(modules: Record<string, string>) {
-  const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code)
-  }
-  return errors
-}
-
-function noErrors(modules: Record<string, string>) {
-  return Object.fromEntries(Object.keys(modules).map((name) => [name, []]))
-}
-
-/**
- * Builds `source` as a code-split route with the real Vite plugin, then renders
- * its component twice in a separate Node process and returns both renders.
- */
-async function renderSplitRouteTwice(
-  source: string,
-  groupings: CodeSplitGroupings,
-) {
-  // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(path.join(__dirname, '.edge-case-runtime-'))
-  try {
-    await mkdir(path.join(root, 'routes'))
-    await writeFile(path.join(root, 'routes/edge.tsx'), source)
-    await writeFile(
-      path.join(root, 'routes/__root.tsx'),
-      `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({})`,
-    )
-    await writeFile(
-      path.join(root, 'entry.ts'),
-      `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-import { Route } from './routes/edge'
-export async function renderTwice() {
-  const component: any = Route.options.component
-  await component.preload?.()
-  return [renderToString(createElement(component)), renderToString(createElement(component))]
-}`,
-    )
-    await build({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      plugins: [
-        tanstackRouter({
-          target: 'react',
-          routesDirectory: './routes',
-          generatedRouteTree: './routeTree.gen.ts',
-          autoCodeSplitting: true,
-          codeSplittingOptions: { addHmr: false, defaultBehavior: groupings },
-        }),
-      ],
-      build: {
-        ssr: path.join(root, 'entry.ts'),
-        outDir: 'dist',
-        minify: false,
-        rollupOptions: {
-          output: { entryFileNames: 'entry.mjs', chunkFileNames: '[name].mjs' },
-        },
-      },
-    })
-    const entryUrl = pathToFileURL(path.join(root, 'dist/entry.mjs')).href
-    const { stdout } = await runNode(process.execPath, [
-      '--input-type=module',
-      '--eval',
-      `const { renderTwice } = await import(${JSON.stringify(entryUrl)})
-process.stdout.write(JSON.stringify(await renderTwice()))`,
-    ])
-    return JSON.parse(stdout) as Array<string>
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-}
+  buildAndRun,
+  compileRouteModules,
+  expectValidModules,
+} from './regression-helpers'
+import { declarationOf } from './validate-module'
 
 describe('code-splitter keeps one module state', () => {
   it.each([
@@ -172,10 +41,13 @@ export const Route = createFileRoute('/')({ component: Page })
     async ({ source }) => {
       // Without splitting, the component renders 1 and then 2: the exported
       // function and the component must observe the same module-level binding.
-      expect(await renderSplitRouteTwice(source, [['component']])).toEqual([
-        '<p>1</p>',
-        '<p>2</p>',
-      ])
+      const renders = await buildAndRun({
+        files: { 'routes/index.tsx': source },
+        defaultBehavior: [['component']],
+        script: `const component = entry.Route.options.component
+return [await entry.render(component), await entry.render(component)]`,
+      })
+      expect(renders).toEqual(['<p>1</p>', '<p>2</p>'])
     },
     30_000,
   )
@@ -210,7 +82,7 @@ export const Route = createFileRoute('/')({
   component: () => <div>{value}</div>,
 })
 `)
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 
@@ -223,7 +95,7 @@ export const Route = createFileRoute('/')({
   component: () => <div>{flag}</div>,
 })
 `)
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   it('keeps a for-var declaration in the chunk of the only component using it', async () => {
@@ -237,7 +109,7 @@ export const Route = createFileRoute('/')({
 `)
     expect(modules['virtual component']).toMatch(/for \(var index = 0/)
     expect(modules['virtual component']).toMatch(/for \(var key in/)
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 })
 
@@ -255,7 +127,7 @@ export const Route = createFileRoute('/')({
 })
 `)
     expect(Object.values(modules).join('\n')).toContain('.add(199)')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 })
 
@@ -270,7 +142,7 @@ export const Route = createFileRoute('/')({
 })
 `)
     expect(modules['virtual component']).toContain('last')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 })
 
@@ -297,7 +169,7 @@ export const Route = createFileRoute('/posts')(options)
       /import \{ Route \} from ['"]route\.tsx['"]/,
     )
     expect(modules['virtual component']).not.toContain('fetchPosts')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   it('never extracts a destructuring whose sibling depends on Route', async () => {
@@ -310,9 +182,9 @@ export const Route = createFileRoute('/')({
   component: () => <div>{cache.size}{typeof routeGetter}</div>,
 })
 `)
-    expect([...sharedBindings]).toEqual([])
+    expect(sharedBindings).toEqual([])
     expect(modules.reference).toMatch(declarationOf('Route'))
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   it('keeps module-level re-exports and empty exports valid in every module', async () => {
@@ -329,7 +201,7 @@ export const Route = createFileRoute('/')({
 `)
     expect(modules.reference).toMatch(/export \* from ['"]\.\/lib['"]/)
     expect(modules.reference).toMatch(/export \* as lib from ['"]\.\/lib['"]/)
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   it('erases type-only imports and exports from split chunks', async () => {
@@ -354,7 +226,7 @@ export const Route = createFileRoute('/')({
     expect(modules.shared).toMatch(
       /import \{ defaults \} from ['"]\.\/settings['"]/,
     )
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   it('re-exports a shared binding under string-literal and default names', async () => {
@@ -367,11 +239,11 @@ export const Route = createFileRoute('/')({
   component: () => <div>{store.count}</div>,
 })
 `)
-    expect([...sharedBindings]).toEqual(['store'])
+    expect(sharedBindings).toEqual(['store'])
     expect(modules.reference).toMatch(/["']my-store["']/)
     expect(modules.reference).toMatch(/\bdefault\b/)
     expect(modules['virtual component']).not.toMatch(declarationOf('store'))
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   it('shares a class with private members and a static block', async () => {
@@ -392,10 +264,10 @@ export const Route = createFileRoute('/')({
   component: () => <div>{counter.count}</div>,
 })
 `)
-    expect([...sharedBindings].sort()).toEqual(['Counter', 'counter'])
+    expect(sharedBindings).toEqual(['Counter', 'counter'])
     expect(modules.shared).toContain('static {')
     expect(modules['virtual component']).not.toMatch(declarationOf('Counter'))
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   it('keeps namespace imports used as JSX member tags in the split chunk', async () => {
@@ -415,6 +287,6 @@ export const Route = createFileRoute('/')({
       /import \{ ["']kebab-name["'] as Kebab \} from ['"]\.\/icons['"]/,
     )
     expect(modules.reference).not.toContain('./icons')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 })

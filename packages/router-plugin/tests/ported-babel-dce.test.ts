@@ -7,90 +7,26 @@
  * used; these tests check which bindings that removal prunes and which it
  * keeps.
  */
-import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { promisify } from 'node:util'
-import { build } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
-import { tanstackRouter } from '../src/vite'
-import { declarationOf, getModuleErrors } from './validate-module'
+  buildAndRun,
+  compileRouteModules,
+  expectValidModules,
+} from './regression-helpers'
+import { declarationOf } from './validate-module'
 
-const filename = 'route.tsx'
 const head = `import { createFileRoute } from '@tanstack/react-router'\n`
-const runNode = promisify(execFile)
 
-/** Compiles a route file into every module the code splitter emits for it. */
-function compileRouteModules(code: string) {
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const reference = compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: false,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-    targetFramework: 'react',
-    sharedBindings: shared,
-  })
-  const hmrReference = compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: true,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-    targetFramework: 'react',
-    sharedBindings: shared,
-    compilerPlugins: getFrameworkHmrCompilerPlugins({
-      targetFramework: 'react',
-    }),
-  })
-  const modules: Record<string, string> = {
-    reference: reference?.code ?? code,
-    'reference with HMR': hmrReference?.code ?? code,
-  }
-  for (const targets of defaultCodeSplitGroupings) {
-    const split = targets.join('-')
-    modules[`virtual ${split}`] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  if (shared) {
-    modules.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings: shared,
-      filename: `${filename}?tsr-shared=1`,
-    }).code
-  }
-  return { modules, sharedBindings: [...sharedBindings].sort() }
-}
-
-async function getErrorsByModule(modules: Record<string, string>) {
-  const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code)
-  }
-  return errors
-}
-
-function noErrors(modules: Record<string, string>) {
-  return Object.fromEntries(Object.keys(modules).map((name) => [name, []]))
+/**
+ * Compiles every module the code splitter emits, plus the reference module
+ * compiled with React route HMR (`reference with HMR`).
+ */
+function compileWithHmrReference(code: string) {
+  const { modules, sharedBindings } = compileRouteModules(code)
+  modules['reference with HMR'] = compileRouteModules(code, {
+    hmr: true,
+  }).modules.reference!
+  return { modules, sharedBindings }
 }
 
 /** Import statements of `code` that load `source`. */
@@ -100,83 +36,12 @@ function importsOf(code: string, source: string) {
     .filter((line) => /^import\b/.test(line) && line.includes(`'${source}'`))
 }
 
-/**
- * Builds a small app with the real Vite plugin (code splitting enabled), then
- * imports the built `entry.ts` in a separate Node process and returns the JSON
- * value printed by `script`, which has the entry's exports in scope as `entry`.
- */
-async function buildAndRun(options: {
-  files: Record<string, string>
-  script: string
-}) {
-  // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(path.join(__dirname, '.ported-babel-dce-'))
-  try {
-    await mkdir(path.join(root, 'routes'))
-    await writeFile(
-      path.join(root, 'routes/__root.tsx'),
-      `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({})`,
-    )
-    await writeFile(
-      path.join(root, 'entry.ts'),
-      `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-export * from './routes/index'
-export async function render(component: any) {
-  await component.preload?.()
-  return renderToString(createElement(component))
-}
-`,
-    )
-    for (const [file, code] of Object.entries(options.files)) {
-      await writeFile(path.join(root, file), code)
-    }
-    await build({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      plugins: [
-        tanstackRouter({
-          target: 'react',
-          routesDirectory: './routes',
-          generatedRouteTree: './routeTree.gen.ts',
-          autoCodeSplitting: true,
-          codeSplittingOptions: {
-            addHmr: false,
-            defaultBehavior: defaultCodeSplitGroupings,
-          },
-        }),
-      ],
-      build: {
-        ssr: path.join(root, 'entry.ts'),
-        outDir: 'dist',
-        minify: false,
-        rollupOptions: {
-          output: { entryFileNames: 'entry.mjs', chunkFileNames: '[name].mjs' },
-        },
-      },
-    })
-    const entryUrl = pathToFileURL(path.join(root, 'dist/entry.mjs')).href
-    const { stdout } = await runNode(process.execPath, [
-      '--input-type=module',
-      '--eval',
-      `const entry = await import(${JSON.stringify(entryUrl)})
-const result = await (async () => { ${options.script} })()
-process.stdout.write(JSON.stringify(result))`,
-    ])
-    return JSON.parse(stdout) as unknown
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-}
-
 describe('ported babel-dead-code-elimination: imports', () => {
   // Source: dead-code-elimination.test.ts "import" > "mixed default and named:
   // only named used" and "mixed default and named: only default used"
   it('gives the reference module and the chunk only the specifiers each one reads', async () => {
     const { modules } =
-      compileRouteModules(`${head}import def, { named } from './lib'
+      compileWithHmrReference(`${head}import def, { named } from './lib'
 import other, * as ns from './other'
 export const Route = createFileRoute('/')({
   loader: () => [named, other],
@@ -196,13 +61,14 @@ export const Route = createFileRoute('/')({
     expect(importsOf(component, './other')).toEqual([
       expect.stringMatching(/^import \* as ns from/),
     ])
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: dead-code-elimination.test.ts "import" > "mixed default and named:
   // none used", "namespace" and "side-effect"
   it('drops an import whose every specifier moved instead of leaving a side-effect import', async () => {
-    const { modules } = compileRouteModules(`${head}import a, { b } from 'pkg'
+    const { modules } =
+      compileWithHmrReference(`${head}import a, { b } from 'pkg'
 import * as ns from 'ns-pkg'
 import './styles.css'
 export const Route = createFileRoute('/')({
@@ -218,7 +84,7 @@ export const Route = createFileRoute('/')({
     expect(importsOf(modules['virtual component']!, 'pkg')).toEqual([
       expect.stringMatching(/^import a, \{ b \} from/),
     ])
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 })
 
@@ -229,7 +95,7 @@ describe('ported babel-dead-code-elimination: declarations', () => {
   // "single unreferenced binding without self-ref -> not removable by SCC"
   it('keeps declarations that nothing used before splitting in the reference module', async () => {
     const { modules } =
-      compileRouteModules(`${head}function unusedFunction() { return 1 }
+      compileWithHmrReference(`${head}function unusedFunction() { return 1 }
 const unusedExpression = function () {}
 const unusedArrow = () => {}
 function y(): number { return x() }
@@ -252,7 +118,7 @@ export const Route = createFileRoute('/')({
         expect(modules[name]).toMatch(declarationOf(declared))
       }
     }
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: dead-code-elimination.test.ts "SCC dead code elimination" >
@@ -260,7 +126,7 @@ export const Route = createFileRoute('/')({
   // cycle -> removed" and "self-recursive function used -> preserved"
   it('moves component-only mutually recursive and self-recursive helpers out of the reference module', async () => {
     const { modules, sharedBindings } =
-      compileRouteModules(`${head}import { dep } from './dep'
+      compileWithHmrReference(`${head}import { dep } from './dep'
 const ping = (n: number): number => (n > 0 ? pong(n - 1) : 0)
 const pong = function (n: number): number { return n > 0 ? ping(n - 1) : dep }
 function self(n: number): number { return n > 0 ? self(n - 1) : 2 }
@@ -279,7 +145,7 @@ export const Route = createFileRoute('/')({
     for (const declared of ['ping', 'pong', 'self']) {
       expect(modules['virtual component']).toMatch(declarationOf(declared))
     }
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: dead-code-elimination.test.ts "SCC dead code elimination" > "SCC
@@ -288,7 +154,7 @@ export const Route = createFileRoute('/')({
   // -> not removable"
   it('keeps a cycle the component reads in the reference module while an unused caller still reaches it', async () => {
     const { modules } =
-      compileRouteModules(`${head}function a(): number { return b() }
+      compileWithHmrReference(`${head}function a(): number { return b() }
 function b(): number { return a() }
 function c() { return a() }
 export const Route = createFileRoute('/')({
@@ -300,13 +166,13 @@ export const Route = createFileRoute('/')({
       expect(modules.reference).toMatch(declarationOf(declared))
     }
     expect(modules['virtual component']).toMatch(declarationOf('a'))
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: find-removable-bindings.test.ts "constant violations mark as
   // external" and dead-code-elimination.test.ts "assignment"
   it('declares a binding the split component only writes in its chunk', async () => {
-    const { modules } = compileRouteModules(`${head}let lastRender = 0
+    const { modules } = compileWithHmrReference(`${head}let lastRender = 0
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => {
@@ -316,7 +182,7 @@ export const Route = createFileRoute('/')({
 })
 `)
     expect(modules['virtual component']).toMatch(/let lastRender = 0/)
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 })
 
@@ -325,7 +191,7 @@ describe('ported babel-dead-code-elimination: patterns', () => {
   // assignment pattern" and "array pattern" > "within object property"
   it('shares a nested destructuring with default values whose bindings the loader and the component split', async () => {
     const { modules, sharedBindings } =
-      compileRouteModules(`${head}import { x } from './x'
+      compileWithHmrReference(`${head}import { x } from './x'
 let { a: { aa, bb } = { aa: 1, bb: 2 }, c: [c0, c1] = [] } = x
 export const Route = createFileRoute('/')({
   loader: () => [bb, c1],
@@ -338,7 +204,7 @@ export const Route = createFileRoute('/')({
     for (const name of ['reference', 'virtual component']) {
       expect(modules[name]).not.toContain('./x')
     }
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: dead-code-elimination.test.ts "object pattern" > "within function
@@ -346,7 +212,7 @@ export const Route = createFileRoute('/')({
   // class method and class private method)
   it('keeps empty destructuring parameters of helpers moved into the chunk', async () => {
     const { modules } =
-      compileRouteModules(`${head}function f(a: any, {}: any) { return a }
+      compileWithHmrReference(`${head}function f(a: any, {}: any) { return a }
 const g = (a: any, []: any) => a
 const o = { m(a: any, {}: any) { return a } }
 class K {
@@ -364,7 +230,7 @@ export const Route = createFileRoute('/')({
     expect(component).toContain('const g = (a: any, []: any) => a')
     expect(component).toContain('m(a: any, {}: any)')
     expect(component).toContain('#p(a: any, {}: any)')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 })
 
@@ -375,7 +241,7 @@ describe('ported babel-dead-code-elimination: var declarations nested in stateme
   // the reference module, so their initializers run once, in the chunk.
   it('moves component-only vars declared in top-level blocks out of the reference module', async () => {
     const { modules } =
-      compileRouteModules(`${head}import { compute, connect } from './lib'
+      compileWithHmrReference(`${head}import { compute, connect } from './lib'
 if (typeof window !== 'undefined') {
   var flag = compute()
 }
@@ -394,13 +260,13 @@ export const Route = createFileRoute('/')({
     }
     expect(modules['virtual component']).toContain('var flag = compute()')
     expect(modules['virtual component']).toContain('var conn = connect()')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: dead-code-elimination.test.ts "variable" > "within for...in"
   it('keeps a loader-only var declared in a top-level block out of the component chunk', async () => {
     const { modules } =
-      compileRouteModules(`${head}import { compute } from './lib'
+      compileWithHmrReference(`${head}import { compute } from './lib'
 {
   var block = compute()
 }
@@ -412,7 +278,7 @@ export const Route = createFileRoute('/')({
     expect(modules.reference).toContain('var block = compute()')
     expect(modules['virtual component']).not.toContain('compute()')
     expect(modules['virtual component']).not.toContain('./lib')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: dead-code-elimination.test.ts "variable" > "within for...in"

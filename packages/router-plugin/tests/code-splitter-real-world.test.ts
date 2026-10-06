@@ -1,56 +1,14 @@
-import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { promisify } from 'node:util'
-import { build, transformWithOxc } from 'vite'
+import { transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
-import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
-import { createRouterPluginContext } from '../src/core/router-plugin-context'
-import { tanstackRouter } from '../src/vite'
+  buildAndRun,
+  compileRouteModules,
+  createCodeSplitterTransforms,
+  routeFile,
+  transformWithRouteHmrPlugin,
+} from './regression-helpers'
 import { declarationOf, getModuleErrors } from './validate-module'
-import type { UnpluginOptions } from 'unplugin'
-
-const runNode = promisify(execFile)
-const filename = 'route.tsx'
-
-/** Compiles the reference module and every default split chunk of a route. */
-function compileRouteModules(code: string) {
-  const groupings = defaultCodeSplitGroupings
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: groupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const reference = compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: false,
-    codeSplitGroupings: groupings,
-    targetFramework: 'react',
-    sharedBindings: shared,
-  })
-  const chunks: Record<string, string> = {}
-  for (const targets of groupings) {
-    const split = targets.join('-')
-    chunks[split] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  return { reference: reference?.code ?? code, chunks }
-}
 
 /** Erases TypeScript and compiles JSX with React's classic runtime. */
 async function compileClassicJsx(code: string) {
@@ -62,75 +20,13 @@ async function compileClassicJsx(code: string) {
 
 const reactNamespaceImport = /import \* as React from ['"]react['"]/
 
-/**
- * Builds `route` as a code-split route with the real Vite plugin, imports it in
- * a separate Node process, renders its component once, then evaluates
- * `readAfterRender` (which may use the route module's exports as `route`).
- */
-async function renderSplitRoute(options: {
-  route: string
-  readAfterRender: string
-  classicJsx?: boolean
-}) {
-  // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(path.join(__dirname, '.real-world-runtime-'))
-  try {
-    await mkdir(path.join(root, 'routes'))
-    await writeFile(path.join(root, 'routes/page.tsx'), options.route)
-    await writeFile(
-      path.join(root, 'routes/__root.tsx'),
-      `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({})`,
-    )
-    await writeFile(
-      path.join(root, 'entry.ts'),
-      `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-import * as route from './routes/page'
-export async function render() {
-  const component: any = route.Route.options.component
-  await component.preload?.()
-  const html = renderToString(createElement(component))
-  return { html, after: ${options.readAfterRender} }
-}`,
-    )
-    await build({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      ...(options.classicJsx ? { oxc: { jsx: { runtime: 'classic' } } } : {}),
-      plugins: [
-        tanstackRouter({
-          target: 'react',
-          routesDirectory: './routes',
-          generatedRouteTree: './routeTree.gen.ts',
-          autoCodeSplitting: true,
-          codeSplittingOptions: {
-            addHmr: false,
-            defaultBehavior: [['component']],
-          },
-        }),
-      ],
-      build: {
-        ssr: path.join(root, 'entry.ts'),
-        outDir: 'dist',
-        minify: false,
-        rollupOptions: {
-          output: { entryFileNames: 'entry.mjs', chunkFileNames: '[name].mjs' },
-        },
-      },
-    })
-    const entryUrl = pathToFileURL(path.join(root, 'dist/entry.mjs')).href
-    const { stdout } = await runNode(process.execPath, [
-      '--input-type=module',
-      '--eval',
-      `const { render } = await import(${JSON.stringify(entryUrl)})
-process.stdout.write(JSON.stringify(await render()))`,
-    ])
-    return JSON.parse(stdout) as { html: string; after: unknown }
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
+/** Runs the route HMR plugin on `src/routes/posts.tsx` for a React route. */
+function transformWithHmrPlugin(code: string) {
+  return transformWithRouteHmrPlugin(
+    code,
+    { target: 'react' },
+    { file: routeFile('posts'), routeId: '/posts' },
+  )
 }
 
 // Route files commonly export a store, context or query helper next to the
@@ -148,17 +44,17 @@ export const Route = createFileRoute('/')({ component: Page })
 
 describe('split chunks share exported route-file bindings', () => {
   it('imports an exported binding that depends on state the component also reads', async () => {
-    const { reference, chunks } = compileRouteModules(exportedStoreRoute)
-    const chunk = chunks.component!
+    const { modules } = compileRouteModules(exportedStoreRoute)
+    const chunk = modules['virtual component']!
     // The chunk must use the route module's instance instead of creating its own.
     expect(chunk).not.toMatch(declarationOf('store'))
     expect(chunk).toMatch(/import \{[^}]*\bstore\b[^}]*\} from/)
-    expect(reference).toMatch(/export const store\b/)
+    expect(modules.reference).toMatch(/export const store\b/)
     expect(await getModuleErrors(chunk)).toEqual([])
   })
 
   it('imports an exported React context whose default value the component reads', () => {
-    const { chunks } = compileRouteModules(`
+    const { modules } = compileRouteModules(`
 import { createContext, useContext } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 const defaultTheme = 'light'
@@ -171,16 +67,20 @@ export const Route = createFileRoute('/')({ component: Page })
 `)
     // A second createContext() call would make providers rendered by other
     // modules (which import ThemeContext from the route file) invisible here.
-    expect(chunks.component).not.toMatch(declarationOf('ThemeContext'))
-    expect(chunks.component).toMatch(
+    expect(modules['virtual component']).not.toMatch(
+      declarationOf('ThemeContext'),
+    )
+    expect(modules['virtual component']).toMatch(
       /import \{[^}]*\bThemeContext\b[^}]*\} from/,
     )
   })
 
   it('mutates the exported binding other modules see when the component renders', async () => {
-    const result = await renderSplitRoute({
-      route: exportedStoreRoute,
-      readAfterRender: 'route.store.count',
+    const result = await buildAndRun({
+      files: { 'routes/index.tsx': exportedStoreRoute },
+      defaultBehavior: [['component']],
+      script: `const html = await entry.render(entry.Route.options.component)
+return { html, after: entry.store.count }`,
     })
     expect(result).toEqual({ html: '<p>1</p>', after: 1 })
   }, 30_000)
@@ -188,32 +88,8 @@ export const Route = createFileRoute('/')({ component: Page })
 
 /** Drives the code-splitter transforms the way a bundler does for one file. */
 async function splitThroughPlugin(file: string, code: string) {
-  const context = createRouterPluginContext()
-  context.routesByFile.set(file, { routeId: '/route' })
-  const plugins = createRouterCodeSplitterPlugin(
-    { target: 'react', autoCodeSplitting: true },
-    context,
-  ) as Array<UnpluginOptions>
-  const byName = (suffix: string) =>
-    plugins.find((plugin) => plugin.name.endsWith(suffix))!
-  const reference = byName('compile-reference-file')
-  const hook = reference.vite!.configResolved!
-  const config = { root: process.cwd(), command: 'build', plugins: [] }
-  await (typeof hook === 'function'
-    ? hook.call({} as never, config as never)
-    : hook.handler.call({} as never, config as never))
-  const run = (plugin: UnpluginOptions, id: string) => {
-    const transform = plugin.transform
-    if (!transform || typeof transform === 'function') {
-      throw new Error('Expected object transform')
-    }
-    const result = transform.handler.call({} as never, code, id) as
-      | { code: string }
-      | string
-      | null
-    return result === null || typeof result === 'string' ? result : result.code
-  }
-  const referenceCode = run(reference, file)!
+  const splitter = await createCodeSplitterTransforms({}, { [file]: '/route' })
+  const referenceCode = splitter.reference(code, file)!
   const modules: Record<string, string> = { reference: referenceCode }
   const pending = [...referenceCode.matchAll(/\?(tsr-[^"'`]+)["'`]/g)]
   const seen = new Set<string>()
@@ -223,12 +99,10 @@ async function splitThroughPlugin(file: string, code: string) {
       continue
     }
     seen.add(query)
-    const plugin = byName(
-      query.startsWith('tsr-shared')
-        ? 'compile-shared-file'
-        : 'compile-virtual-file',
-    )
-    modules[query] = run(plugin, `${file}?${query}`)!
+    const transform = query.startsWith('tsr-shared')
+      ? splitter.shared
+      : splitter.virtual
+    modules[query] = transform(code, `${file}?${query}`)!
     pending.push(...modules[query].matchAll(/\?(tsr-[^"'`]+)["'`]/g))
   }
   return modules
@@ -305,11 +179,11 @@ export const Route = createFileRoute('/posts')({
   component: () => <p>posts</p>,
 })
 `
-    const { reference, chunks } = compileRouteModules(code)
-    expect(reference).toMatch(/export \{ Post \}/)
-    expect(await getModuleErrors(reference)).toEqual([])
-    expect(chunks.component).toContain('posts')
-    expect(await transformWithHmrPlugin(code)).toContain('import.meta.hot')
+    const { modules } = compileRouteModules(code)
+    expect(modules.reference).toMatch(/export \{ Post \}/)
+    expect(await getModuleErrors(modules.reference!)).toEqual([])
+    expect(modules['virtual component']).toContain('posts')
+    expect(transformWithHmrPlugin(code)).toContain('import.meta.hot')
   })
 })
 
@@ -332,36 +206,18 @@ const analyticsSideEffect = /registerAnalytics\(\s*['"]\/posts['"]\s*\)/
 
 describe('declarations only referenced from types', () => {
   it('stay in the reference module', async () => {
-    const { reference } = compileRouteModules(typeOnlyReferencedRoute)
+    const { reference } = compileRouteModules(typeOnlyReferencedRoute).modules
     expect(reference).toMatch(analyticsSideEffect)
     expect(reference).toMatch(declarationOf('analytics'))
-    expect(await getModuleErrors(reference)).toEqual([])
+    expect(await getModuleErrors(reference!)).toEqual([])
   })
 
-  it('stay in a route module compiled for HMR', async () => {
-    const output = await transformWithHmrPlugin(typeOnlyReferencedRoute)
+  it('stay in a route module compiled for HMR', () => {
+    const output = transformWithHmrPlugin(typeOnlyReferencedRoute)
     expect(output).toMatch(analyticsSideEffect)
     expect(output).toMatch(declarationOf('analytics'))
   })
 })
-
-async function transformWithHmrPlugin(code: string) {
-  const file = path.join(process.cwd(), 'src/routes/posts.tsx')
-  const context = createRouterPluginContext()
-  context.routesByFile.set(file, { routeId: '/posts' })
-  const plugin = createRouterHmrPlugin(
-    { target: 'react' },
-    context,
-  ) as UnpluginOptions
-  const transform = plugin.transform
-  if (!transform || typeof transform === 'function') {
-    throw new Error('Expected object transform')
-  }
-  const result = (await transform.handler.call({} as never, code, file)) as
-    | { code: string }
-    | string
-  return typeof result === 'string' ? result : result.code
-}
 
 // With React's classic JSX runtime (`jsx: "react"` in tsconfig, or
 // `jsxRuntime: 'classic'`), JSX compiles to `React.createElement`, so the
@@ -377,14 +233,14 @@ export const Route = createFileRoute('/')({ component: Page })
 
 describe('classic JSX runtime', () => {
   it('keeps the React import a split component needs for classic JSX', async () => {
-    const { chunks } = compileRouteModules(classicRoute)
-    const javascript = await compileClassicJsx(chunks.component!)
+    const { modules } = compileRouteModules(classicRoute)
+    const javascript = await compileClassicJsx(modules['virtual component']!)
     expect(javascript).toContain('React.createElement')
     expect(javascript).toMatch(reactNamespaceImport)
   })
 
   it('keeps the React import of a route module compiled for HMR', async () => {
-    const code = await transformWithHmrPlugin(`
+    const code = transformWithHmrPlugin(`
 import * as React from 'react'
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 function Layout({ children }: { children: React.ReactNode }) {
@@ -400,12 +256,13 @@ export const Route = createFileRoute('/posts')({
   })
 
   it('renders a split component built with the classic JSX runtime', async () => {
-    const result = await renderSplitRoute({
-      route: classicRoute,
-      readAfterRender: 'null',
+    const html = await buildAndRun({
+      files: { 'routes/index.tsx': classicRoute },
       classicJsx: true,
+      defaultBehavior: [['component']],
+      script: 'return entry.render(entry.Route.options.component)',
     })
-    expect(result.html).toBe('<p>classic</p>')
+    expect(html).toBe('<p>classic</p>')
   }, 30_000)
 })
 
@@ -414,7 +271,7 @@ export const Route = createFileRoute('/posts')({
 // (`@emotion/react`, `theme-ui`, Preact, ...) of the components it now holds.
 describe('file-level JSX pragmas', () => {
   it('stay at the top of a split component chunk', async () => {
-    const { chunks } =
+    const { modules } =
       compileRouteModules(`/** @jsxImportSource @emotion/react */
 import { createFileRoute } from '@tanstack/react-router'
 
@@ -426,9 +283,11 @@ function StyledPage() {
   return <main css={{ color: 'hotpink' }}>styled</main>
 }
 `)
-    const { code } = await transformWithOxc(chunks.component!, 'chunk.tsx', {
-      jsx: { runtime: 'automatic', importSource: 'react' },
-    })
+    const { code } = await transformWithOxc(
+      modules['virtual component']!,
+      'chunk.tsx',
+      { jsx: { runtime: 'automatic', importSource: 'react' } },
+    )
     expect(code).toMatch(/from ["']@emotion\/react\/jsx-runtime["']/)
   })
 })

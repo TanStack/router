@@ -6,68 +6,11 @@
  * play the chunked exports and the reference module plays the main chunk.
  */
 import { describe, expect, it } from 'vitest'
-import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { declarationOf, getModuleErrors } from './validate-module'
+import { compileCodeSplitVirtualRoute } from '../src/core/code-splitter/compilers'
+import { compileRouteModules, expectValidModules } from './regression-helpers'
+import { declarationOf } from './validate-module'
 
-const filename = 'route.tsx'
 const head = `import { createFileRoute } from '@tanstack/react-router'\n`
-
-/** Compiles a route file into every module the code splitter emits for it. */
-function compileRouteModules(code: string) {
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const reference = compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: false,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-    targetFramework: 'react',
-    sharedBindings: shared,
-  })
-  const modules: Record<string, string> = {
-    reference: reference?.code ?? code,
-  }
-  for (const targets of defaultCodeSplitGroupings) {
-    const split = targets.join('-')
-    modules[`virtual ${split}`] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  if (shared) {
-    modules.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings: shared,
-      filename: `${filename}?tsr-shared=1`,
-    }).code
-  }
-  return { modules, sharedBindings: [...sharedBindings].sort() }
-}
-
-async function getErrorsByModule(modules: Record<string, string>) {
-  const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code)
-  }
-  return errors
-}
-
-function noErrors(modules: Record<string, string>) {
-  return Object.fromEntries(Object.keys(modules).map((name) => [name, []]))
-}
 
 /** Decodes source map mappings into `[column, source, line, column, name]` segments. */
 function decodeMappings(mappings: string) {
@@ -147,7 +90,7 @@ export const Route = createFileRoute('/')({
     expect(modules['virtual notFoundComponent']).toMatch(
       declarationOf('getTargetMessage1'),
     )
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: route-chunks-test.ts "shared imports across chunks but not main chunk"
@@ -163,7 +106,7 @@ export const Route = createFileRoute('/')({
     expect(modules.reference).not.toContain('./shared')
     expect(modules['virtual component']).toContain('./shared')
     expect(modules['virtual errorComponent']).toContain('./shared')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: route-chunks-test.ts "import with side effect usage" and "shared
@@ -197,7 +140,7 @@ export const Route = createFileRoute('/')({
       expect(modules.reference).toContain(call)
       expect(modules['virtual component']).not.toContain(call)
       expect(modules['virtual errorComponent']).not.toContain(call)
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 })
@@ -247,7 +190,7 @@ export const Route = createFileRoute('/')({
       expect(modules['virtual component']).toContain('chunkMessage')
       expect(modules['virtual component']).not.toContain('mainMessage')
       expect(modules['virtual errorComponent']).not.toContain('Message')
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 
@@ -268,7 +211,7 @@ export const Route = createFileRoute('/')({
     expect(modules.reference).toMatch(/const Preview = Page;/)
     expect(modules.reference).not.toMatch(declarationOf('Page'))
     expect(modules['virtual component']).not.toMatch(declarationOf('Page'))
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: route-chunks-test.ts "exported destructured object (spread)
@@ -309,7 +252,7 @@ export const Route = createFileRoute('/')({
         expect(modules[name]).not.toContain('./messages')
         expect(modules[name]).toContain('tsr-shared=1')
       }
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 
@@ -334,7 +277,7 @@ export const Route = createFileRoute('/')({
     expect(modules['virtual component']).not.toMatch(
       declarationOf('getMainMessage'),
     )
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 })
 
@@ -413,7 +356,7 @@ export const Route = createFileRoute('/')({
     }
     expect(component).toContain('function* chunkGenerator')
     expect(component).not.toContain('./main')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: route-chunks-test.ts "reassignment" and "function argument
@@ -441,7 +384,7 @@ export const Route = createFileRoute('/')({
       /let chunkMessage = ['"]chunk['"]/,
     )
     expect(modules['virtual component']).toMatch(declarationOf('getMessage'))
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: route-chunks-test.ts "computed object property" and "class method
@@ -467,7 +410,7 @@ export const Route = createFileRoute('/')({
     expect(sharedBindings).toEqual(['kind'])
     expect(modules['virtual component']).not.toContain('./load')
     expect(modules.reference).toMatch(declarationOf('label'))
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 })
 
@@ -530,7 +473,7 @@ export const Route = createFileRoute('/')({
       expect(modules['virtual component']).toMatch(declarationOf('removedUtil'))
       expect(modules.shared).toContain('shared-lib')
       expect(modules.shared).not.toMatch(/removed|kept/i)
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 })
@@ -550,7 +493,7 @@ export const Route = createFileRoute('/')({
 `
     const result = compileCodeSplitVirtualRoute({
       code,
-      filename: `${filename}?tsr-split=component`,
+      filename: `route.tsx?tsr-split=component`,
       splitTargets: ['component'],
     })
     const map = result.map as unknown as {

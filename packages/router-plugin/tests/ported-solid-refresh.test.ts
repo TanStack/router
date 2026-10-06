@@ -11,74 +11,23 @@
 import { parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
-import { createRouterPluginContext } from '../src/core/router-plugin-context'
+  compileRouteModules,
+  transformWithRouteHmrPlugin,
+} from './regression-helpers'
 import { getModuleErrors } from './validate-module'
 import type { ESTree } from 'vite'
 
 const head = `import { createFileRoute } from '@tanstack/solid-router'\n`
 
 /** Runs the route HMR plugin used when automatic code splitting is off. */
-async function compileWithRouteHmr(code: string) {
-  const id = `${process.cwd().replaceAll('\\', '/')}/src/routes/index.tsx`
-  const context = createRouterPluginContext()
-  context.routesByFile.set(id, { routeId: '/' })
-  const plugins = createRouterHmrPlugin({ target: 'solid' }, context)
-  const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
-  const transform = plugin.transform
-  if (!transform || typeof transform === 'function') {
-    throw new Error('expected an object transform hook')
-  }
-  const result = await transform.handler.call({} as never, code, id)
-  if (!result || typeof result === 'string') {
-    throw new Error('expected the route HMR plugin to transform the route')
-  }
-  return result.code
+function compileWithRouteHmr(code: string) {
+  return transformWithRouteHmrPlugin(code, { target: 'solid' })
 }
 
 /** Compiles every module the code splitter emits for a Solid route, with HMR. */
 function compileWithCodeSplitting(code: string) {
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename: 'route.tsx',
-    codeSplitGroupings: defaultCodeSplitGroupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const modules: Record<string, string> = {
-    reference:
-      compileCodeSplitReferenceRoute({
-        code,
-        filename: 'route.tsx',
-        id: 'route.tsx',
-        addHmr: true,
-        codeSplitGroupings: defaultCodeSplitGroupings,
-        targetFramework: 'solid',
-        sharedBindings: shared,
-      })?.code ?? code,
-  }
-  for (const targets of defaultCodeSplitGroupings) {
-    const split = targets.join('-')
-    modules[split] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `route.tsx?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  if (shared) {
-    modules.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings: shared,
-      filename: 'route.tsx?tsr-shared=1',
-    }).code
-  }
-  return modules
+  return compileRouteModules(code, { hmr: true, targetFramework: 'solid' })
+    .modules
 }
 
 function parseModule(code: string) {
@@ -192,11 +141,11 @@ export const Route = createFileRoute('/')({ component: Page })`
         expectSolidComponent(modules.reference!, 'Page')
         return
       }
-      const local = modules.component!.match(
+      const local = modules['virtual component']!.match(
         /export \{ (\w+) as component \}/,
       )?.[1]
       expect(local).toBeDefined()
-      expectSolidComponent(modules.component!, local!)
+      expectSolidComponent(modules['virtual component']!, local!)
     },
   )
 
@@ -208,7 +157,7 @@ export const Route = createFileRoute('/')({ component: Page })`
   errorComponent: (props: { error: unknown }) => <p>{String(props.error)}</p>,
 })`)
     for (const split of ['component', 'errorComponent']) {
-      const chunk = modules[split]!
+      const chunk = modules[`virtual ${split}`]!
       expect(await getModuleErrors(chunk)).toEqual([])
       const local = chunk.match(
         new RegExp(String.raw`export \{ (\w+) as ${split} \}`),
@@ -250,7 +199,7 @@ export const Route = createFileRoute('/')({ component: Page })`
     const modules = compileWithCodeSplitting(source)
     expect({
       reference: modules.reference!.includes(pragma),
-      component: modules.component!.includes(pragma),
+      component: modules['virtual component']!.includes(pragma),
     }).toEqual({ reference: true, component: true })
   })
 
@@ -263,7 +212,7 @@ function Page() {
 export const Route = createFileRoute('/')({ component: Page })`)
     expect({
       reference: modules.reference!.includes('@refresh reload'),
-      component: modules.component!.includes('@refresh reload'),
+      component: modules['virtual component']!.includes('@refresh reload'),
     }).toEqual({ reference: true, component: true })
   })
 })
@@ -307,7 +256,7 @@ const Theme = createContext('light')
 export const Route = createFileRoute('/')({
   component: () => <p>{useContext(Theme)}</p>,
 })`)
-    expect(topLevelContexts(modules.component!)).toEqual(['Theme'])
+    expect(topLevelContexts(modules['virtual component']!)).toEqual(['Theme'])
     expect(modules.reference).not.toContain('createContext(')
   })
 })

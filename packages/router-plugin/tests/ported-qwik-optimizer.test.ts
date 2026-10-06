@@ -6,70 +6,12 @@
  * code splitting move module-level code between modules. Each test names the
  * Qwik test it is ported from.
  */
-import { transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { getModuleErrors } from './validate-module'
-
-const filename = 'route.tsx'
-
-/** Compiles a route file into every module the code splitter emits for it. */
-function compileRouteModules(code: string) {
-  const groupings = defaultCodeSplitGroupings
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: groupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const reference = compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: false,
-    codeSplitGroupings: groupings,
-    targetFramework: 'react',
-    sharedBindings: shared,
-  })
-  const modules: Record<string, string> = {
-    reference: reference?.code ?? code,
-  }
-  for (const targets of groupings) {
-    const split = targets.join('-')
-    modules[`virtual ${split}`] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  if (shared) {
-    modules.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings: shared,
-      filename: `${filename}?tsr-shared=1`,
-    }).code
-  }
-  return { modules, sharedBindings }
-}
-
-async function getErrorsByModule(modules: Record<string, string>) {
-  const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code)
-  }
-  return errors
-}
-
-function noErrors(modules: Record<string, string>) {
-  return Object.fromEntries(Object.keys(modules).map((name) => [name, []]))
-}
+  compileRouteModules,
+  evaluateModule,
+  expectValidModules,
+} from './regression-helpers'
 
 /**
  * How many times `pattern` occurs across the modules a bundle loads: the
@@ -90,50 +32,12 @@ function countAcrossModules(modules: Record<string, string>, pattern: RegExp) {
     )
 }
 
-const stubsKey = '__portedQwikRouteStubs'
-let evaluations = 0
-
-/**
- * Evaluates a split component chunk like a bundler would and renders its
- * component: JSX becomes plain calls (intrinsic elements render as tags,
- * components are called) and named imports are linked to `stubs`.
- */
+/** Evaluates a split component chunk and renders its component. */
 async function renderSplitComponent(
   chunk: string,
   stubs: Record<string, Record<string, unknown>> = {},
 ) {
-  const { code } = await transformWithOxc(chunk, 'chunk.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
-  })
-  const key = `${stubsKey}${evaluations++}`
-  ;(globalThis as Record<string, unknown>)[key] = stubs
-  // Imports are hoisted: link them before any other statement runs.
-  const imports: Array<string> = []
-  const body = code.replace(
-    /^import\s+\{([^}]*)\}\s+from\s+(["'])(.+?)\2;?$/gm,
-    (_, named: string, __, source: string) => {
-      if (!(source in stubs)) {
-        throw new Error(`no stub for import ${source}`)
-      }
-      imports.push(
-        `const { ${named.replace(/\bas\b/g, ':')} } = globalThis.${key}[${JSON.stringify(source)}];`,
-      )
-      return ''
-    },
-  )
-  const runtime = `const Fragment = Symbol('Fragment')
-const h = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false).join('')
-  if (type === Fragment) return text
-  if (typeof type === 'function') return type({ ...props, children: text })
-  if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
-  return '<' + type + '>' + text + '</' + type + '>'
-}
-`
-  const module: Record<string, unknown> = await import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(`${runtime}${imports.join('\n')}\n${body}`)}`
-  )
-  return (module.component as () => string)()
+  return (await evaluateModule(chunk, stubs)).component!()
 }
 
 describe('route code splitting (ported from the Qwik optimizer)', () => {
@@ -156,7 +60,7 @@ export const Route = createFileRoute('/')({
   component: () => <div>{JSON.stringify(b)}</div>,
 })
 `)
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
       expect(countAcrossModules(modules, /makeConfig\(\)/)).toBe(1)
     },
   )
@@ -174,7 +78,7 @@ export const Route = createFileRoute('/')({
   component: () => <p>{useContext(Theme)}</p>,
 })
 `)
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
     expect(countAcrossModules(modules, /createContext\(/)).toBe(1)
   })
 
@@ -204,7 +108,7 @@ export const Route = createFileRoute('/')({
   component: () => ${render},
 })
 `)
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
       expect(await renderSplitComponent(modules['virtual component']!)).toBe(
         rendered,
       )
@@ -229,9 +133,9 @@ export const Route = createFileRoute('/')({
   },
 })
 `)
-    expect([...sharedBindings]).toEqual([])
+    expect(sharedBindings).toEqual([])
     expect(modules['virtual component']).not.toContain('createDb')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Qwik: root_level_self_referential_qrl, example_self_referential_component_migration
@@ -246,7 +150,7 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <B depth={0} />,
 })
 `)
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
     expect(countAcrossModules(modules, /function Tree\b/)).toBe(1)
     expect(countAcrossModules(modules, /function A\b/)).toBe(1)
     expect(countAcrossModules(modules, /function B\b/)).toBe(1)
@@ -266,11 +170,11 @@ export const Route = createFileRoute('/')({
   component: () => <p>{[Tone.Loud, label('x'), DefaultFn(), internal].join('|')}</p>,
 })
 `)
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
     // The chunk may import exported bindings from the route module itself.
     expect(
       await renderSplitComponent(modules['virtual component']!, {
-        [filename]: { default: () => 'default', renamed: 'i' },
+        ['route.tsx']: { default: () => 'default', renamed: 'i' },
       }),
     ).toBe('<p>LOUD|label:x|default|i</p>')
   })

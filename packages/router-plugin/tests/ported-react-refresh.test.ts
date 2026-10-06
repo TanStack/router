@@ -13,73 +13,31 @@
 import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
-import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
-import { createRouterPluginContext } from '../src/core/router-plugin-context'
+  compileRouteModules,
+  transformWithRouteHmrPlugin,
+} from './regression-helpers'
 import { getModuleErrors } from './validate-module'
 
 const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
 /** Runs the route HMR plugin used when automatic code splitting is off. */
-async function compileWithRouteHmr(
+function compileWithRouteHmr(
   code: string,
   hmrStyle: 'vite' | 'webpack' = 'vite',
 ) {
-  const id = `${process.cwd().replaceAll('\\', '/')}/src/routes/index.tsx`
-  const context = createRouterPluginContext()
-  context.routesByFile.set(id, { routeId: '/' })
-  const plugins = createRouterHmrPlugin(
-    { target: 'react', plugin: { hmr: { style: hmrStyle } } },
-    context,
-  )
-  const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
-  const transform = plugin.transform
-  if (!transform || typeof transform === 'function') {
-    throw new Error('expected an object transform hook')
-  }
-  const result = await transform.handler.call({} as never, code, id)
-  if (!result || typeof result === 'string') {
-    throw new Error('expected the route HMR plugin to transform the route')
-  }
-  return result.code
+  return transformWithRouteHmrPlugin(code, {
+    target: 'react',
+    plugin: { hmr: { style: hmrStyle } },
+  })
 }
 
 /** Compiles the reference module and the `component` chunk with React HMR. */
 function compileWithCodeSplitting(code: string) {
-  const compilerPlugins = getFrameworkHmrCompilerPlugins({
-    targetFramework: 'react',
-  })!
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename: 'route.tsx',
-    codeSplitGroupings: defaultCodeSplitGroupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const reference = compileCodeSplitReferenceRoute({
-    code,
-    filename: 'route.tsx',
-    id: 'route.tsx',
-    addHmr: true,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-    targetFramework: 'react',
-    compilerPlugins,
-    sharedBindings: shared,
-  })
-  const component = compileCodeSplitVirtualRoute({
-    code,
-    filename: 'route.tsx?tsr-split=component',
-    splitTargets: ['component'],
-    sharedBindings: shared,
-    compilerPlugins: compilerPlugins.filter(
-      (plugin) => plugin.onVirtualRouteSplitNode,
-    ),
-  })
-  return { reference: reference?.code ?? code, component: component.code }
+  const { modules } = compileRouteModules(code, { hmr: true })
+  return {
+    reference: modules.reference!,
+    component: modules['virtual component']!,
+  }
 }
 
 /**

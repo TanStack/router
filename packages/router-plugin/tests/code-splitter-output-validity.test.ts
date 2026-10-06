@@ -1,65 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
+import { compileRouteModules, expectValidModules } from './regression-helpers'
 import { declarationOf, getModuleErrors } from './validate-module'
-
-const filename = 'route.tsx'
-
-/** Compiles a route file into every module the code splitter emits for it. */
-function compileRouteModules(code: string) {
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const reference = compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: false,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-    targetFramework: 'react',
-    sharedBindings: shared,
-  })
-  const modules: Record<string, string> = {
-    reference: reference?.code ?? code,
-  }
-  for (const targets of defaultCodeSplitGroupings) {
-    const split = targets.join('-')
-    modules[`virtual ${split}`] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  if (shared) {
-    modules.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings: shared,
-      filename: `${filename}?tsr-shared=1`,
-    }).code
-  }
-  return modules
-}
-
-async function getErrorsByModule(modules: Record<string, string>) {
-  const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code)
-  }
-  return errors
-}
-
-function noErrors(modules: Record<string, string>) {
-  return Object.fromEntries(Object.keys(modules).map((name) => [name, []]))
-}
 
 describe('code-splitter emits valid modules', () => {
   it.each([
@@ -68,7 +9,7 @@ describe('code-splitter emits valid modules', () => {
   ])(
     'does not redeclare an imported binding that is re-exported $name',
     async ({ exports }) => {
-      const modules = compileRouteModules(`
+      const { modules } = compileRouteModules(`
 import { createFileRoute } from '@tanstack/react-router'
 import { Foo } from './foo'
 ${exports}
@@ -77,12 +18,12 @@ function Page() {
   return <Foo />
 }
 `)
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 
   it('does not redeclare an exported binding destructured next to a non-exported one', async () => {
-    const modules = compileRouteModules(`
+    const { modules } = compileRouteModules(`
 import { createFileRoute } from '@tanstack/react-router'
 const { a, b } = getStuff()
 export { a }
@@ -90,7 +31,7 @@ export const Route = createFileRoute('/')({
   component: () => <div>{a}{b}</div>,
 })
 `)
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   it.each([
@@ -99,7 +40,7 @@ export const Route = createFileRoute('/')({
   ])(
     'keeps an anonymous default-exported $name valid in split chunks',
     async ({ declaration }) => {
-      const modules = compileRouteModules(`
+      const { modules } = compileRouteModules(`
 import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: Page })
 function Page() {
@@ -107,7 +48,7 @@ function Page() {
 }
 export default ${declaration}
 `)
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 
@@ -117,7 +58,7 @@ export default ${declaration}
   ])(
     'keeps an anonymous default-exported $name valid when bindings are shared',
     async ({ declaration }) => {
-      const modules = compileRouteModules(`
+      const { modules } = compileRouteModules(`
 import { createFileRoute } from '@tanstack/react-router'
 const cache = new Map()
 export const Route = createFileRoute('/')({
@@ -127,7 +68,7 @@ export const Route = createFileRoute('/')({
 export default ${declaration}
 `)
       expect(Object.keys(modules)).toContain('shared')
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 })
@@ -166,7 +107,9 @@ function restore() {
   ])(
     'keeps $name in the reference module',
     async ({ setup, sideEffect, declared }) => {
-      const { reference } = compileRouteModules(`
+      const {
+        modules: { reference },
+      } = compileRouteModules(`
 import { createFileRoute } from '@tanstack/react-router'
 ${setup}
 export const Route = createFileRoute('/')({ component: () => <div /> })
@@ -182,7 +125,7 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
   )
 
   it('keeps the namespace import that a TypeScript import alias refers to', () => {
-    const modules = compileRouteModules(`
+    const { modules } = compileRouteModules(`
 import { createFileRoute } from '@tanstack/react-router'
 import * as lib from './lib'
 import Helper = lib.Helper
@@ -198,7 +141,9 @@ export const Route = createFileRoute('/')({
   it('keeps decorators before `export` for legacy decorator transforms', () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only
     // accept decorators before the `export` keyword.
-    const { reference } = compileRouteModules(`
+    const {
+      modules: { reference },
+    } = compileRouteModules(`
 import { createFileRoute } from '@tanstack/react-router'
 @observable export class Store { @observable count = 0 }
 export const Route = createFileRoute('/')({ component: () => <div /> })

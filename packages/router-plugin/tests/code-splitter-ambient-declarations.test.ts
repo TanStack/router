@@ -1,54 +1,6 @@
 import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
-import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-
-const filename = 'route.tsx'
-
-/** Compiles a route file into every module the code splitter emits for it. */
-function compileRouteModules(code: string) {
-  const groupings = defaultCodeSplitGroupings
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: groupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const modules: Record<string, string> = {
-    reference:
-      compileCodeSplitReferenceRoute({
-        code,
-        filename,
-        id: filename,
-        addHmr: false,
-        codeSplitGroupings: groupings,
-        targetFramework: 'react',
-        sharedBindings: shared,
-      })?.code ?? code,
-  }
-  for (const targets of groupings) {
-    const split = targets.join('-')
-    modules[`virtual ${split}`] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  if (shared) {
-    modules.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings: shared,
-      filename: `${filename}?tsr-shared=1`,
-    }).code
-  }
-  return modules
-}
+import { compileRouteModules } from './regression-helpers'
 
 /** The module record a bundler sees once TypeScript is erased. */
 async function runtimeModuleInfo(code: string) {
@@ -131,7 +83,7 @@ export const Route = createFileRoute('/ambient')({
   component: () => <button onClick={() => ${use}}>track</button>,
 })
 `
-      const modules = compileRouteModules(code)
+      const { modules } = compileRouteModules(code)
       expect(await missingSharedImports(modules)).toEqual([])
     },
   )

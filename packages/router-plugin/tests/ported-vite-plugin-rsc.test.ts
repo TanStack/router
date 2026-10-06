@@ -6,44 +6,16 @@
  * route components into virtual modules together with the module-level code
  * they read. Each test names the plugin-rsc fixture it is ported from.
  */
-import { transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
-import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitVirtualRoute,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
+import { compileRouteModules, evaluateModule } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
 
-const filename = 'route.tsx'
-
 function compileReference(code: string) {
-  return compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: false,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-    targetFramework: 'react',
-  })?.code
+  return compileRouteModules(code).modules.reference!
 }
 
 function compileComponent(code: string) {
-  return compileCodeSplitVirtualRoute({
-    code,
-    filename: `${filename}?tsr-split=component`,
-    splitTargets: ['component'],
-  }).code
-}
-
-/** Evaluates a self-contained module (no imports). */
-async function evaluateModule(code: string) {
-  const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'h' },
-  })
-  return (await import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(`const h = (type) => type\n${javascript}`)}`
-  )) as Record<string, (...args: Array<any>) => unknown>
+  return compileRouteModules(code).modules['virtual component']!
 }
 
 const route = (
@@ -148,7 +120,7 @@ function Page() {
     expect(await getModuleErrors(component)).toEqual([])
     const module = await evaluateModule(component)
     expect(module.component!({})).toBe(expected)
-    expect(await getModuleErrors(compileReference(code)!)).toEqual([])
+    expect(await getModuleErrors(compileReference(code))).toEqual([])
   })
 })
 
@@ -191,7 +163,7 @@ function Page() {
   return 'page'
 }
 export const Route = createFileRoute('/')({ loader: ${loader}, component: Page })
-`)!
+`)
     expect(await getModuleErrors(reference)).toEqual([])
     expect(reference).toMatch(/import \{ store \} from ['"]\.\/store['"]/)
   })
@@ -206,7 +178,7 @@ ${route(`function Page() {
   return 'page'
 }`)}`
     const prologue = /^\s*(["'])use strict\1;?\s*(["'])use client\2/
-    const reference = compileReference(code)!
+    const reference = compileReference(code)
     const component = compileComponent(code)
     for (const output of [reference, component]) {
       expect(await getModuleErrors(output)).toEqual([])

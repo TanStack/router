@@ -1,45 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import {
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
+import { compileRouteModules } from './regression-helpers'
 
-const filename = 'route.tsx'
-
-/** Compiles every split chunk (and the shared module, if any) of a route file. */
-function compileChunks(code: string) {
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const chunks: Record<string, string> = {}
-  for (const targets of defaultCodeSplitGroupings) {
-    const split = targets.join('-')
-    chunks[split] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  if (shared) {
-    chunks.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings: shared,
-      filename: `${filename}?tsr-shared=1`,
-    }).code
-  }
-  return chunks
-}
-
-/** Chunks that contain JSX and therefore need the file's JSX pragma. */
+/** Split chunks (and the shared module) that contain JSX. */
 function jsxChunks(code: string) {
-  return Object.entries(compileChunks(code)).filter(([, chunk]) =>
-    /<[A-Za-z]/.test(chunk),
+  const { modules } = compileRouteModules(code)
+  return Object.entries(modules).filter(
+    ([name, chunk]) => name !== 'reference' && /<[A-Za-z]/.test(chunk),
   )
 }
 
@@ -106,7 +72,7 @@ export const Route = createFileRoute('/pragma')({
   component: () => <div css={{ color: 'red' }}>{icon}</div>,
 })
 `
-    const { shared } = compileChunks(code)
+    const { shared } = compileRouteModules(code).modules
     expect(shared).toContain('<svg')
     expect(shared).toContain('@jsxImportSource @emotion/react')
   })

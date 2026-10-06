@@ -1,24 +1,12 @@
 import { parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
-import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
+import { compileRouteModules } from './regression-helpers'
 import type { ESTree } from 'vite'
 
 function compileWithReactRefresh(code: string) {
-  const result = compileCodeSplitReferenceRoute({
-    code,
-    filename: 'route.tsx',
-    id: 'route.tsx',
-    addHmr: true,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-    targetFramework: 'react',
-    compilerPlugins: getFrameworkHmrCompilerPlugins({
-      targetFramework: 'react',
-    }),
-  })
-  expect(result).toBeTruthy()
-  return result!.code
+  const { reference } = compileRouteModules(code, { hmr: true }).modules
+  expect(reference).not.toBe(code)
+  return reference!
 }
 
 function parseModule(code: string) {
@@ -69,9 +57,8 @@ function getRouteOption(program: ESTree.Program, option: string) {
   return { route, value: property.value }
 }
 
-describe('React Refresh route component hoisting', () => {
-  it('does not hoist a component out of the function scope it closes over', () => {
-    const code = compileWithReactRefresh(`
+// A root route next to a factory that creates child routes inside a function.
+const nestedRouteFactory = `
 import { createRootRoute, createRoute } from '@tanstack/react-router'
 export function makeChild(label: string) {
   return createRoute({
@@ -81,7 +68,11 @@ export function makeChild(label: string) {
   })
 }
 export const Route = createRootRoute({ component: () => <div /> })
-`)
+`
+
+describe('React Refresh route component hoisting', () => {
+  it('does not hoist a component out of the function scope it closes over', () => {
+    const code = compileWithReactRefresh(nestedRouteFactory)
     // `label` only exists inside `makeChild`; any other top-level statement
     // that mentions it reads an undefined global at render time.
     const statementsUsingLabel = parseModule(code)
@@ -95,17 +86,7 @@ export const Route = createRootRoute({ component: () => <div /> })
   })
 
   it('hoists the inline component of the root route next to a nested route factory', () => {
-    const code = compileWithReactRefresh(`
-import { createRootRoute, createRoute } from '@tanstack/react-router'
-export function makeChild(label: string) {
-  return createRoute({
-    getParentRoute: () => Route,
-    path: label,
-    component: () => <div>{label}</div>,
-  })
-}
-export const Route = createRootRoute({ component: () => <div /> })
-`)
+    const code = compileWithReactRefresh(nestedRouteFactory)
     // React Refresh can only register components bound to top-level names.
     const program = parseModule(code)
     const { value } = getRouteOption(program, 'component')

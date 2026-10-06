@@ -6,68 +6,10 @@
  * reference module plays the page that keeps the rest.
  */
 import { describe, expect, it } from 'vitest'
-import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { declarationOf, getModuleErrors } from './validate-module'
+import { compileRouteModules, expectValidModules } from './regression-helpers'
+import { declarationOf } from './validate-module'
 
-const filename = 'route.tsx'
 const head = `import { createFileRoute } from '@tanstack/react-router'\n`
-
-/** Compiles a route file into every module the code splitter emits for it. */
-function compileRouteModules(code: string) {
-  const sharedBindings = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-  })
-  const shared = sharedBindings.size > 0 ? sharedBindings : undefined
-  const reference = compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: false,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-    targetFramework: 'react',
-    sharedBindings: shared,
-  })
-  const modules: Record<string, string> = {
-    reference: reference?.code ?? code,
-  }
-  for (const targets of defaultCodeSplitGroupings) {
-    const split = targets.join('-')
-    modules[`virtual ${split}`] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings: shared,
-    }).code
-  }
-  if (shared) {
-    modules.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings: shared,
-      filename: `${filename}?tsr-shared=1`,
-    }).code
-  }
-  return { modules, sharedBindings: [...sharedBindings].sort() }
-}
-
-async function getErrorsByModule(modules: Record<string, string>) {
-  const errors: Record<string, Array<string>> = {}
-  for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code)
-  }
-  return errors
-}
-
-function noErrors(modules: Record<string, string>) {
-  return Object.fromEntries(Object.keys(modules).map((name) => [name, []]))
-}
 
 describe('ported Next.js SSG fixtures: references', () => {
   // Source: ssg/getStaticProps/should-not-remove-import-used-in-render
@@ -120,7 +62,7 @@ export const Route = createFileRoute('/')({
     expect(component).not.toContain('UnusedInRender')
     expect(modules.reference).toContain('UnusedInRender')
     expect(modules.reference).not.toMatch(/from ['"]react['"]/)
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: ssg/getStaticProps/should-not-remove-import-used-in-render
@@ -148,7 +90,7 @@ export const Route = createFileRoute('/')({
     )
     expect(modules.reference).toMatch(declarationOf('a'))
     expect(modules.reference).toMatch(declarationOf('label'))
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: ssg/getStaticProps/should-not-mix-up-bindings and
@@ -252,7 +194,7 @@ export const Route = createFileRoute('/')({
       for (const text of referenceExcludes ?? []) {
         expect(modules.reference).not.toContain(text)
       }
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 })
@@ -327,7 +269,7 @@ export const Route = createFileRoute('/')({
     for (const name of ['inception1', 'abc', 'b', 'b2', 'bla', 'var3']) {
       expect(component).toMatch(declarationOf(name))
     }
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: ssg/getStaticProps/destructuring-assignment-array and
@@ -369,7 +311,7 @@ export const Route = createFileRoute('/')({
       expect(modules.reference).not.toMatch(/from ['"]fs['"]/)
       expect(modules['virtual component']).toContain('= fs.promises')
       expect(modules['virtual component']).not.toContain('= other')
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 
@@ -388,7 +330,7 @@ export const Route = createFileRoute('/')({
     expect(modules.reference).toContain('./server-data')
     expect(modules['virtual component']).toContain('./analytics')
     expect(modules['virtual component']).not.toContain('./server-data')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: ssg/getStaticProps/issue-31855 and
@@ -413,7 +355,7 @@ export const Route = createFileRoute('/')({
       )
       expect(component).not.toMatch(declarationOf(name))
     }
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: ssg/getStaticProps/should-remove-re-exported-variable-declarations-safe
@@ -432,7 +374,7 @@ export const Route = createFileRoute('/')({
     expect(modules.reference).not.toContain('chunkMessage')
     expect(modules['virtual component']).toMatch(declarationOf('Page'))
     expect(modules['virtual component']).not.toContain('mainMessage')
-    expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+    await expectValidModules(modules)
   })
 
   // Source: ssg/getStaticProps/should-support-babel-style-memoized-function
@@ -464,7 +406,7 @@ export const Route = createFileRoute('/')({
         : modules['virtual component']!
       expect(owner).toMatch(declarationOf('fetchData'))
       expect(owner).toContain('fetchData = function')
-      expect(await getErrorsByModule(modules)).toEqual(noErrors(modules))
+      await expectValidModules(modules)
     },
   )
 })
