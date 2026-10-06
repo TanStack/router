@@ -967,7 +967,7 @@ export class StartCompiler {
       if (
         !isLookupKind(kind) ||
         kind === 'ClientOnlyJSX' ||
-        !candidateKinds.has(kind)
+        !this.validLookupKinds.has(kind)
       ) {
         continue
       }

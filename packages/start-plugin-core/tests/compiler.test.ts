@@ -1416,6 +1416,44 @@ test('resolves distinct re-export aliases without conflating their source bindin
   expect(() => b()).toThrow('can only be called on the client')
 })
 
+test('transforms an aliased env-only factory whose kind was not text-detected', async () => {
+  const sources: Record<string, string> = {
+    '/test/env.ts': `export { createClientOnlyFn as clientOnly } from '@tanstack/react-start'`,
+  }
+  const compiler: StartCompiler = new StartCompiler({
+    ...getDefaultTestOptions('server'),
+    env: 'server',
+    mode: 'build',
+    lookupKinds: getLookupKindsForEnv('server'),
+    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react'),
+    getKnownServerFns: () => ({}),
+    resolveId: async (id) =>
+      id === './env' ? '/test/env.ts' : id.startsWith('@tanstack/') ? id : null,
+    loadModule: async (id) => {
+      if (sources[id]) {
+        compiler.ingestModule({ id, code: sources[id] })
+      }
+    },
+  })
+  const code = `import { createServerOnlyFn } from '@tanstack/react-start'
+import { clientOnly } from './env'
+import { secret } from './secret.server'
+import { readWindow } from './browser'
+export const s = createServerOnlyFn(() => secret())
+export const c = clientOnly(() => readWindow())`
+  const result = await compiler.compile({
+    id: '/test/entry.ts',
+    code,
+    detectedKinds: detectKindsInCode(code, 'server'),
+  })
+  expect(result).not.toBeNull()
+  expect(result!.code).not.toContain('readWindow')
+  expect(result!.code).not.toContain('./browser')
+  expect(result!.code).toContain(
+    'createClientOnlyFn() functions can only be called on the client!',
+  )
+})
+
 test('leaves unrelated SSR middleware chains to the bundler when a server function factory is present', async () => {
   const compiler = new StartCompiler({
     ...getDefaultTestOptions('server'),
