@@ -302,6 +302,26 @@ describe('output liveness', () => {
     expect(generateModule(program).code).not.toContain('./server-only')
   })
 
+  test.each([
+    ['function type parameters', '(theme: string) => void'],
+    ['construct signature parameters', 'new (theme: string) => object'],
+    ['method signature parameters', '{ set(theme: string): void }'],
+    ['generic type parameters', '<Theme>() => void'],
+    ['inferred type parameters', 'string extends infer Theme ? 1 : 0'],
+  ])(
+    'removes a dead declaration whose type arguments declare %s',
+    (_, type) => {
+      const output = cleanup(
+        `import { createContext } from 'react'
+const ThemeContext = createContext<${type}>(null!)
+export const Route = createRoute({ component: () => <ThemeContext.Provider />, loader: () => 1 })`,
+        'component',
+      )
+      expect(output).not.toContain('ThemeContext')
+      expect(output).not.toContain('react')
+    },
+  )
+
   test('removes a dead namespace including its exported members', () => {
     const output = cleanup(
       `namespace Labels { export const component = initialize() } export const Route = createRoute({ loader: () => Labels.component })`,

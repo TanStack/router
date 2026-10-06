@@ -1,7 +1,7 @@
 ---
-'@tanstack/router-utils': major
-'@tanstack/router-plugin': major
-'@tanstack/start-plugin-core': major
+'@tanstack/router-utils': minor
+'@tanstack/router-plugin': minor
+'@tanstack/start-plugin-core': minor
 '@tanstack/router-generator': patch
 '@tanstack/react-start-rsc': patch
 ---

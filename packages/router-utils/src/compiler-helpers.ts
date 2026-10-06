@@ -1,3 +1,4 @@
+import { BindingFlags } from 'yuku-analyzer'
 import { bindingIdentifiers, is, nameOf, walk } from 'yuku-ast'
 import { generatedReferenceOf } from './ast'
 import type { Binding, Module, Scope } from 'yuku-analyzer'
@@ -80,6 +81,11 @@ function declarationIndex(
   const declarations = new Map<Binding, Node>()
   const declarationSymbols = new Map<Node, Set<Binding>>()
   for (const binding of bindings) {
+    // Parameters belong to their function or signature, never to a statement,
+    // even when a signature sits in a declaration's type arguments
+    if (binding.flags & (BindingFlags.Parameter | BindingFlags.TypeParameter)) {
+      continue
+    }
     for (const identifier of binding.declarations) {
       const declaration = declarationOf(module, identifier)
       if (!declaration) {
