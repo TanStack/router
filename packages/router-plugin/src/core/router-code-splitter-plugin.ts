@@ -342,6 +342,13 @@ export function createRouterCodeSplitterPlugin(
         ROOT = process.cwd()
         initUserConfig()
       },
+
+      esbuild: {
+        config() {
+          ROOT = process.cwd()
+          initUserConfig()
+        },
+      },
     },
     {
       name: 'tanstack-router:code-splitter:compile-virtual-file',

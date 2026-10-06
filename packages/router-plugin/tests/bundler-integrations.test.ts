@@ -12,8 +12,10 @@ import { createInterface } from 'node:readline'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { rspack } from '@rsbuild/core'
+import * as esbuild from 'esbuild'
 import webpack from 'webpack'
 import { describe, expect, it } from 'vitest'
+import { tanstackRouter as tanstackRouterEsbuild } from '../src/esbuild'
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
 import { tanstackRouter as tanstackRouterWebpack } from '../src/webpack'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
@@ -42,7 +44,7 @@ type BuildOptions = {
 type WebpackLikeName = 'webpack' | 'rspack'
 
 type Bundler = {
-  name: WebpackLikeName
+  name: WebpackLikeName | 'esbuild'
   /** Builds `entry` into `outDir` and returns the emitted entry file name. */
   build: (options: BuildOptions) => Promise<string>
 }
@@ -160,6 +162,25 @@ const bundlers: Array<Bundler> = [
   {
     name: 'rspack',
     build: (options) => runWebpackLikeBuild('rspack', options),
+  },
+  {
+    name: 'esbuild',
+    async build({ entry, outDir, mode, routerOptions }) {
+      await esbuild.build({
+        entryPoints: { entry },
+        outdir: outDir,
+        outExtension: { '.js': '.mjs' },
+        bundle: true,
+        splitting: true,
+        format: 'esm',
+        platform: 'node',
+        packages: 'external',
+        logLevel: 'silent',
+        define: { 'process.env.NODE_ENV': JSON.stringify(mode) },
+        plugins: [tanstackRouterEsbuild(routerOptions)],
+      })
+      return 'entry.mjs'
+    },
   },
 ]
 
@@ -297,7 +318,7 @@ describe.each(bundlers)('router-plugin/$name', (bundler) => {
         expect(componentChunks[0]!.file).not.toBe(entryFileName)
         expect(componentChunks[0]!.code).not.toContain(LOADER_MARKER)
 
-        if (mode === 'development') {
+        if (mode === 'development' && bundler.name !== 'esbuild') {
           // Webpack and Rspack use the `import.meta.webpackHot` adapter.
           expect(entry!.code).toContain('tsr-route-id')
           expect(entry!.code).toContain('tsr-split-component:component')
