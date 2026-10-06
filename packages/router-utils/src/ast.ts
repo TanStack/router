@@ -59,7 +59,13 @@ export function analyzeModule({
   const physicalName = filename.replace(/[?#].*$/, '')
   const module = analyze(code, {
     path: filename,
-    lang: /\.[cm]?ts$/.test(physicalName) ? 'ts' : 'tsx',
+    // JavaScript route files may contain JSX but never TypeScript, where
+    // `a < b > (c)` would be a call with type arguments
+    lang: /\.[cm]?ts$/.test(physicalName)
+      ? 'ts'
+      : /\.[cm]?jsx?$/.test(physicalName)
+        ? 'jsx'
+        : 'tsx',
     sourceType: 'module',
     attachComments: true,
     core: getCore(),
