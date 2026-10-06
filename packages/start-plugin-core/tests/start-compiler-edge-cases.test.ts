@@ -1,70 +1,16 @@
 import { describe, expect, test } from 'vitest'
-import {
-  StartCompiler,
-  detectKindsInCode,
-  getLookupKindsForEnv,
-} from '../src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
+import { createStartCompiler, moduleId } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
-import type { ServerFn } from '../src/start-compiler/types'
 
-const moduleId = '/test/src/module.tsx'
 const providerId = `${moduleId}?tss-serverfn-split`
 
-function createCompiler(options: {
-  env: 'client' | 'server'
-  files?: Record<string, string>
-  mode?: 'dev' | 'build'
-  directives?: Array<string>
-}) {
-  const { env, files = {} } = options
-  const serverFns: Record<string, ServerFn> = {}
-  const compiler: StartCompiler = new StartCompiler({
-    env,
-    envName: env === 'client' ? 'client' : 'ssr',
-    root: '/test',
-    framework: 'react',
-    providerEnvName: 'ssr',
-    mode: options.mode ?? 'build',
-    lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
-    getKnownServerFns: () => ({}),
-    devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
-      `/@id${extractedFilename.slice(root.length)}`,
-    serverFnProviderModuleDirectives: options.directives,
-    onServerFnsById: (fns) => Object.assign(serverFns, fns),
-    loadModule: async (id) => {
-      const code = files[id]
-      if (code !== undefined) {
-        compiler.ingestModule({ code, id })
-      }
-    },
-    resolveId: async (id) => {
-      if (id.startsWith('@tanstack/')) {
-        return id
-      }
-      const file = id.startsWith('./') ? `/test/src/${id.slice(2)}.ts` : id
-      return file in files ? file : null
-    },
-  })
-  const compile = async (code: string, id = moduleId) => {
-    const result = await compiler.compile({
-      code,
-      id,
-      detectedKinds: detectKindsInCode(code, env),
-    })
-    return result?.code ?? null
-  }
-  return { compiler, compile, serverFns }
-}
-
 async function compileValid(
-  options: Parameters<typeof createCompiler>[0] & {
+  options: Parameters<typeof createStartCompiler>[0] & {
     code: string
     provider?: boolean
   },
 ) {
-  const { compile, serverFns } = createCompiler(options)
+  const { compile, serverFns } = createStartCompiler(options)
   const code = await compile(
     options.code,
     options.provider ? providerId : moduleId,
@@ -307,7 +253,7 @@ export const c = authed.validator((x: string) => x).handler(async () => db.c())`
 })
 
 test('a validator without an argument is rejected', async () => {
-  const { compile } = createCompiler({ env: 'client' })
+  const { compile } = createStartCompiler({ env: 'client' })
   await expect(
     compile(`import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().validator().handler(async () => 1)`),
@@ -324,7 +270,7 @@ export const base = createServerFn()`,
     '/test/src/d.ts': `import { base } from './c'
 export const alias = base`,
   }
-  const { compiler, compile } = createCompiler({
+  const { compiler, compile } = createStartCompiler({
     env: 'client',
     mode: 'dev',
     files,

@@ -7,164 +7,18 @@
  * of the other environment and resolves factories through re-exports. Each
  * test names the plugin-rsc test or fixture it is ported from.
  */
-import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import {
-  StartCompiler,
-  detectKindsInCode,
-  getLookupKindsForEnv,
-} from '../src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
-import { compileStartModule } from './compile-start-module'
+  callProvider,
+  compileAll,
+  compileCode,
+  compileHydrate,
+  getChunkParams,
+  importModule,
+  importSources,
+  renderChunk,
+} from './regression-helpers'
 import { getModuleErrors } from './validate-module'
-
-type Output = 'client' | 'ssr' | 'provider'
-const outputs: Array<Output> = ['client', 'ssr', 'provider']
-const moduleId = '/test/src/module.tsx'
-
-async function compileFor(
-  output: Output,
-  code: string,
-  options: {
-    id?: string
-    files?: Record<string, string>
-    directives?: Array<string>
-  } = {},
-) {
-  const { files = {}, id = moduleId } = options
-  const env = output === 'client' ? 'client' : 'server'
-  const compiler: StartCompiler = new StartCompiler({
-    env,
-    envName: env === 'client' ? 'client' : 'ssr',
-    root: '/test',
-    framework: 'react',
-    providerEnvName: 'ssr',
-    mode: 'build',
-    lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
-    getKnownServerFns: () => ({}),
-    serverFnProviderModuleDirectives: options.directives,
-    loadModule: async (moduleId) => {
-      const source = files[moduleId]
-      if (source !== undefined) {
-        compiler.ingestModule({ code: source, id: moduleId })
-      }
-    },
-    resolveId: async (source) => {
-      if (source.startsWith('@tanstack/')) {
-        return source
-      }
-      const file = source.startsWith('./')
-        ? `/test/src/${source.slice(2)}.ts`
-        : source
-      return file in files ? file : null
-    },
-  })
-  const result = await compiler.compile({
-    code,
-    id: output === 'provider' ? `${id}?tss-serverfn-split` : id,
-    detectedKinds: detectKindsInCode(code, env),
-  })
-  return result?.code ?? null
-}
-
-/** Compiles the client, SSR caller and provider outputs and validates each. */
-async function compileAll(code: string, files?: Record<string, string>) {
-  const compiled = {} as Record<Output, string>
-  const errors = {} as Record<Output, Array<string>>
-  for (const output of outputs) {
-    const result = await compileFor(output, code, { files })
-    expect(result, output).not.toBeNull()
-    compiled[output] = result!
-    errors[output] = await getModuleErrors(result!)
-  }
-  expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  return compiled
-}
-
-/** Matches the source of an import or re-export statement. */
-const moduleSource =
-  /^(\s*import\s*|\s*(?:import|export)\b[^;'"]*?\bfrom\s*)(["'])([^"']+)\2/gm
-
-/** Project-local import sources of a module, sorted. */
-function importSources(code: string) {
-  return [...code.matchAll(moduleSource)]
-    .map((match) => match[3]!)
-    .filter((source) => !source.startsWith('@tanstack/'))
-    .sort()
-}
-
-const dataUrl = (code: string, type = 'text/javascript') =>
-  `data:${type},${encodeURIComponent(code)}`
-
-/**
- * Minimal Start runtime: callers keep the RPC they were given, providers run
- * the original handler.
- */
-const startRuntime: Record<string, string> = {
-  '@tanstack/react-start': `
-const builder = () => {
-  const self = {
-    middleware: () => self,
-    validator: () => self,
-    inputValidator: () => self,
-    handler: (rpc, impl) =>
-      impl
-        ? Object.assign((opts) => impl(opts ?? {}), {
-            __executeServer: (opts) => impl(opts),
-          })
-        : { rpc },
-  }
-  return self
-}
-export const createServerFn = builder`,
-  '@tanstack/react-start/server-rpc': `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`,
-  '@tanstack/react-start/client-rpc': `export const createClientRpc = (id) => ({ client: id })`,
-  '@tanstack/react-start/ssr-rpc': `export const createSsrRpc = (id) => ({ ssr: id })`,
-}
-
-/**
- * Evaluates a compiled module, resolving every import to the given stubs.
- * Stubs of `.json` specifiers are linked as JSON modules.
- */
-async function importModule(
-  code: string,
-  modules: Record<string, string> = {},
-): Promise<Record<string, any>> {
-  const sources = { ...startRuntime, ...modules }
-  const { code: javascript } = await transformWithOxc(code, 'module.ts')
-  const linked = javascript.replace(
-    moduleSource,
-    (_match, prefix: string, _quote: string, source: string) => {
-      const stub = sources[source]
-      if (stub === undefined) {
-        throw new Error(`No stub for import ${source}`)
-      }
-      const url = source.endsWith('.json')
-        ? dataUrl(stub, 'application/json')
-        : dataUrl(stub)
-      return `${prefix}${JSON.stringify(url)}`
-    },
-  )
-  return import(/* @vite-ignore */ dataUrl(linked))
-}
-
-/** Runs a provider's extracted handler the way the server-fn router does. */
-async function callProvider(
-  provider: string | Record<string, any>,
-  name: string,
-  modules: Record<string, string> = {},
-  data?: unknown,
-) {
-  const module =
-    typeof provider === 'string'
-      ? await importModule(provider, modules)
-      : provider
-  const handler = module[`${name}_createServerFn_handler`]
-  expect(handler, name).toBeTypeOf('function')
-  return handler({ data })
-}
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const dbServer = `export const db = { x: () => 'x' }`
@@ -786,8 +640,8 @@ export const createMiddleware = builder`,
     './chart.client': `export const chart = { draw: () => 'drawn' }`,
     './db.server': dbServer,
   }
-  const client = await compileFor('client', code)
-  const ssr = await compileFor('ssr', code)
+  const client = await compileCode('client', code)
+  const ssr = await compileCode('ssr', code)
   for (const output of [client, ssr]) {
     expect(output).not.toBeNull()
     expect(await getModuleErrors(output!)).toEqual([])
@@ -997,7 +851,7 @@ export const serverOnly = createServerOnlyFn(() => 'server only')`,
       startServerOnlyFn: true,
     },
   ])('$name', async ({ files, code = user, startServerOnlyFn }) => {
-    const client = await compileFor('client', code, { files })
+    const client = await compileCode('client', code, { files })
     expect(client).not.toBeNull()
     expect(await getModuleErrors(client!)).toEqual([])
     expect(client).toMatch(/createServerFn\(\)\.handler\(createClientRpc\(/)
@@ -1032,7 +886,7 @@ describe('provider module directives', () => {
     },
   ])('a "use server" string $name', async ({ prologue, existing }) => {
     const code = `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`
-    const provider = await compileFor('provider', code, {
+    const provider = await compileCode('provider', code, {
       directives: ['use server'],
     })
     expect(provider).not.toBeNull()
@@ -1050,7 +904,7 @@ describe('provider module directives', () => {
   test("a 'use client' directive after 'use strict' stays in the callers' prologue", async () => {
     const code = `'use strict'\n'use client'\n${head}export const fn = createServerFn().handler(async () => 1)`
     for (const output of ['client', 'ssr'] as const) {
-      const caller = await compileFor(output, code)
+      const caller = await compileCode(output, code)
       expect(caller).toMatch(/^\s*(["'])use strict\1;?\s*(["'])use client\2/)
     }
   })
@@ -1064,63 +918,12 @@ describe('CommonJS and TypeScript module formats', () => {
       const code = `${head}import { db } from './db.server'
 const n = <number>(1 as unknown)
 export const fn = createServerFn().handler(async () => [n, db.x()])`
-      const client = await compileFor('client', code, { id })
+      const client = await compileCode('client', code, { id })
       expect(client).toMatch(/createClientRpc\(/)
       expect(importSources(client!)).toEqual([])
     },
   )
 })
-
-/** Compiles a module with `<Hydrate>` and loads its split chunks, in order. */
-async function compileHydrate(env: 'client' | 'server', code: string) {
-  const plugin = createHydrateCompilerPlugin()
-  const parent = await compileStartModule({
-    env,
-    code,
-    compilerPlugins: [plugin],
-  })
-  expect(parent).not.toBeNull()
-  const chunks = [...parent!.matchAll(/import\((["'])(.+?)\1\)/g)].map(
-    ([, , id]) => {
-      const chunk = plugin.loadVirtualModule?.({
-        id: id!,
-        root: '/test',
-        env,
-        envName: env === 'client' ? 'client' : 'ssr',
-      })
-      expect(chunk, id).toBeTruthy()
-      return chunk!.code
-    },
-  )
-  return { parent: parent!, chunks }
-}
-
-/** The names a split chunk component receives as props. */
-function getChunkParams(chunk: string) {
-  const params = chunk.match(/export function H\d+\(([^)]*)\)/)?.[1] ?? ''
-  return [...params.matchAll(/[\w$]+/g)].map(([name]) => name).sort()
-}
-
-/** Evaluates a self-contained chunk and renders its component to a string. */
-async function renderChunk(chunk: string, props: Record<string, unknown>) {
-  const { code } = await transformWithOxc(chunk, 'chunk.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
-  })
-  const runtime = `const Fragment = Symbol('Fragment')
-const h = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false).join('')
-  if (type === Fragment) return text
-  if (typeof type === 'function') return type({ ...props, children: text })
-  return '<' + type + '>' + text + '</' + type + '>'
-}
-`
-  const module: Record<string, (props: unknown) => string> = await import(
-    /* @vite-ignore */ dataUrl(runtime + code)
-  )
-  const name = Object.keys(module).find((key) => /^H\d+$/.test(key))
-  expect(name).toBeDefined()
-  return module[name!]!(props)
-}
 
 describe('Hydrate children capture the bindings they read', () => {
   test.each<{

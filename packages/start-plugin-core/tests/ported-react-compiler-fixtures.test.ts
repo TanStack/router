@@ -1,7 +1,6 @@
-import { transformWithOxc } from 'vite'
 import { afterEach, describe, expect, test } from 'vitest'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import { compileStartModule } from './compile-start-module'
+import { compileHydrate, renderChunk } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
 
 // Inputs adapted from the React Compiler fixture corpus
@@ -9,47 +8,9 @@ import { getModuleErrors } from './validate-module'
 
 /** Compiles a module with one `<Hydrate>` boundary and loads its client chunk. */
 async function compileHydrateChunk(code: string) {
-  const plugin = createHydrateCompilerPlugin()
-  const parent = await compileStartModule({
-    env: 'client',
-    code,
-    compilerPlugins: [plugin],
-  })
-  const ids = [...(parent ?? '').matchAll(/import\((["'])(.+?)\1\)/g)]
-  expect(ids).toHaveLength(1)
-  const chunk = plugin.loadVirtualModule?.({
-    id: ids[0]![2]!,
-    root: '/test',
-    env: 'client',
-    envName: 'client',
-  })
-  if (!chunk) {
-    throw new Error('expected the Hydrate chunk to load')
-  }
-  return { parent: parent!, chunk: chunk.code }
-}
-
-/**
- * Evaluates a self-contained chunk (no imports) like a bundler would and
- * renders its `H0` export: JSX becomes plain function calls and intrinsic
- * elements become tags.
- */
-async function renderChunk(chunk: string, props: Record<string, unknown>) {
-  const { code } = await transformWithOxc(chunk, 'chunk.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
-  })
-  const runtime = `const Fragment = Symbol('Fragment')
-const h = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false).join('')
-  if (type === Fragment) return text
-  if (typeof type === 'function') return type({ ...props, children: text })
-  return '<' + type + '>' + text + '</' + type + '>'
-}
-`
-  const module: Record<string, (props: unknown) => string> = await import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(runtime + code)}`
-  )
-  return module.H0!({ props })
+  const { parent, chunks } = await compileHydrate('client', code)
+  expect(chunks).toHaveLength(1)
+  return { parent, chunk: chunks[0]! }
 }
 
 const hydratePage = (
@@ -168,7 +129,7 @@ function Widget() {
       const { parent, chunk } = await compileHydrateChunk(hydratePage(body))
       expect(await getModuleErrors(parent)).toEqual([])
       expect(await getModuleErrors(chunk)).toEqual([])
-      expect(await renderChunk(chunk, props ?? {})).toBe(expected)
+      expect(await renderChunk(chunk, { props: props ?? {} })).toBe(expected)
     },
   )
 })
@@ -205,7 +166,7 @@ function Widget() {
       )
       const calls: Array<string> = []
       ;(globalThis as { __portedTrack?: Array<string> }).__portedTrack = calls
-      expect(await renderChunk(chunk, {})).toBe('<p>widget</p>')
+      expect(await renderChunk(chunk, { props: {} })).toBe('<p>widget</p>')
       expect(calls).toHaveLength(1)
     },
   )

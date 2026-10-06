@@ -6,146 +6,20 @@
  * isomorphic functions, middleware and server functions. Each test names the
  * Waku test whose scenario it translates.
  */
-import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
-  StartCompiler,
-  detectKindsInCode,
-  getLookupKindsForEnv,
-} from '../src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
+  clientOnlyError as clientOnly,
+  compileAll,
+  compileCode,
+  frameworks,
+  importModule,
+  importSources,
+  outputs,
+  serverOnlyError as serverOnly,
+  settle,
+} from './regression-helpers'
 import { getModuleErrors } from './validate-module'
-
-type Output = 'client' | 'ssr' | 'provider'
-type Framework = 'react' | 'solid'
-const outputs: Array<Output> = ['client', 'ssr', 'provider']
-const frameworks: Array<Framework> = ['react', 'solid']
-
-async function compile(
-  output: Output,
-  code: string,
-  options: { framework?: Framework; mode?: 'build' | 'dev' } = {},
-) {
-  const env = output === 'client' ? 'client' : 'server'
-  const framework = options.framework ?? 'react'
-  const compiler = new StartCompiler({
-    env,
-    envName: env === 'client' ? 'client' : 'ssr',
-    root: '/test',
-    framework,
-    providerEnvName: 'ssr',
-    mode: options.mode ?? 'build',
-    lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, framework),
-    getKnownServerFns: () => ({}),
-    devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
-      `/@id${extractedFilename.slice(root.length)}`,
-    loadModule: async () => {},
-    resolveId: async (id) => (id.startsWith('@tanstack/') ? id : null),
-  })
-  const id = '/test/src/module.tsx'
-  const result = await compiler.compile({
-    code,
-    id: output === 'provider' ? `${id}?tss-serverfn-split` : id,
-    detectedKinds: detectKindsInCode(code, env),
-  })
-  return result?.code ?? null
-}
-
-/** Compiles every output, checks each is a valid module and returns them. */
-async function compileAll(
-  code: string,
-  options: Parameters<typeof compile>[2] = {},
-) {
-  const compiled = {} as Record<Output, string>
-  const errors = {} as Record<Output, Array<string>>
-  for (const output of outputs) {
-    const result = await compile(output, code, options)
-    expect(result, output).not.toBeNull()
-    compiled[output] = result!
-    errors[output] = await getModuleErrors(result!)
-  }
-  expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  return compiled
-}
-
-/** Matches the source of an import or re-export statement. */
-const moduleSource =
-  /^(\s*import\s*|\s*(?:import|export)\b[^;'"]*?\bfrom\s*)(["'])([^"']+)\2/gm
-
-/** Project-local import and re-export sources of a module, sorted. */
-function importSources(code: string) {
-  return [...code.matchAll(moduleSource)]
-    .map((match) => match[3]!)
-    .filter((source) => !source.startsWith('@tanstack/'))
-    .sort()
-}
-
-const dataUrl = (code: string) =>
-  `data:text/javascript,${encodeURIComponent(code)}`
-
-/** Uncompiled factories throw, so a test only passes if the compiler ran. */
-const startPackage = `
-const uncompiled = () => { throw new Error('uncompiled Start factory') }
-export const createServerFn = () => ({
-  handler: (rpc, impl) => (impl ? { __executeServer: (opts) => impl(opts) } : { rpc }),
-})
-export const createServerOnlyFn = uncompiled
-export const createClientOnlyFn = uncompiled
-export const createIsomorphicFn = uncompiled
-export const createMiddleware = () => ({ server: uncompiled })`
-
-const runtime: Record<string, string> = {}
-for (const framework of frameworks) {
-  runtime[`@tanstack/${framework}-start`] = startPackage
-  runtime[`@tanstack/${framework}-start/server-rpc`] =
-    `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`
-  runtime[`@tanstack/${framework}-start/client-rpc`] =
-    `export const createClientRpc = (id) => ({ client: id })`
-  runtime[`@tanstack/${framework}-start/ssr-rpc`] =
-    `export const createSsrRpc = (id) => ({ ssr: id })`
-}
-
-let evaluations = 0
-
-/**
- * Evaluates a compiled module, resolving every import to the given stubs.
- * Every call evaluates a fresh instance, even for identical code.
- */
-async function importModule(
-  code: string,
-  modules: Record<string, string> = {},
-): Promise<Record<string, any>> {
-  const sources = { ...runtime, ...modules }
-  const { code: javascript } = await transformWithOxc(code, 'module.ts')
-  const linked = javascript.replace(
-    moduleSource,
-    (_match, prefix: string, _quote: string, source: string) => {
-      const stub = sources[source]
-      if (stub === undefined) {
-        throw new Error(`No stub for import ${source}`)
-      }
-      return `${prefix}${JSON.stringify(dataUrl(stub))}`
-    },
-  )
-  return import(
-    /* @vite-ignore */ dataUrl(`${linked}\n// evaluation ${++evaluations}`)
-  )
-}
-
-/** The value of `run`, or the message of the error it throws. */
-function settle(run: () => unknown) {
-  try {
-    return run()
-  } catch (error) {
-    return `throws: ${(error as Error).message}`
-  }
-}
-
-const serverOnly =
-  'throws: createServerOnlyFn() functions can only be called on the server!'
-const clientOnly =
-  'throws: createClientOnlyFn() functions can only be called on the client!'
+import type { Output } from './regression-helpers'
 
 describe('ported Waku allowServer transform tests', () => {
   // "skips files without a use client directive even if the string exists",
@@ -178,7 +52,7 @@ export const value = createServerOnlyFn(() => 'mine')`,
     },
   ])('a module that $name is left untouched', async ({ code }) => {
     for (const output of outputs) {
-      expect(await compile(output, code), output).toBeNull()
+      expect(await compileCode(output, code), output).toBeNull()
     }
   })
 
@@ -207,7 +81,7 @@ export const value = createServerOnlyFn(() => 'mine')`,
       const rejected: Array<Output> = []
       for (const output of outputs) {
         try {
-          await compile(
+          await compileCode(
             output,
             `import { createServerOnlyFn, createClientOnlyFn, createIsomorphicFn } from '@tanstack/react-start'\n${code}`,
           )
@@ -352,7 +226,7 @@ export default createMiddleware().server(async ({ next }) => {
   db.log()
   return next()
 })`
-    const client = await compile('client', code)
+    const client = await compileCode('client', code)
     expect(client).not.toBeNull()
     expect(await getModuleErrors(client!)).toEqual([])
     expect(importSources(client!)).toEqual([])
@@ -426,7 +300,7 @@ export const fn = createServerFn().handler(async () => 'handler')${end}`
     expect(Object.keys(provider)).toEqual(['fn_createServerFn_handler'])
     expect(await provider.fn_createServerFn_handler({})).toBe('handler')
 
-    const dev = await compile('provider', code, { mode: 'dev' })
+    const dev = await compileCode('provider', code, { mode: 'dev' })
     expect(dev).not.toBeNull()
     expect(await getModuleErrors(dev!)).toEqual([])
     expect(dev).toMatch(/^if \(import\.meta\.hot\)/m)

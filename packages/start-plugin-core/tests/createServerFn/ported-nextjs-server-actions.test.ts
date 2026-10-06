@@ -4,146 +4,16 @@
  * Each test names the fixture directories (`server-graph/N`, `client-graph/N`)
  * whose scenario it translates to `createServerFn`.
  */
-import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
-  StartCompiler,
-  detectKindsInCode,
-  getLookupKindsForEnv,
-} from '../../src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
-import { declarationOf, getModuleErrors } from '../validate-module'
-import type { ServerFn } from '../../src/start-compiler/types'
-
-type Output = 'client' | 'ssr' | 'provider'
-const outputs: Array<Output> = ['client', 'ssr', 'provider']
-
-async function compileFor(
-  output: Output,
-  code: string,
-  mode: 'build' | 'dev' = 'build',
-) {
-  const env = output === 'client' ? 'client' : 'server'
-  const serverFns: Record<string, ServerFn> = {}
-  const compiler = new StartCompiler({
-    env,
-    envName: env === 'client' ? 'client' : 'ssr',
-    root: '/test',
-    framework: 'react',
-    providerEnvName: 'ssr',
-    mode,
-    lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
-    getKnownServerFns: () => ({}),
-    devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
-      `/@id${extractedFilename.slice(root.length)}`,
-    onServerFnsById: (fns) => Object.assign(serverFns, fns),
-    loadModule: async () => {},
-    resolveId: async (id) => (id.startsWith('@tanstack/') ? id : null),
-  })
-  const id = '/test/src/module.tsx'
-  const result = await compiler.compile({
-    code,
-    id: output === 'provider' ? `${id}?tss-serverfn-split` : id,
-    detectedKinds: detectKindsInCode(code, env),
-  })
-  return { code: result?.code ?? null, serverFns }
-}
-
-/** Compiles the client, SSR caller and provider outputs and validates each. */
-async function compileAll(code: string) {
-  const compiled = {} as Record<Output, string>
-  const errors = {} as Record<Output, Array<string>>
-  let serverFns: Record<string, ServerFn> = {}
-  for (const output of outputs) {
-    const result = await compileFor(output, code)
-    expect(result.code, output).not.toBeNull()
-    compiled[output] = result.code!
-    errors[output] = await getModuleErrors(result.code!)
-    if (output === 'client') {
-      serverFns = result.serverFns
-    }
-  }
-  expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  const idOf = (functionName: string) =>
-    Object.values(serverFns).find((fn) => fn.functionName === functionName)
-      ?.functionId
-  return { ...compiled, serverFns, idOf }
-}
-
-/** Matches the source of an import or re-export statement. */
-const moduleSource =
-  /^(\s*import\s*|\s*(?:import|export)\b[^;'"]*?\bfrom\s*)(["'])([^"']+)\2/gm
-
-/** Project-local import sources of a module, sorted. */
-function importSources(code: string) {
-  return [...code.matchAll(moduleSource)]
-    .map((match) => match[3]!)
-    .filter((source) => !source.startsWith('@tanstack/'))
-    .sort()
-}
-
-const dataUrl = (code: string) =>
-  `data:text/javascript,${encodeURIComponent(code)}`
-
-/**
- * Minimal Start runtime: callers keep the RPC they were given, providers run
- * the original handler through `__executeServer`.
- */
-const startRuntime: Record<string, string> = {
-  '@tanstack/react-start': `
-const builder = () => {
-  const self = {
-    middleware: () => self,
-    validator: () => self,
-    inputValidator: () => self,
-    handler: (rpc, impl) =>
-      impl
-        ? Object.assign((data) => impl({ data }), {
-            __executeServer: (opts) => impl(opts),
-          })
-        : { rpc },
-  }
-  return self
-}
-export const createServerFn = builder`,
-  '@tanstack/react-start/server-rpc': `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`,
-  '@tanstack/react-start/client-rpc': `export const createClientRpc = (id) => ({ client: id })`,
-  '@tanstack/react-start/ssr-rpc': `export const createSsrRpc = (id) => ({ ssr: id })`,
-}
-
-/** Evaluates a compiled module, resolving every import to the given stubs. */
-async function importModule(
-  code: string,
-  modules: Record<string, string> = {},
-): Promise<Record<string, any>> {
-  const sources = { ...startRuntime, ...modules }
-  const { code: javascript } = await transformWithOxc(code, 'module.ts')
-  const linked = javascript.replace(
-    moduleSource,
-    (_match, prefix: string, _quote: string, source: string) => {
-      const stub = sources[source]
-      if (stub === undefined) {
-        throw new Error(`No stub for import ${source}`)
-      }
-      return `${prefix}${JSON.stringify(dataUrl(stub))}`
-    },
-  )
-  return import(/* @vite-ignore */ dataUrl(linked))
-}
-
-/** Runs a provider's extracted handler the way the server-fn router does. */
-async function callProvider(
-  provider: string,
-  name: string,
-  modules: Record<string, string> = {},
-  data?: unknown,
-) {
-  const module = await importModule(provider, modules)
-  const handler = module[`${name}_createServerFn_handler`]
-  expect(handler, name).toBeTypeOf('function')
-  return handler({ data })
-}
+  callProvider,
+  compileAll,
+  compileFor,
+  importModule,
+  importSources,
+  outputs,
+} from '../regression-helpers'
+import { declarationOf } from '../validate-module'
 
 const dbServer = `export const db = {
   x: () => 'x', y: () => 'y', z: () => 'z', w: () => 'w',
@@ -621,7 +491,7 @@ ${names.map((name) => `export const ${name} = createServerFn().handler(async () 
       expect(await handler({})).toBe(name)
     }
 
-    const dev = await compileFor('client', code, 'dev')
+    const dev = await compileFor('client', code, { mode: 'dev' })
     expect(
       Object.keys(dev.serverFns)
         .map(

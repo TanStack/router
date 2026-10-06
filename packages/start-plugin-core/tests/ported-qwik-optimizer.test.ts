@@ -6,176 +6,36 @@
  * code splitting move module-level code between modules. Each test names the
  * Qwik test it is ported from.
  */
-import { parseSync, transformWithOxc } from 'vite'
+import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
-import {
-  StartCompiler,
-  detectKindsInCode,
-  getLookupKindsForEnv,
-} from '../src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
 import { compileStartModule } from './compile-start-module'
+import {
+  compileHydrate,
+  createStartCompiler,
+  evaluateModule,
+  getChunkIds,
+  getChunkParams,
+  loadChunk,
+  renderChunk,
+} from './regression-helpers'
 import { getModuleErrors } from './validate-module'
+import type { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 
-const parentId = '/test/src/module.tsx'
-type Env = 'client' | 'server'
-type HydratePlugin = ReturnType<typeof createHydrateCompilerPlugin>
-
-/**
- * Compiles one module through `StartCompiler` like the bundler plugins do: the
- * parent module, or a loaded split chunk under its virtual module id.
- */
-async function compileModule(
-  plugin: HydratePlugin,
-  env: Env,
+/** Compiles a loaded split chunk under its virtual module id, like the bundler. */
+function compileChunk(
+  plugin: ReturnType<typeof createHydrateCompilerPlugin>,
   code: string,
-  id = parentId,
+  id: string,
 ) {
-  const compiler: StartCompiler = new StartCompiler({
-    env,
-    envName: env === 'client' ? 'client' : 'ssr',
-    root: '/test',
-    framework: 'react',
-    providerEnvName: 'ssr',
-    mode: 'build',
-    lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
-    getKnownServerFns: () => ({}),
-    loadModule: async () => {},
-    resolveId: async (source) =>
-      source.startsWith('@tanstack/') ? source : null,
+  return createStartCompiler({
+    env: 'client',
     compilerPlugins: [plugin],
-  })
-  const result = await compiler.compile({
-    code,
-    id,
-    detectedKinds: detectKindsInCode(code, env),
-  })
-  return result?.code ?? null
-}
-
-/** The Hydrate chunk ids a compiled module imports, in source order. */
-function getChunkIds(code: string) {
-  return [...code.matchAll(/import\((["'])(.+?)\1\)/g)]
-    .map(([, , id]) => id!)
-    .filter((id) => id.includes('tss-hydrate='))
-}
-
-function loadChunk(plugin: HydratePlugin, env: Env, id: string) {
-  return (
-    plugin.loadVirtualModule?.({
-      id,
-      root: '/test',
-      env,
-      envName: env === 'client' ? 'client' : 'ssr',
-    })?.code ?? null
-  )
-}
-
-/** Compiles a module with `<Hydrate>` and loads the split chunks it imports. */
-async function compileHydrate(env: Env, code: string) {
-  const plugin = createHydrateCompilerPlugin()
-  const parent = await compileModule(plugin, env, code)
-  if (parent === null) {
-    throw new Error('expected the module to be transformed')
-  }
-  const chunks = getChunkIds(parent).map((id) => {
-    const chunk = loadChunk(plugin, env, id)
-    if (chunk === null) {
-      throw new Error(`expected virtual module ${id} to load`)
-    }
-    return chunk
-  })
-  // Order chunks by boundary index, however the parent declares them.
-  const index = (chunk: string) =>
-    Number(chunk.match(/export function H(\d+)\(/)?.[1] ?? -1)
-  chunks.sort((a, b) => index(a) - index(b))
-  return { parent, chunks, plugin }
-}
-
-/** The names a split chunk component receives as props. */
-function getChunkParams(chunk: string) {
-  const params = chunk.match(/export function H\d+\(([^)]*)\)/)?.[1] ?? ''
-  return [...params.matchAll(/[\w$]+/g)].map(([name]) => name).sort()
+  }).compile(code, id)
 }
 
 /** Boundary ids (`h` props) a compiled module renders, in source order. */
 function getBoundaryIds(code: string) {
   return [...code.matchAll(/\bh=\s*["']([^"']+)["']/g)].map(([, id]) => id!)
-}
-
-const stubsKey = '__portedQwikOptimizerStubs'
-let evaluations = 0
-
-/** Renders JSX to text: intrinsic elements become tags, components are called. */
-const renderRuntime = `const Fragment = Symbol('Fragment')
-const h = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
-  if (type === Fragment) return text
-  if (typeof type === 'function') return type({ ...props, children: text })
-  if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
-  return '<' + type + '>' + text + '</' + type + '>'
-}
-`
-
-/**
- * Evaluates a compiled module like a bundler would: JSX becomes plain calls
- * of the `runtime`, and imports are linked to `stubs`, keyed by specifier.
- */
-async function evaluate(
-  code: string,
-  stubs: Record<string, Record<string, unknown>> = {},
-  runtime = renderRuntime,
-): Promise<Record<string, (...args: Array<any>) => unknown>> {
-  const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
-  })
-  const key = `${stubsKey}${evaluations++}`
-  ;(globalThis as Record<string, unknown>)[key] = stubs
-  // Imports are hoisted: link them before any other statement runs.
-  const imports: Array<string> = []
-  const body = javascript.replace(
-    /^import\s+(.+?)\s+from\s+(["'])(.+?)\2;?$/gm,
-    (_, clause: string, __, source: string) => {
-      if (!(source in stubs)) {
-        throw new Error(`no stub for import ${source}`)
-      }
-      const from = `globalThis.${key}[${JSON.stringify(source)}]`
-      const named = clause.match(/\{(.*)\}/)?.[1]
-      const head = clause
-        .replace(/\{.*\}/, '')
-        .replace(/,\s*$/, '')
-        .trim()
-      if (named) {
-        imports.push(`const { ${named.replace(/\bas\b/g, ':')} } = ${from};`)
-      }
-      if (head.startsWith('* as ')) {
-        imports.push(`const ${head.slice(5)} = ${from};`)
-      } else if (head) {
-        imports.push(`const ${head} = ${from}.default;`)
-      }
-      return ''
-    },
-  )
-  const linked = `${imports.join('\n')}\n${body}`
-  return import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(runtime + linked)}`
-  )
-}
-
-/** Renders a chunk's component export with the given props. */
-async function renderChunk(
-  chunk: string,
-  props: Record<string, unknown> = {},
-  stubs: Record<string, Record<string, unknown>> = {},
-) {
-  const module = await evaluate(chunk, stubs)
-  const name = Object.keys(module).find((key) => /^H\d+$/.test(key))
-  if (!name) {
-    throw new Error('expected the chunk to export a component')
-  }
-  return module[name]!(props)
 }
 
 const startStubs = {
@@ -458,7 +318,7 @@ export function Page() {
     )
     expect(await getModuleErrors(parent)).toEqual([])
     // The lazy chunk component must not be shadowed by the captured locals.
-    const module = await evaluate(parent, startStubs)
+    const module = await evaluateModule(parent, startStubs)
     expect(module.Page!()).toBe('lazy(_H0=local,_H0_preload=preload)')
     expect(
       await renderChunk(chunks[0]!, { _H0: 'local', _H0_preload: 'preload' }),
@@ -571,12 +431,12 @@ export function Page() {
     const propsRuntime = `const Fragment = null
 const h = (type, props) => JSON.stringify(props)
 `
-    const expected = await evaluate(
+    const expected = await evaluateModule(
       `export const H0 = () => ${element}`,
       {},
       propsRuntime,
     )
-    const module = await evaluate(chunks[0]!, {}, propsRuntime)
+    const module = await evaluateModule(chunks[0]!, {}, propsRuntime)
     expect(module.H0!({})).toBe(expected.H0!())
   })
 
@@ -627,7 +487,7 @@ export function Page() {
 `,
     )
     expect(await getModuleErrors(chunks[0]!)).toEqual([])
-    const module = await evaluate(chunks[0]!)
+    const module = await evaluateModule(chunks[0]!)
     expect(module.H0!({})).toBe('<p>1</p>')
     expect(module.H0!({})).toBe('<p>2</p>')
   })
@@ -655,7 +515,7 @@ export function Page() {
       expect(await getModuleErrors(parent)).toEqual([])
       expect(await getModuleErrors(chunks[0]!)).toEqual([])
       expect(getDeclaredNames(parent).has('b')).toBe(true)
-      const module = await evaluate(parent, startStubs)
+      const module = await evaluateModule(parent, startStubs)
       expect(module.fromRoot!()).toMatch(/B/)
       expect(await renderChunk(chunks[0]!)).toBe('<p>A</p>')
     },
@@ -694,7 +554,7 @@ export function Page() {
 `,
     )
     expect(await getModuleErrors(parent)).toEqual([])
-    const module = await evaluate(parent, startStubs)
+    const module = await evaluateModule(parent, startStubs)
     expect(module.exportedValue).toBe('abc')
     expect(module.readShared!()).toBe('abc')
     expect(await renderChunk(chunks[0]!)).toBe('<p>abc</p>')
@@ -717,7 +577,7 @@ export function App() {
     )
     expect(chunks).toHaveLength(2)
     expect(await getModuleErrors(parent)).toEqual([])
-    const module = await evaluate(parent, startStubs)
+    const module = await evaluateModule(parent, startStubs)
     expect(module.direct!()).toBe(2)
     expect(await renderChunk(chunks[0]!)).toBe('<p>3</p>')
     expect(await renderChunk(chunks[1]!)).toBe('<p>4</p>')
@@ -754,9 +614,8 @@ export function Page({ isOpen, fee }) {
     const { parent, chunks, plugin } = await compileHydrate('client', code)
     expect(getChunkParams(chunks[0]!)).toEqual(['fee', 'isOpen', 'label'])
     // The bundler compiles the loaded chunk like any other module.
-    const outer = await compileModule(
+    const outer = await compileChunk(
       plugin,
-      'client',
       chunks[0]!,
       getChunkIds(parent)[0]!,
     )
@@ -837,7 +696,7 @@ export function Card(label, body) {
 `,
     )
     expect(await getModuleErrors(parent)).toEqual([])
-    const module = await evaluate(parent, startStubs)
+    const module = await evaluateModule(parent, startStubs)
     expect(module.List!({ items: ['a', 'b'] })).toBe(
       '<ul><li>0</li><li>1</li></ul>',
     )
@@ -887,7 +746,7 @@ export function Page(props) {
 }
 `,
     )
-    const module = await evaluate(parent, startStubs)
+    const module = await evaluateModule(parent, startStubs)
     expect(module.Page!({ a: 'A', b: 'B' })).toBe('<p>B</p>')
   })
 })
@@ -929,9 +788,8 @@ export function Page() {
     'client: $name calls the provider id from the split chunk',
     async ({ code }) => {
       const { parent, chunks, plugin } = await compileHydrate('client', code)
-      const chunk = await compileModule(
+      const chunk = await compileChunk(
         plugin,
-        'client',
         chunks[0]!,
         getChunkIds(parent)[0]!,
       )

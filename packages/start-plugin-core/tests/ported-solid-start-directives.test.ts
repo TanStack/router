@@ -5,153 +5,21 @@
  * helpers). Each test names the SolidStart test or helper whose scenario it
  * translates to `createServerFn`, the env-only functions or `<Hydrate>`.
  */
-import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
-  StartCompiler,
-  detectKindsInCode,
-  getLookupKindsForEnv,
-} from '../src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+  clientOnlyError as clientOnly,
+  compileAll,
+  compileFor,
+  compileHydrate as compileHydrateModule,
+  frameworks,
+  getChunkParams,
+  importModule,
+  importSources,
+  renderChunk,
+  serverOnlyError as serverOnly,
+  settle,
+} from './regression-helpers'
 import { getModuleErrors } from './validate-module'
-import type { ServerFn } from '../src/start-compiler/types'
-
-type Output = 'client' | 'ssr' | 'provider'
-type Framework = 'react' | 'solid'
-const frameworks: Array<Framework> = ['react', 'solid']
-
-async function compile(
-  output: Output,
-  code: string,
-  options: { framework?: Framework; mode?: 'build' | 'dev'; id?: string } = {},
-) {
-  const env = output === 'client' ? 'client' : 'server'
-  const framework = options.framework ?? 'react'
-  const serverFns: Record<string, ServerFn> = {}
-  const compiler = new StartCompiler({
-    env,
-    envName: env === 'client' ? 'client' : 'ssr',
-    root: '/test',
-    framework,
-    providerEnvName: 'ssr',
-    mode: options.mode ?? 'build',
-    lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, framework),
-    getKnownServerFns: () => ({}),
-    devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
-      `/@id${extractedFilename.slice(root.length)}`,
-    onServerFnsById: (fns) => Object.assign(serverFns, fns),
-    loadModule: async () => {},
-    resolveId: async (id) => (id.startsWith('@tanstack/') ? id : null),
-  })
-  const id = options.id ?? '/test/src/module.tsx'
-  const result = await compiler.compile({
-    code,
-    id: output === 'provider' ? `${id}?tss-serverfn-split` : id,
-    detectedKinds: detectKindsInCode(code, env),
-  })
-  return { code: result?.code ?? null, serverFns }
-}
-
-/** Compiles every output, checks each is a valid module and returns them. */
-async function compileAll(code: string, framework: Framework = 'react') {
-  const compiled = {} as Record<Output, string>
-  const errors = {} as Record<Output, Array<string>>
-  for (const output of ['client', 'ssr', 'provider'] as const) {
-    const { code: result } = await compile(output, code, { framework })
-    expect(result, output).not.toBeNull()
-    compiled[output] = result!
-    errors[output] = await getModuleErrors(result!)
-  }
-  expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  return compiled
-}
-
-/** Matches the source of an import or re-export statement. */
-const moduleSource =
-  /^(\s*import\s*|\s*(?:import|export)\b[^;'"]*?\bfrom\s*)(["'])([^"']+)\2/gm
-
-/** Project-local import sources of a module, sorted. */
-function importSources(code: string) {
-  return [...code.matchAll(moduleSource)]
-    .map((match) => match[3]!)
-    .filter((source) => !source.startsWith('@tanstack/'))
-    .sort()
-}
-
-const dataUrl = (code: string) =>
-  `data:text/javascript,${encodeURIComponent(code)}`
-
-/** Uncompiled factories throw, so a test only passes if the compiler ran. */
-const startPackage = `
-const uncompiled = () => { throw new Error('uncompiled Start factory') }
-const builder = () => {
-  const self = {
-    middleware: () => self,
-    validator: () => self,
-    handler: (rpc, impl) =>
-      impl ? { __executeServer: (opts) => impl(opts) } : { rpc },
-  }
-  return self
-}
-export const createServerFn = builder
-export const createServerOnlyFn = uncompiled
-export const createClientOnlyFn = uncompiled
-export const createIsomorphicFn = uncompiled
-export const createMiddleware = uncompiled`
-
-const runtime: Record<string, string> = {}
-for (const framework of frameworks) {
-  runtime[`@tanstack/${framework}-start`] = startPackage
-  runtime[`@tanstack/${framework}-start/server-rpc`] =
-    `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`
-  runtime[`@tanstack/${framework}-start/client-rpc`] =
-    `export const createClientRpc = (id) => ({ client: id })`
-  runtime[`@tanstack/${framework}-start/ssr-rpc`] =
-    `export const createSsrRpc = (id) => ({ ssr: id })`
-}
-
-let evaluations = 0
-
-/**
- * Evaluates a compiled module, resolving every import to the given stubs.
- * Every call evaluates a fresh instance, even for identical code.
- */
-async function importModule(
-  code: string,
-  modules: Record<string, string> = {},
-): Promise<Record<string, any>> {
-  const sources = { ...runtime, ...modules }
-  const { code: javascript } = await transformWithOxc(code, 'module.ts')
-  const linked = javascript.replace(
-    moduleSource,
-    (_match, prefix: string, _quote: string, source: string) => {
-      const stub = sources[source]
-      if (stub === undefined) {
-        throw new Error(`No stub for import ${source}`)
-      }
-      return `${prefix}${JSON.stringify(dataUrl(stub))}`
-    },
-  )
-  return import(
-    /* @vite-ignore */ dataUrl(`${linked}\n// evaluation ${++evaluations}`)
-  )
-}
-
-/** The value of `run`, or the message of the error it throws. */
-function settle(run: () => unknown) {
-  try {
-    return run()
-  } catch (error) {
-    return `throws: ${(error as Error).message}`
-  }
-}
-
-const serverOnly =
-  'throws: createServerOnlyFn() functions can only be called on the server!'
-const clientOnly =
-  'throws: createClientOnlyFn() functions can only be called on the client!'
 
 describe.each(frameworks)('ported SolidStart directives (%s)', (framework) => {
   const start = `import { createServerFn, createServerOnlyFn, createClientOnlyFn, createIsomorphicFn } from '@tanstack/${framework}-start'`
@@ -167,7 +35,7 @@ describe.each(frameworks)('ported SolidStart directives (%s)', (framework) => {
         `${start}
 ${imports}
 export const serverAction = createServerFn().handler(async (): Promise<Session | null> => verify())`,
-        framework,
+        { framework },
       )
       expect(importSources(compiled.client)).toEqual([])
       expect(importSources(compiled.ssr)).toEqual([])
@@ -193,7 +61,7 @@ export const serverAction = createServerFn().handler(async (): Promise<Session |
 ${imports}
 export const value = clientValue
 export const serverAction = createServerFn().handler(async (): Promise<Session | null> => ${call})`,
-        framework,
+        { framework },
       )
       const modules = {
         './server-module': `export const clientValue = 'client'; export const verify = () => 'verified'; export default verify`,
@@ -326,7 +194,7 @@ export class Api extends Base {
   ])(
     'an env-only function keeps $name',
     async ({ code, run, client, server }) => {
-      const compiled = await compileAll(`${start}\n${code}`, framework)
+      const compiled = await compileAll(`${start}\n${code}`, { framework })
       expect(importSources(compiled.client)).toEqual([])
       const modules = { './db.server': `export const db = { count: () => 41 }` }
       expect(run(await importModule(compiled.client, modules))).toEqual(client)
@@ -375,7 +243,7 @@ describe('ported SolidStart directives', () => {
   ])('a server fn in $name is rejected', async ({ code }) => {
     for (const output of ['client', 'ssr', 'provider'] as const) {
       await expect(
-        compile(output, `${start}\n${code}`),
+        compileFor(output, `${start}\n${code}`),
         output,
       ).rejects.toThrow('createServerFn must be assigned to a variable!')
     }
@@ -384,9 +252,9 @@ describe('ported SolidStart directives', () => {
   describe('server function ids', () => {
     async function idsOf(
       code: string,
-      options: Parameters<typeof compile>[2] = {},
+      options: Parameters<typeof compileFor>[2] = {},
     ) {
-      const { serverFns } = await compile(
+      const { serverFns } = await compileFor(
         'client',
         `${start}\n${code}`,
         options,
@@ -422,7 +290,7 @@ export const save = createServerFn().handler(async () => 2)`
 export const loadSecretReport = createServerFn().handler(async () => 1)`
       const [id] = Object.values(await idsOf(code))
       expect(id).not.toMatch(/loadSecretReport|module|src/)
-      const client = await compile('client', `${start}\n${code}`)
+      const client = await compileFor('client', `${start}\n${code}`)
       expect(client.code).toContain(JSON.stringify(id))
       expect(client.code).not.toContain('loadSecretReport_createServerFn')
     })
@@ -433,9 +301,9 @@ export const loadSecretReport = createServerFn().handler(async () => 1)`
       const code = `${start}\nexport const load = createServerFn().handler(async () => 1)`
       const ids: Array<string> = []
       for (const id of ['/test/src/a.tsx', '/test/src/b/a.tsx']) {
-        const client = await compile('client', code, { id })
+        const client = await compileFor('client', code, { id })
         const [functionId] = Object.keys(client.serverFns)
-        const provider = await compile('provider', code, { id })
+        const provider = await compileFor('provider', code, { id })
         expect(provider.code).toContain(JSON.stringify(functionId))
         ids.push(functionId!)
       }
@@ -468,79 +336,13 @@ export const fn = createServerFn().handler(async () => red)`)
   })
 })
 
-/** Compiles a module with `<Hydrate>` for the client and loads its chunks. */
+/** Compiles a module with `<Hydrate>` for the client and checks every module. */
 async function compileHydrate(code: string) {
-  const plugin = createHydrateCompilerPlugin()
-  const compiler = new StartCompiler({
-    env: 'client',
-    envName: 'client',
-    root: '/test',
-    framework: 'react',
-    providerEnvName: 'ssr',
-    mode: 'build',
-    lookupKinds: getLookupKindsForEnv('client'),
-    lookupConfigurations: getLookupConfigurationsForEnv('client', 'react'),
-    getKnownServerFns: () => ({}),
-    loadModule: async () => {},
-    resolveId: async (id) => (id.startsWith('@tanstack/') ? id : null),
-    compilerPlugins: [plugin],
-  })
-  const result = await compiler.compile({
-    code,
-    id: '/test/src/module.tsx',
-    detectedKinds: detectKindsInCode(code, 'client'),
-  })
-  const parent = result?.code
-  if (!parent) {
-    throw new Error('expected the module to be transformed')
+  const { parent, chunks } = await compileHydrateModule('client', code)
+  for (const module of [parent, ...chunks]) {
+    expect(await getModuleErrors(module)).toEqual([])
   }
-  expect(await getModuleErrors(parent)).toEqual([])
-  const chunks: Array<string> = []
-  for (const [, , id] of parent.matchAll(/import\((["'])(.+?)\1\)/g)) {
-    const chunk = plugin.loadVirtualModule?.({
-      id: id!,
-      root: '/test',
-      env: 'client',
-      envName: 'client',
-    })
-    expect(chunk, id).toBeTruthy()
-    expect(await getModuleErrors(chunk!.code)).toEqual([])
-    chunks.push(chunk!.code)
-  }
-  // Order chunks by boundary index, however the parent declares them.
-  const index = (chunk: string) =>
-    Number(chunk.match(/export function H(\d+)\(/)?.[1] ?? -1)
-  chunks.sort((a, b) => index(a) - index(b))
   return { parent, chunks }
-}
-
-/** The names a split chunk component receives as props, sorted. */
-function chunkParams(chunk: string) {
-  const params = chunk.match(/export function H\d+\(([^)]*)\)/)?.[1] ?? ''
-  return [...params.matchAll(/[\w$]+/g)].map(([name]) => name).sort()
-}
-
-/** Renders a chunk export to a string: JSX becomes nested tags. */
-async function renderChunk(
-  chunk: string,
-  exportName: string,
-  props: Record<string, unknown> = {},
-) {
-  const { code } = await transformWithOxc(chunk, 'chunk.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
-  })
-  const jsx = `const Fragment = Symbol('Fragment')
-const h = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false).join('')
-  if (type === Fragment) return text
-  if (typeof type === 'function') return type({ ...props, children: text })
-  return '<' + type + '>' + text + '</' + type + '>'
-}
-`
-  const module: Record<string, (props: unknown) => string> = await import(
-    /* @vite-ignore */ dataUrl(jsx + code)
-  )
-  return module[exportName]!(props)
 }
 
 describe('ported SolidStart directives: Hydrate children captures', () => {
@@ -560,9 +362,9 @@ export function Page() {
   return <Hydrate><List<Item> items={items as Array<Shape>} /><p>{(items[0] satisfies Item).id}</p></Hydrate>
 }`)
     expect(chunks).toHaveLength(1)
-    expect(chunkParams(chunks[0]!)).toEqual(['items'])
+    expect(getChunkParams(chunks[0]!)).toEqual(['items'])
     expect(parent).not.toMatch(/\b(?:Item|Shape)=\{/)
-    expect(await renderChunk(chunks[0]!, 'H0', { items: [{ id: 'a' }] })).toBe(
+    expect(await renderChunk(chunks[0]!, { items: [{ id: 'a' }] })).toBe(
       '<ul>1</ul><p>a</p>',
     )
   })
@@ -588,7 +390,7 @@ export function Page({ suffix = '!' }: { suffix?: string }) {
     <Hydrate><i>{(function (..._args: Array<unknown>) { return arguments.length })(1, 2)}</i></Hydrate>
   </>
 }`)
-    expect(chunks.map(chunkParams)).toEqual([
+    expect(chunks.map(getChunkParams)).toEqual([
       ['suffix'],
       ['Local'],
       ['label'],
@@ -596,14 +398,14 @@ export function Page({ suffix = '!' }: { suffix?: string }) {
     ])
     expect(
       await Promise.all([
-        renderChunk(chunks[0]!, 'H0', { suffix: '!' }),
-        renderChunk(chunks[1]!, 'H1', {
+        renderChunk(chunks[0]!, { suffix: '!' }),
+        renderChunk(chunks[1]!, {
           Local: class {
             static label = 'local'
           },
         }),
-        renderChunk(chunks[2]!, 'H2', { label: 'inner' }),
-        renderChunk(chunks[3]!, 'H3'),
+        renderChunk(chunks[2]!, { label: 'inner' }),
+        renderChunk(chunks[3]!),
       ]),
     ).toEqual(['<p>module!</p>', '<p>local2</p>', '<b>inner</b>', '<i>2</i>'])
   })

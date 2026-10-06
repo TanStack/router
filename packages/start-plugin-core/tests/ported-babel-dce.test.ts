@@ -7,91 +7,9 @@
  * then everything only they used; these tests check which bindings that
  * removal prunes and which it keeps.
  */
-import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
-import {
-  StartCompiler,
-  detectKindsInCode,
-  getLookupKindsForEnv,
-} from '../src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
+import { compileAll, compileFor, importModule } from './regression-helpers'
 import { declarationOf, getModuleErrors } from './validate-module'
-
-type Output = 'client' | 'ssr' | 'provider'
-
-async function compileFor(output: Output, code: string) {
-  const env = output === 'client' ? 'client' : 'server'
-  const compiler = new StartCompiler({
-    env,
-    envName: env === 'client' ? 'client' : 'ssr',
-    root: '/test',
-    framework: 'react',
-    providerEnvName: 'ssr',
-    mode: 'build',
-    lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
-    getKnownServerFns: () => ({}),
-    loadModule: async () => {},
-    resolveId: async (id) => (id.startsWith('@tanstack/') ? id : null),
-  })
-  const id = '/test/src/module.tsx'
-  const result = await compiler.compile({
-    code,
-    id: output === 'provider' ? `${id}?tss-serverfn-split` : id,
-    detectedKinds: detectKindsInCode(code, env),
-  })
-  expect(result, output).not.toBeNull()
-  return result!.code
-}
-
-/** Compiles the client, SSR caller and provider outputs and validates each. */
-async function compileAll(code: string) {
-  const compiled = {} as Record<Output, string>
-  const errors = {} as Record<Output, Array<string>>
-  for (const output of ['client', 'ssr', 'provider'] as const) {
-    compiled[output] = await compileFor(output, code)
-    errors[output] = await getModuleErrors(compiled[output])
-  }
-  expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  return compiled
-}
-
-/** Matches the source of an import or re-export statement. */
-const moduleSource =
-  /^(\s*import\s*|\s*(?:import|export)\b[^;'"]*?\bfrom\s*)(["'])([^"']+)\2/gm
-
-const dataUrl = (code: string) =>
-  `data:text/javascript,${encodeURIComponent(code)}`
-
-const startRuntime: Record<string, string> = {
-  '@tanstack/react-start': `
-const builder = () => {
-  const self = { handler: (rpc) => ({ rpc }) }
-  return self
-}
-export const createServerFn = builder`,
-  '@tanstack/react-start/client-rpc': `export const createClientRpc = (id) => ({ client: id })`,
-}
-
-/** Evaluates a compiled module, resolving every import to the given stubs. */
-async function importModule(
-  code: string,
-  modules: Record<string, string>,
-): Promise<Record<string, any>> {
-  const sources = { ...startRuntime, ...modules }
-  const { code: javascript } = await transformWithOxc(code, 'module.ts')
-  const linked = javascript.replace(
-    moduleSource,
-    (_match, prefix: string, _quote: string, source: string) => {
-      const stub = sources[source]
-      if (stub === undefined) {
-        throw new Error(`No stub for import ${source}`)
-      }
-      return `${prefix}${JSON.stringify(dataUrl(stub))}`
-    },
-  )
-  return import(/* @vite-ignore */ dataUrl(linked))
-}
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -250,7 +168,7 @@ export const fn = createServerFn().handler(async () => [flag, conn, mode, labele
 
   // Source: dead-code-elimination.test.ts "variable" > "within for...in"
   test('the client drops a var nested in a function block that only the server implementation reads', async () => {
-    const client = await compileFor(
+    const { code: client } = await compileFor(
       'client',
       `import { createIsomorphicFn } from '@tanstack/react-start'
 import { serverCall } from './db.server'
@@ -263,7 +181,8 @@ export function getValue(flag: boolean) {
 }
 `,
     )
-    expect(await getModuleErrors(client)).toEqual([])
+    expect(client).not.toBeNull()
+    expect(await getModuleErrors(client!)).toEqual([])
     expect(client).not.toContain('./db.server')
     expect(client).not.toContain('serverCall()')
   })

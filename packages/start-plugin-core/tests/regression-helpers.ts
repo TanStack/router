@@ -1,0 +1,386 @@
+/**
+ * Helpers shared by the Start compiler regression suites: compile a module
+ * into its client, SSR caller and server-function provider outputs, split
+ * `<Hydrate>` children into chunks, and evaluate compiled modules against a
+ * minimal Start runtime.
+ */
+import { transformWithOxc } from 'vite'
+import { expect } from 'vitest'
+import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+import {
+  StartCompiler,
+  detectKindsInCode,
+  getLookupKindsForEnv,
+} from '../src/start-compiler/compiler'
+import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
+import { getModuleErrors } from './validate-module'
+import type { ServerFn } from '../src/start-compiler/types'
+import type { StartCompilerPlugin } from '../src/types'
+
+export type Output = 'client' | 'ssr' | 'provider'
+export const outputs: Array<Output> = ['client', 'ssr', 'provider']
+export type Framework = 'react' | 'solid'
+export const frameworks: Array<Framework> = ['react', 'solid']
+export const moduleId = '/test/src/module.tsx'
+
+export interface StartCompilerOptions {
+  env: 'client' | 'server'
+  framework?: Framework
+  mode?: 'build' | 'dev'
+  /** Project modules by absolute id; `./name` resolves to `/test/src/name.ts`. */
+  files?: Record<string, string>
+  /** `serverFnProviderModuleDirectives` */
+  directives?: Array<string>
+  compilerPlugins?: Array<StartCompilerPlugin>
+  warn?: (message: string) => void
+}
+
+/**
+ * Creates a `StartCompiler` configured the way the bundler plugins do, and
+ * records the server functions it reports.
+ */
+export function createStartCompiler(options: StartCompilerOptions) {
+  const { env, files = {}, framework = 'react' } = options
+  const serverFns: Record<string, ServerFn> = {}
+  const compiler: StartCompiler = new StartCompiler({
+    env,
+    envName: env === 'client' ? 'client' : 'ssr',
+    root: '/test',
+    framework,
+    providerEnvName: 'ssr',
+    mode: options.mode ?? 'build',
+    lookupKinds: getLookupKindsForEnv(env),
+    lookupConfigurations: getLookupConfigurationsForEnv(env, framework),
+    getKnownServerFns: () => ({}),
+    devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
+      `/@id${extractedFilename.slice(root.length)}`,
+    serverFnProviderModuleDirectives: options.directives,
+    onServerFnsById: (fns) => Object.assign(serverFns, fns),
+    loadModule: async (id) => {
+      const code = files[id]
+      if (code !== undefined) {
+        compiler.ingestModule({ code, id })
+      }
+    },
+    resolveId: async (id) => {
+      if (id.startsWith('@tanstack/')) {
+        return id
+      }
+      const file = id.startsWith('./') ? `/test/src/${id.slice(2)}.ts` : id
+      return file in files ? file : null
+    },
+    compilerPlugins: options.compilerPlugins,
+    warn: options.warn,
+  })
+  const compile = async (code: string, id = moduleId) => {
+    const result = await compiler.compile({
+      code,
+      id,
+      detectedKinds: detectKindsInCode(code, env),
+    })
+    return result?.code ?? null
+  }
+  return { compiler, compile, serverFns }
+}
+
+/**
+ * Compiles `code` for one output: the client, the SSR caller or the
+ * server-function provider module (`?tss-serverfn-split`).
+ */
+export async function compileFor(
+  output: Output,
+  code: string,
+  options: Omit<StartCompilerOptions, 'env'> & { id?: string } = {},
+) {
+  const { compile, serverFns } = createStartCompiler({
+    ...options,
+    env: output === 'client' ? 'client' : 'server',
+  })
+  const id = options.id ?? moduleId
+  const result = await compile(
+    code,
+    output === 'provider' ? `${id}?tss-serverfn-split` : id,
+  )
+  return { code: result, serverFns }
+}
+
+/** Like `compileFor`, returning only the code (null when untouched). */
+export async function compileCode(
+  ...args: Parameters<typeof compileFor>
+): Promise<string | null> {
+  return (await compileFor(...args)).code
+}
+
+/**
+ * Compiles the client, SSR caller and provider outputs, checks that each is
+ * a valid module and returns them with the server functions the client
+ * compilation reported.
+ */
+export async function compileAll(
+  code: string,
+  options: Omit<StartCompilerOptions, 'env'> = {},
+) {
+  const compiled = {} as Record<Output, string>
+  const errors = {} as Record<Output, Array<string>>
+  let serverFns: Record<string, ServerFn> = {}
+  for (const output of outputs) {
+    const result = await compileFor(output, code, options)
+    expect(result.code, output).not.toBeNull()
+    compiled[output] = result.code!
+    errors[output] = await getModuleErrors(result.code!)
+    if (output === 'client') {
+      serverFns = result.serverFns
+    }
+  }
+  expect(errors).toEqual({ client: [], ssr: [], provider: [] })
+  /** The id of the server function whose handler is named `functionName`. */
+  const idOf = (functionName: string) =>
+    Object.values(serverFns).find((fn) => fn.functionName === functionName)
+      ?.functionId
+  return { ...compiled, serverFns, idOf }
+}
+
+/** Matches the source of an import or re-export statement. */
+const moduleSource =
+  /^(\s*import\s*|\s*(?:import|export)\b[^;'"]*?\bfrom\s*)(["'])([^"']+)\2/gm
+
+/** Project-local import and re-export sources of a module, sorted. */
+export function importSources(code: string) {
+  return [...code.matchAll(moduleSource)]
+    .map((match) => match[3]!)
+    .filter((source) => !source.startsWith('@tanstack/'))
+    .sort()
+}
+
+const dataUrl = (code: string, type = 'text/javascript') =>
+  `data:${type},${encodeURIComponent(code)}`
+
+/**
+ * Minimal Start package: callers keep the RPC they were given, providers run
+ * the original handler. The other factories throw when they are called
+ * uncompiled, so a test only passes if the compiler ran.
+ */
+const startPackage = `
+const uncompiled = () => { throw new Error('uncompiled Start factory') }
+const builder = () => {
+  const self = {
+    middleware: () => self,
+    validator: () => self,
+    inputValidator: () => self,
+    handler: (rpc, impl) =>
+      impl
+        ? Object.assign((opts) => impl(opts ?? {}), {
+            __executeServer: (opts) => impl(opts),
+          })
+        : { rpc },
+  }
+  return self
+}
+export const createServerFn = builder
+export const createServerOnlyFn = uncompiled
+export const createClientOnlyFn = uncompiled
+export const createIsomorphicFn = uncompiled
+export const createMiddleware = () => ({ server: uncompiled })`
+
+const startRuntime: Record<string, string> = {}
+for (const framework of frameworks) {
+  startRuntime[`@tanstack/${framework}-start`] = startPackage
+  startRuntime[`@tanstack/${framework}-start/server-rpc`] =
+    `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`
+  startRuntime[`@tanstack/${framework}-start/client-rpc`] =
+    `export const createClientRpc = (id) => ({ client: id })`
+  startRuntime[`@tanstack/${framework}-start/ssr-rpc`] =
+    `export const createSsrRpc = (id) => ({ ssr: id })`
+}
+
+let imports = 0
+
+/**
+ * Evaluates a compiled module, resolving every import to the minimal Start
+ * runtime or to the given stubs (by specifier; `.json` stubs are JSON
+ * modules). Every call evaluates a fresh instance, even for identical code.
+ */
+export async function importModule(
+  code: string,
+  modules: Record<string, string> = {},
+): Promise<Record<string, any>> {
+  const sources = { ...startRuntime, ...modules }
+  const { code: javascript } = await transformWithOxc(code, 'module.ts')
+  const linked = javascript.replace(
+    moduleSource,
+    (_match, prefix: string, _quote: string, source: string) => {
+      const stub = sources[source]
+      if (stub === undefined) {
+        throw new Error(`No stub for import ${source}`)
+      }
+      const url = source.endsWith('.json')
+        ? dataUrl(stub, 'application/json')
+        : dataUrl(stub)
+      return `${prefix}${JSON.stringify(url)}`
+    },
+  )
+  return import(
+    /* @vite-ignore */ dataUrl(`${linked}\n// evaluation ${++imports}`)
+  )
+}
+
+/** Runs a provider's extracted handler the way the server-fn router does. */
+export async function callProvider(
+  provider: string | Record<string, any>,
+  name: string,
+  modules: Record<string, string> = {},
+  data?: unknown,
+) {
+  const module =
+    typeof provider === 'string'
+      ? await importModule(provider, modules)
+      : provider
+  const handler = module[`${name}_createServerFn_handler`]
+  expect(handler, name).toBeTypeOf('function')
+  return handler({ data })
+}
+
+/** The value of `run`, or the message of the error it throws. */
+export function settle(run: () => unknown) {
+  try {
+    return run()
+  } catch (error) {
+    return `throws: ${(error as Error).message}`
+  }
+}
+
+export const serverOnlyError =
+  'throws: createServerOnlyFn() functions can only be called on the server!'
+export const clientOnlyError =
+  'throws: createClientOnlyFn() functions can only be called on the client!'
+
+type HydratePlugin = ReturnType<typeof createHydrateCompilerPlugin>
+
+/** The `<Hydrate>` chunk ids a compiled module imports, in source order. */
+export function getChunkIds(code: string) {
+  return [...code.matchAll(/import\((["'])(.+?)\1\)/g)]
+    .map(([, , id]) => id!)
+    .filter((id) => id.includes('tss-hydrate='))
+}
+
+/** Loads a `<Hydrate>` chunk the way the bundler loads the virtual module. */
+export function loadChunk(
+  plugin: HydratePlugin,
+  env: 'client' | 'server',
+  id: string,
+) {
+  return (
+    plugin.loadVirtualModule?.({
+      id,
+      root: '/test',
+      env,
+      envName: env === 'client' ? 'client' : 'ssr',
+    })?.code ?? null
+  )
+}
+
+/**
+ * Compiles a module with `<Hydrate>` and loads the split chunks it imports,
+ * ordered by boundary index.
+ */
+export async function compileHydrate(env: 'client' | 'server', code: string) {
+  const plugin = createHydrateCompilerPlugin()
+  const { compile } = createStartCompiler({ env, compilerPlugins: [plugin] })
+  const parent = await compile(code)
+  if (parent === null) {
+    throw new Error('expected the module to be transformed')
+  }
+  const chunks = getChunkIds(parent).map((id) => {
+    const chunk = loadChunk(plugin, env, id)
+    if (chunk === null) {
+      throw new Error(`expected virtual module ${id} to load`)
+    }
+    return chunk
+  })
+  // Order chunks by boundary index, however the parent declares them.
+  const index = (chunk: string) =>
+    Number(chunk.match(/export function H(\d+)\(/)?.[1] ?? -1)
+  chunks.sort((a, b) => index(a) - index(b))
+  return { parent, chunks, plugin }
+}
+
+/** The names a split chunk component receives as props, sorted. */
+export function getChunkParams(chunk: string) {
+  const params = chunk.match(/export function H\d+\(([^)]*)\)/)?.[1] ?? ''
+  return [...params.matchAll(/[\w$]+/g)].map(([name]) => name).sort()
+}
+
+/** Renders JSX to text: intrinsic elements become tags, components are called. */
+export const jsxToText = `const Fragment = Symbol('Fragment')
+const h = (type, props, ...children) => {
+  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
+  if (type === Fragment) return text
+  if (typeof type === 'function') return type({ ...props, children: text })
+  if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
+  return '<' + type + '>' + text + '</' + type + '>'
+}
+`
+
+const stubsKey = '__regressionModuleStubs'
+let evaluations = 0
+
+/**
+ * Evaluates a compiled module like a bundler would: JSX becomes plain calls
+ * of `runtime` (which defines `h` and `Fragment`), and imports are linked to
+ * `stubs`, keyed by specifier.
+ */
+export async function evaluateModule(
+  code: string,
+  stubs: Record<string, Record<string, unknown>> = {},
+  runtime = jsxToText,
+): Promise<Record<string, (...args: Array<any>) => any>> {
+  const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
+    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
+  })
+  const key = `${stubsKey}${evaluations++}`
+  ;(globalThis as Record<string, unknown>)[key] = stubs
+  // Imports are hoisted: link them before any other statement runs.
+  const linkedImports: Array<string> = []
+  const body = javascript.replace(
+    /^import\s+(.+?)\s+from\s+(["'])(.+?)\2;?$/gm,
+    (_, clause: string, __, source: string) => {
+      if (!(source in stubs)) {
+        throw new Error(`no stub for import ${source}`)
+      }
+      const from = `globalThis.${key}[${JSON.stringify(source)}]`
+      const named = clause.match(/\{(.*)\}/)?.[1]
+      const head = clause
+        .replace(/\{.*\}/, '')
+        .replace(/,\s*$/, '')
+        .trim()
+      if (named) {
+        linkedImports.push(
+          `const { ${named.replace(/\bas\b/g, ':')} } = ${from};`,
+        )
+      }
+      if (head.startsWith('* as ')) {
+        linkedImports.push(`const ${head.slice(5)} = ${from};`)
+      } else if (head) {
+        linkedImports.push(`const ${head} = ${from}.default;`)
+      }
+      return ''
+    },
+  )
+  return import(
+    /* @vite-ignore */ dataUrl(`${runtime}${linkedImports.join('\n')}\n${body}`)
+  )
+}
+
+/** Renders the component a `<Hydrate>` chunk exports with the given props. */
+export async function renderChunk(
+  chunk: string,
+  props: Record<string, unknown> = {},
+  stubs: Record<string, Record<string, unknown>> = {},
+) {
+  const module = await evaluateModule(chunk, stubs)
+  const name = Object.keys(module).find((key) => /^H\d+$/.test(key))
+  if (!name) {
+    throw new Error('expected the chunk to export a component')
+  }
+  return module[name]!(props)
+}

@@ -1,49 +1,17 @@
-import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
-import { compileStartModule } from './compile-start-module'
-
-/** Compiles a module with `<Hydrate>` and loads the split chunks it imports. */
-async function compileHydrate(env: 'client' | 'server', code: string) {
-  const plugin = createHydrateCompilerPlugin()
-  const parent = await compileStartModule({
-    env,
-    code,
-    compilerPlugins: [plugin],
-  })
-  if (parent === null) {
-    throw new Error('expected the module to be transformed')
-  }
-  const chunks = [...parent.matchAll(/import\((["'])(.+?)\1\)/g)].map(
-    ([, , id]) => {
-      const chunk = plugin.loadVirtualModule?.({
-        id: id!,
-        root: '/test',
-        env,
-        envName: env === 'client' ? 'client' : 'ssr',
-      })
-      if (!chunk) {
-        throw new Error(`expected virtual module ${id} to load`)
-      }
-      return chunk.code
-    },
-  )
-  return { parent, chunks }
-}
+import { compileHydrate, evaluateModule } from './regression-helpers'
 
 /**
  * Compiles a chunk's JSX like a bundler would and returns the text its
  * components render, so JSX text and string literals are compared by meaning.
  */
 async function renderChunkText(chunk: string) {
-  const { code } = await transformWithOxc(chunk, 'chunk.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
-  })
-  const runtime = `const Fragment = null
+  const module = await evaluateModule(
+    chunk,
+    {},
+    `const Fragment = null
 const h = (type, props, ...children) => children.flat().join('')
-`
-  const module: Record<string, unknown> = await import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(runtime + code)}`
+`,
   )
   return Object.values(module)
     .map((value) => (typeof value === 'function' ? value() : ''))

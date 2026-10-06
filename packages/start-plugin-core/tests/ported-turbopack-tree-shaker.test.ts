@@ -7,45 +7,7 @@
  * statements and imports it needs, in their original order.
  */
 import { describe, expect, test } from 'vitest'
-import {
-  StartCompiler,
-  detectKindsInCode,
-  getLookupKindsForEnv,
-} from '../src/start-compiler/compiler'
-import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
-import { getModuleErrors } from './validate-module'
-
-type Output = 'client' | 'ssr' | 'provider'
-
-async function compileAll(code: string) {
-  const compiled = {} as Record<Output, string>
-  for (const output of ['client', 'ssr', 'provider'] as const) {
-    const env = output === 'client' ? 'client' : 'server'
-    const compiler = new StartCompiler({
-      env,
-      envName: env === 'client' ? 'client' : 'ssr',
-      root: '/test',
-      framework: 'react',
-      providerEnvName: 'ssr',
-      mode: 'build',
-      lookupKinds: getLookupKindsForEnv(env),
-      lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
-      getKnownServerFns: () => ({}),
-      loadModule: async () => {},
-      resolveId: async (id) => (id.startsWith('@tanstack/') ? id : null),
-    })
-    const id = '/test/src/module.tsx'
-    const result = await compiler.compile({
-      code,
-      id: output === 'provider' ? `${id}?tss-serverfn-split` : id,
-      detectedKinds: detectKindsInCode(code, env),
-    })
-    expect(result, output).not.toBeNull()
-    compiled[output] = result!.code
-    expect(await getModuleErrors(compiled[output]), output).toEqual([])
-  }
-  return compiled
-}
+import { compileAll } from './regression-helpers'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 

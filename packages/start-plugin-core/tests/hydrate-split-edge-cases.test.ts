@@ -1,73 +1,13 @@
-import { parseSync, transformWithOxc } from 'vite'
+import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import { compileStartModule } from './compile-start-module'
+import {
+  compileHydrate,
+  getChunkParams,
+  renderChunk,
+} from './regression-helpers'
 import { getModuleErrors } from './validate-module'
-
-/** Compiles a module with `<Hydrate>` and loads the split chunks it imports. */
-async function compileHydrate(env: 'client' | 'server', code: string) {
-  const plugin = createHydrateCompilerPlugin()
-  const parent = await compileStartModule({
-    env,
-    code,
-    compilerPlugins: [plugin],
-  })
-  if (parent === null) {
-    throw new Error('expected the module to be transformed')
-  }
-  const chunks = [...parent.matchAll(/import\((["'])(.+?)\1\)/g)].map(
-    ([, , id]) => {
-      const chunk = plugin.loadVirtualModule?.({
-        id: id!,
-        root: '/test',
-        env,
-        envName: env === 'client' ? 'client' : 'ssr',
-      })
-      if (!chunk) {
-        throw new Error(`expected virtual module ${id} to load`)
-      }
-      return chunk.code
-    },
-  )
-  // Order chunks by boundary index, however the parent declares them.
-  const index = (chunk: string) =>
-    Number(chunk.match(/export function H(\d+)\(/)?.[1] ?? -1)
-  chunks.sort((a, b) => index(a) - index(b))
-  return { parent, chunks, plugin }
-}
-
-/**
- * Evaluates a self-contained chunk (no imports) like a bundler would and
- * renders one of its exports to a string: JSX becomes plain function calls
- * and intrinsic elements become tags.
- */
-async function renderChunkExport(
-  chunk: string,
-  exportName: string,
-  props: Record<string, unknown> = {},
-) {
-  const { code } = await transformWithOxc(chunk, 'chunk.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
-  })
-  const runtime = `const Fragment = Symbol('Fragment')
-const h = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false).join('')
-  if (type === Fragment) return text
-  if (typeof type === 'function') return type({ ...props, children: text })
-  return '<' + type + '>' + text + '</' + type + '>'
-}
-`
-  const module: Record<string, (props: unknown) => string> = await import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(runtime + code)}`
-  )
-  return module[exportName]!(props)
-}
-
-/** Every split-chunk component name and the props the parent passes to it. */
-function getChunkParams(chunk: string) {
-  const params = chunk.match(/export function H\d+\(([^)]*)\)/)?.[1] ?? ''
-  return [...params.matchAll(/[\w$]+/g)].map(([name]) => name).sort()
-}
 
 type JsxNode = {
   type: string
@@ -140,7 +80,7 @@ export function Page() {
       )
       expect(chunks).toHaveLength(1)
       expect(await getModuleErrors(chunks[0]!)).toEqual([])
-      expect(await renderChunkExport(chunks[0]!, 'H0')).toBe(rendered)
+      expect(await renderChunk(chunks[0]!)).toBe(rendered)
     },
   )
 
@@ -207,11 +147,11 @@ export function Page({ prefix = 'p', ...rest }) {
     }
     // Module-level helpers move into the chunk with the children.
     expect(parent).not.toMatch(/function Row\b/)
+    expect(await renderChunk(chunks[0]!, { label: 'p-a', value: 1 })).toBe(
+      '<li>p-a1</li>',
+    )
     expect(
-      await renderChunkExport(chunks[0]!, 'H0', { label: 'p-a', value: 1 }),
-    ).toBe('<li>p-a1</li>')
-    expect(
-      await renderChunkExport(chunks[1]!, 'H1', {
+      await renderChunk(chunks[1]!, {
         item: 'x',
         i: 0,
         prefix: 'p',
@@ -240,7 +180,7 @@ export function Page() {
     expect(await getModuleErrors(chunks[0]!)).toEqual([])
     expect(getChunkParams(chunks[0]!)).toEqual(['error', 'later', 'value'])
     expect(
-      await renderChunkExport(chunks[0]!, 'H0', {
+      await renderChunk(chunks[0]!, {
         value: 'local',
         error: new Error('caught'),
         later: () => 'hoisted',
@@ -277,7 +217,7 @@ export function Page() {
 `,
       )
       expect(chunks).toHaveLength(1)
-      expect(await renderChunkExport(chunks[0]!, 'H0')).toBe('<p>child</p>')
+      expect(await renderChunk(chunks[0]!)).toBe('<p>child</p>')
     },
   )
 
@@ -335,9 +275,9 @@ export function Page() {
     )
     expect(await getModuleErrors(parent)).toEqual([])
     expect(chunks).toHaveLength(2)
-    for (const [index, chunk] of chunks.entries()) {
+    for (const chunk of chunks) {
       expect(await getModuleErrors(chunk)).toEqual([])
-      expect(await renderChunkExport(chunk, `H${index}`)).toBeNull()
+      expect(await renderChunk(chunk)).toBeNull()
     }
   })
 
