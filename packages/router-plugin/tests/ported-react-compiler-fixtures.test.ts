@@ -34,21 +34,8 @@ function Page() {
 }`,
       expected: '<p>0123456789012</p>',
     },
-    {
-      // try-catch-* fixtures
-      name: 'a catch parameter shadowing a module binding',
-      body: `const error = 'module'
-function Page() {
-  let caught
-  try {
-    throw 'thrown'
-  } catch (error) {
-    caught = error
-  }
-  return <p>{caught}-{error}</p>
-}`,
-      expected: '<p>thrown-module</p>',
-    },
+    // try-catch-* fixtures (a catch parameter shadowing a module binding):
+    // covered by `ported-vite-plugin-rsc.test.ts`.
     {
       // fn-name-no-leak-to-nested-arrow.js
       name: 'a named function expression shadowing a module binding',

@@ -30,7 +30,9 @@ function transformWithHmrPlugin(code: string) {
 }
 
 // Route files commonly export a store, context or query helper next to the
-// route and read it from the route component as well.
+// route and read it from the route component as well. Whether a split chunk
+// imports such a binding instead of redeclaring it is covered by
+// `code-splitter-exported-bindings.test.ts`; this checks the built app.
 const exportedStoreRoute = `
 import { createFileRoute } from '@tanstack/react-router'
 const initialCount = 0
@@ -43,38 +45,6 @@ export const Route = createFileRoute('/')({ component: Page })
 `
 
 describe('split chunks share exported route-file bindings', () => {
-  it('imports an exported binding that depends on state the component also reads', async () => {
-    const { modules } = compileRouteModules(exportedStoreRoute)
-    const chunk = modules['virtual component']!
-    // The chunk must use the route module's instance instead of creating its own.
-    expect(chunk).not.toMatch(declarationOf('store'))
-    expect(chunk).toMatch(/import \{[^}]*\bstore\b[^}]*\} from/)
-    expect(modules.reference).toMatch(/export const store\b/)
-    expect(await getModuleErrors(chunk)).toEqual([])
-  })
-
-  it('imports an exported React context whose default value the component reads', () => {
-    const { modules } = compileRouteModules(`
-import { createContext, useContext } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
-const defaultTheme = 'light'
-export const ThemeContext = createContext(defaultTheme)
-function Page() {
-  const theme = useContext(ThemeContext)
-  return <p>{theme === defaultTheme ? 'default' : theme}</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
-`)
-    // A second createContext() call would make providers rendered by other
-    // modules (which import ThemeContext from the route file) invisible here.
-    expect(modules['virtual component']).not.toMatch(
-      declarationOf('ThemeContext'),
-    )
-    expect(modules['virtual component']).toMatch(
-      /import \{[^}]*\bThemeContext\b[^}]*\} from/,
-    )
-  })
-
   it('mutates the exported binding other modules see when the component renders', async () => {
     const result = await buildAndRun({
       files: { 'routes/index.tsx': exportedStoreRoute },
@@ -264,30 +234,4 @@ export const Route = createFileRoute('/posts')({
     })
     expect(html).toBe('<p>classic</p>')
   }, 30_000)
-})
-
-// The code splitter runs before the bundler's JSX transform, so a split chunk
-// must keep the route file's JSX pragma: it selects the JSX runtime
-// (`@emotion/react`, `theme-ui`, Preact, ...) of the components it now holds.
-describe('file-level JSX pragmas', () => {
-  it('stay at the top of a split component chunk', async () => {
-    const { modules } =
-      compileRouteModules(`/** @jsxImportSource @emotion/react */
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/styled')({
-  component: StyledPage,
-})
-
-function StyledPage() {
-  return <main css={{ color: 'hotpink' }}>styled</main>
-}
-`)
-    const { code } = await transformWithOxc(
-      modules['virtual component']!,
-      'chunk.tsx',
-      { jsx: { runtime: 'automatic', importSource: 'react' } },
-    )
-    expect(code).toMatch(/from ["']@emotion\/react\/jsx-runtime["']/)
-  })
 })

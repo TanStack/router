@@ -359,23 +359,8 @@ export const Route = createFileRoute('/')({
   })
 
   // Source: ssg/getStaticProps/should-remove-re-exported-variable-declarations-safe
-  it('moves one declarator of a multi-declarator statement into the split chunk', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import { chunkMessage, mainMessage } from './messages'
-const Page = () => <div>{chunkMessage}</div>,
-  a = mainMessage
-export const Route = createFileRoute('/')({
-  loader: () => a,
-  component: Page,
-})
-`)
-    expect(modules.reference).toMatch(/const a = mainMessage;/)
-    expect(modules.reference).not.toMatch(declarationOf('Page'))
-    expect(modules.reference).not.toContain('chunkMessage')
-    expect(modules['virtual component']).toMatch(declarationOf('Page'))
-    expect(modules['virtual component']).not.toContain('mainMessage')
-    await expectValidModules(modules)
-  })
+  // is covered by `ported-react-router-route-chunks.test.ts` ("moves plain
+  // declarators sharing a statement into their own modules").
 
   // Source: ssg/getStaticProps/should-support-babel-style-memoized-function
   it.each([

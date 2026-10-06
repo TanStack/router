@@ -1,3 +1,4 @@
+import { transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { compileRouteModules } from './regression-helpers'
 
@@ -9,28 +10,42 @@ function jsxChunks(code: string) {
   )
 }
 
-// JSX pragmas apply per module: the bundler's JSX transform runs on each split
-// chunk separately, so a chunk without the pragma compiles its JSX with the
-// project default runtime (e.g. `css` props are no longer handled by Emotion).
+/** The JSX runtime Oxc (Vite 8's JSX transform) selects for a module. */
+async function jsxRuntimeOf(code: string) {
+  const { code: javascript } = await transformWithOxc(code, 'chunk.tsx', {
+    jsx: { runtime: 'automatic', importSource: 'react' },
+  })
+  return javascript.match(/from ["']([^"']+\/jsx-(?:dev-)?runtime)["']/)?.[1]
+}
+
+// JSX pragmas apply per module: the code splitter runs before the bundler's
+// JSX transform, which then runs on each split chunk separately, so a chunk
+// without the pragma compiles its JSX with the project default runtime (e.g.
+// `css` props are no longer handled by Emotion).
 describe('code-splitter keeps JSX pragmas in split chunks', () => {
   it.each([
     [
       '@jsxImportSource on the first import',
       `/** @jsxImportSource @emotion/react */\nimport { createFileRoute } from '@tanstack/react-router'\n`,
+      true,
     ],
     [
       '@jsxImportSource line comment',
       `// @jsxImportSource @emotion/react\nimport { createFileRoute } from '@tanstack/react-router'\n`,
+      true,
     ],
     [
       '@jsxImportSource inside a file header',
       `/**\n * Header\n * @jsxImportSource @emotion/react\n */\nimport { createFileRoute } from '@tanstack/react-router'\n`,
+      true,
     ],
     [
+      // Oxc only reads leading pragmas; esbuild and Babel read them anywhere.
       '@jsxImportSource after the imports',
       `import { createFileRoute } from '@tanstack/react-router'\n/** @jsxImportSource @emotion/react */\n`,
+      false,
     ],
-  ])('keeps %s', (_, header) => {
+  ])('keeps %s', async (_, header, leading) => {
     const code = `${header}export const Route = createFileRoute('/pragma')({
   component: () => <div css={{ color: 'red' }}>styled</div>,
   errorComponent: () => <p css={{ color: 'blue' }}>error</p>,
@@ -43,6 +58,11 @@ describe('code-splitter keeps JSX pragmas in split chunks', () => {
         name,
         chunk: expect.stringContaining('@jsxImportSource @emotion/react'),
       })
+      if (leading) {
+        expect(await jsxRuntimeOf(chunk), name).toBe(
+          '@emotion/react/jsx-runtime',
+        )
+      }
     }
   })
 

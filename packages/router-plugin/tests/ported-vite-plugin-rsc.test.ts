@@ -65,7 +65,7 @@ function Page() {
       expected: 'outer',
     },
     {
-      // hoist/catch-binding-shadow.js
+      // hoist/catch-binding-shadow.js; React Compiler try-catch-* fixtures
       name: 'next to a catch parameter of the same name',
       body: `const err = { message: 'outer' }
 function Page() {

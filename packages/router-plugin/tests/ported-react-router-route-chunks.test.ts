@@ -150,12 +150,15 @@ describe('ported React Router route chunks: declarations', () => {
   // sharing an export statement" (plain, destructured and nested spread)
   it.each([
     {
+      // Also Next.js ssg/getStaticProps/should-remove-re-exported-variable-declarations-safe
       name: 'plain declarators',
       declarations: `const Page = () => <div>{chunkMessage}</div>,
   ErrorView = () => <div>error</div>,
   main = mainMessage`,
       component: 'Page',
       errorComponent: 'ErrorView',
+      kept: /const main = mainMessage;/,
+      moved: 'Page',
     },
     {
       name: 'destructured declarators',
@@ -174,7 +177,7 @@ describe('ported React Router route chunks: declarations', () => {
     },
   ])(
     'moves $name sharing a statement into their own modules',
-    async ({ declarations, component, errorComponent }) => {
+    async ({ declarations, component, errorComponent, kept, moved }) => {
       const { modules, sharedBindings } =
         compileRouteModules(`${head}import { chunkMessage, mainMessage } from './messages'
 ${declarations}
@@ -190,6 +193,13 @@ export const Route = createFileRoute('/')({
       expect(modules['virtual component']).toContain('chunkMessage')
       expect(modules['virtual component']).not.toContain('mainMessage')
       expect(modules['virtual errorComponent']).not.toContain('Message')
+      if (kept) {
+        expect(modules.reference).toMatch(kept)
+      }
+      if (moved) {
+        expect(modules.reference).not.toMatch(declarationOf(moved))
+        expect(modules['virtual component']).toMatch(declarationOf(moved))
+      }
       await expectValidModules(modules)
     },
   )
