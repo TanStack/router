@@ -805,6 +805,7 @@ export function compileCodeSplitVirtualRoute(
     })
   }
   const generatedExports: Array<ProgramStatement> = []
+  const splitReferences = new Set<Binding>()
   for (const route of analysis.routes) {
     if (route.factory !== 'createFileRoute') {
       continue
@@ -823,6 +824,12 @@ export function compileCodeSplitVirtualRoute(
         : null
       if (binding && analysis.exported.has(binding)) {
         continue
+      }
+      for (const reference of collectModuleReferences(
+        analysis.module,
+        propertyValue,
+      )) {
+        splitReferences.add(reference)
       }
       const value = copies.get(propertyValue) as Expression
       const meta = splitMeta(key)
@@ -859,35 +866,21 @@ export function compileCodeSplitVirtualRoute(
     }
     ;(copies.get(route.options) as ObjectExpression).properties = []
   }
-  // A split module imports user exports, including the Route singleton, from the
-  // reference module instead of initializing a second copy. Imports keep their
-  // source, and a destructuring that also declares private bindings stays whole.
-  const ownedExports = [...analysis.exported].filter(([binding]) => {
-    if (binding.has(BindingFlags.Import)) {
-      return false
-    }
-    const declaration = analysis.graph.declarations.get(binding)
-    const siblings = declaration
-      ? analysis.graph.declarationSymbols.get(declaration)
-      : undefined
-    return (
-      !!siblings &&
-      [...siblings].every((sibling) => analysis.exported.has(sibling))
-    )
-  })
+  const importedExports = exportsImportedBySplitModule(
+    analysis,
+    splitReferences,
+    options.sharedBindings,
+  )
   program.body = program.body.flatMap(withoutExportSyntax)
   removeDeclarations(
     program,
-    new Set(ownedExports.map(([binding]) => binding.name)),
+    new Set(importedExports.map(([binding]) => binding.name)),
   )
-  const retainedExports = ownedExports.filter(
-    ([binding]) => !options.sharedBindings?.has(binding.name),
-  )
-  if (retainedExports.length) {
+  if (importedExports.length) {
     prepend(
       program,
       imports(
-        retainedExports.map(([binding, names]) => ({
+        importedExports.map(([binding, names]) => ({
           local: binding.name,
           imported: names[0]!,
         })),
@@ -903,6 +896,73 @@ export function compileCodeSplitVirtualRoute(
     source: options.code,
     filename: options.filename,
   })
+}
+
+/**
+ * User exports, including the Route singleton, that a split module imports from
+ * the reference module instead of initializing a second copy. Imports keep their
+ * source, a destructuring that also declares private bindings stays whole, and
+ * shared bindings come from the shared module. An export that depends on a
+ * private binding the split module declares itself is declared alongside it,
+ * so that both observe one module state.
+ */
+function exportsImportedBySplitModule(
+  analysis: RouteModuleAnalysis,
+  splitReferences: Set<Binding>,
+  sharedBindings: Set<string> | undefined,
+) {
+  const { graph, exported, chunkDependencies } = analysis
+  const siblingsOf = (binding: Binding) => {
+    const declaration = graph.declarations.get(binding)
+    return declaration ? graph.declarationSymbols.get(declaration) : undefined
+  }
+  const isShared = (binding: Binding) => !!sharedBindings?.has(binding.name)
+  const dependenciesUntil = (stop: (binding: Binding) => boolean) =>
+    new Map([...chunkDependencies].filter(([binding]) => !stop(binding)))
+  const privateDependencies = dependenciesUntil(isShared)
+  const imported = new Set(
+    [...exported.keys()].filter((binding) => {
+      const siblings = siblingsOf(binding)
+      return (
+        !binding.has(BindingFlags.Import) &&
+        !isShared(binding) &&
+        !!siblings &&
+        [...siblings].every((sibling) => exported.has(sibling))
+      )
+    }),
+  )
+  let changed = true
+  while (changed) {
+    changed = false
+    const declared = expandTransitively(
+      splitReferences,
+      dependenciesUntil(
+        (binding) => imported.has(binding) || isShared(binding),
+      ),
+    )
+    for (const binding of imported) {
+      const dependencies = expandTransitively(
+        chunkDependencies.get(binding) ?? new Set<Binding>(),
+        privateDependencies,
+      )
+      if (
+        [...dependencies].some(
+          (dependency) =>
+            declared.has(dependency) &&
+            graph.declarations.has(dependency) &&
+            !dependency.has(BindingFlags.Import) &&
+            !imported.has(dependency) &&
+            !isShared(dependency),
+        )
+      ) {
+        for (const sibling of siblingsOf(binding)!) {
+          imported.delete(sibling)
+        }
+        changed = true
+      }
+    }
+  }
+  return [...exported].filter(([binding]) => imported.has(binding))
 }
 
 function stripUnownedExpressions(
