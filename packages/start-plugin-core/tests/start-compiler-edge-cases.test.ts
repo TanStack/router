@@ -85,15 +85,8 @@ export const fn = createServerFn().handler(async () => 1)`
     expect(output).toMatch(/["']use strict["']/)
   })
 
-  test('does not duplicate a directive the module already has', async () => {
-    const { code: output } = await compileValid({
-      env: 'server',
-      provider: true,
-      directives: ['use server'],
-      code: `'use server'\n${code}`,
-    })
-    expect(output.match(/["']use server["']/g)).toHaveLength(1)
-  })
+  // A directive the module already has is covered by
+  // `ported-vite-plugin-rsc.test.ts` ("provider module directives").
 
   test('only provider modules receive directives', async () => {
     const { code: output } = await compileValid({
@@ -227,6 +220,26 @@ export const s = so(() => db.y())`,
       'createServerOnlyFn() functions can only be called on the server!',
     )
     expect(output).not.toContain('db.server')
+  })
+
+  test('transforms an aliased re-export of createClientOnlyFn next to createServerOnlyFn on the server', async () => {
+    const { code: output } = await compileValid({
+      env: 'server',
+      files: {
+        '/test/src/env.ts': `export { createClientOnlyFn as clientOnly } from '@tanstack/react-start'`,
+      },
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { clientOnly } from './env'
+import { secret } from './secret.server'
+import { readWindow } from './browser'
+export const serverValue = createServerOnlyFn(() => secret())
+export const clientValue = clientOnly(() => readWindow())`,
+    })
+    // The client-only implementation (and its browser import) must not reach SSR.
+    expect(output).not.toContain('readWindow')
+    expect(output).toContain(
+      'createClientOnlyFn() functions can only be called on the client!',
+    )
   })
 
   test('a builder reused by several server functions in one module', async () => {

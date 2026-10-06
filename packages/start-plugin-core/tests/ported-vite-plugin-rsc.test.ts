@@ -869,6 +869,11 @@ describe('provider module directives', () => {
   // utils.test.ts "recognizes directive prologues"
   test.each([
     {
+      name: 'that is already the prologue',
+      prologue: `'use server'\n`,
+      existing: true,
+    },
+    {
       name: 'after another directive',
       prologue: `'use strict'\n'use server'\n`,
       existing: true,

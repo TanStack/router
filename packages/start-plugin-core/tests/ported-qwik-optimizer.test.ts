@@ -282,23 +282,32 @@ export function Page({ id, ...rest }) {
     ).toBe('<b>A!</b>')
   })
 
-  // Qwik: should_wrap_type_asserted_variables_in_template
+  // Qwik: should_wrap_type_asserted_variables_in_template; SolidStart
+  // validate.ts (assertHoistable): "does not read type annotations as captured
+  // values". Split children move to a module-level chunk component, so only
+  // runtime values may become props.
   test('client: local types used by the children are not captured as values', async () => {
     const { parent, chunks } = await compileHydrate(
       'client',
       `import { Hydrate } from '@tanstack/react-start'
 import type { Shape } from './types'
 function format<T>(value: T) { return String(value) }
+function List<T>(props: { items: Array<T> }) { return <ul>{props.items.length}</ul> }
 export function Page({ v }: { v: unknown }) {
   type Local = string
   interface Box { value: Local }
-  return <Hydrate><p>{format<Local>(v as Local) + (v satisfies unknown as Box['value'] as Shape)}</p></Hydrate>
+  return <Hydrate><List<Box> items={[v] as Array<Shape>} /><p>{format<Local>(v as Local) + (v satisfies unknown as Box['value'] as Shape)}</p></Hydrate>
 }
 `,
     )
+    expect(chunks).toHaveLength(1)
     expect(await getModuleErrors(parent)).toEqual([])
+    expect(await getModuleErrors(chunks[0]!)).toEqual([])
     expect(getChunkParams(chunks[0]!)).toEqual(['v'])
-    expect(await renderChunk(chunks[0]!, { v: 'x' })).toBe('<p>xx</p>')
+    expect(parent).not.toMatch(/\b(?:Local|Box|Shape)=\{/)
+    expect(await renderChunk(chunks[0]!, { v: 'x' })).toBe(
+      '<ul>1</ul><p>xx</p>',
+    )
   })
 
   // Qwik: example_qwik_conflict, import_collision_with_renaming

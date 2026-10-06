@@ -347,27 +347,8 @@ async function compileHydrate(code: string) {
 
 describe('ported SolidStart directives: Hydrate children captures', () => {
   // validate.ts (assertHoistable): "does not read type annotations as
-  // captured values". Split children move to a module-level chunk component,
-  // so only runtime values may become props.
-  test('local types used by split children are not passed as props', async () => {
-    const { parent, chunks } =
-      await compileHydrate(`import { Hydrate } from '@tanstack/react-start'
-function List<T>(props: { items: Array<T> }) {
-  return <ul>{props.items.length}</ul>
-}
-export function Page() {
-  type Item = { id: string }
-  interface Shape { id: string }
-  const items = [{ id: 'a' }]
-  return <Hydrate><List<Item> items={items as Array<Shape>} /><p>{(items[0] satisfies Item).id}</p></Hydrate>
-}`)
-    expect(chunks).toHaveLength(1)
-    expect(getChunkParams(chunks[0]!)).toEqual(['items'])
-    expect(parent).not.toMatch(/\b(?:Item|Shape)=\{/)
-    expect(await renderChunk(chunks[0]!, { items: [{ id: 'a' }] })).toBe(
-      '<ul>1</ul><p>a</p>',
-    )
-  })
+  // captured values" is covered by `ported-qwik-optimizer.test.ts` ("local
+  // types used by the children are not captured as values").
 
   // compile.spec.ts: "allows module scope, globals, parameters and locals",
   // "allows `this` and `arguments` in a function expression";
