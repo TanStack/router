@@ -8,9 +8,11 @@ import type {
 } from '@yuku-toolchain/types'
 import type { StartCompilerTransformContext } from '../types'
 
+/** JavaScript line terminators, as counted by editors and parsers. */
+const lineTerminator = /\r\n|[\n\r\u2028\u2029]/
+
 export function sourcePosition(code: string, offset: number) {
-  const before = code.slice(0, offset)
-  const lines = before.split('\n')
+  const lines = code.slice(0, offset).split(lineTerminator)
   return { line: lines.length, column: lines[lines.length - 1]!.length }
 }
 
@@ -20,7 +22,7 @@ export function codeFrameError(
   message: string,
 ) {
   const start = sourcePosition(code, node.start)
-  const lines = code.split('\n')
+  const lines = code.split(lineTerminator)
   const frame = lines
     .slice(Math.max(0, start.line - 2), start.line + 1)
     .map((line, index) => {
