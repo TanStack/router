@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791146952992,
+  "lastUpdate": 1791269102940,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "manuel.schiller@caligano.de",
-            "name": "Manuel Schiller",
-            "username": "schiller-manuel"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "ac10815f387d25b15163ff711b4049e8f8482d01",
-          "message": "fix(router-core): respect stripped params in retainSearchParams (#7555)",
-          "timestamp": "2026-06-06T00:49:14+02:00",
-          "tree_id": "ca343da6867ca4269e3c387bb3dbc4b61ad2214f",
-          "url": "https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01"
-        },
-        "date": 1780699908170,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89336,
-            "unit": "bytes",
-            "extra": "raw=280292; brotli=77759; initial_gzip=89195"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93203,
-            "unit": "bytes",
-            "extra": "raw=292896; brotli=81064; initial_gzip=93061"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36319,
-            "unit": "bytes",
-            "extra": "raw=108568; brotli=32723; initial_gzip=36190"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41477,
-            "unit": "bytes",
-            "extra": "raw=124068; brotli=37318; initial_gzip=41348"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54220,
-            "unit": "bytes",
-            "extra": "raw=153639; brotli=48773; initial_gzip=54087"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 60341,
-            "unit": "bytes",
-            "extra": "raw=172765; brotli=54025; initial_gzip=60209"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104306,
-            "unit": "bytes",
-            "extra": "raw=329769; brotli=90298; initial_gzip=104164"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105062,
-            "unit": "bytes",
-            "extra": "raw=331177; brotli=90914; initial_gzip=104188"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107773,
-            "unit": "bytes",
-            "extra": "raw=340327; brotli=93281; initial_gzip=107633"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 101959,
-            "unit": "bytes",
-            "extra": "raw=324109; brotli=87719; initial_gzip=101783"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 102367,
-            "unit": "bytes",
-            "extra": "raw=325068; brotli=88006; initial_gzip=102198"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105297,
-            "unit": "bytes",
-            "extra": "raw=334751; brotli=90445; initial_gzip=105121"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50765,
-            "unit": "bytes",
-            "extra": "raw=155741; brotli=44821; initial_gzip=50632"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 54105,
-            "unit": "bytes",
-            "extra": "raw=163973; brotli=47882; initial_gzip=50691"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56687,
-            "unit": "bytes",
-            "extra": "raw=173076; brotli=49960; initial_gzip=56554"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 72697,
-            "unit": "bytes",
-            "extra": "raw=212153; brotli=64375; initial_gzip=72566"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 76756,
-            "unit": "bytes",
-            "extra": "raw=224973; brotli=67860; initial_gzip=76623"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -25820,6 +25694,138 @@ window.BENCHMARK_DATA = {
             "value": 71009,
             "unit": "bytes",
             "extra": "raw=203301; brotli=63183; initial_gzip=70882"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "efc2042c2d02a9780c3e7efe81f123d066a869eb",
+          "message": "perf(router): skip Link work for routes a navigation leaves (#8602)\n\n* test(benchmarks): add departing and retained Link navigation cases\n\nAdd lane-* cases to the React Link performance harness, with per-navigation\nsync, onLoad and total timings in the paired runner.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\n\n* perf(react-router): share one location subscription per route's Links\n\nLinks subscribe to a scope owned by their match context instead of each\nsubscribing to the location store. A scope skips a location publication\nwhose navigation leaves its route, so Links that are about to unmount do\nno work. Clicks and preloads resolve from the location a Link displays,\nand mask builds use the same source location as their destination.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\n\n* test(benchmarks): add Solid departing and retained Link navigation harness\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): hold the location of Links in a departing match\n\nEach Match owns one memo that keeps its Links' source location when the\npublishing navigation leaves the route, so those Links do no work.\nClicks and preloads resolve from that source.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(react-router): trim the Link scope's bundle cost\n\nKey each router's link scopes by route id instead of carrying them in a\n`[routeId, linkScope]` match context tuple. `matchContext` provides the\nroute id again, so `Match`, `Outlet`, `useMatch` and `useParentMatches` /\n`useChildMatches` match main, and the outside-every-match holder becomes\nthe `undefined` key of the same registry. A scope without links still\nreleases its location, so keeping one per route id holds none.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(benchmarks): add Vue departing and retained Link navigation harness\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(vue-router): hold the location of Links in a departing match\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(benchmarks): add a real-browser Link INP harness\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): gate departing Links in their own location memo\n\nDrop the per-Match memo and the third match-context slot. Each Link reads\nits route id once at setup and, while the publishing navigation leaves\nthat route, keeps its previous location in the memo it already owns.\nLinks mounting in an already-departing route read the pending location.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(benchmarks): add Vue to the real-browser Link INP harness\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(solid-router): build Link navigations from the live location state\n\nThe Link location memo deduplicated by href, so a same-href navigation that only changed history state left clicks and preloads building from the previous location's state.\nCompare by identity instead; downstream href and active memos still compare by value, so unchanged Links do not touch the DOM.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(react-router): drop the Link scope's reentrant publication re-check\n\nA listener that publishes a new location while a route's Links derive is not a\nsupported use case, so the scope no longer re-reads the store after notifying.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(react-router, router-core): follow-up Link improvements (#8607)\n\n* perf(router-core): cache location-independent masked destinations\n\nA mask that reads the current location already marks the result as\nsource-dependent through the shared usedCurrent flag, and route masks\nbelong to the route tree and options whose updates replace the cache.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(react-router): hydrate hash-sensitive Links through the scope's server snapshot\n\nThe Link's location subscription already has a server-snapshot slot.\nReporting an active hash-sensitive Link as inactive there replaces the\nper-Link useHydrated subscription with identical hydration output.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(react-router): follow href and reloadDocument changes of a mounted Link\n\nThe destination memo did not depend on href, so a Link whose href alone\nchanged kept displaying, preloading and navigating to the old target.\nClicks also navigated with the memo's copy of the options, so a changed\nreloadDocument only applied once another destination prop changed.\nNavigate with the current options and the displayed source location.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(react-router): hold a Link's intent preload timer on its own ref\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(history): avoid copying navigation arguments when checking blockers\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(benchmarks): opt-in intent preloading for the Link lane cases\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* chore: changeset\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router, vue-router): follow-up Link improvements (#8609)\n\n* test(benchmarks): measure Solid and Vue Link lanes with intent preloading\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): reuse a Link-owned destination so fixed Links hit the location cache\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): pass navigation controls through the Link-owned options\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(solid-router): cover Link clicks after a state-only navigation\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): read Link options directly with a single splitProps\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): keep the Link preload timer in a closure\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): let the Link observer read the preload mode directly\n\nThe internal useIntersectionObserver no longer returns an unused accessor and\ntakes the preload mode instead of two predicates (its unit test is updated).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): create the Link hydration signal only for SSR routers\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): let element insertion track Link children without a memo\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(solid-router): call a Link's ref once per element\n\nThe ref no longer comes from the props memo, so href/active changes do not\nre-run the element's ref effect. Drops the mergeRefs import.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): derive a Link's href and active state in one computation\n\nThe destination build, href, external/blocked classification and active state\nshare one memo whose unchanged result keeps its identity, so a navigation that\nleaves a Link as it was notifies nothing downstream. Presentation props only\nrerun the props memo. The server derives the same values once, without memos.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(benchmarks): use the t quantile for the lane comparison's round count\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(solid-router): split a Link's props once\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(vue-router): reuse a Link-owned destination so fixed Links hit the location cache\n\nNavigation controls travel on the same object, so clicks no longer re-list them.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(vue-router): pick a Link's element props with one shared key set\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(vue-router): derive a Link's href and active state in one computed\n\nThe preload effects read a location-independent mode, so a navigation no\nlonger queues them for every Link. A Link whose destination updater navigates\nwhile it derives derives again for the newer location.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(vue-router): keep the Link preload timer in a closure\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(vue-router): drop the unused IntersectionObserver ref per Link\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(vue-router): return plain empty Link props without a router\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(vue-router): render server Links without reactive wrappers\n\nThe server returns shallow refs and reads Link props directly, without the\nattrs snapshot, its update hook, the props computed or a template ref.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(vue-router): drop the deferred re-derivation for updaters that navigate\n\nA search updater that navigates while a Link derives is not a supported use\ncase; remove the retry that existed only for it, and its test.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* chore: add changeset for the Solid and Vue Link follow-up\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>\n\n* chore(benchmarks): remove the real-browser Link INP harness\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(solid-router, vue-router): rebuild masks whose options are stores\n\nRouter core now reuses masked locations built from the same options object\nwhen the mask does not read the current location. Solid and Vue Links keep\none destination object while their navigation options keep their identity,\nand only a store/reactive option value forced a fresh object per location.\nA plain mask object holding a store (e.g. `mask={{ to, params: store }}`)\ntherefore kept the mask built from the store's first value. The mask's own\nvalues are destination options too, so check them for stores as well.\n\nReact has no in-place reactive values: a changed mask prop changes identity\nand rebuilds. Add the equivalent React coverage for prop and inherited masks.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* chore(benchmarks): remove the ad-hoc Link lane harnesses\n\nThe link-churn scenario covers this work in CodSpeed. Removes the Solid and\nVue lane harnesses and restores link-performance to its main content.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* style: name tuple indexes in Link code\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* refactor(react-router): stop treating _fromLocation as a Link prop\n\n`_fromLocation` is an internal router option, not a Link prop: the Link\nalways builds from its own scope's location. It stays among the stripped\nrouter option keys so code that still passes it does not leak an attribute\nto the element.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* refactor(solid-router): stop treating _fromLocation as a Link prop\n\n`_fromLocation` is an internal router option, not a Link prop: the Link\nalways builds from the location its match presents.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* refactor(vue-router): stop treating _fromLocation as a Link prop\n\n`_fromLocation` is an internal router option, not a Link prop: the Link\nalways builds from the location its match presents.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* refactor(react-router): drop _fromLocation from the Link's option keys\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Fable 5.1 <noreply@anthropic.com>",
+          "timestamp": "2026-10-05T21:27:33+02:00",
+          "tree_id": "0f191614d36399c280d8bbdf29f944e2326aebab",
+          "url": "https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb"
+        },
+        "date": 1791269100164,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85979,
+            "unit": "bytes",
+            "extra": "raw=267628; brotli=74942; initial_gzip=85838"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89627,
+            "unit": "bytes",
+            "extra": "raw=279789; brotli=78208; initial_gzip=89486"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34288,
+            "unit": "bytes",
+            "extra": "raw=98040; brotli=31029; initial_gzip=34163"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39326,
+            "unit": "bytes",
+            "extra": "raw=113196; brotli=35495; initial_gzip=39198"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50647,
+            "unit": "bytes",
+            "extra": "raw=139846; brotli=45903; initial_gzip=50521"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56396,
+            "unit": "bytes",
+            "extra": "raw=158594; brotli=50997; initial_gzip=56269"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99081,
+            "unit": "bytes",
+            "extra": "raw=309582; brotli=86095; initial_gzip=98942"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106707,
+            "unit": "bytes",
+            "extra": "raw=336821; brotli=92715; initial_gzip=106567"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99824,
+            "unit": "bytes",
+            "extra": "raw=310971; brotli=86824; initial_gzip=98964"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102331,
+            "unit": "bytes",
+            "extra": "raw=319590; brotli=88796; initial_gzip=102193"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102791,
+            "unit": "bytes",
+            "extra": "raw=320842; brotli=88770; initial_gzip=102617"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103212,
+            "unit": "bytes",
+            "extra": "raw=321818; brotli=89144; initial_gzip=103044"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 106117,
+            "unit": "bytes",
+            "extra": "raw=331210; brotli=91526; initial_gzip=105943"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47408,
+            "unit": "bytes",
+            "extra": "raw=138777; brotli=42187; initial_gzip=47281"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50531,
+            "unit": "bytes",
+            "extra": "raw=146327; brotli=45102; initial_gzip=47340"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52662,
+            "unit": "bytes",
+            "extra": "raw=154560; brotli=46716; initial_gzip=52537"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67052,
+            "unit": "bytes",
+            "extra": "raw=190492; brotli=59864; initial_gzip=66924"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70992,
+            "unit": "bytes",
+            "extra": "raw=203134; brotli=63230; initial_gzip=70865"
           }
         ]
       }
