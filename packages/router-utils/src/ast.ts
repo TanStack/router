@@ -87,8 +87,12 @@ export function analyzeModule({
 }
 
 /** Print an output tree without modifying the source model or its semantic tables. */
-/** File-level pragmas: JSX transform configuration and `@refresh reset`. */
-const filePragma = /@jsx(?:Frag|ImportSource|Runtime)?\b|@refresh reset\b/
+/**
+ * File-level pragmas: JSX transform configuration, React Refresh's
+ * `@refresh reset`, and solid-refresh's `@refresh reload` and `@refresh skip`.
+ */
+const filePragma =
+  /@jsx(?:Frag|ImportSource|Runtime)?\b|@refresh (?:reload|reset|skip)\b/
 
 /**
  * Pragma comments configure transforms that run after these compilers for the
