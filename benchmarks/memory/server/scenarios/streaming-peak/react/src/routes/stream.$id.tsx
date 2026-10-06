@@ -4,54 +4,30 @@ import {
   makeDeferredSectionPayload,
   type DeferredSectionPayload,
 } from '../../../deferred-section-data'
-
-const fallbackFlushTicks = 4
+import { createSectionGates } from '../../../stream-gate'
 
 export const Route = createFileRoute('/stream/$id')({
-  loader: ({ params }) => ({
-    eager: `streaming-peak-eager-${params.id}`,
-    deferred0: makeDeferredSection(params.id, 0),
-    deferred1: makeDeferredSection(params.id, 1),
-    deferred2: makeDeferredSection(params.id, 2),
-    deferred3: makeDeferredSection(params.id, 3),
-  }),
+  loader: ({ params }) => {
+    const gates = createSectionGates(params.id)
+
+    return {
+      eager: `streaming-peak-eager-${params.id}`,
+      deferred0: makeDeferredSection(params.id, gates[0]!, 0),
+      deferred1: makeDeferredSection(params.id, gates[1]!, 1),
+      deferred2: makeDeferredSection(params.id, gates[2]!, 2),
+      deferred3: makeDeferredSection(params.id, gates[3]!, 3),
+    }
+  },
   component: StreamComponent,
 })
 
-// Deferred sections must settle strictly AFTER React's shell flush, which
-// React schedules via setImmediate internally. Microtask chains drain during
-// router load (sections resolve before the Suspense boundaries are even
-// reached) and setImmediate chains registered at loader time win the race
-// against React's flush — either way no fallback ever streams and the bench
-// stops exercising multi-flush streaming. Timers-phase callbacks reliably
-// lose that race, but a millisecond delay makes the loss margin wall-clock
-// dependent, so this chains 0ms hops instead: each hop yields one full
-// event-loop turn (immediates and microtasks included), making the flush
-// ordering a function of turn count, not runner speed. Distinct hop counts
-// keep section ordering deterministic.
-function afterFallbackFlush(sectionIndex: number) {
-  return new Promise<void>((resolve) => {
-    let remaining = fallbackFlushTicks + sectionIndex
-
-    const step = () => {
-      remaining -= 1
-
-      if (remaining <= 0) {
-        resolve()
-        return
-      }
-
-      setTimeout(step, 0)
-    }
-
-    setTimeout(step, 0)
-  })
-}
-
-function makeDeferredSection(id: string, sectionIndex: number) {
-  return afterFallbackFlush(sectionIndex).then(() =>
-    makeDeferredSectionPayload(id, sectionIndex),
-  )
+// Each section resolves when the bench opens its gate (see stream-gate.ts).
+function makeDeferredSection(
+  id: string,
+  gate: Promise<void>,
+  sectionIndex: number,
+) {
+  return gate.then(() => makeDeferredSectionPayload(id, sectionIndex))
 }
 
 function StreamComponent() {

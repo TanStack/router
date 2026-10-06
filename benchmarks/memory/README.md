@@ -145,10 +145,12 @@ benchmark-specific V8 settings; compare identical harness versions.
   server response is fully consumed before the next request. Pairing a single
   navigation with its render signal via `Promise.all([navigate, rendered])`
   is fine — never overlap distinct work items.
-- Randomness only via the seeded LCG in `bench-utils.ts`. Deferred streaming
-  uses counted zero-delay timer hops to stage work. Timers still depend on the
-  event loop, so validate repeatability on CI instead of assuming deterministic
-  ordering from a zero delay alone.
+- Randomness only via the seeded LCG in `bench-utils.ts`. Never stage work
+  with timers: even `setTimeout(0)` waits on the wall clock, so ordering
+  against the renderer varies with runner speed. A warmup request that takes
+  a different path also changes the measured one, because it shifts V8's JIT
+  history. Deferred streaming waits on gates that the bench opens after
+  reading the previous stage's output (`streaming-peak/stream-gate.ts`).
 - Sanity assertions run once at module load and throw on wrong
   status/markers, so a bench can never silently measure the wrong thing.
 - Server requests follow `benchmarks/ssr` conventions: document GETs send

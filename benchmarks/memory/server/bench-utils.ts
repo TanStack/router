@@ -17,6 +17,8 @@ export type RunSequentialRequestLoopOptions =
     iterations?: number
     buildRequest: (random: () => number, index: number) => Request
     validateResponse?: (response: Response, request: Request) => void
+    /** Receives each body chunk as it is read, e.g. to pace deferred work. */
+    onChunk?: (chunk: Uint8Array) => void
   }
 
 export const memoryBenchOptions = {
@@ -40,7 +42,10 @@ export function randomSegment(random: () => number) {
   return Math.floor(random() * 1_000_000_000).toString(36)
 }
 
-export async function drainResponse(response: Response) {
+export async function drainResponse(
+  response: Response,
+  onChunk?: (chunk: Uint8Array) => void,
+) {
   const reader = response.body?.getReader()
 
   if (!reader) {
@@ -54,6 +59,8 @@ export async function drainResponse(response: Response) {
       if (result.done) {
         break
       }
+
+      onChunk?.(result.value)
     }
   } finally {
     reader.releaseLock()
@@ -64,7 +71,7 @@ export async function runSequentialRequestLoop(
   handler: StartRequestHandler,
   options: RunSequentialRequestLoopOptions,
 ) {
-  const { iterations = 10, buildRequest, validateResponse } = options
+  const { iterations = 10, buildRequest, validateResponse, onChunk } = options
   const random =
     options.seed !== undefined
       ? createDeterministicRandom(options.seed)
@@ -85,7 +92,7 @@ export async function runSequentialRequestLoop(
 
     validate(response, request)
 
-    await drainResponse(response)
+    await drainResponse(response, onChunk)
   }
 }
 
