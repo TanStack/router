@@ -861,7 +861,7 @@ export class StartCompiler {
           : is.Identifier(receiver)
             ? receiver
             : null
-        const symbol = root && module.symbolOf(originalNodes.get(root)!)
+        const symbol = root && module.bindingOf(originalNodes.get(root)!)
         const binding = symbol && sourceInfo.bindings.get(symbol.name)
         if (
           binding?.type === 'import' &&
@@ -900,7 +900,7 @@ export class StartCompiler {
           return
         }
         const original = originalNodes.get(node.openingElement.name)!
-        const symbol = module.symbolOf(original)
+        const symbol = module.bindingOf(original)
         if (!symbol || symbol.scope !== module.rootScope) {
           return
         }
@@ -940,7 +940,7 @@ export class StartCompiler {
           }
         }
         if (is.Identifier(base)) {
-          const symbol = module.symbolOf(originalNodes.get(base)!)
+          const symbol = module.bindingOf(originalNodes.get(base)!)
           if (!symbol || symbol.scope !== module.rootScope) {
             return { node, kind: 'None' as Kind }
           }

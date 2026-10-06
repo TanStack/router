@@ -1,6 +1,9 @@
 # Compiler migration benchmarks
 
-## Current Yuku 0.12.0 evaluation
+## Yuku 0.12.0 evaluation
+
+The compiler packages now depend on Yuku 0.17.0. The measurements in this
+section were recorded with 0.12.0 and have not been repeated for 0.17.0.
 
 Yuku 0.12.0 fixes the reported JSX-reference and purity-comment defects. The
 upgraded compiler passes the dependency probes, package checks, public Vite
@@ -207,7 +210,8 @@ node benchmarks/compiler/measure.mjs > candidate.json
 
 `--yuku-root` optionally selects a directory containing `node_modules/yuku-analyzer`
 and `node_modules/yuku-codegen`; by default these resolve from the workspace's
-router-utils package. Historical measurements use 0.11.0; fresh measurements use 0.12.0.
+router-utils package, which currently installs 0.17.0. Historical measurements use
+0.11.0; the most recent recorded measurements use 0.12.0.
 The override was used for the initial isolated toolkit evaluation. Resolve Babel
 from the baseline workspace dependencies. Preserve baseline build outputs/results
 before rebuilding migrated packages.

@@ -1,20 +1,20 @@
 import { bindingIdentifiers, is, nameOf, walk } from 'yuku-ast'
 import { generatedReferenceOf } from './ast'
-import type { Module, Scope, Symbol } from 'yuku-analyzer'
+import type { Binding, Module, Scope } from 'yuku-analyzer'
 import type { Expression, Node, Program } from '@yuku-toolchain/types'
 
 export interface ModuleDeclarationGraph {
-  declarations: Map<Symbol, Node>
-  dependencies: Map<Symbol, Set<Symbol>>
-  declarationSymbols: Map<Node, Set<Symbol>>
+  declarations: Map<Binding, Node>
+  dependencies: Map<Binding, Set<Binding>>
+  declarationSymbols: Map<Node, Set<Binding>>
 }
 
 /** Runtime references resolved by Yuku, including JSX and excluding shadowed names. */
 export function collectModuleReferences(
   module: Module,
   node: Node,
-): Set<Symbol> {
-  const references = new Set<Symbol>()
+): Set<Binding> {
+  const references = new Set<Binding>()
   module.walk(
     {
       enter(current) {
@@ -22,9 +22,9 @@ export function collectModuleReferences(
         if (
           reference &&
           !reference.inTypePosition &&
-          reference.symbol?.scope === module.rootScope
+          reference.binding?.scope === module.rootScope
         ) {
-          references.add(reference.symbol)
+          references.add(reference.binding)
         }
       },
     },
@@ -75,25 +75,25 @@ function declarationOf(module: Module, identifier: Node): Node | undefined {
 
 function declarationIndex(
   module: Module,
-  symbols: Array<Symbol>,
+  bindings: Array<Binding>,
 ): Pick<ModuleDeclarationGraph, 'declarations' | 'declarationSymbols'> {
-  const declarations = new Map<Symbol, Node>()
-  const declarationSymbols = new Map<Node, Set<Symbol>>()
-  for (const symbol of symbols) {
-    for (const identifier of symbol.declarations) {
+  const declarations = new Map<Binding, Node>()
+  const declarationSymbols = new Map<Node, Set<Binding>>()
+  for (const binding of bindings) {
+    for (const identifier of binding.declarations) {
       const declaration = declarationOf(module, identifier)
       if (!declaration) {
         continue
       }
-      const previous = declarations.get(symbol)
+      const previous = declarations.get(binding)
       if (
         !previous ||
         (is.TSDeclareFunction(previous) && !is.TSDeclareFunction(declaration))
       ) {
-        declarations.set(symbol, declaration)
+        declarations.set(binding, declaration)
       }
-      const siblings = declarationSymbols.get(declaration) ?? new Set<Symbol>()
-      siblings.add(symbol)
+      const siblings = declarationSymbols.get(declaration) ?? new Set<Binding>()
+      siblings.add(binding)
       declarationSymbols.set(declaration, siblings)
     }
   }
@@ -103,17 +103,17 @@ function declarationIndex(
 /** Bindings sharing a declarator are one initialization unit. */
 export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
   const index = declarationIndex(module, module.rootScope.bindings)
-  const dependencies = new Map<Symbol, Set<Symbol>>()
+  const dependencies = new Map<Binding, Set<Binding>>()
   for (const [declaration, owners] of index.declarationSymbols) {
     const references = collectModuleReferences(module, declaration)
-    for (const symbol of owners) {
-      const combined = dependencies.get(symbol) ?? new Set<Symbol>()
+    for (const binding of owners) {
+      const combined = dependencies.get(binding) ?? new Set<Binding>()
       for (const reference of references) {
-        if (reference !== symbol) {
+        if (reference !== binding) {
           combined.add(reference)
         }
       }
-      dependencies.set(symbol, combined)
+      dependencies.set(binding, combined)
     }
   }
   return { ...index, dependencies }
@@ -172,13 +172,13 @@ export function stripTypeExports(program: Program): void {
 }
 
 export interface RemoveUnusedBindingsOptions {
-  roots?: Iterable<Symbol | string>
+  roots?: Iterable<Binding | string>
   /** Preserve user declarations that were unused before the transform. */
   preserveInitiallyUnused?: boolean
 }
 
 /**
- * Rebuild liveness from surviving nodes, using original symbol identity. This
+ * Rebuild liveness from surviving nodes, using original binding identity. This
  * removes dependencies of erased route options without reparsing generated code.
  * Callers decide output ownership before invoking this lexical binding cleanup.
  */
@@ -192,11 +192,11 @@ export function removeUnusedBindings(
   }: RemoveUnusedBindingsOptions = {},
 ): void {
   stripTypeExports(program)
-  const graph = declarationIndex(module, module.symbols)
+  const graph = declarationIndex(module, module.bindings)
   const byName = new Map(
-    module.rootScope.bindings.map((symbol) => [symbol.name, symbol]),
+    module.rootScope.bindings.map((binding) => [binding.name, binding]),
   )
-  const originalOwners = new Map<Node, Set<Symbol>>(graph.declarationSymbols)
+  const originalOwners = new Map<Node, Set<Binding>>(graph.declarationSymbols)
   // Export records are uses even when there are no lexical references. A
   // transform that removes an export may also remove its declaration graph.
   const { exports: originalExports } = module
@@ -205,20 +205,20 @@ export function removeUnusedBindings(
       .filter((record) => !record.typeOnly && record.local)
       .map((record) => record.local),
   )
-  const live = new Set<Symbol>()
-  const dependencies = new Map<Symbol, Set<Symbol>>()
-  const present = new Set<Symbol>()
-  const ownerStack: Array<Set<Symbol> | null> = []
+  const live = new Set<Binding>()
+  const dependencies = new Map<Binding, Set<Binding>>()
+  const present = new Set<Binding>()
+  const ownerStack: Array<Set<Binding> | null> = []
   const scopeStack: Array<Scope> = []
-  const addDependency = (from: Symbol, to: Symbol) => {
-    const edges = dependencies.get(from) ?? new Set<Symbol>()
+  const addDependency = (from: Binding, to: Binding) => {
+    const edges = dependencies.get(from) ?? new Set<Binding>()
     edges.add(to)
     dependencies.set(from, edges)
   }
   for (const root of roots) {
-    const symbol = typeof root === 'string' ? byName.get(root) : root
-    if (symbol) {
-      live.add(symbol)
+    const binding = typeof root === 'string' ? byName.get(root) : root
+    if (binding) {
+      live.add(binding)
     }
   }
   walk(program, {
@@ -233,40 +233,40 @@ export function removeUnusedBindings(
         : (scopeStack.at(-1) ?? module.rootScope)
       scopeStack.push(scope)
       if (own) {
-        for (const symbol of own) {
-          present.add(symbol)
+        for (const binding of own) {
+          present.add(binding)
           if (
             preserveInitiallyUnused &&
-            symbol.references.length === 0 &&
-            !originallyExported.has(symbol)
+            binding.references.length === 0 &&
+            !originallyExported.has(binding)
           ) {
             if (parentOwner) {
               for (const parent of parentOwner) {
-                addDependency(parent, symbol)
+                addDependency(parent, binding)
               }
             } else {
-              live.add(symbol)
+              live.add(binding)
             }
           }
           for (const parent of parentOwner ?? []) {
-            addDependency(symbol, parent)
+            addDependency(binding, parent)
           }
         }
       }
       const markExport = (identifier: Node) => {
         const originalIdentifier = originalNodes.get(identifier)
-        const symbol = originalIdentifier
-          ? module.symbolOf(originalIdentifier)
+        const binding = originalIdentifier
+          ? module.bindingOf(originalIdentifier)
           : byName.get(nameOf(identifier) ?? '')
-        if (!symbol) {
+        if (!binding) {
           return
         }
         if (owner) {
           for (const parent of owner) {
-            addDependency(parent, symbol)
+            addDependency(parent, binding)
           }
         } else {
-          live.add(symbol)
+          live.add(binding)
         }
       }
       if (is.ExportNamedDeclaration(node) && node.declaration) {
@@ -293,24 +293,24 @@ export function removeUnusedBindings(
         markExport(node.local)
       }
       const reference = original ? module.referenceOf(original) : null
-      let symbol =
-        reference && !reference.inTypePosition ? reference.symbol : null
+      let binding =
+        reference && !reference.inTypePosition ? reference.binding : null
       const generated = generatedReferenceOf(node)
       if (!original && generated) {
-        symbol =
+        binding =
           typeof generated === 'string'
-            ? module.resolve(generated, scope)
+            ? module.lookup(generated, { from: scope })
             : generated
       }
-      if (!symbol || !graph.declarations.has(symbol)) {
+      if (!binding || !graph.declarations.has(binding)) {
         return
       }
       if (!owner) {
-        live.add(symbol)
+        live.add(binding)
       } else {
         for (const source of owner) {
-          const edges = dependencies.get(source) ?? new Set<Symbol>()
-          edges.add(symbol)
+          const edges = dependencies.get(source) ?? new Set<Binding>()
+          edges.add(binding)
           dependencies.set(source, edges)
         }
       }
@@ -326,22 +326,22 @@ export function removeUnusedBindings(
     if (!representative) {
       continue
     }
-    for (const symbol of siblings) {
-      if (symbol !== representative) {
-        addDependency(representative, symbol)
-        addDependency(symbol, representative)
+    for (const binding of siblings) {
+      if (binding !== representative) {
+        addDependency(representative, binding)
+        addDependency(binding, representative)
       }
     }
   }
   const retained = expandTransitively(live, dependencies)
   const removable = new Set(
-    [...present].filter((symbol) => !retained.has(symbol)),
+    [...present].filter((binding) => !retained.has(binding)),
   )
   walk(program, {
     enter(node, context) {
       const original = originalNodes.get(node)
       const owners = original ? originalOwners.get(original) : undefined
-      if (owners && [...owners].every((symbol) => removable.has(symbol))) {
+      if (owners && [...owners].every((binding) => removable.has(binding))) {
         context.remove()
       }
     },
@@ -418,8 +418,8 @@ export function extractModuleInfo(sourceModule: Module): ExtractedModuleInfo {
   const exportBindings = new Map<string, string>()
   const reExportAllSources: Array<string> = []
   const graph = declarationIndex(sourceModule, sourceModule.rootScope.bindings)
-  for (const [symbol, declaration] of graph.declarations) {
-    bindings.set(symbol.name, {
+  for (const [binding, declaration] of graph.declarations) {
+    bindings.set(binding.name, {
       type: 'var',
       init: is.VariableDeclarator(declaration) ? declaration.init : null,
     })

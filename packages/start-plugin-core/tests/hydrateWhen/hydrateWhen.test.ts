@@ -228,7 +228,7 @@ describe('Hydrate compiler transform fixtures', async () => {
           const reference = output.referenceOf(node)
           if (reference && capturedNames.includes(reference.name)) {
             capturedReferences.add(reference.name)
-            expect(reference.symbol).toBeTruthy()
+            expect(reference.binding).toBeTruthy()
           }
         },
       })

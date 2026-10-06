@@ -28,8 +28,8 @@ export const render = () => {
   })
   const graph = moduleDeclarationGraph(module)
   const outer = module.rootScope.find('_Widget')!
-  const inner = module.symbols.find(
-    (symbol) => symbol.name === '_Widget' && symbol !== outer,
+  const inner = module.bindings.find(
+    (binding) => binding.name === '_Widget' && binding !== outer,
   )!
   expect(outer.references).toHaveLength(0)
   expect(inner.references).toHaveLength(1)

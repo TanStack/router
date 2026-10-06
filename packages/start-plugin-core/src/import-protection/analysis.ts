@@ -3,7 +3,7 @@ import { bindingIdentifiers, is } from 'yuku-ast'
 import { buildLineIndex, indexToLineColumn } from './sourceLocation'
 import { getOrCreate } from './utils'
 import type * as t from '@yuku-toolchain/types'
-import type { Module, Symbol } from 'yuku-analyzer'
+import type { Binding, Module } from 'yuku-analyzer'
 import type { LineIndex, TransformResult } from './sourceLocation'
 
 export type UsagePos = { line: number; column0: number }
@@ -106,7 +106,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
   const importSourcesInOrder: Array<string> = []
   const importSpecifierLocationIndex = new Map<string, number>()
   const importBindingsBySource = new Map<string, ImportBindingInfo>()
-  const memberBindingSources = new Map<Symbol, Set<string>>()
+  const memberBindingSources = new Map<Binding, Set<string>>()
   const mockNamesBySource = new Map<string, Set<string>>()
   const namedExports = new Set<string>()
 
@@ -133,9 +133,9 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
   }
 
   const addMemberBinding = (localName: string, source: string) => {
-    const symbol = module.rootScope.find(localName)
-    if (symbol) {
-      getOrCreate(memberBindingSources, symbol, () => new Set<string>()).add(
+    const binding = module.rootScope.find(localName)
+    if (binding) {
+      getOrCreate(memberBindingSources, binding, () => new Set<string>()).add(
         source,
       )
     }
@@ -237,7 +237,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
     } else if (is.MemberExpression(node)) {
       const object = unwrapNode(node.object)
       if (is.Identifier(object)) {
-        const sources = memberBindingSources.get(module.symbolOf(object)!)
+        const sources = memberBindingSources.get(module.bindingOf(object)!)
         if (sources) {
           const property = node.property
           for (const source of sources) {
@@ -459,19 +459,19 @@ function findUsagePosInAnalysis(
   const module = analysis.module
   const imported =
     analysis.importBindingsBySource.get(source)?.importedLocalNames
-  const symbols = new Set<Symbol>()
+  const bindings = new Set<Binding>()
   for (const name of imported ?? []) {
-    const symbol = module.rootScope.find(name)
-    if (symbol) {
-      symbols.add(symbol)
+    const binding = module.rootScope.find(name)
+    if (binding) {
+      bindings.add(binding)
     }
   }
   let preferred: UsagePos | undefined
   let anyUsage: UsagePos | undefined
   for (const reference of module.references) {
     if (
-      !reference.symbol ||
-      !symbols.has(reference.symbol) ||
+      !reference.binding ||
+      !bindings.has(reference.binding) ||
       reference.inTypePosition
     ) {
       continue

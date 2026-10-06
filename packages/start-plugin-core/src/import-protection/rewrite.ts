@@ -27,7 +27,7 @@ export function rewriteDeniedImports(
 ): { code: string; map?: SourceMapLike } | undefined {
   const module = analyzeModule({ code, filename: id })
   const { program } = cloneModuleAst(module)
-  const usedNames = new Set(module.symbols.map((symbol) => symbol.name))
+  const usedNames = new Set(module.bindings.map((binding) => binding.name))
   let counter = 0
   const uniqueName = (prefix: string) => {
     let name = prefix

@@ -80,8 +80,9 @@ evidence for their recorded revisions, not new measurements of this follow-up.
 
 ## Scope and architecture
 
-The compiler packages use Yuku 0.12.0 for parsing, semantic analysis, AST
-transformation, and code generation. There is no Babel compatibility layer or
+The compiler packages use Yuku 0.17.0 for parsing, semantic analysis, AST
+transformation, and code generation. The recorded measurements below used
+0.12.0 and have not been repeated for 0.17.0. There is no Babel compatibility layer or
 fallback in the migrated compiler. Babel can still occur transitively in
 unrelated framework tooling.
 

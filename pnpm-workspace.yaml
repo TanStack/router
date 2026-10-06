@@ -1,35 +1,5 @@
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
-# Allow the Yuku 0.12.0 fixes and their native bindings during migration validation.
-minimumReleaseAgeExclude:
-  - '@yuku-analyzer/binding-android-arm64@0.12.0'
-  - '@yuku-analyzer/binding-darwin-arm64@0.12.0'
-  - '@yuku-analyzer/binding-darwin-x64@0.12.0'
-  - '@yuku-analyzer/binding-freebsd-x64@0.12.0'
-  - '@yuku-analyzer/binding-linux-arm-gnu@0.12.0'
-  - '@yuku-analyzer/binding-linux-arm-musl@0.12.0'
-  - '@yuku-analyzer/binding-linux-arm64-gnu@0.12.0'
-  - '@yuku-analyzer/binding-linux-arm64-musl@0.12.0'
-  - '@yuku-analyzer/binding-linux-x64-gnu@0.12.0'
-  - '@yuku-analyzer/binding-linux-x64-musl@0.12.0'
-  - '@yuku-analyzer/binding-win32-arm64@0.12.0'
-  - '@yuku-analyzer/binding-win32-x64@0.12.0'
-  - '@yuku-codegen/binding-android-arm64@0.12.0'
-  - '@yuku-codegen/binding-darwin-arm64@0.12.0'
-  - '@yuku-codegen/binding-darwin-x64@0.12.0'
-  - '@yuku-codegen/binding-freebsd-x64@0.12.0'
-  - '@yuku-codegen/binding-linux-arm-gnu@0.12.0'
-  - '@yuku-codegen/binding-linux-arm-musl@0.12.0'
-  - '@yuku-codegen/binding-linux-arm64-gnu@0.12.0'
-  - '@yuku-codegen/binding-linux-arm64-musl@0.12.0'
-  - '@yuku-codegen/binding-linux-x64-gnu@0.12.0'
-  - '@yuku-codegen/binding-linux-x64-musl@0.12.0'
-  - '@yuku-codegen/binding-win32-arm64@0.12.0'
-  - '@yuku-codegen/binding-win32-x64@0.12.0'
-  - '@yuku-toolchain/types@0.12.0'
-  - 'yuku-analyzer@0.12.0'
-  - 'yuku-ast@0.12.0'
-  - 'yuku-codegen@0.12.0'
 
 linkWorkspacePackages: true
 preferWorkspacePackages: true

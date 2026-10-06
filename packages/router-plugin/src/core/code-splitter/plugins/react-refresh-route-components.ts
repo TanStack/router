@@ -61,12 +61,12 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
       }
 
       const original = ctx.originalNodes.get(prop.value)
-      const symbol = original ? ctx.module.symbolOf(original) : null
-      if (symbol && ctx.opts.sharedBindings?.has(symbol.name)) {
+      const binding = original ? ctx.module.bindingOf(original) : null
+      if (binding && ctx.opts.sharedBindings?.has(binding.name)) {
         continue
       }
-      const bindingNode = symbol
-        ? moduleDeclarationGraph(ctx.module).declarations.get(symbol)
+      const bindingNode = binding
+        ? moduleDeclarationGraph(ctx.module).declarations.get(binding)
         : undefined
       const isLocalComponentBinding =
         bindingNode?.type === 'FunctionDeclaration' ||

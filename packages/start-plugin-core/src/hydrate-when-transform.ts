@@ -15,7 +15,7 @@ import {
 } from '@tanstack/router-utils'
 import { tssHydrate } from './hydration-constants'
 import { cleanId, codeFrameError } from './start-compiler/utils'
-import type { Module, Symbol } from 'yuku-analyzer'
+import type { Binding, Module } from 'yuku-analyzer'
 import type * as t from '@yuku-toolchain/types'
 import type {
   CompileStartFrameworkOptions,
@@ -158,16 +158,16 @@ function getSingleUseObjectExpressionBinding(
   objectExpressions: WeakMap<t.Node, t.ObjectExpression>,
 ) {
   const original = sourceNode(context, identifier)
-  const symbol = context.module.symbolOf(original)
+  const binding = context.module.bindingOf(original)
   if (
-    !symbol ||
-    symbol.references.length !== 1 ||
-    symbol.references[0]?.node !== original ||
-    symbol.references.some((reference) => reference.isWrite)
+    !binding ||
+    binding.references.length !== 1 ||
+    binding.references[0]?.node !== original ||
+    binding.references.some((reference) => reference.isWrite)
   ) {
     return undefined
   }
-  const declarationIdentifier = symbol.declarations[0]
+  const declarationIdentifier = binding.declarations[0]
   const declaration =
     declarationIdentifier && context.module.parentOf(declarationIdentifier)
   if (!is.VariableDeclarator(declaration) || !declaration.init) {
@@ -229,23 +229,23 @@ function inspectSplitBoundary(
         return
       }
       const reference = context.module.referenceOf(sourceNode(context, current))
-      const symbol = reference?.symbol
+      const binding = reference?.binding
       if (
         !reference ||
         reference.inTypePosition ||
-        !symbol ||
-        symbol.scope === context.module.rootScope
+        !binding ||
+        binding.scope === context.module.rootScope
       ) {
         return
       }
       if (
-        symbol.declarations.some((declaration) =>
+        binding.declarations.some((declaration) =>
           isWithin(context.module, declaration, originalBoundary),
         )
       ) {
         return
       }
-      captured.add(symbol.name)
+      captured.add(binding.name)
     },
     JSXOpeningElement(current, visitor) {
       if (current === node.openingElement) {
@@ -344,7 +344,7 @@ function transformHydrateAst(
   const transformation = { modified: false }
   let lazyName: string | undefined
   const names = new Set([
-    ...options.module.symbols.map((symbol) => symbol.name),
+    ...options.module.bindings.map((binding) => binding.name),
     ...options.module.unresolvedReferences.map((reference) => reference.name),
   ])
   const fresh = (base: string) => {
@@ -570,14 +570,14 @@ function loadHydrateVirtualModule(options: {
     })
   }
   const graph = moduleDeclarationGraph(module)
-  const keep = new Set<Symbol>()
+  const keep = new Set<Binding>()
   for (const child of children) {
-    for (const symbol of collectModuleReferences(
+    for (const binding of collectModuleReferences(
       module,
       sourceNode(context, child),
     )) {
-      if (symbol.name !== 'Route') {
-        keep.add(symbol)
+      if (binding.name !== 'Route') {
+        keep.add(binding)
       }
     }
   }
@@ -585,7 +585,7 @@ function loadHydrateVirtualModule(options: {
   const selected = new Set(
     [...graph.declarationSymbols]
       .filter(([, owners]) =>
-        [...owners].some((symbol) => retained.has(symbol)),
+        [...owners].some((binding) => retained.has(binding)),
       )
       .map(([declaration]) => declaration),
   )

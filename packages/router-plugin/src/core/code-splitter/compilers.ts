@@ -1,5 +1,5 @@
 import { b, bindingIdentifiers, is, isIdentifierName, walk } from 'yuku-ast'
-import { SymbolFlags } from 'yuku-analyzer'
+import { BindingFlags } from 'yuku-analyzer'
 import {
   analyzeModule,
   cloneModuleAst,
@@ -17,7 +17,7 @@ import { tsrShared, tsrSplit } from '../constants'
 import { createRouteHmrStatement } from '../hmr'
 import { getObjectPropertyKeyName, getUniqueProgramIdentifier } from '../utils'
 import { getFrameworkOptions } from './framework-options'
-import type { Module, Symbol } from 'yuku-analyzer'
+import type { Binding, Module } from 'yuku-analyzer'
 import type {
   Expression,
   Node,
@@ -84,7 +84,7 @@ export type RouteModuleAnalysis = {
   module: Module
   routes: Array<RouteDefinition>
   graph: ReturnType<typeof moduleDeclarationGraph>
-  exported: Map<Symbol, Array<string>>
+  exported: Map<Binding, Array<string>>
 }
 
 type SourceOptions = AnalyzeModuleOptions & { analysis?: RouteModuleAnalysis }
@@ -92,7 +92,7 @@ type SourceOptions = AnalyzeModuleOptions & { analysis?: RouteModuleAnalysis }
 function resolveExpression(
   module: Module,
   node: Node | null | undefined,
-  seen = new Set<Symbol>(),
+  seen = new Set<Binding>(),
 ): Node | undefined {
   if (!node) {
     return undefined
@@ -101,12 +101,12 @@ function resolveExpression(
     node = unwrapExpression(node)
   }
   if (is.Identifier(node)) {
-    const symbol = module.symbolOf(node)
-    if (!symbol || seen.has(symbol)) {
+    const binding = module.bindingOf(node)
+    if (!binding || seen.has(binding)) {
       return undefined
     }
-    seen.add(symbol)
-    let declaration: Node | null | undefined = symbol.declarations[0]
+    seen.add(binding)
+    let declaration: Node | null | undefined = binding.declarations[0]
     while (
       declaration &&
       !is.VariableDeclarator(declaration) &&
@@ -151,7 +151,7 @@ export function analyzeRouteModule(
       routes.push({ options, factory: callee.name, statement })
     },
   })
-  const exported = new Map<Symbol, Array<string>>()
+  const exported = new Map<Binding, Array<string>>()
   const { exports: moduleExports } = module
   for (const entry of moduleExports) {
     if (entry.local && entry.name !== null && !entry.typeOnly) {
@@ -194,10 +194,10 @@ export function computeSharedBindings(
 ): Set<string> {
   const analysis = sourceAnalysis(options)
   const { module, graph } = analysis
-  const groupsBySymbol = new Map<Symbol, Set<number>>()
+  const groupsByBinding = new Map<Binding, Set<number>>()
   const chunkDependencies = new Map(
-    [...graph.dependencies].map(([symbol, dependencies]) => [
-      symbol,
+    [...graph.dependencies].map(([binding, dependencies]) => [
+      binding,
       new Set(
         [...dependencies].filter((dependency) => dependency.name !== 'Route'),
       ),
@@ -205,7 +205,8 @@ export function computeSharedBindings(
   )
   const locals = new Set(
     module.rootScope.bindings.filter(
-      (symbol) => symbol.name !== 'Route' && !symbol.has(SymbolFlags.Import),
+      (binding) =>
+        binding.name !== 'Route' && !binding.has(BindingFlags.Import),
     ),
   )
   for (const route of analysis.routes) {
@@ -226,58 +227,61 @@ export function computeSharedBindings(
         collectModuleReferences(module, property.value),
         chunkDependencies,
       )
-      for (const symbol of references) {
-        if (!locals.has(symbol)) {
+      for (const binding of references) {
+        if (!locals.has(binding)) {
           continue
         }
-        const groups = groupsBySymbol.get(symbol) ?? new Set<number>()
+        const groups = groupsByBinding.get(binding) ?? new Set<number>()
         groups.add(group)
-        groupsBySymbol.set(symbol, groups)
+        groupsByBinding.set(binding, groups)
       }
     }
   }
-  const shared = new Set<Symbol>()
-  for (const [symbol, groups] of groupsBySymbol) {
+  const shared = new Set<Binding>()
+  for (const [binding, groups] of groupsByBinding) {
     if (groups.size > 1) {
-      shared.add(symbol)
+      shared.add(binding)
     }
   }
   // A destructured initializer belongs to one module even when its individual
   // bindings are used in different chunks.
   for (const siblings of graph.declarationSymbols.values()) {
     const groups = new Set(
-      [...siblings].flatMap((symbol) => [
-        ...(groupsBySymbol.get(symbol) ?? []),
+      [...siblings].flatMap((binding) => [
+        ...(groupsByBinding.get(binding) ?? []),
       ]),
     )
-    if (groups.size > 1 || [...siblings].some((symbol) => shared.has(symbol))) {
-      for (const symbol of siblings) {
-        if (locals.has(symbol)) {
-          shared.add(symbol)
+    if (
+      groups.size > 1 ||
+      [...siblings].some((binding) => shared.has(binding))
+    ) {
+      for (const binding of siblings) {
+        if (locals.has(binding)) {
+          shared.add(binding)
         }
       }
     }
   }
   const forbidden = new Set(
-    module.rootScope.bindings.filter((symbol) => symbol.name === 'Route'),
+    module.rootScope.bindings.filter((binding) => binding.name === 'Route'),
   )
   let changed = true
   while (changed) {
     changed = false
-    for (const [symbol, dependencies] of graph.dependencies) {
+    for (const [binding, dependencies] of graph.dependencies) {
       if (
-        !forbidden.has(symbol) &&
+        !forbidden.has(binding) &&
         [...dependencies].some((dependency) => forbidden.has(dependency))
       ) {
-        forbidden.add(symbol)
+        forbidden.add(binding)
         changed = true
       }
     }
     for (const siblings of graph.declarationSymbols.values()) {
-      if ([...siblings].some((symbol) => forbidden.has(symbol))) {
-        for (const symbol of siblings) {
-          if (!forbidden.has(symbol)) {
-            forbidden.add(symbol)
+      if ([...siblings].some((binding) => forbidden.has(binding))) {
+        for (const binding of siblings) {
+          if (!forbidden.has(binding)) {
+            forbidden.add(binding)
             changed = true
           }
         }
@@ -286,17 +290,17 @@ export function computeSharedBindings(
   }
   return new Set(
     [...shared]
-      .filter((symbol) => !forbidden.has(symbol))
-      .map((symbol) => symbol.name),
+      .filter((binding) => !forbidden.has(binding))
+      .map((binding) => binding.name),
   )
 }
 
 function identifier(name: string) {
   return b.Identifier({ name })
 }
-function reference(name: string, symbol?: Symbol) {
+function reference(name: string, binding?: Binding) {
   const node = identifier(name)
-  linkGeneratedReference(node, symbol ?? name)
+  linkGeneratedReference(node, binding ?? name)
   return node
 }
 function string(value: string) {
@@ -322,16 +326,16 @@ function imports(
   })
 }
 function exports(
-  names: Array<{ local: string; exported: string; symbol?: Symbol }>,
+  names: Array<{ local: string; exported: string; binding?: Binding }>,
   source: string | null = null,
 ) {
   return b.ExportNamedDeclaration({
     declaration: null,
     source: source === null ? null : string(source),
     attributes: [],
-    specifiers: names.map(({ local, exported, symbol }) =>
+    specifiers: names.map(({ local, exported, binding }) =>
       b.ExportSpecifier({
-        local: source === null ? reference(local, symbol) : moduleName(local),
+        local: source === null ? reference(local, binding) : moduleName(local),
         exported: moduleName(exported),
       }),
     ),
@@ -372,8 +376,8 @@ function createOutput(analysis: RouteModuleAnalysis) {
   })
   const renameBinding = (node: Node, name: string) => {
     const original = originalNodes.get(node)
-    const symbol = original ? analysis.module.symbolOf(original) : null
-    if (!symbol) {
+    const binding = original ? analysis.module.bindingOf(original) : null
+    if (!binding) {
       return
     }
     const declarationExports = new Map<Node, typeof analysis.module.exports>()
@@ -396,7 +400,7 @@ function createOutput(analysis: RouteModuleAnalysis) {
     for (const [statement, entries] of declarationExports) {
       const copy = copies.get(statement)
       if (
-        !entries.some((entry) => entry.local === symbol) ||
+        !entries.some((entry) => entry.local === binding) ||
         !is.ExportNamedDeclaration(copy) ||
         !copy.declaration
       ) {
@@ -415,7 +419,7 @@ function createOutput(analysis: RouteModuleAnalysis) {
           uniqueEntries.map((entry) => ({
             local: entry.local!.name,
             exported: entry.name!,
-            symbol: entry.local!,
+            binding: entry.local!,
           })),
         )
         for (const [index, entry] of uniqueEntries.entries()) {
@@ -435,7 +439,7 @@ function createOutput(analysis: RouteModuleAnalysis) {
           return
         }
         const source = originalNodes.get(candidate)
-        if (source && analysis.module.symbolOf(source) === symbol) {
+        if (source && analysis.module.bindingOf(source) === binding) {
           candidate.name = name
           const parent = context.parent
           if (
@@ -598,12 +602,12 @@ export function compileCodeSplitReferenceRoute(
           continue
         }
         const original = originalNodes.get(unwrapExpression(prop.value))
-        const symbol =
+        const binding =
           original && is.Identifier(original)
-            ? analysis.module.symbolOf(original)
+            ? analysis.module.bindingOf(original)
             : null
-        if (symbol && analysis.exported.has(symbol)) {
-          knownExported.add(symbol.name)
+        if (binding && analysis.exported.has(binding)) {
+          knownExported.add(binding.name)
           continue
         }
         const meta = splitMeta(key)
@@ -716,9 +720,9 @@ export function compileCodeSplitReferenceRoute(
   }
   addSharedImports(program, options.sharedBindings, options.filename)
   const sharedExports = [...analysis.exported]
-    .filter(([symbol]) => options.sharedBindings?.has(symbol.name))
-    .flatMap(([symbol, names]) =>
-      names.map((name) => ({ local: symbol.name, exported: name })),
+    .filter(([binding]) => options.sharedBindings?.has(binding.name))
+    .flatMap(([binding, names]) =>
+      names.map((name) => ({ local: binding.name, exported: name })),
     )
   if (sharedExports.length) {
     program.body.push(
@@ -773,17 +777,17 @@ export function compileCodeSplitVirtualRoute(
         continue
       }
       const propertyValue = unwrapExpression(property.value)
-      const symbol = is.Identifier(propertyValue)
-        ? analysis.module.symbolOf(propertyValue)
+      const binding = is.Identifier(propertyValue)
+        ? analysis.module.bindingOf(propertyValue)
         : null
-      if (symbol && analysis.exported.has(symbol)) {
+      if (binding && analysis.exported.has(binding)) {
         continue
       }
       const value = copies.get(propertyValue) as Expression
       const meta = splitMeta(key)
       if (is.Identifier(value)) {
-        const declaration = symbol
-          ? analysis.graph.declarations.get(symbol)
+        const declaration = binding
+          ? analysis.graph.declarations.get(binding)
           : undefined
         const splitNode = declaration ? copies.get(declaration) : undefined
         if (splitNode) {
@@ -798,7 +802,7 @@ export function compileCodeSplitVirtualRoute(
         }
         generatedExports.push(
           exports([
-            { local: value.name, exported: key, symbol: symbol ?? undefined },
+            { local: value.name, exported: key, binding: binding ?? undefined },
           ]),
         )
       } else {
@@ -817,7 +821,7 @@ export function compileCodeSplitVirtualRoute(
   // A split module imports user exports, including the Route singleton, from the
   // reference module instead of initializing a second copy.
   const userExports = new Set(
-    [...analysis.exported.keys()].map((symbol) => symbol.name),
+    [...analysis.exported.keys()].map((binding) => binding.name),
   )
   program.body = program.body.flatMap((statement): Array<ProgramStatement> => {
     if (is.ExportNamedDeclaration(statement)) {
@@ -836,14 +840,14 @@ export function compileCodeSplitVirtualRoute(
   })
   removeDeclarations(program, userExports)
   const retainedExports = [...analysis.exported].filter(
-    ([symbol]) => !options.sharedBindings?.has(symbol.name),
+    ([binding]) => !options.sharedBindings?.has(binding.name),
   )
   if (retainedExports.length) {
     prepend(
       program,
       imports(
-        retainedExports.map(([symbol, names]) => ({
-          local: symbol.name,
+        retainedExports.map(([binding, names]) => ({
+          local: binding.name,
           imported: names[0]!,
         })),
         bareFilename(options.filename),
@@ -887,8 +891,8 @@ function stripUnownedExpressions(
     const original = originalNodes.get(statement)
     return (
       !!original &&
-      [...collectModuleReferences(module, original)].some((symbol) =>
-        localNames.has(symbol.name),
+      [...collectModuleReferences(module, original)].some((binding) =>
+        localNames.has(binding.name),
       )
     )
   })
@@ -905,17 +909,17 @@ export function compileCodeSplitSharedRoute(
   const keep = expandTransitively(
     new Set(
       analysis.module.rootScope.bindings.filter(
-        (symbol) =>
-          symbol.name !== 'Route' && options.sharedBindings.has(symbol.name),
+        (binding) =>
+          binding.name !== 'Route' && options.sharedBindings.has(binding.name),
       ),
     ),
     analysis.graph.dependencies,
   )
-  const names = new Set([...keep].map((symbol) => symbol.name))
+  const names = new Set([...keep].map((binding) => binding.name))
   const remove = new Set(
     analysis.module.rootScope.bindings
-      .filter((symbol) => !names.has(symbol.name))
-      .map((symbol) => symbol.name),
+      .filter((binding) => !names.has(binding.name))
+      .map((binding) => binding.name),
   )
   program.body = program.body.flatMap((statement): Array<ProgramStatement> => {
     if (is.ExportNamedDeclaration(statement)) {

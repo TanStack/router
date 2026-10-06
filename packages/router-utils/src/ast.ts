@@ -1,9 +1,37 @@
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { analyze } from 'yuku-analyzer'
 import { generate } from 'yuku-codegen'
 import { walk } from 'yuku-ast'
-import type { Module, Symbol } from 'yuku-analyzer'
-import type { Expression, Node, Program } from '@yuku-toolchain/types'
+import { load as loadNativeCore } from 'yuku-core'
+import { loadSync as loadWasmCore } from '@yuku-core/wasm'
+import type { Binding, Module } from 'yuku-analyzer'
+import type { Core, Expression, Node, Program } from '@yuku-toolchain/types'
 import type { GenerateResult as NativeGenerateResult } from 'yuku-codegen'
+
+let core: Core | undefined
+
+function getCore(): Core {
+  if (!core) {
+    // WebContainers (StackBlitz, bolt.new) cannot load native addons, and
+    // Yuku no longer falls back to WebAssembly on its own since
+    // https://github.com/yuku-toolchain/yuku/releases/tag/v0.17.0
+    if (process.versions.webcontainer != null) {
+      // `@yuku-core/wasm`'s `loadSync()` needs the bytes, so resolve the file
+      // from whichever build runs: CJS has `__filename`, ESM has `import.meta`
+      const require = createRequire(
+        // @ts-ignore TS1470: `import.meta` is only read in the ESM build
+        typeof __filename === 'string' ? __filename : import.meta.url,
+      )
+      core = loadWasmCore(
+        readFileSync(require.resolve('@yuku-core/wasm/yuku-core.wasm')),
+      )
+    } else {
+      core = loadNativeCore()
+    }
+  }
+  return core
+}
 
 export interface GenerateResult extends Omit<NativeGenerateResult, 'map'> {
   map: {
@@ -33,6 +61,7 @@ export function analyzeModule({
     lang: /\.[cm]?ts$/.test(physicalName) ? 'ts' : 'tsx',
     sourceType: 'module',
     attachComments: true,
+    core: getCore(),
   })
   const error = module.diagnostics.find(
     (diagnostic) => diagnostic.severity === 'error',
@@ -67,8 +96,10 @@ export function generateModule(
         }
       : {}),
   })
-  if (result.errors.length) {
-    throw new Error(result.errors.map((error) => error.message).join('\n'))
+  if (result.diagnostics.length) {
+    throw new Error(
+      result.diagnostics.map((diagnostic) => diagnostic.message).join('\n'),
+    )
   }
   return {
     ...result,
@@ -114,18 +145,18 @@ export function cloneModuleAst(module: Module): ModuleAstClone {
   return { program, originalNodes }
 }
 
-const generatedReferences = new WeakMap<Node, Symbol | string>()
+const generatedReferences = new WeakMap<Node, Binding | string>()
 
 /** Explicitly connect a new reference to a source binding; never infer local scope. */
 export function linkGeneratedReference<T extends Node>(
   node: T,
-  reference: Symbol | string,
+  reference: Binding | string,
 ): T {
   generatedReferences.set(node, reference)
   return node
 }
 
-export function generatedReferenceOf(node: Node): Symbol | string | undefined {
+export function generatedReferenceOf(node: Node): Binding | string | undefined {
   return generatedReferences.get(node)
 }
 

@@ -2,7 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { analyzeModule } from '@tanstack/router-utils'
-import { SymbolFlags } from 'yuku-analyzer'
+import { BindingFlags } from 'yuku-analyzer'
 
 import {
   analyzeRouteModule,
@@ -362,10 +362,10 @@ describe('computeSharedBindings invariants', () => {
     return new Set(
       analyzeModule({ code })
         .rootScope.bindings.filter(
-          (symbol) =>
-            !symbol.has(SymbolFlags.Import) && symbol.name !== 'Route',
+          (binding) =>
+            !binding.has(BindingFlags.Import) && binding.name !== 'Route',
         )
-        .map((symbol) => symbol.name),
+        .map((binding) => binding.name),
     )
   }
 
@@ -887,10 +887,10 @@ export const Route = createFileRoute('/')({
         const localBindings = new Set(
           analyzeModule({ code })
             .rootScope.bindings.filter(
-              (symbol) =>
-                !symbol.has(SymbolFlags.Import) && symbol.name !== 'Route',
+              (binding) =>
+                !binding.has(BindingFlags.Import) && binding.name !== 'Route',
             )
-            .map((symbol) => symbol.name),
+            .map((binding) => binding.name),
         )
 
         for (const name of result) {
