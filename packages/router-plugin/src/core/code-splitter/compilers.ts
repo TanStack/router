@@ -84,6 +84,12 @@ export type RouteModuleAnalysis = {
   module: Module
   routes: Array<RouteDefinition>
   graph: ReturnType<typeof moduleDeclarationGraph>
+  /**
+   * Declaration dependencies without the `Route` singleton. Split and shared
+   * modules import `Route` rather than declare it, so reading it never brings
+   * the dependencies of every route option along.
+   */
+  chunkDependencies: Map<Binding, Set<Binding>>
   exported: Map<Binding, Array<string>>
 }
 
@@ -167,7 +173,19 @@ export function analyzeRouteModule(
       exported.set(entry.local, names)
     }
   }
-  return { module, routes, graph: moduleDeclarationGraph(module), exported }
+  const graph = moduleDeclarationGraph(module)
+  const chunkDependencies = new Map<Binding, Set<Binding>>()
+  for (const [binding, dependencies] of graph.dependencies) {
+    if (binding.name !== 'Route') {
+      chunkDependencies.set(
+        binding,
+        new Set(
+          [...dependencies].filter((dependency) => dependency.name !== 'Route'),
+        ),
+      )
+    }
+  }
+  return { module, routes, graph, chunkDependencies, exported }
 }
 
 function sourceAnalysis(options: SourceOptions) {
@@ -198,16 +216,8 @@ export function computeSharedBindings(
   options: SourceOptions & { codeSplitGroupings: CodeSplitGroupings },
 ): Set<string> {
   const analysis = sourceAnalysis(options)
-  const { module, graph } = analysis
+  const { module, graph, chunkDependencies } = analysis
   const groupsByBinding = new Map<Binding, Set<number>>()
-  const chunkDependencies = new Map(
-    [...graph.dependencies].map(([binding, dependencies]) => [
-      binding,
-      new Set(
-        [...dependencies].filter((dependency) => dependency.name !== 'Route'),
-      ),
-    ]),
-  )
   const locals = new Set(
     module.rootScope.bindings.filter(
       (binding) =>
