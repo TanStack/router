@@ -232,11 +232,13 @@ export function computeSharedBindings(
   const analysis = sourceAnalysis(options)
   const { module, graph, chunkDependencies } = analysis
   const groupsByBinding = new Map<Binding, Set<number>>()
-  // Only a top-level declaration can move to the shared module
+  // Only a top-level declaration with a runtime value can move to the shared
+  // module: an ambient one is provided by the environment and erased with types
   const locals = new Set(
     [...graph.declarations.keys()].filter(
       (binding) =>
-        binding.name !== 'Route' && !binding.has(BindingFlags.Import),
+        binding.name !== 'Route' &&
+        !binding.has(BindingFlags.Import | BindingFlags.Ambient),
     ),
   )
   for (const route of analysis.routes) {
