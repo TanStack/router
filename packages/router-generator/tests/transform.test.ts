@@ -27,6 +27,24 @@ describe('transform', () => {
     }
   })
 
+  it('reads route call parts through parentheses and TypeScript wrappers', () => {
+    const node = makeNode()
+    const result = transform({
+      source:
+        "import { createFileRoute } from '@tanstack/react-router'\n" +
+        "export const Route = (createFileRoute as typeof createFileRoute)(('/old' as const))(({ component: Page, server: {} }) satisfies object)\n",
+      ctx: { target: 'react', routeId: '/new', lazy: false },
+      node,
+    })
+    expect(result).toEqual({
+      result: 'modified',
+      output:
+        "import { createFileRoute } from '@tanstack/react-router'\n" +
+        "export const Route = (createFileRoute as typeof createFileRoute)(('/new' as const))(({ component: Page, server: {} }) satisfies object)\n",
+    })
+    expect(node.createFileRouteProps).toEqual(new Set(['component', 'server']))
+  })
+
   it('does not treat root route exports as missing Route exports', async () => {
     const result = await transform({
       source: [

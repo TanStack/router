@@ -227,12 +227,12 @@ function findExportedRouteCalls(
         continue
       }
 
-      const routeIdArg = init.innerCall.arguments[0]
+      const routeIdArg = unwrapNode(init.innerCall.arguments[0])
       if (isSupportedRouteId(routeIdArg)) {
         calls.push({
           callee: init.callee,
           routeIdArg,
-          optionsArg: init.outerCall.arguments[0],
+          optionsArg: unwrapNode(init.outerCall.arguments[0]),
         })
       } else {
         hasUnsupportedRouteId = true
@@ -267,24 +267,18 @@ function getRouteConstructorInit(expression: t.Expression | null | undefined) {
   if (!is.CallExpression(expression)) {
     return null
   }
-  const callee = is.Expression(expression.callee)
-    ? unwrapExpression(expression.callee)
-    : expression.callee
-  if (!is.CallExpression(callee)) {
+  const innerCall = unwrapNode(expression.callee)
+  if (!is.CallExpression(innerCall)) {
     return null
   }
 
-  const innerCall = callee
-
-  if (
-    !is.Identifier(innerCall.callee) ||
-    !isRouteConstructor(innerCall.callee)
-  ) {
+  const callee = unwrapNode(innerCall.callee)
+  if (!is.Identifier(callee) || !isRouteConstructor(callee)) {
     return null
   }
 
   return {
-    callee: innerCall.callee,
+    callee,
     outerCall: expression,
     innerCall,
   }
@@ -294,12 +288,21 @@ function isDirectRouteConstructorCall(
   expression: t.Expression | null | undefined,
 ) {
   expression = expression ? unwrapExpression(expression) : expression
-  return (
-    !!expression &&
-    is.CallExpression(expression) &&
-    is.Identifier(expression.callee) &&
-    isRouteConstructor(expression.callee)
-  )
+  if (!expression || !is.CallExpression(expression)) {
+    return false
+  }
+  const callee = unwrapNode(expression.callee)
+  return is.Identifier(callee) && isRouteConstructor(callee)
+}
+
+/**
+ * Parentheses and TypeScript-only wrappers do not change the wrapped value, so
+ * route call parts are read through them.
+ */
+function unwrapNode<TNode extends t.Node | undefined>(
+  node: TNode,
+): TNode | t.Expression {
+  return node && is.Expression(node) ? unwrapExpression(node) : node
 }
 
 function isRouteConstructor(callee: t.Identifier): callee is t.Identifier & {
