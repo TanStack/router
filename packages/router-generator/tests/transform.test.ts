@@ -14,6 +14,19 @@ function makeNode(
 }
 
 describe('transform', () => {
+  it('updates parenthesized route calls without changing their surrounding source', () => {
+    const result = transform({
+      source:
+        "import { createFileRoute } from '@tanstack/react-router'; export const Route = ((createFileRoute('/old'))({}));",
+      ctx: { target: 'react', routeId: '/new', lazy: false },
+      node: makeNode(),
+    })
+    expect(result.result).toBe('modified')
+    if (result.result === 'modified') {
+      expect(result.output).toContain("((createFileRoute('/new'))({}))")
+    }
+  })
+
   it('does not treat root route exports as missing Route exports', async () => {
     const result = await transform({
       source: [

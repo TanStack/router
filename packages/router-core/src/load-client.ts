@@ -116,6 +116,28 @@ export function _getRenderedMatches(
   return end && end < matches.length ? matches.slice(0, end) : matches
 }
 
+/**
+ * Truthy when the transaction publishing `location` leaves `routeId` out of its
+ * matches, so subscribers scoped to that route can skip the publication: the
+ * route unmounts when the transaction commits, and a transaction that ends
+ * otherwise is superseded or redirected by a newer publication. Only valid
+ * synchronously inside the publication: the transaction's matches are emptied
+ * at commit and before following a redirect. Publications without a matching
+ * transaction (hydration) and scopes without a route never depart.
+ */
+export function _isRouteDeparting(
+  router: AnyRouter,
+  routeId: string | undefined,
+  location: ParsedLocation,
+): unknown {
+  const tx = router._tx
+  return (
+    routeId &&
+    tx?.[2 /* location */] === location &&
+    !tx[3 /* matches */].some((match) => match.routeId === routeId)
+  )
+}
+
 /** Return the lane whose document assets belong to the current presentation. */
 export function _getAssetMatches(
   matches: Array<AnyRouteMatch>,

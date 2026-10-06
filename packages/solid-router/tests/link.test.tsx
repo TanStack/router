@@ -34,6 +34,7 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
+import { useIntersectionObserver } from '../src/utils'
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
@@ -1405,10 +1406,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/posts')
+    // The clicked link left with the index page; check the posts page's own.
+    const activePostsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(activePostsLink).not.toBe(postsLink)
+    expect(activePostsLink).toHaveAttribute('data-status', 'active')
+    expect(activePostsLink).toHaveAttribute('aria-current', 'page')
+    expect(activePostsLink).toHaveClass('active')
+    expect(activePostsLink).toHaveAttribute('href', '/posts')
   })
 
   test('when navigating to /posts with a base url', async () => {
@@ -1464,10 +1468,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/app/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/app/posts')
+    // The clicked link left with the index page; check the posts page's own.
+    const activePostsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(activePostsLink).not.toBe(postsLink)
+    expect(activePostsLink).toHaveAttribute('data-status', 'active')
+    expect(activePostsLink).toHaveAttribute('aria-current', 'page')
+    expect(activePostsLink).toHaveClass('active')
+    expect(activePostsLink).toHaveAttribute('href', '/app/posts')
   })
 
   test('when navigating to /posts with search', async () => {
@@ -5291,6 +5298,112 @@ describe('Link', () => {
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
 
+  test.each([
+    ['intent', true],
+    [false, false],
+  ] as const)(
+    'observers without viewport preloading clean up only while preloading (%s)',
+    (mode, cleansUp) => {
+      const callback = vi.fn()
+      const view = render(() => {
+        const [element, setElement] = Solid.createSignal<Element | null>(null)
+        useIntersectionObserver(element, callback, () => mode)
+        return <div ref={setElement} />
+      })
+      callback.mockClear()
+      view.unmount()
+      if (cleansUp) {
+        expect(callback).toHaveBeenCalledWith()
+      } else {
+        expect(callback).not.toHaveBeenCalled()
+      }
+    },
+  )
+
+  test.each(['intent', 'viewport'] as const)(
+    'preserves %s timer cleanup across mode changes and unmount',
+    async (mode) => {
+      const [preload, setPreload] = Solid.createSignal<
+        false | 'intent' | 'viewport'
+      >()
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <Link to="/about" preload={preload()} preloadDelay={50}>
+            Preload Link
+          </Link>
+        ),
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+        history,
+      })
+      const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+      const view = render(() => <RouterProvider router={router} />)
+      const link = await screen.findByRole('link', { name: 'Preload Link' })
+      const notify = (callback: IntersectionObserverCallback) => {
+        callback(
+          [
+            {
+              isIntersecting: true,
+              target: link,
+            } as unknown as IntersectionObserverEntry,
+          ],
+          {} as IntersectionObserver,
+        )
+      }
+      const trigger = () => {
+        if (mode === 'intent') {
+          fireEvent.mouseEnter(link)
+        } else {
+          notify(ioCallback)
+        }
+      }
+      vi.useFakeTimers()
+
+      setPreload(mode)
+      await Promise.resolve()
+      const oldObserver = mode === 'viewport' ? ioCallback : undefined
+      trigger()
+      await vi.advanceTimersByTimeAsync(49)
+      setPreload(false)
+      await Promise.resolve()
+      if (oldObserver) {
+        notify(oldObserver)
+      }
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+      setPreload(mode)
+      await Promise.resolve()
+      if (oldObserver) {
+        // The mode matches again, but the previous observer is still obsolete.
+        notify(oldObserver)
+      }
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).not.toHaveBeenCalled()
+      trigger()
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+      preloadRouteSpy.mockClear()
+      trigger()
+      const lastObserver = mode === 'viewport' ? ioCallback : undefined
+      view.unmount()
+      if (lastObserver) {
+        notify(lastObserver)
+      }
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).not.toHaveBeenCalled()
+    },
+  )
+
   test('Link.preload="viewport" should respect preloadDelay', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -6741,14 +6854,12 @@ describe('splat routes with empty splat', () => {
     async (trailingSlash) => {
       const tail = trailingSlash === 'always' ? '/' : ''
 
-      const rootRoute = createRootRoute()
-      const indexRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
+      // The links stay mounted across the navigation so they can turn active.
+      const rootRoute = createRootRoute({
         component: () => {
           return (
             <>
-              <h1>Index Route</h1>
+              <Outlet />
               <Link
                 data-testid="splat-link-with-empty-splat"
                 to="/splat/$"
@@ -6775,6 +6886,13 @@ describe('splat routes with empty splat', () => {
               </Link>
             </>
           )
+        },
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return <h1>Index Route</h1>
         },
       })
 

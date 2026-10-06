@@ -147,13 +147,15 @@ skills:
           context types to not flow into loader.
         wrong_pattern: |
           createFileRoute('/posts')({
-            loader: ({ context }) => context.queryClient.ensureQueryData(postsQuery),
+            loader: ({ context }) =>
+              context.queryClient.query({ ...postsQuery, staleTime: 'static' }),
             beforeLoad: ({ context }) => ({ queryClient: context.queryClient }),
           })
         correct_pattern: |
           createFileRoute('/posts')({
             beforeLoad: ({ context }) => ({ queryClient: context.queryClient }),
-            loader: ({ context }) => context.queryClient.ensureQueryData(postsQuery),
+            loader: ({ context }) =>
+              context.queryClient.query({ ...postsQuery, staleTime: 'static' }),
           })
         source: 'docs/router/eslint/create-route-property-order.md'
         priority: HIGH
@@ -536,7 +538,7 @@ skills:
       - '@tanstack/react-router-ssr-query'
     covers:
       - External cache coordination pattern
-      - queryClient.ensureQueryData in loader
+      - "queryClient.query with staleTime: 'static' in loader"
       - useSuspenseQuery in components
       - setupRouterSsrQueryIntegration
       - defaultPreloadStaleTime
@@ -579,11 +581,11 @@ skills:
         priority: HIGH
         status: active
 
-      - mistake: 'Awaiting prefetchQuery in loader blocks rendering'
+      - mistake: 'Awaiting a fire-and-forget query in loader blocks rendering'
         mechanism: >-
-          For streaming/deferred patterns, prefetchQuery should NOT
-          be awaited in the loader — it starts fetching on server
-          and streams without blocking. Awaiting defeats the purpose.
+          For streaming/deferred patterns, start a query without awaiting
+          it and handle failures with catch(noop) — it starts fetching on
+          the server and streams without blocking. Awaiting defeats the purpose.
         source: 'docs/router/integrations/query.md'
         priority: MEDIUM
         status: active

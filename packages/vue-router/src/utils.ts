@@ -33,7 +33,7 @@ export const usePrevious = (fn: () => boolean) => {
  * @param ref - The ref to observe
  * @param callback - The callback to call when the intersection changes
  * @param disabled - Whether observation is disabled
- * @returns The IntersectionObserver instance
+ * @param cleanupWhenDisabled - Whether cleanup is needed without an observer (defaults to true)
  * @example
  * ```tsx
  * const MyComponent = () => {
@@ -50,37 +50,40 @@ export function useIntersectionObserver<T extends Element>(
   ref: Vue.Ref<T | null>,
   callback: (entry?: IntersectionObserverEntry) => void,
   disabled: () => boolean,
-): Vue.Ref<IntersectionObserver | null> {
+  cleanupWhenDisabled?: () => boolean,
+): void {
   const isIntersectionObserverAvailable =
     typeof IntersectionObserver === 'function'
-  const observerRef = Vue.ref<IntersectionObserver | null>(null)
 
   // Use watchEffect with cleanup to properly manage the observer lifecycle
   Vue.watchEffect((onCleanup) => {
     const r = ref.value
     if (disabled() || !r || !isIntersectionObserverAvailable) {
-      onCleanup(() => callback())
+      if (cleanupWhenDisabled?.() ?? true) {
+        onCleanup(() => callback())
+      }
       return
     }
 
+    let active = true
     const observer = new IntersectionObserver(
       (entries) => {
-        callback(entries.pop())
+        // Queued notifications can arrive after this effect has cleaned up.
+        if (active) {
+          callback(entries.pop())
+        }
       },
       { rootMargin: '100px' },
     )
 
-    observerRef.value = observer
     observer.observe(r)
 
     onCleanup(() => {
+      active = false
       observer.disconnect()
-      observerRef.value = null
       callback()
     })
   })
-
-  return observerRef
 }
 
 export function splitProps<T extends Record<string, any>>(

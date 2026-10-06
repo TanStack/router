@@ -60,11 +60,11 @@ export function parseSegment(
   /** The next slash, or the length of the path. */
   end: number,
 ): InterpolationSegment {
-  const part = path.substring(start, end)
+  const part = path.slice(start, end)
   if (part.charCodeAt(0) === 36) {
     return part.length === 1
       ? [SEGMENT_TYPE_WILDCARD, '_splat', '', undefined]
-      : [SEGMENT_TYPE_PARAM, part.substring(1), '', '']
+      : [SEGMENT_TYPE_PARAM, part.slice(1), '', '']
   }
   const open = part.indexOf('{')
   if (open >= 0) {
@@ -76,7 +76,7 @@ export function parseSegment(
       part.charCodeAt(nameStart - 1) === 36 &&
       (!optional || nameStart < close)
     ) {
-      const key = part.substring(nameStart, close)
+      const key = part.slice(nameStart, close)
       return [
         optional
           ? SEGMENT_TYPE_OPTIONAL_PARAM
@@ -84,8 +84,8 @@ export function parseSegment(
             ? SEGMENT_TYPE_PARAM
             : SEGMENT_TYPE_WILDCARD,
         key || '_splat',
-        part.substring(0, open),
-        path.substring(start + close + 1, key ? end : path.length),
+        part.slice(0, open),
+        path.slice(start + close + 1, key ? end : path.length),
       ]
     }
   }
@@ -193,7 +193,7 @@ export function parseSegments<TRouteLike extends RouteLike>(
       if (interpolation && literalStart < end) {
         // Retain original spelling before matcher case folding.
         if (literalStart < start - 1) {
-          interpolation.push(path.substring(literalStart, start - 1))
+          interpolation.push(path.slice(literalStart, start - 1))
         }
         segment[2 /* prefix */] = '/' + prefix
         if (
@@ -253,7 +253,7 @@ export function parseSegments<TRouteLike extends RouteLike>(
   }
 
   if (interpolation && literalStart < literalEnd) {
-    interpolation.push(path.substring(literalStart, literalEnd))
+    interpolation.push(path.slice(literalStart, literalEnd))
   }
   // Discard push()'s spare capacity before retaining this array on both owners.
   const segmentData = interpolation?.slice()
