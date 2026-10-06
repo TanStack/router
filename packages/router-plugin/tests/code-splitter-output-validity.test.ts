@@ -6,7 +6,7 @@ import {
   computeSharedBindings,
 } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { getModuleErrors } from './validate-module'
+import { declarationOf, getModuleErrors } from './validate-module'
 
 const filename = 'route.tsx'
 
@@ -137,6 +137,7 @@ describe('code-splitter preserves module semantics', () => {
     {
       name: 'a store subscription that unsubscribes itself',
       sideEffect: 'store.subscribe(',
+      declared: ['unsubscribe'],
       setup: `import { store } from './store'
 const unsubscribe = store.subscribe(() => {
   if (store.state.done) unsubscribe()
@@ -145,6 +146,7 @@ const unsubscribe = store.subscribe(() => {
     {
       name: 'an interval that clears itself',
       sideEffect: 'setInterval(',
+      declared: ['ticks', 'interval'],
       setup: `let ticks = 0
 const interval = setInterval(() => {
   ticks++
@@ -154,21 +156,30 @@ const interval = setInterval(() => {
     {
       name: 'mutually-referencing declarations',
       sideEffect: 'createPersister(',
+      declared: ['persister', 'restore'],
       setup: `import { createPersister } from './persist'
 const persister = createPersister({ onRestore: () => restore() })
 function restore() {
   persister.restore()
 }`,
     },
-  ])('keeps $name in the reference module', async ({ setup, sideEffect }) => {
-    const { reference } = compileRouteModules(`
+  ])(
+    'keeps $name in the reference module',
+    async ({ setup, sideEffect, declared }) => {
+      const { reference } = compileRouteModules(`
 import { createFileRoute } from '@tanstack/react-router'
 ${setup}
 export const Route = createFileRoute('/')({ component: () => <div /> })
 `)
-    expect(reference).toContain(sideEffect)
-    expect(await getModuleErrors(reference!)).toEqual([])
-  })
+      expect(reference).toContain(sideEffect)
+      // The side effects' callbacks reference these bindings, and the module
+      // validator does not report references to undeclared names.
+      for (const name of declared) {
+        expect(reference).toMatch(declarationOf(name))
+      }
+      expect(await getModuleErrors(reference!)).toEqual([])
+    },
+  )
 
   it('keeps the namespace import that a TypeScript import alias refers to', () => {
     const modules = compileRouteModules(`

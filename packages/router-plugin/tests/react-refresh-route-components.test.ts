@@ -126,12 +126,11 @@ export const page = () => <div />, Route = createRootRoute({
 `)
     const program = parseModule(code)
     const { route, value } = getRouteOption(program, 'pendingComponent')
-    if (value.type !== 'Identifier') {
-      // Not hoisted: there is no declaration to order.
-      return
-    }
+    // React Refresh needs the inline component hoisted to a top-level binding.
+    expect(value.type).toBe('Identifier')
+    const name = (value as ESTree.IdentifierReference).name
     const declaration = getTopLevelDeclarators(program).find(
-      (declarator) => getDeclaratorName(declarator) === value.name,
+      (declarator) => getDeclaratorName(declarator) === name,
     )
     // A `const` used before its declaration throws a TDZ ReferenceError when
     // the route is created.

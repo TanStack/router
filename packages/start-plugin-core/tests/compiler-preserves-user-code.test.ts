@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { compileStartModule } from './compile-start-module'
+import { declarationOf, getModuleErrors } from './validate-module'
 
 // The compiler removes code that only served a transformed call. Declarations
 // that merely reference themselves (or each other) are still live user code:
@@ -8,6 +9,7 @@ const selfReferencingCode = [
   {
     name: 'a store subscription that unsubscribes itself',
     sideEffect: 'store.subscribe(',
+    declared: ['unsubscribe'],
     code: `import { createIsomorphicFn } from '@tanstack/react-start'
 import { store } from './store'
 const unsubscribe = store.subscribe(() => {
@@ -18,6 +20,7 @@ export const value = createIsomorphicFn().server(() => 1).client(() => 2)`,
   {
     name: 'an interval that clears itself',
     sideEffect: 'setInterval(',
+    declared: ['ticks', 'interval'],
     code: `import { createServerFn } from '@tanstack/react-start'
 let ticks = 0
 const interval = setInterval(() => {
@@ -29,6 +32,7 @@ export const fn = createServerFn().handler(async () => 1)`,
   {
     name: 'mutually-referencing declarations',
     sideEffect: 'createPersister(',
+    declared: ['persister', 'restore'],
     code: `import { createServerFn } from '@tanstack/react-start'
 import { createPersister } from './persist'
 const persister = createPersister({ onRestore: () => restore() })
@@ -40,6 +44,7 @@ export const fn = createServerFn().handler(async () => 1)`,
   {
     name: 'a self-referencing local inside an exported function',
     sideEffect: 'new MutationObserver(',
+    declared: ['observer'],
     code: `import { createServerFn } from '@tanstack/react-start'
 export function useObserver() {
   const observer = new MutationObserver(() => observer.disconnect())
@@ -51,9 +56,18 @@ export const fn = createServerFn().handler(async () => 1)`,
 
 describe('Start compiler keeps self-referencing user code', () => {
   describe.each(['client', 'server'] as const)('%s', (env) => {
-    test.each(selfReferencingCode)('$name', async ({ code, sideEffect }) => {
-      const output = await compileStartModule({ env, code })
-      expect(output).toContain(sideEffect)
-    })
+    test.each(selfReferencingCode)(
+      '$name',
+      async ({ code, sideEffect, declared }) => {
+        const output = await compileStartModule({ env, code })
+        expect(output).toContain(sideEffect)
+        // The side effects' callbacks reference these bindings, and the module
+        // validator does not report references to undeclared names.
+        for (const name of declared) {
+          expect(output).toMatch(declarationOf(name))
+        }
+        expect(await getModuleErrors(output!)).toEqual([])
+      },
+    )
   })
 })

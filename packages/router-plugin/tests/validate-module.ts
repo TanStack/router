@@ -31,3 +31,8 @@ export async function getModuleErrors(
   })
   return errors.map((error) => error.message)
 }
+
+/** Matches a declaration of `name` in generated code, however it is printed. */
+export function declarationOf(name: string): RegExp {
+  return new RegExp(String.raw`\b(?:const|let|var|function|class)\s+${name}\b`)
+}
