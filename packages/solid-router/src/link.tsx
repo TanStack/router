@@ -407,14 +407,16 @@ function createLinkProps(
   // Link's own, receives the element once; a state change does not re-call it.
   const linkRef = (el: Element) => {
     setRef(el)
-    const ref = Solid.untrack(resolvedProps).ref ?? options.ref
+    const ref = resolved.ref ?? options.ref
     if (typeof ref === 'function') {
       ref(el as HTMLAnchorElement)
     }
   }
 
-  const resolvedProps = Solid.createMemo(() =>
-    resolveLinkStateProps(linkState(), {
+  // `mergeProps` memoizes this itself; the ref reads its latest result.
+  let resolved: Solid.ComponentProps<'a'>
+  const resolvedProps = () =>
+    (resolved = resolveLinkStateProps(linkState(), {
       onClick,
       onBlur,
       onFocus,
@@ -423,8 +425,7 @@ function createLinkProps(
       onMouseLeave,
       onMouseOut,
       onTouchStart,
-    }),
-  )
+    }))
 
   // The ref sits after the memo so reading it does not track the memo: the
   // element's ref effect then runs once.
