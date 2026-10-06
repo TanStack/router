@@ -207,6 +207,20 @@ function properties(route: RouteDefinition) {
   )
 }
 
+/** The properties the runtime object keeps: a later duplicate key wins. */
+function runtimeProperties(route: RouteDefinition) {
+  const all = properties(route)
+  return all.filter((property, index) => {
+    const key = getObjectPropertyKeyName(property)
+    return (
+      !key ||
+      !all
+        .slice(index + 1)
+        .some((later) => getObjectPropertyKeyName(later) === key)
+    )
+  })
+}
+
 function isDataProperty(property: ObjectProperty) {
   return !property.method && property.kind === 'init'
 }
@@ -810,7 +824,7 @@ export function compileCodeSplitVirtualRoute(
     if (route.factory !== 'createFileRoute') {
       continue
     }
-    for (const property of properties(route)) {
+    for (const property of runtimeProperties(route)) {
       if (!isDataProperty(property)) {
         continue
       }
