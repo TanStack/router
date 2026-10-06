@@ -156,8 +156,11 @@ the existing DOM with the framework's native renderer:
 - **React:** a separate completion component signals from its post-hydration
   effect, after the same snapshot transition as hash-sensitive Links. The harness
   awaits that signal and two idle React scheduler turns, then checks the expected
-  active links. Concurrent hydration can take as many turns as needed under CPU
-  instrumentation, with a 60-second failure watchdog.
+  active links. The window's `performance.now()` is frozen, so React's
+  scheduler yields only to paint after commits, not after 5 ms of wall time, which CPU
+  instrumentation stretches by a runner-dependent factor. Each sample therefore
+  uses the same number of scheduler tasks. `Date.now()` is unchanged. A
+  60-second watchdog fails a sample that never settles.
 - **Solid:** execute the native hydration bootstrap and retain the server's
   component/key hierarchy. Wait for mount, the router's rendered event, active-link
   effects, and two idle turns. DOM identity assertions include every workload
