@@ -31,7 +31,6 @@ import {
   redirect,
   useBlocker,
 } from '../src'
-import type { BlockerResolver } from '../src'
 
 beforeEach(() => attribution.enable({ log: false }))
 afterEach(() => {
@@ -47,7 +46,7 @@ const navigations = () =>
 const click = (target: string, fn: () => void) =>
   OBSERVE!.attribution.withInteraction({ type: 'click', target }, fn)
 
-let resolver: (() => BlockerResolver) | undefined
+let resolver: ReturnType<typeof useBlocker> | undefined
 let blocking = false
 
 function Guard() {
