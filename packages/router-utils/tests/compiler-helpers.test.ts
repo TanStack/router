@@ -268,6 +268,47 @@ describe('output liveness', () => {
     expect(output).not.toContain('const b')
   })
 
+  test('preserves side effects that only reference themselves or each other', () => {
+    const output = cleanup(
+      `
+      import { store } from './store'
+      import { createPersister } from './persist'
+      const stop = store.subscribe(() => stop())
+      const persister = createPersister({ onRestore: () => restore() })
+      function restore() { persister.restore() }
+      export function useThing() {
+        const observer = new MutationObserver(() => observer.disconnect())
+        return 1
+      }
+      export const Route = createRoute({ loader: () => 1 })
+    `,
+      'loader',
+    )
+    expect(output).toContain('store.subscribe(')
+    expect(output).toContain("import { store } from './store'")
+    expect(output).toContain('createPersister(')
+    expect(output).toContain('function restore()')
+    expect(output).toContain('new MutationObserver(')
+  })
+
+  test('removes dependencies of an unused local once its enclosing declaration is erased', () => {
+    const output = cleanup(
+      `
+      import { useMutation } from './mutation'
+      function save() {}
+      function Component() {
+        const mutation = useMutation({ fn: save })
+        return null
+      }
+      export const Route = createRoute({ component: Component, loader: () => 1 })
+    `,
+      'component',
+    )
+    expect(output).not.toContain('Component')
+    expect(output).not.toContain('./mutation')
+    expect(output).not.toContain('function save')
+  })
+
   test('does not change original AST or symbol identities when generating multiple outputs', () => {
     const module = analyzeModule({
       code: 'const value = 1; export const Route = value;',

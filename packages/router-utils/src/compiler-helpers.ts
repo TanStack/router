@@ -179,58 +179,69 @@ export function stripTypeExports(program: Program): void {
 
 export interface RemoveUnusedBindingsOptions {
   roots?: Iterable<Binding | string>
-  /** Preserve user declarations that were unused before the transform. */
+  /**
+   * Preserve user declarations that nothing used before the transform,
+   * including self-referencing and mutually-referencing side effects.
+   */
   preserveInitiallyUnused?: boolean
 }
 
-/**
- * Rebuild liveness from surviving nodes, using original binding identity. This
- * removes dependencies of erased route options without reparsing generated code.
- * Callers decide output ownership before invoking this lexical binding cleanup.
- */
-export function removeUnusedBindings(
+type DeclarationIndex = ReturnType<typeof declarationIndex>
+
+interface BindingUses {
+  /** Declarations present in the traced program. */
+  present: Set<Binding>
+  /** Bindings used outside of any declaration, including exports. */
+  roots: Set<Binding>
+  /** Bindings used by each declaration's own code. */
+  uses: Map<Binding, Set<Binding>>
+  /** Declarations that execute only when their enclosing declaration does. */
+  parents: Map<Binding, Set<Binding>>
+}
+
+function addEdge(
+  edges: Map<Binding, Set<Binding>>,
+  from: Binding,
+  to: Binding,
+) {
+  const targets = edges.get(from) ?? new Set<Binding>()
+  targets.add(to)
+  edges.set(from, targets)
+}
+
+/** `originOf` maps a traced node to its source node, if it has one. */
+function collectBindingUses(
   module: Module,
   program: Program,
-  originalNodes: WeakMap<Node, Node>,
-  {
-    roots = [],
-    preserveInitiallyUnused = true,
-  }: RemoveUnusedBindingsOptions = {},
-): void {
-  stripTypeExports(program)
-  const graph = declarationIndex(module, module.bindings)
+  index: DeclarationIndex,
+  originOf: (node: Node) => Node | undefined,
+  /** Type-only uses make a source declaration used, never an output one. */
+  typeReferences: boolean,
+): BindingUses {
   const byName = new Map(
     module.rootScope.bindings.map((binding) => [binding.name, binding]),
   )
-  const originalOwners = new Map<Node, Set<Binding>>(graph.declarationSymbols)
-  // Export records are uses even when there are no lexical references. A
-  // transform that removes an export may also remove its declaration graph.
-  const { exports: originalExports } = module
-  const originallyExported = new Set(
-    originalExports
-      .filter((record) => !record.typeOnly && record.local)
-      .map((record) => record.local),
-  )
-  const live = new Set<Binding>()
-  const dependencies = new Map<Binding, Set<Binding>>()
-  const present = new Set<Binding>()
+  const result: BindingUses = {
+    present: new Set(),
+    roots: new Set(),
+    uses: new Map(),
+    parents: new Map(),
+  }
   const ownerStack: Array<Set<Binding> | null> = []
   const scopeStack: Array<Scope> = []
-  const addDependency = (from: Binding, to: Binding) => {
-    const edges = dependencies.get(from) ?? new Set<Binding>()
-    edges.add(to)
-    dependencies.set(from, edges)
-  }
-  for (const root of roots) {
-    const binding = typeof root === 'string' ? byName.get(root) : root
-    if (binding) {
-      live.add(binding)
+  const use = (owner: Set<Binding> | null, binding: Binding) => {
+    if (!owner) {
+      result.roots.add(binding)
+      return
+    }
+    for (const source of owner) {
+      addEdge(result.uses, source, binding)
     }
   }
   walk(program, {
     enter(node) {
-      const original = originalNodes.get(node)
-      const own = original ? originalOwners.get(original) : undefined
+      const original = originOf(node)
+      const own = original ? index.declarationSymbols.get(original) : undefined
       const parentOwner = ownerStack.at(-1) ?? null
       const owner = own ?? parentOwner
       ownerStack.push(owner)
@@ -238,41 +249,21 @@ export function removeUnusedBindings(
         ? module.scopeOf(original)
         : (scopeStack.at(-1) ?? module.rootScope)
       scopeStack.push(scope)
-      if (own) {
-        for (const binding of own) {
-          present.add(binding)
-          if (
-            preserveInitiallyUnused &&
-            binding.references.length === 0 &&
-            !originallyExported.has(binding)
-          ) {
-            if (parentOwner) {
-              for (const parent of parentOwner) {
-                addDependency(parent, binding)
-              }
-            } else {
-              live.add(binding)
-            }
-          }
-          for (const parent of parentOwner ?? []) {
-            addDependency(binding, parent)
-          }
+      for (const binding of own ?? []) {
+        result.present.add(binding)
+        for (const parent of parentOwner ?? []) {
+          addEdge(result.parents, binding, parent)
         }
       }
+      // Export records are uses even when there are no lexical references. A
+      // transform that removes an export may also remove its declaration graph.
       const markExport = (identifier: Node) => {
-        const originalIdentifier = originalNodes.get(identifier)
+        const originalIdentifier = originOf(identifier)
         const binding = originalIdentifier
           ? module.bindingOf(originalIdentifier)
           : byName.get(nameOf(identifier) ?? '')
-        if (!binding) {
-          return
-        }
-        if (owner) {
-          for (const parent of owner) {
-            addDependency(parent, binding)
-          }
-        } else {
-          live.add(binding)
+        if (binding) {
+          use(owner, binding)
         }
       }
       if (is.ExportNamedDeclaration(node) && node.declaration) {
@@ -300,7 +291,9 @@ export function removeUnusedBindings(
       }
       const reference = original ? module.referenceOf(original) : null
       let binding =
-        reference && !reference.inTypePosition ? reference.binding : null
+        reference && (typeReferences || !reference.inTypePosition)
+          ? reference.binding
+          : null
       const generated = generatedReferenceOf(node)
       if (!original && generated) {
         binding =
@@ -308,17 +301,8 @@ export function removeUnusedBindings(
             ? module.lookup(generated, { from: scope })
             : generated
       }
-      if (!binding || !graph.declarations.has(binding)) {
-        return
-      }
-      if (!owner) {
-        live.add(binding)
-      } else {
-        for (const source of owner) {
-          const edges = dependencies.get(source) ?? new Set<Binding>()
-          edges.add(binding)
-          dependencies.set(source, edges)
-        }
+      if (binding && index.declarations.has(binding)) {
+        use(owner, binding)
       }
     },
     leave() {
@@ -326,27 +310,177 @@ export function removeUnusedBindings(
       scopeStack.pop()
     },
   })
+  return result
+}
+
+/**
+ * Declarations that nothing outside their own reference cycle uses, such as
+ * `const stop = subscribe(() => stop())`. They exist for their side effects.
+ */
+function findInitiallyUnused({ present, roots, uses }: BindingUses) {
+  // Tarjan's strongly connected components, iterative to bound stack depth
+  const order = new Map<Binding, number>()
+  const lowLink = new Map<Binding, number>()
+  const component = new Map<Binding, Array<Binding>>()
+  const stack: Array<Binding> = []
+  for (const start of present) {
+    if (order.has(start)) {
+      continue
+    }
+    const work: Array<[Binding, Iterator<Binding>]> = []
+    const visit = (binding: Binding) => {
+      lowLink.set(binding, order.size)
+      order.set(binding, order.size)
+      stack.push(binding)
+      work.push([binding, (uses.get(binding) ?? new Set()).values()])
+    }
+    visit(start)
+    while (work.length) {
+      const [binding, targets] = work.at(-1)!
+      const next = targets.next()
+      if (!next.done) {
+        if (!order.has(next.value)) {
+          visit(next.value)
+        } else if (!component.has(next.value)) {
+          lowLink.set(
+            binding,
+            Math.min(lowLink.get(binding)!, order.get(next.value)!),
+          )
+        }
+        continue
+      }
+      work.pop()
+      const caller = work.at(-1)?.[0]
+      if (caller) {
+        lowLink.set(
+          caller,
+          Math.min(lowLink.get(caller)!, lowLink.get(binding)!),
+        )
+      }
+      if (lowLink.get(binding) === order.get(binding)) {
+        const members: Array<Binding> = []
+        let member: Binding
+        do {
+          member = stack.pop()!
+          members.push(member)
+          component.set(member, members)
+        } while (member !== binding)
+      }
+    }
+  }
+  const used = new Set<Array<Binding>>()
+  for (const root of roots) {
+    const members = component.get(root)
+    if (members) {
+      used.add(members)
+    }
+  }
+  for (const [from, targets] of uses) {
+    for (const to of targets) {
+      const members = component.get(to)
+      if (members && members !== component.get(from)) {
+        used.add(members)
+      }
+    }
+  }
+  return new Set(
+    [...present].filter((binding) => !used.has(component.get(binding)!)),
+  )
+}
+
+const initiallyUnusedBindings = new WeakMap<Module, Set<Binding>>()
+
+function initiallyUnused(module: Module, index: DeclarationIndex) {
+  let unused = initiallyUnusedBindings.get(module)
+  if (!unused) {
+    unused = findInitiallyUnused(
+      collectBindingUses(module, module.ast, index, (node) => node, true),
+    )
+    initiallyUnusedBindings.set(module, unused)
+  }
+  return unused
+}
+
+/**
+ * Rebuild liveness from surviving nodes, using original binding identity. This
+ * removes dependencies of erased route options without reparsing generated code.
+ * Callers decide output ownership before invoking this lexical binding cleanup.
+ */
+export function removeUnusedBindings(
+  module: Module,
+  program: Program,
+  originalNodes: WeakMap<Node, Node>,
+  {
+    roots = [],
+    preserveInitiallyUnused = true,
+  }: RemoveUnusedBindingsOptions = {},
+): void {
+  stripTypeExports(program)
+  const index = declarationIndex(module, module.bindings)
+  const preserved = preserveInitiallyUnused
+    ? initiallyUnused(module, index)
+    : new Set<Binding>()
+  const output = collectBindingUses(
+    module,
+    program,
+    index,
+    (node) => originalNodes.get(node),
+    false,
+  )
+  const byName = new Map(
+    module.rootScope.bindings.map((binding) => [binding.name, binding]),
+  )
+  const live = new Set(output.roots)
+  for (const root of roots) {
+    const binding = typeof root === 'string' ? byName.get(root) : root
+    if (binding) {
+      live.add(binding)
+    }
+  }
+  const dependencies = new Map<Binding, Set<Binding>>()
+  for (const [from, targets] of output.uses) {
+    for (const to of targets) {
+      addEdge(dependencies, from, to)
+    }
+  }
+  for (const [binding, parents] of output.parents) {
+    for (const parent of parents) {
+      // A live nested declaration needs its enclosing code to exist
+      addEdge(dependencies, binding, parent)
+      // and a preserved one survives wherever its enclosing code does
+      if (preserved.has(binding)) {
+        addEdge(dependencies, parent, binding)
+      }
+    }
+  }
+  for (const binding of output.present) {
+    if (preserved.has(binding) && !output.parents.has(binding)) {
+      live.add(binding)
+    }
+  }
   // Destructuring must initialize once in its entirety if any sibling is live.
-  for (const siblings of graph.declarationSymbols.values()) {
+  for (const siblings of index.declarationSymbols.values()) {
     const representative = siblings.values().next().value
     if (!representative) {
       continue
     }
     for (const binding of siblings) {
       if (binding !== representative) {
-        addDependency(representative, binding)
-        addDependency(binding, representative)
+        addEdge(dependencies, representative, binding)
+        addEdge(dependencies, binding, representative)
       }
     }
   }
   const retained = expandTransitively(live, dependencies)
   const removable = new Set(
-    [...present].filter((binding) => !retained.has(binding)),
+    [...output.present].filter((binding) => !retained.has(binding)),
   )
   walk(program, {
     enter(node, context) {
       const original = originalNodes.get(node)
-      const owners = original ? originalOwners.get(original) : undefined
+      const owners = original
+        ? index.declarationSymbols.get(original)
+        : undefined
       if (owners && [...owners].every((binding) => removable.has(binding))) {
         context.remove()
       }
