@@ -18,10 +18,11 @@ function getCore(): Core {
     // https://github.com/yuku-toolchain/yuku/releases/tag/v0.17.0
     if (process.versions.webcontainer != null) {
       // `@yuku-core/wasm`'s `loadSync()` needs the bytes, so resolve the file
-      // from whichever build runs: CJS has `__filename`, ESM has `import.meta`
+      // from whichever build runs. Check `import.meta` first: the CJS build
+      // compiles it to `{}`, and `node -e` defines a global `__filename` in ESM
       const require = createRequire(
         // @ts-ignore TS1470: `import.meta` is only read in the ESM build
-        typeof __filename === 'string' ? __filename : import.meta.url,
+        import.meta.url ?? __filename,
       )
       core = loadWasmCore(
         readFileSync(require.resolve('@yuku-core/wasm/yuku-core.wasm')),
