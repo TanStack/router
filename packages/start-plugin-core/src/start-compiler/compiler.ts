@@ -1012,16 +1012,20 @@ export class StartCompiler {
       for (const element of jsx) {
         handleClientOnlyJSX(element, { env: 'server' })
       }
-      removeUnusedBindings(module, ast, originalNodes, {
-        preserveInitiallyUnused: true,
-      })
     }
     modified =
       this.runAstTransforms(
         context,
         this.getAstTransformPluginsForCode(code),
       ) || modified
-    return modified ? this.generateResultFromAst(ast, code, id) : null
+    if (!modified) {
+      return null
+    }
+    // One liveness pass after every transform: AST plugins also orphan bindings.
+    removeUnusedBindings(module, ast, originalNodes, {
+      preserveInitiallyUnused: true,
+    })
+    return this.generateResultFromAst(ast, code, id)
   }
 
   private generateResultFromAst(

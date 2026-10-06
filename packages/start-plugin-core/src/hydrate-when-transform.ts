@@ -496,7 +496,11 @@ function transformHydrateAst(
   if (!transformation.modified) {
     return null
   }
-  options.ast.body.unshift(...prepend)
+  let prologueEnd = 0
+  while (is.Directive(options.ast.body[prologueEnd])) {
+    prologueEnd++
+  }
+  options.ast.body.splice(prologueEnd, 0, ...prepend)
   return true
 }
 
@@ -547,22 +551,16 @@ function loadHydrateVirtualModule(options: {
     return null
   }
   const children = getMeaningfulChildren(target.children)
+  const child = children.length === 1 ? children[0] : undefined
   let expression: t.Expression = b.Literal({ value: null, raw: 'null' })
-  if (children.length === 1) {
-    const child = children[0]!
-    if (is.JSXExpressionContainer(child)) {
-      expression = is.JSXEmptyExpression(child.expression)
-        ? expression
-        : child.expression
-    } else if (is.JSXText(child)) {
-      expression = b.Literal({
-        value: child.value,
-        raw: JSON.stringify(child.value),
-      })
-    } else if (is.JSXElement(child) || is.JSXFragment(child)) {
-      expression = child
+  if (is.JSXExpressionContainer(child)) {
+    if (!is.JSXEmptyExpression(child.expression)) {
+      expression = child.expression
     }
-  } else if (children.length > 1) {
+  } else if (is.JSXElement(child) || is.JSXFragment(child)) {
+    expression = child
+  } else if (children.length) {
+    // Keep text as JSX so the JSX compiler applies entity and whitespace rules.
     expression = b.JSXFragment({
       openingFragment: b.JSXOpeningFragment({}),
       closingFragment: b.JSXClosingFragment({}),
@@ -590,7 +588,7 @@ function loadHydrateVirtualModule(options: {
       .map(([declaration]) => declaration),
   )
   ast.body = ast.body.flatMap((statement): t.Program['body'] => {
-    if (is.ImportDeclaration(statement)) {
+    if (is.ImportDeclaration(statement) || is.Directive(statement)) {
       return [statement]
     }
     const declaration =

@@ -9,8 +9,10 @@ import {
   parseExpression,
   removeUnusedBindings,
 } from '@tanstack/router-utils'
+import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+import { StartCompiler } from '../src/start-compiler/compiler'
 import type { CompileStartFrameworkOptions } from '../src/types'
 
 const root = '/repo'
@@ -735,4 +737,123 @@ const props = { when: true, fallback: <p>server-fallback</p> }`,
       loadVirtualHydrateModule({ code, id: mismatchedId, root }),
     ).toBeNull()
   })
+})
+
+describe('Hydrate through the StartCompiler pipeline', () => {
+  function createPipeline(env: 'client' | 'server') {
+    const plugin = createHydrateCompilerPlugin()
+    const compiler = new StartCompiler({
+      env,
+      envName: env,
+      root,
+      framework: 'react',
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      loadModule: async () => {},
+      resolveId: async (source) => source,
+      mode: 'build',
+      compilerPlugins: [plugin],
+    })
+    return { plugin, compiler }
+  }
+
+  test('removes bindings orphaned by the Hydrate transform', async () => {
+    const code = `import { Hydrate } from '@tanstack/react-start'
+import { Chart, FallbackPane, useLabel } from './widgets'
+import { formatValue } from './format'
+
+const chartTitle = formatValue('Revenue')
+
+export function Page() {
+  const label = useLabel()
+  return (
+    <Hydrate fallback={<FallbackPane />}>
+      <Chart title={chartTitle} label={label} />
+    </Hydrate>
+  )
+}
+`
+    const client = await createPipeline('client').compiler.compile({
+      code,
+      id,
+    })
+    expect(client?.code).toContain(
+      `import { FallbackPane, useLabel } from './widgets'`,
+    )
+    expect(client?.code).toContain('label={label}')
+    expect(client?.code).not.toContain('./format')
+    expect(client?.code).not.toContain('chartTitle')
+    expect(client?.code).not.toMatch(/\bChart\b/)
+
+    const server = await createPipeline('server').compiler.compile({
+      code,
+      id,
+    })
+    expect(server?.code).toContain(
+      `import { Chart, useLabel } from './widgets'`,
+    )
+    expect(server?.code).toContain(`import { formatValue } from './format'`)
+    expect(server?.code).not.toContain('FallbackPane')
+  })
+
+  test('keeps the directive prologue first in the parent and split chunk', async () => {
+    const { plugin, compiler } = createPipeline('client')
+    const parent = await compiler.compile({
+      code: `'use client'
+'use strict'
+import { Hydrate } from '@tanstack/react-start'
+import { Chart } from './chart'
+export function Page() { return <Hydrate><Chart /></Hydrate> }
+`,
+      id,
+    })
+    expect(parent?.code).toMatch(/^'use client';\s*'use strict';\s*import /)
+    const virtualId = /import\("([^"]+)"\)/.exec(parent!.code)![1]!
+    const chunk = plugin.loadVirtualModule!({
+      id: virtualId,
+      root,
+      env: 'client',
+      envName: 'client',
+      code: undefined,
+    }) as { code: string }
+    expect(chunk.code).toMatch(/^'use client';\s*'use strict';\s*import /)
+  })
+
+  test.each([
+    ['entities', 'Fish &amp; Chips &copy; &#169; &#xA9;', 'Fish & Chips © © ©'],
+    [
+      'multiline text',
+      '\n      first line  \n      second line\n    ',
+      'first line second line',
+    ],
+  ])(
+    'renders a text-only split child with JSX %s semantics',
+    async (_, text, expected) => {
+      const { plugin, compiler } = createPipeline('client')
+      const parent = await compiler.compile({
+        code: `import { Hydrate } from '@tanstack/react-start'
+export function Page() { return <Hydrate>${text}</Hydrate> }
+`,
+        id,
+      })
+      const virtualId = /import\("([^"]+)"\)/.exec(parent!.code)![1]!
+      const chunk = plugin.loadVirtualModule!({
+        id: virtualId,
+        root,
+        env: 'client',
+        envName: 'client',
+        code: undefined,
+      }) as { code: string }
+      const compiled = await transformWithOxc(chunk.code, id, {
+        jsx: { runtime: 'classic' },
+      })
+      const literal =
+        /React\.createElement\(React\.Fragment, null, ("[^"]*")\)/.exec(
+          compiled.code,
+        )?.[1]
+      expect(literal && JSON.parse(literal)).toBe(expected)
+    },
+  )
 })
