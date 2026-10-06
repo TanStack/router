@@ -180,6 +180,23 @@ describe('semantic dependency analysis', () => {
     ).toEqual(['E'])
   })
 
+  test('only declares a var where its statement runs in the binding scope', () => {
+    const module = analyzeModule({
+      code: `
+      var topLevel = 1
+      if (cond) { var inBlock = 2 }
+      if (cond) var inStatement = 3
+      for (var inHead = 4; ; ) break
+      `,
+    })
+    const graph = moduleDeclarationGraph(module)
+    expect(
+      ['topLevel', 'inBlock', 'inStatement', 'inHead'].filter((name) =>
+        graph.declarations.has(module.rootScope.find(name)!),
+      ),
+    ).toEqual(['topLevel'])
+  })
+
   test('groups destructured symbols in one initialization unit', () => {
     const module = analyzeModule({
       code: 'const { a, nested: { b } } = initialize()',
@@ -485,6 +502,89 @@ export const Route = createRoute({ component: () => <ThemeContext.Provider />, l
     expect(output).not.toContain('./server')
     expect(output).not.toContain('const load')
     expect(output).toContain('initiallyUnused')
+  })
+
+  test('removes erased var declarators nested in statements and keeps the statements', () => {
+    const output = cleanup(
+      `
+      import { a, b, c, d, e, f } from './server'
+      if (cond) { var inIf = a(); keep() }
+      try { var inTry = b() } catch {}
+      switch (mode) { case 1: var inCase = c() }
+      outer: { var inLabel = d(); break outer }
+      for (var i = 0, inFor = e(); i < 1; i++) {}
+      export function factory(flag) {
+        if (flag) { var inFunction = f() }
+        return createRoute({ loader: () => inFunction, component: () => 'ok' })
+      }
+      export const Route = createRoute({
+        loader: () => [inIf, inTry, inCase, inLabel, inFor],
+        component: () => 'ok',
+      })
+    `,
+      'loader',
+    )
+    expect(output).not.toContain('./server')
+    expect(output).not.toMatch(/\b[a-f]\(\)/)
+    expect(output).toContain('keep()')
+    expect(output).toContain('break outer')
+    expect(output).toMatch(/for \(var i = 0; i < 1; i\+\+\)/)
+    expect(analyzeModule({ code: output }).diagnostics).toEqual([])
+  })
+
+  test('keeps a statement wherever an erased var was its only content', () => {
+    const output = cleanup(
+      `
+      import { a, b, c, d, e, f } from './server'
+      if (cond) var inIf = a(); else var inElse = b()
+      while (once()) var inWhile = c()
+      outer: var inLabel = d()
+      for (var inFor = e(); ; ) break
+      for (;;) var inBody = f()
+      export const Route = createRoute({
+        loader: () => [inIf, inElse, inWhile, inLabel, inFor, inBody],
+        component: () => 'ok',
+      })
+    `,
+      'loader',
+    )
+    expect(output).not.toContain('./server')
+    expect(output).not.toMatch(/\b[a-f]\(\)/)
+    expect(output).toContain('cond')
+    expect(output).toContain('once()')
+    expect(analyzeModule({ code: output }).diagnostics).toEqual([])
+  })
+
+  test('removes every declarator of an erased var redeclared in a nested block', () => {
+    const output = cleanup(
+      `
+      import { a, b } from './server'
+      var value = a()
+      if (cond) { var value = b() }
+      export const Route = createRoute({ loader: () => value, component: () => 'ok' })
+    `,
+      'loader',
+    )
+    expect(output).not.toContain('./server')
+    expect(output).not.toContain('value')
+  })
+
+  test('keeps nested vars that are still used or never were', () => {
+    const output = cleanup(
+      `
+      import { a } from './server'
+      if (cond) { var used = a(); var initiallyUnused = sideEffect() }
+      for (var key in object) {}
+      export const Route = createRoute({
+        loader: () => [used, key],
+        component: () => used,
+      })
+    `,
+      'loader',
+    )
+    expect(output).toContain('var used = a()')
+    expect(output).toContain('var initiallyUnused = sideEffect()')
+    expect(output).toContain('for (var key in object)')
   })
 
   test('generated parameter shadowing cannot retain an erased server import', () => {

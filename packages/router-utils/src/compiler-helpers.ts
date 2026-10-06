@@ -1,12 +1,14 @@
 import { BindingFlags } from 'yuku-analyzer'
-import { bindingIdentifiers, is, nameOf, walk } from 'yuku-ast'
+import { b, bindingIdentifiers, is, nameOf, walk } from 'yuku-ast'
 import { generatedReferenceOf } from './ast'
 import type { Binding, Module, Scope } from 'yuku-analyzer'
 import type { Expression, Node, Program } from '@yuku-toolchain/types'
 
 export interface ModuleDeclarationGraph {
+  /** The statement of its own scope declaring each binding, if any. */
   declarations: Map<Binding, Node>
   dependencies: Map<Binding, Set<Binding>>
+  /** Every removable declaration, including `var` nested in statements. */
   declarationSymbols: Map<Node, Set<Binding>>
 }
 
@@ -34,33 +36,17 @@ export function collectModuleReferences(
   return references
 }
 
-function declarationOf(
-  module: Module,
-  binding: Binding,
-  identifier: Node,
-): Node | undefined {
+/** The node that declares an identifier and goes when its bindings do. */
+function declarationOf(module: Module, identifier: Node): Node | undefined {
   let current: Node | null = identifier
   while (current) {
     if (is.VariableDeclarator(current)) {
+      // A for-in or for-of loop assigns its head on every iteration
       const statement = module.parentOf(current)
       const parent = statement && module.parentOf(statement)
-      if (
-        is.ForInStatement(parent) ||
-        is.ForOfStatement(parent) ||
-        is.ForStatement(parent)
-      ) {
-        return undefined
-      }
-      // A `var` hoisted out of a nested block initializes as part of that
-      // block's statement, not as a declaration of its function or module
-      const scope = module.scopeOf(current)
-      if (
-        binding.scope !== scope &&
-        !(scope.kind === 'functionBody' && binding.scope === scope.parent)
-      ) {
-        return undefined
-      }
-      return current
+      return is.ForInStatement(parent) || is.ForOfStatement(parent)
+        ? undefined
+        : current
     }
     if (is.TSEnumDeclaration(current) || is.TSModuleDeclaration(current)) {
       return current.id === identifier ? current : undefined
@@ -85,6 +71,36 @@ function declarationOf(
     current = module.parentOf(current)
   }
   return undefined
+}
+
+/**
+ * Whether a declaration is a statement of its binding's own scope. A `var`
+ * nested in another statement, such as a block or a loop head, initializes as
+ * part of that statement: its declarator can be removed from it, but the
+ * binding has no declaration to move or import on its own.
+ */
+function declaresInOwnScope(
+  module: Module,
+  binding: Binding,
+  declaration: Node,
+): boolean {
+  if (!is.VariableDeclarator(declaration)) {
+    return true
+  }
+  let container = module.parentOf(module.parentOf(declaration)!)
+  if (is.ExportNamedDeclaration(container)) {
+    container = module.parentOf(container)
+  }
+  const scope = module.scopeOf(declaration)
+  return (
+    (is.Program(container) ||
+      is.BlockStatement(container) ||
+      is.StaticBlock(container) ||
+      is.SwitchCase(container) ||
+      is.TSModuleBlock(container)) &&
+    (binding.scope === scope ||
+      (scope.kind === 'functionBody' && binding.scope === scope.parent))
+  )
 }
 
 interface DeclarationIndex extends Pick<
@@ -123,14 +139,16 @@ function declarationIndex(
       continue
     }
     for (const identifier of binding.declarations) {
-      const declaration = declarationOf(module, binding, identifier)
+      const declaration = declarationOf(module, identifier)
       if (!declaration) {
         continue
       }
       const previous = declarations.get(binding)
       if (
-        !previous ||
-        (is.TSDeclareFunction(previous) && !is.TSDeclareFunction(declaration))
+        declaresInOwnScope(module, binding, declaration) &&
+        (!previous ||
+          (is.TSDeclareFunction(previous) &&
+            !is.TSDeclareFunction(declaration)))
       ) {
         declarations.set(binding, declaration)
       }
@@ -349,7 +367,7 @@ function collectBindingUses(
             ? module.lookup(generated, { from: scope })
             : generated
       }
-      if (binding && index.declarations.has(binding)) {
+      if (binding) {
         use(owner, binding)
       }
     },
@@ -530,7 +548,17 @@ export function removeUnusedBindings(
     },
     leave(node, context) {
       if (is.VariableDeclaration(node) && node.declarations.length === 0) {
-        context.remove()
+        // A statement slot, as in `if (x) var y = z`, cannot be left empty;
+        // a statement list, a loop head and an `export` can.
+        if (
+          context.index === null &&
+          context.key !== 'init' &&
+          context.key !== 'declaration'
+        ) {
+          context.replace(b.BlockStatement({ body: [] }))
+        } else {
+          context.remove()
+        }
       } else if (is.ImportDeclaration(node) && node.specifiers.length === 0) {
         const original = originalNodes.get(node)
         if (

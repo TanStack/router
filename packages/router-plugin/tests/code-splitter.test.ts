@@ -423,6 +423,23 @@ export const Route = createFileRoute('/')({
     expect(result.has('helper')).toBe(false)
   })
 
+  it('INVARIANT: vars declared inside nested statements are never shared', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+if (typeof window !== 'undefined') { var inBlock = 1 }
+if (typeof window !== 'undefined') var inStatement = 2
+export const Route = createFileRoute('/')({
+  loader: () => [inBlock, inStatement],
+  component: () => <div>{inBlock}{inStatement}</div>,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultGroupings,
+    })
+    expect([...result]).toEqual([])
+  })
+
   it('INVARIANT: destructured siblings are either all shared or none shared', () => {
     const code = `
 import { createFileRoute } from '@tanstack/react-router'
