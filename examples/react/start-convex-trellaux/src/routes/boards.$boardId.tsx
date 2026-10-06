@@ -7,7 +7,10 @@ export const Route = createFileRoute('/boards/$boardId')({
   component: Home,
   pendingComponent: () => <Loader />,
   loader: async ({ params, context: { queryClient } }) => {
-    await queryClient.ensureQueryData(boardQueries.detail(params.boardId))
+    await queryClient.query({
+      ...boardQueries.detail(params.boardId),
+      staleTime: 'static',
+    })
   },
 })
 
