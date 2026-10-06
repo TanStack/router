@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.34
+
+### Patch Changes
+
+- [#8573](https://github.com/TanStack/router/pull/8573) [`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb) - Align server function request and response handling.
+
 ## 1.171.33
 
 ### Patch Changes

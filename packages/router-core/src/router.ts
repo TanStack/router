@@ -1914,9 +1914,10 @@ export class RouterCore<
         }
       }
 
-      // We allow the caller to override the current location
+      // We allow the caller to override the current location. Masks build
+      // from the same location as the destination they mask.
       const currentLocation =
-        dest._fromLocation || this._pendingLocation || this.latestLocation
+        opts._fromLocation || this._pendingLocation || this.latestLocation
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match
@@ -1926,10 +1927,8 @@ export class RouterCore<
         usedCurrent = true
         return currentLocation
       }
-      const currentMatch = () => {
-        usedCurrent = true
-        return (lightweight ??= this.matchRoutesLightweight(currentLocation))
-      }
+      const currentMatch = () =>
+        (lightweight ??= this.matchRoutesLightweight(current()))
 
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
@@ -2206,13 +2205,10 @@ export class RouterCore<
       }
     }
 
-    // Masked locations stay out: `opts.mask` is rebuilt from the current location.
-    if (
-      !(isServer ?? this.isServer) &&
-      !usedCurrent &&
-      opts._fromLocation &&
-      !next.maskedLocation
-    ) {
+    // A mask that reads the current location marks the whole result through
+    // `usedCurrent`. Route masks belong to the route tree and options, whose
+    // updates replace the cache.
+    if (!(isServer ?? this.isServer) && !usedCurrent && opts._fromLocation) {
       this.staticLocations!.set(opts, next)
     }
 

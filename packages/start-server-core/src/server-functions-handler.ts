@@ -155,26 +155,35 @@ export const handleServerAction = async ({
       }
       const payload: any = payloadParam
         ? fromJSON(JSON.parse(payloadParam), { plugins: serovalPlugins })
-        : {}
-      payload.context = safeObjectMerge(payload.context, context)
-      payload.method = methodUpper
-      res = await action(payload)
+        : undefined
+      res = await action({
+        data: payload?.data,
+        context: safeObjectMerge(payload?.context, context),
+        method: methodUpper,
+      })
     } else {
       const payload: any = contentType?.includes('application/json')
         ? fromJSON(await request.json(), { plugins: serovalPlugins })
-        : {}
-      payload.context = safeObjectMerge(payload.context, context)
-      payload.method = methodUpper
-      res = await action(payload)
+        : undefined
+      res = await action({
+        data: payload?.data,
+        context: safeObjectMerge(payload?.context, context),
+        method: methodUpper,
+      })
     }
 
-    const unwrapped = res.result !== undefined ? res.result : res.error
+    const unwrapped = res.error !== undefined ? res.error : res.result
 
     if (isNotFound(res)) {
       res = isNotFoundResponse(res)
     }
 
-    if (!isServerFn) {
+    if (
+      !isServerFn &&
+      (unwrapped instanceof Response ||
+        unwrapped === null ||
+        typeof unwrapped !== 'object')
+    ) {
       return unwrapped
     }
 
@@ -517,12 +526,10 @@ function serializeResult(
 
 function isNotFoundResponse(error: any) {
   const { headers, ...rest } = error
-
-  return new Response(JSON.stringify(rest), {
+  const response = new Response(JSON.stringify(rest), {
     status: 404,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(headers || {}),
-    },
+    headers,
   })
+  response.headers.set('Content-Type', 'application/json')
+  return response
 }

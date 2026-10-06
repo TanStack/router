@@ -1,5 +1,14 @@
 # @tanstack/vue-router
 
+## 1.170.37
+
+### Patch Changes
+
+- [#8568](https://github.com/TanStack/router/pull/8568) [`614bc27`](https://github.com/TanStack/router/commit/614bc27034c8ec98747bf305ed41d4a619640949) - Update TanStack Store to 0.11.2 to prevent unrelated atom reads inside subscription observers from triggering extra notifications.
+
+- Updated dependencies [[`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb)]:
+  - @tanstack/router-core@1.171.34
+
 ## 1.170.36
 
 ### Patch Changes
