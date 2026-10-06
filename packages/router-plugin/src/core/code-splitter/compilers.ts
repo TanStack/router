@@ -130,6 +130,11 @@ export function analyzeRouteModule(
   const seen = new Set<Node>()
   module.walk({
     CallExpression(node) {
+      // A factory call inside a function or block can close over local
+      // bindings, so its options cannot be split or hoisted to module scope.
+      if (module.scopeOf(node) !== module.rootScope) {
+        return
+      }
       const outerCallee = unwrapExpression(node.callee)
       const callee = unwrapExpression(
         is.CallExpression(outerCallee) ? outerCallee.callee : outerCallee,
