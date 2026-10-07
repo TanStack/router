@@ -118,6 +118,37 @@ describe('createServerFn compiles correctly', async () => {
     `)
   })
 
+  // Editors count \n, \r\n, a lone \r, U+2028 and U+2029 as line
+  // terminators, so diagnostic locations must count every one.
+  // TODO remove upon stable with the inputValidator deprecation, after moving
+  // these line terminator cases to another located diagnostic.
+  test.each([
+    ['\\n', '\n'],
+    ['\\r\\n', '\r\n'],
+    ['a lone \\r', '\r'],
+    ['U+2028', '\u2028'],
+    ['U+2029', '\u2029'],
+  ])(
+    'reports the inputValidator deprecation location with %s line endings',
+    async (_name, eol) => {
+      const warn = vi.fn()
+      await compile({
+        code: [
+          `import { createServerFn } from '@tanstack/react-start'`,
+          `export const fn = createServerFn().inputValidator((x: string) => x).handler(async () => 1)`,
+        ].join(eol),
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+        warn,
+      })
+
+      expect(warn).toHaveBeenCalledWith(
+        '/test/src/test.ts:2:19 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.',
+      )
+    },
+  )
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()

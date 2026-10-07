@@ -512,6 +512,88 @@ describe('compiler handles external import transforms', () => {
 
     expect(result).toBeNull()
   })
+
+  // Source: @vitejs/plugin-rsc transform fixtures (per row)
+  test.each([
+    {
+      // hoist/function-hoist-block.js: block-level functions are block scoped
+      name: 'past a function declared in a nested block',
+      body: `{
+    function renderThing() {}
+  }
+  return renderThing(<Card />)`,
+      transformed: true,
+    },
+    {
+      // scope/param-default-var-hoisting.js
+      name: 'in a parameter default next to a var of the same name',
+      params: `element = renderThing(<Card />)`,
+      body: `var renderThing = null
+  return element`,
+      transformed: true,
+    },
+    {
+      // hoist/catch-binding-shadow.js
+      name: 'in a try block whose catch parameter shadows it',
+      body: `try {
+    return renderThing(<Card />)
+  } catch (renderThing) {
+    return renderThing
+  }`,
+      transformed: true,
+    },
+    {
+      // hoist/var-hoist-block.js
+      name: 'after a var in a nested block shadows it',
+      body: `if (Math.random() < 2) {
+    var renderThing = (element) => element
+  }
+  return renderThing(<Card />)`,
+      transformed: false,
+    },
+    {
+      // scope/fn-decl-hoisting.js
+      name: 'before a hoisted function declaration shadows it',
+      body: `return renderThing(<Card />)
+  function renderThing(element) {
+    return element
+  }`,
+      transformed: false,
+    },
+    {
+      // scope/catch-param.js
+      name: 'in a catch block whose parameter shadows it',
+      body: `try {
+    throw (element) => element
+  } catch (renderThing) {
+    return renderThing(<Card />)
+  }`,
+      transformed: false,
+    },
+  ])(
+    'runs external transforms on a call $name only if it reads the import',
+    async ({ params = '', body, transformed }) => {
+      const compiler = createExternalTransformCompiler()
+
+      // The top-level call keeps the module transformed in every row.
+      const result = await compiler.compile({
+        code: `
+        import { renderThing } from '@example/runtime'
+        export const transformed = renderThing(<Card />)
+        export function render(${params}) {
+          ${body}
+        }
+      `,
+        id: '/test/src/routes/card.tsx',
+      })
+
+      expect(result).not.toBeNull()
+      const renderStart = result!.code.indexOf('function render(')
+      expect(renderStart).toBeGreaterThanOrEqual(0)
+      const render = result!.code.slice(renderStart)
+      expect(render.includes('injected: loadThing()')).toBe(transformed)
+    },
+  )
 })
 
 describe('server function provider module directives', () => {
