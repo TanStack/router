@@ -211,8 +211,12 @@ describe('hydrate', () => {
         .before.map((script) => script.children)
         .join('')
 
-      // U+0000 is a parse error in the HTML input stream.
-      expect(html).not.toContain('\0')
+      // Control characters other than whitespace are parse errors in the HTML
+      // input stream.
+      // eslint-disable-next-line no-control-regex
+      expect(html).not.toMatch(/[\x00-\x08\x0b\x0e-\x1f\x7f-\x9f]/)
+      // A char above U+00FF would widen the whole HTML string to two bytes.
+      expect(html).not.toMatch(/[\u0100-\uffff]/)
       expect(html).not.toContain('/products/42')
     } finally {
       router.serverSsr?.cleanup()
