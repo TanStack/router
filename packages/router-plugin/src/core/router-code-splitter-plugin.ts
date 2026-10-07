@@ -4,14 +4,14 @@
  */
 
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { decodeIdentifier, logDiff } from '@tanstack/router-utils'
+import { decodeIdentifier, logDiff, parseAst } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
 import {
-  compileCodeSplitReferenceRoute,
+  compileCodeSplitReferenceRouteFromAst,
   compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-  detectCodeSplitGroupingsFromRoute,
+  computeSharedBindingsFromAst,
+  detectCodeSplitGroupingsFromAst,
 } from './code-splitter/compilers'
 import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import {
@@ -134,10 +134,11 @@ export function createRouterCodeSplitterPlugin(
   ): UnpluginTransformResult => {
     if (debug) console.info('Compiling Route: ', id)
 
-    const fromCode = detectCodeSplitGroupingsFromRoute({
+    const ast = parseAst({
       code,
       filename: id,
     })
+    const fromCode = detectCodeSplitGroupingsFromAst(ast)
 
     if (fromCode.groupings !== undefined) {
       const res = splitGroupingsSchema.safeParse(fromCode.groupings)
@@ -168,19 +169,15 @@ export function createRouterCodeSplitterPlugin(
     const splitGroupings: CodeSplitGroupings =
       fromCode.groupings ?? pluginSplitBehavior ?? getGlobalCodeSplitGroupings()
 
-    // Compute shared bindings before compiling the reference route
-    const sharedBindings = computeSharedBindings({
-      code,
-      filename: id,
-      codeSplitGroupings: splitGroupings,
-    })
+    // Both analyses must finish before the reference compiler mutates this AST.
+    const sharedBindings = computeSharedBindingsFromAst(ast, splitGroupings)
     if (sharedBindings.size > 0) {
       sharedBindingsMap.set(id, sharedBindings)
     } else {
       sharedBindingsMap.delete(id)
     }
 
-    const compiledReferenceRoute = compileCodeSplitReferenceRoute({
+    const compiledReferenceRoute = compileCodeSplitReferenceRouteFromAst(ast, {
       code,
       codeSplitGroupings: splitGroupings,
       targetFramework: userConfig.target,
