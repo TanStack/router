@@ -1,43 +1,74 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-test('server handlers receive parsed path params (issue #8431)', async ({
-  request,
-}) => {
-  const response = await request.get('/api/parsed-params/44')
+test.describe('server handlers receive raw path params (issue #8431)', () => {
+  test('even when params.parse is defined', async ({ request }) => {
+    const response = await request.get('/api/parsed-params/44')
 
-  expect(response.status()).toBe(200)
-  expect(await response.json()).toEqual({ id: 44 })
+    expect(response.status()).toBe(200)
+    expect(await response.json()).toEqual({ id: '44' })
+  })
+
+  test('for parent and child routes with createHandlers', async ({
+    request,
+  }) => {
+    const response = await request.get('/api/parsed-params/44/2')
+
+    expect(response.status()).toBe(200)
+    expect(await response.json()).toEqual({ id: '44', childId: '2' })
+  })
+
+  test('even when params.parse throws', async ({ request }) => {
+    const response = await request.get('/api/parsed-params/nope')
+
+    expect(response.status()).toBe(200)
+    expect(await response.json()).toEqual({ id: 'nope' })
+  })
+
+  test('while the loader receives parsed params after deferring to rendering', async ({
+    page,
+  }) => {
+    await page.goto('/api/parsed-params/44/2?render')
+
+    const result = page.getByTestId('parsed-params')
+    await expect(result).toBeVisible()
+    expect(JSON.parse((await result.textContent())!)).toEqual({
+      loaderParams: { id: 44, childId: 2 },
+      handlerParams: { id: '44', childId: '2' },
+    })
+  })
 })
 
-test('createHandlers receives parsed parent and child path params', async ({
-  request,
-}) => {
-  const response = await request.get('/api/parsed-params/44/2')
+test.describe('page route with a server handler and params.parse', () => {
+  test.use({
+    whitelistErrors: [
+      'Failed to load resource: the server responded with a status of 404',
+    ],
+  })
 
-  expect(response.status()).toBe(200)
-  expect(await response.json()).toEqual({ id: 44, childId: 2 })
-})
+  test('renders the page with parsed params', async ({ page }) => {
+    const response = await page.goto('/parsed-page/44')
 
-test('handler middleware can catch path parameter parsing errors', async ({
-  request,
-}) => {
-  const response = await request.get('/api/parsed-params/44/invalid')
+    expect(response?.status()).toBe(200)
+    await expect(page.getByTestId('parsed-page')).toHaveText('{"id":44}')
+  })
 
-  expect(response.status()).toBe(400)
-  expect(await response.text()).toBe('Invalid child id')
-})
+  test('renders the not-found page when params.parse throws notFound', async ({
+    page,
+  }) => {
+    const response = await page.goto('/parsed-page/nope')
 
-test('parsed path params agree when a server handler defers to rendering', async ({
-  page,
-}) => {
-  await page.goto('/api/parsed-params/44/2?render')
+    expect(response?.status()).toBe(404)
+    await expect(page.getByTestId('default-not-found-component')).toBeVisible()
+  })
 
-  const result = page.getByTestId('parsed-params')
-  await expect(result).toBeVisible()
-  expect(JSON.parse((await result.textContent())!)).toEqual({
-    loaderParams: { id: 44, childId: 2 },
-    handlerParams: { id: 44, childId: 2 },
+  test('lets the handler answer API requests with raw params', async ({
+    request,
+  }) => {
+    const response = await request.get('/parsed-page/nope')
+
+    expect(response.status()).toBe(200)
+    expect(await response.json()).toEqual({ id: 'nope' })
   })
 })
 

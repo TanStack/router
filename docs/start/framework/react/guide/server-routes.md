@@ -243,7 +243,7 @@ export const Route = createFileRoute('/hello')({
 Each HTTP method handler receives an object with the following properties:
 
 - `request`: The incoming request object. You can read more about the `Request` object in the [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/Request).
-- `params`: An object containing the dynamic path parameters of the route. For example, if the route path is `/users/$id`, and the request is made to `/users/123`, then `params` will be `{ id: '123' }`. We'll cover dynamic path parameters and wildcard parameters later in this guide.
+- `params`: An object containing the dynamic path parameters of the route. For example, if the route path is `/users/$id`, and the request is made to `/users/123`, then `params` will be `{ id: '123' }`. These are always the raw strings from the URL. We'll cover dynamic path parameters and wildcard parameters later in this guide.
 - `context`: An object containing the context of the request. This is useful for passing data between middleware.
 
 Once you've processed the request, you can return a `Response` object or `Promise<Response>` or even use any of the helpers from `@tanstack/react-start` to manipulate the response.
@@ -291,6 +291,36 @@ export const Route = createFileRoute('/users/$id/posts/$postId')({
 // Visit /users/123/posts/456 to see the response
 // User ID: 123, Post ID: 456
 ```
+
+### Raw Params and `params.parse`
+
+Server handlers work with the raw HTTP request, so `params` always contains the raw strings from the URL, just like the search params you read from `request.url`. If the route defines [`params.parse`](/router/latest/docs/framework/react/guide/path-params), the handler does not receive its output, and a `params.parse` that throws does not stop the handler from running. Validate the params in the handler, or call `next()` to let the router render the page with parsed params:
+
+```ts
+// routes/users/$id.ts
+import { createFileRoute } from '@tanstack/react-router'
+
+const parseUserId = (id: string) => {
+  const userId = Number(id)
+  return Number.isInteger(userId) ? userId : undefined
+}
+
+export const Route = createFileRoute('/users/$id')({
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        const userId = parseUserId(params.id)
+        if (userId === undefined) {
+          return new Response('Not found', { status: 404 })
+        }
+        return Response.json({ id: userId })
+      },
+    },
+  },
+})
+```
+
+When `params.parse` returns `false`, the route does not match at all, so its handlers are not used.
 
 ## Wildcard/Splat Param
 

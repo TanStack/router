@@ -84,6 +84,8 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(rawParams: Record<string, string>) => TParams | false`
 - Optional
 - A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function returns parsed params, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
+- Throwing `notFound()` or `redirect()` from this function is handled like throwing them from `beforeLoad`: the route renders its not-found state or the router redirects.
+- TanStack Start server route handlers receive the raw params, not this function's output.
 - This is a planning callback. It must be deterministic and side-effect-free for the same input.
 - Experimental: returning `false` during incoming route matching skips this route and allows matching to continue to another candidate route.
 
