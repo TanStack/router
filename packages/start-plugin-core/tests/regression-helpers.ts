@@ -379,3 +379,10 @@ export const hydrateParentStubs = {
         .join(',')})`,
   },
 }
+
+// Helpers shared with the known-bugs pins.
+
+/** Boundary ids (`h` props) a compiled module renders, in source order. */
+export function getBoundaryIds(code: string) {
+  return [...code.matchAll(/\bh=\s*["']([^"']+)["']/g)].map(([, id]) => id!)
+}

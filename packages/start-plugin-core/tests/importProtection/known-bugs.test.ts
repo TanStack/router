@@ -1,13 +1,10 @@
 /**
- * Known import-protection bugs, pinned as expected failures.
- *
- * Every test asserts the CORRECT behaviour and is marked `.fails` because the
- * rewrite does not implement it yet. When a fix lands, the test starts
- * passing, Vitest reports the `.fails` test as failed, and the `.fails`
- * modifier must be removed.
+ * Known import-protection bugs. Each test asserts correct behaviour for a bug
+ * on main and is marked .fails; remove .fails when the bug is fixed.
  */
 import { transformWithOxc } from 'vite'
 import { expect, test } from 'vitest'
+import { findOriginalUnsafeUsagePos } from '../../src/import-protection/analysis'
 import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
 
 const mockModule = `data:text/javascript,${encodeURIComponent(
@@ -32,10 +29,9 @@ async function evaluateRewritten(code: string, denied: Array<string>) {
 }
 
 // Bug: rewriting a denied `export * as ns from 'denied'` drops the `ns`
-// export (main imports the mock without re-exporting it; the Yuku PR removes
-// the statement). Impact: importers of `ns` get `undefined` (or a missing
-// export error) instead of the mock, unlike every other denied import form.
-// Remove `.fails` once fixed.
+// export.
+// Impact: importers of `ns` get `undefined` (or a missing export error)
+// instead of the mock, unlike every other denied import form.
 test.fails('a denied namespace re-export keeps its exported name', async () => {
   const exports = await evaluateRewritten(
     `export * as ns from 'denied'
@@ -45,4 +41,20 @@ export const keep = 1`,
   expect(exports.keep).toBe(1)
   expect(Object.keys(exports)).toContain('ns')
   expect(exports.ns).toBeDefined()
+})
+
+// Bug: compiler-safe boundaries are recognized by the bare factory name
+// (`createServerFn().handler`, `createServerOnlyFn`), so the same calls through
+// a namespace import (`Start.createServerFn().handler`) are not safe.
+// Impact: import-protection diagnostics point at a usage inside a server fn
+// handler, which the compiler removes from the client, instead of the real
+// cause.
+test.fails.each([
+  `Start.createServerFn().handler(() => denied())`,
+  `Start.createServerOnlyFn(() => denied())`,
+])('client: %s is a safe boundary', (expression) => {
+  const code = `import * as Start from '@tanstack/react-start'
+import { denied } from 'denied'
+export const result = ${expression}`
+  expect(findOriginalUnsafeUsagePos(code, 'denied', 'client')).toBeUndefined()
 })

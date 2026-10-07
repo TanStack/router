@@ -1,80 +1,71 @@
 /**
- * Known Start compiler bugs, pinned as expected failures.
- *
- * Every `.fails` test asserts the CORRECT behaviour and is marked `.fails`
- * because the compiler does not implement it yet. When a fix lands, the test
- * starts passing, Vitest reports the `.fails` test as failed, and the `.fails`
- * modifier must be removed.
- *
- * Several bugs were found by porting other compilers' test suites (all MIT):
- * - the Next.js server actions transform fixtures (vercel/next.js
- *   `crates/next-custom-transforms/tests/fixture/server-actions`);
- * - babel-dead-code-elimination's tests (pcattori/babel-dead-code-elimination
- *   `src/dead-code-elimination.test.ts`);
- * - the `@vitejs/plugin-rsc` transform tests (vitejs/vite-plugin-react
- *   `packages/plugin-rsc/src/transforms`).
- * Each ported test names its source.
+ * Known Start compiler bugs. Each test asserts correct behaviour for a bug on
+ * main and is marked .fails; remove .fails when the bug is fixed.
  */
-import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { compileStartModule } from './compile-start-module'
-import { createStartModuleCompiler } from './known-bugs-helpers'
-import { declarationOf, getModuleErrors } from './validate-module'
+import {
+  compileAll,
+  compileCode,
+  createStartCompiler,
+  evaluateModule,
+  outputs,
+  settle,
+} from './regression-helpers'
+import { getModuleErrors } from './validate-module'
+import type { ModuleStub } from './regression-helpers'
+
+const head = `import { createServerFn } from '@tanstack/react-start'\n`
+
+/** Server-only module that must never reach the client bundle. */
+const serverOnly = './db.server'
 
 /**
- * Compiles several modules with one build-mode client compiler, like a
- * production build compiles every importer with the same compiler instance.
+ * Every output either rejects the code with a createServerFn error or is a
+ * valid module, and the handler body (`db.inner()`) is not in the client.
  */
-function createBuildCompiler(files: Record<string, string>) {
-  const compile = createStartModuleCompiler({ env: 'client', files })
-  return async (id: string) => {
-    const code = files[id]!
-    // An untransformed module ships its source as is.
-    return (await compile(code, id)) ?? code
+async function expectNoClientHandler(code: string) {
+  for (const output of outputs) {
+    let compiled: string
+    try {
+      compiled = (await compileCode(output, code)) ?? code
+    } catch (error) {
+      expect((error as Error).message, output).toMatch(/createServerFn/)
+      continue
+    }
+    expect(await getModuleErrors(compiled), output).toEqual([])
+    if (output === 'client') {
+      expect(compiled).not.toContain('db.inner()')
+    }
   }
 }
 
-/** Server-only code that must never reach the client bundle. */
-const serverOnlyImport = './db.server'
-
-describe('known Start compiler bugs: server code in the client bundle', () => {
-  // Controls for the bugs below: a server fn whose builder is created in the
-  // module or imported by name from another module is compiled, and the
-  // server-only import its handler used is removed from the client module.
-  test.each<{ name: string; files: Record<string, string>; code: string }>([
-    {
-      name: 'a builder created in the module',
-      files: {},
-      code: `import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export const fn = createServerFn().handler(async () => db.x())`,
-    },
-    {
-      name: 'a builder imported from another module',
-      files: {
-        '/test/src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
-export const authed = createServerFn({ method: 'POST' })`,
-      },
-      code: `import { authed } from './fns'
-import { db } from './db.server'
-export const fn = authed.handler(async () => db.x())`,
-    },
-  ])(
-    'client builds do not ship the server code of $name',
-    async ({ files, code }) => {
-      const output = await compileStartModule({ env: 'client', files, code })
-      expect(output).toContain('createClientRpc')
-      expect(output).not.toContain(serverOnlyImport)
-    },
+/**
+ * Calls every server fn the client build reports through the provider
+ * export it names, like the server-function router.
+ */
+async function callServerFns(
+  code: string,
+  options: {
+    directives?: Array<string>
+    stubs?: Record<string, ModuleStub>
+  } = {},
+) {
+  const { provider, serverFns } = await compileAll(code, options)
+  const module = await evaluateModule(provider, options.stubs)
+  const results = await Promise.all(
+    Object.values(serverFns).map(({ functionName }) =>
+      module[functionName]({ data: undefined }),
+    ),
   )
+  return { provider, results }
+}
 
-  // Bug: `findExportInModule` caches export lookups per module in build mode,
-  // but the `visitedModules` set is shared between the parallel `export *`
-  // branches. In a diamond (`a` re-exports `b` and `c`, both re-export `d`) or
-  // a cycle, the branch that reaches an already-visited module caches "not
-  // found" for its own module. A later importer of that module is then left
-  // untransformed. Impact: its server handler and server-only imports ship to
-  // the client bundle. Remove `.fails` once fixed.
+describe('server code in the client bundle', () => {
+  // Bug: build-mode export lookups are cached per module, but parallel
+  // `export *` branches share one visited set, so in a diamond or a cycle a
+  // module that re-exports the builder is cached as "not found".
+  // Impact: a later importer through that module is left untransformed and
+  // ships its handler and server-only imports to the client.
   test.fails.each<{ name: string; reExports: Record<string, string> }>([
     {
       name: 'diamonds',
@@ -106,15 +97,17 @@ import { db } from './db.server'
 export const via = base.handler(async () => db.${name}())`,
         ] as const
       })
-      const compile = createBuildCompiler({
-        '/test/src/d.ts': `import { createServerFn } from '@tanstack/react-start'
-export const base = createServerFn()`,
-        ...reExports,
-        ...Object.fromEntries(importers),
+      // One compiler for every importer, like a production build.
+      const { compile } = createStartCompiler({
+        env: 'client',
+        files: {
+          '/test/src/d.ts': `${head}export const base = createServerFn()`,
+          ...reExports,
+        },
       })
       const leaked: Array<string> = []
-      for (const [id] of importers) {
-        if ((await compile(id)).includes(serverOnlyImport)) {
+      for (const [id, code] of importers) {
+        if (((await compile(code, id)) ?? code).includes(serverOnly)) {
           leaked.push(id)
         }
       }
@@ -122,37 +115,18 @@ export const base = createServerFn()`,
     },
   )
 
-  // Bug: chains whose builder is reached through a namespace member, a
-  // namespace re-export of the Start package, or a middleware/isomorphic
-  // builder finished in a file without the detection text are not resolved.
-  // The module is left untransformed. Impact: server handlers and server-only
-  // imports ship to the client bundle. Remove `.fails` once fixed.
+  // Bug: middleware and isomorphic fns are detected by the `createMiddleware`
+  // / `createIsomorphicFn` text, so a module that only finishes a builder
+  // imported from another module is never compiled.
+  // Impact: the `.server()` implementation and its server-only imports ship
+  // to the client.
   test.fails.each<{
     name: string
     files: Record<string, string>
     code: string
   }>([
     {
-      name: 'a namespace member builder (F.authed.handler)',
-      files: {
-        '/test/src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
-export const authed = createServerFn({ method: 'POST' })`,
-      },
-      code: `import * as F from './fns'
-import { db } from './db.server'
-export const fn = F.authed.handler(async () => db.x())`,
-    },
-    {
-      name: 'a namespace re-export of the Start package (Start.createServerFn)',
-      files: {
-        '/test/src/start.ts': `export * as Start from '@tanstack/react-start'`,
-      },
-      code: `import { Start } from './start'
-import { db } from './db.server'
-export const fn = Start.createServerFn().handler(async () => db.x())`,
-    },
-    {
-      name: 'a middleware builder finished in another file (mw.server)',
+      name: 'a middleware builder',
       files: {
         '/test/src/mw.ts': `import { createMiddleware } from '@tanstack/react-start'
 export const mw = createMiddleware({ type: 'function' })`,
@@ -162,7 +136,7 @@ import { db } from './db.server'
 export const logged = mw.server(async ({ next }) => { db.log(); return next() })`,
     },
     {
-      name: 'an isomorphic builder finished in another file (iso.server)',
+      name: 'an isomorphic builder',
       files: {
         '/test/src/iso.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
 export const iso = createIsomorphicFn()`,
@@ -172,34 +146,66 @@ import { db } from './db.server'
 export const fn = iso.server(() => db.x()).client(() => 'client')`,
     },
   ])(
-    'client builds do not ship the server code of $name',
+    'client builds compile $name finished in another module',
     async ({ files, code }) => {
-      const output =
-        (await compileStartModule({ env: 'client', files, code })) ?? code
-      expect(output).not.toContain(serverOnlyImport)
+      const client = (await compileCode('client', code, { files })) ?? code
+      expect(client).not.toContain(serverOnly)
     },
   )
 
-  // Bug: a `createServerFn` that is not declared at the module top level
-  // (function body, switch case, block) is left untransformed. Impact: its
-  // server handler and server-only imports ship to the client bundle. The
-  // fix may also reject such declarations with a compile error.
-  // Remove `.fails` once fixed.
+  // Bug: a server fn builder read as a member of a namespace import
+  // (`F.authed.handler`) is not resolved, unlike the same builder imported by
+  // name.
+  // Impact: the module is left untransformed and ships its handler and
+  // server-only imports to the client.
+  test.fails(
+    'client builds compile a builder read from a namespace import',
+    async () => {
+      const code = `import * as F from './fns'
+import { db } from './db.server'
+export const fn = F.authed.handler(async () => db.x())`
+      const files = {
+        '/test/src/fns.ts': `${head}export const authed = createServerFn({ method: 'POST' })`,
+      }
+      const client = (await compileCode('client', code, { files })) ?? code
+      expect(client).not.toContain(serverOnly)
+    },
+  )
+
+  // Bug: a namespace of the Start package re-exported by a project module
+  // (`export * as Start from '@tanstack/react-start'`) is not resolved.
+  // Impact: `Start.createServerFn()` modules are left untransformed and ship
+  // their handler and server-only imports to the client.
+  test.fails(
+    'client builds compile factories of a re-exported Start namespace',
+    async () => {
+      const code = `import { Start } from './start'
+import { db } from './db.server'
+export const fn = Start.createServerFn().handler(async () => db.x())`
+      const files = {
+        '/test/src/start.ts': `export * as Start from '@tanstack/react-start'`,
+      }
+      const client = (await compileCode('client', code, { files })) ?? code
+      expect(client).not.toContain(serverOnly)
+    },
+  )
+
+  // Bug: when createServerFn is the only factory imported, the compiler only
+  // visits top-level variable declarations, so a server fn anywhere else is
+  // neither extracted nor rejected. Rejecting it with a clear compile error
+  // is a valid fix.
+  // Impact: its handler and server-only imports ship to the client.
   test.fails.each([
     {
       name: 'a function body',
-      code: `import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export function make() {
+      code: `export function make() {
   const inner = createServerFn().handler(async () => db.inner())
   return inner
 }`,
     },
     {
       name: 'a function body next to a top-level server fn',
-      code: `import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export const top = createServerFn().handler(async () => db.top())
+      code: `export const top = createServerFn().handler(async () => db.top())
 export function make() {
   const inner = createServerFn().handler(async () => db.inner())
   return inner
@@ -207,9 +213,7 @@ export function make() {
     },
     {
       name: 'a switch case',
-      code: `import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export function pick(kind: string) {
+      code: `export function pick(kind: string) {
   switch (kind) {
     case 'a':
       const inner = createServerFn().handler(async () => db.inner())
@@ -219,194 +223,169 @@ export function pick(kind: string) {
     },
     {
       name: 'a top-level block',
-      code: `import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export const registry: Array<unknown> = []
+      code: `export const registry: Array<unknown> = []
 {
   const inner = createServerFn().handler(async () => db.inner())
   registry.push(inner)
 }`,
     },
+    {
+      name: 'an object property',
+      code: `export const api = { read: createServerFn().handler(async () => db.inner()) }`,
+    },
+    {
+      name: 'a class field',
+      code: `export class Api { read = createServerFn().handler(async () => db.inner()) }`,
+    },
+    {
+      name: 'an anonymous default export',
+      code: `export default createServerFn().handler(async () => db.inner())`,
+    },
+    {
+      name: 'an assignment',
+      code: `export let fn
+fn = createServerFn().handler(async () => db.inner())`,
+    },
   ])(
-    'a createServerFn nested in $name does not ship its handler to the client',
+    'a createServerFn in $name does not ship its handler to the client',
     async ({ code }) => {
-      let output: string
-      try {
-        output = (await compileStartModule({ env: 'client', code })) ?? code
-      } catch {
-        // Rejecting the declaration at compile time also keeps it out of the client.
-        return
-      }
-      expect(output).not.toContain('db.inner()')
+      await expectNoClientHandler(
+        `${head}import { db } from './db.server'\n${code}`,
+      )
+    },
+  )
+
+  // Bug: with another factory imported, a server fn nested in a function is
+  // extracted on the client, but its provider module exports a handler it
+  // never declares.
+  // Impact: the server build fails.
+  test.fails(
+    'a createServerFn nested in a function next to another factory yields a valid provider',
+    async () => {
+      await expectNoClientHandler(`import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const serverOnly = createServerOnlyFn(() => db.top())
+export function make() {
+  const inner = createServerFn().handler(async () => db.inner())
+  return inner
+}`)
+    },
+  )
+
+  // Bug: Start factories are matched by name without scope analysis, so a
+  // parameter shadowing the imported factory or namespace is compiled as the
+  // factory.
+  // Impact: the client replaces the local call with the server-only stub,
+  // which throws.
+  test.fails.each([
+    {
+      name: 'a parenthesized namespace receiver',
+      code: `import * as Start from '@tanstack/react-start'
+export function make(Start) {
+  return (Start).createServerOnlyFn(() => 'local')
+}`,
+      local: { createServerOnlyFn: (fn: () => string) => fn },
+    },
+    {
+      name: 'a factory name',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+export function make(createServerOnlyFn) {
+  return createServerOnlyFn(() => 'local')
+}`,
+      local: (fn: () => string) => fn,
+    },
+  ])(
+    'client: a parameter shadowing $name is left alone',
+    async ({ code, local }) => {
+      const client = (await compileCode('client', code)) ?? code
+      const { make } = await evaluateModule(client)
+      expect(settle(() => make(local)())).toBe('local')
     },
   )
 })
 
-describe('known Start compiler bugs: server function handlers', () => {
-  /**
-   * Evaluates a provider module with minimal runtime stubs and returns its
-   * only export: the function the server-function router calls for a request.
-   */
-  async function loadProviderHandler(provider: string) {
-    const stub = (code: string) =>
-      `data:text/javascript,${encodeURIComponent(code)}`
-    const runtime: Record<string, string> = {
-      '@tanstack/react-start/server-rpc': stub(
-        `export const createServerRpc = (meta, fn) => fn`,
-      ),
-      '@tanstack/react-start': stub(
-        `export const createServerFn = () => ({ handler: (_rpc, impl) => ({ __executeServer: (opts) => impl(opts) }) })`,
-      ),
-    }
-    const { code } = await transformWithOxc(provider, 'provider.ts')
-    const linked = code.replace(
-      /from\s*(["'])([^"']+)\1/g,
-      (match, _quote: string, source: string) =>
-        source in runtime ? `from ${JSON.stringify(runtime[source])}` : match,
-    )
-    const module: Record<string, (opts: unknown) => unknown> = await import(
-      /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(linked)}`
-    )
-    const handlers = Object.values(module)
-    expect(handlers).toHaveLength(1)
-    return handlers[0]!
-  }
-
-  // Control for the bug below: the provider of a server fn calls its handler.
-  test('a server fn keeps working in the provider', async () => {
-    const provider = await compileStartModule({
-      env: 'server',
-      provider: true,
-      code: `import { createServerFn } from '@tanstack/react-start'
-export const greet = createServerFn().handler(async () => 'from the server')`,
-    })
-    expect(provider).not.toBeNull()
-    const handler = await loadProviderHandler(provider!)
-    expect(await handler({ data: undefined })).toBe('from the server')
+describe('server function handlers', () => {
+  // Bug: generated names are not made unique against user bindings: a user
+  // binding named like a generated import or handler collides with it, and
+  // the `opts` parameter of the provider's wrapper shadows a server fn named
+  // `opts`.
+  // Impact: the module fails to build, or every call of the `opts` server fn
+  // fails on the server.
+  test.fails.each([
+    {
+      name: 'a server fn named opts',
+      code: `${head}export const opts = createServerFn().handler(async () => 'from the server')`,
+    },
+    ...[
+      'createClientRpc',
+      'createSsrRpc',
+      'createServerRpc',
+      'fn_createServerFn_handler',
+    ].map((binding) => ({
+      name: `a user binding named ${binding}`,
+      code: `${head}const ${binding} = (value: unknown) => value
+export const used = ${binding}('user')
+export const fn = createServerFn().handler(async () => 'from the server')`,
+    })),
+  ])('$name does not collide with generated code', async ({ code }) => {
+    expect((await callServerFns(code)).results).toEqual(['from the server'])
   })
 
-  // Bug: generated names are not checked against user bindings (see also the
-  // next test). The provider module wraps each handler as
-  // `createServerRpc(meta, (opts) => <name>.__executeServer(opts))`. For a
-  // server fn named `opts`, the parameter shadows it and the declaration of
-  // `opts` is removed as unused. The module stays valid, so only running it
-  // shows the bug. Impact: every call of that server fn fails on the server.
-  // Remove `.fails` once fixed.
-  test.fails(
-    'a server fn named opts keeps working in the provider',
-    async () => {
-      const provider = await compileStartModule({
-        env: 'server',
-        provider: true,
-        code: `import { createServerFn } from '@tanstack/react-start'
-export const opts = createServerFn().handler(async () => 'from the server')`,
-      })
-      expect(provider).not.toBeNull()
-      expect(provider).toMatch(declarationOf('opts'))
-      const handler = await loadProviderHandler(provider!)
-      expect(await handler({ data: undefined })).toBe('from the server')
-    },
-  )
-
-  // Bug: generated names are not checked against user bindings. A user binding
-  // named like a generated import (`createClientRpc`, `createSsrRpc`,
-  // `createServerRpc`) or like a generated handler
-  // (`fn_createServerFn_handler`) collides with it. Main throws
-  // `Duplicate declaration` at compile time; the Yuku PR emits a module that
-  // redeclares the name. Impact: the module cannot be built.
-  // Remove `.fails` once fixed.
-  test.fails.each([
-    { name: 'createClientRpc', env: 'client' as const, provider: false },
-    { name: 'createSsrRpc', env: 'server' as const, provider: false },
-    { name: 'createServerRpc', env: 'server' as const, provider: true },
-    {
-      name: 'fn_createServerFn_handler',
-      env: 'server' as const,
-      provider: true,
-    },
-  ])(
-    'a user binding named $name does not collide with generated code',
-    async ({ name, env, provider }) => {
-      const output = await compileStartModule({
-        env,
-        provider,
-        code: `import { createServerFn } from '@tanstack/react-start'
-const ${name} = (value: unknown) => value
-export const used = ${name}(1)
-export const fn = createServerFn().handler(async () => 1)`,
-      })
-      expect(output).not.toBeNull()
-      expect(await getModuleErrors(output!)).toEqual([])
-    },
-  )
-  // Bug: when the handler passed to `.handler()` is itself a Start call
-  // (`createServerOnlyFn(fn)`), the inner call is compiled first. Main then
-  // silently miscompiles the server fn: the client caller gets the
-  // server-only "can only be called on the server" stub instead of an RPC,
-  // and the SSR caller gets a bare id string. The Yuku PR throws "Cannot
-  // replace a detached output node". Impact: the server fn cannot be called.
-  // Remove `.fails` once fixed.
-  test.fails.each([
-    { env: 'client' as const, rpc: 'createClientRpc' },
-    { env: 'server' as const, rpc: 'createSsrRpc' },
-  ])(
-    'a createServerOnlyFn handler still produces a $rpc caller',
-    async ({ env, rpc }) => {
-      const output = await compileStartModule({
-        env,
-        code: `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+  // Bug: when the handler passed to `.handler()` is a `createServerOnlyFn()`
+  // call, the inner call is compiled first and the caller is never rewritten
+  // into an RPC.
+  // Impact: the server fn cannot be called (the client caller throws the
+  // server-only error, the SSR caller is a bare id).
+  test.fails.each(['client', 'ssr'] as const)(
+    '%s: a createServerOnlyFn handler still produces an RPC caller',
+    async (output) => {
+      const code = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
-export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()))`,
-      })
-      expect(output).not.toBeNull()
-      expect(output).toMatch(new RegExp(String.raw`\.handler\(${rpc}\(`))
-      expect(output).not.toContain('can only be called on the server')
-      expect(await getModuleErrors(output!)).toEqual([])
+export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()))`
+      const module = await evaluateModule(
+        (await compileCode(output, code)) ?? code,
+        { './db.server': { db: {} } },
+      )
+      expect(module.fn).toEqual({ rpc: { [output]: expect.any(String) } })
     },
   )
 
   // Bug: the provider module (`?tss-serverfn-split`) keeps the `'use client'`
-  // directive of its source module, although it only holds server code. In an
-  // RSC build the provider environment turns every export of a `'use client'`
-  // module into a client reference that throws when called on the server.
-  // Impact: a server fn declared in a `'use client'` file cannot run in RSC
-  // apps. Remove `.fails` once fixed.
-  // Next.js server actions: server-graph/3, server-graph/4 (module-level
-  // directives)
+  // directive of its source module.
+  // Impact: in RSC builds every export of the provider becomes a client
+  // reference, so a server fn declared in a `'use client'` file cannot run.
+  // Source: Next.js server actions transform fixtures server-graph/3 and
+  // server-graph/4
   test.fails(
     "the provider of a 'use client' module is not a client module",
     async () => {
-      const provider = await compileStartModule({
-        env: 'server',
-        provider: true,
-        code: `'use client'
-import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
+      const { provider, results } = await callServerFns(
+        `'use client'
+${head}import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())`,
-      })
-      expect(provider).not.toBeNull()
-      expect(await getModuleErrors(provider!)).toEqual([])
-      expect(provider).toMatch(/export\s*\{\s*fn_createServerFn_handler\s*\}/)
+        {
+          // What react-start's Rsbuild RSC configuration passes.
+          directives: ['use server-entry'],
+          stubs: { './db.server': { db: { x: () => 'from the server' } } },
+        },
+      )
+      expect(results).toEqual(['from the server'])
       expect(provider).not.toMatch(/['"]use client['"]/)
     },
   )
 })
 
-describe('known Start compiler bugs: dead-code elimination', () => {
-  // Bug: when the compiler drops the other environment's implementation of a
-  // `createIsomorphicFn`/`createServerOnlyFn`/`createClientOnlyFn` declared
-  // inside a hook, it also deletes the hook's locals that only that
-  // implementation read, including their initializers. Here the first
-  // `useId()` disappears from one environment only, so the next `useId()`
-  // returns a different id on the server and on the client. Impact: hydration
-  // mismatches (and any other side effect of such an initializer runs in one
-  // environment only). Remove `.fails` once fixed.
-  // babel-dead-code-elimination: "only eliminates newly unreferenced
-  // identifiers" (applied to locals of a surviving function).
+describe('dead-code elimination', () => {
+  // Bug: removing the other environment's implementation of an env function
+  // declared in a hook also removes the hook calls initializing locals that
+  // only that implementation read.
+  // Impact: the hooks after it run in a different order on the server and
+  // the client (`useId` mismatches, hydration errors).
+  // Source: babel-dead-code-elimination "only eliminates newly unreferenced
+  // identifiers"
   test.fails.each([
     {
-      name: 'client',
-      env: 'client' as const,
+      output: 'client' as const,
       code: `import { createIsomorphicFn } from '@tanstack/react-start'
 import { useId } from 'react'
 export function useField() {
@@ -414,12 +393,10 @@ export function useField() {
   const describe = createIsomorphicFn().server(() => serverId).client(() => 'client')
   const inputId = useId()
   return [describe(), inputId]
-}
-`,
+}`,
     },
     {
-      name: 'server',
-      env: 'server' as const,
+      output: 'ssr' as const,
       code: `import { createClientOnlyFn } from '@tanstack/react-start'
 import { useId } from 'react'
 export function useField() {
@@ -427,30 +404,32 @@ export function useField() {
   const describe = createClientOnlyFn(() => clientId)
   const inputId = useId()
   return [describe, inputId]
-}
-`,
+}`,
     },
   ])(
-    '$name: hook calls read only by the removed implementation still run',
-    async ({ env, code }) => {
-      const output = await compileStartModule({ env, code })
-      expect(output).not.toBeNull()
-      expect(await getModuleErrors(output!)).toEqual([])
-      expect(output!.match(/\buseId\(\)/g)).toHaveLength(2)
+    '$output: hook calls read only by the removed implementation still run',
+    async ({ output, code }) => {
+      const calls: Array<string> = []
+      const { useField } = await evaluateModule(
+        (await compileCode(output, code)) ?? code,
+        { react: { useId: () => calls.push('useId') } },
+      )
+      useField()
+      expect(calls).toHaveLength(2)
     },
   )
 })
 
-describe('known Start compiler bugs: CommonJS dependencies', () => {
-  // Bug: every `.js`/`.cjs` file whose text matches a detection pattern (for
-  // example `.handler(`) is parsed as a strict ES module, including CommonJS
-  // dependencies that client builds bundle. Sloppy-mode syntax such as a
-  // legacy octal escape, a `with` statement or a top-level `return` throws a
-  // SyntaxError although the file has no Start import to compile. Impact: a
-  // CommonJS dependency containing such code and text like `app.handler(`
-  // fails the build. Remove `.fails` once fixed.
-  // @vitejs/plugin-rsc: cjs.test.ts (fixtures/cjs: CommonJS modules are
-  // sloppy-mode scripts)
+describe('CommonJS dependencies', () => {
+  // Bug: the compiler parses every module whose text matches a detection
+  // pattern (such as `.handler(`) as a strict ES module, so sloppy-mode
+  // CommonJS throws a SyntaxError although it has no Start import. The
+  // bundler plugins must keep compiling `node_modules` (Start libraries), so
+  // this is the compiler's contract.
+  // Impact: a CommonJS dependency with such code and text like `app.handler(`
+  // fails the build.
+  // Source: @vitejs/plugin-rsc cjs.test.ts (CommonJS modules are sloppy-mode
+  // scripts)
   test.fails.each([
     {
       name: 'a legacy octal escape',
@@ -481,7 +460,7 @@ exports.run = function (app) {
     'a CommonJS dependency with $name is left untouched',
     async ({ id, code }) => {
       for (const env of ['client', 'server'] as const) {
-        const compile = createStartModuleCompiler({ env })
+        const { compile } = createStartCompiler({ env })
         await expect(compile(code, id)).resolves.toBeNull()
       }
     },
