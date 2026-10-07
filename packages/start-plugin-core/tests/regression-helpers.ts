@@ -286,6 +286,11 @@ export function getChunkIds(code: string) {
     .filter((id) => id.includes('tss-hydrate='))
 }
 
+/** Boundary ids (`h` props) a compiled module renders, in source order. */
+export function getBoundaryIds(code: string) {
+  return [...code.matchAll(/\bh=\s*["']([^"']+)["']/g)].map(([, id]) => id!)
+}
+
 /** Loads a `<Hydrate>` chunk the way the bundler loads the virtual module. */
 export function loadChunk(
   plugin: HydratePlugin,
@@ -380,9 +385,32 @@ export const hydrateParentStubs = {
   },
 }
 
-// Helpers shared with the known-bugs pins.
+/**
+ * Import sources of a `<Hydrate>` chunk that name its parent module: a chunk
+ * may import the module bindings it shares with the parent instead of
+ * declaring its own copy.
+ */
+export function parentImportSources(chunk: string) {
+  return importSources(chunk).filter((source) =>
+    [moduleId, './module.tsx', './module'].includes(source),
+  )
+}
 
-/** Boundary ids (`h` props) a compiled module renders, in source order. */
-export function getBoundaryIds(code: string) {
-  return [...code.matchAll(/\bh=\s*["']([^"']+)["']/g)].map(([, id]) => id!)
+/**
+ * Stubs that link the parent imports of `chunk` (if any) to the parent module,
+ * evaluated with `hydrateParentStubs` unless an evaluated module is given.
+ */
+export async function parentModuleStubs(
+  chunk: string,
+  parent: string | Record<string, unknown>,
+): Promise<Record<string, ModuleStub>> {
+  const sources = parentImportSources(chunk)
+  if (sources.length === 0) {
+    return {}
+  }
+  const module =
+    typeof parent === 'string'
+      ? await evaluateModule(parent, hydrateParentStubs)
+      : parent
+  return Object.fromEntries(sources.map((source) => [source, module]))
 }

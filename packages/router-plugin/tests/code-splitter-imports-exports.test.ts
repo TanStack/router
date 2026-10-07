@@ -166,7 +166,7 @@ export default ${declaration}
   )
 
   // Source: Next.js ssg/getStaticProps/issue-31855 and multi-declarator-export
-  it('are imported from the route module by the chunk when declared in one statement', async () => {
+  it('are imported by the chunk when declared in one statement', async () => {
     const { modules } = compileRouteModules(`${head}export const a = 1,
   b = 2
 export const Route = createFileRoute('/')({
@@ -175,8 +175,16 @@ export const Route = createFileRoute('/')({
 `)
     expect(exportedNames(modules.reference!)).toEqual(['Route', 'a', 'b'])
     const chunk = modules['virtual component']!
-    expect(importedNames(chunk, 'route.tsx')).toEqual(['a', 'b'])
+    // From the route module, or from the shared module the route module
+    // re-exports them from.
+    expect(
+      [
+        ...importedNames(chunk, 'route.tsx'),
+        ...importedNames(chunk, 'route.tsx?tsr-shared=1'),
+      ].sort(),
+    ).toEqual(['a', 'b'])
     expect(chunk).not.toMatch(declarationOf('a'))
+    expect(chunk).not.toMatch(declarationOf('b'))
     await expectValidModules(modules)
   })
 

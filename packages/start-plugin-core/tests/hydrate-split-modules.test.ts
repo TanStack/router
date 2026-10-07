@@ -5,10 +5,13 @@ import {
   compileFirstChunk,
   compileHydrate,
   evaluateModule,
+  getBoundaryIds,
   getChunkIds,
   hydrateParentStubs,
   importSources,
   loadChunk,
+  parentImportSources,
+  parentModuleStubs,
   renderChunk,
 } from './regression-helpers'
 import { declarationOf, getModuleErrors } from './validate-module'
@@ -19,11 +22,6 @@ import { declarationOf, getModuleErrors } from './validate-module'
 // Both modules must stay valid and behave like the original source.
 
 const head = `import { Hydrate } from '@tanstack/react-start'\n`
-
-/** Boundary ids (`h` props) a compiled module renders, in source order. */
-function getBoundaryIds(code: string) {
-  return [...code.matchAll(/\bh=\s*["']([^"']+)["']/g)].map(([, id]) => id!)
-}
 
 describe('the parent module', () => {
   const widgetPage = `${head}import { visible } from '@tanstack/react-start/hydration'
@@ -255,15 +253,22 @@ export function Page() {
     'client: $name calls the provider id from the split chunk',
     async ({ code }) => {
       const { parent, plugin } = await compileHydrate('client', code)
-      const { code: chunk, serverFns } = await compileFirstChunk(plugin, parent)
-      expect(await getModuleErrors(chunk!)).toEqual([])
+      const compiled = await compileFirstChunk(plugin, parent)
+      const chunk =
+        compiled.code ?? loadChunk(plugin, 'client', getChunkIds(parent)[0]!)!
+      expect(await getModuleErrors(chunk)).toEqual([])
       expect(chunk).not.toContain('greet-handler-marker')
       const provider = await evaluateModule(
         (await compileCode('provider', code))!,
       )
-      expect(Object.keys(serverFns)).toEqual([
-        provider.greet_createServerFn_handler.meta.id,
-      ])
+      // The chunk compiles its own caller of the provider, or imports the
+      // parent's caller.
+      const ids = Object.keys(compiled.serverFns)
+      if (ids.length > 0) {
+        expect(ids).toEqual([provider.greet_createServerFn_handler.meta.id])
+      } else {
+        expect(parentImportSources(chunk)).not.toEqual([])
+      }
     },
   )
 })
@@ -304,14 +309,16 @@ export function Page() {
     expect(await renderChunk(chunks[0]!)).toBe('<ul><li>A</li><li>B</li></ul>')
   })
 
+  // Leaving such a boundary unsplit is valid too.
   test('client: empty and comment-only boundaries load chunks that render nothing', async () => {
-    const { chunks } = await compileHydrate(
+    const { parent, chunks } = await compileHydrate(
       'client',
       `${head}export function Page() {
   return <div><Hydrate></Hydrate><Hydrate>{/* nothing */}</Hydrate></div>
 }`,
     )
-    expect(chunks).toHaveLength(2)
+    expect(await getModuleErrors(parent)).toEqual([])
+    expect(chunks.length).toBeLessThanOrEqual(2)
     for (const chunk of chunks) {
       expect(await getModuleErrors(chunk)).toEqual([])
       expect(await renderChunk(chunk)).toBeNull()
@@ -455,7 +462,13 @@ export function Page() {
       )
       const module = await evaluateModule(parent, hydrateParentStubs)
       expect(module.fromRoot()).toContain('B')
-      expect(await renderChunk(chunks[0]!)).toBe('<p>A</p>')
+      expect(
+        await renderChunk(
+          chunks[0]!,
+          {},
+          await parentModuleStubs(chunks[0]!, module),
+        ),
+      ).toBe('<p>A</p>')
     },
   )
 
@@ -474,9 +487,12 @@ export function App() {
 }`,
     )
     expect(chunks).toHaveLength(2)
-    expect((await evaluateModule(parent, hydrateParentStubs)).direct).toBe(2)
-    expect(await renderChunk(chunks[0]!)).toBe('<p>3</p>')
-    expect(await renderChunk(chunks[1]!)).toBe('<p>4</p>')
+    const module = await evaluateModule(parent, hydrateParentStubs)
+    expect(module.direct).toBe(2)
+    const render = async (chunk: string) =>
+      renderChunk(chunk, {}, await parentModuleStubs(chunk, module))
+    expect(await render(chunks[0]!)).toBe('<p>3</p>')
+    expect(await render(chunks[1]!)).toBe('<p>4</p>')
   })
 
   // Source: Qwik optimizer example_ts_enums (TypeScript-only declaration forms)

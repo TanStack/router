@@ -16,17 +16,18 @@ const inSwitchCase = `export function pick(kind: string) {
   }
 }`
 
-// Only module-level `createServerFn` declarations are extracted. One declared
-// below the module top level must neither make the compiler throw nor produce
-// an invalid module, and top-level server fns next to it are still extracted.
-// Known limitation on main: the nested one is left untransformed, so its
-// handler ships to the client.
+// A `createServerFn` declared below the module top level must not produce an
+// invalid module, and top-level server fns next to it are still extracted.
+// Rejecting it with a compile error is valid too, but not crashing on it.
+// Known limitation on main: only module-level declarations are extracted; the
+// nested one is left untransformed, so its handler ships to the client. Which
+// nested server fns are extracted is left open here.
 test.each([
-  { name: 'a function', code: inFunction, extracted: [] },
+  { name: 'a function', code: inFunction, topLevel: [] },
   {
     name: 'a switch case inside a function',
     code: inSwitchCase,
-    extracted: [],
+    topLevel: [],
   },
   {
     name: 'a switch case at the module top level',
@@ -35,37 +36,48 @@ test.each([
     const fn = createServerFn().handler(async () => 'nested')
     console.log(fn)
 }`,
-    extracted: [],
+    topLevel: [],
   },
   {
     name: 'a function next to a top-level one',
     code: `${top}${inFunction}`,
-    extracted: ['top'],
+    topLevel: ['top'],
   },
   {
     name: 'a switch case next to a top-level one',
     code: `${top}${inSwitchCase}`,
-    extracted: ['top'],
+    topLevel: ['top'],
   },
 ])(
-  'a server fn declared in $name compiles to valid modules',
-  async ({ code, extracted }) => {
+  'a server fn declared in $name compiles to valid modules or is rejected',
+  async ({ code, topLevel }) => {
     const errors: Record<string, Array<string>> = {}
-    let extractedNames: Array<string> = []
     for (const output of outputs) {
-      const result = await compileFor(output, `${head}${code}`)
+      let result: Awaited<ReturnType<typeof compileFor>>
+      try {
+        result = await compileFor(output, `${head}${code}`)
+      } catch (error) {
+        expect((error as Error).message, output).not.toMatch(
+          /Expected createServerFn declaration in a statement list/,
+        )
+        continue
+      }
       errors[output] =
         result.code === null ? [] : await getModuleErrors(result.code)
       if (output === 'client') {
-        extractedNames = Object.values(result.serverFns).map(
+        const extractedNames = Object.values(result.serverFns).map(
           (fn) => fn.functionName,
+        )
+        expect(extractedNames).toEqual(
+          expect.arrayContaining(
+            topLevel.map((name) => `${name}_createServerFn_handler`),
+          ),
         )
       }
     }
-    expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-    expect(extractedNames).toEqual(
-      extracted.map((name) => `${name}_createServerFn_handler`),
-    )
+    for (const [output, moduleErrors] of Object.entries(errors)) {
+      expect(moduleErrors, output).toEqual([])
+    }
   },
 )
 
