@@ -6,102 +6,27 @@
  * transform (the one `@vitejs/plugin-react` uses) on the output to see which
  * components are registered and how their hook signatures are computed.
  */
-import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
   declarationOf,
+  declaratorName,
   evaluateModule,
+  expectRegisteredRouteOption,
   exportedNames,
+  getRouteOption,
   head,
   importedNames,
+  parseModule,
+  reactRefresh,
+  topLevelDeclarators,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
-import { getModuleErrors } from './validate-module'
 import type { ESTree } from 'vite'
 
 /** Compiles every module the code splitter emits, with React HMR. */
 function compileWithCodeSplitting(code: string) {
   return compileRouteModules(code, { hmr: true }).modules
-}
-
-/**
- * Applies the React Refresh transform and returns the registered component
- * names and the hook signature arguments of each signed binding.
- */
-async function reactRefresh(code: string) {
-  const result = await transformWithOxc(code, 'route.tsx', {
-    jsx: {
-      runtime: 'automatic',
-      development: true,
-      refresh: { emitFullSignatures: true },
-    },
-  })
-  const registered = [
-    ...result.code.matchAll(/\$RefreshReg\$\(\w+, "([^"]+)"\)/g),
-  ].map((match) => match[1]!)
-  const signatures = new Map(
-    [...result.code.matchAll(/\b_s\d*\((\w+), ([\s\S]*?)\);\n/g)].map(
-      (match) => [match[1]!, match[2]!] as const,
-    ),
-  )
-  return { registered, signatures }
-}
-
-function parseModule(code: string) {
-  const { program, errors } = parseSync('route.tsx', code, {
-    sourceType: 'module',
-  })
-  expect(errors).toEqual([])
-  return program
-}
-
-function topLevelDeclarators(program: ESTree.Program) {
-  return program.body.flatMap((statement) => {
-    const declaration =
-      statement.type === 'ExportNamedDeclaration'
-        ? statement.declaration
-        : statement
-    return declaration?.type === 'VariableDeclaration'
-      ? declaration.declarations
-      : []
-  })
-}
-
-function declaratorName(declarator: ESTree.VariableDeclarator) {
-  return declarator.id.type === 'Identifier' ? declarator.id.name : undefined
-}
-
-/** The `Route` declarator and the value of its `option`. */
-function getRouteOption(program: ESTree.Program, option: string) {
-  const route = topLevelDeclarators(program).find(
-    (declarator) => declaratorName(declarator) === 'Route',
-  )
-  const options =
-    route?.init?.type === 'CallExpression' ? route.init.arguments[0] : null
-  if (options?.type !== 'ObjectExpression') {
-    throw new Error('expected `Route` to be created with an options object')
-  }
-  const property = options.properties.find(
-    (candidate) =>
-      candidate.type === 'Property' &&
-      candidate.key.type === 'Identifier' &&
-      candidate.key.name === option,
-  )
-  if (property?.type !== 'Property') {
-    throw new Error(`expected the \`${option}\` route option`)
-  }
-  return { route: route!, value: property.value }
-}
-
-/** Asserts that `option` points to a binding React Refresh registers. */
-async function expectRegisteredRouteOption(code: string, option: string) {
-  expect(await getModuleErrors(code)).toEqual([])
-  const { value } = getRouteOption(parseModule(code), option)
-  expect(value.type).toBe('Identifier')
-  const binding = (value as ESTree.IdentifierReference).name
-  expect((await reactRefresh(code)).registered).toContain(binding)
-  return binding
 }
 
 describe('React Refresh registers route components', () => {

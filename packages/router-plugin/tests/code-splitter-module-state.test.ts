@@ -1,12 +1,6 @@
-import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { promisify } from 'node:util'
-import { build } from 'vite'
 import { describe, expect, it } from 'vitest'
-import { tanstackRouter } from '../src/vite'
 import {
+  buildAndRun,
   compileRouteModules,
   declarationOf,
   expectValidModules,
@@ -21,74 +15,6 @@ function countAcrossModules(modules: Record<string, string>, pattern: RegExp) {
       count + (code.match(new RegExp(pattern.source, 'g'))?.length ?? 0),
     0,
   )
-}
-
-const runNode = promisify(execFile)
-
-/**
- * Builds a small app with the real Vite plugin (default code splitting):
- * `routes/index.tsx` holds `route`, and `entry.ts` re-exports the route module
- * next to `render(component)`, which preloads a component and renders it to a
- * string. Then imports the built entry in a separate Node process and returns
- * the JSON value returned by `script`, which has the entry's exports in scope
- * as `entry`.
- */
-async function buildAndRun(route: string, script: string) {
-  // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(path.join(__dirname, '.regression-build-'))
-  try {
-    await mkdir(path.join(root, 'routes'))
-    await writeFile(
-      path.join(root, 'routes/__root.tsx'),
-      `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({})`,
-    )
-    await writeFile(path.join(root, 'routes/index.tsx'), route)
-    await writeFile(
-      path.join(root, 'entry.ts'),
-      `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-export * from './routes/index'
-export async function render(component: any) {
-  await component.preload?.()
-  return renderToString(createElement(component))
-}
-`,
-    )
-    await build({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      plugins: [
-        tanstackRouter({
-          target: 'react',
-          routesDirectory: './routes',
-          generatedRouteTree: './routeTree.gen.ts',
-          autoCodeSplitting: true,
-          codeSplittingOptions: { addHmr: false },
-        }),
-      ],
-      build: {
-        ssr: path.join(root, 'entry.ts'),
-        outDir: 'dist',
-        minify: false,
-        rollupOptions: {
-          output: { entryFileNames: 'entry.mjs', chunkFileNames: '[name].mjs' },
-        },
-      },
-    })
-    const entryUrl = pathToFileURL(path.join(root, 'dist/entry.mjs')).href
-    const { stdout } = await runNode(process.execPath, [
-      '--input-type=module',
-      '--eval',
-      `const entry = await import(${JSON.stringify(entryUrl)})
-const result = await (async () => { ${script} })()
-process.stdout.write(JSON.stringify(result))`,
-    ])
-    return JSON.parse(stdout) as unknown
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
 }
 
 describe('split chunks keep the module state the route relies on', () => {

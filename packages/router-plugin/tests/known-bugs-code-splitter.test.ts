@@ -1,261 +1,273 @@
 /**
- * Known code-splitter bugs, pinned as expected failures.
- *
- * Every `.fails` test asserts the CORRECT behaviour and is marked `.fails`
- * because the compiler does not implement it yet. When a fix lands, the test
- * starts passing, Vitest reports the `.fails` test as failed, and the `.fails`
- * modifier must be removed.
- *
- * Several bugs were found by porting other compilers' test suites (all MIT):
- * - Next.js SSG transform fixtures (vercel/next.js
- *   `crates/next-custom-transforms/tests/fixture/ssg`);
- * - React Router route-chunk and export-removal tests (remix-run/react-router
- *   `packages/react-router-dev/vite/route-chunks-test.ts` and
- *   `remove-exports-test.ts`);
- * - the Qwik optimizer tests (QwikDev/qwik
- *   `packages/optimizer/core/src/test.rs`);
- * - the React Compiler fixture corpus (facebook/react
- *   `compiler/packages/babel-plugin-react-compiler/src/__tests__/fixtures/compiler`);
- * - Turbopack's tree-shaker analyzer fixtures (vercel/next.js
- *   `turbopack/crates/turbopack-ecmascript/tests/tree-shaker/analyzer`).
- * Each ported test names its source.
+ * Known code-splitter bugs on main. Each `.fails` test asserts the correct
+ * behaviour for a bug on main and is marked `.fails`; remove `.fails` when the
+ * bug is fixed.
  */
-import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { promisify } from 'node:util'
-import { build } from 'vite'
-import { describe, expect, test } from 'vitest'
+import { parseSync } from 'vite'
+import { describe, expect, test, vi } from 'vitest'
 import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitVirtualRoute,
-} from '../src/core/code-splitter/compilers'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { tanstackRouter } from '../src/vite'
-import { declarationOf, getModuleErrors } from './validate-module'
-import type { CodeSplitGroupings } from '../src/core/constants'
+  buildAndRun,
+  compileRouteModules,
+  declarationOf,
+  evaluateModule,
+  head,
+  importSources,
+} from './regression-helpers'
 
-const runNode = promisify(execFile)
-
-/** Renders a route component (loading its split chunk first) to HTML. */
-const renderEntry = `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-export * from './routes/index'
-export async function render(component: any) {
-  await component.preload?.()
-  return renderToString(createElement(component))
-}
-`
-
-/** Counts module-state initializations in `globalThis.initCalls`. */
-const stateModule = `function count() {
-  ;(globalThis as any).initCalls = ((globalThis as any).initCalls ?? 0) + 1
-}
-export function init<T>(value: T): T {
-  count()
-  return value
-}
-export function register(items: Array<string>) {
-  count()
-  items.push('item')
-}
-`
+type Stubs = Record<string, Record<string, unknown>>
 
 /**
- * Builds a small app with the real Vite plugin (code splitting enabled), then
- * imports the built `entry.ts` in a separate Node process and returns the JSON
- * value printed by `script`, which has the entry's exports in scope as `entry`.
- *
- * The app has a root route, `routes/index.tsx` from `files`, `state.ts`
- * ({@link stateModule}) and, unless `files` replaces it, an `entry.ts` that
- * re-exports the index route and renders components ({@link renderEntry}).
+ * The exports of an emitted module, as another emitted module imports them:
+ * importing a name the module does not export throws, as in a bundler.
  */
-async function buildAndRun(options: {
-  files: Record<string, string>
-  groupings?: CodeSplitGroupings
-  script: string
-}) {
-  // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(path.join(__dirname, '.known-bugs-runtime-'))
-  try {
-    await mkdir(path.join(root, 'routes'))
-    const files: Record<string, string> = {
-      'routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({})`,
-      'entry.ts': renderEntry,
-      'state.ts': stateModule,
-      ...options.files,
-    }
-    for (const [file, code] of Object.entries(files)) {
-      await writeFile(path.join(root, file), code)
-    }
-    await build({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      plugins: [
-        tanstackRouter({
-          target: 'react',
-          routesDirectory: './routes',
-          generatedRouteTree: './routeTree.gen.ts',
-          autoCodeSplitting: true,
-          codeSplittingOptions: {
-            addHmr: false,
-            defaultBehavior: options.groupings ?? defaultCodeSplitGroupings,
-          },
-        }),
-      ],
-      build: {
-        ssr: path.join(root, 'entry.ts'),
-        outDir: 'dist',
-        minify: false,
-        rollupOptions: {
-          output: { entryFileNames: 'entry.mjs', chunkFileNames: '[name].mjs' },
-        },
-      },
-    })
-    const entryUrl = pathToFileURL(path.join(root, 'dist/entry.mjs')).href
-    const { stdout } = await runNode(process.execPath, [
-      '--input-type=module',
-      '--eval',
-      `const entry = await import(${JSON.stringify(entryUrl)})
-const result = await (async () => { ${options.script} })()
-process.stdout.write(JSON.stringify(result))`,
-    ])
-    return JSON.parse(stdout) as unknown
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
+function linkable(specifier: string, exports: Record<string, unknown>) {
+  return new Proxy(exports, {
+    get(target, name) {
+      if (typeof name === 'string' && !(name in target)) {
+        throw new Error(`"${name}" is not exported by "${specifier}"`)
+      }
+      return Reflect.get(target, name)
+    },
+  })
 }
 
-const renderComponent = `await entry.render(entry.Route.options.component)`
+/**
+ * Compiles a route file, then evaluates every module the code splitter emits,
+ * linked by import specifier: the shared module, the reference module, then
+ * every split chunk, as once all chunks have loaded. `stubs` provides the
+ * route's other imports. Returns the modules, the route options and the
+ * exports of each chunk by split name.
+ */
+async function loadRouteModules(code: string, stubs: Stubs = {}) {
+  const { modules } = compileRouteModules(code)
+  const linked: Stubs = {
+    ...stubs,
+    '@tanstack/react-router': {
+      createFileRoute: () => (options: unknown) => ({ options }),
+      lazyRouteComponent: () => () => null,
+    },
+  }
+  for (const [name, specifier] of [
+    ['shared', 'route.tsx?tsr-shared=1'],
+    ['reference', 'route.tsx'],
+  ] as const) {
+    if (modules[name]) {
+      linked[specifier] = linkable(
+        specifier,
+        await evaluateModule(modules[name], linked),
+      )
+    }
+  }
+  const chunks: Record<string, Record<string, any>> = {}
+  for (const [name, chunk] of Object.entries(modules)) {
+    if (name.startsWith('virtual ')) {
+      chunks[name.slice('virtual '.length)] = await evaluateModule(
+        chunk,
+        linked,
+      )
+    }
+  }
+  const { Route } = linked['route.tsx'] as { Route: { options: any } }
+  return { modules, options: Route.options, chunks }
+}
 
-describe('known code-splitter bugs: module state shared with split chunks', () => {
-  // Control for the bugs below: a binding read by the loader (reference
-  // module) and the split component moves to the shared module, so its
-  // initializer runs once.
-  test('a binding read by the loader and a split component is initialized once', async () => {
-    const result = await buildAndRun({
-      files: {
-        'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { init } from '../state'
-const value = init('value')
+/** Stubs `./state`, counting the calls of `init` and `register`. */
+function stateStub() {
+  const state = {
+    calls: 0,
+    init: <T>(value: T) => {
+      state.calls++
+      return value
+    },
+    register: (items: Array<string>) => {
+      state.calls++
+      items.push('item')
+    },
+  }
+  return state
+}
+
+describe('module state shared with split chunks', () => {
+  // Control for loadRouteModules: a top-level const read by the loader and
+  // the split component moves to the shared module and is initialized once.
+  test('a const read by the loader and the split component is initialized once', async () => {
+    const state = stateStub()
+    const { options, chunks } = await loadRouteModules(
+      `${head}import { init } from './state'
+const value = init(1)
 export const Route = createFileRoute('/')({
   loader: () => value,
   component: () => <p>{value}</p>,
 })`,
-      },
-      script: `return [await entry.Route.options.loader({}), ${renderComponent}, globalThis.initCalls]`,
-    })
-    expect(result).toEqual(['value', '<p>value</p>', 1])
-  }, 30_000)
+      { './state': state },
+    )
+    expect([
+      options.loader(),
+      chunks.component!.component(),
+      state.calls,
+    ]).toEqual([1, '<p>1</p>', 1])
+  })
 
-  // Bug: a binding read by the reference module and a split chunk moves to the
-  // shared module even though it is reassigned outside it, and the module that
-  // reassigns it now imports it. Imports are read-only, so the build fails with
-  // "Cannot assign to import" (or, when the modules are linked without a
-  // bundler, the reassignment throws "Assignment to constant variable").
-  // Impact: the route cannot be built as soon as code splitting is on.
-  // Remove `.fails` once fixed.
-  // Sources: "a function reassigned at module level" is adapted from the React
-  // Compiler fixture `module-scoped-bindings.js`.
+  // Bug: module bindings are collected from top-level var/function/class
+  // declarations only, so a `var` nested in a statement, an enum or a
+  // namespace is neither moved with the shared helper reading it nor shared:
+  // its statement is copied into every module.
+  // Impact: the shared helper throws a ReferenceError when the route loads,
+  // or the declaring statement (and its side effects) runs once per module.
   test.fails.each([
     {
-      name: 'a let incremented by the loader',
-      route: `let count = 0
+      name: 'a var in an if block',
+      declaration: `if (globalThis) { var value = init(1) }
+const read = () => value`,
+    },
+    {
+      name: 'a var in a try block',
+      declaration: `try { var value = init(1) } catch {}
+const read = () => value`,
+    },
+    {
+      name: 'a var in a for head',
+      declaration: `for (var value = init(0); value < 1; value++) {}
+const read = () => value`,
+    },
+    {
+      name: 'a var in a for head, read directly',
+      declaration: `for (var value = init(0); value < 1; value++) {}`,
+      read: 'value',
+    },
+    {
+      name: 'an enum',
+      declaration: `enum Value { One = init(1) }
+const read = () => Value.One`,
+    },
+    {
+      name: 'a namespace',
+      declaration: `namespace Value { export const one = init(1) }
+const read = () => Value.one`,
+    },
+  ])(
+    'a binding declared by $name and read by the loader and the split component is initialized once',
+    async ({ declaration, read = 'read()' }) => {
+      const state = stateStub()
+      const { options, chunks } = await loadRouteModules(
+        `${head}import { init } from './state'
+${declaration}
+export const Route = createFileRoute('/')({
+  loader: () => ${read},
+  component: () => <p>{${read}}</p>,
+})`,
+        { './state': state },
+      )
+      expect([
+        options.loader(),
+        chunks.component!.component(),
+        state.calls,
+      ]).toEqual([1, '<p>1</p>', 1])
+    },
+  )
+
+  // Bug: a `let` the loader reassigns is shared with the split component, so
+  // the reference module imports it, and imports are read-only: the build
+  // fails with "Cannot assign to import".
+  // Impact: the route cannot be built as soon as code splitting is on.
+  test.fails(
+    'a let the loader reassigns stays writable and the split component reads its value',
+    async () => {
+      const result = await buildAndRun(
+        `${head}let count = 0
 export const Route = createFileRoute('/')({
   loader: () => { count++; return count },
   component: () => <p>{count}</p>,
 })`,
-      script: `const loaded = [await entry.Route.options.loader({}), await entry.Route.options.loader({})]
-return [...loaded, ${renderComponent}]`,
-      expected: [1, 2, '<p>2</p>'],
+        `const loaded = [await entry.Route.options.loader({}), await entry.Route.options.loader({})]
+return [...loaded, await entry.render(entry.Route.options.component)]`,
+      )
+      expect(result).toEqual([1, 2, '<p>2</p>'])
     },
+    30_000,
+  )
+
+  // Bug: a top-level statement that writes a binding stays in the reference
+  // module when the binding moves to the shared module or a split chunk.
+  // Impact: the write throws (an import is read-only, or the moved binding is
+  // not declared there) or runs after the shared declarations that it should
+  // precede.
+  test.fails.each([
     {
-      name: 'a function reassigned at module level',
-      route: `function format() {
+      name: 'a function (reassignment)',
+      // Source: React Compiler fixture module-scoped-bindings.js
+      setup: `function format() {
   return 'original'
 }
-format = () => 'reassigned'
-export const Route = createFileRoute('/')({
-  loader: () => format(),
-  component: () => <p>{format()}</p>,
-})`,
-      script: `return [await entry.Route.options.loader({}), ${renderComponent}]`,
+format = () => 'reassigned'`,
+      loader: 'format()',
+      component: '() => <p>{format()}</p>',
       expected: ['reassigned', '<p>reassigned</p>'],
     },
-  ])(
-    'a shared binding reassigned outside the shared module ($name) stays writable',
-    async ({ route, script, expected }) => {
-      const result = await buildAndRun({
-        files: {
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-${route}`,
-        },
-        script,
-      })
-      expect(result).toEqual(expected)
-    },
-    30_000,
-  )
-
-  // Bug: a top-level binding that reads a `var` declared inside a block (`if`,
-  // `try`, a `for` head) is moved to the shared module when the loader and a
-  // split component both use it, but the nested `var` is not, so the shared
-  // module reads an undeclared name. Impact: calling it throws a ReferenceError
-  // as soon as the route loads. Remove `.fails` once fixed.
-  test.fails.each([
-    { name: 'an if block', declaration: 'if (globalThis) { var flag = 1 }' },
-    { name: 'a try block', declaration: 'try { var flag = 1 } catch {}' },
     {
-      name: 'a for head',
-      declaration: 'for (var flag = 0; flag < 1; flag++) {}',
+      name: 'a registry a shared store is created from (push)',
+      // Source: Turbopack tree-shaker analyzer/write-order, analyzer/shared-2
+      // and analyzer/shared-regression
+      setup: `const plugins: Array<string> = []
+plugins.push('auth')
+const store = { plugins: [...plugins] }
+plugins.push('late')`,
+      loader: 'store.plugins',
+      component: '() => <p>{store.plugins.join()}</p>',
+      expected: [['auth'], '<p>auth</p>'],
+    },
+    {
+      name: 'the split component (property assignment)',
+      // Source: React Router remove-exports-test.ts "function statement with
+      // property assignment" and "arrow function with property assignment"
+      setup: `function Page() {
+  return <div>{Page.displayName}</div>
+}
+Page.displayName = 'PageDisplay'`,
+      loader: `'data'`,
+      component: 'Page',
+      expected: ['data', '<div>PageDisplay</div>'],
+      split: 'Page',
     },
   ])(
-    'a shared helper keeps reading a var declared in $name',
-    async ({ declaration }) => {
-      const result = await buildAndRun({
-        files: {
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-${declaration}
-const read = () => flag
+    'top-level writes to $name stay with the binding they write',
+    async ({ setup, loader, component, expected, split }) => {
+      const { modules, options, chunks } =
+        await loadRouteModules(`${head}${setup}
 export const Route = createFileRoute('/')({
-  loader: () => read(),
-  component: () => <p>{read()}</p>,
-})`,
-        },
-        script: `return [await entry.Route.options.loader({}), ${renderComponent}]`,
-      })
-      expect(result).toEqual([1, '<p>1</p>'])
+  loader: () => ${loader},
+  component: ${component},
+})`)
+      expect([options.loader(), chunks.component!.component()]).toEqual(
+        expected,
+      )
+      if (split) {
+        // The component is still split out of the route module.
+        expect(modules.reference).not.toMatch(declarationOf(split))
+      }
     },
-    30_000,
   )
 
-  // Bug: the shared module is computed from the route options only. A
-  // declaration that the reference module keeps for another reason (an
-  // export, an exported function reading it, a sibling binding that nothing
-  // references, a top-level statement reading it) and that a split component
-  // also reads is copied into the component chunk instead of being shared.
-  // Impact: its initializer runs twice, so module state (contexts, stores,
-  // subscriptions, registrations) is duplicated and the component reads a
-  // different instance than the reference module (e.g. a context created in
-  // the route file ignores its exported Provider). Remove `.fails` once fixed.
+  // Bug: a declaration the reference module keeps for another reason than a
+  // route option (an export, an exported function reading it, a sibling
+  // binding, a top-level statement reading it) is copied into the split
+  // chunks instead of being shared.
+  // Impact: its initializer runs once per module, so module state (contexts,
+  // stores, registrations) is duplicated and the component reads another
+  // instance than the route module.
   test.fails.each([
     {
       name: 'a destructuring with one exported binding',
-      // The original pin for this bug.
-      route: `import { init } from '../state'
-const { a, b } = init({ a: 'a', b: 'b' })
+      declaration: `const { a, b } = init({ a: 'a', b: 'b' })
 export { a }`,
       render: '{a + b}',
       html: '<p>ab</p>',
     },
     {
       name: 'a binding read by an exported function',
-      // Qwik: should_keep_module_level_var_used_in_both_main_and_qrl
-      route: `import { init } from '../state'
-const theme = init('dark')
+      // Source: Qwik optimizer test.rs
+      // should_keep_module_level_var_used_in_both_main_and_qrl
+      declaration: `const theme = init('dark')
 export function ThemeProvider() {
   return theme
 }`,
@@ -263,185 +275,115 @@ export function ThemeProvider() {
       html: '<p>dark</p>',
     },
     {
+      name: 'an exported function over private state',
+      declaration: `const state = init({ count: 0 })
+export function increment() {
+  return ++state.count
+}`,
+      render: '{increment()}',
+      html: '<p>1</p>',
+    },
+    {
       name: 'an array destructuring with an unreferenced binding',
-      // Next.js: ssg/getStaticProps/destructuring-assignment-array
-      route: `import { init } from '../state'
-const [unused, value] = init(['unused', 'value'])`,
+      // Source: Next.js ssg/getStaticProps/destructuring-assignment-array
+      declaration: `const [unused, value] = init(['unused', 'value'])`,
       render: '{value}',
       html: '<p>value</p>',
     },
     {
-      name: 'an object rest destructuring with an unreferenced binding',
-      // Next.js: ssg/getStaticProps/destructuring-assignment-object
-      route: `import { init } from '../state'
-const { unused, ...rest } = init({ unused: 'unused', value: 'value' })`,
-      render: '{Object.keys(rest).join()}',
-      html: '<p>value</p>',
-    },
-    {
       name: 'a binding filled by a top-level registration call',
-      // React Router: route-chunks-test.ts "top level await" and "object
-      // property mutation"
-      route: `import { register } from '../state'
-const items: Array<string> = []
+      // Source: React Router route-chunks-test.ts "top level await" and
+      // "object property mutation"
+      declaration: `const items: Array<string> = []
 register(items)`,
       render: '{items.join()}',
       html: '<p>item</p>',
     },
-    {
-      name: 'an instance whose method is reassigned at top level',
-      // React Router: route-chunks-test.ts "class method mutation"
-      route: `import { init } from '../state'
-class Greeter {
-  constructor() {
-    init(this)
-  }
-  greet() {
-    return 'hello'
-  }
-}
-const greeter: any = new Greeter()
-greeter.greet = () => 'mutated'`,
-      render: '{greeter.greet()}',
-      html: '<p>mutated</p>',
-    },
   ])(
     'module state that the reference module keeps for $name is initialized once',
-    async ({ route, render, html }) => {
-      const result = await buildAndRun({
-        files: {
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-${route}
+    async ({ declaration, render, html }) => {
+      const state = stateStub()
+      const { chunks } = await loadRouteModules(
+        `${head}import { init, register } from './state'
+${declaration}
 export const Route = createFileRoute('/')({
   component: () => <p>${render}</p>,
 })`,
-        },
-        script: `return [${renderComponent}, globalThis.initCalls]`,
-      })
-      expect(result).toEqual([html, 1])
+        { './state': state },
+      )
+      expect([chunks.component!.component(), state.calls]).toEqual([html, 1])
     },
-    30_000,
   )
 
   // Bug: top-level side effects that nothing references (an `if` block, or a
-  // declaration such as `const unsubscribe = store.subscribe(...)` whose
-  // binding is unused) are copied into every split chunk, so they run once
-  // more for each chunk that loads, even for a chunk that only holds the
-  // errorComponent. Impact: duplicated subscriptions/logging/initialization.
-  // Remove `.fails` once fixed.
+  // declaration whose binding is unused) are copied into every split chunk.
+  // Impact: they run again for every chunk that loads, even for a chunk
+  // holding only the errorComponent (duplicated subscriptions, logging).
   test.fails.each([
     {
       name: 'an if statement',
       effect: `if (typeof globalThis === 'object') {
-  ;(globalThis as any).effects = ((globalThis as any).effects ?? 0) + 1
+  track()
 }`,
     },
     {
       name: 'an unused subscription',
-      effect: `const subscribe = (listener: () => void) => {
-  ;(globalThis as any).effects = ((globalThis as any).effects ?? 0) + 1
-  return listener
-}
-const unsubscribe = subscribe(() => {})`,
+      effect: `const unsubscribe = subscribe(() => {})`,
     },
   ])(
-    'an unreferenced top-level side effect ($name) runs once when split chunks load',
+    'an unreferenced top-level side effect ($name) runs once',
     async ({ effect }) => {
-      const result = await buildAndRun({
-        files: {
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+      let calls = 0
+      await loadRouteModules(
+        `${head}import { subscribe, track } from './effects'
 ${effect}
 export const Route = createFileRoute('/')({
   component: () => <p>index</p>,
-  errorComponent: () => <p>error</p>,
 })`,
+        {
+          './effects': {
+            track: () => calls++,
+            subscribe: (listener: () => void) => {
+              calls++
+              return listener
+            },
+          },
         },
-        script: `await entry.Route.options.component.preload?.()
-await entry.Route.options.errorComponent.preload?.()
-return globalThis.effects`,
-      })
-      expect(result).toBe(1)
+      )
+      expect(calls).toBe(1)
     },
-    30_000,
   )
 
-  // Bug: when a declaration moves into the shared module (the loader and the
-  // split component both read it), top-level statements that write the
-  // bindings it reads stay in the reference module. The shared module is
-  // imported, so it evaluates first: the declaration's initializer runs before
-  // statements that preceded it in the source. Impact: initialization order
-  // changes, e.g. a store created from a registry no longer sees the plugins
-  // registered above it. Remove `.fails` once fixed.
-  // Turbopack: analyzer/write-order, analyzer/shared-2 and
-  // analyzer/shared-regression.
+  // Bug: an ambient `declare const` read by the loader and the split
+  // component is shared: the shared module exports a name that TypeScript
+  // erases, and the reference module and the chunk import it.
+  // Impact: the build fails with a missing export, e.g. for a constant
+  // injected with Vite's `define`.
   test.fails(
-    'a shared declaration still runs after the top-level writes that precede it',
+    'an ambient declare const read by the loader and the split component stays a global',
     async () => {
-      const result = await buildAndRun({
-        files: {
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-const plugins: Array<string> = []
-plugins.push('auth')
-const store = { plugins: [...plugins] }
-plugins.push('late')
+      vi.stubGlobal('APP_VERSION', '1.0')
+      try {
+        const { options, chunks } =
+          await loadRouteModules(`${head}declare const APP_VERSION: string
 export const Route = createFileRoute('/')({
-  loader: () => store.plugins,
-  component: () => <p>{store.plugins.join()}</p>,
-})`,
-        },
-        script: `const loaded = await entry.Route.options.loader({})
-return [loaded, ${renderComponent}]`,
-      })
-      expect(result).toEqual([['auth'], '<p>auth</p>'])
+  loader: () => APP_VERSION,
+  component: () => <p>{APP_VERSION}</p>,
+})`)
+        expect([options.loader(), chunks.component!.component()]).toEqual([
+          '1.0',
+          '<p>1.0</p>',
+        ])
+      } finally {
+        vi.unstubAllGlobals()
+      }
     },
-    30_000,
   )
 })
 
-describe('known code-splitter bugs: split route options', () => {
-  // Bug: with several `createFileRoute(...)` calls in one route file, main
-  // points every route at one split chunk (the first route renders the last
-  // route's component); the Yuku PR emits a chunk with a duplicated
-  // `component` export. Impact: wrong component rendered / broken build.
-  // Remove `.fails` once fixed.
-  test.fails(
-    'several createFileRoute calls in one file keep their own split components',
-    async () => {
-      const result = await buildAndRun({
-        files: {
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-function Home() { return <p>home</p> }
-function Other() { return <p>other</p> }
-export const Route = createFileRoute('/')({ component: Home })
-export const OtherRoute = createFileRoute('/')({ component: Other })`,
-        },
-        script: `return [
-  ${renderComponent},
-  await entry.render(entry.OtherRoute.options.component),
-]`,
-      })
-      expect(result).toEqual(['<p>home</p>', '<p>other</p>'])
-    },
-    30_000,
-  )
-
-  // Bug: the object form `loader: { handler }` cannot be split. Main throws
-  // "Unexpected splitNode type ☝️: ObjectExpression"; the Yuku PR moves the
-  // object into a chunk and wraps it with `lazyFn`, which then calls the
-  // object as a function. Impact: the route's data never loads.
-  // Remove `.fails` once fixed.
-  test.fails(
-    'a split loader in object form still loads route data',
-    async () => {
-      const result = await buildAndRun({
-        groupings: [['loader'], ['component']],
-        files: {
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({
-  loader: { handler: () => 'loaded' },
-  component: () => <p>index</p>,
-})`,
-          'entry.ts': `import { createMemoryHistory, createRouter } from '@tanstack/react-router'
+describe('split route options', () => {
+  /** Loads `/` with a real router and returns each match's loader data. */
+  const routerEntry = `import { createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export async function load() {
   const router = createRouter({
@@ -450,56 +392,69 @@ export async function load() {
   })
   await router.load()
   return router.state.matches.map((match) => match.loaderData ?? null)
-}`,
-        },
-        script: `return await entry.load()`,
-      })
-      expect(result).toEqual([null, 'loaded'])
+}`
+
+  function loadWithSplitLoader(loader: string) {
+    return buildAndRun(
+      `${head}export const Route = createFileRoute('/')({
+  loader: ${loader},
+  component: () => <p>index</p>,
+})`,
+      `return await entry.load()`,
+      {
+        files: { 'entry.ts': routerEntry },
+        groupings: [['loader'], ['component']],
+      },
+    )
+  }
+
+  // Control for the object-form loader pin below (same harness).
+  test('a split loader loads route data', async () => {
+    expect(await loadWithSplitLoader(`() => 'loaded'`)).toEqual([
+      null,
+      'loaded',
+    ])
+  }, 30_000)
+
+  // Bug: the object form `loader: { handler }` cannot be split: the virtual
+  // compiler throws "Unexpected splitNode type ☝️: ObjectExpression".
+  // Impact: a route with an object-form loader cannot be built once the
+  // loader is split.
+  test.fails(
+    'a split loader in object form loads route data',
+    async () => {
+      expect(await loadWithSplitLoader(`{ handler: () => 'loaded' }`)).toEqual([
+        null,
+        'loaded',
+      ])
     },
     30_000,
   )
 
-  // Bug: statements that assign properties to a split component
-  // (`Page.displayName = ...`) stay in the reference module. Main keeps the
-  // statements but removes the component's declaration, so the reference
-  // module throws `ReferenceError: Page is not defined`; the Yuku PR keeps a
-  // second copy of the component in the reference module. Impact: the route
-  // crashes (main) or the component is not split out of the main bundle (PR).
-  // Remove `.fails` once fixed.
-  // React Router: remove-exports-test.ts "function statement with property
-  // assignment" and "arrow function with property assignment".
-  test.fails(
-    'property assignments move into the chunk with the split component',
-    async () => {
-      const code = `import { createFileRoute } from '@tanstack/react-router'
-function Page() {
-  return <div>{Page.label}</div>
-}
-Page.label = 'page'
-Page.displayName = 'PageDisplay'
+  // Bug: a module-level `export * from` is copied into every split chunk.
+  // Impact: every chunk depends on and re-exports that module.
+  test.fails('split chunks do not re-export a module-level export *', () => {
+    const { modules } = compileRouteModules(`${head}export * from './lib'
 export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: Page,
-})
-`
-      const reference = compileCodeSplitReferenceRoute({
-        code,
-        filename: 'route.tsx',
-        id: 'route.tsx',
-        addHmr: false,
-        codeSplitGroupings: defaultCodeSplitGroupings,
-        targetFramework: 'react',
-      })!.code
-      const component = compileCodeSplitVirtualRoute({
-        code,
-        filename: 'route.tsx?tsr-split=component',
-        splitTargets: ['component'],
-      }).code
-      expect(reference).not.toMatch(/\bPage\b/)
-      expect(component).toMatch(declarationOf('Page'))
-      expect(component).toMatch(/Page\.displayName = ['"]PageDisplay['"]/)
-      expect(await getModuleErrors(reference)).toEqual([])
-      expect(await getModuleErrors(component)).toEqual([])
-    },
-  )
+  component: () => <p>index</p>,
+})`)
+    /** Sources a module imports or re-exports from. */
+    const requested = (code: string) => [
+      ...importSources(code),
+      ...parseSync('module.tsx', code, {
+        sourceType: 'module',
+      }).module.staticExports.flatMap((statement) =>
+        statement.entries.flatMap((entry) =>
+          entry.moduleRequest ? [entry.moduleRequest.value] : [],
+        ),
+      ),
+    ]
+    expect(requested(modules.reference!)).toContain('./lib')
+    const chunksRequestingLib = Object.keys(modules).filter(
+      (name) =>
+        name.startsWith('virtual ') &&
+        requested(modules[name]!).includes('./lib'),
+    )
+    expect(chunksRequestingLib).toEqual([])
+  })
 })
