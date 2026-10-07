@@ -5,6 +5,7 @@ import {
   compileFirstChunk,
   compileHydrate,
   evaluateModule,
+  getBoundaryIds,
   getChunkIds,
   hydrateParentStubs,
   importSources,
@@ -21,11 +22,6 @@ import { declarationOf, getModuleErrors } from './validate-module'
 // Both modules must stay valid and behave like the original source.
 
 const head = `import { Hydrate } from '@tanstack/react-start'\n`
-
-/** Boundary ids (`h` props) a compiled module renders, in source order. */
-function getBoundaryIds(code: string) {
-  return [...code.matchAll(/\bh=\s*["']([^"']+)["']/g)].map(([, id]) => id!)
-}
 
 describe('the parent module', () => {
   const widgetPage = `${head}import { visible } from '@tanstack/react-start/hydration'

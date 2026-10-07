@@ -286,6 +286,11 @@ export function getChunkIds(code: string) {
     .filter((id) => id.includes('tss-hydrate='))
 }
 
+/** Boundary ids (`h` props) a compiled module renders, in source order. */
+export function getBoundaryIds(code: string) {
+  return [...code.matchAll(/\bh=\s*["']([^"']+)["']/g)].map(([, id]) => id!)
+}
+
 /** Loads a `<Hydrate>` chunk the way the bundler loads the virtual module. */
 export function loadChunk(
   plugin: HydratePlugin,
