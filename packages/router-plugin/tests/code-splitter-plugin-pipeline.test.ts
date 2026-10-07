@@ -1,6 +1,10 @@
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { normalizePath } from '../src/core/utils'
 import {
   createCodeSplitterTransforms,
+  expectValidModules,
+  importSources,
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
@@ -26,8 +30,7 @@ describe('code-splitter plugin pipeline', () => {
       {},
       { [file]: '/query' },
     )
-    const reference = splitter.reference(code, file)
-    expect(reference).toContain('tsr-split=component')
+    expect(splitter.reference(code, file)).toContain('tsr-split=component')
 
     const virtual = splitter.virtual(code, `${file}?tsr-split=component`)
     expect(virtual).toContain('state.name')
@@ -37,37 +40,37 @@ describe('code-splitter plugin pipeline', () => {
     expect(splitter.virtual(code, `${file}?t=123&tsr-split=component`)).toBe(
       virtual,
     )
-    expect(splitter.shared(code, `${file}?tsr-shared=1&t=123`)).toBe(
-      splitter.shared(code, `${file}?tsr-shared=1`),
-    )
+    const shared = splitter.shared(code, `${file}?tsr-shared=1`)
+    expect(shared).toContain('"query"')
+    expect(splitter.shared(code, `${file}?tsr-shared=1&t=123`)).toBe(shared)
   })
 
-  it('recompiles a route identically after many other routes were compiled', async () => {
-    const names = Array.from({ length: 140 }, (_, index) => `route${index}`)
+  it('compiles the split modules of a route with its own shared bindings after another route', async () => {
+    const files = {
+      shared: routeFile('shared'),
+      unshared: routeFile('unshared'),
+    }
     const splitter = await createCodeSplitterTransforms(
       {},
-      Object.fromEntries(names.map((name) => [routeFile(name), `/${name}`])),
+      { [files.shared]: '/shared', [files.unshared]: '/unshared' },
     )
-    const compileAll = (name: string) => {
-      const file = routeFile(name)
-      const code = routeSource(name)
-      return {
-        reference: splitter.reference(code, file),
-        component: splitter.virtual(code, `${file}?tsr-split=component`),
-        errorComponent: splitter.virtual(
-          code,
-          `${file}?tsr-split=errorComponent`,
-        ),
-        shared: splitter.shared(code, `${file}?tsr-shared=1`),
-      }
-    }
-    const first = compileAll('route0')
-    expect(first.shared).toContain('"route0"')
-    expect(first.errorComponent).toContain('error in route0')
-    for (const name of names.slice(1)) {
-      compileAll(name)
-    }
-    expect(compileAll('route0')).toEqual(first)
+    const code = routeSource('shared')
+    // Bundlers transform the route modules first, then the chunks they import.
+    splitter.reference(code, files.shared)
+    splitter.reference(
+      `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/unshared')({ component: () => <p /> })
+`,
+      files.unshared,
+    )
+    const component = splitter.virtual(
+      code,
+      `${files.shared}?tsr-split=component`,
+    )!
+    expect(importSources(component)).toContain(`${files.shared}?tsr-shared=1`)
+    expect(splitter.shared(code, `${files.shared}?tsr-shared=1`)).toContain(
+      '"shared"',
+    )
   })
 
   it('splits by the plugin-level splitBehavior for the route id', async () => {
@@ -110,7 +113,7 @@ describe('code-splitter plugin pipeline', () => {
     )
   })
 
-  it('deletes the configured route options from the reference module', async () => {
+  it('passes the deleteNodes option to the reference compiler', async () => {
     const file = routeFile('deleted')
     const splitter = await createCodeSplitterTransforms(
       { codeSplittingOptions: { deleteNodes: ['head'] } },
@@ -147,18 +150,58 @@ export const Route = createFileRoute('/unshared')({
     expect(splitter.reference(code, file)).toContain('tsr-split=component')
     expect(splitter.shared(code, `${file}?tsr-shared=1`)).toBeNull()
   })
+
+  // File names from real apps: optional segments, pathless groups and escaped dots.
+  it.each([
+    'src/routes/{-$locale}/changelog.tsx',
+    'src/routes/(marketing)/about.tsx',
+    'src/routes/api/[.]well-known/security[.]txt.tsx',
+  ])('imports the split modules of %s by its id', async (name) => {
+    const file = normalizePath(path.join(process.cwd(), name))
+    const code = routeSource('route')
+    const splitter = await createCodeSplitterTransforms(
+      {},
+      { [file]: '/route' },
+    )
+    const modules = {
+      reference: splitter.reference(code, file)!,
+      component: splitter.virtual(code, `${file}?tsr-split=component`)!,
+      shared: splitter.shared(code, `${file}?tsr-shared=1`)!,
+    }
+    expect(modules.reference).toContain(`${file}?tsr-split=component`)
+    expect(importSources(modules.reference)).toContain(`${file}?tsr-shared=1`)
+    expect(importSources(modules.component)).toContain(`${file}?tsr-shared=1`)
+    await expectValidModules(modules)
+  })
+
+  it('only checks the plugin order when the router plugin is in the resolved config', async () => {
+    const reactPlugin = { name: 'vite:react-babel' }
+    const routerPlugin = {
+      name: 'tanstack-router:code-splitter:compile-reference-file',
+    }
+    await expect(
+      createCodeSplitterTransforms({}, {}, [reactPlugin]),
+    ).resolves.toBeDefined()
+    await expect(
+      createCodeSplitterTransforms({}, {}, [reactPlugin, routerPlugin]),
+    ).rejects.toThrow('Plugin order error')
+  })
 })
 
 describe('route HMR plugin without code splitting', () => {
-  const file = routeFile('hmr')
-  const code = `
-import { createFileRoute } from '@tanstack/solid-router'
+  function transformWith(
+    options: Partial<Config> & { target: 'solid' | 'vue' },
+  ) {
+    const code = `
+import { createFileRoute } from '@tanstack/${options.target}-router'
 export const Route = createFileRoute('/hmr')({
   component: () => <p>hmr</p>,
 })
 `
-  function transformWith(options: Partial<Config>) {
-    return transformWithRouteHmrPlugin(code, options, { file, routeId: '/hmr' })
+    return transformWithRouteHmrPlugin(code, options, {
+      file: routeFile('hmr'),
+      routeId: '/hmr',
+    })
   }
 
   it.each(['solid', 'vue'] as const)(

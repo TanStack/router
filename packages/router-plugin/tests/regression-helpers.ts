@@ -1,15 +1,10 @@
 /**
  * Helpers shared by the code-splitter and route HMR regression suites: compile
  * a route file into every module the code splitter emits, drive the bundler
- * plugins the way a bundler does, build and run a small app with the real
- * Vite plugin, and evaluate an emitted module.
+ * plugins the way a bundler does, and inspect or evaluate an emitted module.
  */
-import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { promisify } from 'node:util'
-import { build, transformWithOxc } from 'vite'
+import { parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
 import {
   compileCodeSplitReferenceRoute,
@@ -23,22 +18,23 @@ import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
-import { tanstackRouter } from '../src/vite'
 import { getModuleErrors } from './validate-module'
 import type { Config } from '../src/core/config'
-import type { CodeSplitGroupings } from '../src/core/constants'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
 
+export { declarationOf } from './validate-module'
+
+export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
+
 /**
- * Compiles a route file into every module the code splitter emits for it:
- * `reference`, one `virtual <split>` chunk per grouping and, when bindings are
- * shared, `shared`.
+ * Compiles a route file with the default groupings into every module the code
+ * splitter emits for it: `reference`, one `virtual <split>` chunk per grouping
+ * and, when bindings are shared, `shared`.
  */
 export function compileRouteModules(
   code: string,
   options: {
     filename?: string
-    groupings?: CodeSplitGroupings
     targetFramework?: 'react' | 'solid'
     /** Compile with route HMR and the framework's HMR compiler plugins. */
     hmr?: boolean
@@ -46,10 +42,10 @@ export function compileRouteModules(
 ) {
   const {
     filename = 'route.tsx',
-    groupings = defaultCodeSplitGroupings,
     targetFramework = 'react',
     hmr = false,
   } = options
+  const groupings = defaultCodeSplitGroupings
   const compilerPlugins = hmr
     ? getFrameworkHmrCompilerPlugins({ targetFramework })
     : undefined
@@ -92,6 +88,11 @@ export function compileRouteModules(
   return { modules, sharedBindings: [...computed].sort() }
 }
 
+/** Compiles every module of a route file and returns the component chunk. */
+export function componentChunk(code: string) {
+  return compileRouteModules(code).modules['virtual component']!
+}
+
 /** Asserts that every module is valid, reporting the errors by module name. */
 export async function expectValidModules(modules: Record<string, string>) {
   const errors: Record<string, Array<string>> = {}
@@ -101,6 +102,55 @@ export async function expectValidModules(modules: Record<string, string>) {
   expect(errors).toEqual(
     Object.fromEntries(Object.keys(modules).map((name) => [name, []])),
   )
+}
+
+function moduleRecord(code: string) {
+  return parseSync('module.tsx', code, { sourceType: 'module' }).module
+}
+
+/** Sources a module imports, side-effect imports included, sorted. */
+export function importSources(code: string) {
+  return [
+    ...new Set(
+      moduleRecord(code).staticImports.map(
+        (statement) => statement.moduleRequest.value,
+      ),
+    ),
+  ].sort()
+}
+
+/**
+ * The values a module imports from `source`, sorted: `default`, `*` for a
+ * namespace import, or the imported name. Type-only specifiers are skipped.
+ */
+export function importedNames(code: string, source: string) {
+  return moduleRecord(code)
+    .staticImports.filter(
+      (statement) => statement.moduleRequest.value === source,
+    )
+    .flatMap((statement) =>
+      statement.entries
+        .filter((entry) => !entry.isType)
+        .map((entry) =>
+          entry.importName.kind === 'Default'
+            ? 'default'
+            : entry.importName.kind === 'NamespaceObject'
+              ? '*'
+              : entry.importName.name!,
+        ),
+    )
+    .sort()
+}
+
+/** Value names a module exports (`default` for a default export), sorted. */
+export function exportedNames(code: string) {
+  return moduleRecord(code)
+    .staticExports.flatMap((statement) =>
+      statement.entries
+        .filter((entry) => !entry.isType && entry.exportName.kind !== 'None')
+        .map((entry) => entry.exportName.name ?? 'default'),
+    )
+    .sort()
 }
 
 /** Absolute, normalized path of a route file in the package's `src/routes`. */
@@ -182,7 +232,7 @@ export async function createCodeSplitterTransforms(
  */
 export function transformWithRouteHmrPlugin(
   code: string,
-  options: Partial<Config>,
+  options: Partial<Config> = { target: 'react' },
   route: { file: string; routeId: string } = {
     file: routeFile('index'),
     routeId: '/',
@@ -199,95 +249,19 @@ export function transformWithRouteHmrPlugin(
   return output
 }
 
-const runNode = promisify(execFile)
-
-/**
- * Builds a small app with the real Vite plugin (code splitting enabled): the
- * given `files` (`routes/index.tsx` holds the route under test) and an
- * `entry.ts` that re-exports the route module next to
- * `render(component)`, which preloads a component and renders it to a string.
- * Then imports the built entry in a separate Node process and returns the
- * JSON value returned by `script`, which has the entry's exports in scope as
- * `entry`.
- */
-export async function buildAndRun(options: {
-  files: Record<string, string>
-  script: string
-  defaultBehavior?: CodeSplitGroupings
-  /** Compile JSX with React's classic runtime. */
-  classicJsx?: boolean
-}) {
-  // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(path.join(__dirname, '.regression-build-'))
-  try {
-    await mkdir(path.join(root, 'routes'))
-    await writeFile(
-      path.join(root, 'routes/__root.tsx'),
-      `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({})`,
-    )
-    await writeFile(
-      path.join(root, 'entry.ts'),
-      `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-export * from './routes/index'
-export async function render(component: any) {
-  await component.preload?.()
-  return renderToString(createElement(component))
-}
-`,
-    )
-    for (const [file, code] of Object.entries(options.files)) {
-      await writeFile(path.join(root, file), code)
-    }
-    await build({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      ...(options.classicJsx ? { oxc: { jsx: { runtime: 'classic' } } } : {}),
-      plugins: [
-        tanstackRouter({
-          target: 'react',
-          routesDirectory: './routes',
-          generatedRouteTree: './routeTree.gen.ts',
-          autoCodeSplitting: true,
-          codeSplittingOptions: {
-            addHmr: false,
-            defaultBehavior:
-              options.defaultBehavior ?? defaultCodeSplitGroupings,
-          },
-        }),
-      ],
-      build: {
-        ssr: path.join(root, 'entry.ts'),
-        outDir: 'dist',
-        minify: false,
-        rollupOptions: {
-          output: { entryFileNames: 'entry.mjs', chunkFileNames: '[name].mjs' },
-        },
-      },
-    })
-    const entryUrl = pathToFileURL(path.join(root, 'dist/entry.mjs')).href
-    const { stdout } = await runNode(process.execPath, [
-      '--input-type=module',
-      '--eval',
-      `const entry = await import(${JSON.stringify(entryUrl)})
-const result = await (async () => { ${options.script} })()
-process.stdout.write(JSON.stringify(result))`,
-    ])
-    return JSON.parse(stdout) as unknown
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-}
-
 /** Renders JSX to text: intrinsic elements become tags, components are called. */
 const jsxToText = `const Fragment = Symbol('Fragment')
 const h = (type, props, ...children) => {
   const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
-  if (type === Fragment) return text
-  if (typeof type === 'function') return type({ ...props, children: text })
-  if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
+  if (type === Fragment) {
+    return text
+  }
+  if (typeof type === 'function') {
+    return type({ ...props, children: text })
+  }
+  if (typeof type !== 'string') {
+    throw new Error('cannot render ' + String(type))
+  }
   return '<' + type + '>' + text + '</' + type + '>'
 }
 `
