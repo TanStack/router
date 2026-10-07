@@ -1,6 +1,8 @@
 // Inlined match ids must not look like relative URLs to crawlers, and must only
-// contain characters that are valid in the HTML input stream. The client
-// compares ids in this encoded form, so no decoder is needed.
+// contain characters that are valid in the HTML input stream. Keep the
+// delimiter one-byte: a single char above U+00FF makes V8 widen the whole
+// concatenated HTML string to two bytes per char, which slows SSR.
+// The client compares ids in this encoded form, so no decoder is needed.
 export function dehydrateSsrMatchId(id: string): string {
-  return id.replaceAll('/', '\uFFFD')
+  return id.replaceAll('/', '|')
 }
