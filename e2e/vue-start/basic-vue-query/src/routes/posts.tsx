@@ -57,7 +57,10 @@ const PostsComponent = defineComponent({
 
 export const Route = createFileRoute('/posts')({
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(postsQueryOptions())
+    await context.queryClient.query({
+      ...postsQueryOptions(),
+      staleTime: 'static',
+    })
   },
   head: () => ({ meta: [{ title: 'Posts' }] }),
   component: PostsComponent,

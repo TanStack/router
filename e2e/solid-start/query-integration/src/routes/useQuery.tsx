@@ -5,7 +5,8 @@ import { makeQueryOptions } from '~/queryOptions'
 const qOptions = makeQueryOptions('useQuery')
 
 export const Route = createFileRoute('/useQuery')({
-  loader: ({ context }) => context.queryClient.ensureQueryData(qOptions),
+  loader: ({ context }) =>
+    context.queryClient.query({ ...qOptions, staleTime: 'static' }),
   component: RouteComponent,
   ssr: true,
 })
