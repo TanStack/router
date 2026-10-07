@@ -246,7 +246,6 @@ export type {
 } from './stores'
 export {
   defaultSerializeError,
-  getLocationChangeInfo,
   RouterCore,
   lazyFn,
   SearchParamError,
@@ -254,6 +253,7 @@ export {
   getInitialRouterState,
   trailingSlashOptions,
 } from './router'
+export { getLocationChangeInfo } from './route-lifecycle'
 
 export type {
   ViewTransitionOptions,
