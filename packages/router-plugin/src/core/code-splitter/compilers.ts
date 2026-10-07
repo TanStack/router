@@ -109,7 +109,8 @@ const KNOWN_SPLIT_ROUTE_IDENTS = [...SPLIT_NODES_CONFIG.keys()] as const
 /**
  * Rewrites method shorthand for the splittable route options, e.g.
  * `component() {}`, into `component: function () {}` so it is split
- * like any other function expression.
+ * like any other function expression. Methods that use `super` keep their
+ * method form (and stay unsplit), since a function expression can't.
  */
 function normalizeSplittableRouteOptionMethods(
   routeOptions: t.ObjectExpression,
@@ -121,6 +122,10 @@ function normalizeSplittableRouteOptionMethods(
 
     const key = getObjectPropertyKeyName(prop)
     if (!key || !SPLIT_NODES_CONFIG.has(key as SplitRouteIdentNodes)) {
+      return prop
+    }
+
+    if (containsSuper(prop.body)) {
       return prop
     }
 
@@ -140,6 +145,14 @@ function normalizeSplittableRouteOptionMethods(
     property.leadingComments = prop.leadingComments
     return property
   })
+}
+
+function containsSuper(node: t.Node): boolean {
+  let found = false
+  t.traverseFast(node, (child) => {
+    if (t.isSuper(child)) found = true
+  })
+  return found
 }
 
 function addSplitSearchParamToFilename(
