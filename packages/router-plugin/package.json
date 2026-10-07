@@ -103,7 +103,17 @@
         "default": "./dist/cjs/esbuild.cjs"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./config": {
+      "import": {
+        "types": "./dist/esm/core/config.d.ts",
+        "default": "./dist/esm/core/config.js"
+      },
+      "require": {
+        "types": "./dist/cjs/core/config.d.cts",
+        "default": "./dist/cjs/core/config.cjs"
+      }
+    }
   },
   "sideEffects": false,
   "files": [

@@ -7,7 +7,6 @@ import type { CookieSerializeOptions } from 'cookie-es'
 type EncryptionAlgorithm = 'aes-128-ctr' | 'aes-256-cbc'
 /** Algorithm used for integrity verification. */
 type IntegrityAlgorithm = 'sha256'
-/** @internal */
 type _Algorithm = EncryptionAlgorithm | IntegrityAlgorithm
 /**
  * Options for customizing the key derivation algorithm used to generate encryption and integrity verification keys as well as the algorithms and salt sizes used.
