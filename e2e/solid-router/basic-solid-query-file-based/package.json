@@ -13,8 +13,8 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-query-devtools": "^5.90.0",
+    "@tanstack/solid-query": "catalog:",
+    "@tanstack/solid-query-devtools": "catalog:",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "redaxios": "catalog:",
