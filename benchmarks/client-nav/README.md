@@ -59,6 +59,7 @@ be attributed to a specific feature area.
 | `head`                                   | `HeadContent` per-navigation work: nested route `head()` evaluation, title/meta/link dedupe across matches, and head tag DOM updates during navigation.                                                                                                                                                                              |
 | `history`                                | History push/replace/back/forward traversal, location masking, registered-but-never-blocking `useBlocker`, and `useCanGoBack`/`useLocation` subscriptions.                                                                                                                                                                           |
 | `hydration`                              | Initial DOM hydration: execute the SSR payload, restore `beforeLoad` context and loader data, and hydrate 192 ordinary and eight hash-sensitive Links through their follow-up effects in React and Solid.                                                                                                                            |
+| `link-churn`                             | Links that depart, stay and mount: 30 `/hub` layout Links stay while 100 `/hub/list` leaf Links leave (alone, or with the layout to `/other`) and remount on return; a search-only change rebuilds updater and `to="."` Links. Unlike `links`, whose root-layout Links never depart.                                                 |
 | `links`                                  | Per-navigation cost of ~200 mounted `<Link>`s: link prop building, active-state recompute across `activeOptions` variants, `activeProps` swaps, and `useMatchRoute` probes (the `MatchRoute` component is avoided: vue-router's implementation leaks one subscription per render).                                                   |
 | `loaders`                                | Client loader dispatch: always-stale re-runs (`staleTime: 0`), cached revisits (re-run once per lap by the `invalidate` step), `loaderDeps`-keyed caching, `router.invalidate()`, and `useLoaderData` selectors.                                                                                                                     |
 | `mount`                                  | Cold start: `createRouter` (route-tree processing) + first render + initial `router.load()` + unmount, with a fresh router per mount.                                                                                                                                                                                                |
@@ -155,8 +156,11 @@ the existing DOM with the framework's native renderer:
 - **React:** a separate completion component signals from its post-hydration
   effect, after the same snapshot transition as hash-sensitive Links. The harness
   awaits that signal and two idle React scheduler turns, then checks the expected
-  active links. Concurrent hydration can take as many turns as needed under CPU
-  instrumentation, with a 60-second failure watchdog.
+  active links. The window's `performance.now()` is frozen, so React's
+  scheduler yields only to paint after commits, not after 5 ms of wall time, which CPU
+  instrumentation stretches by a runner-dependent factor. Each sample therefore
+  uses the same number of scheduler tasks. `Date.now()` is unchanged. A
+  60-second watchdog fails a sample that never settles.
 - **Solid:** execute the native hydration bootstrap and retain the server's
   component/key hierarchy. Wait for mount, the router's rendered event, active-link
   effects, and two idle turns. DOM identity assertions include every workload

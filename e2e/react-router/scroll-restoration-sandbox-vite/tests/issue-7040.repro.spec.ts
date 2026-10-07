@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { apiTest as test } from '@tanstack/router-e2e-utils'
+import { test } from '@tanstack/router-e2e-utils'
 import type { Page } from '@playwright/test'
 import { toRuntimePath } from '@tanstack/router-e2e-utils'
 
@@ -27,7 +27,7 @@ type ReproAttempt = {
 
 async function openFreshSourcePage(page: Page) {
   await page.goto(toRuntimePath('/issue-7040-source'))
-  await page.waitForLoadState('networkidle')
+  await expect(page.getByTestId('issue-7040-source-top')).toBeVisible()
 
   await page.evaluate(() => {
     sessionStorage.clear()
@@ -35,7 +35,7 @@ async function openFreshSourcePage(page: Page) {
   })
 
   await page.reload()
-  await page.waitForLoadState('networkidle')
+  await expect(page.getByTestId('issue-7040-source-top')).toBeVisible()
 }
 
 async function fastScrollSourcePage(page: Page) {
@@ -97,7 +97,7 @@ async function clickTargetLinkImmediatelyAfterScroll(page: Page) {
 
 async function waitForTargetPageToSettle(page: Page) {
   await page.waitForURL('**/issue-7040-target')
-  await page.waitForLoadState('networkidle')
+  await expect(page.getByTestId('issue-7040-target-top')).toBeVisible()
   await page.waitForFunction(() => window.scrollY === 0)
 }
 

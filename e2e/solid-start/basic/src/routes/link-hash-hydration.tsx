@@ -1,10 +1,5 @@
 import { createSignal, onMount } from 'solid-js'
-import {
-  Link,
-  createFileRoute,
-  createLink,
-  useRouter,
-} from '@tanstack/solid-router'
+import { Link, createFileRoute, createLink } from '@tanstack/solid-router'
 import type { ComponentProps } from 'solid-js'
 import type { LinkOptions } from '@tanstack/solid-router'
 
@@ -18,15 +13,8 @@ const cases: Array<{
   id: string
   hash?: LinkOptions['hash']
   insensitive?: boolean
-  sourceHash?: string
   href?: string
 }> = [
-  { id: 'explicit-source', hash: true, sourceHash: 'preset' },
-  {
-    id: 'explicit-source-function',
-    hash: (hash = '') => `${hash}-child`,
-    sourceHash: 'preset',
-  },
   {
     id: 'explicit-href',
     href: '/link-hash-hydration#fixed',
@@ -67,7 +55,6 @@ export const Route = createFileRoute('/link-hash-hydration')({
 })
 
 function Page() {
-  const router = useRouter()
   const [mounted, setMounted] = createSignal(false)
   const [includeHash, setIncludeHash] = createSignal(true)
   const [show, setShow] = createSignal(false)
@@ -80,11 +67,6 @@ function Page() {
           to="/link-hash-hydration"
           hash={entry.hash}
           href={entry.href}
-          _fromLocation={
-            entry.sourceHash
-              ? { ...router.stores.location.get(), hash: entry.sourceHash }
-              : undefined
-          }
           activeOptions={{ includeHash: !entry.insensitive && includeHash() }}
           inactiveProps={{ class: 'inactive' }}
         >

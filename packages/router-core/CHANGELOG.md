@@ -1,5 +1,21 @@
 # @tanstack/router-core
 
+## 1.171.34
+
+### Patch Changes
+
+- [#8573](https://github.com/TanStack/router/pull/8573) [`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb) - Align server function request and response handling.
+
+## 1.171.33
+
+### Patch Changes
+
+- [#8297](https://github.com/TanStack/router/pull/8297) [`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f) - Update `seroval` and `seroval-plugins` from 1.6.2 to 1.6.7. This picks up the typed array length guard, the `maxBase64Length` and `compactArrayBufferViews` options, and the `isStream` export.
+
+- [#8460](https://github.com/TanStack/router/pull/8460) [`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47) - Abort reserved loader generations with no remaining owners when invalidation removes them from discovery, ensuring their public abort signals are retired.
+
+- [#8519](https://github.com/TanStack/router/pull/8519) [`3cdd1af`](https://github.com/TanStack/router/commit/3cdd1af04b3e2d6f777797ee7bddf285318dd9d2) - Hand native scroll restoration back to the browser on pagehide, including entries entering BFCache, and reclaim manual restoration when a cached document resumes.
+
 ## 1.171.32
 
 ### Patch Changes

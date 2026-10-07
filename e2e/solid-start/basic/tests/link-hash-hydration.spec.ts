@@ -23,16 +23,6 @@ test('hash-dependent links reproduce the server state before using the browser h
   const path = '/link-hash-hydration'
   const cases = [
     {
-      id: 'explicit-source',
-      server: ['#preset', false],
-      client: ['#preset', false],
-    },
-    {
-      id: 'explicit-source-function',
-      server: ['#preset-child', false],
-      client: ['#preset-child', false],
-    },
-    {
       id: 'explicit-href',
       server: ['#fixed', false],
       client: ['#fixed', false],

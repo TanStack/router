@@ -2,8 +2,10 @@ import { describe, expect, test } from 'vitest'
 
 import {
   isValidExportName,
+  getImportSpecifierLocationFromResult,
   getMockExportNamesBySource,
   getNamedExports,
+  getImportSources,
 } from '../../src/import-protection/analysis'
 
 describe('isValidExportName', () => {
@@ -244,4 +246,33 @@ describe('collectNamedExports', () => {
     const code = [`const local = 1`, `export { local as "foo-bar" }`].join('\n')
     expect(getNamedExports(code)).toEqual(['foo-bar'])
   })
+})
+
+test('discovers mock exports through parenthesized namespace access', () => {
+  const exports = getMockExportNamesBySource(
+    `import * as denied from 'denied'; (denied).read(); (denied)['write']()`,
+  )
+  expect(exports.get('denied')).toEqual(['read', 'write'])
+})
+
+test('discovers parenthesized literal dynamic import sources', () => {
+  expect(getImportSources(`export const value = import(('denied'))`)).toEqual([
+    'denied',
+  ])
+})
+
+test('namespace and default re-exports are import sources without named exports', () => {
+  const code = [
+    `export * as ns from 'denied-a'`,
+    `export { default } from 'denied-b'`,
+    `export type { OnlyType } from 'denied-c'`,
+  ].join('\n')
+  expect(getImportSources(code)).toEqual(['denied-a', 'denied-b'])
+  expect(getNamedExports(`export { default } from 'denied-b'`)).toEqual([])
+  expect(getMockExportNamesBySource(code).get('denied-b')).toBeUndefined()
+  const result = { code, map: undefined, originalCode: undefined }
+  expect(getImportSpecifierLocationFromResult(result, 'denied-a')).toBe(
+    code.indexOf('denied-a'),
+  )
+  expect(getImportSpecifierLocationFromResult(result, 'denied-c')).toBe(-1)
 })

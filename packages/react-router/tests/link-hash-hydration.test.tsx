@@ -40,27 +40,10 @@ const cases: Array<{
   name: string
   hash?: LinkOptions['hash']
   href?: string
-  sourceHash?: string
   includeHash?: boolean
   server: [string, boolean]
   client: [string, boolean]
 }> = [
-  {
-    name: 'explicit-source',
-    hash: true,
-    sourceHash: 'preset',
-    includeHash: true,
-    server: ['/#preset', false],
-    client: ['/#preset', false],
-  },
-  {
-    name: 'explicit-source-function',
-    hash: (hash = '') => `${hash}-child`,
-    sourceHash: 'preset',
-    includeHash: true,
-    server: ['/#preset-child', false],
-    client: ['/#preset-child', false],
-  },
   {
     name: 'explicit-href',
     href: '/#fixed',
@@ -142,15 +125,11 @@ test.each(
   'hydrates $name links at $url without changing server DOM during hydration',
   async (entry) => {
     const renders: Array<boolean> = []
-    const source = entry.sourceHash
-      ? makeRouter(true, `/#${entry.sourceHash}`).stores.location.get()
-      : undefined
     const link = (
       <Link
         to="/"
         hash={entry.hash}
         href={entry.href}
-        _fromLocation={source}
         activeOptions={{ includeHash: entry.includeHash }}
         inactiveProps={{ className: 'inactive' }}
       >
