@@ -41,6 +41,53 @@ test('parsed path params agree when a server handler defers to rendering', async
   })
 })
 
+test('server handlers respond 404 when params.parse throws notFound', async ({
+  request,
+}) => {
+  const response = await request.get('/api/parsed-params/nope')
+
+  expect(response.status()).toBe(404)
+})
+
+test.describe('page route with a server handler and parsed params', () => {
+  test.use({
+    whitelistErrors: [
+      'Failed to load resource: the server responded with a status of 404',
+    ],
+  })
+
+  test('renders the page with parsed params', async ({ page }) => {
+    const response = await page.goto('/parsed-page/44')
+
+    expect(response?.status()).toBe(200)
+    await expect(page.getByTestId('parsed-page')).toHaveText('{"id":44}')
+  })
+
+  test('responds with parsed params to API requests', async ({ request }) => {
+    const response = await request.get('/parsed-page/44')
+
+    expect(response.status()).toBe(200)
+    expect(await response.json()).toEqual({ id: 44 })
+  })
+
+  test('renders the not-found page when params.parse throws notFound', async ({
+    page,
+  }) => {
+    const response = await page.goto('/parsed-page/nope')
+
+    expect(response?.status()).toBe(404)
+    await expect(page.getByTestId('default-not-found-component')).toBeVisible()
+  })
+
+  test('responds 404 to API requests when params.parse throws notFound', async ({
+    request,
+  }) => {
+    const response = await request.get('/parsed-page/nope')
+
+    expect(response.status()).toBe(404)
+  })
+})
+
 test('merge-middleware-context', async ({ page }) => {
   await page.goto('/merge-middleware-context')
 

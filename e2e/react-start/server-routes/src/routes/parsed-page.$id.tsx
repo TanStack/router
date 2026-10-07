@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/api/parsed-params/$id')({
+export const Route = createFileRoute('/parsed-page/$id')({
   params: {
     parse: (params) => {
       const id = Number(params.id)
@@ -13,10 +13,19 @@ export const Route = createFileRoute('/api/parsed-params/$id')({
   },
   server: {
     handlers: {
-      GET: ({ params }) => {
+      GET: ({ request, next, params }) => {
+        if (request.headers.get('accept')?.includes('text/html')) {
+          return next()
+        }
         const id: number = params.id
         return Response.json({ id })
       },
     },
   },
+  component: ParsedPage,
 })
+
+function ParsedPage() {
+  const { id } = Route.useParams()
+  return <div data-testid="parsed-page">{JSON.stringify({ id })}</div>
+}

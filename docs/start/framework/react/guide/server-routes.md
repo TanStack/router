@@ -243,7 +243,7 @@ export const Route = createFileRoute('/hello')({
 Each HTTP method handler receives an object with the following properties:
 
 - `request`: The incoming request object. You can read more about the `Request` object in the [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/Request).
-- `params`: An object containing the dynamic path parameters of the route. For example, if the route path is `/users/$id`, and the request is made to `/users/123`, then `params` will be `{ id: '123' }`. We'll cover dynamic path parameters and wildcard parameters later in this guide.
+- `params`: An object containing the dynamic path parameters of the route. For example, if the route path is `/users/$id`, and the request is made to `/users/123`, then `params` will be `{ id: '123' }`. If the route defines `params.parse`, `params` contains the parsed values. We'll cover dynamic path parameters and wildcard parameters later in this guide.
 - `context`: An object containing the context of the request. This is useful for passing data between middleware.
 
 Once you've processed the request, you can return a `Response` object or `Promise<Response>` or even use any of the helpers from `@tanstack/react-start` to manipulate the response.
@@ -291,6 +291,41 @@ export const Route = createFileRoute('/users/$id/posts/$postId')({
 // Visit /users/123/posts/456 to see the response
 // User ID: 123, Post ID: 456
 ```
+
+### Parsing Path Params
+
+If the route, or any of its parent routes, defines [`params.parse`](/router/latest/docs/framework/react/guide/path-params), handlers receive the parsed params, the same values the route's loader gets.
+
+```ts
+// routes/users/$id.ts
+import { createFileRoute, notFound } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/users/$id')({
+  params: {
+    parse: ({ id }) => {
+      const userId = Number(id)
+      if (!Number.isInteger(userId)) {
+        throw notFound()
+      }
+      return { id: userId }
+    },
+    stringify: ({ id }) => ({ id: String(id) }),
+  },
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        // params.id is a number
+        return Response.json({ id: params.id })
+      },
+    },
+  },
+})
+```
+
+A handler never runs with params that failed to parse. When `params.parse` returns `false`, the route does not match and matching continues with other routes. When it throws, Start skips the handler:
+
+- If the route also has a `component` and the request explicitly accepts `text/html`, as browser page loads do, Start renders the page as if the route had no handler. The page shows the route's not-found or error component with the matching status code.
+- Otherwise, the error goes through the route and handler middleware, which can catch it and return their own response. If no middleware catches it, `redirect()` responds with the redirect, `notFound()` responds with a `404`, and any other error responds with a `500`.
 
 ## Wildcard/Splat Param
 
