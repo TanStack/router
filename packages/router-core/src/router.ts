@@ -1095,6 +1095,8 @@ export interface RouterCore<
   _tx?: LoadTransaction
   /** Joinable in-flight loader generations keyed by match ID. */
   _flights?: Map<string, LoaderFlight>
+  /** A handoff may have left zero-owner flights; leases remain authoritative. */
+  _unowned?: boolean
   /** Active speculative lanes retained for cancellation, invalidation, and cache clearing. */
   _preloads?: Map<AbortController, Array<AnyRouteMatch>>
   /** Owns cancellable work before a client transaction publishes. */
