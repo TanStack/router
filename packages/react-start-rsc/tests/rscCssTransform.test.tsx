@@ -1,3 +1,4 @@
+import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
   StartCompiler,
@@ -212,4 +213,96 @@ describe('RSC CSS compiler transforms', () => {
     expect(code).toContain('renderToReadableStream(...args)')
     expect(code).not.toContain('loadCss')
   })
+})
+
+// Each test asserts correct behaviour for a bug on main and is marked .fails;
+// remove .fails when the bug is fixed.
+describe('known bugs', () => {
+  const dataUrl = (code: string) =>
+    `data:text/javascript,${encodeURIComponent(code)}`
+
+  /**
+   * Compiles `code` with `loadCss()` as the CSS expression and evaluates it:
+   * JSX becomes `{ type, children }` trees and the RSC render APIs return the
+   * arguments they are called with.
+   */
+  async function evaluateCompiled(code: string) {
+    const compiled = await compileWithRscCssTransform({
+      code,
+      loadCssExpression: 'loadCss()',
+    })
+    const { code: javascript } = await transformWithOxc(
+      compiled ?? code,
+      'route.tsx',
+      { jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' } },
+    )
+    const rsc = dataUrl(`const args = (...values) => values
+export const renderToReadableStream = args
+export const renderServerComponent = args
+export const createCompositeComponent = args`)
+    const linked = javascript.replace(
+      /(["'])@tanstack\/react-start\/rsc\1/,
+      JSON.stringify(rsc),
+    )
+    return import(
+      /* @vite-ignore */ dataUrl(`const Fragment = 'Fragment'
+const h = (type, props, ...children) => ({ type, children })
+const loadCss = () => 'css'
+const Card = 'Card'
+${linked}`)
+    )
+  }
+
+  /** The text nodes of an evaluated element tree. */
+  const texts = (node: unknown): Array<string> => {
+    if (typeof node === 'string') {
+      return [node]
+    }
+    if (Array.isArray(node)) {
+      return node.flatMap(texts)
+    }
+    return texts((node as { children?: unknown } | null)?.children ?? [])
+  }
+
+  // Bug: a comment before the JSX argument of `renderToReadableStream` is
+  // moved into the generated CSS fragment, where it becomes JSX text.
+  // Impact: the comment is rendered into the RSC payload as visible text.
+  test.fails.each([
+    { name: 'a block comment', argument: `/* the card */ <Card />` },
+    {
+      name: 'a line comment',
+      argument: `
+  // the card
+  <Card />,
+`,
+    },
+  ])(
+    'renderToReadableStream does not render $name before the JSX argument',
+    async ({ argument }) => {
+      const { stream } = await evaluateCompiled(`
+import { renderToReadableStream } from '@tanstack/react-start/rsc'
+export const stream = renderToReadableStream(${argument})
+`)
+      expect(texts(stream)).toEqual(['css'])
+    },
+  )
+
+  // Bug: for `renderServerComponent(...args)` / `createCompositeComponent(...args)`
+  // the CSS options object is appended after the spread, so it lands after
+  // the options the spread already passes.
+  // Impact: the component's CSS is not attached.
+  test.fails.each(['renderServerComponent', 'createCompositeComponent'])(
+    '%s does not append CSS options after a spread argument',
+    async (name) => {
+      const { value } = await evaluateCompiled(`
+import { ${name} } from '@tanstack/react-start/rsc'
+const args = [<Card />, { extra: true }] as const
+export const value = ${name}(...args)
+`)
+      expect(value).toEqual([
+        { type: 'Card', children: [] },
+        expect.objectContaining({ extra: true }),
+      ])
+    },
+  )
 })
