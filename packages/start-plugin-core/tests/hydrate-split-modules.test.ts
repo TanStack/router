@@ -4,14 +4,15 @@ import {
   compileCode,
   compileFirstChunk,
   compileHydrate,
+  evaluateHydrateParent,
   evaluateModule,
   getBoundaryIds,
+  getChunkComponent,
   getChunkIds,
   hydrateParentStubs,
   importSources,
   loadChunk,
   parentImportSources,
-  parentModuleStubs,
   renderChunk,
 } from './regression-helpers'
 import { declarationOf, getModuleErrors } from './validate-module'
@@ -393,7 +394,7 @@ const __jsx = (type, props) => JSON.stringify(props)
       propsRuntime,
     )
     const module = await evaluateModule(chunks[0]!, {}, propsRuntime)
-    expect(module.H0({})).toBe(expected.H0())
+    expect(getChunkComponent(module)({})).toBe(expected.H0())
   })
 
   // Source: Qwik optimizer example_default_export
@@ -438,9 +439,9 @@ export function Page() {
   return <Hydrate><p>{++renders}</p></Hydrate>
 }`,
     )
-    const module = await evaluateModule(chunks[0]!)
-    expect(module.H0({})).toBe('<p>1</p>')
-    expect(module.H0({})).toBe('<p>2</p>')
+    const component = getChunkComponent(await evaluateModule(chunks[0]!))
+    expect(component({})).toBe('<p>1</p>')
+    expect(component({})).toBe('<p>2</p>')
   })
 
   // Source: Qwik optimizer should_keep_non_migrated_binding_from_shared_destructuring_declarator
@@ -452,7 +453,7 @@ export function Page() {
   ])(
     'client: an $name destructuring shared by the parent and the children keeps both bindings',
     async ({ declaration }) => {
-      const { parent, chunks } = await compileHydrate(
+      const { parent, chunks, plugin } = await compileHydrate(
         'client',
         `${head}${declaration}
 export const fromRoot = () => JSON.stringify(b)
@@ -460,14 +461,13 @@ export function Page() {
   return <Hydrate><p>{a}</p></Hydrate>
 }`,
       )
-      const module = await evaluateModule(parent, hydrateParentStubs)
+      const { module, parentModuleStubs } = await evaluateHydrateParent(
+        plugin,
+        parent,
+      )
       expect(module.fromRoot()).toContain('B')
       expect(
-        await renderChunk(
-          chunks[0]!,
-          {},
-          await parentModuleStubs(chunks[0]!, module),
-        ),
+        await renderChunk(chunks[0]!, {}, await parentModuleStubs(chunks[0]!)),
       ).toBe('<p>A</p>')
     },
   )
@@ -476,7 +476,7 @@ export function Page() {
   // example_segment_variable_migration,
   // variable_migration_transitive_dep_used_by_other_segment
   test('client: helpers shared by two boundaries and an export stay available to each', async () => {
-    const { parent, chunks } = await compileHydrate(
+    const { parent, chunks, plugin } = await compileHydrate(
       'client',
       `${head}const scrollState = (el) => ({ x: el.x, y: el.y })
 const saveScroll = (s) => s.x + s.y
@@ -487,10 +487,13 @@ export function App() {
 }`,
     )
     expect(chunks).toHaveLength(2)
-    const module = await evaluateModule(parent, hydrateParentStubs)
+    const { module, parentModuleStubs } = await evaluateHydrateParent(
+      plugin,
+      parent,
+    )
     expect(module.direct).toBe(2)
     const render = async (chunk: string) =>
-      renderChunk(chunk, {}, await parentModuleStubs(chunk, module))
+      renderChunk(chunk, {}, await parentModuleStubs(chunk))
     expect(await render(chunks[0]!)).toBe('<p>3</p>')
     expect(await render(chunks[1]!)).toBe('<p>4</p>')
   })

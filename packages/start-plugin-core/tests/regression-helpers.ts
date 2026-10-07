@@ -346,10 +346,39 @@ export async function compileFirstChunk(plugin: HydratePlugin, parent: string) {
   return { code, serverFns }
 }
 
-/** The names a split chunk component receives as props, sorted. */
+/** Exported function declarations: name and parameter list. */
+const exportedFunction =
+  /export\s+(?:default\s+)?function\s*([\w$]*)\s*\(([^)]*)\)/g
+
+/**
+ * The names the component of a split chunk receives as props, sorted. The
+ * component is the generated `H<index>` export, else the only exported
+ * function.
+ */
 export function getChunkParams(chunk: string) {
-  const params = chunk.match(/export function H\d+\(([^)]*)\)/)?.[1] ?? ''
+  const components = [...chunk.matchAll(exportedFunction)]
+  const component =
+    components.find(([, name]) => /^H\d+$/.test(name!)) ??
+    (components.length === 1 ? components[0] : undefined)
+  const params = component?.[2] ?? ''
   return [...params.matchAll(/[\w$]+/g)].map(([name]) => name).sort()
+}
+
+/**
+ * The component an evaluated `<Hydrate>` chunk exports: the generated
+ * `H<index>` export, else the only exported function.
+ */
+export function getChunkComponent(module: Record<string, any>) {
+  const functions = Object.keys(module).filter(
+    (key) => typeof module[key] === 'function',
+  )
+  const name =
+    functions.find((key) => /^H\d+$/.test(key)) ??
+    (functions.length === 1 ? functions[0] : undefined)
+  if (!name) {
+    throw new Error('expected the chunk to export a component')
+  }
+  return module[name] as (props: Record<string, unknown>) => any
 }
 
 /** Renders the component a `<Hydrate>` chunk exports with the given props. */
@@ -358,12 +387,7 @@ export async function renderChunk(
   props: Record<string, unknown> = {},
   stubs: Record<string, ModuleStub> = {},
 ) {
-  const module = await evaluateModule(chunk, stubs)
-  const name = Object.keys(module).find((key) => /^H\d+$/.test(key))
-  if (!name) {
-    throw new Error('expected the chunk to export a component')
-  }
-  return module[name]!(props)
+  return getChunkComponent(await evaluateModule(chunk, stubs))(props)
 }
 
 /** Parent-module stubs: `<Hydrate>` marks where its children render, lazy chunks render their props. */
@@ -386,31 +410,62 @@ export const hydrateParentStubs = {
 }
 
 /**
- * Import sources of a `<Hydrate>` chunk that name its parent module: a chunk
- * may import the module bindings it shares with the parent instead of
- * declaring its own copy.
+ * Import sources of a `<Hydrate>` module that name the parent module, with any
+ * query or hash: a chunk may import the module bindings it shares with the
+ * parent instead of declaring its own copy.
  */
-export function parentImportSources(chunk: string) {
-  return importSources(chunk).filter((source) =>
-    [moduleId, './module.tsx', './module'].includes(source),
+export function parentImportSources(code: string) {
+  return importSources(code).filter((source) =>
+    [moduleId, './module.tsx', './module'].includes(
+      source.replace(/[?#].*$/, ''),
+    ),
   )
 }
 
 /**
- * Stubs that link the parent imports of `chunk` (if any) to the parent module,
- * evaluated with `hydrateParentStubs` unless an evaluated module is given.
+ * Evaluates a client `<Hydrate>` parent and links its modules like a bundler.
+ * An import of the parent module (`parentImportSources`) resolves to the
+ * virtual module the Hydrate plugin loads for that id, evaluated once and
+ * shared by the parent and its chunks, or else to the evaluated parent.
+ * Returns the parent module and `parentModuleStubs(chunk)`, the stubs that
+ * link a chunk's parent imports.
  */
-export async function parentModuleStubs(
-  chunk: string,
-  parent: string | Record<string, unknown>,
-): Promise<Record<string, ModuleStub>> {
-  const sources = parentImportSources(chunk)
-  if (sources.length === 0) {
-    return {}
+export async function evaluateHydrateParent(
+  plugin: HydratePlugin,
+  parent: string,
+  stubs: Record<string, ModuleStub> = hydrateParentStubs,
+  runtime?: string,
+) {
+  const virtualModules = new Map<string, Promise<Record<string, unknown>>>()
+  const link = async (code: string, parentModule?: Record<string, unknown>) => {
+    const linked: Record<string, ModuleStub> = {}
+    for (const source of parentImportSources(code)) {
+      const id = `${moduleId}${source.match(/[?#].*$/)?.[0] ?? ''}`
+      const virtualModule = loadChunk(plugin, 'client', id)
+      if (virtualModule !== null) {
+        if (!virtualModules.has(id)) {
+          const linkedModule = link(virtualModule, parentModule).then(
+            (imports) =>
+              evaluateModule(virtualModule, { ...stubs, ...imports }, runtime),
+          )
+          virtualModules.set(id, linkedModule)
+        }
+        linked[source] = await virtualModules.get(id)!
+      } else if (parentModule) {
+        linked[source] = parentModule
+      } else {
+        throw new Error(`Cannot link ${source} before the parent is evaluated`)
+      }
+    }
+    return linked
   }
-  const module =
-    typeof parent === 'string'
-      ? await evaluateModule(parent, hydrateParentStubs)
-      : parent
-  return Object.fromEntries(sources.map((source) => [source, module]))
+  const module: Record<string, any> = await evaluateModule(
+    parent,
+    { ...stubs, ...(await link(parent)) },
+    runtime,
+  )
+  return {
+    module,
+    parentModuleStubs: (chunk: string) => link(chunk, module),
+  }
 }
