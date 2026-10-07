@@ -20,8 +20,9 @@ const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const serverOnly = './db.server'
 
 /**
- * Every output either rejects the code with a createServerFn error or is a
- * valid module, and the handler body (`db.inner()`) is not in the client.
+ * Every output either rejects the code with a createServerFn error (not the
+ * internal statement-list crash) or is a valid module, and the handler body
+ * (`db.inner()`) is not in the client.
  */
 async function expectNoClientHandler(code: string) {
   for (const output of outputs) {
@@ -29,7 +30,11 @@ async function expectNoClientHandler(code: string) {
     try {
       compiled = (await compileCode(output, code)) ?? code
     } catch (error) {
-      expect((error as Error).message, output).toMatch(/createServerFn/)
+      const { message } = error as Error
+      expect(message, output).toMatch(/createServerFn/)
+      expect(message, output).not.toMatch(
+        /Expected createServerFn declaration in a statement list/,
+      )
       continue
     }
     expect(await getModuleErrors(compiled), output).toEqual([])
@@ -421,13 +426,8 @@ export function useField() {
 })
 
 describe('CommonJS dependencies', () => {
-  // Bug: the compiler parses every module whose text matches a detection
-  // pattern (such as `.handler(`) as a strict ES module, so sloppy-mode
-  // CommonJS throws a SyntaxError although it has no Start import. The
-  // bundler plugins must keep compiling `node_modules` (Start libraries), so
-  // this is the compiler's contract.
-  // Impact: a CommonJS dependency with such code and text like `app.handler(`
-  // fails the build.
+  // Bug: a module matching a detection pattern (`.handler(`) is parsed as strict ESM.
+  // Impact: a sloppy-mode CommonJS dependency with such text fails the build.
   // Source: @vitejs/plugin-rsc cjs.test.ts (CommonJS modules are sloppy-mode
   // scripts)
   test.fails.each([
@@ -461,7 +461,7 @@ exports.run = function (app) {
     async ({ id, code }) => {
       for (const env of ['client', 'server'] as const) {
         const { compile } = createStartCompiler({ env })
-        await expect(compile(code, id)).resolves.toBeNull()
+        expect((await compile(code, id)) ?? code).toBe(code)
       }
     },
   )

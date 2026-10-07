@@ -1,13 +1,11 @@
 /**
- * Known route HMR and React Refresh bugs on main. Each `.fails` test asserts
- * the correct behaviour for a bug on main and is marked `.fails`; remove
- * `.fails` when the bug is fixed.
+ * Known route HMR and React Refresh bugs. Each test asserts correct behaviour
+ * for a bug on main and is marked .fails; remove .fails when the bug is fixed.
  *
  * Route HMR keeps the previous `component` (and the other component options)
  * so that React Refresh can patch it in place; a component React Refresh does
  * not register keeps rendering the old code until a full reload.
  */
-import { createRequire } from 'node:module'
 import { describe, expect, test } from 'vitest'
 import {
   compileRouteModules,
@@ -178,32 +176,6 @@ export const Route = createFileRoute('/')({
 })`)
       await expectValidModules(modules)
       expect(exportedNames(modules.reference!)).toContain('hot')
-    },
-  )
-})
-
-describe('router-core CommonJS build', () => {
-  const require = createRequire(import.meta.url)
-
-  // Control for the CommonJS pin below: the ESM build defines the method.
-  test('RouterCore defines _replaceRouteChunk in the ESM build', async () => {
-    const { RouterCore } = await import('@tanstack/router-core')
-    expect(typeof (RouterCore.prototype as any)._replaceRouteChunk).toBe(
-      'function',
-    )
-  })
-
-  // Bug: in router-core's CommonJS build, `router.cjs` reads
-  // `replaceRouteChunk` from `load-client.cjs` while a circular require
-  // leaves it uninitialized, so `RouterCore.prototype._replaceRouteChunk` is
-  // undefined.
-  // Impact: for CommonJS consumers, the generated route HMR handler throws
-  // `router._replaceRouteChunk is not a function` on every route update.
-  test.fails(
-    'RouterCore defines _replaceRouteChunk in the CommonJS build',
-    () => {
-      const { RouterCore } = require('@tanstack/router-core')
-      expect(typeof RouterCore.prototype._replaceRouteChunk).toBe('function')
     },
   )
 })

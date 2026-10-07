@@ -6,13 +6,12 @@ import { describe, expect, test } from 'vitest'
 import {
   compileFirstChunk,
   compileHydrate,
+  evaluateHydrateParent,
   evaluateModule,
   getBoundaryIds,
   getChunkIds,
   hydrateParentStubs,
   loadChunk,
-  parentModuleStubs,
-  renderChunk,
 } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
 import type { ModuleStub } from './regression-helpers'
@@ -38,10 +37,9 @@ const __jsx = (type, props, ...children) => {
 
 /**
  * Evaluates `code` compiled for the client once its `<Hydrate>` chunks have
- * loaded: each lazy chunk component renders the chunk export it loads.
- * Chunk imports of the parent module are linked to the evaluated parent, so
- * the chunk may share the parent's bindings. `beforeChunksLoad` runs app code
- * between the two.
+ * loaded: each lazy chunk component renders the chunk export it loads, and
+ * the modules are linked like a bundler would (`evaluateHydrateParent`).
+ * `beforeChunksLoad` runs app code between the two.
  */
 async function loadClientModule(
   code: string,
@@ -50,7 +48,7 @@ async function loadClientModule(
     beforeChunksLoad?: (module: Record<string, any>) => void
   } = {},
 ) {
-  const { parent, chunks } = await compileHydrate('client', code)
+  const { parent, chunks, plugin } = await compileHydrate('client', code)
   const lazyChunks: Array<{ name: string; rendered: boolean }> = []
   const chunkExports: Record<string, (props: unknown) => unknown> = {}
   const userStubs = options.stubs ?? {}
@@ -70,7 +68,12 @@ async function loadClientModule(
     },
   }
   expect(await getModuleErrors(parent)).toEqual([])
-  const module = await evaluateModule(parent, stubs, reactRuntime)
+  const { module, parentModuleStubs } = await evaluateHydrateParent(
+    plugin,
+    parent,
+    stubs,
+    reactRuntime,
+  )
   options.beforeChunksLoad?.(module)
   for (const chunk of chunks) {
     expect(await getModuleErrors(chunk)).toEqual([])
@@ -78,13 +81,24 @@ async function loadClientModule(
       chunkExports,
       await evaluateModule(
         chunk,
-        { ...stubs, ...(await parentModuleStubs(chunk, module)) },
+        { ...stubs, ...(await parentModuleStubs(chunk)) },
         reactRuntime,
       ),
     )
   }
   return { module, lazyChunks }
 }
+
+test('client: loadClientModule renders every boundary through its lazy chunk', async () => {
+  const { module, lazyChunks } =
+    await loadClientModule(`${head}const helper = () => '!'
+export function Page() {
+  const label = 'hi'
+  return <><Hydrate><p>{label}{helper()}</p></Hydrate><Hydrate><b>two</b></Hydrate></>
+}`)
+  expect(module.Page()).toBe('[<p>hi!</p>][<b>two</b>]')
+  expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true, true])
+})
 
 describe('boundaries and ids', () => {
   // Bug: the server and the client number boundaries without the Hydrate
@@ -100,19 +114,12 @@ describe('boundaries and ids', () => {
   </div>
 }`
       const server = await compileHydrate('server', code)
-      const { parent, plugin } = await compileHydrate('client', code)
+      const { parent } = await compileHydrate('client', code)
       const serverIds = getBoundaryIds(server.parent)
       expect(serverIds).toHaveLength(2)
       expect(getBoundaryIds(parent)).toEqual(expect.arrayContaining(serverIds))
-      const rendered: Array<unknown> = []
-      for (const id of serverIds) {
-        const chunkId = getChunkIds(parent).find((chunk) =>
-          chunk.endsWith(`=${id}`),
-        )
-        expect(chunkId, id).toBeDefined()
-        rendered.push(await renderChunk(loadChunk(plugin, 'client', chunkId!)!))
-      }
-      expect(rendered).toEqual(['<p>outer</p>', '<p>second</p>'])
+      const { module } = await loadClientModule(code)
+      expect(module.Page()).toBe('<div>[<p>outer</p>][<p>second</p>]</div>')
     },
   )
 
@@ -234,6 +241,8 @@ describe('values captured by the children', () => {
   // Bug: captured locals are passed to the lazy chunk component as props of
   // the same name, so locals named `key` or `ref` become React's `key`/`ref`.
   // Impact: the split children render without those values.
+  // Expected fix: rename only the reserved `key`/`ref` props; other captures
+  // keep their names as chunk props, which hydrate-captures.test.ts relies on.
   test.fails(
     'client: captured locals named key and ref reach the split children',
     async () => {
@@ -267,9 +276,7 @@ describe('values captured by the children', () => {
     },
   )
 
-  // Bug: any `this` in split children rejects the boundary ("Hydrate cannot
-  // code-split JSX that captures this"), including the own `this` of a
-  // function, class or method written inside the children.
+  // Bug: a `this` owned by a function, class or method in the children is rejected.
   // Impact: valid code fails to build.
   // Source: Qwik optimizer issue_5008; SolidStart compile.spec.ts "allows
   // `this` and `arguments` in a function expression"

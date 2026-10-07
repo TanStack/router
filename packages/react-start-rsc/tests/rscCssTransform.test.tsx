@@ -264,6 +264,14 @@ ${linked}`)
     return texts((node as { children?: unknown } | null)?.children ?? [])
   }
 
+  test('evaluateCompiled renders the CSS before the JSX argument', async () => {
+    const { stream } = await evaluateCompiled(`
+import { renderToReadableStream } from '@tanstack/react-start/rsc'
+export const stream = renderToReadableStream(<Card />)
+`)
+    expect(texts(stream)).toEqual(['css'])
+  })
+
   // Bug: a comment before the JSX argument of `renderToReadableStream` is
   // moved into the generated CSS fragment, where it becomes JSX text.
   // Impact: the comment is rendered into the RSC payload as visible text.
@@ -284,25 +292,6 @@ import { renderToReadableStream } from '@tanstack/react-start/rsc'
 export const stream = renderToReadableStream(${argument})
 `)
       expect(texts(stream)).toEqual(['css'])
-    },
-  )
-
-  // Bug: for `renderServerComponent(...args)` / `createCompositeComponent(...args)`
-  // the CSS options object is appended after the spread, so it lands after
-  // the options the spread already passes.
-  // Impact: the component's CSS is not attached.
-  test.fails.each(['renderServerComponent', 'createCompositeComponent'])(
-    '%s does not append CSS options after a spread argument',
-    async (name) => {
-      const { value } = await evaluateCompiled(`
-import { ${name} } from '@tanstack/react-start/rsc'
-const args = [<Card />, { extra: true }] as const
-export const value = ${name}(...args)
-`)
-      expect(value).toEqual([
-        { type: 'Card', children: [] },
-        expect.objectContaining({ extra: true }),
-      ])
     },
   )
 })

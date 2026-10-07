@@ -1,7 +1,6 @@
 /**
- * Known code-splitter bugs on main. Each `.fails` test asserts the correct
- * behaviour for a bug on main and is marked `.fails`; remove `.fails` when the
- * bug is fixed.
+ * Known code-splitter bugs. Each test asserts correct behaviour for a bug on
+ * main and is marked .fails; remove .fails when the bug is fixed.
  */
 import { parseSync } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
@@ -32,11 +31,11 @@ function linkable(specifier: string, exports: Record<string, unknown>) {
 }
 
 /**
- * Compiles a route file, then evaluates every module the code splitter emits,
+ * Compiles a route file, then evaluates the modules the code splitter emits,
  * linked by import specifier: the shared module, the reference module, then
- * every split chunk, as once all chunks have loaded. `stubs` provides the
- * route's other imports. Returns the modules, the route options and the
- * exports of each chunk by split name.
+ * every split chunk the reference module imports, as once all chunks have
+ * loaded. `stubs` provides the route's other imports. Returns the modules,
+ * the route options and the exports of each chunk by split name.
  */
 async function loadRouteModules(code: string, stubs: Stubs = {}) {
   const { modules } = compileRouteModules(code)
@@ -59,13 +58,13 @@ async function loadRouteModules(code: string, stubs: Stubs = {}) {
     }
   }
   const chunks: Record<string, Record<string, any>> = {}
-  for (const [name, chunk] of Object.entries(modules)) {
-    if (name.startsWith('virtual ')) {
-      chunks[name.slice('virtual '.length)] = await evaluateModule(
-        chunk,
-        linked,
-      )
-    }
+  for (const [, split] of modules.reference!.matchAll(
+    /\?tsr-split=([\w-]+)/g,
+  )) {
+    chunks[split!] ??= await evaluateModule(
+      modules[`virtual ${split}`]!,
+      linked,
+    )
   }
   const { Route } = linked['route.tsx'] as { Route: { options: any } }
   return { modules, options: Route.options, chunks }
@@ -108,12 +107,8 @@ export const Route = createFileRoute('/')({
     ]).toEqual([1, '<p>1</p>', 1])
   })
 
-  // Bug: module bindings are collected from top-level var/function/class
-  // declarations only, so a `var` nested in a statement, an enum or a
-  // namespace is neither moved with the shared helper reading it nor shared:
-  // its statement is copied into every module.
-  // Impact: the shared helper throws a ReferenceError when the route loads,
-  // or the declaring statement (and its side effects) runs once per module.
+  // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
+  // Impact: the route throws a ReferenceError or runs the declaration per module.
   test.fails.each([
     {
       name: 'a var in an if block',
@@ -166,10 +161,11 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  // Bug: a `let` the loader reassigns is shared with the split component, so
-  // the reference module imports it, and imports are read-only: the build
-  // fails with "Cannot assign to import".
+  // Bug: a `let` the loader reassigns is shared, so the route module assigns
+  // to a read-only import ("Cannot assign to import").
   // Impact: the route cannot be built as soon as code splitting is on.
+  // Needs a real build: imports are live bindings, and the in-process harness
+  // snapshots them, so even a correct fix would read a stale value there.
   test.fails(
     'a let the loader reassigns stays writable and the split component reads its value',
     async () => {
@@ -248,13 +244,8 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  // Bug: a declaration the reference module keeps for another reason than a
-  // route option (an export, an exported function reading it, a sibling
-  // binding, a top-level statement reading it) is copied into the split
-  // chunks instead of being shared.
-  // Impact: its initializer runs once per module, so module state (contexts,
-  // stores, registrations) is duplicated and the component reads another
-  // instance than the route module.
+  // Bug: a declaration the reference module also keeps is copied into chunks.
+  // Impact: module state is duplicated; the component reads another instance.
   test.fails.each([
     {
       name: 'a destructuring with one exported binding',
