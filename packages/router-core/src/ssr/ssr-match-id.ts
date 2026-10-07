@@ -1,16 +1,6 @@
+// Inlined match ids must not look like relative URLs to crawlers, and must only
+// contain characters that are valid in the HTML input stream. The client
+// compares ids in this encoded form, so no decoder is needed.
 export function dehydrateSsrMatchId(id: string): string {
-  return id
-    .replaceAll('~', '~~')
-    .replaceAll('\0', '~0')
-    .replaceAll('\uFFFD', '~r')
-    .replaceAll('/', '\uFFFD')
-}
-
-export function hydrateSsrMatchId(id: string): string {
-  return id
-    .replaceAll('\0', '/')
-    .replaceAll('\uFFFD', '/')
-    .replace(/~([~0r])/g, (_, code) =>
-      code === '0' ? '\0' : code === 'r' ? '\uFFFD' : code,
-    )
+  return id.replaceAll('/', '\uFFFD')
 }

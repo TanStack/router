@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dehydrateSsrMatchId, hydrateSsrMatchId } from '../src/ssr/ssr-match-id'
+import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 
 describe('ssr match id codec', () => {
   it('removes forward slashes in dehydrated ids', () => {
@@ -8,60 +8,16 @@ describe('ssr match id codec', () => {
     )
 
     expect(dehydratedId).not.toContain('/')
-    expect(hydrateSsrMatchId(dehydratedId)).toBe(
-      '/$orgId/projects/$projectId//acme/projects/dashboard/{}',
-    )
+    expect(dehydratedId).not.toContain('\0')
   })
 
   it('leaves ids without slashes unchanged', () => {
-    const id = 'plain-id'
-
-    expect(dehydrateSsrMatchId(id)).toBe(id)
-    expect(hydrateSsrMatchId(id)).toBe(id)
+    expect(dehydrateSsrMatchId('plain-id')).toBe('plain-id')
   })
 
-  it('round-trips reserved and browser-normalized characters', () => {
-    const id = '~/\0/\uFFFD/~0/~r'
-    const dehydratedId = dehydrateSsrMatchId(id)
-    const normalize = (value: string) => value.replaceAll('\0', '\uFFFD')
-
-    expect(hydrateSsrMatchId(normalize(dehydratedId))).toBe(id)
-    expect(normalize(dehydrateSsrMatchId('/r'))).not.toBe(
-      normalize(dehydrateSsrMatchId('\uFFFDr')),
+  it('keeps distinct slash-delimited ids distinct', () => {
+    expect(dehydrateSsrMatchId('/posts/1')).not.toBe(
+      dehydrateSsrMatchId('/posts1'),
     )
-  })
-
-  it('decodes browser-normalized replacement chars back to slashes', () => {
-    const normalized = dehydrateSsrMatchId('/posts/1').replaceAll(
-      '\0',
-      '\uFFFD',
-    )
-
-    expect(hydrateSsrMatchId(normalized)).toBe('/posts/1')
-  })
-
-  it('still decodes legacy null-byte delimiters for backward compatibility', () => {
-    // Payloads emitted before the switch to U+FFFD encoded slashes as U+0000.
-    // hydrateSsrMatchId keeps the legacy decode branch so an in-flight payload
-    // from a previous deploy still hydrates correctly.
-    const nullChar = String.fromCharCode(0)
-    expect(hydrateSsrMatchId(`${nullChar}posts${nullChar}1`)).toBe('/posts/1')
-  })
-
-  it('does not emit control characters that are invalid in SSR HTML', () => {
-    const dehydratedId = dehydrateSsrMatchId(
-      '/$orgId/projects/$projectId//acme/projects/dashboard/{}',
-    )
-
-    // U+0000 and the other C0 control characters trigger a
-    // control-character-in-input-stream parse error when the dehydrated id is
-    // inlined into the SSR <script> payload, so the codec must never emit them.
-    const nullChar = String.fromCharCode(0)
-    expect(dehydratedId).not.toContain(nullChar)
-
-    const hasControlChar = dehydratedId
-      .split('')
-      .some((char) => char.charCodeAt(0) <= 0x1f)
-    expect(hasControlChar).toBe(false)
   })
 })

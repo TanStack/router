@@ -10,6 +10,7 @@ import {
 } from '../src'
 import { hydrate } from '../src/ssr/client'
 import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
+import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { createTestRouter, dehydrateToBootstrap } from './routerTestUtils'
 import type { AnyRouteMatch, AnyRouter, LocationRewrite } from '../src'
 import type { ServerManifest } from '../src/manifest'
@@ -186,6 +187,36 @@ describe('hydrate', () => {
       source: 'server',
     })
     expect(clientLoader).not.toHaveBeenCalled()
+  })
+
+  it('inlines match ids that are valid HTML and not path-like', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const productRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/products/$productId',
+      loader: () => 'product',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([productRoute]),
+      history: createMemoryHistory({ initialEntries: ['/products/42'] }),
+      isServer: true,
+    })
+    attachRouterServerSsrUtils({ router, manifest: testManifest })
+
+    try {
+      await router.load()
+      await router.serverSsr!.dehydrate()
+      const html = router
+        .serverSsr!.takeInitialHydrationScriptTags()!
+        .before.map((script) => script.children)
+        .join('')
+
+      // U+0000 is a parse error in the HTML input stream.
+      expect(html).not.toContain('\0')
+      expect(html).not.toContain('/products/42')
+    } finally {
+      router.serverSsr?.cleanup()
+    }
   })
 
   it('restores undefined loader data without serializing it', async () => {
