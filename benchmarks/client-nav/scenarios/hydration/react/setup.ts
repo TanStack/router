@@ -18,6 +18,16 @@ type TaskHooks = {
 
 const turn = () => new Promise<void>((resolve) => setImmediate(resolve))
 
+// React's scheduler ends a time slice once performance.now() has advanced 5 ms.
+// Under CodSpeed's CPU simulation the wall clock advances much further per
+// instruction, by a runner-dependent factor, so real time turned identical
+// samples into different numbers of yields, scheduler tasks and event-loop
+// turns. With a frozen clock React yields only to paint after a commit, as on
+// a fast host. 1 s is past React's initial 300 ms fallback throttle. Only the
+// window's performance clock is pinned: Date.now(), which the Router uses for
+// match timestamps, is unchanged.
+const schedulerTime = 1_000
+
 export function setup({ countRenders = false } = {}) {
   // Compile once, outside measurement. Evaluation below creates fresh objects
   // in each window's realm; neither the payload nor module state is reused.
@@ -49,6 +59,7 @@ export function setup({ countRenders = false } = {}) {
       virtualConsole,
     })
     const immediates = new Set<NodeJS.Immediate>()
+    const scheduler = { tasks: 0 }
     try {
       Object.assign(dom.window, {
         TextEncoder,
@@ -62,6 +73,7 @@ export function setup({ countRenders = false } = {}) {
           callback: (...args: Array<unknown>) => void,
           ...args: Array<unknown>
         ) {
+          scheduler.tasks++
           const handle = setImmediate(() => {
             immediates.delete(handle)
             callback(...args)
@@ -78,6 +90,7 @@ export function setup({ countRenders = false } = {}) {
         },
         scrollTo() {},
       })
+      dom.window.performance.now = () => schedulerTime
       const context = dom.getInternalVMContext()
       // jsdom has no layout/scroll implementation; only hydration CPU is measured.
       dom.window.HTMLElement.prototype.scrollIntoView = () => {}
@@ -110,6 +123,7 @@ export function setup({ countRenders = false } = {}) {
         scriptElements,
         executingScript,
         immediates,
+        scheduler,
         errors,
         started: false,
         completed: false,
@@ -184,6 +198,13 @@ export function setup({ countRenders = false } = {}) {
     return JSON.parse(JSON.stringify(current.app.snapshot())) as ReturnType<
       ClientApp['snapshot']
     >
+  }
+
+  function schedulerTasks() {
+    if (!current) {
+      throw new Error('No hydration sample')
+    }
+    return current.scheduler.tasks
   }
 
   function validate() {
@@ -297,6 +318,7 @@ export function setup({ countRenders = false } = {}) {
     run,
     after,
     snapshot,
+    schedulerTasks,
     // Vitest passes setup to the Tinybench Bench, where it runs once per
     // warmup/run stage. Install the Task's public per-iteration hooks there.
     installIterationHooks(task: TaskHooks) {

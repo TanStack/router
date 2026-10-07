@@ -1,5 +1,16 @@
 # @tanstack/start-server-core
 
+## 1.169.39
+
+### Patch Changes
+
+- [#8573](https://github.com/TanStack/router/pull/8573) [`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb) - Align server function request and response handling.
+
+- Updated dependencies [[`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb)]:
+  - @tanstack/router-core@1.171.34
+  - @tanstack/start-client-core@1.170.34
+  - @tanstack/start-storage-context@1.167.36
+
 ## 1.169.38
 
 ### Patch Changes

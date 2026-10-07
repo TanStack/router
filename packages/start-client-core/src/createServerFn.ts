@@ -186,7 +186,8 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               startContext.contextAfterGlobalMiddlewares
             const ctx = {
               ...extractedFn,
-              ...opts,
+              data: opts.data,
+              method: opts.method ?? resolvedOptions.method,
               // Ensure we use the full serverFnMeta from the provider file's extractedFn
               // (which has id, name, filename) rather than the partial one from SSR/client
               // callers (which only has id)
