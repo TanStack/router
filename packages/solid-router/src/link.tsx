@@ -18,6 +18,8 @@ import { nearestMatchContext } from './matchContext'
 
 import { useIntersectionObserver } from './utils'
 
+import { useHydrated } from './ClientOnly'
+
 import type {
   AnyRouter,
   Constrain,
@@ -97,12 +99,10 @@ function createLinkProps(
 
   // Only actual client hydration renders the server's hash-less state first,
   // and needs reactive state and a mount callback.
-  let hydrating: Solid.Accessor<boolean> | undefined
-  if (!(isServer ?? router.isServer) && Solid.sharedConfig.context) {
-    const [getHydrating, setHydrating] = Solid.createSignal(true)
-    hydrating = getHydrating
-    Solid.onMount(() => setHydrating(false))
-  }
+  const hydrated =
+    !(isServer ?? router.isServer) && Solid.sharedConfig.context
+      ? useHydrated()
+      : undefined
 
   // Everything the Link derives from its destination and the location, in
   // one computation: [element href, external href (null when blocked),
@@ -134,7 +134,11 @@ function createLinkProps(
       // Only hash-dependent destinations need the server's empty hash. Keep
       // the source location identity so links share the route-match cache.
       const hydratingHash =
-        !options_.href && hash && typeof hash !== 'string' && hydrating?.()
+        !options_.href &&
+        hash &&
+        typeof hash !== 'string' &&
+        hydrated &&
+        !hydrated()
       // untrack because router-core will also access stores, which are signals in solid
       const next = Solid.untrack(() =>
         router.buildLocation(
@@ -192,7 +196,7 @@ function createLinkProps(
               activeOptions?.explicitUndefined,
             )) &&
           (!activeOptions?.includeHash ||
-            (hydrating?.() ? '' : location.hash) === next.hash)
+            (hydrated && !hydrated() ? '' : location.hash) === next.hash)
       }
     }
     href = external === null ? undefined : external || href

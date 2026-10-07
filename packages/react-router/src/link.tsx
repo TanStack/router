@@ -275,10 +275,6 @@ export function useLinkProps<
     }
 
     const dest = { ...options } as any
-    // Inherited and updated hashes derive from the location's hash.
-    const hashFromLocation =
-      !options.href &&
-      (options.hash === true || typeof options.hash === 'function')
     let source: ParsedLocation | undefined
     let state: LinkState | undefined
     let hydrationState: LinkState | undefined
@@ -289,11 +285,15 @@ export function useLinkProps<
       hydrating?: boolean,
     ): LinkState => {
       dest._fromLocation = location
-      // Only hash-dependent destinations need the server's empty hash. Keep
-      // the source location identity so links share the route-match cache.
+      // Hydration resolves the hash against the server's empty one. Keep the
+      // source location identity so links share the route-match cache. An
+      // explicit href carries its own hash.
       const next = router.buildLocation(
-        hydrating && hashFromLocation
-          ? { ...dest, hash: dest.hash === true ? '' : dest.hash('') }
+        hydrating && !dest.href
+          ? {
+              ...dest,
+              hash: dest.hash === true ? '' : functionalUpdate(dest.hash, ''),
+            }
           : dest,
       )
 
@@ -334,9 +334,9 @@ export function useLinkProps<
       dest,
       getLinkState,
       // Hydration renders the server's markup, which has no hash. React
-      // rerenders a hash-dependent link after hydration only if its live
+      // rerenders a link that uses the hash after hydration only if its live
       // state differs.
-      (stableActiveOptions?.includeHash || hashFromLocation) &&
+      (stableActiveOptions?.includeHash || options.hash) &&
         ((): LinkState =>
           (hydrationState ??= deriveLinkState(
             scope[0 /* getSource */](),
