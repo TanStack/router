@@ -12,6 +12,14 @@ import {
 
 const sharedModule = 'route.tsx?tsr-shared=1'
 
+/** Whether a module declares `name` or imports it from the shared module. */
+function binds(module: string, name: string) {
+  return (
+    declarationOf(name).test(module) ||
+    importedNames(module, sharedModule).includes(name)
+  )
+}
+
 /**
  * The reference module, compiled without and with React HMR: HMR rewrites the
  * route options (hoisted components, refresh anchor) before dead code is
@@ -23,6 +31,29 @@ function referenceModules(code: string) {
     'reference with HMR': compileRouteModules(code, { hmr: true }).modules
       .reference!,
   }
+}
+
+/**
+ * Renders the split component the way an app loads it: the shared module (if
+ * any) and the reference module run first, then the component chunk, all
+ * linked to one instance of the shared module. A top-level statement may then
+ * reach the component by moving into its chunk or by staying in the
+ * reference module and writing to a shared binding.
+ */
+async function renderSplitComponent(modules: Record<string, string>) {
+  const stubs: Record<string, Record<string, unknown>> = {}
+  if (modules.shared) {
+    stubs[sharedModule] = await evaluateModule(modules.shared)
+  }
+  await evaluateModule(modules.reference!, {
+    ...stubs,
+    '@tanstack/react-router': {
+      createFileRoute: () => (options: unknown) => ({ options }),
+      lazyRouteComponent: () => () => null,
+    },
+  })
+  const chunk = await evaluateModule(modules['virtual component']!, stubs)
+  return chunk.component!()
 }
 
 describe('the reference module only drops code that splitting left unused', () => {
@@ -63,10 +94,12 @@ function pong(): number { return ping() }`,
 export const Route = createFileRoute('/')({ component: () => ${component} })
 `
       const modules = referenceModules(code)
-      // The validator does not report references to undeclared names.
-      for (const name of declared) {
-        expect(modules.reference).toMatch(declarationOf(name))
-        expect(modules['reference with HMR']).toMatch(declarationOf(name))
+      // The validator does not report references to undeclared names. A
+      // binding the split component reads may come from the shared module.
+      for (const [module, reference] of Object.entries(modules)) {
+        for (const name of declared) {
+          expect(binds(reference, name), `${module} binds ${name}`).toBe(true)
+        }
       }
       await expectValidModules(modules)
     },
@@ -201,8 +234,7 @@ export const Route = createFileRoute('/')({
 })
 `)
       await expectValidModules(modules)
-      const chunk = await evaluateModule(modules['virtual component']!)
-      expect(chunk.component!()).toBe(rendered)
+      expect(await renderSplitComponent(modules)).toBe(rendered)
     },
   )
 
@@ -367,18 +399,13 @@ export const Route = createFileRoute('/')({
       // Known limitation on main: the statement runs in both modules instead
       // of once in the shared module; only check that each module binds `value`.
       for (const name of ['reference', 'virtual component']) {
-        const module = modules[name]!
-        expect(
-          declarationOf('value').test(module) ||
-            importedNames(module, sharedModule).includes('value'),
-          `${name} binds value`,
-        ).toBe(true)
+        expect(binds(modules[name]!, 'value'), `${name} binds value`).toBe(true)
       }
       await expectValidModules(modules)
     },
   )
 
-  it('stay declared in the reference module when exported and read by the component', async () => {
+  it('stay bound in the reference module when exported and read by the component', async () => {
     const { modules } =
       compileRouteModules(`${head}if (typeof window === 'undefined') { var flag = 'server' }
 export { flag }
@@ -386,7 +413,7 @@ export const Route = createFileRoute('/')({
   component: () => <div>{flag}</div>,
 })
 `)
-    expect(modules.reference).toMatch(declarationOf('flag'))
+    expect(binds(modules.reference!, 'flag')).toBe(true)
     await expectValidModules(modules)
   })
 

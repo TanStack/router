@@ -14,7 +14,9 @@ import { declarationOf, getModuleErrors } from './validate-module'
 // `<Hydrate>` moves its children into a chunk component at module level. The
 // locals of the enclosing scopes the children read become props of that
 // component, under the same names; module bindings move along with the
-// children; names the children declare themselves are not captured.
+// children; names the children declare themselves are not captured. React
+// keeps the `key` and `ref` props for itself, so no captured local here is
+// named like them.
 
 const head = `import { Hydrate } from '@tanstack/react-start'\n`
 
@@ -74,20 +76,20 @@ test.each<{
   {
     // Source: @vitejs/plugin-rsc hoist/computed-destructuring-key-captures-outer-binding.js
     name: 'through a computed destructuring key',
-    children: `{(({ [key]: picked }) => picked)({ value })}`,
-    params: ['key', 'value'],
+    children: `{(({ [field]: picked }) => picked)({ value })}`,
+    params: ['field', 'value'],
     expected: '<p>outer</p>',
   },
   {
     // Source: @vitejs/plugin-rsc hoist/var-hoist-block.js, hoist/shadow-var-nested-block.js
     name: 'unless a var in a nested block shadows them',
     children: `{(() => {
-  if (key) {
+  if (field) {
     var value = 'inner'
   }
   return value
 })()}`,
-    params: ['key'],
+    params: ['field'],
     expected: '<p>inner</p>',
   },
   {
@@ -105,11 +107,11 @@ test.each<{
   async ({ children, params, expected }) => {
     const { chunk } = await compileChunk(`export function Page() {
   const value = 'outer'
-  const key = 'value'
+  const field = 'value'
   return <Hydrate><p>${children}</p></Hydrate>
 }`)
     expect(getChunkParams(chunk)).toEqual(params)
-    expect(await renderChunk(chunk, { value: 'outer', key: 'value' })).toBe(
+    expect(await renderChunk(chunk, { value: 'outer', field: 'value' })).toBe(
       expected,
     )
   },

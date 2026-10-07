@@ -379,3 +379,33 @@ export const hydrateParentStubs = {
         .join(',')})`,
   },
 }
+
+/**
+ * Import sources of a `<Hydrate>` chunk that name its parent module: a chunk
+ * may import the module bindings it shares with the parent instead of
+ * declaring its own copy.
+ */
+export function parentImportSources(chunk: string) {
+  return importSources(chunk).filter((source) =>
+    [moduleId, './module.tsx', './module'].includes(source),
+  )
+}
+
+/**
+ * Stubs that link the parent imports of `chunk` (if any) to the parent module,
+ * evaluated with `hydrateParentStubs` unless an evaluated module is given.
+ */
+export async function parentModuleStubs(
+  chunk: string,
+  parent: string | Record<string, unknown>,
+): Promise<Record<string, ModuleStub>> {
+  const sources = parentImportSources(chunk)
+  if (sources.length === 0) {
+    return {}
+  }
+  const module =
+    typeof parent === 'string'
+      ? await evaluateModule(parent, hydrateParentStubs)
+      : parent
+  return Object.fromEntries(sources.map((source) => [source, module]))
+}

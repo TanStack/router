@@ -172,6 +172,8 @@ export const mw = createMiddleware().server(async ({ next }) =>
   })
 
   // Source: babel-dead-code-elimination "variable" > "within for...in"
+  // Hook calls are different (dropping one changes the hook order; pinned
+  // separately); a plain server call like this one must go.
   test('the client drops a var nested in a function block that only the server implementation reads', async () => {
     const client = await compileCode(
       'client',
