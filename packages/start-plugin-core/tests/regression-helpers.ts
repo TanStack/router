@@ -1,5 +1,5 @@
 /**
- * Helpers shared by the Start compiler regression suites: compile a module
+ * Shared harness of the Start compiler behaviour suites: compile a module
  * into its client, SSR caller and server-function provider outputs, split
  * `<Hydrate>` children into chunks, and evaluate compiled modules against a
  * minimal Start runtime.
@@ -19,38 +19,34 @@ import type { StartCompilerPlugin } from '../src/types'
 
 export type Output = 'client' | 'ssr' | 'provider'
 export const outputs: Array<Output> = ['client', 'ssr', 'provider']
-export type Framework = 'react' | 'solid'
-export const frameworks: Array<Framework> = ['react', 'solid']
-export const moduleId = '/test/src/module.tsx'
+const moduleId = '/test/src/module.tsx'
 
-export interface StartCompilerOptions {
+interface StartCompilerOptions {
   env: 'client' | 'server'
-  framework?: Framework
   mode?: 'build' | 'dev'
   /** Project modules by absolute id; `./name` resolves to `/test/src/name.ts`. */
   files?: Record<string, string>
   /** `serverFnProviderModuleDirectives` */
   directives?: Array<string>
   compilerPlugins?: Array<StartCompilerPlugin>
-  warn?: (message: string) => void
 }
 
 /**
- * Creates a `StartCompiler` configured the way the bundler plugins do, and
- * records the server functions it reports.
+ * Creates a React `StartCompiler` configured the way the bundler plugins do,
+ * and records the server functions it reports.
  */
 export function createStartCompiler(options: StartCompilerOptions) {
-  const { env, files = {}, framework = 'react' } = options
+  const { env, files = {} } = options
   const serverFns: Record<string, ServerFn> = {}
   const compiler: StartCompiler = new StartCompiler({
     env,
     envName: env === 'client' ? 'client' : 'ssr',
     root: '/test',
-    framework,
+    framework: 'react',
     providerEnvName: 'ssr',
     mode: options.mode ?? 'build',
     lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, framework),
+    lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
     getKnownServerFns: () => ({}),
     devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
       `/@id${extractedFilename.slice(root.length)}`,
@@ -70,7 +66,6 @@ export function createStartCompiler(options: StartCompilerOptions) {
       return file in files ? file : null
     },
     compilerPlugins: options.compilerPlugins,
-    warn: options.warn,
   })
   const compile = async (code: string, id = moduleId) => {
     const result = await compiler.compile({
@@ -133,16 +128,15 @@ export async function compileAll(
     }
   }
   expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  /** The id of the server function whose handler is named `functionName`. */
-  const idOf = (functionName: string) =>
-    Object.values(serverFns).find((fn) => fn.functionName === functionName)
-      ?.functionId
-  return { ...compiled, serverFns, idOf }
+  return { ...compiled, serverFns }
 }
 
-/** Matches the source of an import or re-export statement. */
+/**
+ * Matches the source of an import or re-export statement (specifier names
+ * may be string literals).
+ */
 const moduleSource =
-  /^(\s*import\s*|\s*(?:import|export)\b[^;'"]*?\bfrom\s*)(["'])([^"']+)\2/gm
+  /^(\s*import\s*|\s*(?:import|export)\b(?:[^;'"]|'[^'\n]*'|"[^"\n]*")*?\bfrom\s*)(["'])([^"']+)\2/gm
 
 /** Project-local import and re-export sources of a module, sorted. */
 export function importSources(code: string) {
@@ -160,13 +154,11 @@ const dataUrl = (code: string, type = 'text/javascript') =>
  * the original handler. The other factories throw when they are called
  * uncompiled, so a test only passes if the compiler ran.
  */
-const startPackage = `
+const startRuntime: Record<string, string> = {
+  '@tanstack/react-start': `
 const uncompiled = () => { throw new Error('uncompiled Start factory') }
 const builder = () => {
   const self = {
-    middleware: () => self,
-    validator: () => self,
-    inputValidator: () => self,
     handler: (rpc, impl) =>
       impl
         ? Object.assign((opts) => impl(opts ?? {}), {
@@ -180,32 +172,64 @@ export const createServerFn = builder
 export const createServerOnlyFn = uncompiled
 export const createClientOnlyFn = uncompiled
 export const createIsomorphicFn = uncompiled
-export const createMiddleware = () => ({ server: uncompiled })`
-
-const startRuntime: Record<string, string> = {}
-for (const framework of frameworks) {
-  startRuntime[`@tanstack/${framework}-start`] = startPackage
-  startRuntime[`@tanstack/${framework}-start/server-rpc`] =
-    `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`
-  startRuntime[`@tanstack/${framework}-start/client-rpc`] =
-    `export const createClientRpc = (id) => ({ client: id })`
-  startRuntime[`@tanstack/${framework}-start/ssr-rpc`] =
-    `export const createSsrRpc = (id) => ({ ssr: id })`
+export const createMiddleware = () => ({ server: uncompiled })`,
+  '@tanstack/react-start/server-rpc': `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`,
+  '@tanstack/react-start/client-rpc': `export const createClientRpc = (id) => ({ client: id })`,
+  '@tanstack/react-start/ssr-rpc': `export const createSsrRpc = (id) => ({ ssr: id })`,
 }
 
-let imports = 0
+/**
+ * JSX runtime of evaluated modules: intrinsic elements render as tags,
+ * components are called with their props.
+ */
+const jsxToText = `const __Fragment = Symbol('Fragment')
+const __jsx = (type, props, ...children) => {
+  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
+  if (type === __Fragment) return text
+  if (typeof type === 'function') return type(children.length ? { ...props, children: text } : { ...props })
+  if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
+  return '<' + type + '>' + text + '</' + type + '>'
+}
+`
+
+/** Module stub: module source code, or the exports of the module. */
+export type ModuleStub = string | Record<string, unknown>
+
+const stubsKey = '__startCompilerTestStubs'
+const stubRegistry: Array<Record<string, unknown>> = []
+;(globalThis as Record<string, unknown>)[stubsKey] = stubRegistry
+
+function stubUrl(source: string, stub: ModuleStub) {
+  if (typeof stub === 'string') {
+    return source.endsWith('.json')
+      ? dataUrl(stub, 'application/json')
+      : dataUrl(stub)
+  }
+  const index = stubRegistry.push(stub) - 1
+  const named = Object.keys(stub).filter((name) => name !== 'default')
+  return dataUrl(`const stub = globalThis.${stubsKey}[${index}]
+export default stub.default
+export const { ${named.join(', ')} } = stub`)
+}
+
+let evaluations = 0
 
 /**
- * Evaluates a compiled module, resolving every import to the minimal Start
- * runtime or to the given stubs (by specifier; `.json` stubs are JSON
- * modules). Every call evaluates a fresh instance, even for identical code.
+ * Evaluates a compiled module like a bundler would: TypeScript is erased, JSX
+ * becomes calls of `runtime` (which defines `__jsx` and `__Fragment`), and
+ * every import is linked to the minimal Start runtime or to `stubs` (by
+ * specifier; `.json` string stubs are JSON modules). Every call evaluates a
+ * fresh instance, even for identical code.
  */
-export async function importModule(
+export async function evaluateModule(
   code: string,
-  modules: Record<string, string> = {},
+  stubs: Record<string, ModuleStub> = {},
+  runtime = jsxToText,
 ): Promise<Record<string, any>> {
-  const sources = { ...startRuntime, ...modules }
-  const { code: javascript } = await transformWithOxc(code, 'module.ts')
+  const sources: Record<string, ModuleStub> = { ...startRuntime, ...stubs }
+  const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
+    jsx: { runtime: 'classic', pragma: '__jsx', pragmaFrag: '__Fragment' },
+  })
   const linked = javascript.replace(
     moduleSource,
     (_match, prefix: string, _quote: string, source: string) => {
@@ -213,14 +237,13 @@ export async function importModule(
       if (stub === undefined) {
         throw new Error(`No stub for import ${source}`)
       }
-      const url = source.endsWith('.json')
-        ? dataUrl(stub, 'application/json')
-        : dataUrl(stub)
-      return `${prefix}${JSON.stringify(url)}`
+      return `${prefix}${JSON.stringify(stubUrl(source, stub))}`
     },
   )
   return import(
-    /* @vite-ignore */ dataUrl(`${linked}\n// evaluation ${++imports}`)
+    /* @vite-ignore */ dataUrl(
+      `${runtime}${linked}\n// evaluation ${++evaluations}`,
+    )
   )
 }
 
@@ -228,12 +251,12 @@ export async function importModule(
 export async function callProvider(
   provider: string | Record<string, any>,
   name: string,
-  modules: Record<string, string> = {},
+  stubs: Record<string, ModuleStub> = {},
   data?: unknown,
 ) {
   const module =
     typeof provider === 'string'
-      ? await importModule(provider, modules)
+      ? await evaluateModule(provider, stubs)
       : provider
   const handler = module[`${name}_createServerFn_handler`]
   expect(handler, name).toBeTypeOf('function')
@@ -304,78 +327,31 @@ export async function compileHydrate(env: 'client' | 'server', code: string) {
   return { parent, chunks, plugin }
 }
 
+/**
+ * Loads the first chunk a parent module imports and compiles it for the
+ * client under its virtual module id, like the bundler does.
+ */
+export async function compileFirstChunk(plugin: HydratePlugin, parent: string) {
+  const id = getChunkIds(parent)[0]!
+  const { compile, serverFns } = createStartCompiler({
+    env: 'client',
+    compilerPlugins: [plugin],
+  })
+  const code = await compile(loadChunk(plugin, 'client', id)!, id)
+  return { code, serverFns }
+}
+
 /** The names a split chunk component receives as props, sorted. */
 export function getChunkParams(chunk: string) {
   const params = chunk.match(/export function H\d+\(([^)]*)\)/)?.[1] ?? ''
   return [...params.matchAll(/[\w$]+/g)].map(([name]) => name).sort()
 }
 
-/** Renders JSX to text: intrinsic elements become tags, components are called. */
-export const jsxToText = `const Fragment = Symbol('Fragment')
-const h = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
-  if (type === Fragment) return text
-  if (typeof type === 'function') return type({ ...props, children: text })
-  if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
-  return '<' + type + '>' + text + '</' + type + '>'
-}
-`
-
-const stubsKey = '__regressionModuleStubs'
-let evaluations = 0
-
-/**
- * Evaluates a compiled module like a bundler would: JSX becomes plain calls
- * of `runtime` (which defines `h` and `Fragment`), and imports are linked to
- * `stubs`, keyed by specifier.
- */
-export async function evaluateModule(
-  code: string,
-  stubs: Record<string, Record<string, unknown>> = {},
-  runtime = jsxToText,
-): Promise<Record<string, (...args: Array<any>) => any>> {
-  const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
-  })
-  const key = `${stubsKey}${evaluations++}`
-  ;(globalThis as Record<string, unknown>)[key] = stubs
-  // Imports are hoisted: link them before any other statement runs.
-  const linkedImports: Array<string> = []
-  const body = javascript.replace(
-    /^import\s+(.+?)\s+from\s+(["'])(.+?)\2;?$/gm,
-    (_, clause: string, __, source: string) => {
-      if (!(source in stubs)) {
-        throw new Error(`no stub for import ${source}`)
-      }
-      const from = `globalThis.${key}[${JSON.stringify(source)}]`
-      const named = clause.match(/\{(.*)\}/)?.[1]
-      const head = clause
-        .replace(/\{.*\}/, '')
-        .replace(/,\s*$/, '')
-        .trim()
-      if (named) {
-        linkedImports.push(
-          `const { ${named.replace(/\bas\b/g, ':')} } = ${from};`,
-        )
-      }
-      if (head.startsWith('* as ')) {
-        linkedImports.push(`const ${head.slice(5)} = ${from};`)
-      } else if (head) {
-        linkedImports.push(`const ${head} = ${from}.default;`)
-      }
-      return ''
-    },
-  )
-  return import(
-    /* @vite-ignore */ dataUrl(`${runtime}${linkedImports.join('\n')}\n${body}`)
-  )
-}
-
 /** Renders the component a `<Hydrate>` chunk exports with the given props. */
 export async function renderChunk(
   chunk: string,
   props: Record<string, unknown> = {},
-  stubs: Record<string, Record<string, unknown>> = {},
+  stubs: Record<string, ModuleStub> = {},
 ) {
   const module = await evaluateModule(chunk, stubs)
   const name = Object.keys(module).find((key) => /^H\d+$/.test(key))
@@ -383,4 +359,23 @@ export async function renderChunk(
     throw new Error('expected the chunk to export a component')
   }
   return module[name]!(props)
+}
+
+/** Parent-module stubs: `<Hydrate>` marks where its children render, lazy chunks render their props. */
+export const hydrateParentStubs = {
+  '@tanstack/react-start': {
+    Hydrate: (props: { children: unknown }) => `[${props.children ?? ''}]`,
+  },
+  '@tanstack/react-start/hydration': {
+    idle: () => 'idle',
+    visible: () => 'visible',
+  },
+  '@tanstack/react-router': {
+    lazyRouteComponent: () => (props: Record<string, unknown>) =>
+      `lazy(${Object.keys(props)
+        .filter((name) => name !== 'children')
+        .sort()
+        .map((name) => `${name}=${String(props[name])}`)
+        .join(',')})`,
+  },
 }
