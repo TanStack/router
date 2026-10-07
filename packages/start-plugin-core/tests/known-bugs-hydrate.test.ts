@@ -10,8 +10,8 @@ import {
   getBoundaryIds,
   getChunkIds,
   hydrateParentStubs,
-  importSources,
   loadChunk,
+  parentModuleStubs,
   renderChunk,
 } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
@@ -39,9 +39,9 @@ const __jsx = (type, props, ...children) => {
 /**
  * Evaluates `code` compiled for the client once its `<Hydrate>` chunks have
  * loaded: each lazy chunk component renders the chunk export it loads.
- * Chunk imports of project modules without a stub are linked to the parent
- * module, so the chunk may share the parent's bindings however it imports
- * them. `beforeChunksLoad` runs app code between the two.
+ * Chunk imports of the parent module are linked to the evaluated parent, so
+ * the chunk may share the parent's bindings. `beforeChunksLoad` runs app code
+ * between the two.
  */
 async function loadClientModule(
   code: string,
@@ -74,14 +74,11 @@ async function loadClientModule(
   options.beforeChunksLoad?.(module)
   for (const chunk of chunks) {
     expect(await getModuleErrors(chunk)).toEqual([])
-    const parentLinks = importSources(chunk)
-      .filter((source) => !(source in stubs))
-      .map((source) => [source, module])
     Object.assign(
       chunkExports,
       await evaluateModule(
         chunk,
-        { ...stubs, ...Object.fromEntries(parentLinks) },
+        { ...stubs, ...(await parentModuleStubs(chunk, module)) },
         reactRuntime,
       ),
     )
