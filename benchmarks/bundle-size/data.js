@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791303232015,
+  "lastUpdate": 1791383087396,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "41898282+github-actions[bot]@users.noreply.github.com",
-            "name": "github-actions[bot]",
-            "username": "github-actions[bot]"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "996b9bee381c2eccf703d0ee27d09d9cb71b7ee0",
-          "message": "ci: Version Packages (#7561)",
-          "timestamp": "2026-06-06T10:45:35+02:00",
-          "tree_id": "d54be1369b5373406e56dc4a5ec773ec8eeba862",
-          "url": "https://github.com/TanStack/router/commit/996b9bee381c2eccf703d0ee27d09d9cb71b7ee0"
-        },
-        "date": 1780735695131,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89354,
-            "unit": "bytes",
-            "extra": "raw=280341; brotli=77715; initial_gzip=89213"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93274,
-            "unit": "bytes",
-            "extra": "raw=293028; brotli=81063; initial_gzip=93134"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36335,
-            "unit": "bytes",
-            "extra": "raw=108617; brotli=32735; initial_gzip=36207"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41519,
-            "unit": "bytes",
-            "extra": "raw=124200; brotli=37308; initial_gzip=41391"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54244,
-            "unit": "bytes",
-            "extra": "raw=153688; brotli=48796; initial_gzip=54110"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 60372,
-            "unit": "bytes",
-            "extra": "raw=172897; brotli=54081; initial_gzip=60239"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104325,
-            "unit": "bytes",
-            "extra": "raw=329818; brotli=90259; initial_gzip=104183"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105079,
-            "unit": "bytes",
-            "extra": "raw=331226; brotli=91035; initial_gzip=104203"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107816,
-            "unit": "bytes",
-            "extra": "raw=340376; brotli=93168; initial_gzip=107674"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 101980,
-            "unit": "bytes",
-            "extra": "raw=324175; brotli=87815; initial_gzip=101804"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 102387,
-            "unit": "bytes",
-            "extra": "raw=325134; brotli=88109; initial_gzip=102218"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105317,
-            "unit": "bytes",
-            "extra": "raw=334817; brotli=90523; initial_gzip=105141"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50786,
-            "unit": "bytes",
-            "extra": "raw=155790; brotli=44823; initial_gzip=50651"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 54125,
-            "unit": "bytes",
-            "extra": "raw=164022; brotli=47885; initial_gzip=50711"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56706,
-            "unit": "bytes",
-            "extra": "raw=173125; brotli=50006; initial_gzip=56576"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 72720,
-            "unit": "bytes",
-            "extra": "raw=212202; brotli=64357; initial_gzip=72587"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 76778,
-            "unit": "bytes",
-            "extra": "raw=225022; brotli=67888; initial_gzip=76645"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -25741,6 +25615,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/30fc108a5ebbc4eadd48439282bf1c27d55fbb94"
         },
         "date": 1791303230023,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85979,
+            "unit": "bytes",
+            "extra": "raw=267628; brotli=74942; initial_gzip=85838"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89627,
+            "unit": "bytes",
+            "extra": "raw=279789; brotli=78208; initial_gzip=89486"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34285,
+            "unit": "bytes",
+            "extra": "raw=98034; brotli=31063; initial_gzip=34159"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39322,
+            "unit": "bytes",
+            "extra": "raw=113190; brotli=35496; initial_gzip=39197"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50647,
+            "unit": "bytes",
+            "extra": "raw=139846; brotli=45903; initial_gzip=50521"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56396,
+            "unit": "bytes",
+            "extra": "raw=158594; brotli=50997; initial_gzip=56269"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99081,
+            "unit": "bytes",
+            "extra": "raw=309582; brotli=86095; initial_gzip=98942"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106707,
+            "unit": "bytes",
+            "extra": "raw=336821; brotli=92715; initial_gzip=106567"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99824,
+            "unit": "bytes",
+            "extra": "raw=310971; brotli=86824; initial_gzip=98964"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102331,
+            "unit": "bytes",
+            "extra": "raw=319590; brotli=88796; initial_gzip=102193"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102791,
+            "unit": "bytes",
+            "extra": "raw=320842; brotli=88770; initial_gzip=102617"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103212,
+            "unit": "bytes",
+            "extra": "raw=321818; brotli=89144; initial_gzip=103044"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 106117,
+            "unit": "bytes",
+            "extra": "raw=331210; brotli=91526; initial_gzip=105943"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47408,
+            "unit": "bytes",
+            "extra": "raw=138771; brotli=42271; initial_gzip=47279"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50523,
+            "unit": "bytes",
+            "extra": "raw=146321; brotli=45078; initial_gzip=47336"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52665,
+            "unit": "bytes",
+            "extra": "raw=154554; brotli=46687; initial_gzip=52536"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67052,
+            "unit": "bytes",
+            "extra": "raw=190492; brotli=59864; initial_gzip=66924"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70992,
+            "unit": "bytes",
+            "extra": "raw=203134; brotli=63230; initial_gzip=70865"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a641d859c92b97b9c084fdab4de42e82a69f6cb",
+          "message": "test: cover compiler output validity and edge cases for code splitting, Hydrate, server functions and the route generator (#8629)\n\n* test(router-plugin, start-plugin-core): cover compiler output regressions\n\nAdd engine-agnostic regression tests for compiler output found while\nreviewing the compiler migration (#8504). They only use the public\ncompiler entry points and validate emitted code with Vite's Oxc\ntransform/parser (TypeScript erased, parsed as a JS module with semantic\nchecks), so they run unchanged against any compiler implementation.\n\nrouter-plugin:\n- every emitted code-splitter module stays valid for re-exported imports,\n  partially exported destructuring and anonymous default exports\n- self-/mutually-referencing side effects stay in the reference module\n- namespace imports used by `import X = ns.X` and decorator placement\n  before `export` are preserved\n- React Refresh hoisting keeps closures in scope, hoists the root route\n  component, and declares hoisted components before use\n\nstart-plugin-core:\n- self-referencing user code survives client and server compilation\n- nested and switch-case createServerFn keep provider modules valid\n- aliased createClientOnlyFn re-exports are transformed in SSR\n- Hydrate split modules: parent/fallback-only bindings are removed, text\n  children render decoded entities, `'use client'` stays first\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test: require hoisting and declared bindings in compiler regression tests\n\n- The React Refresh ordering test now requires the inline pendingComponent\n  to be hoisted instead of passing when it stays inline, since main hoists it\n  and React Refresh needs a top-level binding.\n- The self-referencing side-effect tests also assert that each binding the\n  callbacks use is still declared. The module validator does not report\n  references to undeclared names. The Start variant now validates the module.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin, start-plugin-core, router-generator, react-start-rsc): cover compiler edge cases\n\nEngine-agnostic tests through public compiler entry points, passing on\nmain. They cover:\n\n- code-splitter module state shared with exported functions, `var`\n  declared inside top-level statements, long method chains, duplicate\n  split keys, split options that read `Route`, route options declared\n  in a variable, re-exports, type-only syntax, private class members,\n  and namespace JSX tags\n- the code-splitter plugin pipeline: analysis cache keys and eviction,\n  plugin-level `splitBehavior`, config `deleteNodes`, and the\n  non-split HMR plugin for Solid and Vue\n- the route generator transform with parenthesized call parts, and\n  byte-exact edits after a BOM or astral characters\n- the Start compiler: dev-mode server function ids, provider\n  directives, handler name versioning, provider export removal,\n  cross-module factory resolution, invalidation, and diagnostic\n  locations\n- Hydrate children with block-bodied callbacks, self-closing\n  boundaries, captures, split attributes, and the virtual module cache\n- import-protection exports, member-chain boundaries, source-mapped\n  locations, and executed denied-import rewrites\n- RSC CSS transform import shapes and argument unwrapping\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(start-plugin-core): port Next.js server actions fixtures to createServerFn\n\nTranslate the scenarios of Next.js's server-actions transform fixtures\n(crates/next-custom-transforms/tests/fixture/server-actions) to the\ncreateServerFn client, SSR caller and provider outputs: captured module\nbindings, shadowing, destructuring, handler forms, directives, export\nforms, non-ASCII names and client/server-only code side by side.\n\nThe destructuring default and computed-key cases pass on main and fail\nwith the Yuku compiler (#8504), which keeps every sibling of a live\ndestructuring and with it a server-only import in the client output.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin): port Next.js SSG and React Router route-chunk splitting scenarios\n\nTranslate edge cases from Next.js's SSG transform fixtures and React Router's\nroute-chunks / remove-exports tests into code-splitter coverage: imports used\nin JSX positions, shadowed names, transitive pruning of every declaration\nkind, destructurings and multi-declarator statements split across groups,\nmutually recursive shared helpers, nested-scope dependency analysis, helpers\nshared with the loader, top-level calls on imports and split chunk source\nmaps. All scenarios already behave correctly; these tests pin them.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(start-plugin-core, router-plugin): port Qwik optimizer extraction edge cases\n\nPort capture and extraction scenarios from the Qwik optimizer test suite\n(QwikDev/qwik, packages/optimizer/core/src/test.rs) to the Hydrate split\ntransform, server function extraction and route code splitting. All of\nthem pass with both the Babel and the Yuku compiler.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin, start-plugin-core): cover real-world compiler shapes\n\nAdds regression coverage derived from a differential audit of in-repo\nexamples/e2e apps and open-source TanStack Router/Start apps:\n\n- split chunks import exported route-file bindings instead of copying them\n- declarations and imports only referenced from TypeScript types survive\n  (classic JSX runtime React imports, side-effecting initializers)\n- TypeScript type and value exports sharing a name compile\n- file-level JSX pragmas stay in split chunks and Start compiler output\n- ambient declarations are not imported from the shared module\n- chained comparisons in plain JavaScript route files keep their operands\n- real-world route file names go through the code-splitter plugin pipeline\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin, start-plugin-core): port React Compiler fixture shapes\n\nWrap component bodies adapted from the React Compiler fixture corpus into\nroute files and Start modules:\n\n- split route components and Hydrate chunks render like the original for\n  labeled breaks, shadowing catch params and function names, destructuring\n  defaults, getters/computed keys, hoisted functions, optional call chains,\n  tagged templates and classes with static blocks/private fields\n- server function handlers that read a server-only import through unusual\n  syntax positions keep it off the client\n- unused locals with side-effectful initializers (hook calls) in shared route\n  modules and Hydrate chunks still run; these fail on the Yuku migration,\n  which removes them\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test: cover exported route variables in split chunks and JSX pragma forms\n\n- Split chunks import exported route-file variables (contexts, stores and\n  caches built from private bindings) from the route module instead of\n  redeclaring them.\n- The Start compiler keeps JSX pragmas in the Hydrate chunk, line-comment and\n  license-header forms, classic `@jsx` with `@jsxFrag`, and after a\n  `'use client'` directive.\n\nBoth pass on main and on #8504 after its fixes.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(start-plugin-core): port SolidStart directive and Waku allowServer edge cases\n\nTranslate SolidStart's \"use server\" directive compiler tests and helpers\n(type-only import specifiers, rejected server fn positions, captured\nthis/arguments/super/private members, id stability and opacity, Hydrate\nclosure captures) and Waku's allowServer transform tests (dependency\npruning, aliasing, default exports, untouched look-alikes, zero-argument\nfactories, trailing comments) into Start compiler coverage for React and\nSolid.\n\nThe import-alias namespace test passes on main and fails on the Yuku\ncompiler (#8504), which deletes the aliased namespace.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin): port React Refresh and solid-refresh scenarios to route HMR\n\nCovers which route component shapes React Refresh registers after the HMR\ntransforms (checked with Vite's Oxc React Refresh transform), hook\nsignatures, @refresh reset, generated-name collisions, and the module shape\nsolid-refresh expects (registrable components, @refresh reload/skip,\ntop-level createContext).\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin, start-plugin-core, react-start-rsc): port @vitejs/plugin-rsc transform edge cases\n\nPort scope, hoisting, export-shape, export * and directive scenarios from\n@vitejs/plugin-rsc's transform tests (vitejs/vite-plugin-react, MIT) to the\nStart compiler (server fn providers and callers, env-only functions, Hydrate\nchunks), the route code splitter and the RSC CSS transforms.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test: port babel-dead-code-elimination and Turbopack tree-shaker scenarios\n\nPort dead-code-elimination scenarios (pcattori/babel-dead-code-elimination)\nand Turbopack tree-shaker analyzer fixtures (vercel/next.js) to the code\nsplitter and the Start compiler: import specifier pruning, initially unused\ndeclarations and cycles, SCC removal, write-only bindings, nested patterns\nwith rests and defaults, empty parameter patterns, var declarations nested\nin top-level statements, import attributes, typeof references, enum IIFEs,\nshared mutable state and statement order in the provider.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin): share compiler regression test helpers\n\nThe regression suites each re-implemented the same plumbing. Move it into\n`tests/regression-helpers.ts`:\n\n- `compileRouteModules` (reference, virtual chunks and shared module, with\n  optional route HMR, Solid target or file name) and `expectValidModules`,\n  previously copied into 12 files\n- `buildAndRun`, the Vite build-and-run harness copied into 5 files\n- `createCodeSplitterTransforms` and `transformWithRouteHmrPlugin`, which\n  drive the bundler plugins the way a bundler does\n- `evaluateModule`, the JSX-to-text module evaluator copied into 3 files\n\nNo test is added, removed or renamed.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(start-plugin-core): share compiler regression test helpers\n\nThe regression suites each built their own `StartCompiler`, output compiler,\nStart runtime stubs and `<Hydrate>` chunk loader. Move them into\n`tests/regression-helpers.ts`:\n\n- `createStartCompiler`, `compileFor`, `compileCode` and `compileAll` (client,\n  SSR caller and provider outputs, validated), previously built in 10 files\n- `importModule`, `callProvider`, `importSources` and `settle`, with one\n  minimal Start runtime instead of four variants\n- `compileHydrate`, `getChunkParams`, `getChunkIds`, `loadChunk`,\n  `evaluateModule` and `renderChunk`, previously copied into 6 files\n\nNo test is added, removed or renamed.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(react-start-rsc): share the RSC CSS transform compile helper\n\nBoth RSC CSS transform regression suites defined the same compile helper\nand a copy of the module validator; move the helper into\n`tests/regression-helpers.ts` and reuse start-plugin-core's validator.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin): merge duplicated compiler regression tests\n\nRemove tests whose input shape and assertions another suite already covers,\nfolding any unique assertion into the surviving test:\n\n- code-splitter-real-world: the two \"split chunks share exported route-file\n  bindings\" compile checks duplicate code-splitter-exported-bindings (the\n  built-app check stays); \"file-level JSX pragmas\" duplicates the\n  @jsxImportSource cases of code-splitter-jsx-pragmas, which now also check\n  that Oxc selects the pragma's JSX runtime for every split chunk.\n- ported-react-compiler-fixtures: \"a catch parameter shadowing a module\n  binding\" duplicates the plugin-rsc \"next to a catch parameter of the same\n  name\" case, which now names both sources.\n- ported-nextjs-ssg: \"moves one declarator of a multi-declarator statement\n  into the split chunk\" duplicates the React Router \"plain declarators\" case,\n  which now also asserts where each declarator is declared.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(start-plugin-core): merge duplicated compiler regression tests\n\n- The SolidStart \"local types used by split children are not passed as\n  props\" Hydrate test duplicates the Qwik \"local types used by the children\n  are not captured as values\" test; the Qwik test now also covers JSX type\n  arguments and asserts that no type is passed as a prop.\n- start-compiler-edge-cases \"does not duplicate a directive the module\n  already has\" becomes a case of the plugin-rsc \"provider module directives\"\n  table, which also checks the prologue and module validity.\n- The single test of aliased-env-only-fns.test.ts moves to the\n  \"cross-module factory resolution\" tests of start-compiler-edge-cases, where\n  its output is also validated.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-generator): merge the parenthesized route call transform tests\n\ntransform-parenthesized.test.ts duplicated the `transform` harness of\ntransform-preservation.test.ts; move its tests there.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin): keep covering configs without the router plugin\n\nBefore the code-splitter transforms were shared, the real-world file-name\ntest resolved a Vite config that did not list the router plugin, which\ncovers the early return of the plugin-order check. Let the shared helper\ntake the config's plugins and keep that case.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-plugin): regroup compiler regression tests by behaviour\n\nDissolve the ported-* and code-splitter edge-case files into behaviour\nfiles (dead code, imports/exports, module state, pragmas, route options,\nscope), drop duplicate cases and vacuous assertions, and replace the five\nreal Vite builds with one.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(start-plugin-core): regroup compiler regression tests by behaviour\n\nDissolve the ported-* and start-compiler edge-case files into behaviour\nfiles (server fn caller dead code, declaration sites, exports and\ndirectives, handler scope, Hydrate captures, factories, user code kept),\ndrop duplicate cases and vacuous assertions, and compile through a single\nharness. The RSC external-transform scope cases move into compiler.test.ts,\nreplacing react-start-rsc's ported-vite-plugin-rsc.test.tsx.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(router-generator): move transform edge cases into transform.test.ts\n\nMerge the five parenthesized-call cases into one test next to the existing\nouter-parens test and fold the remaining preservation cases into\ntransform.test.ts, reusing its makeNode helper.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(react-start-rsc): move RSC CSS transform edge cases into rscCssTransform.test.tsx\n\nKeep the cases with unique coverage (the @tanstack/react-start-rsc import\nsource, transparent JSX wrappers, non-JSX arguments) next to the existing\ntests and drop the separate helper, which imported start-plugin-core tests.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test: keep regression tests valid once known compiler bugs are fixed\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test: share the build and React Refresh helpers\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n* test(start-plugin-core): link Hydrate chunks to their parent however a fix imports it\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-10-07T16:21:29+02:00",
+          "tree_id": "34af25d0f308e070ad10a7a311ecdbd2a1359a5b",
+          "url": "https://github.com/TanStack/router/commit/5a641d859c92b97b9c084fdab4de42e82a69f6cb"
+        },
+        "date": 1791383084664,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
