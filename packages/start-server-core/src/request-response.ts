@@ -226,7 +226,9 @@ export function getRequestHost(opts?: { xForwardedHost?: boolean }) {
  *
  * If `xForwardedHost` is `true`, it will use the `x-forwarded-host` header if it exists.
  *
- * If `xForwardedProto` is `false`, it will not use the `x-forwarded-proto` header.
+ * If `xForwardedProto` is `true`, it will use the `x-forwarded-proto` header if it exists.
+ *
+ * Note: Make sure that these headers can be trusted (your application running behind a CDN or reverse proxy) before enabling.
  */
 export function getRequestUrl(opts?: {
   xForwardedHost?: boolean
@@ -238,7 +240,9 @@ export function getRequestUrl(opts?: {
 /**
  * Get the request protocol.
  *
- * If `x-forwarded-proto` header is set to "https", it will return "https". You can disable this behavior by setting `xForwardedProto` to `false`.
+ * If `xForwardedProto` is `true`, it will use the `x-forwarded-proto` header if it exists.
+ *
+ * Note: Make sure that this header can be trusted (your application running behind a CDN or reverse proxy) before enabling.
  *
  * If protocol cannot be determined, it will default to "http".
  */
