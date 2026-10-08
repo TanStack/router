@@ -8,6 +8,7 @@ import {
   head,
   importSources,
   importedNames,
+  loadRouteModules,
 } from './regression-helpers'
 
 describe('route options', () => {
@@ -43,6 +44,35 @@ export const Route = createFileRoute('/posts')(options)
 `)
     expect(modules['virtual component']).toContain('last-marker')
     expect(modules['virtual component']).not.toContain('first-marker')
+    await expectValidModules(modules)
+  })
+})
+
+describe('route options written as methods or accessors', () => {
+  // Only property values are split; splitting method shorthands is proposed in
+  // https://github.com/TanStack/router/pull/8459.
+  it('stay in the route module and keep working, while arrow options are split', async () => {
+    const { modules, options, chunks } =
+      await loadRouteModules(`${head}const state = { count: 0 }
+export const Route = createFileRoute('/')({
+  loader() {
+    return state
+  },
+  get component() {
+    return () => <div>{state.count}</div>
+  },
+  set component(_value) {
+    state.count++
+  },
+  errorComponent: () => <div>{state.count}</div>,
+})`)
+    expect(Object.keys(chunks)).toEqual(['errorComponent'])
+    options.component = null
+    expect([
+      options.loader().count,
+      options.component(),
+      chunks.errorComponent!.errorComponent(),
+    ]).toEqual([1, '<div>1</div>', '<div>1</div>'])
     await expectValidModules(modules)
   })
 })
