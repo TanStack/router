@@ -195,24 +195,22 @@ describe('Hydrate compiler transform fixtures', async () => {
     ).toHaveLength(1)
   })
 
-  test.each(['Local', '_Local', '$Local', 'ÉLocal', '组件'])(
-    'retains captured local component %s and values across extraction',
-    async (componentName) => {
+  test('retains captured local components and values across extraction', async () => {
       const code = `
       import { Hydrate } from '@tanstack/react-start'
       export function Page({ name }) {
         const count = 1
-        const ${componentName} = () => <b>{name}</b>
-        return <Hydrate><${componentName} count={count}/><span>{name}</span></Hydrate>
+        const Local = () => <b>{name}</b>
+        return <Hydrate><Local count={count}/><span>{name}</span></Hydrate>
       }
     `
       const id = fixtureId('captured.tsx')
       const compiled = compile({ env: 'client', code, id })!
-      expect(compiled.code).toContain(`${componentName}={${componentName}}`)
+      expect(compiled.code).toContain('Local={Local}')
       expect(compiled.code).toContain('count={count}')
       expect(compiled.code).toContain('name={name}')
       expect(compiled.code).toContain('const count = 1')
-      expect(compiled.code).toContain(`const ${componentName}`)
+      expect(compiled.code).toContain('const Local')
       const loaded = await loadVirtualHydrateModule({
         code,
         id: virtualHydrateId(id, compiled.boundaries[0]!),
@@ -221,7 +219,7 @@ describe('Hydrate compiler transform fixtures', async () => {
       expect(loaded).toBeTruthy()
       const output = analyzeModule({ code: loaded!.code })
       expect(output.rootScope.find('Page')).toBeNull()
-      const capturedNames = [componentName, 'count', 'name'].sort()
+      const capturedNames = ['Local', 'count', 'name']
       const capturedReferences = new Set<string>()
       output.walk({
         enter(node) {
@@ -238,8 +236,7 @@ describe('Hydrate compiler transform fixtures', async () => {
           capturedNames.includes(reference.name),
         ),
       ).toHaveLength(0)
-    },
-  )
+  })
 
   test('should extract virtual modules and keep nested ids stable', async () => {
     const filename = 'hydrateWhenNested.tsx'

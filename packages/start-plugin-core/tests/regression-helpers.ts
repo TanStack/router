@@ -398,7 +398,9 @@ export function getChunkParams(chunk: string) {
     components.find(([, name]) => /^H\d+$/.test(name!)) ??
     (components.length === 1 ? components[0] : undefined)
   const params = component?.[2] ?? ''
-  return [...params.matchAll(/[\w$]+/g)].map(([name]) => name).sort()
+  return [...params.matchAll(/[\p{L}\p{N}_$]+/gu)]
+    .map(([name]) => name)
+    .sort()
 }
 
 /**

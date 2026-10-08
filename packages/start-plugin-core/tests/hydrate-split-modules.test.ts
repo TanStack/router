@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import {
   compileCode,
+  compileErrorMessage,
   compileFirstChunk,
   compileHydrate,
   evaluateHydrateParent,
@@ -16,6 +17,7 @@ import {
   renderChunk,
 } from './regression-helpers'
 import { declarationOf, getModuleErrors } from './validate-module'
+import type { ModuleStub } from './regression-helpers'
 
 // On the client `<Hydrate>` children move into a lazily loaded chunk module
 // and the parent renders the chunk component in their place; on the server
@@ -23,6 +25,117 @@ import { declarationOf, getModuleErrors } from './validate-module'
 // Both modules must stay valid and behave like the original source.
 
 const head = `import { Hydrate } from '@tanstack/react-start'\n`
+
+/**
+ * JSX runtime of the evaluated modules: intrinsic elements render as tags and,
+ * like React, components never receive `key` (nor `ref` before React 19).
+ */
+const reactRuntime = `const __Fragment = Symbol('Fragment')
+const __jsx = (type, props, ...children) => {
+  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
+  if (type === __Fragment) return text
+  if (typeof type === 'function') {
+    const { key, ref, ...rest } = props ?? {}
+    return type(children.length ? { ...rest, children: text } : rest)
+  }
+  if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
+  return '<' + type + '>' + text + '</' + type + '>'
+}
+`
+
+/**
+ * Evaluates `code` compiled for the client once its `<Hydrate>` chunks have
+ * loaded: each lazy chunk component renders the chunk export it loads, and
+ * the modules are linked like a bundler would (`evaluateHydrateParent`).
+ * `beforeChunksLoad` runs app code between the two.
+ */
+async function loadClientModule(
+  code: string,
+  options: {
+    stubs?: Record<string, ModuleStub>
+    beforeChunksLoad?: (module: Record<string, any>) => void
+  } = {},
+) {
+  const { parent, chunks, plugin } = await compileHydrate('client', code)
+  const lazyChunks: Array<{ name: string; rendered: boolean }> = []
+  const chunkExports: Record<string, (props: unknown) => unknown> = {}
+  const userStubs = options.stubs ?? {}
+  const stubs: Record<string, ModuleStub> = {
+    ...hydrateParentStubs,
+    ...userStubs,
+    '@tanstack/react-router': {
+      ...(userStubs['@tanstack/react-router'] as Record<string, unknown>),
+      lazyRouteComponent: (_load: unknown, name = 'default') => {
+        const lazyChunk = { name, rendered: false }
+        lazyChunks.push(lazyChunk)
+        return (props: unknown) => {
+          lazyChunk.rendered = true
+          return chunkExports[name]!(props)
+        }
+      },
+    },
+  }
+  expect(await getModuleErrors(parent)).toEqual([])
+  const { module, parentModuleStubs } = await evaluateHydrateParent(
+    plugin,
+    parent,
+    stubs,
+    reactRuntime,
+  )
+  options.beforeChunksLoad?.(module)
+  for (const chunk of chunks) {
+    expect(await getModuleErrors(chunk)).toEqual([])
+    Object.assign(
+      chunkExports,
+      await evaluateModule(
+        chunk,
+        { ...stubs, ...(await parentModuleStubs(chunk)) },
+        reactRuntime,
+      ),
+    )
+  }
+  return { module, lazyChunks }
+}
+
+describe('harness controls', () => {
+  test('client: loadClientModule renders every boundary through its lazy chunk', async () => {
+    const { module, lazyChunks } =
+      await loadClientModule(`${head}const helper = () => '!'
+export function Page() {
+  const label = 'hi'
+  return <><Hydrate><p>{label}{helper()}</p></Hydrate><Hydrate><b>two</b></Hydrate></>
+}`)
+    expect(module.Page()).toBe('[<p>hi!</p>][<b>two</b>]')
+    expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true, true])
+  })
+
+  test('client: loadClientModule links stubs and runs app code before the chunks load', async () => {
+    const events: Array<string> = []
+    const { module } = await loadClientModule(
+      `${head}import { Link } from '@tanstack/react-router'
+import { label } from './label'
+export function Page() {
+  return <Hydrate><p><Link />{label()}</p></Hydrate>
+}`,
+      {
+        stubs: {
+          // Merged with the lazy chunk loader the harness provides.
+          '@tanstack/react-router': { Link: () => 'link ' },
+          './label': {
+            get label() {
+              events.push('label linked')
+              return () => 'stubbed'
+            },
+          },
+        },
+        beforeChunksLoad: (parent) =>
+          events.push(`app code with ${Object.keys(parent).join()}`),
+      },
+    )
+    expect(module.Page()).toBe('[<p>link stubbed</p>]')
+    expect(events).toEqual(['app code with Page', 'label linked'])
+  })
+})
 
 describe('the parent module', () => {
   const widgetPage = `${head}import { visible } from '@tanstack/react-start/hydration'
@@ -59,26 +172,40 @@ export function Page() {
     expect(chunks[0]).toMatch(/^\s*['"]use client['"]/)
   })
 
-  test('client: a self-closing Hydrate with a children prop renders nothing next to its boundary', async () => {
-    const { parent } = await compileHydrate(
-      'client',
-      `${head}import { idle } from '@tanstack/react-start/hydration'
+  // Children passed as props split like JSX children, or stay in place when
+  // props only provide them at runtime; either way they render once, without
+  // a chunk that never renders.
+  test.each([
+    {
+      name: 'a spread on an element without children',
+      code: `export function Page(props) {
+  return <Hydrate {...props}></Hydrate>
+}`,
+      props: { children: 'spread' },
+      html: '[spread]',
+    },
+    {
+      name: 'a children prop of a self-closing element',
+      code: `import { idle } from '@tanstack/react-start/hydration'
 import { Chart } from './chart'
 export function Page() {
-  return <section><Hydrate when={idle()} children={<Chart />} /></section>
+  return <Hydrate when={idle()} children={<Chart />} />
 }`,
-    )
-    expect(await getModuleErrors(parent)).toEqual([])
-    const module = await evaluateModule(parent, {
-      ...hydrateParentStubs,
-      './chart': { Chart: () => 'chart' },
-    })
-    // Whether the children prop renders inline or from the chunk, nothing
-    // may render next to the boundary.
-    expect(module.Page()).toMatch(
-      /^<section>\[(?:chart|lazy\(\))\]<\/section>$/,
-    )
-  })
+      props: {},
+      html: '[chart]',
+    },
+  ])(
+    'client: children passed through $name render without unused chunks',
+    async ({ code, props, html }) => {
+      const { module, lazyChunks } = await loadClientModule(`${head}${code}`, {
+        stubs: { './chart': { Chart: () => 'chart' } },
+      })
+      expect({
+        html: module.Page(props),
+        unusedChunks: lazyChunks.filter((chunk) => !chunk.rendered).length,
+      }).toEqual({ html, unusedChunks: 0 })
+    },
+  )
 
   test('client: a stale h attribute is replaced by the generated boundary id', async () => {
     const { parent } = await compileHydrate(
@@ -397,6 +524,57 @@ const __jsx = (type, props) => JSON.stringify(props)
     expect(getChunkComponent(module)({})).toBe(expected.H0())
   })
 
+  // Source: Qwik optimizer example_exports, example_ts_enums
+  test.each([
+    {
+      name: 'exported declarations of every form',
+      code: `export const [a, { b }] = ['a', { b: 'b' }]
+const exp1 = 'e1'
+const internal = 'i'
+export { exp1, internal as expr2 }
+export function foo() { return 'foo' }
+export class Bar { static id = 'bar' }
+export default function DefaultFn() { return 'default' }
+export function Page() {
+  return <Hydrate><p>{[a, b, exp1, internal, foo(), Bar.id, DefaultFn()].join('|')}</p></Hydrate>
+}`,
+      rendered: '<p>a|b|e1|i|foo|bar|default</p>',
+    },
+    {
+      name: 'TypeScript enums and namespaces',
+      code: `export enum Tone { Loud = 'LOUD' }
+namespace Labels { export const quiet = 'quiet' }
+export function Page() {
+  return <Hydrate><p>{Tone.Loud + ':' + Labels.quiet}</p></Hydrate>
+}`,
+      rendered: '<p>LOUD:quiet</p>',
+    },
+  ])(
+    'client: $name used by the children reach the chunk',
+    async ({ code, rendered }) => {
+      // Known limitation: the chunk declares its own copy of these module
+      // declarations, so the parent and the chunk do not share class
+      // identity or module state, and initializers run twice. Only the
+      // rendered output is asserted here.
+      const { chunks } = await compileHydrate('client', `${head}${code}`)
+      expect(await getModuleErrors(chunks[0]!)).toEqual([])
+      expect(await renderChunk(chunks[0]!)).toBe(rendered)
+    },
+  )
+
+  // Source: Qwik optimizer example_use_optimization (use* calls inside the
+  // extracted scope)
+  test('client: an optional hook call in the children is rejected', async () => {
+    const error = await compileHydrate(
+      'client',
+      `import { useId } from 'react'
+${head}export function Page() {
+  return <Hydrate><p id={useId?.()}>x</p></Hydrate>
+}`,
+    ).catch((caught: unknown) => caught)
+    expect(compileErrorMessage(error)).toMatch(/hook/i)
+  })
+
   // Source: Qwik optimizer example_default_export
   test('client: an anonymous default-exported component splits its boundary', async () => {
     const { parent, chunks } = await compileHydrate(
@@ -430,19 +608,32 @@ export function Page() {
     ).toBe('<p>A|d|{"extra":"x"}</p>')
   })
 
-  // Source: Qwik optimizer should_preserve_let_when_migrated_into_segment
-  test('client: a module-level let used only by the children stays mutable', async () => {
-    const { chunks } = await compileHydrate(
-      'client',
-      `${head}let renders = 0
+  // Source: Qwik optimizer should_preserve_let_when_migrated_into_segment;
+  // React Compiler fixture should-bailout-without-compilation-annotation-mode.js
+  test.each([
+    { name: 'read and written', update: '{++renders}', rendered: ['1', '2'] },
+    {
+      name: 'only written',
+      update: `{(() => { renders = 'set' })()}`,
+      rendered: ['', ''],
+    },
+  ])(
+    'client: a module-level let only the children use stays mutable when $name',
+    async ({ update, rendered }) => {
+      const { chunks } = await compileHydrate(
+        'client',
+        `${head}let renders = 0
 export function Page() {
-  return <Hydrate><p>{++renders}</p></Hydrate>
+  return <Hydrate><p>${update}</p></Hydrate>
 }`,
-    )
-    const component = getChunkComponent(await evaluateModule(chunks[0]!))
-    expect(component({})).toBe('<p>1</p>')
-    expect(component({})).toBe('<p>2</p>')
-  })
+      )
+      expect(await getModuleErrors(chunks[0]!)).toEqual([])
+      const component = getChunkComponent(await evaluateModule(chunks[0]!))
+      expect([component({}), component({})]).toEqual(
+        rendered.map((text) => `<p>${text}</p>`),
+      )
+    },
+  )
 
   // Source: Qwik optimizer should_keep_non_migrated_binding_from_shared_destructuring_declarator
   // (+ _array_destructuring_declarator, _with_rest)
