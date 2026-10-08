@@ -5,6 +5,7 @@ import {
   compileErrorMessage,
   compileFirstChunk,
   compileHydrate,
+  directivePrologue,
   evaluateHydrateParent,
   evaluateModule,
   getBoundaryIds,
@@ -159,17 +160,18 @@ export function Page() {
     expect(parent).not.toContain('FallbackPane')
   })
 
-  test("client: 'use client' stays first in the parent module and the split chunk", async () => {
+  test("client: the directive prologue stays first in the parent module and 'use client' in the split chunk", async () => {
     const { parent, chunks } = await compileHydrate(
       'client',
       `'use client'
+'use strict'
 ${head}import { Chart } from './chart'
 export function Page() {
   return <Hydrate><Chart /></Hydrate>
 }`,
     )
-    expect(parent).toMatch(/^\s*['"]use client['"]/)
-    expect(chunks[0]).toMatch(/^\s*['"]use client['"]/)
+    expect(directivePrologue(parent)).toEqual(['use client', 'use strict'])
+    expect(directivePrologue(chunks[0]!)[0]).toBe('use client')
   })
 
   // Children passed as props split like JSX children, or stay in place when
@@ -193,6 +195,19 @@ export function Page() {
 }`,
       props: {},
       html: '[chart]',
+    },
+    {
+      // A string children prop is left in place, while the same text as JSX
+      // children (`<Hydrate>text</Hydrate>`) is split like any JSX children
+      // (see the text-only child tests): the compiler only moves a children
+      // prop holding an expression into the JSX children. Plain text has
+      // nothing to hydrate, so both render the same.
+      name: 'a string children prop',
+      code: `export function Page() {
+  return <Hydrate children="text" />
+}`,
+      props: {},
+      html: '[text]',
     },
   ])(
     'client: children passed through $name render without unused chunks',
@@ -402,26 +417,36 @@ export function Page() {
 })
 
 describe('the split chunk', () => {
+  // The server renders the children as JSX text.
   test.each([
     { name: 'entities', text: '&amp; &#38; &#x26;', rendered: '& & &' },
+    {
+      name: 'numeric entities',
+      text: '&copy; &#169; &#xA9;',
+      rendered: '© © ©',
+    },
     {
       name: 'multi-line text with entities',
       text: '\n      Fish &amp;\n      Chips &copy;\n    ',
       rendered: 'Fish & Chips ©',
     },
+    {
+      name: 'lines with trailing whitespace',
+      text: '\n      first line  \n      second line\n    ',
+      rendered: 'first line second line',
+    },
   ])(
     'client: a text-only child renders like JSX text: $name',
     async ({ text, rendered }) => {
+      const jsx = await evaluateModule(`export const text = <>${text}</>`)
+      expect(jsx.text).toBe(rendered)
       const { chunks } = await compileHydrate(
         'client',
         `${head}export function Page() {
   return <Hydrate>${text}</Hydrate>
 }`,
       )
-      // Whitespace collapsing aside, the text must render like the
-      // server-rendered JSX text.
-      const output = await renderChunk(chunks[0]!)
-      expect(output.replace(/\s+/g, ' ').trim()).toBe(rendered)
+      expect(await renderChunk(chunks[0]!)).toBe(rendered)
     },
   )
 
@@ -430,23 +455,34 @@ describe('the split chunk', () => {
       'client',
       `${head}const letters = ['a', 'b']
 export function Page() {
-  return <Hydrate><ul>{letters.map((letter) => { const upper = letter.toUpperCase(); return <li>{upper}</li> })}</ul></Hydrate>
+  return <Hydrate><ul onClick={() => { return 'click' }}>{letters.map((letter) => { const upper = letter.toUpperCase(); return <li>{upper}</li> })}{(function () { return 'iife' })()}</ul></Hydrate>
 }`,
     )
     expect(await getModuleErrors(chunks[0]!)).toEqual([])
-    expect(await renderChunk(chunks[0]!)).toBe('<ul><li>A</li><li>B</li></ul>')
+    // Render the click handler's result next to the element.
+    const runtime = `const __Fragment = Symbol('Fragment')
+const __jsx = (type, props, ...children) => {
+  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
+  const click = props?.onClick ? '(' + props.onClick() + ')' : ''
+  return '<' + type + '>' + click + text + '</' + type + '>'
+}
+`
+    const module = await evaluateModule(chunks[0]!, {}, runtime)
+    expect(getChunkComponent(module)({})).toBe(
+      '<ul>(click)<li>A</li><li>B</li>iife</ul>',
+    )
   })
 
   // Leaving such a boundary unsplit is valid too.
-  test('client: empty and comment-only boundaries load chunks that render nothing', async () => {
+  test('client: empty, self-closing and comment-only boundaries load chunks that render nothing', async () => {
     const { parent, chunks } = await compileHydrate(
       'client',
       `${head}export function Page() {
-  return <div><Hydrate></Hydrate><Hydrate>{/* nothing */}</Hydrate></div>
+  return <div><Hydrate></Hydrate><Hydrate /><Hydrate>{/* nothing */}</Hydrate></div>
 }`,
     )
     expect(await getModuleErrors(parent)).toEqual([])
-    expect(chunks.length).toBeLessThanOrEqual(2)
+    expect(chunks.length).toBeLessThanOrEqual(3)
     for (const chunk of chunks) {
       expect(await getModuleErrors(chunk)).toEqual([])
       expect(await renderChunk(chunk)).toBeNull()

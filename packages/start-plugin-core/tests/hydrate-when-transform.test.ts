@@ -9,10 +9,8 @@ import {
   parseExpression,
   removeUnusedBindings,
 } from '@tanstack/router-utils'
-import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
-import { StartCompiler } from '../src/start-compiler/compiler'
 import type { CompileStartFrameworkOptions } from '../src/types'
 
 const root = '/repo'
@@ -67,6 +65,14 @@ function withSourceHash(id: string, sourceHash: string) {
   return `${id.slice(0, separatorIndex + 1)}${sourceHash}`
 }
 
+/**
+ * Runs only the Hydrate plugin's `transformAst` on a fresh AST, with a minimal
+ * editor and its own unused-binding cleanup, bypassing `StartCompiler` (no
+ * Start factories, generated-import insertion or file pragmas). It unit-tests
+ * the transform's output; tests of what compiled modules do belong in
+ * hydrate-split-modules.test.ts and hydrate-captures.test.ts, which compile
+ * through the real pipeline (`compileHydrate` in regression-helpers.ts).
+ */
 function compileHydrate(options: {
   code: string
   id: string
@@ -737,216 +743,4 @@ const props = { when: true, fallback: <p>server-fallback</p> }`,
       loadVirtualHydrateModule({ code, id: mismatchedId, root }),
     ).toBeNull()
   })
-})
-
-describe('Hydrate through the StartCompiler pipeline', () => {
-  function createPipeline(env: 'client' | 'server') {
-    const plugin = createHydrateCompilerPlugin()
-    const compiler = new StartCompiler({
-      env,
-      envName: env,
-      root,
-      framework: 'react',
-      providerEnvName: 'ssr',
-      lookupKinds: new Set(),
-      lookupConfigurations: [],
-      getKnownServerFns: () => ({}),
-      loadModule: async () => {},
-      resolveId: async (source) => source,
-      mode: 'build',
-      compilerPlugins: [plugin],
-    })
-    return { plugin, compiler }
-  }
-
-  test('removes bindings orphaned by the Hydrate transform', async () => {
-    const code = `import { Hydrate } from '@tanstack/react-start'
-import { Chart, FallbackPane, useLabel } from './widgets'
-import { formatValue } from './format'
-
-const chartTitle = formatValue('Revenue')
-
-export function Page() {
-  const label = useLabel()
-  return (
-    <Hydrate fallback={<FallbackPane />}>
-      <Chart title={chartTitle} label={label} />
-    </Hydrate>
-  )
-}
-`
-    const client = await createPipeline('client').compiler.compile({
-      code,
-      id,
-    })
-    expect(client?.code).toContain(
-      `import { FallbackPane, useLabel } from './widgets'`,
-    )
-    expect(client?.code).toContain('label={label}')
-    expect(client?.code).not.toContain('./format')
-    expect(client?.code).not.toContain('chartTitle')
-    expect(client?.code).not.toMatch(/\bChart\b/)
-
-    const server = await createPipeline('server').compiler.compile({
-      code,
-      id,
-    })
-    expect(server?.code).toContain(
-      `import { Chart, useLabel } from './widgets'`,
-    )
-    expect(server?.code).toContain(`import { formatValue } from './format'`)
-    expect(server?.code).not.toContain('FallbackPane')
-  })
-
-  test('keeps the directive prologue first in the parent and split chunk', async () => {
-    const { plugin, compiler } = createPipeline('client')
-    const parent = await compiler.compile({
-      code: `'use client'
-'use strict'
-import { Hydrate } from '@tanstack/react-start'
-import { Chart } from './chart'
-export function Page() { return <Hydrate><Chart /></Hydrate> }
-`,
-      id,
-    })
-    expect(parent?.code).toMatch(/^'use client';\s*'use strict';\s*import /)
-    const virtualId = /import\("([^"]+)"\)/.exec(parent!.code)![1]!
-    const chunk = plugin.loadVirtualModule!({
-      id: virtualId,
-      root,
-      env: 'client',
-      envName: 'client',
-      code: undefined,
-    }) as { code: string }
-    expect(chunk.code).toMatch(/^'use client';\s*'use strict';\s*import /)
-  })
-
-  async function compileWithChunks(env: 'client' | 'server', code: string) {
-    const { plugin, compiler } = createPipeline(env)
-    const parent = (await compiler.compile({ code, id }))!.code
-    const chunks = [...parent.matchAll(/import\("([^"]+)"\)/g)].map(
-      ([, virtualId]) =>
-        (
-          plugin.loadVirtualModule!({
-            id: virtualId!,
-            root,
-            env,
-            envName: env,
-            code: undefined,
-          }) as { code: string }
-        ).code,
-    )
-    // Throws on invalid syntax, like the bundler would.
-    for (const module of [parent, ...chunks]) {
-      await transformWithOxc(module, id, { jsx: { runtime: 'automatic' } })
-    }
-    return { parent, chunks }
-  }
-
-  test('keeps return statements nested in split children', async () => {
-    const { chunks } = await compileWithChunks(
-      'client',
-      `import { Hydrate } from '@tanstack/react-start'
-export function Page({ items }) {
-  return (
-    <Hydrate>
-      <ul onClick={() => { return 'click' }}>
-        {items.map((item) => { return <li>{item}</li> })}
-        {(function () { return 'iife' })()}
-      </ul>
-    </Hydrate>
-  )
-}
-`,
-    )
-    expect(chunks).toHaveLength(1)
-    expect(chunks[0]).toMatch(
-      /export function H0\(\{ items \}\) \{\s*return <ul/,
-    )
-    expect(chunks[0]).toContain(`return 'click'`)
-    expect(chunks[0]).toContain('return <li>{item}</li>')
-    expect(chunks[0]).toContain(`return 'iife'`)
-  })
-
-  test('splits a children prop like JSX children', async () => {
-    const code = `import { Hydrate } from '@tanstack/react-start'
-import { Chart } from './chart'
-export function Page({ title }) {
-  return <section><Hydrate when={true} children={<Chart title={title} />} /></section>
-}
-`
-    const client = await compileWithChunks('client', code)
-    expect(client.parent).not.toMatch(/\bChart\b/)
-    expect(client.parent).toMatch(
-      /<section><Hydrate when=\{true\} h="[^"]+">\{<_H0 title=\{title\} \/>\}<\/Hydrate><\/section>/,
-    )
-    expect(client.chunks).toHaveLength(1)
-    expect(client.chunks[0]).toContain('return <Chart title={title} />')
-
-    const server = await compileWithChunks('server', code)
-    expect(server.parent).toMatch(
-      /<Hydrate when=\{true\} h="[^"]+">\{<Chart title=\{title\} \/>\}<\/Hydrate>/,
-    )
-  })
-
-  test('keeps children that props may provide in place', async () => {
-    const { parent, chunks } = await compileWithChunks(
-      'client',
-      `import { Hydrate } from '@tanstack/react-start'
-export function Page(props) {
-  return <section><Hydrate {...props} /><Hydrate children="text" /></section>
-}
-`,
-    )
-    expect(chunks).toHaveLength(0)
-    expect(parent).toMatch(/<Hydrate \{\.\.\.props\} h="0_[^"]+" \/>/)
-    expect(parent).toMatch(/<Hydrate children="text" h="1_[^"]+" \/>/)
-  })
-
-  test('splits an empty self-closing boundary into a valid element', async () => {
-    const { parent, chunks } = await compileWithChunks(
-      'client',
-      `import { Hydrate } from '@tanstack/react-start'
-export function Page() { return <Hydrate /> }
-`,
-    )
-    expect(parent).toMatch(/<Hydrate h="[^"]+">\{<_H0 \/>\}<\/Hydrate>/)
-    expect(chunks[0]).toMatch(/return null/)
-  })
-
-  test.each([
-    ['entities', 'Fish &amp; Chips &copy; &#169; &#xA9;', 'Fish & Chips © © ©'],
-    [
-      'multiline text',
-      '\n      first line  \n      second line\n    ',
-      'first line second line',
-    ],
-  ])(
-    'renders a text-only split child with JSX %s semantics',
-    async (_, text, expected) => {
-      const { plugin, compiler } = createPipeline('client')
-      const parent = await compiler.compile({
-        code: `import { Hydrate } from '@tanstack/react-start'
-export function Page() { return <Hydrate>${text}</Hydrate> }
-`,
-        id,
-      })
-      const virtualId = /import\("([^"]+)"\)/.exec(parent!.code)![1]!
-      const chunk = plugin.loadVirtualModule!({
-        id: virtualId,
-        root,
-        env: 'client',
-        envName: 'client',
-        code: undefined,
-      }) as { code: string }
-      const compiled = await transformWithOxc(chunk.code, id, {
-        jsx: { runtime: 'classic' },
-      })
-      const literal =
-        /React\.createElement\(React\.Fragment, null, ("[^"]*")\)/.exec(
-          compiled.code,
-        )?.[1]
-      expect(literal && JSON.parse(literal)).toBe(expected)
-    },
-  )
 })

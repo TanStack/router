@@ -67,6 +67,14 @@ function getHydrateBoundariesFromCode(code: string): Array<HydrateBoundary> {
   return boundaries.sort((a, b) => a.index - b.index)
 }
 
+/**
+ * Runs only the Hydrate plugin's `transformAst` on a fresh AST, with a minimal
+ * editor and its own unused-binding cleanup, bypassing `StartCompiler` (no
+ * Start factories, generated-import insertion or file pragmas). It unit-tests
+ * the transform's output; tests of what compiled modules do belong in
+ * hydrate-split-modules.test.ts and hydrate-captures.test.ts, which compile
+ * through the real pipeline (`compileHydrate` in regression-helpers.ts).
+ */
 function compile(opts: {
   env: 'client' | 'server'
   code: string

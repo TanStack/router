@@ -478,6 +478,11 @@ describe('compiler handles external import transforms', () => {
     },
   )
 
+  // A call named like a configured transform but imported from another module
+  // is ruled out by its import alone, so that module is never resolved or
+  // loaded. Loading it would fail the build: a virtual runtime module (here
+  // `\0`-prefixed, like the RSC runtime) has no file behind it, and the
+  // Rsbuild host loads compiler dependencies from the input file system.
   test.each([
     'export const component = renderThing(<Card />)',
     'export function component() { return renderThing(<Card />) }',
