@@ -136,6 +136,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       if (
         process.env.NODE_ENV !== 'production' &&
         process.env.NODE_ENV !== 'test' &&
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         !(isServer ?? typeof window === 'undefined') &&
         !(extractedFn as any)?.[TSS_SERVER_FUNCTION]
       ) {
