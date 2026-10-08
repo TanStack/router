@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildAndRun,
   compileRouteModules,
   declarationOf,
+  evaluateModule,
   expectValidModules,
   head,
   importSources,
@@ -43,6 +45,105 @@ export const Route = createFileRoute('/posts')(options)
     expect(modules['virtual component']).not.toContain('first-marker')
     await expectValidModules(modules)
   })
+})
+
+describe('split loaders', () => {
+  /** Loads `/` with a real router and returns each match's loader data. */
+  const routerEntry = `import { createMemoryHistory, createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export async function load() {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.load()
+  return router.state.matches.map((match) => match.loaderData ?? null)
+}`
+
+  function loadWithSplitLoader(loader: string) {
+    return buildAndRun(
+      `${head}export const Route = createFileRoute('/')({
+  loader: ${loader},
+  component: () => <p>index</p>,
+})`,
+      `return await entry.load()`,
+      {
+        files: { 'entry.ts': routerEntry },
+        groupings: [['loader'], ['component']],
+      },
+    )
+  }
+
+  it('load route data', async () => {
+    expect(await loadWithSplitLoader(`() => 'loaded'`)).toEqual([
+      null,
+      'loaded',
+    ])
+  }, 30_000)
+
+  it('load route data in object form', async () => {
+    expect(
+      await loadWithSplitLoader(
+        `{ handler: () => 'loaded', staleReloadMode: 'blocking' }`,
+      ),
+    ).toEqual([null, 'loaded'])
+  }, 30_000)
+
+  // The router reads the other keys of a loader object (`staleReloadMode`)
+  // from the route options when the route loads.
+  it('move only the handler of a loader in object form into their chunk', async () => {
+    const { modules, sharedBindings } = compileRouteModules(
+      `${head}import { fetchPosts } from './api'
+import { init } from './state'
+const mode = init('blocking')
+export const Route = createFileRoute('/')({
+  loader: {
+    handler: () => [mode, fetchPosts()],
+    staleReloadMode: mode,
+  },
+  component: () => <p>index</p>,
+})
+`,
+      { groupings: [['loader'], ['component']] },
+    )
+    // `mode` is read by the handler and by the route module: initialized once
+    expect(sharedBindings).toEqual(['mode'])
+    expect(importSources(modules.reference!)).not.toContain('./api')
+    expect(modules.reference).toContain('staleReloadMode')
+    const chunk = await evaluateModule(modules['virtual loader']!, {
+      './api': { fetchPosts: () => 'posts' },
+      'route.tsx?tsr-shared=1': { mode: 'blocking' },
+    })
+    expect(chunk.loader!()).toEqual(['blocking', 'posts'])
+    await expectValidModules(modules)
+  })
+
+  it.each([
+    {
+      name: 'a method',
+      loader: `{ handler() { return fetchPosts() } }`,
+    },
+    {
+      name: 'a spread after the handler',
+      loader: `{ handler: () => fetchPosts(), ...defaults }`,
+    },
+  ])(
+    'keep a loader object whose handler is $name in the route module',
+    async ({ loader }) => {
+      const { modules } = compileRouteModules(
+        `${head}import { fetchPosts, defaults } from './api'
+export const Route = createFileRoute('/')({
+  loader: ${loader},
+  component: () => <p>index</p>,
+})
+`,
+        { groupings: [['loader'], ['component']] },
+      )
+      expect(importedNames(modules.reference!, './api')).toContain('fetchPosts')
+      expect(modules.reference).not.toContain('tsr-split=loader')
+      await expectValidModules(modules)
+    },
+  )
 })
 
 describe('split options that read the Route singleton', () => {

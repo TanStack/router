@@ -226,6 +226,32 @@ function isDataProperty(property: ObjectProperty) {
   return !property.method && property.kind === 'init'
 }
 
+/**
+ * The property whose value a split moves into its chunk: the route option
+ * itself, or the `handler` of a loader in object form, since the router reads
+ * the other keys of that object (`staleReloadMode`) from the route options.
+ * Undefined when the option keeps its value in the route module.
+ */
+function splitProperty(key: string, property: ObjectProperty) {
+  const value = unwrapExpression(property.value)
+  if (key !== 'loader' || !is.ObjectExpression(value)) {
+    return property
+  }
+  // The last `handler` wins, unless a spread or a computed key may override it
+  for (let index = value.properties.length - 1; index >= 0; index--) {
+    const candidate = value.properties[index]!
+    if (!is.Property(candidate) || candidate.computed) {
+      return undefined
+    }
+    if (getObjectPropertyKeyName(candidate) === 'handler') {
+      return isDataProperty(candidate) && !isFallback(candidate.value)
+        ? candidate
+        : undefined
+    }
+  }
+  return undefined
+}
+
 /** Assign each initializer and its dependencies to the chunks that consume it. */
 export function computeSharedBindings(
   options: SourceOptions & { codeSplitGroupings: CodeSplitGroupings },
@@ -256,17 +282,34 @@ export function computeSharedBindings(
             keys.includes(key as SplitRouteIdentNodes),
           )
         : -1
-      const references = expandTransitively(
-        collectModuleReferences(module, property.value),
-        chunkDependencies,
-      )
-      for (const binding of references) {
-        if (!locals.has(binding)) {
-          continue
+      const split = group === -1 ? undefined : splitProperty(key, property)
+      // What stays in the route module belongs to the reference group (-1)
+      const parts: Array<[Node, number]> =
+        split === property
+          ? [[property.value, group]]
+          : !split
+            ? [[property.value, -1]]
+            : [
+                [split.value, group],
+                ...(
+                  unwrapExpression(property.value) as ObjectExpression
+                ).properties
+                  .filter((other) => other !== split)
+                  .map((other): [Node, number] => [other, -1]),
+              ]
+      for (const [node, partGroup] of parts) {
+        const references = expandTransitively(
+          collectModuleReferences(module, node),
+          chunkDependencies,
+        )
+        for (const binding of references) {
+          if (!locals.has(binding)) {
+            continue
+          }
+          const groups = groupsByBinding.get(binding) ?? new Set<number>()
+          groups.add(partGroup)
+          groupsByBinding.set(binding, groups)
         }
-        const groups = groupsByBinding.get(binding) ?? new Set<number>()
-        groups.add(group)
-        groupsByBinding.set(binding, groups)
       }
     }
   }
@@ -672,7 +715,11 @@ export function compileCodeSplitReferenceRoute(
         if (!group || !splitKeys.includes(key) || isFallback(prop.value)) {
           continue
         }
-        const original = originalNodes.get(unwrapExpression(prop.value))
+        const target = splitProperty(key, prop)
+        if (!target) {
+          continue
+        }
+        const original = originalNodes.get(unwrapExpression(target.value))
         const binding =
           original && is.Identifier(original)
             ? analysis.module.bindingOf(original)
@@ -721,7 +768,7 @@ export function compileCodeSplitReferenceRoute(
           value =
             plugin.onSplitRouteProperty?.({
               ...context,
-              prop,
+              prop: target,
               splitNodeMeta: meta,
               lazyRouteComponentIdent: lazy,
             }) ?? undefined
@@ -729,13 +776,13 @@ export function compileCodeSplitReferenceRoute(
             break
           }
         }
-        prop.value =
+        target.value =
           value ??
           call(lazy, [
             reference(meta.localImporterIdent),
             string(meta.exporterIdent),
           ])
-        prop.shorthand = false
+        target.shorthand = false
         modified = true
       }
     } else {
@@ -842,7 +889,11 @@ export function compileCodeSplitVirtualRoute(
       if (!options.splitTargets.includes(key) || isFallback(property.value)) {
         continue
       }
-      const propertyValue = unwrapExpression(property.value)
+      const target = splitProperty(key, property)
+      if (!target) {
+        continue
+      }
+      const propertyValue = unwrapExpression(target.value)
       const binding = is.Identifier(propertyValue)
         ? analysis.module.bindingOf(propertyValue)
         : null
