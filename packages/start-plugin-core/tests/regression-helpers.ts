@@ -354,9 +354,17 @@ export function loadChunk(
  * ordered by boundary index. A module the compiler leaves untouched is its
  * own parent, without chunks.
  */
-export async function compileHydrate(env: 'client' | 'server', code: string) {
+export async function compileHydrate(
+  env: 'client' | 'server',
+  code: string,
+  options: Pick<StartCompilerOptions, 'mode' | 'warn'> = {},
+) {
   const plugin = createHydrateCompilerPlugin()
-  const { compile } = createStartCompiler({ env, compilerPlugins: [plugin] })
+  const { compile } = createStartCompiler({
+    ...options,
+    env,
+    compilerPlugins: [plugin],
+  })
   const parent = (await compile(code)) ?? code
   const chunks = getChunkIds(parent).map((id) => {
     const chunk = loadChunk(plugin, env, id)

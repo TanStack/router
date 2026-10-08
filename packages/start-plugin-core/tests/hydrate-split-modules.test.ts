@@ -695,6 +695,141 @@ ${head}export function Page() {
     expect(compileErrorMessage(error)).toMatch(/hook/i)
   })
 
+  // A hook is recognized by its import, whatever its local name
+  test.each([
+    {
+      name: 'a renamed React hook',
+      imports: `import { useState as state } from 'react'`,
+      expression: 'state(0)[0]',
+    },
+    {
+      name: 'React 19 use()',
+      imports: `import { use } from 'react'`,
+      expression: 'use(globalThis.promise)',
+    },
+    {
+      name: 'a hook of a React namespace import',
+      imports: `import * as React from 'react'`,
+      expression: 'React.useId()',
+    },
+    {
+      name: 'a hook of a React default import',
+      imports: `import React from 'react'`,
+      expression: 'React.useId()',
+    },
+  ])(
+    'client: $name in the children is rejected',
+    async ({ imports, expression }) => {
+      const error = await compileHydrate(
+        'client',
+        `${imports}
+${head}export function Page() {
+  return <Hydrate><p>{${expression}}</p></Hydrate>
+}`,
+      ).catch((caught: unknown) => caught)
+      expect(compileErrorMessage(error)).toMatch(/calls hooks during render/)
+    },
+  )
+
+  test('client: a use-prefixed function that is not a hook splits', async () => {
+    const { chunks } = await compileHydrate(
+      'client',
+      `import { use } from './helpers'
+import { useless } from './helpers'
+${head}export function Page() {
+  return <Hydrate><p>{use(useless)}</p></Hydrate>
+}`,
+    )
+    expect(chunks).toHaveLength(1)
+  })
+
+  // Code that reads the state of the component's own call cannot move into
+  // the chunk component
+  test.each([
+    {
+      name: 'await',
+      component: `export async function Page() {
+  return <Hydrate><p>{await globalThis.load()}</p></Hydrate>
+}`,
+      error: /uses await during render/,
+    },
+    {
+      name: 'yield',
+      component: `export function* Page() {
+  return <Hydrate><p>{yield 'x'}</p></Hydrate>
+}`,
+      error: /uses yield during render/,
+    },
+    {
+      name: 'arguments',
+      component: `export function Page() {
+  return <Hydrate><p>{arguments.length}</p></Hydrate>
+}`,
+      error: /reads the arguments of its component/,
+    },
+    {
+      name: 'arguments in an arrow function',
+      component: `export function Page() {
+  return <Hydrate><p>{[1].map(() => arguments.length)}</p></Hydrate>
+}`,
+      error: /reads the arguments of its component/,
+    },
+  ])(
+    'client: $name in the children is rejected',
+    async ({ component, error }) => {
+      const caught = await compileHydrate(
+        'client',
+        `${head}${component}`,
+      ).catch((caught: unknown) => caught)
+      expect(compileErrorMessage(caught)).toMatch(error)
+    },
+  )
+
+  test.each([
+    {
+      name: 'await in a nested async function',
+      expression: '[1].map(async () => await globalThis.load()).length',
+    },
+    {
+      name: 'arguments of a nested function',
+      expression: '[1].map(function () { return arguments.length })',
+    },
+  ])('client: $name in the children splits', async ({ expression }) => {
+    const { chunks } = await compileHydrate(
+      'client',
+      `${head}export function Page() {
+  return <Hydrate><p>{${expression}}</p></Hydrate>
+}`,
+    )
+    expect(chunks).toHaveLength(1)
+    expect(await getModuleErrors(chunks[0]!)).toEqual([])
+  })
+
+  test('client dev: a boundary whose children come from a spread is reported', async () => {
+    const code = `${head}export function Page(props: any) {
+  return (
+    <>
+      <Hydrate {...props} />
+      <Hydrate {...{ when: 'idle' }}><p>split</p></Hydrate>
+      <Hydrate {...{ when: 'idle' }} />
+    </>
+  )
+}`
+    const warnings: Array<string> = []
+    await compileHydrate('client', code, {
+      mode: 'dev',
+      warn: (message) => warnings.push(message),
+    })
+    expect(warnings).toEqual([
+      "[tanstack-start] The <Hydrate> at /test/src/module.tsx:5:7 receives its children from a spread, so they won't be code-split. Pass them as JSX children or a children prop, or use split={false}.",
+    ])
+    const buildWarnings: Array<string> = []
+    await compileHydrate('client', code, {
+      warn: (message) => buildWarnings.push(message),
+    })
+    expect(buildWarnings).toEqual([])
+  })
+
   // Source: Qwik optimizer example_default_export
   test('client: an anonymous default-exported component splits its boundary', async () => {
     const { parent, chunks } = await compileHydrate(
