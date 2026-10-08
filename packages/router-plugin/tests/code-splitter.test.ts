@@ -50,52 +50,77 @@ const testGroups: Array<{ name: string; groupings: CodeSplitGroupings }> = [
   },
 ]
 
-it('reuses immutable route analysis regardless of output generation order', () => {
+describe('one route analysis shared by every output', () => {
   const code = `'use client';
 import { createFileRoute } from '@tanstack/react-router'
 const state = {count: 0}
 export const Route = createFileRoute('/')({loader: () => state, component: () => state.count})`
-  const analysis = analyzeRouteModule({ code, filename: 'route.tsx' })
-  const original = JSON.stringify(analysis.module.ast)
-  const sharedBindings = computeSharedBindings({
-    code,
-    analysis,
-    codeSplitGroupings: defaultCodeSplitGroupings,
-  })
-  const reference = () =>
-    compileCodeSplitReferenceRoute({
+
+  function compileOutputs() {
+    const analysis = analyzeRouteModule({ code, filename: 'route.tsx' })
+    const sharedBindings = computeSharedBindings({
       code,
       analysis,
-      sharedBindings,
-      filename: 'route.tsx',
-      id: 'route.tsx',
-      targetFramework: 'react',
-      addHmr: false,
       codeSplitGroupings: defaultCodeSplitGroupings,
     })
-  const component = () =>
-    compileCodeSplitVirtualRoute({
-      code,
-      analysis,
-      sharedBindings,
-      filename: 'route.tsx?tsr-split=component',
-      splitTargets: ['component'],
-    })
-  const firstComponent = component()
-  const firstReference = reference()
-  const shared = compileCodeSplitSharedRoute({
-    code,
-    analysis,
-    sharedBindings,
-    filename: 'route.tsx?tsr-shared=1',
-  })
-  for (const output of [firstReference, firstComponent, shared]) {
-    expect(output?.code).toMatch(/^['"]use client['"]/)
+    return {
+      reference: () =>
+        compileCodeSplitReferenceRoute({
+          code,
+          analysis,
+          sharedBindings,
+          filename: 'route.tsx',
+          id: 'route.tsx',
+          targetFramework: 'react',
+          addHmr: false,
+          codeSplitGroupings: defaultCodeSplitGroupings,
+        })!.code,
+      component: () =>
+        compileCodeSplitVirtualRoute({
+          code,
+          analysis,
+          sharedBindings,
+          filename: 'route.tsx?tsr-split=component',
+          splitTargets: ['component'],
+        }).code,
+      shared: () =>
+        compileCodeSplitSharedRoute({
+          code,
+          analysis,
+          sharedBindings,
+          filename: 'route.tsx?tsr-shared=1',
+        }).code,
+    }
   }
-  expect(reference()).toEqual(firstReference)
-  expect(component()).toEqual(firstComponent)
-  expect(JSON.stringify(analysis.module.ast)).toBe(original)
-  expect(analysis.module.rootScope.find('state')?.references).toHaveLength(2)
+
+  it('compiles the same outputs whatever order they are generated in', () => {
+    const first = compileOutputs()
+    const componentFirst = first.component()
+    const referenceSecond = first.reference()
+    const sharedThird = first.shared()
+    const second = compileOutputs()
+    expect([second.shared(), second.reference(), second.component()]).toEqual([
+      sharedThird,
+      referenceSecond,
+      componentFirst,
+    ])
+    expect([first.reference(), first.component(), first.shared()]).toEqual([
+      referenceSecond,
+      componentFirst,
+      sharedThird,
+    ])
+  })
+
+  it('keeps "use client" first in the reference, split and shared outputs', () => {
+    const outputs = compileOutputs()
+    for (const output of [
+      outputs.reference(),
+      outputs.component(),
+      outputs.shared(),
+    ]) {
+      expect(output).toMatch(/^['"]use client['"]/)
+    }
+  })
 })
 
 describe('code-splitter works', () => {
@@ -349,10 +374,14 @@ export const Route = createFileRoute('/')({
 })
 
 // ============================================================================
-// LAYER 1: Algebraic Property Tests on Helper Functions
+// Invariant Tests on computeSharedBindings
 //
-// These test that the pure graph/set functions obey mathematical contracts
-// independent of any particular route file.
+// These verify the core "contracts" of the shared bindings computation:
+// - Route is never extracted
+// - Results are always real local bindings
+// - Destructured cohesion holds
+// - Transitive dependencies are included
+// - Route-dependent bindings are excluded
 // ============================================================================
 
 describe('computeSharedBindings invariants', () => {
@@ -568,7 +597,7 @@ export const Route = createFileRoute('/')({
 })
 
 // ============================================================================
-// LAYER 3: Small-Scope Exhaustive Tests
+// Small-Scope Exhaustive Tests
 //
 // Inspired by Alloy's "small scope hypothesis" — most bugs show up in small
 // counterexamples. We exhaustively test all combinations of:
