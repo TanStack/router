@@ -9,55 +9,58 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RichIdRouteImport } from './routes/rich.$id'
 import { Route as PlainIdRouteImport } from './routes/plain.$id'
+import { Route as ResourceIdRouteImport } from './routes/resource.$id'
+import { Route as RichIdRouteImport } from './routes/rich.$id'
 
-const RichIdRoute = RichIdRouteImport.update({
-  id: '/rich/$id',
-  path: '/rich/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlainIdRoute = PlainIdRouteImport.update({
   id: '/plain/$id',
   path: '/plain/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResourceIdRoute = ResourceIdRouteImport.update({
+  id: '/resource/$id',
+  path: '/resource/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RichIdRoute = RichIdRouteImport.update({
+  id: '/rich/$id',
+  path: '/rich/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/plain/$id': typeof PlainIdRoute
+  '/resource/$id': typeof ResourceIdRoute
   '/rich/$id': typeof RichIdRoute
 }
 export interface FileRoutesByTo {
   '/plain/$id': typeof PlainIdRoute
+  '/resource/$id': typeof ResourceIdRoute
   '/rich/$id': typeof RichIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/plain/$id': typeof PlainIdRoute
+  '/resource/$id': typeof ResourceIdRoute
   '/rich/$id': typeof RichIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/plain/$id' | '/rich/$id'
+  fullPaths: '/plain/$id' | '/resource/$id' | '/rich/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/plain/$id' | '/rich/$id'
-  id: '__root__' | '/plain/$id' | '/rich/$id'
+  to: '/plain/$id' | '/resource/$id' | '/rich/$id'
+  id: '__root__' | '/plain/$id' | '/resource/$id' | '/rich/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   PlainIdRoute: typeof PlainIdRoute
+  ResourceIdRoute: typeof ResourceIdRoute
   RichIdRoute: typeof RichIdRoute
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/rich/$id': {
-      id: '/rich/$id'
-      path: '/rich/$id'
-      fullPath: '/rich/$id'
-      preLoaderRoute: typeof RichIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/plain/$id': {
       id: '/plain/$id'
       path: '/plain/$id'
@@ -65,11 +68,26 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof PlainIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/resource/$id': {
+      id: '/resource/$id'
+      path: '/resource/$id'
+      fullPath: '/resource/$id'
+      preLoaderRoute: typeof ResourceIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rich/$id': {
+      id: '/rich/$id'
+      path: '/rich/$id'
+      fullPath: '/rich/$id'
+      preLoaderRoute: typeof RichIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   PlainIdRoute: PlainIdRoute,
+  ResourceIdRoute: ResourceIdRoute,
   RichIdRoute: RichIdRoute,
 }
 export const routeTree = rootRouteImport
