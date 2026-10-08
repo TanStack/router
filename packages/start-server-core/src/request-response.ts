@@ -225,11 +225,7 @@ export function getRequestHost(opts?: { xForwardedHost?: boolean }) {
  * Get the full incoming request URL.
  *
  * If `xForwardedHost` is `true`, it will use the `x-forwarded-host` header if it exists.
- *
- * If `xForwardedProto` is `true`, it will use the `x-forwarded-proto` header if it exists.
- *
- * Note: Make sure that these headers can be trusted (your application running behind a CDN or reverse proxy) before enabling.
- */
+*/
 export function getRequestUrl(opts?: {
   xForwardedHost?: boolean
   xForwardedProto?: boolean
@@ -241,8 +237,6 @@ export function getRequestUrl(opts?: {
  * Get the request protocol.
  *
  * If `xForwardedProto` is `true`, it will use the `x-forwarded-proto` header if it exists.
- *
- * Note: Make sure that this header can be trusted (your application running behind a CDN or reverse proxy) before enabling.
  *
  * If protocol cannot be determined, it will default to "http".
  */
