@@ -1,15 +1,12 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { isRedirect, parseRedirect } from '@tanstack/router-core'
-import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
+import { isServer } from '@tanstack/router-core/isServer'
+import { TSS_SERVER_FUNCTION, TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
 import { createNullProtoObject, safeObjectMerge } from './safeObjectMerge'
-import type {
-  ClientFnMeta,
-  ServerFnMeta,
-  TSS_SERVER_FUNCTION,
-} from './constants'
+import type { ClientFnMeta, ServerFnMeta } from './constants'
 import type {
   AnyValidator,
   Constrain,
@@ -132,6 +129,21 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         CompiledFetcherFn<Register, any>,
         ServerFn<Register, Method, any, any, any>,
       ]
+
+      // The compiled client passes the RPC of the server function; anything
+      // else means the compiler missed this call, and the handler shipped.
+      // Tests run uncompiled by design.
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        process.env.NODE_ENV !== 'test' &&
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        !(isServer ?? typeof window === 'undefined') &&
+        !(extractedFn as any)?.[TSS_SERVER_FUNCTION]
+      ) {
+        console.error(
+          '[TanStack Start] createServerFn().handler() was not compiled, so its server code shipped to the client and the call will not reach the server. Assign the server function to a module-level variable (export const fn = createServerFn().handler(...)), with createServerFn imported directly from your Start package (e.g. @tanstack/react-start).',
+        )
+      }
 
       // Keep the original function around so we can use it
       // in the server environment

@@ -1,9 +1,10 @@
 import path from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { normalizePath } from '../src/core/utils'
 import {
   createCodeSplitterTransforms,
   createRouteHmrTransform,
+  head,
   expectValidModules,
   importSources,
   routeFile,
@@ -316,6 +317,177 @@ export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
         }
       }
       expect(warn.mock.calls).toEqual(files.map((file) => [warning(file)]))
+    })
+  })
+})
+
+describe('route file diagnostics', () => {
+  const file = routeFile('diagnosed')
+  const createSplitter = () =>
+    createCodeSplitterTransforms({}, { [file]: '/diagnosed' })
+
+  describe('a route file that creates two file routes', () => {
+    it('fails to compile, naming the file and both calls', async () => {
+      const splitter = await createSplitter()
+      const code = `${head}export const Route = createFileRoute('/diagnosed')({ component: () => <p>a</p> })
+const Other = createFileRoute('/other')({ component: () => <p>b</p> })
+`
+      expect(() => splitter.reference(code, file)).toThrow(
+        [
+          `[tanstack-router] "${file}" calls createFileRoute 2 times:`,
+          `- ${file}:2:22`,
+          `- ${file}:3:15`,
+          'A route file creates exactly one file route.',
+        ].join('\n'),
+      )
+    })
+
+    it('compiles a root route next to a file route', async () => {
+      const splitter = await createSplitter()
+      const code = `import { createFileRoute, createRootRoute } from '@tanstack/react-router'
+export const Root = createRootRoute({})
+export const Route = createFileRoute('/diagnosed')({ component: () => <p>a</p> })
+`
+      expect(splitter.reference(code, file)).toContain('tsr-split=component')
+      expect(splitter.warn).not.toHaveBeenCalled()
+    })
+  })
+
+  it('reports an exported split option once per file in a build, where it is the only split option', async () => {
+    const code = `${head}export function Page() { return <p>page</p> }
+export const Route = createFileRoute('/diagnosed')({ component: Page })
+`
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const splitter = await createSplitter()
+    expect(splitter.reference(code, file)).toBeNull()
+    expect(splitter.reference(`${code}// edit\n`, file)).toBeNull()
+    expect(splitter.warn).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining(
+        `[tanstack-router] These exports from "${file}" will not be code-split and will increase your bundle size:\n- Page`,
+      ),
+    )
+    // The bundler reports it, not the console of the build process
+    expect(consoleWarn).not.toHaveBeenCalled()
+    consoleWarn.mockRestore()
+  })
+
+  describe('route options the code splitter cannot read', () => {
+    it.each([
+      [
+        'a method',
+        'component() { return <p>a</p> }',
+        '"component" route option at {file}:4:3 is a method',
+      ],
+      [
+        'a getter',
+        'get component() { return () => <p>a</p> }',
+        '"component" route option at {file}:4:3 is a getter',
+      ],
+      [
+        'a computed key',
+        "['component']: () => <p>a</p>",
+        '"component" route option at {file}:4:3 uses a computed key',
+      ],
+    ])('reports %s', async (_, option, message) => {
+      const splitter = await createSplitter()
+      splitter.reference(
+        `${head}export const Route = createFileRoute('/diagnosed')({
+  loader: () => null,
+  ${option},
+})
+`,
+        file,
+      )
+      expect(splitter.warn).toHaveBeenCalledExactlyOnceWith(
+        expect.stringContaining(message.replace('{file}', file)),
+      )
+    })
+
+    it('does not report a method the groupings do not split', async () => {
+      const splitter = await createSplitter()
+      splitter.reference(
+        `${head}export const Route = createFileRoute('/diagnosed')({
+  loader() { return null },
+  component: () => <p>a</p>,
+})
+`,
+        file,
+      )
+      expect(splitter.warn).not.toHaveBeenCalled()
+    })
+
+    it('rejects codeSplitGroupings behind a computed key', async () => {
+      const splitter = await createSplitter()
+      expect(() =>
+        splitter.reference(
+          `${head}export const Route = createFileRoute('/diagnosed')({
+  ['codeSplitGroupings']: [['component', 'errorComponent']],
+  component: () => <p>a</p>,
+})
+`,
+          file,
+        ),
+      ).toThrow('use a computed key, so they cannot be read')
+    })
+
+    it('reports split options and codeSplitGroupings spread from another object', async () => {
+      const splitter = await createSplitter()
+      splitter.reference(
+        `${head}const shared = {
+  codeSplitGroupings: [['component', 'errorComponent']],
+  component: () => <p>a</p>,
+  errorComponent: () => <p>error</p>,
+}
+export const Route = createFileRoute('/diagnosed')({
+  ...shared,
+  errorComponent: () => <p>own error</p>,
+})
+`,
+        file,
+      )
+      expect(splitter.warn).toHaveBeenCalledExactlyOnceWith(
+        expect.stringContaining(
+          `The route options at ${file}:8:3 spread codeSplitGroupings, component from another object.`,
+        ),
+      )
+    })
+  })
+
+  describe('a renamed route factory', () => {
+    const aliased = `import { createFileRoute as cfr } from '@tanstack/react-router'
+export const Route = cfr('/diagnosed')({ component: () => <p>a</p> })
+`
+    const namespaced = `import * as Router from '@tanstack/react-router'
+export const Route = Router.createFileRoute('/diagnosed')({ component: () => <p>a</p> })
+`
+    const warnings = [
+      [
+        expect.stringContaining(
+          `"${file}" imports createFileRoute as cfr. Route factories are only recognized by their own name`,
+        ),
+      ],
+      [
+        expect.stringContaining(
+          `"${file}" calls Router.createFileRoute through a namespace import.`,
+        ),
+      ],
+    ]
+
+    it('is reported by the code splitter', async () => {
+      const splitter = await createSplitter()
+      splitter.reference(aliased, file)
+      splitter.reference(namespaced, file)
+      expect(splitter.warn.mock.calls).toEqual(warnings)
+    })
+
+    it('is reported by the route HMR plugin', () => {
+      const hmr = createRouteHmrTransform(
+        { target: 'react' },
+        { [file]: '/diagnosed' },
+      )
+      hmr.transform(aliased, file)
+      hmr.transform(namespaced, file)
+      expect(hmr.warn.mock.calls).toEqual(warnings)
     })
   })
 })

@@ -17,7 +17,7 @@ import {
 } from '@tanstack/router-utils'
 import { BindingFlags } from 'yuku-analyzer'
 import { tssHydrate } from './hydration-constants'
-import { cleanId, codeFrameError } from './start-compiler/utils'
+import { cleanId, codeFrameError, sourcePosition } from './start-compiler/utils'
 import type { Binding, Module } from 'yuku-analyzer'
 import type * as t from '@yuku-toolchain/types'
 import type {
@@ -194,6 +194,57 @@ function isWithin(module: Module, node: t.Node, parent: t.Node) {
   return false
 }
 
+/** Packages whose `use*` exports are hooks, by framework */
+const hookSources: Record<CompileStartFrameworkOptions, Set<string>> = {
+  react: new Set(['react']),
+  solid: new Set(['solid-js']),
+  vue: new Set(['vue']),
+}
+
+/** The import a reference reads, if it reads a module-scope import. */
+function importOf(context: HydrateAst, identifier: t.Node) {
+  const binding = context.module.bindingOf(sourceNode(context, identifier))
+  return binding
+    ? context.module.imports.find((entry) => entry.local === binding)
+    : undefined
+}
+
+/**
+ * Whether a call is a hook call: a callee named like a custom hook
+ * (`useThing`), or a hook of the framework, renamed (`useState as state`),
+ * read from a namespace (`React.useState`) or named `use`.
+ */
+function isHookCall(
+  context: HydrateAst,
+  call: t.CallExpression,
+  framework: CompileStartFrameworkOptions,
+) {
+  const callee = unwrapExpression(call.callee)
+  const hookName = /^use(?:[A-Z0-9]|$)/
+  if (is.Identifier(callee)) {
+    if (/^use[A-Z0-9]/.test(callee.name)) {
+      return true
+    }
+    const entry = importOf(context, callee)
+    return (
+      entry?.kind === 'named' &&
+      hookSources[framework].has(entry.specifier) &&
+      hookName.test(entry.name ?? '')
+    )
+  }
+  if (
+    is.MemberExpression(callee) &&
+    !callee.computed &&
+    is.Identifier(callee.property) &&
+    hookName.test(callee.property.name)
+  ) {
+    const object = unwrapExpression(callee.object)
+    const entry = is.Identifier(object) ? importOf(context, object) : undefined
+    return !!entry && hookSources[framework].has(entry.specifier)
+  }
+  return false
+}
+
 function inspectSplitBoundary(
   context: HydrateAst,
   node: t.JSXElement,
@@ -202,12 +253,34 @@ function inspectSplitBoundary(
     validate?: boolean
     collectCaptured?: boolean
     nestedHydrate?: { localName: string }
+    framework?: CompileStartFrameworkOptions
   },
 ) {
   const captured = new Set<string>()
   let nestedBoundaryCount = 0
   const fail = (message: string): never => {
     throw codeFrameError(options.code, sourceNode(context, node), message)
+  }
+  /**
+   * Whether the component that renders the boundary owns `current`: no
+   * function (or, with `arrows: false`, no non-arrow function) lies between
+   * them, so moving `current` into the chunk component changes its meaning.
+   */
+  const ownedByComponent = (current: t.Node, arrows: boolean) => {
+    for (
+      let ancestor = context.module.parentOf(sourceNode(context, current));
+      ancestor && ancestor !== originalBoundary;
+      ancestor = context.module.parentOf(ancestor)
+    ) {
+      if (
+        is.FunctionDeclaration(ancestor) ||
+        is.FunctionExpression(ancestor) ||
+        (arrows && is.ArrowFunctionExpression(ancestor))
+      ) {
+        return false
+      }
+    }
+    return true
   }
   if (options.validate) {
     for (const child of node.children) {
@@ -269,14 +342,53 @@ function inspectSplitBoundary(
       }
     },
     CallExpression(current) {
-      const callee = unwrapExpression(current.callee)
       if (
         options.validate &&
-        is.Identifier(callee) &&
-        /^use[A-Z0-9]/.test(callee.name)
+        isHookCall(context, current, options.framework ?? 'react')
       ) {
         fail(
           'Hydrate cannot code-split JSX that calls hooks during render. Move the hook call into a child component or use split={false}.',
+        )
+      }
+    },
+    AwaitExpression(current) {
+      if (options.validate && ownedByComponent(current, true)) {
+        fail(
+          'Hydrate cannot code-split JSX that uses await during render. Await the value before the boundary, or use split={false}.',
+        )
+      }
+    },
+    ForOfStatement(current) {
+      if (
+        options.validate &&
+        current.await &&
+        ownedByComponent(current, true)
+      ) {
+        fail(
+          'Hydrate cannot code-split JSX that uses await during render. Await the value before the boundary, or use split={false}.',
+        )
+      }
+    },
+    YieldExpression(current) {
+      if (options.validate && ownedByComponent(current, true)) {
+        fail(
+          'Hydrate cannot code-split JSX that uses yield during render. Yield before the boundary, or use split={false}.',
+        )
+      }
+    },
+    Identifier(current) {
+      if (
+        !options.validate ||
+        current.name !== 'arguments' ||
+        !ownedByComponent(current, false)
+      ) {
+        return
+      }
+      const reference = context.module.referenceOf(sourceNode(context, current))
+      // The implicit `arguments` of the component, not a binding of that name
+      if (reference && !reference.binding?.declarations.length) {
+        fail(
+          'Hydrate cannot code-split JSX that reads the arguments of its component. Read them before the boundary, or use split={false}.',
         )
       }
     },
@@ -373,6 +485,37 @@ function moveChildrenPropIntoChildren(node: t.JSXElement) {
   return true
 }
 
+/**
+ * Whether a boundary without JSX children may receive them from a spread,
+ * which cannot be split. A spread object literal without children does not.
+ */
+function childrenComeFromSpread(node: t.JSXElement) {
+  if (getMeaningfulChildren(node.children).length) {
+    return false
+  }
+  const attributes = node.openingElement.attributes
+  for (let index = attributes.length - 1; index >= 0; index--) {
+    const attribute = attributes[index]!
+    if (!is.JSXSpreadAttribute(attribute)) {
+      if (
+        is.JSXIdentifier(attribute.name) &&
+        attribute.name.name === 'children'
+      ) {
+        return false
+      }
+      continue
+    }
+    const argument = unwrapExpression(attribute.argument)
+    if (
+      !is.ObjectExpression(argument) ||
+      objectExpressionMayHaveProperty(argument, 'children')
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
 function transformHydrateAst(
   options: HydrateAst & {
     code: string
@@ -381,6 +524,8 @@ function transformHydrateAst(
     env: 'client' | 'server'
     framework: CompileStartFrameworkOptions
     indexOffset?: number
+    /** Reports a boundary that is left unsplit */
+    warn?: (message: string) => void
   },
 ) {
   if (!options.code.includes('Hydrate')) {
@@ -458,9 +603,19 @@ function transformHydrateAst(
       if (getBooleanProp(node.openingElement, 'split') === false) {
         return
       }
+      if (options.env === 'client' && childrenComeFromSpread(node)) {
+        const position = sourcePosition(
+          options.code,
+          sourceNode(options, node).start,
+        )
+        options.warn?.(
+          `[tanstack-start] The <${localName}> at ${sourceId}:${position.line}:${position.column + 1} receives its children from a spread, so they won't be code-split. Pass them as JSX children or a children prop, or use split={false}.`,
+        )
+      }
       const splittable = moveChildrenPropIntoChildren(node)
       const inspection = inspectSplitBoundary(options, node, {
         code: options.code,
+        framework: options.framework,
         validate: true,
         collectCaptured: options.env === 'client',
         ...(options.env === 'client' ? { nestedHydrate: { localName } } : {}),
@@ -726,6 +881,7 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
   }
 
   const sourcesByEnvironment = new Map<string, Map<string, SourceEntry>>()
+  const reportedWarnings = new Set<string>()
 
   const getEnvironmentSources = (envName: string) => {
     let sources = sourcesByEnvironment.get(envName)
@@ -787,6 +943,16 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
         env: context.env,
         framework: context.framework,
         indexOffset,
+        // A dev warning about the source module, once per message
+        warn:
+          context.mode === 'dev' && virtualModule.boundaryIndex < 0
+            ? (message) => {
+                if (!reportedWarnings.has(message)) {
+                  reportedWarnings.add(message)
+                  context.warn?.(message)
+                }
+              }
+            : undefined,
       })
 
       if (result && virtualModule.boundaryIndex < 0) {

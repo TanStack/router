@@ -3,6 +3,7 @@ import {
   analyzeRouteModule,
   compileCodeSplitReferenceRoute,
   createRouteInFunctionMessage,
+  getRouteModuleWarnings,
 } from './code-splitter/compilers'
 import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import { createRouteHmrStatement } from './hmr'
@@ -30,8 +31,8 @@ export function createRouterHmrPlugin(
   }
 
   let userConfig = resolveUserConfig()
-  // Route files already reported for a route created inside a function
-  const routesInFunctionReported = new Set<string>()
+  // Warnings already reported: once per message, which names the route file
+  const reportedWarnings = new Set<string>()
 
   return {
     name: 'tanstack-router:hmr',
@@ -55,12 +56,16 @@ export function createRouterHmrPlugin(
 
         const hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
         const analysis = analyzeRouteModule({ code, filename: normalizedId })
-        if (
-          analysis.routeCreatedInFunction &&
-          !routesInFunctionReported.has(normalizedId)
-        ) {
-          routesInFunctionReported.add(normalizedId)
-          this.warn(createRouteInFunctionMessage(normalizedId))
+        // Nothing is split here: only the warnings about the route factory
+        const warnings = getRouteModuleWarnings(analysis, normalizedId, [])
+        if (analysis.routeCreatedInFunction) {
+          warnings.push(createRouteInFunctionMessage(normalizedId))
+        }
+        for (const message of warnings) {
+          if (!reportedWarnings.has(message)) {
+            reportedWarnings.add(message)
+            this.warn(message)
+          }
         }
 
         if (userConfig.target === 'react') {

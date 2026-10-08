@@ -15,6 +15,7 @@ import { handleCreateMiddleware } from './handleCreateMiddleware'
 import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
+import { findUnrecognizedFactoryUses } from './unrecognized-factory-use'
 import { cleanId, createAstEditor, getVariableDeclarator } from './utils'
 import type * as t from '@yuku-toolchain/types'
 import type { Module } from 'yuku-analyzer'
@@ -354,6 +355,9 @@ export class StartCompiler {
   // Maps: libName → (exportName → Kind)
   // This allows O(1) resolution for the common case without async resolveId calls
   private knownRootImports = new Map<string, Map<string, Kind>>()
+
+  // Diagnostics already reported in dev, so an unchanged problem is reported once
+  private reportedWarnings = new Set<string>()
 
   // For generating unique function IDs in production builds
   private entryIdToFunctionId = new Map<string, string>()
@@ -1008,6 +1012,13 @@ export class StartCompiler {
       candidates.push({ node, methodChain })
       candidatesByKind.set(kind, candidates)
     }
+    if (this.options.env === 'client' && !/[?&]tss-/.test(id)) {
+      this.reportUnrecognizedFactoryUses(
+        context,
+        candidatesByKind,
+        warn ?? this.options.warn,
+      )
+    }
     let modified = candidatesByKind.size > 0 || jsx.length > 0
     if (modified) {
       // A candidate inside code an earlier handler replaced (e.g. a server fn
@@ -1040,6 +1051,76 @@ export class StartCompiler {
     removeUnusedBindings(module, ast, originalNodes)
     keepFilePragmas(module.ast, ast)
     return this.generateResultFromAst(ast, code, id)
+  }
+
+  /**
+   * Reports the Start factory uses the client compilation leaves alone, so
+   * their implementation ships to the client: a warning in dev, which keeps
+   * the dev server usable mid-edit, and an error that fails a build.
+   */
+  private reportUnrecognizedFactoryUses(
+    context: CompilationContext,
+    candidatesByKind: Map<
+      Exclude<LookupKind, 'ClientOnlyJSX'>,
+      Array<RewriteCandidate>
+    >,
+    warn: ((message: string) => void) | undefined,
+  ) {
+    const source = (node: t.Node) => context.originalNodes.get(node) ?? node
+    const recognized = new Set<t.Node>()
+    const stripped = new Set<t.Node>()
+    for (const [kind, candidates] of candidatesByKind) {
+      for (const { node, methodChain } of candidates) {
+        let current: t.Node = node
+        for (;;) {
+          recognized.add(source(current))
+          if (is.Expression(current)) {
+            current = unwrapExpression(current)
+            recognized.add(source(current))
+          }
+          if (is.CallExpression(current)) {
+            current = current.callee
+          } else if (is.MemberExpression(current)) {
+            current = current.object
+          } else {
+            break
+          }
+        }
+        // The client output replaces these implementations
+        const implementation =
+          kind === 'ServerFn'
+            ? methodChain.handler?.firstArg
+            : kind === 'Middleware' || kind === 'IsomorphicFn'
+              ? methodChain.server?.firstArg
+              : kind === 'ServerOnlyFn'
+                ? node.arguments[0]
+                : undefined
+        if (implementation) {
+          stripped.add(source(implementation))
+        }
+      }
+    }
+    const messages = findUnrecognizedFactoryUses({
+      module: context.module,
+      code: context.code,
+      id: context.id,
+      isFactoryImport: (specifier, name) =>
+        this.knownRootImports.get(specifier)?.has(name) ?? false,
+      recognized,
+      stripped,
+    })
+    if (!messages.length) {
+      return
+    }
+    if (this.mode === 'build') {
+      throw new Error(messages.join('\n'))
+    }
+    for (const message of messages) {
+      if (!this.reportedWarnings.has(message)) {
+        this.reportedWarnings.add(message)
+        warn?.(message)
+      }
+    }
   }
 
   private generateResultFromAst(

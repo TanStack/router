@@ -1,4 +1,5 @@
-import { expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { TSS_SERVER_FUNCTION } from '../src/constants'
 import { createMiddleware } from '../src/createMiddleware'
 import { createServerFn } from '../src/createServerFn'
 
@@ -51,4 +52,52 @@ test('does not register middleware appended while reading the input', () => {
     first,
   ])
   expect(middlewares).toHaveLength(2)
+})
+
+describe('a server function the compiler missed', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  // The compiled client passes the RPC, marked as a server function
+  const compiledRpc = Object.assign(async () => undefined, {
+    [TSS_SERVER_FUNCTION]: true,
+  })
+  const handler = async () => 'secret'
+
+  function defineServerFn(rpc: unknown) {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    ;(createServerFn().handler as (...args: Array<unknown>) => unknown)(rpc)
+    return error
+  }
+
+  test('is reported in the browser in development', () => {
+    vi.stubEnv('NODE_ENV', 'development')
+    expect(defineServerFn(handler)).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining(
+        'createServerFn().handler() was not compiled, so its server code shipped to the client',
+      ),
+    )
+  })
+
+  test('a compiled server function is not reported', () => {
+    vi.stubEnv('NODE_ENV', 'development')
+    expect(defineServerFn(compiledRpc)).not.toHaveBeenCalled()
+  })
+
+  test.each(['production', 'test'])(
+    'is not reported when NODE_ENV is %s',
+    (env) => {
+      vi.stubEnv('NODE_ENV', env)
+      expect(defineServerFn(handler)).not.toHaveBeenCalled()
+    },
+  )
+
+  test('is not reported on the server', () => {
+    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubGlobal('window', undefined)
+    expect(defineServerFn(handler)).not.toHaveBeenCalled()
+  })
 })

@@ -17,9 +17,12 @@ export function normalizePath(path: string): string {
 }
 
 export const routeFactoryCallCodeFilter = [
-  /\bcreateFileRoute\s*\(/,
-  /\bcreateRootRoute\s*\(/,
+  // A call may pass type arguments: createFileRoute<'/a'>('/a')
+  /\bcreateFileRoute\s*(?:<|\()/,
+  /\bcreateRootRoute\s*(?:<|\()/,
   /\bcreateRootRouteWithContext\s*(?:<|\()/,
+  // An aliased import, which the plugins report
+  /\b(?:createFileRoute|createRootRoute|createRootRouteWithContext)\s+as\s/,
 ]
 
 export function getObjectPropertyKeyName(prop: Property): string | undefined {
