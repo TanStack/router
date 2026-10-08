@@ -5,14 +5,15 @@
 import { describe, expect, test } from 'vitest'
 import {
   compileErrorMessage,
-  compileFirstChunk,
   compileHydrate,
+  createStartCompiler,
   evaluateHydrateParent,
   evaluateModule,
   getBoundaryIds,
   getChunkIds,
   hydrateParentStubs,
   loadChunk,
+  settle,
 } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
 import type { ModuleStub } from './regression-helpers'
@@ -181,11 +182,13 @@ describe('boundaries and ids', () => {
     },
   )
 
-  // Bug: a component rendered inside its own boundary is copied into the
-  // chunk, and compiling the chunk numbers the copy's boundary after the
-  // chunk's own index.
-  // Impact: nested boundaries of recursive components (trees, threads) render
-  // ids the server never emitted and lazy-load boundaries that do not exist.
+  // Bug: a component that declares a boundary and is rendered inside a
+  // boundary (its own, or another one) is copied into the chunk, and
+  // compiling the chunk numbers the copy's boundary after the chunk's own
+  // index.
+  // Impact: nested boundaries of recursive components (trees, threads) and
+  // of components with their own boundary render ids the server never
+  // emitted and lazy-load boundaries that do not exist.
   // Source: Qwik optimizer root_level_self_referential_qrl,
   // example_self_referential_component_migration
   test.fails.each([
@@ -194,6 +197,7 @@ describe('boundaries and ids', () => {
       code: `export function Tree({ node }) {
   return <li>{node.label}<Hydrate><ul>{node.children.map((child) => <Tree node={child} />)}</ul></Hydrate></li>
 }`,
+      boundaries: 1,
     },
     {
       name: 'mutually recursive components',
@@ -201,32 +205,50 @@ describe('boundaries and ids', () => {
 export function Leaf({ depth }) {
   return <Hydrate><Branch depth={depth} /></Hydrate>
 }`,
+      boundaries: 1,
+    },
+    {
+      name: 'a component with its own boundary inside another boundary',
+      code: `function Widget() { return <Hydrate><b>widget</b></Hydrate> }
+export function Page() {
+  return <Hydrate><section><Widget /></section></Hydrate>
+}`,
+      boundaries: 2,
     },
   ])(
     'client: $name keeps boundary ids aligned with the server',
-    async ({ code }) => {
-      // Each module declares one boundary, rendered with a static id.
+    async ({ code, boundaries }) => {
+      // Each boundary is rendered with a static id.
       const server = await compileHydrate('server', `${head}${code}`)
       const serverIds = getBoundaryIds(server.parent)
-      expect(serverIds).toHaveLength(1)
-      const { parent, chunks, plugin } = await compileHydrate(
+      expect(serverIds).toHaveLength(boundaries)
+      const { parent, plugin } = await compileHydrate(
         'client',
         `${head}${code}`,
       )
-      expect(getBoundaryIds(parent)).toEqual(serverIds)
-      expect(chunks).toHaveLength(1)
-      // The bundler compiles the loaded chunk like any other module.
-      const chunk = (await compileFirstChunk(plugin, parent)).code ?? chunks[0]!
-      expect(await getModuleErrors(chunk)).toEqual([])
-      // Every boundary the chunk renders (if it declares the recursive
-      // component again) has a static id the server emitted.
-      const chunkIds = getBoundaryIds(chunk)
-      expect(chunkIds).toHaveLength(chunk.match(/\sh=/g)?.length ?? 0)
-      for (const id of chunkIds) {
+      expect(getBoundaryIds(parent)).not.toEqual([])
+      for (const id of getBoundaryIds(parent)) {
         expect(serverIds).toContain(id)
       }
-      for (const id of getChunkIds(chunk)) {
-        expect(loadChunk(plugin, 'client', id), id).not.toBeNull()
+      // The bundler compiles each chunk it loads like any other module.
+      for (const chunkId of getChunkIds(parent)) {
+        const { compile } = createStartCompiler({
+          env: 'client',
+          compilerPlugins: [plugin],
+        })
+        const loaded = loadChunk(plugin, 'client', chunkId)!
+        const chunk = (await compile(loaded, chunkId)) ?? loaded
+        expect(await getModuleErrors(chunk)).toEqual([])
+        // Every boundary the chunk renders (if it declares a component with
+        // a boundary again) has a static id the server emitted.
+        const chunkIds = getBoundaryIds(chunk)
+        expect(chunkIds).toHaveLength(chunk.match(/\sh=/g)?.length ?? 0)
+        for (const id of chunkIds) {
+          expect(serverIds).toContain(id)
+        }
+        for (const id of getChunkIds(chunk)) {
+          expect(loadChunk(plugin, 'client', id), id).not.toBeNull()
+        }
       }
     },
   )
@@ -287,6 +309,15 @@ export function Page() {
 }`,
       props: {},
       html: '[chart]',
+    },
+    {
+      // A comment-only `{/* */}` child is no child for React either.
+      name: 'a children prop next to a comment-only body',
+      code: `export function Page() {
+  return <Hydrate children={<p>prop</p>}>{/* note */}</Hydrate>
+}`,
+      props: {},
+      html: '[<p>prop</p>]',
     },
   ])(
     'client: children passed through $name render without unused chunks',
@@ -588,6 +619,53 @@ export function Page() {
   return <Hydrate><H0 /></Hydrate>
 }`)
       expect(module.Page()).toBe('[<b>helper</b>]')
+    },
+  )
+
+  /** Preact's `h`, rendering intrinsic elements as `<h:tag>`. */
+  const preact = {
+    h: (type: unknown, props: object | null, ...children: Array<unknown>) => {
+      const text = children.flat(Infinity).join('')
+      if (typeof type === 'function') {
+        return type(children.length ? { ...props, children: text } : props)
+      }
+      return `<h:${String(type)}>${text}</h:${String(type)}>`
+    },
+  }
+  const pragmaModule = `/** @jsx h */
+import { h } from 'preact'
+${head}export function Page() {
+  return <div><Hydrate><p>{h('i', null)}</p></Hydrate></div>
+}`
+  const pragmaHtml = '<h:div>[<h:p><h:i></h:i></h:p>]</h:div>'
+
+  // Control for the JSX pragma pin below (same rendering).
+  test('server: a module with a classic JSX pragma renders through its factory', async () => {
+    const { parent } = await compileHydrate('server', pragmaModule)
+    const { Page } = await evaluateModule(
+      parent,
+      { ...hydrateParentStubs, preact },
+      reactRuntime,
+    )
+    expect(Page()).toBe(pragmaHtml)
+  })
+
+  // Bug: dead-code elimination does not count a classic JSX pragma
+  // (`/** @jsx h */`) as a use of the factory it names, so the client parent
+  // drops the factory import once the children that call it are split (the
+  // generated code also lands above the pragma comment, where Oxc no longer
+  // reads it). Same root cause as the JSX pragma pins in
+  // known-bugs-start-compiler.test.ts and
+  // router-plugin/tests/known-bugs-code-splitter.test.ts.
+  // Impact: the client renders the parent's JSX through another factory than
+  // the server (a hydration mismatch), or throws "h is not defined".
+  test.fails(
+    'client: a module with a classic JSX pragma renders through its factory',
+    async () => {
+      const { module } = await loadClientModule(pragmaModule, {
+        stubs: { preact },
+      })
+      expect(settle(() => module.Page())).toBe(pragmaHtml)
     },
   )
 })

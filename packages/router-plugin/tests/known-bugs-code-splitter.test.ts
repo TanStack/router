@@ -186,24 +186,42 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  // Bug: a `let` the loader reassigns is shared, so the route module assigns
-  // to a read-only import ("Cannot assign to import").
+  // Bug: a `let` that code in another module than its declaration reassigns
+  // is imported there, read-only: a `let` the loader reassigns is shared, so
+  // the route module assigns to an import of the shared module; an exported
+  // `let` the split component reassigns stays in the route module, which the
+  // chunk imports it from ("Cannot assign to import").
   // Impact: the route cannot be built as soon as code splitting is on.
   // Needs a real build: imports are live bindings, and the in-process harness
   // snapshots them, so even a correct fix would read a stale value there.
-  test.fails(
-    'a let the loader reassigns stays writable and the split component reads its value',
-    async () => {
-      const result = await buildAndRun(
-        `${head}let count = 0
+  test.fails.each([
+    {
+      name: 'the loader reassigns',
+      route: `${head}let count = 0
 export const Route = createFileRoute('/')({
   loader: () => { count++; return count },
   component: () => <p>{count}</p>,
 })`,
-        `const loaded = [await entry.Route.options.loader({}), await entry.Route.options.loader({})]
+      script: `const loaded = [await entry.Route.options.loader({}), await entry.Route.options.loader({})]
 return [...loaded, await entry.render(entry.Route.options.component)]`,
-      )
-      expect(result).toEqual([1, 2, '<p>2</p>'])
+      expected: [1, 2, '<p>2</p>'],
+    },
+    {
+      name: 'the split component reassigns (exported)',
+      route: `${head}export let count = 0
+function Page() {
+  count++
+  return <p>{count}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })`,
+      script: `const component = entry.Route.options.component
+return [await entry.render(component), await entry.render(component), entry.count]`,
+      expected: ['<p>1</p>', '<p>2</p>', 2],
+    },
+  ])(
+    'a let $name stays writable and the split component reads its value',
+    async ({ route, script, expected }) => {
+      expect(await buildAndRun(route, script)).toEqual(expected)
     },
     30_000,
   )
@@ -414,26 +432,41 @@ export const Route = createFileRoute('/')({
     expect(chunksRequestingLib).toEqual([])
   })
 
-  // Bug: an ambient `declare const` read by the loader and the split
-  // component is shared: the shared module exports a name that TypeScript
-  // erases, and the reference module and the chunk import it.
+  // Bug: an ambient `declare const` is handled as a module binding. Read by
+  // the loader and the split component, it is shared: the shared module
+  // exports a name that TypeScript erases, and the reference module and the
+  // chunk import it. Used as a split option, the chunk exports it
+  // (`export { GlobalPage as component }`), an export TypeScript erases.
   // Impact: the build fails with a missing export, e.g. for a constant
-  // injected with Vite's `define`.
-  test.fails(
-    'an ambient declare const read by the loader and the split component stays a global',
-    async () => {
-      vi.stubGlobal('APP_VERSION', '1.0')
-      try {
-        const { options, chunks } =
-          await loadRouteModules(`${head}declare const APP_VERSION: string
+  // injected with Vite's `define`, or the split component is undefined.
+  test.fails.each([
+    {
+      name: 'read by the loader and the split component',
+      global: '1.0',
+      route: `${head}declare const APP_VERSION: string
 export const Route = createFileRoute('/')({
   loader: () => APP_VERSION,
   component: () => <p>{APP_VERSION}</p>,
-})`)
-        expect([options.loader(), chunks.component!.component()]).toEqual([
-          '1.0',
-          '<p>1.0</p>',
-        ])
+})`,
+      expected: ['1.0', '<p>1.0</p>'],
+    },
+    {
+      name: 'used as the split component',
+      global: () => '<p>global</p>',
+      route: `${head}declare const APP_VERSION: any
+export const Route = createFileRoute('/')({ component: APP_VERSION })`,
+      expected: ['<p>global</p>'],
+    },
+  ])(
+    'an ambient declare const $name stays a global',
+    async ({ global, route, expected }) => {
+      vi.stubGlobal('APP_VERSION', global)
+      try {
+        const { options, chunks } = await loadRouteModules(route)
+        expect([
+          ...(options.loader ? [options.loader()] : []),
+          chunks.component!.component!(),
+        ]).toEqual(expected)
       } finally {
         vi.unstubAllGlobals()
       }
@@ -487,6 +520,77 @@ export async function load() {
         null,
         'loaded',
       ])
+    },
+    30_000,
+  )
+})
+
+describe('classic JSX pragmas', () => {
+  /** Emotion's `jsx`, rendering intrinsic elements as `<emotion:tag>`. */
+  const emotion = {
+    jsx: (type: string, _props: unknown, ...children: Array<string>) =>
+      `<emotion:${type}>${children.join('')}</emotion:${type}>`,
+  }
+  const pragma = `/** @jsxRuntime classic */
+/** @jsx jsx */
+import { jsx } from '@emotion/react'
+`
+
+  // Control for the JSX pragma pin below (same rendering).
+  test('evaluateModule renders JSX through the factory of a classic JSX pragma', async () => {
+    const { Page } = await evaluateModule(
+      `${pragma}export const Page = () => <div>page</div>`,
+      { '@emotion/react': emotion },
+    )
+    expect(Page!()).toBe('<emotion:div>page</emotion:div>')
+  })
+
+  // Bug: dead-code elimination does not count a classic JSX pragma
+  // (`/** @jsx jsx */`) as a use of the factory it names, so a chunk whose
+  // only use of the factory is its JSX drops the factory import. Same root
+  // cause as the JSX pragma pins in
+  // start-plugin-core/tests/known-bugs-start-compiler.test.ts and
+  // known-bugs-hydrate.test.ts.
+  // Impact: the split component throws "jsx is not defined".
+  test.fails(
+    'a split component renders through the factory of a classic JSX pragma',
+    async () => {
+      const { chunks } = await loadRouteModules(
+        `${pragma}${head}export const Route = createFileRoute('/')({
+  component: () => <div>page</div>,
+  errorComponent: () => jsx('b', null, 'error'),
+})`,
+        { '@emotion/react': emotion },
+      )
+      expect(chunks.component!.component()).toBe(
+        '<emotion:div>page</emotion:div>',
+      )
+    },
+  )
+})
+
+describe('app paths', () => {
+  const route = `${head}export const Route = createFileRoute('/')({
+  component: () => <p>index</p>,
+})`
+  const script = `return await entry.render(entry.Route.options.component)`
+
+  // Control for the `#` pin below (same app, without `#`).
+  test('an app builds and preloads a split component', async () => {
+    expect(await buildAndRun(route, script)).toBe('<p>index</p>')
+  }, 30_000)
+
+  // Bug: the route module imports its chunks by absolute file path with the
+  // split query (`<root>/routes/index.tsx?tsr-split=component`), and a `#`
+  // in the path is read as the start of a URL fragment.
+  // Impact: an app in a directory whose name contains `#` cannot be built
+  // with code splitting ([UNRESOLVED_IMPORT]).
+  test.fails(
+    'an app in a directory with # in its name builds and preloads a split component',
+    async () => {
+      expect(
+        await buildAndRun(route, script, { prefix: '.regression-build-#' }),
+      ).toBe('<p>index</p>')
     },
     30_000,
   )

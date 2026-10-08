@@ -6,7 +6,7 @@
  * so that React Refresh can patch it in place; a component React Refresh does
  * not register keeps rendering the old code until a full reload.
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   compileRouteModules,
   evaluateModule,
@@ -289,6 +289,143 @@ export const Route = createFileRoute('/')({
   return <p>{renders}</p>
 }`),
       ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+    },
+  )
+})
+
+describe('route updates', () => {
+  /**
+   * Compiles a route file at `/` with the route HMR plugin for `style`, then
+   * runs a hot update the way the bundler does: loads the module, registers
+   * its `Route` with a stub router (`window.__TSR_ROUTER__`), and loads it
+   * again with the same hot data (Vite: the first module's accept callback
+   * receives the new module; webpack: the module re-runs with the data its
+   * dispose handlers wrote). Returns whether the live route now has the
+   * options of the new module.
+   */
+  async function hotUpdate(code: string, style: 'vite' | 'webpack') {
+    const compiled = transformWithRouteHmrPlugin(code, {
+      target: 'react',
+      plugin: { hmr: { style } },
+    })
+    const created: Array<Record<string, unknown>> = []
+    const router = {
+      routesById: {} as Record<string, { options: Record<string, unknown> }>,
+      buildRouteTree: () => ({}),
+      setRoutes: () => {},
+      _replaceRouteChunk: () => {},
+      resolvePathCache: { clear: () => {} },
+    }
+    let data: Record<string, unknown> = {}
+    let accepted: Array<(module: unknown) => void> = []
+    const disposers: Array<(data: Record<string, unknown>) => void> = []
+    const load = () =>
+      evaluateModule(
+        `import { hot as __hot } from 'hot'
+${compiled.replace(/import\.meta\.(?:webpackHot|hot)\b/g, '__hot')}`,
+        {
+          hot: {
+            hot: {
+              data,
+              accept: (callback?: (module: unknown) => void) => {
+                if (callback) {
+                  accepted.push(callback)
+                }
+              },
+              dispose: (callback: (data: Record<string, unknown>) => void) => {
+                disposers.push(callback)
+              },
+            },
+          },
+          '@tanstack/react-router': {
+            createFileRoute: () => (options: Record<string, unknown>) => {
+              created.push(options)
+              return { options, update: () => {} }
+            },
+            lazyRouteComponent: () => () => null,
+          },
+        },
+      )
+    vi.stubGlobal('window', { __TSR_ROUTER__: router })
+    try {
+      const first = await load()
+      router.routesById['/'] = first.Route as unknown as {
+        options: Record<string, unknown>
+      }
+      if (style === 'webpack') {
+        const next: Record<string, unknown> = {}
+        disposers.forEach((dispose) => dispose(next))
+        data = next
+      }
+      const firstAccepted = accepted
+      accepted = []
+      const second = await load()
+      firstAccepted.forEach((accept) => accept(second))
+      return router.routesById['/'].options.loader === created[1]!.loader
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  }
+
+  // Control for the route update pins below (same harness).
+  test.each(['vite', 'webpack'] as const)(
+    '%s: a hot update gives the live route the new options',
+    async (style) => {
+      expect(
+        await hotUpdate(
+          `${head}export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>page</p>,
+})`,
+          style,
+        ),
+      ).toBe(true)
+    },
+  )
+
+  // Bug: the injected HMR code reads the module's route through the
+  // identifier `Route`, but a route may be declared under another name and
+  // exported as `Route` (`export { MyRoute as Route }`).
+  // Impact: webpack and Rspack apps throw "Route is not defined" when the
+  // route module loads in development; Vite apps throw on the first hot
+  // update of the route.
+  test.fails.each(['vite', 'webpack'] as const)(
+    '%s: a route exported under another local name is hot-updated',
+    async (style) => {
+      expect(
+        await hotUpdate(
+          `${head}const MyRoute = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>page</p>,
+})
+export { MyRoute as Route }`,
+          style,
+        ),
+      ).toBe(true)
+    },
+  )
+
+  // Bug: `handleRouteUpdate` keeps the previous component by assigning it to
+  // the new route options, which throws when the option is a getter.
+  // Impact: every hot update of a route with a getter component option fails
+  // ("Cannot set property component of #<Object> which has only a getter").
+  test.fails.each(['vite', 'webpack'] as const)(
+    '%s: a route with a getter component option is hot-updated',
+    async (style) => {
+      expect(
+        await hotUpdate(
+          `${head}function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  get component() {
+    return Page
+  },
+})`,
+          style,
+        ),
+      ).toBe(true)
     },
   )
 })

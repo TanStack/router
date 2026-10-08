@@ -13,6 +13,7 @@ import {
   evaluateModule,
   importSources,
   outputs,
+  serverOnlyError,
   settle,
 } from './regression-helpers'
 import type { ModuleStub, Output } from './regression-helpers'
@@ -91,6 +92,27 @@ async function expectNoClientHandler(code: string) {
   expect(results).toContain('inner')
 }
 
+/**
+ * A clear compile error rejecting a server fn builder returned by a function,
+ * matched against the message without its code frame (`compileErrorMessage`).
+ */
+const returnedBuilderRejection =
+  /createServerFn\b[^]*\b(returned|returning|returns)\b/i
+
+/**
+ * Compiles `code` for the client and calls its `read` export: the client
+ * must not import the server-only module, and calling the server-only fn
+ * must throw the server-only error.
+ */
+async function expectServerOnlyRead(code: string) {
+  const client = (await compileCode('client', code)) ?? code
+  expect(importSources(client)).not.toContain(serverOnly)
+  const { read } = await evaluateModule(client, {
+    [serverOnly]: { db: { secret: () => 'secret' } },
+  })
+  expect(settle(() => read())).toBe(serverOnlyError)
+}
+
 describe('harness controls', () => {
   test('callServerFns calls a top-level server fn through its provider', async () => {
     const { results } = await callServerFns(
@@ -115,6 +137,40 @@ export const fn = createServerFn().handler(...args)`,
     const message = compileErrorMessage(error)
     expect(message).toMatch(/handler\(\) must be called with an expression/)
     expect(message).not.toMatch(misplacedServerFnRejection)
+    expect(message).not.toMatch(returnedBuilderRejection)
+  })
+
+  test.each([
+    {
+      name: 'a nested createServerOnlyFn',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export function getRead() { return createServerOnlyFn(() => db.secret()) }
+export const read = () => getRead()()`,
+    },
+    {
+      name: 'a top-level renamed createServerOnlyFn',
+      code: `import { createServerOnlyFn as serverOnly } from '@tanstack/react-start'
+import { db } from './db.server'
+export const read = serverOnly(() => db.secret())`,
+    },
+  ])(
+    'expectServerOnlyRead accepts $name compiled for the client',
+    async ({ code }) => {
+      await expectServerOnlyRead(code)
+    },
+  )
+
+  test('a server fn in a plain .ts module compiles by its id', async () => {
+    const { code, serverFns } = await compileFor(
+      'client',
+      `${head}import { db } from './db.server'
+const input = <string>(globalThis as any).input
+export const fn = createServerFn().handler(async () => db.x(input))`,
+      { id: '/test/src/fns.ts' },
+    )
+    expect(Object.keys(serverFns)).toHaveLength(1)
+    expect(importSources(code!)).not.toContain(serverOnly)
   })
 })
 
@@ -245,6 +301,97 @@ export const fn = Start.createServerFn().handler(async () => db.x())`
       }
       const client = (await compileCode('client', code, { files })) ?? code
       expect(client).not.toContain(serverOnly)
+    },
+  )
+
+  // Bug: the builder of a `.handler()` chain is resolved through identifiers
+  // and member expressions only, so a builder returned by a function call
+  // (`authed().handler(...)`) is not traced. Rejecting it with a clear
+  // compile error is a valid fix.
+  // Impact: the module is left untransformed and ships its handler and
+  // server-only imports to the client, without an RPC.
+  test.fails.each<{
+    name: string
+    code: string
+    files: Record<string, string>
+  }>([
+    {
+      name: 'the same module',
+      code: `${head}import { db } from './db.server'
+const authed = () => createServerFn({ method: 'POST' })
+export const fn = authed().handler(async () => db.x())`,
+      files: {},
+    },
+    {
+      name: 'another module',
+      code: `import { authed } from './fns'
+import { db } from './db.server'
+export const fn = authed().handler(async () => db.x())`,
+      files: {
+        '/test/src/fns.ts': `${head}export const authed = () => createServerFn({ method: 'POST' })`,
+      },
+    },
+  ])(
+    'client builds compile a builder returned by a function of $name',
+    async ({ code, files }) => {
+      const client = await compileCode('client', code, { files }).catch(
+        (error: Error) => error,
+      )
+      if (client instanceof Error) {
+        expect(compileErrorMessage(client)).toMatch(returnedBuilderRejection)
+        return
+      }
+      expect(importSources(client ?? code)).not.toContain(serverOnly)
+    },
+  )
+
+  // Bug: env-only factories nested in other code are found by the factory's
+  // exported name (`isNestedDirectCallCandidate`), so a renamed import or a
+  // local alias is only compiled as a top-level variable initializer.
+  // Impact: the implementation and its server-only imports ship to the
+  // client, where calling the server-only fn runs it instead of throwing.
+  test.fails.each([
+    {
+      name: 'a renamed import in a function body',
+      code: `import { createServerOnlyFn as serverOnly } from '@tanstack/react-start'
+import { db } from './db.server'
+export function getRead() { return serverOnly(() => db.secret()) }
+export const read = () => getRead()()`,
+    },
+    {
+      name: 'a renamed import in an object property',
+      code: `import { createServerOnlyFn as serverOnly } from '@tanstack/react-start'
+import { db } from './db.server'
+export const api = { read: serverOnly(() => db.secret()) }
+export const read = () => api.read()`,
+    },
+    {
+      name: 'a local alias in a function body',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const so = createServerOnlyFn
+export function getRead() { return so(() => db.secret()) }
+export const read = () => getRead()()`,
+    },
+  ])(
+    'client: a createServerOnlyFn called through $name is compiled',
+    async ({ code }) => {
+      await expectServerOnlyRead(code)
+    },
+  )
+
+  // Bug: a call whose result is immediately member-called (`f().bind()`) is
+  // recorded as the inner call of a method chain and never visited as a
+  // candidate itself. Same root cause as the `renderServerComponent(...).then()`
+  // pin in react-start-rsc/tests/rscCssTransform.test.tsx.
+  // Impact: the implementation and its server-only imports ship to the
+  // client, where calling the server-only fn runs it instead of throwing.
+  test.fails(
+    'client: a createServerOnlyFn whose result is member-called is compiled',
+    async () => {
+      await expectServerOnlyRead(`import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const read = createServerOnlyFn(() => db.secret()).bind(null)`)
     },
   )
 
@@ -476,6 +623,59 @@ export function useField() {
       )
       useField()
       expect(calls).toHaveLength(2)
+    },
+  )
+
+  const pragmaModule = `/** @jsx h */
+import { h } from './jsx'
+import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => h('p', null))
+export const Card = () => <div />`
+  const pragmaStubs = { './jsx': { h: (type: string) => `h(${type})` } }
+
+  // Control for the JSX pragma pin below (same harness).
+  test('evaluateModule renders JSX through the factory of a classic JSX pragma', async () => {
+    const { Card } = await evaluateModule(pragmaModule, pragmaStubs)
+    expect(Card()).toBe('h(div)')
+  })
+
+  // Bug: dead-code elimination does not count a classic JSX pragma
+  // (`/** @jsx h */`) as a use of the factory it names, so the factory import
+  // is removed when no other code reads it (the generated imports also land
+  // above the pragma comment, where Oxc no longer reads it). Same root cause
+  // as the JSX pragma pins in known-bugs-hydrate.test.ts and
+  // router-plugin/tests/known-bugs-code-splitter.test.ts.
+  // Impact: the module's components throw "h is not defined" or render
+  // through another JSX factory than the one the module selects.
+  test.fails(
+    'client: the factory of a classic JSX pragma stays imported',
+    async () => {
+      const client = (await compileCode('client', pragmaModule)) ?? pragmaModule
+      const { Card } = await evaluateModule(client, pragmaStubs)
+      expect(settle(() => Card())).toBe('h(div)')
+    },
+  )
+})
+
+describe('Vue single-file components', () => {
+  // Bug: the parser is chosen from the module id without its query, so the
+  // `<script setup lang="ts">` block of a Vue SFC, which @vitejs/plugin-vue
+  // serves in builds as `Page.vue?vue&type=script&setup=true&lang.ts`, is
+  // parsed as TSX.
+  // Impact: TypeScript-only syntax such as a `<string>value` assertion fails
+  // the build.
+  test.fails(
+    'a <script setup lang="ts"> block is parsed as TypeScript',
+    async () => {
+      const { code, serverFns } = await compileFor(
+        'client',
+        `${head}import { db } from './db.server'
+const input = <string>(globalThis as any).input
+export const fn = createServerFn().handler(async () => db.x(input))`,
+        { id: '/test/src/Page.vue?vue&type=script&setup=true&lang.ts' },
+      )
+      expect(Object.keys(serverFns)).toHaveLength(1)
+      expect(importSources(code!)).not.toContain(serverOnly)
     },
   )
 })

@@ -454,9 +454,10 @@ const runNode = promisify(execFile)
  * groupings unless `groupings` is given): `routes/index.tsx` holds `route`,
  * and `entry.ts` re-exports the route module next to `render(component)`,
  * which preloads a component and renders it to a string. `files` adds files
- * or replaces `entry.ts`. Then imports the built entry in a separate Node
- * process and returns the JSON value returned by `script`, which has the
- * entry's exports in scope as `entry`.
+ * or replaces `entry.ts`. The app directory name starts with `prefix`. Then
+ * imports the built entry in a separate Node process and returns the JSON
+ * value returned by `script`, which has the entry's exports in scope as
+ * `entry`.
  */
 export async function buildAndRun(
   route: string,
@@ -464,11 +465,14 @@ export async function buildAndRun(
   options: {
     files?: Record<string, string>
     groupings?: CodeSplitGroupings
+    prefix?: string
   } = {},
 ) {
   const { tanstackRouter } = await import('../src/vite')
   // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(path.join(__dirname, '.regression-build-'))
+  const root = await mkdtemp(
+    path.join(__dirname, options.prefix ?? '.regression-build-'),
+  )
   try {
     await mkdir(path.join(root, 'routes'))
     const files: Record<string, string> = {

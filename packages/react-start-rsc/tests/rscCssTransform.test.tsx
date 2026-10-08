@@ -225,7 +225,7 @@ describe('known bugs', () => {
    * Compiles `code` with `loadCss()` as the CSS expression and evaluates it:
    * JSX becomes `{ type, children }` trees, components are called (`Card`
    * renders `card`) and the RSC render APIs return the arguments they are
-   * called with.
+   * called with (`renderServerComponent`, which is async, resolves to them).
    */
   async function evaluateCompiled(code: string) {
     const compiled = await compileWithRscCssTransform({
@@ -239,7 +239,7 @@ describe('known bugs', () => {
     )
     const rsc = dataUrl(`const args = (...values) => values
 export const renderToReadableStream = args
-export const renderServerComponent = args
+export const renderServerComponent = async (...values) => values
 export const createCompositeComponent = args`)
     const linked = javascript.replace(
       /(["'])@tanstack\/react-start\/rsc\1/,
@@ -294,6 +294,33 @@ import { renderToReadableStream } from '@tanstack/react-start/rsc'
 export const stream = renderToReadableStream(${argument})
 `)
       expect(texts(stream)).toEqual(['css', 'card'])
+    },
+  )
+
+  test('evaluateCompiled passes the CSS to renderServerComponent', async () => {
+    const { rendered } = await evaluateCompiled(`
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+export const rendered = renderServerComponent(<Card />)
+`)
+    const [, options] = await rendered
+    expect(options).toEqual({ __tanstackStartRscCss: 'css' })
+  })
+
+  // Bug: a call whose result is immediately member-called
+  // (`renderServerComponent(...).then()`) is recorded as the inner call of a
+  // method chain and never visited as a candidate itself. Same root cause as
+  // the `createServerOnlyFn(...).bind()` pin in
+  // start-plugin-core/tests/known-bugs-start-compiler.test.ts.
+  // Impact: the server component renders without its CSS.
+  test.fails(
+    'renderServerComponent receives the CSS when its result is chained',
+    async () => {
+      const { rendered } = await evaluateCompiled(`
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+export const rendered = renderServerComponent(<Card />).then((value) => value)
+`)
+      const [, options] = await rendered
+      expect(options).toEqual({ __tanstackStartRscCss: 'css' })
     },
   )
 })
