@@ -1123,6 +1123,17 @@ export type HydrationHandoff = [
   finish: (matches?: Array<AnyRouteMatch>) => number | undefined,
 ]
 
+function shouldNoOpLocationCommit(router: {
+  options: { isServer?: boolean }
+  history?: { isServerHistory?: boolean }
+}): boolean {
+  return (
+    router.options.isServer === true ||
+    router.history == null ||
+    router.history.isServerHistory === true
+  )
+}
+
 /**
  * Core, framework-agnostic router engine that powers TanStack Router.
  *
@@ -2226,7 +2237,7 @@ export class RouterCore<
     ignoreBlocker,
     ...next
   }) => {
-    if (isServer ?? this.isServer) {
+    if (shouldNoOpLocationCommit(this)) {
       return
     }
 
@@ -2335,7 +2346,7 @@ export class RouterCore<
     ignoreBlocker,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}): Promise<void> => {
-    if (isServer ?? this.isServer) {
+    if (shouldNoOpLocationCommit(this)) {
       return Promise.resolve()
     }
 
@@ -2382,7 +2393,7 @@ export class RouterCore<
     publicHref,
     ...rest
   }) => {
-    if (isServer ?? this.isServer) {
+    if (shouldNoOpLocationCommit(this)) {
       return
     }
 
