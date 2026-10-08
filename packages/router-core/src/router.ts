@@ -141,6 +141,28 @@ function getUrlPath(url: URL) {
   return url.pathname + url.search + url.hash
 }
 
+/**
+ * Rewrites only the query component of an href, leaving its path and hash
+ * byte-for-byte as they were given.
+ */
+function withCanonicalSearch(
+  href: string,
+  canonicalize: (rawSearch: string) => string,
+) {
+  const hashIndex = href.indexOf('#')
+  const hash = hashIndex === -1 ? '' : href.slice(hashIndex)
+  const beforeHash = hashIndex === -1 ? href : href.slice(0, hashIndex)
+  const queryIndex = beforeHash.indexOf('?')
+  if (queryIndex === -1) {
+    return href
+  }
+  return (
+    beforeHash.slice(0, queryIndex) +
+    canonicalize(beforeHash.slice(queryIndex)) +
+    hash
+  )
+}
+
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
   reject: (value?: any) => void
@@ -1493,9 +1515,21 @@ export class RouterCore<
       // (We were already doing this, so just keeping it for now)
       url.search = searchStr
 
+      // The public href keeps its own path and hash exactly as history gave
+      // them -- an output rewrite is not necessarily the inverse of the input
+      // one, and re-running it here would be an observable side effect. Only
+      // the query is re-stringified, so that a landing url whose search is not
+      // in canonical form (`?q=a%2Ab` rather than `?q=a*b`) still produces the
+      // `publicHref` that `buildLocation` would produce for the same location.
+      // Otherwise the transitioner reads the landing location as a change and
+      // re-runs every matched loader right after hydration.
+      const publicHref = withCanonicalSearch(href, (rawSearch) =>
+        this.options.stringifySearch(this.options.parseSearch(rawSearch)),
+      )
+
       return {
         href: url.href.replace(url.origin, ''),
-        publicHref: href,
+        publicHref,
         // An input rewrite can expose a path like "//evil.example".
         // Normalize it to "/evil.example" to keep it on the current origin.
         pathname: decodePath(normalizeProtocolRelative(url.pathname)),
