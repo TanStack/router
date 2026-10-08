@@ -140,7 +140,8 @@ export function analyzeRouteModule(
 ): RouteModuleAnalysis {
   const module = analyzeModule(options)
   const routes: Array<RouteDefinition> = []
-  const routeIdentifier = module.exports.find(
+  const { exports: moduleExports } = module
+  const routeIdentifier = moduleExports.find(
     (entry) => entry.name === 'Route' && !entry.typeOnly,
   )?.local?.declarations[0]
   const routeDeclarator = routeIdentifier && module.parentOf(routeIdentifier)
@@ -182,7 +183,6 @@ export function analyzeRouteModule(
     },
   })
   const exported = new Map<Binding, Array<string>>()
-  const { exports: moduleExports } = module
   for (const entry of moduleExports) {
     if (entry.local && entry.name !== null && !entry.typeOnly) {
       const names = exported.get(entry.local) ?? []

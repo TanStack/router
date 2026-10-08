@@ -15,9 +15,9 @@ import {
   unwrapExport,
   unwrapExpression,
 } from '@tanstack/router-utils'
+import { BindingFlags } from 'yuku-analyzer'
 import { tssHydrate } from './hydration-constants'
 import { cleanId, codeFrameError } from './start-compiler/utils'
-import { BindingFlags } from 'yuku-analyzer'
 import type { Binding, Module } from 'yuku-analyzer'
 import type * as t from '@yuku-toolchain/types'
 import type {
@@ -644,7 +644,8 @@ function loadHydrateVirtualModule(options: {
     new Map([...graph.dependencies].filter(([binding]) => binding !== route)),
   )
   if (route && retained.delete(route)) {
-    const exportedNames = module.exports
+    const { exports: moduleExports } = module
+    const exportedNames = moduleExports
       .filter((entry) => entry.local === route && !entry.typeOnly)
       .map((entry) => entry.name)
     const exported = exportedNames.includes('Route')

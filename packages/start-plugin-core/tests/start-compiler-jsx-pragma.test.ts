@@ -255,7 +255,7 @@ export function Page() {
   )
 }`,
   )
-  let chunkComponent: (props: unknown) => unknown = () => null
+  let chunkComponent: (props: Record<string, unknown>) => unknown = () => null
   const stubs = {
     ...hydrateParentStubs,
     preact: { h: renderJsx },
@@ -264,7 +264,8 @@ export function Page() {
       createServerFn: () => ({ handler: () => () => null }),
     },
     '@tanstack/react-router': {
-      lazyRouteComponent: () => (props: unknown) => chunkComponent(props),
+      lazyRouteComponent: () => (props: Record<string, unknown>) =>
+        chunkComponent(props),
     },
   }
   const { module, parentModuleStubs } = await evaluateHydrateParent(
