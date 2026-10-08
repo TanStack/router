@@ -12,6 +12,7 @@ import {
   compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
   computeSharedBindings,
+  createRouteInFunctionMessage,
   detectCodeSplitGroupingsFromRoute,
 } from './code-splitter/compilers'
 import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framework-plugins'
@@ -144,6 +145,9 @@ export function createRouterCodeSplitterPlugin(
     }
     return analysis
   }
+
+  // Route files already reported for a route created inside a function
+  const routesInFunctionReported = new Set<string>()
 
   const getGlobalCodeSplitGroupings = () => {
     return (
@@ -309,6 +313,13 @@ export function createRouterCodeSplitterPlugin(
           const generatorFileInfo =
             routerPluginContext.routesByFile.get(normalizedId)
           if (generatorFileInfo) {
+            if (
+              getRouteAnalysis(code, normalizedId).routeCreatedInFunction &&
+              !routesInFunctionReported.has(normalizedId)
+            ) {
+              routesInFunctionReported.add(normalizedId)
+              this.warn(createRouteInFunctionMessage(normalizedId))
+            }
             return handleCompilingReferenceFile(
               code,
               normalizedId,

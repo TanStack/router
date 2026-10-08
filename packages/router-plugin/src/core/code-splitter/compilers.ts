@@ -90,6 +90,12 @@ export type RouteModuleAnalysis = {
    * `Route` holds, else the first one.
    */
   moduleRoute: RouteDefinition | undefined
+  /**
+   * The module's `Route` is not created by a module-scope factory call, but a
+   * function or block calls a route factory: it creates the module's route,
+   * which can be neither split nor updated by route HMR.
+   */
+  routeCreatedInFunction: boolean
   graph: ReturnType<typeof moduleDeclarationGraph>
   /**
    * Declaration dependencies without the `Route` singleton. Split and shared
@@ -149,14 +155,13 @@ export function analyzeRouteModule(
     ? routeDeclarator.init && unwrapExpression(routeDeclarator.init)
     : undefined
   let moduleRoute: RouteDefinition | undefined
+  // A factory call inside a function or block, and one at module scope that
+  // initializes the exported `Route`
+  let nestedFactoryCall: Node | undefined
+  let routeFactoryCall: Node | undefined
   const seen = new Set<Node>()
   module.walk({
     CallExpression(node) {
-      // A factory call inside a function or block can close over local
-      // bindings, so its options cannot be split or hoisted to module scope.
-      if (module.scopeOf(node) !== module.rootScope) {
-        return
-      }
       const outerCallee = unwrapExpression(node.callee)
       const callee = unwrapExpression(
         is.CallExpression(outerCallee) ? outerCallee.callee : outerCallee,
@@ -164,17 +169,26 @@ export function analyzeRouteModule(
       if (!is.Identifier(callee) || !factoryNames.has(callee.name)) {
         return
       }
+      // A factory call inside a function or block can close over local
+      // bindings, so its options cannot be split or hoisted to module scope.
+      if (module.scopeOf(node) !== module.rootScope) {
+        nestedFactoryCall ??= node
+        return
+      }
+      let statement: Node = node
+      let parent = module.parentOf(statement)
+      while (parent && !is.Program(parent)) {
+        if (parent === routeDeclarator) {
+          routeFactoryCall ??= node
+        }
+        statement = parent
+        parent = module.parentOf(statement)
+      }
       const options = resolveExpression(module, node.arguments[0])
       if (!is.ObjectExpression(options) || seen.has(options)) {
         return
       }
       seen.add(options)
-      let statement: Node = node
-      let parent = module.parentOf(statement)
-      while (parent && !is.Program(parent)) {
-        statement = parent
-        parent = module.parentOf(statement)
-      }
       const route = { options, factory: callee.name, statement }
       routes.push(route)
       if (node === routeInit) {
@@ -208,6 +222,7 @@ export function analyzeRouteModule(
     module,
     routes,
     moduleRoute: moduleRoute ?? routes[0],
+    routeCreatedInFunction: !!nestedFactoryCall && !routeFactoryCall,
     graph,
     chunkDependencies,
     exported,
@@ -1203,4 +1218,8 @@ function createNotExportableMessage(
     ...[...identifiers].map((name) => `- ${name}`),
     'For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.',
   ].join('\n')
+}
+
+export function createRouteInFunctionMessage(filename: string) {
+  return `[tanstack-router] The route in "${filename}" is created inside a function. Route factories are not supported, so it will not be code-split or hot-updated. Create it at module level: export const Route = createFileRoute('/path')({ ... })`
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { normalizePath } from '../src/core/utils'
 import {
   createCodeSplitterTransforms,
+  createRouteHmrTransform,
   expectValidModules,
   importSources,
   routeFile,
@@ -226,5 +227,95 @@ export const Route = createFileRoute('/hmr')({
     expect(output).toContain('"/hmr"')
     expect(output).not.toContain('__react_refresh_utils__')
     expect(await getModuleErrors(output)).toEqual([])
+  })
+})
+
+describe('a route created inside a function', () => {
+  const routeInHelper = `
+import { createFileRoute } from '@tanstack/react-router'
+function makeRoute() {
+  return createFileRoute('/made')({ component: () => <p>made</p> })
+}
+export const Route = makeRoute()
+`
+  const routeInIife = `
+import { createFileRoute } from '@tanstack/react-router'
+export const Route = (() =>
+  createFileRoute('/made')({ component: () => <p>made</p> }))()
+`
+  const moduleRoute = `
+import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
+`
+  const moduleRouteWithCodeRouteInHelper = `
+import { createFileRoute, createRoute } from '@tanstack/react-router'
+export function makeChild(label: string) {
+  return createRoute({
+    getParentRoute: () => Route,
+    path: label,
+    component: () => <p>{label}</p>,
+  })
+}
+export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
+`
+  const warning = (file: string) =>
+    expect.stringContaining(
+      `[tanstack-router] The route in "${file}" is created inside a function.`,
+    )
+
+  // Each plugin path: a transform of `file` (registered as the route `/made`)
+  // and the spy on the warnings it reports to the bundler.
+  const pluginPaths = {
+    'code splitter': async (files: Array<string>) => {
+      const splitter = await createCodeSplitterTransforms(
+        {},
+        Object.fromEntries(files.map((file) => [file, '/made'])),
+      )
+      return { transform: splitter.reference, warn: splitter.warn }
+    },
+    'route HMR plugin': async (files: Array<string>) =>
+      createRouteHmrTransform(
+        { target: 'react' },
+        Object.fromEntries(files.map((file) => [file, '/made'])),
+      ),
+  }
+
+  describe.each(Object.entries(pluginPaths))('through the %s', (_, create) => {
+    it.each([
+      ['a helper function', routeInHelper],
+      ['an IIFE', routeInIife],
+    ])('is reported when built in %s', async (_, code) => {
+      const file = routeFile('made')
+      const { transform, warn } = await create([file])
+      transform(code, file)
+      expect(warn).toHaveBeenCalledExactlyOnceWith(warning(file))
+      expect(warn.mock.calls[0]![0]).toContain(
+        "export const Route = createFileRoute('/path')({ ... })",
+      )
+    })
+
+    it.each([
+      ['a module-scope route', moduleRoute],
+      [
+        'a module-scope route next to a code route a function creates',
+        moduleRouteWithCodeRouteInHelper,
+      ],
+    ])('is not reported for %s', async (_, code) => {
+      const file = routeFile('made')
+      const { transform, warn } = await create([file])
+      transform(code, file)
+      expect(warn).not.toHaveBeenCalled()
+    })
+
+    it('is reported once per file across repeated transforms', async () => {
+      const files = [routeFile('made'), routeFile('other')]
+      const { transform, warn } = await create(files)
+      for (let edit = 0; edit < 3; edit++) {
+        for (const file of files) {
+          transform(`${routeInHelper}// edit ${edit}\n`, file)
+        }
+      }
+      expect(warn.mock.calls).toEqual(files.map((file) => [warning(file)]))
+    })
   })
 })

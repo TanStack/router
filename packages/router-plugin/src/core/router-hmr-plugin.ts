@@ -1,5 +1,9 @@
-import { analyzeModule, generateModule, logDiff } from '@tanstack/router-utils'
-import { compileCodeSplitReferenceRoute } from './code-splitter/compilers'
+import { generateModule, logDiff } from '@tanstack/router-utils'
+import {
+  analyzeRouteModule,
+  compileCodeSplitReferenceRoute,
+  createRouteInFunctionMessage,
+} from './code-splitter/compilers'
 import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import { createRouteHmrStatement } from './hmr'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
@@ -26,6 +30,8 @@ export function createRouterHmrPlugin(
   }
 
   let userConfig = resolveUserConfig()
+  // Route files already reported for a route created inside a function
+  const routesInFunctionReported = new Set<string>()
 
   return {
     name: 'tanstack-router:hmr',
@@ -48,6 +54,14 @@ export function createRouterHmrPlugin(
         if (debug) console.info('Adding HMR handling to route ', normalizedId)
 
         const hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
+        const analysis = analyzeRouteModule({ code, filename: normalizedId })
+        if (
+          analysis.routeCreatedInFunction &&
+          !routesInFunctionReported.has(normalizedId)
+        ) {
+          routesInFunctionReported.add(normalizedId)
+          this.warn(createRouteInFunctionMessage(normalizedId))
+        }
 
         if (userConfig.target === 'react') {
           const compilerPlugins = getFrameworkHmrCompilerPlugins({
@@ -56,6 +70,7 @@ export function createRouterHmrPlugin(
           })
           const compiled = compileCodeSplitReferenceRoute({
             code,
+            analysis,
             filename: normalizedId,
             id: normalizedId,
             addHmr: true,
@@ -76,7 +91,8 @@ export function createRouterHmrPlugin(
           }
         }
 
-        const ast = analyzeModule({ code, filename: normalizedId }).ast
+        // The reference compiler emits a copy, so the parsed module is intact
+        const ast = analysis.module.ast
         ast.body.push(
           ...createRouteHmrStatement([], {
             hmrStyle,

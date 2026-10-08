@@ -9,7 +9,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { build, parseSync, transformWithOxc } from 'vite'
-import { expect } from 'vitest'
+import { expect, vi } from 'vitest'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitSharedRoute,
@@ -187,12 +187,22 @@ export function routeFile(name: string) {
   return normalizePath(path.join(process.cwd(), `src/routes/${name}.tsx`))
 }
 
-function runTransform(plugin: UnpluginOptions, code: string, id: string) {
+/** The bundler's plugin context of a transform; `warn` is a spy. */
+function createTransformContext() {
+  return { warn: vi.fn<(message: string) => void>() }
+}
+
+function runTransform(
+  plugin: UnpluginOptions,
+  code: string,
+  id: string,
+  context: ReturnType<typeof createTransformContext>,
+) {
   const transform = plugin.transform
   if (!transform || typeof transform === 'function') {
     throw new Error('Expected object transform')
   }
-  const result = transform.handler.call({} as never, code, id) as
+  const result = transform.handler.call(context as never, code, id) as
     | TransformResult
     | null
     | undefined
@@ -211,7 +221,8 @@ const sharedPluginName = 'tanstack-router:code-splitter:compile-shared-file'
  * Drives the three code-splitter transforms the way a bundler does, for the
  * given route files (absolute path to route id). `configPlugins` are the
  * plugins of the resolved Vite config; by default the code splitter itself,
- * so its plugin-order check runs.
+ * so its plugin-order check runs. `warn` spies on the warnings the transforms
+ * report to the bundler.
  */
 export async function createCodeSplitterTransforms(
   options: Partial<Config>,
@@ -245,13 +256,44 @@ export async function createCodeSplitterTransforms(
   } else if (hook) {
     await hook.handler.call({} as never, config)
   }
+  const transformContext = createTransformContext()
   return {
     reference: (code: string, id: string) =>
-      runTransform(byName(referencePluginName), code, id),
+      runTransform(byName(referencePluginName), code, id, transformContext),
     virtual: (code: string, id: string) =>
-      runTransform(byName(virtualPluginName), code, id),
+      runTransform(byName(virtualPluginName), code, id, transformContext),
     shared: (code: string, id: string) =>
-      runTransform(byName(sharedPluginName), code, id),
+      runTransform(byName(sharedPluginName), code, id, transformContext),
+    warn: transformContext.warn,
+  }
+}
+
+/**
+ * Creates the route HMR plugin (used when automatic code splitting is off)
+ * for the given route files (absolute path to route id). `transform` runs it
+ * on a route file the way a bundler does, and `warn` spies on the warnings it
+ * reports to the bundler.
+ */
+export function createRouteHmrTransform(
+  options: Partial<Config>,
+  routes: Record<string, string>,
+) {
+  const context = createRouterPluginContext()
+  for (const [file, routeId] of Object.entries(routes)) {
+    context.routesByFile.set(file, { routeId })
+  }
+  const plugins = createRouterHmrPlugin(options, context)
+  const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
+  const transformContext = createTransformContext()
+  return {
+    transform: (code: string, id: string) => {
+      const output = runTransform(plugin, code, id, transformContext)
+      if (output === null) {
+        throw new Error('expected the route HMR plugin to transform the route')
+      }
+      return output
+    },
+    warn: transformContext.warn,
   }
 }
 
@@ -267,15 +309,9 @@ export function transformWithRouteHmrPlugin(
     routeId: '/',
   },
 ) {
-  const context = createRouterPluginContext()
-  context.routesByFile.set(route.file, { routeId: route.routeId })
-  const plugins = createRouterHmrPlugin(options, context)
-  const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
-  const output = runTransform(plugin, code, route.file)
-  if (output === null) {
-    throw new Error('expected the route HMR plugin to transform the route')
-  }
-  return output
+  return createRouteHmrTransform(options, {
+    [route.file]: route.routeId,
+  }).transform(code, route.file)
 }
 
 /** Renders JSX to text: intrinsic elements become tags, components are called. */
