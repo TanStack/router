@@ -975,10 +975,10 @@ export function compileCodeSplitVirtualRoute(
  * the reference module instead of initializing a second copy. Imports keep their
  * source, a destructuring that also declares private bindings stays whole, and
  * shared bindings come from the shared module. Exported variables are always
- * imported, as on main, so that every module sees one context or store
- * instance. An exported function or class that depends on a private binding the
- * split module declares itself is declared alongside it, so that both observe
- * one module state.
+ * imported so that every module sees one context or store instance. An
+ * exported function or class that depends on a private binding the split
+ * module declares itself is declared alongside it, so that both observe one
+ * module state.
  */
 function exportsImportedBySplitModule(
   analysis: RouteModuleAnalysis,
