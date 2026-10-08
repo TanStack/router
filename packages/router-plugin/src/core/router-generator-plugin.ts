@@ -42,10 +42,13 @@ export function createRouterGeneratorPlugin(
     })
   }
 
-  const generate = async (opts?: {
-    file: string
-    event: 'create' | 'update' | 'delete'
-  }) => {
+  const generate = async (
+    opts?: {
+      file: string
+      event: 'create' | 'update' | 'delete'
+    },
+    failOnError = false,
+  ) => {
     if (routeGenerationDisabled()) {
       return
     }
@@ -63,6 +66,11 @@ export function createRouterGeneratorPlugin(
       await generator.run(generatorEvent)
       routerPluginContext.routesByFile = generator.getRoutesByFileMap()
     } catch (e) {
+      // A build fails rather than bundle a stale route tree. A dev server
+      // reports the error and keeps running, so the next edit can fix it.
+      if (failOnError) {
+        throw e
+      }
       console.error(e)
     }
   }
@@ -79,7 +87,7 @@ export function createRouterGeneratorPlugin(
     vite: {
       async configResolved(config) {
         initConfigAndGenerator({ root: config.root })
-        await generate()
+        await generate(undefined, config.command === 'build')
       },
     },
     rspack(compiler) {
@@ -87,7 +95,9 @@ export function createRouterGeneratorPlugin(
 
       let handle: FSWatcher | null = null
 
-      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () =>
+        generate(undefined, true),
+      )
 
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
         if (handle) {
@@ -115,7 +125,9 @@ export function createRouterGeneratorPlugin(
 
       let handle: FSWatcher | null = null
 
-      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () =>
+        generate(undefined, true),
+      )
 
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
         if (handle) {

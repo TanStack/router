@@ -260,15 +260,21 @@ describe('determineInitialRoutePath', () => {
     })
   })
 
-  it('errors on disallowed escaped character', () => {
+  it('throws on a disallowed escaped character instead of exiting the process', () => {
     const consoleSpy = vi.spyOn(console, 'error')
 
-    expect(() => determineInitialRoutePath('/a[/]')).toThrowError()
-
-    expect(consoleSpy).toBeCalledWith(
-      'Error: Disallowed character "/" found in square brackets in route path "/a[/]".\n' +
+    expect(() => determineInitialRoutePath('/a[/]')).toThrowError(
+      'Disallowed character "/" found in square brackets in route path "/a[/]".\n' +
         'You cannot use any of the following characters in square brackets: /, \\, ?, #, :, *, <, >, |, !, $, %\n' +
         'Please remove and/or replace them.',
+    )
+    expect(consoleSpy).not.toHaveBeenCalled()
+    // The next route path is checked from its start
+    expect(() => determineInitialRoutePath('/a-longer-path[%]')).toThrowError(
+      'Disallowed character "%"',
+    )
+    expect(() => determineInitialRoutePath('/b[%]')).toThrowError(
+      'Disallowed character "%"',
     )
 
     consoleSpy.mockRestore()

@@ -203,12 +203,15 @@ function determineInitialRoutePathFromParts(
       const character = match[1]
       if (character === undefined) continue
       if (DISALLOWED_ESCAPE_CHARS.has(character)) {
-        console.error(
-          `Error: Disallowed character "${character}" found in square brackets in route path "${routePath}".\nYou cannot use any of the following characters in square brackets: ${Array.from(
+        // The next route path scans from the start again
+        BRACKET_CONTENT_RE.lastIndex = 0
+        // Throw rather than exit the process: the generator's callers report
+        // it, so a dev server stays up and a build fails.
+        throw new Error(
+          `Disallowed character "${character}" found in square brackets in route path "${routePath}".\nYou cannot use any of the following characters in square brackets: ${Array.from(
             DISALLOWED_ESCAPE_CHARS,
           ).join(', ')}\nPlease remove and/or replace them.`,
         )
-        process.exit(1)
       }
     }
 
