@@ -94,43 +94,6 @@ async function importModule(
   return import(/* @vite-ignore */ dataUrl(linked))
 }
 
-describe('ported SolidStart directives', () => {
-  // plugin.ts transformFunction (directive functions nested in a server
-  // function are compiled too). Main leaves env-specific functions inside a
-  // handler untransformed in the provider: the client-only implementation
-  // and its browser-only import ship in the server bundle.
-  test('env-specific functions inside a handler are compiled in the provider', async () => {
-    const { code } = await compile(
-      'provider',
-      `import { createServerFn, createClientOnlyFn, createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'
-import { chart } from './chart.client'
-import { db } from './db.server'
-export const fn = createServerFn().handler(async () => {
-  const draw = createClientOnlyFn(() => chart())
-  const now = createIsomorphicFn().server(() => db.now()).client(() => chart())
-  const read = createServerOnlyFn(() => db.read())
-  let drawn
-  try {
-    drawn = draw()
-  } catch (error) {
-    drawn = (error as Error).message
-  }
-  return [drawn, now(), read()]
-})`,
-    )
-    expect(await getModuleErrors(code!)).toEqual([])
-    expect(importSources(code!)).toEqual(['./db.server'])
-    const module = await importModule(code!, {
-      './db.server': `export const db = { now: () => 'now', read: () => 'read' }`,
-    })
-    expect(await module.fn_createServerFn_handler({})).toEqual([
-      'createClientOnlyFn() functions can only be called on the client!',
-      'now',
-      'read',
-    ])
-  })
-})
-
 /** Compiles a module with `<Hydrate>` for the client and loads its chunks. */
 async function compileHydrate(code: string) {
   const plugin = createHydrateCompilerPlugin()

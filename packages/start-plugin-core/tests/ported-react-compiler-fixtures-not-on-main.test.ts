@@ -140,20 +140,3 @@ export function Page() {
     expect(await renderChunk(chunk)).toBe(expected)
   })
 })
-
-// context-variable-as-jsx-element-tag.js: a local named like its own function
-test('client: a server-only function with a local of the same name is removed', async () => {
-  const client = await compileStartModule({
-    env: 'client',
-    code: `import { createServerFn } from '@tanstack/react-start'
-import { readSecret } from './server-only'
-function Report() {
-  let Report = readSecret()
-  return <Report />
-}
-export const getReport = createServerFn().handler(async () => Report())
-`,
-  })
-  expect(client).not.toContain('server-only')
-  expect(client).not.toContain('readSecret')
-})

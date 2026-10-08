@@ -140,3 +140,57 @@ export const fn = createServerFn().handler(async () => red)`,
   )
   expect((await evaluateModule(client!)).label).toBe('red')
 })
+
+// An empty destructuring pattern binds nothing, but its initializer still
+// runs.
+// Source: babel-dead-code-elimination "object pattern" > "unzips if all
+// variables are unused", "array pattern" > "unzips if all variables are
+// unused"
+test.each(['client', 'provider'] as const)(
+  '%s: keeps the initializers of empty destructuring patterns',
+  async (output) => {
+    const result = await compileCode(
+      output,
+      `import { createServerFn } from '@tanstack/react-start'
+import { init, other } from './init'
+const {} = init()
+const [] = other()
+const { a: {} } = init()
+export const fn = createServerFn().handler(async () => 'ok')`,
+    )
+    const calls: Array<string> = []
+    await evaluateModule(result!, {
+      './init': {
+        init: () => {
+          calls.push('init')
+          return { a: {} }
+        },
+        other: () => {
+          calls.push('other')
+          return []
+        },
+      },
+    })
+    expect(calls).toEqual(['init', 'other', 'init'])
+  },
+)
+
+// Source: typescript-eslint type-assertion/increment/as-increment.js,
+// type-assertion/increment/non-null-increment.js, type-assertion/satisfies.js
+test('keeps the parentheses of asserted update operands', async () => {
+  const client = await compileCode(
+    'client',
+    `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 1)
+let count = 0
+export function bump() {
+  ;(count as number)++
+  ;(count satisfies number)++
+  count!++
+  ;(count as any) += 1
+  return count
+}`,
+  )
+  expect(await getModuleErrors(client!)).toEqual([])
+  expect((await evaluateModule(client!)).bump()).toBe(4)
+})
