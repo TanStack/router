@@ -289,34 +289,34 @@ export const Route = createFileRoute('/')({
   })
 
   // TypeScript lets a type and a value share a name; exporting both is valid.
-  it.each([
-    {
-      name: 'a type alias and an export specifier',
-      exports: `export type Post = { id: string }
+  it('exports a type and a value with the same name', async () => {
+    const code = `${head}export type Post = { id: string }
 function Post(id: string): Post {
   return { id }
 }
-export { Post }`,
-    },
-    {
-      name: 'a type re-export and a value re-export',
-      exports: `export type { Post } from './post-types'
-export { Post } from './post-values'`,
-    },
-  ])(
-    'exports a type and a value with the same name: $name',
-    async ({ exports }) => {
-      const code = `${head}${exports}
+export { Post }
 export const Route = createFileRoute('/posts')({
   component: () => <p>posts</p>,
 })
 `
-      const { modules } = compileRouteModules(code)
-      expect(exportedNames(modules.reference!)).toContain('Post')
-      expect(exportedNames(transformWithRouteHmrPlugin(code))).toContain('Post')
-      await expectValidModules(modules)
-    },
-  )
+    const { modules } = compileRouteModules(code)
+    expect(exportedNames(modules.reference!)).toContain('Post')
+    expect(exportedNames(transformWithRouteHmrPlugin(code))).toContain('Post')
+    await expectValidModules(modules)
+  })
+
+  // Re-exporting a type and a value under one name is a duplicate export for
+  // TypeScript ("Duplicate identifier"), so the compiler rejects it too.
+  it('rejects a type re-export and a value re-export of the same name', () => {
+    const code = `${head}export type { Post } from './post-types'
+export { Post } from './post-values'
+export const Route = createFileRoute('/posts')({
+  component: () => <p>posts</p>,
+})
+`
+    expect(() => compileRouteModules(code)).toThrow(/\bPost\b/)
+    expect(() => transformWithRouteHmrPlugin(code)).toThrow(/\bPost\b/)
+  })
 
   it('keeps decorators before `export` for legacy decorator transforms', () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only
