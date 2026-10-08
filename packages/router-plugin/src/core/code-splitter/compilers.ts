@@ -78,6 +78,8 @@ export function addSharedSearchParamToFilename(filename: string) {
 type RouteDefinition = {
   options: ObjectExpression
   factory: string
+  /** The factory call that receives the options */
+  call: Node
   statement: Node
 }
 
@@ -189,7 +191,7 @@ export function analyzeRouteModule(
         return
       }
       seen.add(options)
-      const route = { options, factory: callee.name, statement }
+      const route = { options, factory: callee.name, call: node, statement }
       routes.push(route)
       if (node === routeInit) {
         moduleRoute = route
@@ -701,6 +703,8 @@ export function compileCodeSplitReferenceRoute(
   options: SourceOptions &
     CompileCodeSplitReferenceRouteOptions & {
       compilerPlugins?: Array<CodeSplitCompilerPlugin>
+      /** Reports a problem with the route file to the bundler */
+      warn?: (message: string) => void
     },
 ) {
   const analysis = sourceAnalysis(options)
@@ -852,6 +856,14 @@ export function compileCodeSplitReferenceRoute(
       modified = true
     }
   }
+  // Reported before an unmodified module returns: an exported option that is
+  // the only one to split leaves the module as is in a production build.
+  const notExportableMessage = knownExported.size
+    ? createNotExportableMessage(options.filename, knownExported)
+    : undefined
+  if (notExportableMessage) {
+    options.warn?.(notExportableMessage)
+  }
   if (!modified) {
     return null
   }
@@ -888,15 +900,14 @@ export function compileCodeSplitReferenceRoute(
     )
   }
   removeUnusedBindings(analysis.module, program, originalNodes)
-  if (knownExported.size) {
-    const message = createNotExportableMessage(options.filename, knownExported)
-    console.warn(message)
-    if (process.env.NODE_ENV !== 'production') {
-      prepend(
-        program,
-        ...parseStatements(`console.warn(${JSON.stringify(message)})`),
-      )
-    }
+  // The browser console shows it too, where the terminal output may be unseen
+  if (notExportableMessage && process.env.NODE_ENV !== 'production') {
+    prepend(
+      program,
+      ...parseStatements(
+        `console.warn(${JSON.stringify(notExportableMessage)})`,
+      ),
+    )
   }
   return generateRouteModule(analysis, program, options.filename)
 }
@@ -1172,6 +1183,11 @@ export function detectCodeSplitGroupingsFromRoute(options: SourceOptions): {
       continue
     }
     for (const property of properties(route)) {
+      if (computedKeyName(property) === 'codeSplitGroupings') {
+        throw new Error(
+          `[tanstack-router] The codeSplitGroupings of the route in "${options.filename}" use a computed key, so they cannot be read. Use a static key: codeSplitGroupings: [...]`,
+        )
+      }
       if (getObjectPropertyKeyName(property) !== 'codeSplitGroupings') {
         continue
       }
@@ -1222,4 +1238,152 @@ function createNotExportableMessage(
 
 export function createRouteInFunctionMessage(filename: string) {
   return `[tanstack-router] The route in "${filename}" is created inside a function. Route factories are not supported, so it will not be code-split or hot-updated. Create it at module level: export const Route = createFileRoute('/path')({ ... })`
+}
+
+/** The string literal of a computed key (`['component']`). */
+function computedKeyName(property: ObjectProperty) {
+  return property.computed &&
+    is.Literal(property.key) &&
+    typeof property.key.value === 'string'
+    ? property.key.value
+    : undefined
+}
+
+/** `file:line:column` of a node of the route module, the column 1-based. */
+function sourceLocation(analysis: RouteModuleAnalysis, node: Node) {
+  const lines = analysis.module.source.slice(0, node.start).split(/\r\n?|\n/)
+  return `${analysis.module.path}:${lines.length}:${lines.at(-1)!.length + 1}`
+}
+
+/**
+ * The error of a route file that creates more than one file route: their split
+ * chunks would export the same options, and only one route can be the file's.
+ */
+export function createDuplicateFileRouteMessage(
+  analysis: RouteModuleAnalysis,
+  filename: string,
+) {
+  const fileRoutes = analysis.routes.filter(
+    (route) => route.factory === 'createFileRoute',
+  )
+  if (fileRoutes.length < 2) {
+    return undefined
+  }
+  return [
+    `[tanstack-router] "${filename}" calls createFileRoute ${fileRoutes.length} times:`,
+    ...fileRoutes.map((route) => `- ${sourceLocation(analysis, route.call)}`),
+    'A route file creates exactly one file route. Move the other routes into their own route files, or create them with createRoute.',
+  ].join('\n')
+}
+
+/**
+ * Route file patterns the code splitter and route HMR leave alone without
+ * failing: an aliased or namespaced route factory is not recognized, and
+ * route options it cannot read statically are not split. Options are only
+ * checked when `codeSplitGroupings` would split them.
+ */
+export function getRouteModuleWarnings(
+  analysis: RouteModuleAnalysis,
+  filename: string,
+  codeSplitGroupings: CodeSplitGroupings,
+): Array<string> {
+  const { module } = analysis
+  const warnings: Array<string> = []
+  for (const entry of module.imports) {
+    if (entry.typeOnly || !entry.local) {
+      continue
+    }
+    if (
+      entry.kind === 'named' &&
+      entry.name &&
+      factoryNames.has(entry.name) &&
+      entry.local.name !== entry.name
+    ) {
+      warnings.push(
+        `[tanstack-router] "${filename}" imports ${entry.name} as ${entry.local.name}. Route factories are only recognized by their own name, so this route will not be code-split or hot-updated. Import it without renaming: import { ${entry.name} } from '${entry.specifier}'`,
+      )
+      continue
+    }
+    if (entry.kind !== 'namespace') {
+      continue
+    }
+    const members = new Set<string>()
+    for (const reference of entry.local.references) {
+      const parent = module.parentOf(reference.node)
+      if (
+        is.MemberExpression(parent) &&
+        parent.object === reference.node &&
+        !parent.computed &&
+        is.Identifier(parent.property) &&
+        factoryNames.has(parent.property.name)
+      ) {
+        members.add(parent.property.name)
+      }
+    }
+    for (const member of members) {
+      warnings.push(
+        `[tanstack-router] "${filename}" calls ${entry.local.name}.${member} through a namespace import. Route factories are only recognized when imported by name, so this route will not be code-split or hot-updated. Import it by name: import { ${member} } from '${entry.specifier}'`,
+      )
+    }
+  }
+  const splitOptions = new Set<string>(codeSplitGroupings.flat())
+  for (const route of analysis.routes) {
+    if (route.factory !== 'createFileRoute') {
+      continue
+    }
+    const all = route.options.properties
+    all.forEach((property, index) => {
+      // A later static key overrides it at runtime
+      const overridden = (key: string) =>
+        all
+          .slice(index + 1)
+          .some(
+            (later) =>
+              is.Property(later) && getObjectPropertyKeyName(later) === key,
+          )
+      if (is.SpreadElement(property)) {
+        const spread = resolveExpression(module, property.argument)
+        if (!is.ObjectExpression(spread)) {
+          return
+        }
+        const keys = spread.properties
+          .filter((candidate) => is.Property(candidate))
+          .map((candidate) => getObjectPropertyKeyName(candidate))
+          .filter(
+            (key): key is string =>
+              !!key &&
+              (key === 'codeSplitGroupings' || splitOptions.has(key)) &&
+              !overridden(key),
+          )
+        if (keys.length) {
+          warnings.push(
+            `[tanstack-router] The route options at ${sourceLocation(analysis, property)} spread ${keys.join(', ')} from another object. Spread options are not read by the code splitter, so ${keys.includes('codeSplitGroupings') ? 'these codeSplitGroupings are ignored and ' : ''}${keys.some((key) => key !== 'codeSplitGroupings') ? 'these options will not be code-split' : 'the default groupings apply'}. Write them in the route options object itself.`,
+          )
+        }
+        return
+      }
+      const computed = computedKeyName(property)
+      if (computed !== undefined) {
+        if (splitOptions.has(computed) && !overridden(computed)) {
+          warnings.push(
+            `[tanstack-router] The "${computed}" route option at ${sourceLocation(analysis, property)} uses a computed key, so it will not be code-split. Use a static key: ${computed}: ...`,
+          )
+        }
+        return
+      }
+      const key = getObjectPropertyKeyName(property)
+      if (
+        key &&
+        splitOptions.has(key) &&
+        !isDataProperty(property) &&
+        !overridden(key)
+      ) {
+        const form = property.method ? 'a method' : `a ${property.kind}ter`
+        warnings.push(
+          `[tanstack-router] The "${key}" route option at ${sourceLocation(analysis, property)} is ${form}, so it will not be code-split. Write it as a property: ${key}: () => ...`,
+        )
+      }
+    })
+  }
+  return warnings
 }

@@ -12,8 +12,10 @@ import {
   compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
   computeSharedBindings,
+  createDuplicateFileRouteMessage,
   createRouteInFunctionMessage,
   detectCodeSplitGroupingsFromRoute,
+  getRouteModuleWarnings,
 } from './code-splitter/compilers'
 import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import {
@@ -146,8 +148,9 @@ export function createRouterCodeSplitterPlugin(
     return analysis
   }
 
-  // Route files already reported for a route created inside a function
-  const routesInFunctionReported = new Set<string>()
+  // Warnings already reported: once per message, which names the route file,
+  // so an edit that changes the problem reports it again
+  const reportedWarnings = new Set<string>()
 
   const getGlobalCodeSplitGroupings = () => {
     return (
@@ -163,8 +166,17 @@ export function createRouterCodeSplitterPlugin(
     code: string,
     id: string,
     generatorNodeInfo: GetRoutesByFileMapResultValue,
+    warn: (message: string) => void,
   ): UnpluginTransformResult => {
     if (debug) console.info('Compiling Route: ', id)
+
+    const duplicateFileRoute = createDuplicateFileRouteMessage(
+      getRouteAnalysis(code, id),
+      id,
+    )
+    if (duplicateFileRoute) {
+      throw new Error(duplicateFileRoute)
+    }
 
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
@@ -201,6 +213,14 @@ export function createRouterCodeSplitterPlugin(
     const splitGroupings: CodeSplitGroupings =
       fromCode.groupings ?? pluginSplitBehavior ?? getGlobalCodeSplitGroupings()
 
+    for (const message of getRouteModuleWarnings(
+      getRouteAnalysis(code, id),
+      id,
+      splitGroupings,
+    )) {
+      warn(message)
+    }
+
     // Compute shared bindings before compiling the reference route
     const sharedBindings = computeSharedBindings({
       code,
@@ -229,6 +249,7 @@ export function createRouterCodeSplitterPlugin(
       hmrRouteId: generatorNodeInfo.routeId,
       sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
       compilerPlugins,
+      warn,
     })
 
     if (compiledReferenceRoute === null) {
@@ -313,17 +334,20 @@ export function createRouterCodeSplitterPlugin(
           const generatorFileInfo =
             routerPluginContext.routesByFile.get(normalizedId)
           if (generatorFileInfo) {
-            if (
-              getRouteAnalysis(code, normalizedId).routeCreatedInFunction &&
-              !routesInFunctionReported.has(normalizedId)
-            ) {
-              routesInFunctionReported.add(normalizedId)
-              this.warn(createRouteInFunctionMessage(normalizedId))
+            const warn = (message: string) => {
+              if (!reportedWarnings.has(message)) {
+                reportedWarnings.add(message)
+                this.warn(message)
+              }
+            }
+            if (getRouteAnalysis(code, normalizedId).routeCreatedInFunction) {
+              warn(createRouteInFunctionMessage(normalizedId))
             }
             return handleCompilingReferenceFile(
               code,
               normalizedId,
               generatorFileInfo,
+              warn,
             )
           }
 
