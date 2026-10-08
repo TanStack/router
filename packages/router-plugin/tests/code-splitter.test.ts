@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { analyzeModule } from '@tanstack/router-utils'
+import { analyzeModule, createIdentifier } from '@tanstack/router-utils'
 import { BindingFlags } from 'yuku-analyzer'
 
 import {
@@ -11,7 +11,6 @@ import {
   compileCodeSplitVirtualRoute,
   computeSharedBindings,
 } from '../src/core/code-splitter/compilers'
-import { createIdentifier } from '@tanstack/router-utils'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { frameworks } from './constants'

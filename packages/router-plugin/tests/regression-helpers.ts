@@ -507,7 +507,7 @@ export async function expectRefreshableRouteOption(
   let node: ESTree.Expression | ESTree.Argument | undefined = getRouteOption(
     parseModule(code),
     option,
-  ).value as ESTree.Expression
+  ).value
   while (node?.type === 'CallExpression' && isMemoOrForwardRef(node.callee)) {
     node = node.arguments[0]
   }
