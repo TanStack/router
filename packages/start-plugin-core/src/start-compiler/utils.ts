@@ -45,6 +45,7 @@ export function cleanId(id: string): string {
 /** Output-tree edits use native node identity; semantic queries use the source module. */
 export function createAstEditor(ast: Program) {
   const parents = new WeakMap<Node, { parent: Node; key: string }>()
+  const replaced = new WeakSet<Node>()
   function indexSubtree(root: Node) {
     walk(root, {
       enter(node, context) {
@@ -77,6 +78,20 @@ export function createAstEditor(ast: Program) {
       }
       parents.set(replacement, position)
       indexSubtree(replacement)
+      replaced.add(node)
+    },
+    /** Whether `replaceNode` removed `node` or one of its ancestors. */
+    isReplaced(node: Node): boolean {
+      for (
+        let current: Node | undefined = node;
+        current;
+        current = parents.get(current)?.parent
+      ) {
+        if (replaced.has(current)) {
+          return true
+        }
+      }
+      return false
     },
   }
 }

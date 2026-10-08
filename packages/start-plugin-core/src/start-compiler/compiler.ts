@@ -1010,14 +1010,20 @@ export class StartCompiler {
     }
     let modified = candidatesByKind.size > 0 || jsx.length > 0
     if (modified) {
-      this.runExternalTransforms('pre', candidatesByKind, context)
+      // A candidate inside code an earlier handler replaced (e.g. a server fn
+      // handler a caller replaced with its RPC) is no longer in the output.
+      const liveCandidates = (kind: Exclude<LookupKind, 'ClientOnlyJSX'>) =>
+        candidatesByKind
+          .get(kind)
+          ?.filter(({ node }) => !editor.isReplaced(node))
+      this.runExternalTransforms('pre', liveCandidates, context)
       for (const kind of BuiltInKindHandlerOrder) {
-        const candidates = candidatesByKind.get(kind)
-        if (candidates) {
+        const candidates = liveCandidates(kind)
+        if (candidates?.length) {
           BuiltInKindHandlers[kind](candidates, context, kind)
         }
       }
-      this.runExternalTransforms('post', candidatesByKind, context)
+      this.runExternalTransforms('post', liveCandidates, context)
       for (const element of jsx) {
         handleClientOnlyJSX(element, { env: 'server' })
       }
@@ -1074,10 +1080,9 @@ export class StartCompiler {
 
   private runExternalTransforms(
     order: 'pre' | 'post',
-    candidatesByKind: Map<
-      Exclude<LookupKind, 'ClientOnlyJSX'>,
-      Array<RewriteCandidate>
-    >,
+    getCandidates: (
+      kind: Exclude<LookupKind, 'ClientOnlyJSX'>,
+    ) => Array<RewriteCandidate> | undefined,
     context: CompilationContext,
   ) {
     for (const [kind, transform] of this.externalTransformsByKind) {
@@ -1085,8 +1090,8 @@ export class StartCompiler {
         continue
       }
 
-      const candidates = candidatesByKind.get(kind)
-      if (!candidates) {
+      const candidates = getCandidates(kind)
+      if (!candidates?.length) {
         continue
       }
 
