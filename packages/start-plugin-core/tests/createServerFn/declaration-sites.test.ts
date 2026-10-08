@@ -170,3 +170,12 @@ export const fn = createServerFn().handler(...args)`,
   expect(message).toMatch(/handler\(\) must be called with an expression/)
   expect(message).not.toContain('export const fn')
 })
+
+test('a .ts module in a directory whose name contains # compiles as TypeScript', async () => {
+  const { code } = await compileFor(
+    'client',
+    `${imports['createServerFn alone'].head}export const fn = createServerFn().handler(async ({ data }) => <string>data)`,
+    { id: '/test/c#proj/src/module.ts' },
+  )
+  expect(code).toContain('createClientRpc')
+})

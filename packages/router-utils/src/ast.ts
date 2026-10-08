@@ -56,7 +56,9 @@ export function analyzeModule({
   code,
   filename = 'input.tsx',
 }: AnalyzeModuleOptions): Module {
-  const physicalName = filename.replace(/[?#].*$/, '')
+  // Without the query, and a hash after the last path segment's extension (a
+  // `#` may also be part of a directory name)
+  const physicalName = filename.replace(/\?.*$/, '').replace(/#[^/\\]*$/, '')
   const module = analyze(code, {
     path: filename,
     // JavaScript route files may contain JSX but never TypeScript, where
