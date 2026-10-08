@@ -1793,8 +1793,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -2000,8 +2000,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -2046,8 +2046,8 @@ importers:
         specifier: 'catalog:'
         version: 6.1.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -2150,8 +2150,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -2177,8 +2177,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
     devDependencies:
       '@playwright/test':
         specifier: ^1.63.0
@@ -2260,8 +2260,8 @@ importers:
         specifier: ^1.97.2
         version: 1.97.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -2327,8 +2327,8 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -2394,8 +2394,8 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -2446,8 +2446,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -2498,8 +2498,8 @@ importers:
         specifier: ^3.0.260903-beta
         version: 3.0.260903-beta
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -2553,8 +2553,8 @@ importers:
         specifier: ^1.3.1
         version: 1.3.1
       srvx:
-        specifier: 0.11.15
-        version: 0.11.15
+        specifier: 1.0.5
+        version: 1.0.5
       tsx:
         specifier: 4.20.3
         version: 4.20.3
@@ -2580,8 +2580,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
     devDependencies:
       '@platformatic/flame':
         specifier: latest
@@ -2767,8 +2767,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -2813,8 +2813,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -2960,8 +2960,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -3006,8 +3006,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.9)
       srvx:
-        specifier: ^0.10.0
-        version: 0.10.1
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -3067,8 +3067,8 @@ importers:
         specifier: ^9.22.0
         version: 9.22.0(jiti@2.7.0)(supports-color@10.2.2)
       srvx:
-        specifier: ^0.10.0
-        version: 0.10.0
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -3116,8 +3116,8 @@ importers:
         specifier: ^0.5.30
         version: 0.5.30(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -3174,8 +3174,8 @@ importers:
         specifier: ^0.5.30
         version: 0.5.30(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.10.0
-        version: 0.10.0
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -3220,8 +3220,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.9)
       srvx:
-        specifier: ^0.10.0
-        version: 0.10.1
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -3281,8 +3281,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -3336,8 +3336,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -3391,8 +3391,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -3479,8 +3479,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -3531,8 +3531,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -3610,8 +3610,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -3662,8 +3662,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -3760,8 +3760,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -3907,8 +3907,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -3956,8 +3956,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -4023,8 +4023,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -4087,8 +4087,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -4861,8 +4861,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -4928,8 +4928,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -5041,8 +5041,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -5084,8 +5084,8 @@ importers:
         specifier: 'catalog:'
         version: 6.1.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -5121,8 +5121,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -5161,8 +5161,8 @@ importers:
         specifier: ^1.97.2
         version: 1.97.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -5216,8 +5216,8 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -5265,8 +5265,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -5305,8 +5305,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -5418,8 +5418,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -5458,8 +5458,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -5504,8 +5504,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -5574,8 +5574,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -5644,8 +5644,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -5761,8 +5761,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -5804,8 +5804,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -5862,8 +5862,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -5917,8 +5917,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -6892,8 +6892,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -6962,8 +6962,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7060,8 +7060,8 @@ importers:
         specifier: 'catalog:'
         version: 6.1.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -7124,8 +7124,8 @@ importers:
         specifier: ^5.1.5
         version: 5.1.5(supports-color@7.2.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7167,8 +7167,8 @@ importers:
         specifier: ^1.97.2
         version: 1.97.2
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -7225,8 +7225,8 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7274,8 +7274,8 @@ importers:
         specifier: ^5.1.5
         version: 5.1.5(supports-color@7.2.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -7393,8 +7393,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7436,8 +7436,8 @@ importers:
         specifier: ^5.1.5
         version: 5.1.5(supports-color@7.2.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7485,8 +7485,8 @@ importers:
         specifier: ^5.1.5
         version: 5.1.5(supports-color@7.2.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7561,8 +7561,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7634,8 +7634,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7717,8 +7717,8 @@ importers:
         specifier: ^5.1.5
         version: 5.1.5(supports-color@7.2.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -7760,8 +7760,8 @@ importers:
         specifier: ^5.1.5
         version: 5.1.5(supports-color@7.2.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
+        specifier: ^1.0.5
+        version: 1.0.5
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -7821,8 +7821,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7879,8 +7879,8 @@ importers:
         specifier: ^5.1.5
         version: 5.1.5(supports-color@7.2.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -10280,8 +10280,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       srvx:
-        specifier: ^0.11.18
-        version: 0.11.18
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -10450,8 +10450,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       srvx:
-        specifier: ^0.11.9
-        version: 0.11.12
+        specifier: ^1.0.5
+        version: 1.0.5
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -13750,7 +13750,7 @@ importers:
         version: link:../react-router
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.6.3
@@ -13799,7 +13799,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@typescript-eslint/rule-tester':
         specifier: ^8.23.0
         version: 8.23.0(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
@@ -13863,7 +13863,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
@@ -13884,7 +13884,7 @@ importers:
     dependencies:
       nitropack:
         specifier: ^2.13.4
-        version: 2.13.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(@rspack/core@2.2.7(@swc/helpers@0.5.23))(mysql2@3.15.3)(rolldown@1.2.13)(srvx@0.11.22)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(webpack@5.110.3)
+        version: 2.13.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(@rspack/core@2.2.7(@swc/helpers@0.5.23))(mysql2@3.15.3)(rolldown@1.2.13)(srvx@1.0.5)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(webpack@5.110.3)
       pathe:
         specifier: 'catalog:'
         version: 2.0.3
@@ -13934,7 +13934,7 @@ importers:
         version: 5.102.0(react@19.2.3)
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.6.3
@@ -14004,7 +14004,7 @@ importers:
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -14065,7 +14065,7 @@ importers:
         version: link:../react-router
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.9
@@ -14144,7 +14144,7 @@ importers:
         version: 2.2.5
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -14196,7 +14196,7 @@ importers:
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -14275,7 +14275,7 @@ importers:
         version: 2.2.7(@swc/helpers@0.5.23)
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -14336,7 +14336,7 @@ importers:
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.9
@@ -14394,7 +14394,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -14480,7 +14480,7 @@ importers:
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.9
@@ -14532,7 +14532,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.6.3
@@ -14593,7 +14593,7 @@ importers:
         version: link:../react-router
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -14714,7 +14714,7 @@ importers:
         version: link:../router-core
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
@@ -14763,7 +14763,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/babel__generator':
         specifier: ^7.27.0
         version: 7.27.0
@@ -14794,7 +14794,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       publint:
         specifier: 'catalog:'
         version: 0.3.17
@@ -14834,7 +14834,7 @@ importers:
         version: 0.8.10(solid-js@1.9.12)
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.6.3
@@ -14886,7 +14886,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -14929,7 +14929,7 @@ importers:
         version: link:../solid-router
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       eslint-plugin-solid:
         specifier: ^0.14.5
         version: 0.14.5(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
@@ -14996,7 +14996,7 @@ importers:
         version: link:../router-utils
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -15039,7 +15039,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.6.3
@@ -15079,7 +15079,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@typescript/native':
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
@@ -15128,7 +15128,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -15155,7 +15155,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       publint:
         specifier: 'catalog:'
         version: 0.3.17
@@ -15217,8 +15217,8 @@ importers:
         specifier: ^0.7.6
         version: 0.7.6
       srvx:
-        specifier: ^0.11.22
-        version: 0.11.22
+        specifier: ^1.0.5
+        version: 1.0.5
       tinyglobby:
         specifier: 'catalog:'
         version: 0.2.17
@@ -15243,7 +15243,7 @@ importers:
         version: 2.2.5
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/babel__code-frame':
         specifier: ^7.0.6
         version: 7.0.6
@@ -15287,8 +15287,8 @@ importers:
         specifier: ^0.1.6
         version: 0.1.7
       h3-v2:
-        specifier: npm:h3@2.0.1-rc.20
-        version: h3@2.0.1-rc.20(crossws@0.4.12(srvx@1.0.5))
+        specifier: npm:h3@2.0.1
+        version: h3@2.0.1(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0)
       seroval:
         specifier: ^1.6.7
         version: 1.6.7
@@ -15301,7 +15301,7 @@ importers:
         version: 1.0.0
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -15344,7 +15344,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -15375,7 +15375,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -15405,7 +15405,7 @@ importers:
         version: link:../react-router
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.6.3
@@ -15450,7 +15450,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
@@ -15490,7 +15490,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.6.3
@@ -15551,7 +15551,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -15588,7 +15588,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../vue-router
@@ -15646,7 +15646,7 @@ importers:
         version: link:../router-utils
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -15689,7 +15689,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@vitejs/plugin-vue-jsx':
         specifier: 'catalog:'
         version: 4.2.0(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
@@ -15729,7 +15729,7 @@ importers:
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@typescript/native':
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
@@ -15768,7 +15768,7 @@ importers:
         version: link:../react-router
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.6.3
@@ -25121,19 +25121,9 @@ packages:
   h3@1.15.11:
     resolution: {integrity: sha512-L3THSe2MPeBwgIZVSH5zLdBBU90TOxarvhK9d04IDY2AmVS8j2Jz2LIWtwsGOU3lu2I5jCN7FNvVfY2+XyF+mg==}
 
-  h3@2.0.1-rc.20:
-    resolution: {integrity: sha512-28ljodXuUp0fZovdiSRq4G9OgrxCztrJe5VdYzXAB7ueRvI7pIUqLU14Xi3XqdYJ/khXjfpUOOD2EQa6CmBgsg==}
-    engines: {node: '>=20.11.1'}
-    hasBin: true
-    peerDependencies:
-      crossws: ^0.4.1
-    peerDependenciesMeta:
-      crossws:
-        optional: true
-
-  h3@2.0.1-rc.32:
-    resolution: {integrity: sha512-Epg1E85L8yIKd9UeAQAVdm6QVrnHbppMsQ641EjpNi4c0IlAg+PJlwp4Xw03Z1loRXPQaH9k64gJT5qDELqm+g==}
-    engines: {node: '>=20.11.1'}
+  h3@2.0.1:
+    resolution: {integrity: sha512-trUtZ82iNkfYi8An9M2kIM/SPlomO59pTRMt4zMBffuVPdwv5v1Bxs7uShxi7bOIAuZne6zq6TsD9hVYdNgo+A==}
+    engines: {node: '>=20.19.0'}
     hasBin: true
     peerDependencies:
       crossws: ^0.4.12
@@ -27675,11 +27665,12 @@ packages:
   rou3@0.7.12:
     resolution: {integrity: sha512-iFE4hLDuloSWcD7mjdCDhx2bKcIsYbtOTpfH5MHHLSKMOUyjqQXTeZVa289uuwEGEKFoE/BAPbhaU4B774nceg==}
 
-  rou3@0.8.1:
-    resolution: {integrity: sha512-ePa+XGk00/3HuCqrEnK3LxJW7I0SdNg6EFzKUJG73hMAdDcOUC/i/aSz7LSDwLrGr33kal/rqOGydzwl6U7zBA==}
-
   rou3@0.9.2:
     resolution: {integrity: sha512-3SOzvaAg8rkHrXtRjpCvCvbyO5to9oOO27Z/XqHEYXfMRVSw/qMIVdmaOk9W2lcRLtR6dlqTjo9hDeJk70QBYQ==}
+
+  rou3@1.0.0:
+    resolution: {integrity: sha512-ySeaQkSrua+ut9g+65I7FHqOFBaY8tV0FmccXItoq0q21se32Q3u4YiW7/RqXSosWgYJaaKwRHXy3BST9PeCNQ==}
+    engines: {node: '>=20.19.0'}
 
   router@2.2.0:
     resolution: {integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==}
@@ -28072,31 +28063,6 @@ packages:
   sqlstring@2.3.3:
     resolution: {integrity: sha512-qC9iz2FlN7DQl3+wjwn3802RTyjCx7sDvfQEXchwa6CWOx07/WVfh91gBmQ9fahw8snwGEWU3xGzOt4tFyHLxg==}
     engines: {node: '>= 0.6'}
-
-  srvx@0.10.0:
-    resolution: {integrity: sha512-NqIsR+wQCfkvvwczBh8J8uM4wTZx41K2lLSEp/3oMp917ODVVMtW5Me4epCmQ3gH8D+0b+/t4xxkUKutyhimTA==}
-    engines: {node: '>=20.16.0'}
-    hasBin: true
-
-  srvx@0.10.1:
-    resolution: {integrity: sha512-A//xtfak4eESMWWydSRFUVvCTQbSwivnGCEf8YGPe2eHU0+Z6znfUTCPF0a7oV3sObSOcrXHlL6Bs9vVctfXdg==}
-    engines: {node: '>=20.16.0'}
-    hasBin: true
-
-  srvx@0.11.12:
-    resolution: {integrity: sha512-AQfrGqntqVPXgP03pvBDN1KyevHC+KmYVqb8vVf4N+aomQqdhaZxjvoVp+AOm4u6x+GgNQY3MVzAUIn+TqwkOA==}
-    engines: {node: '>=20.16.0'}
-    hasBin: true
-
-  srvx@0.11.15:
-    resolution: {integrity: sha512-iXsux0UcOjdvs0LCMa2Ws3WwcDUozA3JN3BquNXkaFPP7TpRqgunKdEgoZ/uwb1J6xaYHfxtz9Twlh6yzwM6Tg==}
-    engines: {node: '>=20.16.0'}
-    hasBin: true
-
-  srvx@0.11.18:
-    resolution: {integrity: sha512-7/EW5sPdC1bU7iq1tgTvCZqUQDkJdsqIVzYqBv7SuBfQQ10oWkKj4KYNOw0H4Ig26bXuUYDA7XTKxB+/HC5SRw==}
-    engines: {node: '>=20.16.0'}
-    hasBin: true
 
   srvx@0.11.22:
     resolution: {integrity: sha512-LqZxxBDMKuMAZzFzJnDCkFOrs9MZQZr0LvHiO/SuSZVdQaXD7xQ5UWTUxheJrQPve1qk9MG2B/yttUvJxw8egQ==}
@@ -35819,18 +35785,6 @@ snapshots:
       - supports-color
       - typescript
 
-  '@tanstack/vite-config@0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))':
-    dependencies:
-      vite: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
-      vite-plugin-dts: 4.2.3(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
-      vite-plugin-externalize-deps: 0.10.0(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
-      vite-tsconfig-paths: 6.1.1(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
-    transitivePeerDependencies:
-      - '@types/node'
-      - rollup
-      - supports-color
-      - typescript
-
   '@tanstack/vite-config@0.5.2(@types/node@25.0.9)(supports-color@10.2.2)(typescript@5.9.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))':
     dependencies:
       vite: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
@@ -38643,10 +38597,6 @@ snapshots:
     dependencies:
       uncrypto: 0.1.3
 
-  crossws@0.4.12(srvx@0.11.22):
-    optionalDependencies:
-      srvx: 0.11.22
-
   crossws@0.4.12(srvx@1.0.5):
     optionalDependencies:
       srvx: 1.0.5
@@ -40349,16 +40299,9 @@ snapshots:
       ufo: 1.6.4
       uncrypto: 0.1.3
 
-  h3@2.0.1-rc.20(crossws@0.4.12(srvx@1.0.5)):
+  h3@2.0.1(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0):
     dependencies:
-      rou3: 0.8.1
-      srvx: 0.11.22
-    optionalDependencies:
-      crossws: 0.4.12(srvx@1.0.5)
-
-  h3@2.0.1-rc.32(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0):
-    dependencies:
-      rou3: 0.9.2
+      rou3: 1.0.0
       srvx: 1.0.5
     optionalDependencies:
       crossws: 0.4.12(srvx@1.0.5)
@@ -40703,7 +40646,7 @@ snapshots:
       etag: 1.8.1
       h3: 1.15.11
       image-meta: 0.2.2
-      listhen: 1.10.1
+      listhen: 1.10.1(srvx@1.0.5)
       ofetch: 1.5.1
       pathe: 2.0.3
       sharp: 0.34.5
@@ -41310,33 +41253,12 @@ snapshots:
 
   lines-and-columns@2.0.3: {}
 
-  listhen@1.10.1:
+  listhen@1.10.1(srvx@1.0.5):
     dependencies:
       '@parcel/watcher-wasm': 2.6.0
       citty: 0.2.2
       consola: 3.4.2
       crossws: 0.4.12(srvx@1.0.5)
-      defu: 6.1.7
-      get-port-please: 3.2.0
-      h3: 1.15.11
-      http-shutdown: 1.2.2
-      jiti: 2.7.0
-      node-forge: 1.4.0
-      pathe: 2.0.3
-      std-env: 4.2.0
-      tinyclip: 0.1.15
-      ufo: 1.6.4
-      untun: 0.2.2
-      uqr: 0.1.3
-    transitivePeerDependencies:
-      - srvx
-
-  listhen@1.10.1(srvx@0.11.22):
-    dependencies:
-      '@parcel/watcher-wasm': 2.6.0
-      citty: 0.2.2
-      consola: 3.4.2
-      crossws: 0.4.12(srvx@0.11.22)
       defu: 6.1.7
       get-port-please: 3.2.0
       h3: 1.15.11
@@ -41831,7 +41753,7 @@ snapshots:
       crossws: 0.4.12(srvx@1.0.5)
       db0: 0.4.1
       env-runner: 0.2.3
-      h3: 2.0.1-rc.32(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0)
+      h3: 2.0.1(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0)
       hookable: 6.1.2
       nf3: 0.3.24
       ocache: 0.3.0
@@ -41841,7 +41763,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       unstorage: 2.0.0-alpha.10
 
-  nitropack@2.13.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(@rspack/core@2.2.7(@swc/helpers@0.5.23))(mysql2@3.15.3)(rolldown@1.2.13)(srvx@0.11.22)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(webpack@5.110.3):
+  nitropack@2.13.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(@rspack/core@2.2.7(@swc/helpers@0.5.23))(mysql2@3.15.3)(rolldown@1.2.13)(srvx@1.0.5)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(webpack@5.110.3):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.4.2
       '@rollup/plugin-alias': 6.0.0(rollup@4.63.1)
@@ -41879,7 +41801,7 @@ snapshots:
       jiti: 2.7.0
       klona: 2.0.6
       knitwork: 1.3.0
-      listhen: 1.10.1(srvx@0.11.22)
+      listhen: 1.10.1(srvx@1.0.5)
       magic-string: 0.30.21
       magicast: 0.5.4
       mime: 4.1.0
@@ -43263,9 +43185,9 @@ snapshots:
 
   rou3@0.7.12: {}
 
-  rou3@0.8.1: {}
-
   rou3@0.9.2: {}
+
+  rou3@1.0.0: {}
 
   router@2.2.0(supports-color@10.2.2):
     dependencies:
@@ -43752,16 +43674,6 @@ snapshots:
       kysely: 0.27.6
 
   sqlstring@2.3.3: {}
-
-  srvx@0.10.0: {}
-
-  srvx@0.10.1: {}
-
-  srvx@0.11.12: {}
-
-  srvx@0.11.15: {}
-
-  srvx@0.11.18: {}
 
   srvx@0.11.22: {}
 
@@ -44611,25 +44523,6 @@ snapshots:
       typescript: '@typescript/typescript6@6.0.2'
     optionalDependencies:
       vite: 8.3.4(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
-    transitivePeerDependencies:
-      - '@types/node'
-      - rollup
-      - supports-color
-
-  vite-plugin-dts@4.2.3(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
-    dependencies:
-      '@microsoft/api-extractor': 7.47.7(@types/node@25.0.9)
-      '@rollup/pluginutils': 5.1.4(rollup@4.63.1)
-      '@volar/typescript': 2.4.26(@typescript/typescript6@6.0.2)
-      '@vue/language-core': 2.1.6(@typescript/typescript6@6.0.2)
-      compare-versions: 6.1.1
-      debug: 4.4.3(supports-color@10.2.2)
-      kolorist: 1.8.0
-      local-pkg: 0.5.1
-      magic-string: 0.30.21
-      typescript: '@typescript/typescript6@6.0.2'
-    optionalDependencies:
-      vite: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@types/node'
       - rollup

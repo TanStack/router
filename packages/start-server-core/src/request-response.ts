@@ -141,21 +141,28 @@ function handleResponseError(error: unknown): Response {
   return new Response('Internal Server Error', { status: 500 })
 }
 
+// Returns `undefined` for percent-encoded bytes that are not valid UTF-8 (e.g. `/%80`).
+// The decoded value is returned on purpose: bundlers treat `decodeURI` as pure
+// and drop calls whose result is unused, even inside `try`.
+function decodePathname(pathname: string): string | undefined {
+  try {
+    return decodeURI(pathname)
+  } catch {
+    return undefined
+  }
+}
+
 export function requestHandler<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
   return (request: Request, requestOpts: any): Promise<Response> | Response => {
-    let h3Event: H3Event
-    try {
-      h3Event = new H3Event(request)
-    } catch (error) {
-      if (error instanceof URIError) {
-        return new Response(null, {
-          status: 400,
-          statusText: 'Bad Request',
-        })
-      }
-      throw error
+    const h3Event = new H3Event(request)
+    const pathname = h3Event.url.pathname
+    if (pathname.includes('%') && decodePathname(pathname) === undefined) {
+      return new Response(null, {
+        status: 400,
+        statusText: 'Bad Request',
+      })
     }
 
     let response: unknown
