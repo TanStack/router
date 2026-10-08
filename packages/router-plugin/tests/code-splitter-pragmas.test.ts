@@ -183,3 +183,15 @@ export const Route = createFileRoute('/')({ component: Page })
     expect(modules['virtual component']).toContain(pragma)
   })
 })
+
+// Minifiers keep legal comments in the modules that carry them.
+it('split modules keep the leading legal comment of the route file', () => {
+  const legal = '/*! Example Corp. | MIT License */'
+  const { modules } = compileRouteModules(
+    `${legal}\n${head}export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+})`,
+  )
+  expect(modules.reference).toContain(legal)
+  expect(modules['virtual component']).toContain(legal)
+})

@@ -1,5 +1,9 @@
 import { b, is } from 'yuku-ast'
-import { parseExpression, parseStatements } from '@tanstack/router-utils'
+import {
+  parseExpression,
+  parseStatements,
+  unwrapExport,
+} from '@tanstack/router-utils'
 import path from 'pathe'
 import {
   cleanId,
@@ -228,10 +232,12 @@ function removeExports(program: Program) {
         is.FunctionDeclaration(node.declaration) ||
         is.ClassDeclaration(node.declaration)
       ) {
-        return node.declaration.id ? [node.declaration] : [node]
+        return node.declaration.id
+          ? [unwrapExport(node, node.declaration)]
+          : [node]
       }
       if (is.VariableDeclaration(node.declaration)) {
-        return [node.declaration]
+        return [unwrapExport(node, node.declaration)]
       }
       if (!node.declaration) {
         return []

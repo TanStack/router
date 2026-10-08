@@ -12,6 +12,7 @@ import {
   parseExpression,
   parseStatements,
   removeUnusedBindings,
+  unwrapExport,
   unwrapExpression,
 } from '@tanstack/router-utils'
 import { tssHydrate } from './hydration-constants'
@@ -688,7 +689,9 @@ function loadHydrateVirtualModule(options: {
       declaration.declarations = declaration.declarations.filter((item) =>
         selected.has(sourceNode(context, item)),
       )
-      return declaration.declarations.length ? [declaration] : []
+      return declaration.declarations.length
+        ? [unwrapExport(statement, declaration)]
+        : []
     }
     if (
       (is.FunctionDeclaration(declaration) ||
@@ -698,7 +701,7 @@ function loadHydrateVirtualModule(options: {
         is.TSEnumDeclaration(declaration)) &&
       selected.has(sourceNode(context, declaration))
     ) {
-      return [declaration]
+      return [unwrapExport(statement, declaration)]
     }
     return []
   })

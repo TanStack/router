@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   compileCode,
+  compileHydrate,
   evaluateModule,
   importSources,
 } from './regression-helpers'
@@ -193,4 +194,67 @@ export function bump() {
   )
   expect(await getModuleErrors(client!)).toEqual([])
   expect((await evaluateModule(client!)).bump()).toBe(4)
+})
+
+// Bundlers read these comments: minifiers keep legal comments, and Rollup and
+// Rolldown treat calls of functions annotated `__NO_SIDE_EFFECTS__` as pure.
+describe('keeps the comments bundlers read', () => {
+  const legal = '/*! Example Corp. | MIT License */'
+
+  test('client: a leading legal comment survives the removal of the import it leads', async () => {
+    const client = await compileCode(
+      'client',
+      `${legal}
+import { createIsomorphicFn } from '@tanstack/react-start'
+const where = createIsomorphicFn()
+  .server(() => 'server')
+  .client(() => 'client')
+export const label = () => where()`,
+    )
+    expect(client).toContain(legal)
+  })
+
+  test('client: a Hydrate chunk keeps the leading legal comment of its module', async () => {
+    const { chunks } = await compileHydrate(
+      'client',
+      `${legal}
+import { Hydrate } from '@tanstack/react-start'
+export function Page() {
+  return <Hydrate><p>hi</p></Hydrate>
+}`,
+    )
+    expect(chunks[0]).toContain(legal)
+  })
+
+  test.each([
+    {
+      name: 'function',
+      code: `/* #__NO_SIDE_EFFECTS__ */
+export function makeLabel() {
+  return 'label'
+}`,
+    },
+    {
+      name: 'arrow function',
+      code: `/* @__NO_SIDE_EFFECTS__ */
+export const makeLabel = () => 'label'`,
+    },
+  ])(
+    'the annotation of an exported $name copied to a Hydrate chunk and the provider',
+    async ({ code }) => {
+      const source = `import { Hydrate, createServerFn } from '@tanstack/react-start'
+${code}
+export const fn = createServerFn().handler(async () => makeLabel())
+export function Page() {
+  return <Hydrate><p>{makeLabel()}</p></Hydrate>
+}`
+      const { chunks } = await compileHydrate('client', source)
+      const provider = await compileCode('provider', source)
+      for (const output of [chunks[0]!, provider!]) {
+        expect(output).toMatch(
+          /__NO_SIDE_EFFECTS__ \*\/\s*(?:function|const) makeLabel\b/,
+        )
+      }
+    },
+  )
 })

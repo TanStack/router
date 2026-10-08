@@ -113,38 +113,65 @@ export function analyzeModule({
 const filePragma =
   /@jsx(?:Frag|ImportSource|Runtime)?\b|@refresh (?:reload|reset|skip)\b/
 
+/** Legal comments, which minifiers keep: `/*! … *\/`, `@license`, `@preserve`. */
+const legalComment = /^!|@license\b|@preserve\b/
+
 /**
  * Pragma comments configure transforms that run after these compilers for the
  * whole file, and Oxc only reads them from the comments that lead the file. So
  * an output must start with the source's top-level pragmas: removing a
  * statement drops the comments attached to it, and inserted statements would
- * otherwise land above them.
+ * otherwise land above them. The legal comments that lead the source lead
+ * every output too.
  */
 export function keepFilePragmas(source: Program, output: Program): void {
   const first = output.body[0]
-  const pragmas = source.body.flatMap(
-    (statement) =>
-      statement.comments?.filter((comment) => filePragma.test(comment.value)) ??
-      [],
+  const kept = source.body.flatMap(
+    (statement, index) =>
+      statement.comments?.filter(
+        (comment) =>
+          filePragma.test(comment.value) ||
+          (index === 0 &&
+            comment.position === 'before' &&
+            legalComment.test(comment.value)),
+      ) ?? [],
   )
-  if (!pragmas.length || !first) {
+  if (!kept.length || !first) {
     return
   }
+  const values = new Set(kept.map((comment) => comment.value))
   for (const statement of output.body) {
     if (statement.comments) {
       statement.comments = statement.comments.filter(
-        (comment) => !filePragma.test(comment.value),
+        (comment) => !values.has(comment.value),
       )
     }
   }
   first.comments = [
-    ...pragmas.map((comment) => ({
+    ...kept.map((comment) => ({
       ...comment,
       position: 'before' as const,
       sameLine: false,
     })),
     ...(first.comments ?? []),
   ]
+}
+
+/**
+ * The declaration of an `export` statement, to replace the statement: it keeps
+ * the statement's comments, such as a `#__NO_SIDE_EFFECTS__` annotation.
+ */
+export function unwrapExport<T extends Node>(
+  statement: Node,
+  declaration: T,
+): T {
+  if (statement !== declaration && statement.comments?.length) {
+    declaration.comments = [
+      ...statement.comments,
+      ...(declaration.comments ?? []),
+    ]
+  }
+  return declaration
 }
 
 export function generateModule(

@@ -12,6 +12,7 @@ import {
   moduleDeclarationGraph,
   parseStatements,
   removeUnusedBindings,
+  unwrapExport,
   unwrapExpression,
 } from '@tanstack/router-utils'
 import { tsrShared, tsrSplit } from '../constants'
@@ -576,7 +577,9 @@ function withoutExportSyntax(
   statement: ProgramStatement,
 ): Array<ProgramStatement> {
   if (is.ExportNamedDeclaration(statement)) {
-    return statement.declaration ? [statement.declaration] : []
+    return statement.declaration
+      ? [unwrapExport(statement, statement.declaration)]
+      : []
   }
   if (is.ExportDefaultDeclaration(statement)) {
     const { declaration } = statement
@@ -584,7 +587,7 @@ function withoutExportSyntax(
     return (is.FunctionDeclaration(declaration) ||
       is.ClassDeclaration(declaration)) &&
       declaration.id
-      ? [declaration]
+      ? [unwrapExport(statement, declaration)]
       : []
   }
   if (is.ExportAllDeclaration(statement)) {
