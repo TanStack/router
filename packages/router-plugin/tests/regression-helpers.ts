@@ -289,8 +289,9 @@ let evaluations = 0
 
 /**
  * Evaluates an emitted module like a bundler would: JSX becomes plain calls
- * that render to text, and named imports are linked to `stubs`, keyed by
- * specifier. Every call evaluates a fresh module instance.
+ * that render to text, and imports (named, namespace or side-effect only) are
+ * linked to `stubs`, keyed by specifier. Every call evaluates a fresh module
+ * instance.
  */
 export async function evaluateModule(
   code: string,
@@ -304,14 +305,17 @@ export async function evaluateModule(
   // Imports are hoisted: link them before any other statement runs.
   const imports: Array<string> = []
   const body = javascript.replace(
-    /^import\s+\{([^}]*)\}\s+from\s+(["'])(.+?)\2;?$/gm,
-    (_, named: string, __, source: string) => {
+    /^import\s+(?:(\{[^}]*\}|\*\s*as\s+[\w$]+)\s+from\s+)?(["'])(.+?)\2;?$/gm,
+    (_, clause: string | undefined, __, source: string) => {
       if (!(source in stubs)) {
         throw new Error(`no stub for import ${source}`)
       }
-      imports.push(
-        `const { ${named.replace(/\bas\b/g, ':')} } = globalThis.${key}[${JSON.stringify(source)}];`,
-      )
+      const exports = `globalThis.${key}[${JSON.stringify(source)}]`
+      if (clause?.startsWith('{')) {
+        imports.push(`const ${clause.replace(/\bas\b/g, ':')} = ${exports};`)
+      } else if (clause) {
+        imports.push(`const ${clause.replace(/^\*\s*as\s+/, '')} = ${exports};`)
+      }
       return ''
     },
   )
@@ -403,6 +407,44 @@ export async function expectRegisteredRouteOption(
   const binding = (value as ESTree.IdentifierReference).name
   expect((await reactRefresh(code)).registered).toContain(binding)
   return binding
+}
+
+/** Whether a callee is `memo` or `forwardRef`, imported or namespaced. */
+function isMemoOrForwardRef(callee: ESTree.Expression | ESTree.Super) {
+  const name =
+    callee.type === 'Identifier'
+      ? callee.name
+      : callee.type === 'MemberExpression' &&
+          callee.property.type === 'Identifier'
+        ? callee.property.name
+        : undefined
+  return name === 'memo' || name === 'forwardRef'
+}
+
+/**
+ * Asserts that React Refresh can hot-update the component of `option`: the
+ * option is a binding React Refresh registers, or a `memo(...)` /
+ * `forwardRef(...)` call (nested or not) of one, since React Refresh resolves
+ * those wrappers through the function they wrap.
+ */
+export async function expectRefreshableRouteOption(
+  code: string,
+  option: string,
+) {
+  expect(await getModuleErrors(code)).toEqual([])
+  let node: ESTree.Expression | ESTree.Argument | undefined = getRouteOption(
+    parseModule(code),
+    option,
+  ).value as ESTree.Expression
+  while (node?.type === 'CallExpression' && isMemoOrForwardRef(node.callee)) {
+    node = node.arguments[0]
+  }
+  const binding = node?.type === 'Identifier' ? node.name : undefined
+  const { registered } = await reactRefresh(code)
+  expect(
+    binding !== undefined && registered.includes(binding),
+    `\`${option}\` is neither a binding React Refresh registers nor a memo/forwardRef call of one (registered: ${registered.join(', ')})`,
+  ).toBe(true)
 }
 
 const runNode = promisify(execFile)

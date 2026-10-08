@@ -10,7 +10,7 @@ import { describe, expect, test } from 'vitest'
 import {
   compileRouteModules,
   evaluateModule,
-  expectRegisteredRouteOption,
+  expectRefreshableRouteOption,
   expectValidModules,
   exportedBinding,
   exportedNames,
@@ -25,8 +25,21 @@ function compileWithCodeSplitting(code: string) {
 }
 
 describe('React Refresh registration', () => {
+  // Control for the inline component pins below (same assertion).
+  test('a memo of a top-level component is refreshable', async () => {
+    await expectRefreshableRouteOption(
+      transformWithRouteHmrPlugin(`${head}import { memo } from 'react'
+function Page() {
+  return <p>hi</p>
+}
+export const Route = createFileRoute('/')({ component: memo(Page) })`),
+      'component',
+    )
+  })
+
   // Bug: inline component options that are not plain functions (`memo(...)`,
-  // `forwardRef(...)`, method shorthand) are neither hoisted nor registered.
+  // `forwardRef(...)`, method shorthand) are neither hoisted nor registered,
+  // nor is the function they wrap.
   // Impact: on unsplit routes (root routes, or file routes without automatic
   // code splitting), edits to these components are dropped until a reload.
   // Source: ReactFreshBabelPlugin-test "registers likely HOCs with inline functions"
@@ -70,7 +83,7 @@ export const Route = createRootRoute({
   ])(
     'registers an inline component written as $name',
     async ({ code, compile }) => {
-      await expectRegisteredRouteOption(compile(code), 'component')
+      await expectRefreshableRouteOption(compile(code), 'component')
     },
   )
 
@@ -127,6 +140,43 @@ export const Route = createFileRoute('/')({ component: ${name} })`)[
 })
 
 describe('generated code', () => {
+  /** Evaluates the route module compiled with HMR and returns its route. */
+  async function evaluateRoute(code: string) {
+    const { reference } = compileWithCodeSplitting(code)
+    const { Route } = await evaluateModule(reference!, {
+      '@tanstack/react-router': {
+        createRootRoute: (options: unknown) => ({ options }),
+        createFileRoute: () => (options: unknown) => ({ options }),
+        lazyRouteComponent: () => () => null,
+        Outlet: () => null,
+      },
+    })
+    return Route as unknown as { options: { component?: unknown } }
+  }
+
+  // Control for the options-in-a-variable pins below (same harness).
+  test.each([
+    {
+      name: 'an unsplittable root route',
+      code: `import { createRootRoute, Outlet } from '@tanstack/react-router'
+export const Route = createRootRoute({
+  component: () => <Outlet />,
+})`,
+    },
+    {
+      name: 'a split file route',
+      code: `${head}export const Route = createFileRoute('/')({
+  component: () => <p>home</p>,
+})`,
+    },
+  ])(
+    'inline route options ($name) evaluate to a route with a component',
+    async ({ code }) => {
+      const Route = await evaluateRoute(code)
+      expect(typeof Route.options.component).toBe('function')
+    },
+  )
+
   // Bug: when the route options are passed through a variable, the HMR
   // transforms replace `component` in the options object with a generated
   // binding declared after the object that reads it.
@@ -150,22 +200,14 @@ export const Route = createFileRoute('/')(options)`,
   ])(
     'route options in a variable ($name) evaluate to a route with a component',
     async ({ code }) => {
-      const { reference } = compileWithCodeSplitting(code)
-      const { Route } = await evaluateModule(reference!, {
-        '@tanstack/react-router': {
-          createRootRoute: (options: unknown) => ({ options }),
-          createFileRoute: () => (options: unknown) => ({ options }),
-          lazyRouteComponent: () => () => null,
-          Outlet: () => null,
-        },
-      })
-      expect(typeof (Route as any).options.component).toBe('function')
+      const Route = await evaluateRoute(code)
+      expect(typeof Route.options.component).toBe('function')
     },
   )
 
-  // Bug: the React Refresh plugin injects a top-level `const hot =
-  // import.meta.hot` that collides with a user's top-level `hot` binding
-  // (compile error `Duplicate declaration "hot"`).
+  // Bug: our `react-refresh-ignored-route-exports` compiler plugin injects a
+  // top-level `const hot = import.meta.hot` that collides with a user's
+  // top-level `hot` binding (compile error `Duplicate declaration "hot"`).
   // Impact: the route cannot be served in development.
   test.fails(
     'a user binding named hot does not collide with the injected HMR code',

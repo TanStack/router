@@ -34,10 +34,15 @@ function linkable(specifier: string, exports: Record<string, unknown>) {
  * Compiles a route file, then evaluates the modules the code splitter emits,
  * linked by import specifier: the shared module, the reference module, then
  * every split chunk the reference module imports, as once all chunks have
- * loaded. `stubs` provides the route's other imports. Returns the modules,
- * the route options and the exports of each chunk by split name.
+ * loaded. `stubs` provides the route's other imports; `beforeChunksLoad` runs
+ * once the route module has loaded. Returns the modules, the route options
+ * and the exports of each chunk by split name.
  */
-async function loadRouteModules(code: string, stubs: Stubs = {}) {
+async function loadRouteModules(
+  code: string,
+  stubs: Stubs = {},
+  beforeChunksLoad?: () => void,
+) {
   const { modules } = compileRouteModules(code)
   const linked: Stubs = {
     ...stubs,
@@ -57,6 +62,7 @@ async function loadRouteModules(code: string, stubs: Stubs = {}) {
       )
     }
   }
+  beforeChunksLoad?.()
   const chunks: Record<string, Record<string, any>> = {}
   for (const [, split] of modules.reference!.matchAll(
     /\?tsr-split=([\w-]+)/g,
@@ -91,20 +97,39 @@ describe('module state shared with split chunks', () => {
   // the split component moves to the shared module and is initialized once.
   test('a const read by the loader and the split component is initialized once', async () => {
     const state = stateStub()
+    let callsBeforeChunks: number | undefined
     const { options, chunks } = await loadRouteModules(
       `${head}import { init } from './state'
 const value = init(1)
 export const Route = createFileRoute('/')({
   loader: () => value,
   component: () => <p>{value}</p>,
+  errorComponent: () => <p>error</p>,
 })`,
       { './state': state },
+      () => {
+        callsBeforeChunks = state.calls
+      },
     )
     expect([
       options.loader(),
       chunks.component!.component(),
+      chunks.errorComponent!.errorComponent(),
+      callsBeforeChunks,
       state.calls,
-    ]).toEqual([1, '<p>1</p>', 1])
+    ]).toEqual([1, '<p>1</p>', '<p>error</p>', 1, 1])
+  })
+
+  // Control for evaluateModule: a module may link a shared module through a
+  // side-effect or namespace import, as a fix might emit.
+  test('evaluateModule links side-effect and namespace imports', async () => {
+    const { read } = await evaluateModule(
+      `import './effects'
+import * as lib from './lib'
+export const read = () => lib.value`,
+      { './effects': {}, './lib': { value: 'lib' } },
+    )
+    expect(read!()).toBe('lib')
   })
 
   // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
@@ -204,13 +229,16 @@ format = () => 'reassigned'`,
       name: 'a registry a shared store is created from (push)',
       // Source: Turbopack tree-shaker analyzer/write-order, analyzer/shared-2
       // and analyzer/shared-regression
-      setup: `const plugins: Array<string> = []
+      setup: `import { init } from './state'
+const plugins: Array<string> = []
 plugins.push('auth')
-const store = { plugins: [...plugins] }
+const store = init({ plugins: [...plugins] })
 plugins.push('late')`,
       loader: 'store.plugins',
       component: '() => <p>{store.plugins.join()}</p>',
+      // One store, created once.
       expected: [['auth'], '<p>auth</p>'],
+      inits: 1,
     },
     {
       name: 'the split component (property assignment)',
@@ -227,16 +255,21 @@ Page.displayName = 'PageDisplay'`,
     },
   ])(
     'top-level writes to $name stay with the binding they write',
-    async ({ setup, loader, component, expected, split }) => {
-      const { modules, options, chunks } =
-        await loadRouteModules(`${head}${setup}
+    async ({ setup, loader, component, expected, inits = 0, split }) => {
+      const state = stateStub()
+      const { modules, options, chunks } = await loadRouteModules(
+        `${head}${setup}
 export const Route = createFileRoute('/')({
   loader: () => ${loader},
   component: ${component},
-})`)
-      expect([options.loader(), chunks.component!.component()]).toEqual(
-        expected,
+})`,
+        { './state': state },
       )
+      expect([
+        options.loader(),
+        chunks.component!.component(),
+        state.calls,
+      ]).toEqual([...expected, inits])
       if (split) {
         // The component is still split out of the route module.
         expect(modules.reference).not.toMatch(declarationOf(split))
@@ -244,7 +277,11 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  // Bug: a declaration the reference module also keeps is copied into chunks.
+  // Bug: shared bindings are computed from the route options only
+  // (`computeSharedBindings`), so a declaration that one split chunk reads
+  // and that the reference module keeps as well (for an export, a top-level
+  // call, or another binding of the declaration) is not shared: the chunk
+  // declares its own copy.
   // Impact: module state is duplicated; the component reads another instance.
   test.fails.each([
     {
@@ -258,21 +295,12 @@ export { a }`,
       name: 'a binding read by an exported function',
       // Source: Qwik optimizer test.rs
       // should_keep_module_level_var_used_in_both_main_and_qrl
-      declaration: `const theme = init('dark')
-export function ThemeProvider() {
-  return theme
-}`,
-      render: '{theme}',
-      html: '<p>dark</p>',
-    },
-    {
-      name: 'an exported function over private state',
       declaration: `const state = init({ count: 0 })
 export function increment() {
   return ++state.count
 }`,
-      render: '{increment()}',
-      html: '<p>1</p>',
+      render: '{increment()}-{state.count}',
+      html: '<p>1-1</p>',
     },
     {
       name: 'an array destructuring with an unreferenced binding',
@@ -306,10 +334,16 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  // Bug: top-level side effects that nothing references (an `if` block, or a
-  // declaration whose binding is unused) are copied into every split chunk.
-  // Impact: they run again for every chunk that loads, even for a chunk
-  // holding only the errorComponent (duplicated subscriptions, logging).
+  // Bug: split chunks keep the top-level statements that nothing references
+  // unless they are expression statements: dead-code elimination only removes
+  // what the split made unreferenced, and
+  // `stripUnreferencedTopLevelExpressionStatements` only strips expression
+  // statements, so an `if` block, a declaration whose binding is never read
+  // or an `export * from` is copied into every split chunk.
+  // Impact: side effects run again for every chunk that loads, even a chunk
+  // holding only the errorComponent (duplicated subscriptions, logging); every
+  // chunk depends on and re-exports all of the `export *` module through the
+  // opaque namespace of its dynamic import, which defeats tree-shaking of it.
   test.fails.each([
     {
       name: 'an if statement',
@@ -322,14 +356,16 @@ export const Route = createFileRoute('/')({
       effect: `const unsubscribe = subscribe(() => {})`,
     },
   ])(
-    'an unreferenced top-level side effect ($name) runs once',
+    'an unreferenced top-level side effect ($name) runs once, with the route module',
     async ({ effect }) => {
       let calls = 0
-      await loadRouteModules(
+      let callsBeforeChunks: number | undefined
+      const { chunks } = await loadRouteModules(
         `${head}import { subscribe, track } from './effects'
 ${effect}
 export const Route = createFileRoute('/')({
   component: () => <p>index</p>,
+  errorComponent: () => <p>error</p>,
 })`,
         {
           './effects': {
@@ -340,10 +376,43 @@ export const Route = createFileRoute('/')({
             },
           },
         },
+        () => {
+          callsBeforeChunks = calls
+        },
       )
-      expect(calls).toBe(1)
+      // Both chunks loaded, and the effect ran once, with the route module.
+      expect([
+        Object.keys(chunks).sort().join(),
+        callsBeforeChunks,
+        calls,
+      ]).toEqual(['component,errorComponent', 1, 1])
     },
   )
+
+  test.fails('split chunks do not re-export a module-level export *', () => {
+    const { modules } = compileRouteModules(`${head}export * from './lib'
+export const Route = createFileRoute('/')({
+  component: () => <p>index</p>,
+})`)
+    /** Sources a module imports or re-exports from. */
+    const requested = (code: string) => [
+      ...importSources(code),
+      ...parseSync('module.tsx', code, {
+        sourceType: 'module',
+      }).module.staticExports.flatMap((statement) =>
+        statement.entries.flatMap((entry) =>
+          entry.moduleRequest ? [entry.moduleRequest.value] : [],
+        ),
+      ),
+    ]
+    expect(requested(modules.reference!)).toContain('./lib')
+    const chunksRequestingLib = Object.keys(modules).filter(
+      (name) =>
+        name.startsWith('virtual ') &&
+        requested(modules[name]!).includes('./lib'),
+    )
+    expect(chunksRequestingLib).toEqual([])
+  })
 
   // Bug: an ambient `declare const` read by the loader and the split
   // component is shared: the shared module exports a name that TypeScript
@@ -421,31 +490,4 @@ export async function load() {
     },
     30_000,
   )
-
-  // Bug: a module-level `export * from` is copied into every split chunk.
-  // Impact: every chunk depends on and re-exports that module.
-  test.fails('split chunks do not re-export a module-level export *', () => {
-    const { modules } = compileRouteModules(`${head}export * from './lib'
-export const Route = createFileRoute('/')({
-  component: () => <p>index</p>,
-})`)
-    /** Sources a module imports or re-exports from. */
-    const requested = (code: string) => [
-      ...importSources(code),
-      ...parseSync('module.tsx', code, {
-        sourceType: 'module',
-      }).module.staticExports.flatMap((statement) =>
-        statement.entries.flatMap((entry) =>
-          entry.moduleRequest ? [entry.moduleRequest.value] : [],
-        ),
-      ),
-    ]
-    expect(requested(modules.reference!)).toContain('./lib')
-    const chunksRequestingLib = Object.keys(modules).filter(
-      (name) =>
-        name.startsWith('virtual ') &&
-        requested(modules[name]!).includes('./lib'),
-    )
-    expect(chunksRequestingLib).toEqual([])
-  })
 })
