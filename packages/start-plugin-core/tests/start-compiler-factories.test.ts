@@ -697,6 +697,15 @@ export { createServerFn }
 export type Factory = typeof createServerFn`,
     },
     {
+      // e.g. the bundle-size benchmark apps, which keep the API surface alive
+      name: 'value uses that neither call the factory nor pass it to a function',
+      code: `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+export function Page() {
+  const startSurface = [createMiddleware, createServerFn]
+  return startSurface.length === 2 && createServerFn !== undefined
+}`,
+    },
+    {
       name: 'a namespace import',
       code: `import * as Start from '@tanstack/react-start'
 export const fn = Start.createServerFn().handler(async () => 'secret')`,

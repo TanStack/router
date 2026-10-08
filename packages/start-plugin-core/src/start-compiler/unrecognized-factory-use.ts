@@ -110,8 +110,12 @@ export function findUnrecognizedFactoryUses(options: {
     // Climb the call chain the reference starts: createServerFn(...).middleware(...)
     let top = node
     let chained = false
+    // The chain calls the factory, so an implementation may be passed to it
+    let called = false
     // The chain calls the method that finishes it, so it is not a builder
     let finished = false
+    // A sequence, conditional or logical expression chooses the value
+    let branched = false
     for (;;) {
       const parent = module.parentOf(top)
       if (!parent) {
@@ -119,9 +123,18 @@ export function findUnrecognizedFactoryUses(options: {
       }
       if (isTransparentWrapper(parent, top)) {
         top = parent
+      } else if (
+        (is.SequenceExpression(parent) && parent.expressions.at(-1) === top) ||
+        (is.ConditionalExpression(parent) && parent.test !== top) ||
+        is.LogicalExpression(parent)
+      ) {
+        // The value may be the factory, but not one the compiler follows
+        top = parent
+        branched = true
       } else if (is.CallExpression(parent) && parent.callee === top) {
         top = parent
         chained = true
+        called = true
       } else if (is.MemberExpression(parent) && parent.object === top) {
         top = parent
         chained = true
@@ -134,6 +147,7 @@ export function findUnrecognizedFactoryUses(options: {
     }
     const parent = module.parentOf(top)
     if (
+      !branched &&
       is.VariableDeclarator(parent) &&
       parent.init === top &&
       is.Identifier(parent.id) &&
@@ -153,7 +167,13 @@ export function findUnrecognizedFactoryUses(options: {
         return
       }
     }
-    if (is.ExportSpecifier(parent) && top === node) {
+    // Other value uses that neither call it nor hand it to a function (an
+    // array element, an object value, a comparison) carry no implementation
+    // here: they are left alone rather than reported.
+    const passed =
+      (is.CallExpression(parent) || is.NewExpression(parent)) &&
+      parent.arguments.includes(top as t.Expression)
+    if (!called && !passed) {
       return
     }
     const position = sourcePosition(code, node.start)
