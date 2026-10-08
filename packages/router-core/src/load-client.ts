@@ -7,7 +7,7 @@ import {
   lifecycleEnd,
   runRouteLifecycle,
 } from './router'
-import { hydrateSsrMatchId } from './ssr/ssr-match-id'
+import { dehydrateSsrMatchId } from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { TsrSsrGlobal } from './ssr/types'
 import type { ParsedLocation } from './location'
@@ -114,6 +114,28 @@ export function _getRenderedMatches(
       (match) => match.status !== 'success' || match._notFound,
     ) + 1
   return end && end < matches.length ? matches.slice(0, end) : matches
+}
+
+/**
+ * Truthy when the transaction publishing `location` leaves `routeId` out of its
+ * matches, so subscribers scoped to that route can skip the publication: the
+ * route unmounts when the transaction commits, and a transaction that ends
+ * otherwise is superseded or redirected by a newer publication. Only valid
+ * synchronously inside the publication: the transaction's matches are emptied
+ * at commit and before following a redirect. Publications without a matching
+ * transaction (hydration) and scopes without a route never depart.
+ */
+export function _isRouteDeparting(
+  router: AnyRouter,
+  routeId: string | undefined,
+  location: ParsedLocation,
+): unknown {
+  const tx = router._tx
+  return (
+    routeId &&
+    tx?.[2 /* location */] === location &&
+    !tx[3 /* matches */].some((match) => match.routeId === routeId)
+  )
 }
 
 /** Return the lane whose document assets belong to the current presentation. */
@@ -2294,10 +2316,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   for (let index = 0; index < shared; index++) {
     const candidate = candidates[index]!
     const dehydrated = dehydratedMatches[index]!
-    if (
-      typeof dehydrated.i !== 'string' ||
-      hydrateSsrMatchId(dehydrated.i) !== candidate.id
-    ) {
+    if (dehydrated.i !== dehydrateSsrMatchId(candidate.id)) {
       pendingBoundary ??= index
       break
     }

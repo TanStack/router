@@ -7,12 +7,14 @@ const turn = () => new Promise<void>((resolve) => setImmediate(resolve))
 
 test('restores data and context into fresh DOMs and includes follow-up renders', async () => {
   const scenario = setup({ countRenders: true })
+  const schedulerTasks = new Set<number>()
   for (let iteration = 0; iteration < 3; iteration++) {
     await scenario.before()
     try {
       expect(scenario.snapshot().diagnostics.mounted).toBe(false)
       expect(scenario.snapshot().matches).toBeUndefined()
       await scenario.run()
+      schedulerTasks.add(scenario.schedulerTasks())
       const completed = scenario.snapshot()
       // Supports both main's extra Link update and the optimized snapshot.
       expect([ordinaryLinkCount, ordinaryLinkCount * 2]).toContain(
@@ -30,6 +32,8 @@ test('restores data and context into fresh DOMs and includes follow-up renders',
       await scenario.after()
     }
   }
+  // React yields on its pinned clock, never on wall time spent hydrating.
+  expect(schedulerTasks.size).toBe(1)
 })
 
 test('installs per-iteration preparation for the ordinary Vitest runner', async () => {

@@ -401,7 +401,10 @@ const postQueryOptions = (postId: string) => ({
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ context, params }) => {
     // Prefetch during SSR - data reused on client without refetch
-    await context.queryClient.ensureQueryData(postQueryOptions(params.postId))
+    await context.queryClient.query({
+      ...postQueryOptions(params.postId),
+      staleTime: 'static',
+    })
   },
   component: PostPage,
 })
