@@ -100,6 +100,22 @@ describe('routeFactoryCallCodeFilter', () => {
         'createRootRouteWithContext<MyContext>()({})',
       ),
     ).toBe(true)
+    expect(
+      matchesRouteFactoryCallCodeFilter(
+        "createFileRoute<'/posts'>('/posts')({})",
+      ),
+    ).toBe(true)
+    expect(matchesRouteFactoryCallCodeFilter('createRootRoute<Ctx>({})')).toBe(
+      true,
+    )
+  })
+
+  it('matches a route file that renames a route factory, so it is reported', () => {
+    expect(
+      matchesRouteFactoryCallCodeFilter(
+        "import { createFileRoute as cfr } from '@tanstack/react-router'\nexport const Route = cfr('/posts')({})",
+      ),
+    ).toBe(true)
   })
 
   it('matches route factory calls without TypeScript type arguments', () => {
