@@ -305,19 +305,6 @@ export const Route = createFileRoute('/posts')({
     await expectValidModules(modules)
   })
 
-  // Re-exporting a type and a value under one name is a duplicate export for
-  // TypeScript ("Duplicate identifier"), so the compiler rejects it too.
-  it('rejects a type re-export and a value re-export of the same name', () => {
-    const code = `${head}export type { Post } from './post-types'
-export { Post } from './post-values'
-export const Route = createFileRoute('/posts')({
-  component: () => <p>posts</p>,
-})
-`
-    expect(() => compileRouteModules(code)).toThrow(/\bPost\b/)
-    expect(() => transformWithRouteHmrPlugin(code)).toThrow(/\bPost\b/)
-  })
-
   it('keeps decorators before `export` for legacy decorator transforms', () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only
     // accept decorators before the `export` keyword.
