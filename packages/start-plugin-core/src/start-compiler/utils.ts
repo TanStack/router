@@ -104,6 +104,7 @@ export function getVariableDeclarator(
   while (
     parent &&
     is.oneOf(parent, [
+      'ChainExpression',
       'ParenthesizedExpression',
       'TSAsExpression',
       'TSSatisfiesExpression',

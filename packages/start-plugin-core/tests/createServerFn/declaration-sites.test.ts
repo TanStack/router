@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { compileErrorMessage, compileFor, outputs } from '../regression-helpers'
+import {
+  callProvider,
+  compileAll,
+  compileErrorMessage,
+  compileFor,
+  outputs,
+} from '../regression-helpers'
 
 // A server fn must initialize a module-level variable: the provider module
 // exports its extracted handler next to that declaration. Anywhere else it is
@@ -169,6 +175,15 @@ export const fn = createServerFn().handler(...args)`,
   const message = compileErrorMessage(error)
   expect(message).toMatch(/handler\(\) must be called with an expression/)
   expect(message).not.toContain('export const fn')
+})
+
+test('a server fn created through an optional call chain compiles like a plain chain', async () => {
+  const { client, provider } = await compileAll(
+    `${imports['createServerFn alone'].head}export const fn = createServerFn()?.handler(async () => 'from the server')`,
+  )
+  expect(client).toContain('createClientRpc')
+  expect(client).not.toContain('from the server')
+  expect(await callProvider(provider, 'fn')).toBe('from the server')
 })
 
 test('a .ts module in a directory whose name contains # compiles as TypeScript', async () => {
