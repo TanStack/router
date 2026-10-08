@@ -223,8 +223,9 @@ describe('known bugs', () => {
 
   /**
    * Compiles `code` with `loadCss()` as the CSS expression and evaluates it:
-   * JSX becomes `{ type, children }` trees and the RSC render APIs return the
-   * arguments they are called with.
+   * JSX becomes `{ type, children }` trees, components are called (`Card`
+   * renders `card`) and the RSC render APIs return the arguments they are
+   * called with.
    */
   async function evaluateCompiled(code: string) {
     const compiled = await compileWithRscCssTransform({
@@ -246,9 +247,10 @@ export const createCompositeComponent = args`)
     )
     return import(
       /* @vite-ignore */ dataUrl(`const Fragment = 'Fragment'
-const h = (type, props, ...children) => ({ type, children })
+const h = (type, props, ...children) =>
+  typeof type === 'function' ? type({ ...props, children }) : { type, children }
 const loadCss = () => 'css'
-const Card = 'Card'
+const Card = () => 'card'
 ${linked}`)
     )
   }
@@ -269,7 +271,7 @@ ${linked}`)
 import { renderToReadableStream } from '@tanstack/react-start/rsc'
 export const stream = renderToReadableStream(<Card />)
 `)
-    expect(texts(stream)).toEqual(['css'])
+    expect(texts(stream)).toEqual(['css', 'card'])
   })
 
   // Bug: a comment before the JSX argument of `renderToReadableStream` is
@@ -291,7 +293,7 @@ export const stream = renderToReadableStream(<Card />)
 import { renderToReadableStream } from '@tanstack/react-start/rsc'
 export const stream = renderToReadableStream(${argument})
 `)
-      expect(texts(stream)).toEqual(['css'])
+      expect(texts(stream)).toEqual(['css', 'card'])
     },
   )
 })
