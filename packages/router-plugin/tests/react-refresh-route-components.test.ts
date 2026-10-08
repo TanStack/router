@@ -12,6 +12,7 @@ import {
   declarationOf,
   declaratorName,
   evaluateModule,
+  expectRefreshableRouteOption,
   expectRegisteredRouteOption,
   exportedNames,
   getRouteOption,
@@ -106,6 +107,18 @@ ${Object.entries(options)
       )
     },
   )
+
+  // React Refresh resolves memo(...) through the function it wraps.
+  it('wrapped in memo(...) around a top-level component', async () => {
+    await expectRefreshableRouteOption(
+      transformWithRouteHmrPlugin(`${head}import { memo } from 'react'
+function Page() {
+  return <p>hi</p>
+}
+export const Route = createFileRoute('/')({ component: memo(Page) })`),
+      'component',
+    )
+  })
 
   // Source: ReactFreshBabelPlugin-test "does not consider require-like methods to be HOCs"
   it('but leaves an imported lowercase component to the module that declares it', () => {

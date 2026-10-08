@@ -1,5 +1,5 @@
 import { transformWithOxc } from 'vite'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   compileRouteModules,
   componentChunk,
@@ -10,6 +10,8 @@ import {
   head,
   importSources,
   importedNames,
+  loadRouteModules,
+  requestedSources,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
@@ -202,6 +204,23 @@ export const Route = createFileRoute('/')({
     expect(modules.reference).toMatch(/export \* as lib from ['"]\.\/lib['"]/)
     await expectValidModules(modules)
   })
+
+  // A chunk that re-exported `export *` would depend on all of `./lib`
+  // through the opaque namespace of its dynamic import, which defeats
+  // tree-shaking of it.
+  it('keep module-level export * out of the split chunks', () => {
+    const { modules } = compileRouteModules(`${head}export * from './lib'
+export const Route = createFileRoute('/')({
+  component: () => <p>index</p>,
+})`)
+    expect(requestedSources(modules.reference!)).toContain('./lib')
+    const chunksRequestingLib = Object.keys(modules).filter(
+      (name) =>
+        name.startsWith('virtual ') &&
+        requestedSources(modules[name]!).includes('./lib'),
+    )
+    expect(chunksRequestingLib).toEqual([])
+  })
 })
 
 describe('TypeScript-only syntax', () => {
@@ -261,6 +280,25 @@ export const Route = createFileRoute('/ambient')({
       await expectValidModules(modules)
     },
   )
+
+  // For example a constant injected with Vite's `define`: no module exports it.
+  it('leaves an ambient declare const read by the loader and the split component a global', async () => {
+    vi.stubGlobal('APP_VERSION', '1.0')
+    try {
+      const { options, chunks } =
+        await loadRouteModules(`${head}declare const APP_VERSION: string
+export const Route = createFileRoute('/')({
+  loader: () => APP_VERSION,
+  component: () => <p>{APP_VERSION}</p>,
+})`)
+      expect([options.loader(), chunks.component!.component()]).toEqual([
+        '1.0',
+        '<p>1.0</p>',
+      ])
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 
   it('keeps the namespace import that an import alias refers to', () => {
     const chunk = componentChunk(`${head}import * as lib from './lib'

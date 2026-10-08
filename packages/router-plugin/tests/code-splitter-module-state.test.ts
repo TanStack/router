@@ -6,7 +6,20 @@ import {
   expectValidModules,
   head,
   importSources,
+  loadRouteModules,
 } from './regression-helpers'
+
+/** Stubs `./state`, counting the calls of `init`. */
+function stateStub() {
+  const state = {
+    calls: 0,
+    init: <T>(value: T) => {
+      state.calls++
+      return value
+    },
+  }
+  return state
+}
 
 /** How many times `pattern` occurs across all emitted modules. */
 function countAcrossModules(modules: Record<string, string>, pattern: RegExp) {
@@ -43,11 +56,58 @@ export const Route = createFileRoute('/')({ component: Page })
       `const component = entry.Route.options.component
 return [await entry.render(component), await entry.render(component), entry.store.count]`,
     )
-    // Known limitation on main: the chunk gets its own copy of `state` and
-    // `renders`, so callers of the exported functions are not checked here.
+    // Known limitation: the chunk gets its own copy of `state` and `renders`,
+    // so callers of the exported functions are not checked here.
     // `store.count` is 2: the chunk mutated the store the route module exports
     expect(result).toEqual(['<p>1/1/1</p>', '<p>2/2/2</p>', 2])
   }, 30_000)
+
+  // A declaration the loader and a split component both read runs once, with
+  // the route module, before any chunk loads; TypeScript enums and namespaces
+  // compile to such declarations too.
+  it.each([
+    {
+      name: 'a const',
+      declaration: `const value = init(1)
+const read = () => value`,
+    },
+    {
+      name: 'an enum',
+      declaration: `enum Value { One = init(1) }
+const read = () => Value.One`,
+    },
+    {
+      name: 'a namespace',
+      declaration: `namespace Value { export const one = init(1) }
+const read = () => Value.one`,
+    },
+  ])(
+    'initializes $name read by the loader and the split component once',
+    async ({ declaration }) => {
+      const state = stateStub()
+      let callsBeforeChunks: number | undefined
+      const { options, chunks } = await loadRouteModules(
+        `${head}import { init } from './state'
+${declaration}
+export const Route = createFileRoute('/')({
+  loader: () => read(),
+  component: () => <p>{read()}</p>,
+  errorComponent: () => <p>error</p>,
+})`,
+        { './state': state },
+        () => {
+          callsBeforeChunks = state.calls
+        },
+      )
+      expect([
+        options.loader(),
+        chunks.component!.component(),
+        chunks.errorComponent!.errorComponent(),
+        callsBeforeChunks,
+        state.calls,
+      ]).toEqual([1, '<p>1</p>', '<p>error</p>', 1, 1])
+    },
+  )
 
   // Source: Qwik optimizer test.rs
   // should_keep_non_migrated_binding_from_shared_destructuring_declarator_with_default (+ _with_rest)
