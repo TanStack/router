@@ -95,38 +95,6 @@ async function importModule(
 }
 
 describe('ported SolidStart directives', () => {
-  // compile.spec.ts: "keeps client and server ids aligned around nested
-  // server functions". Main also compiles the server fn nested in the
-  // handler: callers register a phantom server fn, the top-level `fn` is
-  // renamed `fn_createServerFn_handler_1`, and the provider exports the
-  // undeclared `fn_createServerFn_handler`.
-  test('a server fn nested in a handler does not shift or break the top-level server fns', async () => {
-    const code = `import { createServerFn } from '@tanstack/react-start'
-export const outer = createServerFn().handler(async () => {
-  const fn = createServerFn().handler(async () => 1)
-  return typeof fn
-})
-export const fn = createServerFn().handler(async () => 2)`
-    const client = await compile('client', code)
-    expect(
-      Object.values(client.serverFns)
-        .map((serverFn) => serverFn.functionName)
-        .sort(),
-    ).toEqual(['fn_createServerFn_handler', 'outer_createServerFn_handler'])
-    const provider = await compile('provider', code)
-    expect(await getModuleErrors(provider.code!)).toEqual([])
-    const module = await importModule(provider.code!)
-    expect(Object.keys(module).sort()).toEqual([
-      'fn_createServerFn_handler',
-      'outer_createServerFn_handler',
-    ])
-    for (const serverFn of Object.values(client.serverFns)) {
-      expect(client.code).toContain(JSON.stringify(serverFn.functionId))
-      expect(module[serverFn.functionName].meta.id).toBe(serverFn.functionId)
-    }
-    expect(await module.fn_createServerFn_handler({})).toBe(2)
-  })
-
   // plugin.ts transformFunction (directive functions nested in a server
   // function are compiled too). Main leaves env-specific functions inside a
   // handler untransformed in the provider: the client-only implementation

@@ -56,6 +56,18 @@ export function handleCreateServerFn(
         'createServerFn must be assigned to a simple identifier, not a destructuring pattern',
       )
     }
+    // The provider module exports the extracted handler next to the
+    // declaration, so only module-level declarations can be split.
+    const declaration = context.parentOf(declarator) as VariableDeclaration
+    const parent = context.parentOf(declaration)
+    const statement = is.ExportNamedDeclaration(parent) ? parent : declaration
+    if (!is.Program(context.parentOf(statement))) {
+      throw codeFrameError(
+        context.code,
+        declarator,
+        'createServerFn must be assigned to a top-level variable, not declared inside a function or block!',
+      )
+    }
     const variableName = declarator.id.name
     let functionName = `${variableName}_createServerFn_handler`
     while (functionNames.has(functionName)) {
@@ -123,10 +135,6 @@ export function handleCreateServerFn(
       )
       continue
     }
-    // The compiler only passes server functions declared at module level.
-    const declaration = context.parentOf(declarator) as VariableDeclaration
-    const parent = context.parentOf(declaration)
-    const statement = is.ExportNamedDeclaration(parent) ? parent : declaration
     const metadata = JSON.stringify({
       id: functionId,
       name: variableName,

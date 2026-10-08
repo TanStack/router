@@ -321,25 +321,18 @@ function isDirectCallCandidateForKind(
   return getLookupSetup(kind, externalLookupSetup)?.type === 'directCall'
 }
 
-/**
- * Where the variable initialized by `node` is declared: `module` for a
- * declaration directly in the module body, `nested` for any other, and
- * `undefined` when `node` does not initialize a variable.
- */
-function getDeclarationLevel(
+/** Whether `node` initializes a variable declared directly in the module body. */
+function isModuleLevelInitializer(
   node: t.Node,
   parentOf: (node: t.Node) => t.Node | null,
-): 'module' | 'nested' | undefined {
+): boolean {
   const declarator = getVariableDeclarator(node, parentOf)
-  if (!declarator) {
-    return undefined
-  }
-  const declaration = parentOf(declarator)
+  const declaration = declarator && parentOf(declarator)
   const parent = declaration && parentOf(declaration)
-  return is.Program(parent) ||
+  return (
+    is.Program(parent) ||
     (is.ExportNamedDeclaration(parent) && is.Program(parentOf(parent)))
-    ? 'module'
-    : 'nested'
+  )
 }
 
 export class StartCompiler {
@@ -869,7 +862,7 @@ export class StartCompiler {
             : null
         const simpleDirectCall =
           is.Identifier(callee) || is.Identifier(receiver)
-        const topLevel = getDeclarationLevel(node, editor.parentOf) === 'module'
+        const topLevel = isModuleLevelInitializer(node, editor.parentOf)
         // External transforms are bound to configured imports. Their known kind
         // must take precedence over generic built-in alias tracing.
         const root = is.Identifier(callee)
@@ -969,15 +962,6 @@ export class StartCompiler {
         !isLookupKind(kind) ||
         kind === 'ClientOnlyJSX' ||
         !this.validLookupKinds.has(kind)
-      ) {
-        continue
-      }
-      // The provider module exports each server function's extracted handler,
-      // so only module-level declarations can be split. Nested declarations
-      // are left untransformed in every environment.
-      if (
-        kind === 'ServerFn' &&
-        getDeclarationLevel(node, editor.parentOf) === 'nested'
       ) {
         continue
       }
