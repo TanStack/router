@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791383087396,
+  "lastUpdate": 1791441041413,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "manuel.schiller@caligano.de",
-            "name": "Manuel Schiller",
-            "username": "schiller-manuel"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03",
-          "message": "fix(router-core): skip scroll restoration setup when disabled (#7562)",
-          "timestamp": "2026-06-06T11:37:03+02:00",
-          "tree_id": "79cdd300ca7fa997a21d34b84222605e1894e9d9",
-          "url": "https://github.com/TanStack/router/commit/776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03"
-        },
-        "date": 1780738767744,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89342,
-            "unit": "bytes",
-            "extra": "raw=280224; brotli=77792; initial_gzip=89203"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93266,
-            "unit": "bytes",
-            "extra": "raw=292911; brotli=81106; initial_gzip=93124"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36340,
-            "unit": "bytes",
-            "extra": "raw=108500; brotli=32768; initial_gzip=36211"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41509,
-            "unit": "bytes",
-            "extra": "raw=124083; brotli=37364; initial_gzip=41381"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54243,
-            "unit": "bytes",
-            "extra": "raw=153571; brotli=48789; initial_gzip=54108"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 60368,
-            "unit": "bytes",
-            "extra": "raw=172780; brotli=54082; initial_gzip=60235"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104321,
-            "unit": "bytes",
-            "extra": "raw=329701; brotli=90339; initial_gzip=104180"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105071,
-            "unit": "bytes",
-            "extra": "raw=331109; brotli=91084; initial_gzip=104203"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107817,
-            "unit": "bytes",
-            "extra": "raw=340259; brotli=93260; initial_gzip=107676"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 101988,
-            "unit": "bytes",
-            "extra": "raw=324051; brotli=87704; initial_gzip=101812"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 102396,
-            "unit": "bytes",
-            "extra": "raw=325010; brotli=88149; initial_gzip=102227"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105324,
-            "unit": "bytes",
-            "extra": "raw=334699; brotli=90553; initial_gzip=105148"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50794,
-            "unit": "bytes",
-            "extra": "raw=155673; brotli=44858; initial_gzip=50661"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 54132,
-            "unit": "bytes",
-            "extra": "raw=163905; brotli=47888; initial_gzip=50720"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56696,
-            "unit": "bytes",
-            "extra": "raw=173008; brotli=49992; initial_gzip=56561"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 72719,
-            "unit": "bytes",
-            "extra": "raw=212085; brotli=64429; initial_gzip=72587"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 76771,
-            "unit": "bytes",
-            "extra": "raw=224905; brotli=67901; initial_gzip=76637"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -25856,6 +25730,138 @@ window.BENCHMARK_DATA = {
             "value": 70992,
             "unit": "bytes",
             "extra": "raw=203134; brotli=63230; initial_gzip=70865"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "vihaan@clique.so",
+            "name": "VihaanAgarwal",
+            "username": "VihaanAgarwal"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "663282b0ebbc494aee3595ed95867ee29d01938e",
+          "message": "fix(router-core): avoid null bytes in dehydrated SSR match ids (#7654)\n\n* fix(router-core): avoid null bytes in dehydrated SSR match ids\n\ndehydrateSsrMatchId replaced \"/\" with U+0000 so dehydrated ids would not\nlook like crawlable URLs (#6739). U+0000 is forbidden in the HTML input\nstream though, so the inlined hydration payload tripped a\ncontrol-character-in-input-stream parse error and failed markup\nvalidation. Encode with U+FFFD instead, which is valid in HTML and which\nhydrateSsrMatchId already decodes back to \"/\".\n\n* test(router-core): cover legacy null-byte decode in hydrateSsrMatchId\n\nThe codec keeps the U+0000 -> \"/\" decode branch so SSR payloads from a deploy before the U+FFFD switch still hydrate. That branch was the one path the suite didn't exercise, so add a test for it.\n\n* fix(router-core): compare SSR match ids in encoded form\n\nEncode slashes as U+FFFD with no further escaping, and have the client\nencode its own match id instead of decoding the server's. Payload and\nclient always ship from the same build, so the legacy null-byte decode\nand the reversible escape scheme are no longer needed.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(router-core): keep dehydrated SSR match ids one-byte\n\nA U+FFFD delimiter made V8 widen the encoded ids, and every HTML string\nconcatenated with them, to two-byte strings, slowing Solid SSR\nserialization by ~5%. Use ASCII `|` instead.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(router-core): delimit dehydrated SSR match ids with '#'\n\n`|` is a valid static route character, so `/a/b` and `/a|b` encoded to\nthe same id. A decoded pathname keeps `%23` encoded and params encode\n`#`, so a matched id cannot get a '#' from the URL. Seroval emits it\nunescaped and it keeps the HTML one-byte.\n\nTighten the regression test to reject any non-whitespace control\ncharacter and any char above U+00FF in the inlined hydration HTML.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Flo <me@florianpellet.com>\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-10-08T08:27:20+02:00",
+          "tree_id": "b5f22255cc80eed704b66f7dc1d2e65fdb8d7f70",
+          "url": "https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e"
+        },
+        "date": 1791441039746,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85979,
+            "unit": "bytes",
+            "extra": "raw=267628; brotli=74942; initial_gzip=85838"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89627,
+            "unit": "bytes",
+            "extra": "raw=279789; brotli=78208; initial_gzip=89486"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34285,
+            "unit": "bytes",
+            "extra": "raw=98034; brotli=31063; initial_gzip=34159"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39322,
+            "unit": "bytes",
+            "extra": "raw=113190; brotli=35496; initial_gzip=39197"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50647,
+            "unit": "bytes",
+            "extra": "raw=139846; brotli=45903; initial_gzip=50521"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56396,
+            "unit": "bytes",
+            "extra": "raw=158594; brotli=50997; initial_gzip=56269"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99029,
+            "unit": "bytes",
+            "extra": "raw=309480; brotli=85920; initial_gzip=98891"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106654,
+            "unit": "bytes",
+            "extra": "raw=336719; brotli=92576; initial_gzip=106516"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99773,
+            "unit": "bytes",
+            "extra": "raw=310869; brotli=86677; initial_gzip=98912"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102285,
+            "unit": "bytes",
+            "extra": "raw=319488; brotli=88789; initial_gzip=102146"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102735,
+            "unit": "bytes",
+            "extra": "raw=320740; brotli=88705; initial_gzip=102561"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103154,
+            "unit": "bytes",
+            "extra": "raw=321716; brotli=89087; initial_gzip=102986"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 106062,
+            "unit": "bytes",
+            "extra": "raw=331108; brotli=91558; initial_gzip=105888"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47358,
+            "unit": "bytes",
+            "extra": "raw=138669; brotli=42195; initial_gzip=47228"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50476,
+            "unit": "bytes",
+            "extra": "raw=146219; brotli=45048; initial_gzip=47287"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52614,
+            "unit": "bytes",
+            "extra": "raw=154452; brotli=46696; initial_gzip=52485"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67003,
+            "unit": "bytes",
+            "extra": "raw=190390; brotli=59842; initial_gzip=66876"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70939,
+            "unit": "bytes",
+            "extra": "raw=203032; brotli=63238; initial_gzip=70809"
           }
         ]
       }
