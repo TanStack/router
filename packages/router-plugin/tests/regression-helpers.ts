@@ -522,6 +522,19 @@ export async function expectRefreshableRouteOption(
 const runNode = promisify(execFile)
 
 /**
+ * The default `entry.ts` of `buildAndRun`: re-exports the route module and
+ * `render(component)`, which preloads a component and renders it to a string.
+ */
+export const renderEntry = `import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
+export * from './routes/index'
+export async function render(component: any) {
+  await component.preload?.()
+  return renderToString(createElement(component))
+}
+`
+
+/**
  * Builds a small app with the real Vite plugin (code splitting on, default
  * groupings unless `groupings` is given): `routes/index.tsx` holds `route`,
  * and `entry.ts` re-exports the route module next to `render(component)`,
@@ -547,14 +560,7 @@ export async function buildAndRun(
       'routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({})`,
       'routes/index.tsx': route,
-      'entry.ts': `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-export * from './routes/index'
-export async function render(component: any) {
-  await component.preload?.()
-  return renderToString(createElement(component))
-}
-`,
+      'entry.ts': renderEntry,
       ...options.files,
     }
     for (const [file, code] of Object.entries(files)) {

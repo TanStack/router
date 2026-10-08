@@ -5,6 +5,7 @@ import {
   declarationOf,
   evaluateModule,
   expectValidModules,
+  exportedNames,
   head,
   importSources,
   importedNames,
@@ -32,6 +33,77 @@ export const Route = createFileRoute('/posts')(options)
     // The split component reads the Route singleton from the reference module
     expect(importedNames(chunk, 'route.tsx')).toEqual(['Route'])
     expect(importSources(chunk)).not.toContain('./api')
+    await expectValidModules(modules)
+  })
+
+  // Source: React Router route-chunks-test.ts "chunkable" detection of export values
+  it.each([
+    {
+      name: 'a satisfies expression',
+      code: `import type { FC } from 'react'
+function Page() {
+  return <div>page</div>
+}
+export const Route = createFileRoute('/')({ component: Page satisfies FC })`,
+    },
+    {
+      name: 'a non-null assertion',
+      code: `const Page: (() => any) | undefined = () => <div>page</div>
+export const Route = createFileRoute('/')({ component: Page! })`,
+    },
+  ])('are split when wrapped in $name', async ({ code }) => {
+    const { modules } = compileRouteModules(`${head}${code}\n`)
+    expect(modules.reference).toContain('tsr-split=component')
+    expect(modules.reference).not.toMatch(declarationOf('Page'))
+    expect(modules['virtual component']).toMatch(declarationOf('Page'))
+    await expectValidModules(modules)
+  })
+
+  // Source: React Router route-chunks-test.ts "isolated exported destructured
+  // array variable declarations sharing an export statement" and "exported
+  // destructured array variable declarations sharing an assignment"
+  it.each([
+    {
+      name: 'its own array destructuring',
+      code: `import { chunkMessage, mainMessage } from './messages'
+const [Page] = [() => <div>{chunkMessage}</div>],
+  [main] = [mainMessage]
+export const Route = createFileRoute('/')({
+  loader: () => main,
+  component: Page,
+})`,
+    },
+    {
+      name: 'an array destructuring shared with the errorComponent',
+      code: `import { createPair } from './factory'
+const [Page, ErrorView] = createPair()
+export const Route = createFileRoute('/')({
+  component: Page,
+  errorComponent: ErrorView,
+})`,
+    },
+  ])('are split when declared by $name', async ({ code }) => {
+    const { modules } = compileRouteModules(`${head}${code}\n`)
+    expect(modules.reference).toContain('tsr-split=component')
+    expect(modules.reference).not.toMatch(/\bPage\b/)
+    expect(exportedNames(modules['virtual component']!)).toEqual(['component'])
+    await expectValidModules(modules)
+  })
+
+  // Source: React Router route-chunks-test.ts "exported destructured array
+  // variable declarations sharing an assignment"
+  it('keep the modules valid for a component declared by an array destructuring shared with the loader', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { chunkMessage, mainMessage } from './messages'
+const [Page, main] = [() => <div>{chunkMessage}</div>, mainMessage]
+export const Route = createFileRoute('/')({
+  loader: () => main,
+  component: Page,
+})
+`)
+    // Known limitation: a destructuring is initialized in one module, so the
+    // whole declaration moves to the shared module that the route module
+    // imports for `main`, and the component is not lazy-loaded.
     await expectValidModules(modules)
   })
 

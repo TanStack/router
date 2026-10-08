@@ -7,6 +7,7 @@ import {
   head,
   importSources,
   loadRouteModules,
+  renderEntry,
 } from './regression-helpers'
 
 /** Stubs `./state`, counting the calls of `init`. */
@@ -108,6 +109,71 @@ export const Route = createFileRoute('/')({
       ]).toEqual([1, '<p>1</p>', '<p>error</p>', 1, 1])
     },
   )
+
+  // Source: Next.js ssg/getStaticProps/should-support-export-named-as-default-with-other-specifiers
+  it.each([
+    {
+      name: 'export { store as appStore }',
+      exports: 'export { store as appStore }',
+      read: 'entry.appStore',
+      entry: '',
+    },
+    {
+      name: 'export default store',
+      exports: 'export default store',
+      read: 'entry.default',
+      entry: `export { default } from './routes/index'\n`,
+    },
+  ])(
+    'shares one store exported as $name with the split component',
+    async ({ exports, read, entry }) => {
+      const result = await buildAndRun(
+        `${head}import { createStore } from '../store'
+const store = createStore()
+${exports}
+export const Route = createFileRoute('/')({
+  component: () => <p>{store.count}</p>,
+})`,
+        `${read}.count = 5
+const html = await entry.render(entry.Route.options.component)
+return [html, globalThis.stores]`,
+        {
+          files: {
+            'store.ts': `export function createStore() {
+  ;(globalThis as any).stores = ((globalThis as any).stores ?? 0) + 1
+  return { count: 0 }
+}`,
+            'entry.ts': `${renderEntry}${entry}`,
+          },
+        },
+      )
+      expect(result).toEqual(['<p>5</p>', 1])
+    },
+    30_000,
+  )
+
+  // Source: Next.js ssg/getStaticProps/should-not-remove-import-used-in-render
+  it('shares a binding the loader reads and the component renders as a JSX member tag', async () => {
+    const result = await buildAndRun(
+      `${head}import { createUi } from '../ui'
+const ui = createUi()
+export const Route = createFileRoute('/')({
+  loader: () => typeof ui.Box,
+  component: () => <ui.Box />,
+})`,
+      `const html = await entry.render(entry.Route.options.component)
+return [html, globalThis.uis]`,
+      {
+        files: {
+          'ui.tsx': `export function createUi() {
+  ;(globalThis as any).uis = ((globalThis as any).uis ?? 0) + 1
+  return { Box: () => <p>box</p> }
+}`,
+        },
+      },
+    )
+    expect(result).toEqual(['<p>box</p>', 1])
+  }, 30_000)
 
   // Source: Qwik optimizer test.rs
   // should_keep_non_migrated_binding_from_shared_destructuring_declarator_with_default (+ _with_rest)
@@ -232,4 +298,79 @@ export const Route = createFileRoute('/')({
       await expectValidModules(modules)
     },
   )
+})
+
+describe('split components see the top-level writes to what they read', () => {
+  // Source: React Router route-chunks-test.ts "reassignment with nullish
+  // coalescing" and "destructured reassignment"
+  it('renders bindings reassigned at the top level with their final values', async () => {
+    const result = await buildAndRun(
+      `${head}let plain = 'initial'
+plain = 'assigned'
+let compound = 1
+compound += 1
+let logical = ''
+logical ||= 'logical'
+let handler: (() => string) | undefined
+handler ??= () => 'handler'
+let swapped = () => 'original'
+;[swapped] = [() => 'swapped']
+export const Route = createFileRoute('/')({
+  component: () => <p>{[plain, compound, logical, handler!(), swapped()].join(' ')}</p>,
+})`,
+      `return await entry.render(entry.Route.options.component)`,
+    )
+    expect(result).toBe('<p>assigned 2 logical handler swapped</p>')
+  }, 30_000)
+
+  // Source: Turbopack tree-shaker analyzer/assign-before-decl-var and
+  // analyzer/assign-before-decl-fn
+  it.each([
+    {
+      name: 'a var',
+      setup: `value = 'assigned'
+var value: string`,
+      render: '{value}',
+      html: '<p>assigned</p>',
+    },
+    {
+      name: 'a function declaration',
+      setup: `value = () => 'reassigned'
+function value() {
+  return 'declared'
+}`,
+      render: '{value()}',
+      html: '<p>reassigned</p>',
+    },
+  ])(
+    'renders $name assigned before its hoisted declaration',
+    async ({ setup, render, html }) => {
+      const result = await buildAndRun(
+        `${head}${setup}
+export const Route = createFileRoute('/')({
+  component: () => <p>${render}</p>,
+})`,
+        `return await entry.render(entry.Route.options.component)`,
+      )
+      expect(result).toBe(html)
+    },
+    30_000,
+  )
+
+  // Source: React Router remove-exports-test.ts "function statement with
+  // property assignment"
+  it('renders a split component that has properties assigned at the top level', async () => {
+    const result = await buildAndRun(
+      `${head}function Page() {
+  return <p>{(Page as any).label}</p>
+}
+;(Page as any).label = 'page'
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: Page,
+})`,
+      `return await entry.render(entry.Route.options.component)`,
+    )
+    expect(result).toBe('<p>page</p>')
+  }, 30_000)
 })

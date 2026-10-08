@@ -196,9 +196,91 @@ export const Route = createFileRoute('/posts')({
       await expectValidModules({ output })
     },
   )
+
+  // Inputs adapted from babel-dead-code-elimination dead-code-elimination.test.ts
+  // "object pattern" and "array pattern" > "unzips if all variables are
+  // unused", which removes the whole declaration: an empty pattern declares
+  // nothing, so splitting never left it unused and its initializer still runs.
+  it('keeps the initializers of empty destructuring patterns', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { init, other } from './init'
+const {} = init()
+const [] = other()
+const { a: {} } = init()
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>component</p>,
+})
+`)
+    expect(modules.reference!.match(/\binit\(\)/g)).toHaveLength(2)
+    expect(modules.reference).toContain('other()')
+    expect(importSources(modules['virtual component']!)).not.toContain('./init')
+    await expectValidModules(modules)
+  })
 })
 
 describe('code a split option needs moves with it', () => {
+  // Inputs adapted from babel-dead-code-elimination dead-code-elimination.test.ts
+  // "function" > "declaration" and "variable" > "identifier"
+  it.each([
+    {
+      name: 'an overloaded function',
+      declarations: `function load(id: string): string
+function load(id: number): string
+function load(id: any) { return lib.x(id) }`,
+      render: '{load(1)}',
+    },
+    {
+      name: 'a redeclared var',
+      declarations: `var load = lib.a()
+var load = lib.b()`,
+      render: '{load}',
+    },
+  ])(
+    'moves $name only the split component uses, and its import, into its chunk',
+    async ({ declarations, render }) => {
+      const { modules } =
+        compileRouteModules(`${head}import { lib } from './lib'
+${declarations}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>${render}</p>,
+})
+`)
+      expect(importSources(modules.reference!)).not.toContain('./lib')
+      expect(modules.reference).not.toMatch(/\bload\b/)
+      expect(importedNames(modules['virtual component']!, './lib')).toEqual([
+        'lib',
+      ])
+      await expectValidModules(modules)
+    },
+  )
+
+  // Source: Next.js ssg/getStaticProps/should-support-class-exports
+  it('moves a class component and the imports of its static fields into its chunk', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import * as React from 'react'
+import { format } from './format'
+class Page extends React.Component {
+  static title = format('home')
+  render() {
+    return <div>{Page.title}</div>
+  }
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: Page,
+})
+`)
+    expect(modules.reference).not.toMatch(declarationOf('Page'))
+    expect(importSources(modules.reference!)).not.toContain('./format')
+    expect(modules['virtual component']).toMatch(declarationOf('Page'))
+    expect(importedNames(modules['virtual component']!, './format')).toEqual([
+      'format',
+    ])
+    await expectValidModules(modules)
+  })
+
   // Source: Qwik optimizer test.rs should_not_move_over_side_effects,
   // example_drop_side_effects; Turbopack tree-shaker analyzer/route-kind
   it.each([
@@ -396,8 +478,8 @@ export const Route = createFileRoute('/')({
   component: () => <div>{value}</div>,
 })
 `)
-      // Known limitation on main: the statement runs in both modules instead
-      // of once in the shared module; only check that each module binds `value`.
+      // Known limitation: the statement runs in both modules instead of once
+      // in the shared module; only check that each module binds `value`.
       for (const name of ['reference', 'virtual component']) {
         expect(binds(modules[name]!, 'value'), `${name} binds value`).toBe(true)
       }
