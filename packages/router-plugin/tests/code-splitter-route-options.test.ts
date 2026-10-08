@@ -178,6 +178,11 @@ export const Route = createFileRoute('/posts')({
       expect(sharedBindings).toEqual(['format'])
       expect(modules.reference).toMatch(declarationOf('fetchPosts'))
       expect(modules.reference).toMatch(declarationOf('prefix'))
+      // The loader's helpers stay out of the component chunk
+      expect(modules['virtual component']).not.toMatch(
+        declarationOf('fetchPosts'),
+      )
+      expect(modules['virtual component']).not.toMatch(declarationOf('prefix'))
       await expectValidModules(modules)
     },
   )
