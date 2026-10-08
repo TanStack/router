@@ -11,24 +11,41 @@ import type { GenerateResult as NativeGenerateResult } from 'yuku-codegen'
 
 let core: Core | undefined
 
+function loadWasm(): Core {
+  // `@yuku-core/wasm`'s `loadSync()` needs the bytes, so resolve the file
+  // from whichever build runs. Check `import.meta` first: the CJS build
+  // compiles it to `{}`, and `node -e` defines a global `__filename` in ESM
+  const require = createRequire(
+    // @ts-ignore TS1470: `import.meta` is only read in the ESM build
+    import.meta.url ?? __filename, // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- `{}.url` in the CJS build
+  )
+  return loadWasmCore(
+    readFileSync(require.resolve('@yuku-core/wasm/yuku-core.wasm')),
+  )
+}
+
 function getCore(): Core {
   if (!core) {
     // WebContainers (StackBlitz, bolt.new) cannot load native addons, and
     // Yuku no longer falls back to WebAssembly on its own since
     // https://github.com/yuku-toolchain/yuku/releases/tag/v0.17.0
     if (process.versions.webcontainer != null) {
-      // `@yuku-core/wasm`'s `loadSync()` needs the bytes, so resolve the file
-      // from whichever build runs. Check `import.meta` first: the CJS build
-      // compiles it to `{}`, and `node -e` defines a global `__filename` in ESM
-      const require = createRequire(
-        // @ts-ignore TS1470: `import.meta` is only read in the ESM build
-        import.meta.url ?? __filename, // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- `{}.url` in the CJS build
-      )
-      core = loadWasmCore(
-        readFileSync(require.resolve('@yuku-core/wasm/yuku-core.wasm')),
-      )
+      core = loadWasm()
     } else {
-      core = loadNativeCore()
+      // Platforms without a native binary, or installs without optional
+      // dependencies, use WebAssembly
+      try {
+        core = loadNativeCore()
+      } catch (nativeError) {
+        try {
+          core = loadWasm()
+        } catch (wasmError) {
+          throw new AggregateError(
+            [nativeError, wasmError],
+            'Yuku could load neither its native binding nor its WebAssembly core',
+          )
+        }
+      }
     }
   }
   return core
