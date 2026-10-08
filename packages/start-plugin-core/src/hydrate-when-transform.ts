@@ -16,6 +16,7 @@ import {
 } from '@tanstack/router-utils'
 import { tssHydrate } from './hydration-constants'
 import { cleanId, codeFrameError } from './start-compiler/utils'
+import { BindingFlags } from 'yuku-analyzer'
 import type { Binding, Module } from 'yuku-analyzer'
 import type * as t from '@yuku-toolchain/types'
 import type {
@@ -629,12 +630,44 @@ function loadHydrateVirtualModule(options: {
       module,
       sourceNode(context, child),
     )) {
-      if (binding.name !== 'Route') {
-        keep.add(binding)
-      }
+      keep.add(binding)
     }
   }
-  const retained = expandTransitively(keep, graph.dependencies)
+  // The route is a singleton: code reading the module's `Route` imports the
+  // parent module's instead of creating the route again with its options.
+  const route = module.rootScope.bindings.find(
+    (binding) => binding.name === 'Route' && !binding.has(BindingFlags.Import),
+  )
+  const retained = expandTransitively(
+    keep,
+    new Map([...graph.dependencies].filter(([binding]) => binding !== route)),
+  )
+  if (route && retained.delete(route)) {
+    const exportedNames = module.exports
+      .filter((entry) => entry.local === route && !entry.typeOnly)
+      .map((entry) => entry.name)
+    const exported = exportedNames.includes('Route')
+      ? 'Route'
+      : exportedNames.find((name) => name !== null)
+    if (!exported) {
+      throw codeFrameError(
+        options.code,
+        sourceNode(context, target),
+        'Hydrate cannot code-split children that read Route when the module does not export it. Export Route, or use split={false} for this boundary.',
+      )
+    }
+    let prologueEnd = 0
+    while (is.Directive(ast.body[prologueEnd])) {
+      prologueEnd++
+    }
+    ast.body.splice(
+      prologueEnd,
+      0,
+      ...parseStatements(
+        `import { ${/^[\p{L}_$][\p{L}\p{N}_$]*$/u.test(exported) ? exported : JSON.stringify(exported)} as Route } from ${JSON.stringify(sourceId)}`,
+      ),
+    )
+  }
   const selected = new Set(
     [...graph.declarationSymbols]
       .filter(([, owners]) =>

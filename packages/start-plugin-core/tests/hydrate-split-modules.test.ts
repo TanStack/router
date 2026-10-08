@@ -450,6 +450,90 @@ describe('the split chunk', () => {
     },
   )
 
+  describe('the route of the parent module', () => {
+    /** Router stub recording the routes it creates. */
+    const routerStub = (created: Array<string>) => ({
+      '@tanstack/react-router': {
+        createFileRoute:
+          (id: string) => (options: { loader?: () => unknown }) => {
+            created.push(id)
+            return { id, useLoaderData: () => options.loader?.() }
+          },
+      },
+    })
+
+    test.each([
+      {
+        name: 'directly',
+        code: `export const Route = createFileRoute('/posts')({ component: Page })
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+        rendered: '[<p>/posts</p>]',
+      },
+      {
+        name: 'through a module helper',
+        code: `export const Route = createFileRoute('/posts')({
+  loader: () => 'data',
+  component: Page,
+})
+function Comments() {
+  return <p>{Route.useLoaderData()}</p>
+}
+export function Page() {
+  return <Hydrate><Comments /></Hydrate>
+}`,
+        rendered: '[<p>data</p>]',
+      },
+      {
+        name: 'exported under a specifier',
+        code: `const Route = createFileRoute('/posts')({ component: Page })
+export { Route }
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+        rendered: '[<p>/posts</p>]',
+      },
+      {
+        name: 'exported as default',
+        code: `const Route = createFileRoute('/posts')({ component: Page })
+export default Route
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+        rendered: '[<p>/posts</p>]',
+      },
+    ])(
+      'client: children reading Route $name use the one route',
+      async ({ code, rendered }) => {
+        const created: Array<string> = []
+        const { module } = await loadClientModule(
+          `${head}import { createFileRoute } from '@tanstack/react-router'
+${code}`,
+          { stubs: routerStub(created) },
+        )
+        expect(module.Page()).toBe(rendered)
+        expect(created).toEqual(['/posts'])
+      },
+    )
+
+    test('client: children reading a Route the module does not export are rejected', async () => {
+      const error = await compileHydrate(
+        'client',
+        `${head}import { createFileRoute } from '@tanstack/react-router'
+const Route = createFileRoute('/posts')({ component: Page })
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+      )
+        .then(({ parent, plugin }) =>
+          loadChunk(plugin, 'client', getChunkIds(parent)[0]!),
+        )
+        .catch((error: unknown) => error)
+      expect(compileErrorMessage(error)).toMatch(/\bHydrate\b[^]*\bRoute\b/)
+    })
+  })
+
   test('client: children may contain return statements', async () => {
     const { chunks } = await compileHydrate(
       'client',
