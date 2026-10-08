@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@msw/playwright": "0.6.7",
+    "@mswjs/interceptors": "0.41.9",
     "msw": "2.15.0",
     "rimraf": "catalog:",
     "vite": "^8.0.14",

@@ -1,19 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { isPreview } from './utils/isPreview'
 import { isSpaMode } from './utils/isSpaMode'
 
 test('authentication docs pattern handles login, logout, route context, and server authorization', async ({
   page,
 }) => {
-  // The MSW 2.x preload (@mswjs/interceptors 0.41) rebuilds copied `Headers` from
-  // an empty raw-header list, so under vite preview the login response keeps only
-  // `set-cookie` and the redirect is never followed. Fixed upstream in
-  // @mswjs/interceptors 0.45.6 (MSW 3.0.2); remove this once MSW is upgraded.
-  test.fixme(
-    isPreview && process.env.E2E_TOOLCHAIN !== 'rsbuild',
-    'MSW 2.x drops copied response headers in vite preview (mswjs/interceptors#850)',
-  )
-
   await page.goto('/auth-docs/private')
   await expect(page).toHaveURL(/\/auth-docs$/)
   await expect(page.getByTestId('auth-docs-user')).toHaveText('Signed out')
