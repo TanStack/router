@@ -458,7 +458,7 @@ describe('transform', () => {
     expect(result.output).toContain("createFileRoute('/new')")
   })
 
-  it('returns an error for multiple exported route calls', async () => {
+  it('rejects duplicate Route exports as a syntax error', async () => {
     const result = await transform({
       source: [
         "import { createFileRoute } from '@tanstack/react-router'",
@@ -481,6 +481,32 @@ describe('transform', () => {
       throw new Error(`expected error result, got ${result.result}`)
     }
     expect(String(result.error)).toContain("Duplicate export of 'Route'")
+  })
+
+  it('returns an error when a redeclared Route var holds two route calls', async () => {
+    const result = await transform({
+      source: [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        '',
+        "var Route = createFileRoute('/a')({})",
+        "var Route = createFileRoute('/b')({})",
+        'export { Route }',
+      ].join('\n'),
+      ctx: {
+        target: 'react',
+        routeId: '/new',
+        lazy: false,
+      },
+      node: makeNode(),
+    })
+
+    expect(result.result).toBe('error')
+    if (result.result !== 'error') {
+      throw new Error(`expected error result, got ${result.result}`)
+    }
+    expect(String(result.error)).toContain(
+      'expected exactly one createFileRoute/createLazyFileRoute call in /new',
+    )
   })
 
   it('prepends a new import when no target-module import exists', async () => {
