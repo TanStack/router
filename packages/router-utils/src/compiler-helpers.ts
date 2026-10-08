@@ -267,6 +267,49 @@ interface BindingUses {
   erasedReferences: Map<Binding, Set<Set<Binding> | null>>
 }
 
+interface JsxFactoryNames {
+  /** Names JSX elements compile to calls of. */
+  element: Array<string>
+  /** Names fragments also compile to references of. */
+  fragment: Array<string>
+}
+
+const jsxFactoryNamesCache = new WeakMap<Module, JsxFactoryNames>()
+
+/**
+ * The names a classic JSX runtime compiles JSX to references of, as the
+ * file's `@jsx` and `@jsxFrag` pragmas name them (`React.createElement` →
+ * `React`). `@jsxRuntime automatic` makes them ignored. The default `React`
+ * factory is an erased reference instead (see `BindingUses`).
+ */
+function jsxFactoryNames(module: Module): JsxFactoryNames {
+  let names = jsxFactoryNamesCache.get(module)
+  if (!names) {
+    names = { element: [], fragment: [] }
+    if (
+      !module.comments.some((comment) =>
+        /@jsxRuntime\s+automatic\b/.test(comment.value),
+      )
+    ) {
+      for (const comment of module.comments) {
+        for (const [, pragma, name] of comment.value.matchAll(
+          /@(jsx|jsxFrag)\s+([\p{L}\p{N}_$]+)/gu,
+        )) {
+          names[pragma === 'jsx' ? 'element' : 'fragment'].push(name!)
+        }
+      }
+    }
+    jsxFactoryNamesCache.set(module, names)
+  }
+  return names
+}
+
+function jsxFactoriesOf(names: JsxFactoryNames, node: Node): Array<string> {
+  return is.JSXFragment(node)
+    ? [...names.element, ...names.fragment]
+    : names.element
+}
+
 function addEdge(
   edges: Map<Binding, Set<Binding>>,
   from: Binding,
@@ -299,6 +342,7 @@ function collectBindingUses(
     erasedReferences: new Map(),
   }
   const reactImport = byName.get('React')
+  const factories = jsxFactoryNames(module)
   const erasedReference = (owner: Set<Binding> | null, binding: Binding) => {
     if (binding.has(BindingFlags.Import)) {
       const owners = result.erasedReferences.get(binding) ?? new Set()
@@ -377,8 +421,16 @@ function collectBindingUses(
       if (reference?.inTypePosition && reference.binding) {
         erasedReference(owner, reference.binding)
       }
-      if (reactImport && (is.JSXElement(node) || is.JSXFragment(node))) {
-        erasedReference(owner, reactImport)
+      if (is.JSXElement(node) || is.JSXFragment(node)) {
+        if (reactImport) {
+          erasedReference(owner, reactImport)
+        }
+        for (const name of jsxFactoriesOf(factories, node)) {
+          const factory = module.lookup(name, { from: scope })
+          if (factory) {
+            use(owner, factory)
+          }
+        }
       }
       let binding =
         reference && !reference.inTypePosition ? reference.binding : null
@@ -637,8 +689,14 @@ export function removeUnusedBindings(
   })
 
   const referencedNames = new Set<string>()
+  const factories = jsxFactoryNames(module)
   walk(program, {
     enter(node) {
+      if (is.JSXElement(node) || is.JSXFragment(node)) {
+        for (const name of jsxFactoriesOf(factories, node)) {
+          referencedNames.add(name)
+        }
+      }
       const original = originalNodes.get(node)
       if (original) {
         const reference = module.referenceOf(original)

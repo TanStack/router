@@ -4,6 +4,7 @@ import {
   compileRouteModules,
   componentChunk,
   head,
+  loadRouteModules,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
@@ -76,6 +77,66 @@ export const Route = createFileRoute('/pragma')({
 })
 `).modules
     expect(await jsxRuntimeOf(shared!)).toBe('@emotion/react/jsx-runtime')
+  })
+})
+
+// With the classic runtime, the JSX of each module compiles to calls of the
+// factory its pragmas name, so the factory import must stay wherever JSX does.
+describe('split modules keep the classic JSX factories their JSX compiles to', () => {
+  /** Classic JSX factory rendering intrinsic elements to text. */
+  const render = (type: unknown, _props: unknown, ...children: Array<any>) => {
+    const text = children.flat(Infinity).join('')
+    if (typeof type === 'function') {
+      return type()
+    }
+    return type === Fragment ? text : `<${String(type)}>${text}</${type}>`
+  }
+  const Fragment = Symbol('Fragment')
+  const stubs = { '@emotion/react': { jsx: render, Frag: Fragment } }
+  const classicHead = `/** @jsxRuntime classic */
+/** @jsx jsx */
+${head}import { jsx } from '@emotion/react'
+`
+
+  it('in the route module, when the code calling the factory is split', async () => {
+    const { options } = await loadRouteModules(
+      `${classicHead}function Page() {
+  return jsx('div', null, 'page')
+}
+export const Route = createFileRoute('/')({
+  component: Page,
+  pendingComponent: () => <p>pending</p>,
+})`,
+      stubs,
+    )
+    expect(options.pendingComponent()).toBe('<p>pending</p>')
+  })
+
+  it('in a split chunk, when only other chunks call the factory', async () => {
+    const { chunks } = await loadRouteModules(
+      `${classicHead}export const Route = createFileRoute('/')({
+  component: () => <div>page</div>,
+  errorComponent: () => jsx('b', null, 'error'),
+})`,
+      stubs,
+    )
+    expect(chunks.component!.component()).toBe('<div>page</div>')
+    expect(chunks.errorComponent!.errorComponent()).toBe('<b>error</b>')
+  })
+
+  it('with the @jsxFrag factory of the fragments that remain', async () => {
+    const { chunks } = await loadRouteModules(
+      `/** @jsx jsx */
+/** @jsxFrag Frag */
+${head}import { jsx, Frag } from '@emotion/react'
+export const Route = createFileRoute('/')({
+  component: () => <>page</>,
+  errorComponent: () => jsx(Frag, null, 'error'),
+})`,
+      stubs,
+    )
+    expect(chunks.component!.component()).toBe('page')
+    expect(chunks.errorComponent!.errorComponent()).toBe('error')
   })
 })
 

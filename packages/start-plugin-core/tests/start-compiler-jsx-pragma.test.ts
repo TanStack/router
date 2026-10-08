@@ -1,7 +1,15 @@
 import { transformWithOxc } from 'vite'
 import { expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
-import { compileCode, compileHydrate, outputs } from './regression-helpers'
+import {
+  compileCode,
+  compileHydrate,
+  evaluateHydrateParent,
+  evaluateModule,
+  getChunkComponent,
+  hydrateParentStubs,
+  outputs,
+} from './regression-helpers'
 
 /**
  * A file-level JSX pragma decides which JSX runtime the bundler's own JSX
@@ -179,3 +187,96 @@ export function Card() {
     expect(await jsxRuntimeOf(parent!)).toBe('@emotion/react/jsx-runtime')
   },
 )
+
+/** Classic JSX factory: intrinsic elements render as tags, components are called. */
+const renderJsx = (type: unknown, props: unknown, ...children: Array<any>) => {
+  const text = children
+    .flat(Infinity)
+    .filter((child) => child != null && child !== false && child !== true)
+    .join('')
+  if (typeof type === 'function') {
+    return type({ ...(props as object), children: text })
+  }
+  return typeof type === 'string' ? `<${type}>${text}</${type}>` : text
+}
+
+// With the classic runtime, JSX compiles to calls of the factories the file's
+// pragmas name: their imports stay wherever JSX does, even when the code
+// calling them explicitly moves to the server.
+test.each([
+  {
+    name: '@jsx factory',
+    pragmas: '/** @jsx h */',
+    imports: 'h',
+    handler: `h('p', null)`,
+    component: '<div>card</div>',
+    rendered: '<div>card</div>',
+  },
+  {
+    name: '@jsxFrag factory',
+    pragmas: '/** @jsx h */\n/** @jsxFrag Fragment */',
+    imports: 'h, Fragment',
+    handler: `h(Fragment, null)`,
+    component: '<>card</>',
+    rendered: 'card',
+  },
+])(
+  'client: the $name stays imported for the JSX left once server functions are compiled',
+  async ({ pragmas, imports, handler, component, rendered }) => {
+    const client = await compileCode(
+      'client',
+      `${pragmas}
+import { createServerFn } from '@tanstack/react-start'
+import { ${imports} } from './jsx'
+export const fn = createServerFn().handler(async () => ${handler})
+export const Card = () => ${component}`,
+    )
+    const module = await evaluateModule(client!, {
+      './jsx': { h: renderJsx, Fragment: Symbol('Fragment') },
+    })
+    expect(module.Card()).toBe(rendered)
+  },
+)
+
+test('client: a Hydrate parent and its chunk keep the @jsx factory their JSX compiles to', async () => {
+  const { parent, chunks, plugin } = await compileHydrate(
+    'client',
+    `/** @jsx h */
+import { h } from 'preact'
+import { Hydrate, createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => h('p', null))
+export function Page() {
+  return (
+    <main>
+      <Hydrate>
+        <b>chunk</b>
+      </Hydrate>
+    </main>
+  )
+}`,
+  )
+  let chunkComponent: (props: unknown) => unknown = () => null
+  const stubs = {
+    ...hydrateParentStubs,
+    preact: { h: renderJsx },
+    '@tanstack/react-start': {
+      ...hydrateParentStubs['@tanstack/react-start'],
+      createServerFn: () => ({ handler: () => () => null }),
+    },
+    '@tanstack/react-router': {
+      lazyRouteComponent: () => (props: unknown) => chunkComponent(props),
+    },
+  }
+  const { module, parentModuleStubs } = await evaluateHydrateParent(
+    plugin,
+    parent,
+    stubs,
+  )
+  chunkComponent = getChunkComponent(
+    await evaluateModule(chunks[0]!, {
+      ...stubs,
+      ...(await parentModuleStubs(chunks[0]!)),
+    }),
+  )
+  expect(module.Page()).toBe('<main>[<b>chunk</b>]</main>')
+})
