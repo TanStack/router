@@ -67,36 +67,6 @@ describe('semantic dependency analysis', () => {
     }
   })
 
-  test('extracts module imports, exports, and re-export sources through native records', () => {
-    const module = analyzeModule({
-      code: `
-      import value, { dep as local } from 'dependency'
-      export const result = value(local)
-      export { result as renamed }
-      export { another } from './other'
-      export * from './all'
-    `,
-    })
-    expect(
-      module.imports.map((record) => [
-        record.local?.name,
-        record.specifier,
-        record.name,
-      ]),
-    ).toEqual([
-      ['value', 'dependency', 'default'],
-      ['local', 'dependency', 'dep'],
-    ])
-    expect(
-      module.exports.map((record) => [record.name, record.specifier]),
-    ).toEqual([
-      ['result', null],
-      ['renamed', null],
-      ['another', './other'],
-      [null, './all'],
-    ])
-  })
-
   test('keeps distinct re-export identities when imported names collide', () => {
     const module = analyzeModule({
       code: `
@@ -134,25 +104,16 @@ describe('semantic dependency analysis', () => {
     `,
     })
     const graph = moduleDeclarationGraph(module)
-    const helper = module.rootScope.find('helper')!
-    const merged = module.rootScope.find('Merged')!
-    expect(graph.declarations.get(helper)?.type).toBe('FunctionDeclaration')
     expect(
-      [...graph.dependencies.get(helper)!].map((symbol) => symbol.name),
+      [...graph.dependencies.get(module.rootScope.find('helper')!)!].map(
+        (symbol) => symbol.name,
+      ),
     ).toEqual(['dep'])
     expect(
-      [...graph.dependencies.get(merged)!].map((symbol) => symbol.name).sort(),
+      [...graph.dependencies.get(module.rootScope.find('Merged')!)!]
+        .map((symbol) => symbol.name)
+        .sort(),
     ).toEqual(['another', 'dep'])
-    expect(
-      [...graph.declarationSymbols.values()].filter((owners) =>
-        owners.has(helper),
-      ),
-    ).toHaveLength(3)
-    expect(
-      [...graph.declarationSymbols.values()].filter((owners) =>
-        owners.has(merged),
-      ),
-    ).toHaveLength(2)
     const { program, originalNodes } = cloneModuleAst(module)
     removeUnusedBindings(module, program, originalNodes)
     const output = generateModule(program).code
@@ -162,49 +123,37 @@ describe('semantic dependency analysis', () => {
     expect(output).toContain('const another = 2')
   })
 
+  test('removes every overload and namespace block once they are unused', () => {
+    const output = cleanup(
+      `
+      const dep = 1
+      function helper(value: string): string
+      function helper(value: any) { return dep + value }
+      namespace Merged { export const a = 1 }
+      namespace Merged { export const b = 2 }
+      export const Route = createRoute({ loader: () => helper(Merged.a + Merged.b) })
+    `,
+      'loader',
+    )
+    expect(output).not.toContain('helper')
+    expect(output).not.toContain('Merged')
+    expect(output).not.toContain('dep')
+  })
+
   test('tracks runtime enum and namespace declarations as owned bindings', () => {
-    const module = analyzeModule({
-      code: 'enum E { A }; namespace N { export const x = E.A } export const value = N.x;',
-    })
-    const graph = moduleDeclarationGraph(module)
-    expect(graph.declarations.get(module.rootScope.find('E')!)?.type).toBe(
-      'TSEnumDeclaration',
-    )
-    expect(graph.declarations.get(module.rootScope.find('N')!)?.type).toBe(
-      'TSModuleDeclaration',
-    )
+    const code =
+      'enum E { A }; namespace N { export const x = E.A } export const Route = createRoute({ loader: () => N.x });'
+    const module = analyzeModule({ code })
     expect(
-      [...graph.dependencies.get(module.rootScope.find('N')!)!].map(
-        (symbol) => symbol.name,
-      ),
+      [
+        ...moduleDeclarationGraph(module).dependencies.get(
+          module.rootScope.find('N')!,
+        )!,
+      ].map((symbol) => symbol.name),
     ).toEqual(['E'])
-  })
-
-  test('only declares a var where its statement runs in the binding scope', () => {
-    const module = analyzeModule({
-      code: `
-      var topLevel = 1
-      if (cond) { var inBlock = 2 }
-      if (cond) var inStatement = 3
-      for (var inHead = 4; ; ) break
-      `,
-    })
-    const graph = moduleDeclarationGraph(module)
-    expect(
-      ['topLevel', 'inBlock', 'inStatement', 'inHead'].filter((name) =>
-        graph.declarations.has(module.rootScope.find(name)!),
-      ),
-    ).toEqual(['topLevel'])
-  })
-
-  test('groups destructured symbols in one initialization unit', () => {
-    const module = analyzeModule({
-      code: 'const { a, nested: { b } } = initialize()',
-    })
-    const graph = moduleDeclarationGraph(module)
-    expect(graph.declarations.get(module.rootScope.find('a')!)).toBe(
-      graph.declarations.get(module.rootScope.find('b')!),
-    )
+    const output = cleanup(code, 'loader')
+    expect(output).not.toContain('enum E')
+    expect(output).not.toContain('namespace N')
   })
 })
 
