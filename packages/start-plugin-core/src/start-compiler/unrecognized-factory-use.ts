@@ -1,7 +1,7 @@
 import { is } from 'yuku-ast'
 import { sourcePosition } from './utils'
 import type * as t from '@yuku-toolchain/types'
-import type { Binding, Module } from 'yuku-analyzer'
+import type { Binding, Module, Scope } from 'yuku-analyzer'
 
 /** The Start factories whose implementation the compiler removes from a bundle. */
 export const startFactoryNames = new Set([
@@ -157,9 +157,17 @@ export function findUnrecognizedFactoryUses(options: {
       return
     }
     const position = sourcePosition(code, node.start)
+    let inFunction = false
+    for (
+      let scope: Scope | null = module.scopeOf(node);
+      scope && !inFunction;
+      scope = scope.parent
+    ) {
+      inFunction = scope.kind === 'function'
+    }
     messages.push({
       start: node.start,
-      message: `Unrecognized use of ${factory} at ${id}:${position.line}:${position.column + 1}: it is not compiled, so its implementation ships to the client. Assign it to a module-level variable: ${usage[factory]}, with ${factory} imported directly from the Start package.`,
+      message: `Unrecognized use of ${factory} at ${id}:${position.line}:${position.column + 1}: it is not compiled, so its implementation ships to the client.${inFunction ? ` A ${factory} called or returned by a function is not compiled.` : ''} Assign it to a module-level variable: ${usage[factory]}, with ${factory} imported directly from the Start package.`,
     })
   }
 
