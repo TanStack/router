@@ -242,6 +242,43 @@ export const Route = createFileRoute('/')({
     await expectValidModules(modules)
   })
 
+  // An import the code only references from types (without `import type`)
+  // stays only where such a reference does, for TypeScript to erase.
+  it.each([
+    {
+      name: 'the loader',
+      options: `loader: (): Framework => 'react',
+  component: () => <p>index</p>,`,
+      importers: ['reference'],
+    },
+    {
+      name: 'the split component',
+      options: `loader: () => 'data',
+  component: () => {
+    const [framework] = useState<Framework>('react')
+    return <p>{framework}</p>
+  },`,
+      importers: ['virtual component'],
+    },
+  ])(
+    'imports a binding only types reference in $name only where they do',
+    async ({ options, importers }) => {
+      const { modules } =
+        compileRouteModules(`${head}import { useState } from 'react'
+import { Framework } from './projects'
+export const Route = createFileRoute('/')({
+  ${options}
+})
+`)
+      expect(
+        Object.keys(modules).filter((name) =>
+          importSources(modules[name]!).includes('./projects'),
+        ),
+      ).toEqual(importers)
+      await expectValidModules(modules)
+    },
+  )
+
   // Ambient declarations (`declare ...`) have no runtime binding: the
   // environment provides the value (a <script> tag, a bundler define, a global).
   it.each([

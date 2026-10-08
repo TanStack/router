@@ -259,6 +259,12 @@ interface BindingUses {
   uses: Map<Binding, Set<Binding>>
   /** Declarations that execute only when their enclosing declaration does. */
   parents: Map<Binding, Set<Binding>>
+  /**
+   * The owners (null outside of any declaration) of each import's erased
+   * references: references from types, and for an import named `React`, the
+   * JSX that a classic JSX runtime compiles to `React.createElement` calls.
+   */
+  erasedReferences: Map<Binding, Set<Set<Binding> | null>>
 }
 
 function addEdge(
@@ -273,7 +279,8 @@ function addEdge(
 
 /**
  * Runtime uses only: TypeScript erases types, so they neither use a declaration
- * nor keep it alive. `originOf` maps a traced node to its source node, if any.
+ * nor keep it alive; erased references to imports are recorded apart.
+ * `originOf` maps a traced node to its source node, if any.
  */
 function collectBindingUses(
   module: Module,
@@ -289,6 +296,15 @@ function collectBindingUses(
     roots: new Set(),
     uses: new Map(),
     parents: new Map(),
+    erasedReferences: new Map(),
+  }
+  const reactImport = byName.get('React')
+  const erasedReference = (owner: Set<Binding> | null, binding: Binding) => {
+    if (binding.has(BindingFlags.Import)) {
+      const owners = result.erasedReferences.get(binding) ?? new Set()
+      owners.add(owner)
+      result.erasedReferences.set(binding, owners)
+    }
   }
   const ownerStack: Array<Set<Binding> | null> = []
   const scopeStack: Array<Scope> = []
@@ -358,6 +374,12 @@ function collectBindingUses(
         markExport(node.local)
       }
       const reference = original ? module.referenceOf(original) : null
+      if (reference?.inTypePosition && reference.binding) {
+        erasedReference(owner, reference.binding)
+      }
+      if (reactImport && (is.JSXElement(node) || is.JSXFragment(node))) {
+        erasedReference(owner, reactImport)
+      }
       let binding =
         reference && !reference.inTypePosition ? reference.binding : null
       const generated = generatedReferenceOf(node)
@@ -456,14 +478,34 @@ function findInitiallyUnused({ present, roots, uses }: BindingUses) {
   )
 }
 
-const initiallyUnusedBindings = new WeakMap<Module, Set<Binding>>()
+interface InitiallyUnused {
+  /** Survive wherever their enclosing code does. */
+  preserved: Set<Binding>
+  /**
+   * Imports only types reference, which survive wherever such a reference (or
+   * the JSX a classic runtime compiles with them) does.
+   */
+  erased: Set<Binding>
+}
+
+const initiallyUnusedBindings = new WeakMap<Module, InitiallyUnused>()
 
 function initiallyUnused(module: Module, index: DeclarationIndex) {
   let unused = initiallyUnusedBindings.get(module)
   if (!unused) {
-    unused = findInitiallyUnused(
-      collectBindingUses(module, module.ast, index, (node) => node),
+    const uses = collectBindingUses(module, module.ast, index, (node) => node)
+    const all = findInitiallyUnused(uses)
+    const erased = new Set(
+      [...all].filter(
+        (binding) =>
+          binding.has(BindingFlags.Import) &&
+          binding.references.some((reference) => reference.inTypePosition),
+      ),
     )
+    unused = {
+      preserved: new Set([...all].filter((binding) => !erased.has(binding))),
+      erased,
+    }
     initiallyUnusedBindings.set(module, unused)
   }
   return unused
@@ -473,7 +515,8 @@ function initiallyUnused(module: Module, index: DeclarationIndex) {
  * Rebuild liveness from surviving nodes, using original binding identity. This
  * removes dependencies of erased route options without reparsing generated code.
  * Only declarations the source used, and whose uses the transform erased, are
- * removed: initially unused ones survive wherever their enclosing code does.
+ * removed: initially unused ones survive wherever their enclosing code does,
+ * except imports only types reference, which survive with those references.
  * Callers decide output ownership before invoking this lexical binding cleanup.
  */
 export function removeUnusedBindings(
@@ -484,7 +527,7 @@ export function removeUnusedBindings(
 ): void {
   stripTypeExports(program)
   const index = declarationIndex(module, module.bindings)
-  const preserved = initiallyUnused(module, index)
+  const { preserved, erased } = initiallyUnused(module, index)
   const output = collectBindingUses(module, program, index, (node) =>
     originalNodes.get(node),
   )
@@ -517,6 +560,20 @@ export function removeUnusedBindings(
   for (const binding of output.present) {
     if (preserved.has(binding) && !output.parents.has(binding)) {
       live.add(binding)
+    }
+  }
+  for (const [binding, owners] of output.erasedReferences) {
+    if (!erased.has(binding)) {
+      continue
+    }
+    for (const owner of owners) {
+      if (!owner) {
+        live.add(binding)
+        continue
+      }
+      for (const from of owner) {
+        addEdge(dependencies, from, binding)
+      }
     }
   }
   const retained = expandTransitively(live, dependencies)

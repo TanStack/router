@@ -427,7 +427,7 @@ describe('output liveness', () => {
   })
 
   // The TypeScript transform erases them, except a classic JSX factory import
-  test('keeps imports that surviving code only references from types', () => {
+  test('keeps an import only types reference while code referencing it survives', () => {
     const output = cleanup(
       `
       import * as React from 'react'
@@ -435,6 +435,29 @@ describe('output liveness', () => {
         return <main>{children}</main>
       }
       export const Route = createRoute({ component: Layout, loader: () => 1 })
+    `,
+      'loader',
+    )
+    expect(output).toContain("import * as React from 'react'")
+  })
+
+  test('removes an import only types reference with the last code referencing it', () => {
+    const output = cleanup(
+      `
+      import { Framework } from './projects'
+      export const Route = createRoute({ loader: (): Framework => 'react', component: () => 1 })
+    `,
+      'loader',
+    )
+    expect(output).not.toContain('./projects')
+  })
+
+  // A classic JSX runtime compiles JSX to `React.createElement` calls
+  test('keeps a React import only types reference wherever JSX survives', () => {
+    const output = cleanup(
+      `
+      import * as React from 'react'
+      export const Route = createRoute({ loader: (): React.ReactNode => null, component: () => <main /> })
     `,
       'loader',
     )
