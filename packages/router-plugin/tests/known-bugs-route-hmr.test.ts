@@ -220,4 +220,75 @@ export const Route = createFileRoute('/')({
       expect(exportedNames(modules.reference!)).toContain('hot')
     },
   )
+
+  /**
+   * Compiles, with HMR, a route whose `page` component (declared by
+   * `declaration`) the loader also reads, so the code splitter moves it to the
+   * shared module. Evaluates the shared module, the route module and the
+   * component chunk, then renders the split component twice. `page` counts
+   * its renders in a module-level `let` initialized by `init` from `./state`.
+   * Returns both renders and how many times `init` ran.
+   */
+  async function renderSharedComponentTwice(declaration: string) {
+    const { modules } = compileRouteModules(
+      `${head}import { init } from './state'
+let renders = init(0)
+${declaration}
+export const Route = createFileRoute('/')({
+  loader: () => page.name,
+  component: page,
+})`,
+      { hmr: true },
+    )
+    let inits = 0
+    const linked: Record<string, Record<string, unknown>> = {
+      './state': {
+        init: (value: number) => {
+          inits++
+          return value
+        },
+      },
+      '@tanstack/react-router': {
+        createFileRoute: () => (options: unknown) => ({ options }),
+        lazyRouteComponent: () => () => null,
+      },
+    }
+    linked['route.tsx?tsr-shared=1'] = await evaluateModule(
+      modules.shared!,
+      linked,
+    )
+    linked['route.tsx'] = await evaluateModule(modules.reference!, linked)
+    const { component } = await evaluateModule(
+      modules['virtual component']!,
+      linked,
+    )
+    return [component!(), component!(), inits]
+  }
+
+  // Control for the lowercase shared component pin below (same harness).
+  test('a lowercase arrow component shared with the loader renders with the module state it shares', async () => {
+    expect(
+      await renderSharedComponentTwice(`const page = () => {
+  renders++
+  return <p>{renders}</p>
+}`),
+    ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+  })
+
+  // Bug: React HMR renames a lowercase `function` component in its split
+  // chunk even when the code splitter moved the component to the shared
+  // module, so the chunk exports `SplitComponent`, which nothing declares.
+  // Impact: in development, the route's component chunk fails to load
+  // (SyntaxError: Export 'SplitComponent' is not defined).
+  test.fails(
+    'a lowercase function component shared with the loader renders with the module state it shares',
+    async () => {
+      expect(
+        await renderSharedComponentTwice(`function page() {
+  renders++
+  return <p>{renders}</p>
+}`),
+      ).toEqual(['<p>1</p>', '<p>2</p>', 1])
+    },
+  )
 })
