@@ -30,6 +30,8 @@ interface StartCompilerOptions {
   /** `serverFnProviderModuleDirectives` */
   directives?: Array<string>
   compilerPlugins?: Array<StartCompilerPlugin>
+  /** The bundler's warning channel */
+  warn?: (message: string) => void
 }
 
 /**
@@ -67,6 +69,7 @@ export function createStartCompiler(options: StartCompilerOptions) {
       return file in files ? file : null
     },
     compilerPlugins: options.compilerPlugins,
+    warn: options.warn,
   })
   const compile = async (code: string, id = moduleId) => {
     const result = await compiler.compile({

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   callProvider,
   clientOnlyError,
@@ -572,5 +572,165 @@ export const fn = base.handler(async () => db.x())`
       ]),
     ]).toEqual(['/test/src/b.ts'])
     expect(await compile(importer, '/test/src/a.tsx')).toBeNull()
+  })
+})
+
+describe('unrecognized factory uses', () => {
+  // A Start factory the client compilation cannot rewrite keeps its
+  // implementation, and the server-only code it reads, in the client bundle.
+  // Every use of the factory must be rewritten, initialize a module-level
+  // builder or alias, or be re-exported: anything else is reported, as a
+  // warning in dev and an error that fails a build.
+  const serverFn = `import { createServerFn } from '@tanstack/react-start'\n`
+
+  /** The message for `factory` used at the first `snippet` of `code`. */
+  const unrecognized = (code: string, factory: string, snippet: string) => {
+    const lines = code.slice(0, code.indexOf(snippet)).split('\n')
+    return `Unrecognized use of ${factory} at /test/src/module.tsx:${lines.length}:${lines.at(-1)!.length + 1}: it is not compiled, so its implementation ships to the client.`
+  }
+
+  async function diagnose(code: string, mode: 'dev' | 'build') {
+    const warnings: Array<string> = []
+    const { compile } = createStartCompiler({
+      env: 'client',
+      mode,
+      warn: (message) => warnings.push(message),
+    })
+    const error = await compile(code).then(
+      () => undefined,
+      (error: Error) => error.message,
+    )
+    return { error, warnings }
+  }
+
+  test.each([
+    {
+      name: 'a builder returned by a function',
+      code: `${serverFn}const authed = () => createServerFn({ method: 'POST' })
+export const fn = authed().handler(async () => 'secret')`,
+      uses: [['createServerFn', 'createServerFn({']],
+    },
+    {
+      name: 'a sequence expression callee',
+      code: `${serverFn}export const fn = (0, createServerFn)().handler(async () => 'secret')`,
+      uses: [['createServerFn', 'createServerFn)']],
+    },
+    {
+      name: 'a computed member of a namespace import',
+      code: `import * as Start from '@tanstack/react-start'
+export const fn = Start['createServerFn']().handler(async () => 'secret')`,
+      uses: [['createServerFn', "Start['"]],
+    },
+    {
+      name: 'an aliased createServerOnlyFn in a function',
+      code: `import { createServerOnlyFn as serverOnly } from '@tanstack/react-start'
+export function getRead() { return serverOnly(() => 'secret') }`,
+      uses: [['createServerOnlyFn', 'serverOnly(']],
+    },
+    {
+      name: 'a builder held in an object property',
+      code: `${serverFn}const builders = { authed: createServerFn({ method: 'POST' }) }
+export const fn = builders.authed.handler(async () => 'secret')`,
+      uses: [['createServerFn', 'createServerFn({']],
+    },
+    {
+      name: 'builders chosen by a ternary',
+      code: `${serverFn}const base = (globalThis as any).post ? createServerFn({ method: 'POST' }) : createServerFn()
+export const fn = base.handler(async () => 'secret')`,
+      uses: [
+        ['createServerFn', 'createServerFn({'],
+        ['createServerFn', 'createServerFn()'],
+      ],
+    },
+    {
+      // A possible false positive: user code may call the factory, but the
+      // compiler cannot follow it either way.
+      name: 'the factory passed to user code',
+      code: `${serverFn}const makeBuilder = (factory: typeof createServerFn) => factory()
+export const fn = makeBuilder(createServerFn).handler(async () => 'secret')`,
+      uses: [['createServerFn', 'createServerFn).']],
+    },
+    {
+      name: 'a module-level alias used in a function',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+const so = createServerOnlyFn
+export function getRead() { return so(() => 'secret') }`,
+      uses: [['createServerOnlyFn', 'so(()']],
+    },
+  ])('$name: dev warns, a build fails', async ({ code, uses }) => {
+    const messages = uses.map(([factory, snippet]) =>
+      unrecognized(code, factory!, snippet!),
+    )
+    const dev = await diagnose(code, 'dev')
+    expect(dev.error).toBeUndefined()
+    expect(dev.warnings).toEqual(
+      messages.map((message) => expect.stringContaining(message)),
+    )
+    const build = await diagnose(code, 'build')
+    for (const message of messages) {
+      expect(build.error).toContain(message)
+    }
+  })
+
+  test('dev reports an unchanged use once', async () => {
+    const code = `import { createServerOnlyFn as serverOnly } from '@tanstack/react-start'
+export function getRead() { return serverOnly(() => 'secret') }`
+    const warn = vi.fn()
+    const { compile } = createStartCompiler({
+      env: 'client',
+      mode: 'dev',
+      warn,
+    })
+    await compile(code)
+    await compile(code)
+    expect(warn).toHaveBeenCalledOnce()
+  })
+
+  test.each([
+    {
+      name: 'module-level builders and aliases',
+      code: `${serverFn}const authed = createServerFn({ method: 'POST' })
+const alias = createServerFn
+export const a = authed.handler(async () => 'a')
+export const b = alias().handler(async () => 'b')
+export { createServerFn }
+export type Factory = typeof createServerFn`,
+    },
+    {
+      name: 'a namespace import',
+      code: `import * as Start from '@tanstack/react-start'
+export const fn = Start.createServerFn().handler(async () => 'secret')`,
+    },
+    {
+      name: 'env-only and isomorphic functions in function bodies',
+      code: `import { createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'
+export function make() {
+  return [
+    createServerOnlyFn(() => 'secret'),
+    createIsomorphicFn().server(() => 'server').client(() => 'client'),
+  ]
+}`,
+    },
+    {
+      name: 'middleware',
+      code: `import { createMiddleware } from '@tanstack/react-start'
+const base = createMiddleware({ type: 'function' })
+export const logged = base.server(({ next }) => next())
+export const timed = createMiddleware().middleware([logged]).server(({ next }) => next())`,
+    },
+    {
+      name: 'a factory used only inside a server fn handler',
+      code: `${serverFn}export const fn = createServerFn().handler(async () => {
+  const nested = () => createServerFn()
+  return nested
+})`,
+    },
+  ])('$name: nothing is reported', async ({ code }) => {
+    for (const mode of ['dev', 'build'] as const) {
+      expect(await diagnose(code, mode)).toEqual({
+        error: undefined,
+        warnings: [],
+      })
+    }
   })
 })
