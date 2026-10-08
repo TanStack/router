@@ -4,6 +4,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
+  compileErrorMessage,
   compileFirstChunk,
   compileHydrate,
   evaluateHydrateParent,
@@ -89,15 +90,72 @@ async function loadClientModule(
   return { module, lazyChunks }
 }
 
-test('client: loadClientModule renders every boundary through its lazy chunk', async () => {
-  const { module, lazyChunks } =
-    await loadClientModule(`${head}const helper = () => '!'
+/**
+ * Clear compile errors that a fix may reject split children with, matched
+ * against the message without its code frame (`compileErrorMessage`).
+ */
+const rejections = {
+  arguments: /\bHydrate\b[^]*\barguments\b/,
+  await: /\bHydrate\b[^]*\b(await|async)\b/,
+  Route: /\bHydrate\b[^]*\bRoute\b/,
+}
+
+describe('harness controls', () => {
+  test('client: loadClientModule renders every boundary through its lazy chunk', async () => {
+    const { module, lazyChunks } =
+      await loadClientModule(`${head}const helper = () => '!'
 export function Page() {
   const label = 'hi'
   return <><Hydrate><p>{label}{helper()}</p></Hydrate><Hydrate><b>two</b></Hydrate></>
 }`)
-  expect(module.Page()).toBe('[<p>hi!</p>][<b>two</b>]')
-  expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true, true])
+    expect(module.Page()).toBe('[<p>hi!</p>][<b>two</b>]')
+    expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true, true])
+  })
+
+  test('client: loadClientModule links stubs and runs app code before the chunks load', async () => {
+    const events: Array<string> = []
+    const { module } = await loadClientModule(
+      `${head}import { Link } from '@tanstack/react-router'
+import { label } from './label'
+export function Page() {
+  return <Hydrate><p><Link />{label()}</p></Hydrate>
+}`,
+      {
+        stubs: {
+          // Merged with the lazy chunk loader the harness provides.
+          '@tanstack/react-router': { Link: () => 'link ' },
+          './label': {
+            get label() {
+              events.push('label linked')
+              return () => 'stubbed'
+            },
+          },
+        },
+        beforeChunksLoad: (parent) =>
+          events.push(`app code with ${Object.keys(parent).join()}`),
+      },
+    )
+    expect(module.Page()).toBe('[<p>link stubbed</p>]')
+    expect(events).toEqual(['app code with Page', 'label linked'])
+  })
+
+  test('client: the rejection matchers ignore the code frame of an unrelated error', async () => {
+    const error = await compileHydrate(
+      'client',
+      `${head}import { useId } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { load } from './data'
+export const Route = createFileRoute('/')({ component: Page })
+export async function Page() {
+  return <Hydrate><p id={useId()}>{arguments[0]}{Route.id}{await load()}</p></Hydrate>
+}`,
+    ).catch((caught: unknown) => caught)
+    const message = compileErrorMessage(error)
+    expect(message).toMatch(/calls hooks/)
+    for (const rejection of Object.values(rejections)) {
+      expect(message).not.toMatch(rejection)
+    }
+  })
 })
 
 describe('boundaries and ids', () => {
@@ -147,17 +205,24 @@ export function Leaf({ depth }) {
   ])(
     'client: $name keeps boundary ids aligned with the server',
     async ({ code }) => {
+      // Each module declares one boundary, rendered with a static id.
       const server = await compileHydrate('server', `${head}${code}`)
-      const serverIds = new Set(getBoundaryIds(server.parent))
+      const serverIds = getBoundaryIds(server.parent)
+      expect(serverIds).toHaveLength(1)
       const { parent, chunks, plugin } = await compileHydrate(
         'client',
         `${head}${code}`,
       )
+      expect(getBoundaryIds(parent)).toEqual(serverIds)
       expect(chunks).toHaveLength(1)
       // The bundler compiles the loaded chunk like any other module.
       const chunk = (await compileFirstChunk(plugin, parent)).code ?? chunks[0]!
       expect(await getModuleErrors(chunk)).toEqual([])
-      for (const id of [...getBoundaryIds(parent), ...getBoundaryIds(chunk)]) {
+      // Every boundary the chunk renders (if it declares the recursive
+      // component again) has a static id the server emitted.
+      const chunkIds = getBoundaryIds(chunk)
+      expect(chunkIds).toHaveLength(chunk.match(/\sh=/g)?.length ?? 0)
+      for (const id of chunkIds) {
         expect(serverIds).toContain(id)
       }
       for (const id of getChunkIds(chunk)) {
@@ -260,8 +325,8 @@ describe('values captured by the children', () => {
   // props (`this` and `super` are rejected instead).
   // Impact: the boundary silently hydrates with other values than the server
   // rendered. Rejecting it at compile time is a valid fix.
-  // Source: SolidStart validate.ts "rejects `arguments` in an arrow inside a
-  // function"
+  // Source: SolidStart compile.spec.ts "rejects `arguments` in an arrow
+  // inside a function"
   test.fails(
     "client: split children reading the component's arguments render its props",
     async () => {
@@ -269,17 +334,18 @@ describe('values captured by the children', () => {
   return <Hydrate><p>{arguments[0].title}</p></Hydrate>
 }`).catch((error: Error) => error)
       if (loaded instanceof Error) {
-        expect(loaded.message).toMatch(/Hydrate.*arguments/)
+        expect(compileErrorMessage(loaded)).toMatch(rejections.arguments)
         return
       }
       expect(loaded.module.Page({ title: 'Hello' })).toBe('[<p>Hello</p>]')
     },
   )
 
-  // Bug: a `this` owned by a function, class or method in the children is rejected.
+  // Bug: a `this` owned by a function, class or method in the children is
+  // rejected, on the client and the server.
   // Impact: valid code fails to build.
-  // Source: Qwik optimizer issue_5008; SolidStart compile.spec.ts "allows
-  // `this` and `arguments` in a function expression"
+  // Source: SolidStart compile.spec.ts "allows `this` and `arguments` in a
+  // function expression"
   test.fails.each([
     {
       name: 'a function expression',
@@ -299,11 +365,13 @@ describe('values captured by the children', () => {
   ])(
     'client: split children may use the own `this` of $name',
     async ({ children, rendered }) => {
-      const { module } =
-        await loadClientModule(`${head}export function Page({ items }) {
+      const code = `${head}export function Page({ items }) {
   return <Hydrate>${children}</Hydrate>
-}`)
+}`
+      const { module } = await loadClientModule(code)
       expect(module.Page({ items: ['a', 'b'] })).toBe(rendered)
+      const server = await compileHydrate('server', code)
+      expect(await getModuleErrors(server.parent)).toEqual([])
     },
   )
 
@@ -328,11 +396,13 @@ ${head}export function Page() {
   )
 
   // Bug: split children containing `await` (async server components) are
-  // moved into a synchronous chunk component.
-  // Impact: the chunk is not a valid module and the build fails. A clear
-  // compile-time error is a valid fix.
+  // moved as is into the synchronous chunk component the client compile
+  // emits, while the server renders them inline.
+  // Impact: the chunk does not parse (`await` outside an async function) and
+  // the client build fails without saying why. React client components cannot
+  // be async, so the fix is a clear compile-time error.
   test.fails(
-    'client: await in split children never produces a broken chunk',
+    'client: await in split children is rejected clearly',
     async () => {
       const compiled = await compileHydrate(
         'client',
@@ -341,30 +411,26 @@ export async function Page() {
   return <Hydrate><p>{await load()}</p></Hydrate>
 }`,
       ).catch((error: Error) => error)
-      if (compiled instanceof Error) {
-        expect(compiled.message).toMatch(/Hydrate.*(await|async)/)
-        return
+      if (!(compiled instanceof Error)) {
+        // What happens on main: the emitted chunk is not a valid module.
+        for (const chunk of compiled.chunks) {
+          expect(await getModuleErrors(chunk)).toEqual([])
+        }
       }
-      for (const chunk of compiled.chunks) {
-        expect(await getModuleErrors(chunk)).toEqual([])
-      }
+      expect(compiled).toBeInstanceOf(Error)
+      expect(compileErrorMessage(compiled)).toMatch(rejections.await)
     },
   )
 })
 
 describe('module-level code used by the children', () => {
-  // Bug: the chunk cannot use the parent module's instance of module-level
-  // bindings: it re-declares them, or drops `Route`.
-  // Impact: children read another context than the parent provides, the
-  // initial value of a `let` the parent reassigns, or throw on `Route`.
+  // Bug: the chunk re-declares the module-level bindings the children use
+  // instead of using the parent module's instance.
+  // Impact: children read another context than the parent provides, or the
+  // initial value of a `let` the parent reassigns.
   // Source: Qwik optimizer should_keep_module_level_var_used_in_both_main_and_qrl,
   // should_auto_export_shared_let_kept_in_parent
-  test.fails.each<{
-    name: string
-    code: string
-    html: string
-    rejection?: RegExp
-  }>([
+  test.fails.each([
     {
       name: 'context',
       code: `import { createContext, useContext } from 'react'
@@ -385,21 +451,11 @@ export function Page() {
 }`,
       html: '[<p>1</p>]',
     },
-    {
-      name: 'Route',
-      code: `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({ component: Page })
-export function Page() {
-  return <Hydrate><p>{Route.id}</p></Hydrate>
-}`,
-      html: '[<p>/</p>]',
-      rejection: /Hydrate.*Route/,
-    },
   ])(
     'client: the children use the module-level $name of the parent module',
-    async ({ code, html, rejection }) => {
+    async ({ code, html }) => {
       let contexts = 0
-      const loaded = await loadClientModule(`${head}${code}`, {
+      const { module } = await loadClientModule(`${head}${code}`, {
         stubs: {
           react: {
             createContext: () => ({
@@ -409,24 +465,45 @@ export function Page() {
             useContext: (context: { instance: number }) =>
               `context ${context.instance}`,
           },
-          '@tanstack/react-router': {
-            createFileRoute: (id: string) => (options: unknown) => ({
-              id,
-              options,
-            }),
-          },
         },
         // App code runs before the boundary hydrates.
-        beforeChunksLoad: (module) => module.bump?.(),
-      }).catch((error: Error) => error)
-      if (loaded instanceof Error && rejection) {
-        expect(loaded.message).toMatch(rejection)
+        beforeChunksLoad: (parent) => parent.bump?.(),
+      })
+      expect(module.Page()).toBe(html)
+    },
+  )
+
+  // Bug: the client chunk removes the module's `Route`
+  // (`removeModuleLevelBindings(ast, new Set(['Route']))`) without importing
+  // it from the parent module, so split children reading it reference an
+  // undeclared binding.
+  // Impact: the boundary throws "Route is not defined" when it hydrates.
+  // Rejecting it at compile time with a clear error is a valid fix.
+  test.fails(
+    'client: split children reading Route use the route of the parent module',
+    async () => {
+      const loaded = await loadClientModule(
+        `${head}import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: Page })
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+        {
+          stubs: {
+            '@tanstack/react-router': {
+              createFileRoute: (id: string) => (options: unknown) => ({
+                id,
+                options,
+              }),
+            },
+          },
+        },
+      ).catch((error: Error) => error)
+      if (loaded instanceof Error) {
+        expect(compileErrorMessage(loaded)).toMatch(rejections.Route)
         return
       }
-      if (loaded instanceof Error) {
-        throw loaded
-      }
-      expect(loaded.module.Page()).toBe(html)
+      expect(loaded.module.Page()).toBe('[<p>/</p>]')
     },
   )
 

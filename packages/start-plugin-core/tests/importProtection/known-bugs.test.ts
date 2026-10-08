@@ -28,6 +28,16 @@ async function evaluateRewritten(code: string, denied: Array<string>) {
   )) as Record<string, unknown>
 }
 
+// Control for the namespace re-export pin below (same harness).
+test('a denied named import evaluates to the mock', async () => {
+  const exports = await evaluateRewritten(
+    `import { secret } from 'denied'
+export const seen = secret`,
+    ['denied'],
+  )
+  expect({ ...exports }).toEqual({ seen: 'mock:secret' })
+})
+
 // Bug: rewriting a denied `export * as ns from 'denied'` drops the `ns`
 // export.
 // Impact: importers of `ns` get `undefined` (or a missing export error)

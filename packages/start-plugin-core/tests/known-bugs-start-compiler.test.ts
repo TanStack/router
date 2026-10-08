@@ -6,13 +6,16 @@ import { describe, expect, test } from 'vitest'
 import {
   compileAll,
   compileCode,
+  compileErrorMessage,
+  compileFor,
   createStartCompiler,
+  directivePrologue,
   evaluateModule,
+  importSources,
   outputs,
   settle,
 } from './regression-helpers'
-import { getModuleErrors } from './validate-module'
-import type { ModuleStub } from './regression-helpers'
+import type { ModuleStub, Output } from './regression-helpers'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -20,33 +23,9 @@ const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const serverOnly = './db.server'
 
 /**
- * Every output either rejects the code with a createServerFn error (not the
- * internal statement-list crash) or is a valid module, and the handler body
- * (`db.inner()`) is not in the client.
- */
-async function expectNoClientHandler(code: string) {
-  for (const output of outputs) {
-    let compiled: string
-    try {
-      compiled = (await compileCode(output, code)) ?? code
-    } catch (error) {
-      const { message } = error as Error
-      expect(message, output).toMatch(/createServerFn/)
-      expect(message, output).not.toMatch(
-        /Expected createServerFn declaration in a statement list/,
-      )
-      continue
-    }
-    expect(await getModuleErrors(compiled), output).toEqual([])
-    if (output === 'client') {
-      expect(compiled).not.toContain('db.inner()')
-    }
-  }
-}
-
-/**
  * Calls every server fn the client build reports through the provider
- * export it names, like the server-function router.
+ * export it names, like the server-function router. Returns the compiled
+ * outputs and the results of the calls.
  */
 async function callServerFns(
   code: string,
@@ -55,15 +34,89 @@ async function callServerFns(
     stubs?: Record<string, ModuleStub>
   } = {},
 ) {
-  const { provider, serverFns } = await compileAll(code, options)
-  const module = await evaluateModule(provider, options.stubs)
+  const compiled = await compileAll(code, options)
+  const module = await evaluateModule(compiled.provider, options.stubs)
   const results = await Promise.all(
-    Object.values(serverFns).map(({ functionName }) =>
+    Object.values(compiled.serverFns).map(({ functionName }) =>
       module[functionName]({ data: undefined }),
     ),
   )
-  return { provider, results }
+  return { ...compiled, results }
 }
+
+/**
+ * A clear compile error rejecting a createServerFn that is not assigned to a
+ * top-level variable, matched against the message without its code frame
+ * (`compileErrorMessage`).
+ */
+const misplacedServerFnRejection =
+  /createServerFn\b[^]*\b(top[- ]level|module[- ]?(scope|level)|nested|assigned to a (top[- ]level )?variable)/i
+
+/**
+ * Every output either rejects the code with a clear createServerFn error
+ * (not the internal statement-list crash), or the client neither imports the
+ * server-only module nor contains the handler body (`db.inner()`), the SSR
+ * caller calls the handler through the provider like for a top-level server
+ * fn (no handler body; it may import the server-only module for other server
+ * code), and the provider exports and runs every server fn the client
+ * reports, the misplaced one included.
+ */
+async function expectNoClientHandler(code: string) {
+  const compiled = {} as Record<Output, string>
+  let rejected = false
+  for (const output of outputs) {
+    try {
+      compiled[output] = (await compileCode(output, code)) ?? code
+    } catch (error) {
+      const message = compileErrorMessage(error)
+      expect(message, output).toMatch(misplacedServerFnRejection)
+      expect(message, output).not.toMatch(
+        /Expected createServerFn declaration in a statement list/,
+      )
+      rejected = true
+    }
+  }
+  if (rejected) {
+    return
+  }
+  expect(importSources(compiled.client), 'client').not.toContain(serverOnly)
+  for (const output of ['client', 'ssr'] as const) {
+    expect(compiled[output], output).not.toContain('db.inner()')
+  }
+  const { results } = await callServerFns(code, {
+    stubs: {
+      [serverOnly]: { db: { inner: () => 'inner', top: () => 'top' } },
+    },
+  })
+  expect(results).toContain('inner')
+}
+
+describe('harness controls', () => {
+  test('callServerFns calls a top-level server fn through its provider', async () => {
+    const { results } = await callServerFns(
+      `${head}import { db } from './db.server'
+export const fn = createServerFn().handler(async () => db.x())`,
+      { stubs: { [serverOnly]: { db: { x: () => 'from the server' } } } },
+    )
+    expect(results).toEqual(['from the server'])
+  })
+
+  test('expectNoClientHandler accepts a top-level server fn', async () => {
+    await expectNoClientHandler(`${head}import { db } from './db.server'
+export const fn = createServerFn().handler(async () => db.inner())`)
+  })
+
+  test('an unrelated compile error quoting createServerFn is not a rejection of a misplaced server fn', async () => {
+    const error = await compileFor(
+      'client',
+      `${head}const args: Array<() => unknown> = []
+export const fn = createServerFn().handler(...args)`,
+    ).catch((caught: unknown) => caught)
+    const message = compileErrorMessage(error)
+    expect(message).toMatch(/handler\(\) must be called with an expression/)
+    expect(message).not.toMatch(misplacedServerFnRejection)
+  })
+})
 
 describe('server code in the client bundle', () => {
   // Bug: build-mode export lookups are cached per module, but parallel
@@ -310,30 +363,34 @@ export function make(createServerOnlyFn) {
 })
 
 describe('server function handlers', () => {
-  // Bug: generated names are not made unique against user bindings: a user
-  // binding named like a generated import or handler collides with it, and
-  // the `opts` parameter of the provider's wrapper shadows a server fn named
-  // `opts`.
-  // Impact: the module fails to build, or every call of the `opts` server fn
-  // fails on the server.
+  // Bug: generated imports and handler names are not made unique against
+  // user bindings, so a user binding named like one of them collides with it.
+  // Impact: the module fails to build.
   test.fails.each([
-    {
-      name: 'a server fn named opts',
-      code: `${head}export const opts = createServerFn().handler(async () => 'from the server')`,
-    },
-    ...[
-      'createClientRpc',
-      'createSsrRpc',
-      'createServerRpc',
-      'fn_createServerFn_handler',
-    ].map((binding) => ({
-      name: `a user binding named ${binding}`,
-      code: `${head}const ${binding} = (value: unknown) => value
+    'createClientRpc',
+    'createSsrRpc',
+    'createServerRpc',
+    'fn_createServerFn_handler',
+  ])(
+    'a user binding named %s does not collide with generated code',
+    async (binding) => {
+      const { results } =
+        await callServerFns(`${head}const ${binding} = (value: unknown) => value
 export const used = ${binding}('user')
-export const fn = createServerFn().handler(async () => 'from the server')`,
-    })),
-  ])('$name does not collide with generated code', async ({ code }) => {
-    expect((await callServerFns(code)).results).toEqual(['from the server'])
+export const fn = createServerFn().handler(async () => 'from the server')`)
+      expect(results).toEqual(['from the server'])
+    },
+  )
+
+  // Bug: the provider calls each server fn from a generated wrapper,
+  // `opts => fn.__executeServer(opts)`, whose `opts` parameter shadows a
+  // server fn named `opts`.
+  // Impact: every call of a server fn named `opts` fails on the server.
+  test.fails('a server fn named opts runs on the server', async () => {
+    const { results } = await callServerFns(
+      `${head}export const opts = createServerFn().handler(async () => 'from the server')`,
+    )
+    expect(results).toEqual(['from the server'])
   })
 
   // Bug: when the handler passed to `.handler()` is a `createServerOnlyFn()`
@@ -359,8 +416,6 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()
   // directive of its source module.
   // Impact: in RSC builds every export of the provider becomes a client
   // reference, so a server fn declared in a `'use client'` file cannot run.
-  // Source: Next.js server actions transform fixtures server-graph/3 and
-  // server-graph/4
   test.fails(
     "the provider of a 'use client' module is not a client module",
     async () => {
@@ -375,19 +430,19 @@ export const fn = createServerFn().handler(async () => db.x())`,
         },
       )
       expect(results).toEqual(['from the server'])
-      expect(provider).not.toMatch(/['"]use client['"]/)
+      expect(directivePrologue(provider)).not.toContain('use client')
     },
   )
 })
 
 describe('dead-code elimination', () => {
   // Bug: removing the other environment's implementation of an env function
-  // declared in a hook also removes the hook calls initializing locals that
-  // only that implementation read.
+  // declared in a hook leaves the locals only that implementation read
+  // unreferenced, and dead-code elimination (babel-dead-code-elimination,
+  // which removes newly unreferenced bindings) deletes their declarators,
+  // hook calls included.
   // Impact: the hooks after it run in a different order on the server and
   // the client (`useId` mismatches, hydration errors).
-  // Source: babel-dead-code-elimination "only eliminates newly unreferenced
-  // identifiers"
   test.fails.each([
     {
       output: 'client' as const,
@@ -428,8 +483,6 @@ export function useField() {
 describe('CommonJS dependencies', () => {
   // Bug: a module matching a detection pattern (`.handler(`) is parsed as strict ESM.
   // Impact: a sloppy-mode CommonJS dependency with such text fails the build.
-  // Source: @vitejs/plugin-rsc cjs.test.ts (CommonJS modules are sloppy-mode
-  // scripts)
   test.fails.each([
     {
       name: 'a legacy octal escape',
