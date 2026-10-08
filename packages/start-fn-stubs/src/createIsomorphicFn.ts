@@ -58,6 +58,17 @@ function createRuntimeFn(
 ): RuntimeFallbackFn {
   return Object.assign(fn, {
     server: (nextServerImpl: () => any) => {
+      // The compiled client replaces the whole chain, so this never runs
+      // there. Tests run uncompiled by design.
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        process.env.NODE_ENV !== 'test' &&
+        typeof window !== 'undefined'
+      ) {
+        console.error(
+          '[TanStack Start] createIsomorphicFn().server() was not compiled, so its server implementation shipped to the client. Assign it to a module-level variable (export const fn = createIsomorphicFn().server(...).client(...)), with createIsomorphicFn imported directly from your Start package (e.g. @tanstack/react-start).',
+        )
+      }
       return createRuntimeFn(nextServerImpl, nextServerImpl)
     },
     client: (clientImpl: () => any) => {
