@@ -365,6 +365,29 @@ export const Route = createRootRoute({ component: () => <div /> })
     await expectRegisteredRouteOption(reference!, 'component')
   })
 
+  it("hoists the components of the module's Route when another route is created first", async () => {
+    const code = `import { createFileRoute, createRoute } from '@tanstack/react-router'
+export const extra = createRoute({
+  getParentRoute: () => Route,
+  path: 'extra',
+  component: () => <p>extra</p>,
+})
+export const Route = createFileRoute('/')({
+  component: () => <p>home</p>,
+  pendingComponent: () => <p>pending</p>,
+})`
+    await expectRefreshableRouteOption(
+      transformWithRouteHmrPlugin(code),
+      'component',
+    )
+    // The split `component` loads from its chunk; the reference module keeps
+    // `pendingComponent`.
+    await expectRefreshableRouteOption(
+      compileWithCodeSplitting(code).reference!,
+      'pendingComponent',
+    )
+  })
+
   it('declares hoisted components before the route that uses them', () => {
     // The lowercase `page`, declared in the same statement as `Route`, is
     // renamed for React Refresh as well.

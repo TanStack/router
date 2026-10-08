@@ -84,6 +84,11 @@ type RouteDefinition = {
 export type RouteModuleAnalysis = {
   module: Module
   routes: Array<RouteDefinition>
+  /**
+   * The route of the module, which route HMR updates: the one the exported
+   * `Route` holds, else the first one.
+   */
+  moduleRoute: RouteDefinition | undefined
   graph: ReturnType<typeof moduleDeclarationGraph>
   /**
    * Declaration dependencies without the `Route` singleton. Split and shared
@@ -134,6 +139,14 @@ export function analyzeRouteModule(
 ): RouteModuleAnalysis {
   const module = analyzeModule(options)
   const routes: Array<RouteDefinition> = []
+  const routeIdentifier = module.exports.find(
+    (entry) => entry.name === 'Route' && !entry.typeOnly,
+  )?.local?.declarations[0]
+  const routeDeclarator = routeIdentifier && module.parentOf(routeIdentifier)
+  const routeInit = is.VariableDeclarator(routeDeclarator)
+    ? routeDeclarator.init && unwrapExpression(routeDeclarator.init)
+    : undefined
+  let moduleRoute: RouteDefinition | undefined
   const seen = new Set<Node>()
   module.walk({
     CallExpression(node) {
@@ -160,7 +173,11 @@ export function analyzeRouteModule(
         statement = parent
         parent = module.parentOf(statement)
       }
-      routes.push({ options, factory: callee.name, statement })
+      const route = { options, factory: callee.name, statement }
+      routes.push(route)
+      if (node === routeInit) {
+        moduleRoute = route
+      }
     },
   })
   const exported = new Map<Binding, Array<string>>()
@@ -186,7 +203,14 @@ export function analyzeRouteModule(
       )
     }
   }
-  return { module, routes, graph, chunkDependencies, exported }
+  return {
+    module,
+    routes,
+    moduleRoute: moduleRoute ?? routes[0],
+    graph,
+    chunkDependencies,
+    exported,
+  }
 }
 
 function sourceAnalysis(options: SourceOptions) {
@@ -668,7 +692,6 @@ export function compileCodeSplitReferenceRoute(
   const lazyImports = new Map<string, string>()
   const knownExported = new Set<string>()
   let modified = false
-  let hmrAdded = false
   for (const route of analysis.routes) {
     const routeOptions = copies.get(route.options) as ObjectExpression
     const insertionStatement = copies.get(route.statement) as ProgramStatement
@@ -790,7 +813,7 @@ export function compileCodeSplitReferenceRoute(
         modified = !!plugin.onUnsplittableRoute?.(context)?.modified || modified
       }
     }
-    if (options.addHmr && !hmrAdded) {
+    if (options.addHmr && route === analysis.moduleRoute) {
       for (const plugin of options.compilerPlugins ?? []) {
         plugin.onAddHmr?.(context)
       }
@@ -809,7 +832,6 @@ export function compileCodeSplitReferenceRoute(
         }),
       )
       modified = true
-      hmrAdded = true
     }
   }
   if (!modified) {
