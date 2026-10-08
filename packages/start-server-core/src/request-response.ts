@@ -141,9 +141,8 @@ function handleResponseError(error: unknown): Response {
   return new Response('Internal Server Error', { status: 500 })
 }
 
-// Returns `undefined` for percent-encoded bytes that are not valid UTF-8 (e.g. `/%80`).
-// The decoded value is returned on purpose: bundlers treat `decodeURI` as pure
-// and drop calls whose result is unused, even inside `try`.
+// Return `undefined` for percent-encoded bytes that are not valid UTF-8 (e.g. `/%80`).
+// The decoded value is returned so that the result is "used"
 function decodePathname(pathname: string): string | undefined {
   try {
     return decodeURI(pathname)
