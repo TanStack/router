@@ -289,7 +289,8 @@ export function call(value: string) {
     return this.db
   }
 }`,
-      check: (client) => expect(new client.Service('param').read()).toBe('param'),
+      check: (client) =>
+        expect(new client.Service('param').read()).toBe('param'),
     },
     {
       // Source: typescript-eslint jsx/attribute.js, jsx/namespaced-attribute.js,
@@ -387,7 +388,8 @@ test.each([
   `/* SERVICE_ROLE_KEY */ async () => 1,`,
   `async () => 1, // uses SERVICE_ROLE_KEY`,
 ])('callers drop the comments around the handler: %s', async (handler) => {
-  const compiled = await compileAll(`${head}export const fn = createServerFn().handler(
+  const compiled =
+    await compileAll(`${head}export const fn = createServerFn().handler(
   ${handler}
 )`)
   for (const caller of [compiled.client, compiled.ssr]) {

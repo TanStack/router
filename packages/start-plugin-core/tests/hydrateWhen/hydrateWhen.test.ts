@@ -204,7 +204,7 @@ describe('Hydrate compiler transform fixtures', async () => {
   })
 
   test('retains captured local components and values across extraction', async () => {
-      const code = `
+    const code = `
       import { Hydrate } from '@tanstack/react-start'
       export function Page({ name }) {
         const count = 1
@@ -212,38 +212,38 @@ describe('Hydrate compiler transform fixtures', async () => {
         return <Hydrate><Local count={count}/><span>{name}</span></Hydrate>
       }
     `
-      const id = fixtureId('captured.tsx')
-      const compiled = compile({ env: 'client', code, id })!
-      expect(compiled.code).toContain('Local={Local}')
-      expect(compiled.code).toContain('count={count}')
-      expect(compiled.code).toContain('name={name}')
-      expect(compiled.code).toContain('const count = 1')
-      expect(compiled.code).toContain('const Local')
-      const loaded = await loadVirtualHydrateModule({
-        code,
-        id: virtualHydrateId(id, compiled.boundaries[0]!),
-        root: fixtureRoot,
-      })
-      expect(loaded).toBeTruthy()
-      const output = analyzeModule({ code: loaded!.code })
-      expect(output.rootScope.find('Page')).toBeNull()
-      const capturedNames = ['Local', 'count', 'name']
-      const capturedReferences = new Set<string>()
-      output.walk({
-        enter(node) {
-          const reference = output.referenceOf(node)
-          if (reference && capturedNames.includes(reference.name)) {
-            capturedReferences.add(reference.name)
-            expect(reference.binding).toBeTruthy()
-          }
-        },
-      })
-      expect([...capturedReferences].sort()).toEqual(capturedNames)
-      expect(
-        output.unresolvedReferences.filter((reference) =>
-          capturedNames.includes(reference.name),
-        ),
-      ).toHaveLength(0)
+    const id = fixtureId('captured.tsx')
+    const compiled = compile({ env: 'client', code, id })!
+    expect(compiled.code).toContain('Local={Local}')
+    expect(compiled.code).toContain('count={count}')
+    expect(compiled.code).toContain('name={name}')
+    expect(compiled.code).toContain('const count = 1')
+    expect(compiled.code).toContain('const Local')
+    const loaded = await loadVirtualHydrateModule({
+      code,
+      id: virtualHydrateId(id, compiled.boundaries[0]!),
+      root: fixtureRoot,
+    })
+    expect(loaded).toBeTruthy()
+    const output = analyzeModule({ code: loaded!.code })
+    expect(output.rootScope.find('Page')).toBeNull()
+    const capturedNames = ['Local', 'count', 'name']
+    const capturedReferences = new Set<string>()
+    output.walk({
+      enter(node) {
+        const reference = output.referenceOf(node)
+        if (reference && capturedNames.includes(reference.name)) {
+          capturedReferences.add(reference.name)
+          expect(reference.binding).toBeTruthy()
+        }
+      },
+    })
+    expect([...capturedReferences].sort()).toEqual(capturedNames)
+    expect(
+      output.unresolvedReferences.filter((reference) =>
+        capturedNames.includes(reference.name),
+      ),
+    ).toHaveLength(0)
   })
 
   test('should extract virtual modules and keep nested ids stable', async () => {

@@ -200,7 +200,8 @@ test.each(['Local', '_Local', '$Local', 'ÉLocal', '组件'])(
 // Source: Qwik optimizer jsx_member_tag_object_is_captured,
 // destructured_prop_used_as_member_tag
 test('client: the object of a member-expression tag is captured', async () => {
-  const { parent, chunk } = await compileChunk(`function Home() { return <i>home</i> }
+  const { parent, chunk } =
+    await compileChunk(`function Home() { return <i>home</i> }
 export function Page({ Model }) {
   const ui = { Home }
   return <Hydrate><ui.Home /><Model.Item /></Hydrate>

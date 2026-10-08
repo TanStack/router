@@ -1,9 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import {
-  compileErrorMessage,
-  compileFor,
-  outputs,
-} from '../regression-helpers'
+import { compileErrorMessage, compileFor, outputs } from '../regression-helpers'
 
 // A server fn must initialize a module-level variable: the provider module
 // exports its extracted handler next to that declaration. Anywhere else it is

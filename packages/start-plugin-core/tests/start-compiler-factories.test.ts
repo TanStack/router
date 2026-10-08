@@ -358,7 +358,7 @@ describe('factories resolved through project modules', () => {
         '/test/src/mw.ts': `import { createMiddleware } from '@tanstack/react-start'
 export default createMiddleware({ type: 'function' })`,
       },
-      // Known limitation on main: middleware is detected by the
+      // Known limitation: middleware is detected by the
       // `createMiddleware` text, so a module that only calls an imported
       // builder is not compiled and needs this import.
       code: `import { createMiddleware } from '@tanstack/react-start'
