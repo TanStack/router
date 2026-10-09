@@ -144,6 +144,25 @@ test('External script executes with CSP', async ({ page }) => {
     .toBe(true)
 })
 
+test('Inline route script runs once after hydration', async ({ page }) => {
+  await page.goto('/')
+  // The counter only increments once hydration effects have run
+  await expect
+    .poll(
+      async () => {
+        await page.getByTestId('counter-btn').click()
+        return page.getByTestId('counter-value').textContent()
+      },
+      { timeout: 10000, intervals: [100, 200, 500, 1000] },
+    )
+    .not.toBe('0')
+
+  // A CSP response header hides nonce attributes from the client lookup
+  expect(
+    await page.evaluate(() => (window as any).__INLINE_SCRIPT_RUNS__),
+  ).toBe(1)
+})
+
 test('No CSP violations in console', async ({ page }) => {
   const violations: string[] = []
   page.on('console', (msg) => {
