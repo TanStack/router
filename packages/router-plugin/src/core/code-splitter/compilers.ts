@@ -335,6 +335,9 @@ function findExportedSharedBindings(
  * Remove declarations of shared bindings from the AST.
  * Handles both plain and exported declarations, including destructured patterns.
  * Removes the entire statement if all bindings in it are shared.
+ * TypeScript overload signatures of a shared function are removed along with
+ * its implementation: left behind, they read as a local declaration of the
+ * same name and shadow the import from the shared module.
  */
 function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
   ast.program.body = ast.program.body.filter((stmt) => {
@@ -351,7 +354,10 @@ function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
       })
       // If no declarators remain, remove the entire statement
       if (decl.declarations.length === 0) return false
-    } else if (t.isFunctionDeclaration(decl) && decl.id) {
+    } else if (
+      (t.isFunctionDeclaration(decl) || t.isTSDeclareFunction(decl)) &&
+      decl.id
+    ) {
       if (sharedBindings.has(decl.id.name)) return false
     } else if (t.isClassDeclaration(decl) && decl.id) {
       if (sharedBindings.has(decl.id.name)) return false
@@ -1622,13 +1628,21 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
           })
         }
 
-        // declared as `function loaderFn() {}`
-        if (t.isFunctionDeclaration(path.node.declaration)) {
+        // declared as `function loaderFn() {}` or `class Layout {}`
+        if (
+          t.isFunctionDeclaration(path.node.declaration) ||
+          t.isClassDeclaration(path.node.declaration)
+        ) {
           if (t.isIdentifier(path.node.declaration.id)) {
             if (path.node.declaration.id.name === node.name) {
               found = true
             }
           }
+        }
+      } else if (!path.node.source) {
+        // declared as `export { loaderFn }` or `export { loaderFn as load }`
+        if (hasLocalExportSpecifier(path.node, node.name)) {
+          found = true
         }
       }
     },
@@ -1640,8 +1654,11 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
         }
       }
 
-      // declared as `export default function loaderFn() {}`
-      if (t.isFunctionDeclaration(path.node.declaration)) {
+      // declared as `export default function loaderFn() {}` or `export default class Layout {}`
+      if (
+        t.isFunctionDeclaration(path.node.declaration) ||
+        t.isClassDeclaration(path.node.declaration)
+      ) {
         if (t.isIdentifier(path.node.declaration.id)) {
           if (path.node.declaration.id.name === node.name) {
             found = true
@@ -1652,6 +1669,22 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
   })
 
   return found
+}
+
+/**
+ * Whether an `export { ... }` statement without a source exports the given
+ * local binding, under its own name or an alias.
+ */
+function hasLocalExportSpecifier(
+  node: t.ExportNamedDeclaration,
+  name: string,
+): boolean {
+  return node.specifiers.some(
+    (specifier) =>
+      t.isExportSpecifier(specifier) &&
+      t.isIdentifier(specifier.local) &&
+      specifier.local.name === name,
+  )
 }
 
 function removeExports(ast: t.File, node: t.Identifier): boolean {
@@ -1687,14 +1720,35 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
               }
             }
           })
-        } else if (t.isFunctionDeclaration(path.node.declaration)) {
-          // declared as `export const loaderFn = () => {}`
+        } else if (
+          t.isFunctionDeclaration(path.node.declaration) ||
+          t.isClassDeclaration(path.node.declaration)
+        ) {
+          // declared as `export function loaderFn() {}` or `export class Layout {}`
           if (t.isIdentifier(path.node.declaration.id)) {
             if (path.node.declaration.id.name === node.name) {
               path.remove()
               removed = true
             }
           }
+        }
+      } else if (!path.node.source) {
+        // declared as `export { loaderFn }` or `export { loaderFn as load }`
+        if (hasLocalExportSpecifier(path.node, node.name)) {
+          const specifiers = path.node.specifiers.filter(
+            (specifier) =>
+              !(
+                t.isExportSpecifier(specifier) &&
+                t.isIdentifier(specifier.local) &&
+                specifier.local.name === node.name
+              ),
+          )
+          if (specifiers.length === 0) {
+            path.remove()
+          } else {
+            path.node.specifiers = specifiers
+          }
+          removed = true
         }
       }
     },
@@ -1705,8 +1759,11 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
           path.remove()
           removed = true
         }
-      } else if (t.isFunctionDeclaration(path.node.declaration)) {
-        // declared as `export default function loaderFn() {}`
+      } else if (
+        t.isFunctionDeclaration(path.node.declaration) ||
+        t.isClassDeclaration(path.node.declaration)
+      ) {
+        // declared as `export default function loaderFn() {}` or `export default class Layout {}`
         if (t.isIdentifier(path.node.declaration.id)) {
           if (path.node.declaration.id.name === node.name) {
             path.remove()

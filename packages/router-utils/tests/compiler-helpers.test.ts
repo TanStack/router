@@ -218,7 +218,7 @@ describe('extractModuleInfoFromAst', () => {
             "pkg-ns:*",
           ],
           [
-            "remote",
+            "re-export:renamed",
             "./remote:remote",
           ],
         ],
@@ -237,12 +237,106 @@ describe('extractModuleInfoFromAst', () => {
           ],
           [
             "renamed",
-            "remote",
+            "re-export:renamed",
           ],
         ],
         "reExportAllSources": [
           "./all",
         ],
+      }
+    `)
+  })
+
+  test('keeps re-exports of the same name from different sources apart', () => {
+    expect(
+      collectModuleInfoSnapshot(`
+        export { wrap as allowed } from './server'
+        export { wrap as denied } from './client'
+        export { default as ServerPage } from './server-page'
+        export { default as ClientPage } from './client-page'
+        export * as helpers from './helpers'
+      `),
+    ).toMatchInlineSnapshot(`
+      {
+        "bindings": [
+          [
+            "re-export:ClientPage",
+            "./client-page:default",
+          ],
+          [
+            "re-export:ServerPage",
+            "./server-page:default",
+          ],
+          [
+            "re-export:allowed",
+            "./server:wrap",
+          ],
+          [
+            "re-export:denied",
+            "./client:wrap",
+          ],
+          [
+            "re-export:helpers",
+            "./helpers:*",
+          ],
+        ],
+        "exports": [
+          [
+            "ClientPage",
+            "re-export:ClientPage",
+          ],
+          [
+            "ServerPage",
+            "re-export:ServerPage",
+          ],
+          [
+            "allowed",
+            "re-export:allowed",
+          ],
+          [
+            "denied",
+            "re-export:denied",
+          ],
+          [
+            "helpers",
+            "re-export:helpers",
+          ],
+        ],
+        "reExportAllSources": [],
+      }
+    `)
+  })
+
+  test('does not let a re-export shadow a local binding of the same name', () => {
+    expect(
+      collectModuleInfoSnapshot(`
+        const allowed = 1
+        export { wrap as allowed } from './server'
+        export { allowed as local }
+      `),
+    ).toMatchInlineSnapshot(`
+      {
+        "bindings": [
+          [
+            "allowed",
+            "NumericLiteral",
+          ],
+          [
+            "re-export:allowed",
+            "./server:wrap",
+          ],
+        ],
+        "exports": [
+          [
+            "allowed",
+            "re-export:allowed",
+          ],
+          [
+            "local",
+            "allowed",
+          ],
+        ],
+        "reExportAllSources": [],
       }
     `)
   })
