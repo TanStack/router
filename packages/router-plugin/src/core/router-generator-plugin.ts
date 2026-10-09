@@ -146,6 +146,11 @@ export function createRouterGeneratorPlugin(
       config() {
         initConfigAndGenerator()
       },
+      setup(build) {
+        // Generate before esbuild resolves the entry graph, which imports the
+        // route tree and needs `routesByFile` for code splitting.
+        build.onStart(() => generate())
+      },
     },
   }
 }

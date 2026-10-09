@@ -140,6 +140,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
+    "esbuild": "^0.27.4",
     "publint": "catalog:",
     "rimraf": "catalog:",
     "webpack": "^5.104.1"
