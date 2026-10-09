@@ -2,6 +2,37 @@ import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { ssrStylesMode, useNitro, viteBundledDev } from './env'
+import type { DevEnvironment, Plugin } from 'vite'
+
+function observeClientBuildStarts(): Plugin {
+  let clientEnvironment: DevEnvironment
+  let buildStarts = 0
+  let completedBundles = 0
+  return {
+    name: 'observe-client-build-starts',
+    buildStart() {
+      if (this.environment === clientEnvironment) {
+        buildStarts++
+      }
+    },
+    generateBundle() {
+      if (this.environment === clientEnvironment) {
+        completedBundles++
+      }
+    },
+    configureServer(server) {
+      clientEnvironment = server.environments.client
+      server.middlewares.use((req, res, next) => {
+        if (req.url !== '/__client-build-starts') {
+          next()
+          return
+        }
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(buildStarts - completedBundles))
+      })
+    },
+  }
+}
 
 function getSsrStylesConfig() {
   switch (ssrStylesMode) {
@@ -34,6 +65,7 @@ export default defineConfig(async () => {
         },
       }),
       viteReact(),
+      observeClientBuildStarts(),
     ],
   }
 })

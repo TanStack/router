@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import { DEV_STYLES_ATTR } from '@tanstack/router-core'
-import { test } from '@tanstack/router-e2e-utils'
-import { ssrStylesMode } from '../env'
+import { createHmrFileEditor, test } from '@tanstack/router-e2e-utils'
+import { ssrStylesMode, viteBundledDev } from '../env'
 
 // Whitelist errors that can occur in CI:
 // - net::ERR_NAME_NOT_RESOLVED: transient network issues
@@ -14,12 +14,34 @@ const whitelistErrors = [
 test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
   test.use({ whitelistErrors })
 
+  test('unchanged SSR requests reuse evaluated modules', async ({
+    request,
+  }) => {
+    const first = await request.get('/module-state')
+    const second = await request.get('/module-state')
+    expect(first.ok()).toBeTruthy()
+    expect(second.ok()).toBeTruthy()
+    expect(await second.text()).toBe(await first.text())
+  })
+
   test('page renders correctly', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByTestId('home-heading')).toHaveText(
       'Dev SSR Styles Test',
     )
   })
+
+  if (viteBundledDev) {
+    test('SSR style collection does not restart client plugins', async ({
+      page,
+      request,
+    }) => {
+      await page.goto('/')
+      await expect(page.getByTestId('home-heading')).toBeVisible()
+      const response = await request.get('/__client-build-starts')
+      expect(await response.json()).toBe(0)
+    })
+  }
 
   if (ssrStylesMode === 'default') {
     test('dev CSS order is stable after client modules load', async ({
@@ -96,6 +118,31 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
           (el) => getComputedStyle(el).backgroundColor,
         )
         expect(backgroundColor).toBe('rgb(59, 130, 246)')
+      })
+
+      test('SSR CSS updates after a stylesheet edit', async ({ page }) => {
+        const editor = createHmrFileEditor({
+          rootDir: import.meta.dirname,
+          files: { css: '../src/styles/code-split-route.module.css' },
+        })
+        await editor.capturePromise
+        try {
+          await page.goto('/')
+          await expect(page.getByTestId('styled-box')).toHaveCSS(
+            'background-color',
+            'rgb(59, 130, 246)',
+          )
+          await editor.replaceText('css', '#3b82f6', '#ef4444')
+          await expect(async () => {
+            await page.reload()
+            await expect(page.getByTestId('styled-box')).toHaveCSS(
+              'background-color',
+              'rgb(239, 68, 68)',
+            )
+          }).toPass({ timeout: 20_000 })
+        } finally {
+          await editor.restoreFiles()
+        }
       })
 
       test('CSS @import dependencies are not appended after their importer', async ({

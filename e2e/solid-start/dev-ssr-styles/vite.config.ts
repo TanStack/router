@@ -4,6 +4,10 @@ import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
+  experimental:
+    process.env.E2E_VITE_BUNDLED_DEV === 'true'
+      ? { bundledDev: true }
+      : undefined,
   server: { port: 3000 },
   plugins: [tanstackStart(), viteSolid({ ssr: true })],
 })

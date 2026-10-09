@@ -9,48 +9,65 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as CssImportOrderRouteImport } from './routes/css-import-order'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CssImportOrderRouteImport } from './routes/css-import-order'
+import { Route as ModuleStateRouteImport } from './routes/module-state'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CssImportOrderRoute = CssImportOrderRouteImport.update({
   id: '/css-import-order',
   path: '/css-import-order',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ModuleStateRoute = ModuleStateRouteImport.update({
+  id: '/module-state',
+  path: '/module-state',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/css-import-order': typeof CssImportOrderRoute
+  '/module-state': typeof ModuleStateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/css-import-order': typeof CssImportOrderRoute
+  '/module-state': typeof ModuleStateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/css-import-order': typeof CssImportOrderRoute
+  '/module-state': typeof ModuleStateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/css-import-order'
+  fullPaths: '/' | '/css-import-order' | '/module-state'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/css-import-order'
-  id: '__root__' | '/' | '/css-import-order'
+  to: '/' | '/css-import-order' | '/module-state'
+  id: '__root__' | '/' | '/css-import-order' | '/module-state'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CssImportOrderRoute: typeof CssImportOrderRoute
+  ModuleStateRoute: typeof ModuleStateRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/css-import-order': {
       id: '/css-import-order'
       path: '/css-import-order'
@@ -58,11 +75,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CssImportOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/module-state': {
+      id: '/module-state'
+      path: '/module-state'
+      fullPath: '/module-state'
+      preLoaderRoute: typeof ModuleStateRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CssImportOrderRoute: CssImportOrderRoute,
+  ModuleStateRoute: ModuleStateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
