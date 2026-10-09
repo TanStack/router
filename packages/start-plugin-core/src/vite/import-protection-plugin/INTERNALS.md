@@ -364,7 +364,8 @@ Later, the transform-cache plugin:
 1. Self-denies files when the transformed file itself violates file rules.
 2. Caches transformed code and any selectively captured diagnostic sourcemap.
 3. Resolves import sources from the transformed code.
-4. Records `postTransformImports` for the normalized Vite id and physical file path.
+4. Records `postTransformImports` under each full normalized Vite id, preserving
+   unsplit routes and code-split variants separately.
 5. Adds import graph edges from transformed-code imports for warm-start traces.
 6. Maps import-protection mock-edge ids back to physical paths for edge survival.
 7. Detects file violations missed by warm-start `resolveId` cache hits.
@@ -389,11 +390,12 @@ In dev serve with `unknown` reachability, the adapter can conservatively emit
 confirmed-surviving violations or in-scope file violations when pre-transform
 data is not involved.
 
-Bundled client dev has a special case. After edge survival has proved an import
-survived, the adapter uses source-graph reachability because child transforms can
-run before their route/importer source edges are known. If bundled client dev
-finds a surviving violation currently unreachable, it keeps the violation pending
-instead of dropping it.
+Bundled client dev also verifies post-transform reachability, so raw compiler
+lookup imports cannot make a stripped import chain appear reachable. Because
+child transforms can run before their route/importer edges are known, a surviving
+violation that is currently unreachable stays pending instead of being dropped.
+The bundled dev `generateBundle` hook verifies pending violations again after
+all importer edges are recorded.
 
 ## Build Strategy
 
