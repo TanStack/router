@@ -185,6 +185,10 @@
           "to": "guide/scroll-restoration"
         },
         {
+          "label": "Route Announcements",
+          "to": "guide/route-announcements"
+        },
+        {
           "label": "Internationalization",
           "to": "guide/internationalization-i18n"
         }
