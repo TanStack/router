@@ -1424,11 +1424,9 @@ async function executeClientLane(
       }
       planSuccessfulLane()
     }
-    // Planning, or canceling it, ends the reservations of the navigation that
-    // owns this lane. A successor has already ended them.
-    const owner = router._tx
-    if (owner?.[0 /* controller */] === options[0 /* controller */]) {
-      endReservations(router, owner)
+    // Planning ends the reservations of the live navigation owning this lane.
+    if (!signal.aborted && !options[3 /* preload */]) {
+      endReservations(router, router._tx!)
     }
     const reduction = reduceLane(
       router,
