@@ -573,6 +573,44 @@ test('a navigation in async beforeLoad adopts a pending flight released by a red
   expect(signals[0]?.aborted).toBe(false)
 })
 
+test('a navigation canceled before loader planning releases the same-ID work it reserved', async () => {
+  const signals: Array<AbortSignal> = []
+  const rootRoute = new BaseRootRoute({})
+  const indexRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      phase: String(search.phase ?? ''),
+    }),
+    beforeLoad: ({ search, abortController }) => {
+      if (search.phase === 'cancel') {
+        abortController.abort()
+      }
+    },
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return createControlledPromise<string>()
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([indexRoute, pageRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.load()
+
+  router.navigate({ to: '/page', search: { phase: 'first' } })
+  await vi.waitFor(() => expect(signals).toHaveLength(1))
+
+  void router.navigate({ to: '/page', search: { phase: 'cancel' } })
+
+  await vi.waitFor(() => expect(signals[0]?.aborted).toBe(true))
+  expect(signals).toHaveLength(1)
+})
+
 test('an ancestor beforeLoad failure releases an unconsumed background loader', async () => {
   const backgroundResult = createControlledPromise<number>()
   const signals: Array<AbortSignal> = []
