@@ -66,7 +66,7 @@
           "env": {
             "E2E_VITE_BUNDLED_DEV": "true",
             "DEBUG": "vite:full-bundle-mode",
-            "RD_LOG": "rolldown_dev=trace,rolldown::hmr::hmr_stage=trace",
+            "RD_LOG": "notify::inotify=trace",
             "RD_LOG_OUTPUT": "readable"
           }
         },
