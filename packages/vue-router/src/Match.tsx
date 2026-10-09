@@ -3,6 +3,7 @@ import { isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
+import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
 import { provideLinkLocation, routeIdContext } from './matchContext'
@@ -45,6 +46,18 @@ export const Match = Vue.defineComponent({
     return (): VNode => {
       const match = activeMatch.value
       const route = match ? (router.routesById[routeId] as AnyRoute) : undefined
+      const PendingComponent =
+        route?.options.pendingComponent ??
+        router.options.defaultPendingComponent
+      const pendingElement = PendingComponent
+        ? process.env.NODE_ENV !== 'production'
+          ? renderInNonRouteComponentContext(
+              PendingComponent,
+              undefined,
+              'pendingComponent',
+            )
+          : Vue.h(PendingComponent)
+        : undefined
       const routeErrorComponent =
         route?.options.errorComponent ?? router.options.defaultErrorComponent
       const routeOnCatch =
@@ -56,9 +69,22 @@ export const Match = Vue.defineComponent({
       const ShellComponent = route?.isRoot
         ? ((route.options as RootRouteOptions).shellComponent as any)
         : undefined
+      const resolvedNoSsr = match?.ssr === false || match?.ssr === 'data-only'
 
       const renderMatchContent = (): VNode => {
-        let content: VNode = Vue.h(MatchInner)
+        const matchInner = Vue.h(MatchInner)
+
+        let content: VNode = resolvedNoSsr
+          ? Vue.h(
+              ClientOnly,
+              {
+                fallback: pendingElement,
+              },
+              {
+                default: () => matchInner,
+              },
+            )
+          : matchInner
 
         // Wrap in NotFound boundary if needed
         if (routeNotFoundComponent) {
@@ -176,33 +202,6 @@ export const MatchInner = Vue.defineComponent({
       const [match, remountKey] = state
       const route = router.routesById[match.routeId]!
 
-      // Server no-SSR matches render their pending UI here too, where the
-      // hydrating client renders it.
-      if (
-        match.status === 'pending' ||
-        ((isServer ?? router.isServer) &&
-          (match.ssr === false || match.ssr === 'data-only'))
-      ) {
-        // In Vue, we render the pending component directly instead of throwing a promise
-        // because Vue's Suspense doesn't catch thrown promises like React does
-        const PendingComponent =
-          route.options.pendingComponent ??
-          router.options.defaultPendingComponent
-
-        if (PendingComponent) {
-          return process.env.NODE_ENV !== 'production'
-            ? renderInNonRouteComponentContext(
-                PendingComponent,
-                undefined,
-                'pendingComponent',
-              )
-            : Vue.h(PendingComponent)
-        }
-
-        // If no pending component, return null while loading
-        return null
-      }
-
       // Handle different match statuses
       if (match.status === 'notFound') {
         return renderRouteNotFound(router, route, match.error)
@@ -237,6 +236,27 @@ export const MatchInner = Vue.defineComponent({
         // If there's no error component for this route, throw the error
         // so it can bubble up to the nearest parent with an error component
         throw match.error
+      }
+
+      if (match.status === 'pending') {
+        // In Vue, we render the pending component directly instead of throwing a promise
+        // because Vue's Suspense doesn't catch thrown promises like React does
+        const PendingComponent =
+          route.options.pendingComponent ??
+          router.options.defaultPendingComponent
+
+        if (PendingComponent) {
+          return process.env.NODE_ENV !== 'production'
+            ? renderInNonRouteComponentContext(
+                PendingComponent,
+                undefined,
+                'pendingComponent',
+              )
+            : Vue.h(PendingComponent)
+        }
+
+        // If no pending component, return null while loading
+        return null
       }
 
       // Success status - render the component with remount key
