@@ -607,8 +607,30 @@ test.describe('react-start hmr', () => {
   test('preserves local state for code-split route component HMR', async ({
     page,
   }) => {
+    if (isViteBundledDev) {
+      await page.routeWebSocket('**', async (socket) => {
+        // Exercise a slow HMR connection independently of page hydration.
+        await new Promise((resolve) => setTimeout(resolve, 2_000))
+        socket.connectToServer()
+      })
+    }
+    // Hydration can finish before bundled dev registers the route for HMR.
+    const hmrReady = isViteBundledDev
+      ? page.waitForEvent('websocket').then((socket) =>
+          socket.waitForEvent('framesent', ({ payload }) => {
+            const message = JSON.parse(String(payload))
+            return (
+              message.event === 'vite:module-loaded' &&
+              message.data.modules.includes(
+                'src/routes/index.tsx?tsr-split=component',
+              )
+            )
+          }),
+        )
+      : Promise.resolve()
     await page.goto('/')
     await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+    await hmrReady
 
     await page.getByTestId('increment').click()
     await page.getByTestId('message').fill('hmr state')
