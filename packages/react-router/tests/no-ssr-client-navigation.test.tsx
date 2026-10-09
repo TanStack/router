@@ -55,9 +55,19 @@ function createRouteTree(
     getParentRoute: () => rootRoute,
     path: '/items/$id',
     ...(env === 'server' ? { ssr: entry.ssr } : {}),
-    loader: ({ params }) => `item ${params.id}`,
+    // Later items load slowly on the client, so navigations show pending UI.
+    loader: async ({ params }) => {
+      if (env === 'client' && params.id !== '1') {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      return `item ${params.id}`
+    },
     ...(entry.pending
-      ? { pendingComponent: () => <p data-testid="pending">Loading</p> }
+      ? {
+          pendingMs: 0,
+          pendingMinMs: 0,
+          pendingComponent: () => <p data-testid="pending">Loading</p>,
+        }
       : {}),
     component: function Item() {
       const [count, setCount] = React.useState(0)
@@ -169,7 +179,18 @@ describe('a hydrated no-SSR route keeps its component across param navigations',
       fireEvent.click(item()!)
       await waitFor(() => expect(item()).toHaveTextContent('item 1 count=1'))
 
-      await router.navigate({ to: '/items/$id', params: { id: '2' } })
+      const navigation = router.navigate({
+        to: '/items/$id',
+        params: { id: '2' },
+      })
+      if (entry.pending) {
+        await waitFor(() =>
+          expect(
+            document.querySelector('[data-testid="pending"]'),
+          ).not.toBeNull(),
+        )
+      }
+      await navigation
 
       // A param navigation creates a new match on the client. The route
       // component keeps its state, as it does for an SSR route.

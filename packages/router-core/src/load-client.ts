@@ -2559,6 +2559,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   router._committed = committedMatches
   router._lifecycleEnd = lifecycleEnd(committedMatches)
   router._handoff = handoff
+  router._hydrated = presented
   router._preflight = undefined
   router.batch(() => {
     router.stores.setMatches(presented)
