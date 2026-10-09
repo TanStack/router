@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { createMemoryHistory, createRootRoute, createRouter } from '../src'
+import type { PassThrough } from 'node:stream'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type * as RouterSsrServer from '@tanstack/router-core/ssr/server'
 import type * as ReactDomServer from 'react-dom/server'
@@ -742,6 +743,7 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
     let options:
       | Parameters<typeof actualReactDomServer.renderToPipeableStream>[1]
       | undefined
+    let destination: PassThrough | undefined
     const abort = vi.fn((reason: unknown) => {
       options?.onError?.(reason, { componentStack: '' })
     })
@@ -749,11 +751,18 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
       (_children, nextOptions) => {
         options = nextOptions
         queueMicrotask(() => nextOptions.onShellReady())
-        return { abort, pipe: vi.fn() }
+        return {
+          abort,
+          pipe: vi.fn((stream: PassThrough) => {
+            destination = stream
+            return stream
+          }),
+        }
       },
     )
 
     const router = await buildRouter()
+    const cleanup = vi.spyOn(router.serverSsr!, 'cleanup')
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const reason = new Error('pipeable-consumer-gone')
     try {
@@ -767,7 +776,9 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
       )
 
       await response.body!.cancel(reason)
-      expect(abort).toHaveBeenCalledWith(reason)
+      expect(abort).toHaveBeenCalledExactlyOnceWith(reason)
+      await vi.waitFor(() => expect(destination?.destroyed).toBe(true))
+      expect(cleanup).toHaveBeenCalledOnce()
       expect(errorSpy).not.toHaveBeenCalled()
     } finally {
       errorSpy.mockRestore()

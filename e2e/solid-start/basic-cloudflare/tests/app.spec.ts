@@ -17,6 +17,16 @@ test('returns the correct value from a Cloudflare binding', async ({
   await expect(page.getByTestId('myVar')).toHaveText('Hello from Cloudflare')
 })
 
+test('preserves request context with nodejs_als', async ({ page }) => {
+  await page.setExtraHTTPHeaders({
+    'x-solid-start-context': 'request-context-works',
+  })
+  await page.goto('/')
+  await expect(page.getByTestId('requestHeader')).toHaveText(
+    'request-context-works',
+  )
+})
+
 test('prerender with Cloudflare Workers runtime', async ({ page }) => {
   // Verify the static page was prerendered during build
   const distDir = join(process.cwd(), 'dist', 'client')
