@@ -243,6 +243,12 @@ export type LoadTransaction = [
   startedAt: number,
   done: Promise<void>,
   /**
+   * The navigation lane. Its background candidates remain private to this
+   * transaction until background publication clears this slot, so superseding
+   * transactions receive them through the same-ID handoff.
+   */
+  lane?: Lane<any>,
+  /**
    * Dev-only HMR refresh mode. Presence forces successor rematerialization
    * until this publication is acknowledged. The optional hydration handoff is
    * retired when the refresh publishes.
@@ -840,7 +846,7 @@ function createLoaderTask(
   let donor =
     preloadable &&
     routeLoader &&
-    !(process.env.NODE_ENV !== 'production' && router._tx?.[6 /* refresh */])
+    !(process.env.NODE_ENV !== 'production' && router._tx?.[7 /* refresh */])
       ? router._flights?.get(match.id)
       : undefined
   if (donor === match._flight || reloadFailure) {
@@ -1319,11 +1325,10 @@ export async function projectLane(
 
 async function executeClientLane(
   router: AnyRouter,
-  location: ParsedLocation,
-  matches: Array<AnyRouteMatch>,
+  matched: MatchedLane,
   options: ExecuteLaneOptions,
 ): Promise<LaneResult> {
-  const matched = [location, matches as Array<WorkMatch>] as MatchedLane
+  const matches = matched[1 /* matches */]
   const signal = options[0 /* controller */].signal
   let reduced: ReducedLane | ControlOutcome
   try {
@@ -1332,7 +1337,7 @@ async function executeClientLane(
     if (router.options.notFoundMode !== 'root' && plannedBoundary >= 0) {
       const boundary = await getNotFoundBoundary(
         router,
-        matches as Array<WorkMatch>,
+        matches,
         undefined,
         signal,
         plannedBoundary,
@@ -1399,7 +1404,7 @@ async function executeClientLane(
       if (failure[1 /* outcome */][0 /* kind */] === NOT_FOUND) {
         const boundary = await getNotFoundBoundary(
           router,
-          matches as Array<WorkMatch>,
+          matches,
           failure,
           signal,
         )
@@ -1638,7 +1643,7 @@ export function commitMatches(
   }
   const cut = _getRenderedMatches(matches).length
   const cached = new Map<string, AnyRouteMatch>()
-  if (process.env.NODE_ENV === 'production' || !tx[6 /* refresh */]) {
+  if (process.env.NODE_ENV === 'production' || !tx[7 /* refresh */]) {
     const now = Date.now()
     // The rendered prefix and settled descendants supersede older generations.
     // Unsettled matches beyond a fallback must not evict a newer preload.
@@ -1695,7 +1700,7 @@ export function commitMatches(
     matches,
   )
   if (process.env.NODE_ENV !== 'production') {
-    const handoff = tx[6 /* refresh */]?.[0 /* handoff */]
+    const handoff = tx[7 /* refresh */]?.[0 /* handoff */]
     if (handoff && router._handoff === handoff) {
       handoff[1 /* finish */]()
     }
@@ -1813,6 +1818,8 @@ async function runBackground(
       releaseFlight(router, cached)
     }
   }
+  // The candidates become committed before publication can synchronously reenter.
+  tx[6 /* lane */] = undefined
   publishMatches(router, next)
   transferMatchResources(router, base, next)
 }
@@ -1827,8 +1834,7 @@ async function runClientTransaction(
 ): Promise<void> {
   const result = await executeClientLane(
     router,
-    tx[2 /* location */],
-    tx[3 /* matches */],
+    (tx[6 /* lane */] = [tx[2 /* location */], tx[3 /* matches */]]),
     [
       tx[0 /* controller */],
       tx[1 /* redirects */],
@@ -1855,7 +1861,7 @@ async function runClientTransaction(
       finishPending(router, tx)
       return
     }
-    if (process.env.NODE_ENV !== 'production' && tx[6 /* refresh */]) {
+    if (process.env.NODE_ENV !== 'production' && tx[7 /* refresh */]) {
       router._refreshNextLoad = true
     }
     await followRedirect(router, tx, result)
@@ -1901,8 +1907,8 @@ async function runClientTransaction(
       }
     }
     const rendered = await router.startTransition(commit, matches)
-    if (process.env.NODE_ENV !== 'production' && tx[6 /* refresh */]) {
-      tx[6 /* refresh */] = undefined
+    if (process.env.NODE_ENV !== 'production' && tx[7 /* refresh */]) {
+      tx[7 /* refresh */] = undefined
     }
     if (router._tx !== tx) {
       discardBackground(router, result)
@@ -1944,7 +1950,7 @@ export async function loadClientRoute(
 ): Promise<void> {
   let rematerialize = false
   if (process.env.NODE_ENV !== 'production') {
-    rematerialize = !!router._refreshNextLoad || !!router._tx?.[6 /* refresh */]
+    rematerialize = !!router._refreshNextLoad || !!router._tx?.[7 /* refresh */]
   }
   const previousOwner = router._tx
   const resolvedLocation = router.stores.resolvedLocation.get()
@@ -2028,7 +2034,7 @@ export async function loadClientRoute(
     done.then(() => awaitCurrent(router, tx)),
   ]
   if (process.env.NODE_ENV !== 'production' && rematerialize) {
-    tx[6 /* refresh */] = [handoff]
+    tx[7 /* refresh */] = [handoff]
     router._refreshNextLoad = undefined
   }
   router._tx = tx
@@ -2044,7 +2050,12 @@ export async function loadClientRoute(
     previousOwner[0 /* controller */].abort()
     transferMatchResources(
       router,
-      previousOwner[3 /* matches */],
+      [
+        ...previousOwner[3 /* matches */],
+        ...(previousOwner[6 /* lane */]?.[2 /* background */] ?? []).map(
+          (task) => task[3 /* candidate */],
+        ),
+      ],
       tx[3 /* matches */],
       true,
     )
@@ -2081,7 +2092,7 @@ export async function refreshClientRoute(
   const pending = router._tx
   if (
     pending &&
-    !pending[6 /* refresh */] &&
+    !pending[7 /* refresh */] &&
     router.stores.status.get() === 'pending'
   ) {
     await pending[5 /* done */]
@@ -2131,7 +2142,7 @@ export async function preloadClientRoute<
   if (
     process.env.NODE_ENV !== 'production' &&
     ((router as CoordinatorRouter)._refreshNextLoad ||
-      router._tx?.[6 /* refresh */])
+      router._tx?.[7 /* refresh */])
   ) {
     return
   }
@@ -2151,12 +2162,11 @@ export async function preloadClientRoute<
         })
         acquireMatchResources(matches)
         active = (router._preloads ??= new Map()).set(controller, matches)
-        result = await executeClientLane(router, location, matches, [
-          controller,
-          redirects,
-          base,
-          true,
-        ])
+        result = await executeClientLane(
+          router,
+          [location, matches],
+          [controller, redirects, base, true],
+        )
       } finally {
         if (active) {
           active = (
@@ -2175,7 +2185,7 @@ export async function preloadClientRoute<
         result.length < 3 ||
         (process.env.NODE_ENV !== 'production' &&
           ((router as CoordinatorRouter)._refreshNextLoad ||
-            router._tx?.[6 /* refresh */]))
+            router._tx?.[7 /* refresh */]))
       ) {
         return
       }
