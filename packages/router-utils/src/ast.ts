@@ -2,12 +2,12 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { analyze } from 'yuku-analyzer'
 import { generate } from 'yuku-codegen'
-import { walk } from 'yuku-ast'
+import { is, walk } from 'yuku-ast'
 import { load as loadNativeCore } from 'yuku-core'
 import { loadSync as loadWasmCore } from '@yuku-core/wasm'
 import type { Binding, Module } from 'yuku-analyzer'
 import type { Core, Expression, Node, Program } from '@yuku-toolchain/types'
-import type { GenerateResult as NativeGenerateResult } from 'yuku-codegen'
+import type { GenerateResult as YukuGenerateResult } from 'yuku-codegen'
 
 let core: Core | undefined
 
@@ -51,7 +51,7 @@ function getCore(): Core {
   return core
 }
 
-export interface GenerateResult extends Omit<NativeGenerateResult, 'map'> {
+export interface GenerateResult extends Omit<YukuGenerateResult, 'map'> {
   map: {
     version: number
     names: Array<string>
@@ -66,6 +66,24 @@ export interface GenerateResult extends Omit<NativeGenerateResult, 'map'> {
 export interface AnalyzeModuleOptions {
   code: string
   filename?: string
+}
+
+/** One-based line and zero-based UTF-16 column at a source offset. */
+export function sourcePosition(code: string, offset: number) {
+  const lines = code.slice(0, offset).split(/\r\n|[\n\r\u2028\u2029]/)
+  return { line: lines.length, column: lines[lines.length - 1]!.length }
+}
+
+/** Insert statements without displacing the module's directive prologue. */
+export function prependStatements(
+  program: Program,
+  ...statements: Program['body']
+): void {
+  let index = 0
+  while (is.Directive(program.body[index])) {
+    index++
+  }
+  program.body.splice(index, 0, ...statements)
 }
 
 /** Parse and bind once. Treat this module's AST as the immutable source model. */
@@ -93,8 +111,7 @@ export function analyzeModule({
     (diagnostic) => diagnostic.severity === 'error',
   )
   if (error) {
-    const lines = code.slice(0, error.start).split(/\r\n|[\n\r\u2028\u2029]/)
-    const loc = { line: lines.length, column: lines[lines.length - 1]!.length }
+    const loc = sourcePosition(code, error.start)
     throw Object.assign(
       new SyntaxError(
         `${filename}: ${error.message} (${loc.line}:${loc.column})`,
@@ -105,7 +122,6 @@ export function analyzeModule({
   return module
 }
 
-/** Print an output tree without modifying the source model or its semantic tables. */
 /**
  * File-level pragmas: JSX transform configuration, React Refresh's
  * `@refresh reset`, and solid-refresh's `@refresh reload` and `@refresh skip`.
@@ -174,6 +190,7 @@ export function unwrapExport<T extends Node>(
   return declaration
 }
 
+/** Print an output tree without modifying the source model or its semantic tables. */
 export function generateModule(
   program: Program,
   options?: { source: string; filename: string },
@@ -254,7 +271,7 @@ export function generatedReferenceOf(node: Node): Binding | string | undefined {
   return generatedReferences.get(node)
 }
 
-/** Copy a generated fragment without dropping its native reference provenance. */
+/** Copy a generated fragment without dropping its source reference provenance. */
 export function cloneGeneratedNode<T extends Node>(node: T): T {
   const copy = structuredClone(node)
   const originals: Array<Node> = []
@@ -294,10 +311,10 @@ export function parseStatements(code: string): Program['body'] {
 
 export function parseExpression(code: string): Expression {
   const statement = parseStatements(`(${code});`)[0]
-  if (statement?.type !== 'ExpressionStatement') {
+  if (!is.ExpressionStatement(statement)) {
     throw new Error('Expected an expression')
   }
-  return statement.expression.type === 'ParenthesizedExpression'
+  return is.ParenthesizedExpression(statement.expression)
     ? statement.expression.expression
     : statement.expression
 }

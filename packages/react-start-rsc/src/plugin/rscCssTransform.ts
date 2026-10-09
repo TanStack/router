@@ -1,4 +1,5 @@
-import { cloneGeneratedNode } from '@tanstack/router-utils'
+import { cloneGeneratedNode, unwrapExpression } from '@tanstack/router-utils'
+import { is } from 'yuku-ast'
 import type {
   StartCompilerImportTransform,
   StartCompilerTransformContext,
@@ -7,7 +8,7 @@ import type {
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
 const RSC_CSS_OPTIONS_KEY = '__tanstackStartRscCss'
 
-type NativeExpression = ReturnType<
+type CompilerExpression = ReturnType<
   StartCompilerTransformContext['parseExpression']
 >
 
@@ -20,7 +21,7 @@ export function createRscCssCompilerTransforms(opts: {
   loadCssExpression: string
   serverFnProviderOnly?: boolean | undefined
 }): Array<StartCompilerImportTransform> {
-  let loadCssExpression: NativeExpression | undefined
+  let loadCssExpression: CompilerExpression | undefined
 
   const getLoadCssExpression = (context: StartCompilerTransformContext) => {
     loadCssExpression ??= context.parseExpression(opts.loadCssExpression)
@@ -54,7 +55,7 @@ function createRscCssCompilerTransform(opts: {
   kind: RscCssTransformKind
   getLoadCssExpression: (
     context: StartCompilerTransformContext,
-  ) => NativeExpression
+  ) => CompilerExpression
   serverFnProviderOnly?: boolean | undefined
 }): StartCompilerImportTransform {
   return {
@@ -90,7 +91,7 @@ function createRscCssCompilerTransform(opts: {
 
         if (opts.kind === 'renderToReadableStream') {
           const firstArg = args[0]
-          if (!firstArg || firstArg.type === 'SpreadElement') {
+          if (!firstArg || is.SpreadElement(firstArg)) {
             continue
           }
           if (!isTopLevelJsx(firstArg)) {
@@ -109,8 +110,8 @@ function createRscCssCompilerTransform(opts: {
           `{ ${RSC_CSS_OPTIONS_KEY}: null }`,
         )
         if (
-          options.type === 'ObjectExpression' &&
-          options.properties[0]?.type === 'Property'
+          is.ObjectExpression(options) &&
+          is.Property(options.properties[0])
         ) {
           options.properties[0].value = cloneLoadCssExpression()
           args.push(options)
@@ -120,41 +121,27 @@ function createRscCssCompilerTransform(opts: {
   }
 }
 
-function isTopLevelJsx(expr: NativeExpression): boolean {
-  const unwrapped = unwrapTransparentExpression(expr)
-  return unwrapped.type === 'JSXElement' || unwrapped.type === 'JSXFragment'
-}
-
-function unwrapTransparentExpression(expr: NativeExpression): NativeExpression {
-  let current = expr
-  while (
-    current.type === 'ParenthesizedExpression' ||
-    current.type === 'TSAsExpression' ||
-    current.type === 'TSSatisfiesExpression' ||
-    current.type === 'TSTypeAssertion' ||
-    current.type === 'TSNonNullExpression'
-  ) {
-    current = current.expression
-  }
-  return current
+function isTopLevelJsx(expr: CompilerExpression): boolean {
+  const unwrapped = unwrapExpression(expr)
+  return is.JSXElement(unwrapped) || is.JSXFragment(unwrapped)
 }
 
 function createCssFragment(
   context: StartCompilerTransformContext,
-  original: NativeExpression,
-  loadCssExpression: NativeExpression,
+  original: CompilerExpression,
+  loadCssExpression: CompilerExpression,
 ) {
   const fragment = context.parseExpression('<>{null}{null}</>')
   if (
-    fragment.type !== 'JSXFragment' ||
-    fragment.children[0]?.type !== 'JSXExpressionContainer' ||
-    fragment.children[1]?.type !== 'JSXExpressionContainer'
+    !is.JSXFragment(fragment) ||
+    !is.JSXExpressionContainer(fragment.children[0]) ||
+    !is.JSXExpressionContainer(fragment.children[1])
   ) {
     throw new Error('Expected compiler fragment')
   }
   fragment.children[0].expression = loadCssExpression
-  const unwrapped = unwrapTransparentExpression(original)
-  if (unwrapped.type === 'JSXElement' || unwrapped.type === 'JSXFragment') {
+  const unwrapped = unwrapExpression(original)
+  if (is.JSXElement(unwrapped) || is.JSXFragment(unwrapped)) {
     fragment.children[1] = unwrapped
   } else {
     fragment.children[1].expression = original

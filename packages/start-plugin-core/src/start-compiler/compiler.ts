@@ -21,7 +21,7 @@ import type { Module } from 'yuku-analyzer'
 import type {
   CompilationContext,
   DevServerFnModuleSpecifierEncoder,
-  MethodChainPaths,
+  MethodChain,
   RewriteCandidate,
   ServerFn,
 } from './types'
@@ -35,11 +35,11 @@ import type {
   StartCompilerTransformResult,
 } from '../types'
 
-type Binding = ModuleInfoBinding & {
+type CompilerBinding = ModuleInfoBinding & {
   resolvedKind?: Kind
 }
 
-type ImportBinding = Extract<Binding, { type: 'import' }>
+type CompilerImportBinding = Extract<CompilerBinding, { type: 'import' }>
 
 type Kind = 'None' | `Root` | `Builder` | LookupKind
 type ParsedAst = t.Program
@@ -302,12 +302,12 @@ export type LookupConfig = {
 interface ExportResolution {
   moduleInfo: ModuleInfo
   localName: string
-  binding: Binding
+  binding: CompilerBinding
 }
 
 interface ModuleInfo {
   id: string
-  bindings: Map<string, Binding>
+  bindings: Map<string, CompilerBinding>
   // Maps exported name → local binding name
   exports: Map<string, string>
   // Track `export * from './module'` declarations for re-export resolution
@@ -870,18 +870,22 @@ export class StartCompiler {
           : is.Identifier(receiver)
             ? receiver
             : null
-        const symbol = root && module.bindingOf(originalNodes.get(root)!)
-        const binding = symbol && sourceInfo.bindings.get(symbol.name)
+        const binding = root && module.bindingOf(originalNodes.get(root)!)
+        const moduleBinding = binding && sourceInfo.bindings.get(binding.name)
         if (
-          binding?.type === 'import' &&
-          symbol?.scope === module.rootScope &&
-          (binding.importedName === '*'
+          moduleBinding?.type === 'import' &&
+          binding?.scope === module.rootScope &&
+          (moduleBinding.importedName === '*'
             ? is.MemberExpression(callee) && !callee.computed
             : is.Identifier(callee))
         ) {
           const kind = this.knownRootImports
-            .get(binding.source)
-            ?.get(binding.importedName === '*' ? name : binding.importedName)
+            .get(moduleBinding.source)
+            ?.get(
+              moduleBinding.importedName === '*'
+                ? name
+                : moduleBinding.importedName,
+            )
           if (kind && isExternalLookupKind(kind) && candidateKinds.has(kind)) {
             calls.push({ node, kind })
             return
@@ -909,16 +913,16 @@ export class StartCompiler {
           return
         }
         const original = originalNodes.get(node.openingElement.name)!
-        const symbol = module.bindingOf(original)
-        if (!symbol || symbol.scope !== module.rootScope) {
+        const binding = module.bindingOf(original)
+        if (!binding || binding.scope !== module.rootScope) {
           return
         }
-        const binding = sourceInfo.bindings.get(symbol.name)
+        const moduleBinding = sourceInfo.bindings.get(binding.name)
         if (
-          binding?.type === 'import' &&
+          moduleBinding?.type === 'import' &&
           this.knownRootImports
-            .get(binding.source)
-            ?.get(binding.importedName) === 'ClientOnlyJSX'
+            .get(moduleBinding.source)
+            ?.get(moduleBinding.importedName) === 'ClientOnlyJSX'
         ) {
           jsx.push(node)
         }
@@ -949,8 +953,8 @@ export class StartCompiler {
           }
         }
         if (is.Identifier(base)) {
-          const symbol = module.bindingOf(originalNodes.get(base)!)
-          if (!symbol || symbol.scope !== module.rootScope) {
+          const binding = module.bindingOf(originalNodes.get(base)!)
+          if (!binding || binding.scope !== module.rootScope) {
             return { node, kind: 'None' as Kind }
           }
         }
@@ -971,7 +975,7 @@ export class StartCompiler {
       ) {
         continue
       }
-      const methodChain: MethodChainPaths = {
+      const methodChain: MethodChain = {
         middleware: null,
         validator: null,
         inputValidator: null,
@@ -991,7 +995,7 @@ export class StartCompiler {
           is.Identifier(callee.property) &&
           callee.property.name in methodChain
         ) {
-          methodChain[callee.property.name as keyof MethodChainPaths] = {
+          methodChain[callee.property.name as keyof MethodChain] = {
             call: current,
             firstArg: current.arguments[0] ?? null,
           }
@@ -1244,7 +1248,7 @@ export class StartCompiler {
   }
 
   private async resolveKnownImportKind(
-    binding: ImportBinding,
+    binding: CompilerImportBinding,
     resolved?: ExportResolution,
   ): Promise<Kind> {
     const directKind =
@@ -1302,7 +1306,7 @@ export class StartCompiler {
   }
 
   private async resolveImportKind(
-    binding: ImportBinding,
+    binding: CompilerImportBinding,
     fileId: string,
     visited: Set<string>,
   ): Promise<Kind> {
@@ -1359,7 +1363,7 @@ export class StartCompiler {
   }
 
   private async resolveBindingKind(
-    binding: Binding,
+    binding: CompilerBinding,
     fileId: string,
     visited = new Set<string>(),
   ): Promise<Kind> {

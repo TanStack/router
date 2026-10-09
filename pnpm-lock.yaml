@@ -14174,6 +14174,9 @@ importers:
       pathe:
         specifier: 'catalog:'
         version: 2.0.3
+      yuku-ast:
+        specifier: 0.18.0
+        version: 0.18.0
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'

@@ -2,6 +2,8 @@ import { b, is } from 'yuku-ast'
 import {
   parseExpression,
   parseStatements,
+  prependStatements,
+  sourcePosition,
   unwrapExport,
 } from '@tanstack/router-utils'
 import path from 'pathe'
@@ -9,7 +11,6 @@ import {
   cleanId,
   codeFrameError,
   getVariableDeclarator,
-  sourcePosition,
   stripMethodCall,
 } from './utils'
 import type {
@@ -199,14 +200,9 @@ export function handleCreateServerFn(
   } else if (Object.keys(serverFnsById).length) {
     context.onServerFnsById?.(serverFnsById)
   }
-  let importIndex = 0
-  while (is.Directive(context.ast.body[importIndex])) {
-    importIndex++
-  }
   const importPath = runtime === 'provider' ? 'server-rpc' : `${runtime}-rpc`
-  context.ast.body.splice(
-    importIndex,
-    0,
+  prependStatements(
+    context.ast,
     ...parseStatements(
       `import { ${runtimeName} } from '@tanstack/${context.framework}-start/${importPath}';`,
     ),

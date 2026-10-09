@@ -1,4 +1,4 @@
-import { b } from 'yuku-ast'
+import { b, is } from 'yuku-ast'
 import {
   moduleDeclarationGraph,
   unwrapExpression,
@@ -43,7 +43,7 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
   let modified = false
 
   for (const prop of ctx.routeOptions.properties) {
-    if (prop.type !== 'Property' || prop.method || prop.kind !== 'init') {
+    if (!is.Property(prop) || prop.method || prop.kind !== 'init') {
       continue
     }
 
@@ -55,7 +55,7 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
 
     prop.value = unwrapExpression(prop.value)
 
-    if (prop.value.type === 'Identifier') {
+    if (is.Identifier(prop.value)) {
       if (isReactComponentName(prop.value.name)) {
         continue
       }
@@ -69,9 +69,9 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
         ? moduleDeclarationGraph(ctx.module).declarations.get(binding)
         : undefined
       const isLocalComponentBinding =
-        bindingNode?.type === 'FunctionDeclaration' ||
-        bindingNode?.type === 'ClassDeclaration' ||
-        bindingNode?.type === 'VariableDeclarator'
+        is.FunctionDeclaration(bindingNode) ||
+        is.ClassDeclaration(bindingNode) ||
+        is.VariableDeclarator(bindingNode)
 
       if (!isLocalComponentBinding) {
         continue
@@ -88,8 +88,8 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
     }
 
     if (
-      prop.value.type !== 'ArrowFunctionExpression' &&
-      prop.value.type !== 'FunctionExpression'
+      !is.ArrowFunctionExpression(prop.value) &&
+      !is.FunctionExpression(prop.value)
     ) {
       continue
     }
@@ -135,7 +135,7 @@ export function createReactRefreshRouteComponentsPlugin(): ReferenceRouteCompile
     onVirtualRouteSplitNode(ctx) {
       if (
         ctx.splitNodeMeta.splitStrategy !== 'lazyRouteComponent' ||
-        ctx.splitNode.type !== 'FunctionDeclaration' ||
+        !is.FunctionDeclaration(ctx.splitNode) ||
         !ctx.splitNode.id ||
         isReactComponentName(ctx.splitNode.id.name)
       ) {

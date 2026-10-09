@@ -8,6 +8,8 @@ export {
   parseStatements,
   parseExpression,
   linkGeneratedReference,
+  prependStatements,
+  sourcePosition,
 } from './ast'
 export type {
   AnalyzeModuleOptions,

@@ -11,6 +11,7 @@ import {
   moduleDeclarationGraph,
   parseExpression,
   parseStatements,
+  prependStatements,
   removeUnusedBindings,
   unwrapExport,
   unwrapExpression,
@@ -550,11 +551,7 @@ function transformHydrateAst(
   if (!transformation.modified) {
     return null
   }
-  let prologueEnd = 0
-  while (is.Directive(options.ast.body[prologueEnd])) {
-    prologueEnd++
-  }
-  options.ast.body.splice(prologueEnd, 0, ...prepend)
+  prependStatements(options.ast, ...prepend)
   return true
 }
 
@@ -658,20 +655,15 @@ function loadHydrateVirtualModule(options: {
         'Hydrate cannot code-split children that read Route when the module does not export it. Export Route, or use split={false} for this boundary.',
       )
     }
-    let prologueEnd = 0
-    while (is.Directive(ast.body[prologueEnd])) {
-      prologueEnd++
-    }
-    ast.body.splice(
-      prologueEnd,
-      0,
+    prependStatements(
+      ast,
       ...parseStatements(
         `import { ${/^[\p{L}_$][\p{L}\p{N}_$]*$/u.test(exported) ? exported : JSON.stringify(exported)} as Route } from ${JSON.stringify(sourceId)}`,
       ),
     )
   }
   const selected = new Set(
-    [...graph.declarationSymbols]
+    [...graph.declarationBindings]
       .filter(([, owners]) =>
         [...owners].some((binding) => retained.has(binding)),
       )

@@ -1,5 +1,5 @@
 import { is, walk } from 'yuku-ast'
-import { unwrapExpression } from '@tanstack/router-utils'
+import { sourcePosition, unwrapExpression } from '@tanstack/router-utils'
 import type {
   CallExpression,
   Node,
@@ -10,11 +10,6 @@ import type { StartCompilerTransformContext } from '../types'
 
 /** JavaScript line terminators, as counted by editors and parsers. */
 const lineTerminator = /\r\n|[\n\r\u2028\u2029]/
-
-export function sourcePosition(code: string, offset: number) {
-  const lines = code.slice(0, offset).split(lineTerminator)
-  return { line: lines.length, column: lines[lines.length - 1]!.length }
-}
 
 export function codeFrameError(
   code: string,

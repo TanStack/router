@@ -1,4 +1,4 @@
-import { b, walk } from 'yuku-ast'
+import { b, nameOf, walk } from 'yuku-ast'
 import type { Identifier, Program, Property } from '@yuku-toolchain/types'
 
 export const debug =
@@ -27,15 +27,7 @@ export function getObjectPropertyKeyName(prop: Property): string | undefined {
     return undefined
   }
 
-  if (prop.key.type === 'Identifier') {
-    return prop.key.name
-  }
-
-  if (prop.key.type === 'Literal' && typeof prop.key.value === 'string') {
-    return prop.key.value
-  }
-
-  return undefined
+  return nameOf(prop.key) ?? undefined
 }
 
 const reservedProgramNames = new WeakMap<Program, Set<string>>()

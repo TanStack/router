@@ -1,5 +1,5 @@
 import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
-import { bindingIdentifiers, is } from 'yuku-ast'
+import { bindingIdentifiers, is, nameOf } from 'yuku-ast'
 import { buildLineIndex, indexToLineColumn } from './sourceLocation'
 import { getOrCreate } from './utils'
 import type * as t from '@yuku-toolchain/types'
@@ -63,10 +63,6 @@ function getOrAnalyzeModule(result: TransformResult): Module {
 
 function unwrapNode(node: t.Node): t.Node {
   return is.Expression(node) ? unwrapExpression(node) : node
-}
-
-function getModuleExportName(node: t.Identifier | t.StringLiteral): string {
-  return is.Identifier(node) ? node.name : node.value
 }
 
 function getStringLiteralValueStart(node: t.StringLiteral): number {
@@ -175,7 +171,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
           }
 
           bindingInfo.importedLocalNames.add(specifier.local.name)
-          const importedName = getModuleExportName(specifier.imported)
+          const importedName = nameOf(specifier.imported)
           if (importedName !== 'default') {
             addMockName(source, importedName)
           }
@@ -196,7 +192,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
           if (specifier.exportKind === 'type') {
             continue
           }
-          addMockName(source, getModuleExportName(specifier.local))
+          addMockName(source, nameOf(specifier.local))
         }
       }
 
@@ -221,7 +217,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
           if (specifier.exportKind === 'type') {
             continue
           }
-          const exportedName = getModuleExportName(specifier.exported)
+          const exportedName = nameOf(specifier.exported)
           addNamedExport(exportedName)
         }
       }

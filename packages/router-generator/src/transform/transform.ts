@@ -1,5 +1,5 @@
 import MagicString from 'magic-string'
-import { is } from 'yuku-ast'
+import { is, nameOf } from 'yuku-ast'
 import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
 import type * as t from '@yuku-toolchain/types'
 import type { TransformOptions, TransformResult } from './types'
@@ -182,7 +182,7 @@ function getExportedRouteNames(body: t.Program['body']) {
     for (const specifier of statement.specifiers) {
       if (
         !is.ExportSpecifier(specifier) ||
-        getExportedName(specifier.exported) !== 'Route'
+        nameOf(specifier.exported) !== 'Route'
       ) {
         continue
       }
@@ -249,10 +249,6 @@ function getVariableDeclaration(statement: t.ProgramStatement) {
     : statement
 
   return is.VariableDeclaration(declaration) ? declaration : null
-}
-
-function getExportedName(node: t.Identifier | t.StringLiteral) {
-  return is.Identifier(node) ? node.name : node.value
 }
 
 function getLocalBindingName(node: t.Identifier | t.StringLiteral) {
@@ -395,9 +391,7 @@ function parseTargetImports(
           is.ImportSpecifier(specifier),
         )
         .map((specifier) => ({
-          imported: is.Identifier(specifier.imported)
-            ? specifier.imported.name
-            : specifier.imported.value,
+          imported: nameOf(specifier.imported),
           local: specifier.local.name,
           importKind: specifier.importKind ?? undefined,
         })),

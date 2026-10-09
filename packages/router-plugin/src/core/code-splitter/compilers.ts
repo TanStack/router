@@ -11,6 +11,7 @@ import {
   linkGeneratedReference,
   moduleDeclarationGraph,
   parseStatements,
+  prependStatements,
   removeUnusedBindings,
   unwrapExport,
   unwrapExpression,
@@ -361,7 +362,7 @@ export function computeSharedBindings(
   }
   // A destructured initializer belongs to one module even when its individual
   // bindings are used in different chunks.
-  for (const siblings of graph.declarationSymbols.values()) {
+  for (const siblings of graph.declarationBindings.values()) {
     const groups = new Set(
       [...siblings].flatMap((binding) => [
         ...(groupsByBinding.get(binding) ?? []),
@@ -393,7 +394,7 @@ export function computeSharedBindings(
         changed = true
       }
     }
-    for (const siblings of graph.declarationSymbols.values()) {
+    for (const siblings of graph.declarationBindings.values()) {
       if ([...siblings].some((binding) => forbidden.has(binding))) {
         for (const binding of siblings) {
           if (!forbidden.has(binding)) {
@@ -469,17 +470,6 @@ function call(name: string, args: Array<Expression>) {
     arguments: args,
     optional: false,
   })
-}
-
-function prepend(program: Program, ...statements: Array<ProgramStatement>) {
-  const firstStatement = program.body.findIndex(
-    (statement) => !is.Directive(statement),
-  )
-  program.body.splice(
-    firstStatement === -1 ? program.body.length : firstStatement,
-    0,
-    ...statements,
-  )
 }
 
 /** Print a module emitted for a route file, led by the file's pragmas. */
@@ -687,7 +677,7 @@ function addSharedImports(
 ) {
   if (shared?.size) {
     removeDeclarations(program, shared)
-    prepend(
+    prependStatements(
       program,
       imports(
         [...shared].map((name) => ({ local: name, imported: name })),
@@ -773,7 +763,7 @@ export function compileCodeSplitReferenceRoute(
         let lazy = lazyImports.get(meta.splitStrategy)
         if (!lazy) {
           lazy = getUniqueProgramIdentifier(program, meta.splitStrategy).name
-          prepend(
+          prependStatements(
             program,
             imports(
               [{ local: lazy, imported: meta.splitStrategy }],
@@ -786,7 +776,7 @@ export function compileCodeSplitReferenceRoute(
           program,
           meta.localImporterIdent,
         ).name
-        prepend(
+        prependStatements(
           program,
           variable(
             meta.localImporterIdent,
@@ -892,7 +882,7 @@ export function compileCodeSplitReferenceRoute(
     const message = createNotExportableMessage(options.filename, knownExported)
     console.warn(message)
     if (process.env.NODE_ENV !== 'production') {
-      prepend(
+      prependStatements(
         program,
         ...parseStatements(`console.warn(${JSON.stringify(message)})`),
       )
@@ -992,7 +982,7 @@ export function compileCodeSplitVirtualRoute(
     new Set(importedExports.map(([binding]) => binding.name)),
   )
   if (importedExports.length) {
-    prepend(
+    prependStatements(
       program,
       imports(
         importedExports.map(([binding, names]) => ({
@@ -1028,7 +1018,7 @@ function exportsImportedBySplitModule(
   const { graph, exported, chunkDependencies } = analysis
   const siblingsOf = (binding: Binding) => {
     const declaration = graph.declarations.get(binding)
-    return declaration ? graph.declarationSymbols.get(declaration) : undefined
+    return declaration ? graph.declarationBindings.get(declaration) : undefined
   }
   const isShared = (binding: Binding) => !!sharedBindings?.has(binding.name)
   const dependenciesUntil = (stop: (binding: Binding) => boolean) =>

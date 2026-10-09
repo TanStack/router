@@ -1,4 +1,5 @@
-import { sourcePosition, stripMethodCall } from './utils'
+import { sourcePosition } from '@tanstack/router-utils'
+import { stripMethodCall } from './utils'
 import type {
   CompilationContext,
   MethodCallInfo,

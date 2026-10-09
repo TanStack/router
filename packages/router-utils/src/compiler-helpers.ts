@@ -9,7 +9,7 @@ export interface ModuleDeclarationGraph {
   declarations: Map<Binding, Node>
   dependencies: Map<Binding, Set<Binding>>
   /** Every removable declaration, including `var` nested in statements. */
-  declarationSymbols: Map<Node, Set<Binding>>
+  declarationBindings: Map<Node, Set<Binding>>
 }
 
 /** Runtime references resolved by Yuku, including JSX and excluding shadowed names. */
@@ -105,7 +105,7 @@ function declaresInOwnScope(
 
 interface DeclarationIndex extends Pick<
   ModuleDeclarationGraph,
-  'declarations' | 'declarationSymbols'
+  'declarations' | 'declarationBindings'
 > {
   /**
    * Destructuring elements that can be dropped on their own, with the bindings
@@ -130,7 +130,7 @@ function declarationIndex(
   bindings: Array<Binding>,
 ): DeclarationIndex {
   const declarations = new Map<Binding, Node>()
-  const declarationSymbols = new Map<Node, Set<Binding>>()
+  const declarationBindings = new Map<Node, Set<Binding>>()
   const patternElements = new Map<Node, Set<Binding>>()
   for (const binding of bindings) {
     // Parameters belong to their function or signature, never to a statement,
@@ -152,7 +152,7 @@ function declarationIndex(
       ) {
         declarations.set(binding, declaration)
       }
-      addOwner(declarationSymbols, declaration, binding)
+      addOwner(declarationBindings, declaration, binding)
       if (is.VariableDeclarator(declaration)) {
         let element: Node = identifier
         while (element !== declaration.id) {
@@ -169,17 +169,17 @@ function declarationIndex(
       }
     }
   }
-  return { declarations, declarationSymbols, patternElements }
+  return { declarations, declarationBindings, patternElements }
 }
 
 /** Bindings sharing a declarator are one initialization unit. */
 export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
-  const { declarations, declarationSymbols } = declarationIndex(
+  const { declarations, declarationBindings } = declarationIndex(
     module,
     module.rootScope.bindings,
   )
   const dependencies = new Map<Binding, Set<Binding>>()
-  for (const [declaration, owners] of declarationSymbols) {
+  for (const [declaration, owners] of declarationBindings) {
     const references = collectModuleReferences(module, declaration)
     for (const binding of owners) {
       const combined = dependencies.get(binding) ?? new Set<Binding>()
@@ -191,7 +191,7 @@ export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
       dependencies.set(binding, combined)
     }
   }
-  return { declarations, declarationSymbols, dependencies }
+  return { declarations, declarationBindings, dependencies }
 }
 
 export function expandTransitively<T>(
@@ -364,7 +364,7 @@ function collectBindingUses(
   walk(program, {
     enter(node) {
       const original = originOf(node)
-      const own = original ? index.declarationSymbols.get(original) : undefined
+      const own = original ? index.declarationBindings.get(original) : undefined
       const parentOwner = ownerStack.at(-1) ?? null
       // A destructuring element's default value and computed key evaluate for
       // its own bindings; the initializer evaluates for all of them.
@@ -636,7 +636,7 @@ export function removeUnusedBindings(
     const original = node && originalNodes.get(node)
     const owners =
       original &&
-      (index.declarationSymbols.get(original) ??
+      (index.declarationBindings.get(original) ??
         index.patternElements.get(original))
     return !!owners && [...owners].every((binding) => removable.has(binding))
   }
