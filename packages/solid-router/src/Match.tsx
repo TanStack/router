@@ -9,6 +9,7 @@ import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
+import { ClientOnly } from './ClientOnly'
 import {
   nonRouteComponentContext,
   renderInNonRouteComponentContext,
@@ -64,21 +65,21 @@ export const Match = (props: { routeId: string }) => {
         router.options.notFoundRoute?.options.component)
       : routeOptions().notFoundComponent
 
+  const resolvedNoSsr = () =>
+    currentMatch().ssr === false || currentMatch().ssr === 'data-only'
+
+  const shouldSkipSuspenseFallback = () =>
+    (isServer ?? router.isServer)
+      ? resolvedNoSsr()
+      : currentMatch().ssr === 'data-only'
+
   const ShellComponent = route.isRoot
     ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
     : SafeFragment
 
   const MatchContent = () => (
     <Solid.Show
-      when={
-        currentMatch().status !== 'pending' &&
-        // Server no-SSR matches render the pending UI the hydrating client
-        // renders.
-        !(
-          (isServer ?? router.isServer) &&
-          (currentMatch().ssr === false || currentMatch().ssr === 'data-only')
-        )
-      }
+      when={currentMatch().status !== 'pending'}
       fallback={(() => {
         if (process.env.NODE_ENV !== 'production') {
           return renderInNonRouteComponentContext(
@@ -98,6 +99,11 @@ export const Match = (props: { routeId: string }) => {
       <nearestMatchContext.Provider value={nearestMatch}>
         <Solid.Suspense
           fallback={(() => {
+            // Data-only SSR renders the inner fallback on the server, so
+            // avoid adding an extra suspense fallback on the client.
+            if (shouldSkipSuspenseFallback()) {
+              return undefined
+            }
             if (process.env.NODE_ENV !== 'production') {
               return renderInNonRouteComponentContext(
                 () => <Dynamic component={resolvePendingComponent()} />,
@@ -157,7 +163,28 @@ export const Match = (props: { routeId: string }) => {
                 )
               }}
             >
-              <MatchContent />
+              <Solid.Switch>
+                <Solid.Match when={resolvedNoSsr()}>
+                  <ClientOnly
+                    fallback={(() => {
+                      if (process.env.NODE_ENV !== 'production') {
+                        return renderInNonRouteComponentContext(
+                          () => (
+                            <Dynamic component={resolvePendingComponent()} />
+                          ),
+                          'pendingComponent',
+                        )
+                      }
+                      return <Dynamic component={resolvePendingComponent()} />
+                    })()}
+                  >
+                    <MatchContent />
+                  </ClientOnly>
+                </Solid.Match>
+                <Solid.Match when={!resolvedNoSsr()}>
+                  <MatchContent />
+                </Solid.Match>
+              </Solid.Switch>
             </Dynamic>
           </Dynamic>
         </Solid.Suspense>
