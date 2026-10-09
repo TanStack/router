@@ -39,6 +39,29 @@ async function checkNestedData(page: Page) {
     expectedWhisper!,
   )
 }
+
+const temporalTypeNames = [
+  'Instant',
+  'Duration',
+  'PlainDate',
+  'PlainDateTime',
+  'PlainMonthDay',
+  'PlainTime',
+  'PlainYearMonth',
+  'ZonedDateTime',
+] as const
+
+async function checkTemporalData(page: Page, id: string) {
+  for (const name of temporalTypeNames) {
+    const expected = await page
+      .getByTestId(`${id}-${name}-expected`)
+      .textContent()
+    expect(expected).not.toBeNull()
+    expect(expected).toContain(`[object Temporal.${name}]`)
+    await expect(page.getByTestId(`${id}-${name}-actual`)).toHaveText(expected!)
+  }
+}
+
 test.use({
   whitelistErrors: [
     'Failed to load resource: the server responded with a status of 499',
@@ -74,6 +97,13 @@ test.describe('SSR serialization adapters', () => {
 
     await checkNestedData(page)
   })
+
+  test('temporal', async ({ page }) => {
+    await page.goto('/ssr/temporal')
+    await awaitPageLoaded(page)
+
+    await checkTemporalData(page, 'loader')
+  })
 })
 
 test.describe('server functions serialization adapters', () => {
@@ -108,6 +138,18 @@ test.describe('server functions serialization adapters', () => {
 
     await page.getByTestId('server-function-trigger').click()
     await checkNestedData(page)
+  })
+
+  test('temporal', async ({ page }) => {
+    await page.goto('/server-function/temporal')
+    await awaitPageLoaded(page)
+
+    await expect(page.getByTestId('waiting-for-response')).toContainText(
+      'waiting for response...',
+    )
+
+    await page.getByTestId('server-function-trigger').click()
+    await checkTemporalData(page, 'server-fn')
   })
 })
 
