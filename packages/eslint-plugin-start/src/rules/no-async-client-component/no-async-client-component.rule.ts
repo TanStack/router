@@ -31,7 +31,10 @@ const onDemandCache = new WeakMap<
 >()
 
 // Cache adjacency per program to avoid O(allEdges) scans while slicing
-const adjacencyCache = new WeakMap<ts.Program, Map<string, Set<string>>>()
+const adjacencyCache = new WeakMap<
+  ts.Program,
+  Map<string, { children: Set<string>; edgeIndexes: Array<number> }>
+>()
 
 export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
   name,
@@ -308,15 +311,21 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
       for (const r of entryServerRoots) queue.push(r)
 
       const adjacency = getAdjacency(full)
+      const subEdgeIndexes: Array<number> = []
 
       while (queue.length) {
         const key = queue.pop()!
         if (reachable.has(key)) continue
         reachable.add(key)
 
-        const children = adjacency.get(key)
-        if (!children) continue
-        for (const toKey of children) {
+        const outgoing = adjacency.get(key)
+        if (!outgoing) {
+          continue
+        }
+        for (const index of outgoing.edgeIndexes) {
+          subEdgeIndexes.push(index)
+        }
+        for (const toKey of outgoing.children) {
           if (!reachable.has(toKey)) {
             queue.push(toKey)
           }
@@ -329,10 +338,12 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
         if (comp) subComponents.set(key, comp)
       }
 
-      const subEdges = edges.filter((edge) => {
-        const fromKey = `${edge.fromFile}:${edge.fromComponent}`
-        return reachable.has(fromKey) && reachable.has(edge.toComponentKey)
-      })
+      // Every outgoing target is reachable. Keep duplicate JSX edges and restore
+      // their original order for context propagation and diagnostics.
+      const subEdges =
+        subEdgeIndexes.length === edges.length
+          ? edges.slice()
+          : subEdgeIndexes.sort((a, b) => a - b).map((index) => edges[index]!)
 
       const subServerRoots = new Set(
         [...entryServerRoots].filter((k) => reachable.has(k)),
@@ -373,14 +384,16 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
       if (cachedAdjacency) return cachedAdjacency
 
       cachedAdjacency = new Map()
-      for (const edge of full.edges) {
+      for (let index = 0; index < full.edges.length; index++) {
+        const edge = full.edges[index]!
         const fromKey = `${edge.fromFile}:${edge.fromComponent}`
-        let set = cachedAdjacency.get(fromKey)
-        if (!set) {
-          set = new Set()
-          cachedAdjacency.set(fromKey, set)
+        let outgoing = cachedAdjacency.get(fromKey)
+        if (!outgoing) {
+          outgoing = { children: new Set(), edgeIndexes: [] }
+          cachedAdjacency.set(fromKey, outgoing)
         }
-        set.add(edge.toComponentKey)
+        outgoing.children.add(edge.toComponentKey)
+        outgoing.edgeIndexes.push(index)
       }
 
       adjacencyCache.set(program, cachedAdjacency)
