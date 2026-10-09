@@ -141,6 +141,29 @@ function handleResponseError(error: unknown): Response {
   return new Response('Internal Server Error', { status: 500 })
 }
 
+/**
+ * A client that goes away mid-request reaches us as `request.signal.reason`:
+ * the middleware pipeline unwinds with it, and there is no socket left to
+ * answer. h3 reports any rejection it does not recognise as an unhandled error
+ * and logs it, which turns every navigation away into a 500 in the server log.
+ * Settle that one rejection here instead of handing it to h3.
+ */
+function settleAbortedRequest(
+  value: unknown,
+  request: Request,
+): MaybePromise<unknown> {
+  if (!isPromiseLike(value)) {
+    return value
+  }
+
+  return Promise.resolve(value).catch((error) => {
+    if (request.signal.aborted && error === request.signal.reason) {
+      return new Response(null, { status: 500 })
+    }
+    throw error
+  })
+}
+
 export function requestHandler<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
@@ -166,7 +189,10 @@ export function requestHandler<TRegister = unknown>(
     } catch (error) {
       response = handleResponseError(error)
     }
-    return h3_toResponse(finalizeMaybeResponse(response, h3Event), h3Event)
+    return h3_toResponse(
+      finalizeMaybeResponse(settleAbortedRequest(response, request), h3Event),
+      h3Event,
+    )
   }
 }
 
