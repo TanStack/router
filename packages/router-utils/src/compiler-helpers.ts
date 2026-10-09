@@ -95,7 +95,9 @@ function addVariableDeclarationModuleInfo(
     for (const name of collectIdentifiersFromPattern(declarator.id)) {
       bindings.set(name, {
         type: 'var',
-        init: declarator.init ?? null,
+        // Detached: `@babel/traverse` keys its caches on node identity, so
+        // storing the original would pin this file's whole traversal graph.
+        init: declarator.init ? t.cloneNode(declarator.init, true, true) : null,
       })
       exportMap?.set(name, name)
     }
@@ -552,7 +554,9 @@ export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
         const synth = '__default_export__'
         bindings.set(synth, {
           type: 'var',
-          init: t.isExpression(declaration) ? declaration : null,
+          init: t.isExpression(declaration)
+            ? t.cloneNode(declaration, true, true)
+            : null,
         })
         exportMap.set('default', synth)
       }
