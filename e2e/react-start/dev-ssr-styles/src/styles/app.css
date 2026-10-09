@@ -4,3 +4,11 @@ body {
   padding: 20px;
   background-color: #f0f4f8;
 }
+
+@layer utilities {
+  .inline-css-layout {
+    margin: 12px;
+    padding: 24px;
+    border: 3px solid black;
+  }
+}

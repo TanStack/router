@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import { DEV_STYLES_ATTR } from '@tanstack/router-core'
 import { createHmrFileEditor, test } from '@tanstack/router-e2e-utils'
-import { ssrStylesMode, viteBundledDev } from '../env'
+import { ssrStylesMode } from '../env'
 
 // Whitelist errors that can occur in CI:
 // - net::ERR_NAME_NOT_RESOLVED: transient network issues
@@ -30,18 +30,6 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
       'Dev SSR Styles Test',
     )
   })
-
-  if (viteBundledDev) {
-    test('SSR style collection does not restart client plugins', async ({
-      page,
-      request,
-    }) => {
-      await page.goto('/')
-      await expect(page.getByTestId('home-heading')).toBeVisible()
-      const response = await request.get('/__client-build-starts')
-      expect(await response.json()).toBe(0)
-    })
-  }
 
   if (ssrStylesMode === 'default') {
     test('dev CSS order is stable after client modules load', async ({

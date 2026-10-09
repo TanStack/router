@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CssImportOrderRouteImport } from './routes/css-import-order'
+import { Route as InlineCssRouteImport } from './routes/inline-css'
 import { Route as ModuleStateRouteImport } from './routes/module-state'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const CssImportOrderRoute = CssImportOrderRouteImport.update({
   path: '/css-import-order',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InlineCssRoute = InlineCssRouteImport.update({
+  id: '/inline-css',
+  path: '/inline-css',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ModuleStateRoute = ModuleStateRouteImport.update({
   id: '/module-state',
   path: '/module-state',
@@ -32,30 +38,34 @@ const ModuleStateRoute = ModuleStateRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/css-import-order': typeof CssImportOrderRoute
+  '/inline-css': typeof InlineCssRoute
   '/module-state': typeof ModuleStateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/css-import-order': typeof CssImportOrderRoute
+  '/inline-css': typeof InlineCssRoute
   '/module-state': typeof ModuleStateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/css-import-order': typeof CssImportOrderRoute
+  '/inline-css': typeof InlineCssRoute
   '/module-state': typeof ModuleStateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/css-import-order' | '/module-state'
+  fullPaths: '/' | '/css-import-order' | '/inline-css' | '/module-state'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/css-import-order' | '/module-state'
-  id: '__root__' | '/' | '/css-import-order' | '/module-state'
+  to: '/' | '/css-import-order' | '/inline-css' | '/module-state'
+  id: '__root__' | '/' | '/css-import-order' | '/inline-css' | '/module-state'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CssImportOrderRoute: typeof CssImportOrderRoute
+  InlineCssRoute: typeof InlineCssRoute
   ModuleStateRoute: typeof ModuleStateRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CssImportOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/inline-css': {
+      id: '/inline-css'
+      path: '/inline-css'
+      fullPath: '/inline-css'
+      preLoaderRoute: typeof InlineCssRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/module-state': {
       id: '/module-state'
       path: '/module-state'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CssImportOrderRoute: CssImportOrderRoute,
+  InlineCssRoute: InlineCssRoute,
   ModuleStateRoute: ModuleStateRoute,
 }
 export const routeTree = rootRouteImport
