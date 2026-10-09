@@ -102,7 +102,9 @@ const Script = Vue.defineComponent({
           const typeAttr =
             typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
           const nonceAttr =
-            typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
+            typeof attrs?.nonce === 'string'
+              ? attrs.nonce || undefined
+              : undefined
           const existingScript = Array.from(
             document.querySelectorAll('script:not([src])'),
           ).find((el) => {
