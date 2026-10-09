@@ -573,6 +573,52 @@ test('a navigation in async beforeLoad adopts a pending flight released by a red
   expect(signals[0]?.aborted).toBe(false)
 })
 
+test('leaving before loader planning releases the same-ID work a navigation reserved', async () => {
+  const beforeLoadStarted = createControlledPromise<void>()
+  const beforeLoadGate = createControlledPromise<void>()
+  const signals: Array<AbortSignal> = []
+  const rootRoute = new BaseRootRoute({})
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      phase: String(search.phase ?? ''),
+    }),
+    beforeLoad: async ({ search }) => {
+      if (search.phase === 'second') {
+        beforeLoadStarted.resolve()
+        await beforeLoadGate
+      }
+    },
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return createControlledPromise<string>()
+    },
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([pageRoute, otherRoute]),
+    history: createMemoryHistory({ initialEntries: ['/other'] }),
+  })
+  await router.load()
+
+  router.navigate({ to: '/page', search: { phase: 'first' } })
+  await vi.waitFor(() => expect(signals).toHaveLength(1))
+  router.navigate({ to: '/page', search: { phase: 'second' } })
+  await beforeLoadStarted
+  expect(signals[0]?.aborted).toBe(false)
+
+  await router.navigate({ to: '/other' })
+  beforeLoadGate.resolve()
+
+  expect(router.state.location.pathname).toBe('/other')
+  expect(signals[0]?.aborted).toBe(true)
+  expect(signals).toHaveLength(1)
+})
+
 test('an ancestor beforeLoad failure releases an unconsumed background loader', async () => {
   const backgroundResult = createControlledPromise<number>()
   const signals: Array<AbortSignal> = []
