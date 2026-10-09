@@ -3,41 +3,44 @@ id: isr
 title: Incremental Static Regeneration (ISR)
 ---
 
-Incremental Static Regeneration (ISR) allows you to serve statically generated content from a CDN while periodically regenerating it in the background. This gives you the performance benefits of static sites with the freshness of dynamic content.
+TanStack Start supports build-time prerendering and dynamic server rendering. It does **not** install an incremental regeneration service when you set cache headers. The deployment's static asset server or response cache determines what happens on the next request.
 
-## How ISR Works in TanStack Start
+Choose a freshness policy for each page:
 
-TanStack Start's approach to ISR is flexible and leverages standard HTTP cache headers that work with any CDN. Unlike framework-specific ISR implementations, this approach gives you full control over caching behavior at both the page and data level.
+| Page                    | How it is served                                 | How new content becomes visible                                                        |
+| ----------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Public, build-time HTML | A generated file from the host's static assets   | Rebuild and deploy the file; account for the host's asset cache                        |
+| Public, dynamic SSR     | A host-specific response cache in front of Start | A cache miss runs SSR again; the example below uses expiry, without background refresh |
+| Personalized HTML       | Start handles each request with authentication   | Read request-scoped data and send `Cache-Control: private, no-store`                   |
 
-The core concept is simple:
+A cache hit can avoid SSR and loader work. The benefit depends on cache hit rate and how much of your application is public; this guide makes no field-performance or Core Web Vitals improvement claim.
 
-1. **Static Prerendering**: Pages are generated at build time
-2. **CDN Caching**: Cache headers control how long CDNs cache the HTML
-3. **Revalidation**: After the cache expires, the next request triggers regeneration
-4. **Stale-While-Revalidate**: Serve stale content while fetching fresh data in the background
+## Public build-time HTML
 
-## Cache Header Strategies
+Use top-level `pages` with concrete paths. `prerender.routes` is not a supported option, and a wildcard such as `/posts/*` does not enumerate posts. List their URLs, or deliberately enable discovery/crawling as described in [Static Prerendering](./static-prerendering.md).
 
-### Time-Based Revalidation
-
-The most common ISR pattern uses the `Cache-Control` header with `max-age` and `s-maxage` directives:
+This explicit allowlist generates only `/static`:
 
 <!-- ::start:tabs variant="bundler" -->
 
 # Vite
 
 ```ts title="vite.config.ts"
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [
     tanstackStart({
+      pages: [{ path: '/static' }],
       prerender: {
-        routes: ['/blog', '/blog/posts/*'],
-        crawlLinks: true,
+        enabled: true,
+        autoStaticPathsDiscovery: false,
+        crawlLinks: false,
       },
     }),
+    viteReact(),
   ],
 })
 ```
@@ -53,9 +56,11 @@ export default defineConfig({
   plugins: [
     pluginReact(),
     tanstackStart({
+      pages: [{ path: '/static' }],
       prerender: {
-        routes: ['/blog', '/blog/posts/*'],
-        crawlLinks: true,
+        enabled: true,
+        autoStaticPathsDiscovery: false,
+        crawlLinks: false,
       },
     }),
   ],
@@ -64,433 +69,171 @@ export default defineConfig({
 
 <!-- ::end:tabs -->
 
+Keep your host's adapter configuration alongside these plugins. With the default client output directory and subfolder index behavior, `/static` produces `dist/client/static/index.html`. Deploy the client output as static assets and configure the host to serve matching files before invoking SSR. On Cloudflare, retain the Cloudflare Vite plugin and [static-assets-first routing](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/); `run_worker_first` changes that routing. Cloudflare's [HTML handling](https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/) can redirect `/static` to `/static/`.
+
+Prerendering writes the response body to a file. It does not turn the route's response headers into static-host configuration or a regeneration schedule. Set static asset headers through your host. Expiry, a purge, or a request with `Cache-Control: no-cache` can fetch the same old file again. To publish updated content, rebuild and deploy it, then follow the host's asset invalidation policy. If you need request-time refresh, leave that URL out of prerendering and send it to dynamic SSR instead.
+
+Never prerender a page containing account data, session-derived data, or secrets. Static asset delivery may bypass all request-time authorization, including `beforeLoad`.
+
+## Public dynamic SSR on Cloudflare Workers
+
+Cloudflare's default CDN behavior [does not cache HTML automatically](https://developers.cloudflare.com/cache/concepts/default-cache-behavior/). Setting `Cache-Control` on a Worker response alone is not the cache integration shown here. The [Workers Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/) requires explicit `match` and `put` calls and does not implement `stale-while-revalidate` or `stale-if-error` from those directives.
+
+The following example uses the Cache API for one reviewed public document, `/`. Do not prerender `/`: a static file could intercept the request before this handler. Start with the [Cloudflare hosting setup](./hosting.md), set Wrangler's `main` to `src/server.ts`, and generate your Worker types with `wrangler types` as in Cloudflare's [custom entrypoint instructions](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/#custom-entrypoints).
+
+Opt in only the public route to this exact five-second policy:
+
 ```tsx
-// routes/blog/posts/$postId.tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/blog/posts/$postId')({
-  loader: async ({ params }) => {
-    const post = await fetchPost(params.postId)
-    return { post }
-  },
+export const Route = createFileRoute('/')({
   headers: () => ({
-    // Cache at CDN for 1 hour, allow stale content for up to 1 day
-    'Cache-Control':
-      'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+    'Cache-Control': 'public, max-age=0, s-maxage=5',
   }),
+  // Add your public loader and component here.
 })
+```
 
-export default function BlogPost() {
-  const { post } = Route.useLoaderData()
-  return (
-    <article>
-      <h1>{post.title}</h1>
-      <div>{post.content}</div>
-    </article>
-  )
+Use the following server entry. Its request allowlist and response checks are both required. Other routes, server functions, credentials, non-GET methods, conditional/range requests and explicit cache bypass requests go through Start. Query strings and `Accept-Language` get distinct keys. Routes must not vary on other unkeyed inputs such as geography, experiments or custom headers; keep those routes out of the allowlist or design and test their cache keys first.
+
+```ts title="src/server.ts"
+import handler from '@tanstack/react-start/server-entry'
+import { waitUntil } from 'cloudflare:workers'
+
+// Five seconds makes this example's expiry easy to observe locally.
+const publicCacheControl = 'public, max-age=0, s-maxage=5'
+
+export default {
+  async fetch(request: Request) {
+    const url = new URL(request.url)
+    // Only this explicitly reviewed public document can use the shared cache.
+    const eligible =
+      process.env.NODE_ENV === 'production' &&
+      request.method === 'GET' &&
+      url.pathname === '/' &&
+      request.headers.get('accept')?.includes('text/html') &&
+      ![
+        'cookie',
+        'authorization',
+        'range',
+        'if-match',
+        'if-none-match',
+        'if-range',
+        'if-unmodified-since',
+        'if-modified-since',
+        'cache-control',
+        'pragma',
+        'origin',
+      ].some((name) => request.headers.has(name))
+
+    if (!eligible) {
+      return downstream(await handler.fetch(request), 'BYPASS')
+    }
+
+    // Keep the entire search string, and partition header-based locale variants.
+    // Use a separate namespace so these keys cannot collide with static assets.
+    const cache = await caches.open('public-html-v1')
+    const keyUrl = new URL(request.url)
+    keyUrl.search += `${keyUrl.search ? '&' : '?'}__html_language=${encodeURIComponent(request.headers.get('accept-language') ?? '')}`
+    const key = new Request(keyUrl)
+    const cached = await cache.match(key)
+    if (cached) {
+      return downstream(cached, 'HIT')
+    }
+
+    const response = await handler.fetch(request)
+    const varies = (response.headers.get('vary') ?? '')
+      .toLowerCase()
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+    if (
+      response.status !== 200 ||
+      !response.headers.get('content-type')?.startsWith('text/html') ||
+      response.headers.has('set-cookie') ||
+      response.headers.has('content-encoding') ||
+      response.headers.get('cache-control') !== publicCacheControl ||
+      varies.some(
+        (name) => name !== 'accept-encoding' && name !== 'accept-language',
+      )
+    ) {
+      return downstream(response, 'BYPASS')
+    }
+
+    // The cache consumes its own stream while the original streams to the client.
+    waitUntil(
+      cache.put(key, response.clone()).catch((error) => {
+        console.error('Could not cache public HTML', error)
+      }),
+    )
+    return downstream(response, 'MISS')
+  },
+}
+
+function downstream(response: Response, status: string) {
+  const result = new Response(response.body, response)
+  // Only the explicit Worker cache owns freshness; browsers must contact it.
+  result.headers.set('Cache-Control', 'private, no-store')
+  result.headers.set('X-HTML-Cache', status)
+  return result
 }
 ```
 
-### Understanding Cache-Control Directives
+Caching is disabled during development so HMR does not reuse old HTML. The example stores only uncompressed SSR responses; let the host handle delivery compression.
 
-- **`public`**: Response can be cached by any cache (CDN, browser, etc.)
-- **`max-age=3600`**: Content is fresh for 3600 seconds (1 hour)
-- **`s-maxage=3600`**: Overrides max-age for shared caches (CDNs)
-- **`stale-while-revalidate=86400`**: Serve stale content while revalidating in background for up to 24 hours
-- **`immutable`**: Content never changes (use for hash-based assets)
+The stored response uses `s-maxage=5`. The browser-facing response uses `private, no-store`, so only this explicit Worker cache owns freshness. A hit skips Start entirely, including `beforeLoad` and loaders. Consequently, authorization-dependent routes must never enter this public allowlist. The `Set-Cookie`, status, content type, exact policy and `Vary` checks prevent writes of ineligible responses; they cannot make an incorrectly classified public route safe.
 
-## ISR with Server Functions
+After five seconds, `cache.match` misses and that request waits for fresh SSR. There is no timer, scheduled rebuild, stale response fallback, background revalidation or request coalescing here. Concurrent misses can render more than once. A cache write is asynchronous, so a request made before it finishes can also miss. Entries can be evicted before their TTL. Increase the TTL only to match your application's acceptable staleness, updating both the route and server policy.
 
-Server functions can also set cache headers for dynamic data endpoints:
+The handler passes the original response stream to the client and gives a clone to `cache.put` under `waitUntil`. It does not call `.text()` to buffer HTML. Limit this policy to finite public documents; long-lived or very large streams require a separate design because cloning streams can accumulate queued data and background work has host limits.
+
+Cache API entries are local to a Cloudflare data center, without Tiered Cache replication. Local preview verifies the Worker logic, not global hit rates, eviction or purge propagation. A deployment does not by itself establish a purge policy for this application cache: change the cache namespace when a release needs to stop reading old entries. For immediate content invalidation, use Cloudflare's documented [Cache API purge mechanisms](https://developers.cloudflare.com/workers/runtime-apis/cache/#delete); a local `cache.delete` is not a global purge. Never report that content has been regenerated merely because a purge request was accepted.
+
+For other hosts, use their documented dynamic-response cache integration and adapter requirements. Do not assume this Worker entry, a static `_headers` file, or the same headers will create an SSR cache on every platform. Verify the deployed behavior before describing it as ISR or stale-while-revalidate.
+
+## Personalized HTML
+
+Keep private routes out of prerendering and the public cache allowlist. Authenticate each request and keep user data on that request's context or router. For example, apply the following policy to a dashboard whose existing loader authenticates and reads the current user's data:
 
 ```tsx
-// routes/api/products/$productId.ts
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/api/products/$productId')({
-  server: {
-    handlers: {
-      GET: async ({ params, request }) => {
-        const product = await db.products.findById(params.productId)
-
-        return Response.json(
-          { product },
-          {
-            headers: {
-              'Cache-Control':
-                'public, max-age=300, stale-while-revalidate=600',
-              'CDN-Cache-Control': 'max-age=3600', // Cloudflare-specific
-            },
-          },
-        )
-      },
-    },
-  },
-})
-```
-
-### Using Middleware for Cache Headers
-
-For API routes, you can use middleware to set cache headers:
-
-```tsx
-// routes/api/products/$productId.ts
-import { createFileRoute } from '@tanstack/react-router'
-import { createMiddleware } from '@tanstack/react-start'
-
-const cacheMiddleware = createMiddleware().server(async ({ next }) => {
-  const result = await next()
-
-  // Add cache headers to the response
-  result.response.headers.set(
-    'Cache-Control',
-    'public, max-age=3600, stale-while-revalidate=86400',
-  )
-
-  return result
-})
-
-export const Route = createFileRoute('/api/products/$productId')({
-  server: {
-    middleware: [cacheMiddleware],
-    handlers: {
-      GET: async ({ params }) => {
-        const product = await db.products.findById(params.productId)
-        return Response.json({ product })
-      },
-    },
-  },
-})
-```
-
-For page routes, it's simpler to use the `headers` property directly:
-
-```tsx
-// routes/blog/posts/$postId.tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/blog/posts/$postId')({
-  loader: async ({ params }) => {
-    const post = await fetchPost(params.postId)
-    return { post }
-  },
-  headers: () => ({
-    'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
-  }),
-})
-```
-
-## On-Demand Revalidation
-
-While time-based revalidation works well for most cases, you may need to invalidate specific pages immediately (e.g., when content is updated):
-
-```tsx
-// routes/api/revalidate.ts
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/api/revalidate')({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
-        const { path, secret } = await request.json()
-
-        // Verify secret token
-        if (secret !== process.env.REVALIDATE_SECRET) {
-          return Response.json({ error: 'Invalid token' }, { status: 401 })
-        }
-
-        // Trigger CDN purge via your CDN's API
-        await fetch(
-          `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${CF_API_TOKEN}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              files: [`https://yoursite.com${path}`],
-            }),
-          },
-        )
-
-        return Response.json({ revalidated: true })
-      },
-    },
-  },
-})
-```
-
-## CDN-Specific Configuration
-
-### Cloudflare Workers
-
-Cloudflare respects standard `Cache-Control` headers and provides additional control:
-
-```tsx
-export const Route = createFileRoute('/products/$id')({
-  headers: () => ({
-    'Cache-Control': 'public, max-age=3600',
-    // Cloudflare-specific header for finer control
-    'CDN-Cache-Control': 'max-age=7200',
-  }),
-})
-```
-
-### Netlify
-
-Netlify uses `Cache-Control` headers and also supports `_headers` files:
-
-```plaintext
-# public/_headers
-/blog/*
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-
-/api/*
-  Cache-Control: public, max-age=300
-```
-
-### Vercel
-
-When deploying to Vercel, use their Edge Network cache headers:
-
-```tsx
-export const Route = createFileRoute('/posts/$id')({
-  headers: () => ({
-    'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-  }),
-})
-```
-
-## Combining ISR with Client-Side Caching
-
-TanStack Router's built-in cache control works alongside CDN caching:
-
-```tsx
-export const Route = createFileRoute('/posts/$postId')({
-  loader: async ({ params }) => {
-    return fetchPost(params.postId)
-  },
-  // CDN caching (via headers)
-  headers: () => ({
-    'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
-  }),
-  // Client-side caching (via TanStack Router)
-  staleTime: 60_000, // Consider data fresh for 60 seconds on client
-  gcTime: 5 * 60_000, // Keep in memory for 5 minutes
-})
-```
-
-This creates a multi-tier caching strategy:
-
-1. **CDN Edge**: 1 hour cache, stale-while-revalidate for 24 hours
-2. **Client**: 60 seconds of fresh data, 5 minutes in memory
-
-## Common ISR Patterns
-
-### Blog Posts
-
-```tsx
-export const Route = createFileRoute('/blog/$slug')({
-  loader: async ({ params }) => fetchPost(params.slug),
-  headers: () => ({
-    // Cache for 1 hour, allow stale for 7 days
-    'Cache-Control': 'public, max-age=3600, stale-while-revalidate=604800',
-  }),
-  staleTime: 5 * 60_000, // 5 minutes client-side
-})
-```
-
-### E-commerce Product Pages
-
-```tsx
-export const Route = createFileRoute('/products/$id')({
-  loader: async ({ params }) => fetchProduct(params.id),
-  headers: () => ({
-    // Shorter cache due to inventory changes
-    'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
-  }),
-  staleTime: 30_000, // 30 seconds client-side
-})
-```
-
-### Marketing Landing Pages
-
-```tsx
-export const Route = createFileRoute('/landing/$campaign')({
-  loader: async ({ params }) => fetchCampaign(params.campaign),
-  headers: () => ({
-    // Long cache for stable content
-    'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
-  }),
-  staleTime: 60 * 60_000, // 1 hour client-side
-})
-```
-
-### User-Specific Pages
-
-```tsx
 export const Route = createFileRoute('/dashboard')({
-  loader: async () => fetchUserData(),
   headers: () => ({
-    // Private cache, no CDN caching
-    'Cache-Control': 'private, max-age=60',
+    'Cache-Control': 'private, no-store',
   }),
-  staleTime: 30_000,
+  // Keep your authentication and request-scoped loader here.
 })
 ```
 
-## Best Practices
+Preserve `Set-Cookie`; do not strip it to force a cache hit. Check cookies and authorization **before** cache lookup, including on otherwise public URLs. Do not use `Vary: Cookie` as a substitute for excluding personalized HTML from a shared cache. Also check that your host's cache rules cannot override private responses.
 
-### 1. Start Conservative
+## Verify the behavior
 
-Begin with shorter cache times and increase as you understand your content update patterns:
+The [Cloudflare integration fixture](https://github.com/TanStack/router/tree/main/e2e/react-start/basic-cloudflare) runs this server entry with a five-second TTL, a public content source, and two test sessions. Its control endpoint is test-only and must never be deployed. From a repository checkout, after installing the prescribed Node/pnpm versions and root dependencies, run:
 
-```tsx
-// Start here
-'Cache-Control': 'public, max-age=300, stale-while-revalidate=600'
-
-// Then move to
-'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400'
+```sh
+CI=1 NX_DAEMON=false pnpm nx run tanstack-react-start-e2e-basic-cloudflare:test:e2e --outputStyle=stream --skipRemoteCache
 ```
 
-### 2. Use ETags for Validation
+This builds the app and runs it through Cloudflare's local production preview. The checks cover generated HTML and static serving, loader bypass on hits, changed content after expiry, separate query/locale entries, private users, responses that must not be stored, and streaming with deferred data, including a disconnected client.
 
-ETags help CDNs efficiently revalidate content:
+For your own public route, inspect **GET** responses, since this example intentionally bypasses HEAD:
 
-```tsx
-import { createMiddleware } from '@tanstack/react-start'
-import crypto from 'crypto'
-
-const etagMiddleware = createMiddleware().server(async ({ next }) => {
-  const result = await next()
-
-  // Generate ETag from response content
-  const etag = crypto
-    .createHash('md5')
-    .update(JSON.stringify(result.data))
-    .digest('hex')
-
-  result.response.headers.set('ETag', `"${etag}"`)
-
-  return result
-})
+```sh
+curl -sS -D - -H 'Accept: text/html' http://localhost:3000/ -o /tmp/page.html
 ```
 
-### 3. Vary Cache by Query Parameters
+Repeat after the initial cache write finishes: `X-HTML-Cache` should change from `MISS` to `HIT`, and server-side loader instrumentation should not advance. Update the backing content without rebuilding; a hit should still return the cached content. After the TTL, another GET should run the loader and return the new content. Repeat with cookies, authorization, different query strings and locales, and two authenticated users. Verify actual bodies as well as headers; a header saying `HIT` alone is not proof of isolation or correct freshness.
 
-When content varies by query params, include them in cache keys:
+For prerendered routes, check the generated file and request the static URL. Changing the backing content or expiring a CDN entry must not be mistaken for a rebuild. Rebuild and deploy, then verify the new file's content at the public URL.
 
-```tsx
-export const Route = createFileRoute('/search')({
-  headers: () => ({
-    'Cache-Control': 'public, max-age=300',
-    Vary: 'Accept, Accept-Encoding',
-  }),
-})
-```
+TanStack Router's `staleTime`, `gcTime` and invalidation affect its client data cache. They do not purge a CDN or regenerate HTML. Document-cache tests should use full document requests; client navigation and server-function requests have separate data freshness policies.
 
-### 4. Monitor Cache Hit Rates
+## Related resources
 
-Track CDN performance to optimize cache times:
-
-```tsx
-const cacheMonitoringMiddleware = createMiddleware().server(
-  async ({ next }) => {
-    const result = await next()
-
-    // Log cache status (from CDN headers)
-    console.log('Cache Status:', result.response.headers.get('cf-cache-status'))
-
-    return result
-  },
-)
-```
-
-### 5. Combine with Static Prerendering
-
-Prerender at build time for instant first load, then use ISR for updates:
-
-<!-- ::start:tabs variant="bundler" -->
-
-# Vite
-
-```ts title="vite.config.ts"
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import { defineConfig } from 'vite'
-
-export default defineConfig({
-  plugins: [
-    tanstackStart({
-      prerender: {
-        routes: ['/blog', '/blog/posts/*'],
-        crawlLinks: true,
-      },
-    }),
-  ],
-})
-```
-
-# Rsbuild
-
-```ts title="rsbuild.config.ts"
-import { defineConfig } from '@rsbuild/core'
-import { pluginReact } from '@rsbuild/plugin-react'
-import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
-
-export default defineConfig({
-  plugins: [
-    pluginReact(),
-    tanstackStart({
-      prerender: {
-        routes: ['/blog', '/blog/posts/*'],
-        crawlLinks: true,
-      },
-    }),
-  ],
-})
-```
-
-<!-- ::end:tabs -->
-
-## Debugging ISR
-
-### Check Cache Headers
-
-Use browser DevTools or curl to inspect cache headers:
-
-```bash
-curl -I https://yoursite.com/blog/my-post
-
-# Look for:
-# Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-# Age: 1234 (time in cache)
-# X-Cache: HIT (from CDN)
-```
-
-### Test Revalidation
-
-Force cache misses to test regeneration:
-
-```bash
-# Cloudflare: Bypass cache
-curl -H "Cache-Control: no-cache" https://yoursite.com/page
-
-# Or use CDN-specific cache purge APIs
-```
-
-### Monitor Performance
-
-Track key metrics:
-
-- **Cache Hit Rate**: Percentage of requests served from cache
-- **Revalidation Time**: Time to regenerate stale content
-- **Time to First Byte (TTFB)**: Should be low for cached content
-
-## Related Resources
-
-- [Static Prerendering](./static-prerendering.md) - Build-time page generation
-- [Hosting](./hosting.md) - CDN deployment configurations
-- [Server Functions](./server-functions.md) - Creating dynamic data endpoints
-- [Data Loading](/router/latest/docs/guide/data-loading) - Client-side cache control
-- [Middleware](./middleware.md) - Request/response customization
+- [Static Prerendering](./static-prerendering.md)
+- [Hosting](./hosting.md)
+- [Server Entry Point](./server-entry-point.md)
+- [Production Checklist](./production-checklist.md)
+- [Data Loading](/router/latest/docs/guide/data-loading)
