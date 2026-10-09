@@ -3,7 +3,7 @@
  * Crawls the Vite module graph to collect CSS from the router entry and all its dependencies.
  */
 import path from 'node:path'
-import type { DevEnvironment, EnvironmentModuleNode } from 'vite'
+import type { DevEnvironment, EnvironmentModuleNode, Rollup } from 'vite'
 
 // CSS file extensions supported by Vite
 const CSS_FILE_REGEX =
@@ -25,7 +25,9 @@ function isCssFile(file: string): boolean {
 
 function hasCssSideEffectFreeParam(url: string): boolean {
   const queryString = url.split('?')[1]
-  if (!queryString) return false
+  if (!queryString) {
+    return false
+  }
 
   const params = new URLSearchParams(queryString)
   return CSS_SIDE_EFFECT_FREE_PARAMS.some(
@@ -85,19 +87,10 @@ export async function collectDevStyles(
     orderedCssNodes.map((node) => loadCssContents(node.url)),
   )
 
-  const parts: Array<string> = []
-  for (let i = 0; i < cssResults.length; i++) {
-    const css = cssResults[i]
-    if (!css) {
-      continue
-    }
-    const escapedFileName = orderedCssNodes[i]!.url.replace(
-      ESCAPE_CSS_COMMENT_START_REGEX,
-      '/\\*',
-    ).replace(ESCAPE_CSS_COMMENT_END_REGEX, '*\\/')
-    parts.push(`\n/* ${escapedFileName} */\n${css}`)
-  }
-  return parts.length > 0 ? parts.join('\n') : undefined
+  return formatCss(
+    orderedCssNodes.map((node) => node.url),
+    cssResults,
+  )
 }
 
 /**
@@ -148,8 +141,20 @@ async function collectCssNodes(
     entryNodes.map((node) => (node ? discover(node) : Promise.resolve())),
   )
 
-  const orderedCssNodes: Array<EnvironmentModuleNode> = []
-  const ordered = new Set<EnvironmentModuleNode>()
+  return orderCssNodes(
+    entryNodes,
+    (node) => node.url,
+    (node) => dependencies.get(node) ?? [],
+  )
+}
+
+function orderCssNodes<T>(
+  entryNodes: Array<T | undefined>,
+  getUrl: (node: T) => string,
+  getDependencies: (node: T) => ReadonlyArray<T>,
+): Array<T> {
+  const orderedCssNodes: Array<T> = []
+  const ordered = new Set<T>()
   const stack = [...entryNodes].reverse()
 
   while (stack.length > 0) {
@@ -158,11 +163,12 @@ async function collectCssNodes(
       continue
     }
     ordered.add(node)
-    if (isCssFile(node.url) && !hasCssSideEffectFreeParam(node.url)) {
+    const url = getUrl(node)
+    if (isCssFile(url) && !hasCssSideEffectFreeParam(url)) {
       orderedCssNodes.push(node)
     }
 
-    const nodeDependencies = dependencies.get(node) ?? []
+    const nodeDependencies = getDependencies(node)
     for (let i = nodeDependencies.length - 1; i >= 0; i--) {
       stack.push(nodeDependencies[i])
     }
@@ -293,12 +299,16 @@ function extractCssFromTransform(transformResult: {
  */
 export function extractCssFromCode(code: string): string | undefined {
   const startIdx = code.indexOf(VITE_CSS_MARKER)
-  if (startIdx === -1) return undefined
+  if (startIdx === -1) {
+    return undefined
+  }
 
   const valueStart = startIdx + VITE_CSS_MARKER.length
   // Vite emits `const __vite__css = ${JSON.stringify(cssContent)}` which always
   // produces double-quoted JSON string literals.
-  if (code.charCodeAt(valueStart) !== 34) return undefined
+  if (code.charCodeAt(valueStart) !== 34) {
+    return undefined
+  }
 
   const codeLength = code.length
   let i = valueStart + 1
@@ -321,4 +331,72 @@ export function extractCssFromCode(code: string): string | undefined {
   }
 
   return undefined
+}
+
+/** Join available styles in graph order, labeling each with its source URL. */
+function formatCss(
+  urls: ReadonlyArray<string>,
+  cssResults: ReadonlyArray<string | undefined>,
+): string | undefined {
+  const parts: Array<string> = []
+  for (let i = 0; i < cssResults.length; i++) {
+    const css = cssResults[i]
+    if (!css) {
+      continue
+    }
+    const escapedFileName = urls[i]!.replace(
+      ESCAPE_CSS_COMMENT_START_REGEX,
+      '/\\*',
+    ).replace(ESCAPE_CSS_COMMENT_END_REGEX, '*\\/')
+    parts.push(`\n/* ${escapedFileName} */\n${css}`)
+  }
+  return parts.length > 0 ? parts.join('\n') : undefined
+}
+
+/** Snapshot the completed bundle without retaining its plugin context or JS. */
+export function captureBundledDevStyles(
+  graph: Pick<Rollup.PluginContext, 'getModuleIds' | 'getModuleInfo'>,
+  rootDirectory: string,
+) {
+  const css = new Map<string, string>()
+  const dependencies = new Map<string, ReadonlyArray<string>>()
+  for (const id of graph.getModuleIds()) {
+    const info = graph.getModuleInfo(id)
+    if (!info) {
+      continue
+    }
+    // CSS transforms already contain their @imports.
+    if (isCssFile(id)) {
+      if (!hasCssSideEffectFreeParam(id) && info.code) {
+        const contents = extractCssFromCode(info.code)
+        if (contents) {
+          css.set(id, contents)
+        }
+      }
+    } else {
+      dependencies.set(id, [
+        ...info.importedIds,
+        ...info.dynamicallyImportedIds,
+      ])
+    }
+  }
+  return { rootDirectory, css, dependencies }
+}
+
+export function collectBundledDevStyles(
+  snapshot: ReturnType<typeof captureBundledDevStyles> | undefined,
+  entries: Array<string>,
+): string | undefined {
+  if (!snapshot) {
+    return undefined
+  }
+  const nodes = orderCssNodes(
+    entries.map((entry) => entry.replace(/\\/g, '/')),
+    (id) => id,
+    (id) => snapshot.dependencies.get(id) ?? [],
+  )
+  return formatCss(
+    nodes.map((id) => resolveDevUrl(snapshot.rootDirectory, id)),
+    nodes.map((id) => snapshot.css.get(id)),
+  )
 }

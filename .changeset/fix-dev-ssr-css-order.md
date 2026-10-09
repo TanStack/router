@@ -2,4 +2,4 @@
 '@tanstack/start-plugin-core': patch
 ---
 
-Fix dev SSR style collection to preserve CSS order without duplicating imported styles, while retaining styles from code-split routes.
+Fix dev SSR style collection to preserve CSS order without duplicating imported styles, while retaining styles from code-split routes. In bundled development, collect styles from a complete client bundle and load compiler dependencies through the bundler to avoid restarting client plugins. Preserve client hydration and reload SSR modules on file changes instead of clearing them on every request.

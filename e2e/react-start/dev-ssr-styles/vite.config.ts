@@ -10,6 +10,10 @@ function observeClientBuildStarts(): Plugin {
   let completedBundles = 0
   return {
     name: 'observe-client-build-starts',
+    config() {
+      // Enable bundled dev after Start's config hook to cover plugin ordering.
+      return { experimental: { bundledDev: viteBundledDev } }
+    },
     buildStart() {
       if (this.environment === clientEnvironment) {
         buildStarts++
@@ -51,7 +55,6 @@ export default defineConfig(async () => {
 
   return {
     resolve: { tsconfigPaths: true },
-    experimental: viteBundledDev ? { bundledDev: true } : undefined,
     server: {
       port: 3000,
     },
