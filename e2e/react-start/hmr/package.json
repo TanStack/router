@@ -64,7 +64,8 @@
           "mode": "ssr",
           "name": "bundled-dev",
           "env": {
-            "E2E_VITE_BUNDLED_DEV": "true"
+            "E2E_VITE_BUNDLED_DEV": "true",
+            "DEBUG": "vite:full-bundle-mode"
           }
         },
         {
