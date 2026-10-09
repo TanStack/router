@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { waitFor } from '@testing-library/vue'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import {
   Body,
@@ -11,11 +11,26 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  notFound,
 } from '../src'
 import { createRequestHandler, renderRouterToString } from '../src/ssr/server'
 import type { AnyRouter } from '@tanstack/router-core'
 
-function createRouteTree() {
+type NoSsr = 'data-only' | false
+
+type HydrationCase = {
+  name: string
+  ssr: NoSsr
+  path: string
+  dashboardLoader?: 'error' | 'notFound'
+  /** Server status of each match; `+g` marks the URL not-found flag. */
+  payload: Array<string>
+  /** Visible once the client load commits. */
+  result: string
+}
+
+/** The same application module, evaluated on the server or in the browser. */
+function createRouteTree(entry: HydrationCase) {
   // No `<head>` children: once mounted, `<Html>` teleports them and wraps its
   // body in a new Fragment, which remounts the whole hydrated subtree
   // independently of this issue.
@@ -32,18 +47,48 @@ function createRouteTree() {
   const dashboardRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/dashboard',
-    ssr: 'data-only',
-    loader: () => 'dashboard data',
+    ssr: entry.ssr,
+    validateSearch: (search: Record<string, unknown>) => {
+      if ('invalid' in search) {
+        throw new Error('invalid search')
+      }
+      return {}
+    },
+    loader: () => {
+      if (entry.dashboardLoader === 'error') {
+        throw new Error('dashboard failed')
+      }
+      if (entry.dashboardLoader === 'notFound') {
+        throw notFound()
+      }
+      return 'dashboard data'
+    },
     pendingMinMs: 200,
     pendingComponent: () => <div data-testid="skeleton">Loading</div>,
+    errorComponent: () => <p>dashboard error</p>,
+    notFoundComponent: () => <p>dashboard not found</p>,
     component: Vue.defineComponent({
       setup() {
         const data = dashboardRoute.useLoaderData()
-        return () => <main data-testid="content">{data.value}</main>
+        return () => (
+          <main>
+            {data.value}
+            <Outlet />
+          </main>
+        )
       },
     }),
   })
-  return rootRoute.addChildren([dashboardRoute])
+  const childRoute = createRoute({
+    getParentRoute: () => dashboardRoute,
+    path: '/child',
+    loader: () => {
+      throw new Error('child failed')
+    },
+    errorComponent: () => <p>child error</p>,
+    component: () => <p>child</p>,
+  })
+  return rootRoute.addChildren([dashboardRoute.addChildren([childRoute])])
 }
 
 // The same app component on both sides, as in Vue Start's default entries
@@ -70,16 +115,16 @@ afterEach(async () => {
   window.history.replaceState(null, '', '/')
 })
 
-async function loadServerDocument(path: string) {
+async function loadServerDocument(entry: HydrationCase) {
   // `<Html>` / `<Body>` render the server document shell when there is no
   // `window`.
   vi.stubGlobal('window', undefined)
   let html: string
   try {
     const response = await createRequestHandler({
-      request: new Request(`http://localhost${path}`),
+      request: new Request(`http://localhost${entry.path}`),
       createRouter: () =>
-        createRouter({ routeTree: createRouteTree(), isServer: true }),
+        createRouter({ routeTree: createRouteTree(entry), isServer: true }),
     })(({ router, responseHeaders }) =>
       renderRouterToString({ router, responseHeaders, App }),
     )
@@ -97,78 +142,140 @@ async function loadServerDocument(path: string) {
     script.remove()
   }
   currentScript.mockRestore()
-  window.history.replaceState(null, '', path)
+  window.history.replaceState(null, '', entry.path)
   document.documentElement.innerHTML = serverDocument.documentElement.innerHTML
 }
 
-test('a data-only route keeps its server-rendered pending component through pendingMinMs (#8640)', async () => {
-  await loadServerDocument('/dashboard')
+const hydrationCases: Array<HydrationCase> = [
+  {
+    name: 'data-only success',
+    ssr: 'data-only',
+    path: '/dashboard',
+    payload: ['success', 'success'],
+    result: 'dashboard data',
+  },
+  {
+    name: 'ssr: false success',
+    ssr: false,
+    path: '/dashboard',
+    payload: ['success', 'pending'],
+    result: 'dashboard data',
+  },
+  {
+    name: 'data-only loader error',
+    ssr: 'data-only',
+    path: '/dashboard',
+    dashboardLoader: 'error',
+    payload: ['success', 'error'],
+    result: 'dashboard error',
+  },
+  {
+    name: 'data-only loader notFound',
+    ssr: 'data-only',
+    path: '/dashboard',
+    dashboardLoader: 'notFound',
+    payload: ['success', 'notFound'],
+    result: 'dashboard not found',
+  },
+  {
+    name: 'data-only unmatched URL',
+    ssr: 'data-only',
+    path: '/dashboard/missing',
+    payload: ['success', 'success+g'],
+    result: 'dashboard not found',
+  },
+  {
+    name: 'ssr: false invalid search',
+    ssr: false,
+    path: '/dashboard?invalid=1',
+    payload: ['success', 'error'],
+    result: 'dashboard error',
+  },
+  {
+    name: 'ssr: false unmatched URL',
+    ssr: false,
+    path: '/dashboard/missing',
+    payload: ['success', 'pending+g'],
+    result: 'dashboard not found',
+  },
+  {
+    name: 'data-only child loader error',
+    ssr: 'data-only',
+    path: '/dashboard/child',
+    payload: ['success', 'success', 'error'],
+    result: 'dashboard datachild error',
+  },
+]
 
-  const serverSkeleton = document.querySelector('[data-testid="skeleton"]')
-  expect(serverSkeleton).not.toBeNull()
-  expect(document.querySelector('[data-testid="content"]')).toBeNull()
+describe('a no-SSR boundary keeps its server-rendered pending component through hydration (#8640)', () => {
+  test.each(hydrationCases)('$name', async (entry) => {
+    await loadServerDocument(entry)
 
-  // Every skeleton node that ever enters the document, the most that are in
-  // it at once, and whether the server one left before the content arrived.
-  const skeletons = new Set<Element>([serverSkeleton!])
-  let maxSimultaneousSkeletons = 1
-  let serverSkeletonDetachedBeforeContent = false
-  const observer = new MutationObserver(() => {
-    const current = document.querySelectorAll('[data-testid="skeleton"]')
-    maxSimultaneousSkeletons = Math.max(
-      maxSimultaneousSkeletons,
-      current.length,
-    )
-    current.forEach((node) => skeletons.add(node))
-    if (
-      !serverSkeleton!.isConnected &&
-      !document.querySelector('[data-testid="content"]')
-    ) {
-      serverSkeletonDetachedBeforeContent = true
+    expect(
+      window.$_TSR!.router!.matches.map(
+        (match) => `${match.s}${match.g ? '+g' : ''}`,
+      ),
+    ).toEqual(entry.payload)
+    const serverSkeleton = document.querySelector('[data-testid="skeleton"]')
+    expect(serverSkeleton).not.toBeNull()
+    expect(document.body).not.toHaveTextContent(entry.result)
+
+    // Every skeleton node that ever enters the document.
+    const skeletons = new Set<Element>([serverSkeleton!])
+    let skeletonRemovedAt: number | undefined
+    const observer = new MutationObserver(() => {
+      document
+        .querySelectorAll('[data-testid="skeleton"]')
+        .forEach((node) => skeletons.add(node))
+      if (!serverSkeleton!.isConnected) {
+        skeletonRemovedAt ??= performance.now()
+      }
+    })
+    observer.observe(document, { childList: true, subtree: true })
+    cleanups.push(() => observer.disconnect())
+
+    // `<Body>` allows mismatches below it, which would also hide the route's
+    // mismatch warnings. Report them all; only `<Scripts>` may mismatch, where
+    // the self-removed bootstrap scripts were.
+    document
+      .querySelector('#__app > [data-allow-mismatch]')!
+      .removeAttribute('data-allow-mismatch')
+
+    // Mirrors Vue Start's client entry: hydrate the router, then hydrate the
+    // app into `#__app`, then signal hydration completion after mount.
+    const router = createRouter({ routeTree: createRouteTree(entry) })
+    await hydrate(router)
+    const app = Vue.createSSRApp(App, { router })
+    const hydrationWarnings: Array<string> = []
+    app.config.warnHandler = (msg, _instance, trace) => {
+      if (msg.includes('Hydration') && !trace.includes('<Scripts>')) {
+        hydrationWarnings.push(`${msg}${trace}`)
+      }
     }
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const hydrationStart = performance.now()
+    app.mount('#__app')
+    await Vue.nextTick()
+    window.$_TSR?.h()
+    cleanups.push(async () => {
+      app.unmount()
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      router.history.destroy()
+    })
+
+    await waitFor(() => expect(document.body).toHaveTextContent(entry.result), {
+      timeout: 2000,
+    })
+
+    expect(hydrationWarnings).toEqual([])
+    // Hydration adopts the server's pending UI and holds it for
+    // `pendingMinMs`. Vue may not report a mismatch, so also check when the
+    // server HTML was replaced.
+    expect(skeletonRemovedAt! - hydrationStart).toBeGreaterThanOrEqual(150)
+    // The hydrated server skeleton is the only one: it must not be hidden or
+    // replaced by a second copy.
+    expect([...skeletons]).toEqual([serverSkeleton])
+    expect(document.querySelector('[data-testid="skeleton"]')).toBeNull()
   })
-  observer.observe(document, { childList: true, subtree: true })
-  cleanups.push(() => observer.disconnect())
-
-  // Mirrors Vue Start's client entry: hydrate the router, then hydrate the app
-  // into `#__app`, then signal hydration completion after mount.
-  const router = createRouter({ routeTree: createRouteTree() })
-  await hydrate(router)
-  const app = Vue.createSSRApp(App, { router })
-  const hydrationWarnings: Array<string> = []
-  app.config.warnHandler = (msg, _instance, trace) => {
-    if (msg.includes('Hydration')) {
-      hydrationWarnings.push(`${msg}${trace}`)
-    }
-  }
-  // `<Scripts>` renders placeholder scripts where the self-removed bootstrap
-  // scripts were; that mismatch is expected and allowed (`data-allow-mismatch`),
-  // but Vue still logs "Hydration completed but contains mismatches.".
-  vi.spyOn(console, 'error').mockImplementation(() => {})
-  app.mount('#__app')
-  // Hydration adopted the server skeleton.
-  expect(serverSkeleton!.isConnected).toBe(true)
-  await Vue.nextTick()
-  window.$_TSR?.h()
-  cleanups.push(async () => {
-    app.unmount()
-    await new Promise((resolve) => setTimeout(resolve, 20))
-    router.history.destroy()
-  })
-
-  await waitFor(
-    () =>
-      expect(
-        document.querySelector('[data-testid="content"]'),
-      ).toHaveTextContent('dashboard data'),
-    { timeout: 2000 },
-  )
-
-  expect(hydrationWarnings).toEqual([])
-  expect(maxSimultaneousSkeletons).toBe(1)
-  // The hydrated server skeleton is the only one, and it stays mounted until
-  // the route content replaces it.
-  expect([...skeletons]).toEqual([serverSkeleton])
-  expect(serverSkeletonDetachedBeforeContent).toBe(false)
-  expect(document.querySelector('[data-testid="skeleton"]')).toBeNull()
 })

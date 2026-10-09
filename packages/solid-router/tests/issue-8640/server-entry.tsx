@@ -4,13 +4,14 @@ import {
   renderRouterToString,
 } from '../../src/ssr/server'
 import { createRouteTree } from './routeTree'
+import type { HydrationCase } from './routeTree'
 
 // Mirrors Solid Start's server entry (`StartServer` renders `<RouterProvider>`).
-export async function renderDocument(path: string): Promise<string> {
+export async function renderDocument(entry: HydrationCase): Promise<string> {
   const response = await createRequestHandler({
-    request: new Request(`http://localhost${path}`),
+    request: new Request(`http://localhost${entry.path}`),
     createRouter: () =>
-      createRouter({ routeTree: createRouteTree(), isServer: true }),
+      createRouter({ routeTree: createRouteTree(entry), isServer: true }),
   })(({ router, responseHeaders }) =>
     renderRouterToString({
       router,

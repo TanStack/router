@@ -1,8 +1,9 @@
 import { dirname, join } from 'node:path'
 import { createServer } from 'vite'
 import solid from 'vite-plugin-solid'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { Plugin, ViteDevServer } from 'vite'
+import type { HydrationCase } from './issue-8640/routeTree'
 
 // Solid hydration needs the app compiled twice: `generate: 'ssr'` for the
 // server render and `generate: 'dom', hydratable: true` for the client. Neither
@@ -80,12 +81,12 @@ afterEach(async () => {
   window.history.replaceState(null, '', '/')
 })
 
-async function loadServerDocument(path: string) {
+async function loadServerDocument(entry: HydrationCase) {
   let html: string
   const server = await createSsrServer()
   try {
-    const entry = await server.ssrLoadModule(fixture('server-entry.tsx'))
-    html = await entry.renderDocument(path)
+    const serverEntry = await server.ssrLoadModule(fixture('server-entry.tsx'))
+    html = await serverEntry.renderDocument(entry)
   } finally {
     await server.close()
   }
@@ -99,7 +100,7 @@ async function loadServerDocument(path: string) {
     script.remove()
   }
   currentScript.mockRestore()
-  window.history.replaceState(null, '', path)
+  window.history.replaceState(null, '', entry.path)
   // The root route renders `<html>`, so its hydration key must carry over too.
   for (const { name, value } of serverDocument.documentElement.attributes) {
     document.documentElement.setAttribute(name, value)
@@ -107,62 +108,128 @@ async function loadServerDocument(path: string) {
   document.documentElement.innerHTML = serverDocument.documentElement.innerHTML
 }
 
-test('a data-only route keeps its server-rendered pending component through pendingMinMs (#8640)', async () => {
-  await loadServerDocument('/dashboard')
+const hydrationCases: Array<HydrationCase> = [
+  {
+    name: 'data-only success',
+    ssr: 'data-only',
+    path: '/dashboard',
+    payload: ['success', 'success'],
+    result: 'dashboard data',
+  },
+  {
+    name: 'ssr: false success',
+    ssr: false,
+    path: '/dashboard',
+    payload: ['success', 'pending'],
+    result: 'dashboard data',
+  },
+  {
+    name: 'data-only loader error',
+    ssr: 'data-only',
+    path: '/dashboard',
+    dashboardLoader: 'error',
+    payload: ['success', 'error'],
+    result: 'dashboard error',
+  },
+  {
+    name: 'data-only loader notFound',
+    ssr: 'data-only',
+    path: '/dashboard',
+    dashboardLoader: 'notFound',
+    payload: ['success', 'notFound'],
+    result: 'dashboard not found',
+  },
+  {
+    name: 'data-only unmatched URL',
+    ssr: 'data-only',
+    path: '/dashboard/missing',
+    payload: ['success', 'success+g'],
+    result: 'dashboard not found',
+  },
+  {
+    name: 'ssr: false invalid search',
+    ssr: false,
+    path: '/dashboard?invalid=1',
+    payload: ['success', 'error'],
+    result: 'dashboard error',
+  },
+  {
+    name: 'ssr: false unmatched URL',
+    ssr: false,
+    path: '/dashboard/missing',
+    payload: ['success', 'pending+g'],
+    result: 'dashboard not found',
+  },
+  {
+    name: 'data-only child loader error',
+    ssr: 'data-only',
+    path: '/dashboard/child',
+    payload: ['success', 'success', 'error'],
+    result: 'dashboard datachild error',
+  },
+]
 
-  const serverSkeleton = document.querySelector('[data-testid="skeleton"]')
-  expect(serverSkeleton).not.toBeNull()
-  expect(document.querySelector('[data-testid="content"]')).toBeNull()
+describe('a no-SSR boundary keeps its server-rendered pending component through hydration (#8640)', () => {
+  test.each(hydrationCases)('$name', async (entry) => {
+    await loadServerDocument(entry)
 
-  // Every skeleton node that ever enters the document, the most that are in
-  // it at once, and whether the server one left before the content arrived.
-  const skeletons = new Set<Element>([serverSkeleton!])
-  let maxSimultaneousSkeletons = 1
-  let serverSkeletonDetachedBeforeContent = false
-  const observer = new MutationObserver(() => {
-    const current = document.querySelectorAll('[data-testid="skeleton"]')
-    maxSimultaneousSkeletons = Math.max(
-      maxSimultaneousSkeletons,
-      current.length,
-    )
-    current.forEach((node) => skeletons.add(node))
-    if (
-      !serverSkeleton!.isConnected &&
-      !document.querySelector('[data-testid="content"]')
-    ) {
-      serverSkeletonDetachedBeforeContent = true
+    expect(
+      window.$_TSR!.router!.matches.map(
+        (match) => `${match.s}${match.g ? '+g' : ''}`,
+      ),
+    ).toEqual(entry.payload)
+    const serverSkeleton = document.querySelector('[data-testid="skeleton"]')
+    expect(serverSkeleton).not.toBeNull()
+    expect(document.body).not.toHaveTextContent(entry.result)
+
+    // Every skeleton node that ever enters the document.
+    const skeletons = new Set<Element>([serverSkeleton!])
+    let skeletonRemovedAt: number | undefined
+    const observer = new MutationObserver(() => {
+      document
+        .querySelectorAll('[data-testid="skeleton"]')
+        .forEach((node) => skeletons.add(node))
+      if (!serverSkeleton!.isConnected) {
+        skeletonRemovedAt ??= performance.now()
+      }
+    })
+    observer.observe(document, { childList: true, subtree: true })
+    cleanups.push(() => observer.disconnect())
+
+    // Solid reports hydration mismatches through the console.
+    const hydrationErrors: Array<string> = []
+    const recordHydrationError = (...args: Array<unknown>) => {
+      const message = args.map(String).join(' ')
+      if (/hydrat/i.test(message)) {
+        hydrationErrors.push(message)
+      }
     }
-  })
-  observer.observe(document, { childList: true, subtree: true })
-  cleanups.push(() => observer.disconnect())
+    vi.spyOn(console, 'error').mockImplementation(recordHydrationError)
+    vi.spyOn(console, 'warn').mockImplementation(recordHydrationError)
+    const client: ViteDevServer = await createClientServer()
+    cleanups.push(() => client.close())
+    const clientEntry = await client.ssrLoadModule(fixture('client-entry.tsx'))
+    const hydrationStart = performance.now()
+    const { router, dispose } = await clientEntry.hydrateDocument(entry)
+    cleanups.push(async () => {
+      dispose()
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      router.history.destroy()
+    })
 
-  const consoleErrors: Array<unknown> = []
-  vi.spyOn(console, 'error').mockImplementation((...args) => {
-    consoleErrors.push(args)
-  })
-  const client: ViteDevServer = await createClientServer()
-  cleanups.push(() => client.close())
-  const entry = await client.ssrLoadModule(fixture('client-entry.tsx'))
-  const { router, dispose } = await entry.hydrateDocument()
-  cleanups.push(async () => {
-    dispose()
-    await new Promise((resolve) => setTimeout(resolve, 20))
-    router.history.destroy()
-  })
+    await vi.waitFor(
+      () => expect(document.body).toHaveTextContent(entry.result),
+      { timeout: 2000 },
+    )
 
-  await vi.waitFor(
-    () =>
-      expect(
-        document.querySelector('[data-testid="content"]'),
-      ).toHaveTextContent('dashboard data'),
-    { timeout: 2000 },
-  )
-
-  expect(consoleErrors).toEqual([])
-  expect(maxSimultaneousSkeletons).toBe(1)
-  // The hydrated server skeleton is the only one, and it stays mounted until
-  // the route content replaces it.
-  expect([...skeletons]).toEqual([serverSkeleton])
-  expect(serverSkeletonDetachedBeforeContent).toBe(false)
-  expect(document.querySelector('[data-testid="skeleton"]')).toBeNull()
+    expect(hydrationErrors).toEqual([])
+    // Hydration adopts the server's pending UI and holds it for
+    // `pendingMinMs`. Solid may not report a mismatch, so also check when the
+    // server HTML was replaced.
+    expect(skeletonRemovedAt! - hydrationStart).toBeGreaterThanOrEqual(150)
+    // The hydrated server skeleton is the only one: it must not be hidden or
+    // replaced by a second copy.
+    expect([...skeletons]).toEqual([serverSkeleton])
+    expect(document.querySelector('[data-testid="skeleton"]')).toBeNull()
+  })
 })

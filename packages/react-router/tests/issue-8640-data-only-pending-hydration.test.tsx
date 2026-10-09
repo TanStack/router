@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { fireEvent, render, waitFor } from '@testing-library/react'
 import { hydrateRoot } from 'react-dom/client'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   Outlet,
   RouterProvider,
@@ -15,6 +15,17 @@ import type * as ClientModule from '../src/ssr/client'
 import type * as ServerModule from '../src/ssr/server'
 
 type NoSsr = 'data-only' | false
+
+type HydrationCase = {
+  name: string
+  ssr: NoSsr
+  path: string
+  dashboardLoader?: 'error' | 'notFound'
+  /** Server status of each match; `+g` marks the URL not-found flag. */
+  payload: Array<string>
+  /** Visible once the client load commits. */
+  result: string
+}
 
 type Framework = typeof RouterModule & typeof ClientModule & typeof ServerModule
 
@@ -32,7 +43,8 @@ async function loadFramework(): Promise<Framework> {
   return { ...router, ...client, ...server }
 }
 
-function createRouteTree(fw: Framework, ssr: NoSsr) {
+/** The same application module, evaluated on the server or in the browser. */
+function createRouteTree(fw: Framework, entry: HydrationCase) {
   const rootRoute = fw.createRootRoute({
     component: () => (
       <html>
@@ -49,15 +61,45 @@ function createRouteTree(fw: Framework, ssr: NoSsr) {
   const dashboardRoute = fw.createRoute({
     getParentRoute: () => rootRoute,
     path: '/dashboard',
-    ssr,
-    loader: () => 'dashboard data',
+    ssr: entry.ssr,
+    validateSearch: (search: Record<string, unknown>) => {
+      if ('invalid' in search) {
+        throw new Error('invalid search')
+      }
+      return {}
+    },
+    loader: () => {
+      if (entry.dashboardLoader === 'error') {
+        throw new Error('dashboard failed')
+      }
+      if (entry.dashboardLoader === 'notFound') {
+        throw fw.notFound()
+      }
+      return 'dashboard data'
+    },
     pendingMinMs: 200,
     pendingComponent: () => <div data-testid="skeleton">Loading</div>,
+    errorComponent: () => <p>dashboard error</p>,
+    notFoundComponent: () => <p>dashboard not found</p>,
     component: function Dashboard() {
-      return <main data-testid="content">{dashboardRoute.useLoaderData()}</main>
+      return (
+        <main>
+          {dashboardRoute.useLoaderData()}
+          <fw.Outlet />
+        </main>
+      )
     },
   })
-  return rootRoute.addChildren([dashboardRoute])
+  const childRoute = fw.createRoute({
+    getParentRoute: () => dashboardRoute,
+    path: '/child',
+    loader: () => {
+      throw new Error('child failed')
+    },
+    errorComponent: () => <p>child error</p>,
+    component: () => <p>child</p>,
+  })
+  return rootRoute.addChildren([dashboardRoute.addChildren([childRoute])])
 }
 
 const cleanups: Array<() => unknown> = []
@@ -80,11 +122,14 @@ afterEach(async () => {
   window.history.replaceState(null, '', '/')
 })
 
-async function loadServerDocument(fw: Framework, path: string, ssr: NoSsr) {
+async function loadServerDocument(fw: Framework, entry: HydrationCase) {
   const response = await fw.createRequestHandler({
-    request: new Request(`http://localhost${path}`),
+    request: new Request(`http://localhost${entry.path}`),
     createRouter: () =>
-      fw.createRouter({ routeTree: createRouteTree(fw, ssr), isServer: true }),
+      fw.createRouter({
+        routeTree: createRouteTree(fw, entry),
+        isServer: true,
+      }),
   })(({ router, responseHeaders }) =>
     fw.renderRouterToString({
       router,
@@ -105,33 +150,104 @@ async function loadServerDocument(fw: Framework, path: string, ssr: NoSsr) {
     script.remove()
   }
   currentScript.mockRestore()
-  window.history.replaceState(null, '', path)
+  window.history.replaceState(null, '', entry.path)
   document.documentElement.innerHTML = serverDocument.documentElement.innerHTML
 }
 
-test.each([['data-only'], [false]] as const)(
-  'ssr: %s keeps the server-rendered pending component through pendingMinMs (#8640)',
-  async (ssr) => {
-    const fw = await loadFramework()
-    await loadServerDocument(fw, '/dashboard', ssr)
+const hydrationCases: Array<HydrationCase> = [
+  {
+    name: 'data-only success',
+    ssr: 'data-only',
+    path: '/dashboard',
+    payload: ['success', 'success'],
+    result: 'dashboard data',
+  },
+  {
+    name: 'ssr: false success',
+    ssr: false,
+    path: '/dashboard',
+    payload: ['success', 'pending'],
+    result: 'dashboard data',
+  },
+  {
+    name: 'data-only loader error',
+    ssr: 'data-only',
+    path: '/dashboard',
+    dashboardLoader: 'error',
+    payload: ['success', 'error'],
+    result: 'dashboard error',
+  },
+  {
+    name: 'data-only loader notFound',
+    ssr: 'data-only',
+    path: '/dashboard',
+    dashboardLoader: 'notFound',
+    payload: ['success', 'notFound'],
+    result: 'dashboard not found',
+  },
+  {
+    name: 'data-only unmatched URL',
+    ssr: 'data-only',
+    path: '/dashboard/missing',
+    payload: ['success', 'success+g'],
+    result: 'dashboard not found',
+  },
+  {
+    name: 'ssr: false invalid search',
+    ssr: false,
+    path: '/dashboard?invalid=1',
+    payload: ['success', 'error'],
+    result: 'dashboard error',
+  },
+  {
+    name: 'ssr: false unmatched URL',
+    ssr: false,
+    path: '/dashboard/missing',
+    payload: ['success', 'pending+g'],
+    result: 'dashboard not found',
+  },
+  {
+    name: 'data-only child loader error',
+    ssr: 'data-only',
+    path: '/dashboard/child',
+    payload: ['success', 'success', 'error'],
+    result: 'dashboard datachild error',
+  },
+]
 
+describe('a no-SSR boundary keeps its server-rendered pending component through hydration (#8640)', () => {
+  test.each(hydrationCases)('$name', async (entry) => {
+    const fw = await loadFramework()
+    await loadServerDocument(fw, entry)
+
+    expect(
+      window.$_TSR!.router!.matches.map(
+        (match) => `${match.s}${match.g ? '+g' : ''}`,
+      ),
+    ).toEqual(entry.payload)
     const serverSkeleton = document.querySelector('[data-testid="skeleton"]')
     expect(serverSkeleton).not.toBeNull()
-    expect(document.querySelector('[data-testid="content"]')).toBeNull()
+    expect(document.body).not.toHaveTextContent(entry.result)
 
     // Every skeleton node that ever enters the document.
     const skeletons = new Set<Element>([serverSkeleton!])
+    let skeletonRemovedAt: number | undefined
     const observer = new MutationObserver(() => {
       document
         .querySelectorAll('[data-testid="skeleton"]')
         .forEach((node) => skeletons.add(node))
+      if (!serverSkeleton!.isConnected) {
+        skeletonRemovedAt ??= performance.now()
+      }
     })
     observer.observe(document, { childList: true, subtree: true })
     cleanups.push(() => observer.disconnect())
 
-    const router = fw.createRouter({ routeTree: createRouteTree(fw, ssr) })
+    const router = fw.createRouter({ routeTree: createRouteTree(fw, entry) })
     const recoverableErrors: Array<unknown> = []
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const hydrationStart = performance.now()
     const root = hydrateRoot(document, <fw.RouterClient router={router} />, {
       onRecoverableError: (error) => {
         recoverableErrors.push(error)
@@ -143,21 +259,21 @@ test.each([['data-only'], [false]] as const)(
       router.history.destroy()
     })
 
-    await waitFor(
-      () =>
-        expect(
-          document.querySelector('[data-testid="content"]'),
-        ).toHaveTextContent('dashboard data'),
-      { timeout: 2000 },
-    )
+    await waitFor(() => expect(document.body).toHaveTextContent(entry.result), {
+      timeout: 2000,
+    })
 
+    // Hydration adopts the server's pending UI and holds it for
+    // `pendingMinMs`. Frameworks may not report a mismatch (an error boundary
+    // can silently replace the server HTML), so check when it was replaced.
+    expect(skeletonRemovedAt! - hydrationStart).toBeGreaterThanOrEqual(150)
     expect(recoverableErrors).toEqual([])
-    // The hydrated server skeleton is the only one: React must not hide it and
-    // mount a second copy from the Suspense fallback.
+    // The hydrated server skeleton is the only one: it must not be hidden or
+    // replaced by a second copy.
     expect([...skeletons]).toEqual([serverSkeleton])
     expect(document.querySelector('[data-testid="skeleton"]')).toBeNull()
-  },
-)
+  })
+})
 
 test('client navigation within a data-only route keeps the route component mounted', async () => {
   let mounts = 0
