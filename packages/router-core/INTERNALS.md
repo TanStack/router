@@ -421,9 +421,7 @@ normal navigation staleness and GC semantics rather than becoming synthetic
 preloads.
 
 Background loader candidates remain private until their exact transaction and
-committed base authorize background publication. Their transaction keeps its lane
-until that publication so a superseding navigation receives the candidates'
-leases like any other private work of its predecessor. A development refresh may
+committed base authorize background publication. A development refresh may
 admit successful loader work while its lane is private, but refresh commit
 discards every cache generation instead of preserving stale rematerialization
 inputs.
@@ -496,30 +494,26 @@ removes a successful generation only if it is still the current registry entry,
 then aborts its controller. Every copied semantic match that retains a flight
 must acquire a lease, and every discarded match must release one exactly once.
 
-There are two short exceptions to normal zero-lease cleanup. When one navigation
-replaces another with the same match ID, the successor has not yet run
-`beforeLoad` or decided whether to reuse the predecessor's loader flight.
-Installing the successor therefore hands it every lease the predecessor still
-owns privately: its unpublished lane matches and, after commit, its unpublished
-background candidates. A sole-owner flight whose ID the successor also matched
-stays discoverable with zero leases instead of being aborted. This reservation
-is made synchronously at installation, so it does not depend on how far the
-successor has progressed when the predecessor later observes cancellation.
+There is one short exception to normal zero-lease cleanup. A navigation has not
+decided whether to reuse same-ID loader work until its loader planning, after
+its `beforeLoad` chain. Its transaction therefore records the same-ID flights
+that are discoverable when it is installed. Until planning ends that
+reservation, a reserved flight that loses its final lease remains discoverable
+instead of being aborted, regardless of which owner released it: the superseded
+navigation's lane or background candidates, a preload, or any other consumer. A
+reservation is not a lease: an unowned reserved generation that fails still
+retires and aborts at settlement without user error hooks. Only the current
+transaction's reservations count; merely having a current `_tx` is not enough to
+retain a zero-lease flight.
 
-Flights owned by other consumers, such as an active preload that settles or
-stops early, can also lose their final lease before the successor plans. While
-the current transaction is visibly running `beforeLoad` for that same-ID
-successor, such a flight remains discoverable too. Outside these two cases,
-merely having a current `_tx` is not enough to retain a zero-lease flight.
-
-Loader planning ends both reservations synchronously. The successor either
-acquires the discoverable flight or one sweep removes and aborts it. A lane with
-no `beforeLoad` reaches loader planning before contextualization yields; an
-asynchronous `beforeLoad` keeps the grace period visible until it settles.
-Preloads neither create nor sweep this navigation-only reservation. An explicit
-`shouldReload: false` declines the flight, while invalidation removes discovery
-for selected IDs before starting the replacement load. No extra flag, counter,
-or completion promise represents either reservation.
+Loader planning ends the reservation synchronously. The successor either
+acquires a reserved flight or retires every unadopted zero-lease one. A
+transaction superseded before planning ends its reservations at installation of
+its successor, which has already recorded its own. Preloads neither create nor
+end this navigation-only reservation. An explicit `shouldReload: false` declines
+the flight, while invalidation removes discovery for selected IDs before
+starting the replacement load. No extra flag, counter, or completion promise
+represents the reservation.
 
 Releasing a set of matches is deliberately two-phase. First every outgoing
 match drops its `_flight` lease and every zero-owner generation not reserved by

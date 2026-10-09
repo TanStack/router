@@ -243,11 +243,11 @@ export type LoadTransaction = [
   startedAt: number,
   done: Promise<void>,
   /**
-   * The navigation lane. Its background candidates remain private to this
-   * transaction until background publication clears this slot, so superseding
-   * transactions receive them through the same-ID handoff.
+   * Same-ID loader work discoverable when this navigation was installed. Until
+   * its loader planning decides whether to reuse it, losing its last lease
+   * keeps it discoverable instead of aborting it.
    */
-  lane?: Lane<any>,
+  reserved: Array<[id: string, flight: LoaderFlight]> | undefined,
   /**
    * Dev-only HMR refresh mode. Presence forces successor rematerialization
    * until this publication is acknowledged. The optional hydration handoff is
@@ -501,28 +501,30 @@ async function contextualize(
 
 function releaseOwnedFlight(
   router: AnyRouter,
-  match: WorkMatch,
+  id: string,
   flight?: LoaderFlight,
 ): AbortController | undefined {
-  if (!flight || --flight[2 /* leases */]) {
-    return
+  if (flight && !--flight[2 /* leases */]) {
+    return retireFlight(router, id, flight)
   }
-  if (router._flights?.get(match.id) === flight) {
-    const current = router._tx
+  return
+}
+
+/** Retire an ownerless flight unless the current navigation reserves it. */
+function retireFlight(
+  router: AnyRouter,
+  id: string,
+  flight: LoaderFlight,
+): AbortController | undefined {
+  if (router._flights?.get(id) === flight) {
     if (
-      current &&
-      !current[0 /* controller */].signal.aborted &&
-      !current[3 /* matches */].includes(match) &&
-      current[3 /* matches */].some((candidate) => candidate.id === match.id) &&
-      current[3 /* matches */].some(
-        (candidate) => candidate.isFetching === 'beforeLoad',
+      router._tx?.[6 /* reserved */]?.some(
+        (reservation) => reservation[1 /* flight */] === flight,
       )
     ) {
-      // Keep work discoverable only while the current lane is still running
-      // beforeLoad. Loader planning performs the matching zero-owner sweep.
       return
     }
-    router._flights.delete(match.id)
+    router._flights.delete(id)
   }
   return flight[1 /* controller */]
 }
@@ -530,7 +532,24 @@ function releaseOwnedFlight(
 function releaseFlight(router: AnyRouter, match: WorkMatch): void {
   const flight = match._flight
   match._flight = undefined
-  releaseOwnedFlight(router, match, flight)?.abort()
+  releaseOwnedFlight(router, match.id, flight)?.abort()
+}
+
+/** End a navigation's reservations, retiring work nobody adopted. */
+function endReservations(router: AnyRouter, tx: LoadTransaction): void {
+  const reserved = tx[6 /* reserved */]
+  tx[6 /* reserved */] = undefined
+  const abort: Array<AbortController> = []
+  for (const [id, flight] of reserved ?? []) {
+    const controller =
+      !flight[2 /* leases */] && retireFlight(router, id, flight)
+    if (controller) {
+      abort.push(controller)
+    }
+  }
+  for (const controller of abort) {
+    controller.abort()
+  }
 }
 /**
  * Not passing in a `next` ownership recipient
@@ -540,26 +559,15 @@ function transferMatchResources(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   next?: Array<AnyRouteMatch>,
-  deferSameIdFlight?: true,
 ): void {
   const abort: Array<AbortController> = []
   for (const match of previous as Array<WorkMatch>) {
     if (!next?.includes(match)) {
       const flight = match._flight
       match._flight = undefined
-      if (
-        deferSameIdFlight &&
-        flight?.[2 /* leases */] === 1 &&
-        router._flights?.get(match.id) === flight &&
-        next?.some((candidate) => candidate.id === match.id)
-      ) {
-        // The successor has not made its same-ID reload decision yet.
-        flight[2 /* leases */] = 0
-      } else {
-        const controller = releaseOwnedFlight(router, match, flight)
-        if (controller) {
-          abort.push(controller)
-        }
+      const controller = releaseOwnedFlight(router, match.id, flight)
+      if (controller) {
+        abort.push(controller)
       }
     }
   }
@@ -882,7 +890,7 @@ function createLoaderTask(
   if (blocking) {
     const acceptedFlight = match._flight
     match._flight = donor
-    releaseOwnedFlight(router, match, acceptedFlight)?.abort()
+    releaseOwnedFlight(router, match.id, acceptedFlight)?.abort()
     // A mounted success remains renderable while its loader revalidates. Every
     // non-retained blocking generation presents pending state.
     if (index >= retainedEnd) {
@@ -1325,10 +1333,11 @@ export async function projectLane(
 
 async function executeClientLane(
   router: AnyRouter,
-  matched: MatchedLane,
+  location: ParsedLocation,
+  matches: Array<AnyRouteMatch>,
   options: ExecuteLaneOptions,
 ): Promise<LaneResult> {
-  const matches = matched[1 /* matches */]
+  const matched = [location, matches as Array<WorkMatch>] as MatchedLane
   const signal = options[0 /* controller */].signal
   let reduced: ReducedLane | ControlOutcome
   try {
@@ -1337,7 +1346,7 @@ async function executeClientLane(
     if (router.options.notFoundMode !== 'root' && plannedBoundary >= 0) {
       const boundary = await getNotFoundBoundary(
         router,
-        matches,
+        matches as Array<WorkMatch>,
         undefined,
         signal,
         plannedBoundary,
@@ -1404,7 +1413,7 @@ async function executeClientLane(
       if (failure[1 /* outcome */][0 /* kind */] === NOT_FOUND) {
         const boundary = await getNotFoundBoundary(
           router,
-          matches,
+          matches as Array<WorkMatch>,
           failure,
           signal,
         )
@@ -1415,17 +1424,9 @@ async function executeClientLane(
       }
       planSuccessfulLane()
     }
+    // Planning ends the reservations of the live navigation owning this lane.
     if (!signal.aborted && !options[3 /* preload */]) {
-      const abort: Array<AbortController> = []
-      for (const [id, flight] of router._flights ?? []) {
-        if (!flight[2 /* leases */]) {
-          router._flights!.delete(id)
-          abort.push(flight[1 /* controller */])
-        }
-      }
-      for (const controller of abort) {
-        controller.abort()
-      }
+      endReservations(router, router._tx!)
     }
     const reduction = reduceLane(
       router,
@@ -1818,8 +1819,6 @@ async function runBackground(
       releaseFlight(router, cached)
     }
   }
-  // The candidates become committed before publication can synchronously reenter.
-  tx[6 /* lane */] = undefined
   publishMatches(router, next)
   transferMatchResources(router, base, next)
 }
@@ -1834,7 +1833,8 @@ async function runClientTransaction(
 ): Promise<void> {
   const result = await executeClientLane(
     router,
-    (tx[6 /* lane */] = [tx[2 /* location */], tx[3 /* matches */]]),
+    tx[2 /* location */],
+    tx[3 /* matches */],
     [
       tx[0 /* controller */],
       tx[1 /* redirects */],
@@ -2011,6 +2011,13 @@ export async function loadClientRoute(
     return
   }
   router._preflight = undefined
+  const reserved: Array<[string, LoaderFlight]> = []
+  for (const match of matches as Array<WorkMatch>) {
+    const flight = router._flights?.get(match.id)
+    if (flight) {
+      reserved.push([match.id, flight])
+    }
+  }
 
   let settle: ((value: void | PromiseLike<void>) => void) | undefined
   const run = () =>
@@ -2032,6 +2039,7 @@ export async function loadClientRoute(
     matches,
     Date.now(),
     done.then(() => awaitCurrent(router, tx)),
+    reserved,
   ]
   if (process.env.NODE_ENV !== 'production' && rematerialize) {
     tx[7 /* refresh */] = [handoff]
@@ -2050,15 +2058,10 @@ export async function loadClientRoute(
     previousOwner[0 /* controller */].abort()
     transferMatchResources(
       router,
-      [
-        ...previousOwner[3 /* matches */],
-        ...(previousOwner[6 /* lane */]?.[2 /* background */] ?? []).map(
-          (task) => task[3 /* candidate */],
-        ),
-      ],
+      previousOwner[3 /* matches */],
       tx[3 /* matches */],
-      true,
     )
+    endReservations(router, previousOwner)
   }
   if (router._tx !== tx) {
     transferMatchResources(router, tx[3 /* matches */])
@@ -2162,11 +2165,12 @@ export async function preloadClientRoute<
         })
         acquireMatchResources(matches)
         active = (router._preloads ??= new Map()).set(controller, matches)
-        result = await executeClientLane(
-          router,
-          [location, matches],
-          [controller, redirects, base, true],
-        )
+        result = await executeClientLane(router, location, matches, [
+          controller,
+          redirects,
+          base,
+          true,
+        ])
       } finally {
         if (active) {
           active = (
