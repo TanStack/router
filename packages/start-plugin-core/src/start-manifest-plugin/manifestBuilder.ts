@@ -285,9 +285,10 @@ export function buildStartManifest(options: {
 
   dedupeNestedRouteManifestEntries(rootRouteId, routes[rootRouteId]!, routes)
 
-  // Prune routes with no manifest data
+  // Remove build-only paths and prune routes with no manifest data
   for (const routeId in routes) {
     const route = routes[routeId]!
+    delete route.filePath
     const hasScripts = route.scripts && route.scripts.length > 0
     const hasCssLinks = route.css && route.css.length > 0
     const hasPreloads = route.preloads && route.preloads.length > 0
