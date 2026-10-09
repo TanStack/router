@@ -10,7 +10,6 @@ import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import { ClientOnly } from './ClientOnly'
 import {
   nonRouteComponentContext,
   wrapInNonRouteComponentContext,
@@ -103,9 +102,6 @@ function matchView(router: ReturnType<typeof useRouter>, match: AnyRouteMatch) {
       ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
 
   let content = <MatchInner match={match} />
-  if (resolvedNoSsr) {
-    content = <ClientOnly fallback={pendingElement}>{content}</ClientOnly>
-  }
   if (routeNotFoundComponent) {
     content = (
       <CatchNotFound
@@ -214,7 +210,11 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     return Comp ? <Comp key={key} /> : <Outlet />
   }, [key, route.options.component, router.options.defaultComponent])
 
-  if (match.status === 'pending') {
+  if (
+    match.status === 'pending' ||
+    ((isServer ?? router.isServer) &&
+      (match.ssr === false || match.ssr === 'data-only'))
+  ) {
     if (router.ssr && !canWrapInSuspense(router, route, match.ssr)) {
       // Replacing an SSR document root with pending UI would remove <html>.
       // Hydrated matches retain their prior data, so keep rendering it.
