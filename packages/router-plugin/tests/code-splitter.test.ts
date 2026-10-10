@@ -13,6 +13,7 @@ import {
   compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
   computeSharedBindings,
+  detectCodeSplitGroupingsFromRoute,
   expandDestructuredDeclarations,
   expandSharedDestructuredDeclarators,
   expandTransitively,
@@ -76,7 +77,7 @@ describe('code-splitter works', () => {
               codeSplitGroupings: grouping,
             })
 
-            const compileResult = compileCodeSplitReferenceRoute({
+            const options = {
               code,
               filename,
               id: filename,
@@ -85,7 +86,15 @@ describe('code-splitter works', () => {
               targetFramework: framework,
               sharedBindings:
                 sharedBindings.size > 0 ? sharedBindings : undefined,
-            })
+            }
+            const compileResult = compileCodeSplitReferenceRoute(options)
+
+            const ast = parseAst({ code, filename })
+            detectCodeSplitGroupingsFromRoute({ code, filename }, ast)
+            expect(computeSharedBindings(options, ast)).toEqual(sharedBindings)
+            const reusedAstResult = compileCodeSplitReferenceRoute(options, ast)
+            expect(reusedAstResult?.code).toEqual(compileResult?.code)
+            expect(reusedAstResult?.map).toEqual(compileResult?.map)
 
             await expect(compileResult?.code || code).toMatchFileSnapshot(
               path.join(dirs.snapshots, groupName, filename),
