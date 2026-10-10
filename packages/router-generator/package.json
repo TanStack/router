@@ -62,7 +62,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=20.19"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:*",
@@ -72,8 +72,8 @@
     "magic-string": "^0.30.21",
     "prettier": "^3.9.6",
     "zod": "catalog:",
-    "@yuku-toolchain/types": "0.18.1",
-    "yuku-ast": "0.18.1"
+    "@yuku-toolchain/types": "catalog:",
+    "yuku-ast": "catalog:"
   },
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",

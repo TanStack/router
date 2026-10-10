@@ -1,26 +1,5 @@
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
-# Allow Yuku 0.18.1 before it is a day old.
-minimumReleaseAgeExclude:
-  - '@yuku-core/binding-android-arm64@0.18.1'
-  - '@yuku-core/binding-darwin-arm64@0.18.1'
-  - '@yuku-core/binding-darwin-x64@0.18.1'
-  - '@yuku-core/binding-freebsd-x64@0.18.1'
-  - '@yuku-core/binding-linux-arm-gnu@0.18.1'
-  - '@yuku-core/binding-linux-arm-musl@0.18.1'
-  - '@yuku-core/binding-linux-arm64-gnu@0.18.1'
-  - '@yuku-core/binding-linux-arm64-musl@0.18.1'
-  - '@yuku-core/binding-linux-x64-gnu@0.18.1'
-  - '@yuku-core/binding-linux-x64-musl@0.18.1'
-  - '@yuku-core/binding-win32-arm64@0.18.1'
-  - '@yuku-core/binding-win32-x64@0.18.1'
-  - '@yuku-core/wasm@0.18.1'
-  - '@yuku-toolchain/types@0.18.1'
-  - 'yuku-analyzer@0.18.1'
-  - 'yuku-ast@0.18.1'
-  - 'yuku-codegen@0.18.1'
-  - 'yuku-core@0.18.1'
-
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 blockExoticSubdeps: true
@@ -89,6 +68,13 @@ catalog:
   '@tanstack/react-query': ^5.102.0
   '@tanstack/solid-query': ^5.102.0
   '@tanstack/vue-query': ^5.102.0
+  # Yuku packages are released together: keep them on one exact version.
+  '@yuku-core/wasm': 0.18.1
+  '@yuku-toolchain/types': 0.18.1
+  yuku-analyzer: 0.18.1
+  yuku-ast: 0.18.1
+  yuku-codegen: 0.18.1
+  yuku-core: 0.18.1
 
 overrides:
   '@types/babel__traverse': '^7.28.0'

@@ -114,7 +114,7 @@
     "!skills/_artifacts"
   ],
   "engines": {
-    "node": ">=20.19"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:*",
@@ -123,9 +123,9 @@
     "chokidar": "catalog:",
     "unplugin": "^3.3.0",
     "zod": "catalog:",
-    "@yuku-toolchain/types": "0.18.1",
-    "yuku-analyzer": "0.18.1",
-    "yuku-ast": "0.18.1"
+    "@yuku-toolchain/types": "catalog:",
+    "yuku-analyzer": "catalog:",
+    "yuku-ast": "catalog:"
   },
   "devDependencies": {
     "@rsbuild/core": "catalog:",

@@ -103,9 +103,9 @@
     "vitefu": "^1.1.3",
     "xmlbuilder2": "^4.0.3",
     "zod": "catalog:",
-    "@yuku-toolchain/types": "0.18.1",
-    "yuku-analyzer": "0.18.1",
-    "yuku-ast": "0.18.1"
+    "@yuku-toolchain/types": "catalog:",
+    "yuku-analyzer": "catalog:",
+    "yuku-ast": "catalog:"
   },
   "devDependencies": {
     "@rsbuild/core": "catalog:",

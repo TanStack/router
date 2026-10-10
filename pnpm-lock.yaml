@@ -33,6 +33,12 @@ catalogs:
     '@vitest/ui':
       specifier: ^4.1.4
       version: 4.1.4
+    '@yuku-core/wasm':
+      specifier: 0.18.1
+      version: 0.18.1
+    '@yuku-toolchain/types':
+      specifier: 0.18.1
+      version: 0.18.1
     chokidar:
       specifier: ^5.0.0
       version: 5.0.0
@@ -72,6 +78,18 @@ catalogs:
     vue:
       specifier: ^3.5.25
       version: 3.5.25
+    yuku-analyzer:
+      specifier: 0.18.1
+      version: 0.18.1
+    yuku-ast:
+      specifier: 0.18.1
+      version: 0.18.1
+    yuku-codegen:
+      specifier: 0.18.1
+      version: 0.18.1
+    yuku-core:
+      specifier: 0.18.1
+      version: 0.18.1
     zod:
       specifier: ^4.5.4
       version: 4.5.4
@@ -14258,7 +14276,7 @@ importers:
         specifier: 'catalog:'
         version: 2.0.3
       yuku-ast:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
     devDependencies:
       '@arethetypeswrong/cli':
@@ -14567,7 +14585,7 @@ importers:
         specifier: workspace:*
         version: link:../virtual-file-routes
       '@yuku-toolchain/types':
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       jiti:
         specifier: ^2.7.0
@@ -14579,7 +14597,7 @@ importers:
         specifier: ^3.9.6
         version: 3.9.6
       yuku-ast:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       zod:
         specifier: 'catalog:'
@@ -14631,7 +14649,7 @@ importers:
         specifier: workspace:*
         version: link:../router-utils
       '@yuku-toolchain/types':
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       chokidar:
         specifier: 'catalog:'
@@ -14646,10 +14664,10 @@ importers:
         specifier: ^2.11.10 || ^3.0.0-0
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       yuku-analyzer:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       yuku-ast:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       zod:
         specifier: 'catalog:'
@@ -14731,10 +14749,10 @@ importers:
   packages/router-utils:
     dependencies:
       '@yuku-core/wasm':
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       '@yuku-toolchain/types':
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       ansis:
         specifier: ^4.3.1
@@ -14749,16 +14767,16 @@ importers:
         specifier: 'catalog:'
         version: 0.2.17
       yuku-analyzer:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       yuku-ast:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       yuku-codegen:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       yuku-core:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
     devDependencies:
       '@arethetypeswrong/cli':
@@ -15190,7 +15208,7 @@ importers:
         specifier: workspace:*
         version: link:../start-server-core
       '@yuku-toolchain/types':
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       exsolve:
         specifier: ^1.1.1
@@ -15226,10 +15244,10 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       yuku-analyzer:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       yuku-ast:
-        specifier: 0.18.1
+        specifier: 'catalog:'
         version: 0.18.1
       zod:
         specifier: 'catalog:'
