@@ -525,6 +525,58 @@ export async function load() {
   )
 })
 
+describe('route options read from the environment', () => {
+  /**
+   * The component the route renders: the route option itself, or the export
+   * of the chunk the option was split into.
+   */
+  async function routeComponent(code: string, stubs: Stubs = {}) {
+    const { modules, options, chunks } = await loadRouteModules(code, stubs)
+    return /\?tsr-split=component\b/.test(modules.reference!)
+      ? chunks.component?.component
+      : options.component
+  }
+
+  // Control for the pins below (same harness).
+  test('a split component imported by the route file renders', async () => {
+    const Page = () => null
+    expect(
+      await routeComponent(
+        `import { Page } from './page'
+${head}export const Route = createFileRoute('/')({ component: Page })
+`,
+        { './page': { Page } },
+      ),
+    ).toBe(Page)
+  })
+
+  // Bug: a split option that is a global (no declaration in the module) or
+  // an ambient `declare const` is exported from the chunk under a name the
+  // chunk never declares ("Export '...' is not defined"), or the export is
+  // erased with the `declare`.
+  // Impact: the chunk fails to load, or the route renders no component.
+  test.fails.each([
+    { name: 'an undeclared global', declaration: '' },
+    {
+      name: 'an ambient declare const',
+      declaration: 'declare const TsrGlobalPage: () => null\n',
+    },
+  ])('a component read from $name renders', async ({ declaration }) => {
+    const TsrGlobalPage = () => null
+    vi.stubGlobal('TsrGlobalPage', TsrGlobalPage)
+    try {
+      expect(
+        await routeComponent(`${head}${declaration}export const Route = createFileRoute('/')({
+  component: TsrGlobalPage,
+})
+`),
+      ).toBe(TsrGlobalPage)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})
+
 describe('classic JSX pragmas', () => {
   /** Emotion's `jsx`, rendering intrinsic elements as `<emotion:tag>`. */
   const emotion = {
