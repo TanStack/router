@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
+import { formatSnapshot } from '../format-snapshot'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -91,9 +92,9 @@ describe('createServerFn compiles correctly', async () => {
           : env.isProviderFile
             ? 'server-provider'
             : 'server-caller'
-      await expect(result!.code).toMatchFileSnapshot(
-        `./snapshots/${folder}/${filename}`,
-      )
+      await expect(
+        await formatSnapshot(result!.code, filename),
+      ).toMatchFileSnapshot(`./snapshots/${folder}/${filename}`)
     })
   })
 

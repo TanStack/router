@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
+import { formatSnapshot } from '../format-snapshot'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -69,9 +70,9 @@ describe('createMiddleware compiles correctly', async () => {
     test(`should compile for ${filename} client`, async () => {
       const result = await compile({ env: 'client', code, id: filename })
 
-      await expect(result!.code).toMatchFileSnapshot(
-        `./snapshots/client/${filename}`,
-      )
+      await expect(
+        await formatSnapshot(result!.code, filename),
+      ).toMatchFileSnapshot(`./snapshots/client/${filename}`)
     })
   })
 
