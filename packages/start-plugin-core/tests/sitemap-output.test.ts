@@ -120,7 +120,7 @@ describe('post-build sitemap', () => {
             <image:image>
               <image:loc>https://example.com/img.png?a=1&amp;b=2</image:loc>
               <image:title>Tom &amp; "Jerry's" &lt;img&gt;</image:title>
-              <image:caption>A &gt; B &amp; C &#169; &amp;#x27;</image:caption>
+              <image:caption>A &gt; B &amp; C &#169; &#x27;</image:caption>
             </image:image>
             <image:image>
               <image:loc>https://example.com/plain.png</image:loc>
@@ -136,6 +136,47 @@ describe('post-build sitemap', () => {
           </url>
         </urlset>"
       `)
+    } finally {
+      await rm(publicDir, { recursive: true, force: true })
+    }
+  })
+
+  it('escapes entity names that XML does not define', async () => {
+    const publicDir = await mkdtemp(path.join(tmpdir(), 'tss-sitemap-'))
+    const startConfig = parseStartConfig(
+      {
+        sitemap: { host: 'https://example.com' },
+        pages: [
+          {
+            path: '/',
+            sitemap: {
+              images: [
+                {
+                  loc: 'https://example.com/img.png',
+                  title: 'A&nbsp;B &copy; &amp; &#169; &#x27;',
+                },
+              ],
+            },
+          },
+        ],
+      },
+      { framework: 'react' },
+      process.cwd(),
+    )
+
+    try {
+      await postBuild({
+        startConfig,
+        adapter: {
+          getClientOutputDirectory: () => publicDir,
+          prerender: vi.fn(),
+        },
+      })
+
+      const xml = await readFile(path.join(publicDir, 'sitemap.xml'), 'utf8')
+      expect(xml).toContain(
+        '<image:title>A&amp;nbsp;B &amp;copy; &amp; &#169; &#x27;</image:title>',
+      )
     } finally {
       await rm(publicDir, { recursive: true, force: true })
     }

@@ -144,9 +144,10 @@ function textElement(depth: number, name: string, text: string): string {
 }
 
 function escapeXml(value: string, attribute = false): string {
-  // Ampersands that already start an entity are left untouched.
+  // Ampersands that already start an XML entity or a character reference are
+  // left untouched.
   const escaped = value
-    .replace(/&(?![A-Za-z]+;|#\d+;)/g, '&amp;')
+    .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\dA-Fa-f]+);)/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
   return attribute ? escaped.replace(/"/g, '&quot;') : escaped
