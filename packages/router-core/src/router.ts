@@ -1552,9 +1552,17 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const [initialMatchedRoutes, rawParams, foundRoute] = this.getMatchedRoutes(
-      next.pathname,
+    const routeMatch = findRouteMatch(
+      trimPathRight(next.pathname),
+      this.processedTree,
+      true,
     )
+    const initialMatchedRoutes = routeMatch?.branch ?? [
+      this.routesById[rootRouteId]!,
+    ]
+    // Matching only reads raw params; interpolation creates each mutable copy.
+    const rawParams = routeMatch?.rawParams ?? Object.create(null)
+    const foundRoute = routeMatch?.route
     let matchedRoutes = initialMatchedRoutes
     let isGlobalNotFound = false
 
@@ -1981,13 +1989,18 @@ export class RouterCore<
         // typed destination mismatch, not a concrete URL to route-match.
         destRoutes = []
       } else {
-        const [matchedRoutes, rawParams, foundRoute] =
-          this.getMatchedRoutes(nextTo)
-        destRoutes = matchedRoutes
+        const routeMatch = findRouteMatch(
+          trimPathRight(nextTo),
+          this.processedTree,
+          true,
+        )
+        const foundRoute = routeMatch?.route
+        destRoutes = routeMatch?.branch ?? [this.routesById[rootRouteId]!]
 
         if (
           this.options.notFoundRoute &&
-          (!foundRoute || (foundRoute.path !== '/' && rawParams['**']))
+          (!foundRoute ||
+            (foundRoute.path !== '/' && routeMatch.rawParams['**']))
         ) {
           destRoutes = [...destRoutes, this.options.notFoundRoute]
         }
