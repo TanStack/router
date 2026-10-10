@@ -1,3 +1,3 @@
-const loaderHelper = () => fetch('/api');
-const SplitLoader = async () => loaderHelper();
-export { SplitLoader as loader };
+const loaderHelper = () => fetch('/api')
+const SplitLoader = async () => loaderHelper()
+export { SplitLoader as loader }
