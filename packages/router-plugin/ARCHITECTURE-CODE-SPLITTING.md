@@ -807,9 +807,10 @@ wraps the async function for deferred loading.
 
 ### 11. Source Maps Are Preserved
 
-All three compilers pass `sourceMaps: true` and `sourceFileName` to
-`generateFromAst()`, ensuring the browser's devtools can map back to the
-original source file.
+All three compilers print through `generateModule()` with the original source
+and filename, so Yuku's code generator emits a source map (with
+`sourcesContent`) that lets the browser's devtools map back to the original
+source file.
 
 ---
 
