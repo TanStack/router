@@ -45,6 +45,7 @@ return [await entry.render(component), await entry.render(component), entry.stor
     )
     // Known limitation on main: the chunk gets its own copy of `state` and
     // `renders`, so callers of the exported functions are not checked here.
+    // Pinned in known-bugs-code-splitter.test.ts ("a binding read by an exported function").
     // `store.count` is 2: the chunk mutated the store the route module exports
     expect(result).toEqual(['<p>1/1/1</p>', '<p>2/2/2</p>', 2])
   }, 30_000)

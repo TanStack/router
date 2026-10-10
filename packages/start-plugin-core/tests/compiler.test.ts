@@ -1439,23 +1439,6 @@ test('compiles a server function through a parenthesized namespace receiver', as
   expect(result!.code).toContain('createClientRpc')
 })
 
-// The compiler currently mistakes the local parameter for the namespace import.
-// Keep the intended behavior executable until binding resolution is corrected.
-test.fails(
-  'preserves a shadowed parenthesized namespace receiver',
-  async () => {
-    const compiler = createFullCompiler('client')
-    const code = `import * as Start from '@tanstack/react-start'; export function fn(Start) { return (Start).createServerFn().handler(() => 'local-runtime-body') }`
-    const result = await compiler.compile({
-      id: '/test/shadowed-namespace.ts',
-      code,
-    })
-    const output = result?.code ?? code
-    expect(output).toContain('local-runtime-body')
-    expect(output).not.toContain('createClientRpc')
-  },
-)
-
 test.each([
   `(Start).createServerOnlyFn(() => 'private-server-body')`,
   `(Start).createIsomorphicFn().server(() => 'private-server-body').client(() => 'client-value')`,

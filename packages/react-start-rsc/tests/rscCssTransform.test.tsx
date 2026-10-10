@@ -1,3 +1,4 @@
+import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
   StartCompiler,
@@ -212,4 +213,114 @@ describe('RSC CSS compiler transforms', () => {
     expect(code).toContain('renderToReadableStream(...args)')
     expect(code).not.toContain('loadCss')
   })
+})
+
+// Each test asserts correct behaviour for a bug on main and is marked .fails;
+// remove .fails when the bug is fixed.
+describe('known bugs', () => {
+  const dataUrl = (code: string) =>
+    `data:text/javascript,${encodeURIComponent(code)}`
+
+  /**
+   * Compiles `code` with `loadCss()` as the CSS expression and evaluates it:
+   * JSX becomes `{ type, children }` trees, components are called (`Card`
+   * renders `card`) and the RSC render APIs return the arguments they are
+   * called with (`renderServerComponent`, which is async, resolves to them).
+   */
+  async function evaluateCompiled(code: string) {
+    const compiled = await compileWithRscCssTransform({
+      code,
+      loadCssExpression: 'loadCss()',
+    })
+    const { code: javascript } = await transformWithOxc(
+      compiled ?? code,
+      'route.tsx',
+      { jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' } },
+    )
+    const rsc = dataUrl(`const args = (...values) => values
+export const renderToReadableStream = args
+export const renderServerComponent = async (...values) => values
+export const createCompositeComponent = args`)
+    const linked = javascript.replace(
+      /(["'])@tanstack\/react-start\/rsc\1/,
+      JSON.stringify(rsc),
+    )
+    return import(
+      /* @vite-ignore */ dataUrl(`const Fragment = 'Fragment'
+const h = (type, props, ...children) =>
+  typeof type === 'function' ? type({ ...props, children }) : { type, children }
+const loadCss = () => 'css'
+const Card = () => 'card'
+${linked}`)
+    )
+  }
+
+  /** The text nodes of an evaluated element tree. */
+  const texts = (node: unknown): Array<string> => {
+    if (typeof node === 'string') {
+      return [node]
+    }
+    if (Array.isArray(node)) {
+      return node.flatMap(texts)
+    }
+    return texts((node as { children?: unknown } | null)?.children ?? [])
+  }
+
+  test('evaluateCompiled renders the CSS before the JSX argument', async () => {
+    const { stream } = await evaluateCompiled(`
+import { renderToReadableStream } from '@tanstack/react-start/rsc'
+export const stream = renderToReadableStream(<Card />)
+`)
+    expect(texts(stream)).toEqual(['css', 'card'])
+  })
+
+  // Bug: a comment before the JSX argument of `renderToReadableStream` is
+  // moved into the generated CSS fragment, where it becomes JSX text.
+  // Impact: the comment is rendered into the RSC payload as visible text.
+  test.fails.each([
+    { name: 'a block comment', argument: `/* the card */ <Card />` },
+    {
+      name: 'a line comment',
+      argument: `
+  // the card
+  <Card />,
+`,
+    },
+  ])(
+    'renderToReadableStream does not render $name before the JSX argument',
+    async ({ argument }) => {
+      const { stream } = await evaluateCompiled(`
+import { renderToReadableStream } from '@tanstack/react-start/rsc'
+export const stream = renderToReadableStream(${argument})
+`)
+      expect(texts(stream)).toEqual(['css', 'card'])
+    },
+  )
+
+  test('evaluateCompiled passes the CSS to renderServerComponent', async () => {
+    const { rendered } = await evaluateCompiled(`
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+export const rendered = renderServerComponent(<Card />)
+`)
+    const [, options] = await rendered
+    expect(options).toEqual({ __tanstackStartRscCss: 'css' })
+  })
+
+  // Bug: a call whose result is immediately member-called
+  // (`renderServerComponent(...).then()`) is recorded as the inner call of a
+  // method chain and never visited as a candidate itself. Same root cause as
+  // the `createServerOnlyFn(...).bind()` pin in
+  // start-plugin-core/tests/known-bugs-start-compiler.test.ts.
+  // Impact: the server component renders without its CSS.
+  test.fails(
+    'renderServerComponent receives the CSS when its result is chained',
+    async () => {
+      const { rendered } = await evaluateCompiled(`
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+export const rendered = renderServerComponent(<Card />).then((value) => value)
+`)
+      const [, options] = await rendered
+      expect(options).toEqual({ __tanstackStartRscCss: 'css' })
+    },
+  )
 })
