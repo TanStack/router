@@ -303,6 +303,9 @@ export function tanStackStartRsbuild(
         compilerTransforms: corePluginOpts.compilerTransforms,
         serverFnProviderModuleDirectives:
           corePluginOpts.serverFnProviderModuleDirectives,
+        // With RSC, provider modules compile in the RSC layer, where every
+        // module they import is a separate instance anyway.
+        serverFnSharedModule: !rscEnabled,
         serverFnsById,
         onServerFnsByIdChange: () => {
           updateServerFnResolver?.()

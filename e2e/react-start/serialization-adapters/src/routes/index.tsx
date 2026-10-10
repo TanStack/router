@@ -32,6 +32,14 @@ function Home() {
         >
           Nested Classes
         </Link>
+        <br />
+        <Link
+          data-testid="ssr-same-module-class-link"
+          to="/ssr/same-module-class"
+          reloadDocument={true}
+        >
+          Class declared next to the Server Function
+        </Link>
       </div>
       <div>
         <h2>Server Functions</h2>
@@ -49,6 +57,14 @@ function Home() {
           reloadDocument={true}
         >
           Nested Classes returned from Server Function
+        </Link>
+        <br />
+        <Link
+          data-testid="server-function-same-module-class-link"
+          to="/server-function/same-module-class"
+          reloadDocument={true}
+        >
+          Class declared next to the Server Function
         </Link>
       </div>
     </>

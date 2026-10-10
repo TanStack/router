@@ -60,6 +60,8 @@ Server functions are discovered in caller modules, not in provider modules. In `
 - `extractedFilename`, the provider module ID with the server-function split query.
 - `isClientReferenced`, whether client-origin calls are allowed.
 
+In the provider environment, module-level bindings that handlers share with the rest of their module move into a `?tss-serverfn-shared` module, which the module, its route-split variants and the provider import, so the server holds one instance of each. A server function whose handler writes such a binding moves there with it and is discovered there as well. With RSC enabled the shared module is off: provider modules compile in the RSC layer, where every module they import is a separate instance anyway.
+
 `onServerFnsById` merges discoveries into the shared `serverFnsById` registry. While a compile task is active, it also merges the same discoveries into that module's `activeServerFnMetadata` object. After compile finishes, that object becomes the metadata payload for the module.
 
 Per-environment compiler tasks are serialized because `StartCompiler` owns mutable module caches and because `activeServerFnMetadata` must only describe the module currently being compiled in that environment.

@@ -1,6 +1,7 @@
 import { createStart } from '@tanstack/react-start'
 import { carAdapter, fooAdapter, nestedOuterAdapter } from './data'
 import { customErrorAdapter } from './CustomError'
+import { moneyAdapter } from './Money'
 
 export const startInstance = createStart(() => {
   return {
@@ -9,6 +10,7 @@ export const startInstance = createStart(() => {
       fooAdapter,
       carAdapter,
       customErrorAdapter,
+      moneyAdapter,
       // only register nestedOuterAdapter here, nestedInnerAdapter is registered as an "extends" of nestedOuterAdapter
       nestedOuterAdapter,
     ],

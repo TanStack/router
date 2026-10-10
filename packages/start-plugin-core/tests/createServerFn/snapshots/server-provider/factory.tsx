@@ -1,29 +1,5 @@
 import { createServerRpc } from '@tanstack/react-start/server-rpc';
-import { createServerFn, createMiddleware } from '@tanstack/react-start';
-const authMiddleware = createMiddleware({
-  type: 'function'
-}).server(({
-  next
-}) => {
-  return next({
-    context: {
-      auth: 'auth'
-    }
-  });
-});
-const adminMiddleware = createMiddleware({
-  type: 'function'
-}).server(({
-  next
-}) => {
-  return next({
-    context: {
-      admin: 'admin'
-    }
-  });
-});
-const createAuthServerFn = createServerFn().middleware([authMiddleware]);
-const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware]);
+import { createAuthServerFn, createAdminServerFn } from "./test.ts?tss-serverfn-shared";
 const myAuthedFn_createServerFn_handler = createServerRpc({
   id: "3bb88b23926fa224cea3dcfb877026757733d95b42e3b66cf7f06bb89dab06a3",
   name: "myAuthedFn",

@@ -1,9 +1,11 @@
 import { expect, test } from 'vitest'
+import { declarationOf } from '../validate-module'
 import {
   callProvider,
   compileAll,
   compileCode,
   evaluateModule,
+  evaluateServerModules,
   importSources,
 } from '../regression-helpers'
 
@@ -341,7 +343,7 @@ export const bump = createServerFn().handler(async () => ++count)`)
 })
 
 // Source: Next.js server-actions fixtures server-graph/27
-test('exported helpers the handler uses stay declared in the provider', async () => {
+test('exported helpers the handler uses stay available to the provider', async () => {
   const { provider } = await compileAll(`${head}import { db } from './db.server'
 export async function load() {
   return db.x()
@@ -360,4 +362,109 @@ export const fn = createServerFn().handler(async () => [await load(), helper(), 
   expect(
     await callProvider(provider, 'fn', { './db.server': dbServer }),
   ).toEqual(['x', 'y', 'z', 'w'])
+})
+
+// On the server, other code imports the SSR caller (e.g. src/start.ts
+// registering a serialization adapter) while the server-fn router runs the
+// handler from the provider. Both must see one module: one class, one state.
+
+// Source: a serialization adapter whose class is declared next to the server
+// function returning it; the adapter's `instanceof` test never matched.
+test('a class instance the handler returns is an instance of the class other server code imports', async () => {
+  const compiled = await compileAll(`${head}export class Money {
+  constructor(readonly cents: number) {}
+}
+export const getBudget = createServerFn().handler(async () => new Money(100))`)
+  const { ssr, provider } = await evaluateServerModules(compiled)
+  expect(await callProvider(provider, 'getBudget')).toBeInstanceOf(ssr.Money)
+})
+
+test('module state the handler updates is the state other server code reads', async () => {
+  const compiled = await compileAll(`${head}let requests = 0
+export function requestCount() {
+  return requests
+}
+export const track = createServerFn().handler(async () => {
+  requests += 1
+})`)
+  const { ssr, provider } = await evaluateServerModules(compiled)
+  await callProvider(provider, 'track')
+  expect(ssr.requestCount()).toBe(1)
+})
+
+test('a destructuring both sides read from evaluates once', async () => {
+  const compiled = await compileAll(`${head}import { make } from './make'
+const { left, right } = make()
+export const getLeft = createServerFn().handler(async () => left)
+export const getRight = () => right`)
+  let calls = 0
+  const { ssr, provider } = await evaluateServerModules(compiled, {
+    './make': { make: () => ({ left: ++calls, right: calls }) },
+  })
+  expect(await callProvider(provider, 'getLeft')).toBe(1)
+  expect(ssr.getRight()).toBe(1)
+  expect(calls).toBe(1)
+})
+
+test('the route and the bindings that depend on it stay in the module', async () => {
+  const compiled =
+    await compileAll(`import { createFileRoute } from '@tanstack/react-router'
+${head}const label = 'label'
+const routeLabel = () => Route.id + label
+export const getLabel = createServerFn().handler(async () => [label, routeLabel()])
+export const Route = createFileRoute('/')({ loader: () => [label, routeLabel()] })`)
+  expect(compiled.shared).toMatch(declarationOf('label'))
+  for (const name of ['Route', 'routeLabel']) {
+    expect(compiled.shared).not.toMatch(declarationOf(name))
+    expect(compiled.ssr).toMatch(declarationOf(name))
+  }
+})
+
+// Statements run where the module runs, so their bindings keep a copy in the
+// provider, as before.
+test.each([
+  {
+    name: 'calls a method on',
+    code: `export const registry: Array<string> = []
+registry.push('loaded')
+export const list = createServerFn().handler(async () => registry)`,
+  },
+  {
+    name: 'assigns',
+    code: `export let mode = 'default'
+mode = 'loaded'
+export const getMode = createServerFn().handler(async () => mode)`,
+  },
+])(
+  'a binding a module-level statement $name is not shared',
+  async ({ code }) => {
+    const compiled = await compileAll(`${head}${code}`)
+    expect(compiled.shared).toBeUndefined()
+    expect(importSources(compiled.ssr)).toEqual([])
+    expect(importSources(compiled.provider)).toEqual([])
+  },
+)
+
+test('a shared helper reading an enum keeps a copy with the enum', async () => {
+  const compiled = await compileAll(`${head}enum Role {
+  Admin = 'admin',
+}
+export const label = (role: Role) => (role === Role.Admin ? 'admin' : 'user')
+export const getLabel = createServerFn().handler(async () => label(Role.Admin))`)
+  expect(compiled.shared).toBeUndefined()
+  const { ssr, provider } = await evaluateServerModules(compiled)
+  expect(await callProvider(provider, 'getLabel')).toBe('admin')
+  expect(ssr.label('admin')).toBe('admin')
+})
+
+// Rsbuild compiles provider modules in the RSC layer with RSC enabled.
+test('a separately layered provider keeps its own copy', async () => {
+  const compiled = await compileAll(
+    `${head}export class Money {}
+export const getBudget = createServerFn().handler(async () => new Money())`,
+    { serverFnSharedModule: false },
+  )
+  expect(compiled.shared).toBeUndefined()
+  expect(compiled.ssr).toMatch(declarationOf('Money'))
+  expect(compiled.provider).toMatch(declarationOf('Money'))
 })

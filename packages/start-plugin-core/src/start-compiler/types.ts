@@ -13,6 +13,11 @@ export interface CompilationContext extends StartCompilerTransformContext {
   getKnownServerFns: () => Record<string, ServerFn>
   /** Module-level directives to add to extracted server function provider files. */
   serverFnProviderModuleDirectives: ReadonlyArray<string> | undefined
+  /**
+   * Server functions of a provider module that its `?tss-serverfn-shared`
+   * module hosts; the provider re-exports their handlers from `source`.
+   */
+  sharedServerFns?: { source: string; names: ReadonlyArray<string> } | undefined
 
   /**
    * Callback when server functions are discovered.

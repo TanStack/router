@@ -111,6 +111,29 @@ test.describe('server functions serialization adapters', () => {
   })
 })
 
+// The class, its adapter and the server function returning it are declared in
+// one module (src/Money.ts); the adapter is registered in src/start.tsx.
+test.describe('class declared in the server function module', () => {
+  test('server function', async ({ page }) => {
+    await page.goto('/server-function/same-module-class')
+    await awaitPageLoaded(page)
+
+    await page.getByTestId('same-module-class-trigger').click()
+    await expect(page.getByTestId('same-module-class-result')).toHaveText(
+      'Money 12500.00 EUR',
+    )
+  })
+
+  test('SSR loader', async ({ page }) => {
+    await page.goto('/ssr/same-module-class')
+    await awaitPageLoaded(page)
+
+    await expect(page.getByTestId('same-module-class-loader')).toHaveText(
+      'Money 12500.00 EUR',
+    )
+  })
+})
+
 test.describe('late RawStream serialization', () => {
   test('single late stream', async ({ page }) => {
     await page.goto('/server-function/late-raw-stream')

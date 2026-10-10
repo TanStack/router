@@ -28,6 +28,7 @@ interface StartCompilerOptions {
   files?: Record<string, string>
   /** `serverFnProviderModuleDirectives` */
   directives?: Array<string>
+  serverFnSharedModule?: boolean
   compilerPlugins?: Array<StartCompilerPlugin>
 }
 
@@ -51,6 +52,7 @@ export function createStartCompiler(options: StartCompilerOptions) {
     devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
       `/@id${extractedFilename.slice(root.length)}`,
     serverFnProviderModuleDirectives: options.directives,
+    serverFnSharedModule: options.serverFnSharedModule,
     onServerFnsById: (fns) => Object.assign(serverFns, fns),
     loadModule: async (id) => {
       const code = files[id]
@@ -80,7 +82,9 @@ export function createStartCompiler(options: StartCompilerOptions) {
 
 /**
  * Compiles `code` for one output: the client, the SSR caller or the
- * server-function provider module (`?tss-serverfn-split`).
+ * server-function provider module (`?tss-serverfn-split`). When a server
+ * output imports its `?tss-serverfn-shared` module, that module is compiled
+ * too, and `evaluateModule` links it.
  */
 export async function compileFor(
   output: Output,
@@ -96,8 +100,23 @@ export async function compileFor(
     code,
     output === 'provider' ? `${id}?tss-serverfn-split` : id,
   )
-  return { code: result, serverFns }
+  const shared =
+    result !== null && importSources(result).includes(sharedSpecifier(id))
+      ? await compile(code, `${id}?tss-serverfn-shared`)
+      : null
+  if (result !== null && shared !== null) {
+    sharedModules.set(result, { specifier: sharedSpecifier(id), code: shared })
+  }
+  return { code: result, shared, serverFns }
 }
+
+/** The specifier a module imports its `?tss-serverfn-shared` module by. */
+function sharedSpecifier(id = moduleId) {
+  return `./${id.slice(id.lastIndexOf('/') + 1)}?tss-serverfn-shared`
+}
+
+/** Compiled `?tss-serverfn-shared` modules by the compiled module importing them. */
+const sharedModules = new Map<string, { specifier: string; code: string }>()
 
 /** Like `compileFor`, returning only the code (null when untouched). */
 export async function compileCode(
@@ -118,6 +137,7 @@ export async function compileAll(
   const compiled = {} as Record<Output, string>
   const errors = {} as Record<Output, Array<string>>
   let serverFns: Record<string, ServerFn> = {}
+  let shared: string | undefined
   for (const output of outputs) {
     const result = await compileFor(output, code, options)
     expect(result.code, output).not.toBeNull()
@@ -126,9 +146,13 @@ export async function compileAll(
     if (output === 'client') {
       serverFns = result.serverFns
     }
+    shared ??= result.shared ?? undefined
   }
   expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  return { ...compiled, serverFns }
+  if (shared !== undefined) {
+    expect(await getModuleErrors(shared), 'shared').toEqual([])
+  }
+  return { ...compiled, shared, serverFns }
 }
 
 /**
@@ -192,14 +216,26 @@ const __jsx = (type, props, ...children) => {
 }
 `
 
-/** Module stub: module source code, or the exports of the module. */
+/**
+ * Module stub: module source code, the exports of the module, or a module
+ * `evaluateModule` returned, which links as that same instance with live
+ * bindings.
+ */
 export type ModuleStub = string | Record<string, unknown>
+
+/** The URL of every module `evaluateModule` evaluated. */
+const evaluatedModuleUrls = new WeakMap<object, string>()
 
 const stubsKey = '__startCompilerTestStubs'
 const stubRegistry: Array<Record<string, unknown>> = []
 ;(globalThis as Record<string, unknown>)[stubsKey] = stubRegistry
 
 function stubUrl(source: string, stub: ModuleStub) {
+  const evaluatedUrl =
+    typeof stub === 'object' ? evaluatedModuleUrls.get(stub) : undefined
+  if (evaluatedUrl !== undefined) {
+    return evaluatedUrl
+  }
   if (typeof stub === 'string') {
     return source.endsWith('.json')
       ? dataUrl(stub, 'application/json')
@@ -227,6 +263,14 @@ export async function evaluateModule(
   runtime = jsxToText,
 ): Promise<Record<string, any>> {
   const sources: Record<string, ModuleStub> = { ...startRuntime, ...stubs }
+  const shared = sharedModules.get(code)
+  if (shared !== undefined && !(shared.specifier in sources)) {
+    sources[shared.specifier] = await evaluateModule(
+      shared.code,
+      stubs,
+      runtime,
+    )
+  }
   const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
     jsx: { runtime: 'classic', pragma: '__jsx', pragmaFrag: '__Fragment' },
   })
@@ -240,11 +284,10 @@ export async function evaluateModule(
       return `${prefix}${JSON.stringify(stubUrl(source, stub))}`
     },
   )
-  return import(
-    /* @vite-ignore */ dataUrl(
-      `${runtime}${linked}\n// evaluation ${++evaluations}`,
-    )
-  )
+  const url = dataUrl(`${runtime}${linked}\n// evaluation ${++evaluations}`)
+  const module: Record<string, any> = await import(/* @vite-ignore */ url)
+  evaluatedModuleUrls.set(module, url)
+  return module
 }
 
 /** Runs a provider's extracted handler the way the server-fn router does. */
@@ -261,6 +304,29 @@ export async function callProvider(
   const handler = module[`${name}_createServerFn_handler`]
   expect(handler, name).toBeTypeOf('function')
   return handler({ data })
+}
+
+/**
+ * Evaluates a module's SSR caller and server-function provider in one server
+ * runtime: other server code imports the caller, the server-fn router loads
+ * the provider, and both link the single instance of their
+ * `?tss-serverfn-shared` module, like in a bundle.
+ */
+export async function evaluateServerModules(
+  compiled: { ssr: string; provider: string; shared?: string | undefined },
+  stubs: Record<string, ModuleStub> = {},
+) {
+  const linked =
+    compiled.shared === undefined
+      ? stubs
+      : {
+          ...stubs,
+          [sharedSpecifier()]: await evaluateModule(compiled.shared, stubs),
+        }
+  return {
+    ssr: await evaluateModule(compiled.ssr, linked),
+    provider: await evaluateModule(compiled.provider, linked),
+  }
 }
 
 /** The value of `run`, or the message of the error it throws. */

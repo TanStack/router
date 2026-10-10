@@ -344,10 +344,12 @@ export const fn = createServerFn()
   .validator((data: unknown) => schema.parse(data))
   .handler(async () => 'ok')`)
     expect(importSources(compiled.client)).toEqual([])
+    // The SSR caller and the provider share the middleware's single instance.
     expect(importSources(compiled.provider)).toEqual([
-      './db.server',
+      './module.tsx?tss-serverfn-shared',
       './schema.server',
     ])
+    expect(importSources(compiled.shared!)).toEqual(['./db.server'])
   })
 })
 
@@ -547,11 +549,16 @@ export const fn = createServerFn().handler(async () => {
   return a
 })
 export const clientB = clientCopy`)
-    for (const caller of [compiled.client, compiled.ssr]) {
-      expect(caller).not.toMatch(declarationOf('hits'))
-      expect(caller).toMatch(declarationOf('a'))
-      expect(importSources(caller)).toEqual(['./db.server'])
-    }
+    expect(compiled.client).not.toMatch(declarationOf('hits'))
+    expect(compiled.client).toMatch(declarationOf('a'))
+    expect(importSources(compiled.client)).toEqual(['./db.server'])
+    // On the server, the kept sibling and the handler share `a`.
+    expect(compiled.ssr).not.toMatch(declarationOf('hits'))
+    expect(importSources(compiled.ssr)).toEqual([
+      './module.tsx?tss-serverfn-shared',
+    ])
+    expect(compiled.shared).toMatch(declarationOf('a'))
+    expect(compiled.shared).not.toMatch(declarationOf('hits'))
     expect(compiled.provider).toMatch(declarationOf('hits'))
     expect(compiled.provider).not.toContain('clientCopy')
   })
