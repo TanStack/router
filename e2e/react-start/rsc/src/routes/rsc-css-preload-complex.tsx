@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { CompositeComponent } from '@tanstack/react-start/rsc'
+import { useState } from 'react'
 import { formatTime, pageStyles } from '~/utils/styles'
 import { getComplexPreloadServerComponentA } from '~/utils/complexPreloadServerComponentA'
 import { getComplexPreloadServerComponentB } from '~/utils/complexPreloadServerComponentB'
@@ -38,8 +39,8 @@ export const Route = createFileRoute('/rsc-css-preload-complex')({
 })
 
 function RscCssPreloadComplexComponent() {
-  const { ServerA, loaderTimestamp } = Route.useLoaderData()
-  // Note: ServerB is intentionally NOT used/rendered
+  const { ServerA, ServerB, loaderTimestamp } = Route.useLoaderData()
+  const [showServerB, setShowServerB] = useState(false)
 
   return (
     <div style={pageStyles.container}>
@@ -62,6 +63,14 @@ function RscCssPreloadComplexComponent() {
       <CompositeComponent src={ServerA}>
         <ClientWidgetB title="Widget B (Slot)" />
       </CompositeComponent>
+
+      <button
+        data-testid="render-server-b"
+        onClick={() => setShowServerB(true)}
+      >
+        Render ServerB
+      </button>
+      {showServerB && ServerB}
 
       <div
         style={{

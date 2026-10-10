@@ -1,7 +1,6 @@
 'use client'
 
 import { use } from 'react'
-import { trackPostProcessPromise } from '@tanstack/start-client-core'
 import { createFromReadableStream as browserDecode } from 'virtual:tanstack-rsc-browser-decode'
 
 import { awaitLazyElements } from './awaitLazyElements'
@@ -89,7 +88,6 @@ function setupStreamDecode(
   const jsPreloads = options?.jsPreloads
     ? new Set(options.jsPreloads)
     : undefined
-  const shouldDeferDecode = cssHrefs.size > 0 || !!jsPreloads?.size
 
   // Synchronous cache for the decoded tree.
   let cachedTree: unknown = undefined
@@ -109,17 +107,9 @@ function setupStreamDecode(
           return cachedTree
         },
       )
-
-      // Track the lazy element loading - prevents flash for RPC/RSC fetches.
-      trackPostProcessPromise(transformedTreePromise)
     }
 
     return transformedTreePromise
-  }
-
-  if (!shouldDeferDecode) {
-    // Start decoding eagerly during deserialization for non-SSR streams.
-    startDecode()
   }
 
   const streamWrapper: ServerComponentStream = {
@@ -128,6 +118,8 @@ function setupStreamDecode(
 
   const getTree = () => {
     if (cacheReady) return cachedTree
+    // Decoding loads client modules and their CSS, so wait until this stream
+    // is rendered even when SSR asset metadata is absent.
     // eslint-disable-next-line react-hooks/rules-of-hooks
     return use(startDecode())
   }

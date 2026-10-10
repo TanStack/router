@@ -38,6 +38,7 @@ import { createFromReadableStream as browserDecode } from '@vitejs/plugin-rsc/br
 
 import {
   createCompositeFromStream,
+  createRenderableFromStream,
   createServerComponentFromStream,
 } from '../src/createServerComponentFromStream'
 import {
@@ -46,6 +47,59 @@ import {
 } from '../src/ServerComponentTypes'
 
 describe('ServerComponent (client)', () => {
+  it.each(['renderable', 'composite'] as const)(
+    'renders the selected %s stream and switches to a previously unused one',
+    async (kind) => {
+      const decodeMock = vi.mocked(browserDecode)
+      decodeMock.mockClear()
+      const create =
+        kind === 'renderable'
+          ? createRenderableFromStream
+          : createCompositeFromStream
+      const unusedStream = new ReadableStream<Uint8Array>()
+      const selectedStream = new ReadableStream<Uint8Array>()
+      decodeMock.mockImplementation(
+        (stream) =>
+          Promise.resolve(
+            React.createElement(
+              'div',
+              null,
+              stream === selectedStream ? 'selected' : 'other',
+            ),
+          ) as ReturnType<typeof browserDecode>,
+      )
+      const unused = create(unusedStream)
+      const selected = create(selectedStream)
+      expect(decodeMock).not.toHaveBeenCalled()
+
+      const { CompositeComponent } = await import('../src/CompositeComponent')
+      let view: ReturnType<typeof render>
+      await act(async () => {
+        view = render(
+          kind === 'renderable' ? (
+            selected
+          ) : (
+            <CompositeComponent src={selected} />
+          ),
+        )
+      })
+      expect(view!.getByText('selected')).toBeTruthy()
+      expect(view!.queryByText('other')).toBeNull()
+      expect(decodeMock).toHaveBeenCalledOnce()
+      expect(decodeMock.mock.calls[0]?.[0]).toBe(selectedStream)
+
+      await act(async () => {
+        view!.rerender(
+          kind === 'renderable' ? unused : <CompositeComponent src={unused} />,
+        )
+      })
+      expect(view!.getByText('other')).toBeTruthy()
+      expect(view!.queryByText('selected')).toBeNull()
+      expect(decodeMock).toHaveBeenCalledTimes(2)
+      expect(decodeMock.mock.calls[1]?.[0]).toBe(unusedStream)
+    },
+  )
+
   it('decodes a stream only once', async () => {
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -62,6 +116,7 @@ describe('ServerComponent (client)', () => {
     })
 
     const decodeMock = browserDecode as unknown as ReturnType<typeof vi.fn>
+    decodeMock.mockClear()
     decodeMock.mockImplementation((rs: ReadableStream<Uint8Array>) => {
       createdReadableStream = rs
       return decodePromise
@@ -115,4 +170,61 @@ describe('ServerComponent (client)', () => {
       '/assets/component.js',
     ])
   })
+
+  it.each(['renderable', 'composite'] as const)(
+    'keeps the previous %s visible while decoding its replacement',
+    async (kind) => {
+      const decodeMock = vi.mocked(browserDecode)
+      decodeMock.mockClear()
+      decodeMock.mockResolvedValueOnce(
+        React.createElement('div', null, 'previous'),
+      )
+      let resolveNext!: (value: React.ReactNode) => void
+      decodeMock.mockReturnValueOnce(
+        new Promise<React.ReactNode>((resolve) => {
+          resolveNext = resolve
+        }) as ReturnType<typeof browserDecode>,
+      )
+
+      const create =
+        kind === 'renderable'
+          ? createRenderableFromStream
+          : createCompositeFromStream
+      const previous = create(new ReadableStream<Uint8Array>())
+      const next = create(new ReadableStream<Uint8Array>())
+      const { CompositeComponent } = await import('../src/CompositeComponent')
+      let view: ReturnType<typeof render>
+      await act(async () => {
+        view = render(
+          kind === 'renderable' ? (
+            previous
+          ) : (
+            <CompositeComponent src={previous} />
+          ),
+        )
+      })
+      await act(async () => {
+        view!.rerender(
+          kind === 'renderable' ? next : <CompositeComponent src={next} />,
+        )
+      })
+      expect(view!.getByText('previous').style.display).not.toBe('none')
+      expect(view!.queryByText('replacement')).toBeNull()
+
+      await act(async () => {
+        resolveNext(React.createElement('div', null, 'replacement'))
+      })
+      expect(view!.queryByText('previous')).toBeNull()
+      expect(view!.getByText('replacement').style.display).not.toBe('none')
+      expect(decodeMock).toHaveBeenCalledTimes(2)
+
+      await act(async () => {
+        view!.rerender(
+          kind === 'renderable' ? next : <CompositeComponent src={next} />,
+        )
+      })
+      expect(decodeMock).toHaveBeenCalledTimes(2)
+      expect(view!.getByText('replacement').style.display).not.toBe('none')
+    },
+  )
 })
