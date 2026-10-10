@@ -85,7 +85,7 @@ describe('HMR route refresh', () => {
     await router._refreshRoute!()
     await router.preloadRoute({ to: '/other' })
 
-    expect(router._tx?.[6]).toBeUndefined()
+    expect(router._tx?.[7]).toBeUndefined()
     expect(otherLoader).toHaveBeenCalledOnce()
   })
 

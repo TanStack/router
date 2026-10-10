@@ -506,6 +506,121 @@ test('a superseding navigation reuses a pending background loader after async be
   expect(router.state.matches.at(-1)?.preload).toBe(false)
 })
 
+test('a navigation in async beforeLoad adopts a pending flight released by a redirecting preload', async () => {
+  const parentResult = createControlledPromise<string>()
+  const childGate = createControlledPromise<void>()
+  const beforeLoadStarted = createControlledPromise<void>()
+  const beforeLoadGate = createControlledPromise<void>()
+  const signals: Array<AbortSignal> = []
+
+  const rootRoute = new BaseRootRoute({})
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      tab: Number(search.tab ?? 0),
+    }),
+    beforeLoad: async ({ search, preload }) => {
+      if (!preload && search.tab === 2) {
+        beforeLoadStarted.resolve()
+        await beforeLoadGate
+      }
+    },
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return parentResult
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => pageRoute,
+    path: '/child',
+    loader: async () => {
+      await childGate
+      throw redirect({ to: '/other' })
+    },
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      pageRoute.addChildren([childRoute]),
+      otherRoute,
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/other'] }),
+  })
+  await router.load()
+
+  const preload = router.preloadRoute({ to: '/page/child', search: { tab: 1 } })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(signals).toHaveLength(1)
+
+  const first = router.navigate({ to: '/page', search: { tab: 1 } })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  const second = router.navigate({ to: '/page', search: { tab: 2 } })
+  await beforeLoadStarted
+
+  childGate.resolve()
+  await preload
+  beforeLoadGate.resolve()
+  parentResult.resolve('parent')
+  await Promise.all([first, second])
+
+  expect(router.state.location.search).toEqual({ tab: 2 })
+  expect(router.state.matches.at(-1)?.loaderData).toBe('parent')
+  expect(signals).toHaveLength(1)
+  expect(signals[0]?.aborted).toBe(false)
+})
+
+test('leaving before loader planning releases the same-ID work a navigation reserved', async () => {
+  const beforeLoadStarted = createControlledPromise<void>()
+  const beforeLoadGate = createControlledPromise<void>()
+  const signals: Array<AbortSignal> = []
+  const rootRoute = new BaseRootRoute({})
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      phase: String(search.phase ?? ''),
+    }),
+    beforeLoad: async ({ search }) => {
+      if (search.phase === 'second') {
+        beforeLoadStarted.resolve()
+        await beforeLoadGate
+      }
+    },
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return createControlledPromise<string>()
+    },
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([pageRoute, otherRoute]),
+    history: createMemoryHistory({ initialEntries: ['/other'] }),
+  })
+  await router.load()
+
+  router.navigate({ to: '/page', search: { phase: 'first' } })
+  await vi.waitFor(() => expect(signals).toHaveLength(1))
+  router.navigate({ to: '/page', search: { phase: 'second' } })
+  await beforeLoadStarted
+  expect(signals[0]?.aborted).toBe(false)
+
+  await router.navigate({ to: '/other' })
+  beforeLoadGate.resolve()
+  // Let the superseded beforeLoad finish so a late loader start is observable.
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  expect(router.state.location.pathname).toBe('/other')
+  expect(signals[0]?.aborted).toBe(true)
+  expect(signals).toHaveLength(1)
+})
+
 test('an ancestor beforeLoad failure releases an unconsumed background loader', async () => {
   const backgroundResult = createControlledPromise<number>()
   const signals: Array<AbortSignal> = []
