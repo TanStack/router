@@ -12,5 +12,6 @@ export const ServerFunctionSerializationAdapter = createSerializationAdapter({
     return !!v[TSS_SERVER_FUNCTION]
   },
   toSerializable: ({ serverFnMeta }) => ({ functionId: serverFnMeta.id }),
-  fromSerializable: ({ functionId }) => createClientRpc(functionId),
+  // Hydrated callbacks need results; compiled callers consume the envelope.
+  fromSerializable: ({ functionId }) => createClientRpc(functionId, true),
 })

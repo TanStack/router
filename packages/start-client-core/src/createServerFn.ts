@@ -164,13 +164,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             context: createNullProtoObject(),
           })
 
-          const redirect = parseRedirect(result.error)
-          if (redirect) {
-            throw redirect
-          }
-
-          if (result.error) throw result.error
-          return result.result
+          return extractServerFnResult(result)
         },
         {
           // This copies over the URL, function ID
@@ -209,6 +203,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               result: d.result,
               error: d.error,
               context: d.sendContext,
+              ...(d.errorCaught ? { errorCaught: true } : {}),
             }))
 
             return result
@@ -225,6 +220,20 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
     return createServerFn(undefined, newOptions)
   }
   return Object.assign(fun, res) as any
+}
+
+export function extractServerFnResult(
+  result: Pick<ServerFnMiddlewareResult, 'result' | 'error' | 'errorCaught'>,
+) {
+  const redirect = parseRedirect(result.error)
+  if (redirect) {
+    throw redirect
+  }
+
+  if (result.errorCaught || result.error) {
+    throw result.error
+  }
+  return result.result
 }
 
 export async function executeMiddleware(
@@ -308,12 +317,14 @@ export async function executeMiddleware(
                 : userCtx instanceof Response
                   ? userCtx
                   : (ctx as any).result,
-            error: userCtx.error ?? (ctx as any).error,
+            error: userCtx.errorCaught
+              ? userCtx.error
+              : (userCtx.error ?? ctx.error),
           }
 
           const result = await callNextMiddleware(nextCtx)
 
-          if (result.error) {
+          if (result.errorCaught || result.error) {
             throw result.error
           }
 
@@ -356,6 +367,7 @@ export async function executeMiddleware(
       return {
         ...ctx,
         error,
+        errorCaught: true,
       }
     }
   }
@@ -878,6 +890,8 @@ export type ServerFnMiddlewareOptions = {
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
   result?: unknown
   error?: unknown
+  /** @internal - Distinguishes caught failures from returned errors. */
+  errorCaught?: boolean
 }
 
 export type NextFn = (

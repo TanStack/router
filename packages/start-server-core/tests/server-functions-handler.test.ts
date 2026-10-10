@@ -1,20 +1,29 @@
 // @vitest-environment node
 
-import { beforeEach, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { createStream, fromCrossJSON } from 'seroval'
 import {
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+  X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
+  createMiddleware,
+  createServerFn,
+  getDefaultSerovalPlugins,
 } from '@tanstack/start-client-core'
 import {
   FRAME_HEADER_SIZE,
   FRAME_TYPE_CHUNK,
   FRAME_TYPE_JSON,
   MAX_FRAMED_STREAMS,
+  createClientRpc,
 } from '@tanstack/start-client-core/client-rpc'
 import { RawStream } from '@tanstack/router-core'
 import { defaultSerovalDeserializerPlugins } from '@tanstack/router-core/ssr/server'
+import { runWithStartContext } from '@tanstack/start-storage-context'
+import { createServerRpc } from '../src/createServerRpc'
+import { createSsrRpc } from '../src/createSsrRpc'
 import { handleServerAction } from '../src/server-functions-handler'
+import { ServerFunctionSerializationAdapter } from '../src/serializer/ServerFunctionSerializationAdapter'
 import type * as StartClientCore from '@tanstack/start-client-core'
 
 const mocks = vi.hoisted(() => ({
@@ -44,6 +53,219 @@ beforeEach(() => {
   mocks.action.mockReset()
   mocks.response.status = 200
   mocks.response.statusText = 'OK'
+})
+
+const failure = new Error('existing error')
+const serverFnCases = [
+  ...[undefined, null, false, 0, ''].flatMap((value) => {
+    const name = JSON.stringify(value) ?? 'undefined'
+    return [
+      {
+        name: `returns ${name}`,
+        handler: () => value,
+        value,
+        fails: false,
+        middleware: undefined,
+      },
+      {
+        name: `throws ${name}`,
+        handler: () => {
+          throw value
+        },
+        value,
+        fails: true,
+        middleware: undefined,
+      },
+      {
+        name: `rejects ${name}`,
+        handler: () => Promise.reject(value),
+        value,
+        fails: true,
+        middleware: undefined,
+      },
+      {
+        name: `has middleware that returns error: ${name}`,
+        handler: () => 'returned result',
+        value: 'returned result',
+        fails: false,
+        middleware: createMiddleware({ type: 'function' }).server(
+          async ({ next }) => ({ ...(await next()), error: value }),
+        ),
+      },
+    ]
+  }),
+  {
+    name: 'throws an Error',
+    handler: () => {
+      throw failure
+    },
+    value: failure,
+    fails: true,
+    middleware: undefined,
+  },
+  {
+    name: 'returns an envelope-shaped payload',
+    handler: () => ({
+      result: 'payload',
+      error: 'payload error',
+      errorCaught: true,
+    }),
+    value: { result: 'payload', error: 'payload error', errorCaught: true },
+    fails: false,
+    middleware: undefined,
+  },
+  {
+    name: 'returns a Response',
+    handler: () => new Response('raw response'),
+    value: new Response('raw response'),
+    fails: false,
+    middleware: undefined,
+  },
+  {
+    name: 'has middleware that returns a truthy error',
+    handler: () => 'returned result',
+    value: 'returned error',
+    fails: true,
+    middleware: createMiddleware({ type: 'function' }).server(
+      async ({ next }) => ({ ...(await next()), error: 'returned error' }),
+    ),
+  },
+]
+
+describe.each([
+  'client RPC',
+  'SSR',
+  'server-deserialized adapter',
+  'hydrated callback',
+  'request without header',
+])('%s', (path) => {
+  test.each(
+    serverFnCases.filter(
+      ({ fails, middleware }) =>
+        path !== 'request without header' || (fails && !middleware),
+    ),
+  )(
+    'server function that $name',
+    async ({ handler, value, fails, middleware }) => {
+      const rpc = createServerRpc(
+        { id: 'test', name: 'fn', filename: 'test.ts' },
+        (opts) => provider.__executeServer(opts),
+      )
+      const provider = createServerFn({ method: 'POST' })
+        .middleware(middleware ? [middleware] : [])
+        // The compiler supplies the provider handler as the second argument.
+        // @ts-expect-error Compiler-transformed signature
+        .handler(rpc, handler)
+      mocks.action.mockImplementation(rpc)
+      const request = new Request('http://localhost/_serverFn/test')
+      const fetch: StartClientCore.CustomFetch = async (_url, init) => {
+        const headers = new Headers(init?.headers)
+        if (path === 'request without header') {
+          headers.delete('x-tsr-serverFn')
+        }
+        const response = await handleServerAction({
+          request: new Request(request.url, { ...init, headers }),
+          context: {},
+          serverFnId: 'test',
+        })
+        expect(response).toBeInstanceOf(Response)
+        expect(response.status).toBe(200)
+        if (value instanceof Response) {
+          expect(response.headers.get(X_TSS_RAW_RESPONSE)).toBe('true')
+          return response
+        }
+        expect(response.headers.get(X_TSS_SERIALIZED)).toBe('true')
+        const envelope = fromCrossJSON(await response.clone().json(), {
+          plugins: getDefaultSerovalPlugins(),
+        }) as Record<string, unknown>
+        expect(Object.keys(envelope)).toEqual([
+          'result',
+          'error',
+          'context',
+          ...(fails && value !== undefined && !value ? ['errorCaught'] : []),
+        ])
+        return response
+      }
+
+      await runWithStartContext(
+        {
+          request,
+          startOptions: {
+            functionMiddleware:
+              path === 'hydrated callback'
+                ? [
+                    createMiddleware({ type: 'function' }).client(() => {
+                      throw new Error(
+                        'Hydrated callbacks bypass client middleware',
+                      )
+                    }),
+                  ]
+                : [],
+          },
+          contextAfterGlobalMiddlewares: {},
+          executedRequestMiddlewares: new Set(),
+          handlerType: 'serverFn',
+          getRouter: () => {
+            throw new Error('This server function does not use a router')
+          },
+        },
+        async () => {
+          const result =
+            path === 'SSR'
+              ? createServerFn({ method: 'POST' }).handler(
+                  createSsrRpc('test'),
+                )()
+              : path === 'server-deserialized adapter'
+                ? (
+                    ServerFunctionSerializationAdapter.fromSerializable({
+                      functionId: 'test',
+                    }) as unknown as () => Promise<unknown>
+                  )()
+                : path === 'hydrated callback'
+                  ? createClientRpc('test', true)({ method: 'POST', fetch })
+                  : createServerFn({ method: 'POST' }).handler(
+                      createClientRpc('test'),
+                    )({ fetch })
+          const http = path !== 'SSR' && path !== 'server-deserialized adapter'
+          if (value instanceof Response) {
+            const response = await result
+            expect(response).toBeInstanceOf(Response)
+            expect(await response.text()).toBe(await value.clone().text())
+          } else if (!fails) {
+            await expect(result).resolves.toEqual(value)
+          } else if (http && (value instanceof Error || value === undefined)) {
+            await expect(result).rejects.toThrow(
+              value instanceof Error
+                ? value.message
+                : 'Server function threw undefined',
+            )
+          } else {
+            await expect(result).rejects.toBe(value)
+          }
+          if (
+            path === 'hydrated callback' &&
+            !fails &&
+            !(value instanceof Response)
+          ) {
+            const callback = createClientRpc('test', true)
+            await expect(
+              callback({
+                method: 'POST',
+                fetch: async () => Response.json(value ?? null),
+              }),
+            ).resolves.toEqual(value ?? null)
+            const json = { result: 'raw JSON', error: null, context: {} }
+            await expect(
+              callback({
+                method: 'POST',
+                fetch: async () => Response.json(json),
+              }),
+            ).resolves.toEqual(json)
+          }
+        },
+      )
+    },
+  )
 })
 
 async function readFrames(response: Response) {
