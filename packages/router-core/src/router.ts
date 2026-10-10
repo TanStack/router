@@ -2183,6 +2183,7 @@ export class RouterCore<
       next.maskedLocation = build({
         from: opts.from,
         ...opts.mask,
+        _fromLocation: next,
       })
     } else if (this.options.routeMasks) {
       const match = findFlatMatch<RouteMask<TRouteTree>>(
@@ -2201,6 +2202,7 @@ export class RouterCore<
           from: opts.from,
           ...maskProps,
           params: nextParams,
+          _fromLocation: next,
         })
       }
     }
