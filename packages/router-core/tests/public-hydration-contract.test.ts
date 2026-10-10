@@ -382,13 +382,10 @@ describe('public hydration contracts', () => {
   test('does not cache missing loader data when retrying a hydrated terminal boundary', async () => {
     const serverError = new Error('Server boundary failed')
     const chunkError = new Error('Boundary chunk failed during hydration')
-    const errorComponentPreload = vi
-      .fn<() => Promise<void>>()
+    const lazyBoundary = vi
+      .fn<() => Promise<any>>()
       .mockRejectedValueOnce(chunkError)
-      .mockResolvedValue(undefined)
-    const ErrorComponent = Object.assign(() => 'App error', {
-      preload: errorComponentPreload,
-    })
+      .mockResolvedValue({ options: { errorComponent: () => 'App error' } })
     const beforeLoad = vi.fn()
     const loader = vi.fn(() => 'client data')
     const rootRoute = new BaseRootRoute({})
@@ -397,8 +394,7 @@ describe('public hydration contracts', () => {
       path: '/app',
       beforeLoad,
       loader,
-      errorComponent: ErrorComponent,
-    })
+    }).lazy(lazyBoundary)
     const childRoute = new BaseRoute({
       getParentRoute: () => boundaryRoute,
       path: '/child',
@@ -429,7 +425,7 @@ describe('public hydration contracts', () => {
 
     await hydrate(router)
 
-    expect(errorComponentPreload).toHaveBeenCalledTimes(1)
+    expect(lazyBoundary).toHaveBeenCalledTimes(1)
     expect(beforeLoad).not.toHaveBeenCalled()
     expect(router.state.resolvedLocation).toBeUndefined()
     expect(router.state.matches.map((match) => match.routeId)).toEqual([
@@ -1438,10 +1434,9 @@ describe('public hydration contracts', () => {
     })
   })
 
-  test('turns a hydrated normal-component chunk failure into a route error without rerunning loader data', async () => {
-    const chunkError = new Error('page component failed to load')
-    const componentPreload = vi.fn(() => Promise.reject(chunkError))
-    const Page = Object.assign(() => 'Page', { preload: componentPreload })
+  test('turns a hydrated lazy route chunk failure into a route error without rerunning loader data', async () => {
+    const chunkError = new Error('page route chunk failed to load')
+    const Page = () => 'Page'
     const loader = vi.fn(() => 'client data')
     const onError = vi.fn()
     const rootRoute = new BaseRootRoute({})
@@ -1452,7 +1447,7 @@ describe('public hydration contracts', () => {
       errorComponent: () => 'Page error',
       loader,
       onError,
-    })
+    }).lazy(() => Promise.reject(chunkError))
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([pageRoute]),
       history: createMemoryHistory({ initialEntries: ['/page'] }),
@@ -1496,30 +1491,22 @@ describe('public hydration contracts', () => {
   })
 
   test('retries from the earliest failed hydration chunk regardless of rejection order', async () => {
-    const rootChunkError = new Error('root component failed to load')
-    const childChunkError = new Error('child component failed to load')
-    const rootChunkGate = createControlledPromise<void>()
+    const rootChunkError = new Error('root route chunk failed to load')
+    const childChunkError = new Error('child route chunk failed to load')
+    const rootChunkGate = createControlledPromise<any>()
     const rootChunkStarted = createControlledPromise<void>()
-    const RootComponent = Object.assign(() => 'Root', {
-      preload: () => {
-        rootChunkStarted.resolve()
-        return rootChunkGate
-      },
-    })
-    const childComponentPreload = vi.fn(() => Promise.reject(childChunkError))
-    const ChildComponent = Object.assign(() => 'Child', {
-      preload: childComponentPreload,
-    })
+    const lazyChild = vi.fn(() => Promise.reject(childChunkError))
     const rootContext = vi.fn(() => ({}))
     const rootRoute = new BaseRootRoute({
-      component: RootComponent,
       context: rootContext,
+    }).lazy(() => {
+      rootChunkStarted.resolve()
+      return rootChunkGate
     })
     const childRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/child',
-      component: ChildComponent,
-    })
+    }).lazy(lazyChild)
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([childRoute]),
       history: createMemoryHistory({ initialEntries: ['/child'] }),
@@ -1539,7 +1526,7 @@ describe('public hydration contracts', () => {
     const hydration = hydrate(router)
     await rootChunkStarted
     await vi.waitFor(() => {
-      expect(childComponentPreload).toHaveBeenCalledTimes(1)
+      expect(lazyChild).toHaveBeenCalledTimes(1)
     })
     rootChunkGate.reject(rootChunkError)
     await expect(hydration).resolves.toBeUndefined()
@@ -1549,27 +1536,19 @@ describe('public hydration contracts', () => {
   })
 
   test('does not wait for descendant chunks after an earlier chunk fails', async () => {
-    const rootChunkError = new Error('root component failed to load')
-    const childChunkGate = createControlledPromise<void>()
+    const rootChunkError = new Error('root route chunk failed to load')
+    const childChunkGate = createControlledPromise<any>()
     const childChunkStarted = createControlledPromise<void>()
-    const RootComponent = Object.assign(() => 'Root', {
-      preload: () => Promise.reject(rootChunkError),
-    })
-    const ChildComponent = Object.assign(() => 'Child', {
-      preload: () => {
-        childChunkStarted.resolve()
-        return childChunkGate
-      },
-    })
     const rootContext = vi.fn(() => ({}))
     const rootRoute = new BaseRootRoute({
-      component: RootComponent,
       context: rootContext,
-    })
+    }).lazy(() => Promise.reject(rootChunkError))
     const childRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/child',
-      component: ChildComponent,
+    }).lazy(() => {
+      childChunkStarted.resolve()
+      return childChunkGate
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([childRoute]),
@@ -1597,7 +1576,7 @@ describe('public hydration contracts', () => {
         expect(settled).toBe(true)
       })
     } finally {
-      childChunkGate.resolve()
+      childChunkGate.resolve({ options: {} })
       await hydration
     }
 

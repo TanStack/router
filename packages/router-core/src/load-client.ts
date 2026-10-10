@@ -2371,7 +2371,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   const chunks = committed.map(async (match) => {
     try {
       const route = getRoute(router, match)
-      await (match._notFound
+      const load = match._notFound
         ? Promise.all([
             loadRouteChunk(route),
             loadRouteChunk(route, 'notFoundComponent'),
@@ -2383,7 +2383,11 @@ export async function hydrate(router: AnyRouter): Promise<void> {
               : match.status === 'notFound'
                 ? 'notFoundComponent'
                 : undefined,
-          ))
+          )
+      // Component chunks suspend through hydration; unmerged lazy options would
+      // render `<Outlet />` in place of the server component.
+      load?.catch(() => {})
+      await loadRouteChunk(route, false)
       return true
     } catch {
       return false

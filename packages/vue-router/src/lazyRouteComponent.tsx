@@ -69,82 +69,58 @@ export function lazyRouteComponent<
 
     return loadPromise
   }
-  // Create a lazy component wrapper using defineComponent so it works in Vue SFC templates
+  // Reload once per missing module URL: a newer deployment may have replaced it.
+  const reloadOnce = () => {
+    if (
+      isModuleNotFoundError(error) &&
+      !attemptedReload &&
+      typeof sessionStorage !== 'undefined'
+    ) {
+      const storageKey = `tanstack_router_reload:${error.message}`
+      if (!sessionStorage.getItem(storageKey)) {
+        sessionStorage.setItem(storageKey, '1')
+        attemptedReload = true
+        window.location.reload()
+        return true
+      }
+    }
+    return false
+  }
+
+  // Vue (>= 3.3) hydrates an unresolved async component only once its loader
+  // settles, so the server HTML stays in place while the chunk downloads.
+  const AsyncComp = Vue.defineAsyncComponent(() =>
+    load().then(() => {
+      if (error) {
+        if (reloadOnce()) {
+          return new Promise<never>(() => {})
+        }
+        throw error
+      }
+      return comp as any
+    }),
+  )
+
   const lazyComp = Vue.defineComponent({
     name: 'LazyRouteComponent',
     setup(props: any) {
-      // Create refs to track component state
-      // Use shallowRef for component to avoid making it reactive (Vue warning)
-      const component = Vue.shallowRef<any>(comp ? Vue.markRaw(comp) : comp)
-      const errorState = Vue.ref<any>(error)
-      const loading = Vue.ref(!component.value && !errorState.value)
-
-      // Setup effect to load the component when this component is used
-      Vue.onMounted(() => {
-        if (!component.value && !errorState.value) {
-          loading.value = true
-
-          load()
-            .then((result) => {
-              // Use markRaw to prevent Vue from making the component reactive
-              component.value = result ? Vue.markRaw(result) : result
-              loading.value = false
-            })
-            .catch((err) => {
-              errorState.value = err
-              loading.value = false
-            })
+      if (error && !comp) {
+        if (reloadOnce()) {
+          return () => null
         }
-      })
-
-      // Handle module not found error with reload attempt
-      if (
-        errorState.value &&
-        isModuleNotFoundError(errorState.value) &&
-        !attemptedReload
-      ) {
-        if (
-          typeof window !== 'undefined' &&
-          typeof sessionStorage !== 'undefined'
-        ) {
-          // Try to reload once on module not found error
-          const storageKey = `tanstack_router_reload:${errorState.value.message}`
-          if (!sessionStorage.getItem(storageKey)) {
-            sessionStorage.setItem(storageKey, '1')
-            attemptedReload = true
-            window.location.reload()
-            return () => null // Return empty while reloading
-          }
-        }
+        throw error
       }
-
-      // If we have a non-module-not-found error, throw it
-      if (errorState.value && !isModuleNotFoundError(errorState.value)) {
-        throw errorState.value
-      }
-
-      // Return a render function
+      const resolved = comp ? Vue.markRaw(comp) : null
       return () => {
-        // If we're still loading or don't have a component yet, use a suspense pattern
-        if (loading.value || !component.value) {
-          return Vue.h('div', null) // Empty div while loading
-        }
-
-        // If SSR is disabled for this component
+        const inner = Vue.h(resolved ?? AsyncComp, props)
         if (ssr?.() === false) {
           return Vue.h(
             ClientOnly,
-            {
-              fallback: Vue.h(Outlet),
-            },
-            {
-              default: () => Vue.h(component.value, props),
-            },
+            { fallback: Vue.h(Outlet) },
+            { default: () => inner },
           )
         }
-
-        // Regular render with the loaded component
-        return Vue.h(component.value, props)
+        return inner
       }
     },
   })
