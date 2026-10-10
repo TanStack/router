@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '../src'
+import type { SubscriberArgs } from '../src'
 
 describe('createMemoryHistory', () => {
   test.each([
@@ -209,5 +210,130 @@ describe('createMemoryHistory', () => {
     // Navigation should proceed since blocker was removed
     expect(history.location.pathname).toBe('/a')
     expect(blockerFn).not.toHaveBeenCalled()
+  })
+})
+
+describe('createMemoryHistory global blocker (generator contract)', () => {
+  type BlockAction = Extract<SubscriberArgs['action'], { type: 'BLOCK' }>
+
+  function generatorBlocker() {
+    let resolve: (value: boolean) => void = () => {}
+    return async function* () {
+      const promise = new Promise<boolean>((r) => {
+        resolve = r
+      })
+      yield resolve
+      return await promise
+    }
+  }
+
+  test('emits BLOCK then DISMISS_BLOCK, and proceed allows navigation', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    let block: BlockAction | undefined
+    const subscriber = vi.fn(({ action }: SubscriberArgs) => {
+      if (action.type === 'BLOCK') {
+        block = action
+      }
+    })
+    history.subscribe(subscriber)
+
+    history.block({ blockerFn: generatorBlocker(), enableBeforeUnload: false })
+    history.push('/a')
+
+    await vi.waitFor(() => expect(block).toBeDefined())
+    expect(history.location.pathname).toBe('/')
+
+    block?.proceed()
+
+    await vi.waitFor(() => expect(history.location.pathname).toBe('/a'))
+    expect(subscriber).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: expect.objectContaining({ type: 'BLOCK' }),
+      }),
+    )
+    expect(subscriber).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: expect.objectContaining({ type: 'DISMISS_BLOCK' }),
+      }),
+    )
+  })
+
+  test('reset keeps the navigation blocked', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    let block: BlockAction | undefined
+    const subscriber = vi.fn(({ action }: SubscriberArgs) => {
+      if (action.type === 'BLOCK') {
+        block = action
+      }
+    })
+    history.subscribe(subscriber)
+
+    history.block({ blockerFn: generatorBlocker(), enableBeforeUnload: false })
+    history.push('/a')
+
+    await vi.waitFor(() => expect(block).toBeDefined())
+    block?.reset()
+
+    await vi.waitFor(() =>
+      expect(subscriber).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: expect.objectContaining({ type: 'DISMISS_BLOCK' }),
+        }),
+      ),
+    )
+    expect(history.location.pathname).toBe('/')
+  })
+
+  test('sequential blockers each emit BLOCK and must each be proceeded', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    let block: BlockAction | undefined
+    const subscriber = vi.fn(({ action }: SubscriberArgs) => {
+      if (action.type === 'BLOCK') {
+        block = action
+      }
+    })
+    history.subscribe(subscriber)
+
+    const blockCount = () =>
+      subscriber.mock.calls.filter(([{ action }]) => action.type === 'BLOCK')
+        .length
+
+    history.block({ blockerFn: generatorBlocker(), enableBeforeUnload: false })
+    history.block({ blockerFn: generatorBlocker(), enableBeforeUnload: false })
+    history.push('/a')
+
+    await vi.waitFor(() => expect(blockCount()).toBe(1))
+    block?.proceed()
+
+    await vi.waitFor(() => expect(blockCount()).toBe(2))
+    expect(history.location.pathname).toBe('/')
+    block?.proceed()
+
+    await vi.waitFor(() => expect(history.location.pathname).toBe('/a'))
+  })
+
+  test('proceedAll resolves the current blocker and skips the rest', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    let block: BlockAction | undefined
+    const subscriber = vi.fn(({ action }: SubscriberArgs) => {
+      if (action.type === 'BLOCK') {
+        block = action
+      }
+    })
+    history.subscribe(subscriber)
+
+    const blockCount = () =>
+      subscriber.mock.calls.filter(([{ action }]) => action.type === 'BLOCK')
+        .length
+
+    history.block({ blockerFn: generatorBlocker(), enableBeforeUnload: false })
+    history.block({ blockerFn: generatorBlocker(), enableBeforeUnload: false })
+    history.push('/a')
+
+    await vi.waitFor(() => expect(blockCount()).toBe(1))
+    block?.proceedAll()
+
+    await vi.waitFor(() => expect(history.location.pathname).toBe('/a'))
+    expect(blockCount()).toBe(1)
   })
 })
