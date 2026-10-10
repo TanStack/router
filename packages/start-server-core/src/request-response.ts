@@ -141,8 +141,11 @@ function handleResponseError(error: unknown): Response {
   return new Response('Internal Server Error', { status: 500 })
 }
 
-// Return `undefined` for percent-encoded bytes that are not valid UTF-8 (e.g. `/%80`).
-// The decoded value is returned so that the result is "used"
+/**
+ * Decode a URL pathname, or return `undefined` if its percent-encoding is malformed (e.g. `/%80`).
+ *
+ * Returns the decoded value rather than a boolean so bundlers that treat `decodeURI` as side-effect free keep the call.
+ */
 function decodePathname(pathname: string): string | undefined {
   try {
     return decodeURI(pathname)
@@ -151,6 +154,11 @@ function decodePathname(pathname: string): string | undefined {
   }
 }
 
+/**
+ * Wrap a request handler so it runs with a request-scoped event, which the request and response helpers in this module read.
+ *
+ * Responds with 400 Bad Request, without calling `handler`, if the request path has malformed percent-encoding.
+ */
 export function requestHandler<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
@@ -225,7 +233,9 @@ export function getRequestHost(opts?: { xForwardedHost?: boolean }) {
  * Get the full incoming request URL.
  *
  * If `xForwardedHost` is `true`, it will use the `x-forwarded-host` header if it exists.
-*/
+ *
+ * If `xForwardedProto` is `true`, it will use the `x-forwarded-proto` header if it exists.
+ */
 export function getRequestUrl(opts?: {
   xForwardedHost?: boolean
   xForwardedProto?: boolean
