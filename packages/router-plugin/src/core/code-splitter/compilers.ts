@@ -106,6 +106,55 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
 
 const KNOWN_SPLIT_ROUTE_IDENTS = [...SPLIT_NODES_CONFIG.keys()] as const
 
+/**
+ * Rewrites method shorthand for the splittable route options, e.g.
+ * `component() {}`, into `component: function () {}` so it is split
+ * like any other function expression. Methods that use `super` keep their
+ * method form (and stay unsplit), since a function expression can't.
+ */
+function normalizeSplittableRouteOptionMethods(
+  routeOptions: t.ObjectExpression,
+) {
+  routeOptions.properties = routeOptions.properties.map((prop) => {
+    if (!t.isObjectMethod(prop) || prop.kind !== 'method') {
+      return prop
+    }
+
+    const key = getObjectPropertyKeyName(prop)
+    if (!key || !SPLIT_NODES_CONFIG.has(key as SplitRouteIdentNodes)) {
+      return prop
+    }
+
+    if (containsSuper(prop.body)) {
+      return prop
+    }
+
+    const fn = t.functionExpression(
+      null,
+      prop.params as Array<t.Identifier | t.Pattern | t.RestElement>,
+      prop.body,
+      prop.generator,
+      prop.async,
+    )
+    fn.returnType = prop.returnType
+    fn.typeParameters = prop.typeParameters
+    fn.loc = prop.loc
+
+    const property = t.objectProperty(prop.key, fn)
+    property.loc = prop.loc
+    property.leadingComments = prop.leadingComments
+    return property
+  })
+}
+
+function containsSuper(node: t.Node): boolean {
+  let found = false
+  t.traverseFast(node, (child) => {
+    if (t.isSuper(child)) found = true
+  })
+  return found
+}
+
 function addSplitSearchParamToFilename(
   filename: string,
   grouping: Array<string>,
@@ -200,6 +249,8 @@ export function computeSharedBindings(opts: {
   })
 
   if (!routeOptions) return new Set()
+
+  normalizeSplittableRouteOptionMethods(routeOptions)
 
   // Fast path: if fewer than 2 distinct groups are referenced by route options,
   // nothing can be shared and we can skip the rest of the work.
@@ -463,6 +514,8 @@ export function compileCodeSplitReferenceRoute(
               }
 
               if (t.isObjectExpression(routeOptions)) {
+                normalizeSplittableRouteOptionMethods(routeOptions)
+
                 const insertionPath = path.getStatementParent() ?? path
 
                 opts.compilerPlugins?.forEach((plugin) => {
@@ -922,6 +975,8 @@ export function compileCodeSplitVirtualRoute(
 
             function babelHandleVirtual(options: t.Node | undefined) {
               if (t.isObjectExpression(options)) {
+                normalizeSplittableRouteOptionMethods(options)
+
                 options.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
                     // do not use `intendedSplitNodes` here
