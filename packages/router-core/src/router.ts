@@ -1101,6 +1101,11 @@ export interface RouterCore<
   _preflight?: AbortController
   /** Transfers one reconstructed SSR prefix into its initial client load. */
   _handoff?: HydrationHandoff
+  /**
+   * Matches as the server rendered them, published by `hydrate()`. Hydration
+   * renders read these, however late their boundary hydrates.
+   */
+  _hydrated?: Array<AnyRouteMatch>
   /** Pending-boundary reveal and minimum-visible timing state. */
   _pending?: PendingSession
   /** Result of the latest server load, used to render or redirect. */
