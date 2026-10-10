@@ -1,7 +1,7 @@
 import * as goober from 'goober'
 import { createSignal, useContext } from 'solid-js'
 import { tokens } from './tokens'
-import { ShadowDomTargetContext } from './context'
+import { DevtoolsStylesContext, ShadowDomTargetContext } from './context'
 import type { Accessor } from 'solid-js'
 
 const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
@@ -616,8 +616,22 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
   }
 }
 
+// Each mount owns its cache key. Module replacement starts a fresh style cache.
+const stylesCache = new WeakMap<
+  object,
+  Accessor<ReturnType<typeof stylesFactory>>
+>()
+
 export function useStyles() {
   const shadowDomTarget = useContext(ShadowDomTargetContext)
+  const owner = useContext(DevtoolsStylesContext)
+  const cachedStyles = owner && stylesCache.get(owner)
+  if (cachedStyles) {
+    return cachedStyles
+  }
   const [_styles] = createSignal(stylesFactory(shadowDomTarget))
+  if (owner) {
+    stylesCache.set(owner, _styles)
+  }
   return _styles
 }
