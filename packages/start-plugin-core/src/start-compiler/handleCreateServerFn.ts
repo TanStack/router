@@ -52,7 +52,11 @@ export function handleCreateServerFn(
   for (const { node, methodChain } of candidates) {
     const declarator = getVariableDeclarator(node, context.parentOf)
     if (!declarator) {
-      throw new Error('createServerFn must be assigned to a variable!')
+      throw codeFrameError(
+        context.code,
+        node,
+        'createServerFn must be assigned to a variable!',
+      )
     }
     if (!is.Identifier(declarator.id)) {
       throw codeFrameError(

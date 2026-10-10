@@ -1211,5 +1211,5 @@ function createNotExportableMessage(
 }
 
 export function createRouteInFunctionMessage(filename: string) {
-  return `[tanstack-router] The route in "${filename}" is created inside a function. Route factories are not supported, so it will not be code-split or hot-updated. Create it at module level: export const Route = createFileRoute('/path')({ ... })`
+  return `[tanstack-router] The route in "${filename}" is created inside a function. Route factories are not supported, so it will not be code-split, and edits to its components may need a full page reload. Create it at module level: export const Route = createFileRoute('/path')({ ... })`
 }
