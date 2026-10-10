@@ -8,12 +8,25 @@ vi.mock('yuku-core', async (importOriginal) => ({
   },
 }))
 
+// WebContainers report the previous call's byte counts for
+// `TextEncoder.encodeInto('')`: https://github.com/stackblitz/webcontainer-core/issues/2173
+const encodeInto = TextEncoder.prototype.encodeInto
+
 beforeAll(() => {
   process.versions.webcontainer = '1.0.0'
+  let previous = { read: 0, written: 0 }
+  TextEncoder.prototype.encodeInto = function (source, destination) {
+    if (source === '') {
+      return previous
+    }
+    previous = encodeInto.call(this, source, destination)
+    return previous
+  }
 })
 
 afterAll(() => {
   delete process.versions.webcontainer
+  TextEncoder.prototype.encodeInto = encodeInto
 })
 
 test('analyzes and prints modules with the WebAssembly core in WebContainers', () => {
@@ -32,4 +45,11 @@ export const render = (props: { id: string }) => <Page id={props.id} />
       id: string;
     }) => <Page id={props.id} />;"
   `)
+})
+
+test('analyzes an empty module in WebContainers', () => {
+  analyzeModule({ code: 'export const value = 1', filename: 'value.ts' })
+  const module = analyzeModule({ code: '', filename: 'empty.ts' })
+  expect(module.ast.body).toEqual([])
+  expect(generateModule(cloneModuleAst(module).program).code).toBe('')
 })
