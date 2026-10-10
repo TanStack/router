@@ -4,7 +4,8 @@ import type {
   Assign,
   Constrain,
   Expand,
-  ResolveAllParamsFromParent,
+  ResolveFullPath,
+  ResolveParams,
   UnionToIntersection,
 } from '@tanstack/router-core'
 import type {
@@ -483,7 +484,8 @@ export interface RouteMethodHandlerCtx<
     >
   >
   request: Request
-  params: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
+  /** Raw path params from the URL. `params.parse` output is not applied. */
+  params: Expand<ResolveParams<ResolveFullPath<TParentRoute, TFullPath>>>
   pathname: TFullPath
   next: <TContext = undefined>(options?: {
     context?: TContext

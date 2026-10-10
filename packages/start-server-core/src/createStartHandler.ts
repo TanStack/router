@@ -45,7 +45,6 @@ import type {
   AnyRequestMiddleware,
   AnyStartInstanceOptions,
   RouteMethod,
-  RouteMethodHandlerFn,
   RouterEntry,
   StartEntry,
 } from '@tanstack/start-client-core'
@@ -907,32 +906,6 @@ async function handleRedirectResponse(
   return ssrResponse
 }
 
-function withParsedParams(
-  handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any, any>,
-  matchedRoutes: ReadonlyArray<AnyRoute>,
-): TODO {
-  if (
-    !matchedRoutes.some(
-      (route) => route.options.params?.parse ?? route.options.parseParams,
-    )
-  ) {
-    return handler
-  }
-
-  return (ctx: TODO) => {
-    // Parse inside the pipeline so middleware can catch errors. Keep the raw
-    // params for app-router validation when the handler defers to rendering.
-    const params = Object.assign(Object.create(null), ctx.params)
-    for (const route of matchedRoutes) {
-      const parse = route.options.params?.parse ?? route.options.parseParams
-      if (parse) {
-        Object.assign(params, parse(params))
-      }
-    }
-    return handler({ ...ctx, params })
-  }
-}
-
 async function handleServerRoutes({
   getRouter,
   request,
@@ -1013,12 +986,11 @@ async function handleServerRoutes({
       const routeHandler =
         typeof handler === 'function' ? handler : handler.handler
       if (routeHandler) {
-        const parsedHandler = withParsedParams(routeHandler, matchedRoutes)
         if (!mayDefer) {
-          terminalHandler = parsedHandler
+          terminalHandler = routeHandler
           terminalNext = throwIfMayNotDefer
         } else {
-          routeMiddlewares.push(parsedHandler)
+          routeMiddlewares.push(routeHandler)
         }
       }
     }
