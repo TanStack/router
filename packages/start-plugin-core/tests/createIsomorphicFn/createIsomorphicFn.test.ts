@@ -3,6 +3,7 @@ import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
 import { StartCompiler } from '../../src/start-compiler/compiler'
+import { formatSnapshot } from '../format-snapshot'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -68,9 +69,9 @@ describe('createIsomorphicFn compiles correctly', async () => {
           id: filename,
         })
 
-        await expect(compiledResult!.code).toMatchFileSnapshot(
-          `./snapshots/${env}/${filename}`,
-        )
+        await expect(
+          await formatSnapshot(compiledResult!.code, filename),
+        ).toMatchFileSnapshot(`./snapshots/${env}/${filename}`)
       },
     )
   })

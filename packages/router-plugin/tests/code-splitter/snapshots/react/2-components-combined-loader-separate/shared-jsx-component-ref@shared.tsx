@@ -1,2 +1,3 @@
-const shared = 1;
-export { shared };
+// @ts-nocheck
+const shared = 1
+export { shared }

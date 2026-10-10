@@ -1,2 +1,2 @@
-const collection = { name: 'todos', preload: async () => {} };
-export { collection };
+const collection = { name: 'todos', preload: async () => {} }
+export { collection }

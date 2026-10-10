@@ -14,6 +14,7 @@ import {
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { frameworks } from './constants'
+import { formatSnapshot } from './format-snapshot'
 import type { CodeSplitGroupings } from '../src/core/constants'
 
 function getFrameworkDir(framework: string) {
@@ -155,7 +156,9 @@ describe('code-splitter works', () => {
               analyzeModule({ code: compileResult.code, filename })
             }
 
-            await expect(compileResult?.code || code).toMatchFileSnapshot(
+            await expect(
+              await formatSnapshot(compileResult?.code || code, filename),
+            ).toMatchFileSnapshot(
               path.join(dirs.snapshots, groupName, filename),
             )
           },
@@ -189,9 +192,9 @@ describe('code-splitter works', () => {
                 groupName,
                 `${filename.replace('.tsx', '')}@${ident}.tsx`,
               )
-              await expect(splitResult.code).toMatchFileSnapshot(
-                snapshotFilename,
-              )
+              await expect(
+                await formatSnapshot(splitResult.code, filename),
+              ).toMatchFileSnapshot(snapshotFilename)
             }
           },
         )
@@ -226,9 +229,9 @@ describe('code-splitter works', () => {
             })
             analyzeModule({ code: sharedResult.code, filename })
 
-            await expect(sharedResult.code).toMatchFileSnapshot(
-              snapshotFilename,
-            )
+            await expect(
+              await formatSnapshot(sharedResult.code, filename),
+            ).toMatchFileSnapshot(snapshotFilename)
           },
         )
       },

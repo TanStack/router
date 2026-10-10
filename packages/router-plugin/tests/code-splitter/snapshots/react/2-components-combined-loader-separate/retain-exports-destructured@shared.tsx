@@ -1,6 +1,9 @@
-const createBits = () => ({ component: AboutComponentImpl, loader: () => ({ message: 'hello' }) });
-const { component: AboutComponent, loader } = createBits();
+const createBits = () => ({
+  component: AboutComponentImpl,
+  loader: () => ({ message: 'hello' }),
+})
+const { component: AboutComponent, loader } = createBits()
 function AboutComponentImpl() {
-  return <div>About</div>;
+  return <div>About</div>
 }
-export { AboutComponent, AboutComponentImpl, createBits, loader };
+export { AboutComponent, AboutComponentImpl, createBits, loader }

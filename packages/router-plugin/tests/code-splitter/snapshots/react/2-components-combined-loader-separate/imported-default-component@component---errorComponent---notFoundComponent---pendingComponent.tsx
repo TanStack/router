@@ -1,2 +1,3 @@
-import ImportedDefaultComponent from '../../shared/imported';
-export { ImportedDefaultComponent as component };
+import ImportedDefaultComponent from '../../shared/imported'
+const SplitComponent = ImportedDefaultComponent
+export { SplitComponent as component }

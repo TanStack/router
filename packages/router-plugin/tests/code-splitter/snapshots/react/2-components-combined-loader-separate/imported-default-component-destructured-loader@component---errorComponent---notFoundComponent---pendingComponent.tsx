@@ -1,2 +1,3 @@
-import importedComponent from '../../shared/imported';
-export { importedComponent as component };
+import importedComponent from '../../shared/imported'
+const SplitComponent = importedComponent
+export { SplitComponent as component }

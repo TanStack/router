@@ -14676,6 +14676,9 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
       publint:
         specifier: 'catalog:'
         version: 0.3.17
@@ -15247,6 +15250,9 @@ importers:
       '@types/picomatch':
         specifier: ^4.0.2
         version: 4.0.2
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
       publint:
         specifier: 'catalog:'
         version: 0.3.17

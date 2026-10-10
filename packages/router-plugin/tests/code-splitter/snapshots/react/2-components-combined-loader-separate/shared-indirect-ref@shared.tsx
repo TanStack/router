@@ -1,5 +1,5 @@
-const state = { count: 0 };
+const state = { count: 0 }
 function getCount() {
-  return state.count;
+  return state.count
 }
-export { getCount, state };
+export { getCount, state }

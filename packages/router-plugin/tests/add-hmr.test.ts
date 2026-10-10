@@ -9,6 +9,7 @@ import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { createRouteHmrStatement } from '../src/core/hmr'
 import { frameworks } from './constants'
+import { formatSnapshot } from './format-snapshot'
 
 function getFrameworkDir(framework: string) {
   const files = path.resolve(__dirname, `./add-hmr/test-files/${framework}`)
@@ -39,7 +40,9 @@ describe('add-hmr works', () => {
           }),
         })
 
-        await expect(compileResult?.code || code).toMatchFileSnapshot(
+        await expect(
+          await formatSnapshot(compileResult?.code || code, filename),
+        ).toMatchFileSnapshot(
           path.join(dirs.snapshots, filename.replace('.tsx', '@true.tsx')),
         )
       },
@@ -60,7 +63,9 @@ describe('add-hmr works', () => {
           targetFramework: framework,
         })
 
-        await expect(compileResult?.code || code).toMatchFileSnapshot(
+        await expect(
+          await formatSnapshot(compileResult?.code || code, filename),
+        ).toMatchFileSnapshot(
           path.join(dirs.snapshots, filename.replace('.tsx', '@false.tsx')),
         )
       },
@@ -89,7 +94,9 @@ describe('add-hmr works', () => {
       }),
     })
 
-    await expect(compileResult?.code || code).toMatchFileSnapshot(
+    await expect(
+      await formatSnapshot(compileResult?.code || code, filename),
+    ).toMatchFileSnapshot(
       path.join(
         getFrameworkDir(framework).snapshots,
         filename.replace('.tsx', '@webpack-hot.tsx'),

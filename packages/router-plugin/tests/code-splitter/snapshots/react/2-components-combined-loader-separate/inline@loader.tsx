@@ -1,2 +1,2 @@
-import { Route } from "inline.tsx";
-import * as React from 'react';
+import * as React from 'react'
+import { Route } from 'inline.tsx'

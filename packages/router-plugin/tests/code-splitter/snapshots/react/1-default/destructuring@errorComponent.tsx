@@ -1,5 +1,9 @@
-import thing from 'thing';
+import thing from 'thing'
 export function test() {
-  const { foo: { bar: { destructured } } } = thing;
-  return destructured;
+  const {
+    foo: {
+      bar: { destructured },
+    },
+  } = thing
+  return destructured
 }

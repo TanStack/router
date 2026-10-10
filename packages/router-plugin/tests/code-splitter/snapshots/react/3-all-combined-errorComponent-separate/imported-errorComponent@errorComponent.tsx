@@ -1,2 +1,3 @@
-import { importedErrorComponent } from '../../shared/imported';
-export { importedErrorComponent as errorComponent };
+import { importedErrorComponent } from '../../shared/imported'
+const SplitErrorComponent = importedErrorComponent
+export { SplitErrorComponent as errorComponent }

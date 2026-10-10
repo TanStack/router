@@ -1,2 +1,3 @@
-import { importedNotFoundComponent } from '../../shared/imported';
-export { importedNotFoundComponent as notFoundComponent };
+import { importedNotFoundComponent } from '../../shared/imported'
+const SplitNotFoundComponent = importedNotFoundComponent
+export { SplitNotFoundComponent as notFoundComponent }
