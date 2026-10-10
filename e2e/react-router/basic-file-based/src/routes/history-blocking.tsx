@@ -113,6 +113,7 @@ function HistoryBlocking() {
           History go({delta})
         </button>
       ))}
+      <a href="#native-fragment">Native fragment</a>
       <a href="/">Leave document</a>
     </div>
   )
