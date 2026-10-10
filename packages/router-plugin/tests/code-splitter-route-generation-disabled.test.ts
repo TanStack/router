@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -8,6 +9,7 @@ import {
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { createReadOnlyFs } from '../src/core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from '../src/core/router-composed-plugin'
 import type { UnpluginOptions } from 'unplugin'
 
@@ -35,7 +37,10 @@ function setup() {
   writeFileSync(path.join(root, 'src/routeTree.gen.ts'), routeTree)
 }
 
-async function runBuild(enableRouteGeneration: boolean) {
+async function runBuild(
+  enableRouteGeneration: boolean,
+  extra: Record<string, unknown> = {},
+) {
   const plugins = unpluginRouterComposedFactory(
     {
       target: 'react',
@@ -45,6 +50,7 @@ async function runBuild(enableRouteGeneration: boolean) {
       generatedRouteTree: path.join(root, 'src/routeTree.gen.ts'),
       disableLogging: true,
       codeSplittingOptions: { addHmr: false },
+      ...extra,
     },
     { framework: 'vite', versions: {} },
   ) as Array<UnpluginOptions>
@@ -98,5 +104,38 @@ describe('autoCodeSplitting with enableRouteGeneration disabled', () => {
     expect(
       readFileSync(path.join(root, 'src/routeTree.gen.ts'), 'utf8'),
     ).not.toBe(routeTree)
+  })
+
+  it('does not create the temp or route tree directories on disk', async () => {
+    setup()
+    rmSync(path.join(root, 'src/routeTree.gen.ts'))
+    const tmpDir = path.join(root, 'missing-tmp/nested')
+    const treeDir = path.join(root, 'missing-gen')
+    const code = await runBuild(false, {
+      tmpDir,
+      generatedRouteTree: path.join(treeDir, 'routeTree.gen.ts'),
+    })
+    expect(code).toContain('tsr-split=component')
+    expect(existsSync(tmpDir)).toBe(false)
+    expect(existsSync(path.join(root, 'missing-tmp'))).toBe(false)
+    expect(existsSync(treeDir)).toBe(false)
+  })
+
+  it('lets edits on disk win over in-memory writes', async () => {
+    root = mkdtempSync(path.join(tmpdir(), 'tsr-gen-disabled-'))
+    const file = path.join(root, 'route.tsx')
+    writeFileSync(file, 'one')
+    const fs = createReadOnlyFs()
+    await fs.writeFile(file, 'virtual')
+    expect(await fs.readFile(file)).toMatchObject({ fileContent: 'virtual' })
+
+    writeFileSync(file, 'two')
+    fs.invalidate(file)
+    const res = await fs.readFile(file)
+    expect(res).toMatchObject({ fileContent: 'two' })
+    expect((await fs.stat(file)).mtimeMs).toBe(
+      (res as { stat: { mtimeMs: bigint } }).stat.mtimeMs,
+    )
+    expect(readFileSync(file, 'utf8')).toBe('two')
   })
 })

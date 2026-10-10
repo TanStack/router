@@ -282,7 +282,8 @@ export class Generator {
 
     const generatedRouteTreeDir = path.dirname(generatedRouteTreePath)
 
-    if (!existsSync(generatedRouteTreeDir)) {
+    // a custom fs (e.g. an in-memory one) owns its writes, so do not touch disk
+    if (this.fs === DefaultFileSystem && !existsSync(generatedRouteTreeDir)) {
       mkdirSync(generatedRouteTreeDir, { recursive: true })
     }
 
@@ -1273,8 +1274,10 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     const hash = crypto.createHash('md5').update(absPath).digest('hex')
     // lazy initialize sessionId to only create tmpDir when it is first needed
     if (!this.sessionId) {
-      // ensure the directory exists
-      mkdirSync(this.config.tmpDir, { recursive: true })
+      // ensure the directory exists (a custom fs owns its temp files)
+      if (this.fs === DefaultFileSystem) {
+        mkdirSync(this.config.tmpDir, { recursive: true })
+      }
       this.sessionId = crypto.randomBytes(4).toString('hex')
     }
     return path.join(this.config.tmpDir, `${this.sessionId}-${hash}`)

@@ -17,7 +17,9 @@ type GeneratorFs = NonNullable<ConstructorParameters<typeof Generator>[0]['fs']>
 // Reads from disk, keeps writes in memory. Used when route generation is
 // disabled so the generator can still collect route metadata for the code
 // splitter without touching any file.
-function createReadOnlyFs(): GeneratorFs {
+export function createReadOnlyFs(): GeneratorFs & {
+  invalidate: (filePath: string) => void
+} {
   const written = new Map<string, { fileContent: string; mtimeMs: bigint }>()
   let clock = 0n
   const stat = async (filePath: string) => {
@@ -34,6 +36,10 @@ function createReadOnlyFs(): GeneratorFs {
     }
   }
   return {
+    // a change on disk wins over the in-memory copy of that file
+    invalidate: (filePath) => {
+      written.delete(filePath)
+    },
     stat,
     readFile: async (filePath) => {
       const entry = written.get(filePath)
@@ -80,6 +86,7 @@ export function createRouterGeneratorPlugin(
   let ROOT: string = process.cwd()
   let userConfig: Config
   let generator: Generator
+  let readOnlyFs: ReturnType<typeof createReadOnlyFs> | undefined
 
   const getRoutesDirectoryPath = () => {
     return isAbsolute(userConfig.routesDirectory)
@@ -96,13 +103,14 @@ export function createRouterGeneratorPlugin(
     } else {
       userConfig = getConfig(options, ROOT)
     }
+    readOnlyFs =
+      userConfig.enableRouteGeneration === false
+        ? createReadOnlyFs()
+        : undefined
     generator = new Generator({
       config: userConfig,
       root: ROOT,
-      fs:
-        userConfig.enableRouteGeneration === false
-          ? createReadOnlyFs()
-          : undefined,
+      fs: readOnlyFs,
     })
   }
 
@@ -117,6 +125,7 @@ export function createRouterGeneratorPlugin(
         initConfigAndGenerator()
         return
       }
+      readOnlyFs?.invalidate(filePath)
       generatorEvent = { path: filePath, type: opts.event }
     }
 
