@@ -110,6 +110,27 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // A declaration only the split component reads moves into its chunk with the
+  // module-level statements that write to it.
+  it.each([
+    { name: 'a const', declaration: 'const State = { count: 0 }' },
+    { name: 'an enum', declaration: 'enum State { Zero = 0 }' },
+    {
+      name: 'a namespace',
+      declaration: 'namespace State { export const zero = 0 }',
+    },
+  ])(
+    'keeps the writes to $name the split component reads',
+    async ({ declaration }) => {
+      const { chunks } = await loadRouteModules(`${head}${declaration}
+Object.assign(State, { extra: 7 })
+export const Route = createFileRoute('/')({
+  component: () => <p>{(State as any).extra}</p>,
+})`)
+      expect(chunks.component!.component()).toBe('<p>7</p>')
+    },
+  )
+
   // Source: Next.js ssg/getStaticProps/should-support-export-named-as-default-with-other-specifiers
   it.each([
     {

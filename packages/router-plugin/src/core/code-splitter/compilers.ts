@@ -1091,6 +1091,17 @@ function stripUnownedExpressions(
       statement.id
     ) {
       localNames.add(statement.id.name)
+    } else if (is.TSEnumDeclaration(statement) && !statement.declare) {
+      localNames.add(statement.id.name)
+    } else if (is.TSModuleDeclaration(statement) && !statement.declare) {
+      // `namespace A.B {}` declares `A`
+      let id: Node = statement.id
+      while (is.TSQualifiedName(id)) {
+        id = id.left
+      }
+      if (is.Identifier(id)) {
+        localNames.add(id.name)
+      }
     }
   }
   program.body = program.body.filter((statement) => {
