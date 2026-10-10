@@ -1310,3 +1310,11 @@ export function getImportForRouteNode(
     ],
   } satisfies ImportDeclaration
 }
+
+export function isPlainTypeScriptFile(filename: string | undefined): boolean {
+  if (!filename) {
+    return false
+  }
+
+  return /\.[cm]?ts(?:$|[?#])/.test(filename)
+}

@@ -303,6 +303,27 @@ async function preprocess(folderName: string) {
     await makeEmptyFile('index.tsx')
     await makeEmptyFile('foo.lazy.tsx')
     await makeEmptyFile('api', 'bar.tsx')
+  } else if (folderName === 'typescript-server-route') {
+    const makeEmptyFile = async (...file: Array<string>) => {
+      const filePath = join(makeFolderDir(folderName), 'routes', ...file)
+      const dir = dirname(filePath)
+      await fs.mkdir(dir, { recursive: true })
+      const fh = await fs.open(filePath, 'w')
+      await fh.close()
+    }
+
+    await makeEmptyFile('api', 'foo.ts')
+    await makeEmptyFile('api', 'foobar.lazy.ts')
+  } else if (folderName === 'typescript-root-route') {
+    const makeEmptyFile = async (...file: Array<string>) => {
+      const filePath = join(makeFolderDir(folderName), 'routes', ...file)
+      const dir = dirname(filePath)
+      await fs.mkdir(dir, { recursive: true })
+      const fh = await fs.open(filePath, 'w')
+      await fh.close()
+    }
+
+    await makeEmptyFile('__root.ts')
   }
 }
 
@@ -323,6 +344,21 @@ async function postprocess(folderName: string) {
             )
           }),
       )
+      break
+    }
+    case 'typescript-server-route':
+    case 'typescript-root-route': {
+      const startDir = join(makeFolderDir(folderName), 'routes')
+      await traverseDirectory(startDir, async (filePath) => {
+        const relativePath = relative(startDir, filePath)
+        if (filePath.endsWith('.ts')) {
+          await expect(
+            await fs.readFile(filePath, 'utf-8'),
+          ).toMatchFileSnapshot(
+            join('generator', folderName, 'snapshots', relativePath),
+          )
+        }
+      })
       break
     }
     case 'custom-scaffolding': {
