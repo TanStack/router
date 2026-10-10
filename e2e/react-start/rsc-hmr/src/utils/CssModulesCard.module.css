@@ -1,0 +1,13 @@
+.card {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin: 20px;
+}
+
+.title {
+  color: rgb(128, 0, 128);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 1.5rem;
+}

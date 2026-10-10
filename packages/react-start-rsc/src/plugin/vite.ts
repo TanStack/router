@@ -82,8 +82,11 @@ export function reactStartRscVitePlugin(): PluginOption {
     },
     {
       name: 'tanstack-react-start:rsc-env-config',
-      config() {
+      config(_config, { command }) {
         return {
+          define: {
+            TSS_VITE_RSC_DEV: JSON.stringify(command === 'serve'),
+          },
           rsc: {
             // Disable @vitejs/plugin-rsc's built-in server handler middleware.
             // TanStack Start has its own request handling via the SSR environment.

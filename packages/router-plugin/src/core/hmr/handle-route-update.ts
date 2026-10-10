@@ -9,6 +9,7 @@ type AnyRouteWithPrivateProps = AnyRoute & {
   _id: string
   _fullPath: string
   _to: string
+  _hmrRouter?: AnyRouterWithPrivateState
 }
 
 type AnyRouterWithPrivateState = AnyRouter & {
@@ -22,8 +23,12 @@ type AnyRouterWithPrivateState = AnyRouter & {
 function handleRouteUpdate(
   routeId: string,
   newRoute: AnyRouteWithPrivateProps,
+  previousRoute: AnyRouteWithPrivateProps,
 ) {
-  const router = window.__TSR_ROUTER__ as AnyRouterWithPrivateState
+  const router = previousRoute._hmrRouter
+  if (!router) {
+    return
+  }
   const oldRoute = router.routesById[routeId] as
     | AnyRouteWithPrivateProps
     | undefined
@@ -85,6 +90,10 @@ function handleRouteUpdate(
     // routeTree.gen.ts mutates the original module export with generated
     // routing state. Mirror that state onto the fresh HMR export too, so
     // aliased route imports keep working after the module is hot-reloaded.
+    Object.defineProperty(newRoute, '_hmrRouter', {
+      value: router,
+      configurable: true,
+    })
     newRoute.options = liveRoute.options
     newRoute.parentRoute = liveRoute.parentRoute
     newRoute._path = liveRoute._path

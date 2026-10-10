@@ -1389,6 +1389,15 @@ export class RouterCore<
 
   buildRouteTree = (): RouteTreeCaches<TRouteTree> => {
     const result = processRouteTree(this.routeTree, this.options.caseSensitive)
+    if (process.env.NODE_ENV !== 'production' && !(isServer ?? this.isServer)) {
+      for (const route of Object.values(result.routesById)) {
+        // HMR modules retain this route even when another app creates a router.
+        Object.defineProperty(route, '_hmrRouter', {
+          value: this,
+          configurable: true,
+        })
+      }
+    }
     if (this.options.routeMasks) {
       processRouteMasks(this.options.routeMasks, result.processedTree)
     }
