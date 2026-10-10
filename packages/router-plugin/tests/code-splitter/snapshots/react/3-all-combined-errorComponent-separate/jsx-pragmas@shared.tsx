@@ -3,5 +3,5 @@
  * @jsxImportSource @emotion/react
  */
 // @refresh reset
-const icon = <svg css={{ width: 16 }} />;
-export { icon };
+const icon = <svg css={{ width: 16 }} />
+export { icon }

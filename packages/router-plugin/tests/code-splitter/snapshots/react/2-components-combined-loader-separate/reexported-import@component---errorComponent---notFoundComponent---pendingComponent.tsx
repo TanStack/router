@@ -1,5 +1,5 @@
-import { Foo } from './foo';
+import { Foo } from './foo'
 function RouteComponent() {
-  return <Foo />;
+  return <Foo />
 }
-export { RouteComponent as component };
+export { RouteComponent as component }

@@ -1,9 +1,4 @@
-import {
-  state,
-  createState,
-  createSeed,
-  increment,
-} from 'shared-runtime.tsx?tsr-shared=1'
+import { state, increment } from 'shared-runtime.tsx?tsr-shared=1'
 const $$splitComponentImporter = () =>
   import('shared-runtime.tsx?tsr-split=component')
 import { lazyRouteComponent } from '@tanstack/react-router'
@@ -17,9 +12,9 @@ export const Route = createFileRoute('/shared-runtime')({
   },
   component: lazyRouteComponent($$splitComponentImporter, 'component'),
 })
-function createState(initialState: { count: number }): {
-  state: { count: number }
-  increment: () => number
-}
-export { state as firstState, state as secondState, state as 'odd-name' }
-export default createSeed
+export {
+  state as firstState,
+  state as secondState,
+  state as 'odd-name',
+  createSeed as default,
+} from 'shared-runtime.tsx?tsr-shared=1'
