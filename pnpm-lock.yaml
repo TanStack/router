@@ -13914,8 +13914,8 @@ importers:
         specifier: workspace:*
         version: link:../history
       '@tanstack/react-store':
-        specifier: ^0.11.2
-        version: 0.11.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^1.0.0-alpha.0
+        version: 1.0.0-alpha.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -21728,8 +21728,8 @@ packages:
     peerDependencies:
       react: ^19.2.3
 
-  '@tanstack/react-store@0.11.2':
-    resolution: {integrity: sha512-oj5O5DmiMWE+ih+SioX2ayC1kbK7d3fpLx0B75fPJr9nY3zU+hoW010yr64qXsY/9fyiLVE2bn5mGNV3owm8RQ==}
+  '@tanstack/react-store@1.0.0-alpha.0':
+    resolution: {integrity: sha512-9nP706EWgwrXUERJjE7k50ZgQfnALMgma9fvwiSdN1bGdyJutVB9sVe0/BestCHO0ghiJWJshGn8qFp6uOiNKw==}
     peerDependencies:
       react: ^19.2.3
       react-dom: ^19.2.3
@@ -35749,12 +35749,11 @@ snapshots:
       '@tanstack/query-core': 5.102.0
       react: 19.2.3
 
-  '@tanstack/react-store@0.11.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@tanstack/react-store@1.0.0-alpha.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tanstack/store': 0.11.2
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-      use-sync-external-store: 1.6.0(react@19.2.3)
 
   '@tanstack/react-virtual@3.13.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
