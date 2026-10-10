@@ -167,3 +167,6 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
+minimumReleaseAgeExclude:
+  # Renovate security update: js-cookie@3.0.7
+  - js-cookie@3.0.7
