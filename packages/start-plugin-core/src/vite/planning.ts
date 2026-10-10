@@ -73,6 +73,11 @@ export function createViteConfigPlan(opts: {
         })(),
         optimizeDeps: {
           exclude: opts.optimizeDepsExclude,
+          // RPC transforms introduce these imports after Vite's initial scan.
+          include: ['cookie-es', 'seroval', 'seroval-plugins/web'].map(
+            (dependency) =>
+              `@tanstack/${opts.framework}-start > @tanstack/start-client-core > @tanstack/router-core > ${dependency}`,
+          ),
           entries: escapeEntries([
             opts.entryAliases.client,
             opts.entryAliases.router,
