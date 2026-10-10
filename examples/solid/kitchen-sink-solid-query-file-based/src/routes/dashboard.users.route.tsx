@@ -9,7 +9,7 @@ import {
   useNavigate,
 } from '@tanstack/solid-router'
 import { useQuery } from '@tanstack/solid-query'
-import { z } from 'zod'
+import * as z from 'zod'
 import { Spinner } from '../components/Spinner'
 import { usersQueryOptions } from '../utils/queryOptions'
 

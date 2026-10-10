@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { zodValidator } from '../src'
-import { z } from 'zod'
+import * as z from 'zod'
 import {
   createRootRoute,
   createRoute,

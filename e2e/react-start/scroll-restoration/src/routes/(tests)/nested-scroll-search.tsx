@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 export const Route = createFileRoute('/(tests)/nested-scroll-search')({
   validateSearch: z.object({

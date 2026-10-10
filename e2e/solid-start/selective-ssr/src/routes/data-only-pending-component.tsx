@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { z } from 'zod'
+import * as z from 'zod'
 import { ssrSchema } from '~/search'
 
 export const Route = createFileRoute('/data-only-pending-component')({

@@ -11,7 +11,7 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import axios from 'redaxios'
-import { z } from 'zod'
+import * as z from 'zod'
 import type {
   ErrorComponentProps,
   SearchSchemaInput,

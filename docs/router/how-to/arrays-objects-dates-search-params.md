@@ -41,7 +41,7 @@ Arrays are commonly used for filters, tags, categories, and multi-select options
 ```tsx
 // routes/products.tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const searchSchema = z.object({
   categories: z.array(z.string()).default([]),
