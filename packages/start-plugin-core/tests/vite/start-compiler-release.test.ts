@@ -4,8 +4,11 @@ import { describe, expect, test } from 'vitest'
 import { VITE_ENVIRONMENT_NAMES } from '../../src/constants'
 import { startCompilerPlugin } from '../../src/vite/start-compiler-plugin/plugin'
 
+// Expose `gc()` without the process-wide `--expose-gc` flag, then turn the flag
+// off again once we hold a reference to it.
 setFlagsFromString('--expose-gc')
 const collectGarbage = runInNewContext('gc') as () => void
+setFlagsFromString('--no-expose-gc')
 
 function createClientPlugin() {
   const plugins = (
@@ -62,9 +65,12 @@ describe('startCompilerPlugin in a build', () => {
       environment: { name: VITE_ENVIRONMENT_NAMES.client, mode: 'build' },
     })
 
-    // A WeakRef keeps its target alive until the current job ends.
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    collectGarbage()
+    // One collection is not guaranteed to reclaim the target, and a WeakRef
+    // keeps it alive until the current job ends, so yield before each pass.
+    for (let attempt = 0; attempt < 10 && contextRef.deref(); attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      collectGarbage()
+    }
 
     expect(contextRef.deref()).toBeUndefined()
   })
