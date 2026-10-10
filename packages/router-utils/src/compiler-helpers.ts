@@ -729,6 +729,189 @@ export function expandDestructuredDeclarations(
   }
 }
 
+/**
+ * Bindings that two or more groups of a module use, from the groups that use
+ * each binding. A destructuring is shared whole once any of its names is
+ * shared or its names are used by different groups, so it still runs once.
+ */
+export function findSharedBindings(
+  ast: t.File,
+  groupsByBinding: Map<string, Set<number>>,
+): Set<string> {
+  const shared = new Set<string>()
+  for (const [name, groups] of groupsByBinding) {
+    if (groups.size >= 2) shared.add(name)
+  }
+
+  for (const statement of ast.program.body) {
+    const declaration =
+      t.isExportNamedDeclaration(statement) && statement.declaration
+        ? statement.declaration
+        : statement
+    if (!t.isVariableDeclaration(declaration)) continue
+
+    for (const declarator of declaration.declarations) {
+      if (
+        !t.isObjectPattern(declarator.id) &&
+        !t.isArrayPattern(declarator.id)
+      ) {
+        continue
+      }
+      const names = collectIdentifiersFromPattern(declarator.id)
+      let firstGroup: number | undefined
+      let isShared = false
+      for (const name of names) {
+        if (shared.has(name)) {
+          isShared = true
+          break
+        }
+        for (const group of groupsByBinding.get(name) ?? []) {
+          if (firstGroup === undefined) {
+            firstGroup = group
+          } else if (group !== firstGroup) {
+            isShared = true
+            break
+          }
+        }
+        if (isShared) break
+      }
+      if (isShared) {
+        for (const name of names) shared.add(name)
+      }
+    }
+  }
+
+  return shared
+}
+
+/**
+ * Removes the declarations of the shared bindings from a module that imports
+ * them from its shared module instead. Returns the removed bindings the
+ * module exported, as `[local, exported]` pairs to re-export.
+ */
+export function removeSharedDeclarations(
+  ast: t.File,
+  shared: Set<string>,
+): Array<[local: string, exported: string]> {
+  const exported: Array<[string, string]> = []
+  ast.program.body = ast.program.body.filter((statement) => {
+    const isNamedExport = t.isExportNamedDeclaration(statement)
+    const declaration = isNamedExport
+      ? statement.declaration
+      : t.isExportDefaultDeclaration(statement)
+        ? statement.declaration
+        : statement
+
+    if (t.isVariableDeclaration(declaration)) {
+      declaration.declarations = declaration.declarations.filter(
+        (declarator) => {
+          const names = collectIdentifiersFromPattern(declarator.id)
+          if (!names.every((name) => shared.has(name))) return true
+          if (isNamedExport) {
+            for (const name of names) exported.push([name, name])
+          }
+          return false
+        },
+      )
+      return declaration.declarations.length > 0
+    }
+
+    if (
+      (t.isFunctionDeclaration(declaration) ||
+        t.isClassDeclaration(declaration)) &&
+      declaration.id &&
+      shared.has(declaration.id.name)
+    ) {
+      if (declaration !== statement) {
+        const name = declaration.id.name
+        exported.push([name, isNamedExport ? name : 'default'])
+      }
+      return false
+    }
+
+    return true
+  })
+  return exported
+}
+
+/** The import of the shared bindings from their shared module. */
+export function createSharedImport(
+  shared: Iterable<string>,
+  source: string,
+): t.ImportDeclaration {
+  return t.importDeclaration(
+    Array.from(shared, (name) =>
+      t.importSpecifier(t.identifier(name), t.identifier(name)),
+    ),
+    t.stringLiteral(source),
+  )
+}
+
+/**
+ * The re-export of the shared bindings a module exported, from their shared
+ * module, or null when it exported none.
+ */
+export function createSharedReExport(
+  exported: Array<[local: string, exported: string]>,
+  source: string,
+): t.ExportNamedDeclaration | null {
+  if (exported.length === 0) return null
+  return t.exportNamedDeclaration(
+    null,
+    exported.map(([local, name]) =>
+      t.exportSpecifier(t.identifier(local), t.identifier(name)),
+    ),
+    t.stringLiteral(source),
+  )
+}
+
+/**
+ * Turns a module into its shared module: the shared declarations, the
+ * declarations they depend on and the module's imports, with every shared
+ * binding exported in a stable order. The `Route` binding never moves.
+ */
+export function retainSharedDeclarations(ast: t.File, shared: Set<string>) {
+  unwrapExportedDeclarations(ast)
+
+  const declarations = buildDeclarationMap(ast)
+  const keep = new Set<string>()
+  const queue: Array<string> = []
+  for (const name of shared) {
+    if (name !== 'Route') queue.push(name)
+  }
+  while (queue.length > 0) {
+    const name = queue.pop()!
+    if (keep.has(name)) continue
+    keep.add(name)
+    const declaration = declarations.get(name)
+    if (!declaration) continue
+    for (const dependency of collectIdentifiersFromNode(declaration)) {
+      if (
+        dependency !== 'Route' &&
+        !keep.has(dependency) &&
+        declarations.has(dependency)
+      ) {
+        queue.push(dependency)
+      }
+    }
+  }
+  retainModuleLevelDeclarations(ast, keep)
+
+  const exported = [...shared]
+    .filter((name) => name !== 'Route')
+    .sort((a, b) => a.localeCompare(b))
+  if (exported.length > 0) {
+    ast.program.body.push(
+      t.exportNamedDeclaration(
+        null,
+        exported.map((name) =>
+          t.exportSpecifier(t.identifier(name), t.identifier(name)),
+        ),
+      ),
+    )
+  }
+}
+
 export function removeBindingsTransitivelyDependingOn(
   bindings: Set<string>,
   dependencyGraph: Map<string, Set<string>>,

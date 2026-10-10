@@ -1,5 +1,5 @@
+import { createAdminServerFn, createAuthServerFn } from "./test.ts?tss-serverfn-shared";
 import { createServerRpc } from '@tanstack/react-start/server-rpc';
-import { createAuthServerFn, createAdminServerFn } from "./test.ts?tss-serverfn-shared";
 const myAuthedFn_createServerFn_handler = createServerRpc({
   id: "3bb88b23926fa224cea3dcfb877026757733d95b42e3b66cf7f06bb89dab06a3",
   name: "myAuthedFn",

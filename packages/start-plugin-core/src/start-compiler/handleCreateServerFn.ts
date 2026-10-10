@@ -3,7 +3,7 @@ import babel from '@babel/core'
 import { hasKeys } from '@tanstack/router-core'
 import { getVariableDeclaratorForExpressionPath } from '@tanstack/router-utils'
 import path from 'pathe'
-import { isServerFnSharedModuleId } from './server-fn-shared-module'
+import { TSS_SERVERFN_SHARED_PARAM } from './server-fn-shared-module'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
 import type {
   CompilationContext,
@@ -213,15 +213,14 @@ export function handleCreateServerFn(
   candidates: Array<RewriteCandidate>,
   context: CompilationContext,
 ) {
-  const isProviderFile = context.id.includes(TSS_SERVERFN_SPLIT_PARAM)
-  const sharedServerFns = isProviderFile ? context.sharedServerFns : undefined
-  if (candidates.length === 0 && !sharedServerFns) {
+  if (candidates.length === 0) {
     return
   }
 
-  // The shared module hosts its server functions itself: it keeps their
-  // handlers like a provider and exports their extracted handlers.
-  const isSharedModule = isServerFnSharedModuleId(context.id)
+  const isProviderFile = context.id.includes(TSS_SERVERFN_SPLIT_PARAM)
+  // The shared module hosts the server functions whose handlers write its
+  // bindings: it keeps their handlers like a provider.
+  const isSharedModule = context.id.includes(TSS_SERVERFN_SHARED_PARAM)
   const hostsHandlers = isProviderFile || isSharedModule
   if (isProviderFile && context.serverFnProviderModuleDirectives) {
     ensureDirectivePrologue(
@@ -271,7 +270,7 @@ export function handleCreateServerFn(
 
     // Generate unique function name with _createServerFn_handler suffix
     // The function name is derived from the variable name
-    let functionName = getServerFnFunctionName(existingVariableName)
+    let functionName = `${existingVariableName}_createServerFn_handler`
     while (functionNameSet.has(functionName)) {
       functionName = incrementFunctionNameVersion(functionName)
     }
@@ -464,30 +463,25 @@ export function handleCreateServerFn(
     // These were populated by handleCreateServerFn:
     // 1. Extracted handlers: const fn_createServerFn_handler = createServerRpc(...)
     // 2. Original variables: const fn = createServerFn().handler(...)
-    pushExportSpecifiers(context.ast, exportNames)
-
-    if (sharedServerFns) {
-      pushExportSpecifiers(
-        context.ast,
-        sharedServerFns.names.map(getServerFnFunctionName),
-        sharedServerFns.source,
+    if (exportNames.size > 0) {
+      context.ast.program.body.push(
+        t.exportNamedDeclaration(
+          undefined,
+          Array.from(exportNames).map((name) =>
+            t.exportSpecifier(t.identifier(name), t.identifier(name)),
+          ),
+        ),
       )
     }
 
     if (context.mode === 'dev') {
       context.ast.program.body.push(...providerHmrAcceptTemplate())
     }
-  } else if (isSharedModule) {
-    pushExportSpecifiers(context.ast, exportNames)
   }
 
   // Notify about discovered functions (only for non-provider files)
   if (!isProviderFile && hasKeys(serverFnsById) && context.onServerFnsById) {
     context.onServerFnsById(serverFnsById)
-  }
-
-  if (candidates.length === 0) {
-    return
   }
 
   // Add runtime import using cached AST node
@@ -496,31 +490,6 @@ export function handleCreateServerFn(
     envConfig.runtimeCodeType,
   )
   context.ast.program.body.unshift(t.cloneNode(runtimeCode))
-}
-
-/** The export name of a server function's extracted handler. */
-function getServerFnFunctionName(variableName: string) {
-  return `${variableName}_createServerFn_handler`
-}
-
-function pushExportSpecifiers(
-  ast: t.File,
-  names: Iterable<string>,
-  source?: string,
-): void {
-  const specifiers = Array.from(names, (name) =>
-    t.exportSpecifier(t.identifier(name), t.identifier(name)),
-  )
-  if (specifiers.length === 0) {
-    return
-  }
-  ast.program.body.push(
-    t.exportNamedDeclaration(
-      undefined,
-      specifiers,
-      source === undefined ? undefined : t.stringLiteral(source),
-    ),
-  )
 }
 
 /**

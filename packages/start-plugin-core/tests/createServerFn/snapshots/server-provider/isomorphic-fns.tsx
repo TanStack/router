@@ -1,5 +1,5 @@
+import { getEcho, getEnv } from "./test.ts?tss-serverfn-shared";
 import { createServerRpc } from '@tanstack/react-start/server-rpc';
-import { getEnv, getEcho } from "./test.ts?tss-serverfn-shared";
 import { createServerFn } from '@tanstack/react-start';
 const getServerEnv_createServerFn_handler = createServerRpc({
   id: "6049dd46bc00e0980e387f3e74924b40e92f37634a3fe74a1a1facda9e9207c2",

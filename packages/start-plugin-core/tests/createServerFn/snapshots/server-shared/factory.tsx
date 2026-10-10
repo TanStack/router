@@ -21,6 +21,6 @@ const adminMiddleware = createMiddleware({
     }
   });
 });
-export const createAuthServerFn = createServerFn().middleware([authMiddleware]);
+const createAuthServerFn = createServerFn().middleware([authMiddleware]);
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware]);
-export { authMiddleware, adminMiddleware, createAdminServerFn };
+export { adminMiddleware, authMiddleware, createAdminServerFn, createAuthServerFn };

@@ -8,17 +8,18 @@ import {
   collectLocalBindingsFromStatement,
   collectModuleLevelRefsFromNode,
   createIdentifier,
+  createSharedImport,
+  createSharedReExport,
   deadCodeElimination,
-  expandDestructuredDeclarations,
-  expandSharedDestructuredDeclarators,
   expandTransitively,
   findReferencedIdentifiers,
+  findSharedBindings,
   generateFromAst,
   parseAst,
   removeBindingsTransitivelyDependingOn,
-  retainModuleLevelDeclarations,
+  removeSharedDeclarations,
+  retainSharedDeclarations,
   stripUnreferencedTopLevelExpressionStatements,
-  unwrapExportedDeclarations,
 } from '@tanstack/router-utils'
 import { tsrShared, tsrSplit } from '../constants'
 import { createRouteHmrStatement } from '../hmr'
@@ -272,24 +273,12 @@ export function computeSharedBindings(opts: {
     }
   }
 
-  // Shared = bindings appearing in 2+ distinct groups
-  const shared = new Set<string>()
-  for (const [name, groups] of refsByGroup) {
-    if (groups.size >= 2) shared.add(name)
-  }
-
-  // Destructured declarators (e.g. `const { a, b } = fn()`) must be treated
-  // as a single initialization unit. Even if each binding is referenced by
-  // only one group, if *different* bindings from the same declarator are
-  // referenced by different groups, the declarator must be extracted to the
-  // shared module to avoid double initialization.
-  expandSharedDestructuredDeclarators(ast, refsByGroup, shared)
+  // Shared = bindings appearing in 2+ distinct groups, with destructured
+  // declarators (e.g. `const { a, b } = fn()`) treated as a single
+  // initialization unit.
+  const shared = findSharedBindings(ast, refsByGroup)
 
   if (shared.size === 0) return shared
-
-  // If any binding from a destructured declaration is shared,
-  // all bindings from that declaration must be shared
-  expandDestructuredDeclarations(ast, shared)
 
   // Remove shared bindings that transitively depend on `Route`.
   // The Route singleton must stay in the reference file; extracting a
@@ -300,65 +289,22 @@ export function computeSharedBindings(opts: {
 }
 
 /**
- * Find which shared bindings are user-exported in the original source.
- * These need to be re-exported from the shared module.
+ * Imports the shared bindings from the shared module, registering the import
+ * locals in `refIdents` so DCE removes the ones the module does not use.
  */
-function findExportedSharedBindings(
-  ast: t.File,
+function importSharedBindings(
+  programPath: babel.NodePath<t.Program>,
   sharedBindings: Set<string>,
-): Set<string> {
-  const exported = new Set<string>()
-  for (const stmt of ast.program.body) {
-    if (!t.isExportNamedDeclaration(stmt) || !stmt.declaration) continue
-
-    if (t.isVariableDeclaration(stmt.declaration)) {
-      for (const decl of stmt.declaration.declarations) {
-        for (const name of collectIdentifiersFromPattern(decl.id)) {
-          if (sharedBindings.has(name)) exported.add(name)
-        }
-      }
-    } else if (
-      t.isFunctionDeclaration(stmt.declaration) &&
-      stmt.declaration.id
-    ) {
-      if (sharedBindings.has(stmt.declaration.id.name))
-        exported.add(stmt.declaration.id.name)
-    } else if (t.isClassDeclaration(stmt.declaration) && stmt.declaration.id) {
-      if (sharedBindings.has(stmt.declaration.id.name))
-        exported.add(stmt.declaration.id.name)
-    }
+  sharedModuleUrl: string,
+  refIdents: ReturnType<typeof findReferencedIdentifiers>,
+) {
+  const [importPath] = programPath.unshiftContainer(
+    'body',
+    createSharedImport(sharedBindings, sharedModuleUrl),
+  )
+  for (const specifier of importPath.get('specifiers')) {
+    refIdents.add(specifier.get('local'))
   }
-  return exported
-}
-
-/**
- * Remove declarations of shared bindings from the AST.
- * Handles both plain and exported declarations, including destructured patterns.
- * Removes the entire statement if all bindings in it are shared.
- */
-function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
-  ast.program.body = ast.program.body.filter((stmt) => {
-    const decl =
-      t.isExportNamedDeclaration(stmt) && stmt.declaration
-        ? stmt.declaration
-        : stmt
-
-    if (t.isVariableDeclaration(decl)) {
-      // Filter out declarators where all bound names are shared
-      decl.declarations = decl.declarations.filter((declarator) => {
-        const names = collectIdentifiersFromPattern(declarator.id)
-        return !names.every((n) => sharedBindings.has(n))
-      })
-      // If no declarators remain, remove the entire statement
-      if (decl.declarations.length === 0) return false
-    } else if (t.isFunctionDeclaration(decl) && decl.id) {
-      if (sharedBindings.has(decl.id.name)) return false
-    } else if (t.isClassDeclaration(decl) && decl.id) {
-      if (sharedBindings.has(decl.id.name)) return false
-    }
-
-    return true
-  })
 }
 
 export function compileCodeSplitReferenceRoute(
@@ -395,7 +341,6 @@ export function compileCodeSplitReferenceRoute(
 
   let modified = false as boolean
   let hmrAdded = false as boolean
-  let sharedExportedNames: Set<string> | undefined
   babel.traverse(ast, {
     Program: {
       enter(programPath) {
@@ -780,50 +725,22 @@ export function compileCodeSplitReferenceRoute(
         // Handle shared bindings inside the Program visitor so we have
         // access to programPath for cheap refIdents registration.
         if (opts.sharedBindings && opts.sharedBindings.size > 0) {
-          sharedExportedNames = findExportedSharedBindings(
+          const sharedExports = removeSharedDeclarations(
             ast,
             opts.sharedBindings,
           )
-          removeSharedDeclarations(ast, opts.sharedBindings)
-
           const sharedModuleUrl = addSharedSearchParamToFilename(opts.filename)
-
-          const sharedImportSpecifiers = [...opts.sharedBindings].map((name) =>
-            t.importSpecifier(t.identifier(name), t.identifier(name)),
+          importSharedBindings(
+            programPath,
+            opts.sharedBindings,
+            sharedModuleUrl,
+            refIdents,
           )
-          const [sharedImportPath] = programPath.unshiftContainer(
-            'body',
-            t.importDeclaration(
-              sharedImportSpecifiers,
-              t.stringLiteral(sharedModuleUrl),
-            ),
-          )
-
-          // Register import specifier locals in refIdents so DCE can remove unused ones
-          sharedImportPath.traverse({
-            Identifier(identPath) {
-              if (
-                identPath.parentPath.isImportSpecifier() &&
-                identPath.key === 'local'
-              ) {
-                refIdents.add(identPath)
-              }
-            },
-          })
 
           // Re-export user-exported shared bindings from the shared module
-          if (sharedExportedNames.size > 0) {
-            const reExportSpecifiers = [...sharedExportedNames].map((name) =>
-              t.exportSpecifier(t.identifier(name), t.identifier(name)),
-            )
-            programPath.pushContainer(
-              'body',
-              t.exportNamedDeclaration(
-                null,
-                reExportSpecifiers,
-                t.stringLiteral(sharedModuleUrl),
-              ),
-            )
+          const reExport = createSharedReExport(sharedExports, sharedModuleUrl)
+          if (reExport) {
+            programPath.pushContainer('body', reExport)
           }
         }
       },
@@ -1245,30 +1162,14 @@ export function compileCodeSplitVirtualRoute(
         // Add shared bindings import, registering specifiers in refIdents
         // so DCE can remove unused ones (same pattern as import replacements above).
         if (opts.sharedBindings && opts.sharedBindings.size > 0) {
-          const sharedImportSpecifiers = [...opts.sharedBindings].map((name) =>
-            t.importSpecifier(t.identifier(name), t.identifier(name)),
-          )
-          const sharedModuleUrl = addSharedSearchParamToFilename(
-            removeSplitSearchParamFromFilename(opts.filename),
-          )
-          const [sharedImportPath] = programPath.unshiftContainer(
-            'body',
-            t.importDeclaration(
-              sharedImportSpecifiers,
-              t.stringLiteral(sharedModuleUrl),
+          importSharedBindings(
+            programPath,
+            opts.sharedBindings,
+            addSharedSearchParamToFilename(
+              removeSplitSearchParamFromFilename(opts.filename),
             ),
+            refIdents,
           )
-
-          sharedImportPath.traverse({
-            Identifier(identPath) {
-              if (
-                identPath.parentPath.isImportSpecifier() &&
-                identPath.key === 'local'
-              ) {
-                refIdents.add(identPath)
-              }
-            },
-          })
         }
       },
     },
@@ -1311,56 +1212,20 @@ export function compileCodeSplitSharedRoute(
   const ast = parseAst(opts)
   const refIdents = findReferencedIdentifiers(ast)
 
-  // Collect all names that need to stay: shared bindings + their transitive deps
-  const localBindings = new Set<string>()
-  for (const node of ast.program.body) {
-    collectLocalBindingsFromStatement(node, localBindings)
-  }
+  retainSharedDeclarations(ast, opts.sharedBindings)
 
-  // Route must never be extracted into the shared module.
-  // Excluding it from the dep graph prevents expandTransitively from
-  // pulling it in as a transitive dependency of a shared binding.
-  localBindings.delete('Route')
-
-  const declMap = buildDeclarationMap(ast)
-  const depGraph = buildDependencyGraph(declMap, localBindings)
-
-  // Start with shared bindings and expand transitively
-  const keepBindings = new Set(opts.sharedBindings)
-  keepBindings.delete('Route')
-  expandTransitively(keepBindings, depGraph)
-
-  retainModuleLevelDeclarations(ast, keepBindings)
-  unwrapExportedDeclarations(ast)
-
-  // Export all shared bindings (sorted for deterministic output)
-  const exportNames = [...opts.sharedBindings].sort((a, b) =>
-    a.localeCompare(b),
-  )
-  const exportSpecifiers = exportNames.map((name) =>
-    t.exportSpecifier(t.identifier(name), t.identifier(name)),
-  )
-  if (exportSpecifiers.length > 0) {
-    const exportDecl = t.exportNamedDeclaration(null, exportSpecifiers)
-    ast.program.body.push(exportDecl)
-
-    // Register export specifier locals in refIdents so DCE doesn't treat
-    // the exported bindings as unreferenced.
+  // Register export specifier locals in refIdents so DCE doesn't treat
+  // the exported bindings as unreferenced.
+  const exportDecl = ast.program.body.at(-1)
+  if (t.isExportNamedDeclaration(exportDecl) && !exportDecl.source) {
     babel.traverse(ast, {
       Program(programPath) {
-        const bodyPaths = programPath.get('body')
-        const last = bodyPaths[bodyPaths.length - 1]
-        if (last && last.isExportNamedDeclaration()) {
-          last.traverse({
-            Identifier(identPath) {
-              if (
-                identPath.parentPath.isExportSpecifier() &&
-                identPath.key === 'local'
-              ) {
-                refIdents.add(identPath)
-              }
-            },
-          })
+        const last = programPath.get('body').at(-1)
+        if (last?.isExportNamedDeclaration()) {
+          for (const specifier of last.get('specifiers')) {
+            const local = specifier.get('local')
+            if (local.isIdentifier()) refIdents.add(local)
+          }
         }
         programPath.stop()
       },

@@ -1,12 +1,16 @@
 import crypto from 'node:crypto'
 import * as t from '@babel/types'
 import {
+  createSharedImport,
+  createSharedReExport,
   deadCodeElimination,
   extractModuleInfoFromAst,
   findReferencedIdentifiers,
   generateFromAst,
   getVariableDeclaratorForExpressionPath,
   parseAst,
+  removeSharedDeclarations,
+  retainSharedDeclarations,
   unwrapExpression,
 } from '@tanstack/router-utils'
 import babel from '@babel/core'
@@ -19,12 +23,10 @@ import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
 import {
+  TSS_SERVERFN_SHARED_PARAM,
   computeServerFnSharedBindings,
+  getModuleDeclarationName,
   getServerFnSharedModuleSpecifier,
-  importServerFnSharedDeclarations,
-  isServerFnSharedModuleId,
-  pruneServerFnSharedImports,
-  retainServerFnSharedDeclarations,
 } from './server-fn-shared-module'
 import { cleanId } from './utils'
 import type { ServerFnDeclaration } from './server-fn-shared-module'
@@ -507,21 +509,50 @@ function getExternalDirectCallCandidateKind(
   return undefined
 }
 
-/** Whether every node from `path` up to the program is still in the AST. */
-function isAttached(path: babel.NodePath) {
-  for (let current = path; current.parentPath; current = current.parentPath) {
-    // Removed paths lose their node, which their type does not reflect.
-    const node = current.node as t.Node | null
-    const parentNode = current.parentPath.node as t.Node | null
-    if (!node || !parentNode) {
-      return false
-    }
-    const slot = (parentNode as any)[current.parentKey]
-    if (Array.isArray(slot) ? !slot.includes(node) : slot !== node) {
-      return false
-    }
+type PathToRewrite = {
+  path: babel.NodePath<t.CallExpression>
+  kind: Exclude<LookupKind, 'ClientOnlyJSX'>
+  methodChain: MethodChainPaths
+}
+
+interface ServerFnSharedModulePlan {
+  programPath: babel.NodePath<t.Program>
+  /** The bindings that live in the shared module. */
+  shared: Set<string>
+  /** Whether the compiled module is the `?tss-serverfn-shared` module. */
+  isSharedModule: boolean
+  /** The candidates the compiled module still declares. */
+  candidates: Array<PathToRewrite>
+}
+
+/**
+ * Turns the compiled module into the shared module, or replaces its shared
+ * declarations with imports from it. Runs after the handlers and before DCE,
+ * which drops the imports the module no longer uses.
+ */
+function applyServerFnSharedModule(
+  ast: t.File,
+  id: string,
+  plan: ServerFnSharedModulePlan,
+  refIdents: ReturnType<typeof findReferencedIdentifiers>,
+) {
+  if (plan.isSharedModule) {
+    retainSharedDeclarations(ast, plan.shared)
+    return
   }
-  return true
+  const source = getServerFnSharedModuleSpecifier(id)
+  const exported = removeSharedDeclarations(ast, plan.shared)
+  const [importPath] = plan.programPath.unshiftContainer(
+    'body',
+    createSharedImport(plan.shared, source),
+  )
+  for (const specifier of importPath.get('specifiers')) {
+    refIdents.add(specifier.get('local'))
+  }
+  const reExport = createSharedReExport(exported, source)
+  if (reExport) {
+    ast.program.body.push(reExport)
+  }
 }
 
 export class StartCompiler {
@@ -1320,11 +1351,7 @@ export class StartCompiler {
       }
 
       // Process valid candidates to collect method chains
-      const pathsToRewrite: Array<{
-        path: babel.NodePath<t.CallExpression>
-        kind: Exclude<LookupKind, 'ClientOnlyJSX'>
-        methodChain: MethodChainPaths
-      }> = []
+      const pathsToRewrite: Array<PathToRewrite> = []
 
       for (const { path, kind } of validCandidates) {
         const node = path.node
@@ -1386,8 +1413,11 @@ export class StartCompiler {
 
       const refIdents = findReferencedIdentifiers(ast)
 
-      const { remainingPaths, sharedServerFnNames, sharedImport } =
-        this.splitServerFnSharedModule(ast, id, pathsToRewrite)
+      const sharedModule = this.planServerFnSharedModule(
+        ast,
+        id,
+        pathsToRewrite,
+      )
 
       const context: CompilationContext = {
         ast,
@@ -1410,13 +1440,6 @@ export class StartCompiler {
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,
-        sharedServerFns:
-          sharedServerFnNames.length > 0
-            ? {
-                source: getServerFnSharedModuleSpecifier(id),
-                names: sharedServerFnNames,
-              }
-            : undefined,
         onServerFnsById: this.options.onServerFnsById,
       }
 
@@ -1426,11 +1449,9 @@ export class StartCompiler {
         Array<RewriteCandidate>
       >()
 
-      if (sharedServerFnNames.length > 0) {
-        // The provider re-exports the handlers its shared module now hosts.
-        candidatesByKind.set('ServerFn', [])
-      }
-      for (const { path: candidatePath, kind, methodChain } of remainingPaths) {
+      for (const { path: candidatePath, kind, methodChain } of sharedModule
+        ? sharedModule.candidates
+        : pathsToRewrite) {
         const candidate: RewriteCandidate = { path: candidatePath, methodChain }
         const existing = candidatesByKind.get(kind)
         if (existing) {
@@ -1459,13 +1480,11 @@ export class StartCompiler {
         handleClientOnlyJSX(jsxPath, { env: 'server' })
       }
 
-      deadCodeElimination(ast, refIdents)
-      if (sharedImport) {
-        pruneServerFnSharedImports(
-          sharedImport.programPath,
-          sharedImport.source,
-        )
+      if (sharedModule) {
+        applyServerFnSharedModule(ast, id, sharedModule, refIdents)
       }
+
+      deadCodeElimination(ast, refIdents)
       astHasChanges = true
     }
 
@@ -1484,34 +1503,23 @@ export class StartCompiler {
   }
 
   /**
-   * In the provider environment, moves the module-level bindings that server
-   * function handlers share with the rest of the module into its
-   * `?tss-serverfn-shared` module (see `server-fn-shared-module.ts`). Returns
-   * the candidates still declared in this module and, for a provider module,
-   * the server functions its shared module now hosts.
+   * In the provider environment, finds the module-level bindings that server
+   * function handlers share with the rest of their module, which move into
+   * its `?tss-serverfn-shared` module (see `server-fn-shared-module.ts`).
+   * Candidates are compiled where their declaration ends up, except that the
+   * provider still wraps the server functions the shared module hosts.
    */
-  private splitServerFnSharedModule(
+  private planServerFnSharedModule(
     ast: t.File,
     id: string,
-    pathsToRewrite: Array<{
-      path: babel.NodePath<t.CallExpression>
-      kind: Exclude<LookupKind, 'ClientOnlyJSX'>
-      methodChain: MethodChainPaths
-    }>,
-  ) {
-    const unchanged = {
-      remainingPaths: pathsToRewrite,
-      sharedServerFnNames: [] as Array<string>,
-      sharedImport: undefined as
-        | { programPath: babel.NodePath<t.Program>; source: string }
-        | undefined,
-    }
+    pathsToRewrite: Array<PathToRewrite>,
+  ): ServerFnSharedModulePlan | undefined {
     if (
       this.options.env !== 'server' ||
       this.options.envName !== this.options.providerEnvName ||
       this.options.serverFnSharedModule === false
     ) {
-      return unchanged
+      return undefined
     }
 
     const serverFns: Array<ServerFnDeclaration> = []
@@ -1533,42 +1541,37 @@ export class StartCompiler {
             statement.parentPath.isProgram())
         )
       ) {
-        return unchanged
+        return undefined
       }
       serverFns.push({
         name: declarator.node.id.name,
         handlerCall: methodChain.handler.callPath.node,
       })
     }
-    if (serverFns.length === 0) return unchanged
+    if (serverFns.length === 0) return undefined
 
-    const programPath = pathsToRewrite[0]!.path.scope.getProgramParent()
-      .path as babel.NodePath<t.Program>
-    const shared = computeServerFnSharedBindings({
+    const programPath = pathsToRewrite[0]!.path.scope.getProgramParent().path
+    const shared = computeServerFnSharedBindings(
       ast,
-      programPath,
+      programPath.scope,
       serverFns,
-    })
-    const isSharedModule = isServerFnSharedModuleId(id)
-    if (shared.length === 0 && !isSharedModule) return unchanged
+    )
+    const isSharedModule = id.includes(TSS_SERVERFN_SHARED_PARAM)
+    if (!shared && !isSharedModule) return undefined
 
-    const source = getServerFnSharedModuleSpecifier(id)
-    if (isSharedModule) {
-      retainServerFnSharedDeclarations(programPath, shared)
-    } else {
-      importServerFnSharedDeclarations(programPath, shared, source)
-    }
-
-    const sharedNames = new Set(shared)
+    const sharedNames = shared ?? new Set<string>()
+    const isProvider = id.includes(TSS_SERVERFN_SPLIT_PARAM)
     return {
-      sharedImport: isSharedModule ? undefined : { programPath, source },
-      remainingPaths: pathsToRewrite.filter(({ path }) => isAttached(path)),
-      sharedServerFnNames:
-        !isSharedModule && id.includes(TSS_SERVERFN_SPLIT_PARAM)
-          ? serverFns
-              .filter(({ name }) => sharedNames.has(name))
-              .map(({ name }) => name)
-          : [],
+      programPath: programPath as babel.NodePath<t.Program>,
+      shared: sharedNames,
+      isSharedModule,
+      candidates: pathsToRewrite.filter(({ path, kind }) => {
+        const name = getModuleDeclarationName(path)
+        const isShared = name !== undefined && sharedNames.has(name)
+        return isSharedModule
+          ? isShared
+          : !isShared || (isProvider && kind === 'ServerFn')
+      }),
     }
   }
 

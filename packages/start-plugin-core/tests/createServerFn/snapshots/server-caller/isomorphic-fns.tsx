@@ -1,5 +1,5 @@
+import { getEcho, getEnv } from "./test.ts?tss-serverfn-shared";
 import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
-import { getEnv, getEcho } from "./test.ts?tss-serverfn-shared";
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
