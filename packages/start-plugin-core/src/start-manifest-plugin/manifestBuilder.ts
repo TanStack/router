@@ -265,7 +265,10 @@ export function buildStartManifest(options: {
   >
 }): StartManifest {
   const scannedChunks = scanClientChunks(options.clientBuild)
-  const assetResolvers = createManifestAssetResolvers(options.basePath)
+  const assetResolvers = createManifestAssetResolvers(
+    options.basePath,
+    scannedChunks.chunksByFileName,
+  )
 
   const routes = buildRouteManifestRoutes({
     routeTreeRoutes: options.routeTreeRoutes,
@@ -355,6 +358,7 @@ export function scanClientChunks(
 
 export function createManifestAssetResolvers(
   basePath: string,
+  chunksByFileName?: ReadonlyMap<string, NormalizedClientChunk>,
 ): ManifestAssetResolvers {
   const assetPathByFileName = new Map<string, string>()
   const stylesheetLinkByFileName = new Map<string, ManifestCssLink>()
@@ -390,11 +394,15 @@ export function createManifestAssetResolvers(
       return cachedPreloads
     }
 
-    const preloads = [getAssetPath(chunk.fileName)]
-
-    for (let i = 0; i < chunk.imports.length; i++) {
-      preloads.push(getAssetPath(chunk.imports[i]!))
+    // Rolldown lists only direct imports, so follow the static import graph.
+    // Set iteration also visits entries added during the loop.
+    const fileNames = new Set([chunk.fileName, ...chunk.imports])
+    for (const fileName of fileNames) {
+      for (const imported of chunksByFileName?.get(fileName)?.imports ?? []) {
+        fileNames.add(imported)
+      }
     }
+    const preloads = Array.from(fileNames, getAssetPath)
 
     preloadsByChunk.set(chunk, preloads)
     return preloads
