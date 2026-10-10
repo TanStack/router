@@ -1,7 +1,7 @@
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { createServer } from 'vite'
+import { createServer, normalizePath } from 'vite'
 import { expect, test } from 'vitest'
 import {
   captureBundledDevStyles,
@@ -38,7 +38,8 @@ test('collects ordered static and dynamic CSS from a completed bundled graph', a
       {
         name: 'capture-completed-styles',
         generateBundle() {
-          if (!this.getModuleInfo(path.join(root, 'entry.js'))) {
+          // Rolldown module ids use forward slashes, also on Windows.
+          if (!this.getModuleInfo(normalizePath(path.join(root, 'entry.js')))) {
             return
           }
           snapshot = captureBundledDevStyles(this, root)
