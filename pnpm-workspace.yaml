@@ -167,3 +167,6 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
+minimumReleaseAgeExclude:
+  # Renovate security update: srvx@0.11.13
+  - srvx@0.11.13
