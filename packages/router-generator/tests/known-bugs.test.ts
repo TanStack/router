@@ -31,6 +31,8 @@ export const Route = createRootRoute()`,
       disableLogging: true,
       routesDirectory: path.join(root, 'routes'),
       generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+      // Same filesystem as the app, so the generator can rename its temp files
+      tmpDir: path.join(root, '.tanstack/tmp'),
       plugins: [
         {
           name: 'route-nodes',
