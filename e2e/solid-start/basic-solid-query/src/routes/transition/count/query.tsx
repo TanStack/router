@@ -21,7 +21,7 @@ export const Route = createFileRoute('/transition/count/query')({
   validateSearch: searchSchema,
   loader: ({ context: { queryClient }, location }) => {
     const { n } = searchSchema.parse(location.search)
-    return queryClient.ensureQueryData(doubleQueryOptions(n))
+    return queryClient.query({ ...doubleQueryOptions(n), staleTime: 'static' })
   },
   component: TransitionPage,
 })

@@ -24,7 +24,7 @@ const RouteComponent = defineComponent({
   },
 })
 
-export const Route = createFileRoute('/loader-fetchQuery/$type')({
+export const Route = createFileRoute('/loader-query/$type')({
   component: RouteComponent,
   params: {
     parse: ({ type }) =>
@@ -35,10 +35,10 @@ export const Route = createFileRoute('/loader-fetchQuery/$type')({
         .parse({ type }),
   },
   context: ({ params }) => ({
-    queryOptions: makeQueryOptions(`loader-fetchQuery-${params.type}`),
+    queryOptions: makeQueryOptions(`loader-query-${params.type}`),
   }),
   loader: ({ context, params }) => {
-    const queryPromise = context.queryClient.fetchQuery(context.queryOptions)
+    const queryPromise = context.queryClient.query(context.queryOptions)
     if (params.type === 'sync') {
       return queryPromise
     }

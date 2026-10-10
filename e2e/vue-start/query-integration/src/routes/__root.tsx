@@ -44,22 +44,22 @@ function RootComponent() {
             Home
           </Link>{' '}
           <Link
-            to="/loader-fetchQuery/$type"
+            to="/loader-query/$type"
             params={{ type: 'sync' }}
             activeProps={{
               class: 'font-bold',
             }}
           >
-            fetchQuery (sync)
+            query (sync)
           </Link>{' '}
           <Link
-            to="/loader-fetchQuery/$type"
+            to="/loader-query/$type"
             params={{ type: 'async' }}
             activeProps={{
               class: 'font-bold',
             }}
           >
-            fetchQuery (async)
+            query (async)
           </Link>{' '}
           <Link
             to="/useQuery"

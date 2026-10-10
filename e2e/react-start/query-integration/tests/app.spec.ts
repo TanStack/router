@@ -4,10 +4,10 @@ import { test } from '@tanstack/router-e2e-utils'
 // if the query would not be streamed to the client, it would re-execute on the client
 // and thus cause a hydration mismatch since the query function returns 'client' when executed on the client
 test.describe('queries are streamed from the server', () => {
-  test('direct visit - loader on server runs fetchQuery and awaits it', async ({
+  test('direct visit - loader on server runs query and awaits it', async ({
     page,
   }) => {
-    await page.goto('/loader-fetchQuery/sync')
+    await page.goto('/loader-query/sync')
 
     // wait for the query data to be streamed from the server
     const queryData = page.getByTestId('query-data')
@@ -17,10 +17,10 @@ test.describe('queries are streamed from the server', () => {
     const loaderData = page.getByTestId('loader-data')
     await expect(loaderData).toHaveText('server')
   })
-  test('direct visit - loader on server runs fetchQuery and does not await it', async ({
+  test('direct visit - loader on server runs query and does not await it', async ({
     page,
   }) => {
-    await page.goto('/loader-fetchQuery/async')
+    await page.goto('/loader-query/async')
 
     // wait for the query data to be streamed from the server
     const queryData = page.getByTestId('query-data')

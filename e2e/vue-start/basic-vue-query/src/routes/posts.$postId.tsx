@@ -39,7 +39,10 @@ const PostComponent = defineComponent({
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ context, params }) => {
-    await context.queryClient.ensureQueryData(postQueryOptions(params.postId))
+    await context.queryClient.query({
+      ...postQueryOptions(params.postId),
+      staleTime: 'static',
+    })
   },
   errorComponent: PostErrorComponent,
   component: PostComponent,

@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UseQueryRouteImport } from './routes/useQuery'
 import { Route as UseSuspenseQueryRouteImport } from './routes/useSuspenseQuery'
-import { Route as LoaderFetchQueryTypeRouteImport } from './routes/loader-fetchQuery/$type'
+import { Route as LoaderQueryTypeRouteImport } from './routes/loader-query/$type'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -29,9 +29,9 @@ const UseSuspenseQueryRoute = UseSuspenseQueryRouteImport.update({
   path: '/useSuspenseQuery',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoaderFetchQueryTypeRoute = LoaderFetchQueryTypeRouteImport.update({
-  id: '/loader-fetchQuery/$type',
-  path: '/loader-fetchQuery/$type',
+const LoaderQueryTypeRoute = LoaderQueryTypeRouteImport.update({
+  id: '/loader-query/$type',
+  path: '/loader-query/$type',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -39,43 +39,35 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/useQuery': typeof UseQueryRoute
   '/useSuspenseQuery': typeof UseSuspenseQueryRoute
-  '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/loader-query/$type': typeof LoaderQueryTypeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/useQuery': typeof UseQueryRoute
   '/useSuspenseQuery': typeof UseSuspenseQueryRoute
-  '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/loader-query/$type': typeof LoaderQueryTypeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/useQuery': typeof UseQueryRoute
   '/useSuspenseQuery': typeof UseSuspenseQueryRoute
-  '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/loader-query/$type': typeof LoaderQueryTypeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/useQuery'
-    | '/useSuspenseQuery'
-    | '/loader-fetchQuery/$type'
+  fullPaths: '/' | '/useQuery' | '/useSuspenseQuery' | '/loader-query/$type'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/useQuery' | '/useSuspenseQuery' | '/loader-fetchQuery/$type'
+  to: '/' | '/useQuery' | '/useSuspenseQuery' | '/loader-query/$type'
   id:
-    | '__root__'
-    | '/'
-    | '/useQuery'
-    | '/useSuspenseQuery'
-    | '/loader-fetchQuery/$type'
+    '__root__' | '/' | '/useQuery' | '/useSuspenseQuery' | '/loader-query/$type'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   UseQueryRoute: typeof UseQueryRoute
   UseSuspenseQueryRoute: typeof UseSuspenseQueryRoute
-  LoaderFetchQueryTypeRoute: typeof LoaderFetchQueryTypeRoute
+  LoaderQueryTypeRoute: typeof LoaderQueryTypeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -101,11 +93,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UseSuspenseQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/loader-fetchQuery/$type': {
-      id: '/loader-fetchQuery/$type'
-      path: '/loader-fetchQuery/$type'
-      fullPath: '/loader-fetchQuery/$type'
-      preLoaderRoute: typeof LoaderFetchQueryTypeRouteImport
+    '/loader-query/$type': {
+      id: '/loader-query/$type'
+      path: '/loader-query/$type'
+      fullPath: '/loader-query/$type'
+      preLoaderRoute: typeof LoaderQueryTypeRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -115,7 +107,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   UseQueryRoute: UseQueryRoute,
   UseSuspenseQueryRoute: UseSuspenseQueryRoute,
-  LoaderFetchQueryTypeRoute: LoaderFetchQueryTypeRoute,
+  LoaderQueryTypeRoute: LoaderQueryTypeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
