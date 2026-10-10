@@ -1,3 +1,3 @@
-import { fetchPosts } from '../posts';
-const SplitLoader = fetchPosts;
-export { SplitLoader as loader };
+import { fetchPosts } from '../posts'
+const SplitLoader = fetchPosts
+export { SplitLoader as loader }
