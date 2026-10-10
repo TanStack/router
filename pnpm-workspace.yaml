@@ -167,3 +167,6 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
+minimumReleaseAgeExclude:
+  # Renovate security update: @auth/core@0.41.3
+  - '@auth/core@0.41.3'
