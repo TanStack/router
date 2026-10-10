@@ -1,10 +1,12 @@
 import { isRunnableDevEnvironment } from 'vite'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../../constants'
+import { ensureLatestClientBuild } from '../bundled-dev'
 import {
-  CSS_MODULES_REGEX,
+  captureBundledDevStyles,
+  collectBundledDevStyles,
   collectDevStyles,
-  normalizeCssModuleCacheKey,
+  fetchCssFromModule,
 } from './dev-styles'
 import type { Connect, DevEnvironment, PluginOption } from 'vite'
 import type { GetConfigFn } from '../../types'
@@ -19,31 +21,73 @@ export function devServerPlugin({
   installDevServerMiddleware: boolean | undefined
 }): PluginOption {
   let isTest = false
-
-  // Cache CSS modules content during transform hook.
-  // For CSS modules, the transform hook receives the raw CSS content before
-  // Vite wraps it in JS. We capture this to use during SSR style collection.
-  const cssModulesCache: Record<string, string> = {}
+  let bundledDev = false
+  let bundledStyles: ReturnType<typeof captureBundledDevStyles> | undefined
 
   return [
     {
       name: 'tanstack-start-core:dev-server',
+      perEnvironmentWatchChangeDuringDev: true,
       config(_userConfig, { mode }) {
         isTest = isTest ? isTest : mode === 'test'
       },
-      // Capture CSS modules content during transform
-      transform: {
-        filter: {
-          id: CSS_MODULES_REGEX,
-        },
-        handler(code, id) {
-          cssModulesCache[normalizeCssModuleCacheKey(id)] = code
+      configEnvironment(name, _config, { command }) {
+        if (
+          command === 'serve' &&
+          devSsrStylesEnabled &&
+          name === VITE_ENVIRONMENT_NAMES.client
+        ) {
+          // Bundled dev needs code-split CSS before a browser requests chunks.
+          // Declare this even if a later config hook enables bundled dev.
+          return {
+            build: {
+              rolldownOptions: {
+                experimental: { devMode: { lazy: false } },
+              },
+            },
+          }
+        }
+        return undefined
+      },
+      configResolved(config) {
+        bundledDev =
+          config.command === 'serve' && !!config.experimental.bundledDev
+      },
+      generateBundle() {
+        if (
+          bundledDev &&
+          devSsrStylesEnabled &&
+          this.environment.name === VITE_ENVIRONMENT_NAMES.client
+        ) {
+          bundledStyles = captureBundledDevStyles(
+            this,
+            this.environment.config.root,
+          )
+        }
+      },
+      watchChange: {
+        order: 'post',
+        sequential: true,
+        handler(id) {
+          if (
+            bundledDev &&
+            this.environment.name === VITE_ENVIRONMENT_NAMES.server &&
+            this.environment.mode === 'dev'
+          ) {
+            // Vite skips server HMR hooks in bundled dev. Invalidate changed
+            // transforms before notifying local or external SSR module runners.
+            this.environment.moduleGraph.onFileChange(id)
+            this.environment.hot.send({ type: 'full-reload', triggeredBy: id })
+          }
         },
       },
       configureServer(viteDevServer) {
         if (isTest) {
           return
         }
+
+        const clientEnv =
+          viteDevServer.environments[VITE_ENVIRONMENT_NAMES.client]
 
         // CSS middleware registered in PRE-PHASE (before Vite's internal middlewares)
         // This ensures it handles /@tanstack-start/styles.css before any catch-all middleware
@@ -83,18 +127,36 @@ export function devServerPlugin({
                 }
               }
 
-              const css =
-                entries.length > 0
-                  ? await collectDevStyles({
-                      viteDevServer,
+              let css = ''
+              if (entries.length > 0) {
+                if (bundledDev) {
+                  // Wait for the bundled client's completed graph without
+                  // starting Vite's separate normal client container.
+                  await ensureLatestClientBuild(clientEnv)
+                  css = collectBundledDevStyles(bundledStyles, entries) ?? ''
+                } else {
+                  css =
+                    (await collectDevStyles({
+                      serverEnvironment:
+                        viteDevServer.environments[
+                          VITE_ENVIRONMENT_NAMES.server
+                        ],
+                      rootDirectory: viteDevServer.config.root,
                       entries,
-                      cssModulesCache,
-                    })
-                  : undefined
+                      loadCssContents: (url) =>
+                        fetchCssFromModule(
+                          viteDevServer.environments[
+                            VITE_ENVIRONMENT_NAMES.client
+                          ],
+                          url,
+                        ),
+                    })) ?? ''
+                }
+              }
 
               res.setHeader('Content-Type', 'text/css')
               res.setHeader('Cache-Control', 'no-store')
-              res.end(css ?? '')
+              res.end(css)
             } catch (e) {
               // Log error but still return valid CSS response to avoid MIME type issues
               console.error('[tanstack-start] Error collecting dev styles:', e)
@@ -123,15 +185,6 @@ export function devServerPlugin({
               `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
             )
           }
-          const clientEnv = viteDevServer.environments[
-            VITE_ENVIRONMENT_NAMES.client
-          ] as
-            | {
-                devEngine?: {
-                  ensureLatestBuildOutput?: () => Promise<void>
-                }
-              }
-            | undefined
 
           const installMiddleware = installDevServerMiddleware
           if (installMiddleware === false) {
@@ -177,9 +230,7 @@ export function devServerPlugin({
                * }
                */
               if (viteDevServer.config.experimental.bundledDev) {
-                await clientEnv?.devEngine?.ensureLatestBuildOutput?.()
-                serverEnv.moduleGraph.invalidateAll()
-                serverRunner.clearCache()
+                await ensureLatestClientBuild(clientEnv)
               }
 
               const serverEntry = await serverRunner.import(ENTRY_POINTS.server)
