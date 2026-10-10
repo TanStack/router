@@ -1,5 +1,11 @@
 # @tanstack/router-plugin
 
+## 1.168.44
+
+### Patch Changes
+
+- [#8655](https://github.com/TanStack/router/pull/8655) [`e66da18`](https://github.com/TanStack/router/commit/e66da18266859ab49e20a7b8c858232449ee5290) - Remove redundant string excludes from the reference code-splitter transform filter to avoid unnecessary glob compilation in unplugin bundler adapters.
+
 ## 1.168.43
 
 ### Patch Changes
