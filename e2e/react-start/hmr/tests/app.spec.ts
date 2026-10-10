@@ -607,8 +607,18 @@ test.describe('react-start hmr', () => {
   test('preserves local state for code-split route component HMR', async ({
     page,
   }) => {
+    // Hydration can finish before Vite connects its HMR socket.
+    const hmrReady =
+      (process.env.E2E_TOOLCHAIN ?? 'vite') === 'vite'
+        ? page.waitForEvent('websocket').then((socket) => {
+            return socket.waitForEvent('framereceived', ({ payload }) => {
+              return JSON.parse(String(payload)).type === 'connected'
+            })
+          })
+        : Promise.resolve()
     await page.goto('/')
     await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+    await hmrReady
 
     await page.getByTestId('increment').click()
     await page.getByTestId('message').fill('hmr state')
