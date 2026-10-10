@@ -3,6 +3,7 @@ import babel from '@babel/core'
 import { hasKeys } from '@tanstack/router-core'
 import { getVariableDeclaratorForExpressionPath } from '@tanstack/router-utils'
 import path from 'pathe'
+import { TSS_SERVERFN_SHARED_PARAM } from './server-fn-shared-module'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
 import type {
   CompilationContext,
@@ -12,7 +13,7 @@ import type {
 } from './types'
 import type { CompileStartFrameworkOptions } from '../types'
 
-const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
+export const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
 
 const providerHmrAcceptTemplate = babel.template.statements(
   `
@@ -217,6 +218,10 @@ export function handleCreateServerFn(
   }
 
   const isProviderFile = context.id.includes(TSS_SERVERFN_SPLIT_PARAM)
+  // The shared module hosts the server functions whose handlers write its
+  // bindings: it keeps their handlers like a provider.
+  const isSharedModule = context.id.includes(TSS_SERVERFN_SHARED_PARAM)
+  const hostsHandlers = isProviderFile || isSharedModule
   if (isProviderFile && context.serverFnProviderModuleDirectives) {
     ensureDirectivePrologue(
       context.ast,
@@ -225,7 +230,7 @@ export function handleCreateServerFn(
   }
 
   // Get environment-specific configuration
-  const envConfig = getEnvConfig(context, isProviderFile)
+  const envConfig = getEnvConfig(context, hostsHandlers)
 
   // Track function names to ensure uniqueness within this file
   const functionNameSet = new Set<string>()
@@ -284,11 +289,13 @@ export function handleCreateServerFn(
     // 1. We're in the client (browser) environment, OR
     // 2. It was already discovered by another environment (knownFn), OR
     // 3. We're in an SSR caller environment — any server function reachable from
-    //    SSR module graph is callable via client navigation HTTP requests
+    //    SSR module graph is callable via client navigation HTTP requests.
+    //    The shared module is part of that graph as well.
     const isClientReferenced =
       envConfig.isClientEnvironment ||
       !!knownFn ||
-      envConfig.runtimeCodeType === 'ssr'
+      envConfig.runtimeCodeType === 'ssr' ||
+      isSharedModule
 
     // Use canonical extracted filename from known functions if available
     const canonicalExtractedFilename =
@@ -357,8 +364,9 @@ export function handleCreateServerFn(
       }
     }
 
-    if (isProviderFile) {
+    if (hostsHandlers) {
       // PROVIDER FILE: This is the extracted file that contains the actual implementation
+      // (or the shared module, which hosts server functions its bindings need)
       // We need to:
       // 1. Create an extractedFn that calls __executeServer
       // 2. Modify .handler() to pass (extractedFn, serverFn) - two arguments

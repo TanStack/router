@@ -19,12 +19,14 @@ async function getFilenames() {
 }
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
+const TSS_SERVERFN_SHARED_PARAM = 'tss-serverfn-shared'
 
 async function compile(opts: {
   env: 'client' | 'server'
   code: string
   parserFilename?: string
   isProviderFile: boolean
+  isSharedModule?: boolean
   mode: 'dev' | 'build'
   warn?: (message: string) => void
 }) {
@@ -33,6 +35,8 @@ async function compile(opts: {
 
   if (opts.isProviderFile) {
     id += `?${TSS_SERVERFN_SPLIT_PARAM}`
+  } else if (opts.isSharedModule) {
+    id += `?${TSS_SERVERFN_SHARED_PARAM}`
   }
 
   const compiler = new StartCompiler({
@@ -94,6 +98,25 @@ describe('createServerFn compiles correctly', async () => {
       await expect(result!.code).toMatchFileSnapshot(
         `./snapshots/${folder}/${filename}`,
       )
+
+      // Bindings the handlers share with the rest of the module move into
+      // the module's shared module on the server.
+      if (
+        folder === 'server-caller' &&
+        result!.code.includes(`./test.ts?${TSS_SERVERFN_SHARED_PARAM}`)
+      ) {
+        const shared = await compile({
+          env: 'server',
+          isProviderFile: false,
+          isSharedModule: true,
+          code,
+          parserFilename: `/test/src/${filename}`,
+          mode: 'build',
+        })
+        await expect(shared!.code).toMatchFileSnapshot(
+          `./snapshots/server-shared/${filename}`,
+        )
+      }
     })
   })
 

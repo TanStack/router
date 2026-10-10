@@ -121,6 +121,8 @@ export interface StartCompilerHostOptions {
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
   compilerPlugins?: Array<StartCompilerPlugin> | undefined
   serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
+  /** See `serverFnSharedModule` of the StartCompiler. */
+  serverFnSharedModule?: boolean | undefined
   serverFnsById?: Record<string, ServerFn>
   onServerFnsByIdChange?: () => void
 }
@@ -297,6 +299,7 @@ export function registerStartCompilerTransforms(
               compilerTransforms,
               compilerPlugins,
               serverFnProviderModuleDirectives,
+              serverFnSharedModule: opts.serverFnSharedModule,
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
               encodeModuleSpecifierInDev: isDev

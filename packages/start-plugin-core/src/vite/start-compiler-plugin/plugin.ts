@@ -14,6 +14,7 @@ import {
   mergeServerFnsById,
 } from '../../start-compiler/host'
 import { generateServerFnResolverModule } from '../../start-compiler/server-fn-resolver-module'
+import { TSS_SERVERFN_SHARED_PARAM } from '../../start-compiler/server-fn-shared-module'
 import { cleanId } from '../../start-compiler/utils'
 import { createVirtualModule } from '../createVirtualModule'
 import {
@@ -134,10 +135,10 @@ function invalidateServerFnProviderModules(
   },
   ids: Iterable<string>,
 ) {
-  return invalidateMatchingFileModules(
-    environment,
-    ids,
-    (fileModule) => fileModule.id?.includes(TSS_SERVERFN_SPLIT_PARAM) ?? false,
+  return invalidateMatchingFileModules(environment, ids, (fileModule) =>
+    SERVER_FN_MODULE_PARAMS.some(
+      (param) => fileModule.id?.includes(param) ?? false,
+    ),
   )
 }
 
@@ -171,12 +172,20 @@ function invalidateCompilerVirtualModules(
   })
 }
 
+// The provider module and the shared module its bindings move into.
+const SERVER_FN_MODULE_PARAMS = [
+  TSS_SERVERFN_SPLIT_PARAM,
+  TSS_SERVERFN_SHARED_PARAM,
+]
+
 function getServerFnProviderIds(ids: Iterable<string>) {
   const providerIds = new Set<string>()
 
   for (const id of ids) {
     const cleanedId = cleanId(id)
-    providerIds.add(`${cleanedId}?${TSS_SERVERFN_SPLIT_PARAM}`)
+    for (const param of SERVER_FN_MODULE_PARAMS) {
+      providerIds.add(`${cleanedId}?${param}`)
+    }
   }
 
   return providerIds
