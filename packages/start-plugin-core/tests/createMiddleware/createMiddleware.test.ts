@@ -91,11 +91,11 @@ describe('createMiddleware compiles correctly', async () => {
       id: 'test.ts',
     })
 
-    expect(result!.code).toMatchInlineSnapshot(`
-      "import { createMiddleware } from '@tanstack/react-start';
-      const myMiddleware = createMiddleware({
-        type: 'function'
-      });"
+    expect(await formatSnapshot(result!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+      "import { createMiddleware } from '@tanstack/react-start'
+      const myMiddleware = createMiddleware({ type: 'function' })
+      "
     `)
   })
 
