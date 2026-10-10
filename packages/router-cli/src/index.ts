@@ -1,25 +1,43 @@
-import yargs from 'yargs'
-import { hideBin } from 'yargs/helpers'
 import { getConfig } from '@tanstack/router-generator'
 import { generate } from './generate'
 import { watch } from './watch'
 
+declare const __TSR_VERSION__: string
+
+const usage = `tsr <cmd> [args]
+
+Commands:
+  tsr generate  Generate the routes for a project
+  tsr watch     Continuously watch and generate the routes for a project
+
+Options:
+  --version  Show version number
+  --help     Show help`
+
 main()
 
 export function main() {
-  yargs(hideBin(process.argv))
-    .scriptName('tsr')
-    .usage('$0 <cmd> [args]')
-    .command('generate', 'Generate the routes for a project', async () => {
-      const config = getConfig()
-      await generate(config, process.cwd())
-    })
-    .command(
-      'watch',
-      'Continuously watch and generate the routes for a project',
-      () => {
-        watch(process.cwd())
-      },
-    )
-    .help().argv
+  const args = process.argv.slice(2)
+
+  if (args.includes('--help')) {
+    console.log(usage)
+    return
+  }
+
+  if (args.includes('--version')) {
+    console.log(__TSR_VERSION__)
+    return
+  }
+
+  const command = args.find((arg) => !arg.startsWith('-'))
+
+  if (command === 'generate') {
+    const config = getConfig()
+    generate(config, process.cwd())
+    return
+  }
+
+  if (command === 'watch') {
+    watch(process.cwd())
+  }
 }

@@ -57,8 +57,7 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@tanstack/router-devtools-core": "workspace:*",
-    "vite": "*"
+    "@tanstack/router-devtools-core": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue-jsx": "catalog:",
@@ -68,7 +67,8 @@
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "vite": "*"
   },
   "peerDependencies": {
     "@tanstack/vue-router": "workspace:^",

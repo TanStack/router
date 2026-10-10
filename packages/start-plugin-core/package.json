@@ -104,7 +104,6 @@
     "tinyglobby": "catalog:",
     "ufo": "^1.6.4",
     "vitefu": "^1.1.3",
-    "xmlbuilder2": "^4.0.3",
     "zod": "catalog:"
   },
   "devDependencies": {

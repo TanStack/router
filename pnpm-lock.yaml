@@ -14385,9 +14385,6 @@ importers:
       chokidar:
         specifier: 'catalog:'
         version: 5.0.0
-      yargs:
-        specifier: ^17.7.2
-        version: 17.7.2
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14398,9 +14395,6 @@ importers:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
-      '@types/yargs':
-        specifier: ^17.0.33
-        version: 17.0.33
       publint:
         specifier: 'catalog:'
         version: 0.3.17
@@ -14813,9 +14807,6 @@ importers:
 
   packages/solid-router:
     dependencies:
-      '@solid-primitives/refs':
-        specifier: ^1.0.8
-        version: 1.1.0(solid-js@1.9.12)
       '@solidjs/meta':
         specifier: ^0.29.4
         version: 0.29.4(solid-js@1.9.12)
@@ -15231,9 +15222,6 @@ importers:
       vitefu:
         specifier: ^1.1.3
         version: 1.1.3(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
-      xmlbuilder2:
-        specifier: ^4.0.3
-        version: 4.0.3
       zod:
         specifier: 'catalog:'
         version: 4.5.4
@@ -15548,9 +15536,6 @@ importers:
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../vue-router
-      vite:
-        specifier: ^8.3.4
-        version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15570,6 +15555,9 @@ importers:
       rimraf:
         specifier: 'catalog:'
         version: 6.1.2
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
@@ -19209,22 +19197,6 @@ packages:
   '@one-ini/wasm@0.1.1':
     resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
 
-  '@oozcitak/dom@2.0.2':
-    resolution: {integrity: sha512-GjpKhkSYC3Mj4+lfwEyI1dqnsKTgwGy48ytZEhm4A/xnH/8z9M3ZVXKr/YGQi3uCLs1AEBS+x5T2JPiueEDW8w==}
-    engines: {node: '>=20.0'}
-
-  '@oozcitak/infra@2.0.2':
-    resolution: {integrity: sha512-2g+E7hoE2dgCz/APPOEK5s3rMhJvNxSMBrP+U+j1OWsIbtSpWxxlUjq1lU8RIsFJNYv7NMlnVsCuHcUzJW+8vA==}
-    engines: {node: '>=20.0'}
-
-  '@oozcitak/url@3.0.0':
-    resolution: {integrity: sha512-ZKfET8Ak1wsLAiLWNfFkZc/BraDccuTJKR6svTYc7sVjbR+Iu0vtXdiDMY4o6jaFl5TW2TlS7jbLl4VovtAJWQ==}
-    engines: {node: '>=20.0'}
-
-  '@oozcitak/util@10.0.0':
-    resolution: {integrity: sha512-hAX0pT/73190NLqBPPWSdBVGtbY6VOhWYK3qqHqtXQ1gK7kS2yz4+ivsN07hpJ6I3aeMtKP6J6npsEKOAzuTLA==}
-    engines: {node: '>=20.0'}
-
   '@open-draft/deferred-promise@2.2.0':
     resolution: {integrity: sha512-CecwLWx3rhxVQF6V4bAgPS5t+So2sTbPgAzafKkVizyi7tlwpcFpdFqq+wqF2OwNBmqFuu6tOyouTuxgpMfzmA==}
 
@@ -22074,12 +22046,6 @@ packages:
 
   '@types/ws@8.5.14':
     resolution: {integrity: sha512-bd/YFLW+URhBzMXurx7lWByOu+xzU9+kb3RboOteXYDfW+tr+JZa99OyNmPINEGB/ahzKrEuc8rcv4gnpJmxTw==}
-
-  '@types/yargs-parser@21.0.3':
-    resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
-
-  '@types/yargs@17.0.33':
-    resolution: {integrity: sha512-WpxBCKWPLr4xSsHgz511rFJAM+wS28w2zEO1QDNY5zM/S8ok70NNfztH0xwhqKyaK0OHCbN98LDAZuy1ctxDkA==}
 
   '@typescript-eslint/eslint-plugin@8.44.1':
     resolution: {integrity: sha512-molgphGqOBT7t4YKCSkbasmu1tb1MgrZ2szGzHbclF7PNmOkSTQVHy+2jXOSnxvR3+Xe1yySHFZoqMpz3TfQsw==}
@@ -29447,10 +29413,6 @@ packages:
     resolution: {integrity: sha512-EvGK8EJ3DhaHfbRlETOWAS5pO9MZITeauHKJyb8wyajUfQUenkIg2MvLDTZ4T/TgIcm3HU0TFBgWWboAZ30UHg==}
     engines: {node: '>=18'}
 
-  xmlbuilder2@4.0.3:
-    resolution: {integrity: sha512-bx8Q1STctnNaaDymWnkfQLKofs0mGNN7rLLapJlGuV3VlvegD7Ls4ggMjE3aUSWItCCzU0PEv45lI87iSigiCA==}
-    engines: {node: '>=20.0'}
-
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
@@ -33299,23 +33261,6 @@ snapshots:
 
   '@one-ini/wasm@0.1.1': {}
 
-  '@oozcitak/dom@2.0.2':
-    dependencies:
-      '@oozcitak/infra': 2.0.2
-      '@oozcitak/url': 3.0.0
-      '@oozcitak/util': 10.0.0
-
-  '@oozcitak/infra@2.0.2':
-    dependencies:
-      '@oozcitak/util': 10.0.0
-
-  '@oozcitak/url@3.0.0':
-    dependencies:
-      '@oozcitak/infra': 2.0.2
-      '@oozcitak/util': 10.0.0
-
-  '@oozcitak/util@10.0.0': {}
-
   '@open-draft/deferred-promise@2.2.0': {}
 
   '@open-draft/deferred-promise@3.0.0': {}
@@ -36201,12 +36146,6 @@ snapshots:
   '@types/ws@8.5.14':
     dependencies:
       '@types/node': 25.0.9
-
-  '@types/yargs-parser@21.0.3': {}
-
-  '@types/yargs@17.0.33':
-    dependencies:
-      '@types/yargs-parser': 21.0.3
 
   '@typescript-eslint/eslint-plugin@8.44.1(@typescript-eslint/parser@8.44.1(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2))(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
@@ -45512,13 +45451,6 @@ snapshots:
   xml-name-validator@4.0.0: {}
 
   xml-name-validator@5.0.0: {}
-
-  xmlbuilder2@4.0.3:
-    dependencies:
-      '@oozcitak/dom': 2.0.2
-      '@oozcitak/infra': 2.0.2
-      '@oozcitak/util': 10.0.0
-      js-yaml: 4.1.1
 
   xmlchars@2.2.0: {}
 
