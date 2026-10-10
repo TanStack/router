@@ -76,7 +76,12 @@ describe('generator with concurrent in-place saves', () => {
           rename: (oldPath, newPath) => fs.rename(oldPath, newPath),
           writeFile: (filePath, content) => fs.writeFile(filePath, content),
           readFile: async (filePath) => {
-            if (!saveRacesNextRead || filePath !== postsRoutePath) {
+            // The generator passes route paths with forward slashes, also on
+            // Windows.
+            if (
+              !saveRacesNextRead ||
+              path.resolve(filePath) !== postsRoutePath
+            ) {
               return readFileWithStat(filePath)
             }
             saveRacesNextRead = false
@@ -104,7 +109,7 @@ describe('generator with concurrent in-place saves', () => {
             return result
           },
           stat: async (filePath) => {
-            if (completeSave && filePath.startsWith(tmpDir)) {
+            if (completeSave && path.resolve(filePath).startsWith(tmpDir)) {
               await completeSave()
             }
             const stat = await fs.stat(filePath, { bigint: true })
