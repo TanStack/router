@@ -141,21 +141,35 @@ function handleResponseError(error: unknown): Response {
   return new Response('Internal Server Error', { status: 500 })
 }
 
+/**
+ * Decode a URL pathname, or return `undefined` if its percent-encoding is malformed (e.g. `/%80`).
+ *
+ * Returns the decoded value rather than a boolean so bundlers that treat `decodeURI` as side-effect free keep the call.
+ */
+function decodePathname(pathname: string): string | undefined {
+  try {
+    return decodeURI(pathname)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Wrap a request handler so it runs with a request-scoped event, which the request and response helpers in this module read.
+ *
+ * Responds with 400 Bad Request, without calling `handler`, if the request path has malformed percent-encoding.
+ */
 export function requestHandler<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
   return (request: Request, requestOpts: any): Promise<Response> | Response => {
-    let h3Event: H3Event
-    try {
-      h3Event = new H3Event(request)
-    } catch (error) {
-      if (error instanceof URIError) {
-        return new Response(null, {
-          status: 400,
-          statusText: 'Bad Request',
-        })
-      }
-      throw error
+    const h3Event = new H3Event(request)
+    const pathname = h3Event.url.pathname
+    if (pathname.includes('%') && decodePathname(pathname) === undefined) {
+      return new Response(null, {
+        status: 400,
+        statusText: 'Bad Request',
+      })
     }
 
     let response: unknown
@@ -220,7 +234,7 @@ export function getRequestHost(opts?: { xForwardedHost?: boolean }) {
  *
  * If `xForwardedHost` is `true`, it will use the `x-forwarded-host` header if it exists.
  *
- * If `xForwardedProto` is `false`, it will not use the `x-forwarded-proto` header.
+ * If `xForwardedProto` is `true`, it will use the `x-forwarded-proto` header if it exists.
  */
 export function getRequestUrl(opts?: {
   xForwardedHost?: boolean
@@ -232,7 +246,7 @@ export function getRequestUrl(opts?: {
 /**
  * Get the request protocol.
  *
- * If `x-forwarded-proto` header is set to "https", it will return "https". You can disable this behavior by setting `xForwardedProto` to `false`.
+ * If `xForwardedProto` is `true`, it will use the `x-forwarded-proto` header if it exists.
  *
  * If protocol cannot be determined, it will default to "http".
  */

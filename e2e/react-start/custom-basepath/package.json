@@ -29,7 +29,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
     "cross-env": "^10.0.0",
-    "srvx": "^0.11.9",
+    "srvx": "^1.0.5",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.20.3",
     "@typescript/native": "npm:typescript@^7.0.2",

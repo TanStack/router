@@ -203,3 +203,35 @@ describe('setResponseHeaders', () => {
     await handler(new Request('http://localhost:3000/test'), {})
   })
 })
+
+describe('requestHandler', () => {
+  it.each(['/malformed/%E0%A4', '/malformed/%80', '/malformed/%FF'])(
+    'should respond with 400 for the malformed path %s',
+    async (pathname) => {
+      let called = false
+      const handler = requestHandler(() => {
+        called = true
+        return new Response('OK')
+      })
+
+      const response = await handler(
+        new Request(`http://localhost:3000${pathname}`),
+        {},
+      )
+
+      expect(response.status).toBe(400)
+      expect(called).toBe(false)
+    },
+  )
+
+  it('should pass percent-encoded paths that decode to the handler', async () => {
+    const handler = requestHandler(() => new Response('OK'))
+
+    const response = await handler(
+      new Request('http://localhost:3000/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD'),
+      {},
+    )
+
+    expect(response.status).toBe(200)
+  })
+})
