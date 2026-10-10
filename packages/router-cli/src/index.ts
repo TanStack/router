@@ -32,7 +32,13 @@ export function main() {
   const command = args.find((arg) => !arg.startsWith('-'))
 
   if (command === 'generate') {
-    const config = getConfig()
+    let config
+    try {
+      config = getConfig()
+    } catch (err) {
+      console.error(err)
+      process.exit(1)
+    }
     generate(config, process.cwd())
     return
   }
