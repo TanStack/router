@@ -613,6 +613,8 @@ test('leaving before loader planning releases the same-ID work a navigation rese
 
   await router.navigate({ to: '/other' })
   beforeLoadGate.resolve()
+  // Let the superseded beforeLoad finish so a late loader start is observable.
+  await new Promise((resolve) => setTimeout(resolve, 0))
 
   expect(router.state.location.pathname).toBe('/other')
   expect(signals[0]?.aborted).toBe(true)
