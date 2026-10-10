@@ -19,6 +19,7 @@ export default mergeConfig(
       './src/index.ts',
       './src/utils.ts',
       './src/vite/index.ts',
+      './src/vite/prerender-worker.ts',
       './src/rsbuild/index.ts',
       './src/rsbuild/types.ts',
       './src/rsbuild/import-protection-loader.ts',
