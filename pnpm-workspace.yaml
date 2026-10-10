@@ -167,3 +167,6 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
+minimumReleaseAgeExclude:
+  # Renovate security update: next@16.3.6
+  - next@16.3.6
