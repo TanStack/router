@@ -13,5 +13,5 @@ const { component: MyComponent = DefaultComponent, loader = defaultLoader } =
 function ActualComponent() {
   return <div>About</div>
 }
-export { loader }
 export { MyComponent as component }
+export { loader }

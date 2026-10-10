@@ -1,3 +1,4 @@
+import { textColors, gradients, Route } from 'random-number.tsx'
 import { Await, Link, defer } from '@tanstack/react-router'
 import { Carbon } from '~/components/Carbon'
 import { twMerge } from 'tailwind-merge'
@@ -14,8 +15,6 @@ import bytesImage from '~/images/bytes.svg'
 import bytesUidotdevImage from '~/images/bytes-uidotdev.png'
 import { useMutation } from '~/hooks/useMutation'
 import { sample } from '~/utils/utils'
-import { textColors } from 'random-number.tsx'
-import { gradients } from 'random-number.tsx'
 const courses = [
   {
     name: 'The Official TanStack React Query Course',
@@ -24,7 +23,6 @@ const courses = [
     description: `Learn how to build enterprise quality apps with TanStack's React Query the easy way with our brand new course.`,
   },
 ]
-import { Route } from 'random-number.tsx'
 async function bytesSignupServerFn({ email }: { email: string }) {
   'use server'
   return fetch(`https://bytes.dev/api/bytes-optin-cors`, {

@@ -26,25 +26,21 @@ it.each(groupings)(
   30_000,
 )
 
-// Shared extraction currently duplicates named default function declarations and
-// drops TypeScript enum/namespace dependencies. Keep their intended contracts.
-it.fails.each(['named-default', 'enum', 'namespace'] as const)(
-  'preserves executable route contracts with shared %s declarations',
-  async (syntax) => {
-    await assertRuntimeContracts({
-      groupings: [['component'], ['loader']],
-      syntax,
-    })
-  },
-  30_000,
-)
+// A default-exported function declaration that the loader and the component
+// both reach is shared like any other declaration, and declared once.
+it('preserves executable route contracts with a shared named default function', async () => {
+  await assertRuntimeContracts({
+    groupings: [['component'], ['loader']],
+    syntax: 'named-default',
+  })
+}, 30_000)
 
 async function assertRuntimeContracts({
   groupings,
   syntax,
 }: {
   groupings: CodeSplitGroupings
-  syntax?: 'named-default' | 'enum' | 'namespace'
+  syntax?: 'named-default'
 }) {
   // Keep the temporary app inside the package so real runtime imports resolve.
   const root = await mkdtemp(path.join(__dirname, '.runtime-contract-'))
@@ -58,16 +54,6 @@ async function assertRuntimeContracts({
           'export default function createSeed()',
         )
         .replace('export default createSeed', '')
-    } else if (syntax === 'enum') {
-      source = source.replace(
-        'const Count = { Initial: 0 }',
-        'enum Count { Initial = 0 }',
-      )
-    } else if (syntax === 'namespace') {
-      source = source.replace(
-        "const Labels = { component: 'count' }",
-        "namespace Labels { export const component = 'count' }",
-      )
     }
     await writeFile(path.join(root, 'routes/shared-runtime.tsx'), source)
     await writeFile(

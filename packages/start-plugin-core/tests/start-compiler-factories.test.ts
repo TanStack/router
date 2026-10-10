@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import {
+  callProvider,
   clientOnlyError,
   compileAll,
   compileCode,
@@ -172,28 +173,64 @@ export const mw = createMiddleware().server(async ({ next }) =>
   })
 
   // Source: babel-dead-code-elimination "variable" > "within for...in"
-  // Hook calls are different (dropping one changes the hook order; pinned
-  // separately); a plain server call like this one must go.
-  test('the client drops a var nested in a function block that only the server implementation reads', async () => {
+  // Hook calls are different (dropping one changes the hook order); a plain
+  // server call like these must go.
+  test('the client drops vars nested in blocks that only the server implementation reads', async () => {
     const client = await compileCode(
       'client',
-      `${head}import { serverCall } from './db.server'
+      `${head}import { connect, serverCall } from './db.server'
+if (typeof window === 'undefined') {
+  var connection = connect()
+}
 export function getValue(flag: boolean) {
   if (flag) {
     var local = serverCall()
   }
-  const read = createIsomorphicFn().server(() => local).client(() => 'client')
+  const read = createIsomorphicFn().server(() => [connection, local]).client(() => 'client')
   return read()
 }`,
     )
     expect(await getModuleErrors(client!)).toEqual([])
     expect(importSources(client!)).toEqual([])
-    expect(client).not.toContain('serverCall')
+    expect(client).not.toMatch(/\b(?:connect|serverCall)\b/)
+    expect((await evaluateModule(client!)).getValue(true)).toBe('client')
+  })
+
+  // Source: SolidStart directives plugin.ts transformFunction (directive
+  // functions nested in a server function are compiled too)
+  test('the provider compiles env-specific functions inside a server fn handler', async () => {
+    const provider = await compileCode(
+      'provider',
+      `import { createServerFn, createClientOnlyFn, createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'
+import { chart } from './chart.client'
+import { db } from './db.server'
+export const fn = createServerFn().handler(async () => {
+  const draw = createClientOnlyFn(() => chart())
+  const now = createIsomorphicFn().server(() => db.now()).client(() => chart())
+  const read = createServerOnlyFn(() => db.read())
+  return [settle(draw), now(), read()]
+})
+function settle(run: () => unknown) {
+  try {
+    return run()
+  } catch (error) {
+    return (error as Error).message
+  }
+}`,
+    )
+    expect(await getModuleErrors(provider!)).toEqual([])
+    expect(importSources(provider!)).toEqual(['./db.server'])
+    expect(
+      await callProvider(provider!, 'fn', {
+        './db.server': `export const db = { now: () => 'now', read: () => 'read' }`,
+      }),
+    ).toEqual([clientOnlyError.slice('throws: '.length), 'now', 'read'])
   })
 
   // Source: Waku vite-plugin-allow-server.test.ts "skips files without a use
   // client directive even if the string exists", "does not require
-  // allowServer to come from waku/client" (inverted)
+  // allowServer to come from waku/client" (inverted: only calls of the Start
+  // imports are compiled)
   test.each([
     {
       name: 'only mentions the factories in strings and comments',
@@ -219,6 +256,62 @@ export const value = createServerOnlyFn(() => 'mine')`,
       expect(await compileCode(output, code), output).toBeNull()
     }
   })
+
+  // Source: Waku vite-plugin-allow-server.test.ts "does not require
+  // allowServer to come from waku/client" (inverted)
+  test.each(outputs)(
+    '%s: parameters and locals shadowing the factories are left alone next to a compiled factory call',
+    async (output) => {
+      const code = `import * as Start from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn, createClientOnlyFn, createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+export const real = createServerOnlyFn(() => 'real')
+export function wrap(createServerOnlyFn) {
+  return createServerOnlyFn(() => 'param')
+}
+export function receiver(Start) {
+  return (Start).createServerOnlyFn(() => 'receiver')
+}
+export function local() {
+  const createClientOnlyFn = (fn: () => string) => fn
+  return createClientOnlyFn(() => 'local')
+}
+export function iso(createIsomorphicFn) {
+  return createIsomorphicFn().server(() => 's').client(() => 'c')
+}
+export function mw(createMiddleware) {
+  return createMiddleware().server(() => 's')
+}
+export function make(createServerFn) {
+  const made = createServerFn().handler(() => 'param')
+  return made
+}`
+      const module = await evaluateModule((await compileCode(output, code))!)
+      const identity = (fn: () => string) => fn
+      const builder = {
+        server: (server: () => string) => ({
+          client: (client: () => string) => [server(), client()],
+        }),
+        handler: (handler: () => string) => handler(),
+      }
+      expect({
+        real: settle(module.real),
+        wrap: module.wrap(identity)(),
+        receiver: module.receiver({ createServerOnlyFn: identity })(),
+        local: module.local()(),
+        iso: module.iso(() => builder),
+        mw: module.mw(() => ({ server: (fn: () => string) => fn() })),
+        make: module.make(() => builder),
+      }).toEqual({
+        real: output === 'client' ? serverOnlyError : 'real',
+        wrap: 'param',
+        receiver: 'receiver',
+        local: 'local',
+        iso: ['s', 'c'],
+        mw: 's',
+        make: 'param',
+      })
+    },
+  )
 
   // Source: Waku vite-plugin-allow-server.test.ts "throws when allowServer
   // receives zero arguments"
@@ -265,7 +358,7 @@ describe('factories resolved through project modules', () => {
         '/test/src/mw.ts': `import { createMiddleware } from '@tanstack/react-start'
 export default createMiddleware({ type: 'function' })`,
       },
-      // Known limitation on main: middleware is detected by the
+      // Known limitation: middleware is detected by the
       // `createMiddleware` text, so a module that only calls an imported
       // builder is not compiled and needs this import.
       code: `import { createMiddleware } from '@tanstack/react-start'

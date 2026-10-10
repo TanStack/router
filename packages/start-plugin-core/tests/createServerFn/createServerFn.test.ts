@@ -180,6 +180,30 @@ describe('createServerFn compiles correctly', async () => {
     )
   })
 
+  test.each([
+    ['a lone \\r', '\r'],
+    ['U+2028', '\u2028'],
+  ])(
+    'frames compile errors on the right line with %s line terminators',
+    async (_name, eol) => {
+      const code = [
+        `import { createServerFn } from '@tanstack/react-start'`,
+        `const other = 1`,
+        `const { fn } = createServerFn().handler(async () => other)`,
+      ].join(eol)
+
+      await expect(
+        compile({ code, env: 'client', isProviderFile: false, mode: 'build' }),
+      ).rejects.toThrow(
+        [
+          `2 | const other = 1`,
+          `3 | const { fn } = createServerFn().handler(async () => other)`,
+          `  |       ^ createServerFn must be assigned to a simple identifier, not a destructuring pattern`,
+        ].join('\n'),
+      )
+    },
+  )
+
   test('should work with identifiers of functions', async () => {
     const code = `
         import { createServerFn } from '@tanstack/react-start'

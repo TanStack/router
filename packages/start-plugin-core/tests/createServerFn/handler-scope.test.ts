@@ -113,14 +113,24 @@ export const later = createServerFn().handler(async () => 'later:')`,
     code: `export const fn = (createServerFn().handler(async () => db.x()))!`,
     expected: 'x',
   },
+  {
+    name: 'a createServerOnlyFn call',
+    code: `import { createServerOnlyFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()))`,
+    expected: 'x',
+  },
 ])(
   'the handler can be $name',
   async ({ code, expected, read = async (value) => value }) => {
     const compiled = await compileAll(
       `${head}import { db } from './db.server'\n${code}`,
     )
-    for (const caller of [compiled.client, compiled.ssr]) {
-      expect(importSources(caller)).toEqual([])
+    // Callers call the server fn through its RPC.
+    for (const output of ['client', 'ssr'] as const) {
+      expect(importSources(compiled[output]), output).toEqual([])
+      expect((await evaluateModule(compiled[output])).fn, output).toEqual({
+        rpc: { [output]: expect.any(String) },
+      })
     }
     const value = await callProvider(compiled.provider, 'fn', {
       './db.server': dbServer,

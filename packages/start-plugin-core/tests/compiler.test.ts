@@ -78,7 +78,10 @@ function createFullCompiler(
   })
 }
 
-function createExternalTransformCompiler() {
+function createExternalTransformCompiler(options?: {
+  loadModule?: (id: string) => Promise<void>
+  resolveId?: (id: string, importer?: string) => Promise<string | null>
+}) {
   const compilerTransforms: Array<StartCompilerImportTransform> = [
     {
       name: 'test-render-option-injection',
@@ -91,18 +94,10 @@ function createExternalTransformCompiler() {
       ],
       detect: /\brenderThing\b/,
       transform: (candidates, context) => {
-        const t = context.types
         for (const candidate of candidates) {
-          const args = candidate.path.node.arguments
+          const args = candidate.node.arguments
           if (args.length !== 1) continue
-          args.push(
-            t.objectExpression([
-              t.objectProperty(
-                t.identifier('injected'),
-                context.parseExpression('loadThing()'),
-              ),
-            ]),
-          )
+          args.push(context.parseExpression('({ injected: loadThing() })'))
         }
       },
     },
@@ -119,8 +114,8 @@ function createExternalTransformCompiler() {
       compilerTransforms,
     }),
     getKnownServerFns: () => ({}),
-    loadModule: async () => {},
-    resolveId: async (id) => id,
+    loadModule: options?.loadModule ?? (async () => {}),
+    resolveId: options?.resolveId ?? (async (id) => id),
     mode: 'build',
     compilerTransforms,
   })
@@ -458,6 +453,102 @@ describe('compiler handles multiple files with different kinds', () => {
 })
 
 describe('compiler handles external import transforms', () => {
+  test.each([
+    'export const component = renderThing.bind(null)',
+    'export const component = renderThing.call(null)',
+    'const renderThing = "other"; export const component = runtime[renderThing](<Card />)',
+    'export function component(runtime) { return runtime.renderThing(<Card />) }',
+  ])(
+    'only transforms direct calls to configured bindings: %s',
+    async (body) => {
+      const compiler = createExternalTransformCompiler()
+      const namedImport = body.includes('const renderThing =')
+        ? ''
+        : "import { renderThing } from '@example/runtime'"
+      const result = await compiler.compile({
+        code: `
+        ${namedImport}
+        import * as runtime from '@example/runtime'
+        ${body}
+      `,
+        id: '/test/src/runtime.tsx',
+        detectedKinds: new Set(['External:test-render-option-injection']),
+      })
+      expect(result).toBeNull()
+    },
+  )
+
+  // A call named like a configured transform but imported from another module
+  // is ruled out by its import alone, so that module is never resolved or
+  // loaded. Loading it would fail the build: a virtual runtime module (here
+  // `\0`-prefixed, like the RSC runtime) has no file behind it, and the
+  // Rsbuild host loads compiler dependencies from the input file system.
+  test.each([
+    'export const component = renderThing(<Card />)',
+    'export function component() { return renderThing(<Card />) }',
+    'export const component = runtime.renderThing(<Card />)',
+    'export function component() { return (runtime).renderThing(<Card />) }',
+  ])('does not load unrelated virtual runtime imports: %s', async (body) => {
+    const resolved: Array<string> = []
+    const loaded: Array<string> = []
+    const compiler = createExternalTransformCompiler({
+      resolveId: async (id) => {
+        resolved.push(id)
+        return `\0${id}`
+      },
+      loadModule: async (id) => {
+        loaded.push(id)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { renderThing } from 'virtual:rsc-runtime'
+        import * as runtime from 'virtual:rsc-runtime'
+        ${body}
+      `,
+      id: '/test/src/runtime.tsx',
+      detectedKinds: new Set(['External:test-render-option-injection']),
+    })
+
+    expect(result).toBeNull()
+    expect(resolved).toEqual([])
+    expect(loaded).toEqual([])
+  })
+
+  test('transforms configured aliases without tracing unrelated runtime calls', async () => {
+    const resolved: Array<string> = []
+    const loaded: Array<string> = []
+    const compiler = createExternalTransformCompiler({
+      resolveId: async (id) => {
+        resolved.push(id)
+        return id
+      },
+      loadModule: async (id) => {
+        loaded.push(id)
+      },
+    })
+    const result = await compiler.compile({
+      code: `
+        import { renderThing as renderCard } from '@example/runtime'
+        import * as configured from '@example/runtime'
+        import { renderThing } from 'virtual:rsc-runtime'
+        export const foreign = renderThing(<ForeignCard />)
+        export function component() {
+          return [renderCard(<Card />), (configured).renderThing(<OtherCard />)]
+        }
+      `,
+      id: '/test/src/card.tsx',
+      detectedKinds: new Set(['External:test-render-option-injection']),
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code.match(/injected: loadThing\(\)/g)).toHaveLength(2)
+    expect(result!.code).toContain('renderThing(<ForeignCard />)')
+    expect(resolved).toEqual([])
+    expect(loaded).toEqual([])
+  })
+
   test('runs configured direct-call transforms before server function extraction', async () => {
     const compiler = createExternalTransformCompiler()
 
@@ -1378,6 +1469,78 @@ describe('re-export chain resolution', () => {
   })
 })
 
+test('resolves distinct re-export aliases without conflating their source bindings', async () => {
+  const sources: Record<string, string> = {
+    './barrel': `export { wrap as allowed } from './server'; export { wrap as denied } from './client'`,
+    './server': `export { createServerOnlyFn as wrap } from '@tanstack/start-fn-stubs'`,
+    './client': `export { createClientOnlyFn as wrap } from '@tanstack/start-fn-stubs'`,
+  }
+  const compiler: StartCompiler = new StartCompiler({
+    ...getDefaultTestOptions('server'),
+    env: 'server',
+    mode: 'build',
+    lookupKinds: getLookupKindsForEnv('server'),
+    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react'),
+    getKnownServerFns: () => ({}),
+    resolveId: async (id) => (sources[id] ? id : null),
+    loadModule: async (id) => {
+      if (sources[id]) {
+        compiler.ingestModule({ id, code: sources[id] })
+      }
+    },
+  })
+  const result = await compiler.compile({
+    id: '/test/entry.ts',
+    code: `import { allowed, denied } from './barrel'; export const a = allowed(() => 'server-value'); export const b = denied(() => 'client-value')`,
+  })
+  expect(result).not.toBeNull()
+  expect(result!.code).not.toContain('./barrel')
+  const evaluate = new Function(
+    `${result!.code.replace(/\bexport (?=const)/g, '')}\nreturn { a, b }`,
+  )
+  const { a, b } = evaluate()
+  expect(a()).toBe('server-value')
+  expect(() => b()).toThrow('can only be called on the client')
+})
+
+test('transforms an aliased env-only factory whose kind was not text-detected', async () => {
+  const sources: Record<string, string> = {
+    '/test/env.ts': `export { createClientOnlyFn as clientOnly } from '@tanstack/react-start'`,
+  }
+  const compiler: StartCompiler = new StartCompiler({
+    ...getDefaultTestOptions('server'),
+    env: 'server',
+    mode: 'build',
+    lookupKinds: getLookupKindsForEnv('server'),
+    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react'),
+    getKnownServerFns: () => ({}),
+    resolveId: async (id) =>
+      id === './env' ? '/test/env.ts' : id.startsWith('@tanstack/') ? id : null,
+    loadModule: async (id) => {
+      if (sources[id]) {
+        compiler.ingestModule({ id, code: sources[id] })
+      }
+    },
+  })
+  const code = `import { createServerOnlyFn } from '@tanstack/react-start'
+import { clientOnly } from './env'
+import { secret } from './secret.server'
+import { readWindow } from './browser'
+export const s = createServerOnlyFn(() => secret())
+export const c = clientOnly(() => readWindow())`
+  const result = await compiler.compile({
+    id: '/test/entry.ts',
+    code,
+    detectedKinds: detectKindsInCode(code, 'server'),
+  })
+  expect(result).not.toBeNull()
+  expect(result!.code).not.toContain('readWindow')
+  expect(result!.code).not.toContain('./browser')
+  expect(result!.code).toContain(
+    'createClientOnlyFn() functions can only be called on the client!',
+  )
+})
+
 test('leaves unrelated SSR middleware chains to the bundler when a server function factory is present', async () => {
   const compiler = new StartCompiler({
     ...getDefaultTestOptions('server'),
@@ -1439,22 +1602,17 @@ test('compiles a server function through a parenthesized namespace receiver', as
   expect(result!.code).toContain('createClientRpc')
 })
 
-// The compiler currently mistakes the local parameter for the namespace import.
-// Keep the intended behavior executable until binding resolution is corrected.
-test.fails(
-  'preserves a shadowed parenthesized namespace receiver',
-  async () => {
-    const compiler = createFullCompiler('client')
-    const code = `import * as Start from '@tanstack/react-start'; export function fn(Start) { return (Start).createServerFn().handler(() => 'local-runtime-body') }`
-    const result = await compiler.compile({
-      id: '/test/shadowed-namespace.ts',
-      code,
-    })
-    const output = result?.code ?? code
-    expect(output).toContain('local-runtime-body')
-    expect(output).not.toContain('createClientRpc')
-  },
-)
+test('preserves a shadowed parenthesized namespace receiver', async () => {
+  const compiler = createFullCompiler('client')
+  const code = `import * as Start from '@tanstack/react-start'; export function fn(Start) { return (Start).createServerFn().handler(() => 'local-runtime-body') }`
+  const result = await compiler.compile({
+    id: '/test/shadowed-namespace.ts',
+    code,
+  })
+  const output = result?.code ?? code
+  expect(output).toContain('local-runtime-body')
+  expect(output).not.toContain('createClientRpc')
+})
 
 test.each([
   `(Start).createServerOnlyFn(() => 'private-server-body')`,

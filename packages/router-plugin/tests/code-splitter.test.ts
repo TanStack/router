@@ -1,24 +1,16 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { parseAst } from '@tanstack/router-utils'
+import { analyzeModule, createIdentifier } from '@tanstack/router-utils'
+import { BindingFlags } from 'yuku-analyzer'
 
 import {
-  buildDeclarationMap,
-  buildDependencyGraph,
-  collectIdentifiersFromNode,
-  collectLocalBindingsFromStatement,
-  collectModuleLevelRefsFromNode,
+  analyzeRouteModule,
   compileCodeSplitReferenceRoute,
   compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
   computeSharedBindings,
-  expandDestructuredDeclarations,
-  expandSharedDestructuredDeclarators,
-  expandTransitively,
-  removeBindingsDependingOnRoute,
 } from '../src/core/code-splitter/compilers'
-import { createIdentifier } from '@tanstack/router-utils'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { frameworks } from './constants'
@@ -58,6 +50,79 @@ const testGroups: Array<{ name: string; groupings: CodeSplitGroupings }> = [
   },
 ]
 
+describe('one route analysis shared by every output', () => {
+  const code = `'use client';
+import { createFileRoute } from '@tanstack/react-router'
+const state = {count: 0}
+export const Route = createFileRoute('/')({loader: () => state, component: () => state.count})`
+
+  function compileOutputs() {
+    const analysis = analyzeRouteModule({ code, filename: 'route.tsx' })
+    const sharedBindings = computeSharedBindings({
+      code,
+      analysis,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    return {
+      reference: () =>
+        compileCodeSplitReferenceRoute({
+          code,
+          analysis,
+          sharedBindings,
+          filename: 'route.tsx',
+          id: 'route.tsx',
+          targetFramework: 'react',
+          addHmr: false,
+          codeSplitGroupings: defaultCodeSplitGroupings,
+        })!.code,
+      component: () =>
+        compileCodeSplitVirtualRoute({
+          code,
+          analysis,
+          sharedBindings,
+          filename: 'route.tsx?tsr-split=component',
+          splitTargets: ['component'],
+        }).code,
+      shared: () =>
+        compileCodeSplitSharedRoute({
+          code,
+          analysis,
+          sharedBindings,
+          filename: 'route.tsx?tsr-shared=1',
+        }).code,
+    }
+  }
+
+  it('compiles the same outputs whatever order they are generated in', () => {
+    const first = compileOutputs()
+    const componentFirst = first.component()
+    const referenceSecond = first.reference()
+    const sharedThird = first.shared()
+    const second = compileOutputs()
+    expect([second.shared(), second.reference(), second.component()]).toEqual([
+      sharedThird,
+      referenceSecond,
+      componentFirst,
+    ])
+    expect([first.reference(), first.component(), first.shared()]).toEqual([
+      referenceSecond,
+      componentFirst,
+      sharedThird,
+    ])
+  })
+
+  it('keeps "use client" first in the reference, split and shared outputs', () => {
+    const outputs = compileOutputs()
+    for (const output of [
+      outputs.reference(),
+      outputs.component(),
+      outputs.shared(),
+    ]) {
+      expect(output).toMatch(/^['"]use client['"]/)
+    }
+  })
+})
+
 describe('code-splitter works', () => {
   describe.each(frameworks)('FRAMEWORK=%s', (framework) => {
     describe.each(testGroups)(
@@ -87,6 +152,9 @@ describe('code-splitter works', () => {
               sharedBindings:
                 sharedBindings.size > 0 ? sharedBindings : undefined,
             })
+            if (compileResult) {
+              analyzeModule({ code: compileResult.code, filename })
+            }
 
             await expect(
               await formatSnapshot(compileResult?.code || code, filename),
@@ -117,6 +185,7 @@ describe('code-splitter works', () => {
                 sharedBindings:
                   sharedBindings.size > 0 ? sharedBindings : undefined,
               })
+              analyzeModule({ code: splitResult.code, filename })
 
               const snapshotFilename = path.join(
                 dirs.snapshots,
@@ -158,6 +227,7 @@ describe('code-splitter works', () => {
               sharedBindings,
               filename: `${filename}?tsr-shared=1`,
             })
+            analyzeModule({ code: sharedResult.code, filename })
 
             await expect(
               await formatSnapshot(sharedResult.code, filename),
@@ -306,256 +376,7 @@ export const Route = createFileRoute('/')({
 })
 
 // ============================================================================
-// LAYER 1: Algebraic Property Tests on Helper Functions
-//
-// These test that the pure graph/set functions obey mathematical contracts
-// independent of any particular route file.
-// ============================================================================
-
-describe('expandTransitively', () => {
-  it('is idempotent — running twice yields the same result as once', () => {
-    // Graph: a -> b -> c, d -> b
-    const depGraph = new Map<string, Set<string>>([
-      ['a', new Set(['b'])],
-      ['b', new Set(['c'])],
-      ['c', new Set()],
-      ['d', new Set(['b'])],
-    ])
-
-    const first = new Set(['a'])
-    expandTransitively(first, depGraph)
-    const afterFirst = new Set(first)
-
-    expandTransitively(first, depGraph)
-    expect(first).toEqual(afterFirst)
-  })
-
-  it('is monotone — larger initial set produces equal or larger result', () => {
-    const depGraph = new Map<string, Set<string>>([
-      ['a', new Set(['c'])],
-      ['b', new Set(['d'])],
-      ['c', new Set()],
-      ['d', new Set()],
-    ])
-
-    const small = new Set(['a'])
-    expandTransitively(small, depGraph)
-
-    const large = new Set(['a', 'b'])
-    expandTransitively(large, depGraph)
-
-    for (const item of small) {
-      expect(large.has(item)).toBe(true)
-    }
-  })
-
-  it('handles cycles without infinite loops', () => {
-    const depGraph = new Map<string, Set<string>>([
-      ['a', new Set(['b'])],
-      ['b', new Set(['c'])],
-      ['c', new Set(['a'])],
-    ])
-
-    const set = new Set(['a'])
-    expandTransitively(set, depGraph)
-    expect(set).toEqual(new Set(['a', 'b', 'c']))
-  })
-
-  it('is a no-op when there are no dependencies', () => {
-    const depGraph = new Map<string, Set<string>>([
-      ['a', new Set()],
-      ['b', new Set()],
-    ])
-
-    const set = new Set(['a'])
-    expandTransitively(set, depGraph)
-    expect(set).toEqual(new Set(['a']))
-  })
-
-  it('handles missing entries in the graph gracefully', () => {
-    const depGraph = new Map<string, Set<string>>()
-    const set = new Set(['unknown'])
-    expandTransitively(set, depGraph)
-    expect(set).toEqual(new Set(['unknown']))
-  })
-})
-
-describe('buildDependencyGraph', () => {
-  it('result keys are a subset of localBindings', () => {
-    const code = `
-const a = 1
-const b = a + 1
-const c = 2
-`
-    const ast = parseAst({ code })
-    const declMap = buildDeclarationMap(ast)
-    const localBindings = new Set(['a', 'b', 'c'])
-    const graph = buildDependencyGraph(declMap, localBindings)
-
-    for (const key of graph.keys()) {
-      expect(localBindings.has(key)).toBe(true)
-    }
-  })
-
-  it('dependency values are also subsets of localBindings', () => {
-    const code = `
-import { external } from 'somewhere'
-const a = external
-const b = a + 1
-`
-    const ast = parseAst({ code })
-    const declMap = buildDeclarationMap(ast)
-    const localBindings = new Set(['a', 'b'])
-    const graph = buildDependencyGraph(declMap, localBindings)
-
-    for (const deps of graph.values()) {
-      for (const dep of deps) {
-        expect(localBindings.has(dep)).toBe(true)
-      }
-    }
-  })
-
-  it('captures direct references correctly', () => {
-    const code = `
-const x = 10
-const y = x + 1
-`
-    const ast = parseAst({ code })
-    const declMap = buildDeclarationMap(ast)
-    const localBindings = new Set(['x', 'y'])
-    const graph = buildDependencyGraph(declMap, localBindings)
-
-    expect(graph.get('y')).toEqual(new Set(['x']))
-    expect(graph.get('x')?.size ?? 0).toBe(0)
-  })
-})
-
-describe('removeBindingsDependingOnRoute', () => {
-  it('removes bindings that directly reference Route', () => {
-    const depGraph = new Map<string, Set<string>>([
-      ['helper', new Set(['Route'])],
-      ['standalone', new Set()],
-      ['Route', new Set()],
-    ])
-
-    const shared = new Set(['helper', 'standalone'])
-    removeBindingsDependingOnRoute(shared, depGraph)
-
-    expect(shared.has('helper')).toBe(false)
-    expect(shared.has('standalone')).toBe(true)
-  })
-
-  it('removes bindings that transitively reference Route', () => {
-    const depGraph = new Map<string, Set<string>>([
-      ['a', new Set(['b'])],
-      ['b', new Set(['Route'])],
-      ['c', new Set()],
-      ['Route', new Set()],
-    ])
-
-    const shared = new Set(['a', 'c'])
-    removeBindingsDependingOnRoute(shared, depGraph)
-
-    expect(shared.has('a')).toBe(false)
-    expect(shared.has('c')).toBe(true)
-  })
-
-  it('is a no-op when nothing depends on Route', () => {
-    const depGraph = new Map<string, Set<string>>([
-      ['a', new Set(['b'])],
-      ['b', new Set()],
-      ['Route', new Set()],
-    ])
-
-    const shared = new Set(['a', 'b'])
-    const before = new Set(shared)
-    removeBindingsDependingOnRoute(shared, depGraph)
-
-    expect(shared).toEqual(before)
-  })
-})
-
-describe('expandDestructuredDeclarations', () => {
-  it('is idempotent', () => {
-    const code = `const { a, b } = fn()`
-    const ast = parseAst({ code })
-
-    const shared = new Set(['a'])
-    expandDestructuredDeclarations(ast, shared)
-    const afterFirst = new Set(shared)
-
-    expandDestructuredDeclarations(ast, shared)
-    expect(shared).toEqual(afterFirst)
-  })
-
-  it('pulls all siblings when one destructured binding is shared', () => {
-    const code = `const { a, b, c } = fn()`
-    const ast = parseAst({ code })
-
-    const shared = new Set(['b'])
-    expandDestructuredDeclarations(ast, shared)
-
-    expect(shared).toEqual(new Set(['a', 'b', 'c']))
-  })
-
-  it('does not affect non-destructured declarations', () => {
-    const code = `
-const x = 1
-const y = 2
-`
-    const ast = parseAst({ code })
-
-    const shared = new Set(['x'])
-    expandDestructuredDeclarations(ast, shared)
-
-    expect(shared).toEqual(new Set(['x']))
-  })
-})
-
-describe('collectLocalBindingsFromStatement', () => {
-  it('collects variable declaration names', () => {
-    const code = `const x = 1`
-    const ast = parseAst({ code })
-    const bindings = new Set<string>()
-    collectLocalBindingsFromStatement(ast.program.body[0]!, bindings)
-    expect(bindings).toEqual(new Set(['x']))
-  })
-
-  it('collects function declaration names', () => {
-    const code = `function foo() {}`
-    const ast = parseAst({ code })
-    const bindings = new Set<string>()
-    collectLocalBindingsFromStatement(ast.program.body[0]!, bindings)
-    expect(bindings).toEqual(new Set(['foo']))
-  })
-
-  it('collects class declaration names', () => {
-    const code = `class MyClass {}`
-    const ast = parseAst({ code })
-    const bindings = new Set<string>()
-    collectLocalBindingsFromStatement(ast.program.body[0]!, bindings)
-    expect(bindings).toEqual(new Set(['MyClass']))
-  })
-
-  it('collects exported declaration names', () => {
-    const code = `export const a = 1`
-    const ast = parseAst({ code })
-    const bindings = new Set<string>()
-    collectLocalBindingsFromStatement(ast.program.body[0]!, bindings)
-    expect(bindings).toEqual(new Set(['a']))
-  })
-
-  it('collects destructured binding names', () => {
-    const code = `const { a, b } = obj`
-    const ast = parseAst({ code })
-    const bindings = new Set<string>()
-    collectLocalBindingsFromStatement(ast.program.body[0]!, bindings)
-    expect(bindings).toEqual(new Set(['a', 'b']))
-  })
-})
-
-// ============================================================================
-// LAYER 2: Invariant Tests on computeSharedBindings
+// Invariant Tests on computeSharedBindings
 //
 // These verify the core "contracts" of the shared bindings computation:
 // - Route is never extracted
@@ -569,13 +390,14 @@ describe('computeSharedBindings invariants', () => {
   const defaultGroupings = defaultCodeSplitGroupings
 
   function getLocalBindings(code: string): Set<string> {
-    const ast = parseAst({ code })
-    const bindings = new Set<string>()
-    for (const stmt of ast.program.body) {
-      collectLocalBindingsFromStatement(stmt, bindings)
-    }
-    bindings.delete('Route')
-    return bindings
+    return new Set(
+      analyzeModule({ code })
+        .rootScope.bindings.filter(
+          (binding) =>
+            !binding.has(BindingFlags.Import) && binding.name !== 'Route',
+        )
+        .map((binding) => binding.name),
+    )
   }
 
   it('INVARIANT: Route is never in the shared set', () => {
@@ -630,6 +452,23 @@ export const Route = createFileRoute('/')({
       codeSplitGroupings: defaultGroupings,
     })
     expect(result.has('helper')).toBe(false)
+  })
+
+  it('INVARIANT: vars declared inside nested statements are never shared', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+if (typeof window !== 'undefined') { var inBlock = 1 }
+if (typeof window !== 'undefined') var inStatement = 2
+export const Route = createFileRoute('/')({
+  loader: () => [inBlock, inStatement],
+  component: () => <div>{inBlock}{inStatement}</div>,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultGroupings,
+    })
+    expect([...result]).toEqual([])
   })
 
   it('INVARIANT: destructured siblings are either all shared or none shared', () => {
@@ -760,7 +599,7 @@ export const Route = createFileRoute('/')({
 })
 
 // ============================================================================
-// LAYER 3: Small-Scope Exhaustive Tests
+// Small-Scope Exhaustive Tests
 //
 // Inspired by Alloy's "small scope hypothesis" — most bugs show up in small
 // counterexamples. We exhaustively test all combinations of:
@@ -1093,12 +932,14 @@ export const Route = createFileRoute('/')({
         expect(result.has('Route')).toBe(false)
 
         // Contract 2: all results are real local bindings
-        const ast = parseAst({ code })
-        const localBindings = new Set<string>()
-        for (const stmt of ast.program.body) {
-          collectLocalBindingsFromStatement(stmt, localBindings)
-        }
-        localBindings.delete('Route')
+        const localBindings = new Set(
+          analyzeModule({ code })
+            .rootScope.bindings.filter(
+              (binding) =>
+                !binding.has(BindingFlags.Import) && binding.name !== 'Route',
+            )
+            .map((binding) => binding.name),
+        )
 
         for (const name of result) {
           expect(localBindings.has(name)).toBe(true)

@@ -7,7 +7,7 @@ Start import protection.
 
 Its current structure is:
 
-- parse module code once per `TransformResult`
+- parse and resolve module bindings once per `TransformResult` with Yuku
 - derive a read-only `ImportAnalysis` object from that AST
 - reuse that analysis for source extraction, import-specifier locations, mock
   export discovery, named export discovery, and usage lookup
@@ -27,7 +27,7 @@ It builds and caches `ImportAnalysis` on `TransformResult.analysis`.
 
 `ImportAnalysis` contains:
 
-- parsed AST
+- immutable Yuku module with AST and resolved references
 - line index
 - import sources in source order
 - import specifier literal locations
@@ -151,7 +151,6 @@ It includes:
 - `export ... from 'x'`
 - `export * from 'x'`
 - `import('x')`
-- dynamic import call forms supported by Babel's AST shape
 
 Adapter code that needs source extraction should call into `analysis.ts`
 directly.
@@ -188,11 +187,11 @@ handle default export separately.
 
 Usage lookup is shared across adapters through `analysis.ts`.
 
-The walker:
+The usage lookup:
 
-- tracks lexical/program/block/function bindings manually
-- respects shadowing across nested scopes, block bindings, function params, and
-  `catch` params
+- queries Yuku's resolved runtime references instead of approximating scopes
+- identifies imports by symbol identity, including shadowing across nested scopes,
+  block bindings, function params, and `catch` params
 - treats certain compiler-recognized boundaries as safe when looking for
   original unsafe usage
 
@@ -217,7 +216,7 @@ Analysis and rewrite are intentionally separate.
 Reasons:
 
 - adapters frequently need inspection without mutation
-- mutation wants a fresh, isolated AST/codegen pass
+- mutation uses a cloned output AST and Yuku code generation with source maps
 - read-only analysis is much easier to cache safely
 - source-location helpers and usage lookup should not depend on whether a module
   was rewritten

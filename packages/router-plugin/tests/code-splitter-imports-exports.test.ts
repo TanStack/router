@@ -1,5 +1,5 @@
 import { transformWithOxc } from 'vite'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   compileRouteModules,
   componentChunk,
@@ -10,6 +10,8 @@ import {
   head,
   importSources,
   importedNames,
+  loadRouteModules,
+  requestedSources,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
@@ -202,6 +204,214 @@ export const Route = createFileRoute('/')({
     expect(modules.reference).toMatch(/export \* as lib from ['"]\.\/lib['"]/)
     await expectValidModules(modules)
   })
+
+  // A chunk that re-exported `export *` would depend on all of `./lib`
+  // through the opaque namespace of its dynamic import, which defeats
+  // tree-shaking of it.
+  it('keep module-level export * out of the split chunks', () => {
+    const { modules } = compileRouteModules(`${head}export * from './lib'
+export const Route = createFileRoute('/')({
+  component: () => <p>index</p>,
+})`)
+    expect(requestedSources(modules.reference!)).toContain('./lib')
+    const chunksRequestingLib = Object.keys(modules).filter(
+      (name) =>
+        name.startsWith('virtual ') &&
+        requestedSources(modules[name]!).includes('./lib'),
+    )
+    expect(chunksRequestingLib).toEqual([])
+  })
+
+  // Source: Next.js ssg/getStaticProps/should-remove-extra-named-export-speicifers,
+  // should-support-full-re-export and should-support-class-exports
+  it('keep re-exports and a default-exported class out of the split chunks', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import * as React from 'react'
+export { getPaths, a as getProps } from './lib'
+export { foo, bar as baz } from './lib'
+export { helper } from './default-lib'
+export default class Test extends React.Component {
+  render() {
+    return <div>test</div>
+  }
+}
+export const Route = createFileRoute('/')({
+  component: () => <div>home</div>,
+})
+`)
+    expect(exportedNames(modules.reference!)).toEqual([
+      'Route',
+      'baz',
+      'default',
+      'foo',
+      'getPaths',
+      'getProps',
+      'helper',
+    ])
+    for (const name of [
+      'virtual component',
+      'virtual errorComponent',
+      'virtual notFoundComponent',
+    ]) {
+      expect(requestedSources(modules[name]!)).not.toContain('./lib')
+      expect(requestedSources(modules[name]!)).not.toContain('./default-lib')
+      expect(modules[name]).not.toMatch(declarationOf('Test'))
+    }
+    await expectValidModules(modules)
+  })
+
+  // Source: Next.js ssg/getStaticProps/should-not-crash-for-class-declarations
+  it('keep an exported class component in the route module', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import * as React from 'react'
+export class Page extends React.Component {
+  render() {
+    return <div>page</div>
+  }
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+    expect(modules.reference).toMatch(declarationOf('Page'))
+    expect(exportedNames(modules.reference!)).toContain('Page')
+    await expectValidModules(modules)
+  })
+
+  // Source: Next.js ssg/getStaticProps/should-remove-re-exported-function-declarations,
+  // should-support-named-export-as-default and
+  // should-support-export-named-as-default-with-a-class
+  it.each([
+    {
+      name: 'export { Page as default }',
+      code: `function Page() {
+  return <div>page</div>
+}
+export { Page as default }`,
+    },
+    {
+      name: 'export { Page as default, a } with a class',
+      code: `import * as React from 'react'
+class Page extends React.Component {
+  render() {
+    return <div>page</div>
+  }
+}
+const a = 5
+export { Page as default, a }`,
+    },
+    {
+      name: 'export { Page as Renamed, kept as keptRenamed }',
+      code: `const Page = () => <div>page</div>
+const kept = () => 'kept'
+export { Page as Renamed, kept as keptRenamed }`,
+    },
+  ])(
+    'keep a component exported through $name in the route module',
+    async ({ code }) => {
+      const { modules } = compileRouteModules(`${head}${code}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+      expect(modules.reference).toMatch(declarationOf('Page'))
+      await expectValidModules(modules)
+    },
+  )
+
+  // Inputs adapted from the React Compiler fixture corpus
+  // (compiler/packages/babel-plugin-react-compiler/src/__tests__/fixtures/compiler)
+  it.each([
+    {
+      // FIXTURE_ENTRYPOINT in complex-while.js and most fixtures
+      name: 'an exported object',
+      exports: 'export const meta = { fn: Page, params: [{}] }',
+    },
+    {
+      // gating/gating-use-before-decl.js
+      name: 'an exported call',
+      exports: 'export default memo(Page)',
+    },
+    {
+      // uid-collision-across-functions.js
+      name: 'an export list',
+      exports: 'export { Page, Fallback }',
+    },
+  ])(
+    'keep a component that $name references in the route module',
+    async ({ exports }) => {
+      const { modules } =
+        compileRouteModules(`${head}import { memo } from 'react'
+function Page() {
+  return <div>page</div>
+}
+function Fallback() {
+  return <div>error</div>
+}
+${exports}
+export const Route = createFileRoute('/')({ component: Page, errorComponent: Fallback })
+`)
+      expect(modules.reference).toMatch(declarationOf('Page'))
+      await expectValidModules(modules)
+    },
+  )
+
+  // Source: Next.js ssg/getStaticProps/should-not-crash-for-class-declarations
+  it('are imported by the chunk when exported by specifier or as a class', async () => {
+    const { modules } = compileRouteModules(`${head}function getPaths() {
+  return []
+}
+export { getPaths }
+export class MyClass {}
+function Page() {
+  return <div>{getPaths().length}{String(new MyClass())}</div>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+    const component = modules['virtual component']!
+    // A copied class would break `instanceof MyClass` checks across modules
+    expect(component).not.toMatch(declarationOf('MyClass'))
+    expect(component).not.toMatch(declarationOf('getPaths'))
+    expect(importedNames(component, 'route.tsx')).toEqual([
+      'MyClass',
+      'getPaths',
+    ])
+    await expectValidModules(modules)
+  })
+
+  // A second initialization in the chunk would be another instance than the
+  // one other modules import, even when it is built from a private call
+  // result that the chunk reads as well.
+  it('are imported by the chunk when built from a private call result', async () => {
+    const chunk = componentChunk(`${head}import { load } from './data'
+const initial = load()
+export const cache = new Map(initial)
+function Page() {
+  return <p>{cache.size === initial.length ? 'fresh' : 'changed'}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+    expect(chunk).not.toMatch(declarationOf('cache'))
+    expect(importedNames(chunk, 'route.tsx')).toContain('cache')
+    await expectValidModules({ chunk })
+  })
+
+  // Inputs adapted from React Compiler gating/gating-test-export-default-function.js
+  it('are imported by the chunk of another component that renders the default-exported component', async () => {
+    const { modules } =
+      compileRouteModules(`${head}export default function Bar(props) {
+  return <div>{props.bar}</div>
+}
+function NoForget(props) {
+  return <Bar>{props.noForget}</Bar>
+}
+export const Route = createFileRoute('/')({ component: Bar, errorComponent: NoForget })
+`)
+    const chunk = modules['virtual errorComponent']!
+    expect(chunk).not.toMatch(declarationOf('Bar'))
+    // From the route module (its default export) or the shared module
+    expect([
+      ...importedNames(chunk, 'route.tsx'),
+      ...importedNames(chunk, 'route.tsx?tsr-shared=1'),
+    ]).toEqual([expect.stringMatching(/^(?:Bar|default)$/)])
+    await expectValidModules(modules)
+  })
 })
 
 describe('TypeScript-only syntax', () => {
@@ -222,6 +432,43 @@ export const Route = createFileRoute('/')({
     expect(importedNames(modules.shared!, './settings')).toEqual(['defaults'])
     await expectValidModules(modules)
   })
+
+  // An import the code only references from types (without `import type`)
+  // stays only where such a reference does, for TypeScript to erase.
+  it.each([
+    {
+      name: 'the loader',
+      options: `loader: (): Framework => 'react',
+  component: () => <p>index</p>,`,
+      importers: ['reference'],
+    },
+    {
+      name: 'the split component',
+      options: `loader: () => 'data',
+  component: () => {
+    const [framework] = useState<Framework>('react')
+    return <p>{framework}</p>
+  },`,
+      importers: ['virtual component'],
+    },
+  ])(
+    'imports a binding only types reference in $name only where they do',
+    async ({ options, importers }) => {
+      const { modules } =
+        compileRouteModules(`${head}import { useState } from 'react'
+import { Framework } from './projects'
+export const Route = createFileRoute('/')({
+  ${options}
+})
+`)
+      expect(
+        Object.keys(modules).filter((name) =>
+          importSources(modules[name]!).includes('./projects'),
+        ),
+      ).toEqual(importers)
+      await expectValidModules(modules)
+    },
+  )
 
   // Ambient declarations (`declare ...`) have no runtime binding: the
   // environment provides the value (a <script> tag, a bundler define, a global).
@@ -262,6 +509,25 @@ export const Route = createFileRoute('/ambient')({
     },
   )
 
+  // For example a constant injected with Vite's `define`: no module exports it.
+  it('leaves an ambient declare const read by the loader and the split component a global', async () => {
+    vi.stubGlobal('APP_VERSION', '1.0')
+    try {
+      const { options, chunks } =
+        await loadRouteModules(`${head}declare const APP_VERSION: string
+export const Route = createFileRoute('/')({
+  loader: () => APP_VERSION,
+  component: () => <p>{APP_VERSION}</p>,
+})`)
+      expect([options.loader(), chunks.component!.component()]).toEqual([
+        '1.0',
+        '<p>1.0</p>',
+      ])
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('keeps the namespace import that an import alias refers to', () => {
     const chunk = componentChunk(`${head}import * as lib from './lib'
 import Helper = lib.Helper
@@ -288,35 +554,52 @@ export const Route = createFileRoute('/')({
     expect(chunk.component!()).toBe('<p>LOUD|label:x</p>')
   })
 
+  it('gives the split component the namespace it uses', async () => {
+    const { modules } =
+      compileRouteModules(`${head}namespace Labels { export const quiet = 'quiet' }
+export const Route = createFileRoute('/')({
+  component: () => <p>{Labels.quiet}</p>,
+})
+`)
+    await expectValidModules(modules)
+    const chunk = await evaluateModule(modules['virtual component']!)
+    expect(chunk.component!()).toBe('<p>quiet</p>')
+  })
+
+  // Source: @vitejs/plugin-rsc transform tests, typescript-eslint
+  // type-assertion/increment/as-increment.js,
+  // type-assertion/increment/non-null-increment.js and type-assertion/satisfies.js
+  it('keeps the parentheses around asserted update operands in a split component', async () => {
+    const chunk = componentChunk(`${head}let count = 0
+function Page() {
+  ;(count as number)++
+  ;(count satisfies number)++
+  count!++
+  ;(count as any) += 1
+  return count
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+    await expectValidModules({ chunk })
+    expect((await evaluateModule(chunk)).component!()).toBe(4)
+  })
+
   // TypeScript lets a type and a value share a name; exporting both is valid.
-  it.each([
-    {
-      name: 'a type alias and an export specifier',
-      exports: `export type Post = { id: string }
+  it('exports a type and a value with the same name', async () => {
+    const code = `${head}export type Post = { id: string }
 function Post(id: string): Post {
   return { id }
 }
-export { Post }`,
-    },
-    {
-      name: 'a type re-export and a value re-export',
-      exports: `export type { Post } from './post-types'
-export { Post } from './post-values'`,
-    },
-  ])(
-    'exports a type and a value with the same name: $name',
-    async ({ exports }) => {
-      const code = `${head}${exports}
+export { Post }
 export const Route = createFileRoute('/posts')({
   component: () => <p>posts</p>,
 })
 `
-      const { modules } = compileRouteModules(code)
-      expect(exportedNames(modules.reference!)).toContain('Post')
-      expect(exportedNames(transformWithRouteHmrPlugin(code))).toContain('Post')
-      await expectValidModules(modules)
-    },
-  )
+    const { modules } = compileRouteModules(code)
+    expect(exportedNames(modules.reference!)).toContain('Post')
+    expect(exportedNames(transformWithRouteHmrPlugin(code))).toContain('Post')
+    await expectValidModules(modules)
+  })
 
   it('keeps decorators before `export` for legacy decorator transforms', () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only

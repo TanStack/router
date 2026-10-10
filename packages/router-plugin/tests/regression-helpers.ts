@@ -9,7 +9,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { build, parseSync, transformWithOxc } from 'vite'
-import { expect } from 'vitest'
+import { expect, vi } from 'vitest'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitSharedRoute,
@@ -33,9 +33,9 @@ export { declarationOf } from './validate-module'
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
 /**
- * Compiles a route file with the default groupings into every module the code
- * splitter emits for it: `reference`, one `virtual <split>` chunk per grouping
- * and, when bindings are shared, `shared`.
+ * Compiles a route file (with the default groupings unless `groupings` is
+ * given) into every module the code splitter emits for it: `reference`, one
+ * `virtual <split>` chunk per grouping and, when bindings are shared, `shared`.
  */
 export function compileRouteModules(
   code: string,
@@ -44,14 +44,15 @@ export function compileRouteModules(
     targetFramework?: 'react' | 'solid'
     /** Compile with route HMR and the framework's HMR compiler plugins. */
     hmr?: boolean
+    groupings?: CodeSplitGroupings
   } = {},
 ) {
   const {
     filename = 'route.tsx',
     targetFramework = 'react',
     hmr = false,
+    groupings = defaultCodeSplitGroupings,
   } = options
-  const groupings = defaultCodeSplitGroupings
   const compilerPlugins = hmr
     ? getFrameworkHmrCompilerPlugins({ targetFramework })
     : undefined
@@ -125,6 +126,16 @@ export function importSources(code: string) {
   ].sort()
 }
 
+/** Sources a module imports or re-exports from, sorted. */
+export function requestedSources(code: string) {
+  const reexported = moduleRecord(code).staticExports.flatMap((statement) =>
+    statement.entries.flatMap((entry) =>
+      entry.moduleRequest ? [entry.moduleRequest.value] : [],
+    ),
+  )
+  return [...new Set([...importSources(code), ...reexported])].sort()
+}
+
 /**
  * The values a module imports from `source`, sorted: `default`, `*` for a
  * namespace import, or the imported name. Type-only specifiers are skipped.
@@ -159,17 +170,39 @@ export function exportedNames(code: string) {
     .sort()
 }
 
+/** The local binding a module exports as `name`, if it exports one. */
+export function exportedBinding(code: string, name: string) {
+  for (const statement of moduleRecord(code).staticExports) {
+    for (const entry of statement.entries) {
+      if (!entry.isType && entry.exportName.name === name) {
+        return entry.localName.name ?? undefined
+      }
+    }
+  }
+  return undefined
+}
+
 /** Absolute, normalized path of a route file in the package's `src/routes`. */
 export function routeFile(name: string) {
   return normalizePath(path.join(process.cwd(), `src/routes/${name}.tsx`))
 }
 
-function runTransform(plugin: UnpluginOptions, code: string, id: string) {
+/** The bundler's plugin context of a transform; `warn` is a spy. */
+function createTransformContext() {
+  return { warn: vi.fn<(message: string) => void>() }
+}
+
+function runTransform(
+  plugin: UnpluginOptions,
+  code: string,
+  id: string,
+  context: ReturnType<typeof createTransformContext>,
+) {
   const transform = plugin.transform
   if (!transform || typeof transform === 'function') {
     throw new Error('Expected object transform')
   }
-  const result = transform.handler.call({} as never, code, id) as
+  const result = transform.handler.call(context as never, code, id) as
     | TransformResult
     | null
     | undefined
@@ -188,7 +221,8 @@ const sharedPluginName = 'tanstack-router:code-splitter:compile-shared-file'
  * Drives the three code-splitter transforms the way a bundler does, for the
  * given route files (absolute path to route id). `configPlugins` are the
  * plugins of the resolved Vite config; by default the code splitter itself,
- * so its plugin-order check runs.
+ * so its plugin-order check runs. `warn` spies on the warnings the transforms
+ * report to the bundler.
  */
 export async function createCodeSplitterTransforms(
   options: Partial<Config>,
@@ -222,13 +256,44 @@ export async function createCodeSplitterTransforms(
   } else if (hook) {
     await hook.handler.call({} as never, config)
   }
+  const transformContext = createTransformContext()
   return {
     reference: (code: string, id: string) =>
-      runTransform(byName(referencePluginName), code, id),
+      runTransform(byName(referencePluginName), code, id, transformContext),
     virtual: (code: string, id: string) =>
-      runTransform(byName(virtualPluginName), code, id),
+      runTransform(byName(virtualPluginName), code, id, transformContext),
     shared: (code: string, id: string) =>
-      runTransform(byName(sharedPluginName), code, id),
+      runTransform(byName(sharedPluginName), code, id, transformContext),
+    warn: transformContext.warn,
+  }
+}
+
+/**
+ * Creates the route HMR plugin (used when automatic code splitting is off)
+ * for the given route files (absolute path to route id). `transform` runs it
+ * on a route file the way a bundler does, and `warn` spies on the warnings it
+ * reports to the bundler.
+ */
+export function createRouteHmrTransform(
+  options: Partial<Config>,
+  routes: Record<string, string>,
+) {
+  const context = createRouterPluginContext()
+  for (const [file, routeId] of Object.entries(routes)) {
+    context.routesByFile.set(file, { routeId })
+  }
+  const plugins = createRouterHmrPlugin(options, context)
+  const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
+  const transformContext = createTransformContext()
+  return {
+    transform: (code: string, id: string) => {
+      const output = runTransform(plugin, code, id, transformContext)
+      if (output === null) {
+        throw new Error('expected the route HMR plugin to transform the route')
+      }
+      return output
+    },
+    warn: transformContext.warn,
   }
 }
 
@@ -244,15 +309,9 @@ export function transformWithRouteHmrPlugin(
     routeId: '/',
   },
 ) {
-  const context = createRouterPluginContext()
-  context.routesByFile.set(route.file, { routeId: route.routeId })
-  const plugins = createRouterHmrPlugin(options, context)
-  const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
-  const output = runTransform(plugin, code, route.file)
-  if (output === null) {
-    throw new Error('expected the route HMR plugin to transform the route')
-  }
-  return output
+  return createRouteHmrTransform(options, {
+    [route.file]: route.routeId,
+  }).transform(code, route.file)
 }
 
 /** Renders JSX to text: intrinsic elements become tags, components are called. */
@@ -277,8 +336,9 @@ let evaluations = 0
 
 /**
  * Evaluates an emitted module like a bundler would: JSX becomes plain calls
- * that render to text, and named imports are linked to `stubs`, keyed by
- * specifier. Every call evaluates a fresh module instance.
+ * that render to text, and imports (named, namespace or side-effect only) are
+ * linked to `stubs`, keyed by specifier. Every call evaluates a fresh module
+ * instance.
  */
 export async function evaluateModule(
   code: string,
@@ -292,20 +352,84 @@ export async function evaluateModule(
   // Imports are hoisted: link them before any other statement runs.
   const imports: Array<string> = []
   const body = javascript.replace(
-    /^import\s+\{([^}]*)\}\s+from\s+(["'])(.+?)\2;?$/gm,
-    (_, named: string, __, source: string) => {
+    /^import\s+(?:(\{[^}]*\}|\*\s*as\s+[\w$]+)\s+from\s+)?(["'])(.+?)\2;?$/gm,
+    (_, clause: string | undefined, __, source: string) => {
       if (!(source in stubs)) {
         throw new Error(`no stub for import ${source}`)
       }
-      imports.push(
-        `const { ${named.replace(/\bas\b/g, ':')} } = globalThis.${key}[${JSON.stringify(source)}];`,
-      )
+      const exports = `globalThis.${key}[${JSON.stringify(source)}]`
+      if (clause?.startsWith('{')) {
+        imports.push(`const ${clause.replace(/\bas\b/g, ':')} = ${exports};`)
+      } else if (clause) {
+        imports.push(`const ${clause.replace(/^\*\s*as\s+/, '')} = ${exports};`)
+      }
       return ''
     },
   )
   return import(
     /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(`${jsxToText}${imports.join('\n')}\n${body}`)}`
   )
+}
+
+/**
+ * The exports of an emitted module, as another emitted module imports them:
+ * importing a name the module does not export throws, as in a bundler.
+ */
+function linkable(specifier: string, exports: Record<string, unknown>) {
+  return new Proxy(exports, {
+    get(target, name) {
+      if (typeof name === 'string' && !(name in target)) {
+        throw new Error(`"${name}" is not exported by "${specifier}"`)
+      }
+      return Reflect.get(target, name)
+    },
+  })
+}
+
+/**
+ * Compiles a route file, then evaluates the modules the code splitter emits,
+ * linked by import specifier: the shared module, the reference module, then
+ * every split chunk the reference module imports, as once all chunks have
+ * loaded. `stubs` provides the route's other imports; `beforeChunksLoad` runs
+ * once the route module has loaded. Returns the modules, the route options
+ * and the exports of each chunk by split name.
+ */
+export async function loadRouteModules(
+  code: string,
+  stubs: Record<string, Record<string, unknown>> = {},
+  beforeChunksLoad?: () => void,
+) {
+  const { modules } = compileRouteModules(code)
+  const linked: Record<string, Record<string, unknown>> = {
+    ...stubs,
+    '@tanstack/react-router': {
+      createFileRoute: () => (options: unknown) => ({ options }),
+      lazyRouteComponent: () => () => null,
+    },
+  }
+  for (const [name, specifier] of [
+    ['shared', 'route.tsx?tsr-shared=1'],
+    ['reference', 'route.tsx'],
+  ] as const) {
+    if (modules[name]) {
+      linked[specifier] = linkable(
+        specifier,
+        await evaluateModule(modules[name], linked),
+      )
+    }
+  }
+  beforeChunksLoad?.()
+  const chunks: Record<string, Record<string, any>> = {}
+  for (const [, split] of modules.reference!.matchAll(
+    /\?tsr-split=([\w-]+)/g,
+  )) {
+    chunks[split!] ??= await evaluateModule(
+      modules[`virtual ${split}`]!,
+      linked,
+    )
+  }
+  const { Route } = linked['route.tsx'] as { Route: { options: any } }
+  return { modules, options: Route.options, chunks }
 }
 
 /**
@@ -393,7 +517,58 @@ export async function expectRegisteredRouteOption(
   return binding
 }
 
+/** Whether a callee is `memo` or `forwardRef`, imported or namespaced. */
+function isMemoOrForwardRef(callee: ESTree.Expression | ESTree.Super) {
+  const name =
+    callee.type === 'Identifier'
+      ? callee.name
+      : callee.type === 'MemberExpression' &&
+          callee.property.type === 'Identifier'
+        ? callee.property.name
+        : undefined
+  return name === 'memo' || name === 'forwardRef'
+}
+
+/**
+ * Asserts that React Refresh can hot-update the component of `option`: the
+ * option is a binding React Refresh registers, or a `memo(...)` /
+ * `forwardRef(...)` call (nested or not) of one, since React Refresh resolves
+ * those wrappers through the function they wrap.
+ */
+export async function expectRefreshableRouteOption(
+  code: string,
+  option: string,
+) {
+  expect(await getModuleErrors(code)).toEqual([])
+  let node: ESTree.Expression | ESTree.Argument | undefined = getRouteOption(
+    parseModule(code),
+    option,
+  ).value
+  while (node?.type === 'CallExpression' && isMemoOrForwardRef(node.callee)) {
+    node = node.arguments[0]
+  }
+  const binding = node?.type === 'Identifier' ? node.name : undefined
+  const { registered } = await reactRefresh(code)
+  expect(
+    binding !== undefined && registered.includes(binding),
+    `\`${option}\` is neither a binding React Refresh registers nor a memo/forwardRef call of one (registered: ${registered.join(', ')})`,
+  ).toBe(true)
+}
+
 const runNode = promisify(execFile)
+
+/**
+ * The default `entry.ts` of `buildAndRun`: re-exports the route module and
+ * `render(component)`, which preloads a component and renders it to a string.
+ */
+export const renderEntry = `import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
+export * from './routes/index'
+export async function render(component: any) {
+  await component.preload?.()
+  return renderToString(createElement(component))
+}
+`
 
 /**
  * Builds a small app with the real Vite plugin (code splitting on, default
@@ -421,14 +596,7 @@ export async function buildAndRun(
       'routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({})`,
       'routes/index.tsx': route,
-      'entry.ts': `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-export * from './routes/index'
-export async function render(component: any) {
-  await component.preload?.()
-  return renderToString(createElement(component))
-}
-`,
+      'entry.ts': renderEntry,
       ...options.files,
     }
     for (const [file, code] of Object.entries(files)) {

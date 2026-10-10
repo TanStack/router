@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   compileCode,
+  compileHydrate,
   evaluateModule,
   importSources,
 } from './regression-helpers'
@@ -139,4 +140,121 @@ export const label = red
 export const fn = createServerFn().handler(async () => red)`,
   )
   expect((await evaluateModule(client!)).label).toBe('red')
+})
+
+// An empty destructuring pattern binds nothing, but its initializer still
+// runs.
+// Source: babel-dead-code-elimination "object pattern" > "unzips if all
+// variables are unused", "array pattern" > "unzips if all variables are
+// unused"
+test.each(['client', 'provider'] as const)(
+  '%s: keeps the initializers of empty destructuring patterns',
+  async (output) => {
+    const result = await compileCode(
+      output,
+      `import { createServerFn } from '@tanstack/react-start'
+import { init, other } from './init'
+const {} = init()
+const [] = other()
+const { a: {} } = init()
+export const fn = createServerFn().handler(async () => 'ok')`,
+    )
+    const calls: Array<string> = []
+    await evaluateModule(result!, {
+      './init': {
+        init: () => {
+          calls.push('init')
+          return { a: {} }
+        },
+        other: () => {
+          calls.push('other')
+          return []
+        },
+      },
+    })
+    expect(calls).toEqual(['init', 'other', 'init'])
+  },
+)
+
+// Source: typescript-eslint type-assertion/increment/as-increment.js,
+// type-assertion/increment/non-null-increment.js, type-assertion/satisfies.js
+test('keeps the parentheses of asserted update operands', async () => {
+  const client = await compileCode(
+    'client',
+    `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 1)
+let count = 0
+export function bump() {
+  ;(count as number)++
+  ;(count satisfies number)++
+  count!++
+  ;(count as any) += 1
+  return count
+}`,
+  )
+  expect(await getModuleErrors(client!)).toEqual([])
+  expect((await evaluateModule(client!)).bump()).toBe(4)
+})
+
+// Bundlers read these comments: minifiers keep legal comments, and Rollup and
+// Rolldown treat calls of functions annotated `__NO_SIDE_EFFECTS__` as pure.
+describe('keeps the comments bundlers read', () => {
+  const legal = '/*! Example Corp. | MIT License */'
+
+  test('client: a leading legal comment survives the removal of the import it leads', async () => {
+    const client = await compileCode(
+      'client',
+      `${legal}
+import { createIsomorphicFn } from '@tanstack/react-start'
+const where = createIsomorphicFn()
+  .server(() => 'server')
+  .client(() => 'client')
+export const label = () => where()`,
+    )
+    expect(client).toContain(legal)
+  })
+
+  test('client: a Hydrate chunk keeps the leading legal comment of its module', async () => {
+    const { chunks } = await compileHydrate(
+      'client',
+      `${legal}
+import { Hydrate } from '@tanstack/react-start'
+export function Page() {
+  return <Hydrate><p>hi</p></Hydrate>
+}`,
+    )
+    expect(chunks[0]).toContain(legal)
+  })
+
+  test.each([
+    {
+      name: 'function',
+      code: `/* #__NO_SIDE_EFFECTS__ */
+export function makeLabel() {
+  return 'label'
+}`,
+    },
+    {
+      name: 'arrow function',
+      code: `/* @__NO_SIDE_EFFECTS__ */
+export const makeLabel = () => 'label'`,
+    },
+  ])(
+    'the annotation of an exported $name copied to a Hydrate chunk and the provider',
+    async ({ code }) => {
+      const source = `import { Hydrate, createServerFn } from '@tanstack/react-start'
+${code}
+export const fn = createServerFn().handler(async () => makeLabel())
+export function Page() {
+  return <Hydrate><p>{makeLabel()}</p></Hydrate>
+}`
+      const { chunks } = await compileHydrate('client', source)
+      const provider = await compileCode('provider', source)
+      for (const output of [chunks[0]!, provider!]) {
+        expect(output).toMatch(
+          /__NO_SIDE_EFFECTS__ \*\/\s*(?:function|const) makeLabel\b/,
+        )
+      }
+    },
+  )
 })

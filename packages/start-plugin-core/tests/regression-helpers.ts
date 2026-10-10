@@ -4,7 +4,8 @@
  * `<Hydrate>` children into chunks, and evaluate compiled modules against a
  * minimal Start runtime.
  */
-import { transformWithOxc } from 'vite'
+import { stripVTControlCharacters } from 'node:util'
+import { parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import {
@@ -263,6 +264,44 @@ export async function callProvider(
   return handler({ data })
 }
 
+/**
+ * The message of a compile error without its code frame. A code frame quotes
+ * the source lines, so matching the whole message would also match the input
+ * code, whatever the error.
+ */
+export function compileErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  return stripVTControlCharacters(message)
+    .split('\n')
+    .flatMap((line) => {
+      // A quoted source line: `  12 | code` or `> 12 | code`.
+      if (/^\s*>?\s*\d+\s*\|/.test(line)) {
+        return []
+      }
+      // A marker line, which may end with the message: `   | ^^^ message`.
+      const marker = /^\s*\|\s*\^*\s*(.*)$/.exec(line)
+      return (marker ? marker[1]! : line).trim() || []
+    })
+    .join('\n')
+}
+
+/** The directives of a module's directive prologue, in order. */
+export function directivePrologue(code: string) {
+  const { program } = parseSync('module.tsx', code, { sourceType: 'module' })
+  const directives: Array<string> = []
+  for (const statement of program.body) {
+    if (
+      statement.type !== 'ExpressionStatement' ||
+      !('directive' in statement) ||
+      typeof statement.directive !== 'string'
+    ) {
+      break
+    }
+    directives.push(statement.directive)
+  }
+  return directives
+}
+
 /** The value of `run`, or the message of the error it throws. */
 export function settle(run: () => unknown) {
   try {
@@ -309,15 +348,13 @@ export function loadChunk(
 
 /**
  * Compiles a module with `<Hydrate>` and loads the split chunks it imports,
- * ordered by boundary index.
+ * ordered by boundary index. A module the compiler leaves untouched is its
+ * own parent, without chunks.
  */
 export async function compileHydrate(env: 'client' | 'server', code: string) {
   const plugin = createHydrateCompilerPlugin()
   const { compile } = createStartCompiler({ env, compilerPlugins: [plugin] })
-  const parent = await compile(code)
-  if (parent === null) {
-    throw new Error('expected the module to be transformed')
-  }
+  const parent = (await compile(code)) ?? code
   const chunks = getChunkIds(parent).map((id) => {
     const chunk = loadChunk(plugin, env, id)
     if (chunk === null) {
@@ -361,7 +398,7 @@ export function getChunkParams(chunk: string) {
     components.find(([, name]) => /^H\d+$/.test(name!)) ??
     (components.length === 1 ? components[0] : undefined)
   const params = component?.[2] ?? ''
-  return [...params.matchAll(/[\w$]+/g)].map(([name]) => name).sort()
+  return [...params.matchAll(/[\p{L}\p{N}_$]+/gu)].map(([name]) => name).sort()
 }
 
 /**

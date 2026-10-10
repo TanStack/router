@@ -4,7 +4,7 @@ import { createServer } from 'vite'
 import { expect, it } from 'vitest'
 import { tanstackRouter } from '../src/vite'
 
-it.each(['Widget', '_Widget', '$Widget'])(
+it.each(['Widget', '_Widget', '$Widget', 'ÉWidget', 'éWidget'])(
   'preserves the shared JSX component %s across separate loader and component chunks',
   async (name) => {
     // Keep the temporary app inside the package so runtime imports resolve.
@@ -57,6 +57,7 @@ export const Route = createFileRoute('/widget')({
       expect(typeof element.type).toBe('function')
       expect(element.type()).toBe('hello')
       expect(loaderModule.loader()()).toBe('hello')
+      expect(element.type).toBe(loaderModule.loader())
     } finally {
       await server?.close()
       await rm(root, { recursive: true, force: true })

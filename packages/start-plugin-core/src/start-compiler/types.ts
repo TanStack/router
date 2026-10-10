@@ -1,5 +1,4 @@
-import type * as babel from '@babel/core'
-import type * as t from '@babel/types'
+import type { CallExpression } from '@yuku-toolchain/types'
 import type { StartCompilerTransformContext } from '../types'
 
 /**
@@ -22,31 +21,20 @@ export interface CompilationContext extends StartCompilerTransformContext {
 }
 
 /**
- * Batched plugin handler signature.
- * Receives ALL candidates of a specific kind in one call.
- * Mutates the CompilationContext directly.
- */
-export type BatchedPluginHandler<TOpts = unknown> = (
-  candidates: Array<RewriteCandidate>,
-  context: CompilationContext,
-  opts: TOpts,
-) => void
-
-/**
- * Info about a method call in the chain, including the call expression path
- * and the path to its first argument (if any).
+ * Info about a method call in the chain, including the call expression
+ * and its first argument (if any).
  */
 export interface MethodCallInfo {
-  callPath: babel.NodePath<t.CallExpression>
-  /** Path to the first argument, or null if no arguments */
-  firstArgPath: babel.NodePath | null
+  call: CallExpression
+  /** First argument, or null if no arguments. */
+  firstArg: CallExpression['arguments'][number] | null
 }
 
 /**
- * Pre-collected method chain paths for a root call expression.
+ * Pre-collected native method-chain nodes for a root call expression.
  * This avoids needing to traverse the AST again in handlers.
  */
-export interface MethodChainPaths {
+export interface MethodChain {
   middleware: MethodCallInfo | null
   validator: MethodCallInfo | null
   // TODO remove upon stable
@@ -56,14 +44,12 @@ export interface MethodChainPaths {
   client: MethodCallInfo | null
 }
 
-export type MethodChainKey = keyof MethodChainPaths
-
 /**
  * Information about a candidate that needs to be rewritten.
  */
 export interface RewriteCandidate {
-  path: babel.NodePath<t.CallExpression>
-  methodChain: MethodChainPaths
+  node: CallExpression
+  methodChain: MethodChain
 }
 
 /**
@@ -103,30 +89,9 @@ export type GenerateFunctionIdFnOptional = (
 ) => string | undefined
 
 /**
- * Function type for generating replacement code for server functions.
- * Used internally by handleCreateServerFn.
+ * Encodes the extracted module specifier used in development server function IDs.
  */
 export type DevServerFnModuleSpecifierEncoder = (opts: {
   extractedFilename: string
   root: string
-}) => string
-
-export type ReplacerFn = (opts: {
-  /** Placeholder for the original function expression */
-  fn: string
-  /** The filename where the extracted implementation lives */
-  extractedFilename: string
-  /** The original source filename */
-  filename: string
-  /** The unique function ID */
-  functionId: string
-  /** The export name for this function */
-  functionName: string
-  /** True if this is the source/provider file (has the implementation) */
-  isSourceFn: boolean
-  /**
-   * True when this function was already discovered by a previous build (e.g., client).
-   * For SSR callers, this means the function is in the manifest.
-   */
-  isClientReferenced: boolean
 }) => string

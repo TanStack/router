@@ -263,6 +263,36 @@ export function identity<db>(value: db): db {
       check: (client) => expect(client.identity('id')).toBe('id'),
     },
     {
+      // Source: typescript-eslint ts-enum/member-ref.js
+      name: 'an enum member',
+      code: `export enum Flags {
+  db = 1,
+  other = db + 1,
+}`,
+      check: (client) => expect(client.Flags.other).toBe(2),
+    },
+    {
+      // Source: typescript-eslint functions/function-declaration/overload.js
+      name: 'an overload signature parameter',
+      code: `export function call(db: string): string
+export function call(value: string) {
+  return value
+}`,
+      check: (client) => expect(client.call('call')).toBe('call'),
+    },
+    {
+      // Source: typescript-eslint class/declaration/parameter-properties.js
+      name: 'a parameter property',
+      code: `export class Service {
+  constructor(private db: string) {}
+  read() {
+    return this.db
+  }
+}`,
+      check: (client) =>
+        expect(new client.Service('param').read()).toBe('param'),
+    },
+    {
       // Source: typescript-eslint jsx/attribute.js, jsx/namespaced-attribute.js,
       // jsx/component-intrinsic-name.js, jsx/this-jsxidentifier.js
       name: 'JSX attribute names, intrinsic tags and this members',
@@ -349,6 +379,22 @@ export const fn = createServerFn()
       './schema.server',
     ])
   })
+})
+
+// Source: Next.js server-actions fixtures server-graph/8 (comments in actions)
+test.each([
+  `// uses SERVICE_ROLE_KEY to bypass row level security\n  async () => 1,`,
+  `/*! uses SERVICE_ROLE_KEY to bypass row level security */\n  async () => 1,`,
+  `/* SERVICE_ROLE_KEY */ async () => 1,`,
+  `async () => 1, // uses SERVICE_ROLE_KEY`,
+])('callers drop the comments around the handler: %s', async (handler) => {
+  const compiled =
+    await compileAll(`${head}export const fn = createServerFn().handler(
+  ${handler}
+)`)
+  for (const caller of [compiled.client, compiled.ssr]) {
+    expect(caller).not.toContain('SERVICE_ROLE_KEY')
+  }
 })
 
 // Source: @vitejs/plugin-rsc hoist/function-hoist-block.js,
@@ -493,6 +539,82 @@ export const currentTheme = theme`)
 })
 
 describe('declarations only the handler needs', () => {
+  // Source: babel-dead-code-elimination "function" > "declaration",
+  // "variable" > "identifier" and "repeated elimination"; Next.js
+  // server-actions fixtures server-graph/5, /6
+  test.each([
+    {
+      name: 'a class',
+      declarations: `class Repo extends db.Base {
+  static instance = new Repo()
+  find() { return 'found' }
+}`,
+      use: 'Repo.instance.find()',
+      expected: 'found',
+    },
+    {
+      name: 'an overloaded function',
+      declarations: `function Repo(id: string): string
+function Repo(id: number): string
+function Repo(id: any) { return db.x(id) }`,
+      use: 'Repo(1)',
+      expected: 'x1',
+    },
+    {
+      name: 'an enum and a namespace',
+      declarations: `enum Role { Admin = 'admin' }
+namespace Repo {
+  export const conn = db.connect()
+}`,
+      use: '[Role.Admin, Repo.conn]',
+      expected: ['admin', 'connected'],
+    },
+    {
+      name: 'a redeclared var',
+      declarations: `var Repo = db.a()
+var Repo = db.b()`,
+      use: 'Repo',
+      expected: 'b',
+    },
+  ])(
+    'callers drop $name only the handler uses',
+    async ({ declarations, use, expected }) => {
+      const compiled = await compileAll(`${head}import { db } from './db.server'
+${declarations}
+export const fn = createServerFn().handler(async () => ${use})`)
+      for (const caller of [compiled.client, compiled.ssr]) {
+        expect(importSources(caller)).toEqual([])
+        expect(caller).not.toMatch(/\b(?:Repo|Role)\b/)
+      }
+      expect(
+        await callProvider(compiled.provider, 'fn', {
+          './db.server': `export const db = {
+  Base: class {},
+  x: (id) => 'x' + id,
+  connect: () => 'connected',
+  a: () => 'a',
+  b: () => 'b',
+}`,
+        }),
+      ).toEqual(expected)
+    },
+  )
+
+  // Source: React Compiler fixture context-variable-as-jsx-element-tag.js
+  test('callers drop a handler-only function that declares a local of its own name', async () => {
+    const compiled =
+      await compileAll(`${head}import { readSecret } from './server-only'
+function Report() {
+  let Report = readSecret()
+  return <Report />
+}
+export const getReport = createServerFn().handler(async () => Report())`)
+    for (const caller of [compiled.client, compiled.ssr]) {
+      expect(importSources(caller)).toEqual([])
+      expect(caller).not.toContain('readSecret')
+    }
+  })
+
   // Source: babel-dead-code-elimination "SCC dead code elimination" (mutual
   // recursion, self-recursive functions, unexported circular references)
   test('callers drop handler-only cycles and default parameters but keep cycles nothing used', async () => {

@@ -1,122 +1,196 @@
-import { expect, test } from 'vitest'
-import { compileFor, outputs } from '../regression-helpers'
-import { getModuleErrors } from '../validate-module'
+import { describe, expect, test } from 'vitest'
+import {
+  callProvider,
+  compileAll,
+  compileErrorMessage,
+  compileFor,
+  outputs,
+} from '../regression-helpers'
 
-const head = `import { createServerFn } from '@tanstack/react-start'\n`
-const top = `export const top = createServerFn().handler(async () => 'top')\n`
-const inFunction = `export function make() {
-  const fn = createServerFn().handler(async () => 'nested')
-  return fn
-}`
-const inSwitchCase = `export function pick(kind: string) {
+// A server fn must initialize a module-level variable: the provider module
+// exports its extracted handler next to that declaration. Anywhere else it is
+// rejected with a clear compile error in every output, whatever else the
+// module imports, instead of shipping its handler and server-only imports to
+// the client.
+
+const notAssigned = 'createServerFn must be assigned to a variable!'
+const nested =
+  'createServerFn must be assigned to a top-level variable, not declared inside a function or block!'
+
+const imports = {
+  'createServerFn alone': {
+    head: `import { createServerFn } from '@tanstack/react-start'\n`,
+    tail: '',
+  },
+  'another Start factory': {
+    head: `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'\n`,
+    tail: `\nexport const serverOnly = createServerOnlyFn(() => db.top())`,
+  },
+}
+
+describe.each(Object.entries(imports))(
+  'with %s imported',
+  (_, { head, tail }) => {
+    test.each([
+      {
+        name: 'a function body',
+        code: `export function make() {
+  const inner = createServerFn().handler(async () => db.inner())
+  return inner
+}`,
+        error: nested,
+      },
+      {
+        name: 'a function body next to a top-level server fn',
+        code: `export const top = createServerFn().handler(async () => db.top())
+export function make() {
+  const inner = createServerFn().handler(async () => db.inner())
+  return inner
+}`,
+        error: nested,
+      },
+      {
+        name: 'a switch case inside a function',
+        code: `export function pick(kind: string) {
   switch (kind) {
     case 'a':
-      const fn = createServerFn().handler(async () => 'nested')
-      return fn
+      const inner = createServerFn().handler(async () => db.inner())
+      return inner
   }
-}`
-
-// A `createServerFn` declared below the module top level must not produce an
-// invalid module, and top-level server fns next to it are still extracted.
-// Rejecting it with a compile error is valid too, but not crashing on it.
-// Known limitation on main: only module-level declarations are extracted; the
-// nested one is left untransformed, so its handler ships to the client. Which
-// nested server fns are extracted is left open here.
-test.each([
-  { name: 'a function', code: inFunction, topLevel: [] },
-  {
-    name: 'a switch case inside a function',
-    code: inSwitchCase,
-    topLevel: [],
-  },
-  {
-    name: 'a switch case at the module top level',
-    code: `switch (import.meta.env.MODE) {
-  case 'a':
-    const fn = createServerFn().handler(async () => 'nested')
-    console.log(fn)
 }`,
-    topLevel: [],
-  },
-  {
-    name: 'a function next to a top-level one',
-    code: `${top}${inFunction}`,
-    topLevel: ['top'],
-  },
-  {
-    name: 'a switch case next to a top-level one',
-    code: `${top}${inSwitchCase}`,
-    topLevel: ['top'],
-  },
-])(
-  'a server fn declared in $name compiles to valid modules or is rejected',
-  async ({ code, topLevel }) => {
-    const errors: Record<string, Array<string>> = {}
-    for (const output of outputs) {
-      let result: Awaited<ReturnType<typeof compileFor>>
-      try {
-        result = await compileFor(output, `${head}${code}`)
-      } catch (error) {
-        expect((error as Error).message, output).not.toMatch(
-          /Expected createServerFn declaration in a statement list/,
+        error: nested,
+      },
+      {
+        name: 'a switch case at the module top level',
+        code: `switch (import.meta.env.MODE) {
+  case 'a':
+    const inner = createServerFn().handler(async () => db.inner())
+    console.log(inner)
+}`,
+        error: nested,
+      },
+      {
+        name: 'a block at the module top level',
+        code: `export const registry: Array<unknown> = []
+{
+  const inner = createServerFn().handler(async () => db.inner())
+  registry.push(inner)
+}`,
+        error: nested,
+      },
+      {
+        // Source: SolidStart compile.spec.ts "keeps client and server ids
+        // aligned around nested server functions"
+        name: 'the handler of another server fn',
+        code: `export const outer = createServerFn().handler(async () => {
+  const inner = createServerFn().handler(async () => db.inner())
+  return typeof inner
+})`,
+        error: nested,
+      },
+      {
+        name: 'an object property',
+        code: `export const api = { read: createServerFn().handler(async () => db.inner()) }`,
+        error: notAssigned,
+      },
+      {
+        name: 'a class field',
+        code: `export class Api { read = createServerFn().handler(async () => db.inner()) }`,
+        error: notAssigned,
+      },
+      {
+        name: 'an anonymous default export',
+        code: `export default createServerFn().handler(async () => db.inner())`,
+        error: notAssigned,
+      },
+      {
+        name: 'an assignment',
+        code: `export let fn
+fn = createServerFn().handler(async () => db.inner())`,
+        error: notAssigned,
+      },
+      {
+        name: 'a function return value',
+        code: `export function make() {
+  return createServerFn().handler(async () => db.inner())
+}`,
+        error: notAssigned,
+      },
+      {
+        name: 'a call argument',
+        code: `register(createServerFn().handler(async () => db.inner()))`,
+        error: notAssigned,
+      },
+      {
+        // Source: Next.js server-actions fixtures server-graph/18, /19
+        name: 'a JSX attribute',
+        code: `export function Page() {
+  return <form action={createServerFn().handler(async () => db.inner()) as any} />
+}`,
+        error: notAssigned,
+      },
+      {
+        name: 'a conditional initializer',
+        code: `export const fn = import.meta.env.SSR ? createServerFn().handler(async () => db.inner()) : null`,
+        error: notAssigned,
+      },
+      {
+        // Source: Next.js server-actions fixtures server-graph/56
+        name: 'an object destructuring declarator',
+        code: `export const { fn } = { fn: createServerFn().handler(async () => db.inner()) }`,
+        error: notAssigned,
+      },
+      {
+        // Source: Next.js server-actions fixtures server-graph/20
+        name: 'an array destructuring declarator',
+        code: `export const [fn] = [createServerFn().handler(async () => db.inner())]`,
+        error: notAssigned,
+      },
+      {
+        name: 'a validator call without a validator',
+        code: `export const fn = createServerFn().validator().handler(async () => db.inner())`,
+        error: 'createServerFn().validator() must be called with a validator!',
+      },
+    ])('every output rejects a server fn in $name', async ({ code, error }) => {
+      const source = `${head}import { db } from './db.server'\n${code}${tail}`
+      for (const output of outputs) {
+        const thrown = await compileFor(output, source).then(
+          () => undefined,
+          (caught: unknown) => caught,
         )
-        continue
+        expect(thrown, output).toBeInstanceOf(Error)
+        expect(compileErrorMessage(thrown), output).toContain(error)
       }
-      errors[output] =
-        result.code === null ? [] : await getModuleErrors(result.code)
-      if (output === 'client') {
-        const extractedNames = Object.values(result.serverFns).map(
-          (fn) => fn.functionName,
-        )
-        expect(extractedNames).toEqual(
-          expect.arrayContaining(
-            topLevel.map((name) => `${name}_createServerFn_handler`),
-          ),
-        )
-      }
-    }
-    for (const [output, moduleErrors] of Object.entries(errors)) {
-      expect(moduleErrors, output).toEqual([])
-    }
+    })
   },
 )
 
-// A server fn must be a variable initializer; anywhere else it is rejected
-// in every output instead of being shipped untransformed.
-// Known limitation on main: with createServerFn as the only factory import
-// these modules are returned untransformed, so the extra import is needed.
-const rejectionHead = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'\n`
-test.each([
-  {
-    name: 'an object property',
-    code: `export const api = { read: createServerFn().handler(async () => 1) }`,
-    error: 'createServerFn must be assigned to a variable!',
-  },
-  {
-    name: 'a class field',
-    code: `export class Api { read = createServerFn().handler(async () => 1) }`,
-    error: 'createServerFn must be assigned to a variable!',
-  },
-  {
-    name: 'an anonymous default export',
-    code: `export default createServerFn().handler(async () => 1)`,
-    error: 'createServerFn must be assigned to a variable!',
-  },
-  {
-    name: 'an assignment',
-    code: `export let fn\nfn = createServerFn().handler(async () => 1)`,
-    error: 'createServerFn must be assigned to a variable!',
-  },
-  {
-    name: 'a validator call without a validator',
-    code: `export const fn = createServerFn().validator().handler(async () => 1)`,
-    error: 'createServerFn().validator() must be called with a validator!',
-  },
-])('rejects $name', async ({ code, error }) => {
-  for (const output of outputs) {
-    await expect(
-      compileFor(output, `${rejectionHead}${code}`),
-      output,
-    ).rejects.toThrow(error)
-  }
+test('compileErrorMessage drops the code frame that quotes the source', async () => {
+  const error = await compileFor(
+    'client',
+    `${imports['createServerFn alone'].head}const args: Array<() => unknown> = []
+export const fn = createServerFn().handler(...args)`,
+  ).catch((caught: unknown) => caught)
+  expect((error as Error).message).toContain('export const fn')
+  const message = compileErrorMessage(error)
+  expect(message).toMatch(/handler\(\) must be called with an expression/)
+  expect(message).not.toContain('export const fn')
+})
+
+test('a server fn created through an optional call chain compiles like a plain chain', async () => {
+  const { client, provider } = await compileAll(
+    `${imports['createServerFn alone'].head}export const fn = createServerFn()?.handler(async () => 'from the server')`,
+  )
+  expect(client).toContain('createClientRpc')
+  expect(client).not.toContain('from the server')
+  expect(await callProvider(provider, 'fn')).toBe('from the server')
+})
+
+test('a .ts module in a directory whose name contains # compiles as TypeScript', async () => {
+  const { code } = await compileFor(
+    'client',
+    `${imports['createServerFn alone'].head}export const fn = createServerFn().handler(async ({ data }) => <string>data)`,
+    { id: '/test/c#proj/src/module.ts' },
+  )
+  expect(code).toContain('createClientRpc')
 })

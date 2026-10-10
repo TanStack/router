@@ -1,7 +1,7 @@
-import * as template from '@babel/template'
+import { parseStatements } from '@tanstack/router-utils'
 import { getHandleRouteUpdateCode } from './handle-route-update'
 import type { Config } from '../config'
-import type * as t from '@babel/types'
+import type { ProgramStatement } from '@yuku-toolchain/types'
 
 /**
  * Emits HMR accept code for bundlers with webpack-compatible `module.hot`
@@ -21,7 +21,7 @@ export function createWebpackHmrStatement(
     targetFramework: Config['target']
     routeId?: string
   },
-): Array<t.Statement> {
+): Array<ProgramStatement> {
   const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
   const staticRouteIdLiteral =
     typeof opts.routeId === 'string'
@@ -63,9 +63,8 @@ export function createWebpackHmrStatement(
     } catch (_err) { /* noop */ }`
       : ''
 
-  return [
-    template.statement(
-      `
+  return parseStatements(
+    `
 if (import.meta.webpackHot) {
   const hot = import.meta.webpackHot
   const hotData = hot.data ??= {}
@@ -88,9 +87,5 @@ if (import.meta.webpackHot) {
   hot.accept()
 }
 `,
-      {
-        syntacticPlaceholders: true,
-      },
-    )(),
-  ]
+  )
 }
