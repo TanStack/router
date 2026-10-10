@@ -61,6 +61,18 @@ const jsonStrings = {
   object: '{"nested":true}',
   array: '[1,2,3]',
 }
+const numberAndLiteralPrefixedStrings = {
+  from: '2024-01-01',
+  id: '123abc',
+  offset: '-foo',
+  kind: 'transaction',
+}
+const digitLeadingNearMissStrings = {
+  version: '1.2.3',
+  uuid: '3f2a9c1e-7b4d',
+  time: '12:30',
+  code: '007',
+}
 const mixedValues = {
   tab: 'specs',
   page: '2',
@@ -100,6 +112,12 @@ expect(defaultParseSearch(toSearchString(jsonLiteralWordStrings))).toEqual(
 )
 expect(defaultParseSearch(toSearchString(jsonLiteralBoundaryStrings))).toEqual(
   jsonLiteralBoundaryStrings,
+)
+expect(
+  defaultParseSearch(toSearchString(numberAndLiteralPrefixedStrings)),
+).toEqual(numberAndLiteralPrefixedStrings)
+expect(defaultParseSearch(toSearchString(digitLeadingNearMissStrings))).toEqual(
+  digitLeadingNearMissStrings,
 )
 expect(defaultParseSearch(toSearchString(jsonStrings))).toEqual({
   number: 123,
@@ -174,6 +192,8 @@ const searches = Object.fromEntries(
     jsonLiteralPrefixStrings,
     jsonLiteralWordStrings,
     jsonLiteralBoundaryStrings,
+    numberAndLiteralPrefixedStrings,
+    digitLeadingNearMissStrings,
     jsonStrings,
     mixedValues,
     decodedPrimitives,
@@ -218,6 +238,14 @@ describe('default search parsing', () => {
 
   bench('JSON-literal prefixes followed by punctuation', () => {
     parseBatch(searches.jsonLiteralBoundaryStrings!)
+  })
+
+  bench('number- and literal-prefixed strings that are not JSON', () => {
+    parseBatch(searches.numberAndLiteralPrefixedStrings!)
+  })
+
+  bench('digit-leading near misses and leading-zero ids', () => {
+    parseBatch(searches.digitLeadingNearMissStrings!)
   })
 
   bench('JSON-compatible string values', () => {

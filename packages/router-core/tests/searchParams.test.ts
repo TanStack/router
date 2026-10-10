@@ -132,6 +132,108 @@ describe('Search Params serialization and deserialization', () => {
     }
   })
 
+  const numberAndLiteralPrefixedStrings = {
+    from: '2024-01-01',
+    id: '123abc',
+    offset: '-foo',
+    kind: 'transaction',
+    nullable: 'nullable',
+    speed: 'fast',
+  }
+
+  test('parse skips JSON.parse for number- and literal-prefixed strings that are not JSON', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse')
+    try {
+      const parse = parseSearchWith(JSON.parse)
+      expect(
+        parse(new URLSearchParams(numberAndLiteralPrefixedStrings).toString()),
+      ).toEqual(numberAndLiteralPrefixedStrings)
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
+  })
+
+  test('parse and stringify skip JSON.parse for leading zeros and non-JSON trailing whitespace', () => {
+    const values = {
+      a: '007',
+      b: '00',
+      c: '-01',
+      d: '1\u00a0',
+      e: 'true\u00a0',
+    }
+    const parseSpy = vi.spyOn(JSON, 'parse')
+    try {
+      const parse = parseSearchWith(JSON.parse)
+      const stringify = stringifySearchWith(JSON.stringify, JSON.parse)
+      expect(parse(new URLSearchParams(values).toString())).toEqual(values)
+      expect(parse(stringify(values))).toEqual(values)
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
+  })
+
+  test('custom parsers still receive number- and literal-prefixed strings', () => {
+    const parser = vi.fn((value: string) => JSON.parse(value))
+    const parse = parseSearchWith(parser)
+    expect(
+      parse(new URLSearchParams(numberAndLiteralPrefixedStrings).toString()),
+    ).toEqual(numberAndLiteralPrefixedStrings)
+    expect(parser).toHaveBeenCalledTimes(
+      Object.keys(numberAndLiteralPrefixedStrings).length,
+    )
+
+    const stringifyParser = vi.fn((value: string) => value)
+    expect(
+      stringifySearchWith(JSON.stringify, stringifyParser)({ d: '2024-01-01' }),
+    ).toEqual('?d=%222024-01-01%22')
+    expect(stringifyParser).toHaveBeenCalledExactlyOnceWith('2024-01-01')
+  })
+
+  test('stringify without a parser leaves JSON-like strings unquoted', () => {
+    expect(
+      stringifySearchWith(JSON.stringify)({
+        d: '2024-01-01',
+        n: '1.0',
+        t: 'true',
+      }),
+    ).toEqual('?d=2024-01-01&n=1.0&t=true')
+  })
+
+  test('stringify skips JSON.parse for number- and literal-prefixed strings that are not JSON', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse')
+    try {
+      const stringify = stringifySearchWith(JSON.stringify, JSON.parse)
+      expect(stringify(numberAndLiteralPrefixedStrings)).toEqual(
+        '?from=2024-01-01&id=123abc&offset=-foo&kind=transaction&nullable=nullable&speed=fast',
+      )
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
+  })
+
+  test.each([
+    ['1.0', '?value=%221.0%22'],
+    ['true ', '?value=%22true+%22'],
+    ['12.5e-3', '?value=%2212.5e-3%22'],
+    ['1E+2', '?value=%221E%2B2%22'],
+    ['1 ', '?value=%221+%22'],
+    ['-0', '?value=%22-0%22'],
+    ['01', '?value=01'],
+    ['1.', '?value=1.'],
+    ['1e', '?value=1e'],
+    ['2024-01-01', '?value=2024-01-01'],
+  ])(
+    'stringify quotes string %j only if JSON.parse accepts it, so it round-trips',
+    (value, expected) => {
+      const searchStr = defaultStringifySearch({ value })
+      expect(searchStr).toEqual(expected)
+      expect(defaultParseSearch(searchStr)).toEqual({ value })
+    },
+  )
+
   test('parse still parses strings that pass the jsonStart guard', () => {
     expect(defaultParseSearch('?n=123&flag=true&obj={"a":1}&arr=[1]')).toEqual({
       n: 123,
@@ -181,6 +283,29 @@ describe('Search Params serialization and deserialization', () => {
     ['雪', '雪'],
     ['\u00a0null', '\u00a0null'],
     ['\ufefftrue', '\ufefftrue'],
+    ['1.0', 1],
+    ['12.5e-3', 0.0125],
+    ['1E+2', 100],
+    ['1 ', 1],
+    ['true\n', true],
+    ['2024-01-01', '2024-01-01'],
+    ['1a', '1a'],
+    ['-x', '-x'],
+    ['-0.0', -0],
+    ['1\u00a0', '1\u00a0'],
+    ['true\u00a0', 'true\u00a0'],
+    ['1.', '1.'],
+    ['.5', '.5'],
+    ['1e+', '1e+'],
+    ['--1', '--1'],
+    ['00', '00'],
+    ['-01', '-01'],
+    ['0x10', '0x10'],
+    ['NaN', 'NaN'],
+    ['-Infinity', '-Infinity'],
+    ['truefalse', 'truefalse'],
+    ['true1', 'true1'],
+    ['null1', 'null1'],
   ])(
     'parses decoded value %j without changing fallback behavior',
     (value, expected) => {

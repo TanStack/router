@@ -1,9 +1,11 @@
 import { decode, encode } from './qss'
 import type { AnySchema } from './validators'
 
-// JSON can start with whitespace, ", [, {, -, a digit, or fa/nu/tr.
-// False positives safely fall through to JSON.parse.
-const jsonStart = /^(?:\s|["[{\d-]|fa|nu|tr)/
+// JSON can start with whitespace, ", [ or {. Anything else must be a complete
+// JSON number or literal followed only by JSON whitespace. This must stay a
+// superset of what JSON.parse accepts; false positives safely fall through.
+const jsonStart =
+  /^(?:\s|["[{]|(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)[ \t\n\r]*$)/
 
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
 export const defaultParseSearch = parseSearchWith(JSON.parse)
