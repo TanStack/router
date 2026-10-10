@@ -261,7 +261,6 @@ export function createRouterCodeSplitterPlugin(
       transform: {
         filter: {
           id: {
-            exclude: [tsrSplit, tsrShared],
             // this is necessary for webpack / rspack to avoid matching .html files
             include: /\.(m|c)?(j|t)sx?$/,
           },
