@@ -19,6 +19,7 @@ import { Route as ApiMiddlewareContextRouteImport } from './routes/api/middlewar
 import { Route as ApiOnlyAnyRouteImport } from './routes/api/only-any'
 import { Route as MethodsIndexRouteImport } from './routes/methods/index'
 import { Route as MethodsOnlyAnyRouteImport } from './routes/methods/only-any'
+import { Route as ParsedPageIdRouteImport } from './routes/parsed-page.$id'
 import { Route as ApiParamsFooRouteRouteImport } from './routes/api/params/$foo/route'
 import { Route as ApiParsedParamsIdRouteImport } from './routes/api/parsed-params.$id'
 import { Route as ApiParamsFooBarRouteImport } from './routes/api/params/$foo/$bar'
@@ -74,6 +75,11 @@ const MethodsOnlyAnyRoute = MethodsOnlyAnyRouteImport.update({
   path: '/only-any',
   getParentRoute: () => MethodsRouteRoute,
 } as any)
+const ParsedPageIdRoute = ParsedPageIdRouteImport.update({
+  id: '/parsed-page/$id',
+  path: '/parsed-page/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiParamsFooRouteRoute = ApiParamsFooRouteRouteImport.update({
   id: '/api/params/$foo',
   path: '/api/params/$foo',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/api/middleware-context': typeof ApiMiddlewareContextRoute
   '/api/only-any': typeof ApiOnlyAnyRoute
   '/methods/only-any': typeof MethodsOnlyAnyRoute
+  '/parsed-page/$id': typeof ParsedPageIdRoute
   '/methods/': typeof MethodsIndexRoute
   '/api/params/$foo': typeof ApiParamsFooRouteRouteWithChildren
   '/api/parsed-params/$id': typeof ApiParsedParamsIdRouteWithChildren
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/api/middleware-context': typeof ApiMiddlewareContextRoute
   '/api/only-any': typeof ApiOnlyAnyRoute
   '/methods/only-any': typeof MethodsOnlyAnyRoute
+  '/parsed-page/$id': typeof ParsedPageIdRoute
   '/methods': typeof MethodsIndexRoute
   '/api/params/$foo': typeof ApiParamsFooRouteRouteWithChildren
   '/api/parsed-params/$id': typeof ApiParsedParamsIdRouteWithChildren
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/api/middleware-context': typeof ApiMiddlewareContextRoute
   '/api/only-any': typeof ApiOnlyAnyRoute
   '/methods/only-any': typeof MethodsOnlyAnyRoute
+  '/parsed-page/$id': typeof ParsedPageIdRoute
   '/methods/': typeof MethodsIndexRoute
   '/api/params/$foo': typeof ApiParamsFooRouteRouteWithChildren
   '/api/parsed-params/$id': typeof ApiParsedParamsIdRouteWithChildren
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/api/middleware-context'
     | '/api/only-any'
     | '/methods/only-any'
+    | '/parsed-page/$id'
     | '/methods/'
     | '/api/params/$foo'
     | '/api/parsed-params/$id'
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
     | '/api/middleware-context'
     | '/api/only-any'
     | '/methods/only-any'
+    | '/parsed-page/$id'
     | '/methods'
     | '/api/params/$foo'
     | '/api/parsed-params/$id'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
     | '/api/middleware-context'
     | '/api/only-any'
     | '/methods/only-any'
+    | '/parsed-page/$id'
     | '/methods/'
     | '/api/params/$foo'
     | '/api/parsed-params/$id'
@@ -203,6 +215,7 @@ export interface RootRouteChildren {
   ApiHeadRedirectFallbackRoute: typeof ApiHeadRedirectFallbackRoute
   ApiMiddlewareContextRoute: typeof ApiMiddlewareContextRoute
   ApiOnlyAnyRoute: typeof ApiOnlyAnyRoute
+  ParsedPageIdRoute: typeof ParsedPageIdRoute
   ApiParamsFooRouteRoute: typeof ApiParamsFooRouteRouteWithChildren
   ApiParsedParamsIdRoute: typeof ApiParsedParamsIdRouteWithChildren
 }
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/methods/only-any'
       preLoaderRoute: typeof MethodsOnlyAnyRouteImport
       parentRoute: typeof MethodsRouteRoute
+    }
+    '/parsed-page/$id': {
+      id: '/parsed-page/$id'
+      path: '/parsed-page/$id'
+      fullPath: '/parsed-page/$id'
+      preLoaderRoute: typeof ParsedPageIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/params/$foo': {
       id: '/api/params/$foo'
@@ -355,6 +375,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHeadRedirectFallbackRoute: ApiHeadRedirectFallbackRoute,
   ApiMiddlewareContextRoute: ApiMiddlewareContextRoute,
   ApiOnlyAnyRoute: ApiOnlyAnyRoute,
+  ParsedPageIdRoute: ParsedPageIdRoute,
   ApiParamsFooRouteRoute: ApiParamsFooRouteRouteWithChildren,
   ApiParsedParamsIdRoute: ApiParsedParamsIdRouteWithChildren,
 }

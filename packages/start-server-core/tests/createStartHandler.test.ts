@@ -13,11 +13,13 @@ import {
   RouterCore,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
+  notFound,
   redirect,
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
   createSsrStreamResponse,
+  getSsrStatus,
   transformReadableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
 import {
@@ -1856,6 +1858,172 @@ describe('createStartHandler direct server routes', () => {
       expect(cancel).toHaveBeenCalledOnce()
       expect(cancel).toHaveBeenCalledWith(cancellation)
     })
+    expect(render).not.toHaveBeenCalled()
+  })
+})
+
+describe('createStartHandler server route params parse failures', () => {
+  const browserAccept = 'text/html,application/xhtml+xml,*/*;q=0.8'
+
+  function parseItemId(failure: unknown) {
+    return ({ itemId }: { itemId: string }) => {
+      const parsed = Number(itemId)
+      if (!Number.isFinite(parsed)) {
+        throw failure
+      }
+      return { itemId: parsed }
+    }
+  }
+
+  function makeParsedRouter(failure: unknown, component: boolean) {
+    const routeHandler = vi.fn(({ params }: any) => Response.json(params))
+    startMocks.router = makeRouter({
+      path: '/items/$itemId',
+      component: component ? () => null : undefined,
+      params: { parse: parseItemId(failure) },
+      server: { handlers: { GET: routeHandler } },
+    })
+    const render = vi.fn(
+      ({ router }: { router: AnyRouter }) =>
+        new Response('rendered document', { status: getSsrStatus(router) }),
+    )
+    return { routeHandler, handler: createStartHandler(render), render }
+  }
+
+  it.each([
+    { component: false, accept: undefined },
+    { component: false, accept: browserAccept },
+    { component: true, accept: undefined },
+    { component: true, accept: '*/*' },
+    { component: true, accept: 'application/json' },
+  ])(
+    'responds 404 without rendering when params.parse throws notFound (component=$component, accept=$accept)',
+    async ({ component, accept }) => {
+      const { routeHandler, handler, render } = makeParsedRouter(
+        notFound({ headers: { 'x-not-found': 'params' } }),
+        component,
+      )
+
+      const response = await handler(
+        new Request('http://localhost/items/nope', {
+          headers: accept ? { accept } : {},
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(404)
+      expect(response.headers.get('x-not-found')).toBe('params')
+      expect(routeHandler).not.toHaveBeenCalled()
+      expect(render).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    { failure: notFound(), status: 404 },
+    { failure: new Error('Invalid item id'), status: 500 },
+  ])(
+    'renders the app router for explicit HTML requests when params.parse throws (status=$status)',
+    async ({ failure, status }) => {
+      const { routeHandler, handler, render } = makeParsedRouter(failure, true)
+
+      const response = await handler(
+        new Request('http://localhost/items/nope', {
+          headers: { accept: browserAccept },
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(status)
+      await expect(response.text()).resolves.toBe('rendered document')
+      expect(routeHandler).not.toHaveBeenCalled()
+      expect(render).toHaveBeenCalledOnce()
+    },
+  )
+
+  it('responds 500 without rendering when params.parse throws an error for a non-HTML request', async () => {
+    const { routeHandler, handler, render } = makeParsedRouter(
+      new Error('Invalid item id'),
+      true,
+    )
+
+    const response = await handler(
+      new Request('http://localhost/items/nope'),
+      {},
+    )
+
+    expect(response.status).toBe(500)
+    expect(routeHandler).not.toHaveBeenCalled()
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])(
+    'redirects when params.parse throws a redirect (component=%s)',
+    async (component) => {
+      const { routeHandler, handler } = makeParsedRouter(
+        redirect({ href: '/items/0' }),
+        component,
+      )
+
+      const response = await handler(
+        new Request('http://localhost/items/nope', {
+          headers: { accept: browserAccept },
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get('location')).toBe('/items/0')
+      expect(routeHandler).not.toHaveBeenCalled()
+    },
+  )
+
+  it('lets middleware catch notFound thrown by params.parse', async () => {
+    const middleware = createMiddleware().server(async ({ next }) => {
+      try {
+        return await next()
+      } catch (error) {
+        expect(error).toMatchObject({ isNotFound: true })
+        return Response.json({ error: 'missing' }, { status: 410 })
+      }
+    })
+    startMocks.router = makeRouter({
+      path: '/items/$itemId',
+      component: undefined,
+      params: { parse: parseItemId(notFound()) },
+      server: {
+        middleware: [middleware],
+        handlers: { GET: () => new Response('must not run') },
+      },
+    })
+    const handler = createStartHandler(() => new Response('must not render'))
+
+    const response = await handler(
+      new Request('http://localhost/items/nope'),
+      {},
+    )
+
+    expect(response.status).toBe(410)
+    await expect(response.json()).resolves.toEqual({ error: 'missing' })
+  })
+
+  it('responds 404 when a server route handler throws notFound', async () => {
+    startMocks.router = makeRouter({
+      path: '/items/$itemId',
+      component: undefined,
+      server: {
+        handlers: {
+          GET: () => {
+            throw notFound()
+          },
+        },
+      },
+    })
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+
+    const response = await handler(new Request('http://localhost/items/1'), {})
+
+    expect(response.status).toBe(404)
     expect(render).not.toHaveBeenCalled()
   })
 })
