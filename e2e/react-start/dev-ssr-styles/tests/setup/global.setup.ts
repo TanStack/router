@@ -16,12 +16,21 @@ export default async function setup() {
   const browser = await chromium.launch()
   try {
     const page = await browser.newPage({ javaScriptEnabled: false })
+    const backgroundAsset =
+      ssrStylesMode !== 'disabled'
+        ? page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname.includes('ssr-background'),
+            { timeout: 60_000 },
+          )
+        : undefined
     await page.goto(baseURL, { timeout: 60_000 })
     await expect(page.getByTestId('home-heading')).toHaveText(
       'Dev SSR Styles Test',
       { timeout: 30_000 },
     )
     if (ssrStylesMode !== 'disabled') {
+      expect((await backgroundAsset!).ok()).toBeTruthy()
       await expect(page.getByTestId('styled-box')).toHaveCSS(
         'background-color',
         'rgb(59, 130, 246)',

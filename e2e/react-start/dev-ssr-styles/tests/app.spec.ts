@@ -25,10 +25,15 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
   })
 
   test('page renders correctly', async ({ page }) => {
+    const runtimeErrors: Array<string> = []
+    page.on('pageerror', (error) => {
+      runtimeErrors.push(error.message)
+    })
     await page.goto('/')
     await expect(page.getByTestId('home-heading')).toHaveText(
       'Dev SSR Styles Test',
     )
+    expect(runtimeErrors).toEqual([])
   })
 
   if (ssrStylesMode === 'default') {
@@ -114,6 +119,15 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
           files: { css: '../src/styles/code-split-route.module.css' },
         })
         await editor.capturePromise
+        const expectSsrColor = async (color: string) => {
+          await expect(async () => {
+            await page.reload()
+            await expect(page.getByTestId('styled-box')).toHaveCSS(
+              'background-color',
+              color,
+            )
+          }).toPass({ timeout: 20_000 })
+        }
         try {
           await page.goto('/')
           await expect(page.getByTestId('styled-box')).toHaveCSS(
@@ -121,16 +135,27 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
             'rgb(59, 130, 246)',
           )
           await editor.replaceText('css', '#3b82f6', '#ef4444')
-          await expect(async () => {
-            await page.reload()
-            await expect(page.getByTestId('styled-box')).toHaveCSS(
-              'background-color',
-              'rgb(239, 68, 68)',
-            )
-          }).toPass({ timeout: 20_000 })
+          await expectSsrColor('rgb(239, 68, 68)')
         } finally {
           await editor.restoreFiles()
+          // Finish the restore before another test reads the SSR stylesheet.
+          await expectSsrColor('rgb(59, 130, 246)')
         }
+      })
+
+      test('assets referenced by SSR CSS are available before hydration', async ({
+        page,
+      }) => {
+        await page.goto('/')
+        const backgroundImage = await page
+          .getByTestId('styled-box')
+          .evaluate((element) => getComputedStyle(element).backgroundImage)
+        const assetUrl = backgroundImage.match(/^url\("(.+)"\)$/)?.[1]
+        expect(assetUrl).toBeDefined()
+        const response = await page.request.get(assetUrl!)
+        expect(response.ok()).toBeTruthy()
+        expect(response.headers()['content-type']).toContain('image/svg+xml')
+        expect(await response.text()).toContain('<svg')
       })
 
       test('CSS @import dependencies are not appended after their importer', async ({

@@ -64,10 +64,7 @@
           "mode": "ssr",
           "name": "bundled-dev",
           "env": {
-            "E2E_VITE_BUNDLED_DEV": "true",
-            "DEBUG": "vite:full-bundle-mode",
-            "RD_LOG": "notify::inotify=trace",
-            "RD_LOG_OUTPUT": "readable"
+            "E2E_VITE_BUNDLED_DEV": "true"
           }
         },
         {

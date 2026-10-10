@@ -24,6 +24,7 @@ export function startManifestPlugin(opts: {
 }): PluginOption {
   let clientBuild: NormalizedClientBuild | undefined
   let cssCodeSplitDisabledFileName: string | undefined
+  let devClientRuntime: string | undefined
 
   return [
     {
@@ -32,6 +33,14 @@ export function startManifestPlugin(opts: {
         return environment.name === START_ENVIRONMENT_NAMES.client
       },
       enforce: 'post',
+      configureServer(server) {
+        // Vite's separate bundled dev runtime must run before the client entry.
+        // Use its SSR output API once available (vitejs/vite#22991).
+        devClientRuntime = server.environments[START_ENVIRONMENT_NAMES.client]
+          .bundledDev
+          ? joinURL(server.config.base, 'bundledDevClient.mjs')
+          : undefined
+      },
       generateBundle(_options, bundle) {
         if (this.environment.name !== START_ENVIRONMENT_NAMES.client) {
           throw new Error(
@@ -61,11 +70,11 @@ export function startManifestPlugin(opts: {
         })
 
         if (this.environment.name !== START_ENVIRONMENT_NAMES.server) {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
         if (this.environment.config.command === 'serve') {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
         const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
@@ -138,7 +147,24 @@ function getAssetFileNameByName(
   return undefined
 }
 
-function getEmptyStartManifestModule(clientEntry: string) {
+function getEmptyStartManifestModule(
+  clientEntry: string,
+  clientRuntime?: string,
+) {
+  if (clientRuntime) {
+    const entries = [clientRuntime, clientEntry]
+    return `export const tsrStartManifest = () => (${serializeStartManifest({
+      routes: {
+        [rootRouteId]: {
+          preloads: entries,
+          scripts: entries.map((src) => ({
+            attrs: { type: 'module', async: false, src },
+          })),
+        },
+      },
+    })})`
+  }
+
   return `export const tsrStartManifest = () => ({
       routes: {
         __root__: {

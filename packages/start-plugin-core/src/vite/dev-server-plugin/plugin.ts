@@ -1,6 +1,7 @@
 import { isRunnableDevEnvironment } from 'vite'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../../constants'
+import { ensureLatestClientBuild } from '../bundled-dev'
 import {
   captureBundledDevStyles,
   collectBundledDevStyles,
@@ -76,7 +77,7 @@ export function devServerPlugin({
             // Vite skips server HMR hooks in bundled dev. Invalidate changed
             // transforms before notifying local or external SSR module runners.
             this.environment.moduleGraph.onFileChange(id)
-            this.environment.hot.send({ type: 'full-reload' })
+            this.environment.hot.send({ type: 'full-reload', triggeredBy: id })
           }
         },
       },
@@ -85,15 +86,8 @@ export function devServerPlugin({
           return
         }
 
-        const clientEnv = viteDevServer.environments[
-          VITE_ENVIRONMENT_NAMES.client
-        ] as
-          | {
-              devEngine?: {
-                ensureLatestBuildOutput?: () => Promise<void>
-              }
-            }
-          | undefined
+        const clientEnv =
+          viteDevServer.environments[VITE_ENVIRONMENT_NAMES.client]
 
         // CSS middleware registered in PRE-PHASE (before Vite's internal middlewares)
         // This ensures it handles /@tanstack-start/styles.css before any catch-all middleware
@@ -138,7 +132,7 @@ export function devServerPlugin({
                 if (bundledDev) {
                   // Wait for the bundled client's completed graph without
                   // starting Vite's separate normal client container.
-                  await clientEnv?.devEngine?.ensureLatestBuildOutput?.()
+                  await ensureLatestClientBuild(clientEnv)
                   css = collectBundledDevStyles(bundledStyles, entries) ?? ''
                 } else {
                   css =
@@ -236,7 +230,7 @@ export function devServerPlugin({
                * }
                */
               if (viteDevServer.config.experimental.bundledDev) {
-                await clientEnv?.devEngine?.ensureLatestBuildOutput?.()
+                await ensureLatestClientBuild(clientEnv)
               }
 
               const serverEntry = await serverRunner.import(ENTRY_POINTS.server)

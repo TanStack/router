@@ -607,45 +607,12 @@ test.describe('react-start hmr', () => {
   test('preserves local state for code-split route component HMR', async ({
     page,
   }) => {
-    if (isViteBundledDev) {
-      page.on('websocket', (socket) => {
-        socket.on('framesent', ({ payload }) => {
-          const message = JSON.parse(String(payload))
-          if (message.event === 'vite:module-loaded') {
-            console.log('HMR modules sent', Date.now(), {
-              clientId: message.data.clientId,
-              modules: message.data.modules.filter((id: string) =>
-                id.includes('routes/index'),
-              ),
-            })
-          }
-        })
-        socket.on('framereceived', ({ payload }) => {
-          const message = JSON.parse(String(payload))
-          console.log('HMR message received', Date.now(), {
-            type: message.type,
-            event: message.event,
-          })
-        })
-      })
-    }
-    // Hydration can finish before Vite connects HMR or registers bundled modules.
+    // Hydration can finish before Vite connects its HMR socket.
     const hmrReady =
       (process.env.E2E_TOOLCHAIN ?? 'vite') === 'vite'
         ? page.waitForEvent('websocket').then((socket) => {
-            if (!isViteBundledDev) {
-              return socket.waitForEvent('framereceived', ({ payload }) => {
-                return JSON.parse(String(payload)).type === 'connected'
-              })
-            }
-            return socket.waitForEvent('framesent', ({ payload }) => {
-              const message = JSON.parse(String(payload))
-              return (
-                message.event === 'vite:module-loaded' &&
-                message.data.modules.includes(
-                  'src/routes/index.tsx?tsr-split=component',
-                )
-              )
+            return socket.waitForEvent('framereceived', ({ payload }) => {
+              return JSON.parse(String(payload)).type === 'connected'
             })
           })
         : Promise.resolve()
