@@ -123,9 +123,9 @@
     "chokidar": "catalog:",
     "unplugin": "^3.3.0",
     "zod": "catalog:",
-    "@yuku-toolchain/types": "0.18.0",
-    "yuku-analyzer": "0.18.0",
-    "yuku-ast": "0.18.0"
+    "@yuku-toolchain/types": "0.18.1",
+    "yuku-analyzer": "0.18.1",
+    "yuku-ast": "0.18.1"
   },
   "devDependencies": {
     "@rsbuild/core": "catalog:",

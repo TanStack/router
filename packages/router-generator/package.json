@@ -72,8 +72,8 @@
     "magic-string": "^0.30.21",
     "prettier": "^3.9.6",
     "zod": "catalog:",
-    "@yuku-toolchain/types": "0.18.0",
-    "yuku-ast": "0.18.0"
+    "@yuku-toolchain/types": "0.18.1",
+    "yuku-ast": "0.18.1"
   },
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",

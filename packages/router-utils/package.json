@@ -67,12 +67,12 @@
     "diff": "^8.0.4",
     "pathe": "catalog:",
     "tinyglobby": "catalog:",
-    "@yuku-core/wasm": "0.18.0",
-    "@yuku-toolchain/types": "0.18.0",
-    "yuku-analyzer": "0.18.0",
-    "yuku-ast": "0.18.0",
-    "yuku-codegen": "0.18.0",
-    "yuku-core": "0.18.0"
+    "@yuku-core/wasm": "0.18.1",
+    "@yuku-toolchain/types": "0.18.1",
+    "yuku-analyzer": "0.18.1",
+    "yuku-ast": "0.18.1",
+    "yuku-codegen": "0.18.1",
+    "yuku-core": "0.18.1"
   },
   "devDependencies": {
     "vite": "*",
