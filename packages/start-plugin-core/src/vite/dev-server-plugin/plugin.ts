@@ -18,8 +18,6 @@ export function devServerPlugin({
   devSsrStylesEnabled: boolean
   installDevServerMiddleware: boolean | undefined
 }): PluginOption {
-  let isTest = false
-
   // Cache CSS modules content during transform hook.
   // For CSS modules, the transform hook receives the raw CSS content before
   // Vite wraps it in JS. We capture this to use during SSR style collection.
@@ -28,9 +26,6 @@ export function devServerPlugin({
   return [
     {
       name: 'tanstack-start-core:dev-server',
-      config(_userConfig, { mode }) {
-        isTest = isTest ? isTest : mode === 'test'
-      },
       // Capture CSS modules content during transform
       transform: {
         filter: {
@@ -41,10 +36,6 @@ export function devServerPlugin({
         },
       },
       configureServer(viteDevServer) {
-        if (isTest) {
-          return
-        }
-
         // CSS middleware registered in PRE-PHASE (before Vite's internal middlewares)
         // This ensures it handles /@tanstack-start/styles.css before any catch-all middleware
         // from other plugins (like nitro) that may be registered in the post-phase.
