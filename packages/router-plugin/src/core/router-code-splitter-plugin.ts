@@ -17,7 +17,6 @@ import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framewor
 import {
   defaultCodeSplitGroupings,
   splitRouteIdentNodes,
-  tsrShared,
   tsrSplit,
 } from './constants'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
