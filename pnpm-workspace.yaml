@@ -1,5 +1,7 @@
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - '@tanstack/react-store@1.0.0-alpha.0'
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 blockExoticSubdeps: true
