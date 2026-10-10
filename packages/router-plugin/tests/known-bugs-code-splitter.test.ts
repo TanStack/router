@@ -487,9 +487,9 @@ export async function load() {
   return router.state.matches.map((match) => match.loaderData ?? null)
 }`
 
-  function loadWithSplitLoader(loader: string) {
+  function loadWithSplitLoader(loader: string, declarations = '') {
     return buildAndRun(
-      `${head}export const Route = createFileRoute('/')({
+      `${head}${declarations}export const Route = createFileRoute('/')({
   loader: ${loader},
   component: () => <p>index</p>,
 })`,
@@ -520,6 +520,23 @@ export async function load() {
         null,
         'loaded',
       ])
+    },
+    30_000,
+  )
+
+  // Bug: an object-form loader passed by reference (`loader` holding
+  // `{ handler }`) is split as if it were the loader function, so the route
+  // calls the object ("... is not a function").
+  // Impact: the route's data never loads once the loader is split.
+  test.fails(
+    'a split loader in object form passed by reference loads route data',
+    async () => {
+      expect(
+        await loadWithSplitLoader(
+          'loader',
+          `const loader = { handler: () => 'loaded' }\n`,
+        ),
+      ).toEqual([null, 'loaded'])
     },
     30_000,
   )
