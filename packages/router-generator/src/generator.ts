@@ -1221,20 +1221,6 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     if (opts.strategy.type === 'mtime') {
       const { expectedMtimeMs, expectedContent } = opts.strategy
       const beforeStat = await this.fs.stat(opts.filePath)
-      const current =
-        expectedContent === undefined
-          ? undefined
-          : await this.fs.readFile(opts.filePath)
-      if (
-        beforeStat.mtimeMs !== expectedMtimeMs ||
-        current === 'file-not-existing' ||
-        (current !== undefined && current.fileContent !== expectedContent)
-      ) {
-        throw rerun({
-          msg: `File ${opts.filePath} was modified by another process during processing.`,
-          event: { type: 'update', path: opts.filePath },
-        })
-      }
       const newFileState = await this.fs.stat(tmpPath)
       if (newFileState.mode !== beforeStat.mode) {
         await this.fs.chmod(tmpPath, beforeStat.mode)
@@ -1259,6 +1245,20 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
             throw err
           }
         }
+      }
+      // Check right before the rename so that changes made while the
+      // temporary file was prepared are not overwritten.
+      const current = await this.fs.readFile(opts.filePath)
+      if (
+        current === 'file-not-existing' ||
+        current.stat.mtimeMs !== expectedMtimeMs ||
+        (expectedContent !== undefined &&
+          current.fileContent !== expectedContent)
+      ) {
+        throw rerun({
+          msg: `File ${opts.filePath} was modified by another process during processing.`,
+          event: { type: 'update', path: opts.filePath },
+        })
       }
     } else {
       if (await checkFileExists(opts.filePath)) {
