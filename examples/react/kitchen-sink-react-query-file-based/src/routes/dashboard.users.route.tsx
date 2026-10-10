@@ -30,7 +30,10 @@ export const Route = createFileRoute('/dashboard/users')({
     middlewares: [retainSearchParams(['usersView'])],
   },
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(usersQueryOptions({})),
+    opts.context.queryClient.query({
+      ...usersQueryOptions({}),
+      staleTime: 'static',
+    }),
   component: UsersComponent,
 })
 

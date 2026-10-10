@@ -5,9 +5,10 @@ import { PostErrorComponent } from './posts.$postId'
 
 export const Route = createFileRoute('/posts_/$postId/deep')({
   loader: async ({ params: { postId }, context }) => {
-    const data = await context.queryClient.ensureQueryData(
-      postQueryOptions(postId),
-    )
+    const data = await context.queryClient.query({
+      ...postQueryOptions(postId),
+      staleTime: 'static',
+    })
 
     return {
       title: data.title,

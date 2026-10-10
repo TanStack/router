@@ -4,7 +4,10 @@ import { usersQueryOptions } from '../utils/users'
 
 export const Route = createFileRoute('/users')({
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(usersQueryOptions())
+    await context.queryClient.query({
+      ...usersQueryOptions(),
+      staleTime: 'static',
+    })
   },
   component: UsersComponent,
 })

@@ -101,7 +101,7 @@ const postsLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: ({ context: { queryClient } }) =>
-    queryClient.ensureQueryData(postsQueryOptions),
+    queryClient.query({ ...postsQueryOptions, staleTime: 'static' }),
 }).lazy(() => import('./posts.lazy').then((d) => d.Route))
 
 const postsIndexRoute = createRoute({
@@ -119,7 +119,7 @@ const postRoute = createRoute({
   path: '$postId',
   errorComponent: PostErrorComponent,
   loader: ({ context: { queryClient }, params: { postId } }) =>
-    queryClient.ensureQueryData(postQueryOptions(postId)),
+    queryClient.query({ ...postQueryOptions(postId), staleTime: 'static' }),
   component: PostRouteComponent,
 })
 
