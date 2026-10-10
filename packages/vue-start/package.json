@@ -112,6 +112,7 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
+    "@tanstack/router-core": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
