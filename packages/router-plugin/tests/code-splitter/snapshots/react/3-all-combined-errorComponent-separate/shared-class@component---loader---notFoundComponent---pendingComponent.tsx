@@ -1,13 +1,4 @@
-class DataStore {
-  data = new Map();
-  get(k: string) {
-    return this.data.get(k);
-  }
-  set(k: string, v: unknown) {
-    this.data.set(k, v);
-  }
-}
-const store = new DataStore();
+import { store } from "shared-class.tsx?tsr-shared=1";
 const SplitLoader = async () => {
   store.set('items', await fetch('/api'));
 };

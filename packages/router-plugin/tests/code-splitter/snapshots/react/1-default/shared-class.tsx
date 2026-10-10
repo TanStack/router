@@ -3,6 +3,9 @@ const $$splitComponentImporter = () => import('shared-class.tsx?tsr-split=compon
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/store')({
+  beforeLoad() {
+    console.log(store.get('items'));
+  },
   loader: async () => {
     store.set('items', await fetch('/api'));
   },
