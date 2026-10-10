@@ -1,5 +1,19 @@
 # @tanstack/start-plugin-core
 
+## 1.171.50
+
+### Patch Changes
+
+- [#7830](https://github.com/TanStack/router/pull/7830) [`4191640`](https://github.com/TanStack/router/commit/41916400b93fdb62189722266ed1d77ba9c26be9) - Fix dev SSR style collection to preserve CSS order without duplicating imported styles, while retaining styles from code-split routes. Keep layered imports from inline styles out of the global dev stylesheet. In bundled development, collect styles from a complete client bundle and load compiler dependencies through the bundler to avoid restarting client plugins. Preserve client hydration and reload SSR modules on file changes instead of clearing them on every request.
+
+  Support newer Vite bundled dev versions by loading their separate client runtime before hydration and awaiting the client build through the updated environment API.
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/router-core@1.171.35
+  - @tanstack/start-server-core@1.169.40
+  - @tanstack/router-generator@1.167.41
+  - @tanstack/router-plugin@1.168.43
+
 ## 1.171.49
 
 ### Patch Changes
