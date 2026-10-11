@@ -1,5 +1,5 @@
 import { BindingFlags } from 'yuku-analyzer'
-import { b, bindingIdentifiers, is, nameOf, walk } from 'yuku-ast'
+import { b, bindingIdentifiers, is, nameOf, unwrap, walk } from 'yuku-ast'
 import { generatedReferenceOf } from './ast'
 import type { Binding, Module, Scope } from 'yuku-analyzer'
 import type { Expression, Node, Program } from '@yuku-toolchain/types'
@@ -799,4 +799,12 @@ export function extractModuleInfo(sourceModule: Module): ExtractedModuleInfo {
   return { bindings, exports: exportBindings, reExportAllSources }
 }
 
-export { unwrap as unwrapExpression } from 'yuku-ast'
+/**
+ * The expression inside parentheses and erased TypeScript assertions. Any
+ * other node, or none, is returned as is.
+ */
+export function unwrapExpression<T extends Node | null | undefined>(
+  node: T,
+): T | Expression {
+  return unwrap(node as Expression)
+}

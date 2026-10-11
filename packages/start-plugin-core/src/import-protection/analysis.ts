@@ -60,10 +60,6 @@ function getOrAnalyzeModule(result: TransformResult): Module {
   }
 }
 
-function unwrapNode(node: t.Node): t.Node {
-  return is.Expression(node) ? unwrapExpression(node) : node
-}
-
 function getStringLiteralValueStart(node: t.StringLiteral): number {
   return node.start + 1
 }
@@ -177,7 +173,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         addSpecifierLocation(node.source)
       }
     } else if (is.ImportExpression(node)) {
-      const source = unwrapNode(node.source)
+      const source = unwrapExpression(node.source)
       if (is.StringLiteral(source)) {
         addSpecifierLocation(source)
       }
@@ -283,13 +279,13 @@ function isCompilerSafeBoundaryCall(
   envType: BoundaryEnv,
 ): boolean {
   const directArgument = call.arguments.some(
-    (arg) => unwrapNode(arg) === fnNode,
+    (arg) => unwrapExpression(arg) === fnNode,
   )
   if (!directArgument) {
     return false
   }
 
-  const callee = unwrapNode(call.callee)
+  const callee = unwrapExpression(call.callee)
 
   if (is.Identifier(callee)) {
     return envType === 'client'
@@ -332,7 +328,7 @@ function isCompilerSafeBoundaryCall(
 }
 
 function getCalleeRootName(node: t.Node): string | undefined {
-  node = unwrapNode(node)
+  node = unwrapExpression(node)
   if (is.Identifier(node)) {
     return node.name
   }
@@ -350,7 +346,7 @@ function getCalleeRootName(node: t.Node): string | undefined {
 
 function transparentParent(module: Module, node: t.Node) {
   let parent = module.parentOf(node)
-  while (parent && unwrapNode(parent) === unwrapNode(node)) {
+  while (parent && unwrapExpression(parent) === unwrapExpression(node)) {
     node = parent
     parent = module.parentOf(node)
   }

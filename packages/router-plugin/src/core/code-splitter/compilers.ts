@@ -117,9 +117,7 @@ function resolveExpression(
   if (!node) {
     return undefined
   }
-  if (is.Expression(node)) {
-    node = unwrapExpression(node)
-  }
+  node = unwrapExpression(node)
   if (is.Identifier(node)) {
     const binding = module.bindingOf(node)
     if (!binding || seen.has(binding)) {
@@ -1191,18 +1189,14 @@ export function detectCodeSplitGroupingsFromRoute(options: SourceOptions): {
       }
       return {
         groupings: value.elements.map((element) => {
-          const group = is.Expression(element)
-            ? unwrapExpression(element)
-            : element
+          const group = unwrapExpression(element)
           if (!is.ArrayExpression(group)) {
             throw new Error(
               'You must provide arrays with codeSplitGroupings options.',
             )
           }
           return group.elements.map((element) => {
-            const item = is.Expression(element)
-              ? unwrapExpression(element)
-              : element
+            const item = unwrapExpression(element)
             if (!is.Literal(item) || typeof item.value !== 'string') {
               throw new Error(
                 'You must provide a string literal for the codeSplitGroupings',

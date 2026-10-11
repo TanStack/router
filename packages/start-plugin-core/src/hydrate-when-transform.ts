@@ -115,9 +115,7 @@ function getBooleanProp(node: t.JSXOpeningElement, name: string) {
     return attribute.value.value !== 'false'
   }
   if (is.JSXExpressionContainer(attribute.value)) {
-    const expression = is.Expression(attribute.value.expression)
-      ? unwrapExpression(attribute.value.expression)
-      : attribute.value.expression
+    const expression = unwrapExpression(attribute.value.expression)
     if (is.BooleanLiteral(expression)) {
       return expression.value
     }
@@ -201,10 +199,9 @@ function inspectSplitBoundary(
   }
   if (options.validate) {
     for (const child of node.children) {
-      const expression =
-        is.JSXExpressionContainer(child) && is.Expression(child.expression)
-          ? unwrapExpression(child.expression)
-          : undefined
+      const expression = is.JSXExpressionContainer(child)
+        ? unwrapExpression(child.expression)
+        : undefined
       if (
         is.FunctionExpression(expression) ||
         is.ArrowFunctionExpression(expression)

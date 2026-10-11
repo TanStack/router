@@ -187,18 +187,18 @@ function findRouteCalls(
 
     const init = getRouteConstructorInit(declarator.init)
     if (!init) {
-      if (isCallOf(unwrapNode(declarator.init), routeConstructors)) {
+      if (isCallOf(unwrapExpression(declarator.init), routeConstructors)) {
         hasMalformedRouteCall = true
       }
       continue
     }
 
-    const routeIdArg = unwrapNode(init.innerCall.arguments[0])
+    const routeIdArg = unwrapExpression(init.innerCall.arguments[0])
     if (isSupportedRouteId(routeIdArg)) {
       calls.push({
         callee: init.callee,
         routeIdArg,
-        optionsArg: unwrapNode(init.outerCall.arguments[0]),
+        optionsArg: unwrapExpression(init.outerCall.arguments[0]),
       })
     } else {
       hasUnsupportedRouteId = true
@@ -209,11 +209,11 @@ function findRouteCalls(
 }
 
 function getRouteConstructorInit(expression: t.Expression | null) {
-  const outerCall = unwrapNode(expression)
+  const outerCall = unwrapExpression(expression)
   if (!is.CallExpression(outerCall)) {
     return null
   }
-  const innerCall = unwrapNode(outerCall.callee)
+  const innerCall = unwrapExpression(outerCall.callee)
   if (!isCallOf(innerCall, routeConstructors)) {
     return null
   }
@@ -223,16 +223,6 @@ function getRouteConstructorInit(expression: t.Expression | null) {
     outerCall,
     innerCall,
   }
-}
-
-/**
- * Parentheses and TypeScript-only wrappers do not change the wrapped value, so
- * route call parts are read through them.
- */
-function unwrapNode<TNode extends t.Node | null | undefined>(
-  node: TNode,
-): TNode | t.Expression {
-  return node && is.Expression(node) ? unwrapExpression(node) : node
 }
 
 function isSupportedRouteId(
