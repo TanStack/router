@@ -20,7 +20,7 @@ test('generates a fresh report after a successful Nx run, including cache hits',
   assert.deepEqual(calls[0]?.slice(-5), [
     'nx',
     'run',
-    '@benchmarks/bundle-size:build',
+    '@benchmarks/bundle-size:measure',
     '--outputStyle=stream',
     '--skipRemoteCache',
   ])
