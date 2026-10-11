@@ -611,7 +611,7 @@ export class StartCompiler {
 
     const info: ModuleInfo = {
       id,
-      bindings: new Map(extracted.bindings),
+      bindings: extracted.bindings,
       exports: extracted.exports,
       reExportAllSources: extracted.reExportAllSources,
     }
