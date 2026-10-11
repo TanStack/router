@@ -527,7 +527,6 @@ function transformHydrateAst(
 }
 
 function loadHydrateVirtualModule(options: {
-  module: Module
   id: string
   root: string
   code: string
@@ -537,7 +536,7 @@ function loadHydrateVirtualModule(options: {
   if (!splitId || boundaryIndex < 0) {
     return null
   }
-  const module = options.module
+  const module = analyzeModule({ code: options.code, filename: sourceId })
   const localName = getHydrateLocalName(module, options.framework)
   if (!localName) {
     return null
@@ -682,7 +681,6 @@ function loadHydrateVirtualModule(options: {
 }
 export function createHydrateCompilerPlugin(): StartCompilerPlugin {
   type SourceEntry = {
-    module: Module
     code: string
     framework: CompileStartFrameworkOptions
     virtualModules: Map<string, StartCompilerTransformResult | null>
@@ -704,7 +702,6 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
     id: string,
     code: string,
     framework: CompileStartFrameworkOptions,
-    sourceModule?: Module,
   ) => {
     const sourceId = cleanId(id)
     const sources = getEnvironmentSources(envName)
@@ -714,7 +711,6 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
     }
 
     const entry = {
-      module: sourceModule ?? analyzeModule({ code, filename: sourceId }),
       code,
       framework,
       virtualModules: new Map<string, StartCompilerTransformResult | null>(),
@@ -753,13 +749,7 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
       })
 
       if (result && virtualModule.boundaryIndex < 0) {
-        setSource(
-          context.envName,
-          context.id,
-          context.code,
-          context.framework,
-          context.module,
-        )
+        setSource(context.envName, context.id, context.code, context.framework)
       }
 
       return !!result
@@ -796,7 +786,6 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
       }
 
       const result = loadHydrateVirtualModule({
-        module: sourceEntry.module,
         code: sourceEntry.code,
         id: context.id,
         root: context.root,
