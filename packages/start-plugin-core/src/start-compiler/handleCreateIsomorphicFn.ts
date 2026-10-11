@@ -1,5 +1,4 @@
-import { is } from 'yuku-ast'
-import { parseExpression } from '@tanstack/router-utils'
+import { b, is } from 'yuku-ast'
 import type { CompilationContext, RewriteCandidate } from './types'
 
 export function handleCreateIsomorphicFn(
@@ -10,7 +9,17 @@ export function handleCreateIsomorphicFn(
     const selected =
       context.env === 'client' ? methodChain.client : methodChain.server
     if (!selected) {
-      context.replaceNode(node, parseExpression('() => {}'))
+      context.replaceNode(
+        node,
+        b.ArrowFunctionExpression({
+          id: null,
+          generator: false,
+          async: false,
+          expression: false,
+          params: [],
+          body: b.BlockStatement({ body: [] }),
+        }),
+      )
       continue
     }
     if (!is.Expression(selected.firstArg)) {
