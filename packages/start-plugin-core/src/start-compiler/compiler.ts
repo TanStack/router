@@ -861,7 +861,6 @@ export class StartCompiler {
           : null
         const simpleDirectCall =
           is.Identifier(callee) || is.Identifier(receiver)
-        const topLevel = isModuleLevelInitializer(node, editor.parentOf)
         // External transforms are bound to configured imports. Their known kind
         // must take precedence over generic built-in alias tracing.
         const root = is.Identifier(callee)
@@ -898,7 +897,11 @@ export class StartCompiler {
           if (setup?.type !== 'directCall') {
             continue
           }
-          if ((topLevel && simpleDirectCall) || setup.factoryNames.has(name)) {
+          if (
+            setup.factoryNames.has(name) ||
+            (simpleDirectCall &&
+              isModuleLevelInitializer(node, editor.parentOf))
+          ) {
             calls.push({ node })
             return
           }
