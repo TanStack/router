@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791654880377,
+  "lastUpdate": 1791707249788,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "me@florianpellet.com",
-            "name": "Flo",
-            "username": "Sheraff"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "41e7a24f693b0f58c2bef89a2b8c4d084acbd531",
-          "message": "refactor(solid-router): remove unnecessary setTimeout from Match components (#7584)",
-          "timestamp": "2026-06-07T23:05:20+02:00",
-          "tree_id": "e02ceb3a135fd060d864cbe5a403605f8261e566",
-          "url": "https://github.com/TanStack/router/commit/41e7a24f693b0f58c2bef89a2b8c4d084acbd531"
-        },
-        "date": 1780866476535,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89343,
-            "unit": "bytes",
-            "extra": "raw=280153; brotli=77780; initial_gzip=89203"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93165,
-            "unit": "bytes",
-            "extra": "raw=292333; brotli=81030; initial_gzip=93022"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36332,
-            "unit": "bytes",
-            "extra": "raw=108401; brotli=32799; initial_gzip=36204"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41503,
-            "unit": "bytes",
-            "extra": "raw=123984; brotli=37334; initial_gzip=41376"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54241,
-            "unit": "bytes",
-            "extra": "raw=153500; brotli=48762; initial_gzip=54108"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 60370,
-            "unit": "bytes",
-            "extra": "raw=172709; brotli=54140; initial_gzip=60238"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104328,
-            "unit": "bytes",
-            "extra": "raw=329630; brotli=90256; initial_gzip=104188"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105080,
-            "unit": "bytes",
-            "extra": "raw=331038; brotli=90980; initial_gzip=104209"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107799,
-            "unit": "bytes",
-            "extra": "raw=339800; brotli=93210; initial_gzip=107658"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 101980,
-            "unit": "bytes",
-            "extra": "raw=323947; brotli=87808; initial_gzip=101804"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 102392,
-            "unit": "bytes",
-            "extra": "raw=324906; brotli=88132; initial_gzip=102223"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105278,
-            "unit": "bytes",
-            "extra": "raw=334243; brotli=90523; initial_gzip=105102"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50788,
-            "unit": "bytes",
-            "extra": "raw=155574; brotli=44842; initial_gzip=50654"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 54130,
-            "unit": "bytes",
-            "extra": "raw=163806; brotli=47932; initial_gzip=50714"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56730,
-            "unit": "bytes",
-            "extra": "raw=173028; brotli=49968; initial_gzip=56596"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 72724,
-            "unit": "bytes",
-            "extra": "raw=212014; brotli=64441; initial_gzip=72592"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 76812,
-            "unit": "bytes",
-            "extra": "raw=224953; brotli=67989; initial_gzip=76678"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -25795,6 +25669,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/e66da18266859ab49e20a7b8c858232449ee5290"
         },
         "date": 1791654878731,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 86048,
+            "unit": "bytes",
+            "extra": "raw=267729; brotli=75041; initial_gzip=85907"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89666,
+            "unit": "bytes",
+            "extra": "raw=279879; brotli=78230; initial_gzip=89526"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34131,
+            "unit": "bytes",
+            "extra": "raw=97503; brotli=30895; initial_gzip=34004"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39158,
+            "unit": "bytes",
+            "extra": "raw=112648; brotli=35371; initial_gzip=39030"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50603,
+            "unit": "bytes",
+            "extra": "raw=139733; brotli=45875; initial_gzip=50476"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56311,
+            "unit": "bytes",
+            "extra": "raw=158323; brotli=50858; initial_gzip=56184"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99087,
+            "unit": "bytes",
+            "extra": "raw=309580; brotli=86066; initial_gzip=98946"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106684,
+            "unit": "bytes",
+            "extra": "raw=336797; brotli=92617; initial_gzip=106543"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99829,
+            "unit": "bytes",
+            "extra": "raw=310965; brotli=86718; initial_gzip=98967"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102327,
+            "unit": "bytes",
+            "extra": "raw=319597; brotli=88790; initial_gzip=102188"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102735,
+            "unit": "bytes",
+            "extra": "raw=320743; brotli=88724; initial_gzip=102562"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103155,
+            "unit": "bytes",
+            "extra": "raw=321720; brotli=89075; initial_gzip=102988"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 106067,
+            "unit": "bytes",
+            "extra": "raw=331115; brotli=91584; initial_gzip=105894"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47260,
+            "unit": "bytes",
+            "extra": "raw=138286; brotli=42149; initial_gzip=47129"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50370,
+            "unit": "bytes",
+            "extra": "raw=145794; brotli=44954; initial_gzip=47190"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52504,
+            "unit": "bytes",
+            "extra": "raw=154087; brotli=46544; initial_gzip=52375"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 66919,
+            "unit": "bytes",
+            "extra": "raw=190119; brotli=59714; initial_gzip=66793"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70859,
+            "unit": "bytes",
+            "extra": "raw=202768; brotli=63167; initial_gzip=70733"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "57bd1a92f9839af5bf773c3b36d039569fb1a41e",
+          "message": "fix(router-generator): don't scaffold over a route file mid in-place save (#8664)\n\n* fix(router-generator): don't scaffold over a route file mid in-place save\n\nAn in-place save truncates the file and then writes it. If the generator\nreads the route file in between, it sees empty content and scaffolds a\ntemplate. Its mtime guard before renaming the template into place does not\ncatch the completed save, because the truncation and the write usually share\none mtime tick on Linux, so the user's content was replaced by the template.\n\nRoute file writes now also confirm the file still has the content the\ngenerator read before replacing it.\n\nThis was the main cause of flaky tanstack-react-start-e2e-hmr runs, where SSR\nrendered `Hello \"/route\"!` after the test restored a route file.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(router-generator): check for concurrent saves right before the rename\n\nsafeFileWrite compared the target's mtime and content before preparing the\ntemporary file's mode and owner, so a save completing during those steps was\nstill replaced. Run the check last, immediately before the rename.\n\nThe regression test now also completes the save during the temporary file\nstat, and keeps the generator's tmpDir inside the test directory so the\nrename never crosses filesystems (EXDEV on CI).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(router-generator): match generator paths on Windows in concurrent save test\n\nThe generator reads route files through forward-slash paths, also on Windows,\nso compare resolved paths when injecting the concurrent save.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(router-generator): only read files whose content is compared\n\nThe final concurrent-change check before the rename read the whole target\nfile even for the route tree, whose content is never compared. Stat it\ninstead, as before, and read only route files.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-10-11T10:23:54+02:00",
+          "tree_id": "d52ebd038bae16f29581b28e9767e6d85c7a03d4",
+          "url": "https://github.com/TanStack/router/commit/57bd1a92f9839af5bf773c3b36d039569fb1a41e"
+        },
+        "date": 1791707247604,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
