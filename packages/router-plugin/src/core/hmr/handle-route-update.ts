@@ -19,6 +19,8 @@ type AnyRouterWithPrivateState = AnyRouter & {
   _replaceRouteChunk: (route: AnyRoute, lazyFn: AnyRoute['lazyFn']) => void
 }
 
+export type HandleRouteUpdate = (routeId: string, newRoute: AnyRoute) => void
+
 function handleRouteUpdate(
   routeId: string,
   newRoute: AnyRouteWithPrivateProps,

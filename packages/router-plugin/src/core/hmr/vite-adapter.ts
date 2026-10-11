@@ -1,6 +1,56 @@
-import { parseStatements } from '@tanstack/router-utils'
+import { parseExpression } from '@tanstack/router-utils'
+import { astTemplate, hole, importMeta, literal } from '../ast-template'
 import { getHandleRouteUpdateCode } from './handle-route-update'
+import type { AnyRoute } from '@tanstack/router-core'
+import type { HandleRouteUpdate } from './handle-route-update'
 import type { ProgramStatement } from '@yuku-toolchain/types'
+
+/** The route module's route */
+declare const Route: AnyRoute
+
+const viteRouteHmr = astTemplate(
+  {
+    handleRouteUpdateFunction: hole.expression<HandleRouteUpdate>(),
+    routeIdFallback: hole.expression<string | undefined>(),
+  },
+  ({ handleRouteUpdateFunction, routeIdFallback }) => {
+    if (importMeta.hot) {
+      const hot = importMeta.hot
+      // prettier-ignore
+      const hotData = hot.data ??= {}
+      const handleRouteUpdate = handleRouteUpdateFunction
+      const initialRouteId = routeIdFallback ?? hotData['tsr-route-id']
+      if (initialRouteId) {
+        hotData['tsr-route-id'] = initialRouteId
+      }
+      const existingRoute =
+        typeof window !== 'undefined' && initialRouteId
+          ? // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            window.__TSR_ROUTER__?.routesById?.[initialRouteId]
+          : undefined
+      if (initialRouteId && existingRoute && existingRoute !== Route) {
+        handleRouteUpdate(initialRouteId, Route)
+        hotData['tsr-route-update-handled'] = Route
+      }
+      hot.accept((newModule) => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (Route && newModule && newModule.Route) {
+          const routeId = hotData['tsr-route-id'] ?? routeIdFallback
+          if (routeId) {
+            hotData['tsr-route-id'] = routeId
+          }
+          if (hotData['tsr-route-update-handled'] === newModule.Route) {
+            delete hotData['tsr-route-update-handled']
+            return
+          }
+          handleRouteUpdate(routeId!, newModule.Route)
+        }
+      })
+    }
+  },
+)
+
+const routeIdExpression = astTemplate({}, () => Route.id)
 
 /**
  * Emits HMR accept code for Vite / native ESM HMR: `import.meta.hot.accept`
@@ -16,44 +66,15 @@ export function createViteHmrStatement(
     routeId?: string
   } = {},
 ): Array<ProgramStatement> {
-  const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
-  // The replacement Route object can be uninitialized; keep a generated id as
-  // fallback for the existing router route we need to patch.
-  const routeIdFallback =
-    typeof opts.routeId === 'string' ? JSON.stringify(opts.routeId) : 'Route.id'
-
-  return parseStatements(
-    `
-if (import.meta.hot) {
-  const hot = import.meta.hot
-  const hotData = hot.data ??= {}
-  const handleRouteUpdate = ${handleRouteUpdateCode}
-  const initialRouteId = ${routeIdFallback} ?? hotData['tsr-route-id']
-  if (initialRouteId) {
-    hotData['tsr-route-id'] = initialRouteId
-  }
-  const existingRoute =
-    typeof window !== 'undefined' && initialRouteId
-      ? window.__TSR_ROUTER__?.routesById?.[initialRouteId]
-      : undefined
-  if (initialRouteId && existingRoute && existingRoute !== Route) {
-    handleRouteUpdate(initialRouteId, Route)
-    hotData['tsr-route-update-handled'] = Route
-  }
-  hot.accept((newModule) => {
-    if (Route && newModule && newModule.Route) {
-      const routeId = hotData['tsr-route-id'] ?? ${routeIdFallback}
-      if (routeId) {
-        hotData['tsr-route-id'] = routeId
-      }
-      if (hotData['tsr-route-update-handled'] === newModule.Route) {
-        delete hotData['tsr-route-update-handled']
-        return
-      }
-      handleRouteUpdate(routeId, newModule.Route)
-    }
-    })
-}
-`,
-  )
+  return viteRouteHmr({
+    handleRouteUpdateFunction: parseExpression(
+      getHandleRouteUpdateCode(stableRouteOptionKeys),
+    ),
+    // The replacement Route object can be uninitialized; keep a generated id
+    // as fallback for the existing router route we need to patch.
+    routeIdFallback:
+      typeof opts.routeId === 'string'
+        ? literal(opts.routeId)
+        : routeIdExpression(),
+  })
 }

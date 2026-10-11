@@ -1,7 +1,75 @@
-import { parseStatements } from '@tanstack/router-utils'
+import { parseExpression } from '@tanstack/router-utils'
+import { astTemplate, hole, importMeta } from '../ast-template'
 import { getHandleRouteUpdateCode } from './handle-route-update'
+import type { AnyRoute } from '@tanstack/router-core'
+import type { HandleRouteUpdate } from './handle-route-update'
 import type { Config } from '../config'
 import type { ProgramStatement } from '@yuku-toolchain/types'
+
+/** The route module's route */
+declare const Route: AnyRoute
+
+/** Provided by the React Refresh plugins of webpack and Rspack */
+declare const __react_refresh_utils__:
+  | { enqueueUpdate?: (callback: () => void) => void }
+  | undefined
+
+const webpackRouteHmr = astTemplate(
+  {
+    handleRouteUpdate: hole.expression<HandleRouteUpdate>(),
+    staticRouteId: hole.literal<string | undefined>(),
+    refreshReact: hole.statements(),
+  },
+  ({ handleRouteUpdate, staticRouteId, refreshReact }) => {
+    if (importMeta.webpackHot) {
+      const hot = importMeta.webpackHot
+      // prettier-ignore
+      const hotData = hot.data ??= {}
+      const routeId =
+        hotData['tsr-route-id'] ??
+        Route.id ??
+        (Route.isRoot ? '__root__' : staticRouteId)
+      if (routeId) {
+        hotData['tsr-route-id'] = routeId
+      }
+      const existingRoute =
+        typeof window !== 'undefined' && routeId
+          ? // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            window.__TSR_ROUTER__?.routesById?.[routeId]
+          : undefined
+      if (routeId && existingRoute && existingRoute !== Route) {
+        handleRouteUpdate(routeId, Route)
+        refreshReact()
+      }
+      hot.dispose((data) => {
+        if (routeId) {
+          data['tsr-route-id'] = routeId
+        }
+      })
+      hot.accept()
+    }
+  },
+)
+
+const enqueueReactRefresh = astTemplate({}, () => {
+  try {
+    const tsrReactRefreshUtils =
+      typeof __react_refresh_utils__ !== 'undefined'
+        ? __react_refresh_utils__
+        : undefined
+    const tsrEnqueueUpdate =
+      tsrReactRefreshUtils &&
+      typeof tsrReactRefreshUtils.enqueueUpdate === 'function'
+        ? tsrReactRefreshUtils.enqueueUpdate
+        : undefined
+    if (tsrEnqueueUpdate) {
+      tsrEnqueueUpdate(() => {})
+    }
+    // eslint-disable-next-line unused-imports/no-unused-vars
+  } catch (_err) {
+    /* noop */
+  }
+})
 
 /**
  * Emits HMR accept code for bundlers with webpack-compatible `module.hot`
@@ -22,70 +90,28 @@ export function createWebpackHmrStatement(
     routeId?: string
   },
 ): Array<ProgramStatement> {
-  const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
-  const staticRouteIdLiteral =
-    typeof opts.routeId === 'string'
-      ? JSON.stringify(opts.routeId)
-      : 'undefined'
-
-  // React-only: route modules aren't React Refresh "boundaries" (they export
-  // a non-component `Route`), so the bundler's react-refresh runtime won't
-  // call `performReactRefresh` for us. We kick it manually after swapping
-  // route options so newly-registered component bodies get patched into live
-  // fibers.
-  //
-  // Webpack and Rspack refresh plugins inject `__react_refresh_utils__` via
-  // ProvidePlugin. Use it when present instead of importing
-  // `react-refresh/runtime`, because Rsbuild apps may use React without the
-  // React plugin and therefore may not have that optional dependency installed.
-  //
-  // Use the same delayed refresh style as Rspack's React Refresh runtime.
-  // Route modules and their split component chunks can arrive in separate HMR
-  // steps under CI load; a microtask can run before the split chunk registers
-  // its new component family, causing the refresh to no-op or remount.
-  //
-  // For non-React frameworks we skip this entirely.
-  const reactRefreshCall =
-    opts.targetFramework === 'react'
-      ? `
-    try {
-      const tsrReactRefreshUtils =
-        typeof __react_refresh_utils__ !== 'undefined'
-          ? __react_refresh_utils__
-          : undefined
-      const tsrEnqueueUpdate =
-        tsrReactRefreshUtils && typeof tsrReactRefreshUtils.enqueueUpdate === 'function'
-          ? tsrReactRefreshUtils.enqueueUpdate
-          : undefined
-      if (tsrEnqueueUpdate) {
-        tsrEnqueueUpdate(() => {})
-      }
-    } catch (_err) { /* noop */ }`
-      : ''
-
-  return parseStatements(
-    `
-if (import.meta.webpackHot) {
-  const hot = import.meta.webpackHot
-  const hotData = hot.data ??= {}
-  const routeId = hotData['tsr-route-id'] ?? Route.id ?? (Route.isRoot ? '__root__' : ${staticRouteIdLiteral})
-  if (routeId) {
-    hotData['tsr-route-id'] = routeId
-  }
-  const existingRoute =
-    typeof window !== 'undefined' && routeId
-      ? window.__TSR_ROUTER__?.routesById?.[routeId]
-      : undefined
-  if (routeId && existingRoute && existingRoute !== Route) {
-    (${handleRouteUpdateCode})(routeId, Route)${reactRefreshCall}
-  }
-  hot.dispose((data) => {
-    if (routeId) {
-      data['tsr-route-id'] = routeId
-    }
+  return webpackRouteHmr({
+    handleRouteUpdate: parseExpression(
+      getHandleRouteUpdateCode(stableRouteOptionKeys),
+    ),
+    staticRouteId: opts.routeId,
+    // React-only: route modules aren't React Refresh "boundaries" (they export
+    // a non-component `Route`), so the bundler's react-refresh runtime won't
+    // call `performReactRefresh` for us. We kick it manually after swapping
+    // route options so newly-registered component bodies get patched into live
+    // fibers.
+    //
+    // Webpack and Rspack refresh plugins inject `__react_refresh_utils__` via
+    // ProvidePlugin. Use it when present instead of importing
+    // `react-refresh/runtime`, because Rsbuild apps may use React without the
+    // React plugin and therefore may not have that optional dependency installed.
+    //
+    // Use the same delayed refresh style as Rspack's React Refresh runtime.
+    // Route modules and their split component chunks can arrive in separate HMR
+    // steps under CI load; a microtask can run before the split chunk registers
+    // its new component family, causing the refresh to no-op or remount.
+    //
+    // For non-React frameworks we skip this entirely.
+    refreshReact: opts.targetFramework === 'react' ? enqueueReactRefresh() : [],
   })
-  hot.accept()
-}
-`,
-  )
 }
