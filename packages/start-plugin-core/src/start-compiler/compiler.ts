@@ -805,7 +805,11 @@ export class StartCompiler {
         }
       }
     }
-    const { module } = this.ingestModule({ code, id, parserFilename })
+    const { info: sourceInfo, module } = this.ingestModule({
+      code,
+      id,
+      parserFilename,
+    })
     const { program: ast, originalNodes } = cloneModuleAst(module)
     const editor = createAstEditor(ast)
     const context: CompilationContext = {
@@ -832,7 +836,6 @@ export class StartCompiler {
     const calls: Array<{ node: t.CallExpression; kind?: ExternalLookupKind }> =
       []
     const jsx: Array<t.JSXElement> = []
-    const sourceInfo = this.moduleCache.get(id)!
     walk(ast, {
       CallExpression: (node, position) => {
         if (
