@@ -147,7 +147,9 @@ The resolver virtual module must be rebuilt after cached metadata has been repla
 The ordering is:
 
 1. `finishMake` stage `-20`: replay `buildInfo` into environment snapshots and rebuild `serverFnsById`.
-2. `finishMake` stage `-10`: write resolver virtual module content and rebuild modules that import the resolver.
+2. `finishMake` stage `-10`: write resolver virtual module content and rebuild the resolver module.
+
+The stage `-10` hook skips the rebuild when the resolver has not been written since that compiler last rebuilt it. In development, `virtual-modules.ts` writes the resolver only when its content changes, so edits that leave the server function registry unchanged skip the rebuild. Rebuilding an unchanged resolver can make Rspack rebuild the whole chunk graph. Child compilers copy the `finishMake` hook from their parent. Child compilations always rebuild the resolver and do not change the parent compiler's state.
 
 For non-RSC builds, each server-like environment that needs the resolver installs the stage `-10` rebuild hook.
 

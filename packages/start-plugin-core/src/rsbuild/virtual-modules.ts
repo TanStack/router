@@ -45,8 +45,10 @@ export interface VirtualModuleState {
   updateManifest: (clientBuild: NormalizedClientBuild) => void
   /** Call to update server fn resolver content after compilation discovers fns */
   updateServerFnResolver: () => void
-  /** Try to write explicit resolver content now; queues if env not ready */
+  /** Write explicit server resolver content; queues if env not ready */
   tryUpdateServerFnResolver: (content: string) => void
+  /** Number of times the server fn resolver was written for an environment */
+  getServerFnResolverWriteCount: (environmentName: string) => number
   /** Get the virtual path for a given module ID */
   getVirtualPath: (moduleId: string) => string
   /** Generate resolver module content from current serverFnsById state.
@@ -276,6 +278,7 @@ export function registerVirtualModules(
   let clientBuild: NormalizedClientBuild | undefined
   const lastResolverContentByEnvironment: Record<string, string | undefined> =
     {}
+  const resolverWriteCountByEnvironment: Record<string, number> = {}
   const hasSeparateProviderEnvironment =
     !opts.rscEnabled &&
     opts.providerEnvName !== RSBUILD_ENVIRONMENT_NAMES.server
@@ -307,6 +310,8 @@ export function registerVirtualModules(
       content !== lastResolverContentByEnvironment[environmentName]
     ) {
       lastResolverContentByEnvironment[environmentName] = content
+      resolverWriteCountByEnvironment[environmentName] =
+        (resolverWriteCountByEnvironment[environmentName] ?? 0) + 1
       tryWriteModule(environmentName, paths.serverFnResolver, content)
     }
   }
@@ -591,13 +596,11 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
 
     tryUpdateServerFnResolver(content: string) {
-      lastResolverContentByEnvironment[RSBUILD_ENVIRONMENT_NAMES.server] =
-        content
-      tryWriteModule(
-        RSBUILD_ENVIRONMENT_NAMES.server,
-        paths.serverFnResolver,
-        content,
-      )
+      writeResolverContent(RSBUILD_ENVIRONMENT_NAMES.server, content)
+    },
+
+    getServerFnResolverWriteCount(environmentName: string): number {
+      return resolverWriteCountByEnvironment[environmentName] ?? 0
     },
 
     getVirtualPath(moduleId: string): string {
