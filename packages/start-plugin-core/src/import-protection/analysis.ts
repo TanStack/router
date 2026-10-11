@@ -1,5 +1,5 @@
 import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
-import { bindingIdentifiers, is, nameOf } from 'yuku-ast'
+import { is, literalValue, nameOf } from 'yuku-ast'
 import { buildLineIndex, indexToLineColumn } from './sourceLocation'
 import { getOrCreate } from './utils'
 import type * as t from '@yuku-toolchain/types'
@@ -8,7 +8,6 @@ import type { LineIndex, TransformResult } from './sourceLocation'
 
 export type UsagePos = { line: number; column0: number }
 type BoundaryEnv = 'client' | 'server'
-type ImportBindingInfo = { importedLocalNames: Set<string> }
 type UsageCacheKey = `${BoundaryEnv | 'post'}::${string}`
 
 export type ImportAnalysis = {
@@ -16,7 +15,7 @@ export type ImportAnalysis = {
   lineIndex: LineIndex
   importSourcesInOrder: Array<string>
   importSpecifierLocationIndex: Map<string, number>
-  importBindingsBySource: Map<string, ImportBindingInfo>
+  importBindingsBySource: Map<string, Set<Binding>>
   mockExportNamesBySource: Map<string, Array<string>>
   namedExports: Array<string>
   usageByKey: Map<UsageCacheKey, UsagePos | null>
@@ -98,18 +97,12 @@ export function isValidExportName(name: string): boolean {
 
 function buildImportAnalysis(result: TransformResult): ImportAnalysis {
   const module = getOrAnalyzeModule(result)
+  const { imports, exports } = module
 
   const importSourcesInOrder: Array<string> = []
   const importSpecifierLocationIndex = new Map<string, number>()
-  const importBindingsBySource = new Map<string, ImportBindingInfo>()
-  const memberBindingSources = new Map<Binding, Set<string>>()
+  const importBindingsBySource = new Map<string, Set<Binding>>()
   const mockNamesBySource = new Map<string, Set<string>>()
-  const namedExports = new Set<string>()
-
-  const getBindingInfo = (source: string): ImportBindingInfo =>
-    getOrCreate(importBindingsBySource, source, () => ({
-      importedLocalNames: new Set<string>(),
-    }))
 
   const addSpecifierLocation = (node: t.StringLiteral) => {
     importSourcesInOrder.push(node.value)
@@ -128,98 +121,56 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
     getOrCreate(mockNamesBySource, source, () => new Set<string>()).add(name)
   }
 
-  const addMemberBinding = (localName: string, source: string) => {
-    const binding = module.rootScope.find(localName)
-    if (binding) {
-      getOrCreate(memberBindingSources, binding, () => new Set<string>()).add(
-        source,
-      )
+  for (const imp of imports) {
+    if (
+      imp.typeOnly ||
+      !imp.local ||
+      (imp.kind !== 'named' && imp.kind !== 'namespace')
+    ) {
+      continue
+    }
+    const source = imp.specifier
+    getOrCreate(importBindingsBySource, source, () => new Set()).add(imp.local)
+    if (is.ImportSpecifier(imp.node)) {
+      addMockName(source, imp.name!)
+      continue
+    }
+
+    // Members read from a namespace or default import
+    for (const reference of imp.local.references) {
+      const { node: object, parent } = transparentParent(module, reference.node)
+      if (is.MemberExpression(parent) && parent.object === object) {
+        const name = parent.computed
+          ? literalValue(parent.property)
+          : nameOf(parent.property)
+        if (typeof name === 'string') {
+          addMockName(source, name)
+        }
+      }
     }
   }
 
-  const addNamedExport = (name: string) => {
-    if (name !== 'default' && name.length > 0) {
-      namedExports.add(name)
+  const namedExports = new Set<string>()
+  for (const exp of exports) {
+    if (exp.typeOnly) {
+      continue
+    }
+    if (exp.kind === 'reExport') {
+      addMockName(exp.specifier!, exp.fromName!)
+    }
+    if (exp.name && exp.name !== 'default') {
+      namedExports.add(exp.name)
     }
   }
 
   const visit = (node: t.Node): void => {
     if (is.ImportDeclaration(node)) {
-      const isTypeOnly = isTypeOnlyImportDeclaration(node)
-      if (!isTypeOnly) {
+      if (!isTypeOnlyImportDeclaration(node)) {
         addSpecifierLocation(node.source)
-        const source = node.source.value
-        const bindingInfo = getBindingInfo(source)
-        for (const specifier of node.specifiers) {
-          if (is.ImportNamespaceSpecifier(specifier)) {
-            bindingInfo.importedLocalNames.add(specifier.local.name)
-            addMemberBinding(specifier.local.name, source)
-            continue
-          }
-
-          if (is.ImportDefaultSpecifier(specifier)) {
-            bindingInfo.importedLocalNames.add(specifier.local.name)
-            addMemberBinding(specifier.local.name, source)
-            continue
-          }
-
-          if (!is.ImportSpecifier(specifier)) {
-            continue
-          }
-          if (specifier.importKind === 'type') {
-            continue
-          }
-
-          bindingInfo.importedLocalNames.add(specifier.local.name)
-          const importedName = nameOf(specifier.imported)
-          if (importedName !== 'default') {
-            addMockName(source, importedName)
-          }
-        }
       }
     } else if (is.ExportNamedDeclaration(node)) {
-      const isTypeOnly = isTypeOnlyExportNamedDeclaration(node)
-      if (!isTypeOnly && node.source && is.StringLiteral(node.source)) {
+      if (node.source && !isTypeOnlyExportNamedDeclaration(node)) {
         addSpecifierLocation(node.source)
-      }
-
-      if (!isTypeOnly && node.source?.value) {
-        const source = node.source.value
-        for (const specifier of node.specifiers) {
-          if (!is.ExportSpecifier(specifier)) {
-            continue
-          }
-          if (specifier.exportKind === 'type') {
-            continue
-          }
-          addMockName(source, nameOf(specifier.local))
-        }
-      }
-
-      if (!isTypeOnly) {
-        if (node.declaration) {
-          const decl = node.declaration
-          if (is.FunctionDeclaration(decl) || is.ClassDeclaration(decl)) {
-            if (decl.id?.name) {
-              addNamedExport(decl.id.name)
-            }
-          } else if (is.VariableDeclaration(decl)) {
-            for (const d of decl.declarations) {
-              bindingIdentifiers(d.id).forEach((id) => addNamedExport(id.name))
-            }
-          }
-        }
-
-        for (const specifier of node.specifiers) {
-          if (!is.ExportSpecifier(specifier)) {
-            continue
-          }
-          if (specifier.exportKind === 'type') {
-            continue
-          }
-          const exportedName = nameOf(specifier.exported)
-          addNamedExport(exportedName)
-        }
       }
     } else if (is.ExportAllDeclaration(node)) {
       if (node.exportKind !== 'type') {
@@ -229,21 +180,6 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
       const source = unwrapNode(node.source)
       if (is.StringLiteral(source)) {
         addSpecifierLocation(source)
-      }
-    } else if (is.MemberExpression(node)) {
-      const object = unwrapNode(node.object)
-      if (is.Identifier(object)) {
-        const sources = memberBindingSources.get(module.bindingOf(object)!)
-        if (sources) {
-          const property = node.property
-          for (const source of sources) {
-            if (!node.computed && is.Identifier(property)) {
-              addMockName(source, property.name)
-            } else if (node.computed && is.StringLiteral(property)) {
-              addMockName(source, property.value)
-            }
-          }
-        }
       }
     }
   }
@@ -453,21 +389,13 @@ function findUsagePosInAnalysis(
     return analysis.usageByKey.get(cacheKey) ?? undefined
   }
   const module = analysis.module
-  const imported =
-    analysis.importBindingsBySource.get(source)?.importedLocalNames
-  const bindings = new Set<Binding>()
-  for (const name of imported ?? []) {
-    const binding = module.rootScope.find(name)
-    if (binding) {
-      bindings.add(binding)
-    }
-  }
+  const bindings = analysis.importBindingsBySource.get(source)
   let preferred: UsagePos | undefined
   let anyUsage: UsagePos | undefined
   for (const reference of module.references) {
     if (
       !reference.binding ||
-      !bindings.has(reference.binding) ||
+      !bindings?.has(reference.binding) ||
       reference.inTypePosition
     ) {
       continue

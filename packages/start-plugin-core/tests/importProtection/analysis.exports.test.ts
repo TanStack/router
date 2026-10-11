@@ -59,6 +59,15 @@ describe('collectMockExportNamesBySource', () => {
     expect(result.get('mod-a')).toEqual(['alpha', 'beta'])
   })
 
+  test('collects namespace member usage that precedes the import', () => {
+    const code = [
+      `export const read = () => ns.alpha`,
+      `import * as ns from 'mod-a'`,
+    ].join('\n')
+    const result = getMockExportNamesBySource(code)
+    expect(result.get('mod-a')).toEqual(['alpha'])
+  })
+
   test('collects optional namespace member usage', () => {
     const code = [
       `import * as ns from 'mod-a'`,
@@ -240,6 +249,24 @@ describe('collectNamedExports', () => {
   test('collects re-exports with aliases', () => {
     const code = `export { default as hello } from './foo'`
     expect(getNamedExports(code)).toEqual(['hello'])
+  })
+
+  test('collects namespace re-exports, enums and namespaces', () => {
+    const code = [
+      `export * as ns from './foo'`,
+      `export enum Color { Red }`,
+      `export namespace Util { export const x = 1 }`,
+    ].join('\n')
+    expect(getNamedExports(code)).toEqual(['Color', 'Util', 'ns'])
+  })
+
+  test('ignores ambient exports', () => {
+    const code = [
+      `export declare const a: string`,
+      `export declare class B {}`,
+      `export declare function c(): void`,
+    ].join('\n')
+    expect(getNamedExports(code)).toEqual([])
   })
 
   test('collects string-literal exported names', () => {
