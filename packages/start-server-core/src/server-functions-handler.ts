@@ -172,6 +172,16 @@ export const handleServerAction = async ({
       })
     }
 
+    const failed = res.errorCaught
+    if (res.errorCaught) {
+      if (res.error === undefined) {
+        res.error = new Error('Server function threw undefined')
+      }
+      // Only falsy errors need the failure flag in the wire envelope.
+      if (res.error) {
+        delete res.errorCaught
+      }
+    }
     const unwrapped = res.error !== undefined ? res.error : res.result
 
     if (isNotFound(res)) {
@@ -181,8 +191,7 @@ export const handleServerAction = async ({
     if (
       !isServerFn &&
       (unwrapped instanceof Response ||
-        unwrapped === null ||
-        typeof unwrapped !== 'object')
+        (!failed && (unwrapped === null || typeof unwrapped !== 'object')))
     ) {
       return unwrapped
     }
