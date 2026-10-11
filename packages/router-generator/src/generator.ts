@@ -1248,13 +1248,18 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       }
       // Check right before the rename so that changes made while the
       // temporary file was prepared are not overwritten.
-      const current = await this.fs.readFile(opts.filePath)
-      if (
-        current === 'file-not-existing' ||
-        current.stat.mtimeMs !== expectedMtimeMs ||
-        (expectedContent !== undefined &&
-          current.fileContent !== expectedContent)
-      ) {
+      let changed: boolean
+      if (expectedContent === undefined) {
+        const current = await this.fs.stat(opts.filePath)
+        changed = current.mtimeMs !== expectedMtimeMs
+      } else {
+        const current = await this.fs.readFile(opts.filePath)
+        changed =
+          current === 'file-not-existing' ||
+          current.stat.mtimeMs !== expectedMtimeMs ||
+          current.fileContent !== expectedContent
+      }
+      if (changed) {
         throw rerun({
           msg: `File ${opts.filePath} was modified by another process during processing.`,
           event: { type: 'update', path: opts.filePath },
