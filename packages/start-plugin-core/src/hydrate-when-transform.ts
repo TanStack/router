@@ -8,8 +8,8 @@ import {
   filePragmas,
   generateModule,
   keepFilePragmas,
+  linkGeneratedReference,
   moduleDeclarationGraph,
-  parseExpression,
   parseStatements,
   prepareBindingCleanup,
   prependStatements,
@@ -19,7 +19,11 @@ import {
 } from '@tanstack/router-utils'
 import { BindingFlags } from 'yuku-analyzer'
 import { tssHydrate } from './hydration-constants'
-import { cleanId, codeFrameError } from './start-compiler/utils'
+import {
+  cleanId,
+  codeFrameError,
+  generatedReference,
+} from './start-compiler/utils'
 import type { Binding, Module } from 'yuku-analyzer'
 import type * as t from '@yuku-toolchain/types'
 import type {
@@ -301,6 +305,13 @@ function getMeaningfulChildren(children: t.JSXElement['children']) {
   )
 }
 
+function jsxAttribute(name: string, expression: t.Expression) {
+  return b.JSXAttribute({
+    name: b.JSXIdentifier({ name }),
+    value: b.JSXExpressionContainer({ expression }),
+  })
+}
+
 function setChildren(node: t.JSXElement, children: t.JSXElement['children']) {
   node.children = children
   if (node.openingElement.selfClosing) {
@@ -505,18 +516,23 @@ function transformHydrateAst(
           ...parseStatements(`const ${preloadName} = ${componentName}.preload`),
         )
         node.openingElement.attributes.push(
-          b.JSXAttribute({
-            name: b.JSXIdentifier({ name: 'p' }),
-            value: b.JSXExpressionContainer({
-              expression: parseExpression(preloadName),
-            }),
-          }),
+          jsxAttribute('p', generatedReference(preloadName)),
         )
       }
-      const props = inspection.captured
-        .map((name) => `${name}={${name}}`)
-        .join(' ')
-      const child = parseExpression(`<${componentName} ${props} />`)
+      const child = b.JSXElement({
+        openingElement: b.JSXOpeningElement({
+          name: linkGeneratedReference(
+            b.JSXIdentifier({ name: componentName }),
+            componentName,
+          ),
+          attributes: inspection.captured.map((name) =>
+            jsxAttribute(name, generatedReference(name)),
+          ),
+          selfClosing: true,
+        }),
+        children: [],
+        closingElement: null,
+      })
       setChildren(node, [b.JSXExpressionContainer({ expression: child })])
       visitor.skip()
     },
