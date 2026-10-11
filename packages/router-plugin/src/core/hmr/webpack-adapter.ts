@@ -1,6 +1,5 @@
-import { parseExpression } from '@tanstack/router-utils'
 import { astTemplate, hole, importMeta } from '../ast-template'
-import { getHandleRouteUpdateCode } from './handle-route-update'
+import { createHandleRouteUpdate } from './handle-route-update'
 import type { AnyRoute } from '@tanstack/router-core'
 import type { HandleRouteUpdate } from './handle-route-update'
 import type { Config } from '../config'
@@ -91,9 +90,7 @@ export function createWebpackHmrStatement(
   },
 ): Array<ProgramStatement> {
   return webpackRouteHmr({
-    handleRouteUpdate: parseExpression(
-      getHandleRouteUpdateCode(stableRouteOptionKeys),
-    ),
+    handleRouteUpdate: createHandleRouteUpdate(stableRouteOptionKeys),
     staticRouteId: opts.routeId,
     // React-only: route modules aren't React Refresh "boundaries" (they export
     // a non-component `Route`), so the bundler's react-refresh runtime won't

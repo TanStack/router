@@ -1,7 +1,7 @@
 # Router bundler plugin
 
 - Preserve one initialization of shared module state across reference and split chunks. Shared extraction includes transitive dependencies and whole destructured declarations; never extract `Route` or bindings that depend on it. The invariant suite in `tests/code-splitter.test.ts` covers these contracts.
-- `handleRouteUpdate` is stringified and injected into app modules. Keep runtime dependencies inside the function or explicitly emit them; extracting a helper to plugin module scope breaks the generated function. `tests/handle-route-update.test.ts` executes that emitted code.
+- The code inserted into route modules (route HMR, `handleRouteUpdate`, React Refresh snippets) is written as typed `astTemplate`s, which `ast-templates-plugin.ts` compiles into builder calls for the build and Vitest; see `src/core/ast-template.ts`. A template runs in the route module: it can only reference its holes, globals and `declare`d route module bindings. `tests/handle-route-update.test.ts` executes the emitted `handleRouteUpdate`.
 - Route HMR rebuilds indexes, clears `resolvePathCache`, replaces lazy-chunk ownership, and refreshes active routes while preserving Fast Refresh component identities. Keep these steps coordinated when adding derived state.
 - For code-splitting changes, add inputs under `tests/code-splitter/test-files/<framework>/`. Regenerate and review reference, virtual, and shared snapshots for every grouping in [`tests/code-splitter.test.ts`](tests/code-splitter.test.ts).
 - Check [`tests/constants.ts`](tests/constants.ts) for framework coverage: the snapshot matrix currently covers React and Solid only. Validate affected Vue behavior in Vue router e2e apps.

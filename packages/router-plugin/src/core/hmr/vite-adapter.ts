@@ -1,6 +1,5 @@
-import { parseExpression } from '@tanstack/router-utils'
 import { astTemplate, hole, importMeta, literal } from '../ast-template'
-import { getHandleRouteUpdateCode } from './handle-route-update'
+import { createHandleRouteUpdate } from './handle-route-update'
 import type { AnyRoute } from '@tanstack/router-core'
 import type { HandleRouteUpdate } from './handle-route-update'
 import type { ProgramStatement } from '@yuku-toolchain/types'
@@ -67,9 +66,7 @@ export function createViteHmrStatement(
   } = {},
 ): Array<ProgramStatement> {
   return viteRouteHmr({
-    handleRouteUpdateFunction: parseExpression(
-      getHandleRouteUpdateCode(stableRouteOptionKeys),
-    ),
+    handleRouteUpdateFunction: createHandleRouteUpdate(stableRouteOptionKeys),
     // The replacement Route object can be uninitialized; keep a generated id
     // as fallback for the existing router route we need to patch.
     routeIdFallback:
