@@ -11,11 +11,7 @@ export {
   prependStatements,
   sourcePosition,
 } from './ast'
-export type {
-  AnalyzeModuleOptions,
-  ModuleAstClone,
-  GenerateResult,
-} from './ast'
+export type { AnalyzeModuleOptions, GenerateResult } from './ast'
 export { logDiff } from './logger'
 export { copyFilesPlugin } from './copy-files-plugin'
 export { createIdentifier, decodeIdentifier } from './path-ids'
@@ -25,11 +21,6 @@ export {
   unwrapExpression,
   moduleDeclarationGraph,
   expandTransitively,
-  stripTypeExports,
   removeUnusedBindings,
 } from './compiler-helpers'
-export type {
-  ModuleDeclarationGraph,
-  ExtractedModuleInfo,
-  ModuleInfoBinding,
-} from './compiler-helpers'
+export type { ModuleInfoBinding } from './compiler-helpers'
