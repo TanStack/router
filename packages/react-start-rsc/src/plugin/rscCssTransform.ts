@@ -106,16 +106,24 @@ function createRscCssCompilerTransform(opts: {
           continue
         }
 
-        const options = context.parseExpression(
-          `{ ${RSC_CSS_OPTIONS_KEY}: null }`,
+        args.push(
+          b.ObjectExpression({
+            properties: [
+              // `b.Property` is typed as an object or a binding property
+              {
+                type: 'Property',
+                start: 0,
+                end: 0,
+                kind: 'init',
+                key: b.Identifier({ name: RSC_CSS_OPTIONS_KEY }),
+                value: cloneLoadCssExpression(),
+                method: false,
+                shorthand: false,
+                computed: false,
+              },
+            ],
+          }),
         )
-        if (
-          is.ObjectExpression(options) &&
-          is.Property(options.properties[0])
-        ) {
-          options.properties[0].value = cloneLoadCssExpression()
-          args.push(options)
-        }
       }
     },
   }
