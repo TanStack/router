@@ -1,5 +1,5 @@
 import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
-import { is, literalValue, nameOf } from 'yuku-ast'
+import { is, isWrapper, literalValue, nameOf } from 'yuku-ast'
 import { buildLineIndex, indexToLineColumn } from './sourceLocation'
 import { getOrCreate } from './utils'
 import type * as t from '@yuku-toolchain/types'
@@ -346,7 +346,7 @@ function getCalleeRootName(node: t.Node): string | undefined {
 
 function transparentParent(module: Module, node: t.Node) {
   let parent = module.parentOf(node)
-  while (parent && unwrapExpression(parent) === unwrapExpression(node)) {
+  while (isWrapper(parent) && parent.expression === node) {
     node = parent
     parent = module.parentOf(node)
   }
