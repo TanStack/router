@@ -84,6 +84,9 @@ export const result = ${expression}`
 // Impact: the mock of a denied module that exports a reserved word
 // (`export { remove as delete }`) or is used through one (`api.delete()`) is a
 // SyntaxError, which fails the build instead of mocking the module.
+// Fix: check names with `isValidIdentifier(name) &&
+// !isStrictBindOnlyReservedWord(name)` from `yuku-ast`, since
+// `isValidIdentifier` alone accepts `eval` and `arguments`.
 test.fails.each([
   {
     name: 'a denied file exporting `delete`',
