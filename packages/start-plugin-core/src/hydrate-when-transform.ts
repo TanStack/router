@@ -281,27 +281,16 @@ function inspectSplitBoundary(
   return { captured: [...captured].sort(), nestedBoundaryCount }
 }
 
-function getHydrateImport(
-  ast: t.Program,
+function getHydrateLocalName(
+  module: Module,
   framework: CompileStartFrameworkOptions,
 ) {
-  for (const statement of ast.body) {
-    if (
-      !is.ImportDeclaration(statement) ||
-      statement.source.value !== `@tanstack/${framework}-start`
-    ) {
-      continue
-    }
-    for (const specifier of statement.specifiers) {
-      if (
-        is.ImportSpecifier(specifier) &&
-        nameOf(specifier.imported) === 'Hydrate'
-      ) {
-        return { hydrateLocalName: specifier.local.name }
-      }
-    }
-  }
-  return undefined
+  return module.imports.find(
+    (record) =>
+      record.kind === 'named' &&
+      record.name === 'Hydrate' &&
+      record.specifier === `@tanstack/${framework}-start`,
+  )?.local?.name
 }
 
 function getMeaningfulChildren(children: t.JSXElement['children']) {
@@ -373,11 +362,10 @@ function transformHydrateAst(
   if (!options.code.includes('Hydrate')) {
     return null
   }
-  const hydrateImport = getHydrateImport(options.ast, options.framework)
-  if (!hydrateImport) {
+  const localName = getHydrateLocalName(options.module, options.framework)
+  if (!localName) {
     return null
   }
-  const localName = hydrateImport.hydrateLocalName
   const sourceId = cleanId(options.id)
   const getBoundaryId = createBoundaryId(options.root, sourceId)
   let nextBoundaryIndex = options.indexOffset ?? 0
@@ -553,12 +541,12 @@ function loadHydrateVirtualModule(options: {
     return null
   }
   const module = options.module
-  const { program: ast, originalNodes } = cloneModuleAst(module)
-  const context = { ast, module, originalNodes }
-  const hydrateImport = getHydrateImport(ast, options.framework)
-  if (!hydrateImport) {
+  const localName = getHydrateLocalName(module, options.framework)
+  if (!localName) {
     return null
   }
+  const { program: ast, originalNodes } = cloneModuleAst(module)
+  const context = { ast, module, originalNodes }
   const getBoundaryId = createBoundaryId(options.root, sourceId)
   let target: t.JSXElement | undefined
   let captures: Array<string> = []
@@ -566,7 +554,7 @@ function loadHydrateVirtualModule(options: {
   walk(ast, {
     JSXElement(node, visitor) {
       if (
-        getJSXElementName(node) !== hydrateImport.hydrateLocalName ||
+        getJSXElementName(node) !== localName ||
         getBooleanProp(node.openingElement, 'split') === false
       ) {
         return
