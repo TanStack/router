@@ -445,13 +445,10 @@ function transformHydrateAst(
       const id = getBoundaryId(index)
       const exportName = `H${index}`
       const existingId = getJSXAttribute(node.openingElement, 'h')
-      const idValue: t.StringLiteral = {
-        type: 'Literal',
+      const idValue = b.Literal({
         value: id,
         raw: JSON.stringify(id),
-        start: 0,
-        end: 0,
-      }
+      }) as t.StringLiteral
       if (existingId) {
         existingId.value = idValue
       } else {
