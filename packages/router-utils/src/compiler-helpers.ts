@@ -623,11 +623,15 @@ export function removeUnusedBindings(
         index.patternElements.get(original))
     return !!owners && [...owners].every((binding) => removable.has(binding))
   }
+  // Names the surviving code references, to drop unused generated imports
+  const referencedNames = new Set<string>()
   walk(program, {
     enter(node, context) {
       if (isRemovable(node)) {
         context.remove()
-      } else if (is.ObjectPattern(node)) {
+        return
+      }
+      if (is.ObjectPattern(node)) {
         node.properties = node.properties.filter(
           (property) => !isRemovable(property),
         )
@@ -636,6 +640,24 @@ export function removeUnusedBindings(
         node.elements = node.elements.map((element) =>
           isRemovable(element) ? null : element,
         )
+      } else if (is.JSXElement(node) || is.JSXFragment(node)) {
+        for (const name of jsxFactoriesOf(factories, node)) {
+          referencedNames.add(name)
+        }
+      }
+      const original = originalNodes.get(node)
+      if (original) {
+        const reference = module.referenceOf(original)
+        if (reference && !reference.inTypePosition) {
+          referencedNames.add(reference.name)
+        }
+      } else {
+        const generated = generatedReferenceOf(node)
+        if (generated) {
+          referencedNames.add(
+            typeof generated === 'string' ? generated : generated.name,
+          )
+        }
       }
     },
     leave(node, context) {
@@ -667,31 +689,6 @@ export function removeUnusedBindings(
         !node.source
       ) {
         context.remove()
-      }
-    },
-  })
-
-  const referencedNames = new Set<string>()
-  walk(program, {
-    enter(node) {
-      if (is.JSXElement(node) || is.JSXFragment(node)) {
-        for (const name of jsxFactoriesOf(factories, node)) {
-          referencedNames.add(name)
-        }
-      }
-      const original = originalNodes.get(node)
-      if (original) {
-        const reference = module.referenceOf(original)
-        if (reference && !reference.inTypePosition) {
-          referencedNames.add(reference.name)
-        }
-      } else {
-        const generated = generatedReferenceOf(node)
-        if (generated) {
-          referencedNames.add(
-            typeof generated === 'string' ? generated : generated.name,
-          )
-        }
       }
     },
   })
