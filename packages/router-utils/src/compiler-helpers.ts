@@ -256,10 +256,6 @@ export function stripTypeExports(program: Program): void {
   })
 }
 
-export interface RemoveUnusedBindingsOptions {
-  roots?: Iterable<Binding | string>
-}
-
 interface BindingUses {
   /** Declarations present in the traced program. */
   present: Set<Binding>
@@ -585,7 +581,6 @@ export function removeUnusedBindings(
   module: Module,
   program: Program,
   originalNodes: WeakMap<Node, Node>,
-  { roots = [] }: RemoveUnusedBindingsOptions = {},
 ): void {
   stripTypeExports(program)
   const index = declarationIndex(module, module.bindings)
@@ -593,16 +588,7 @@ export function removeUnusedBindings(
   const output = collectBindingUses(module, program, index, (node) =>
     originalNodes.get(node),
   )
-  const byName = new Map(
-    module.rootScope.bindings.map((binding) => [binding.name, binding]),
-  )
   const live = new Set(output.roots)
-  for (const root of roots) {
-    const binding = typeof root === 'string' ? byName.get(root) : root
-    if (binding) {
-      live.add(binding)
-    }
-  }
   const dependencies = new Map<Binding, Set<Binding>>()
   for (const [from, targets] of output.uses) {
     for (const to of targets) {

@@ -30,7 +30,6 @@ export {
 } from './compiler-helpers'
 export type {
   ModuleDeclarationGraph,
-  RemoveUnusedBindingsOptions,
   ExtractedModuleInfo,
   ModuleInfoBinding,
 } from './compiler-helpers'
