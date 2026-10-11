@@ -19,7 +19,7 @@ function moduleExportName(name: string) {
 }
 
 /** `object.name`, or `object["name"]` when `name` is not a valid identifier. */
-function memberAccess(object: string, name: string) {
+export function memberAccess(object: string, name: string) {
   return isValidIdentifier(name)
     ? b.MemberExpression({
         object: b.Identifier({ name: object }),
@@ -36,10 +36,43 @@ function memberAccess(object: string, name: string) {
 }
 
 /** `const name = init` */
-function constDeclaration(name: string, init: Expression) {
+export function constDeclaration(name: string, init: Expression) {
   return b.VariableDeclaration({
     kind: 'const',
     declarations: [b.VariableDeclarator({ id: b.Identifier({ name }), init })],
+  })
+}
+
+/** `import <local> from "<source>"` */
+export function mockImport(local: string, source: string) {
+  return b.ImportDeclaration({
+    specifiers: [
+      b.ImportDefaultSpecifier({ local: b.Identifier({ name: local }) }),
+    ],
+    source: stringLiteral(source),
+    phase: null,
+    attributes: [],
+    importKind: 'value',
+  })
+}
+
+/** `<local> as <exported>`, with `exported` quoted when it is not a valid identifier. */
+export function reexportSpecifier(local: string, exported: string) {
+  return b.ExportSpecifier({
+    local: b.Identifier({ name: local }),
+    exported: moduleExportName(exported),
+    exportKind: 'value',
+  })
+}
+
+/** `export { <specifiers> }` */
+export function exportList(specifiers: Array<ExportSpecifier>) {
+  return b.ExportNamedDeclaration({
+    declaration: null,
+    specifiers,
+    source: null,
+    attributes: [],
+    exportKind: 'value',
   })
 }
 
@@ -90,17 +123,8 @@ export function rewriteDeniedImports(
     }
     const mockIndex = counter++
     const mockVar = uniqueName(`__tss_deny_${mockIndex}`)
-    // import <mockVar> from "<mock module id>"
     const replacements: Array<ProgramStatement> = [
-      b.ImportDeclaration({
-        specifiers: [
-          b.ImportDefaultSpecifier({ local: b.Identifier({ name: mockVar }) }),
-        ],
-        source: stringLiteral(getMockModuleId(node.source.value)),
-        phase: null,
-        attributes: [],
-        importKind: 'value',
-      }),
+      mockImport(mockVar, getMockModuleId(node.source.value)),
     ]
     if (is.ImportDeclaration(node)) {
       for (const specifier of node.specifiers) {
@@ -140,25 +164,10 @@ export function rewriteDeniedImports(
         replacements.push(
           constDeclaration(internal, memberAccess(mockVar, local)),
         )
-        // <internal> as <exported>
-        exportSpecifiers.push(
-          b.ExportSpecifier({
-            local: b.Identifier({ name: internal }),
-            exported: moduleExportName(exported),
-            exportKind: 'value',
-          }),
-        )
+        exportSpecifiers.push(reexportSpecifier(internal, exported))
       }
       if (exportSpecifiers.length) {
-        replacements.push(
-          b.ExportNamedDeclaration({
-            declaration: null,
-            specifiers: exportSpecifiers,
-            source: null,
-            attributes: [],
-            exportKind: 'value',
-          }),
-        )
+        replacements.push(exportList(exportSpecifiers))
       }
     }
     for (const statement of replacements) {

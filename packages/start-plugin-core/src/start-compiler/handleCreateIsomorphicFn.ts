@@ -9,17 +9,7 @@ export function handleCreateIsomorphicFn(
     const selected =
       context.env === 'client' ? methodChain.client : methodChain.server
     if (!selected) {
-      context.replaceNode(
-        node,
-        b.ArrowFunctionExpression({
-          id: null,
-          generator: false,
-          async: false,
-          expression: false,
-          params: [],
-          body: b.BlockStatement({ body: [] }),
-        }),
-      )
+      context.replaceNode(node, isomorphicStub())
       continue
     }
     if (!is.Expression(selected.firstArg)) {
@@ -29,4 +19,16 @@ export function handleCreateIsomorphicFn(
     }
     context.replaceNode(node, selected.firstArg)
   }
+}
+
+/** `() => {}` */
+export function isomorphicStub() {
+  return b.ArrowFunctionExpression({
+    id: null,
+    generator: false,
+    async: false,
+    expression: false,
+    params: [],
+    body: b.BlockStatement({ body: [] }),
+  })
 }

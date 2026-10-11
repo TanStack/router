@@ -140,68 +140,15 @@ export function handleCreateServerFn(
         isClientReferenced:
           context.env === 'client' || !!knownFn || runtime === 'ssr',
       }
-      context.replaceNode(
-        handler.firstArg,
-        b.CallExpression({
-          callee: generatedReference(runtimeName),
-          arguments: [stringLiteral(functionId)],
-          optional: false,
-        }),
-      )
+      context.replaceNode(handler.firstArg, rpcCall(runtimeName, functionId))
       continue
     }
-    // const <functionName> = createServerRpc({ "id": …, "name": …, "filename": … },
-    //   (opts) => <variableName>.__executeServer(opts))
-    const extracted = b.VariableDeclaration({
-      kind: 'const',
-      declarations: [
-        b.VariableDeclarator({
-          id: b.Identifier({ name: functionName }),
-          init: b.CallExpression({
-            callee: generatedReference(runtimeName),
-            arguments: [
-              b.ObjectExpression({
-                properties: Object.entries({
-                  id: functionId,
-                  name: variableName,
-                  filename: relativeFilename,
-                }).map(
-                  // `b.Property` is typed as an object or a binding property
-                  ([key, value]): ObjectProperty => ({
-                    type: 'Property',
-                    start: 0,
-                    end: 0,
-                    kind: 'init',
-                    key: stringLiteral(key),
-                    value: stringLiteral(value),
-                    method: false,
-                    shorthand: false,
-                    computed: false,
-                  }),
-                ),
-              }),
-              b.ArrowFunctionExpression({
-                id: null,
-                generator: false,
-                async: false,
-                expression: true,
-                params: [b.Identifier({ name: 'opts' })],
-                body: b.CallExpression({
-                  callee: b.MemberExpression({
-                    object: generatedReference(variableName),
-                    property: b.Identifier({ name: '__executeServer' }),
-                    computed: false,
-                    optional: false,
-                  }),
-                  arguments: [b.Identifier({ name: 'opts' })],
-                  optional: false,
-                }),
-              }),
-            ],
-            optional: false,
-          }),
-        }),
-      ],
+    const extracted = extractedHandler({
+      functionName,
+      runtimeName,
+      functionId,
+      variableName,
+      relativeFilename,
     })
     context.ast.body.splice(context.ast.body.indexOf(statement), 0, extracted)
     // Move the existing handler node; its source-binding identity remains intact.
@@ -251,37 +198,13 @@ export function handleCreateServerFn(
         return true
       },
     )
-    context.ast.body.unshift(
-      ...missing.map((directive) => {
-        const expression = stringLiteral(directive)
-        // A directive is its raw source text without the quotes
-        return b.ExpressionStatement({
-          expression,
-          directive: expression.raw.slice(1, -1),
-        })
-      }),
-    )
+    context.ast.body.unshift(...missing.map(directiveStatement))
   } else if (Object.keys(serverFnsById).length) {
     context.onServerFnsById?.(serverFnsById)
   }
   const importPath = runtime === 'provider' ? 'server-rpc' : `${runtime}-rpc`
   const source = `@tanstack/${context.framework}-start/${importPath}`
-  prependStatements(
-    context.ast,
-    b.ImportDeclaration({
-      specifiers: [
-        b.ImportSpecifier({
-          imported: b.Identifier({ name: runtimeName }),
-          local: b.Identifier({ name: runtimeName }),
-          importKind: 'value',
-        }),
-      ],
-      source: b.Literal({ value: source, raw: `'${source}'` }) as StringLiteral,
-      phase: null,
-      attributes: [],
-      importKind: 'value',
-    }),
-  )
+  prependStatements(context.ast, runtimeImport(runtimeName, source))
 }
 
 function incrementFunctionNameVersion(name: string): string {
@@ -318,6 +241,112 @@ function removeExports(program: Program) {
   })
 }
 
+/** `<runtimeName>("<functionId>")` */
+export function rpcCall(runtimeName: string, functionId: string) {
+  return b.CallExpression({
+    callee: generatedReference(runtimeName),
+    arguments: [stringLiteral(functionId)],
+    optional: false,
+  })
+}
+
+/**
+ * `const <functionName> = <runtimeName>({ "id": …, "name": …, "filename": … },
+ *   (opts) => <variableName>.__executeServer(opts));`
+ */
+export function extractedHandler({
+  functionName,
+  runtimeName,
+  functionId,
+  variableName,
+  relativeFilename,
+}: {
+  functionName: string
+  runtimeName: string
+  functionId: string
+  variableName: string
+  relativeFilename: string
+}) {
+  return b.VariableDeclaration({
+    kind: 'const',
+    declarations: [
+      b.VariableDeclarator({
+        id: b.Identifier({ name: functionName }),
+        init: b.CallExpression({
+          callee: generatedReference(runtimeName),
+          arguments: [
+            b.ObjectExpression({
+              properties: Object.entries({
+                id: functionId,
+                name: variableName,
+                filename: relativeFilename,
+              }).map(
+                // `b.Property` is typed as an object or a binding property
+                ([key, value]): ObjectProperty => ({
+                  type: 'Property',
+                  start: 0,
+                  end: 0,
+                  kind: 'init',
+                  key: stringLiteral(key),
+                  value: stringLiteral(value),
+                  method: false,
+                  shorthand: false,
+                  computed: false,
+                }),
+              ),
+            }),
+            b.ArrowFunctionExpression({
+              id: null,
+              generator: false,
+              async: false,
+              expression: true,
+              params: [b.Identifier({ name: 'opts' })],
+              body: b.CallExpression({
+                callee: b.MemberExpression({
+                  object: generatedReference(variableName),
+                  property: b.Identifier({ name: '__executeServer' }),
+                  computed: false,
+                  optional: false,
+                }),
+                arguments: [b.Identifier({ name: 'opts' })],
+                optional: false,
+              }),
+            }),
+          ],
+          optional: false,
+        }),
+      }),
+    ],
+  })
+}
+
+/** `"<directive>";` */
+export function directiveStatement(directive: string) {
+  const expression = stringLiteral(directive)
+  // A directive is its raw source text without the quotes
+  return b.ExpressionStatement({
+    expression,
+    directive: expression.raw.slice(1, -1),
+  })
+}
+
+/** `import { <runtimeName> } from '<source>';` */
+export function runtimeImport(runtimeName: string, source: string) {
+  return b.ImportDeclaration({
+    specifiers: [
+      b.ImportSpecifier({
+        imported: b.Identifier({ name: runtimeName }),
+        local: b.Identifier({ name: runtimeName }),
+        importKind: 'value',
+      }),
+    ],
+    source: b.Literal({ value: source, raw: `'${source}'` }) as StringLiteral,
+    phase: null,
+    attributes: [],
+    importKind: 'value',
+  })
+}
+
 function importMetaMember(name: string) {
   return b.MemberExpression({
     object: b.MetaProperty({
@@ -331,7 +360,7 @@ function importMetaMember(name: string) {
 }
 
 /** `if (import.meta.<api>) { import.meta.<api>.accept(() => {}); }` */
-function acceptHotUpdates(api: 'hot' | 'webpackHot') {
+export function acceptHotUpdates(api: 'hot' | 'webpackHot') {
   return b.IfStatement({
     test: importMetaMember(api),
     consequent: b.BlockStatement({

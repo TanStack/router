@@ -18,30 +18,32 @@ export function handleEnvOnlyFn(
       }
       context.replaceNode(node, argument)
     } else {
-      context.replaceNode(
-        node,
-        b.ArrowFunctionExpression({
-          id: null,
-          generator: false,
-          async: false,
-          expression: false,
-          params: [],
-          body: b.BlockStatement({
-            body: [
-              b.ThrowStatement({
-                argument: b.NewExpression({
-                  callee: generatedReference('Error'),
-                  arguments: [
-                    stringLiteral(
-                      `${factory}() functions can only be called on the ${target}!`,
-                    ),
-                  ],
-                }),
-              }),
+      context.replaceNode(node, envOnlyStub(factory, target))
+    }
+  }
+}
+
+/** `() => { throw new Error("<factory>() functions can only be called on the <target>!"); }` */
+export function envOnlyStub(factory: string, target: string) {
+  return b.ArrowFunctionExpression({
+    id: null,
+    generator: false,
+    async: false,
+    expression: false,
+    params: [],
+    body: b.BlockStatement({
+      body: [
+        b.ThrowStatement({
+          argument: b.NewExpression({
+            callee: generatedReference('Error'),
+            arguments: [
+              stringLiteral(
+                `${factory}() functions can only be called on the ${target}!`,
+              ),
             ],
           }),
         }),
-      )
-    }
-  }
+      ],
+    }),
+  })
 }
