@@ -230,6 +230,60 @@ export const Route = createFileRoute('/')({
   })
 })
 
+describe('names the compilers add', () => {
+  it('avoid the names a route file declares, with HMR and every option split', async () => {
+    const declared = [
+      'lazyRouteComponent',
+      'lazyFn',
+      '$$splitLoaderImporter',
+      '$$splitComponentImporter',
+      '$$splitPendingComponentImporter',
+      'SplitLoader',
+      'SplitComponent',
+      'SplitPendingComponent',
+      'TSRSplitComponent',
+      'TSRSplitPendingComponent',
+      'TSRComponent',
+      'TSRErrorComponent',
+      'TSRFastRefreshAnchor',
+    ]
+    const { modules } = compileRouteModules(
+      `${head}${declared
+        .map((name) => `export const ${name} = ${JSON.stringify(name)}`)
+        .join('\n')}
+function page() {
+  return <p>{[lazyRouteComponent, $$splitComponentImporter, SplitComponent, TSRSplitComponent].join()}</p>
+}
+function pending() {
+  return <p>{[$$splitPendingComponentImporter, SplitPendingComponent, TSRSplitPendingComponent].join()}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => [lazyFn, $$splitLoaderImporter, SplitLoader],
+  component: page,
+  pendingComponent: pending,
+  errorComponent: () => <p>{[TSRComponent, TSRErrorComponent, TSRFastRefreshAnchor].join()}</p>,
+})
+`,
+      {
+        hmr: true,
+        groupings: [['loader'], ['component'], ['pendingComponent']],
+      },
+    )
+    expect(modules.reference).toMatch(
+      declarationOf('\\$\\$splitComponentImporter2'),
+    )
+    expect(modules.reference).toMatch(declarationOf('TSRSplitComponent2'))
+    expect(modules.reference).toMatch(declarationOf('TSRErrorComponent2'))
+    expect(importedNames(modules.reference!, '@tanstack/react-router')).toEqual(
+      ['createFileRoute', 'lazyFn', 'lazyRouteComponent'],
+    )
+    expect(modules['virtual component']).toMatch(
+      declarationOf('SplitComponent2'),
+    )
+    await expectValidModules(modules)
+  })
+})
+
 describe('imports read in nested positions follow the code that reads them', () => {
   // Source: React Router route-chunks-test.ts "default argument", "destructured
   // argument with default value", "for...of with destructuring and default

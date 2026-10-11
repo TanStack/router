@@ -30,25 +30,34 @@ export function getObjectPropertyKeyName(prop: Property): string | undefined {
   return nameOf(prop.key) ?? undefined
 }
 
+/** The names each output program contains or was given. */
 const reservedProgramNames = new WeakMap<Program, Set<string>>()
 
+/**
+ * A name nothing in `program` uses, nor any earlier call gave out. The program
+ * is only read on the first call: an identifier added afterwards must be named
+ * by this function, or must not declare or reference a name a later call could
+ * choose (`baseName`, or it with a numeric suffix). The HMR snippets only
+ * declare and reference names such as `hot`, `hotData` and `window`.
+ */
 export function getUniqueProgramIdentifier(
   program: Program,
   baseName: string,
 ): Identifier {
   let names = reservedProgramNames.get(program)
   if (!names) {
-    names = new Set<string>()
+    const programNames = new Set<string>()
+    walk(program, {
+      Identifier(node) {
+        programNames.add(node.name)
+      },
+      JSXIdentifier(node) {
+        programNames.add(node.name)
+      },
+    })
+    names = programNames
     reservedProgramNames.set(program, names)
   }
-  walk(program, {
-    Identifier(node) {
-      names.add(node.name)
-    },
-    JSXIdentifier(node) {
-      names.add(node.name)
-    },
-  })
   let name = baseName
   let suffix = 2
   while (names.has(name)) {
