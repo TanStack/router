@@ -321,6 +321,12 @@ export async function getRouteNodes(
               // where route.tsx at root should have empty path, not '/'
               const isLayoutRoute = routeType === 'layout'
 
+              // An index directory's route file (index/route.tsx) is the
+              // index route itself, not a layout for the parent path.
+              if (isLayoutRoute) {
+                routeType = 'static'
+              }
+
               routePath =
                 routePath.replace(
                   new RegExp(`/${escapeRegExp(updatedLastRouteSegment)}$`),
