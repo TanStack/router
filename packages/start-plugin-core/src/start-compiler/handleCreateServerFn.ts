@@ -15,6 +15,7 @@ import {
   stripMethodCall,
 } from './utils'
 import type {
+  ObjectProperty,
   Program,
   ProgramStatement,
   StringLiteral,
@@ -150,14 +151,59 @@ export function handleCreateServerFn(
       )
       continue
     }
-    const metadata = JSON.stringify({
-      id: functionId,
-      name: variableName,
-      filename: relativeFilename,
+    // const <functionName> = createServerRpc({ "id": …, "name": …, "filename": … },
+    //   (opts) => <variableName>.__executeServer(opts))
+    const extracted = b.VariableDeclaration({
+      kind: 'const',
+      declarations: [
+        b.VariableDeclarator({
+          id: b.Identifier({ name: functionName }),
+          init: b.CallExpression({
+            callee: generatedReference(runtimeName),
+            arguments: [
+              b.ObjectExpression({
+                properties: Object.entries({
+                  id: functionId,
+                  name: variableName,
+                  filename: relativeFilename,
+                }).map(
+                  // `b.Property` is typed as an object or a binding property
+                  ([key, value]): ObjectProperty => ({
+                    type: 'Property',
+                    start: 0,
+                    end: 0,
+                    kind: 'init',
+                    key: stringLiteral(key),
+                    value: stringLiteral(value),
+                    method: false,
+                    shorthand: false,
+                    computed: false,
+                  }),
+                ),
+              }),
+              b.ArrowFunctionExpression({
+                id: null,
+                generator: false,
+                async: false,
+                expression: true,
+                params: [b.Identifier({ name: 'opts' })],
+                body: b.CallExpression({
+                  callee: b.MemberExpression({
+                    object: generatedReference(variableName),
+                    property: b.Identifier({ name: '__executeServer' }),
+                    computed: false,
+                    optional: false,
+                  }),
+                  arguments: [b.Identifier({ name: 'opts' })],
+                  optional: false,
+                }),
+              }),
+            ],
+            optional: false,
+          }),
+        }),
+      ],
     })
-    const extracted = parseStatements(
-      `const ${functionName} = createServerRpc(${metadata}, (opts) => ${variableName}.__executeServer(opts));`,
-    )[0]!
     context.ast.body.splice(context.ast.body.indexOf(statement), 0, extracted)
     // Move the existing handler node; its source-binding identity remains intact.
     handler.call.arguments = [
