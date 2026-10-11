@@ -172,26 +172,36 @@ function declarationIndex(
   return { declarations, declarationBindings, patternElements }
 }
 
-/** Bindings sharing a declarator are one initialization unit. */
+const moduleDeclarationGraphs = new WeakMap<Module, ModuleDeclarationGraph>()
+
+/**
+ * Bindings sharing a declarator are one initialization unit. Cached per
+ * module, so read-only.
+ */
 export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
-  const { declarations, declarationBindings } = declarationIndex(
-    module,
-    module.rootScope.bindings,
-  )
-  const dependencies = new Map<Binding, Set<Binding>>()
-  for (const [declaration, owners] of declarationBindings) {
-    const references = collectModuleReferences(module, declaration)
-    for (const binding of owners) {
-      const combined = dependencies.get(binding) ?? new Set<Binding>()
-      for (const reference of references) {
-        if (reference !== binding) {
-          combined.add(reference)
+  let graph = moduleDeclarationGraphs.get(module)
+  if (!graph) {
+    const { declarations, declarationBindings } = declarationIndex(
+      module,
+      module.rootScope.bindings,
+    )
+    const dependencies = new Map<Binding, Set<Binding>>()
+    for (const [declaration, owners] of declarationBindings) {
+      const references = collectModuleReferences(module, declaration)
+      for (const binding of owners) {
+        const combined = dependencies.get(binding) ?? new Set<Binding>()
+        for (const reference of references) {
+          if (reference !== binding) {
+            combined.add(reference)
+          }
         }
+        dependencies.set(binding, combined)
       }
-      dependencies.set(binding, combined)
     }
+    graph = { declarations, declarationBindings, dependencies }
+    moduleDeclarationGraphs.set(module, graph)
   }
-  return { declarations, declarationBindings, dependencies }
+  return graph
 }
 
 export function expandTransitively<T>(
