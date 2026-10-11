@@ -94,11 +94,7 @@ export function analyzeModule({
   // Without the query, and a hash after the last path segment's extension (a
   // `#` may also be part of a directory name)
   const physicalName = filename.replace(/\?.*$/, '').replace(/#[^/\\]*$/, '')
-  // WebContainers report a stale byte count for `TextEncoder.encodeInto('')`,
-  // which Yuku's WebAssembly core reads the source with, so an empty source is
-  // analyzed as a line break: https://github.com/stackblitz/webcontainer-core/issues/2173
-  // and https://github.com/yuku-toolchain/yuku/issues/244
-  const module = analyze(code || '\n', {
+  const module = analyze(code, {
     path: filename,
     // JavaScript route files may contain JSX but never TypeScript, where
     // `a < b > (c)` would be a call with type arguments
@@ -196,7 +192,7 @@ export function unwrapExport<T extends Node>(
 
 /** Print an output tree without modifying the source model or its semantic tables. */
 export function generateModule(
-  program: Program,
+  program: Node,
   options?: { source: string; filename: string },
 ): GenerateResult {
   const result = generate(program, {
@@ -298,6 +294,7 @@ export function cloneGeneratedNode<T extends Node>(node: T): T {
 
 /** Parse compiler-owned snippets; their nodes have no original-source spans. */
 export function parseStatements(code: string): Program['body'] {
+  // Nothing to parse
   if (!code) {
     return []
   }
