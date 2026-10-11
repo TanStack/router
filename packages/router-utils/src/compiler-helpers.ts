@@ -48,13 +48,12 @@ function declarationOf(module: Module, identifier: Node): Node | undefined {
         ? undefined
         : current
     }
-    if (is.TSEnumDeclaration(current) || is.TSModuleDeclaration(current)) {
-      return current.id === identifier ? current : undefined
-    }
     if (
       is.FunctionDeclaration(current) ||
       is.ClassDeclaration(current) ||
-      is.TSDeclareFunction(current)
+      is.TSDeclareFunction(current) ||
+      is.TSEnumDeclaration(current) ||
+      is.TSModuleDeclaration(current)
     ) {
       return current.id === identifier ? current : undefined
     }
@@ -276,7 +275,7 @@ interface BindingUses {
 interface JsxFactoryNames {
   /** Names JSX elements compile to calls of. */
   element: Array<string>
-  /** Names fragments also compile to references of. */
+  /** Names fragments compile to references of, the element names included. */
   fragment: Array<string>
 }
 
@@ -304,6 +303,7 @@ function jsxFactoryNames(module: Module): JsxFactoryNames {
           names[pragma === 'jsx' ? 'element' : 'fragment'].push(name!)
         }
       }
+      names.fragment = [...names.element, ...names.fragment]
     }
     jsxFactoryNamesCache.set(module, names)
   }
@@ -311,9 +311,7 @@ function jsxFactoryNames(module: Module): JsxFactoryNames {
 }
 
 function jsxFactoriesOf(names: JsxFactoryNames, node: Node): Array<string> {
-  return is.JSXFragment(node)
-    ? [...names.element, ...names.fragment]
-    : names.element
+  return is.JSXFragment(node) ? names.fragment : names.element
 }
 
 function addEdge(
@@ -337,9 +335,6 @@ function collectBindingUses(
   index: DeclarationIndex,
   originOf: (node: Node) => Node | undefined,
 ): BindingUses {
-  const byName = new Map(
-    module.rootScope.bindings.map((binding) => [binding.name, binding]),
-  )
   const result: BindingUses = {
     present: new Set(),
     roots: new Set(),
@@ -347,7 +342,7 @@ function collectBindingUses(
     parents: new Map(),
     erasedReferences: new Map(),
   }
-  const reactImport = byName.get('React')
+  const reactImport = module.rootScope.find('React')
   const factories = jsxFactoryNames(module)
   const erasedReference = (owner: Set<Binding> | null, binding: Binding) => {
     if (binding.has(BindingFlags.Import)) {
@@ -367,6 +362,17 @@ function collectBindingUses(
       addEdge(result.uses, source, binding)
     }
   }
+  // Export records are uses even when there are no lexical references. A
+  // transform that removes an export may also remove its declaration graph.
+  const markExport = (owner: Set<Binding> | null, identifier: Node) => {
+    const originalIdentifier = originOf(identifier)
+    const binding = originalIdentifier
+      ? module.bindingOf(originalIdentifier)
+      : module.rootScope.find(nameOf(identifier) ?? '')
+    if (binding) {
+      use(owner, binding)
+    }
+  }
   walk(program, {
     enter(node) {
       const original = originOf(node)
@@ -383,21 +389,14 @@ function collectBindingUses(
         ? module.scopeOf(original)
         : (scopeStack.at(-1) ?? module.rootScope)
       scopeStack.push(scope)
-      for (const binding of own ?? []) {
-        result.present.add(binding)
-        for (const parent of parentOwner ?? []) {
-          addEdge(result.parents, binding, parent)
-        }
-      }
-      // Export records are uses even when there are no lexical references. A
-      // transform that removes an export may also remove its declaration graph.
-      const markExport = (identifier: Node) => {
-        const originalIdentifier = originOf(identifier)
-        const binding = originalIdentifier
-          ? module.bindingOf(originalIdentifier)
-          : byName.get(nameOf(identifier) ?? '')
-        if (binding) {
-          use(owner, binding)
+      if (own) {
+        for (const binding of own) {
+          result.present.add(binding)
+          if (parentOwner) {
+            for (const parent of parentOwner) {
+              addEdge(result.parents, binding, parent)
+            }
+          }
         }
       }
       if (is.ExportNamedDeclaration(node) && node.declaration) {
@@ -405,11 +404,11 @@ function collectBindingUses(
         if (is.VariableDeclaration(declaration)) {
           for (const item of declaration.declarations) {
             for (const identifier of bindingIdentifiers(item.id)) {
-              markExport(identifier)
+              markExport(owner, identifier)
             }
           }
         } else if ('id' in declaration && declaration.id) {
-          markExport(declaration.id)
+          markExport(owner, declaration.id)
         }
       }
       if (
@@ -418,10 +417,10 @@ function collectBindingUses(
           is.ClassDeclaration(node.declaration)) &&
         node.declaration.id
       ) {
-        markExport(node.declaration.id)
+        markExport(owner, node.declaration.id)
       }
       if (is.ExportSpecifier(node)) {
-        markExport(node.local)
+        markExport(owner, node.local)
       }
       const reference = original ? module.referenceOf(original) : null
       if (reference?.inTypePosition && reference.binding) {
@@ -783,19 +782,17 @@ export function extractModuleInfo(sourceModule: Module): ExtractedModuleInfo {
               : (record.fromName ?? record.name),
         })
         exportBindings.set(record.name, name)
-      } else if (record.name === 'default') {
-        const statement = sourceModule.ast.body.find(
-          is.ExportDefaultDeclaration,
-        )
-        if (statement) {
-          const declaration = statement.declaration
-          const name = syntheticName()
-          bindings.set(name, {
-            type: 'var',
-            init: is.Expression(declaration) ? declaration : null,
-          })
-          exportBindings.set('default', name)
-        }
+      } else if (
+        record.name === 'default' &&
+        is.ExportDefaultDeclaration(record.node)
+      ) {
+        const declaration = record.node.declaration
+        const name = syntheticName()
+        bindings.set(name, {
+          type: 'var',
+          init: is.Expression(declaration) ? declaration : null,
+        })
+        exportBindings.set('default', name)
       }
     }
   }
