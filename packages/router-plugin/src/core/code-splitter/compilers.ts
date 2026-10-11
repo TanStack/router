@@ -490,23 +490,33 @@ function createOutput(analysis: RouteModuleAnalysis) {
       copies.set(originalNodes.get(node)!, node)
     },
   })
-  const declarationExports = new Map<Node, typeof analysis.module.exports>()
-  for (const entry of analysis.module.exports) {
-    if (!entry.local || entry.name === null || entry.typeOnly) {
-      continue
-    }
-    // The top-level statement, the last ancestor before the program
-    const statement = [...analysis.module.ancestors(entry.node)].at(-2)
-    if (is.ExportNamedDeclaration(statement) && statement.declaration) {
-      const entries = declarationExports.get(statement) ?? []
-      declarationExports.set(statement, [...entries, entry])
-    }
-  }
+  // Most outputs never rename a binding: build the index on first use
+  let declarationExports: Map<Node, typeof analysis.module.exports> | undefined
   const renameBinding = (node: Node, name: string) => {
     const original = originalNodes.get(node)
     const binding = original ? analysis.module.bindingOf(original) : null
     if (!binding) {
       return
+    }
+    if (!declarationExports) {
+      declarationExports = new Map()
+      for (const entry of analysis.module.exports) {
+        if (!entry.local || entry.name === null || entry.typeOnly) {
+          continue
+        }
+        // The top-level statement, the last ancestor before the program
+        let statement: Node = entry.node
+        for (const ancestor of analysis.module.ancestors(entry.node)) {
+          if (is.Program(ancestor)) {
+            break
+          }
+          statement = ancestor
+        }
+        if (is.ExportNamedDeclaration(statement) && statement.declaration) {
+          const entries = declarationExports.get(statement) ?? []
+          declarationExports.set(statement, [...entries, entry])
+        }
+      }
     }
     const aliasedNames = new Set<string>()
     for (const [statement, entries] of declarationExports) {
@@ -611,13 +621,17 @@ function removeDeclarations(program: Program, names: Set<string>) {
         context.remove()
       }
     },
-    VariableDeclarator(node, context) {
-      const container = context.ancestors().at(-2)
-      if (!is.Program(container) && !is.ExportNamedDeclaration(container)) {
-        return
-      }
-      if (bindingIdentifiers(node.id).every((id) => names.has(id.name))) {
-        context.remove()
+    VariableDeclaration(node, context) {
+      if (
+        is.Program(context.parent) ||
+        is.ExportNamedDeclaration(context.parent)
+      ) {
+        node.declarations = node.declarations.filter(
+          (declarator) =>
+            !bindingIdentifiers(declarator.id).every((id) =>
+              names.has(id.name),
+            ),
+        )
       }
     },
     FunctionDeclaration(node, context) {

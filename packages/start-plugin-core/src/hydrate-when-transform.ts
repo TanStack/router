@@ -231,12 +231,12 @@ function inspectSplitBoundary(
       ) {
         return
       }
-      if (
-        binding.declarations.some((declaration) =>
-          [...context.module.ancestors(declaration)].includes(originalBoundary),
-        )
-      ) {
-        return
+      for (const declaration of binding.declarations) {
+        for (const ancestor of context.module.ancestors(declaration)) {
+          if (ancestor === originalBoundary) {
+            return
+          }
+        }
       }
       captured.add(binding.name)
     },
