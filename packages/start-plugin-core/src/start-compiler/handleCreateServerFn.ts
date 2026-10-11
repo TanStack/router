@@ -1,6 +1,5 @@
 import { b, is } from 'yuku-ast'
 import {
-  parseExpression,
   parseStatements,
   prependStatements,
   sourcePosition,
@@ -10,12 +9,15 @@ import path from 'pathe'
 import {
   cleanId,
   codeFrameError,
+  generatedReference,
   getVariableDeclarator,
+  stringLiteral,
   stripMethodCall,
 } from './utils'
 import type {
   Program,
   ProgramStatement,
+  StringLiteral,
   VariableDeclaration,
 } from '@yuku-toolchain/types'
 import type { CompilationContext, RewriteCandidate, ServerFn } from './types'
@@ -140,7 +142,11 @@ export function handleCreateServerFn(
       }
       context.replaceNode(
         handler.firstArg,
-        parseExpression(`${runtimeName}(${JSON.stringify(functionId)})`),
+        b.CallExpression({
+          callee: generatedReference(runtimeName),
+          arguments: [stringLiteral(functionId)],
+          optional: false,
+        }),
       )
       continue
     }
@@ -154,7 +160,10 @@ export function handleCreateServerFn(
     )[0]!
     context.ast.body.splice(context.ast.body.indexOf(statement), 0, extracted)
     // Move the existing handler node; its source-binding identity remains intact.
-    handler.call.arguments = [parseExpression(functionName), handler.firstArg]
+    handler.call.arguments = [
+      generatedReference(functionName),
+      handler.firstArg,
+    ]
     exportNames.add(functionName)
   }
 
@@ -197,19 +206,35 @@ export function handleCreateServerFn(
       },
     )
     context.ast.body.unshift(
-      ...parseStatements(
-        missing.map((directive) => `${JSON.stringify(directive)};`).join('\n'),
-      ),
+      ...missing.map((directive) => {
+        const expression = stringLiteral(directive)
+        // A directive is its raw source text without the quotes
+        return b.ExpressionStatement({
+          expression,
+          directive: expression.raw.slice(1, -1),
+        })
+      }),
     )
   } else if (Object.keys(serverFnsById).length) {
     context.onServerFnsById?.(serverFnsById)
   }
   const importPath = runtime === 'provider' ? 'server-rpc' : `${runtime}-rpc`
+  const source = `@tanstack/${context.framework}-start/${importPath}`
   prependStatements(
     context.ast,
-    ...parseStatements(
-      `import { ${runtimeName} } from '@tanstack/${context.framework}-start/${importPath}';`,
-    ),
+    b.ImportDeclaration({
+      specifiers: [
+        b.ImportSpecifier({
+          imported: b.Identifier({ name: runtimeName }),
+          local: b.Identifier({ name: runtimeName }),
+          importKind: 'value',
+        }),
+      ],
+      source: b.Literal({ value: source, raw: `'${source}'` }) as StringLiteral,
+      phase: null,
+      attributes: [],
+      importKind: 'value',
+    }),
   )
 }
 
