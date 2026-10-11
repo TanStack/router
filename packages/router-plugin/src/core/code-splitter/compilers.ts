@@ -482,6 +482,10 @@ function generateRouteModule(
 
 function createOutput(analysis: RouteModuleAnalysis) {
   const { program, originalNodes } = cloneModuleAst(analysis.module)
+  const reservedNames = new Set([
+    ...analysis.module.bindings.map((binding) => binding.name),
+    ...analysis.module.unresolvedReferences.map((reference) => reference.name),
+  ])
   const copies = new Map<Node, Node>()
   walk(program, {
     enter(node) {
@@ -575,7 +579,7 @@ function createOutput(analysis: RouteModuleAnalysis) {
       },
     })
   }
-  return { program, originalNodes, copies, renameBinding }
+  return { program, originalNodes, reservedNames, copies, renameBinding }
 }
 
 /** Split modules export only their own split values; keep local declarations. */
@@ -700,7 +704,8 @@ export function compileCodeSplitReferenceRoute(
 ) {
   const analysis = sourceAnalysis(options)
   const output = createOutput(analysis)
-  const { program, originalNodes, copies, renameBinding } = output
+  const { program, originalNodes, reservedNames, copies, renameBinding } =
+    output
   const framework = getFrameworkOptions(options.targetFramework)
   const lazyImports = new Map<string, string>()
   const knownExported = new Set<string>()
@@ -712,6 +717,7 @@ export function compileCodeSplitReferenceRoute(
       program,
       module: analysis.module,
       originalNodes,
+      reservedNames,
       renameBinding,
       routeOptions,
       createRouteFn: route.factory,
@@ -767,7 +773,10 @@ export function compileCodeSplitReferenceRoute(
         const meta = splitMeta(key)
         let lazy = lazyImports.get(meta.splitStrategy)
         if (!lazy) {
-          lazy = getUniqueProgramIdentifier(program, meta.splitStrategy).name
+          lazy = getUniqueProgramIdentifier(
+            reservedNames,
+            meta.splitStrategy,
+          ).name
           prependStatements(
             program,
             imports(
@@ -778,7 +787,7 @@ export function compileCodeSplitReferenceRoute(
           lazyImports.set(meta.splitStrategy, lazy)
         }
         meta.localImporterIdent = getUniqueProgramIdentifier(
-          program,
+          reservedNames,
           meta.localImporterIdent,
         ).name
         prependStatements(
@@ -905,7 +914,7 @@ export function compileCodeSplitVirtualRoute(
   },
 ) {
   const analysis = sourceAnalysis(options)
-  const { program, originalNodes, copies, renameBinding } =
+  const { program, originalNodes, reservedNames, copies, renameBinding } =
     createOutput(analysis)
   if (!analysis.routes.some((route) => route.factory === 'createFileRoute')) {
     return generateRouteModule(analysis, program, options.filename)
@@ -952,6 +961,7 @@ export function compileCodeSplitVirtualRoute(
           for (const plugin of options.compilerPlugins ?? []) {
             plugin.onVirtualRouteSplitNode?.({
               program,
+              reservedNames,
               renameBinding,
               splitNode,
               splitNodeMeta: meta,
@@ -965,7 +975,7 @@ export function compileCodeSplitVirtualRoute(
         )
       } else {
         const name = getUniqueProgramIdentifier(
-          program,
+          reservedNames,
           meta.localExporterIdent,
         ).name
         generatedExports.push(

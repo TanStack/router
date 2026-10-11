@@ -15,7 +15,7 @@ export function createReactStableHmrSplitRouteComponentsPlugin(opts: {
       }
       const exportName = ctx.splitNodeMeta.exporterIdent
       const stable = getUniqueProgramIdentifier(
-        ctx.program,
+        ctx.reservedNames,
         `TSRSplit${exportName[0]!.toUpperCase()}${exportName.slice(1)}`,
       )
       const hot =

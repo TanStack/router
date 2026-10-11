@@ -282,6 +282,25 @@ export const Route = createFileRoute('/')({
     )
     await expectValidModules(modules)
   })
+
+  it('avoid the globals a route file reads', async () => {
+    const { modules } = compileRouteModules(
+      `${head}export const Route = createFileRoute('/')({
+  component: () => <p>{[lazyRouteComponent, $$splitComponentImporter, SplitComponent].join()}</p>,
+})
+`,
+    )
+    expect(modules.reference).toMatch(
+      /\blazyRouteComponent as lazyRouteComponent2\b/,
+    )
+    expect(modules.reference).toMatch(
+      declarationOf('\\$\\$splitComponentImporter2'),
+    )
+    expect(modules['virtual component']).toMatch(
+      declarationOf('SplitComponent2'),
+    )
+    await expectValidModules(modules)
+  })
 })
 
 describe('imports read in nested positions follow the code that reads them', () => {

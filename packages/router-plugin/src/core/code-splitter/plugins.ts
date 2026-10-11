@@ -27,6 +27,12 @@ export type ReferenceRouteCompilerPluginContext = {
   program: Program
   module: Module
   originalNodes: WeakMap<Node, Node>
+  /**
+   * The names the source declares or references, and the names given out for
+   * the output. A declaration a plugin adds must take a name not in it, and
+   * add that name.
+   */
+  reservedNames: Set<string>
   insertBefore: (nodes: Array<ProgramStatement>) => void
   renameBinding: (node: Node, name: string) => void
   routeOptions: ObjectExpression
@@ -48,6 +54,8 @@ export type ReferenceRouteCompilerPluginResult = {
 
 export type VirtualRouteSplitNodeCompilerPluginContext = {
   program: Program
+  /** See `ReferenceRouteCompilerPluginContext['reservedNames']`. */
+  reservedNames: Set<string>
   renameBinding: (node: Node, name: string) => void
   splitNode: Node
   splitNodeMeta: SplitNodeMeta

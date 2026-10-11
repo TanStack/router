@@ -1,4 +1,4 @@
-import { analyzeModule, parseExpression } from '@tanstack/router-utils'
+import { parseExpression } from '@tanstack/router-utils'
 import { is } from 'yuku-ast'
 import { describe, expect, it } from 'vitest'
 import {
@@ -14,10 +14,6 @@ function matchesRouteFactoryCallCodeFilter(code: string) {
     pattern.lastIndex = 0
     return result
   })
-}
-
-function getProgramPath(code: string) {
-  return analyzeModule({ code }).ast
 }
 
 describe('normalizePath', () => {
@@ -56,40 +52,31 @@ describe('normalizePath', () => {
 
 describe('getUniqueProgramIdentifier', () => {
   it('returns the base name when unused', () => {
-    const programPath = getProgramPath('const existing = 1')
-
-    expect(getUniqueProgramIdentifier(programPath, 'TSRComponent').name).toBe(
-      'TSRComponent',
-    )
+    expect(
+      getUniqueProgramIdentifier(new Set(['existing']), 'TSRComponent').name,
+    ).toBe('TSRComponent')
   })
 
-  it('appends numeric suffixes for existing bindings', () => {
-    const programPath = getProgramPath(
-      'const TSRComponent = 1\nconst TSRComponent2 = 2',
-    )
-
-    expect(getUniqueProgramIdentifier(programPath, 'TSRComponent').name).toBe(
-      'TSRComponent3',
-    )
-  })
-
-  it('avoids globals too', () => {
-    const programPath = getProgramPath('const existing = window')
-
-    expect(getUniqueProgramIdentifier(programPath, 'window').name).toBe(
-      'window2',
-    )
+  it('appends numeric suffixes for reserved names', () => {
+    expect(
+      getUniqueProgramIdentifier(
+        new Set(['TSRComponent', 'TSRComponent2']),
+        'TSRComponent',
+      ).name,
+    ).toBe('TSRComponent3')
   })
 
   it('avoids collisions across consecutive calls with the same base name', () => {
-    const programPath = getProgramPath('const existing = 1')
+    const reservedNames = new Set(['existing'])
 
-    const first = getUniqueProgramIdentifier(programPath, 'TSRComponent')
-    const second = getUniqueProgramIdentifier(programPath, 'TSRComponent')
+    const first = getUniqueProgramIdentifier(reservedNames, 'TSRComponent')
+    const second = getUniqueProgramIdentifier(reservedNames, 'TSRComponent')
 
     expect(first.name).toBe('TSRComponent')
     expect(second.name).toBe('TSRComponent2')
-    expect(first.name).not.toBe(second.name)
+    expect(reservedNames).toEqual(
+      new Set(['existing', 'TSRComponent', 'TSRComponent2']),
+    )
   })
 })
 

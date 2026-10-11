@@ -78,7 +78,7 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
       }
 
       const componentIdentifier = getUniqueProgramIdentifier(
-        ctx.program,
+        ctx.reservedNames,
         `TSR${key[0]!.toUpperCase()}${key.slice(1)}`,
       )
 
@@ -95,7 +95,7 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
     }
 
     const hoistedIdentifier = getUniqueProgramIdentifier(
-      ctx.program,
+      ctx.reservedNames,
       `TSR${key[0]!.toUpperCase()}${key.slice(1)}`,
     )
 
@@ -143,7 +143,7 @@ export function createReactRefreshRouteComponentsPlugin(): ReferenceRouteCompile
       }
 
       const componentIdentifier = getUniqueProgramIdentifier(
-        ctx.program,
+        ctx.reservedNames,
         ctx.splitNodeMeta.localExporterIdent,
       )
 

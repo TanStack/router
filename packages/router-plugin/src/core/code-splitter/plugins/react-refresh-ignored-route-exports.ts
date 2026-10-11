@@ -7,7 +7,7 @@ export function createReactRefreshIgnoredRouteExportsPlugin(): ReferenceRouteCom
     name: 'react-refresh-ignored-route-exports',
     onAddHmr(ctx) {
       const anchorName = getUniqueProgramIdentifier(
-        ctx.program,
+        ctx.reservedNames,
         'TSRFastRefreshAnchor',
       )
       ctx.program.body.push(
