@@ -1,6 +1,5 @@
 import { b, is } from 'yuku-ast'
 import {
-  parseStatements,
   prependStatements,
   sourcePosition,
   unwrapExport,
@@ -233,10 +232,11 @@ export function handleCreateServerFn(
       )
     }
     if (context.mode === 'dev') {
+      // if (import.meta.hot) { import.meta.hot.accept(() => {}); }
+      // if (import.meta.webpackHot) { import.meta.webpackHot.accept(() => {}); }
       context.ast.body.push(
-        ...parseStatements(
-          'if (import.meta.hot) { import.meta.hot.accept(() => {}); } if (import.meta.webpackHot) { import.meta.webpackHot.accept(() => {}); }',
-        ),
+        acceptHotUpdates('hot'),
+        acceptHotUpdates('webpackHot'),
       )
     }
     const existing = new Set(
@@ -315,5 +315,50 @@ function removeExports(program: Program) {
       }
     }
     return [node]
+  })
+}
+
+function importMetaMember(name: string) {
+  return b.MemberExpression({
+    object: b.MetaProperty({
+      meta: b.Identifier({ name: 'import' }),
+      property: b.Identifier({ name: 'meta' }),
+    }),
+    property: b.Identifier({ name }),
+    computed: false,
+    optional: false,
+  })
+}
+
+/** `if (import.meta.<api>) { import.meta.<api>.accept(() => {}); }` */
+function acceptHotUpdates(api: 'hot' | 'webpackHot') {
+  return b.IfStatement({
+    test: importMetaMember(api),
+    consequent: b.BlockStatement({
+      body: [
+        b.ExpressionStatement({
+          expression: b.CallExpression({
+            callee: b.MemberExpression({
+              object: importMetaMember(api),
+              property: b.Identifier({ name: 'accept' }),
+              computed: false,
+              optional: false,
+            }),
+            arguments: [
+              b.ArrowFunctionExpression({
+                id: null,
+                generator: false,
+                async: false,
+                expression: false,
+                params: [],
+                body: b.BlockStatement({ body: [] }),
+              }),
+            ],
+            optional: false,
+          }),
+        }),
+      ],
+    }),
+    alternate: null,
   })
 }
