@@ -1,4 +1,4 @@
-import { is, isWrapper, walk } from 'yuku-ast'
+import { CHILD_KEYS, is, isWrapper, walk } from 'yuku-ast'
 import { sourcePosition, unwrapExpression } from '@tanstack/router-utils'
 import type {
   CallExpression,
@@ -39,39 +39,50 @@ export function cleanId(id: string): string {
 
 /** Output-tree edits use native node identity; semantic queries use the source module. */
 export function createAstEditor(ast: Program) {
-  const parents = new WeakMap<Node, { parent: Node; key: string }>()
+  const parents = new WeakMap<Node, Node>()
   const replaced = new WeakSet<Node>()
   function indexSubtree(root: Node) {
     walk(root, {
       enter(node, context) {
-        if (context.parent && context.key) {
-          parents.set(node, { parent: context.parent, key: context.key })
+        if (context.parent) {
+          parents.set(node, context.parent)
         }
       },
     })
   }
   indexSubtree(ast)
-  return {
-    parentOf(node: Node): Node | null {
-      return parents.get(node)?.parent ?? null
-    },
-    replaceNode(node: Node, replacement: Node): void {
-      const position = parents.get(node)
-      if (!position) {
-        throw new Error('Cannot replace a node outside the output tree')
+  /** Replace `node` in the field of `parent` holding it, if any. */
+  function replaceChild(parent: Node, node: Node, replacement: Node) {
+    const record = parent as unknown as Record<string, unknown>
+    for (const key of CHILD_KEYS[parent.type] ?? []) {
+      const field = record[key]
+      if (field === node) {
+        record[key] = replacement
+        return true
       }
-      const record = position.parent as unknown as Record<string, unknown>
-      const field = record[position.key]
       if (Array.isArray(field)) {
         const index = field.indexOf(node)
-        if (index < 0) {
-          throw new Error('Cannot replace a detached output node')
+        if (index !== -1) {
+          field[index] = replacement
+          return true
         }
-        field[index] = replacement
-      } else {
-        record[position.key] = replacement
       }
-      parents.set(replacement, position)
+    }
+    return false
+  }
+  return {
+    parentOf(node: Node): Node | null {
+      return parents.get(node) ?? null
+    },
+    replaceNode(node: Node, replacement: Node): void {
+      const parent = parents.get(node)
+      if (!parent) {
+        throw new Error('Cannot replace a node outside the output tree')
+      }
+      if (!replaceChild(parent, node, replacement)) {
+        throw new Error('Cannot replace a detached output node')
+      }
+      parents.set(replacement, parent)
       indexSubtree(replacement)
       replaced.add(node)
     },
@@ -80,7 +91,7 @@ export function createAstEditor(ast: Program) {
       for (
         let current: Node | undefined = node;
         current;
-        current = parents.get(current)?.parent
+        current = parents.get(current)
       ) {
         if (replaced.has(current)) {
           return true
