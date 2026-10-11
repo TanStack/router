@@ -162,7 +162,7 @@ export function analyzeRouteModule(
   let routeFactoryCall: Node | undefined
   const seen = new Set<Node>()
   module.walk({
-    CallExpression(node) {
+    CallExpression(node, ctx) {
       const outerCallee = unwrapExpression(node.callee)
       const callee = unwrapExpression(
         is.CallExpression(outerCallee) ? outerCallee.callee : outerCallee,
@@ -176,15 +176,12 @@ export function analyzeRouteModule(
         nestedFactoryCall ??= node
         return
       }
-      let statement: Node = node
-      let parent = module.parentOf(statement)
-      while (parent && !is.Program(parent)) {
-        if (parent === routeDeclarator) {
-          routeFactoryCall ??= node
-        }
-        statement = parent
-        parent = module.parentOf(statement)
+      const ancestors = ctx.ancestors()
+      if (routeDeclarator && ancestors.includes(routeDeclarator)) {
+        routeFactoryCall ??= node
       }
+      // The top-level statement, the ancestor after the program
+      const statement = ancestors[1] ?? node
       const options = resolveExpression(module, node.arguments[0])
       if (!is.ObjectExpression(options) || seen.has(options)) {
         return
@@ -493,27 +490,23 @@ function createOutput(analysis: RouteModuleAnalysis) {
       copies.set(originalNodes.get(node)!, node)
     },
   })
+  const declarationExports = new Map<Node, typeof analysis.module.exports>()
+  for (const entry of analysis.module.exports) {
+    if (!entry.local || entry.name === null || entry.typeOnly) {
+      continue
+    }
+    // The top-level statement, the last ancestor before the program
+    const statement = [...analysis.module.ancestors(entry.node)].at(-2)
+    if (is.ExportNamedDeclaration(statement) && statement.declaration) {
+      const entries = declarationExports.get(statement) ?? []
+      declarationExports.set(statement, [...entries, entry])
+    }
+  }
   const renameBinding = (node: Node, name: string) => {
     const original = originalNodes.get(node)
     const binding = original ? analysis.module.bindingOf(original) : null
     if (!binding) {
       return
-    }
-    const declarationExports = new Map<Node, typeof analysis.module.exports>()
-    for (const entry of analysis.module.exports) {
-      if (!entry.local || entry.name === null || entry.typeOnly) {
-        continue
-      }
-      let statement: Node = entry.node
-      let parent = analysis.module.parentOf(statement)
-      while (parent && !is.Program(parent)) {
-        statement = parent
-        parent = analysis.module.parentOf(statement)
-      }
-      if (is.ExportNamedDeclaration(statement) && statement.declaration) {
-        const entries = declarationExports.get(statement) ?? []
-        declarationExports.set(statement, [...entries, entry])
-      }
     }
     const aliasedNames = new Set<string>()
     for (const [statement, entries] of declarationExports) {

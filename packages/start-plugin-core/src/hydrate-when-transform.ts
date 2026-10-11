@@ -184,17 +184,6 @@ function getSingleUseObjectExpressionBinding(
   return objectExpressions.get(init)
 }
 
-function isWithin(module: Module, node: t.Node, parent: t.Node) {
-  let current: t.Node | null = node
-  while (current) {
-    if (current === parent) {
-      return true
-    }
-    current = module.parentOf(current)
-  }
-  return false
-}
-
 function inspectSplitBoundary(
   context: HydrateAst,
   node: t.JSXElement,
@@ -244,7 +233,7 @@ function inspectSplitBoundary(
       }
       if (
         binding.declarations.some((declaration) =>
-          isWithin(context.module, declaration, originalBoundary),
+          [...context.module.ancestors(declaration)].includes(originalBoundary),
         )
       ) {
         return

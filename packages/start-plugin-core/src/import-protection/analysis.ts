@@ -362,8 +362,7 @@ function isInsideCompilerSafeBoundary(
   node: t.Node,
   envType: BoundaryEnv,
 ): boolean {
-  let ancestor = module.parentOf(node)
-  while (ancestor) {
+  for (const ancestor of module.ancestors(node)) {
     if (is.Function(ancestor)) {
       const { parent: call } = transparentParent(module, ancestor)
       if (
@@ -373,7 +372,6 @@ function isInsideCompilerSafeBoundary(
         return true
       }
     }
-    ancestor = module.parentOf(ancestor)
   }
   return false
 }
