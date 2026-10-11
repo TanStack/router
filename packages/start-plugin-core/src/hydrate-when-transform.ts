@@ -3,7 +3,6 @@ import crypto from 'node:crypto'
 import { b, is, nameOf, walk } from 'yuku-ast'
 import {
   analyzeModule,
-  cloneModuleAst,
   collectModuleReferences,
   expandTransitively,
   filePragmas,
@@ -87,7 +86,8 @@ function parseHydrateVirtualId(id: string) {
 interface HydrateAst {
   ast: t.Program
   module: Module
-  originalNodes: WeakMap<t.Node, t.Node>
+  /** Maps a copy's nodes to the source's; without it, `ast` is `module.ast`. */
+  originalNodes?: WeakMap<t.Node, t.Node>
 }
 
 function getJSXElementName(node: t.JSXElement) {
@@ -153,7 +153,7 @@ function stripObjectExpressionProperty(node: t.ObjectExpression, name: string) {
 }
 
 function sourceNode(context: HydrateAst, node: t.Node) {
-  return context.originalNodes.get(node) ?? node
+  return context.originalNodes?.get(node) ?? node
 }
 
 function getSingleUseObjectExpressionBinding(
@@ -543,11 +543,10 @@ function loadHydrateVirtualModule(options: {
   if (!localName) {
     return null
   }
-  const { program: ast, originalNodes } = cloneModuleAst(module)
-  const context = { ast, module, originalNodes }
+  const ast = module.ast
+  const context = { ast, module }
   const getBoundaryId = createBoundaryId(options.root, sourceId)
   let target: t.JSXElement | undefined
-  let captures: Array<string> = []
   let index = 0
   walk(ast, {
     JSXElement(node, visitor) {
@@ -558,15 +557,8 @@ function loadHydrateVirtualModule(options: {
         return
       }
       if (index === boundaryIndex) {
-        if (
-          getBoundaryId(index) === splitId &&
-          moveChildrenPropIntoChildren(node)
-        ) {
+        if (getBoundaryId(index) === splitId) {
           target = node
-          captures = inspectSplitBoundary(context, node, {
-            code: options.code,
-            collectCaptured: true,
-          }).captured
         }
         visitor.stop()
       }
@@ -576,6 +568,17 @@ function loadHydrateVirtualModule(options: {
   if (!target) {
     return null
   }
+  // The output edits the analyzed tree in place: read its structure first
+  const graph = moduleDeclarationGraph(module)
+  const cleanup = prepareBindingCleanup(module)
+  const pragmas = filePragmas(ast)
+  if (!moveChildrenPropIntoChildren(target)) {
+    return null
+  }
+  const captures = inspectSplitBoundary(context, target, {
+    code: options.code,
+    collectCaptured: true,
+  }).captured
   const children = getMeaningfulChildren(target.children)
   const child = children.length === 1 ? children[0] : undefined
   let expression: t.Expression = b.Literal({ value: null, raw: 'null' })
@@ -593,13 +596,9 @@ function loadHydrateVirtualModule(options: {
       children: target.children,
     })
   }
-  const graph = moduleDeclarationGraph(module)
   const keep = new Set<Binding>()
   for (const child of children) {
-    for (const binding of collectModuleReferences(
-      module,
-      sourceNode(context, child),
-    )) {
+    for (const binding of collectModuleReferences(module, child)) {
       keep.add(binding)
     }
   }
@@ -623,7 +622,7 @@ function loadHydrateVirtualModule(options: {
     if (!exported) {
       throw codeFrameError(
         options.code,
-        sourceNode(context, target),
+        target,
         'Hydrate cannot code-split children that read Route when the module does not export it. Export Route, or use split={false} for this boundary.',
       )
     }
@@ -652,7 +651,7 @@ function loadHydrateVirtualModule(options: {
         : statement
     if (is.VariableDeclaration(declaration)) {
       declaration.declarations = declaration.declarations.filter((item) =>
-        selected.has(sourceNode(context, item)),
+        selected.has(item),
       )
       return declaration.declarations.length
         ? [unwrapExport(statement, declaration)]
@@ -664,7 +663,7 @@ function loadHydrateVirtualModule(options: {
         is.TSDeclareFunction(declaration) ||
         is.TSModuleDeclaration(declaration) ||
         is.TSEnumDeclaration(declaration)) &&
-      selected.has(sourceNode(context, declaration))
+      selected.has(declaration)
     ) {
       return [unwrapExport(statement, declaration)]
     }
@@ -677,13 +676,8 @@ function loadHydrateVirtualModule(options: {
   const component = output.declaration as t.FunctionDeclaration
   component.body!.body.push(b.ReturnStatement({ argument: expression }))
   ast.body.push(output)
-  removeUnusedBindings(
-    module,
-    ast,
-    prepareBindingCleanup(module),
-    originalNodes,
-  )
-  keepFilePragmas(filePragmas(module.ast), ast)
+  removeUnusedBindings(module, ast, cleanup)
+  keepFilePragmas(pragmas, ast)
   return generateModule(ast, { source: options.code, filename: options.id })
 }
 export function createHydrateCompilerPlugin(): StartCompilerPlugin {
