@@ -1,4 +1,5 @@
 import type { Module } from 'yuku-analyzer'
+import type { moduleDeclarationGraph } from '@tanstack/router-utils'
 import type {
   Expression,
   Node,
@@ -26,6 +27,8 @@ export type CompileCodeSplitReferenceRouteOptions = {
 export type ReferenceRouteCompilerPluginContext = {
   program: Program
   module: Module
+  /** The module-level declarations of `module` and their dependencies. */
+  graph: ReturnType<typeof moduleDeclarationGraph>
   originalNodes: WeakMap<Node, Node>
   /**
    * The names the source declares or references, and the names given out for

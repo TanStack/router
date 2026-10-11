@@ -1,8 +1,5 @@
 import { b, is } from 'yuku-ast'
-import {
-  moduleDeclarationGraph,
-  unwrapExpression,
-} from '@tanstack/router-utils'
+import { unwrapExpression } from '@tanstack/router-utils'
 import {
   getObjectPropertyKeyName,
   getUniqueProgramIdentifier,
@@ -66,7 +63,7 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
         continue
       }
       const bindingNode = binding
-        ? moduleDeclarationGraph(ctx.module).declarations.get(binding)
+        ? ctx.graph.declarations.get(binding)
         : undefined
       const isLocalComponentBinding =
         is.FunctionDeclaration(bindingNode) ||

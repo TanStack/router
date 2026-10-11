@@ -716,6 +716,7 @@ export function compileCodeSplitReferenceRoute(
     const context: ReferenceRouteCompilerPluginContext = {
       program,
       module: analysis.module,
+      graph: analysis.graph,
       originalNodes,
       reservedNames,
       renameBinding,
