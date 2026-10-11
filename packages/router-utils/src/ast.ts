@@ -57,8 +57,6 @@ export interface GenerateResult extends Omit<YukuGenerateResult, 'map'> {
     names: Array<string>
     sources: Array<string>
     mappings: string
-    file?: string
-    sourceRoot?: string
     sourcesContent?: Array<string | null>
   } | null
 }
@@ -212,23 +210,18 @@ export function generateModule(
       result.diagnostics.map((diagnostic) => diagnostic.message).join('\n'),
     )
   }
+  const { map } = result
   return {
     ...result,
-    map: result.map
-      ? {
-          version: result.map.version,
-          names: result.map.names,
-          sources: result.map.sources,
-          mappings: result.map.mappings,
-          ...(result.map.file === null ? {} : { file: result.map.file }),
-          ...(result.map.sourceRoot === null
-            ? {}
-            : { sourceRoot: result.map.sourceRoot }),
-          ...(result.map.sourcesContent === null
-            ? {}
-            : { sourcesContent: result.map.sourcesContent }),
-        }
-      : null,
+    // Without the null `file` and `sourceRoot` Yuku emits when those options
+    // are unset; `sourcesContent` holds the source passed above
+    map: map && {
+      version: map.version,
+      names: map.names,
+      sources: map.sources,
+      mappings: map.mappings,
+      sourcesContent: map.sourcesContent!,
+    },
   }
 }
 
