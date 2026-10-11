@@ -246,5 +246,5 @@ Changes to `routeTree.gen.ts` are overwritten and can leave source routes, gener
 
 ## Cross-References
 
-- [router-core/code-splitting](../../../router-core/skills/router-core/code-splitting/SKILL.md) — manual code splitting concepts
-- [virtual-file-routes](../../../virtual-file-routes/skills/virtual-file-routes/SKILL.md) — programmatic route trees
+- `@tanstack/router-core#router-core/code-splitting` — manual code splitting concepts
+- `@tanstack/virtual-file-routes#virtual-file-routes` — programmatic route trees

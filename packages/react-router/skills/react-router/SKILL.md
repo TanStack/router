@@ -23,7 +23,7 @@ sources:
 
 # React Router (`@tanstack/react-router`)
 
-This skill builds on router-core. Read [router-core](../../../router-core/skills/router-core/SKILL.md) first for foundational concepts.
+This skill builds on router-core. Read `@tanstack/router-core#router-core` first for foundational concepts.
 
 > **CRITICAL**: TanStack Router types are FULLY INFERRED. Never cast, never annotate inferred values.
 > **CRITICAL**: TanStack Router is CLIENT-FIRST. Loaders run on the client by default, not on the server.
@@ -495,4 +495,4 @@ function App() {
 
 ## Cross-References
 
-- [router-core/SKILL.md](../../../router-core/skills/router-core/SKILL.md) — all sub-skills for domain-specific patterns (search params, data loading, navigation, auth, SSR, etc.)
+- `@tanstack/router-core#router-core` — all sub-skills for domain-specific patterns (search params, data loading, navigation, auth, SSR, etc.)

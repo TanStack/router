@@ -23,7 +23,7 @@ sources:
 
 # Auth Server Primitives
 
-This skill covers the **server half** of authentication: session storage, cookie issuance, OAuth flow, password-reset hardening, CSRF, rate limiting. For the **routing half** (`_authenticated` layout, `beforeLoad` redirects, RBAC checks), see [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md).
+This skill covers the **server half** of authentication: session storage, cookie issuance, OAuth flow, password-reset hardening, CSRF, rate limiting. For the **routing half** (`_authenticated` layout, `beforeLoad` redirects, RBAC checks), see `@tanstack/router-core#router-core/auth-and-guards`.
 
 > **CRITICAL**: Protect the data/API boundary first. Server functions, server routes, and other API endpoints that touch private data must enforce auth **inside the handler** or middleware. Route guards are route UX, not the data security boundary.
 > **CRITICAL**: Validating the _shape_ of a client-supplied identifier (`z.string().uuid().parse(...)`) is not authorization. A parsed UUID is still _some_ tenant — re-check membership against the session principal before using it.
@@ -417,7 +417,7 @@ A session token that never rotates is functionally a long-lived credential. Rota
 
 ## Cross-References
 
-- [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) — the routing side: `_authenticated` layout, `beforeLoad`, `redirect`, RBAC checks.
+- `@tanstack/router-core#router-core/auth-and-guards` — the routing side: `_authenticated` layout, `beforeLoad`, `redirect`, RBAC checks.
 - [start-core/server-functions](../server-functions/SKILL.md) — how to expose RPCs (and how the route guard does NOT cover them).
 - [start-core/middleware](../middleware/SKILL.md) — composing `authMiddleware` and others.
 - [start-core/execution-model](../execution-model/SKILL.md) — why module-level env/secret reads are wrong.

@@ -328,6 +328,6 @@ Do not create session config from `process.env` at module load or cache `getRequ
 
 ## Cross-References
 
-- [start-core/server-functions](../../../start-client-core/skills/start-core/server-functions/SKILL.md) — creating server functions that use these utilities
-- [start-core/middleware](../../../start-client-core/skills/start-core/middleware/SKILL.md) — request middleware
-- [start-core/server-routes](../../../start-client-core/skills/start-core/server-routes/SKILL.md) — server route handlers
+- `@tanstack/start-client-core#start-core/server-functions` — creating server functions that use these utilities
+- `@tanstack/start-client-core#start-core/middleware` — request middleware
+- `@tanstack/start-client-core#start-core/server-routes` — server route handlers
