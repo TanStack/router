@@ -4,8 +4,18 @@
  */
 import { transformWithOxc } from 'vite'
 import { expect, test } from 'vitest'
-import { findOriginalUnsafeUsagePos } from '../../src/import-protection/analysis'
+import {
+  findOriginalUnsafeUsagePos,
+  getMockExportNamesBySource,
+  getNamedExports,
+} from '../../src/import-protection/analysis'
 import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
+import {
+  generateSelfContainedMockModule,
+  loadResolvedVirtualModule,
+  makeMockEdgeModuleId,
+  resolveInternalVirtualModuleId,
+} from '../../src/vite/import-protection-plugin/virtualModules'
 
 const mockModule = `data:text/javascript,${encodeURIComponent(
   `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
@@ -67,4 +77,48 @@ test.fails.each([
 import { denied } from 'denied'
 export const result = ${expression}`
   expect(findOriginalUnsafeUsagePos(code, 'denied', 'client')).toBeUndefined()
+})
+
+// Bug: mock modules declare each mocked name as `export const <name>`, and
+// reserved words such as `delete` pass the identifier check.
+// Impact: the mock of a denied module that exports a reserved word
+// (`export { remove as delete }`) or is used through one (`api.delete()`) is a
+// SyntaxError, which fails the build instead of mocking the module.
+test.fails.each([
+  {
+    name: 'a denied file exporting `delete`',
+    mock: () =>
+      generateSelfContainedMockModule(
+        getNamedExports(
+          `const remove = () => {}
+export { remove as delete }`,
+          '/test/api.server.ts',
+        ),
+      ).code,
+  },
+  {
+    name: 'a denied import used as `api.delete()`',
+    mock: () => {
+      const names = getMockExportNamesBySource(
+        `import * as api from 'denied'
+export const result = api.delete()`,
+        '/test/module.ts',
+      ).get('denied')
+      const id = resolveInternalVirtualModuleId(
+        makeMockEdgeModuleId(names ?? [], mockModule),
+      )
+      return loadResolvedVirtualModule(id!)!.code
+    },
+  },
+])('the mock of $name exports `delete`', async ({ mock }) => {
+  const mockUrl = `data:text/javascript,${encodeURIComponent(mock())}`
+  // Read the mock through a namespace import: the test runner would unwrap
+  // its default export, which claims `__esModule` and is thenable.
+  const reader = `import * as mock from ${JSON.stringify(mockUrl)}
+export const exported = 'delete' in mock
+export const mocked = mock.delete === mock.default.delete`
+  const { exported, mocked } = await import(
+    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(reader)}`
+  )
+  expect({ exported, mocked }).toEqual({ exported: true, mocked: true })
 })
