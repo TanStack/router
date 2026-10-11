@@ -182,6 +182,56 @@ describe('registerImportProtection loader registration', () => {
     })
     expect(rule.test).toEqual(/\.[cm]?[tj]sx?$/)
   })
+
+  test('registers no loader or plugins when import protection is disabled', () => {
+    let modifyRspackConfig: ModifyRspackConfigHandler | undefined
+
+    const api = {
+      context: { action: 'build' },
+      onBeforeBuild() {},
+      onBeforeDevCompile() {},
+      modifyRspackConfig(handler) {
+        modifyRspackConfig = handler
+      },
+      processAssets() {},
+    } satisfies ImportProtectionApi
+
+    registerImportProtection(api, {
+      framework: 'react',
+      environments: [{ name: 'client', type: 'client' }],
+      getConfig: () => ({
+        startConfig: { importProtection: { enabled: false } },
+        resolvedStartConfig: {
+          root: '/app',
+          srcDirectory: '/app/src',
+        },
+      }),
+    })
+
+    if (!modifyRspackConfig) {
+      throw new Error('Expected modifyRspackConfig to be registered')
+    }
+
+    class VirtualModulesPlugin {
+      constructor(_modules: Record<string, string>) {}
+
+      writeModule(_filePath: string, _contents: string) {}
+    }
+
+    const config: Parameters<ModifyRspackConfigHandler>[0] = {
+      module: { rules: [] },
+      plugins: [],
+    }
+    modifyRspackConfig(config, {
+      environment: { name: 'client' },
+      rspack: {
+        experiments: { VirtualModulesPlugin },
+      },
+    })
+
+    expect(config.module.rules).toEqual([])
+    expect(config.plugins).toEqual([])
+  })
 })
 
 describe('registerImportProtection marker scope', () => {
