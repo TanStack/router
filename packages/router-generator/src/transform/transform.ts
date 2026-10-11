@@ -107,7 +107,7 @@ export function transform({
   }
 
   const routeCall = routeCalls[0]!
-  const routeIdQuote = getRouteIdQuote(source, routeCall.routeIdArg)
+  const routeIdQuote = getRouteIdQuote(routeCall.routeIdArg)
 
   const createFileRouteProps = getCreateFileRouteProps(routeCall.optionsArg)
   if (createFileRouteProps) {
@@ -317,19 +317,8 @@ function isSupportedRouteId(
   )
 }
 
-function getRouteIdQuote(
-  source: string,
-  arg: SupportedRouteId,
-): '"' | "'" | '`' {
-  const raw = source.slice(arg.start, arg.end)
-
-  if (raw.startsWith("'")) {
-    return "'"
-  }
-  if (raw.startsWith('"')) {
-    return '"'
-  }
-  return '`'
+function getRouteIdQuote(arg: SupportedRouteId): '"' | "'" | '`' {
+  return is.StringLiteral(arg) ? (arg.raw[0] as '"' | "'") : '`'
 }
 
 function getCreateFileRouteProps(
@@ -346,13 +335,9 @@ function getCreateFileRouteProps(
       continue
     }
 
-    if (is.Identifier(property.key)) {
-      props.add(property.key.name)
-      continue
-    }
-
-    if (is.StringLiteral(property.key)) {
-      props.add(property.key.value)
+    const name = nameOf(property.key)
+    if (name !== null) {
+      props.add(name)
     }
   }
 

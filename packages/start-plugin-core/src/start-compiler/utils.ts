@@ -1,4 +1,4 @@
-import { is, walk } from 'yuku-ast'
+import { is, isWrapper, walk } from 'yuku-ast'
 import { sourcePosition, unwrapExpression } from '@tanstack/router-utils'
 import type {
   CallExpression,
@@ -96,17 +96,7 @@ export function getVariableDeclarator(
   parentOf: (node: Node) => Node | null,
 ): VariableDeclarator | null {
   let parent = parentOf(node)
-  while (
-    parent &&
-    is.oneOf(parent, [
-      'ChainExpression',
-      'ParenthesizedExpression',
-      'TSAsExpression',
-      'TSSatisfiesExpression',
-      'TSNonNullExpression',
-      'TSTypeAssertion',
-    ])
-  ) {
+  while (is.ChainExpression(parent) || isWrapper(parent)) {
     node = parent
     parent = parentOf(node)
   }

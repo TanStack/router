@@ -237,8 +237,8 @@ function sourceAnalysis(options: SourceOptions) {
 function isFallback(value: Expression) {
   value = unwrapExpression(value)
   return (
-    (is.Literal(value) &&
-      (value.value === null || typeof value.value === 'boolean')) ||
+    is.NullLiteral(value) ||
+    is.BooleanLiteral(value) ||
     (is.Identifier(value) && value.name === 'undefined')
   )
 }
