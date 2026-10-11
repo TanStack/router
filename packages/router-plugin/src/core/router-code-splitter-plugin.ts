@@ -19,7 +19,6 @@ import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framewor
 import {
   defaultCodeSplitGroupings,
   splitRouteIdentNodes,
-  tsrShared,
   tsrSplit,
 } from './constants'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
@@ -119,32 +118,6 @@ export function createRouterCodeSplitterPlugin(
   // Map from normalized route file path → set of shared binding names.
   // Populated by the reference compiler, consumed by virtual and shared compilers.
   const sharedBindingsMap = new Map<string, Set<string>>()
-  // Cache only immutable source analysis; chunk settings and generated output
-  // stay per transform. A bounded cache avoids retaining every route AST.
-  const analyzedRoutes = new Map<
-    string,
-    { code: string; analysis: RouteModuleAnalysis }
-  >()
-  function getRouteAnalysis(code: string, id: string) {
-    const [pathname, query] = id.split('?')
-    const parameters = new URLSearchParams(query)
-    parameters.delete(tsrSplit)
-    parameters.delete(tsrShared)
-    const filename = parameters.size ? `${pathname}?${parameters}` : pathname!
-    const cached = analyzedRoutes.get(filename)
-    if (cached?.code === code) {
-      analyzedRoutes.delete(filename)
-      analyzedRoutes.set(filename, cached)
-      return cached.analysis
-    }
-    const analysis = analyzeRouteModule({ code, filename })
-    analyzedRoutes.delete(filename)
-    analyzedRoutes.set(filename, { code, analysis })
-    if (analyzedRoutes.size > 128) {
-      analyzedRoutes.delete(analyzedRoutes.keys().next().value!)
-    }
-    return analysis
-  }
 
   // Route files already reported for a route created inside a function
   const routesInFunctionReported = new Set<string>()
@@ -163,13 +136,14 @@ export function createRouterCodeSplitterPlugin(
     code: string,
     id: string,
     generatorNodeInfo: GetRoutesByFileMapResultValue,
+    analysis: RouteModuleAnalysis,
   ): UnpluginTransformResult => {
     if (debug) console.info('Compiling Route: ', id)
 
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
       filename: id,
-      analysis: getRouteAnalysis(code, id),
+      analysis,
     })
 
     if (fromCode.groupings !== undefined) {
@@ -205,7 +179,7 @@ export function createRouterCodeSplitterPlugin(
     const sharedBindings = computeSharedBindings({
       code,
       filename: id,
-      analysis: getRouteAnalysis(code, id),
+      analysis,
       codeSplitGroupings: splitGroupings,
     })
     if (sharedBindings.size > 0) {
@@ -216,7 +190,7 @@ export function createRouterCodeSplitterPlugin(
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
-      analysis: getRouteAnalysis(code, id),
+      analysis,
       codeSplitGroupings: splitGroupings,
       targetFramework: userConfig.target,
       filename: id,
@@ -274,7 +248,6 @@ export function createRouterCodeSplitterPlugin(
 
     const result = compileCodeSplitVirtualRoute({
       code,
-      analysis: getRouteAnalysis(code, id),
       filename: id,
       splitTargets: grouping,
       sharedBindings: resolvedSharedBindings,
@@ -293,9 +266,6 @@ export function createRouterCodeSplitterPlugin(
     {
       name: 'tanstack-router:code-splitter:compile-reference-file',
       enforce: 'pre',
-      buildEnd() {
-        analyzedRoutes.clear()
-      },
 
       transform: {
         filter: {
@@ -312,8 +282,12 @@ export function createRouterCodeSplitterPlugin(
           const generatorFileInfo =
             routerPluginContext.routesByFile.get(normalizedId)
           if (generatorFileInfo) {
+            const analysis = analyzeRouteModule({
+              code,
+              filename: normalizedId,
+            })
             if (
-              getRouteAnalysis(code, normalizedId).routeCreatedInFunction &&
+              analysis.routeCreatedInFunction &&
               !routesInFunctionReported.has(normalizedId)
             ) {
               routesInFunctionReported.add(normalizedId)
@@ -323,6 +297,7 @@ export function createRouterCodeSplitterPlugin(
               code,
               normalizedId,
               generatorFileInfo,
+              analysis,
             )
           }
 
@@ -436,7 +411,6 @@ export function createRouterCodeSplitterPlugin(
 
           const result = compileCodeSplitSharedRoute({
             code,
-            analysis: getRouteAnalysis(code, normalizedId),
             sharedBindings,
             filename: normalizedId,
           })

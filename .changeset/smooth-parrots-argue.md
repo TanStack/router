@@ -8,7 +8,7 @@
 '@tanstack/react-start-rsc': patch
 ---
 
-Replace Babel-based route and Start compilation with Yuku's parser, semantic analysis, AST utilities, and code generator. Parsing and analysis run on Yuku's native core, or on its WebAssembly core in WebContainers such as StackBlitz and where the native binding cannot load. Share immutable route analysis across chunk planning and generation while preserving independent output trees and bounded cache lifetimes.
+Replace Babel-based route and Start compilation with Yuku's parser, semantic analysis, AST utilities, and code generator. Parsing and analysis run on Yuku's native core, or on its WebAssembly core in WebContainers such as StackBlitz and where the native binding cannot load.
 
 Compiler extension hooks and AST helpers now expose Yuku nodes and semantic context. Babel nodes, traversal paths, and helper APIs are removed; extensions must migrate to the native interfaces. Routing and server-function runtime contracts remain unchanged.
 

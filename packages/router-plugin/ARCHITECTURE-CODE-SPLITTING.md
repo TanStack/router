@@ -115,24 +115,16 @@ returns an **array of 3 plugins** that share a closure containing:
 
 - `sharedBindingsMap: Map<string, Set<string>>` — maps normalized file paths
   to their computed shared binding names
-- `analyzedRoutes` — bounded LRU of immutable Yuku source analysis, reused by
-  grouping detection, shared ownership, and output generation
 - `userConfig` — resolved plugin configuration
 - Helper functions for grouping resolution
 
 ### Immutable analysis and output ownership
 
-`analyzeRouteModule()` parses and resolves bindings with Yuku once for a source
-revision. It records route options, exports, and the dependency graph using
+`analyzeRouteModule()` parses and resolves bindings with Yuku once per
+transform. It records route options, exports, and the dependency graph using
 resolved symbol identities, so shadowed names and JSX references are distinct.
 Each output gets its own AST copy with a map back to the original nodes. Output
 mutation never changes the original semantic snapshot.
-
-The plugin caches at most 128 analyses. Keys retain module query parameters
-other than `tsr-split` and `tsr-shared`; cached analysis is reused only when the
-source text also matches. Grouping decisions and generated output are not
-cached, so client/server configuration stays local to each transform. Changed
-source replaces the entry, and `buildEnd` clears retained ASTs.
 
 ### Plugin 1: `tanstack-router:code-splitter:compile-reference-file`
 
@@ -535,7 +527,7 @@ eliminated.
 
 **Key steps:**
 
-1. Reuse source analysis and clone an output tree with semantic provenance
+1. Analyze the source and clone an output tree with semantic provenance
 2. For each split-able property in route options:
    - Check if the value is exported (if so, skip splitting — warn user)
    - Generate a dynamic import URL: `splitFilename()`
@@ -562,7 +554,7 @@ shared bindings set.
 
 **Key steps:**
 
-1. Reuse source analysis and clone an output tree
+1. Analyze the source and clone an output tree
 2. Resolve shared declaration ownership against the original symbols
 3. Track split-able nodes and their metadata
 4. For each intended split target:
@@ -586,7 +578,7 @@ transitive dependencies.
 
 **Key steps:**
 
-1. Reuse source analysis and clone an output tree
+1. Analyze the source and clone an output tree
 2. Build dependency graph, expand shared bindings transitively
 3. Filter `program.body` to keep only:
    - Import declarations (DCE removes unused ones)
