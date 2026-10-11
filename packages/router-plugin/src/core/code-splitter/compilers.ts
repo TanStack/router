@@ -1197,7 +1197,7 @@ export function detectCodeSplitGroupingsFromRoute(options: SourceOptions): {
           }
           return group.elements.map((element) => {
             const item = unwrapExpression(element)
-            if (!is.Literal(item) || typeof item.value !== 'string') {
+            if (!is.StringLiteral(item)) {
               throw new Error(
                 'You must provide a string literal for the codeSplitGroupings',
               )
