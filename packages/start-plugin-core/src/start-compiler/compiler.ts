@@ -811,6 +811,8 @@ export class StartCompiler {
       id,
       parserFilename,
     })
+    // A copy: the module cache keeps this module's source nodes, such as a
+    // binding's `init`, which resolving other modules reads after this output
     const { program: ast, originalNodes } = cloneModuleAst(module)
     const editor = createAstEditor(ast)
     const context: CompilationContext = {

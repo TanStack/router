@@ -250,6 +250,11 @@ export interface ModuleAstClone {
   originalNodes: WeakMap<Node, Node>
 }
 
+/**
+ * A copy of `module.ast`, for an output that cannot edit the analyzed tree
+ * because the source keeps being read after its edits. Pass `originalNodes` to
+ * `removeUnusedBindings`.
+ */
 export function cloneModuleAst(module: Module): ModuleAstClone {
   const program = structuredClone(module.ast)
   const originals: Array<Node> = []

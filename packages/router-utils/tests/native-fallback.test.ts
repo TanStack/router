@@ -33,8 +33,7 @@ beforeEach(() => {
 })
 
 test('analyzes and prints modules with the WebAssembly core when the native binding cannot load', async () => {
-  const { analyzeModule, cloneModuleAst, generateModule } =
-    await import('../src')
+  const { analyzeModule, generateModule } = await import('../src')
   const module = analyzeModule({
     code: `import { lazy } from 'react'
 const Page = lazy(() => import('./page'))
@@ -43,7 +42,7 @@ export const render = (id: string) => <Page id={id} />
     filename: 'route.tsx',
   })
   expect(module.rootScope.find('Page')!.references).toHaveLength(1)
-  expect(generateModule(cloneModuleAst(module).program).code).toContain(
+  expect(generateModule(module.ast).code).toContain(
     'export const render = (id: string) => <Page id={id} />',
   )
   analyzeModule({ code: 'export const other = 1' })
