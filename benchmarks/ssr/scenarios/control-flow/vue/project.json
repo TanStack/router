@@ -1,28 +1,31 @@
 {
   "name": "@benchmarks/ssr-control-flow-vue",
   "projectType": "application",
+  "implicitDependencies": ["@tanstack/vue-start"],
+  "namedInputs": {
+    "sharedBenchmarkFiles": [
+      "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+      "{workspaceRoot}/benchmarks/ssr/bench-utils.ts",
+      "{workspaceRoot}/benchmarks/ssr/package.json",
+      "{workspaceRoot}/benchmarks/ssr/scenarios/control-flow/shared.ts",
+      "{workspaceRoot}/benchmarks/ssr/tsconfig.json",
+      "{workspaceRoot}/benchmarks/ssr/vitest.vue.config.ts",
+      "{workspaceRoot}/benchmarks/tsconfig.json",
+      "{workspaceRoot}/benchmarks/vitest-projects.ts"
+    ]
+  },
   "targets": {
     "build:ssr": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/vue-start"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
       }
     },
     "test:types:ssr": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/vue-start"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "tsc -p {projectRoot}/tsconfig.json --noEmit"
       }

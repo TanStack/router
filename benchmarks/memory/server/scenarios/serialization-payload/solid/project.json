@@ -1,16 +1,30 @@
 {
   "name": "@benchmarks/memory-server-serialization-payload-solid",
   "projectType": "application",
+  "implicitDependencies": ["@tanstack/solid-start"],
+  "namedInputs": {
+    "sharedBenchmarkFiles": [
+      "{workspaceRoot}/benchmarks/memory/flame-control.ts",
+      "{workspaceRoot}/benchmarks/memory/runtime.ts",
+      "{workspaceRoot}/benchmarks/memory/server/bench-utils.ts",
+      "{workspaceRoot}/benchmarks/memory/server/benchmark.ts",
+      "{workspaceRoot}/benchmarks/memory/server/flame-runner.ts",
+      "{workspaceRoot}/benchmarks/memory/server/package.json",
+      "{workspaceRoot}/benchmarks/memory/server/scenarios/serialization-payload/serialization-payload.ts",
+      "{workspaceRoot}/benchmarks/memory/server/scenarios/serialization-payload/shared.ts",
+      "{workspaceRoot}/benchmarks/memory/server/tsconfig.json",
+      "{workspaceRoot}/benchmarks/memory/server/vitest.setup.ts",
+      "{workspaceRoot}/benchmarks/memory/server/vitest.solid.config.ts",
+      "{workspaceRoot}/benchmarks/memory/tsconfig.json",
+      "{workspaceRoot}/benchmarks/memory/turn.ts",
+      "{workspaceRoot}/benchmarks/vitest-projects.ts"
+    ]
+  },
   "targets": {
     "build:ssr": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/solid-start"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
       }
@@ -18,12 +32,7 @@
     "build:ssr:flame": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/solid-start"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts --sourcemap true"
       }
@@ -40,12 +49,7 @@
     },
     "test:types:ssr": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/solid-start"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "tsc -p {projectRoot}/tsconfig.json --noEmit"
       }

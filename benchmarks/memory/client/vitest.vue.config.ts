@@ -1,9 +1,10 @@
 import { defineConfig } from 'vitest/config'
+import { selectBenchmarkProjects } from '../../vitest-projects.ts'
 
 export default defineConfig({
   test: {
     watch: false,
     fileParallelism: false,
-    projects: ['./scenarios/*/vue/vite.config.ts'],
+    projects: selectBenchmarkProjects(['./scenarios/*/vue/vite.config.ts']),
   },
 })

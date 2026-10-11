@@ -31,7 +31,6 @@ concurrency:
 
 permissions:
   contents: read # required for actions/checkout
-  id-token: write # required for OIDC authentication with CodSpeed
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
@@ -39,30 +38,55 @@ env:
   NX_NO_CLOUD: true
 
 jobs:
+  plan:
+    name: Plan CodSpeed benchmarks
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has-work: ${{ steps.plan.outputs.has-work }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Tools
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+
+      # Same base/head derivation as `nx affected` in pr.yml.
+      - name: Get base and head commits for `nx affected`
+        if: github.event_name == 'pull_request'
+        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
+        with:
+          main-branch-name: main
+
+      # Pushes to main and manual runs are CodSpeed baselines and always run the
+      # full suite. Pull requests only run the scenarios that the Nx project
+      # graph marks as affected; CodSpeed reports the others as skipped with
+      # their baseline values.
+      - name: Plan benchmark matrix
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            node scripts/benchmarks/codspeed/plan.mjs --mode affected --base "$NX_BASE" --head "$NX_HEAD"
+          else
+            node scripts/benchmarks/codspeed/plan.mjs --mode full
+          fi
+
   benchmarks:
     name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
+    needs: plan
+    if: needs.plan.outputs.has-work == 'true'
     strategy:
       fail-fast: false
-      matrix:
-        framework:
-          - react
-          - solid
-          - vue
-        benchmark:
-          - client-nav
-          - ssr
-          - memory-server
-          - memory-client
-        include:
-          - benchmark: client-nav
-            mode: simulation
-          - benchmark: ssr
-            mode: simulation
-          - benchmark: memory-server
-            mode: memory
-          - benchmark: memory-client
-            mode: memory
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # required for actions/checkout
+      id-token: write # required for OIDC authentication with CodSpeed
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -74,18 +98,33 @@ jobs:
 
       # Run the build outside of the CodSpeed action to avoid being slowed by intrumentation overhead.
       # (and then run the task itself with --excludeTaskDependencies)
+      # A filtered cell builds only its selected scenario apps (and their packages).
       - name: Prepare ${{ matrix.benchmark }}:${{ matrix.framework }} benchmark
-        run: >-
-          pnpm nx run
-          @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
+        env:
+          BENCHMARK: ${{ matrix.benchmark }}
+          FRAMEWORK: ${{ matrix.framework }}
+          BUILD_TARGET: ${{ matrix.buildTarget }}
+          BUILD_PROJECTS: ${{ matrix.buildProjects }}
+        run: |
+          if [ -n "$BUILD_PROJECTS" ]; then
+            pnpm nx run-many --targets="$BUILD_TARGET" --projects="$BUILD_PROJECTS"
+          else
+            pnpm nx run "@benchmarks/$BENCHMARK:build:$FRAMEWORK"
+          fi
 
+      # BENCHMARK_VITEST_PROJECTS (empty = all) narrows the aggregate Vitest
+      # config to the selected scenarios, see benchmarks/vitest-projects.ts.
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         uses: CodSpeedHQ/action@373d6868929f444bc08d901fd0eb0ad52a8875ea # v5.2.1
         timeout-minutes: 20
+        env:
+          BENCHMARK: ${{ matrix.benchmark }}
+          FRAMEWORK: ${{ matrix.framework }}
+          BENCHMARK_VITEST_PROJECTS: ${{ matrix.vitestProjects }}
         with:
           mode: ${{ matrix.mode }}
           run: >-
             WITH_INSTRUMENTATION=1
             pnpm nx run
-            @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
+            "@benchmarks/$BENCHMARK:test:perf:$FRAMEWORK"
             --excludeTaskDependencies

@@ -3,9 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:react": "NODE_ENV=production vite build --config ./react/vite.config.ts",
-    "build:solid": "NODE_ENV=production vite build --config ./solid/vite.config.ts",
-    "build:vue": "NODE_ENV=production vite build --config ./vue/vite.config.ts",
     "test:flame:react": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./react/speed.flame.ts",
     "test:flame:solid": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./solid/speed.flame.ts",
     "test:flame:vue": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./vue/speed.flame.ts",
@@ -13,10 +10,8 @@
     "test:perf:react": "NODE_ENV=production vitest bench --config ./vitest.react.config.ts",
     "test:perf:solid": "NODE_ENV=production vitest bench --config ./vitest.solid.config.ts",
     "test:perf:vue": "NODE_ENV=production vitest bench --config ./vitest.vue.config.ts",
-    "test:types": "pnpm run test:types:react && pnpm run test:types:solid && pnpm run test:types:vue",
-    "test:types:react": "tsc -p ./react/tsconfig.json --noEmit",
-    "test:types:solid": "tsc -p ./solid/tsconfig.json --noEmit",
-    "test:types:vue": "tsc -p ./vue/tsconfig.json --noEmit"
+    "test:types": "tsc -p ./tsconfig.json --noEmit",
+    "test:unit": "node --test ../../scripts/benchmarks/codspeed/plan.test.mjs"
   },
   "dependencies": {
     "@tanstack/history": "workspace:^",
@@ -50,16 +45,12 @@
   "nx": {
     "targets": {
       "build:react": {
+        "executor": "nx:noop",
         "cache": false,
         "dependsOn": [
           {
             "projects": [
-              "@tanstack/react-router"
-            ],
-            "target": "build"
-          },
-          {
-            "projects": [
+              "@benchmarks/client-nav-react",
               "@benchmarks/client-nav-async-pipeline-react",
               "@benchmarks/client-nav-control-flow-react",
               "@benchmarks/client-nav-head-react",
@@ -80,16 +71,12 @@
         ]
       },
       "build:solid": {
+        "executor": "nx:noop",
         "cache": false,
         "dependsOn": [
           {
             "projects": [
-              "@tanstack/solid-router"
-            ],
-            "target": "build"
-          },
-          {
-            "projects": [
+              "@benchmarks/client-nav-solid",
               "@benchmarks/client-nav-async-pipeline-solid",
               "@benchmarks/client-nav-control-flow-solid",
               "@benchmarks/client-nav-head-solid",
@@ -110,16 +97,12 @@
         ]
       },
       "build:vue": {
+        "executor": "nx:noop",
         "cache": false,
         "dependsOn": [
           {
             "projects": [
-              "@tanstack/vue-router"
-            ],
-            "target": "build"
-          },
-          {
-            "projects": [
+              "@benchmarks/client-nav-vue",
               "@benchmarks/client-nav-async-pipeline-vue",
               "@benchmarks/client-nav-control-flow-vue",
               "@benchmarks/client-nav-head-vue",
@@ -194,6 +177,9 @@
           "^build",
           {
             "projects": [
+              "@benchmarks/client-nav-react",
+              "@benchmarks/client-nav-solid",
+              "@benchmarks/client-nav-vue",
               "@benchmarks/client-nav-async-pipeline-react",
               "@benchmarks/client-nav-async-pipeline-solid",
               "@benchmarks/client-nav-async-pipeline-vue",
@@ -238,6 +224,16 @@
             ],
             "target": "test:types:client"
           }
+        ]
+      },
+      "test:unit": {
+        "dependsOn": [],
+        "inputs": [
+          "default",
+          "{workspaceRoot}/scripts/benchmarks/codspeed/*.mjs",
+          "{workspaceRoot}/benchmarks/vitest-projects.ts",
+          "{workspaceRoot}/benchmarks/{ssr,memory/client,memory/server}/package.json",
+          "{workspaceRoot}/benchmarks/{ssr,memory/client,memory/server}/vitest.*.config.ts"
         ]
       }
     }

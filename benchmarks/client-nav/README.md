@@ -17,7 +17,7 @@ tracked in CI by CodSpeed (simulation mode).
 
 ## Layout
 
-- `react/`, `solid/`, `vue/` - baseline benchmark (mixed navigation loop) + Vitest config
+- `react/`, `solid/`, `vue/` - baseline benchmark (mixed navigation loop) + Vitest config, Nx projects `@benchmarks/client-nav-<framework>`
 - `vitest.react.config.ts`, `vitest.solid.config.ts`, `vitest.vue.config.ts` - per-framework aggregate configs that run the baseline first, then scenario projects
 - `scenarios/harness.ts` - shared scenario runner (mount, link-click steps, `onRendered` synchronization)
 - `scenarios/<scenario>/shared.ts` - framework-agnostic scenario definition (workload data, step sequence, assertions, bench options)

@@ -2,16 +2,12 @@
   "name": "@benchmarks/react-link-performance",
   "projectType": "application",
   "tags": ["optional-benchmark"],
+  "implicitDependencies": ["@tanstack/history", "@tanstack/react-router"],
   "targets": {
     "build:client": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/react-router"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "NODE_ENV=production vite build --config ./link-performance/vite.client.config.ts",
         "cwd": "benchmarks/client-nav"
@@ -20,12 +16,7 @@
     "build:ssr": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/react-router"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "NODE_ENV=production vite build --config ./link-performance/vite.ssr.config.ts",
         "cwd": "benchmarks/client-nav"
@@ -88,12 +79,7 @@
         "{workspaceRoot}/benchmarks/client-nav/tsconfig.json",
         "{workspaceRoot}/benchmarks/client-nav/vitest.setup.ts"
       ],
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/react-router"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "tsc -p ./link-performance/tsconfig.json --noEmit",
         "cwd": "benchmarks/client-nav"

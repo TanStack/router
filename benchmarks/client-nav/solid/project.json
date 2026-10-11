@@ -1,0 +1,37 @@
+{
+  "name": "@benchmarks/client-nav-solid",
+  "projectType": "application",
+  "implicitDependencies": ["@tanstack/solid-router"],
+  "namedInputs": {
+    "sharedBenchmarkFiles": [
+      "{workspaceRoot}/benchmarks/client-nav/jsdom.ts",
+      "{workspaceRoot}/benchmarks/client-nav/package.json",
+      "{workspaceRoot}/benchmarks/client-nav/setup-helpers.ts",
+      "{workspaceRoot}/benchmarks/client-nav/tsconfig.json",
+      "{workspaceRoot}/benchmarks/client-nav/vitest.setup.ts",
+      "{workspaceRoot}/benchmarks/client-nav/vitest.solid.config.ts",
+      "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+      "{workspaceRoot}/benchmarks/tsconfig.json",
+      "{workspaceRoot}/benchmarks/vitest-projects.ts"
+    ]
+  },
+  "targets": {
+    "build:client": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["^build"],
+      "options": {
+        "command": "NODE_ENV=production vite build --config ./solid/vite.config.ts",
+        "cwd": "benchmarks/client-nav"
+      }
+    },
+    "test:types:client": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "options": {
+        "command": "tsc -p ./solid/tsconfig.json --noEmit",
+        "cwd": "benchmarks/client-nav"
+      }
+    }
+  }
+}

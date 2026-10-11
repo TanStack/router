@@ -1,16 +1,31 @@
 {
   "name": "@benchmarks/memory-client-unique-location-churn-solid",
   "projectType": "application",
+  "implicitDependencies": ["@tanstack/solid-router"],
+  "namedInputs": {
+    "sharedBenchmarkFiles": [
+      "{workspaceRoot}/benchmarks/memory/client/bench-utils.ts",
+      "{workspaceRoot}/benchmarks/memory/client/benchmark.ts",
+      "{workspaceRoot}/benchmarks/memory/client/flame-runner.ts",
+      "{workspaceRoot}/benchmarks/memory/client/jsdom.ts",
+      "{workspaceRoot}/benchmarks/memory/client/lifecycle.ts",
+      "{workspaceRoot}/benchmarks/memory/client/package.json",
+      "{workspaceRoot}/benchmarks/memory/client/scenarios/unique-location-churn/shared.ts",
+      "{workspaceRoot}/benchmarks/memory/client/tsconfig.json",
+      "{workspaceRoot}/benchmarks/memory/client/vitest.setup.ts",
+      "{workspaceRoot}/benchmarks/memory/client/vitest.solid.config.ts",
+      "{workspaceRoot}/benchmarks/memory/flame-control.ts",
+      "{workspaceRoot}/benchmarks/memory/runtime.ts",
+      "{workspaceRoot}/benchmarks/memory/tsconfig.json",
+      "{workspaceRoot}/benchmarks/memory/turn.ts",
+      "{workspaceRoot}/benchmarks/vitest-projects.ts"
+    ]
+  },
   "targets": {
     "build:client": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/solid-router"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
       }
@@ -18,12 +33,7 @@
     "build:client:flame": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/solid-router"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts --sourcemap true"
       }
@@ -40,12 +50,7 @@
     },
     "test:types:client": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/solid-router"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "tsc -p {projectRoot}/tsconfig.json --noEmit"
       }

@@ -1,28 +1,34 @@
 {
   "name": "@benchmarks/client-nav-control-flow-react",
   "projectType": "application",
+  "implicitDependencies": ["@tanstack/react-router", "@tanstack/router-plugin"],
+  "namedInputs": {
+    "sharedBenchmarkFiles": [
+      "{workspaceRoot}/benchmarks/client-nav/jsdom.ts",
+      "{workspaceRoot}/benchmarks/client-nav/package.json",
+      "{workspaceRoot}/benchmarks/client-nav/scenarios/control-flow/shared.ts",
+      "{workspaceRoot}/benchmarks/client-nav/scenarios/harness.ts",
+      "{workspaceRoot}/benchmarks/client-nav/setup-helpers.ts",
+      "{workspaceRoot}/benchmarks/client-nav/tsconfig.json",
+      "{workspaceRoot}/benchmarks/client-nav/vitest.react.config.ts",
+      "{workspaceRoot}/benchmarks/client-nav/vitest.setup.ts",
+      "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+      "{workspaceRoot}/benchmarks/tsconfig.json",
+      "{workspaceRoot}/benchmarks/vitest-projects.ts"
+    ]
+  },
   "targets": {
     "build:client": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/react-router", "@tanstack/router-plugin"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
       }
     },
     "test:types:client": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        {
-          "projects": ["@tanstack/react-router", "@tanstack/router-plugin"],
-          "target": "build"
-        }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "tsc -p {projectRoot}/tsconfig.json --noEmit"
       }

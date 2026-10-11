@@ -36,7 +36,8 @@
       "!{projectRoot}/tests/**/*",
       "!{projectRoot}/eslint.config.js"
     ],
-    "buildProduction": ["sharedGlobals", "{projectRoot}/**/*"]
+    "buildProduction": ["sharedGlobals", "{projectRoot}/**/*"],
+    "sharedBenchmarkFiles": []
   },
   "targetDefaults": {
     "test:docs": {
@@ -104,13 +105,7 @@
       "inputs": [
         "default",
         "^production",
-        "{workspaceRoot}/benchmarks/client-nav/*.{ts,json}",
-        "{workspaceRoot}/benchmarks/client-nav/scenarios/*.ts",
-        "{workspaceRoot}/benchmarks/client-nav/scenarios/*/*.ts",
-        "{workspaceRoot}/benchmarks/memory/*.ts",
-        "{workspaceRoot}/benchmarks/memory/client/*.{ts,json}",
-        "{workspaceRoot}/benchmarks/memory/client/scenarios/*/*.ts",
-        "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+        "sharedBenchmarkFiles",
         "dependentTaskOutputs"
       ]
     },
@@ -120,12 +115,7 @@
       "inputs": [
         "default",
         "^production",
-        "{workspaceRoot}/benchmarks/ssr/bench-utils.ts",
-        "{workspaceRoot}/benchmarks/cpu-simulation.ts",
-        "{workspaceRoot}/benchmarks/ssr/scenarios/*/*.ts",
-        "{workspaceRoot}/benchmarks/memory/*.ts",
-        "{workspaceRoot}/benchmarks/memory/server/*.ts",
-        "{workspaceRoot}/benchmarks/memory/server/scenarios/*/*.ts",
+        "sharedBenchmarkFiles",
         "dependentTaskOutputs"
       ]
     },

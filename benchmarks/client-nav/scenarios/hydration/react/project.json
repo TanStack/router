@@ -1,13 +1,21 @@
 {
   "name": "@benchmarks/client-nav-hydration-react",
   "projectType": "application",
+  "implicitDependencies": ["@tanstack/react-router"],
+  "namedInputs": {
+    "sharedBenchmarkFiles": [
+      "{workspaceRoot}/benchmarks/client-nav/package.json",
+      "{workspaceRoot}/benchmarks/client-nav/vitest.react.config.ts",
+      "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+      "{workspaceRoot}/benchmarks/tsconfig.json",
+      "{workspaceRoot}/benchmarks/vitest-projects.ts"
+    ]
+  },
   "targets": {
     "build:client": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        { "projects": ["@tanstack/react-router"], "target": "build" }
-      ],
+      "dependsOn": ["^build"],
       "options": {
         "command": "NODE_ENV=production vite build --config {projectRoot}/vite.server.config.ts && NODE_ENV=production node {projectRoot}/generate-fixture.mjs && NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
       }
@@ -31,9 +39,7 @@
     },
     "test:types:client": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        { "projects": ["@tanstack/react-router"], "target": "build" }
-      ],
+      "dependsOn": ["^build"],
       "options": { "command": "tsc -p {projectRoot}/tsconfig.json --noEmit" }
     }
   }

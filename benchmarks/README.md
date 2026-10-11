@@ -71,6 +71,33 @@ resolve together. Counted turns preserve the initial loading render and deferred
 payloads; the existing HTML assertions check both. These benchmarks execute in
 Node and use `setImmediate` directly.
 
+## CI scenario selection
+
+Pushes to `main` and manual dispatches run every scenario: they are the CodSpeed
+baselines. Pull requests run only the scenarios that the Nx project graph marks
+as affected ([`plan.mjs`](../scripts/benchmarks/codspeed/plan.mjs)); CodSpeed
+reports the others as skipped with their baseline values. Changes to
+`pnpm-lock.yaml`, `pnpm-workspace.yaml`, the workflow or the planner run
+everything.
+
+A scenario project (including the per-framework baselines) is affected through:
+
+- `implicitDependencies`: the packages it builds against. Its targets depend on
+  them with `^build`.
+- Files under its project root.
+- `namedInputs.sharedBenchmarkFiles`: every file outside its root that its
+  build, run or type-check reads, such as shared scenario modules, harnesses,
+  setup files, `cpu-simulation.ts`, its framework's aggregate
+  `vitest.<framework>.config.ts` and the benchmark's `package.json`.
+
+Keep these lists complete when adding a scenario or a shared import: a missing
+file silently skips the scenario on pull requests that only change that file.
+Preview a selection with
+`node scripts/benchmarks/codspeed/plan.mjs --mode affected --files <file,...>`.
+Selected cells set `BENCHMARK_VITEST_PROJECTS` (project directories relative to
+the aggregate config, e.g. `solid,scenarios/loaders/solid`) to narrow the
+aggregate Vitest config; it can be set locally after building those projects.
+
 ## Repeatability checks
 
 Dispatch the existing `Benchmarks` workflow against an unchanged branch:
