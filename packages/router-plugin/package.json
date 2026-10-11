@@ -148,6 +148,8 @@
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2 || ^2.0.0",
     "@tanstack/react-router": "workspace:^",
+    "@tanstack/solid-router": "workspace:^",
+    "@tanstack/vue-router": "workspace:^",
     "vite": ">=5.0.0 || >=6.0.0 || >=7.0.0 || >=8.0.0",
     "vite-plugin-solid": "^2.11.10 || ^3.0.0-0",
     "webpack": ">=5.92.0"
@@ -157,6 +159,12 @@
       "optional": true
     },
     "@tanstack/react-router": {
+      "optional": true
+    },
+    "@tanstack/solid-router": {
+      "optional": true
+    },
+    "@tanstack/vue-router": {
       "optional": true
     },
     "vite": {
@@ -171,7 +179,9 @@
   },
   "nx": {
     "implicitDependencies": [
-      "!@tanstack/react-router"
+      "!@tanstack/react-router",
+      "!@tanstack/solid-router",
+      "!@tanstack/vue-router"
     ]
   }
 }
