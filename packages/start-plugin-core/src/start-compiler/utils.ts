@@ -1,9 +1,14 @@
-import { CHILD_KEYS, is, isWrapper, walk } from 'yuku-ast'
-import { sourcePosition, unwrapExpression } from '@tanstack/router-utils'
+import { CHILD_KEYS, b, is, isWrapper, walk } from 'yuku-ast'
+import {
+  linkGeneratedReference,
+  sourcePosition,
+  unwrapExpression,
+} from '@tanstack/router-utils'
 import type {
   CallExpression,
   Node,
   Program,
+  StringLiteral,
   VariableDeclarator,
 } from '@yuku-toolchain/types'
 import type { StartCompilerTransformContext } from '../types'
@@ -122,4 +127,13 @@ export function stripMethodCall(
   if (is.MemberExpression(callee)) {
     context.replaceNode(call, callee.object)
   }
+}
+
+/** A generated reference to a source binding, import or global named `name`. */
+export function generatedReference(name: string) {
+  return linkGeneratedReference(b.Identifier({ name }), name)
+}
+
+export function stringLiteral(value: string) {
+  return b.Literal({ value, raw: JSON.stringify(value) }) as StringLiteral
 }

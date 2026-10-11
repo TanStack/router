@@ -1,20 +1,79 @@
-import {
-  analyzeModule,
-  generateModule,
-  parseStatements,
-} from '@tanstack/router-utils'
-import { is, isValidIdentifier, nameOf } from 'yuku-ast'
+import { analyzeModule, generateModule } from '@tanstack/router-utils'
+import { b, is, isValidIdentifier, nameOf } from 'yuku-ast'
 import { MOCK_MODULE_ID } from './constants'
 import type { SourceMapLike } from './sourceLocation'
+import type {
+  ExportSpecifier,
+  Expression,
+  ProgramStatement,
+  StringLiteral,
+} from '@yuku-toolchain/types'
 
-function memberAccess(object: string, name: string): string {
-  return isValidIdentifier(name)
-    ? `${object}.${name}`
-    : `${object}[${JSON.stringify(name)}]`
+function stringLiteral(value: string) {
+  return b.Literal({ value, raw: JSON.stringify(value) }) as StringLiteral
 }
 
-function exportName(name: string): string {
-  return isValidIdentifier(name) ? name : JSON.stringify(name)
+/** `name` as an identifier, or quoted when it is not a valid one. */
+function moduleExportName(name: string) {
+  return isValidIdentifier(name) ? b.Identifier({ name }) : stringLiteral(name)
+}
+
+/** `object.name`, or `object["name"]` when `name` is not a valid identifier. */
+export function memberAccess(object: string, name: string) {
+  return isValidIdentifier(name)
+    ? b.MemberExpression({
+        object: b.Identifier({ name: object }),
+        property: b.Identifier({ name }),
+        computed: false,
+        optional: false,
+      })
+    : b.MemberExpression({
+        object: b.Identifier({ name: object }),
+        property: stringLiteral(name),
+        computed: true,
+        optional: false,
+      })
+}
+
+/** `const name = init` */
+export function constDeclaration(name: string, init: Expression) {
+  return b.VariableDeclaration({
+    kind: 'const',
+    declarations: [b.VariableDeclarator({ id: b.Identifier({ name }), init })],
+  })
+}
+
+/** `import <local> from "<source>"` */
+export function mockImport(local: string, source: string) {
+  return b.ImportDeclaration({
+    specifiers: [
+      b.ImportDefaultSpecifier({ local: b.Identifier({ name: local }) }),
+    ],
+    source: stringLiteral(source),
+    phase: null,
+    attributes: [],
+    importKind: 'value',
+  })
+}
+
+/** `<local> as <exported>`, with `exported` quoted when it is not a valid identifier. */
+export function reexportSpecifier(local: string, exported: string) {
+  return b.ExportSpecifier({
+    local: b.Identifier({ name: local }),
+    exported: moduleExportName(exported),
+    exportKind: 'value',
+  })
+}
+
+/** `export { <specifiers> }` */
+export function exportList(specifiers: Array<ExportSpecifier>) {
+  return b.ExportNamedDeclaration({
+    declaration: null,
+    specifiers,
+    source: null,
+    attributes: [],
+    exportKind: 'value',
+  })
 }
 
 /** Rewrite denied static edges in the analyzed tree, which serves this one output. */
@@ -64,8 +123,8 @@ export function rewriteDeniedImports(
     }
     const mockIndex = counter++
     const mockVar = uniqueName(`__tss_deny_${mockIndex}`)
-    const statements = [
-      `import ${mockVar} from ${JSON.stringify(getMockModuleId(node.source.value))}`,
+    const replacements: Array<ProgramStatement> = [
+      mockImport(mockVar, getMockModuleId(node.source.value)),
     ]
     if (is.ImportDeclaration(node)) {
       for (const specifier of node.specifiers) {
@@ -74,15 +133,23 @@ export function rewriteDeniedImports(
             continue
           }
           const imported = nameOf(specifier.imported)
-          statements.push(
-            `const ${specifier.local.name} = ${memberAccess(mockVar, imported)}`,
+          replacements.push(
+            constDeclaration(
+              specifier.local.name,
+              memberAccess(mockVar, imported),
+            ),
           )
         } else {
-          statements.push(`const ${specifier.local.name} = ${mockVar}`)
+          replacements.push(
+            constDeclaration(
+              specifier.local.name,
+              b.Identifier({ name: mockVar }),
+            ),
+          )
         }
       }
     } else {
-      const exportSpecifiers: Array<string> = []
+      const exportSpecifiers: Array<ExportSpecifier> = []
       for (const specifier of node.specifiers) {
         if (specifier.exportKind === 'type') {
           continue
@@ -94,14 +161,15 @@ export function rewriteDeniedImports(
             ? `__tss_reexport_${local}`
             : `__tss_reexport_${mockIndex}`,
         )
-        statements.push(`const ${internal} = ${memberAccess(mockVar, local)}`)
-        exportSpecifiers.push(`${internal} as ${exportName(exported)}`)
+        replacements.push(
+          constDeclaration(internal, memberAccess(mockVar, local)),
+        )
+        exportSpecifiers.push(reexportSpecifier(internal, exported))
       }
       if (exportSpecifiers.length) {
-        statements.push(`export { ${exportSpecifiers.join(', ')} }`)
+        replacements.push(exportList(exportSpecifiers))
       }
     }
-    const replacements = parseStatements(statements.join('\n'))
     for (const statement of replacements) {
       statement.start = node.start
       statement.end = node.end

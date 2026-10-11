@@ -1,5 +1,5 @@
-import { is } from 'yuku-ast'
-import { parseExpression } from '@tanstack/router-utils'
+import { b, is } from 'yuku-ast'
+import { generatedReference, stringLiteral } from './utils'
 import type { CompilationContext, RewriteCandidate } from './types'
 import type { LookupKind } from './compiler'
 
@@ -18,12 +18,32 @@ export function handleEnvOnlyFn(
       }
       context.replaceNode(node, argument)
     } else {
-      context.replaceNode(
-        node,
-        parseExpression(
-          `() => { throw new Error(${JSON.stringify(`${factory}() functions can only be called on the ${target}!`)}); }`,
-        ),
-      )
+      context.replaceNode(node, envOnlyStub(factory, target))
     }
   }
+}
+
+/** `() => { throw new Error("<factory>() functions can only be called on the <target>!"); }` */
+export function envOnlyStub(factory: string, target: string) {
+  return b.ArrowFunctionExpression({
+    id: null,
+    generator: false,
+    async: false,
+    expression: false,
+    params: [],
+    body: b.BlockStatement({
+      body: [
+        b.ThrowStatement({
+          argument: b.NewExpression({
+            callee: generatedReference('Error'),
+            arguments: [
+              stringLiteral(
+                `${factory}() functions can only be called on the ${target}!`,
+              ),
+            ],
+          }),
+        }),
+      ],
+    }),
+  })
 }

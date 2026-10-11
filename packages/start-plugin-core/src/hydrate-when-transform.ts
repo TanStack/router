@@ -8,9 +8,8 @@ import {
   filePragmas,
   generateModule,
   keepFilePragmas,
+  linkGeneratedReference,
   moduleDeclarationGraph,
-  parseExpression,
-  parseStatements,
   prepareBindingCleanup,
   prependStatements,
   removeUnusedBindings,
@@ -19,7 +18,12 @@ import {
 } from '@tanstack/router-utils'
 import { BindingFlags } from 'yuku-analyzer'
 import { tssHydrate } from './hydration-constants'
-import { cleanId, codeFrameError } from './start-compiler/utils'
+import {
+  cleanId,
+  codeFrameError,
+  generatedReference,
+  stringLiteral,
+} from './start-compiler/utils'
 import type { Binding, Module } from 'yuku-analyzer'
 import type * as t from '@yuku-toolchain/types'
 import type {
@@ -301,6 +305,145 @@ function getMeaningfulChildren(children: t.JSXElement['children']) {
   )
 }
 
+export function jsxAttribute(name: string, expression: t.Expression) {
+  return b.JSXAttribute({
+    name: b.JSXIdentifier({ name }),
+    value: b.JSXExpressionContainer({ expression }),
+  })
+}
+
+export function constDeclaration(name: string, init: t.Expression) {
+  return b.VariableDeclaration({
+    kind: 'const',
+    declarations: [b.VariableDeclarator({ id: b.Identifier({ name }), init })],
+  })
+}
+
+export function importDeclaration(
+  imported: t.Identifier | t.StringLiteral,
+  local: string,
+  source: string,
+) {
+  return b.ImportDeclaration({
+    specifiers: [
+      b.ImportSpecifier({
+        imported,
+        local: b.Identifier({ name: local }),
+        importKind: 'value',
+      }),
+    ],
+    source: stringLiteral(source),
+    phase: null,
+    attributes: [],
+    importKind: 'value',
+  })
+}
+
+/** `const <componentName> = <lazyName>(() => import("<source>"), "<exportName>")` */
+export function lazyComponent(
+  componentName: string,
+  lazyName: string,
+  source: string,
+  exportName: string,
+) {
+  return constDeclaration(
+    componentName,
+    b.CallExpression({
+      callee: generatedReference(lazyName),
+      arguments: [
+        b.ArrowFunctionExpression({
+          id: null,
+          generator: false,
+          async: false,
+          expression: true,
+          params: [],
+          body: b.ImportExpression({
+            source: stringLiteral(source),
+            options: null,
+            phase: null,
+          }),
+        }),
+        stringLiteral(exportName),
+      ],
+      optional: false,
+    }),
+  )
+}
+
+/** `const <preloadName> = <componentName>.preload` */
+export function preloadAlias(preloadName: string, componentName: string) {
+  return constDeclaration(
+    preloadName,
+    b.MemberExpression({
+      object: generatedReference(componentName),
+      property: b.Identifier({ name: 'preload' }),
+      computed: false,
+      optional: false,
+    }),
+  )
+}
+
+/** `<componentName capture={capture} … />` */
+export function boundaryChild(componentName: string, captured: Array<string>) {
+  return b.JSXElement({
+    openingElement: b.JSXOpeningElement({
+      name: linkGeneratedReference(
+        b.JSXIdentifier({ name: componentName }),
+        componentName,
+      ),
+      attributes: captured.map((name) =>
+        jsxAttribute(name, generatedReference(name)),
+      ),
+      selfClosing: true,
+    }),
+    children: [],
+    closingElement: null,
+  })
+}
+
+/** `export function H<boundaryIndex>({ <captures> }) { return <expression> }` */
+export function boundaryComponent(
+  boundaryIndex: number,
+  captures: Array<string>,
+  expression: t.Expression,
+) {
+  return b.ExportNamedDeclaration({
+    declaration: b.FunctionDeclaration({
+      id: b.Identifier({ name: `H${boundaryIndex}` }),
+      generator: false,
+      async: false,
+      params: captures.length
+        ? [
+            b.ObjectPattern({
+              properties: captures.map(
+                // `b.Property` is typed as an object or a binding property
+                (name): t.BindingProperty => ({
+                  type: 'Property',
+                  start: 0,
+                  end: 0,
+                  kind: 'init',
+                  key: b.Identifier({ name }),
+                  value: b.Identifier({ name }),
+                  method: false,
+                  shorthand: true,
+                  computed: false,
+                }),
+              ),
+            }),
+          ]
+        : [],
+      body: b.BlockStatement({
+        body: [b.ReturnStatement({ argument: expression })],
+      }),
+      expression: false,
+    }),
+    specifiers: [],
+    source: null,
+    attributes: [],
+    exportKind: 'value',
+  })
+}
+
 function setChildren(node: t.JSXElement, children: t.JSXElement['children']) {
   node.children = children
   if (node.openingElement.selfClosing) {
@@ -486,37 +629,33 @@ function transformHydrateAst(
       })
       if (!lazyName) {
         lazyName = fresh('lazyRouteComponent')
+        // import { lazyRouteComponent as <lazyName> } from "@tanstack/<framework>-router"
         prepend.push(
-          ...parseStatements(
-            `import { lazyRouteComponent as ${lazyName} } from ${JSON.stringify(`@tanstack/${options.framework}-router`)}`,
+          importDeclaration(
+            b.Identifier({ name: 'lazyRouteComponent' }),
+            lazyName,
+            `@tanstack/${options.framework}-router`,
           ),
         )
       }
       const query = new URLSearchParams({ [tssHydrate]: id })
       const componentName = fresh(exportName)
       prepend.push(
-        ...parseStatements(
-          `const ${componentName} = ${lazyName}(() => import(${JSON.stringify(`${sourceId}?${query}`)}), ${JSON.stringify(exportName)})`,
+        lazyComponent(
+          componentName,
+          lazyName,
+          `${sourceId}?${query}`,
+          exportName,
         ),
       )
       if (needsPreload) {
         const preloadName = fresh(`${exportName}_preload`)
-        prepend.push(
-          ...parseStatements(`const ${preloadName} = ${componentName}.preload`),
-        )
+        prepend.push(preloadAlias(preloadName, componentName))
         node.openingElement.attributes.push(
-          b.JSXAttribute({
-            name: b.JSXIdentifier({ name: 'p' }),
-            value: b.JSXExpressionContainer({
-              expression: parseExpression(preloadName),
-            }),
-          }),
+          jsxAttribute('p', generatedReference(preloadName)),
         )
       }
-      const props = inspection.captured
-        .map((name) => `${name}={${name}}`)
-        .join(' ')
-      const child = parseExpression(`<${componentName} ${props} />`)
+      const child = boundaryChild(componentName, inspection.captured)
       setChildren(node, [b.JSXExpressionContainer({ expression: child })])
       visitor.skip()
     },
@@ -626,10 +765,15 @@ function loadHydrateVirtualModule(options: {
         'Hydrate cannot code-split children that read Route when the module does not export it. Export Route, or use split={false} for this boundary.',
       )
     }
+    // import { <exported> as Route } from "<sourceId>"
     prependStatements(
       ast,
-      ...parseStatements(
-        `import { ${/^[\p{L}_$][\p{L}\p{N}_$]*$/u.test(exported) ? exported : JSON.stringify(exported)} as Route } from ${JSON.stringify(sourceId)}`,
+      importDeclaration(
+        /^[\p{L}_$][\p{L}\p{N}_$]*$/u.test(exported)
+          ? b.Identifier({ name: exported })
+          : stringLiteral(exported),
+        'Route',
+        sourceId,
       ),
     )
   }
@@ -669,13 +813,7 @@ function loadHydrateVirtualModule(options: {
     }
     return []
   })
-  const params = captures.length ? `{ ${captures.join(', ')} }` : ''
-  const output = parseStatements(
-    `export function H${boundaryIndex}(${params}) {}`,
-  )[0] as t.ExportNamedDeclaration
-  const component = output.declaration as t.FunctionDeclaration
-  component.body!.body.push(b.ReturnStatement({ argument: expression }))
-  ast.body.push(output)
+  ast.body.push(boundaryComponent(boundaryIndex, captures, expression))
   removeUnusedBindings(module, ast, cleanup)
   keepFilePragmas(pragmas, ast)
   return generateModule(ast, { source: options.code, filename: options.id })

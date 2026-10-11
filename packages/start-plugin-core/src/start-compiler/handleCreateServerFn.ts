@@ -1,7 +1,5 @@
 import { b, is } from 'yuku-ast'
 import {
-  parseExpression,
-  parseStatements,
   prependStatements,
   sourcePosition,
   unwrapExport,
@@ -10,12 +8,16 @@ import path from 'pathe'
 import {
   cleanId,
   codeFrameError,
+  generatedReference,
   getVariableDeclarator,
+  stringLiteral,
   stripMethodCall,
 } from './utils'
 import type {
+  ObjectProperty,
   Program,
   ProgramStatement,
+  StringLiteral,
   VariableDeclaration,
 } from '@yuku-toolchain/types'
 import type { CompilationContext, RewriteCandidate, ServerFn } from './types'
@@ -138,23 +140,22 @@ export function handleCreateServerFn(
         isClientReferenced:
           context.env === 'client' || !!knownFn || runtime === 'ssr',
       }
-      context.replaceNode(
-        handler.firstArg,
-        parseExpression(`${runtimeName}(${JSON.stringify(functionId)})`),
-      )
+      context.replaceNode(handler.firstArg, rpcCall(runtimeName, functionId))
       continue
     }
-    const metadata = JSON.stringify({
-      id: functionId,
-      name: variableName,
-      filename: relativeFilename,
+    const extracted = extractedHandler({
+      functionName,
+      runtimeName,
+      functionId,
+      variableName,
+      relativeFilename,
     })
-    const extracted = parseStatements(
-      `const ${functionName} = createServerRpc(${metadata}, (opts) => ${variableName}.__executeServer(opts));`,
-    )[0]!
     context.ast.body.splice(context.ast.body.indexOf(statement), 0, extracted)
     // Move the existing handler node; its source-binding identity remains intact.
-    handler.call.arguments = [parseExpression(functionName), handler.firstArg]
+    handler.call.arguments = [
+      generatedReference(functionName),
+      handler.firstArg,
+    ]
     exportNames.add(functionName)
   }
 
@@ -178,10 +179,11 @@ export function handleCreateServerFn(
       )
     }
     if (context.mode === 'dev') {
+      // if (import.meta.hot) { import.meta.hot.accept(() => {}); }
+      // if (import.meta.webpackHot) { import.meta.webpackHot.accept(() => {}); }
       context.ast.body.push(
-        ...parseStatements(
-          'if (import.meta.hot) { import.meta.hot.accept(() => {}); } if (import.meta.webpackHot) { import.meta.webpackHot.accept(() => {}); }',
-        ),
+        acceptHotUpdates('hot'),
+        acceptHotUpdates('webpackHot'),
       )
     }
     const existing = new Set(
@@ -196,21 +198,13 @@ export function handleCreateServerFn(
         return true
       },
     )
-    context.ast.body.unshift(
-      ...parseStatements(
-        missing.map((directive) => `${JSON.stringify(directive)};`).join('\n'),
-      ),
-    )
+    context.ast.body.unshift(...missing.map(directiveStatement))
   } else if (Object.keys(serverFnsById).length) {
     context.onServerFnsById?.(serverFnsById)
   }
   const importPath = runtime === 'provider' ? 'server-rpc' : `${runtime}-rpc`
-  prependStatements(
-    context.ast,
-    ...parseStatements(
-      `import { ${runtimeName} } from '@tanstack/${context.framework}-start/${importPath}';`,
-    ),
-  )
+  const source = `@tanstack/${context.framework}-start/${importPath}`
+  prependStatements(context.ast, runtimeImport(runtimeName, source))
 }
 
 function incrementFunctionNameVersion(name: string): string {
@@ -244,5 +238,156 @@ function removeExports(program: Program) {
       }
     }
     return [node]
+  })
+}
+
+/** `<runtimeName>("<functionId>")` */
+export function rpcCall(runtimeName: string, functionId: string) {
+  return b.CallExpression({
+    callee: generatedReference(runtimeName),
+    arguments: [stringLiteral(functionId)],
+    optional: false,
+  })
+}
+
+/**
+ * `const <functionName> = <runtimeName>({ "id": …, "name": …, "filename": … },
+ *   (opts) => <variableName>.__executeServer(opts));`
+ */
+export function extractedHandler({
+  functionName,
+  runtimeName,
+  functionId,
+  variableName,
+  relativeFilename,
+}: {
+  functionName: string
+  runtimeName: string
+  functionId: string
+  variableName: string
+  relativeFilename: string
+}) {
+  return b.VariableDeclaration({
+    kind: 'const',
+    declarations: [
+      b.VariableDeclarator({
+        id: b.Identifier({ name: functionName }),
+        init: b.CallExpression({
+          callee: generatedReference(runtimeName),
+          arguments: [
+            b.ObjectExpression({
+              properties: Object.entries({
+                id: functionId,
+                name: variableName,
+                filename: relativeFilename,
+              }).map(
+                // `b.Property` is typed as an object or a binding property
+                ([key, value]): ObjectProperty => ({
+                  type: 'Property',
+                  start: 0,
+                  end: 0,
+                  kind: 'init',
+                  key: stringLiteral(key),
+                  value: stringLiteral(value),
+                  method: false,
+                  shorthand: false,
+                  computed: false,
+                }),
+              ),
+            }),
+            b.ArrowFunctionExpression({
+              id: null,
+              generator: false,
+              async: false,
+              expression: true,
+              params: [b.Identifier({ name: 'opts' })],
+              body: b.CallExpression({
+                callee: b.MemberExpression({
+                  object: generatedReference(variableName),
+                  property: b.Identifier({ name: '__executeServer' }),
+                  computed: false,
+                  optional: false,
+                }),
+                arguments: [b.Identifier({ name: 'opts' })],
+                optional: false,
+              }),
+            }),
+          ],
+          optional: false,
+        }),
+      }),
+    ],
+  })
+}
+
+/** `"<directive>";` */
+export function directiveStatement(directive: string) {
+  const expression = stringLiteral(directive)
+  // A directive is its raw source text without the quotes
+  return b.ExpressionStatement({
+    expression,
+    directive: expression.raw.slice(1, -1),
+  })
+}
+
+/** `import { <runtimeName> } from '<source>';` */
+export function runtimeImport(runtimeName: string, source: string) {
+  return b.ImportDeclaration({
+    specifiers: [
+      b.ImportSpecifier({
+        imported: b.Identifier({ name: runtimeName }),
+        local: b.Identifier({ name: runtimeName }),
+        importKind: 'value',
+      }),
+    ],
+    source: b.Literal({ value: source, raw: `'${source}'` }) as StringLiteral,
+    phase: null,
+    attributes: [],
+    importKind: 'value',
+  })
+}
+
+function importMetaMember(name: string) {
+  return b.MemberExpression({
+    object: b.MetaProperty({
+      meta: b.Identifier({ name: 'import' }),
+      property: b.Identifier({ name: 'meta' }),
+    }),
+    property: b.Identifier({ name }),
+    computed: false,
+    optional: false,
+  })
+}
+
+/** `if (import.meta.<api>) { import.meta.<api>.accept(() => {}); }` */
+export function acceptHotUpdates(api: 'hot' | 'webpackHot') {
+  return b.IfStatement({
+    test: importMetaMember(api),
+    consequent: b.BlockStatement({
+      body: [
+        b.ExpressionStatement({
+          expression: b.CallExpression({
+            callee: b.MemberExpression({
+              object: importMetaMember(api),
+              property: b.Identifier({ name: 'accept' }),
+              computed: false,
+              optional: false,
+            }),
+            arguments: [
+              b.ArrowFunctionExpression({
+                id: null,
+                generator: false,
+                async: false,
+                expression: false,
+                params: [],
+                body: b.BlockStatement({ body: [] }),
+              }),
+            ],
+            optional: false,
+          }),
+        }),
+      ],
+    }),
+    alternate: null,
   })
 }
