@@ -845,9 +845,7 @@ export class StartCompiler {
           calls.push({ node })
           return
         }
-        const callee = is.Expression(node.callee)
-          ? unwrapExpression(node.callee)
-          : node.callee
+        const callee = unwrapExpression(node.callee)
         const name = is.Identifier(callee)
           ? callee.name
           : is.MemberExpression(callee) && is.Identifier(callee.property)
@@ -856,10 +854,9 @@ export class StartCompiler {
         if (!name) {
           return
         }
-        const receiver =
-          is.MemberExpression(callee) && is.Expression(callee.object)
-            ? unwrapExpression(callee.object)
-            : null
+        const receiver = is.MemberExpression(callee)
+          ? unwrapExpression(callee.object)
+          : null
         const simpleDirectCall =
           is.Identifier(callee) || is.Identifier(receiver)
         const topLevel = isModuleLevelInitializer(node, editor.parentOf)
@@ -939,11 +936,9 @@ export class StartCompiler {
         }
         // Only module bindings can participate in the cross-module builder graph.
         // Local shadowing is decided by Yuku's resolved references before tracing.
-        let base: t.Node = node
+        let base: t.Expression = node
         for (;;) {
-          if (is.Expression(base)) {
-            base = unwrapExpression(base)
-          }
+          base = unwrapExpression(base)
           if (is.CallExpression(base)) {
             base = base.callee
           } else if (is.MemberExpression(base)) {
@@ -985,9 +980,7 @@ export class StartCompiler {
       }
       let current = node
       for (;;) {
-        const callee = is.Expression(current.callee)
-          ? unwrapExpression(current.callee)
-          : current.callee
+        const callee = unwrapExpression(current.callee)
         if (!is.MemberExpression(callee)) {
           break
         }
@@ -1000,9 +993,7 @@ export class StartCompiler {
             firstArg: current.arguments[0] ?? null,
           }
         }
-        const object = is.Expression(callee.object)
-          ? unwrapExpression(callee.object)
-          : callee.object
+        const object = unwrapExpression(callee.object)
         if (!is.CallExpression(object)) {
           break
         }
@@ -1413,9 +1404,6 @@ export class StartCompiler {
     let result: Kind = 'None'
 
     if (is.CallExpression(expr)) {
-      if (!is.Expression(expr.callee)) {
-        return 'None'
-      }
       const callee = unwrapExpression(expr.callee)
       const calleeKind = await this.resolveCalleeKind(callee, fileId, visited)
       if (calleeKind === 'Root' || calleeKind === 'Builder') {
@@ -1455,9 +1443,7 @@ export class StartCompiler {
     fileId: string,
     visited = new Set<string>(),
   ): Promise<Kind> {
-    if (is.Expression(callee)) {
-      callee = unwrapExpression(callee)
-    }
+    callee = unwrapExpression(callee)
     if (is.Identifier(callee)) {
       return this.resolveIdentifierKind(callee.name, fileId, visited)
     }
@@ -1502,9 +1488,7 @@ export class StartCompiler {
       }
 
       // Check if the object is a namespace import
-      const receiver = is.Expression(callee.object)
-        ? unwrapExpression(callee.object)
-        : callee.object
+      const receiver = unwrapExpression(callee.object)
       if (is.Identifier(receiver)) {
         const info = await this.getModuleInfo(fileId)
         const binding = info.bindings.get(receiver.name)
@@ -1555,9 +1539,7 @@ function isMethodChainCandidate(
   node: t.CallExpression,
   lookupKinds: Set<LookupKind>,
 ): boolean {
-  const callee = is.Expression(node.callee)
-    ? unwrapExpression(node.callee)
-    : node.callee
+  const callee = unwrapExpression(node.callee)
   if (!is.MemberExpression(callee) || !is.Identifier(callee.property)) {
     return false
   }

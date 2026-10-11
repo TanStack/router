@@ -107,9 +107,7 @@ export function stripMethodCall(
   call: CallExpression,
   context: StartCompilerTransformContext,
 ): void {
-  const callee = is.Expression(call.callee)
-    ? unwrapExpression(call.callee)
-    : call.callee
+  const callee = unwrapExpression(call.callee)
   if (is.MemberExpression(callee)) {
     context.replaceNode(call, callee.object)
   }
