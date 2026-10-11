@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createServer } from 'vite'
 import { expect, it } from 'vitest'
-import { tanstackRouter } from '../src/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 it.each(['Widget', '_Widget', '$Widget'])(
   'preserves the shared JSX component %s across separate loader and component chunks',

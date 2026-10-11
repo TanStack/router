@@ -12,8 +12,8 @@ import {
 } from '@tanstack/react-router'
 import type { FileRoutesByPath, MakeRouteMatch } from '@tanstack/react-router'
 import { expectTypeOf, test } from 'vitest'
-import { routeTree } from './routeTree.gen'
-import type { FileRouteTypes } from './routeTree.gen'
+import { routeTree } from '../src/routeTree.gen'
+import type { FileRouteTypes } from '../src/routeTree.gen'
 
 const defaultRouter = createRouter({
   routeTree,
