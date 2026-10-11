@@ -1,6 +1,6 @@
 function Sibling() {
-  return <aside>Sibling</aside>;
+  return <aside>Sibling</aside>
 }
 export function H2() {
-  return <Sibling />;
+  return <Sibling />
 }

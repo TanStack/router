@@ -1,9 +1,8 @@
 // @ts-nocheck
-
-const shared = 1;
+const shared = 1
 function SharedComponent() {
-  return <div>{shared}</div>;
+  return <div>{shared}</div>
 }
-const SplitLoader = () => shared;
-export { SplitLoader as loader };
-export { SharedComponent as component };
+const SplitLoader = () => shared
+export { SplitLoader as loader }
+export { SharedComponent as component }

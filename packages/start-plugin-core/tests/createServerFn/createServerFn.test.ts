@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
+import { formatSnapshot } from '../format-snapshot'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -91,9 +92,9 @@ describe('createServerFn compiles correctly', async () => {
           : env.isProviderFile
             ? 'server-provider'
             : 'server-caller'
-      await expect(result!.code).toMatchFileSnapshot(
-        `./snapshots/${folder}/${filename}`,
-      )
+      await expect(
+        await formatSnapshot(result!.code, filename),
+      ).toMatchFileSnapshot(`./snapshots/${folder}/${filename}`)
     })
   })
 
@@ -111,11 +112,17 @@ describe('createServerFn compiles correctly', async () => {
       mode: 'build',
     })
 
-    expect(compiledResultClient!.code).toMatchInlineSnapshot(`
-      "import { createClientRpc } from '@tanstack/react-start/client-rpc';
-      import { createServerFn } from '@tanstack/react-start';
-      const myServerFn = createServerFn().handler(createClientRpc(\"2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b\"));"
-    `)
+    expect(await formatSnapshot(compiledResultClient!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+        "import { createClientRpc } from '@tanstack/react-start/client-rpc'
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn().handler(
+          createClientRpc(
+            '2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b',
+          ),
+        )
+        "
+      `)
   })
 
   // Editors count \n, \r\n, a lone \r, U+2028 and U+2029 as line
@@ -206,34 +213,54 @@ describe('createServerFn compiles correctly', async () => {
       mode: 'build',
     })
 
-    expect(compiledResultClient!.code).toMatchInlineSnapshot(`
-      "import { createClientRpc } from '@tanstack/react-start/client-rpc';
-      import { createServerFn } from '@tanstack/react-start';
-      const myServerFn = createServerFn().handler(createClientRpc("2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b"));"
-    `)
+    expect(await formatSnapshot(compiledResultClient!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+        "import { createClientRpc } from '@tanstack/react-start/client-rpc'
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn().handler(
+          createClientRpc(
+            '2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b',
+          ),
+        )
+        "
+      `)
 
     // Server caller: no second argument (implementation from extracted chunk)
-    expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
-      "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
-      import { createServerFn } from '@tanstack/react-start';
-      const myServerFn = createServerFn().handler(createSsrRpc("2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b"));"
-    `)
+    expect(await formatSnapshot(compiledResultServerCaller!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+        "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc'
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn().handler(
+          createSsrRpc(
+            '2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b',
+          ),
+        )
+        "
+      `)
 
     // Server provider: has second argument (this is the implementation file)
-    expect(compiledResultServerProvider!.code).toMatchInlineSnapshot(`
-      "import { createServerRpc } from '@tanstack/react-start/server-rpc';
-      import { createServerFn } from '@tanstack/react-start';
-      const myFunc = () => {
-        return 'hello from the server';
-      };
-      const myServerFn_createServerFn_handler = createServerRpc({
-        id: "2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b",
-        name: "myServerFn",
-        filename: "src/test.ts"
-      }, opts => myServerFn.__executeServer(opts));
-      const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler, myFunc);
-      export { myServerFn_createServerFn_handler };"
-    `)
+    expect(await formatSnapshot(compiledResultServerProvider!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+        "import { createServerRpc } from '@tanstack/react-start/server-rpc'
+        import { createServerFn } from '@tanstack/react-start'
+        const myFunc = () => {
+          return 'hello from the server'
+        }
+        const myServerFn_createServerFn_handler = createServerRpc(
+          {
+            id: '2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b',
+            name: 'myServerFn',
+            filename: 'src/test.ts',
+          },
+          (opts) => myServerFn.__executeServer(opts),
+        )
+        const myServerFn = createServerFn().handler(
+          myServerFn_createServerFn_handler,
+          myFunc,
+        )
+        export { myServerFn_createServerFn_handler }
+        "
+      `)
   })
 
   test('should remove imports used only as caller handler identifiers', async () => {
@@ -251,11 +278,17 @@ describe('createServerFn compiles correctly', async () => {
       mode: 'build',
     })
 
-    expect(compiledResult!.code).toMatchInlineSnapshot(`
-      "import { createClientRpc } from '@tanstack/react-start/client-rpc';
-      import { createServerFn } from '@tanstack/react-start';
-      export const getUsersFn = createServerFn().handler(createClientRpc(\"a78c63d4bb3c0b10a8b70902c73611fbf0b9229e0807b065c03c939f9c0ce100\"));"
-    `)
+    expect(await formatSnapshot(compiledResult!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+        "import { createClientRpc } from '@tanstack/react-start/client-rpc'
+        import { createServerFn } from '@tanstack/react-start'
+        export const getUsersFn = createServerFn().handler(
+          createClientRpc(
+            'a78c63d4bb3c0b10a8b70902c73611fbf0b9229e0807b065c03c939f9c0ce100',
+          ),
+        )
+        "
+      `)
   })
 
   test('should not remove handler identifier bindings that are still referenced', async () => {
@@ -274,13 +307,19 @@ describe('createServerFn compiles correctly', async () => {
       mode: 'build',
     })
 
-    expect(compiledResult!.code).toMatchInlineSnapshot(`
-      "import { createClientRpc } from '@tanstack/react-start/client-rpc';
-      import { createServerFn } from '@tanstack/react-start';
-      import { getUsers } from './server';
-      export const getUsersFn = createServerFn().handler(createClientRpc(\"a78c63d4bb3c0b10a8b70902c73611fbf0b9229e0807b065c03c939f9c0ce100\"));
-      console.log(getUsers);"
-    `)
+    expect(await formatSnapshot(compiledResult!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+        "import { createClientRpc } from '@tanstack/react-start/client-rpc'
+        import { createServerFn } from '@tanstack/react-start'
+        import { getUsers } from './server'
+        export const getUsersFn = createServerFn().handler(
+          createClientRpc(
+            'a78c63d4bb3c0b10a8b70902c73611fbf0b9229e0807b065c03c939f9c0ce100',
+          ),
+        )
+        console.log(getUsers)
+        "
+      `)
   })
 
   test('should compile server functions wrapped in TypeScript as expressions', async () => {
@@ -341,12 +380,22 @@ describe('createServerFn compiles correctly', async () => {
       mode: 'build',
     })
 
-    expect(compiledResult!.code).toMatchInlineSnapshot(`
-      "import { createClientRpc } from '@tanstack/react-start/client-rpc';
-      import { createServerFn } from '@tanstack/react-start';
-      export const exportedFn = createServerFn().handler(createClientRpc("c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864"));
-      const nonExportedFn = createServerFn().handler(createClientRpc("f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2"));"
-    `)
+    expect(await formatSnapshot(compiledResult!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+        "import { createClientRpc } from '@tanstack/react-start/client-rpc'
+        import { createServerFn } from '@tanstack/react-start'
+        export const exportedFn = createServerFn().handler(
+          createClientRpc(
+            'c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864',
+          ),
+        )
+        const nonExportedFn = createServerFn().handler(
+          createClientRpc(
+            'f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2',
+          ),
+        )
+        "
+      `)
 
     // Server caller (route file) - no second argument
     const compiledResultServerCaller = await compile({
@@ -356,12 +405,22 @@ describe('createServerFn compiles correctly', async () => {
       mode: 'build',
     })
 
-    expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
-      "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
-      import { createServerFn } from '@tanstack/react-start';
-      export const exportedFn = createServerFn().handler(createSsrRpc("c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864"));
-      const nonExportedFn = createServerFn().handler(createSsrRpc("f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2"));"
-    `)
+    expect(await formatSnapshot(compiledResultServerCaller!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+        "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc'
+        import { createServerFn } from '@tanstack/react-start'
+        export const exportedFn = createServerFn().handler(
+          createSsrRpc(
+            'c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864',
+          ),
+        )
+        const nonExportedFn = createServerFn().handler(
+          createSsrRpc(
+            'f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2',
+          ),
+        )
+        "
+      `)
 
     // Server provider (extracted file) - has second argument
     const compiledResultServerProvider = await compile({
@@ -371,29 +430,46 @@ describe('createServerFn compiles correctly', async () => {
       mode: 'build',
     })
 
-    expect(compiledResultServerProvider!.code).toMatchInlineSnapshot(`
-      "import { createServerRpc } from '@tanstack/react-start/server-rpc';
-      import { createServerFn } from '@tanstack/react-start';
-      const exportedVar = 'exported';
-      const exportedFn_createServerFn_handler = createServerRpc({
-        id: "c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864",
-        name: "exportedFn",
-        filename: "src/test.ts"
-      }, opts => exportedFn.__executeServer(opts));
-      const exportedFn = createServerFn().handler(exportedFn_createServerFn_handler, async () => {
-        return exportedVar;
-      });
-      const nonExportedVar = 'non-exported';
-      const nonExportedFn_createServerFn_handler = createServerRpc({
-        id: "f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2",
-        name: "nonExportedFn",
-        filename: "src/test.ts"
-      }, opts => nonExportedFn.__executeServer(opts));
-      const nonExportedFn = createServerFn().handler(nonExportedFn_createServerFn_handler, async () => {
-        return nonExportedVar;
-      });
-      export { exportedFn_createServerFn_handler, nonExportedFn_createServerFn_handler };"
-    `)
+    expect(await formatSnapshot(compiledResultServerProvider!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+        "import { createServerRpc } from '@tanstack/react-start/server-rpc'
+        import { createServerFn } from '@tanstack/react-start'
+        const exportedVar = 'exported'
+        const exportedFn_createServerFn_handler = createServerRpc(
+          {
+            id: 'c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864',
+            name: 'exportedFn',
+            filename: 'src/test.ts',
+          },
+          (opts) => exportedFn.__executeServer(opts),
+        )
+        const exportedFn = createServerFn().handler(
+          exportedFn_createServerFn_handler,
+          async () => {
+            return exportedVar
+          },
+        )
+        const nonExportedVar = 'non-exported'
+        const nonExportedFn_createServerFn_handler = createServerRpc(
+          {
+            id: 'f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2',
+            name: 'nonExportedFn',
+            filename: 'src/test.ts',
+          },
+          (opts) => nonExportedFn.__executeServer(opts),
+        )
+        const nonExportedFn = createServerFn().handler(
+          nonExportedFn_createServerFn_handler,
+          async () => {
+            return nonExportedVar
+          },
+        )
+        export {
+          exportedFn_createServerFn_handler,
+          nonExportedFn_createServerFn_handler,
+        }
+        "
+      `)
   })
 
   test('should use fast path for direct imports from known library (no extra resolveId calls)', async () => {

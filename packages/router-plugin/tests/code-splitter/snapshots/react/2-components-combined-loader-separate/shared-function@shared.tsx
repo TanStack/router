@@ -1,5 +1,5 @@
-const cache = new Map();
+const cache = new Map()
 function getCached(key: string) {
-  return cache.get(key);
+  return cache.get(key)
 }
-export { cache, getCached };
+export { cache, getCached }

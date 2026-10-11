@@ -1,5 +1,18 @@
 # @tanstack/react-start
 
+## 1.168.61
+
+### Patch Changes
+
+- Updated dependencies [[`2413cc0`](https://github.com/TanStack/router/commit/2413cc009826fba4f97b166a35a8a50a4a8fe4bb), [`4191640`](https://github.com/TanStack/router/commit/41916400b93fdb62189722266ed1d77ba9c26be9), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`d35aab4`](https://github.com/TanStack/router/commit/d35aab425b07b46e222a507c0f0239644669757b)]:
+  - @tanstack/react-router@1.170.42
+  - @tanstack/start-plugin-core@1.171.50
+  - @tanstack/start-server-core@1.169.40
+  - @tanstack/react-start-client@1.168.40
+  - @tanstack/react-start-rsc@0.1.60
+  - @tanstack/react-start-server@1.167.47
+  - @tanstack/start-client-core@1.170.35
+
 ## 1.168.60
 
 ### Patch Changes
