@@ -12,12 +12,15 @@ import {
   collectModuleReferences,
   extractModuleInfo,
   moduleDeclarationGraph,
+  prepareBindingCleanup,
   removeUnusedBindings,
 } from '../src/compiler-helpers'
+import type { ImportDeclaration } from '@yuku-toolchain/types'
 
 function cleanup(code: string, erase: string) {
   const module = analyzeModule({ code })
-  const { program, originalNodes } = cloneModuleAst(module)
+  const program = module.ast
+  const prepared = prepareBindingCleanup(module)
   walk(program, {
     Property(node, context) {
       if (is.Identifier(node.key, erase)) {
@@ -25,7 +28,7 @@ function cleanup(code: string, erase: string) {
       }
     },
   })
-  removeUnusedBindings(module, program, originalNodes)
+  removeUnusedBindings(module, program, prepared)
   return generateModule(program).code
 }
 
@@ -114,8 +117,8 @@ describe('semantic dependency analysis', () => {
         .map((symbol) => symbol.name)
         .sort(),
     ).toEqual(['another', 'dep'])
-    const { program, originalNodes } = cloneModuleAst(module)
-    removeUnusedBindings(module, program, originalNodes)
+    const program = module.ast
+    removeUnusedBindings(module, program, prepareBindingCleanup(module))
     const output = generateModule(program).code
     expect(output).toContain('return dep + value')
     expect(output).toContain('const b = another')
@@ -239,11 +242,12 @@ describe('output liveness', () => {
       const module = analyzeModule({
         code: `const { first, middle, last } = initialize(); globalThis.result = [first, middle, last][2]`,
       })
-      const { program, originalNodes } = cloneModuleAst(module)
+      const program = module.ast
+      const prepared = prepareBindingCleanup(module)
       if (!used) {
         program.body.pop()
       }
-      removeUnusedBindings(module, program, originalNodes)
+      removeUnusedBindings(module, program, prepared)
       const events: Array<string> = []
       const context = {
         result: undefined,
@@ -339,8 +343,8 @@ describe('output liveness', () => {
     const module = analyzeModule({
       code: `namespace Labels { export const component = 'count' } export { Labels }`,
     })
-    const { program, originalNodes } = cloneModuleAst(module)
-    removeUnusedBindings(module, program, originalNodes)
+    const program = module.ast
+    removeUnusedBindings(module, program, prepareBindingCleanup(module))
     expect(generateModule(program).code).toContain(
       "export const component = 'count'",
     )
@@ -563,32 +567,57 @@ export const Route = createRoute({ component: () => <ThemeContext.Provider />, l
     const module = analyzeModule({
       code: `import { server } from './server'; export const result = server()`,
     })
-    const { program, originalNodes } = cloneModuleAst(module)
+    const program = module.ast
+    const prepared = prepareBindingCleanup(module)
     program.body.splice(
       1,
       1,
       ...parseStatements('export const result = (server) => server()'),
     )
-    removeUnusedBindings(module, program, originalNodes)
+    removeUnusedBindings(module, program, prepared)
     expect(generateModule(program).code).not.toContain('./server')
+  })
+
+  test('removes a source import the transform emptied, not a side-effect import', () => {
+    const code = `import { a } from './a'; import './side'; export const x = 1`
+    const inPlace = analyzeModule({ code })
+    const prepared = prepareBindingCleanup(inPlace)
+    ;(inPlace.ast.body[0] as ImportDeclaration).specifiers = []
+    removeUnusedBindings(inPlace, inPlace.ast, prepared)
+    const copied = analyzeModule({ code })
+    const { program, originalNodes } = cloneModuleAst(copied)
+    ;(program.body[0] as ImportDeclaration).specifiers = []
+    removeUnusedBindings(
+      copied,
+      program,
+      prepareBindingCleanup(copied),
+      originalNodes,
+    )
+    for (const output of [inPlace.ast, program]) {
+      const generated = generateModule(output).code
+      expect(generated).not.toContain('./a')
+      expect(generated).toContain("import './side'")
+    }
   })
 
   test('retains source dependencies introduced in generated nodes', () => {
     const module = analyzeModule({ code: 'const value = 1;' })
-    const { program, originalNodes } = cloneModuleAst(module)
+    const program = module.ast
+    const prepared = prepareBindingCleanup(module)
     program.body.push(...parseStatements('export const result = value'))
-    removeUnusedBindings(module, program, originalNodes)
+    removeUnusedBindings(module, program, prepared)
     expect(generateModule(program).code).toContain('const value = 1')
   })
 
   test('retains nested source references when cloning a generated fragment', async () => {
     const module = analyzeModule({ code: 'const value = 41;' })
-    const { program, originalNodes } = cloneModuleAst(module)
+    const program = module.ast
+    const prepared = prepareBindingCleanup(module)
     const generated = parseStatements(
       'export const result = (() => ({ read: () => value + 1 }))().read()',
     )[0]!
     program.body.push(cloneGeneratedNode(generated))
-    removeUnusedBindings(module, program, originalNodes)
+    removeUnusedBindings(module, program, prepared)
     const output = generateModule(program).code
     expect(output).toContain('const value = 41')
     const evaluated = await import(

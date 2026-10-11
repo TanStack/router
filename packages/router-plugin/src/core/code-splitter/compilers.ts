@@ -2,15 +2,17 @@ import { b, bindingIdentifiers, is, isIdentifierName, walk } from 'yuku-ast'
 import { BindingFlags } from 'yuku-analyzer'
 import {
   analyzeModule,
-  cloneModuleAst,
   collectModuleReferences,
   createIdentifier,
   expandTransitively,
+  filePragmas,
   generateModule,
+  generatedReferenceOf,
   keepFilePragmas,
   linkGeneratedReference,
   moduleDeclarationGraph,
   parseStatements,
+  prepareBindingCleanup,
   prependStatements,
   removeUnusedBindings,
   unwrapExport,
@@ -82,7 +84,10 @@ type RouteDefinition = {
   statement: Node
 }
 
-/** Source syntax and semantic identities are immutable across all output chunks. */
+/**
+ * The analysis of a route file, which serves one output: the output edits the
+ * analyzed tree in place (see `createOutput`).
+ */
 export type RouteModuleAnalysis = {
   module: Module
   routes: Array<RouteDefinition>
@@ -467,36 +472,40 @@ function call(name: string, args: Array<Expression>) {
   })
 }
 
+type RouteModuleOutput = ReturnType<typeof createOutput>
+
 /** Print a module emitted for a route file, led by the file's pragmas. */
 function generateRouteModule(
   analysis: RouteModuleAnalysis,
-  program: Program,
+  output: RouteModuleOutput,
   filename: string,
 ) {
-  keepFilePragmas(analysis.module.ast, program)
-  return generateModule(program, {
+  keepFilePragmas(output.pragmas, output.program)
+  return generateModule(output.program, {
     source: analysis.module.source,
     filename,
   })
 }
 
+/**
+ * The output edits the analyzed tree in place, so an analysis serves one
+ * output. Its semantic tables are keyed by node identity and read from Yuku's
+ * buffer, so they describe the source whatever the output does to the tree.
+ * What is read from the tree's structure is read here, before the first edit.
+ */
 function createOutput(analysis: RouteModuleAnalysis) {
-  const { program, originalNodes } = cloneModuleAst(analysis.module)
+  const { module } = analysis
+  const program = module.ast
+  const cleanup = prepareBindingCleanup(module)
+  const pragmas = filePragmas(program)
   const reservedNames = new Set([
-    ...analysis.module.bindings.map((binding) => binding.name),
-    ...analysis.module.unresolvedReferences.map((reference) => reference.name),
+    ...module.bindings.map((binding) => binding.name),
+    ...module.unresolvedReferences.map((reference) => reference.name),
   ])
-  const copies = new Map<Node, Node>()
-  walk(program, {
-    enter(node) {
-      copies.set(originalNodes.get(node)!, node)
-    },
-  })
   // Most outputs never rename a binding: build the index on first use
   let declarationExports: Map<Node, typeof analysis.module.exports> | undefined
   const renameBinding = (node: Node, name: string) => {
-    const original = originalNodes.get(node)
-    const binding = original ? analysis.module.bindingOf(original) : null
+    const binding = module.bindingOf(node)
     if (!binding) {
       return
     }
@@ -508,7 +517,7 @@ function createOutput(analysis: RouteModuleAnalysis) {
         }
         // The top-level statement, the last ancestor before the program
         let statement: Node = entry.node
-        for (const ancestor of analysis.module.ancestors(entry.node)) {
+        for (const ancestor of module.ancestors(entry.node)) {
           if (is.Program(ancestor)) {
             break
           }
@@ -522,15 +531,14 @@ function createOutput(analysis: RouteModuleAnalysis) {
     }
     const aliasedNames = new Set<string>()
     for (const [statement, entries] of declarationExports) {
-      const copy = copies.get(statement)
       if (
         !entries.some((entry) => entry.local === binding) ||
-        !is.ExportNamedDeclaration(copy) ||
-        !copy.declaration
+        !is.ExportNamedDeclaration(statement) ||
+        !statement.declaration
       ) {
         continue
       }
-      const index = program.body.indexOf(copy)
+      const index = program.body.indexOf(statement)
       if (index !== -1) {
         const uniqueEntries = entries.filter((entry) => {
           if (aliasedNames.has(entry.name!)) {
@@ -546,13 +554,10 @@ function createOutput(analysis: RouteModuleAnalysis) {
             binding: entry.local!,
           })),
         )
-        for (const [index, entry] of uniqueEntries.entries()) {
-          originalNodes.set(aliases.specifiers[index]!.local, entry.node)
-        }
         program.body.splice(
           index,
           1,
-          copy.declaration,
+          statement.declaration,
           ...(uniqueEntries.length ? [aliases] : []),
         )
       }
@@ -562,8 +567,11 @@ function createOutput(analysis: RouteModuleAnalysis) {
         if (!is.Identifier(candidate) && !is.JSXIdentifier(candidate)) {
           return
         }
-        const source = originalNodes.get(candidate)
-        if (source && analysis.module.bindingOf(source) === binding) {
+        // The aliases above reference the binding they export
+        if (
+          module.bindingOf(candidate) === binding ||
+          generatedReferenceOf(candidate) === binding
+        ) {
           candidate.name = name
           const parent = context.parent
           if (
@@ -579,7 +587,8 @@ function createOutput(analysis: RouteModuleAnalysis) {
       },
     })
   }
-  return { program, originalNodes, reservedNames, copies, renameBinding }
+  const removeUnused = () => removeUnusedBindings(module, program, cleanup)
+  return { program, pragmas, reservedNames, renameBinding, removeUnused }
 }
 
 /** Split modules export only their own split values; keep local declarations. */
@@ -704,20 +713,18 @@ export function compileCodeSplitReferenceRoute(
 ) {
   const analysis = sourceAnalysis(options)
   const output = createOutput(analysis)
-  const { program, originalNodes, reservedNames, copies, renameBinding } =
-    output
+  const { program, reservedNames, renameBinding } = output
   const framework = getFrameworkOptions(options.targetFramework)
   const lazyImports = new Map<string, string>()
   const knownExported = new Set<string>()
   let modified = false
   for (const route of analysis.routes) {
-    const routeOptions = copies.get(route.options) as ObjectExpression
-    const insertionStatement = copies.get(route.statement) as ProgramStatement
+    const routeOptions = route.options
+    const insertionStatement = route.statement as ProgramStatement
     const context: ReferenceRouteCompilerPluginContext = {
       program,
       module: analysis.module,
       graph: analysis.graph,
-      originalNodes,
       reservedNames,
       renameBinding,
       routeOptions,
@@ -762,11 +769,10 @@ export function compileCodeSplitReferenceRoute(
         if (!target) {
           continue
         }
-        const original = originalNodes.get(unwrapExpression(target.value))
-        const binding =
-          original && is.Identifier(original)
-            ? analysis.module.bindingOf(original)
-            : null
+        const splitValue = unwrapExpression(target.value)
+        const binding = is.Identifier(splitValue)
+          ? analysis.module.bindingOf(splitValue)
+          : null
         if (binding && analysis.exported.has(binding)) {
           knownExported.add(binding.name)
           continue
@@ -892,7 +898,7 @@ export function compileCodeSplitReferenceRoute(
       exports(sharedExports, addSharedSearchParamToFilename(options.filename)),
     )
   }
-  removeUnusedBindings(analysis.module, program, originalNodes)
+  output.removeUnused()
   if (knownExported.size) {
     const message = createNotExportableMessage(options.filename, knownExported)
     console.warn(message)
@@ -903,7 +909,7 @@ export function compileCodeSplitReferenceRoute(
       )
     }
   }
-  return generateRouteModule(analysis, program, options.filename)
+  return generateRouteModule(analysis, output, options.filename)
 }
 
 export function compileCodeSplitVirtualRoute(
@@ -915,11 +921,20 @@ export function compileCodeSplitVirtualRoute(
   },
 ) {
   const analysis = sourceAnalysis(options)
-  const { program, originalNodes, reservedNames, copies, renameBinding } =
-    createOutput(analysis)
+  const output = createOutput(analysis)
+  const { program, reservedNames, renameBinding } = output
   if (!analysis.routes.some((route) => route.factory === 'createFileRoute')) {
-    return generateRouteModule(analysis, program, options.filename)
+    return generateRouteModule(analysis, output, options.filename)
   }
+  // What the source's expression statements reference, before edits
+  const statementReferences = new Map(
+    program.body
+      .filter((statement) => is.ExpressionStatement(statement))
+      .map((statement) => [
+        statement,
+        collectModuleReferences(analysis.module, statement),
+      ]),
+  )
   const generatedExports: Array<ProgramStatement> = []
   const splitReferences = new Set<Binding>()
   for (const route of analysis.routes) {
@@ -938,26 +953,21 @@ export function compileCodeSplitVirtualRoute(
       if (!target) {
         continue
       }
-      const propertyValue = unwrapExpression(target.value)
-      const binding = is.Identifier(propertyValue)
-        ? analysis.module.bindingOf(propertyValue)
+      const value = unwrapExpression(target.value)
+      const binding = is.Identifier(value)
+        ? analysis.module.bindingOf(value)
         : null
       if (binding && analysis.exported.has(binding)) {
         continue
       }
-      for (const reference of collectModuleReferences(
-        analysis.module,
-        propertyValue,
-      )) {
+      for (const reference of collectModuleReferences(analysis.module, value)) {
         splitReferences.add(reference)
       }
-      const value = copies.get(propertyValue) as Expression
       const meta = splitMeta(key)
       if (is.Identifier(value)) {
-        const declaration = binding
+        const splitNode = binding
           ? analysis.graph.declarations.get(binding)
           : undefined
-        const splitNode = declaration ? copies.get(declaration) : undefined
         if (splitNode) {
           for (const plugin of options.compilerPlugins ?? []) {
             plugin.onVirtualRouteSplitNode?.({
@@ -985,7 +995,7 @@ export function compileCodeSplitVirtualRoute(
         )
       }
     }
-    ;(copies.get(route.options) as ObjectExpression).properties = []
+    route.options.properties = []
   }
   const importedExports = exportsImportedBySplitModule(
     analysis,
@@ -1011,9 +1021,9 @@ export function compileCodeSplitVirtualRoute(
   }
   addSharedImports(program, options.sharedBindings, options.filename)
   program.body.push(...generatedExports)
-  removeUnusedBindings(analysis.module, program, originalNodes)
-  stripUnownedExpressions(analysis.module, program, originalNodes)
-  return generateRouteModule(analysis, program, options.filename)
+  output.removeUnused()
+  stripUnownedExpressions(program, statementReferences)
+  return generateRouteModule(analysis, output, options.filename)
 }
 
 /**
@@ -1090,9 +1100,8 @@ function exportsImportedBySplitModule(
 }
 
 function stripUnownedExpressions(
-  module: Module,
   program: Program,
-  originalNodes: WeakMap<Node, Node>,
+  statementReferences: Map<Node, Set<Binding>>,
 ) {
   const localNames = new Set<string>()
   for (const statement of program.body) {
@@ -1124,12 +1133,10 @@ function stripUnownedExpressions(
     if (is.Directive(statement) || !is.ExpressionStatement(statement)) {
       return true
     }
-    const original = originalNodes.get(statement)
+    const references = statementReferences.get(statement)
     return (
-      !!original &&
-      [...collectModuleReferences(module, original)].some((binding) =>
-        localNames.has(binding.name),
-      )
+      !!references &&
+      [...references].some((binding) => localNames.has(binding.name))
     )
   })
   if (program.body.every((statement) => is.Directive(statement))) {
@@ -1141,7 +1148,8 @@ export function compileCodeSplitSharedRoute(
   options: SourceOptions & { sharedBindings: Set<string>; filename: string },
 ) {
   const analysis = sourceAnalysis(options)
-  const { program, originalNodes } = createOutput(analysis)
+  const output = createOutput(analysis)
+  const { program } = output
   const keep = expandTransitively(
     new Set(
       analysis.module.rootScope.bindings.filter(
@@ -1173,8 +1181,8 @@ export function compileCodeSplitSharedRoute(
         .map((name) => ({ local: name, exported: name })),
     ),
   )
-  removeUnusedBindings(analysis.module, program, originalNodes)
-  return generateRouteModule(analysis, program, options.filename)
+  output.removeUnused()
+  return generateRouteModule(analysis, output, options.filename)
 }
 
 export function detectCodeSplitGroupingsFromRoute(options: SourceOptions): {

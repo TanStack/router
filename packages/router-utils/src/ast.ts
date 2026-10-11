@@ -6,7 +6,13 @@ import { is, walk } from 'yuku-ast'
 import { load as loadNativeCore } from 'yuku-core'
 import { loadSync as loadWasmCore } from '@yuku-core/wasm'
 import type { Binding, Module } from 'yuku-analyzer'
-import type { Core, Expression, Node, Program } from '@yuku-toolchain/types'
+import type {
+  AttachedComment,
+  Core,
+  Expression,
+  Node,
+  Program,
+} from '@yuku-toolchain/types'
 import type { GenerateResult as YukuGenerateResult } from 'yuku-codegen'
 
 let core: Core | undefined
@@ -84,7 +90,13 @@ export function prependStatements(
   program.body.splice(index, 0, ...statements)
 }
 
-/** Parse and bind once. Treat this module's AST as the immutable source model. */
+/**
+ * Parse and bind once. An output may edit `module.ast` in place once it has
+ * read the tree's structure: the semantic queries (`bindingOf`, `referenceOf`,
+ * `scopeOf`, `parentOf`, the binding, reference, import and export records)
+ * are keyed by node identity and keep describing the source, while `walk`,
+ * `findAll` and `nodeAt` read the edited tree.
+ */
 export function analyzeModule({
   code,
   filename = 'input.tsx',
@@ -138,9 +150,8 @@ const legalComment = /^!|@license\b|@preserve\b/
  * otherwise land above them. The legal comments that lead the source lead
  * every output too.
  */
-export function keepFilePragmas(source: Program, output: Program): void {
-  const first = output.body[0]
-  const kept = source.body.flatMap(
+export function filePragmas(source: Program): Array<AttachedComment> {
+  return source.body.flatMap(
     (statement, index) =>
       statement.comments?.filter(
         (comment) =>
@@ -150,6 +161,14 @@ export function keepFilePragmas(source: Program, output: Program): void {
             legalComment.test(comment.value)),
       ) ?? [],
   )
+}
+
+/** Lead `output` with `kept`, the source's `filePragmas` read before any edit. */
+export function keepFilePragmas(
+  kept: Array<AttachedComment>,
+  output: Program,
+): void {
+  const first = output.body[0]
   if (!kept.length || !first) {
     return
   }
@@ -188,7 +207,7 @@ export function unwrapExport<T extends Node>(
   return declaration
 }
 
-/** Print an output tree without modifying the source model or its semantic tables. */
+/** Print an output tree. */
 export function generateModule(
   program: Node,
   options?: { source: string; filename: string },

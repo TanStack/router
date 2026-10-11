@@ -555,6 +555,21 @@ function initiallyUnused(
   }
 }
 
+export interface BindingCleanup extends InitiallyUnused {
+  index: DeclarationIndex
+  factories: JsxFactoryNames
+}
+
+/**
+ * What `removeUnusedBindings` reads from the source tree. An output that edits
+ * `module.ast` in place prepares it before its first edit.
+ */
+export function prepareBindingCleanup(module: Module): BindingCleanup {
+  const index = declarationIndex(module, module.bindings)
+  const factories = jsxFactoryNames(module)
+  return { index, factories, ...initiallyUnused(module, index, factories) }
+}
+
 /**
  * Rebuild liveness from surviving nodes, using original binding identity. This
  * removes dependencies of erased route options without reparsing generated code.
@@ -562,19 +577,21 @@ function initiallyUnused(
  * removed: initially unused ones survive wherever their enclosing code does,
  * except imports only types reference, which survive with those references.
  * Callers decide output ownership before invoking this lexical binding cleanup.
+ * `originalNodes` maps the nodes of a copy of `module.ast` to the source's;
+ * without it, `program` is `module.ast` edited in place.
  */
 export function removeUnusedBindings(
   module: Module,
   program: Program,
-  originalNodes: WeakMap<Node, Node>,
+  { index, factories, preserved, erased }: BindingCleanup,
+  originalNodes?: WeakMap<Node, Node>,
 ): void {
+  // Yuku decoded every source node, and gave each but `Program` a parent
+  const originOf = originalNodes
+    ? (node: Node) => originalNodes.get(node)
+    : (node: Node) => (module.parentOf(node) ? node : undefined)
   stripTypeExports(program)
-  const index = declarationIndex(module, module.bindings)
-  const factories = jsxFactoryNames(module)
-  const { preserved, erased } = initiallyUnused(module, index, factories)
-  const output = collectBindingUses(module, program, index, factories, (node) =>
-    originalNodes.get(node),
-  )
+  const output = collectBindingUses(module, program, index, factories, originOf)
   const live = new Set(output.roots)
   const dependencies = new Map<Binding, Set<Binding>>()
   for (const [from, targets] of output.uses) {
@@ -616,7 +633,7 @@ export function removeUnusedBindings(
     [...output.present].filter((binding) => !retained.has(binding)),
   )
   const isRemovable = (node: Node | null) => {
-    const original = node && originalNodes.get(node)
+    const original = node && originOf(node)
     const owners =
       original &&
       (index.declarationBindings.get(original) ??
@@ -645,7 +662,7 @@ export function removeUnusedBindings(
           referencedNames.add(name)
         }
       }
-      const original = originalNodes.get(node)
+      const original = originOf(node)
       if (original) {
         const reference = module.referenceOf(original)
         if (reference && !reference.inTypePosition) {
@@ -674,11 +691,14 @@ export function removeUnusedBindings(
           context.remove()
         }
       } else if (is.ImportDeclaration(node) && node.specifiers.length === 0) {
-        const original = originalNodes.get(node)
+        // An emptied source import goes; `import 'side-effect'` has no
+        // specifier records, and stays
+        const original = originOf(node)
         if (
           original &&
-          is.ImportDeclaration(original) &&
-          original.specifiers.length > 0
+          module.imports.some(
+            (entry) => module.parentOf(entry.node) === original,
+          )
         ) {
           context.remove()
         }
@@ -695,7 +715,7 @@ export function removeUnusedBindings(
   program.body = program.body.filter((statement) => {
     if (
       !is.ImportDeclaration(statement) ||
-      originalNodes.has(statement) ||
+      originOf(statement) ||
       statement.specifiers.length === 0
     ) {
       return true

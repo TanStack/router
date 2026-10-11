@@ -6,11 +6,13 @@ import {
   cloneModuleAst,
   collectModuleReferences,
   expandTransitively,
+  filePragmas,
   generateModule,
   keepFilePragmas,
   moduleDeclarationGraph,
   parseExpression,
   parseStatements,
+  prepareBindingCleanup,
   prependStatements,
   removeUnusedBindings,
   unwrapExport,
@@ -675,8 +677,13 @@ function loadHydrateVirtualModule(options: {
   const component = output.declaration as t.FunctionDeclaration
   component.body!.body.push(b.ReturnStatement({ argument: expression }))
   ast.body.push(output)
-  removeUnusedBindings(module, ast, originalNodes)
-  keepFilePragmas(module.ast, ast)
+  removeUnusedBindings(
+    module,
+    ast,
+    prepareBindingCleanup(module),
+    originalNodes,
+  )
+  keepFilePragmas(filePragmas(module.ast), ast)
   return generateModule(ast, { source: options.code, filename: options.id })
 }
 export function createHydrateCompilerPlugin(): StartCompilerPlugin {

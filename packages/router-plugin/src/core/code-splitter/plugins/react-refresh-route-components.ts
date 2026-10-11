@@ -57,8 +57,7 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
         continue
       }
 
-      const original = ctx.originalNodes.get(prop.value)
-      const binding = original ? ctx.module.bindingOf(original) : null
+      const binding = ctx.module.bindingOf(prop.value)
       if (binding && ctx.opts.sharedBindings?.has(binding.name)) {
         continue
       }

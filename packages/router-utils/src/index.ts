@@ -1,6 +1,7 @@
 export {
   analyzeModule,
   generateModule,
+  filePragmas,
   keepFilePragmas,
   unwrapExport,
   cloneModuleAst,
@@ -8,6 +9,7 @@ export {
   parseStatements,
   parseExpression,
   linkGeneratedReference,
+  generatedReferenceOf,
   prependStatements,
   sourcePosition,
 } from './ast'
@@ -21,6 +23,7 @@ export {
   unwrapExpression,
   moduleDeclarationGraph,
   expandTransitively,
+  prepareBindingCleanup,
   removeUnusedBindings,
 } from './compiler-helpers'
 export type { ModuleInfoBinding } from './compiler-helpers'

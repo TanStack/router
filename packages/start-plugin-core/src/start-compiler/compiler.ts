@@ -4,9 +4,11 @@ import {
   analyzeModule,
   cloneModuleAst,
   extractModuleInfo,
+  filePragmas,
   generateModule,
   keepFilePragmas,
   parseExpression,
+  prepareBindingCleanup,
   removeUnusedBindings,
   unwrapExpression,
 } from '@tanstack/router-utils'
@@ -1037,8 +1039,13 @@ export class StartCompiler {
       return null
     }
     // One liveness pass after every transform: AST plugins also orphan bindings.
-    removeUnusedBindings(module, ast, originalNodes)
-    keepFilePragmas(module.ast, ast)
+    removeUnusedBindings(
+      module,
+      ast,
+      prepareBindingCleanup(module),
+      originalNodes,
+    )
+    keepFilePragmas(filePragmas(module.ast), ast)
     return generateModule(ast, { source: code, filename: id })
   }
 

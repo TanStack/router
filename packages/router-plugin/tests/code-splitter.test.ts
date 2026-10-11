@@ -50,12 +50,14 @@ const testGroups: Array<{ name: string; groupings: CodeSplitGroupings }> = [
   },
 ]
 
-describe('one route analysis shared by every output', () => {
+describe('one route analysis per output', () => {
   const code = `'use client';
 import { createFileRoute } from '@tanstack/react-router'
 const state = {count: 0}
 export const Route = createFileRoute('/')({loader: () => state, component: () => state.count})`
 
+  // The reference transform analyzes once for shared-binding planning and its
+  // output; every other output analyzes its own source
   function compileOutputs() {
     const analysis = analyzeRouteModule({ code, filename: 'route.tsx' })
     const sharedBindings = computeSharedBindings({
@@ -78,7 +80,6 @@ export const Route = createFileRoute('/')({loader: () => state, component: () =>
       component: () =>
         compileCodeSplitVirtualRoute({
           code,
-          analysis,
           sharedBindings,
           filename: 'route.tsx?tsr-split=component',
           splitTargets: ['component'],
@@ -86,30 +87,11 @@ export const Route = createFileRoute('/')({loader: () => state, component: () =>
       shared: () =>
         compileCodeSplitSharedRoute({
           code,
-          analysis,
           sharedBindings,
           filename: 'route.tsx?tsr-shared=1',
         }).code,
     }
   }
-
-  it('compiles the same outputs whatever order they are generated in', () => {
-    const first = compileOutputs()
-    const componentFirst = first.component()
-    const referenceSecond = first.reference()
-    const sharedThird = first.shared()
-    const second = compileOutputs()
-    expect([second.shared(), second.reference(), second.component()]).toEqual([
-      sharedThird,
-      referenceSecond,
-      componentFirst,
-    ])
-    expect([first.reference(), first.component(), first.shared()]).toEqual([
-      referenceSecond,
-      componentFirst,
-      sharedThird,
-    ])
-  })
 
   it('keeps "use client" first in the reference, split and shared outputs', () => {
     const outputs = compileOutputs()

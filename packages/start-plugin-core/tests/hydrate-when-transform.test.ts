@@ -7,6 +7,7 @@ import {
   cloneModuleAst,
   generateModule,
   parseExpression,
+  prepareBindingCleanup,
   removeUnusedBindings,
 } from '@tanstack/router-utils'
 import { describe, expect, test } from 'vitest'
@@ -126,7 +127,12 @@ function compileHydrate(options: {
     return null
   }
 
-  removeUnusedBindings(module, ast, originalNodes)
+  removeUnusedBindings(
+    module,
+    ast,
+    prepareBindingCleanup(module),
+    originalNodes,
+  )
   const generated = generateModule(ast, {
     source: options.code,
     filename: options.id,
