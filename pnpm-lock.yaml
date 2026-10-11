@@ -14664,6 +14664,12 @@ importers:
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../vue-router
       chokidar:
         specifier: 'catalog:'
         version: 5.0.0
