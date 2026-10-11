@@ -1,5 +1,5 @@
 import { cloneGeneratedNode, unwrapExpression } from '@tanstack/router-utils'
-import { is } from 'yuku-ast'
+import { b, is } from 'yuku-ast'
 import type {
   StartCompilerImportTransform,
   StartCompilerTransformContext,
@@ -90,19 +90,19 @@ function createRscCssCompilerTransform(opts: {
         }
 
         if (opts.kind === 'renderToReadableStream') {
-          const firstArg = args[0]
-          if (!firstArg || is.SpreadElement(firstArg)) {
-            continue
+          const jsx = unwrapExpression(args[0])
+          if (is.JSXElement(jsx) || is.JSXFragment(jsx)) {
+            args[0] = b.JSXFragment({
+              openingFragment: b.JSXOpeningFragment({}),
+              closingFragment: b.JSXClosingFragment({}),
+              children: [
+                b.JSXExpressionContainer({
+                  expression: cloneLoadCssExpression(),
+                }),
+                jsx,
+              ],
+            })
           }
-          if (!isTopLevelJsx(firstArg)) {
-            continue
-          }
-
-          args[0] = createCssFragment(
-            context,
-            firstArg,
-            cloneLoadCssExpression(),
-          ) as typeof firstArg
           continue
         }
 
@@ -119,32 +119,4 @@ function createRscCssCompilerTransform(opts: {
       }
     },
   }
-}
-
-function isTopLevelJsx(expr: CompilerExpression): boolean {
-  const unwrapped = unwrapExpression(expr)
-  return is.JSXElement(unwrapped) || is.JSXFragment(unwrapped)
-}
-
-function createCssFragment(
-  context: StartCompilerTransformContext,
-  original: CompilerExpression,
-  loadCssExpression: CompilerExpression,
-) {
-  const fragment = context.parseExpression('<>{null}{null}</>')
-  if (
-    !is.JSXFragment(fragment) ||
-    !is.JSXExpressionContainer(fragment.children[0]) ||
-    !is.JSXExpressionContainer(fragment.children[1])
-  ) {
-    throw new Error('Expected compiler fragment')
-  }
-  fragment.children[0].expression = loadCssExpression
-  const unwrapped = unwrapExpression(original)
-  if (is.JSXElement(unwrapped) || is.JSXFragment(unwrapped)) {
-    fragment.children[1] = unwrapped
-  } else {
-    fragment.children[1].expression = original
-  }
-  return fragment
 }
