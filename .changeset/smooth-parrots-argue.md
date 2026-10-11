@@ -25,3 +25,5 @@ Other behaviour changes:
 - A `<Hydrate>` whose content is passed as a `children` prop is now split like JSX children, so hooks or functions there require `split={false}`, as they do for JSX children.
 - `.js` and `.jsx` files are parsed as JavaScript with JSX, so TypeScript syntax in them is a syntax error.
 - Exporting a type and a value of the same name from two separate `export` statements (`export type { Post } from './types'` and `export { Post } from './post'`) is now a syntax error, as it is in TypeScript.
+- The route generator no longer treats a type-only `Route` export (`export type { X as Route }`, `export { type X as Route }`, `export declare const Route`) as the route export: it exports nothing at runtime, so the file is reported as having no `Route` export.
+- Import protection mocks now include the names that `export * as ns`, `export enum` and `export namespace` export, no longer expose names exported inside a namespace, and cover `ns.x` reads that come before `import * as ns`.
