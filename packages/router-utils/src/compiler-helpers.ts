@@ -269,8 +269,6 @@ interface JsxFactoryNames {
   fragment: Array<string>
 }
 
-const jsxFactoryNamesCache = new WeakMap<Module, JsxFactoryNames>()
-
 /**
  * The names a classic JSX runtime compiles JSX to references of, as the
  * file's `@jsx` and `@jsxFrag` pragmas name them (`React.createElement` →
@@ -278,24 +276,20 @@ const jsxFactoryNamesCache = new WeakMap<Module, JsxFactoryNames>()
  * factory is an erased reference instead (see `BindingUses`).
  */
 function jsxFactoryNames(module: Module): JsxFactoryNames {
-  let names = jsxFactoryNamesCache.get(module)
-  if (!names) {
-    names = { element: [], fragment: [] }
-    if (
-      !module.comments.some((comment) =>
-        /@jsxRuntime\s+automatic\b/.test(comment.value),
-      )
-    ) {
-      for (const comment of module.comments) {
-        for (const [, pragma, name] of comment.value.matchAll(
-          /@(jsx|jsxFrag)\s+([\p{L}\p{N}_$]+)/gu,
-        )) {
-          names[pragma === 'jsx' ? 'element' : 'fragment'].push(name!)
-        }
+  const names: JsxFactoryNames = { element: [], fragment: [] }
+  if (
+    !module.comments.some((comment) =>
+      /@jsxRuntime\s+automatic\b/.test(comment.value),
+    )
+  ) {
+    for (const comment of module.comments) {
+      for (const [, pragma, name] of comment.value.matchAll(
+        /@(jsx|jsxFrag)\s+([\p{L}\p{N}_$]+)/gu,
+      )) {
+        names[pragma === 'jsx' ? 'element' : 'fragment'].push(name!)
       }
-      names.fragment = [...names.element, ...names.fragment]
     }
-    jsxFactoryNamesCache.set(module, names)
+    names.fragment = [...names.element, ...names.fragment]
   }
   return names
 }
@@ -323,6 +317,7 @@ function collectBindingUses(
   module: Module,
   program: Program,
   index: DeclarationIndex,
+  factories: JsxFactoryNames,
   originOf: (node: Node) => Node | undefined,
 ): BindingUses {
   const result: BindingUses = {
@@ -333,7 +328,6 @@ function collectBindingUses(
     erasedReferences: new Map(),
   }
   const reactImport = module.rootScope.find('React')
-  const factories = jsxFactoryNames(module)
   const erasedReference = (owner: Set<Binding> | null, binding: Binding) => {
     if (binding.has(BindingFlags.Import)) {
       const owners = result.erasedReferences.get(binding) ?? new Set()
@@ -535,27 +529,30 @@ interface InitiallyUnused {
   erased: Set<Binding>
 }
 
-const initiallyUnusedBindings = new WeakMap<Module, InitiallyUnused>()
-
-function initiallyUnused(module: Module, index: DeclarationIndex) {
-  let unused = initiallyUnusedBindings.get(module)
-  if (!unused) {
-    const uses = collectBindingUses(module, module.ast, index, (node) => node)
-    const all = findInitiallyUnused(uses)
-    const erased = new Set(
-      [...all].filter(
-        (binding) =>
-          binding.has(BindingFlags.Import) &&
-          binding.references.some((reference) => reference.inTypePosition),
-      ),
-    )
-    unused = {
-      preserved: new Set([...all].filter((binding) => !erased.has(binding))),
-      erased,
-    }
-    initiallyUnusedBindings.set(module, unused)
+function initiallyUnused(
+  module: Module,
+  index: DeclarationIndex,
+  factories: JsxFactoryNames,
+): InitiallyUnused {
+  const uses = collectBindingUses(
+    module,
+    module.ast,
+    index,
+    factories,
+    (node) => node,
+  )
+  const all = findInitiallyUnused(uses)
+  const erased = new Set(
+    [...all].filter(
+      (binding) =>
+        binding.has(BindingFlags.Import) &&
+        binding.references.some((reference) => reference.inTypePosition),
+    ),
+  )
+  return {
+    preserved: new Set([...all].filter((binding) => !erased.has(binding))),
+    erased,
   }
-  return unused
 }
 
 /**
@@ -573,8 +570,9 @@ export function removeUnusedBindings(
 ): void {
   stripTypeExports(program)
   const index = declarationIndex(module, module.bindings)
-  const { preserved, erased } = initiallyUnused(module, index)
-  const output = collectBindingUses(module, program, index, (node) =>
+  const factories = jsxFactoryNames(module)
+  const { preserved, erased } = initiallyUnused(module, index, factories)
+  const output = collectBindingUses(module, program, index, factories, (node) =>
     originalNodes.get(node),
   )
   const live = new Set(output.roots)
@@ -674,7 +672,6 @@ export function removeUnusedBindings(
   })
 
   const referencedNames = new Set<string>()
-  const factories = jsxFactoryNames(module)
   walk(program, {
     enter(node) {
       if (is.JSXElement(node) || is.JSXFragment(node)) {
