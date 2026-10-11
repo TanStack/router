@@ -16,7 +16,8 @@
     "test:types": "pnpm run test:types:react && pnpm run test:types:solid && pnpm run test:types:vue",
     "test:types:react": "tsc -p ./react/tsconfig.json --noEmit",
     "test:types:solid": "tsc -p ./solid/tsconfig.json --noEmit",
-    "test:types:vue": "tsc -p ./vue/tsconfig.json --noEmit"
+    "test:types:vue": "tsc -p ./vue/tsconfig.json --noEmit",
+    "test:unit": "node --test ../../scripts/benchmarks/codspeed/plan-cells.test.mjs"
   },
   "dependencies": {
     "@tanstack/history": "workspace:^",
@@ -238,6 +239,12 @@
             ],
             "target": "test:types:client"
           }
+        ]
+      },
+      "test:unit": {
+        "dependsOn": [],
+        "inputs": [
+          "{workspaceRoot}/scripts/benchmarks/codspeed/*.mjs"
         ]
       }
     }

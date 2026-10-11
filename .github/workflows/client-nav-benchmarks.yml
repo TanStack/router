@@ -22,6 +22,8 @@ on:
       - '!packages/**/__tests__/**'
       - '!packages/**/*.test.*'
       - 'benchmarks/**'
+      - '.github/workflows/client-nav-benchmarks.yml'
+      - 'scripts/benchmarks/codspeed/**'
   workflow_dispatch:
 
 concurrency:
@@ -31,7 +33,6 @@ concurrency:
 
 permissions:
   contents: read # required for actions/checkout
-  id-token: write # required for OIDC authentication with CodSpeed
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
@@ -39,29 +40,54 @@ env:
   NX_NO_CLOUD: true
 
 jobs:
+  # Pull requests run only the benchmark x framework cells the change can
+  # affect; CodSpeed reports skipped cells with their baseline values. Pushes to
+  # main and manual runs keep running every cell, as they are the baselines.
+  plan:
+    name: Plan CodSpeed benchmarks
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has-work: ${{ steps.plan.outputs.has-work }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Full history for the PR merge-base diff (inverted: `0` is falsy).
+          fetch-depth: ${{ github.event_name != 'pull_request' && 1 || 0 }}
+          persist-credentials: false
+
+      - name: Setup Tools
+        if: github.event_name == 'pull_request'
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+
+      - name: Get base and head commits for `nx affected`
+        if: github.event_name == 'pull_request'
+        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
+        with:
+          main-branch-name: main
+
+      - name: Plan benchmark cells
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            node scripts/benchmarks/codspeed/plan-cells.mjs --base "$NX_BASE" --head "$NX_HEAD" >> "$GITHUB_OUTPUT"
+          else
+            node scripts/benchmarks/codspeed/plan-cells.mjs --all >> "$GITHUB_OUTPUT"
+          fi
+
   benchmarks:
     name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
+    needs: plan
+    if: needs.plan.outputs.has-work == 'true'
+    permissions:
+      contents: read # required for actions/checkout
+      id-token: write # required for OIDC authentication with CodSpeed
     strategy:
       fail-fast: false
-      matrix:
-        framework:
-          - react
-          - solid
-          - vue
-        benchmark:
-          - client-nav
-          - ssr
-          - memory-server
-          - memory-client
-        include:
-          - benchmark: client-nav
-            mode: simulation
-          - benchmark: ssr
-            mode: simulation
-          - benchmark: memory-server
-            mode: memory
-          - benchmark: memory-client
-            mode: memory
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -75,9 +101,10 @@ jobs:
       # Run the build outside of the CodSpeed action to avoid being slowed by intrumentation overhead.
       # (and then run the task itself with --excludeTaskDependencies)
       - name: Prepare ${{ matrix.benchmark }}:${{ matrix.framework }} benchmark
-        run: >-
-          pnpm nx run
-          @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
+        env:
+          BENCHMARK: ${{ matrix.benchmark }}
+          FRAMEWORK: ${{ matrix.framework }}
+        run: pnpm nx run "@benchmarks/$BENCHMARK:build:$FRAMEWORK"
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         uses: CodSpeedHQ/action@373d6868929f444bc08d901fd0eb0ad52a8875ea # v5.2.1
