@@ -16,7 +16,7 @@ export type UseLocationResult<
   TSelected,
 > = unknown extends TSelected
   ? RouterState<TRouter['routeTree']>['location']
-  : TSelected
+  : NoInfer<TSelected>
 
 export function useLocation<
   TRouter extends AnyRouter = RegisteredRouter,
