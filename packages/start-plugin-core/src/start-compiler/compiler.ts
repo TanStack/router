@@ -42,7 +42,6 @@ type CompilerBinding = ModuleInfoBinding & {
 type CompilerImportBinding = Extract<CompilerBinding, { type: 'import' }>
 
 type Kind = 'None' | `Root` | `Builder` | LookupKind
-type ParsedAst = t.Program
 type StartCompilerAstPlugin = StartCompilerPlugin & {
   transformAst: NonNullable<StartCompilerPlugin['transformAst']>
 }
@@ -781,7 +780,7 @@ export class StartCompiler {
     /** Pre-detected kinds present in this file. If not provided, all valid kinds are checked. */
     detectedKinds?: Set<LookupKind>
     warn?: (message: string) => void
-  }) {
+  }): Promise<StartCompilerTransformResult | null> {
     if (!this.initialized) {
       await this.init()
     }
@@ -1037,15 +1036,7 @@ export class StartCompiler {
     // One liveness pass after every transform: AST plugins also orphan bindings.
     removeUnusedBindings(module, ast, originalNodes)
     keepFilePragmas(module.ast, ast)
-    return this.generateResultFromAst(ast, code, id)
-  }
-
-  private generateResultFromAst(
-    ast: ParsedAst,
-    sourceCode: string,
-    id: string,
-  ): StartCompilerTransformResult {
-    return generateModule(ast, { source: sourceCode, filename: id })
+    return generateModule(ast, { source: code, filename: id })
   }
 
   private getAstTransformPluginsForCode(
