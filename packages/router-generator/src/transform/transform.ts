@@ -1,5 +1,5 @@
 import MagicString from 'magic-string'
-import { is, nameOf } from 'yuku-ast'
+import { is, isCallOf, nameOf } from 'yuku-ast'
 import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
 import type * as t from '@yuku-toolchain/types'
 import type { TransformOptions, TransformResult } from './types'
@@ -63,9 +63,17 @@ export function transform({
     }
   }
 
-  const exportedRouteNames = getExportedRouteNames(ast.ast.body)
+  // A runtime `export { x as Route }` of any binding, or `export const Route`
+  const routeExport = ast.exports.find(
+    (exp) =>
+      exp.name === 'Route' &&
+      exp.local &&
+      !exp.typeOnly &&
+      (is.ExportSpecifier(exp.node) ||
+        is.VariableDeclarator(ast.parentOf(exp.node))),
+  )
 
-  if (exportedRouteNames.size === 0) {
+  if (!routeExport) {
     return { result: 'no-route-export' }
   }
 
@@ -73,7 +81,7 @@ export function transform({
     calls: routeCalls,
     hasUnsupportedRouteId,
     hasMalformedRouteCall,
-  } = findExportedRouteCalls(ast.ast.body, exportedRouteNames)
+  } = findRouteCalls(ast, routeExport.local!.declarations)
 
   if (routeCalls.length === 0 && hasMalformedRouteCall) {
     return {
@@ -163,148 +171,68 @@ export function transform({
   }
 }
 
-function getExportedRouteNames(body: t.Program['body']) {
-  const exportedRouteNames = new Set<string>()
-
-  for (const statement of body) {
-    if (!is.ExportNamedDeclaration(statement) || statement.source) {
-      continue
-    }
-
-    if (is.VariableDeclaration(statement.declaration)) {
-      for (const declarator of statement.declaration.declarations) {
-        if (is.Identifier(declarator.id) && declarator.id.name === 'Route') {
-          exportedRouteNames.add('Route')
-        }
-      }
-    }
-
-    for (const specifier of statement.specifiers) {
-      if (
-        !is.ExportSpecifier(specifier) ||
-        nameOf(specifier.exported) !== 'Route'
-      ) {
-        continue
-      }
-
-      const localName = getLocalBindingName(specifier.local)
-      if (localName) {
-        exportedRouteNames.add(localName)
-      }
-    }
-  }
-
-  return exportedRouteNames
-}
-
-function findExportedRouteCalls(
-  body: t.Program['body'],
-  exportedRouteNames: Set<string>,
+function findRouteCalls(
+  module: ReturnType<typeof analyzeModule>,
+  declarations: Array<t.Node>,
 ): RouteCallAnalysis {
   const calls: Array<RouteCall> = []
   let hasUnsupportedRouteId = false
   let hasMalformedRouteCall = false
 
-  for (const statement of body) {
-    const declaration = getVariableDeclaration(statement)
-    if (!declaration) {
+  for (const declaration of declarations) {
+    const declarator = module.parentOf(declaration)
+    if (!is.VariableDeclarator(declarator)) {
       continue
     }
 
-    for (const declarator of declaration.declarations) {
-      if (
-        !is.Identifier(declarator.id) ||
-        !exportedRouteNames.has(declarator.id.name)
-      ) {
-        continue
+    const init = getRouteConstructorInit(declarator.init)
+    if (!init) {
+      if (isCallOf(unwrapNode(declarator.init), routeConstructors)) {
+        hasMalformedRouteCall = true
       }
+      continue
+    }
 
-      const init = getRouteConstructorInit(declarator.init)
-      if (!init) {
-        if (isDirectRouteConstructorCall(declarator.init)) {
-          hasMalformedRouteCall = true
-        }
-        continue
-      }
-
-      const routeIdArg = unwrapNode(init.innerCall.arguments[0])
-      if (isSupportedRouteId(routeIdArg)) {
-        calls.push({
-          callee: init.callee,
-          routeIdArg,
-          optionsArg: unwrapNode(init.outerCall.arguments[0]),
-        })
-      } else {
-        hasUnsupportedRouteId = true
-      }
+    const routeIdArg = unwrapNode(init.innerCall.arguments[0])
+    if (isSupportedRouteId(routeIdArg)) {
+      calls.push({
+        callee: init.callee,
+        routeIdArg,
+        optionsArg: unwrapNode(init.outerCall.arguments[0]),
+      })
+    } else {
+      hasUnsupportedRouteId = true
     }
   }
 
   return { calls, hasUnsupportedRouteId, hasMalformedRouteCall }
 }
 
-function getVariableDeclaration(statement: t.ProgramStatement) {
-  const declaration = is.ExportNamedDeclaration(statement)
-    ? statement.declaration
-    : statement
-
-  return is.VariableDeclaration(declaration) ? declaration : null
-}
-
-function getLocalBindingName(node: t.Identifier | t.StringLiteral) {
-  return is.Identifier(node) ? node.name : null
-}
-
-function getRouteConstructorInit(expression: t.Expression | null | undefined) {
-  if (!expression) {
+function getRouteConstructorInit(expression: t.Expression | null) {
+  const outerCall = unwrapNode(expression)
+  if (!is.CallExpression(outerCall)) {
     return null
   }
-  expression = unwrapExpression(expression)
-  if (!is.CallExpression(expression)) {
-    return null
-  }
-  const innerCall = unwrapNode(expression.callee)
-  if (!is.CallExpression(innerCall)) {
-    return null
-  }
-
-  const callee = unwrapNode(innerCall.callee)
-  if (!is.Identifier(callee) || !isRouteConstructor(callee)) {
+  const innerCall = unwrapNode(outerCall.callee)
+  if (!isCallOf(innerCall, routeConstructors)) {
     return null
   }
 
   return {
-    callee,
-    outerCall: expression,
+    callee: unwrapExpression(innerCall.callee) as RouteCall['callee'],
+    outerCall,
     innerCall,
   }
-}
-
-function isDirectRouteConstructorCall(
-  expression: t.Expression | null | undefined,
-) {
-  expression = expression ? unwrapExpression(expression) : expression
-  if (!expression || !is.CallExpression(expression)) {
-    return false
-  }
-  const callee = unwrapNode(expression.callee)
-  return is.Identifier(callee) && isRouteConstructor(callee)
 }
 
 /**
  * Parentheses and TypeScript-only wrappers do not change the wrapped value, so
  * route call parts are read through them.
  */
-function unwrapNode<TNode extends t.Node | undefined>(
+function unwrapNode<TNode extends t.Node | null | undefined>(
   node: TNode,
 ): TNode | t.Expression {
   return node && is.Expression(node) ? unwrapExpression(node) : node
-}
-
-function isRouteConstructor(callee: t.Identifier): callee is t.Identifier & {
-  name: RouteConstructorName
-} {
-  return routeConstructors.includes(callee.name as RouteConstructorName)
 }
 
 function isSupportedRouteId(

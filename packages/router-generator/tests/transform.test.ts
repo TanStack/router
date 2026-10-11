@@ -458,6 +458,18 @@ describe('transform', () => {
     expect(result.output).toContain("createFileRoute('/new')")
   })
 
+  it.each([
+    "const MyRoute = createFileRoute('/old')({})\nexport type { MyRoute as Route }",
+    "const MyRoute = createFileRoute('/old')({})\nexport { type MyRoute as Route }",
+    'export declare const Route: unknown',
+  ])('does not treat a type-only Route export as a route: %s', (code) => {
+    const result = transformToNewRoute(
+      `import { createFileRoute } from '@tanstack/react-router'\n${code}`,
+    )
+
+    expect(result.result).toBe('no-route-export')
+  })
+
   it('rejects duplicate Route exports as a syntax error', async () => {
     const result = await transform({
       source: [
