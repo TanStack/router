@@ -13,6 +13,7 @@ const { values } = parseArgs({
       default: 'benchmarks/bundle-size/results/current.json',
     },
     id: { type: 'string' },
+    'current-only': { type: 'boolean' },
     json: { type: 'boolean' },
   },
 })
@@ -33,7 +34,9 @@ const baselineById = byId(readCurrent(values.baseline))
 const currentById = byId(readCurrent(values.current))
 const ids = values.id
   ? [values.id]
-  : [...new Set([...baselineById.keys(), ...currentById.keys()])].sort()
+  : values['current-only']
+    ? [...currentById.keys()].sort()
+    : [...new Set([...baselineById.keys(), ...currentById.keys()])].sort()
 
 const rows = ids.map((id) => {
   const baseline = baselineById.get(id)

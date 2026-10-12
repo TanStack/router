@@ -1111,48 +1111,6 @@ export function importProtectionPlugin(
     return hasUnknownEdge ? 'unknown' : 'unreachable'
   }
 
-  function checkSourceGraphReachability(
-    env: EnvState,
-    file: string,
-  ): 'reachable' | 'unreachable' {
-    const visited = new Set<string>()
-    const queue: Array<string> = [file]
-    let qi = 0
-
-    while (qi < queue.length) {
-      const current = queue[qi++]!
-      if (visited.has(current)) {
-        continue
-      }
-      visited.add(current)
-
-      if (env.graph.entries.has(current)) {
-        return 'reachable'
-      }
-
-      const importers = env.graph.reverseEdges.get(current)
-      if (!importers) {
-        continue
-      }
-
-      if (importers.size === 0) {
-        const routesDirectory = normalizePath(`${config.srcDirectory}/routes`)
-        if (current === file || isInsideDirectory(current, routesDirectory)) {
-          return 'reachable'
-        }
-        continue
-      }
-
-      for (const [parent] of importers) {
-        if (!visited.has(parent)) {
-          queue.push(parent)
-        }
-      }
-    }
-
-    return 'unreachable'
-  }
-
   /**
    * Filter pending violations using edge-survival data.  Returns the subset
    * of violations whose resolved import survived the Start compiler (or all
@@ -1220,9 +1178,7 @@ export function importProtectionPlugin(
       // Wait for entries before running reachability.  registerEntries()
       // populates entries at buildStart; resolveId(!importer) may add more.
       let status: 'reachable' | 'unreachable' | 'unknown'
-      if (isBundledClientDev && edgeSurvivalApplied) {
-        status = checkSourceGraphReachability(env, file)
-      } else if (env.graph.entries.size > 0) {
+      if (env.graph.entries.size > 0) {
         status = checkPostTransformReachability(env, file)
       } else {
         status = 'unknown'
@@ -2009,7 +1965,17 @@ export function importProtectionPlugin(
       async generateBundle(_options, bundle) {
         const envName = this.environment.name
         const env = envStates.get(envName)
-        if (!env || env.deferredBuildViolations.length === 0) return
+        if (!env) {
+          return
+        }
+        if (config.command === 'serve' && config.bundledDev) {
+          // Child transforms can finish before their importers. Verify pending
+          // violations once the completed bundle has recorded every edge.
+          await processPendingViolations(env, this.warn.bind(this))
+        }
+        if (env.deferredBuildViolations.length === 0) {
+          return
+        }
 
         const candidateCache = new Map<string, Array<string>>()
         const toModuleIdCandidates = (id: string): Array<string> => {
@@ -2366,10 +2332,9 @@ export function importProtectionPlugin(
               // Non-fatal
             }
           }
+          // A split component's imports must not replace the unsplit route's
+          // imports. Reachability merges the separately cached variants.
           envState.postTransformImports.set(cacheKey, resolvedChildren)
-          if (cacheKey !== file && !isServerFnLookup) {
-            envState.postTransformImports.set(file, resolvedChildren)
-          }
 
           await processPendingViolations(envState, this.warn.bind(this))
 

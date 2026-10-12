@@ -1,6 +1,8 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Matches } from './Matches'
 import { provideRouter } from './routerContext'
+import { provideLinkLocation } from './matchContext'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -23,6 +25,10 @@ export const RouterContextProvider = Vue.defineComponent({
 
     // Provide router to all child components
     provideRouter(router)
+    // Links outside every match follow the live location.
+    if (!(isServer ?? router.isServer)) {
+      provideLinkLocation(router)
+    }
 
     return () => {
       // Allow the router to update options on the router instance

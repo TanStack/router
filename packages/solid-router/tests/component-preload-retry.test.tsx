@@ -1,4 +1,5 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { ErrorBoundary, Suspense } from 'solid-js'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
@@ -118,14 +119,42 @@ test('revisiting a resolved lazy component skips pending UI', async () => {
   expect(importer).toHaveBeenCalledOnce()
 })
 
+test('a missing export fails through the route error UI instead of recursing', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+
+  const importer = vi.fn().mockResolvedValue({ Other: () => null })
+  const Page = lazyRouteComponent(importer, 'Missing' as never)
+  const rootRoute = createRootRoute()
+  const pageRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    component: Page,
+    errorComponent: (props: ErrorComponentProps) => (
+      <div>{props.error.message}</div>
+    ),
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([pageRoute]),
+    history: createMemoryHistory({ initialEntries: ['/page'] }),
+  })
+
+  render(() => <RouterProvider router={router} />)
+
+  expect(
+    await screen.findByText('lazyRouteComponent: export "Missing" not found'),
+  ).toBeInTheDocument()
+})
+
 test('a failed component download is retried from the route error UI', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 
   const PageContent = () => <div>Page content</div>
+  const retryImport = createControlledPromise<{ default: typeof PageContent }>()
+  onTestFinished(() => retryImport.resolve({ default: PageContent }))
   const importer = vi
     .fn<() => Promise<{ default: typeof PageContent }>>()
     .mockRejectedValueOnce(new Error('component download failed'))
-    .mockResolvedValue({ default: PageContent })
+    .mockImplementation(() => retryImport)
   const Page = lazyRouteComponent(importer)
 
   function RouteError(props: ErrorComponentProps) {
@@ -159,5 +188,62 @@ test('a failed component download is retried from the route error UI', async () 
 
   fireEvent.click(await screen.findByRole('button', { name: 'Retry' }))
 
+  await vi.waitFor(() => expect(importer).toHaveBeenCalledTimes(2))
+  expect(screen.queryByText('Page content')).not.toBeInTheDocument()
+  retryImport.resolve({ default: PageContent })
+
   expect(await screen.findByText('Page content')).toBeInTheDocument()
+  expect(importer).toHaveBeenCalledTimes(2)
+  expect(Page.preload).toBeUndefined()
+})
+
+test('a component first loaded during render recovers after an awaited preload retry', async () => {
+  const PageContent = () => <div>Recovered component</div>
+  const retryImport = createControlledPromise<{ default: typeof PageContent }>()
+  onTestFinished(() => retryImport.resolve({ default: PageContent }))
+  const importer = vi
+    .fn<() => Promise<{ default: typeof PageContent }>>()
+    .mockRejectedValueOnce(new Error('component download failed'))
+    .mockImplementation(() => retryImport)
+  const Page = lazyRouteComponent(importer)
+  let retry: Promise<void> | undefined
+
+  render(() => (
+    <ErrorBoundary
+      fallback={(error, reset) => (
+        <button
+          type="button"
+          onClick={() => {
+            retry = Page.preload?.()
+            void retry?.then(reset)
+          }}
+        >
+          Retry {error.message}
+        </button>
+      )}
+    >
+      <Suspense fallback={<span>Loading component</span>}>
+        <Page />
+      </Suspense>
+    </ErrorBoundary>
+  ))
+
+  const button = await screen.findByRole('button', {
+    name: 'Retry component download failed',
+  })
+  expect(importer).toHaveBeenCalledOnce()
+  fireEvent.click(button)
+
+  expect(importer).toHaveBeenCalledTimes(2)
+  expect(retry).toBeDefined()
+  expect(Page.preload?.()).toBe(retry)
+  expect(button).toBeInTheDocument()
+  expect(screen.queryByText('Recovered component')).not.toBeInTheDocument()
+
+  retryImport.resolve({ default: PageContent })
+  await retry
+
+  expect(await screen.findByText('Recovered component')).toBeInTheDocument()
+  expect(importer).toHaveBeenCalledTimes(2)
+  expect(Page.preload).toBeUndefined()
 })

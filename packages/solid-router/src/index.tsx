@@ -177,7 +177,6 @@ export type {
   RouterOptions,
   RouterConstructorOptions,
   ControllablePromise,
-  InjectedHtmlEntry,
   CreateFileRoute,
   CreateLazyFileRoute,
   AnySerializationAdapter,

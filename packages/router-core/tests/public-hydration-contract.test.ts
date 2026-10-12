@@ -1,4 +1,3 @@
-import { runInNewContext } from 'node:vm'
 import {
   afterEach,
   beforeEach,
@@ -16,36 +15,14 @@ import {
   redirect,
 } from '../src'
 import { hydrate } from '../src/ssr/client'
-import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
-import { createTestRouter } from './routerTestUtils'
-import type { AnyRouteMatch, AnyRouter, LocationRewrite } from '../src'
+import { createTestRouter, dehydrateToBootstrap } from './routerTestUtils'
+import type { AnyRouteMatch, LocationRewrite } from '../src'
 import type { DehydratedRouter, TsrSsrGlobal } from '../src/ssr/types'
 import type { ServerManifest } from '../src/manifest'
 
 const testManifest: ServerManifest = { routes: {} }
 const browserWindow = window
-
-async function dehydrateToBootstrap(router: AnyRouter): Promise<TsrSsrGlobal> {
-  attachRouterServerSsrUtils({ router, manifest: testManifest })
-  try {
-    await router.load()
-    await router.serverSsr!.dehydrate()
-
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-
-    const context: Record<string, any> = {
-      document: { currentScript: { remove() {} } },
-    }
-    context.self = context
-    runInNewContext(script!.children!, context)
-
-    return context.$_TSR
-  } finally {
-    router.serverSsr?.cleanup()
-  }
-}
 
 function installHydrationPayload(
   mockWindow: { $_TSR?: TsrSsrGlobal },
@@ -155,7 +132,7 @@ describe('public hydration contracts', () => {
       }),
       isServer: true,
     })
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
     expect(bootstrap.router?.matches).toHaveLength(2)
     expect(bootstrap.router?.matches.at(-1)).toMatchObject({
       s: 'pending',
@@ -241,7 +218,7 @@ describe('public hydration contracts', () => {
       history: createMemoryHistory({ initialEntries: ['/client-only/child'] }),
       isServer: true,
     })
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
 
     const contextLanes: Array<Array<string>> = []
     const headLanes: Array<Array<string>> = []
@@ -567,7 +544,7 @@ describe('public hydration contracts', () => {
       history: createMemoryHistory({ initialEntries: ['/page'] }),
       isServer: true,
     })
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
 
     const head = vi.fn(({ loaderData }) => ({
       meta: [{ title: String(loaderData) }],
@@ -646,7 +623,7 @@ describe('public hydration contracts', () => {
       history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
       isServer: true,
     })
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
 
     expect(serverParentBeforeLoad).toHaveBeenCalledTimes(1)
     expect(serverChildBeforeLoad).toHaveBeenCalledTimes(1)
@@ -729,7 +706,7 @@ describe('public hydration contracts', () => {
       history: createMemoryHistory({ initialEntries: ['/page'] }),
       isServer: true,
     })
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
     const transportedError = bootstrap.router?.matches.at(-1)?.e
 
     expect(transportedError).toMatchObject({
@@ -1408,7 +1385,7 @@ describe('public hydration contracts', () => {
       history: createMemoryHistory({ initialEntries: ['/page'] }),
       isServer: true,
     })
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
     const transportedError = bootstrap.router?.matches.at(-1)?.e
 
     const clientContextError = new Error('client context failed')

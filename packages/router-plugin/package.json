@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.168.38",
+  "version": "1.168.43",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -139,6 +139,7 @@
     "react-dom": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "prettier": "^3.9.6",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
     "rimraf": "catalog:",

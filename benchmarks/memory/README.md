@@ -72,13 +72,14 @@ same workload through the Flame profiler.
 All scenarios use [`memoryConfig`](./runtime.ts). It adds these flags only in
 memory mode:
 
+- `--no-maglev`
 - `--no-flush-bytecode`
 - `--no-minor-gc-task`
 - `--no-incremental-marking`
 - `--initial-old-space-size=512`
 
 `--jitless` was removed after repeated CI comparisons. Ten unchanged-commit
-repetitions with these four flags kept all 48 peak-memory results within 1%
+repetitions with the last four flags kept all 48 peak-memory results within 1%
 (worst spread: 0.834%). With JIT enabled, all 16 subsets of the four flags were
 tested. Removing bytecode, minor-GC-task, incremental-marking, or heap-budget
 overrides from this profile produced worst client peak spreads of 6.616%, 2.714%,
@@ -100,6 +101,19 @@ initial/minimum old-generation allocation budget can postpone automatic full
 collections. This does not preallocate 512 MiB, and the smallest sufficient budget
 was not determined. Results describe this controlled worker profile, not a
 production application's absolute memory footprint.
+
+CodSpeed's `--no-opt` only disables TurboFan on Node 24 (V8 13); Maglev still
+compiles. Under CodSpeed's `--predictable` there is no background compilation,
+so Maglev compiles run synchronously inside whichever request triggers them, and
+the forced GC before the measured call can discard optimized code so recompiles
+land inside the measured window. Maglev's malloc'd Zone scratch (32 KiB
+segments) then dominates allocation metrics, and its size depends on
+per-process feedback state. `--no-maglev` was added for this: the bimodal
++32,792 B / +1 allocation in `mem server error-paths unmatched (react)` was one
+Maglev Zone segment allocated while compiling React Fizz's per-request stream
+`write` closure, and compiler scratch made up ~97% of that bench's allocated
+bytes. Retained-object measurements are unaffected because Zone memory is freed
+after each compile. The repeatability figures above predate this flag.
 
 ## Bench shapes and signals
 

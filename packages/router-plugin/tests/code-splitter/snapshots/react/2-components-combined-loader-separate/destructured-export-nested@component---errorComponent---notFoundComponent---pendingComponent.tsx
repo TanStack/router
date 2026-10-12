@@ -1,7 +1,9 @@
-import { baseUrl } from "destructured-export-nested.tsx";
+import { baseUrl } from 'destructured-export-nested.tsx'
 function AboutComponent() {
-  return <div>
+  return (
+    <div>
       <p>Base URL: {baseUrl}</p>
-    </div>;
+    </div>
+  )
 }
-export { AboutComponent as component };
+export { AboutComponent as component }

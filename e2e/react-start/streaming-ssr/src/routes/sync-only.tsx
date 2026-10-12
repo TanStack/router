@@ -1,22 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { makeSyncOnlyData } from '../../../../streaming-ssr-fixtures'
 
-/**
- * This route tests synchronous serialization - no deferred data, no streaming.
- * The loader returns data synchronously (awaited), so crossSerializeStream
- * completes immediately and all bootstrap scripts should be in the initial HTML.
- */
 export const Route = createFileRoute('/sync-only')({
-  loader: async () => {
-    // Simulate a fast synchronous data fetch
-    // This data is awaited, not deferred, so serialization completes synchronously
-    return {
-      message: 'Hello from sync loader!',
-      timestamp: Date.now(),
-      items: ['item-1', 'item-2', 'item-3'],
-      // Track where this data came from - should always be 'server' if SSR works
-      source: typeof window === 'undefined' ? 'server' : 'client',
-    }
-  },
+  loader: async () => makeSyncOnlyData(),
   component: SyncOnly,
 })
 

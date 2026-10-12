@@ -1,2 +1,2 @@
-const registry = new Map();
-export { registry };
+const registry = new Map()
+export { registry }

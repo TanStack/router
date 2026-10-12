@@ -5,8 +5,8 @@ import {
 import { StartServer } from './StartServer'
 
 export const defaultStreamHandler = defineHandlerCallback(
-  async ({ request, router, responseHeaders }) =>
-    await renderRouterToStream({
+  ({ request, router, responseHeaders }) =>
+    renderRouterToStream({
       request,
       router,
       responseHeaders,

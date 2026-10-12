@@ -1,5 +1,91 @@
 # @tanstack/react-router
 
+## 1.170.42
+
+### Patch Changes
+
+- [#8594](https://github.com/TanStack/router/pull/8594) [`2413cc0`](https://github.com/TanStack/router/commit/2413cc009826fba4f97b166a35a8a50a4a8fe4bb) - reduce component nesting per route match
+
+- [#8602](https://github.com/TanStack/router/pull/8602) [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb) - Links of a route that the pending navigation leaves skip deriving the destination location, and clicks and preloads follow the href a Link displays. `buildLocation` now builds `mask` and `routeMasks` locations from the same `_fromLocation` as the destination.
+
+- [#8602](https://github.com/TanStack/router/pull/8602) [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb) - Fixed Link destinations that resolve to a route mask are now reused across navigations instead of being rebuilt every time. A mounted Link now follows changes to its `href` and `reloadDocument` props, and React Links no longer each subscribe to a hydration flag.
+
+- [#8579](https://github.com/TanStack/router/pull/8579) [`d35aab4`](https://github.com/TanStack/router/commit/d35aab425b07b46e222a507c0f0239644669757b) - Cancel pending link preload timers when starting navigation to avoid redundant preloading while the destination is loading.
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/history@1.162.5
+  - @tanstack/router-core@1.171.35
+
+## 1.170.41
+
+### Patch Changes
+
+- [#8529](https://github.com/TanStack/router/pull/8529) [`60b8ad1`](https://github.com/TanStack/router/commit/60b8ad1ad00812bf966a8eeee6be238c37ddad74) - Compose only enabled route boundaries instead of rendering inactive wrapper components.
+
+- [#8568](https://github.com/TanStack/router/pull/8568) [`614bc27`](https://github.com/TanStack/router/commit/614bc27034c8ec98747bf305ed41d4a619640949) - Update TanStack Store to 0.11.2 to prevent unrelated atom reads inside subscription observers from triggering extra notifications.
+
+- [#8530](https://github.com/TanStack/router/pull/8530) [`ff66a03`](https://github.com/TanStack/router/commit/ff66a03df4816f44a48a4a37189fc4021b1c8480) - Consolidate the root match context provider while preserving match context in the root shell.
+
+- [#8522](https://github.com/TanStack/router/pull/8522) [`863c8a7`](https://github.com/TanStack/router/commit/863c8a736b96746c56278a16c50554356f5523d1) - Reuse Link href classification and active/inactive results across location updates while preserving live history href formatting.
+
+- Updated dependencies [[`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb)]:
+  - @tanstack/router-core@1.171.34
+
+## 1.170.40
+
+### Patch Changes
+
+- [#8436](https://github.com/TanStack/router/pull/8436) [`f5ffd38`](https://github.com/TanStack/router/commit/f5ffd3884ba26778a2a8ce53b379a5bded231676) - Skip unused Link preload cleanup when preloading is disabled and ignore queued viewport notifications after their effect has been cleaned up.
+
+- Updated dependencies [[`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f), [`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47), [`3cdd1af`](https://github.com/TanStack/router/commit/3cdd1af04b3e2d6f777797ee7bddf285318dd9d2)]:
+  - @tanstack/router-core@1.171.33
+
+## 1.170.39
+
+### Patch Changes
+
+- [#8435](https://github.com/TanStack/router/pull/8435) [`73bfc15`](https://github.com/TanStack/router/commit/73bfc153eef460e9b670556215a5adb2b5cbf542) - Avoid hydration-triggered rerenders for links that do not compare URL hashes while preserving hash-sensitive active state and ClientOnly behavior.
+
+## 1.170.38
+
+### Patch Changes
+
+- Updated dependencies [[`cecae54`](https://github.com/TanStack/router/commit/cecae5440b8edaea77c5448fe3d74bbd20fe10a4), [`0103578`](https://github.com/TanStack/router/commit/01035782e53af9b929c784b94ddd64b95efb89c7), [`ce10dcd`](https://github.com/TanStack/router/commit/ce10dcd4d9d3d23738744e453205aad5c6dbd716), [`84936cc`](https://github.com/TanStack/router/commit/84936cc04530bba11059c57b293a794922bbc5aa), [`bbd2336`](https://github.com/TanStack/router/commit/bbd2336b8446de3f7dd85070895e7cf43980183e)]:
+  - @tanstack/router-core@1.171.32
+
+## 1.170.37
+
+### Patch Changes
+
+- [#8418](https://github.com/TanStack/router/pull/8418) [`e561fa1`](https://github.com/TanStack/router/commit/e561fa1d7118e3d29267cc3b6ce1130d6581f387) - `deepEqual` now takes its flags as positional arguments — `deepEqual(a, b, partial?, explicitUndefined?)` — instead of an options object. The router's hot callers (Link option stabilization and active-state checks, `matchRoute`) no longer allocate an options object per comparison, and the comparator reads two booleans instead of a polymorphic object. `explicitUndefined` replaces `ignoreUndefined: false`. `deepEqual` is an internal helper; it stays exported for compatibility of two-argument calls.
+
+- [#8419](https://github.com/TanStack/router/pull/8419) [`a1c8d1a`](https://github.com/TanStack/router/commit/a1c8d1aa759c227eae9601a030321ac4c53c24bd) - `resolvePath` (internal helper) now takes positional arguments — `resolvePath(base, to, trailingSlash?, cache?)` — so `buildLocation` and `matchRoute` no longer allocate an options object per path resolution.
+
+- [#8204](https://github.com/TanStack/router/pull/8204) [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26) - Stream large deferred SSR hydration payloads through a backpressure-aware router transport, fail known setup errors before response creation, and close cancelled or expired transforms safely.
+
+  Start now cancels discarded middleware and HEAD response bodies, including plain streams and derived branches.
+
+  Server-function raw streams share one ordered response. Arbitrary or sequential consumption can require potentially unbounded buffering of unread data on the client. Cancelling one raw stream discards it locally, while aborting the whole call cancels the response and server work. Consume streams concurrently, cancel unused streams promptly, or use separate calls when independent backpressure is required. A raw stream that exceeds its unread-byte limit now fails alone; sibling streams and the JSON result keep flowing.
+
+  The JSON wire shape of a `RawStream` server-function argument changed. Clients and servers must run matching versions for requests that pass a `RawStream`.
+
+  The frame-protocol constants (`FRAME_TYPE_*`, `MAX_FRAME_PAYLOAD_SIZE`, `MAX_FRAMED_STREAMS`) moved from the `@tanstack/start-client-core` root to the `@tanstack/start-client-core/client-rpc` subpath.
+
+  Router requests whose `Accept` header allows neither `text/html` nor `*/*` now receive `406 Not Acceptable` instead of `500`.
+
+  Framework adapters share the body `<Scripts>` composition (`getSsrBodyScriptParts`, `composeSsrBodyScripts`) and the eager HTML response wrapper (`renderSsrHtmlResponse`) from `@tanstack/router-core`.
+
+  Solid SSR now emits one document type and renders late lazy errors through route boundaries. A Solid `<Await>` without a `fallback` no longer holds the streamed shell; it renders inside the nearest `<Suspense>` boundary like React and Vue, and now renders falsy resolved values.
+
+  Static server functions decode cached `RawStream` values with the client deserializer plugins.
+
+  SSR Query integrations now keep request cleanup and stream ownership aligned with the router lifecycle.
+
+- [#8420](https://github.com/TanStack/router/pull/8420) [`8e164d2`](https://github.com/TanStack/router/commit/8e164d28f9e9eb1a7301109230d7ece9817492a8) - `useLinkProps` no longer calls through an internal wrapper. The host element `Link` renders on is an `@internal` overload parameter that is stripped from the published declarations, so the public `useLinkProps(options, forwardedRef?)` signature is unchanged.
+
+- Updated dependencies [[`bc80866`](https://github.com/TanStack/router/commit/bc80866f6d6eb3e6f152ee3682eb783c96403e83), [`e561fa1`](https://github.com/TanStack/router/commit/e561fa1d7118e3d29267cc3b6ce1130d6581f387), [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26), [`a1c8d1a`](https://github.com/TanStack/router/commit/a1c8d1aa759c227eae9601a030321ac4c53c24bd), [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26), [`a0b2ad9`](https://github.com/TanStack/router/commit/a0b2ad99aee64af08d16b0e4ff26b3ba42a99f0a), [`1ca361b`](https://github.com/TanStack/router/commit/1ca361ba52a627d2f76ab33323bd83d1d0aa65a3)]:
+  - @tanstack/router-core@1.171.31
+
 ## 1.170.36
 
 ### Patch Changes

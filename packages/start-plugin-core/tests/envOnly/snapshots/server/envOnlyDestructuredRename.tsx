@@ -1,4 +1,6 @@
-const serverFunc = () => 'server';
+const serverFunc = () => 'server'
 const clientFunc = () => {
-  throw new Error("createClientOnlyFn() functions can only be called on the client!");
-};
+  throw new Error(
+    'createClientOnlyFn() functions can only be called on the client!',
+  )
+}

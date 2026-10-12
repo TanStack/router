@@ -197,7 +197,6 @@ export type {
   RegisteredRouter,
   RouterContextOptions,
   ControllablePromise,
-  InjectedHtmlEntry,
   RouterOptions,
   RouterState,
   ListenerFn,

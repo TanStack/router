@@ -2,7 +2,9 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import {
   createMiddleware,
+  defaultSerovalDeserializerPlugins,
   getDefaultSerovalPlugins,
+  getSerovalPlugins,
 } from '@tanstack/start-client-core'
 import { fromJSON, toJSONAsync } from 'seroval'
 
@@ -69,9 +71,6 @@ const jsonToFilenameSafeString = (json: any) => {
     .replace(/\s+/g, '_') // Optionally replace whitespace with underscores
 }
 
-const staticClientCache =
-  typeof document !== 'undefined' ? new Map<string, any>() : null
-
 async function addItemToCache({
   functionId,
   data,
@@ -81,27 +80,25 @@ async function addItemToCache({
   data: any
   response: StaticCachedResult
 }): Promise<void> {
-  {
-    const hash = jsonToFilenameSafeString(data)
-    const url = await getStaticCacheUrl({ functionId, hash })
-    const clientUrl = process.env.TSS_CLIENT_OUTPUT_DIR!
-    const filePath = path.join(clientUrl, url)
+  const hash = jsonToFilenameSafeString(data)
+  const url = await getStaticCacheUrl({ functionId, hash })
+  const clientUrl = process.env.TSS_CLIENT_OUTPUT_DIR!
+  const filePath = path.join(clientUrl, url)
 
-    // Ensure the directory exists
-    await fs.mkdir(path.dirname(filePath), { recursive: true })
+  // Ensure the directory exists
+  await fs.mkdir(path.dirname(filePath), { recursive: true })
 
-    // Store the result with fs
-    const stringifiedResult = JSON.stringify(
-      await toJSONAsync(
-        {
-          result: response.result,
-          context: response.context.sendContext,
-        },
-        { plugins: getDefaultSerovalPlugins() },
-      ),
-    )
-    await fs.writeFile(filePath, stringifiedResult, 'utf-8')
-  }
+  // Store the result with fs
+  const stringifiedResult = JSON.stringify(
+    await toJSONAsync(
+      {
+        result: response.result,
+        context: response.context.sendContext,
+      },
+      { plugins: getDefaultSerovalPlugins() },
+    ),
+  )
+  await fs.writeFile(filePath, stringifiedResult, 'utf-8')
 }
 
 const fetchItem = async ({
@@ -114,15 +111,16 @@ const fetchItem = async ({
   const hash = jsonToFilenameSafeString(data)
   const url = await getStaticCacheUrl({ functionId, hash })
 
-  let result: any = staticClientCache?.get(url)
-
-  result = await fetch(url, {
+  return fetch(url, {
     method: 'GET',
   })
     .then((r) => r.json())
-    .then((d) => fromJSON(d, { plugins: getDefaultSerovalPlugins() }))
-
-  return result
+    .then((d) =>
+      fromJSON<any>(d, {
+        // Cached responses may carry RawStream nodes.
+        plugins: getSerovalPlugins(defaultSerovalDeserializerPlugins),
+      }),
+    )
 }
 
 export const staticFunctionMiddleware = createMiddleware({ type: 'function' })

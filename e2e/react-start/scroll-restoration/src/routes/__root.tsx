@@ -65,6 +65,10 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  React.useEffect(() => {
+    dispatchEvent(new Event('test-scroll-hydrated'))
+  }, [])
+
   return (
     <RootDocument>
       <Outlet />

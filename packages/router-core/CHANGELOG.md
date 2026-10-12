@@ -1,5 +1,92 @@
 # @tanstack/router-core
 
+## 1.171.35
+
+### Patch Changes
+
+- [#8605](https://github.com/TanStack/router/pull/8605) [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2) - Drop a duplicated current-location flag and a redundant `createHref` wrapper.
+
+- [#8602](https://github.com/TanStack/router/pull/8602) [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb) - Links of a route that the pending navigation leaves skip deriving the destination location, and clicks and preloads follow the href a Link displays. `buildLocation` now builds `mask` and `routeMasks` locations from the same `_fromLocation` as the destination.
+
+- [#8602](https://github.com/TanStack/router/pull/8602) [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb) - Fixed Link destinations that resolve to a route mask are now reused across navigations instead of being rebuilt every time. A mounted Link now follows changes to its `href` and `reloadDocument` props, and React Links no longer each subscribe to a hydration flag.
+
+- [#8605](https://github.com/TanStack/router/pull/8605) [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2) - Use `slice` instead of `substring` where the bounds are always ordered and non-negative.
+
+- [#7654](https://github.com/TanStack/router/pull/7654) [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e) - Encode slashes in dehydrated SSR match IDs with `#` instead of a null byte, so the inlined hydration payload no longer contains U+0000 (which is invalid in HTML and rejected by markup validators)
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2)]:
+  - @tanstack/history@1.162.5
+
+## 1.171.34
+
+### Patch Changes
+
+- [#8573](https://github.com/TanStack/router/pull/8573) [`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb) - Align server function request and response handling.
+
+## 1.171.33
+
+### Patch Changes
+
+- [#8297](https://github.com/TanStack/router/pull/8297) [`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f) - Update `seroval` and `seroval-plugins` from 1.6.2 to 1.6.7. This picks up the typed array length guard, the `maxBase64Length` and `compactArrayBufferViews` options, and the `isStream` export.
+
+- [#8460](https://github.com/TanStack/router/pull/8460) [`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47) - Abort reserved loader generations with no remaining owners when invalidation removes them from discovery, ensuring their public abort signals are retired.
+
+- [#8519](https://github.com/TanStack/router/pull/8519) [`3cdd1af`](https://github.com/TanStack/router/commit/3cdd1af04b3e2d6f777797ee7bddf285318dd9d2) - Hand native scroll restoration back to the browser on pagehide, including entries entering BFCache, and reclaim manual restoration when a cached document resumes.
+
+## 1.171.32
+
+### Patch Changes
+
+- [#8363](https://github.com/TanStack/router/pull/8363) [`cecae54`](https://github.com/TanStack/router/commit/cecae5440b8edaea77c5448fe3d74bbd20fe10a4) - Detect plain objects by constructor instead of `Object.prototype.toString` dispatches in `isPlainObject`, which gates every `deepEqual` and `replaceEqualDeep` recursion step. Object literals, `JSON.parse` output and null-prototype objects are still plain; objects from another realm no longer are. Records with an own `constructor` key (for example the search params of `?constructor=foo`) fall back to a prototype check, so they keep structural sharing while class instances stay opaque.
+
+- [#8364](https://github.com/TanStack/router/pull/8364) [`0103578`](https://github.com/TanStack/router/commit/01035782e53af9b929c784b94ddd64b95efb89c7) - Compare and copy plain objects in `replaceEqualDeep` by their string keys only, skipping the symbol-key lookup that dominated key enumeration. Objects with non-enumerable own properties, or symbol keys on the incoming value, now pass through untouched instead of being structurally shared.
+
+- [#8411](https://github.com/TanStack/router/pull/8411) [`ce10dcd`](https://github.com/TanStack/router/commit/ce10dcd4d9d3d23738744e453205aad5c6dbd716) - Reduce structural-sharing allocations by reusing array key storage and returning incoming objects when their children need no replacements. Preserve signed zero consistently, remove stale symbol properties, and keep sparse arrays with extra keys and built-ins with an own `constructor` opaque.
+
+  Null-prototype mode now applies only when constructing a copy; existing incoming objects can be reused with their original prototype.
+
+- [#8362](https://github.com/TanStack/router/pull/8362) [`84936cc`](https://github.com/TanStack/router/commit/84936cc04530bba11059c57b293a794922bbc5aa) - Allocate the `replaceEqualDeep` result only at the first difference, so structural sharing of search, params, state and loader data no longer allocates when the new value is deeply equal to the previous one.
+
+- [#8389](https://github.com/TanStack/router/pull/8389) [`bbd2336`](https://github.com/TanStack/router/commit/bbd2336b8446de3f7dd85070895e7cf43980183e) - Split `replaceEqualDeep` into an equality scan and a copy phase: arrays and objects are scanned by dedicated loops up to the first difference, matching keys prove ownership without a `hasOwnProperty` lookup, and once a difference is found the result is built without any further equality bookkeeping. Deeply equal search, params, state and loader data are recognised faster and changed values are copied with less work per entry.
+
+## 1.171.31
+
+### Patch Changes
+
+- [#8417](https://github.com/TanStack/router/pull/8417) [`bc80866`](https://github.com/TanStack/router/commit/bc80866f6d6eb3e6f152ee3682eb783c96403e83) - Speed up `deepEqual`: identical array elements no longer recurse, the exact comparison keeps a single key counter, and the redundant `typeof` early exit is gone. Equal numeric arrays compare ~70% faster and record comparisons 5–12% faster in the mixed-mode workloads that Link option stabilization and active-state checks produce, with a slightly smaller bundle. Behavior, including key enumeration and getter read order, is unchanged.
+
+- [#8418](https://github.com/TanStack/router/pull/8418) [`e561fa1`](https://github.com/TanStack/router/commit/e561fa1d7118e3d29267cc3b6ce1130d6581f387) - `deepEqual` now takes its flags as positional arguments — `deepEqual(a, b, partial?, explicitUndefined?)` — instead of an options object. The router's hot callers (Link option stabilization and active-state checks, `matchRoute`) no longer allocate an options object per comparison, and the comparator reads two booleans instead of a polymorphic object. `explicitUndefined` replaces `ignoreUndefined: false`. `deepEqual` is an internal helper; it stays exported for compatibility of two-argument calls.
+
+- [#8204](https://github.com/TanStack/router/pull/8204) [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26) - Reduce per-request SSR overhead: abort settled route matches with one shared `AbortError`-shaped reason instead of building a stack-capturing `DOMException` per match, skip `JSON.parse` for search values that cannot start JSON, wait on request signals with one listener per wait, and keep resolved server-function modules in production builds instead of re-importing them on every call.
+
+- [#8419](https://github.com/TanStack/router/pull/8419) [`a1c8d1a`](https://github.com/TanStack/router/commit/a1c8d1aa759c227eae9601a030321ac4c53c24bd) - `resolvePath` (internal helper) now takes positional arguments — `resolvePath(base, to, trailingSlash?, cache?)` — so `buildLocation` and `matchRoute` no longer allocate an options object per path resolution.
+
+- [#8204](https://github.com/TanStack/router/pull/8204) [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26) - Stream large deferred SSR hydration payloads through a backpressure-aware router transport, fail known setup errors before response creation, and close cancelled or expired transforms safely.
+
+  Start now cancels discarded middleware and HEAD response bodies, including plain streams and derived branches.
+
+  Server-function raw streams share one ordered response. Arbitrary or sequential consumption can require potentially unbounded buffering of unread data on the client. Cancelling one raw stream discards it locally, while aborting the whole call cancels the response and server work. Consume streams concurrently, cancel unused streams promptly, or use separate calls when independent backpressure is required. A raw stream that exceeds its unread-byte limit now fails alone; sibling streams and the JSON result keep flowing.
+
+  The JSON wire shape of a `RawStream` server-function argument changed. Clients and servers must run matching versions for requests that pass a `RawStream`.
+
+  The frame-protocol constants (`FRAME_TYPE_*`, `MAX_FRAME_PAYLOAD_SIZE`, `MAX_FRAMED_STREAMS`) moved from the `@tanstack/start-client-core` root to the `@tanstack/start-client-core/client-rpc` subpath.
+
+  Router requests whose `Accept` header allows neither `text/html` nor `*/*` now receive `406 Not Acceptable` instead of `500`.
+
+  Framework adapters share the body `<Scripts>` composition (`getSsrBodyScriptParts`, `composeSsrBodyScripts`) and the eager HTML response wrapper (`renderSsrHtmlResponse`) from `@tanstack/router-core`.
+
+  Solid SSR now emits one document type and renders late lazy errors through route boundaries. A Solid `<Await>` without a `fallback` no longer holds the streamed shell; it renders inside the nearest `<Suspense>` boundary like React and Vue, and now renders falsy resolved values.
+
+  Static server functions decode cached `RawStream` values with the client deserializer plugins.
+
+  SSR Query integrations now keep request cleanup and stream ownership aligned with the router lifecycle.
+
+- [#8422](https://github.com/TanStack/router/pull/8422) [`a0b2ad9`](https://github.com/TanStack/router/commit/a0b2ad99aee64af08d16b0e4ff26b3ba42a99f0a) - Parse the location once when `router.update()` changes the basepath or rewrite, collect `invalidate()` match ids in a single pass, and specialize internal basepath composition without arrays or loops. Preserve basepath case sensitivity when creating and updating the router.
+
+  Rebuild server route trees when `caseSensitive` changes and reuse the server cache only when the route tree and case sensitivity both match.
+
+- [#8421](https://github.com/TanStack/router/pull/8421) [`1ca361b`](https://github.com/TanStack/router/commit/1ca361ba52a627d2f76ab33323bd83d1d0aa65a3) - Parse masked locations without mutating shared state and simplify input rewrite handling.
+
 ## 1.171.30
 
 ### Patch Changes

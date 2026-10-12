@@ -1,4 +1,2 @@
-const obj = {
-  name: 'test'
-};
-export { obj };
+const obj = { name: 'test' }
+export { obj }

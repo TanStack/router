@@ -1,6 +1,4 @@
-import { createPlugin } from 'seroval'
-import { GLOBAL_TSR } from '../constants'
-import type { Plugin, PluginInfo, SerovalNode } from 'seroval'
+import type { PluginInfo, SerovalNode } from 'seroval'
 import type {
   RegisteredConfigType,
   RegisteredSsr,
@@ -50,6 +48,22 @@ export function createSerializationAdapter<
 >(
   opts: CreateSerializationAdapterOptions<TInput, TOutput, TExtendsAdapters>,
 ): SerializationAdapter<TInput, TOutput, TExtendsAdapters> {
+  if (process.env.NODE_ENV !== 'production') {
+    // Seroval escapes most of these characters before plugin lookup. NUL and
+    // lone surrogates are transport-unstable. Reject every surrogate code unit
+    // to keep adapter keys and this development-only check simple.
+    if (
+      !opts.key ||
+      /[\0"\\<\b\t\f\r\n\u2028\u2029\uD800-\uDFFF]/.test(opts.key)
+    ) {
+      throw new Error(
+        `createSerializationAdapter: key ${JSON.stringify(opts.key)} is ` +
+          'invalid. Serialization adapter keys must be non-empty and not ' +
+          'contain NUL, ", \\, <, backspace, tab, form feed, line ' +
+          'terminators, or UTF-16 surrogate code units.',
+      )
+    }
+  }
   return opts as unknown as SerializationAdapter<
     TInput,
     TOutput,
@@ -62,6 +76,13 @@ export interface CreateSerializationAdapterOptions<
   TOutput,
   TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter> | never,
 > {
+  /**
+   * A non-empty Seroval plugin identifier.
+   *
+   * Must not contain NUL, `"`, `\\`, `<`, backspace, tab, form feed, line
+   * terminators, or UTF-16 surrogate code units. Key validation runs only in
+   * development.
+   */
   key: string
   extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
@@ -176,71 +197,6 @@ export type AnySerializationAdapter = SerializationAdapter<any, any, any>
 
 export interface AdapterNode extends PluginInfo {
   v: SerovalNode
-}
-
-/** Create a Seroval plugin for server-side serialization only. */
-/* @__NO_SIDE_EFFECTS__ */
-export function makeSsrSerovalPlugin(
-  serializationAdapter: AnySerializationAdapter,
-  options: { didRun: boolean },
-): Plugin<any, AdapterNode> {
-  return /* @__PURE__ */ createPlugin<any, AdapterNode>({
-    tag: '$TSR/t/' + serializationAdapter.key,
-    test: serializationAdapter.test,
-    parse: {
-      stream(value, ctx, _data) {
-        return {
-          v: ctx.parse(serializationAdapter.toSerializable(value)),
-        }
-      },
-    },
-    serialize(node, ctx, _data) {
-      options.didRun = true
-      return (
-        GLOBAL_TSR +
-        '.t.get("' +
-        serializationAdapter.key +
-        '")(' +
-        ctx.serialize(node.v) +
-        ')'
-      )
-    },
-    // we never deserialize on the server during SSR
-    deserialize: undefined as never,
-  })
-}
-
-/** Create a Seroval plugin for client/server symmetric (de)serialization. */
-/* @__NO_SIDE_EFFECTS__ */
-export function makeSerovalPlugin(
-  serializationAdapter: AnySerializationAdapter,
-): Plugin<any, AdapterNode> {
-  return /* @__PURE__ */ createPlugin<any, AdapterNode>({
-    tag: '$TSR/t/' + serializationAdapter.key,
-    test: serializationAdapter.test,
-    parse: {
-      sync(value, ctx, _data) {
-        return {
-          v: ctx.parse(serializationAdapter.toSerializable(value)),
-        }
-      },
-      async async(value, ctx, _data) {
-        return {
-          v: await ctx.parse(serializationAdapter.toSerializable(value)),
-        }
-      },
-      stream(value, ctx, _data) {
-        return {
-          v: ctx.parse(serializationAdapter.toSerializable(value)),
-        }
-      },
-    },
-    // we don't generate JS code outside of SSR (for now)
-    serialize: undefined as never,
-    deserialize(node, ctx, _data) {
-      return serializationAdapter.fromSerializable(ctx.deserialize(node.v))
-    },
-  })
 }
 
 export type ValidateSerializableInput<TRegister, T> = ValidateSerializable<

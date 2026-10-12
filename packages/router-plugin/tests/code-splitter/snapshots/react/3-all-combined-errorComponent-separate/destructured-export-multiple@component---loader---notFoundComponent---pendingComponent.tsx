@@ -1,8 +1,10 @@
-import { baseUrl, timeout } from "destructured-export-multiple.tsx";
+import { baseUrl, timeout } from 'destructured-export-multiple.tsx'
 function AboutComponent() {
-  return <div>
+  return (
+    <div>
       <p>Base URL: {baseUrl}</p>
       <p>Timeout: {timeout}</p>
-    </div>;
+    </div>
+  )
 }
-export { AboutComponent as component };
+export { AboutComponent as component }

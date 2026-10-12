@@ -13,6 +13,8 @@ const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 const baseURL = `http://localhost:${PORT}`
 
 // Select the appropriate dev command based on SSR_STYLES + VITE_USE_NITRO
+// package.json omits bundled Nitro runs because its asset plugin produces
+// invalid Vite client code. Re-enable those tests once the upstream fix lands.
 function getDevCommand() {
   const scriptParts = ['dev:e2e']
   if (ssrStylesMode !== 'default') {

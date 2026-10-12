@@ -1151,10 +1151,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/posts')
+    // The clicked link left with the index page; check the posts page's own.
+    const activePostsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(activePostsLink).not.toBe(postsLink)
+    expect(activePostsLink).toHaveAttribute('data-status', 'active')
+    expect(activePostsLink).toHaveAttribute('aria-current', 'page')
+    expect(activePostsLink).toHaveClass('active')
+    expect(activePostsLink).toHaveAttribute('href', '/posts')
   })
 
   test('when navigating to /posts with a base url', async () => {
@@ -1211,10 +1214,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/app/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/app/posts')
+    // The clicked link left with the index page; check the posts page's own.
+    const activePostsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(activePostsLink).not.toBe(postsLink)
+    expect(activePostsLink).toHaveAttribute('data-status', 'active')
+    expect(activePostsLink).toHaveAttribute('aria-current', 'page')
+    expect(activePostsLink).toHaveClass('active')
+    expect(activePostsLink).toHaveAttribute('href', '/app/posts')
   })
 
   test('when navigating to /posts with search', async () => {
@@ -5426,6 +5432,35 @@ describe('Link', () => {
     fireEvent.mouseLeave(viewportLink)
     await vi.advanceTimersByTimeAsync(50)
     expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    // An effect with preloading disabled owns no resources. Re-enabling it
+    // must still install cancellation for a newly scheduled intent timer.
+    fireEvent.click(screen.getByRole('button', { name: 'Use intent' }))
+    fireEvent.mouseEnter(viewportLink)
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Disable preload' }))
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use intent' }))
+    fireEvent.mouseEnter(viewportLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(1)
+
+    preloadRouteSpy.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Disable preload' }))
+    initialIoCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {
@@ -6774,14 +6809,12 @@ describe('splat routes with empty splat', () => {
     async (trailingSlash) => {
       const tail = trailingSlash === 'always' ? '/' : ''
 
-      const rootRoute = createRootRoute()
-      const indexRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
+      // The links stay mounted across the navigation so they can turn active.
+      const rootRoute = createRootRoute({
         component: () => {
           return (
             <>
-              <h1>Index Route</h1>
+              <Outlet />
               <Link
                 data-testid="splat-link-with-empty-splat"
                 to="/splat/$"
@@ -6808,6 +6841,13 @@ describe('splat routes with empty splat', () => {
               </Link>
             </>
           )
+        },
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return <h1>Index Route</h1>
         },
       })
 

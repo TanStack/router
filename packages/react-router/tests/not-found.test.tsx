@@ -5,6 +5,7 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  Scripts,
   createBrowserHistory,
   createControlledPromise,
   createLazyRoute,
@@ -111,6 +112,13 @@ test('a lazy route notFoundComponent handles an eager beforeLoad failure', async
 
 test('SSR uses a lazy route notFoundComponent for an eager beforeLoad failure', async () => {
   const rootRoute = createRootRoute({
+    // Streaming SSR requires the <Scripts /> boundary in the shell.
+    shellComponent: ({ children }) => (
+      <>
+        {children}
+        <Scripts />
+      </>
+    ),
     component: Outlet,
     notFoundComponent: () => <div>Root not found</div>,
   })
@@ -154,6 +162,14 @@ test.each(['client', 'server'] as const)(
   'a lazy child boundary handles a fuzzy URL miss on the %s',
   async (environment) => {
     const rootRoute = createRootRoute({
+      // Streaming SSR requires the <Scripts /> boundary in the shell; the
+      // client render outputs no scripts here.
+      shellComponent: ({ children }) => (
+        <>
+          {children}
+          <Scripts />
+        </>
+      ),
       component: Outlet,
       notFoundComponent: () => <div>Root fuzzy boundary</div>,
     })

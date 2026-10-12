@@ -1,6 +1,46 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
+test('server handlers receive parsed path params (issue #8431)', async ({
+  request,
+}) => {
+  const response = await request.get('/api/parsed-params/44')
+
+  expect(response.status()).toBe(200)
+  expect(await response.json()).toEqual({ id: 44 })
+})
+
+test('createHandlers receives parsed parent and child path params', async ({
+  request,
+}) => {
+  const response = await request.get('/api/parsed-params/44/2')
+
+  expect(response.status()).toBe(200)
+  expect(await response.json()).toEqual({ id: 44, childId: 2 })
+})
+
+test('handler middleware can catch path parameter parsing errors', async ({
+  request,
+}) => {
+  const response = await request.get('/api/parsed-params/44/invalid')
+
+  expect(response.status()).toBe(400)
+  expect(await response.text()).toBe('Invalid child id')
+})
+
+test('parsed path params agree when a server handler defers to rendering', async ({
+  page,
+}) => {
+  await page.goto('/api/parsed-params/44/2?render')
+
+  const result = page.getByTestId('parsed-params')
+  await expect(result).toBeVisible()
+  expect(JSON.parse((await result.textContent())!)).toEqual({
+    loaderParams: { id: 44, childId: 2 },
+    handlerParams: { id: 44, childId: 2 },
+  })
+})
+
 test('merge-middleware-context', async ({ page }) => {
   await page.goto('/merge-middleware-context')
 

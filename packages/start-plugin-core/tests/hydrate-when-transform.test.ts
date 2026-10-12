@@ -117,6 +117,94 @@ function loadVirtualHydrateModule(options: {
 }
 
 describe('Hydrate compiler transform', () => {
+  test.each(['client', 'server'] as const)(
+    'resolves spread props declared after their containing function in %s output',
+    (env) => {
+      const result = compileHydrate({
+        code: `import { Hydrate } from '@tanstack/react-start'
+export function Page() { return <Hydrate {...props}><p>child</p></Hydrate> }
+const props = { when: true, fallback: <p>server-fallback</p> }`,
+        id,
+        root,
+        env,
+      })
+      expect(result).not.toBeNull()
+      expect(result?.code).toContain('when: true')
+      if (env === 'client') {
+        expect(result?.code).not.toContain('.preload')
+        expect(result?.code).toContain('server-fallback')
+      } else {
+        expect(result?.code).not.toContain('server-fallback')
+      }
+    },
+  )
+
+  test.each(['client', 'server'] as const)(
+    'respects parenthesized split={false} in %s output',
+    (env) => {
+      const result = compileHydrate({
+        code: `import { Hydrate } from '@tanstack/react-start'; export function Page() { return <Hydrate split={(false)}>{() => <p>child</p>}</Hydrate> }`,
+        id,
+        root,
+        env,
+      })
+      expect(result).toBeNull()
+    },
+  )
+
+  test.each(['{...({ fallback: <p>server-fallback</p> })}', '{...(props)}'])(
+    'strips fallback from a parenthesized spread %s',
+    (spread) => {
+      const result = compileHydrate({
+        code: `import { Hydrate } from '@tanstack/react-start'; ${spread.includes('props') ? 'const props = ({ fallback: <p>server-fallback</p> });' : ''} export function Page() { return <Hydrate ${spread}><p>child</p></Hydrate> }`,
+        id,
+        root,
+        env: 'server',
+      })
+      expect(result).not.toBeNull()
+      expect(result?.code).not.toContain('server-fallback')
+    },
+  )
+
+  test('strips a statically computed fallback property from server output', () => {
+    const result = compileHydrate({
+      code: `import { Hydrate } from '@tanstack/react-start'; export function Page() { return <Hydrate {...{ ['fallback']: <p>server-fallback</p> }}><p>child</p></Hydrate> }`,
+      id,
+      root,
+      env: 'server',
+    })
+    expect(result).not.toBeNull()
+    expect(result?.code).not.toContain('server-fallback')
+  })
+
+  test.each(['{...({ when: true })}', '{...(props)}'])(
+    'avoids generating a preload callback for known props %s',
+    (spread) => {
+      const result = compileHydrate({
+        code: `import { Hydrate } from '@tanstack/react-start'; const props = ({ when: true }); export function Page() { return <Hydrate ${spread}><p>child</p></Hydrate> }`,
+        id,
+        root,
+        env: 'client',
+      })
+      expect(result).not.toBeNull()
+      expect(result?.code).not.toContain('.preload')
+    },
+  )
+
+  test.each([
+    ['{(() => <p>child</p>)}', /function-as-children/],
+    ['{(useThing)()}', /hooks/],
+  ])('rejects parenthesized unsafe extraction %s', (child, message) => {
+    expect(() =>
+      compileHydrate({
+        code: `import { Hydrate } from '@tanstack/react-start'; export function Page() { return <Hydrate>${child}</Hydrate> }`,
+        id,
+        root,
+        env: 'client',
+      }),
+    ).toThrow(message)
+  })
+
   test('splits Hydrate children behind a lazy import', () => {
     const result = compileHydrate({
       code: `

@@ -512,9 +512,120 @@ describe('compiler handles external import transforms', () => {
 
     expect(result).toBeNull()
   })
+
+  // Source: @vitejs/plugin-rsc transform fixtures (per row)
+  test.each([
+    {
+      // hoist/function-hoist-block.js: block-level functions are block scoped
+      name: 'past a function declared in a nested block',
+      body: `{
+    function renderThing() {}
+  }
+  return renderThing(<Card />)`,
+      transformed: true,
+    },
+    {
+      // scope/param-default-var-hoisting.js
+      name: 'in a parameter default next to a var of the same name',
+      params: `element = renderThing(<Card />)`,
+      body: `var renderThing = null
+  return element`,
+      transformed: true,
+    },
+    {
+      // hoist/catch-binding-shadow.js
+      name: 'in a try block whose catch parameter shadows it',
+      body: `try {
+    return renderThing(<Card />)
+  } catch (renderThing) {
+    return renderThing
+  }`,
+      transformed: true,
+    },
+    {
+      // hoist/var-hoist-block.js
+      name: 'after a var in a nested block shadows it',
+      body: `if (Math.random() < 2) {
+    var renderThing = (element) => element
+  }
+  return renderThing(<Card />)`,
+      transformed: false,
+    },
+    {
+      // scope/fn-decl-hoisting.js
+      name: 'before a hoisted function declaration shadows it',
+      body: `return renderThing(<Card />)
+  function renderThing(element) {
+    return element
+  }`,
+      transformed: false,
+    },
+    {
+      // scope/catch-param.js
+      name: 'in a catch block whose parameter shadows it',
+      body: `try {
+    throw (element) => element
+  } catch (renderThing) {
+    return renderThing(<Card />)
+  }`,
+      transformed: false,
+    },
+  ])(
+    'runs external transforms on a call $name only if it reads the import',
+    async ({ params = '', body, transformed }) => {
+      const compiler = createExternalTransformCompiler()
+
+      // The top-level call keeps the module transformed in every row.
+      const result = await compiler.compile({
+        code: `
+        import { renderThing } from '@example/runtime'
+        export const transformed = renderThing(<Card />)
+        export function render(${params}) {
+          ${body}
+        }
+      `,
+        id: '/test/src/routes/card.tsx',
+      })
+
+      expect(result).not.toBeNull()
+      const renderStart = result!.code.indexOf('function render(')
+      expect(renderStart).toBeGreaterThanOrEqual(0)
+      const render = result!.code.slice(renderStart)
+      expect(render.includes('injected: loadThing()')).toBe(transformed)
+    },
+  )
 })
 
 describe('server function provider module directives', () => {
+  test.each([
+    'export const Route = { component: Page }',
+    'export function Route() { return Page() }',
+    'export default function Route() { return Page() }',
+  ])(
+    'removes browser-only dependencies of stripped exports: %s',
+    async (route) => {
+      const compiler = createFullCompiler('server')
+      const result = await compiler.compile({
+        code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const getMessage = createServerFn().handler(() => 'server message')
+        const browserState = { window }
+        function Page() { return browserState }
+        ${route}
+      `,
+        id: '/test/src/routes/message.tsx?tss-serverfn-split',
+      })
+
+      expect(result).not.toBeNull()
+      expect(result!.code).toContain('server message')
+      expect(result!.code).toContain('createServerRpc')
+      expect(result!.code).not.toContain('window')
+      expect(result!.code).not.toContain('browserState')
+      expect(result!.code).not.toContain('Page')
+      expect(result!.code).not.toContain('Route')
+    },
+  )
+
   const code = `
     import { createServerFn } from '@tanstack/react-start'
 
@@ -1266,3 +1377,98 @@ describe('re-export chain resolution', () => {
     expect(updatedResult!.code).not.toContain('server-only-value')
   })
 })
+
+test('leaves unrelated SSR middleware chains to the bundler when a server function factory is present', async () => {
+  const compiler = new StartCompiler({
+    ...getDefaultTestOptions('server'),
+    env: 'server',
+    mode: 'build',
+    lookupKinds: getLookupKindsForEnv('server'),
+    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react'),
+    getKnownServerFns: () => ({}),
+    resolveId: async () => {
+      throw new Error(
+        'SSR host has no package import conditions for this unrelated binding',
+      )
+    },
+    loadModule: async () => {
+      throw new Error('Unexpected compiler dependency load')
+    },
+  })
+  const code = `import { createMiddleware, createServerFn } from '@tanstack/react-start';
+const middleware = createMiddleware({ type: 'function' }).server(({ next }) => next({ context: { role: 'admin' } }));
+export const factory = createServerFn().middleware([middleware]);`
+  await expect(
+    compiler.compile({
+      id: '/test/auth-wrapper.ts',
+      code,
+      detectedKinds: detectKindsInCode(code, 'server'),
+    }),
+  ).resolves.toBeNull()
+})
+
+test.each([
+  `(createServerOnlyFn)(() => 'server-value')`,
+  `(createIsomorphicFn)().server(() => 'server-value').client(() => 'client-value')`,
+  `(createIsomorphicFn().server(() => 'server-value')).client(() => 'client-value')`,
+])(
+  'compiles transparent parentheses around native call chains: %s',
+  async (expression) => {
+    const compiler = createFullCompiler('server')
+    const result = await compiler.compile({
+      id: '/test/parenthesized.ts',
+      code: `import { createServerOnlyFn, createIsomorphicFn } from '@tanstack/react-start'; export const fn = ${expression}`,
+    })
+
+    expect(result).not.toBeNull()
+    const evaluate = new Function(
+      `${result!.code.replace(/^import .+;$/gm, '').replace(/\bexport (?=const)/g, '')}\nreturn fn`,
+    )
+    expect(evaluate()()).toBe('server-value')
+  },
+)
+
+test('compiles a server function through a parenthesized namespace receiver', async () => {
+  const compiler = createFullCompiler('client')
+  const result = await compiler.compile({
+    id: '/test/namespace-parenthesized.ts',
+    code: `import * as Start from '@tanstack/react-start'; export const fn = (Start).createServerFn().handler(() => 'private-server-body')`,
+  })
+  expect(result).not.toBeNull()
+  expect(result!.code).not.toContain('private-server-body')
+  expect(result!.code).toContain('createClientRpc')
+})
+
+// The compiler currently mistakes the local parameter for the namespace import.
+// Keep the intended behavior executable until binding resolution is corrected.
+test.fails(
+  'preserves a shadowed parenthesized namespace receiver',
+  async () => {
+    const compiler = createFullCompiler('client')
+    const code = `import * as Start from '@tanstack/react-start'; export function fn(Start) { return (Start).createServerFn().handler(() => 'local-runtime-body') }`
+    const result = await compiler.compile({
+      id: '/test/shadowed-namespace.ts',
+      code,
+    })
+    const output = result?.code ?? code
+    expect(output).toContain('local-runtime-body')
+    expect(output).not.toContain('createClientRpc')
+  },
+)
+
+test.each([
+  `(Start).createServerOnlyFn(() => 'private-server-body')`,
+  `(Start).createIsomorphicFn().server(() => 'private-server-body').client(() => 'client-value')`,
+  `(Start).createMiddleware().server(() => 'private-server-body')`,
+])(
+  'removes server-only code through a parenthesized namespace: %s',
+  async (expression) => {
+    const compiler = createFullCompiler('client')
+    const result = await compiler.compile({
+      id: '/test/namespace-builtins.ts',
+      code: `import * as Start from '@tanstack/react-start'; export const fn = ${expression}`,
+    })
+    expect(result).not.toBeNull()
+    expect(result!.code).not.toContain('private-server-body')
+  },
+)

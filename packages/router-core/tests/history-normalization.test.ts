@@ -190,4 +190,26 @@ describe('history normalization boundaries', () => {
       }
     },
   )
+
+  test('reads a hash route that starts with a query once', async () => {
+    window.history.replaceState(null, '', '/shell#?x=1')
+    const history = createHashHistory()
+    try {
+      const root = new BaseRootRoute()
+      const index = new BaseRoute({ getParentRoute: () => root, path: '/' })
+      const router = createTestRouter({
+        routeTree: root.addChildren([index]),
+        history,
+        isServer: false,
+      })
+      await router.load()
+      expect(router.state.location.search).toEqual({ x: 1 })
+      // The query must not also be read as part of the pathname.
+      expect(router.state.location.href).toMatch(/^\/?\?x=1$/)
+      expect(router.state.matches.at(-1)?.routeId).toBe(index.id)
+    } finally {
+      history.destroy()
+      window.history.replaceState(null, '', '/')
+    }
+  })
 })

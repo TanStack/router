@@ -1,44 +1,28 @@
 import * as Vue from 'vue'
-import { _getAssetMatches } from '@tanstack/router-core'
+import {
+  composeSsrBodyScripts,
+  getSsrBodyScriptParts,
+} from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useSelector } from '@tanstack/vue-store'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+/**
+ * During streaming SSR, `<Scripts>` marks where late hydration scripts may
+ * begin to be inserted.
+ */
 export const Scripts = Vue.defineComponent({
   name: 'Scripts',
   setup() {
     const router = useRouter()
     const nonce = router.options.ssr?.nonce
-    const matches = useSelector(router.stores.matches, _getAssetMatches)
+    const matches = useSelector(router.stores.matches, (value) => value)
 
-    const scripts = Vue.computed(() => {
-      const userScripts: Array<RouterManagedTag> = []
-      const assetScripts: Array<RouterManagedTag> = []
-      const manifest = router.ssr?.manifest
-      for (const match of matches.value) {
-        for (const script of match.scripts ?? []) {
-          if (!script) {
-            continue
-          }
-          const { children, ...attrs } = script
-          userScripts.push({
-            tag: 'script',
-            attrs: { ...attrs, nonce },
-            children,
-          })
-        }
-        for (const asset of manifest?.routes[match.routeId]?.scripts ?? []) {
-          assetScripts.push({
-            tag: 'script',
-            attrs: { ...asset.attrs, nonce },
-            children: asset.children,
-          })
-        }
-      }
-      return [userScripts, assetScripts] as const
-    })
+    const scripts = Vue.computed(() =>
+      getSsrBodyScriptParts(matches.value, router.ssr?.manifest, nonce),
+    )
 
     const mounted = Vue.ref(false)
     Vue.onMounted(() => {
@@ -53,20 +37,21 @@ export const Scripts = Vue.defineComponent({
 
 function renderScripts(
   router: ReturnType<typeof useRouter>,
-  [scripts, assetScripts]: readonly [
-    Array<RouterManagedTag>,
-    Array<RouterManagedTag>,
-  ],
+  scriptParts: ReturnType<typeof getSsrBodyScriptParts>,
   mounted: boolean,
   nonce?: string,
 ) {
   const allScripts: Array<RouterManagedTag> = []
+  let streamBoundary: RouterManagedTag | undefined
+  const [scripts, assetScripts] = scriptParts
 
   if ((isServer ?? router.isServer) && router.serverSsr) {
-    const serverBufferedScript = router.serverSsr.takeBufferedScripts()
-    if (serverBufferedScript) {
-      allScripts.push(serverBufferedScript)
-    }
+    const initialHydrationScripts =
+      router.serverSsr.takeInitialHydrationScriptTags()
+    allScripts.push(
+      ...composeSsrBodyScripts(scriptParts, initialHydrationScripts),
+    )
+    return renderScriptTags(allScripts)
   } else if (router.ssr && !mounted) {
     allScripts.push({
       tag: 'script',
@@ -74,15 +59,14 @@ function renderScripts(
       children: '',
     } satisfies RouterManagedTag)
 
-    allScripts.push({
+    streamBoundary = {
       tag: 'script',
       attrs: {
         nonce,
-        id: '$tsr-stream-barrier',
         'data-allow-mismatch': true,
       },
       children: '',
-    } satisfies RouterManagedTag)
+    } satisfies RouterManagedTag
 
     for (const asset of assetScripts) {
       allScripts.push({
@@ -98,10 +82,18 @@ function renderScripts(
 
   allScripts.push(...scripts)
 
-  if (mounted || ((isServer ?? router.isServer) && router.serverSsr)) {
+  if (mounted) {
     allScripts.push(...assetScripts)
   }
 
+  if (streamBoundary) {
+    allScripts.push(streamBoundary)
+  }
+
+  return renderScriptTags(allScripts)
+}
+
+function renderScriptTags(allScripts: Array<RouterManagedTag>) {
   return (
     <>
       {allScripts.map((asset, i) => (

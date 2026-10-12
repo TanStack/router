@@ -31,6 +31,13 @@ export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
         if (OGWrap) {
           return Vue.h(OGWrap, null, () => children)
         }
+
+        // Returning the slot array creates an implicit Vue Fragment around the
+        // document. Preserve its sole VNode so `<html>` remains the outer root.
+        if (children?.length === 1) {
+          return children[0]
+        }
+
         return children
       }
     },

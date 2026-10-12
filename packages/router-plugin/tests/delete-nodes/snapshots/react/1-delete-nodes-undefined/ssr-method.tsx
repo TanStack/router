@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import crypto from 'node:crypto'
-
 export const Route = createFileRoute('/')({
   ssr() {
     if (crypto.randomInt(0, 2) === 0) {

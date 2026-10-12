@@ -244,7 +244,7 @@ chunks only exist when `split` is enabled, so TypeScript rejects strategy-form
 Use procedural prefetch when you need custom work:
 
 ```tsx
-import { useQueryClient } from '@tanstack/react-query'
+import { noop, useQueryClient } from '@tanstack/react-query'
 import { Hydrate } from '@tanstack/react-start'
 import { visible } from '@tanstack/react-start/hydration'
 
@@ -255,8 +255,10 @@ function DeferredReviews() {
     <Hydrate
       when={visible()}
       prefetch={async ({ preload }) => {
-        await preload()
-        await queryClient.prefetchQuery(reviewsQueryOptions)
+        await Promise.all([
+          preload(),
+          queryClient.query(reviewsQueryOptions).catch(noop),
+        ])
       }}
     >
       <Reviews />
