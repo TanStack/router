@@ -1407,7 +1407,7 @@ describe('function middleware', () => {
       })) as () => unknown,
       [
         createMiddleware({ type: 'function' })
-          .inputValidator((data: number) => data + 1)
+          .validator((data: number) => data + 1)
           .client(async ({ next }) => {
             const result = await next({
               context: { local: 'client' },
@@ -1475,7 +1475,7 @@ describe('function middleware', () => {
       (({ data }: { data: unknown }) => data) as () => unknown,
       [
         createMiddleware({ type: 'function' })
-          .inputValidator((data: number) => data * 10)
+          .validator((data: number) => data * 10)
           .client(({ next }) => next()),
       ],
     )
