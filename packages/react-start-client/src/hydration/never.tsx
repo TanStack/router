@@ -25,11 +25,14 @@ import type {
 const neverType = 'never'
 const neverPromise = new Promise<void>(() => {})
 
-function NeverGate(props: { children: React.ReactNode }) {
+function NeverGate(props: {
+  preserve?: boolean
+  children: React.ReactNode
+}) {
   if (
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    isServer ??
-    typeof window === 'undefined'
+    (isServer ?? typeof window === 'undefined') ||
+    !props.preserve
   ) {
     return props.children as React.JSX.Element
   }
@@ -44,6 +47,7 @@ function NeverGate(props: { children: React.ReactNode }) {
 }
 
 export function NeverHydrate(props: HydrateProps): React.JSX.Element {
+  const { onHydrated } = props
   const internalProps = props as InternalHydrateProps
   const hydrated = useHydrated()
   const reactId = React.useId()
@@ -54,12 +58,17 @@ export function NeverHydrate(props: HydrateProps): React.JSX.Element {
   shouldPreserveServerHTMLRef.current ??=
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') || !hydrated
+
+  React.useEffect(() => {
+    if (!shouldPreserveServerHTMLRef.current) {
+      onHydrated?.()
+    }
+  }, [onHydrated])
+
   const markerRef = React.useCallback(
     (element: HTMLDivElement | null) => {
       if (!element) return
-      if (!shouldPreserveServerHTMLRef.current) {
-        element.replaceChildren()
-      } else {
+      if (shouldPreserveServerHTMLRef.current) {
         saveFallbackHtml(id, element)
       }
     },
@@ -85,7 +94,9 @@ export function NeverHydrate(props: HydrateProps): React.JSX.Element {
   return (
     <div {...markerProps}>
       <React.Suspense fallback={fallback}>
-        <NeverGate>{props.children}</NeverGate>
+        <NeverGate preserve={shouldPreserveServerHTMLRef.current}>
+          {props.children}
+        </NeverGate>
       </React.Suspense>
     </div>
   )
