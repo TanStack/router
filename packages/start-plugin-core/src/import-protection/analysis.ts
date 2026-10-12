@@ -1,10 +1,14 @@
-import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
+import {
+  analyzeModule,
+  lineStarts,
+  sourcePosition,
+  unwrapExpression,
+} from '@tanstack/router-utils'
 import { is, isWrapper, literalValue, nameOf } from 'yuku-ast'
-import { buildLineIndex, indexToLineColumn } from './sourceLocation'
 import { getOrCreate } from './utils'
 import type * as t from '@yuku-toolchain/types'
 import type { Binding, Module } from 'yuku-analyzer'
-import type { LineIndex, TransformResult } from './sourceLocation'
+import type { TransformResult } from './sourceLocation'
 
 export type UsagePos = { line: number; column0: number }
 type BoundaryEnv = 'client' | 'server'
@@ -12,7 +16,6 @@ type UsageCacheKey = `${BoundaryEnv | 'post'}::${string}`
 
 export type ImportAnalysis = {
   module: Module
-  lineIndex: LineIndex
   importSourcesInOrder: Array<string>
   importSpecifierLocationIndex: Map<string, number>
   importBindingsBySource: Map<string, Set<Binding>>
@@ -187,12 +190,8 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
     mockExportNamesBySource.set(source, Array.from(names).sort())
   }
 
-  const lineIndex = result.lineIndex ?? buildLineIndex(result.code)
-  result.lineIndex = lineIndex
-
   const analysis = {
     module,
-    lineIndex,
     importSourcesInOrder,
     importSpecifierLocationIndex,
     importBindingsBySource,
@@ -399,8 +398,12 @@ function findUsagePosInAnalysis(
       continue
     }
     const { node: expression, parent } = transparentParent(module, node)
-    const { line, column } = indexToLineColumn(analysis.lineIndex, node.start)
-    const pos = { line, column0: column - 1 }
+    const { line, column } = sourcePosition(
+      result.code,
+      node.start,
+      (result.lineStarts ??= lineStarts(result.code)),
+    )
+    const pos = { line, column0: column }
     const isPreferred =
       ((is.CallExpression(parent) || is.NewExpression(parent)) &&
         parent.callee === expression) ||

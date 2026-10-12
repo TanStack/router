@@ -1,5 +1,6 @@
 import { SourceMapConsumer } from 'source-map'
 import * as path from 'pathe'
+import { lineStarts, sourceLines, sourcePosition } from '@tanstack/router-utils'
 
 import {
   findOriginalUnsafeUsagePosFromResult,
@@ -40,8 +41,8 @@ export interface TransformResult {
   map: SourceMapLike | undefined
   originalCode: string | undefined
   originalResult?: TransformResult
-  /** Precomputed line index for `code` (index → line/col). */
-  lineIndex?: LineIndex
+  /** `lineStarts(code)`, to convert offsets in `code` to line/column. */
+  lineStarts?: Array<number>
   analyzedModule?: Module
   analysis?: ImportAnalysis
   perf?: ImportProtectionPerfRecorder
@@ -59,57 +60,6 @@ export interface TransformResultProvider {
 
 export interface ImportSpecifierLocationIndex {
   find: FindImportSpecifierLocationIndex
-}
-
-// Index → line/column conversion
-
-export type LineIndex = {
-  offsets: Array<number>
-}
-
-export function buildLineIndex(code: string): LineIndex {
-  const offsets: Array<number> = [0]
-  for (let i = 0; i < code.length; i++) {
-    if (code.charCodeAt(i) === 10) {
-      offsets.push(i + 1)
-    }
-  }
-  return { offsets }
-}
-
-function upperBound(values: Array<number>, x: number): number {
-  let lo = 0
-  let hi = values.length
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1
-    if (values[mid]! <= x) lo = mid + 1
-    else hi = mid
-  }
-  return lo
-}
-
-function indexToLineColWithIndex(
-  lineIndex: LineIndex,
-  idx: number,
-): { line: number; column0: number } {
-  const offsets = lineIndex.offsets
-  const ub = upperBound(offsets, idx)
-  const lineIdx = Math.max(0, ub - 1)
-  const line = lineIdx + 1
-
-  const lineStart = offsets[lineIdx] ?? 0
-  return { line, column0: Math.max(0, idx - lineStart) }
-}
-
-export function indexToLineColumn(
-  lineIndex: LineIndex,
-  idx: number,
-): { line: number; column: number } {
-  const { line, column0 } = indexToLineColWithIndex(lineIndex, idx)
-  return {
-    line,
-    column: column0 + 1,
-  }
 }
 
 export function normalizeSourceMap(map: SourceMapLike | null | undefined):
@@ -417,17 +367,22 @@ export async function findImportStatementLocationFromTransformed(
 
     const { map } = res
 
-    const lineIndex =
-      res.lineIndex ?? (res.lineIndex = buildLineIndex(res.code))
-
     const idx = findImportSpecifierLocationIndex(res, source)
     if (idx === -1) {
       importLocCache.set(cacheKey, null)
       return undefined
     }
 
-    const generated = indexToLineColWithIndex(lineIndex, idx)
-    const loc = await mapGeneratedToOriginal(map, generated, importerFile)
+    const { line, column } = sourcePosition(
+      res.code,
+      idx,
+      (res.lineStarts ??= lineStarts(res.code)),
+    )
+    const loc = await mapGeneratedToOriginal(
+      map,
+      { line, column0: column },
+      importerFile,
+    )
     importLocCache.set(cacheKey, loc)
     return loc
   } catch {
@@ -450,11 +405,7 @@ export async function findPostCompileUsageLocation(
     const importerFile = normalizeFilePath(importerId)
     const res = provider.getTransformResult(importerId)
     if (!res) return undefined
-    const { code, map } = res
-
-    if (!res.lineIndex) {
-      res.lineIndex = buildLineIndex(code)
-    }
+    const { map } = res
 
     const pos = findPostCompileUsagePosFromResult(res, source)
     if (!pos) return undefined
@@ -569,12 +520,7 @@ export function buildCodeSnippet(
 
     if (targetLine < 1) return undefined
 
-    const allLines = sourceCode.split('\n')
-    // Strip trailing \r from \r\n line endings
-    for (let i = 0; i < allLines.length; i++) {
-      const line = allLines[i]!
-      if (line.endsWith('\r')) allLines[i] = line.slice(0, -1)
-    }
+    const allLines = sourceLines(sourceCode)
 
     const wantStart = Math.max(1, targetLine - contextLines)
     const wantEnd = Math.min(allLines.length, targetLine + contextLines)

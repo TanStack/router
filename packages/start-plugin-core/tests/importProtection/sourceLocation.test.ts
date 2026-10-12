@@ -5,7 +5,6 @@ import {
   ImportLocCache,
   addTraceImportLocations,
   buildCodeSnippet,
-  buildLineIndex,
   findImportStatementLocationFromTransformed,
   findOriginalUsageLocation,
   findPostCompileUsageLocation,
@@ -123,29 +122,6 @@ describe('pickOriginalCodeFromSourcesContent', () => {
     )
 
     expect(picked).toBeUndefined()
-  })
-})
-
-describe('buildLineIndex', () => {
-  test('single line — one offset at 0', () => {
-    const idx = buildLineIndex('hello')
-    expect(idx.offsets).toEqual([0])
-  })
-
-  test('multiple lines', () => {
-    const idx = buildLineIndex('a\nb\nc')
-    // Lines start at offsets 0, 2, 4
-    expect(idx.offsets).toEqual([0, 2, 4])
-  })
-
-  test('empty string', () => {
-    const idx = buildLineIndex('')
-    expect(idx.offsets).toEqual([0])
-  })
-
-  test('trailing newline', () => {
-    const idx = buildLineIndex('a\n')
-    expect(idx.offsets).toEqual([0, 2])
   })
 })
 
@@ -512,8 +488,10 @@ export const Page = ({ shape }: Props) => <div title="é">{getSecret(shape)}</di
     column: original.split('\n')[2]!.indexOf("'./secret.server'") + 1,
   }
 
-  async function createProvider(): Promise<TransformResultProvider> {
-    const output = await transformWithOxc(original, file, {
+  async function createProvider(
+    source = original,
+  ): Promise<TransformResultProvider> {
+    const output = await transformWithOxc(source, file, {
       jsx: 'preserve',
       sourcemap: true,
     })
@@ -524,7 +502,7 @@ export const Page = ({ shape }: Props) => <div title="é">{getSecret(shape)}</di
         file: undefined,
         sourceRoot: '/root/',
         sources: ['src/page.tsx'],
-        sourcesContent: [original],
+        sourcesContent: [source],
       },
       originalCode: undefined,
       filename: file,
@@ -592,4 +570,72 @@ export const Page = ({ shape }: Props) => <div title="é">{getSecret(shape)}</di
       { file, specifier: './types', line: 1, column: 1 },
     ])
   })
+
+  // Oxc source maps, like Yuku's, end lines at `\r`, `\r\n`, U+2028 and
+  // U+2029 too, so locations read from the original code must count lines
+  // the same way.
+  test.each([
+    { name: 'CRLF', header: '// header', newline: '\r\n', line: 2 },
+    { name: 'CR', header: '// header', newline: '\r', line: 2 },
+    {
+      name: 'U+2028 in a string',
+      header: 'const note = "a\u2028b"',
+      newline: '\n',
+      line: 3,
+    },
+    {
+      name: 'U+2029 in a comment',
+      header: '/* a\u2029b */',
+      newline: '\n',
+      line: 3,
+    },
+  ])(
+    'locations and code snippets agree on lines after $name',
+    async ({ header, newline, line }) => {
+      const importLine = "import { getSecret } from './secret.server'"
+      const usageLine = 'export const Page = () => getSecret()'
+      const source = [header, importLine, usageLine, ''].join(newline)
+      const provider = await createProvider(source)
+      const importLoc = {
+        file,
+        line,
+        column: importLine.indexOf("'./secret.server'") + 1,
+      }
+      const usageLoc = {
+        file,
+        line: line + 1,
+        column: usageLine.indexOf('getSecret(') + 1,
+      }
+      expect(
+        await findImportStatementLocationFromTransformed(
+          provider,
+          file,
+          './secret.server',
+          new ImportLocCache(),
+          findSpecifier(),
+        ),
+      ).toEqual(importLoc)
+      expect(
+        await findPostCompileUsageLocation(provider, file, './secret.server'),
+      ).toEqual(usageLoc)
+      expect(
+        findOriginalUsageLocation(
+          provider,
+          file,
+          './secret.server',
+          'client',
+          '/root',
+        ),
+      ).toEqual(usageLoc)
+      for (const [loc, text] of [
+        [importLoc, importLine],
+        [usageLoc, usageLine],
+      ] as const) {
+        const snippet = buildCodeSnippet(provider, file, loc, 1, '/root')
+        expect(snippet?.lines.find((l) => l.startsWith('  >'))).toBe(
+          `  > ${loc.line} | ${text}`,
+        )
+      }
+    },
+  )
 })

@@ -342,6 +342,27 @@ export function make(createServerFn) {
   )
 })
 
+test.each(['\n', '\r\n', '\r', '\u2028', '\u2029'])(
+  'the code frame of a rejected call points at its line after %j line endings',
+  async (newline) => {
+    const code = [
+      `import { createServerFn } from '@tanstack/react-start'`,
+      '// note',
+      'createServerFn().handler(() => 1)',
+    ].join(newline)
+    const error = await compileCode('client', code).catch(
+      (thrown: Error) => thrown,
+    )
+    expect((error as Error).message).toBe(
+      [
+        '2 | // note',
+        '3 | createServerFn().handler(() => 1)',
+        '  | ^ createServerFn must be assigned to a variable!',
+      ].join('\n'),
+    )
+  },
+)
+
 describe('factories resolved through project modules', () => {
   test.each<{
     name: string

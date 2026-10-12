@@ -72,10 +72,46 @@ export interface AnalyzeModuleOptions {
   filename?: string
 }
 
-/** One-based line and zero-based UTF-16 column at a source offset. */
-export function sourcePosition(code: string, offset: number) {
-  const lines = code.slice(0, offset).split(/\r\n|[\n\r\u2028\u2029]/)
-  return { line: lines.length, column: lines[lines.length - 1]!.length }
+/**
+ * JavaScript line terminators, as counted by parsers and by Yuku and Oxc
+ * source maps.
+ */
+const lineTerminator = /\r\n|[\n\r\u2028\u2029]/g
+
+/** The lines of `code`, without their terminators. */
+export function sourceLines(code: string): Array<string> {
+  return code.split(lineTerminator)
+}
+
+/** The offset at which each line of `code` starts. */
+export function lineStarts(code: string): Array<number> {
+  const starts = [0]
+  for (const match of code.matchAll(lineTerminator)) {
+    starts.push(match.index + match[0].length)
+  }
+  return starts
+}
+
+/**
+ * One-based line and zero-based UTF-16 column at a source offset. Pass the
+ * code's `lineStarts` to look up several offsets.
+ */
+export function sourcePosition(
+  code: string,
+  offset: number,
+  starts: ReadonlyArray<number> = lineStarts(code),
+) {
+  let low = 0
+  let high = starts.length - 1
+  while (low < high) {
+    const middle = (low + high + 1) >> 1
+    if (starts[middle]! <= offset) {
+      low = middle
+    } else {
+      high = middle - 1
+    }
+  }
+  return { line: low + 1, column: offset - starts[low]! }
 }
 
 /** Insert statements without displacing the module's directive prologue. */

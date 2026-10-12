@@ -1,5 +1,27 @@
 import { expect, test } from 'vitest'
-import { analyzeModule } from '../src'
+import { analyzeModule, lineStarts, sourceLines, sourcePosition } from '../src'
+
+test.each(['\n', '\r\n', '\r', '\u2028', '\u2029'])(
+  'counts %j as one line terminator in positions and lines',
+  (newline) => {
+    const code = `a${newline}😀b${newline}${newline}c`
+    expect(sourceLines(code)).toEqual(['a', '😀b', '', 'c'])
+    expect(sourcePosition(code, code.indexOf('b'))).toEqual({
+      line: 2,
+      column: 2,
+    })
+    const starts = lineStarts(code)
+    expect(starts).toHaveLength(4)
+    expect(sourcePosition(code, code.indexOf('c'), starts)).toEqual({
+      line: 4,
+      column: 0,
+    })
+    expect(sourcePosition(code, code.length, starts)).toEqual({
+      line: 4,
+      column: 1,
+    })
+  },
+)
 
 test.each(['\n', '\r\n', '\r', '\u2028', '\u2029'])(
   'reports actionable syntax locations with %j line endings and Unicode source',

@@ -12,6 +12,8 @@ export {
   generatedReferenceOf,
   prependStatements,
   sourcePosition,
+  sourceLines,
+  lineStarts,
 } from './ast'
 export type { AnalyzeModuleOptions, GenerateResult } from './ast'
 export { logDiff } from './logger'

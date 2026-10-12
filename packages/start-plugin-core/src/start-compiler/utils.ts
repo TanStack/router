@@ -1,6 +1,7 @@
 import { CHILD_KEYS, b, is, isWrapper, walk } from 'yuku-ast'
 import {
   linkGeneratedReference,
+  sourceLines,
   sourcePosition,
   unwrapExpression,
 } from '@tanstack/router-utils'
@@ -13,16 +14,13 @@ import type {
 } from '@yuku-toolchain/types'
 import type { StartCompilerTransformContext } from '../types'
 
-/** JavaScript line terminators, as counted by editors and parsers. */
-const lineTerminator = /\r\n|[\n\r\u2028\u2029]/
-
 export function codeFrameError(
   code: string,
   node: Pick<Node, 'start' | 'end'>,
   message: string,
 ) {
   const start = sourcePosition(code, node.start)
-  const lines = code.split(lineTerminator)
+  const lines = sourceLines(code)
   const frame = lines
     .slice(Math.max(0, start.line - 2), start.line + 1)
     .map((line, index) => {
