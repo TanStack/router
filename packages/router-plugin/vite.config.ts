@@ -1,8 +1,10 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
+import { astTemplatesPlugin } from './ast-templates-plugin'
 
 const config = defineConfig({
+  plugins: [astTemplatesPlugin()],
   test: {
     name: packageJson.name,
     dir: './tests',

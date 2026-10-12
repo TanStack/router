@@ -8,16 +8,18 @@ import {
   createNonReactiveReadonlyStore,
   trimPathRight,
 } from '@tanstack/router-core'
+import { generateModule } from '@tanstack/router-utils'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Fragment, act, createElement } from 'react'
 import { createPortal } from 'react-dom'
 import { createRoot } from 'react-dom/client'
+import { b } from 'yuku-ast'
 import { createMemoryHistory } from '../../history/src'
 import { HeadContent } from '../../react-router/src/HeadContent'
 import { RouterContextProvider } from '../../react-router/src/RouterProvider'
 import { Scripts } from '../../react-router/src/Scripts'
 import { Router as ReactRouter } from '../../react-router/src/router'
-import { getHandleRouteUpdateCode } from '../src/core/hmr'
+import { createHandleRouteUpdate } from '../src/core/hmr'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 
 vi.mock('@tanstack/router-core/isServer', async (importOriginal) => ({
@@ -32,7 +34,16 @@ const getStoreConfig: GetStoreConfig = () => ({
 })
 
 const getHandleRouteUpdate = () => {
-  return new Function(`return ${getHandleRouteUpdateCode([])}`)() as (
+  const { code } = generateModule(
+    b.Program({
+      sourceType: 'module',
+      hashbang: null,
+      body: [
+        b.ExpressionStatement({ expression: createHandleRouteUpdate([]) }),
+      ],
+    }),
+  )
+  return new Function(`return ${code}`)() as (
     routeId: string,
     newRoute: AnyRoute,
   ) => void

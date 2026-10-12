@@ -4,14 +4,10 @@ import { lazyRouteComponent } from '@tanstack/react-router'
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { fetchPosts } from '../posts'
-const TSRSplitComponent = (() => {
-  const hot = import.meta.hot
-  const hotData = hot ? (hot.data ??= {}) : undefined
-  return (
-    hotData?.['tsr-split-component:component'] ??
-    lazyRouteComponent($$splitComponentImporter, 'component')
-  )
-})()
+const TSRSplitComponent =
+  (import.meta.hot
+    ? (import.meta.hot.data ??= {})['tsr-split-component:component']
+    : undefined) ?? lazyRouteComponent($$splitComponentImporter, 'component')
 if (import.meta.hot) {
   ;(import.meta.hot.data ??= {})['tsr-split-component:component'] =
     TSRSplitComponent
@@ -47,39 +43,24 @@ if (import.meta.hot) {
     if (!oldRoute) {
       return
     }
-    // Generated route-tree options are not present on the freshly imported route
-    // module, but they must stay on the live route before rebuilding indexes.
-    const generatedRouteOptionKeys = new Set(['id', 'path', 'getParentRoute'])
+    const generatedRouteOptionKeys = ['id', 'path', 'getParentRoute']
     const generatedRouteOptions = {}
     generatedRouteOptionKeys.forEach((key) => {
       if (key in oldRoute.options) {
         generatedRouteOptions[key] = oldRoute.options[key]
       }
     })
-    const oldHasShellComponent = 'shellComponent' in oldRoute.options
-    const newHasShellComponent = 'shellComponent' in newRoute.options
-    const preserveComponentIdentity =
-      oldHasShellComponent === newHasShellComponent
-    // Keys whose identity must remain stable to prevent React from
-    // unmounting/remounting the component tree.  React Fast Refresh already
-    // handles hot-updating the function bodies of these components — our job
-    // is only to update non-component route options (loader, head, etc.).
-    // For code-split (splittable) routes, the lazyRouteComponent wrapper is
-    // already cached in the bundler hot data so its identity is stable.
-    // For unsplittable routes (e.g. root routes), the component is a plain
-    // function reference that gets recreated on every module re-execution,
-    // so we must explicitly preserve the old reference.
-    // Preserve component identity so React doesn't remount.
-    // React Fast Refresh patches the function bodies in-place.
-    const componentKeys = [
-      'component',
-      'shellComponent',
-      'pendingComponent',
-      'errorComponent',
-      'notFoundComponent',
-    ]
-    if (preserveComponentIdentity) {
-      componentKeys.forEach((key) => {
+    if (
+      'shellComponent' in oldRoute.options ===
+      'shellComponent' in newRoute.options
+    ) {
+      ;[
+        'component',
+        'shellComponent',
+        'pendingComponent',
+        'errorComponent',
+        'notFoundComponent',
+      ].forEach((key) => {
         if (key in oldRoute.options && key in newRoute.options) {
           newRoute.options[key] = oldRoute.options[key]
         }
@@ -90,20 +71,14 @@ if (import.meta.hot) {
     oldRoute.update(nextOptions)
     router._replaceRouteChunk(oldRoute, newRoute.lazyFn)
     router.setRoutes(router.buildRouteTree())
-    syncHotRouteExport(oldRoute)
+    newRoute.options = oldRoute.options
+    newRoute.parentRoute = oldRoute.parentRoute
+    newRoute._path = oldRoute._path
+    newRoute._id = oldRoute._id
+    newRoute._fullPath = oldRoute._fullPath
+    newRoute._to = oldRoute._to
     router.resolvePathCache.clear()
-    void router._refreshRoute?.()
-    function syncHotRouteExport(liveRoute) {
-      // routeTree.gen.ts mutates the original module export with generated
-      // routing state. Mirror that state onto the fresh HMR export too, so
-      // aliased route imports keep working after the module is hot-reloaded.
-      newRoute.options = liveRoute.options
-      newRoute.parentRoute = liveRoute.parentRoute
-      newRoute._path = liveRoute._path
-      newRoute._id = liveRoute._id
-      newRoute._fullPath = liveRoute._fullPath
-      newRoute._to = liveRoute._to
-    }
+    router._refreshRoute?.()
   }
   const initialRouteId = Route.id ?? hotData['tsr-route-id']
   if (initialRouteId) {
@@ -118,7 +93,7 @@ if (import.meta.hot) {
     hotData['tsr-route-update-handled'] = Route
   }
   hot.accept((newModule) => {
-    if (Route && newModule && newModule.Route) {
+    if (Route && newModule?.Route) {
       const routeId = hotData['tsr-route-id'] ?? Route.id
       if (routeId) {
         hotData['tsr-route-id'] = routeId
