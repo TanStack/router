@@ -31,6 +31,28 @@ export * from './virtual-modules'
 
 export { HEADERS } from './constants'
 
+export {
+  createRobotsHandler,
+  createSitemapHandler,
+  createSitemapIndexHandler,
+  renderRobots,
+  renderSitemap,
+  renderSitemapIndex,
+  SITEMAP_MAX_URLS,
+} from './metadata-routes'
+export type {
+  MetadataHandlerOptions,
+  RenderMetadataOptions,
+  Robots,
+  RobotsRule,
+  Sitemap,
+  SitemapChangeFrequency,
+  SitemapEntry,
+  SitemapIndex,
+  SitemapIndexEntry,
+  SitemapVideo,
+} from './metadata-routes'
+
 export type { RequestHandler, RequestOptions } from './request-handler'
 
 export type { SessionConfig } from './session'
