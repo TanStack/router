@@ -6,6 +6,10 @@ description: Upgrade a TanStack Start release-candidate app to the first stable 
 
 `@tanstack/react-start` 1.169 is the first stable release of TanStack Start. Upgrading from a release candidate means replacing the removed APIs below and checking the behavior changes that apply to your app.
 
+## Vite 8
+
+Start requires Vite 8 when you build with Vite. Upgrade with Vite's [migration guide](https://vite.dev/guide/migration).
+
 ## Removed APIs
 
 | Removed                                                | Use instead                                                                                                                                                                                                                                                                     |
