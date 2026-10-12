@@ -276,6 +276,8 @@ export default defineConfig({
 
 <!-- ::end:tabs -->
 
+Each entry's `lastmod` defaults to the build date; a page's own `sitemap.lastmod` (in `pages`) takes precedence. For reproducible builds, set [`SOURCE_DATE_EPOCH`](https://reproducible-builds.org/specs/source-date-epoch/) (seconds since the Unix epoch): the sitemap and `pages.json` then use that timestamp instead of the wall clock, so building the same sources again yields the same files.
+
 The sitemap is generated at build time by crawling all discoverable pages from your routes. This is the recommended approach for static or mostly-static sites.
 
 ### Static Sitemap
