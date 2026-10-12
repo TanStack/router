@@ -7,6 +7,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { normalize } from 'pathe'
 import { afterEach, describe, expect, test } from 'vitest'
 import { resolveStartEntryPlan } from '../src/planning'
 import { parseStartConfig as parseRsbuildStartConfig } from '../src/rsbuild/schema'
@@ -78,7 +79,7 @@ describe('server entry planning', () => {
       defaultEntryPaths,
     })
 
-    expect(plan.entryPaths.server).toBe(realpathSync(serverEntry))
+    expect(plan.entryPaths.server).toBe(normalize(realpathSync(serverEntry)))
   })
 
   test.each([
@@ -109,7 +110,7 @@ describe('server entry planning', () => {
         defaultEntryPaths,
       })
 
-      expect(plan.entryPaths.server).toBe(realpathSync(serverEntry))
+      expect(plan.entryPaths.server).toBe(normalize(realpathSync(serverEntry)))
     },
   )
 })
