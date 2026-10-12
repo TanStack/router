@@ -171,6 +171,37 @@ function declarationIndex(
   return { declarations, declarationBindings, patternElements }
 }
 
+/**
+ * The nearest source node, from `node` up, that `owners` maps: the code of a
+ * source reference executes as part of it. Memoized per lookup function.
+ */
+function enclosingOwner(
+  module: Module,
+  owners: (node: Node) => Set<Binding> | undefined,
+) {
+  const cache = new Map<Node, Node | null>()
+  return (node: Node | null): Node | null => {
+    const path: Array<Node> = []
+    let owner: Node | null | undefined
+    for (let current = node; owner === undefined; ) {
+      if (!current) {
+        owner = null
+      } else if (cache.has(current)) {
+        owner = cache.get(current)!
+      } else if (owners(current)) {
+        owner = current
+      } else {
+        path.push(current)
+        current = module.parentOf(current)
+      }
+    }
+    for (const current of path) {
+      cache.set(current, owner)
+    }
+    return owner
+  }
+}
+
 /** Bindings sharing a declarator are one initialization unit. */
 export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
   const { declarations, declarationBindings } = declarationIndex(
@@ -178,16 +209,36 @@ export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
     module.rootScope.bindings,
   )
   const dependencies = new Map<Binding, Set<Binding>>()
-  for (const [declaration, owners] of declarationBindings) {
-    const references = collectModuleReferences(module, declaration)
+  for (const owners of declarationBindings.values()) {
     for (const binding of owners) {
-      const combined = dependencies.get(binding) ?? new Set<Binding>()
-      for (const reference of references) {
-        if (reference !== binding) {
-          combined.add(reference)
+      if (!dependencies.has(binding)) {
+        dependencies.set(binding, new Set())
+      }
+    }
+  }
+  const enclosing = enclosingOwner(module, (node) =>
+    declarationBindings.get(node),
+  )
+  for (const reference of module.references) {
+    const target = reference.binding
+    if (
+      !target ||
+      reference.inTypePosition ||
+      target.scope !== module.rootScope
+    ) {
+      continue
+    }
+    // Every declaration enclosing the reference uses its target
+    for (
+      let declaration = enclosing(reference.node);
+      declaration;
+      declaration = enclosing(module.parentOf(declaration))
+    ) {
+      for (const binding of declarationBindings.get(declaration)!) {
+        if (binding !== target) {
+          dependencies.get(binding)!.add(target)
         }
       }
-      dependencies.set(binding, combined)
     }
   }
   return { declarations, declarationBindings, dependencies }
@@ -308,6 +359,30 @@ function addEdge(
   edges.set(from, targets)
 }
 
+/** The identifiers an `export` statement declares, its specifiers aside. */
+function exportedIdentifiers(node: Node): Array<Node> {
+  if (is.ExportNamedDeclaration(node) && node.declaration) {
+    const declaration = node.declaration
+    if (is.VariableDeclaration(declaration)) {
+      return declaration.declarations.flatMap((item) =>
+        bindingIdentifiers(item.id),
+      )
+    }
+    if ('id' in declaration && declaration.id) {
+      return [declaration.id]
+    }
+  }
+  if (
+    is.ExportDefaultDeclaration(node) &&
+    (is.FunctionDeclaration(node.declaration) ||
+      is.ClassDeclaration(node.declaration)) &&
+    node.declaration.id
+  ) {
+    return [node.declaration.id]
+  }
+  return []
+}
+
 /**
  * Runtime uses only: TypeScript erases types, so they neither use a declaration
  * nor keep it alive; erased references to imports are recorded apart.
@@ -383,25 +458,8 @@ function collectBindingUses(
           }
         }
       }
-      if (is.ExportNamedDeclaration(node) && node.declaration) {
-        const declaration = node.declaration
-        if (is.VariableDeclaration(declaration)) {
-          for (const item of declaration.declarations) {
-            for (const identifier of bindingIdentifiers(item.id)) {
-              markExport(owner, identifier)
-            }
-          }
-        } else if ('id' in declaration && declaration.id) {
-          markExport(owner, declaration.id)
-        }
-      }
-      if (
-        is.ExportDefaultDeclaration(node) &&
-        (is.FunctionDeclaration(node.declaration) ||
-          is.ClassDeclaration(node.declaration)) &&
-        node.declaration.id
-      ) {
-        markExport(owner, node.declaration.id)
+      for (const identifier of exportedIdentifiers(node)) {
+        markExport(owner, identifier)
       }
       if (is.ExportSpecifier(node)) {
         markExport(owner, node.local)
@@ -448,7 +506,11 @@ function collectBindingUses(
  * effects, or for the TypeScript transform to erase, as imports only used in
  * types (except a classic JSX runtime's `React`, which JSX needs).
  */
-function findInitiallyUnused({ present, roots, uses }: BindingUses) {
+function findInitiallyUnused({
+  present,
+  roots,
+  uses,
+}: Pick<BindingUses, 'present' | 'roots' | 'uses'>) {
   // Tarjan's strongly connected components, iterative to bound stack depth
   const order = new Map<Binding, number>()
   const lowLink = new Map<Binding, number>()
@@ -529,19 +591,85 @@ interface InitiallyUnused {
   erased: Set<Binding>
 }
 
+/**
+ * `collectBindingUses` of the unedited source, read from Yuku's reference
+ * tables instead of a walk: each use belongs to the innermost declaration or
+ * destructuring element enclosing it.
+ */
+function collectSourceUses(
+  module: Module,
+  index: DeclarationIndex,
+  factories: JsxFactoryNames,
+): Pick<BindingUses, 'present' | 'roots' | 'uses'> {
+  const present = new Set<Binding>()
+  for (const owners of index.declarationBindings.values()) {
+    for (const binding of owners) {
+      present.add(binding)
+    }
+  }
+  const roots = new Set<Binding>()
+  const uses = new Map<Binding, Set<Binding>>()
+  const ownersOf = (node: Node) =>
+    index.declarationBindings.get(node) ?? index.patternElements.get(node)
+  const enclosing = enclosingOwner(module, ownersOf)
+  const use = (node: Node, binding: Binding) => {
+    const owner = enclosing(node)
+    if (!owner) {
+      roots.add(binding)
+      return
+    }
+    for (const source of ownersOf(owner)!) {
+      addEdge(uses, source, binding)
+    }
+  }
+  for (const reference of module.references) {
+    if (!reference.inTypePosition && reference.binding) {
+      use(reference.node, reference.binding)
+    }
+  }
+  // `export` statements live in the module body and in namespace bodies
+  const bodies = [module.ast.body]
+  for (const scope of module.scopes) {
+    if (is.TSModuleBlock(scope.node)) {
+      bodies.push(scope.node.body)
+    }
+  }
+  for (const body of bodies) {
+    for (const statement of body) {
+      const exported = exportedIdentifiers(statement)
+      if (is.ExportNamedDeclaration(statement)) {
+        exported.push(
+          ...statement.specifiers.map((specifier) => specifier.local),
+        )
+      }
+      for (const identifier of exported) {
+        const binding = module.bindingOf(identifier)
+        if (binding) {
+          use(statement, binding)
+        }
+      }
+    }
+  }
+  // A classic JSX runtime's pragma factories are uses of every JSX node
+  if (factories.fragment.length) {
+    for (const node of module.findAll(['JSXElement', 'JSXFragment'])) {
+      for (const name of jsxFactoriesOf(factories, node)) {
+        const factory = module.lookup(name, { from: module.scopeOf(node) })
+        if (factory) {
+          use(node, factory)
+        }
+      }
+    }
+  }
+  return { present, roots, uses }
+}
+
 function initiallyUnused(
   module: Module,
   index: DeclarationIndex,
   factories: JsxFactoryNames,
 ): InitiallyUnused {
-  const uses = collectBindingUses(
-    module,
-    module.ast,
-    index,
-    factories,
-    (node) => node,
-  )
-  const all = findInitiallyUnused(uses)
+  const all = findInitiallyUnused(collectSourceUses(module, index, factories))
   const erased = new Set(
     [...all].filter(
       (binding) =>
