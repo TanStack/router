@@ -236,9 +236,6 @@ interface MiddlewareResponseOwnership {
   streamResponse?: StreamSsrResponse
 }
 
-// Entries are released with their response; the map is never cleared by hand.
-const responseBodySources = new WeakMap<Response, Response>()
-
 function disposeResponseResult(result: TODO, reason: unknown): void {
   const response = getResponseFromResult(result)
   if (isSsrResponse(response) || response instanceof Response) {
@@ -247,32 +244,19 @@ function disposeResponseResult(result: TODO, reason: unknown): void {
 }
 
 /**
- * Marks `response` as directly derived from the current `source`.
- * Preserves the transport headers required to decode the source body.
- * The new response's headers remain a fresh base for response helper writes.
- * Middleware must consume or cancel any other `clone()` or `tee()` branches.
+ * A new body continues the owned one when it is the same stream, or when the
+ * owned body is already being read, as by a pipe, a tee, or a `Response` that
+ * copies a body by reading it (Bun, or a wrapped global `Response`). Start
+ * cannot tell such a reader from one that stops early, so it disposes only an
+ * unread body. A stream whose reader stops early ends with the request's abort
+ * or the SSR stream's lifetime limit.
  */
-export function transferResponseBodyOwnership<TResponse extends Response>(
-  source: Response,
-  response: TResponse,
-): TResponse {
-  if (!source.body || !response.body) {
-    throw new Error('Response body ownership requires two response bodies')
-  }
-  responseBodySources.set(response, source)
-  transferResponseProtocol(source, response)
-  return response
-}
-
 function inheritsResponseOwnership(
   ownership: MiddlewareResponseOwnership,
-  candidate: Response,
   body: ResponseBody,
 ): boolean {
-  return (
-    body === ownership.response.body ||
-    responseBodySources.get(candidate) === ownership.response
-  )
+  const ownedBody = ownership.response.body
+  return body === ownedBody || ownedBody.locked
 }
 
 function disposeResponseOwnership(
@@ -350,11 +334,7 @@ async function executeMiddleware(
     }
     if (current && current.response === exposed) {
       current.streamResponse ??= streamResponse
-    } else if (
-      current &&
-      body &&
-      inheritsResponseOwnership(current, response, body)
-    ) {
+    } else if (current && body && inheritsResponseOwnership(current, body)) {
       // A wrapper around the same body stream carries the same encoded bytes,
       // so it keeps the transport requirements that decode them.
       if (body === current.response.body) {
@@ -414,14 +394,17 @@ async function executeMiddleware(
     }
   }
 
-  // Start may rebuild a response around the same body; the rebuilt response
-  // takes over its ownership.
+  // Start rebuilds the owned response around its body, or without a body when
+  // the response cannot have one. A rebuilt body takes over ownership without
+  // comparing streams: a wrapped global `Response` copies it into a new one.
   const adoptRebuilt = (exposed: Response, rebuilt: Response) => {
-    const source = responseBodySources.get(exposed)
-    if (source && rebuilt.body) {
-      responseBodySources.set(rebuilt, source)
+    const current = responseOwnership
+    if (current?.response === exposed && rebuilt.body) {
+      current.response = rebuilt as ResponseWithBody
+      ctx.response = rebuilt
+    } else {
+      adoptResponse(rebuilt)
     }
-    adoptResponse(rebuilt)
   }
 
   let nextPromise: Promise<TODO> | undefined

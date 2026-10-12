@@ -1,7 +1,4 @@
-export {
-  createStartHandler,
-  transferResponseBodyOwnership,
-} from './createStartHandler'
+export { createStartHandler } from './createStartHandler'
 export type { CreateStartHandlerOptions } from './createStartHandler'
 
 export type {

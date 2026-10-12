@@ -135,7 +135,7 @@ Reconciliation drops bodies for response shapes that cannot carry one:
 
 `setResponseStatus` ignores codes that are not integers from `200` to `599`, such as informational `101`, `0`, or `NaN`, because Fetch responses cannot carry them. The call changes neither status nor status text: an earlier helper status, or otherwise the returned or error status, stays in effect, and Start logs a warning outside production. Call `setResponseStatus(undefined, text)` to set only the status text.
 
-Server-function replies that Start serializes are the exception. Their protected content type describes a body that the client must decode, so reconciliation never applies a helper-selected `204`, `205`, or `304` to them, together with that call's status text. Serialized errors ignore these statuses from error metadata too. Outside production, Start logs a warning, once per request, when it ignores such a status for a serialized reply. Serialized replies are recognized by the protocol requirements Start attaches to the `Response` it creates. Middleware that clones a serialized reply or rebuilds it around a new body must pass the result through `transferResponseBodyOwnership` to keep those requirements; otherwise the rebuilt response is an ordinary response, so a bodyless helper status drops its body and its `Location` is not removed. A raw `Response` returned by a server function is not serialized and still follows the rules above.
+Server-function replies that Start serializes are the exception. Their protected content type describes a body that the client must decode, so reconciliation never applies a helper-selected `204`, `205`, or `304` to them, together with that call's status text. Serialized errors ignore these statuses from error metadata too. Outside production, Start logs a warning, once per request, when it ignores such a status for a serialized reply. Serialized replies are recognized by the protocol requirements Start attaches to the `Response` it creates. Only a wrapper around the same body stream keeps those requirements. A clone, or a response rebuilt around a new body, is an ordinary response, so a bodyless helper status drops its body and its `Location` is not removed. A raw `Response` returned by a server function is not serialized and still follows the rules above.
 
 If a middleware sets one of these statuses after a streamed SSR response is produced, the middleware executor treats that as response replacement and disposes the original SSR stream owner.
 
@@ -144,14 +144,15 @@ If a middleware sets one of these statuses after a streamed SSR response is prod
 SSR streaming responses carry cleanup ownership metadata. Middleware reconciliation preserves or disposes that ownership based on the final body:
 
 - Same response: ownership is preserved.
-- Wrapper response with the same body: ownership moves to the wrapper, and the wrapper keeps the protected transport headers of the body it wraps. Start recognizes such a wrapper by the identity of its body stream. Some runtimes, such as Bun, can give a wrapper a new stream object for the same bytes, so middleware that wraps a server-function reply portably should use `transferResponseBodyOwnership(source, wrapper)`. A wrapper around a reply without a body has no stream to compare and is an ordinary replacement response without protocol protection.
-- Different response or dropped body: original stream owner is disposed.
+- Wrapper response with the same body: ownership moves to the wrapper, and the wrapper keeps the protected transport headers of the body it wraps. Start recognizes such a wrapper by the identity of its body stream. A wrapper around a reply without a body has no stream to compare and is an ordinary replacement response without protocol protection.
+- Response with a different body while the original body is being read: ownership moves to the new response, without protected transport headers. A pipe, `tee()`, or a `Response` constructor that copies a body by reading it locks the original body. This includes Bun, which gives a same-body wrapper a new stream object, and libraries that wrap the global `Response`. Start cannot tell such a reader from one that stops early, so a stream whose reader stops early ends with the request's abort or the SSR stream's lifetime limit.
+- Different response while nothing reads the original body, or dropped body: original stream owner is disposed.
 - Middleware error after `next()`: original stream owner is disposed.
 - Late result from an abandoned `next()`: a middleware can return its own response while its `next()` is still running, for example a timeout built with `Promise.race`. From then on, the result of that `next()` is abandoned, even while outer middleware is still running. It never replaces or cancels the response the middleware returned, and its body is disposed. Helper writes made by the abandoned work still apply, because helper state belongs to the request.
 
 This prevents cleanup leaks while still allowing middleware to wrap streamed responses without prematurely disposing the stream.
 
-`transferResponseBodyOwnership(source, wrapper)` also preserves the transport headers required to decode the source body. It does not copy helper append records: an application wrapper's headers remain a fresh base for helper writes.
+A same-body wrapper does not copy helper append records: an application wrapper's headers remain a fresh base for helper writes.
 
 ## Error Handling
 

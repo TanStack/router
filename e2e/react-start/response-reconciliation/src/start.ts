@@ -8,9 +8,14 @@ import {
   setResponseStatus,
 } from '@tanstack/react-start/server'
 import { createUpstreamFailure } from './routes/api/-upstream'
+import { installResponseWrapper } from './response-wrapper'
 
 const globalResponseMiddleware = createMiddleware().server(
   async ({ next, request }) => {
+    if (request.headers.get('x-wrap-response') === 'true') {
+      installResponseWrapper()
+    }
+
     const scenario =
       request.headers.get('x-reconciliation-scenario') ||
       getCookie('reconciliation-scenario')
@@ -64,6 +69,31 @@ const globalResponseMiddleware = createMiddleware().server(
       clearResponseHeaders()
       setResponseHeader('x-same-body-wrapper', 'yes')
       return { ...result, response: wrapped }
+    }
+
+    if (scenario === 'global-copy') {
+      // Session middleware copies the response to add a header (#8627).
+      const result = await next()
+      const headers = new Headers(result.response.headers)
+      headers.set('x-global-copy', 'yes')
+      return {
+        ...result,
+        response: new Response(result.response.body, {
+          status: result.response.status,
+          statusText: result.response.statusText,
+          headers,
+        }),
+      }
+    }
+
+    if (scenario === 'global-piped-copy') {
+      const result = await next()
+      const response = new Response(
+        result.response.body!.pipeThrough(new TransformStream()),
+        result.response,
+      )
+      response.headers.set('x-global-piped-copy', 'yes')
+      return { ...result, response }
     }
 
     if (scenario === 'global-timeout') {

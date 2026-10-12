@@ -2,10 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createMiddleware } from '@tanstack/start-client-core'
-import {
-  createStartHandler,
-  transferResponseBodyOwnership,
-} from '../src/createStartHandler'
+import { createStartHandler } from '../src/createStartHandler'
 import {
   appendResponseHeader,
   clearResponseHeaders,
@@ -216,17 +213,14 @@ describe('response helpers through public Start request middleware', () => {
     )
   })
 
-  it('preserves helper writes when middleware transfers a piped response body', async () => {
+  it('preserves helper writes when middleware pipes the response body', async () => {
     const app = handler(
       createMiddleware().server(async ({ next }) => {
         setResponseHeader('x-response-marker', 'helper')
         const result = await next()
-        return transferResponseBodyOwnership(
+        return new Response(
+          result.response.body!.pipeThrough(new TransformStream()),
           result.response,
-          new Response(
-            result.response.body!.pipeThrough(new TransformStream()),
-            result.response,
-          ),
         )
       }),
       createMiddleware().server(() => new Response('stream body')),

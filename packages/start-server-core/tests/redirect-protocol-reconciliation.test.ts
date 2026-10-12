@@ -15,10 +15,7 @@ import {
 } from '@tanstack/router-core'
 import { createMiddleware } from '@tanstack/start-client-core'
 import { serverFnFetcher } from '../../start-client-core/dist/esm/client-rpc/serverFnFetcher.js'
-import {
-  createStartHandler,
-  transferResponseBodyOwnership,
-} from '../src/createStartHandler'
+import { createStartHandler } from '../src/createStartHandler'
 import {
   appendResponseHeader,
   clearResponseHeaders,
@@ -629,15 +626,12 @@ it('unwinds aborted request middleware error serialization', async () => {
   }
 })
 
-it('keeps RPC protocol metadata through explicit response body ownership transfer', async () => {
+it('keeps RPC protocol metadata through a same-body wrapper', async () => {
   mocks.middleware = [
     createMiddleware().server(async ({ next }) => {
       setResponseHeader('content-type', 'text/plain')
       const result = await next()
-      return transferResponseBodyOwnership(
-        result.response,
-        new Response(result.response.body, result.response),
-      )
+      return new Response(result.response.body, result.response)
     }),
   ]
   mocks.action = () => ({ result: 'still serialized' })
@@ -645,17 +639,14 @@ it('keeps RPC protocol metadata through explicit response body ownership transfe
   await expect(callServerFn()).resolves.toEqual({ result: 'still serialized' })
 })
 
-it('applies helper appends to fresh headers during explicit body ownership transfer', async () => {
+it('applies helper appends to the fresh headers of a same-body wrapper', async () => {
   mocks.middleware = [
     createMiddleware().server(async ({ next }) => {
       appendResponseHeader('vary', 'Origin')
       const result = await next()
-      return transferResponseBodyOwnership(
-        result.response,
-        new Response(result.response.body, {
-          headers: { vary: 'Accept-Language' },
-        }),
-      )
+      return new Response(result.response.body, {
+        headers: { vary: 'Accept-Language' },
+      })
     }),
   ]
   mocks.action = () => ({ result: 'still serialized' })

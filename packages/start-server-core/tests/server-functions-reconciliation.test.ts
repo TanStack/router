@@ -16,10 +16,7 @@ import {
   createMiddleware,
   createServerFn,
 } from '@tanstack/start-client-core'
-import {
-  createStartHandler,
-  transferResponseBodyOwnership,
-} from '../src/createStartHandler'
+import { createStartHandler } from '../src/createStartHandler'
 import {
   FRAME_HEADER_SIZE,
   FRAME_TYPE_CHUNK,
@@ -471,26 +468,18 @@ describe('server function response reconciliation', () => {
     }
   })
 
-  it('preserves JSON protocol headers when middleware delegates a transformed body', async () => {
+  it('decodes a serialized reply that middleware pipes through a transform', async () => {
     const action = createAction()
     action.mockReturnValue({ result: 'delegated' })
     serverFnMocks.action = action
     serverFnMocks.middleware = [
       createMiddleware().server(async ({ next }) => {
         const result = await next()
-        const response = transferResponseBodyOwnership(
+        const response = new Response(
+          result.response.body!.pipeThrough(new TransformStream()),
           result.response,
-          new Response(
-            result.response.body!.pipeThrough(new TransformStream()),
-            {
-              headers: {
-                'content-type': 'text/plain',
-                'x-tss-raw': 'true',
-                'x-delegated': 'yes',
-              },
-            },
-          ),
         )
+        response.headers.set('x-delegated', 'yes')
         appendResponseHeader('x-steps', 'delegated')
         return response
       }),
@@ -500,7 +489,6 @@ describe('server function response reconciliation', () => {
 
     expect(response.headers.get('content-type')).toBe('application/json')
     expect(response.headers.get('x-tss-serialized')).toBe('true')
-    expect(response.headers.get('x-tss-raw')).toBeNull()
     expect(response.headers.get('x-delegated')).toBe('yes')
     expect(response.headers.get('x-steps')).toBe('delegated')
     expect(fromCrossJSON(await response.json(), {})).toEqual({

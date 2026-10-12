@@ -538,6 +538,53 @@ test.describe('SSR document responses', () => {
     expect(header(response, 'x-global-after')).toBe('yes')
     expect(header(response, 'x-ssr-loader')).toBe('yes')
   })
+
+  test('middleware can stream the document through a body transform', async ({
+    request,
+  }) => {
+    const response = await request.get('/streamed', {
+      headers: { 'x-reconciliation-scenario': 'global-piped-copy' },
+    })
+
+    expect(response.status()).toBe(200)
+    expect(header(response, 'x-global-piped-copy')).toBe('yes')
+    const html = await response.text()
+    expect(html).toContain('streamed after the shell')
+    expect(html).toContain('</html>')
+  })
+
+  test('regression #8627: middleware can copy the document when Response is wrapped', async ({
+    request,
+  }) => {
+    const response = await request.get('/streamed', {
+      headers: {
+        'x-reconciliation-scenario': 'global-copy',
+        'x-wrap-response': 'true',
+      },
+    })
+
+    expect(response.status()).toBe(200)
+    expect(header(response, 'x-global-copy')).toBe('yes')
+    const html = await response.text()
+    expect(html).toContain('streamed after the shell')
+    expect(html).toContain('</html>')
+  })
+
+  test('regression #8627: loader helpers reconcile onto the document when Response is wrapped', async ({
+    request,
+  }) => {
+    const response = await request.get('/ssr', {
+      headers: { 'x-wrap-response': 'true' },
+    })
+    const cookies = await setCookieValues(response)
+
+    expect(response.status()).toBe(238)
+    expect(header(response, 'x-ssr-loader')).toBe('yes')
+    expectCookie(cookies, 'ssr-one', '1')
+    const html = await response.text()
+    expect(html).toContain('ssr response')
+    expect(html).toContain('</html>')
+  })
 })
 
 test.describe('server functions', () => {

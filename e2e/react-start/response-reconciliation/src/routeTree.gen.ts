@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ServerFunctionsRouteImport } from './routes/server-functions'
 import { Route as SsrRouteImport } from './routes/ssr'
+import { Route as StreamedRouteImport } from './routes/streamed'
 import { Route as ApiBaseRouteImport } from './routes/api/base'
 import { Route as ApiBulkHeadersRouteImport } from './routes/api/bulk-headers'
 import { Route as ApiClearReturnedHeadersRouteImport } from './routes/api/clear-returned-headers'
@@ -46,6 +47,11 @@ const ServerFunctionsRoute = ServerFunctionsRouteImport.update({
 const SsrRoute = SsrRouteImport.update({
   id: '/ssr',
   path: '/ssr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StreamedRoute = StreamedRouteImport.update({
+  id: '/streamed',
+  path: '/streamed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiBaseRoute = ApiBaseRouteImport.update({
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/server-functions': typeof ServerFunctionsRoute
   '/ssr': typeof SsrRoute
+  '/streamed': typeof StreamedRoute
   '/api/base': typeof ApiBaseRoute
   '/api/bulk-headers': typeof ApiBulkHeadersRoute
   '/api/clear-returned-headers': typeof ApiClearReturnedHeadersRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/server-functions': typeof ServerFunctionsRoute
   '/ssr': typeof SsrRoute
+  '/streamed': typeof StreamedRoute
   '/api/base': typeof ApiBaseRoute
   '/api/bulk-headers': typeof ApiBulkHeadersRoute
   '/api/clear-returned-headers': typeof ApiClearReturnedHeadersRoute
@@ -210,6 +218,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/server-functions': typeof ServerFunctionsRoute
   '/ssr': typeof SsrRoute
+  '/streamed': typeof StreamedRoute
   '/api/base': typeof ApiBaseRoute
   '/api/bulk-headers': typeof ApiBulkHeadersRoute
   '/api/clear-returned-headers': typeof ApiClearReturnedHeadersRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
     | '/'
     | '/server-functions'
     | '/ssr'
+    | '/streamed'
     | '/api/base'
     | '/api/bulk-headers'
     | '/api/clear-returned-headers'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/'
     | '/server-functions'
     | '/ssr'
+    | '/streamed'
     | '/api/base'
     | '/api/bulk-headers'
     | '/api/clear-returned-headers'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/'
     | '/server-functions'
     | '/ssr'
+    | '/streamed'
     | '/api/base'
     | '/api/bulk-headers'
     | '/api/clear-returned-headers'
@@ -313,6 +325,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ServerFunctionsRoute: typeof ServerFunctionsRoute
   SsrRoute: typeof SsrRoute
+  StreamedRoute: typeof StreamedRoute
   ApiBaseRoute: typeof ApiBaseRoute
   ApiBulkHeadersRoute: typeof ApiBulkHeadersRoute
   ApiClearReturnedHeadersRoute: typeof ApiClearReturnedHeadersRoute
@@ -356,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/ssr'
       fullPath: '/ssr'
       preLoaderRoute: typeof SsrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/streamed': {
+      id: '/streamed'
+      path: '/streamed'
+      fullPath: '/streamed'
+      preLoaderRoute: typeof StreamedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/base': {
@@ -505,6 +525,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ServerFunctionsRoute: ServerFunctionsRoute,
   SsrRoute: SsrRoute,
+  StreamedRoute: StreamedRoute,
   ApiBaseRoute: ApiBaseRoute,
   ApiBulkHeadersRoute: ApiBulkHeadersRoute,
   ApiClearReturnedHeadersRoute: ApiClearReturnedHeadersRoute,

@@ -21,10 +21,7 @@ import {
   createSsrStreamResponse,
   transformReadableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
-import {
-  createStartHandler,
-  transferResponseBodyOwnership,
-} from '../src/createStartHandler'
+import { createStartHandler } from '../src/createStartHandler'
 import {
   appendResponseHeader,
   clearResponseHeaders,
@@ -2595,6 +2592,67 @@ describe('createStartHandler SSR cleanup ownership', () => {
     expect(router.serverSsr).toBeUndefined()
   })
 
+  it('keeps stream ownership when Start rebuilds a response with a wrapped Response', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const ssrResponse = makeCompletingStreamResponse(router)
+    startMocks.serverFnResult = ssrResponse
+    const dispose = vi.spyOn(ssrResponse as any, 'dispose')
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        // Start rebuilds the response to apply this header.
+        setResponseHeader('x-after-next', 'yes')
+        return result
+      }),
+    ]
+    // A wrapped global Response that copies stream bodies into new streams,
+    // reading the original only once the copy is read.
+    vi.stubGlobal(
+      'Response',
+      new Proxy(Response, {
+        construct(target, [body, init], newTarget) {
+          if (body instanceof ReadableStream) {
+            const source: ReadableStream<Uint8Array> = body
+            let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+            body = new ReadableStream<Uint8Array>({
+              async pull(controller) {
+                reader ??= source.getReader()
+                const chunk = await reader.read()
+                if (chunk.done) {
+                  controller.close()
+                } else {
+                  controller.enqueue(chunk.value)
+                }
+              },
+              cancel(reason) {
+                return reader ? reader.cancel(reason) : source.cancel(reason)
+              },
+            })
+          }
+          return Reflect.construct(target, [body, init], newTarget)
+        },
+      }),
+    )
+
+    try {
+      const handler = createTestStartHandler(() => new Response('unused'))
+      const response = await handler(
+        new Request('http://localhost/_serverFn/test', {
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      )
+
+      expect(response.headers.get('x-after-next')).toBe('yes')
+      expect(dispose).not.toHaveBeenCalled()
+      await expect(response.text()).resolves.toBe('stream')
+      expect(router.serverSsr).toBeUndefined()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('preserves stream ownership when middleware pipes the body', async () => {
     const router = makeRouter()
     startMocks.router = router
@@ -2605,12 +2663,9 @@ describe('createStartHandler SSR cleanup ownership', () => {
     startMocks.requestMiddleware = [
       createMiddleware().server(async ({ next }) => {
         const result = await next()
-        wrappedResponse = transferResponseBodyOwnership(
+        wrappedResponse = new Response(
+          result.response.body!.pipeThrough(new TransformStream()),
           result.response,
-          new Response(
-            result.response.body!.pipeThrough(new TransformStream()),
-            result.response,
-          ),
         )
         return wrappedResponse
       }),
@@ -2641,12 +2696,9 @@ describe('createStartHandler SSR cleanup ownership', () => {
       startMocks.requestMiddleware = [
         createMiddleware().server(async ({ next }) => {
           const result = await next()
-          return transferResponseBodyOwnership(
+          return new Response(
+            result.response.body!.pipeThrough(new TransformStream()),
             result.response,
-            new Response(
-              result.response.body!.pipeThrough(new TransformStream()),
-              result.response,
-            ),
           )
         }),
       ]
@@ -2694,15 +2746,15 @@ describe('createStartHandler SSR cleanup ownership', () => {
     const ssrResponse = makeCompletingStreamResponse(router)
     startMocks.serverFnResult = ssrResponse
     const dispose = vi.spyOn(ssrResponse as any, 'dispose')
-    let siblingResponse!: Response
+    let siblingText!: Promise<string>
     startMocks.requestMiddleware = [
       createMiddleware().server(async ({ next }) => {
         const result = await next()
-        siblingResponse = result.response
-        result.response = transferResponseBodyOwnership(
-          siblingResponse,
-          siblingResponse.clone(),
-        )
+        const siblingResponse = result.response
+        result.response = siblingResponse.clone()
+        // The branch middleware keeps must be read or cancelled. An unread
+        // branch is abandoned with the stream.
+        siblingText = siblingResponse.text()
         return result
       }),
     ]
@@ -2716,9 +2768,10 @@ describe('createStartHandler SSR cleanup ownership', () => {
     )
 
     expect(dispose).not.toHaveBeenCalled()
-    await expect(
-      Promise.all([response.text(), siblingResponse.text()]),
-    ).resolves.toEqual(['stream', 'stream'])
+    await expect(Promise.all([response.text(), siblingText])).resolves.toEqual([
+      'stream',
+      'stream',
+    ])
     expect(router.serverSsr).toBeUndefined()
   })
 
@@ -2738,12 +2791,9 @@ describe('createStartHandler SSR cleanup ownership', () => {
       }),
       createMiddleware().server(async ({ next }) => {
         const result = await next()
-        const response = transferResponseBodyOwnership(
+        const response = new Response(
+          result.response.body!.pipeThrough(new TransformStream()),
           result.response,
-          new Response(
-            result.response.body!.pipeThrough(new TransformStream()),
-            result.response,
-          ),
         )
         derivedCancel = vi.spyOn(response.body!, 'cancel')
         return response
@@ -2843,17 +2893,20 @@ describe('createStartHandler SSR cleanup ownership', () => {
     reader?.releaseLock()
   })
 
-  it('disposes a locked stream replaced by an unrelated body', async () => {
+  it('leaves a stream that middleware reads to the response that replaces it', async () => {
     const router = makeRouter()
     startMocks.router = router
     const ssrResponse = makeStreamResponse(router)
     startMocks.serverFnResult = ssrResponse
     const dispose = vi.spyOn(ssrResponse as any, 'dispose')
     const replacement = new Response('replacement')
+    const requestController = new AbortController()
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
     startMocks.requestMiddleware = [
       createMiddleware().server(async ({ next }) => {
         const result = await next()
+        // A reader is indistinguishable from a pipe that feeds the
+        // replacement, so Start must not dispose the stream under it.
         reader = result.response.body!.getReader()
         return replacement
       }),
@@ -2864,17 +2917,20 @@ describe('createStartHandler SSR cleanup ownership', () => {
       const response = await handler(
         new Request('http://localhost/_serverFn/test', {
           headers: { 'x-tsr-serverFn': 'true' },
+          signal: requestController.signal,
         }),
         {},
       )
 
       expect(response).toBe(replacement)
-      await expect(response.text()).resolves.toBe('replacement')
-      expect(dispose).toHaveBeenCalledOnce()
-      expect(dispose).toHaveBeenCalledWith('middleware response replaced')
+      expect(dispose).not.toHaveBeenCalled()
+      expect(router.serverSsr).toBeDefined()
+
+      const reason = new Error('request disconnected')
+      requestController.abort(reason)
+      expect(dispose).toHaveBeenCalledExactlyOnceWith(reason)
       expect(router.serverSsr).toBeUndefined()
     } finally {
-      await reader?.cancel('test cleanup')
       reader?.releaseLock()
     }
   })
@@ -4369,7 +4425,7 @@ describe('createStartHandler request cancellation', () => {
     expect(router.serverSsr).toBeUndefined()
   })
 
-  it('cancels a transferred body that middleware returns after abort', async () => {
+  it('cancels a piped body that middleware returns after abort', async () => {
     const router = makeRouter()
     startMocks.router = router
     const requestController = new AbortController()
@@ -4386,12 +4442,9 @@ describe('createStartHandler request cancellation', () => {
     startMocks.requestMiddleware = [
       createMiddleware().server(async ({ next }) => {
         const result = await next()
-        const derived = transferResponseBodyOwnership(
+        const derived = new Response(
+          result.response.body!.pipeThrough(new TransformStream()),
           result.response,
-          new Response(
-            result.response.body!.pipeThrough(new TransformStream()),
-            result.response,
-          ),
         )
         derivedBody = derived.body!
         notifyResponseCaptured()
