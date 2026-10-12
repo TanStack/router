@@ -168,6 +168,21 @@ The component tree would look like this:
 </Root>
 ```
 
+The `posts.tsx` file is a layout route, so it must render an `<Outlet />` for the child route to appear. If the route generator has created a standalone page component when you add `posts.tsx`, replace it with a layout component before adding `posts/index.tsx` or `posts/$postId.tsx`:
+
+```tsx
+// src/routes/posts.tsx
+import { Outlet, createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('/posts')({
+  component: PostsLayout,
+})
+
+function PostsLayout() {
+  return <Outlet />
+}
+```
+
 ## Types of Routes
 
 There are a few different types of routes that you can create in your project.
