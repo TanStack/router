@@ -291,6 +291,51 @@ export const Route = createFileRoute('/')({
       ).toEqual(['<p>1</p>', '<p>2</p>', 1])
     },
   )
+
+  /**
+   * Compiles a route with the route HMR plugin (automatic code splitting
+   * off), evaluates it and returns its route.
+   */
+  async function evaluateUnsplitRoute(code: string) {
+    const { Route } = await evaluateModule(transformWithRouteHmrPlugin(code), {
+      '@tanstack/react-router': {
+        createFileRoute: () => (options: unknown) => ({ options }),
+      },
+    })
+    return Route as unknown as { options: Record<string, () => unknown> }
+  }
+
+  // Control for the hoisted inline component pin below (same harness).
+  test('an inline component reading a lowercase component renders it', async () => {
+    const Route =
+      await evaluateUnsplitRoute(`${head}const missing = () => <p>missing</p>
+export const Route = createFileRoute('/')({
+  pendingComponent: () => missing(),
+})`)
+    expect(Route.options.pendingComponent!()).toBe('<p>missing</p>')
+  })
+
+  // Bug: React HMR hoists inline component options into declarations it
+  // inserts after visiting every option, and renames a lowercase component
+  // passed to a later option. The rename only reaches nodes attached to the
+  // program, so a hoisted component still reads the old name.
+  // Impact: in development, the hoisted component throws when it renders
+  // (ReferenceError: missing is not defined).
+  // Fix: rename before hoisting (or insert hoisted declarations immediately),
+  // or rename through the analyzer's binding references.
+  test.fails(
+    'an inline component hoisted before a renamed lowercase component renders it',
+    async () => {
+      const Route =
+        await evaluateUnsplitRoute(`${head}const missing = () => <p>missing</p>
+export const Route = createFileRoute('/')({
+  pendingComponent: () => missing(),
+  notFoundComponent: missing,
+})`)
+      expect(Route.options.pendingComponent!()).toBe('<p>missing</p>')
+      expect(Route.options.notFoundComponent!()).toBe('<p>missing</p>')
+    },
+  )
 })
 
 describe('route updates', () => {
