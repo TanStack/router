@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.37
+
+### Patch Changes
+
+- [#8441](https://github.com/TanStack/router/pull/8441) [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82) - Reuse the parsed request location during SSR instead of repeating input rewrites. Match server routes against the app router's parsed pathname while preserving encoded pathnames for server handlers and middleware.
+
 ## 1.171.36
 
 ### Patch Changes

@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/router-plugin": "^1.168.44",
-    "@tanstack/solid-router": "^1.170.40",
+    "@tanstack/router-plugin": "^1.168.45",
+    "@tanstack/solid-router": "^1.170.41",
     "@tanstack/solid-router-devtools": "^1.167.2",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",

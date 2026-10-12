@@ -13,9 +13,9 @@
   "dependencies": {
     "@convex-dev/better-auth": "^0.9.7",
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/solid-router": "^1.170.40",
+    "@tanstack/solid-router": "^1.170.41",
     "@tanstack/solid-router-devtools": "^1.167.2",
-    "@tanstack/solid-start": "^1.169.0",
+    "@tanstack/solid-start": "^1.169.1",
     "better-auth": "^1.6.19",
     "clsx": "^2.1.1",
     "convex": "^1.28.2",
