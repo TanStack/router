@@ -383,15 +383,16 @@ function findUsagePosInAnalysis(
     return analysis.usageByKey.get(cacheKey) ?? undefined
   }
   const module = analysis.module
-  const bindings = analysis.importBindingsBySource.get(source)
+  const bindings = Array.from(analysis.importBindingsBySource.get(source) ?? [])
+  // The bindings' uses, in source order
+  const references = bindings.flatMap((binding) => binding.references)
+  if (bindings.length > 1) {
+    references.sort((a, b) => a.id - b.id)
+  }
   let preferred: UsagePos | undefined
   let anyUsage: UsagePos | undefined
-  for (const reference of module.references) {
-    if (
-      !reference.binding ||
-      !bindings?.has(reference.binding) ||
-      reference.inTypePosition
-    ) {
+  for (const reference of references) {
+    if (reference.inTypePosition) {
       continue
     }
     const node = reference.node

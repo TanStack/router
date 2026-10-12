@@ -1,7 +1,8 @@
-import { analyzeModule, generateModule } from '@tanstack/router-utils'
+import { generateModule } from '@tanstack/router-utils'
 import { b, is, isValidIdentifier, nameOf } from 'yuku-ast'
+import { getOrCreateImportAnalysis } from './analysis'
 import { MOCK_MODULE_ID } from './constants'
-import type { SourceMapLike } from './sourceLocation'
+import type { SourceMapLike, TransformResult } from './sourceLocation'
 import type {
   ExportSpecifier,
   Expression,
@@ -76,14 +77,18 @@ export function exportList(specifiers: Array<ExportSpecifier>) {
   })
 }
 
-/** Rewrite denied static edges in the analyzed tree, which serves this one output. */
+/**
+ * Rewrite denied static edges in the result's analyzed tree, which serves this
+ * one output. The import analysis is built first, so the tree is read before
+ * it is edited; its semantic queries keep describing `result.code` afterwards.
+ */
 export function rewriteDeniedImports(
-  code: string,
+  result: TransformResult,
   id: string,
   deniedSources: Set<string>,
   getMockModuleId: (source: string) => string = () => MOCK_MODULE_ID,
 ): { code: string; map?: SourceMapLike } | undefined {
-  const module = analyzeModule({ code, filename: id })
+  const { module } = getOrCreateImportAnalysis(result)
   const program = module.ast
   const usedNames = new Set(module.bindings.map((binding) => binding.name))
   let counter = 0
@@ -180,9 +185,12 @@ export function rewriteDeniedImports(
   if (!modified) {
     return undefined
   }
-  const result = generateModule(program, { source: code, filename: id })
+  const generated = generateModule(program, {
+    source: result.code,
+    filename: id,
+  })
   return {
-    code: result.code,
-    ...(result.map ? { map: result.map as SourceMapLike } : {}),
+    code: generated.code,
+    ...(generated.map ? { map: generated.map as SourceMapLike } : {}),
   }
 }

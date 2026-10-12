@@ -1,11 +1,32 @@
 import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
+import {
+  findPostCompileUsagePosFromResult,
+  getImportSourcesFromResult,
+  getImportSpecifierLocationFromResult,
+  getMockExportNamesBySourceFromResult,
+} from '../../src/import-protection/analysis'
 import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
 
 const MOCK_SUBSTR = 'tanstack-start-import-protection:mock'
 
+/** Rewrite freshly transformed code. */
+function rewriteCode(
+  code: string,
+  id: string,
+  deniedSources: Set<string>,
+  getMockModuleId?: (source: string) => string,
+) {
+  return rewriteDeniedImports(
+    { code, filename: id, map: undefined, originalCode: undefined },
+    id,
+    deniedSources,
+    getMockModuleId,
+  )
+}
+
 function rewrite(code: string, denied: Array<string>): string {
-  const result = rewriteDeniedImports(code, '/test.ts', new Set(denied))
+  const result = rewriteCode(code, '/test.ts', new Set(denied))
   expect(result).toBeDefined()
   return result!.code.trim()
 }
@@ -61,7 +82,7 @@ describe('rewriteDeniedImports', () => {
   })
 
   test('skips type-only import declaration', () => {
-    const result = rewriteDeniedImports(
+    const result = rewriteCode(
       `import type { Foo } from './secret.server';`,
       '/test.ts',
       new Set(['./secret.server']),
@@ -126,7 +147,7 @@ describe('rewriteDeniedImports', () => {
   })
 
   test('returns undefined when no denied imports are found', () => {
-    const result = rewriteDeniedImports(
+    const result = rewriteCode(
       `import { ok } from './safe';\nimport { also } from './fine';`,
       '/test.ts',
       new Set(['./secret.server']),
@@ -157,7 +178,7 @@ describe('rewriteDeniedImports', () => {
   })
 
   test('returns a source map', () => {
-    const result = rewriteDeniedImports(
+    const result = rewriteCode(
       `import { foo } from './secret.server';`,
       '/test.ts',
       new Set(['./secret.server']),
@@ -167,7 +188,7 @@ describe('rewriteDeniedImports', () => {
   })
 
   test('skips type-only export declaration', () => {
-    const result = rewriteDeniedImports(
+    const result = rewriteCode(
       `export type { Foo } from './secret.server';`,
       '/test.ts',
       new Set(['./secret.server']),
@@ -176,7 +197,7 @@ describe('rewriteDeniedImports', () => {
   })
 
   test('skips type-only export * from denied', () => {
-    const result = rewriteDeniedImports(
+    const result = rewriteCode(
       `export type * from './secret.server';`,
       '/test.ts',
       new Set(['./secret.server']),
@@ -188,7 +209,7 @@ describe('rewriteDeniedImports', () => {
     const mockModule = `data:text/javascript,${encodeURIComponent(
       `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
     )}`
-    const rewritten = rewriteDeniedImports(
+    const rewritten = rewriteCode(
       `import 'denied'
 import def, { type T, value, "kebab-name" as kebab } from 'denied' with { type: 'json' }
 import * as ns from 'denied'
@@ -211,5 +232,31 @@ export const seen: T = [def === ns, value, kebab] as unknown as T
       ab: 'mock:a-b',
       renamedDefault: 'mock:default',
     })
+  })
+
+  test('locations still describe the transformed code after a rewrite', () => {
+    const code = `import { keep } from './safe'\nimport { secret } from './secret.server'\nexport const value = [keep, secret()]\n`
+    const result = {
+      code,
+      filename: '/test.ts',
+      map: undefined,
+      originalCode: undefined,
+    }
+    expect(
+      rewriteDeniedImports(result, '/test.ts', new Set(['./secret.server'])),
+    ).toBeDefined()
+    expect(getImportSourcesFromResult(result)).toEqual([
+      './safe',
+      './secret.server',
+    ])
+    expect(
+      getImportSpecifierLocationFromResult(result, './secret.server'),
+    ).toBe(code.indexOf('./secret.server'))
+    expect(
+      findPostCompileUsagePosFromResult(result, './secret.server'),
+    ).toEqual({ line: 3, column0: code.split('\n')[2]!.indexOf('secret()') })
+    expect(
+      Object.fromEntries(getMockExportNamesBySourceFromResult(result)),
+    ).toEqual({ './safe': ['keep'], './secret.server': ['secret'] })
   })
 })

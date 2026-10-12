@@ -364,3 +364,8 @@ test('repeated lookups on one transform result return the cached position', () =
     findOriginalUnsafeUsagePosFromResult(result, 'denied', 'client'),
   ).toEqual(position)
 })
+
+test('reports the first use across every binding of a source', () => {
+  const code = `import def, { named } from 'denied'\nnamed()\ndef()`
+  expect(pos(code, 'denied')).toEqual({ line: 2, column0: 0 })
+})

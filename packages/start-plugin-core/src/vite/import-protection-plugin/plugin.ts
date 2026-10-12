@@ -41,6 +41,7 @@ import {
 import {
   getImportSourcesFromResult,
   getMockExportNamesBySource,
+  getMockExportNamesBySourceFromResult,
   getNamedExports,
 } from '../../import-protection/analysis'
 import { rewriteDeniedImports } from '../../import-protection/rewrite'
@@ -749,8 +750,10 @@ export function importProtectionPlugin(
     let parsedBySource = env.mockExportsByImporter.get(importerFile)
     if (!parsedBySource) {
       // Try transform-cache result first, then moduleInfo fallback.
+      const cachedResult =
+        env.transformResultProvider.getTransformResult(importerFile)
       const importerCode =
-        env.transformResultProvider.getTransformResult(importerFile)?.code ??
+        cachedResult?.code ??
         (importerIdHint && ctx.getModuleInfo
           ? (ctx.getModuleInfo(importerIdHint)?.code ?? undefined)
           : undefined)
@@ -758,11 +761,11 @@ export function importProtectionPlugin(
         return []
 
       try {
-        parsedBySource = getMockExportNamesBySource(
-          importerCode,
-          importerFile,
-          perf,
-        )
+        // Reuse the cached result's analysis, which later location lookups
+        // read too.
+        parsedBySource = cachedResult
+          ? getMockExportNamesBySourceFromResult(cachedResult)
+          : getMockExportNamesBySource(importerCode, importerFile, perf)
 
         // Also index by resolved physical IDs so later lookups match.
         await recordMockExportsForImporter(
@@ -2341,7 +2344,7 @@ export function importProtectionPlugin(
           if (deniedSourceReplacements.size > 0) {
             try {
               const rewritten = rewriteDeniedImports(
-                code,
+                result,
                 id,
                 new Set(deniedSourceReplacements.keys()),
                 (source: string) =>

@@ -80,8 +80,9 @@ Why:
 - keeping them separate prevents adapter code from depending on mutation when it
   only needs inspection
 
-`rewriteDeniedImports()` rewrites denied static import/re-export edges to mock
-module imports while preserving explicit bindings expected by the importer.
+`rewriteDeniedImports(result, ...)` rewrites denied static import/re-export
+edges to mock module imports while preserving explicit bindings expected by the
+importer. It reuses the result's analysis instead of parsing the code again.
 
 ### `sourceLocation.ts`
 
@@ -216,7 +217,9 @@ Analysis and rewrite are intentionally separate.
 Reasons:
 
 - adapters frequently need inspection without mutation
-- mutation uses a cloned output AST and Yuku code generation with source maps
+- the rewrite edits the analyzed tree in place, after the analysis has read it,
+  and generates code and source maps with Yuku; the analysis keeps describing
+  the transformed code, so later lookups still work
 - read-only analysis is much easier to cache safely
 - source-location helpers and usage lookup should not depend on whether a module
   was rewritten

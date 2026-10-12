@@ -286,7 +286,7 @@ async function transformImportProtection(
     }
 
     const rewritten = rewriteDeniedImports(
-      code,
+      transformResult,
       id,
       new Set(deniedSpecifierReplacements.keys()),
       (source) => deniedSpecifierReplacements.get(source) ?? source,
