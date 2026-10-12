@@ -517,6 +517,23 @@ ${code}`,
       },
     )
 
+    // `²` is a number but not an identifier character, so the chunk must
+    // import the route by its string name.
+    test('client: children reading Route exported under a string name import it by that name', async () => {
+      const { parent, plugin } = await compileHydrate(
+        'client',
+        `${head}import { createFileRoute } from '@tanstack/react-router'
+const Route = createFileRoute('/posts')({ component: Page })
+export { Route as "route²" }
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+      )
+      const chunk = loadChunk(plugin, 'client', getChunkIds(parent)[0]!)!
+      expect(await getModuleErrors(chunk)).toEqual([])
+      expect(chunk).toContain('import { "route²" as Route }')
+    })
+
     test('client: children reading a Route the module does not export are rejected', async () => {
       const error = await compileHydrate(
         'client',

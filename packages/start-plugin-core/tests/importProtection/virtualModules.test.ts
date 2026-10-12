@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest'
 import {
+  getMockExportNamesBySource,
+  getNamedExports,
+} from '../../src/import-protection/analysis'
+import {
   MOCK_EDGE_PREFIX,
   MOCK_MODULE_ID,
   MOCK_RUNTIME_PREFIX,
@@ -8,9 +12,11 @@ import {
   loadMarkerModule,
   loadMockEdgeModule,
   loadMockRuntimeModule,
+  loadResolvedVirtualModule,
   loadSilentMockModule,
   makeMockEdgeModuleId,
   mockRuntimeModuleIdFromViolation,
+  resolveInternalVirtualModuleId,
 } from '../../src/vite/import-protection-plugin/virtualModules'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 
@@ -346,5 +352,65 @@ describe('generateDevSelfDenialModule', () => {
     // Should NOT contain inline createMock/Proxy (that's the build-mode mock)
     expect(result.code).not.toContain('createMock')
     expect(result.code).not.toContain('Proxy')
+  })
+})
+
+describe('mocks of reserved-word exports', () => {
+  const mockModule = `data:text/javascript,${encodeURIComponent(
+    `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
+  )}`
+
+  // `export const <name>` is a SyntaxError for keywords, strict-mode reserved
+  // words, `await` in modules, and the strict-mode binding names `eval` and
+  // `arguments`.
+  const names = ['delete', 'class', 'let', 'await', 'eval', 'arguments']
+
+  test.each(
+    names.flatMap((name) => [
+      {
+        name,
+        from: `a denied file exporting \`${name}\``,
+        mock: () =>
+          generateSelfContainedMockModule(
+            getNamedExports(
+              `const value = () => {}
+export { value as ${name} }`,
+              '/test/api.server.ts',
+            ),
+          ).code,
+      },
+      {
+        name,
+        from: `a denied import used as \`api.${name}()\``,
+        mock: () => {
+          const exportNames = getMockExportNamesBySource(
+            `import * as api from 'denied'
+export const result = api.${name}()`,
+            '/test/module.ts',
+          ).get('denied')
+          const id = resolveInternalVirtualModuleId(
+            makeMockEdgeModuleId(exportNames ?? [], mockModule),
+          )
+          return loadResolvedVirtualModule(id!)!.code
+        },
+      },
+    ]),
+  )('the mock of $from exports `$name`', async ({ name, mock }) => {
+    const mockUrl = `data:text/javascript,${encodeURIComponent(mock())}`
+    // Read the mock through a namespace import: the test runner would unwrap
+    // its default export, which claims `__esModule` and is thenable.
+    const reader = `import * as mock from ${JSON.stringify(mockUrl)}
+export const exported = ${JSON.stringify(name)} in mock
+export const mocked = mock[${JSON.stringify(name)}] === mock.default[${JSON.stringify(name)}]`
+    const { exported, mocked } = await import(
+      /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(reader)}`
+    )
+    expect({ exported, mocked }).toEqual({ exported: true, mocked: true })
+  })
+
+  test('non-ASCII identifiers are declared directly', () => {
+    expect(generateSelfContainedMockModule(['café']).code).toContain(
+      'export const café = mock.café;',
+    )
   })
 })

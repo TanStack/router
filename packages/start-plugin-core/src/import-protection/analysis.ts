@@ -1,5 +1,12 @@
 import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
-import { is, isWrapper, literalValue, nameOf } from 'yuku-ast'
+import {
+  is,
+  isStrictBindOnlyReservedWord,
+  isValidIdentifier,
+  isWrapper,
+  literalValue,
+  nameOf,
+} from 'yuku-ast'
 import { buildLineIndex, indexToLineColumn } from './sourceLocation'
 import { getOrCreate } from './utils'
 import type * as t from '@yuku-toolchain/types'
@@ -87,8 +94,9 @@ function isTypeOnlyExportNamedDeclaration(
   )
 }
 
+/** True when `name` can be declared as `export const <name>` in a module. */
 export function isValidExportName(name: string): boolean {
-  return name !== 'default' && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)
+  return isValidIdentifier(name) && !isStrictBindOnlyReservedWord(name)
 }
 
 function buildImportAnalysis(result: TransformResult): ImportAnalysis {

@@ -1,6 +1,6 @@
 import { relative } from 'node:path'
 import crypto from 'node:crypto'
-import { b, is, nameOf, walk } from 'yuku-ast'
+import { b, is, isIdentifierName, nameOf, walk } from 'yuku-ast'
 import {
   analyzeModule,
   collectModuleReferences,
@@ -769,7 +769,7 @@ function loadHydrateVirtualModule(options: {
     prependStatements(
       ast,
       importDeclaration(
-        /^[\p{L}_$][\p{L}\p{N}_$]*$/u.test(exported)
+        isIdentifierName(exported)
           ? b.Identifier({ name: exported })
           : stringLiteral(exported),
         'Route',
