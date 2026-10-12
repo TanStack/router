@@ -1,5 +1,14 @@
 # @tanstack/start-storage-context
 
+## 1.167.38
+
+### Patch Changes
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Reduce per-request work in Start: `getNormalizedURL` reads a `URL` input without cloning it, and `runWithStartContext` returns the callback's own result instead of wrapping it in a promise, so a synchronous throw from the callback now propagates synchronously.
+
+- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-core@1.171.36
+
 ## 1.167.37
 
 ### Patch Changes
