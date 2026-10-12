@@ -1,5 +1,20 @@
 # @tanstack/start-server-core
 
+## 1.169.42
+
+### Patch Changes
+
+- [#8451](https://github.com/TanStack/router/pull/8451) [`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8) - Skip request middleware bookkeeping when no request middleware is configured, and stop copying serialization adapters when the router adds none.
+
+  Server route handlers and route middleware now receive the router's decoded pathname, the same one used for route matching. Characters that would change how the path is read, such as `%2F`, `%3F`, and `%23`, stay encoded.
+
+- [#8441](https://github.com/TanStack/router/pull/8441) [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82) - Reuse the parsed request location during SSR instead of repeating input rewrites. Match server routes against the app router's parsed pathname while preserving encoded pathnames for server handlers and middleware.
+
+- Updated dependencies [[`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8), [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/start-storage-context@1.167.39
+  - @tanstack/router-core@1.171.37
+  - @tanstack/start-client-core@1.170.37
+
 ## 1.169.41
 
 ### Patch Changes
