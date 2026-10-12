@@ -11,6 +11,7 @@ import {
   _getRenderedMatches,
   executeRewriteInput,
   isDangerousProtocol,
+  isNotFound,
   isPromise,
   isRedirect,
 } from '@tanstack/router-core'
@@ -910,6 +911,7 @@ async function handleRedirectResponse(
 function withParsedParams(
   handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any, any>,
   matchedRoutes: ReadonlyArray<AnyRoute>,
+  mayDefer: boolean,
 ): TODO {
   if (
     !matchedRoutes.some(
@@ -923,11 +925,23 @@ function withParsedParams(
     // Parse inside the pipeline so middleware can catch errors. Keep the raw
     // params for app-router validation when the handler defers to rendering.
     const params = Object.assign(Object.create(null), ctx.params)
-    for (const route of matchedRoutes) {
-      const parse = route.options.params?.parse ?? route.options.parseParams
-      if (parse) {
-        Object.assign(params, parse(params))
+    try {
+      for (const route of matchedRoutes) {
+        const parse = route.options.params?.parse ?? route.options.parseParams
+        if (parse) {
+          Object.assign(params, parse(params))
+        }
       }
+    } catch (error) {
+      // The handler cannot run without valid params. A client that explicitly
+      // asks for HTML gets the page the app router renders for this failure.
+      if (
+        mayDefer &&
+        /(^|,)\s*text\/html/.test(ctx.request.headers.get('Accept') || '')
+      ) {
+        return ctx.next()
+      }
+      throw error
     }
     return handler({ ...ctx, params })
   }
@@ -1013,7 +1027,11 @@ async function handleServerRoutes({
       const routeHandler =
         typeof handler === 'function' ? handler : handler.handler
       if (routeHandler) {
-        const parsedHandler = withParsedParams(routeHandler, matchedRoutes)
+        const parsedHandler = withParsedParams(
+          routeHandler,
+          matchedRoutes,
+          mayDefer,
+        )
         if (!mayDefer) {
           terminalHandler = parsedHandler
           terminalNext = throwIfMayNotDefer
@@ -1024,19 +1042,27 @@ async function handleServerRoutes({
     }
   }
 
-  const response = await executeMiddleware(
-    routeMiddlewares,
-    terminalHandler,
-    {
-      request,
-      context,
-      params: rawParams,
-      pathname,
-      handlerType: 'router',
-    },
-    request.signal,
-    terminalNext,
-  )
+  let response: HandlerCallbackResult
+  try {
+    response = await executeMiddleware(
+      routeMiddlewares,
+      terminalHandler,
+      {
+        request,
+        context,
+        params: rawParams,
+        pathname,
+        handlerType: 'router',
+      },
+      request.signal,
+      terminalNext,
+    )
+  } catch (error) {
+    if (!isNotFound(error)) {
+      throw error
+    }
+    response = new Response(null, { status: 404, headers: error.headers })
+  }
 
   return normalizeSsrResponse(response)
 }
