@@ -367,7 +367,8 @@ export async function evaluateModule(
     },
   )
   return import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(`${jsxToText}${imports.join('\n')}\n${body}`)}`
+    // The key keeps identical code from reusing a cached module instance.
+    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(`// ${key}\n${jsxToText}${imports.join('\n')}\n${body}`)}`
   )
 }
 

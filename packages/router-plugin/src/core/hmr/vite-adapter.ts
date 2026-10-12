@@ -14,13 +14,18 @@ export function createViteHmrStatement(
   stableRouteOptionKeys: Array<string>,
   opts: {
     routeId?: string
+    /** The local binding the module exports as `Route`. */
+    routeName?: string
   } = {},
 ): Array<ProgramStatement> {
   const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
+  const route = opts.routeName ?? 'Route'
   // The replacement Route object can be uninitialized; keep a generated id as
   // fallback for the existing router route we need to patch.
   const routeIdFallback =
-    typeof opts.routeId === 'string' ? JSON.stringify(opts.routeId) : 'Route.id'
+    typeof opts.routeId === 'string'
+      ? JSON.stringify(opts.routeId)
+      : `${route}.id`
 
   return parseStatements(
     `
@@ -36,12 +41,12 @@ if (import.meta.hot) {
     typeof window !== 'undefined' && initialRouteId
       ? window.__TSR_ROUTER__?.routesById?.[initialRouteId]
       : undefined
-  if (initialRouteId && existingRoute && existingRoute !== Route) {
-    handleRouteUpdate(initialRouteId, Route)
-    hotData['tsr-route-update-handled'] = Route
+  if (initialRouteId && existingRoute && existingRoute !== ${route}) {
+    handleRouteUpdate(initialRouteId, ${route})
+    hotData['tsr-route-update-handled'] = ${route}
   }
   hot.accept((newModule) => {
-    if (Route && newModule && newModule.Route) {
+    if (${route} && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? ${routeIdFallback}
       if (routeId) {
         hotData['tsr-route-id'] = routeId

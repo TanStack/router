@@ -69,7 +69,7 @@ export const keep = 1`,
 // Impact: import-protection diagnostics point at a usage inside a server fn
 // handler, which the compiler removes from the client, instead of the real
 // cause.
-test.fails.each([
+test.each([
   `Start.createServerFn().handler(() => denied())`,
   `Start.createServerOnlyFn(() => denied())`,
 ])('client: %s is a safe boundary', (expression) => {

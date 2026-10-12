@@ -6,6 +6,7 @@ import {
   extractModuleInfo,
   filePragmas,
   generateModule,
+  importedNameOf,
   keepFilePragmas,
   parseExpression,
   prepareBindingCleanup,
@@ -893,6 +894,8 @@ export class StartCompiler {
             return
           }
         }
+        // The factory a renamed import or a module-level alias stands for
+        let imported: string | undefined
         for (const kind of candidateKinds) {
           if (isExternalLookupKind(kind)) {
             continue
@@ -904,7 +907,13 @@ export class StartCompiler {
           if (
             setup.factoryNames.has(name) ||
             (simpleDirectCall &&
-              isModuleLevelInitializer(node, editor.parentOf))
+              isModuleLevelInitializer(node, editor.parentOf)) ||
+            (binding?.scope === module.rootScope &&
+              setup.factoryNames.has(
+                (imported ??=
+                  importedNameOf(module, originalNodes.get(callee))?.name ??
+                  ''),
+              ))
           ) {
             calls.push({ node })
             return
@@ -1138,9 +1147,12 @@ export class StartCompiler {
     visitedModules = new Set<string>(),
   ): Promise<ExportResolution | undefined> {
     const isBuildMode = this.mode === 'build'
+    // Only a top-level search is complete: a nested one skips the modules
+    // other `export *` branches visit (diamonds) or that it came from (cycles)
+    const isTopLevel = visitedModules.size === 0
 
     // Check cache first (only for top-level calls in build mode)
-    if (isBuildMode && visitedModules.size === 0) {
+    if (isBuildMode && isTopLevel) {
       const moduleCache = this.exportResolutionCache.get(moduleInfo.id)
       if (moduleCache) {
         const cached = moduleCache.get(exportName)
@@ -1204,7 +1216,7 @@ export class StartCompiler {
     }
 
     // Cache negative result (build mode only)
-    if (isBuildMode) {
+    if (isBuildMode && isTopLevel) {
       this.getExportResolutionCache(moduleInfo.id).set(exportName, null)
     }
     return undefined
@@ -1434,7 +1446,14 @@ export class StartCompiler {
         }
       }
     } else if (is.MemberExpression(expr) && is.Identifier(expr.property)) {
-      result = await this.resolveCalleeKind(expr.object, fileId, visited)
+      const namespace = await this.resolveNamespaceMember(expr, fileId)
+      result = namespace
+        ? await this.resolveImportKind(
+            namespace.member,
+            namespace.importer,
+            visited,
+          )
+        : await this.resolveCalleeKind(expr.object, fileId, visited)
     }
 
     if (result === 'None' && is.Identifier(expr)) {
@@ -1494,31 +1513,69 @@ export class StartCompiler {
       }
 
       // Check if the object is a namespace import
-      const receiver = unwrapExpression(callee.object)
-      if (is.Identifier(receiver)) {
-        const info = await this.getModuleInfo(fileId)
-        const binding = info.bindings.get(receiver.name)
-        if (
-          binding &&
-          binding.type === 'import' &&
-          binding.importedName === '*'
-        ) {
-          return this.resolveImportKind(
-            {
-              type: 'import',
-              source: binding.source,
-              importedName: callee.property.name,
-            },
-            fileId,
-            visited,
-          )
-        }
+      const namespace = await this.resolveNamespaceMember(callee, fileId)
+      if (namespace) {
+        return this.resolveImportKind(
+          namespace.member,
+          namespace.importer,
+          visited,
+        )
       }
       return this.resolveExprKind(callee.object, fileId, visited)
     }
 
     // handle nested expressions
     return this.resolveExprKind(callee, fileId, visited)
+  }
+
+  /**
+   * `ns.name` as an import of `name` when `ns` is a namespace: a namespace
+   * import, or an import of a namespace another module re-exports
+   * (`export * as ns from '…'`), which `importer` imports.
+   */
+  private async resolveNamespaceMember(
+    member: t.MemberExpression,
+    fileId: string,
+  ): Promise<{ member: CompilerImportBinding; importer: string } | undefined> {
+    const receiver = unwrapExpression(member.object)
+    if (!is.Identifier(receiver) || !is.Identifier(member.property)) {
+      return undefined
+    }
+    let info = await this.getModuleInfo(fileId)
+    let binding = info.bindings.get(receiver.name)
+    const visited = new Set<string>()
+    while (binding?.type === 'import' && binding.importedName !== '*') {
+      // Packages are not followed, like for other imports
+      if (this.knownRootImports.has(binding.source)) {
+        return undefined
+      }
+      const key = `${info.id}:${binding.source}:${binding.importedName}`
+      const target = !visited.has(key)
+        ? await this.resolveIdCached(binding.source, info.id)
+        : null
+      visited.add(key)
+      const found =
+        target &&
+        (await this.findExportInModule(
+          await this.getModuleInfo(target),
+          binding.importedName,
+        ))
+      if (!found) {
+        return undefined
+      }
+      info = found.moduleInfo
+      binding = found.binding
+    }
+    return binding?.type === 'import'
+      ? {
+          member: {
+            type: 'import',
+            source: binding.source,
+            importedName: member.property.name,
+          },
+          importer: info.id,
+        }
+      : undefined
   }
 
   private async getModuleInfo(id: string) {

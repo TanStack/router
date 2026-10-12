@@ -465,7 +465,7 @@ export const Route = createFileRoute('/')({
   // (`export { GlobalPage as component }`), an export TypeScript erases.
   // Impact: the build fails with a missing export, e.g. for a constant
   // injected with Vite's `define`, or the split component is undefined.
-  const ambientCases = [
+  test.each([
     {
       name: 'read by the loader and the split component',
       global: '1.0',
@@ -478,30 +478,12 @@ export const Route = createFileRoute('/')({
     },
     {
       name: 'used as the split component',
-      pinned: true,
       global: () => '<p>global</p>',
       route: `${head}declare const APP_VERSION: any
 export const Route = createFileRoute('/')({ component: APP_VERSION })`,
       expected: ['<p>global</p>'],
     },
-  ]
-  test.each(ambientCases.filter((item) => !item.pinned))(
-    'an ambient declare const $name stays a global',
-    async ({ global, route, expected }) => {
-      vi.stubGlobal('APP_VERSION', global)
-      try {
-        const { options, chunks } = await loadRouteModules(route)
-        expect([
-          ...(options.loader ? [options.loader()] : []),
-          chunks.component!.component!(),
-        ]).toEqual(expected)
-      } finally {
-        vi.unstubAllGlobals()
-      }
-    },
-  )
-  // Known bug for the pinned cases, remove `pinned` when fixed.
-  test.fails.each(ambientCases.filter((item) => item.pinned))(
+  ])(
     'an ambient declare const $name stays a global',
     async ({ global, route, expected }) => {
       vi.stubGlobal('APP_VERSION', global)
@@ -612,7 +594,7 @@ ${head}export const Route = createFileRoute('/')({ component: Page })
   // chunk never declares ("Export '...' is not defined"), or the export is
   // erased with the `declare`.
   // Impact: the chunk fails to load, or the route renders no component.
-  test.fails.each([
+  test.each([
     { name: 'an undeclared global', declaration: '' },
     {
       name: 'an ambient declare const',

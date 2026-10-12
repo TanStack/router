@@ -149,7 +149,7 @@ export const Route = createFileRoute('/old')({})`)
   // its binding, so a value import of the same name is added next to it.
   // Impact: the route keeps its old id when its file moves, or the written
   // route file declares `createFileRoute` twice and fails to build.
-  test.fails.each([
+  test.each([
     {
       name: 'an aliased import',
       source: `import { createFileRoute as route } from '@tanstack/react-router'

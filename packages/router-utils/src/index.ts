@@ -20,10 +20,11 @@ export { createIdentifier, decodeIdentifier } from './path-ids'
 export {
   collectModuleReferences,
   extractModuleInfo,
+  importedNameOf,
   unwrapExpression,
   moduleDeclarationGraph,
   expandTransitively,
   prepareBindingCleanup,
   removeUnusedBindings,
 } from './compiler-helpers'
-export type { ModuleInfoBinding } from './compiler-helpers'
+export type { ImportedName, ModuleInfoBinding } from './compiler-helpers'

@@ -7,6 +7,7 @@ import {
   expandTransitively,
   filePragmas,
   generateModule,
+  importedNameOf,
   keepFilePragmas,
   linkGeneratedReference,
   moduleDeclarationGraph,
@@ -92,12 +93,6 @@ interface HydrateAst {
   module: Module
   /** Maps a copy's nodes to the source's; without it, `ast` is `module.ast`. */
   originalNodes?: WeakMap<t.Node, t.Node>
-}
-
-function getJSXElementName(node: t.JSXElement) {
-  return is.JSXIdentifier(node.openingElement.name)
-    ? node.openingElement.name.name
-    : undefined
 }
 
 function getJSXAttribute(node: t.JSXOpeningElement, name: string) {
@@ -195,7 +190,7 @@ function inspectSplitBoundary(
     code: string
     validate?: boolean
     collectCaptured?: boolean
-    nestedHydrate?: { localName: string }
+    isHydrate?: (node: t.JSXElement) => boolean
   },
 ) {
   const captured = new Set<string>()
@@ -254,8 +249,7 @@ function inspectSplitBoundary(
     JSXElement(current) {
       if (
         current !== node &&
-        options.nestedHydrate &&
-        getJSXElementName(current) === options.nestedHydrate.localName &&
+        options.isHydrate?.(current) &&
         getBooleanProp(current.openingElement, 'split') !== false
       ) {
         nestedBoundaryCount++
@@ -263,18 +257,32 @@ function inspectSplitBoundary(
     },
     CallExpression(current) {
       const callee = unwrapExpression(current.callee)
-      if (
-        options.validate &&
-        is.Identifier(callee) &&
-        /^use[A-Z0-9]/.test(callee.name)
-      ) {
+      // `useHook()`, or `React.useHook()` through a namespace or an object
+      const name = is.Identifier(callee)
+        ? callee.name
+        : is.MemberExpression(callee) && is.Identifier(callee.property)
+          ? callee.property.name
+          : undefined
+      if (options.validate && name && /^use[A-Z0-9]/.test(name)) {
         fail(
           'Hydrate cannot code-split JSX that calls hooks during render. Move the hook call into a child component or use split={false}.',
         )
       }
     },
-    ThisExpression() {
-      if (options.validate) {
+    Identifier(current, visitor) {
+      if (
+        options.validate &&
+        current.name === 'arguments' &&
+        context.module.referenceOf(sourceNode(context, current)) &&
+        !ownsThisAndArguments(visitor.ancestors())
+      ) {
+        fail(
+          "Hydrate cannot code-split JSX that reads the component's arguments.",
+        )
+      }
+    },
+    ThisExpression(_current, visitor) {
+      if (options.validate && !ownsThisAndArguments(visitor.ancestors())) {
         fail('Hydrate cannot code-split JSX that captures this.')
       }
     },
@@ -287,16 +295,48 @@ function inspectSplitBoundary(
   return { captured: [...captured].sort(), nestedBoundaryCount }
 }
 
-function getHydrateLocalName(
+/**
+ * Whether code under these ancestors (from the split boundary down) has its
+ * own `this` and `arguments`, from a function, a class member or a static
+ * block in the boundary rather than from the component.
+ */
+function ownsThisAndArguments(ancestors: Array<t.Node>) {
+  return ancestors.some(
+    (ancestor) =>
+      (is.Function(ancestor) && !is.ArrowFunctionExpression(ancestor)) ||
+      is.PropertyDefinition(ancestor) ||
+      is.AccessorProperty(ancestor) ||
+      is.StaticBlock(ancestor),
+  )
+}
+
+/** Whether a module imports `Hydrate`, by name or with its whole package. */
+function importsHydrate(
   module: Module,
   framework: CompileStartFrameworkOptions,
 ) {
-  return module.imports.find(
+  return module.imports.some(
     (record) =>
-      record.kind === 'named' &&
-      record.name === 'Hydrate' &&
+      (record.kind === 'namespace' ||
+        (record.kind === 'named' && record.name === 'Hydrate')) &&
       record.specifier === `@tanstack/${framework}-start`,
-  )?.local?.name
+  )
+}
+
+/** Whether an element is a `<Hydrate>` boundary, by binding rather than name. */
+function isHydrateElement(
+  context: HydrateAst,
+  framework: CompileStartFrameworkOptions,
+  node: t.JSXElement,
+) {
+  const imported = importedNameOf(
+    context.module,
+    sourceNode(context, node.openingElement.name),
+  )
+  return (
+    imported?.name === 'Hydrate' &&
+    imported.source === `@tanstack/${framework}-start`
+  )
 }
 
 function getMeaningfulChildren(children: t.JSXElement['children']) {
@@ -507,10 +547,11 @@ function transformHydrateAst(
   if (!options.code.includes('Hydrate')) {
     return null
   }
-  const localName = getHydrateLocalName(options.module, options.framework)
-  if (!localName) {
+  if (!importsHydrate(options.module, options.framework)) {
     return null
   }
+  const isHydrate = (node: t.JSXElement) =>
+    isHydrateElement(options, options.framework, node)
   const sourceId = cleanId(options.id)
   const getBoundaryId = createBoundaryId(options.root, sourceId)
   let nextBoundaryIndex = options.indexOffset ?? 0
@@ -539,7 +580,7 @@ function transformHydrateAst(
   })
   walk(options.ast, {
     JSXElement(node, visitor) {
-      if (getJSXElementName(node) !== localName) {
+      if (!isHydrate(node)) {
         return
       }
       if (options.env === 'server') {
@@ -583,7 +624,7 @@ function transformHydrateAst(
         code: options.code,
         validate: true,
         collectCaptured: options.env === 'client',
-        ...(options.env === 'client' ? { nestedHydrate: { localName } } : {}),
+        ...(options.env === 'client' ? { isHydrate } : {}),
       })
       const index = nextBoundaryIndex
       nextBoundaryIndex += 1 + inspection.nestedBoundaryCount
@@ -678,8 +719,7 @@ function loadHydrateVirtualModule(options: {
     return null
   }
   const module = analyzeModule({ code: options.code, filename: sourceId })
-  const localName = getHydrateLocalName(module, options.framework)
-  if (!localName) {
+  if (!importsHydrate(module, options.framework)) {
     return null
   }
   const ast = module.ast
@@ -690,7 +730,7 @@ function loadHydrateVirtualModule(options: {
   walk(ast, {
     JSXElement(node, visitor) {
       if (
-        getJSXElementName(node) !== localName ||
+        !isHydrateElement(context, options.framework, node) ||
         getBooleanProp(node.openingElement, 'split') === false
       ) {
         return
@@ -806,7 +846,8 @@ function loadHydrateVirtualModule(options: {
         is.ClassDeclaration(declaration) ||
         is.TSDeclareFunction(declaration) ||
         is.TSModuleDeclaration(declaration) ||
-        is.TSEnumDeclaration(declaration)) &&
+        is.TSEnumDeclaration(declaration) ||
+        is.TSImportEqualsDeclaration(declaration)) &&
       selected.has(declaration)
     ) {
       return [unwrapExport(statement, declaration)]

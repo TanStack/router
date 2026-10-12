@@ -102,6 +102,8 @@ export type RouteModuleAnalysis = {
    * which can be neither split nor updated by route HMR.
    */
   routeCreatedInFunction: boolean
+  /** The local name of the binding the module exports as `Route`. */
+  routeName: string
   graph: ReturnType<typeof moduleDeclarationGraph>
   /**
    * Declaration dependencies without the `Route` singleton. Split and shared
@@ -151,9 +153,10 @@ export function analyzeRouteModule(
   const module = analyzeModule(options)
   const routes: Array<RouteDefinition> = []
   const { exports: moduleExports } = module
-  const routeIdentifier = moduleExports.find(
+  const routeBinding = moduleExports.find(
     (entry) => entry.name === 'Route' && !entry.typeOnly,
-  )?.local?.declarations[0]
+  )?.local
+  const routeIdentifier = routeBinding?.declarations[0]
   const routeDeclarator = routeIdentifier && module.parentOf(routeIdentifier)
   const routeInit = is.VariableDeclarator(routeDeclarator)
     ? routeDeclarator.init && unwrapExpression(routeDeclarator.init)
@@ -224,6 +227,7 @@ export function analyzeRouteModule(
     routes,
     moduleRoute: moduleRoute ?? routes[0],
     routeCreatedInFunction: !!nestedFactoryCall && !routeFactoryCall,
+    routeName: routeBinding?.name ?? 'Route',
     graph,
     chunkDependencies,
     exported,
@@ -858,6 +862,7 @@ export function compileCodeSplitReferenceRoute(
           hmrStyle: options.hmrStyle ?? 'vite',
           targetFramework: options.targetFramework,
           routeId: options.hmrRouteId,
+          routeName: analysis.routeName,
         }),
       )
       modified = true
@@ -964,10 +969,14 @@ export function compileCodeSplitVirtualRoute(
         splitReferences.add(reference)
       }
       const meta = splitMeta(key)
-      if (is.Identifier(value)) {
-        const splitNode = binding
-          ? analysis.graph.declarations.get(binding)
-          : undefined
+      // A global or an ambient `declare` has no declaration to export: the
+      // chunk exports a copy of its value, like for any other expression
+      if (
+        is.Identifier(value) &&
+        binding &&
+        !binding.has(BindingFlags.Ambient)
+      ) {
+        const splitNode = analysis.graph.declarations.get(binding)
         if (splitNode) {
           for (const plugin of options.compilerPlugins ?? []) {
             plugin.onVirtualRouteSplitNode?.({
@@ -980,9 +989,7 @@ export function compileCodeSplitVirtualRoute(
           }
         }
         generatedExports.push(
-          exports([
-            { local: value.name, exported: key, binding: binding ?? undefined },
-          ]),
+          exports([{ local: value.name, exported: key, binding }]),
         )
       } else {
         const name = getUniqueProgramIdentifier(

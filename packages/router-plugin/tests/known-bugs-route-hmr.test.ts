@@ -434,7 +434,7 @@ ${compiled.replace(/import\.meta\.(?:webpackHot|hot)\b/g, '__hot')}`,
   // Impact: webpack and Rspack apps throw "Route is not defined" when the
   // route module loads in development; Vite apps throw on the first hot
   // update of the route.
-  test.fails.each(['vite', 'webpack'] as const)(
+  test.each(['vite', 'webpack'] as const)(
     '%s: a route exported under another local name is hot-updated',
     async (style) => {
       expect(

@@ -256,7 +256,7 @@ export function Page() {
   // Bug: Hydrate elements are matched by name instead of by binding.
   // Impact: `<Start.Hydrate>` of a namespace import is not split (no boundary
   // id), and a local component named `Hydrate` is split into a lazy chunk.
-  test.fails.each([
+  test.each([
     {
       name: 'a namespace-imported <Start.Hydrate> is split',
       code: `import * as Start from '@tanstack/react-start'
@@ -373,26 +373,23 @@ describe('values captured by the children', () => {
   // rendered. Rejecting it at compile time is a valid fix.
   // Source: SolidStart compile.spec.ts "rejects `arguments` in an arrow
   // inside a function"
-  test.fails(
-    "client: split children reading the component's arguments render its props",
-    async () => {
-      const loaded = await loadClientModule(`${head}export function Page() {
+  test("client: split children reading the component's arguments render its props", async () => {
+    const loaded = await loadClientModule(`${head}export function Page() {
   return <Hydrate><p>{arguments[0].title}</p></Hydrate>
 }`).catch((error: Error) => error)
-      if (loaded instanceof Error) {
-        expect(compileErrorMessage(loaded)).toMatch(rejections.arguments)
-        return
-      }
-      expect(loaded.module.Page({ title: 'Hello' })).toBe('[<p>Hello</p>]')
-    },
-  )
+    if (loaded instanceof Error) {
+      expect(compileErrorMessage(loaded)).toMatch(rejections.arguments)
+      return
+    }
+    expect(loaded.module.Page({ title: 'Hello' })).toBe('[<p>Hello</p>]')
+  })
 
   // Bug: a `this` owned by a function, class or method in the children is
   // rejected, on the client and the server.
   // Impact: valid code fails to build.
   // Source: SolidStart compile.spec.ts "allows `this` and `arguments` in a
   // function expression"
-  test.fails.each([
+  test.each([
     {
       name: 'a function expression',
       children: `<ul>{items.map(function (item) { return <li>{this.prefix + item}</li> }, { prefix: '>' })}</ul>`,
@@ -426,20 +423,17 @@ describe('values captured by the children', () => {
   // Impact: the hook runs in another component on the client than on the
   // server (`useId` mismatches, hydration errors).
   // Source: Qwik optimizer example_use_optimization
-  test.fails(
-    'client: a hook called through a namespace in the children is rejected',
-    async () => {
-      await expect(
-        compileHydrate(
-          'client',
-          `import * as React from 'react'
+  test('client: a hook called through a namespace in the children is rejected', async () => {
+    await expect(
+      compileHydrate(
+        'client',
+        `import * as React from 'react'
 ${head}export function Page() {
   return <Hydrate><p id={React.useId()}>x</p></Hydrate>
 }`,
-        ),
-      ).rejects.toThrow(/hook/i)
-    },
-  )
+      ),
+    ).rejects.toThrow(/hook/i)
+  })
 
   // Bug: split children containing `await` (async server components) are
   // moved as is into the synchronous chunk component the client compile
@@ -594,11 +588,9 @@ export function Page() {
   // Impact: the chunk throws "Card is not defined" when the boundary
   // hydrates.
   // Source: React Compiler fixture ts-import-equals-declaration.ts
-  test.fails(
-    'client: a TypeScript import alias used by the split children is declared in the chunk',
-    async () => {
-      const { module } = await loadClientModule(
-        `${head}import { visible } from '@tanstack/react-start/hydration'
+  test('client: a TypeScript import alias used by the split children is declared in the chunk', async () => {
+    const { module } = await loadClientModule(
+      `${head}import { visible } from '@tanstack/react-start/hydration'
 import * as ui from './ui'
 import Card = ui.Card
 function Panel() {
@@ -607,17 +599,16 @@ function Panel() {
 export function Page() {
   return <Hydrate when={visible()}><Panel /></Hydrate>
 }`,
-        {
-          stubs: {
-            './ui': {
-              Card: (props: { title: string }) => `<b>${props.title}</b>`,
-            },
+      {
+        stubs: {
+          './ui': {
+            Card: (props: { title: string }) => `<b>${props.title}</b>`,
           },
         },
-      )
-      expect(module.Page()).toBe('[<b>hi</b>]')
-    },
-  )
+      },
+    )
+    expect(module.Page()).toBe('[<b>hi</b>]')
+  })
 
   // Bug: a module-level helper moved into the chunk keeps its name, so a
   // helper named like the generated chunk export (`H0`) collides with it.

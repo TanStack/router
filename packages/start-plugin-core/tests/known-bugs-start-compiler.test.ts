@@ -180,7 +180,7 @@ describe('server code in the client bundle', () => {
   // module that re-exports the builder is cached as "not found".
   // Impact: a later importer through that module is left untransformed and
   // ships its handler and server-only imports to the client.
-  test.fails.each<{ name: string; reExports: Record<string, string> }>([
+  test.each<{ name: string; reExports: Record<string, string> }>([
     {
       name: 'diamonds',
       reExports: {
@@ -272,37 +272,31 @@ export const fn = iso.server(() => db.x()).client(() => 'client')`,
   // name.
   // Impact: the module is left untransformed and ships its handler and
   // server-only imports to the client.
-  test.fails(
-    'client builds compile a builder read from a namespace import',
-    async () => {
-      const code = `import * as F from './fns'
+  test('client builds compile a builder read from a namespace import', async () => {
+    const code = `import * as F from './fns'
 import { db } from './db.server'
 export const fn = F.authed.handler(async () => db.x())`
-      const files = {
-        '/test/src/fns.ts': `${head}export const authed = createServerFn({ method: 'POST' })`,
-      }
-      const client = (await compileCode('client', code, { files })) ?? code
-      expect(client).not.toContain(serverOnly)
-    },
-  )
+    const files = {
+      '/test/src/fns.ts': `${head}export const authed = createServerFn({ method: 'POST' })`,
+    }
+    const client = (await compileCode('client', code, { files })) ?? code
+    expect(client).not.toContain(serverOnly)
+  })
 
   // Bug: a namespace of the Start package re-exported by a project module
   // (`export * as Start from '@tanstack/react-start'`) is not resolved.
   // Impact: `Start.createServerFn()` modules are left untransformed and ship
   // their handler and server-only imports to the client.
-  test.fails(
-    'client builds compile factories of a re-exported Start namespace',
-    async () => {
-      const code = `import { Start } from './start'
+  test('client builds compile factories of a re-exported Start namespace', async () => {
+    const code = `import { Start } from './start'
 import { db } from './db.server'
 export const fn = Start.createServerFn().handler(async () => db.x())`
-      const files = {
-        '/test/src/start.ts': `export * as Start from '@tanstack/react-start'`,
-      }
-      const client = (await compileCode('client', code, { files })) ?? code
-      expect(client).not.toContain(serverOnly)
-    },
-  )
+    const files = {
+      '/test/src/start.ts': `export * as Start from '@tanstack/react-start'`,
+    }
+    const client = (await compileCode('client', code, { files })) ?? code
+    expect(client).not.toContain(serverOnly)
+  })
 
   // Bug: the builder of a `.handler()` chain is resolved through identifiers
   // and member expressions only, so a builder returned by a function call
@@ -350,7 +344,7 @@ export const fn = authed().handler(async () => db.x())`,
   // local alias is only compiled as a top-level variable initializer.
   // Impact: the implementation and its server-only imports ship to the
   // client, where calling the server-only fn runs it instead of throwing.
-  test.fails.each([
+  test.each([
     {
       name: 'a renamed import in a function body',
       code: `import { createServerOnlyFn as serverOnly } from '@tanstack/react-start'

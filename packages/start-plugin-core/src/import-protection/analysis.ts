@@ -1,4 +1,8 @@
-import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
+import {
+  analyzeModule,
+  importedNameOf,
+  unwrapExpression,
+} from '@tanstack/router-utils'
 import { is, isWrapper, literalValue, nameOf } from 'yuku-ast'
 import { buildLineIndex, indexToLineColumn } from './sourceLocation'
 import { getOrCreate } from './utils'
@@ -274,6 +278,7 @@ export function getNamedExports(
 }
 
 function isCompilerSafeBoundaryCall(
+  module: Module,
   call: t.CallExpression,
   fnNode: t.Function | t.ArrowFunctionExpression,
   envType: BoundaryEnv,
@@ -286,11 +291,15 @@ function isCompilerSafeBoundaryCall(
   }
 
   const callee = unwrapExpression(call.callee)
+  // A factory imported under another name or read from a namespace import
+  const factory =
+    importedNameOf(module, callee)?.name ??
+    (is.Identifier(callee) ? callee.name : undefined)
 
-  if (is.Identifier(callee)) {
+  if (factory !== undefined) {
     return envType === 'client'
-      ? callee.name === 'createServerOnlyFn'
-      : callee.name === 'createClientOnlyFn'
+      ? factory === 'createServerOnlyFn'
+      : factory === 'createClientOnlyFn'
   }
 
   if (!is.MemberExpression(callee) || callee.computed) {
@@ -302,7 +311,7 @@ function isCompilerSafeBoundaryCall(
   }
 
   const prop = callee.property.name
-  const rootName = getCalleeRootName(callee.object)
+  const rootName = getCalleeRootName(module, callee.object)
 
   if (envType === 'client') {
     if (prop === 'handler') {
@@ -327,18 +336,23 @@ function isCompilerSafeBoundaryCall(
   return false
 }
 
-function getCalleeRootName(node: t.Node): string | undefined {
+function getCalleeRootName(module: Module, node: t.Node): string | undefined {
   node = unwrapExpression(node)
+  const imported = importedNameOf(module, node)?.name
+  if (imported !== undefined && imported !== '*') {
+    return imported
+  }
+
   if (is.Identifier(node)) {
     return node.name
   }
 
   if (is.CallExpression(node)) {
-    return getCalleeRootName(node.callee)
+    return getCalleeRootName(module, node.callee)
   }
 
   if (is.MemberExpression(node)) {
-    return getCalleeRootName(node.object)
+    return getCalleeRootName(module, node.object)
   }
 
   return undefined
@@ -363,7 +377,7 @@ function isInsideCompilerSafeBoundary(
       const { parent: call } = transparentParent(module, ancestor)
       if (
         is.CallExpression(call) &&
-        isCompilerSafeBoundaryCall(call, ancestor, envType)
+        isCompilerSafeBoundaryCall(module, call, ancestor, envType)
       ) {
         return true
       }

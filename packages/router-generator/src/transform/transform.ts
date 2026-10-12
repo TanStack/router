@@ -1,6 +1,10 @@
 import MagicString from 'magic-string'
-import { is, isCallOf, nameOf } from 'yuku-ast'
-import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
+import { is, nameOf } from 'yuku-ast'
+import {
+  analyzeModule,
+  importedNameOf,
+  unwrapExpression,
+} from '@tanstack/router-utils'
 import type * as t from '@yuku-toolchain/types'
 import type { TransformOptions, TransformResult } from './types'
 
@@ -35,7 +39,11 @@ type RouteImportAnalysis =
   | { kind: 'normalize' }
 
 type RouteCall = {
-  callee: t.Identifier & { name: RouteConstructorName }
+  callee: t.Identifier
+  /** The route constructor the callee is bound to. */
+  constructor: RouteConstructorName
+  /** The import the callee is bound to, under its own name or not. */
+  imported: ReturnType<typeof importedNameOf>
   routeIdArg: SupportedRouteId
   optionsArg: t.CallExpression['arguments'][number] | undefined
 }
@@ -134,8 +142,26 @@ export function transform({
   const s = new MagicString(source)
   let modified = false
 
-  if (routeCall.callee.name !== expectedCallee) {
+  // The callee already reads the expected constructor from the target
+  // module, possibly under another name or through a type-only import
+  const imported = routeCall.imported
+  const boundToExpected =
+    routeCall.constructor === expectedCallee &&
+    imported?.source === targetModule
+  // An import under another name or a type-only one is the callee's binding:
+  // keep it rather than normalize imports by name around it
+  const keepImports =
+    boundToExpected &&
+    (routeCall.callee.name !== expectedCallee || imported.typeOnly)
+
+  if (!boundToExpected && routeCall.callee.name !== expectedCallee) {
     s.update(routeCall.callee.start, routeCall.callee.end, expectedCallee)
+    modified = true
+  }
+
+  // A type-only import is erased: make the one the route call reads a value
+  if (keepImports && imported.typeOnly) {
+    makeValueImport(ast, routeCall.callee, s)
     modified = true
   }
 
@@ -149,6 +175,7 @@ export function transform({
   }
 
   if (
+    !keepImports &&
     updateRouteImports({
       imports,
       source,
@@ -185,9 +212,10 @@ function findRouteCalls(
       continue
     }
 
-    const init = getRouteConstructorInit(declarator.init)
+    const init = getRouteConstructorInit(module, declarator.init)
     if (!init) {
-      if (isCallOf(unwrapExpression(declarator.init), routeConstructors)) {
+      const call = unwrapExpression(declarator.init)
+      if (is.CallExpression(call) && routeConstructorOf(module, call.callee)) {
         hasMalformedRouteCall = true
       }
       continue
@@ -197,6 +225,8 @@ function findRouteCalls(
     if (isSupportedRouteId(routeIdArg)) {
       calls.push({
         callee: init.callee,
+        constructor: init.constructor,
+        imported: init.imported,
         routeIdArg,
         optionsArg: unwrapExpression(init.outerCall.arguments[0]),
       })
@@ -208,20 +238,74 @@ function findRouteCalls(
   return { calls, hasUnsupportedRouteId, hasMalformedRouteCall }
 }
 
-function getRouteConstructorInit(expression: t.Expression | null) {
+/**
+ * The route constructor a callee is bound to: the one it imports, under its
+ * own name or not, else the one it is named after.
+ */
+function routeConstructorOf(
+  module: ReturnType<typeof analyzeModule>,
+  node: t.Expression | t.Super,
+) {
+  const callee = unwrapExpression(node)
+  if (!is.Identifier(callee)) {
+    return null
+  }
+  const imported = importedNameOf(module, callee)
+  const name = imported ? imported.name : callee.name
+  return isRouteConstructorName(name)
+    ? { callee, constructor: name, imported }
+    : null
+}
+
+function getRouteConstructorInit(
+  module: ReturnType<typeof analyzeModule>,
+  expression: t.Expression | null,
+) {
   const outerCall = unwrapExpression(expression)
   if (!is.CallExpression(outerCall)) {
     return null
   }
   const innerCall = unwrapExpression(outerCall.callee)
-  if (!isCallOf(innerCall, routeConstructors)) {
+  const constructor =
+    is.CallExpression(innerCall) && routeConstructorOf(module, innerCall.callee)
+  if (!constructor) {
     return null
   }
 
-  return {
-    callee: unwrapExpression(innerCall.callee) as RouteCall['callee'],
-    outerCall,
-    innerCall,
+  return { ...constructor, outerCall, innerCall }
+}
+
+/**
+ * Turns the type-only import an identifier is bound to into a value import:
+ * drops its `type` modifier, or the declaration's when it imports nothing
+ * else, keeping its other specifiers type-only.
+ */
+function makeValueImport(
+  module: ReturnType<typeof analyzeModule>,
+  identifier: t.Identifier,
+  s: MagicString,
+) {
+  const [local] = module.bindingOf(identifier)?.declarations ?? []
+  const specifier = local && module.parentOf(local)
+  const declaration = specifier && module.parentOf(specifier)
+  if (!is.ImportSpecifier(specifier) || !is.ImportDeclaration(declaration)) {
+    return
+  }
+  const typeKeyword = (start: number, end: number) => {
+    const match = /\btype\s+/.exec(module.source.slice(start, end))
+    if (match) {
+      s.remove(start + match.index, start + match.index + match[0].length)
+    }
+  }
+  if (specifier.importKind === 'type') {
+    typeKeyword(specifier.start, specifier.imported.start)
+    return
+  }
+  typeKeyword(declaration.start, declaration.specifiers[0]!.start)
+  for (const other of declaration.specifiers) {
+    if (other !== specifier) {
+      s.prependLeft(other.start, 'type ')
+    }
   }
 }
 

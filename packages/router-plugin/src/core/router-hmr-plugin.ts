@@ -99,6 +99,7 @@ export function createRouterHmrPlugin(
             hmrStyle,
             targetFramework: userConfig.target,
             routeId: routeEntry.routeId,
+            routeName: analysis.routeName,
           }),
         )
         const result = generateModule(ast, {

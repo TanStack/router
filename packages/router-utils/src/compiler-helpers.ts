@@ -53,7 +53,8 @@ function declarationOf(module: Module, identifier: Node): Node | undefined {
       is.ClassDeclaration(current) ||
       is.TSDeclareFunction(current) ||
       is.TSEnumDeclaration(current) ||
-      is.TSModuleDeclaration(current)
+      is.TSModuleDeclaration(current) ||
+      is.TSImportEqualsDeclaration(current)
     ) {
       return current.id === identifier ? current : undefined
     }
@@ -801,6 +802,68 @@ export function extractModuleInfo(sourceModule: Module): ExtractedModuleInfo {
     }
   }
   return { bindings, exports: exportBindings, reExportAllSources }
+}
+
+/** The import a reference resolves to (see `importedNameOf`). */
+export interface ImportedName {
+  /** The specifier of the module it is imported from. */
+  source: string
+  /** Its name there: `default` for a default import, `*` for a namespace. */
+  name: string
+  typeOnly: boolean
+}
+
+/**
+ * The import an expression refers to by binding, not by name: an identifier
+ * bound to an import, or a member `ns.name` (JSX `<ns.Name>` included) of a
+ * namespace import, also through `const` aliases. Undefined for anything
+ * else, such as a local shadowing an import, a global or a computed member.
+ * `node` must belong to `module`'s tree.
+ */
+export function importedNameOf(
+  module: Module,
+  node: Node | null | undefined,
+  seen = new Set<Binding>(),
+): ImportedName | undefined {
+  node = unwrapExpression(node)
+  if (
+    (is.MemberExpression(node) && !node.computed) ||
+    is.JSXMemberExpression(node)
+  ) {
+    const property = node.property
+    const namespace = importedNameOf(module, node.object, seen)
+    return namespace?.name === '*' &&
+      (is.Identifier(property) || is.JSXIdentifier(property))
+      ? { ...namespace, name: property.name }
+      : undefined
+  }
+  const binding =
+    (is.Identifier(node) || is.JSXIdentifier(node)) && module.bindingOf(node)
+  if (!binding || seen.has(binding)) {
+    return undefined
+  }
+  seen.add(binding)
+  if (binding.has(BindingFlags.Import)) {
+    const record = module.imports.find((entry) => entry.local === binding)
+    return (
+      record && {
+        source: record.specifier,
+        name: record.isNamespace ? '*' : (record.name ?? 'default'),
+        typeOnly: record.typeOnly,
+      }
+    )
+  }
+  // `const alias = imported`
+  const [identifier] = binding.declarations
+  const declarator =
+    identifier &&
+    binding.declarations.length === 1 &&
+    binding.has(BindingFlags.Const)
+      ? module.parentOf(identifier)
+      : null
+  return is.VariableDeclarator(declarator) && declarator.id === identifier
+    ? importedNameOf(module, declarator.init, seen)
+    : undefined
 }
 
 /**

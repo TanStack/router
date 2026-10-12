@@ -20,9 +20,12 @@ export function createWebpackHmrStatement(
   opts: {
     targetFramework: Config['target']
     routeId?: string
+    /** The local binding the module exports as `Route`. */
+    routeName?: string
   },
 ): Array<ProgramStatement> {
   const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
+  const route = opts.routeName ?? 'Route'
   const staticRouteIdLiteral =
     typeof opts.routeId === 'string'
       ? JSON.stringify(opts.routeId)
@@ -68,7 +71,7 @@ export function createWebpackHmrStatement(
 if (import.meta.webpackHot) {
   const hot = import.meta.webpackHot
   const hotData = hot.data ??= {}
-  const routeId = hotData['tsr-route-id'] ?? Route.id ?? (Route.isRoot ? '__root__' : ${staticRouteIdLiteral})
+  const routeId = hotData['tsr-route-id'] ?? ${route}.id ?? (${route}.isRoot ? '__root__' : ${staticRouteIdLiteral})
   if (routeId) {
     hotData['tsr-route-id'] = routeId
   }
@@ -76,8 +79,8 @@ if (import.meta.webpackHot) {
     typeof window !== 'undefined' && routeId
       ? window.__TSR_ROUTER__?.routesById?.[routeId]
       : undefined
-  if (routeId && existingRoute && existingRoute !== Route) {
-    (${handleRouteUpdateCode})(routeId, Route)${reactRefreshCall}
+  if (routeId && existingRoute && existingRoute !== ${route}) {
+    (${handleRouteUpdateCode})(routeId, ${route})${reactRefreshCall}
   }
   hot.dispose((data) => {
     if (routeId) {

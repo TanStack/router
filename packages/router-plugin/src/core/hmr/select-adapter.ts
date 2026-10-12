@@ -7,6 +7,8 @@ export type CreateRouteHmrStatementOpts = {
   hmrStyle: HmrStyle
   targetFramework: Config['target']
   routeId?: string
+  /** The local binding the module exports as `Route`. */
+  routeName?: string
 }
 
 /**
@@ -24,9 +26,11 @@ export function createRouteHmrStatement(
     return createWebpackHmrStatement(stableRouteOptionKeys, {
       targetFramework: opts.targetFramework,
       routeId,
+      routeName: opts.routeName,
     })
   }
   return createViteHmrStatement(stableRouteOptionKeys, {
     routeId,
+    routeName: opts.routeName,
   })
 }
