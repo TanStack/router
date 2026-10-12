@@ -169,6 +169,24 @@ export const Route = createFileRoute('/')({ component: page })`,
     expect((Route as any).options.component()).toBe('<p>inner-marker</p>')
   })
 
+  it('renames a component binding inside an inline component hoisted before it', async () => {
+    const code = transformWithRouteHmrPlugin(
+      `${head}const missing = () => <p>missing</p>
+export const Route = createFileRoute('/')({
+  pendingComponent: () => missing(),
+  notFoundComponent: missing,
+})`,
+    )
+    await expectRegisteredRouteOption(code, 'pendingComponent')
+    await expectRegisteredRouteOption(code, 'notFoundComponent')
+    const { Route } = await evaluateModule(code, {
+      '@tanstack/react-router': {
+        createFileRoute: () => (options: unknown) => ({ options }),
+      },
+    })
+    expect((Route as any).options.pendingComponent()).toBe('<p>missing</p>')
+  })
+
   // Source: ReactFreshIntegration-test "preserves state ..." (families are
   // matched by registration name)
   it('names hoisted components after their option, so adding options keeps the family', async () => {

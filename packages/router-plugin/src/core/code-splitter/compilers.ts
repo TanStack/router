@@ -7,7 +7,6 @@ import {
   expandTransitively,
   filePragmas,
   generateModule,
-  generatedReferenceOf,
   keepFilePragmas,
   linkGeneratedReference,
   moduleDeclarationGraph,
@@ -504,6 +503,7 @@ function createOutput(analysis: RouteModuleAnalysis) {
   ])
   // Most outputs never rename a binding: build the index on first use
   let declarationExports: Map<Node, typeof analysis.module.exports> | undefined
+  const aliasReferences = new Map<Binding, Array<Node>>()
   const renameBinding = (node: Node, name: string) => {
     const binding = module.bindingOf(node)
     if (!binding) {
@@ -554,6 +554,13 @@ function createOutput(analysis: RouteModuleAnalysis) {
             binding: entry.local!,
           })),
         )
+        aliases.specifiers.forEach((specifier, specifierIndex) => {
+          const local = uniqueEntries[specifierIndex]!.local!
+          aliasReferences.set(local, [
+            ...(aliasReferences.get(local) ?? []),
+            specifier.local,
+          ])
+        })
         program.body.splice(
           index,
           1,
@@ -562,30 +569,36 @@ function createOutput(analysis: RouteModuleAnalysis) {
         )
       }
     }
-    walk(program, {
-      enter(candidate, context) {
-        if (!is.Identifier(candidate) && !is.JSXIdentifier(candidate)) {
-          return
-        }
-        // The aliases above reference the binding they export
-        if (
-          module.bindingOf(candidate) === binding ||
-          generatedReferenceOf(candidate) === binding
-        ) {
-          candidate.name = name
-          const parent = context.parent
-          if (
-            is.Property(parent) &&
-            parent.shorthand &&
-            is.Identifier(parent.key) &&
-            is.Identifier(parent.value) &&
-            parent.key.name !== parent.value.name
-          ) {
-            parent.shorthand = false
-          }
-        }
-      },
-    })
+    // The output edits the analyzed tree in place, so the binding's source
+    // nodes are the ones to rename, wherever the output has moved them
+    for (const node of [
+      ...binding.declarations,
+      ...binding.references.map((reference) => reference.node),
+    ]) {
+      if (
+        (!is.Identifier(node) && !is.JSXIdentifier(node)) ||
+        module.bindingOf(node) !== binding
+      ) {
+        continue
+      }
+      node.name = name
+      const parent = module.parentOf(node)
+      if (
+        is.Property(parent) &&
+        parent.shorthand &&
+        is.Identifier(parent.key) &&
+        is.Identifier(parent.value) &&
+        parent.key.name !== parent.value.name
+      ) {
+        parent.shorthand = false
+      }
+    }
+    // The aliases above reference the binding they export
+    for (const node of aliasReferences.get(binding) ?? []) {
+      if (is.Identifier(node)) {
+        node.name = name
+      }
+    }
   }
   const removeUnused = () => removeUnusedBindings(module, program, cleanup)
   return { program, pragmas, reservedNames, renameBinding, removeUnused }
