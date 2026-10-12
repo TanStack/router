@@ -63,6 +63,11 @@ export function createWebpackHmrStatement(
     } catch (_err) { /* noop */ }`
       : ''
 
+  // The router holds the `Route` this module exported first, so only that
+  // route may be patched. Matching by id alone would also patch a route from
+  // another module, e.g. a Module Federation remote whose `__root__` or `/`
+  // shares an id with the host's. Webpack only passes `hot.data` to the next
+  // evaluation through `dispose`, so the first `Route` is carried there.
   return [
     template.statement(
       `
@@ -73,17 +78,19 @@ if (import.meta.webpackHot) {
   if (routeId) {
     hotData['tsr-route-id'] = routeId
   }
+  const ownRoute = hotData['tsr-route'] ?? Route
   const existingRoute =
     typeof window !== 'undefined' && routeId
       ? window.__TSR_ROUTER__?.routesById?.[routeId]
       : undefined
-  if (routeId && existingRoute && existingRoute !== Route) {
+  if (routeId && existingRoute === ownRoute && existingRoute !== Route) {
     (${handleRouteUpdateCode})(routeId, Route)${reactRefreshCall}
   }
   hot.dispose((data) => {
     if (routeId) {
       data['tsr-route-id'] = routeId
     }
+    data['tsr-route'] = ownRoute
   })
   hot.accept()
 }
