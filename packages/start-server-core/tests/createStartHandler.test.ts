@@ -14,6 +14,7 @@ import {
   RouterCore,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
+  createSerializationAdapter,
   redirect,
 } from '@tanstack/router-core'
 import {
@@ -82,6 +83,7 @@ const startMocks = vi.hoisted(() => {
     serverFnCalls: [] as Array<{ context?: unknown }>,
     router: undefined as undefined | AnyRouter,
     routerFactory: undefined as undefined | (() => AnyRouter),
+    serializationAdapters: [] as Array<any>,
   }
 })
 
@@ -89,7 +91,7 @@ vi.mock('#tanstack-start-entry', () => ({
   startInstance: {
     getOptions: () => ({
       requestMiddleware: startMocks.requestMiddleware,
-      serializationAdapters: [],
+      serializationAdapters: startMocks.serializationAdapters,
     }),
   },
 }))
@@ -267,6 +269,7 @@ afterEach(() => {
   startMocks.serverFnCalls = []
   startMocks.router = undefined
   startMocks.routerFactory = undefined
+  startMocks.serializationAdapters = []
   vi.unstubAllEnvs()
 })
 
@@ -1827,10 +1830,8 @@ describe('createStartHandler request location reuse', () => {
         renderApp ? 'app response' : 'server response',
       )
       expect(input).toHaveBeenCalledOnce()
-      expect(serverHandler).toHaveBeenCalledExactlyOnceWith(
-        `/${encodeURIComponent(path)}`,
-      )
-      expect(middlewarePathnames).toEqual([`/${encodeURIComponent(path)}`])
+      expect(serverHandler).toHaveBeenCalledExactlyOnceWith(`/${path}`)
+      expect(middlewarePathnames).toEqual([`/${path}`])
       expect(render).toHaveBeenCalledTimes(renderApp ? 1 : 0)
       expect(
         getMatchedRoutes.mock.calls.every(
@@ -1923,9 +1924,17 @@ describe('createStartHandler request location reuse', () => {
     expect(parseSearch).toHaveBeenCalledExactlyOnceWith('?page=2')
   })
 
-  it.each(['a/b', 'a%b', 'a b', 'a?b', 'a#b'])(
+  // Handlers receive the router's pathname: decoded, except for characters
+  // that would change how the path is read.
+  it.each([
+    ['a/b', 'a%2Fb'],
+    ['a%b', 'a%25b'],
+    ['a b', 'a b'],
+    ['a?b', 'a%3Fb'],
+    ['a#b', 'a%23b'],
+  ])(
     'preserves encoded params %j when a server handler continues to SSR',
-    async (value) => {
+    async (value, pathname) => {
       const handlerParams: Array<string> = []
       const handlerPathnames: Array<string> = []
       const root = new BaseRootRoute()
@@ -1963,7 +1972,7 @@ describe('createStartHandler request location reuse', () => {
 
       expect(response.status).toBe(200)
       expect(handlerParams).toEqual([value])
-      expect(handlerPathnames).toEqual([`/params/${encodeURIComponent(value)}`])
+      expect(handlerPathnames).toEqual([`/params/${pathname}`])
       expect(await response.json()).toEqual({
         params: { value },
         loaderData: value,
@@ -3273,6 +3282,39 @@ describe('createStartHandler SSR cleanup ownership', () => {
 })
 
 describe('createStartHandler router initialization', () => {
+  it('keeps adapter order and router adapters isolated to their request', async () => {
+    const adapter = (key: string) =>
+      createSerializationAdapter({
+        key,
+        test: (value: unknown): value is Date => value instanceof Date,
+        toSerializable: (value: Date) => value.toISOString(),
+        fromSerializable: (value: string) => new Date(value),
+      })
+    const startAdapter = adapter('start')
+    const routerAdapter = adapter('router')
+    const startAdapters = [startAdapter]
+    startMocks.serializationAdapters = startAdapters
+    let requestCount = 0
+    startMocks.routerFactory = () => {
+      const router = makeRouter()
+      router.options.serializationAdapters =
+        requestCount++ === 0 ? [routerAdapter] : []
+      return router
+    }
+    const handler = createStartHandler(({ router }) =>
+      Response.json(
+        router.options.serializationAdapters?.map(({ key }) => key),
+      ),
+    )
+
+    const first = await handler(new Request('http://localhost/'), {})
+    const second = await handler(new Request('http://localhost/'), {})
+
+    expect(await first.json()).toEqual(['start', '$TSS/serverfn', 'router'])
+    expect(await second.json()).toEqual(['start', '$TSS/serverfn'])
+    expect(startAdapters).toEqual([startAdapter])
+  })
+
   it('normalizes a server function router URL while preserving the incoming URL', async () => {
     const requestUrl =
       'http://localhost/_serverFn/test?space=a%20b&tilde=~&bad=%GG&a=1&a=2#part'
@@ -3479,6 +3521,49 @@ describe('createStartHandler router initialization', () => {
 })
 
 describe('createStartHandler direct server routes', () => {
+  it.each([false, true])(
+    'runs shared route middleware once and preserves its context (global=%s)',
+    async (global) => {
+      const runMiddleware = vi.fn(({ next }) =>
+        next({ context: { message: 'trusted middleware' } }),
+      )
+      const middleware = createMiddleware().server(runMiddleware)
+      startMocks.requestMiddleware = global ? [middleware] : []
+      const root = new BaseRootRoute({
+        server: { middleware: [middleware] },
+      })
+      startMocks.router = new RouterCore(
+        {
+          isServer: true,
+          routeTree: root.addChildren([
+            new BaseRoute({
+              getParentRoute: () => root,
+              path: '/',
+              component: () => null,
+            }),
+          ]),
+        },
+        getStoreConfig,
+      )
+      const handler = createStartHandler<{
+        server: { requestContext: { message: string; requestValue: string } }
+      }>(({ router }) =>
+        Response.json(router.options.additionalContext?.serverContext),
+      )
+
+      const response = await handler(new Request('http://localhost/'), {
+        context: { message: 'request context', requestValue: 'retained' },
+      })
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({
+        message: 'trusted middleware',
+        requestValue: 'retained',
+      })
+      expect(runMiddleware).toHaveBeenCalledOnce()
+    },
+  )
+
   it('disposes a thrown sole-terminal response when the request aborts after the fast-path check', async () => {
     const requestController = new AbortController()
     const cancellation = new Error('request disconnected')
