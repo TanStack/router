@@ -23,6 +23,7 @@ import {
   getNormalizedURL,
   isSsrResponse,
   normalizeSsrResponse,
+  stripSsrResponseBody,
   waitForRequest,
 } from '@tanstack/router-core/ssr/server'
 import {
@@ -34,6 +35,7 @@ import {
   finalizeResponse,
   reconcileResponse,
   restoreResponseProtocol,
+  transferResponseMetadata,
   transferResponseProtocol,
   withStartRequest,
 } from './internal-request-response'
@@ -523,6 +525,17 @@ async function executeMiddleware(
       // Select the replacement before reconciling: middleware may already
       // have transferred or piped the previous response's body.
       if (response !== undefined) {
+        // Middleware can assign next()'s shared response and then return
+        // another one, such as a 304 after transforming the body. Track the
+        // assigned body first, so the replacement disposes it, without
+        // rebuilding a body it may have already locked or consumed.
+        if (
+          ctx.response !== responseOwnership?.response &&
+          ctx.response !== response &&
+          returnedDepth > caller
+        ) {
+          adoptResponse(ctx.response)
+        }
         setResponse(response, caller)
       } else {
         setResponse(ctx.response, caller)
@@ -946,6 +959,13 @@ export function createStartHandler<TRegister = Register>(
               request.headers.get('x-tsr-serverFn') === 'true',
             event,
           )
+        }
+        // Request middleware can read a HEAD body, for example to compute an
+        // ETag, so it is stripped only when the response leaves the pipeline.
+        if (request.method === 'HEAD' && result.response.body !== null) {
+          const source = result.response
+          result = stripSsrResponseBody(result, 'HEAD body stripped')
+          transferResponseMetadata(source, result.response)
         }
       } catch (error) {
         disposeResponseResult(

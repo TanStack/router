@@ -110,6 +110,14 @@ const throwAfterStatusFn = createServerFn().handler(() => {
   throw new Error('Unauthorized function')
 })
 
+const throwAfterFramingFn = createServerFn().handler(async () => {
+  // Headers for a compressed file whose read then fails.
+  setResponseHeader('content-encoding', 'gzip')
+  setResponseHeader('content-length', '2')
+  await Promise.resolve()
+  throw new Error('File read failed')
+})
+
 const throwAfterMiddlewareStatusFn = createServerFn()
   .middleware([throwStatusMiddleware])
   .handler(() => {
@@ -212,6 +220,7 @@ function ServerFunctions() {
         fn={explicitCookieHeaderFn}
       />
       <ServerFunctionButton name="throwAfterStatus" fn={throwAfterStatusFn} />
+      <ServerFunctionButton name="throwAfterFraming" fn={throwAfterFramingFn} />
       <ServerFunctionButton
         name="throwAfterMiddlewareStatus"
         fn={throwAfterMiddlewareStatusFn}

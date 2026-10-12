@@ -96,6 +96,25 @@ const globalResponseMiddleware = createMiddleware().server(
       return { ...result, response }
     }
 
+    if (scenario === 'global-representation') {
+      // Representation metadata computed from the body, as by ETag middleware.
+      const result = await next()
+      const body = await result.response.text()
+      const response = new Response(body, result.response)
+      response.headers.set('x-body-length', String(body.length))
+      return { ...result, response }
+    }
+
+    if (scenario === 'global-assigned-transform-not-modified') {
+      // Transform the body in place, then answer an ETag match instead.
+      const result = await next()
+      result.response = new Response(
+        result.response.body!.pipeThrough(new TransformStream()),
+        result.response,
+      )
+      return new Response(null, { status: 304 })
+    }
+
     if (scenario === 'global-timeout') {
       // Keep working after next() while the handler the inner timeout
       // abandoned is still running.

@@ -218,9 +218,10 @@ function getErrorStatusText(error: unknown): string | undefined {
   return undefined
 }
 
-// Start always builds a new error body. These headers describe another body's
-// framing or its connection, so they would corrupt that body on the wire.
-const ERROR_BODY_EXCLUDED_HEADERS = [
+// Start builds error bodies and serialized replies itself. These headers
+// describe another body's framing or its connection, whether they come from
+// error metadata or from helpers, so they would corrupt that body on the wire.
+const GENERATED_BODY_EXCLUDED_HEADERS: ReadonlySet<string> = new Set([
   'connection',
   'content-encoding',
   'content-length',
@@ -229,7 +230,7 @@ const ERROR_BODY_EXCLUDED_HEADERS = [
   'te',
   'trailer',
   'transfer-encoding',
-]
+])
 
 // Responses from another fetch implementation or realm fail instanceof.
 function isResponse(value: unknown): boolean {
@@ -259,7 +260,7 @@ export function getErrorHeaders(error: unknown): Headers | undefined {
   } catch {
     return undefined
   }
-  for (const name of ERROR_BODY_EXCLUDED_HEADERS) {
+  for (const name of GENERATED_BODY_EXCLUDED_HEADERS) {
     headers.delete(name)
   }
   return headers
@@ -428,6 +429,7 @@ function applyProtectedHeaders(
 function applyHeaderState(
   target: Headers,
   state: ResponseState,
+  generatedBody: boolean,
   protectedHeaders?: ProtectedHeaders,
   appliedHeaderAppends?: Map<string, HeaderAppendOperation>,
 ): Headers {
@@ -462,7 +464,11 @@ function applyHeaderState(
   // Set-Cookie is the one header where comma-joining is unsafe (cookie
   // attributes like Expires contain commas), so it is handled separately.
   for (const [name, value] of state.headers) {
-    if (name !== 'set-cookie' && !protectedHeaders?.has(name)) {
+    if (
+      name !== 'set-cookie' &&
+      !protectedHeaders?.has(name) &&
+      !(generatedBody && GENERATED_BODY_EXCLUDED_HEADERS.has(name))
+    ) {
       let append = state.headerAppends?.get(name)
       if (!append) {
         if (headers.get(name) !== value) {
@@ -566,10 +572,23 @@ function createReconciledResponse(
   }
 }
 
-/** Apply helper state to a response, including one that bypasses middleware. */
+/** Apply helper state to a response that leaves Start. */
 export function finalizeResponse(
   response: Response,
   event: StartEvent,
+): Response {
+  return applyResponseState(response, event, event.request.method)
+}
+
+/**
+ * Apply helper state with the body rules of `method`. Request middleware still
+ * reads a HEAD response's body, so the pipeline applies GET rules and strips a
+ * HEAD body only when the response leaves it.
+ */
+function applyResponseState(
+  response: Response,
+  event: StartEvent,
+  method: string,
   disposeBody?: (reason: string) => void,
 ): Response {
   const protectedHeaders = getProtectedResponseHeaders(response)
@@ -579,11 +598,11 @@ export function finalizeResponse(
   // so check the response's own status too. Read the body last: the getter
   // allocates a stream for responses that have not exposed one yet.
   const mustDropBody =
-    !canHaveBody(event.request.method, helperStatus ?? response.status) &&
+    !canHaveBody(method, helperStatus ?? response.status) &&
     response.body !== null
   if (mustDropBody) {
     const reason =
-      event.request.method === 'HEAD'
+      method === 'HEAD'
         ? 'HEAD body stripped'
         : 'Response body dropped by Start reconciliation'
     if (disposeBody) {
@@ -614,6 +633,7 @@ export function finalizeResponse(
     ? applyHeaderState(
         response.headers,
         state,
+        serialized,
         protectedHeaders,
         event.responseHeaderAppends?.get(response),
       )
@@ -718,7 +738,7 @@ function createErrorResponse(error: unknown, event: StartEvent): Response {
   }
 
   if (state) {
-    headers = applyHeaderState(headers, state)
+    headers = applyHeaderState(headers, state, true)
   }
 
   // Build Start-owned errors with their final headers instead of creating a
@@ -759,6 +779,7 @@ export function handleStartError(error: unknown): Response {
   })
 }
 
+/** Apply helper state to a response inside the request middleware pipeline. */
 export function reconcileResponse(
   response: Response,
   event: StartEvent,
@@ -772,13 +793,13 @@ export function reconcileResponse(
   if (
     (!event.responseState &&
       (response === event.currentResponse ||
-        canHaveBody(event.request.method, response.status))) ||
+        canHaveBody('GET', response.status))) ||
     isRedirect(response)
   ) {
     event.currentResponse = response
     return response
   }
-  return finalizeResponse(response, event, disposeBody)
+  return applyResponseState(response, event, 'GET', disposeBody)
 }
 
 /**
@@ -828,7 +849,7 @@ export function createFinalizedResponse(
     const helperStatus = getHelperStatus(state, true)
     status = helperStatus ?? 200
     statusText = getHelperStatusText(state, helperStatus) ?? ''
-    headers = applyHeaderState(headers, state, protectedHeaders)
+    headers = applyHeaderState(headers, state, true, protectedHeaders)
   }
   const response = new Response(
     canHaveBody(event.request.method, status) ? (body as BodyInit) : null,
@@ -1209,6 +1230,7 @@ export function getResponseHeaders(): ReadonlyResponseHeaders {
     headers = applyHeaderState(
       headers,
       state,
+      isSerializedResponse(protectedHeaders),
       protectedHeaders,
       event.responseHeaderAppends?.get(currentResponse),
     )
@@ -1241,6 +1263,12 @@ export function getResponseHeader(
     : undefined
   if (protectedHeaders?.has(normalizedName)) {
     return protectedHeaders.get(normalizedName) ?? undefined
+  }
+  if (
+    GENERATED_BODY_EXCLUDED_HEADERS.has(normalizedName) &&
+    isSerializedResponse(protectedHeaders)
+  ) {
+    return currentResponse!.headers.get(name) ?? undefined
   }
 
   const state = event.responseState

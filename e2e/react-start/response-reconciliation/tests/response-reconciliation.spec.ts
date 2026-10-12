@@ -470,6 +470,51 @@ test.describe('server routes', () => {
     expectCookie(cookies, 'redirect-two', '2')
     expectCookie(cookies, 'redirect-three', '3')
   })
+
+  test('generated errors drop framing headers that helpers set for the failed body', async ({
+    request,
+  }) => {
+    const response = await request.get('/api/framing-error')
+
+    expect(response.status()).toBe(500)
+    expect(header(response, 'content-encoding')).toBeNull()
+    expect(header(response, 'content-length')).not.toBe('2')
+    expect(await response.json()).toMatchObject({
+      status: 500,
+      unhandled: true,
+    })
+  })
+
+  test('HEAD keeps the body for middleware until the response leaves the pipeline', async ({
+    request,
+  }) => {
+    const headers = { 'x-reconciliation-scenario': 'global-representation' }
+    const get = await request.get('/api/base', { headers })
+    const head = await request.head('/api/base', { headers })
+
+    expect(head.status()).toBe(get.status())
+    expect(Number(header(get, 'x-body-length'))).toBeGreaterThan(0)
+    expect(header(head, 'x-body-length')).toBe(header(get, 'x-body-length'))
+    expect(await head.body()).toHaveLength(0)
+  })
+
+  test('a response that middleware assigned is disposed when it returns another', async ({
+    request,
+  }) => {
+    const id = crypto.randomUUID()
+    const response = await request.get(`/api/tracked-stream?id=${id}`, {
+      headers: {
+        'x-reconciliation-scenario': 'global-assigned-transform-not-modified',
+      },
+    })
+
+    expect(response.status()).toBe(304)
+    await expect
+      .poll(async () =>
+        (await request.get(`/api/tracked-stream-status?id=${id}`)).json(),
+      )
+      .toEqual({ cancelled: true })
+  })
 })
 
 test.describe('SSR document responses', () => {
@@ -551,6 +596,19 @@ test.describe('SSR document responses', () => {
     const html = await response.text()
     expect(html).toContain('streamed after the shell')
     expect(html).toContain('</html>')
+  })
+
+  test('HEAD documents keep their body for middleware until the response leaves the pipeline', async ({
+    request,
+  }) => {
+    const headers = { 'x-reconciliation-scenario': 'global-representation' }
+    const get = await request.get('/', { headers })
+    const head = await request.head('/', { headers })
+
+    expect(head.status()).toBe(get.status())
+    expect(Number(header(get, 'x-body-length'))).toBeGreaterThan(0)
+    expect(header(head, 'x-body-length')).toBe(header(get, 'x-body-length'))
+    expect(await head.body()).toHaveLength(0)
   })
 
   test('regression #8627: middleware can copy the document when Response is wrapped', async ({
@@ -746,6 +804,21 @@ test.describe('server functions', () => {
       expect(header(response, 'x-function-error')).toBe('yes')
       expect(header(response, 'x-tss-serialized')).toBe('true')
       await expectServerFunctionResult(page, 'throwAfterStatus', /Unauthorized/)
+    })
+
+    test('server function errors drop framing headers that helpers set for the failed body', async ({
+      page,
+    }) => {
+      const response = await invokeJsonServerFunction(page, 'throwAfterFraming')
+
+      expect(header(response, 'content-encoding')).toBeNull()
+      expect(header(response, 'content-length')).not.toBe('2')
+      expect(header(response, 'x-tss-serialized')).toBe('true')
+      await expectServerFunctionResult(
+        page,
+        'throwAfterFraming',
+        'File read failed',
+      )
     })
 
     test('server function request middleware errors caused by an upstream response adopt only its status', async ({

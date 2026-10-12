@@ -18,6 +18,7 @@ import { Route as ApiBulkHeadersRouteImport } from './routes/api/bulk-headers'
 import { Route as ApiClearReturnedHeadersRouteImport } from './routes/api/clear-returned-headers'
 import { Route as ApiDirectMutationVisibleRouteImport } from './routes/api/direct-mutation-visible'
 import { Route as ApiExplicitSetCookieHeaderRouteImport } from './routes/api/explicit-set-cookie-header'
+import { Route as ApiFramingErrorRouteImport } from './routes/api/framing-error'
 import { Route as ApiGetResponseHeaderHelperRouteImport } from './routes/api/get-response-header-helper'
 import { Route as ApiGetResponseHeadersHelperRouteImport } from './routes/api/get-response-headers-helper'
 import { Route as ApiMultipleCookiesRouteImport } from './routes/api/multiple-cookies'
@@ -32,6 +33,8 @@ import { Route as ApiRouteBeforeNextRouteImport } from './routes/api/route-befor
 import { Route as ApiSameBoundaryConflictRouteImport } from './routes/api/same-boundary-conflict'
 import { Route as ApiStatusContractsRouteImport } from './routes/api/status-contracts'
 import { Route as ApiThrowAfterStatusRouteImport } from './routes/api/throw-after-status'
+import { Route as ApiTrackedStreamRouteImport } from './routes/api/tracked-stream'
+import { Route as ApiTrackedStreamStatusRouteImport } from './routes/api/tracked-stream-status'
 import { Route as ApiTwoReturnedResponsesRouteImport } from './routes/api/two-returned-responses'
 
 const IndexRoute = IndexRouteImport.update({
@@ -81,6 +84,11 @@ const ApiExplicitSetCookieHeaderRoute =
     path: '/api/explicit-set-cookie-header',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiFramingErrorRoute = ApiFramingErrorRouteImport.update({
+  id: '/api/framing-error',
+  path: '/api/framing-error',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGetResponseHeaderHelperRoute =
   ApiGetResponseHeaderHelperRouteImport.update({
     id: '/api/get-response-header-helper',
@@ -155,6 +163,16 @@ const ApiThrowAfterStatusRoute = ApiThrowAfterStatusRouteImport.update({
   path: '/api/throw-after-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTrackedStreamRoute = ApiTrackedStreamRouteImport.update({
+  id: '/api/tracked-stream',
+  path: '/api/tracked-stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTrackedStreamStatusRoute = ApiTrackedStreamStatusRouteImport.update({
+  id: '/api/tracked-stream-status',
+  path: '/api/tracked-stream-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTwoReturnedResponsesRoute = ApiTwoReturnedResponsesRouteImport.update({
   id: '/api/two-returned-responses',
   path: '/api/two-returned-responses',
@@ -171,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/api/clear-returned-headers': typeof ApiClearReturnedHeadersRoute
   '/api/direct-mutation-visible': typeof ApiDirectMutationVisibleRoute
   '/api/explicit-set-cookie-header': typeof ApiExplicitSetCookieHeaderRoute
+  '/api/framing-error': typeof ApiFramingErrorRoute
   '/api/get-response-header-helper': typeof ApiGetResponseHeaderHelperRoute
   '/api/get-response-headers-helper': typeof ApiGetResponseHeadersHelperRoute
   '/api/multiple-cookies': typeof ApiMultipleCookiesRoute
@@ -185,6 +204,8 @@ export interface FileRoutesByFullPath {
   '/api/same-boundary-conflict': typeof ApiSameBoundaryConflictRoute
   '/api/status-contracts': typeof ApiStatusContractsRoute
   '/api/throw-after-status': typeof ApiThrowAfterStatusRoute
+  '/api/tracked-stream': typeof ApiTrackedStreamRoute
+  '/api/tracked-stream-status': typeof ApiTrackedStreamStatusRoute
   '/api/two-returned-responses': typeof ApiTwoReturnedResponsesRoute
 }
 export interface FileRoutesByTo {
@@ -197,6 +218,7 @@ export interface FileRoutesByTo {
   '/api/clear-returned-headers': typeof ApiClearReturnedHeadersRoute
   '/api/direct-mutation-visible': typeof ApiDirectMutationVisibleRoute
   '/api/explicit-set-cookie-header': typeof ApiExplicitSetCookieHeaderRoute
+  '/api/framing-error': typeof ApiFramingErrorRoute
   '/api/get-response-header-helper': typeof ApiGetResponseHeaderHelperRoute
   '/api/get-response-headers-helper': typeof ApiGetResponseHeadersHelperRoute
   '/api/multiple-cookies': typeof ApiMultipleCookiesRoute
@@ -211,6 +233,8 @@ export interface FileRoutesByTo {
   '/api/same-boundary-conflict': typeof ApiSameBoundaryConflictRoute
   '/api/status-contracts': typeof ApiStatusContractsRoute
   '/api/throw-after-status': typeof ApiThrowAfterStatusRoute
+  '/api/tracked-stream': typeof ApiTrackedStreamRoute
+  '/api/tracked-stream-status': typeof ApiTrackedStreamStatusRoute
   '/api/two-returned-responses': typeof ApiTwoReturnedResponsesRoute
 }
 export interface FileRoutesById {
@@ -224,6 +248,7 @@ export interface FileRoutesById {
   '/api/clear-returned-headers': typeof ApiClearReturnedHeadersRoute
   '/api/direct-mutation-visible': typeof ApiDirectMutationVisibleRoute
   '/api/explicit-set-cookie-header': typeof ApiExplicitSetCookieHeaderRoute
+  '/api/framing-error': typeof ApiFramingErrorRoute
   '/api/get-response-header-helper': typeof ApiGetResponseHeaderHelperRoute
   '/api/get-response-headers-helper': typeof ApiGetResponseHeadersHelperRoute
   '/api/multiple-cookies': typeof ApiMultipleCookiesRoute
@@ -238,6 +263,8 @@ export interface FileRoutesById {
   '/api/same-boundary-conflict': typeof ApiSameBoundaryConflictRoute
   '/api/status-contracts': typeof ApiStatusContractsRoute
   '/api/throw-after-status': typeof ApiThrowAfterStatusRoute
+  '/api/tracked-stream': typeof ApiTrackedStreamRoute
+  '/api/tracked-stream-status': typeof ApiTrackedStreamStatusRoute
   '/api/two-returned-responses': typeof ApiTwoReturnedResponsesRoute
 }
 export interface FileRouteTypes {
@@ -252,6 +279,7 @@ export interface FileRouteTypes {
     | '/api/clear-returned-headers'
     | '/api/direct-mutation-visible'
     | '/api/explicit-set-cookie-header'
+    | '/api/framing-error'
     | '/api/get-response-header-helper'
     | '/api/get-response-headers-helper'
     | '/api/multiple-cookies'
@@ -266,6 +294,8 @@ export interface FileRouteTypes {
     | '/api/same-boundary-conflict'
     | '/api/status-contracts'
     | '/api/throw-after-status'
+    | '/api/tracked-stream'
+    | '/api/tracked-stream-status'
     | '/api/two-returned-responses'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -278,6 +308,7 @@ export interface FileRouteTypes {
     | '/api/clear-returned-headers'
     | '/api/direct-mutation-visible'
     | '/api/explicit-set-cookie-header'
+    | '/api/framing-error'
     | '/api/get-response-header-helper'
     | '/api/get-response-headers-helper'
     | '/api/multiple-cookies'
@@ -292,6 +323,8 @@ export interface FileRouteTypes {
     | '/api/same-boundary-conflict'
     | '/api/status-contracts'
     | '/api/throw-after-status'
+    | '/api/tracked-stream'
+    | '/api/tracked-stream-status'
     | '/api/two-returned-responses'
   id:
     | '__root__'
@@ -304,6 +337,7 @@ export interface FileRouteTypes {
     | '/api/clear-returned-headers'
     | '/api/direct-mutation-visible'
     | '/api/explicit-set-cookie-header'
+    | '/api/framing-error'
     | '/api/get-response-header-helper'
     | '/api/get-response-headers-helper'
     | '/api/multiple-cookies'
@@ -318,6 +352,8 @@ export interface FileRouteTypes {
     | '/api/same-boundary-conflict'
     | '/api/status-contracts'
     | '/api/throw-after-status'
+    | '/api/tracked-stream'
+    | '/api/tracked-stream-status'
     | '/api/two-returned-responses'
   fileRoutesById: FileRoutesById
 }
@@ -331,6 +367,7 @@ export interface RootRouteChildren {
   ApiClearReturnedHeadersRoute: typeof ApiClearReturnedHeadersRoute
   ApiDirectMutationVisibleRoute: typeof ApiDirectMutationVisibleRoute
   ApiExplicitSetCookieHeaderRoute: typeof ApiExplicitSetCookieHeaderRoute
+  ApiFramingErrorRoute: typeof ApiFramingErrorRoute
   ApiGetResponseHeaderHelperRoute: typeof ApiGetResponseHeaderHelperRoute
   ApiGetResponseHeadersHelperRoute: typeof ApiGetResponseHeadersHelperRoute
   ApiMultipleCookiesRoute: typeof ApiMultipleCookiesRoute
@@ -345,6 +382,8 @@ export interface RootRouteChildren {
   ApiSameBoundaryConflictRoute: typeof ApiSameBoundaryConflictRoute
   ApiStatusContractsRoute: typeof ApiStatusContractsRoute
   ApiThrowAfterStatusRoute: typeof ApiThrowAfterStatusRoute
+  ApiTrackedStreamRoute: typeof ApiTrackedStreamRoute
+  ApiTrackedStreamStatusRoute: typeof ApiTrackedStreamStatusRoute
   ApiTwoReturnedResponsesRoute: typeof ApiTwoReturnedResponsesRoute
 }
 
@@ -411,6 +450,13 @@ declare module '@tanstack/react-router' {
       path: '/api/explicit-set-cookie-header'
       fullPath: '/api/explicit-set-cookie-header'
       preLoaderRoute: typeof ApiExplicitSetCookieHeaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/framing-error': {
+      id: '/api/framing-error'
+      path: '/api/framing-error'
+      fullPath: '/api/framing-error'
+      preLoaderRoute: typeof ApiFramingErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/get-response-header-helper': {
@@ -511,6 +557,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiThrowAfterStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tracked-stream': {
+      id: '/api/tracked-stream'
+      path: '/api/tracked-stream'
+      fullPath: '/api/tracked-stream'
+      preLoaderRoute: typeof ApiTrackedStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tracked-stream-status': {
+      id: '/api/tracked-stream-status'
+      path: '/api/tracked-stream-status'
+      fullPath: '/api/tracked-stream-status'
+      preLoaderRoute: typeof ApiTrackedStreamStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/two-returned-responses': {
       id: '/api/two-returned-responses'
       path: '/api/two-returned-responses'
@@ -531,6 +591,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiClearReturnedHeadersRoute: ApiClearReturnedHeadersRoute,
   ApiDirectMutationVisibleRoute: ApiDirectMutationVisibleRoute,
   ApiExplicitSetCookieHeaderRoute: ApiExplicitSetCookieHeaderRoute,
+  ApiFramingErrorRoute: ApiFramingErrorRoute,
   ApiGetResponseHeaderHelperRoute: ApiGetResponseHeaderHelperRoute,
   ApiGetResponseHeadersHelperRoute: ApiGetResponseHeadersHelperRoute,
   ApiMultipleCookiesRoute: ApiMultipleCookiesRoute,
@@ -545,6 +606,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSameBoundaryConflictRoute: ApiSameBoundaryConflictRoute,
   ApiStatusContractsRoute: ApiStatusContractsRoute,
   ApiThrowAfterStatusRoute: ApiThrowAfterStatusRoute,
+  ApiTrackedStreamRoute: ApiTrackedStreamRoute,
+  ApiTrackedStreamStatusRoute: ApiTrackedStreamStatusRoute,
   ApiTwoReturnedResponsesRoute: ApiTwoReturnedResponsesRoute,
 }
 export const routeTree = rootRouteImport
