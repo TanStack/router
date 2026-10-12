@@ -4,7 +4,6 @@ import { shouldRebaseInlineCssUrls } from '../../src/start-manifest-plugin/inlin
 import {
   appendUniqueStrings,
   buildStartManifest,
-  createChunkCssAssetCollector,
   createManifestAssetResolvers,
   scanClientChunks,
   serializeStartManifest,
@@ -189,7 +188,7 @@ describe('scanClientChunks', () => {
   })
 })
 
-describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
+describe('createManifestAssetResolvers', () => {
   test('reuses cached stylesheet links', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
@@ -209,12 +208,8 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
       '/assets',
       chunksByFileName,
     )
-    const cssLinkCollector = createChunkCssAssetCollector({
-      chunksByFileName,
-      getStylesheetLink: linkResolvers.getStylesheetLink,
-    })
 
-    const links = cssLinkCollector.getChunkCssAssets(
+    const links = linkResolvers.getChunkCssAssets(
       chunksByFileName.get('entry.js')!,
     )
 
@@ -226,7 +221,7 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
   })
 })
 
-describe('createChunkCssAssetCollector', () => {
+describe('getChunkCssAssets', () => {
   test('dedupes css from shared imported chunks', () => {
     const chunkA = makeChunk({
       fileName: 'a.js',
@@ -254,12 +249,10 @@ describe('createChunkCssAssetCollector', () => {
       ['shared.js', normalizeTestChunk(sharedChunk)],
     ])
 
-    const { getChunkCssAssets } = createChunkCssAssetCollector({
+    const { getChunkCssAssets } = createManifestAssetResolvers(
+      '/',
       chunksByFileName,
-      getStylesheetLink: (cssFile) => ({
-        href: `/${cssFile}`,
-      }),
-    })
+    )
 
     const links = getChunkCssAssets(chunksByFileName.get('a.js')!)
 
@@ -287,12 +280,10 @@ describe('createChunkCssAssetCollector', () => {
       ['b.js', normalizeTestChunk(chunkB)],
     ])
 
-    const { getChunkCssAssets } = createChunkCssAssetCollector({
+    const { getChunkCssAssets } = createManifestAssetResolvers(
+      '/',
       chunksByFileName,
-      getStylesheetLink: (cssFile) => ({
-        href: `/${cssFile}`,
-      }),
-    })
+    )
 
     const links = getChunkCssAssets(chunksByFileName.get('a.js')!)
     const hrefs = links.map(getManifestCssHref)

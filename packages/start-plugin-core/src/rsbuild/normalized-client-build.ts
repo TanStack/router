@@ -266,12 +266,36 @@ function computeStaticDependencyChunks(
   return importedChunks
 }
 
+type GetStaticDependencyChunks = (
+  chunk: RspackCompilationChunk,
+) => Array<RspackCompilationChunk>
+
+/**
+ * Memoize static dependency resolution per chunk. Every chunk is resolved once
+ * for its own `imports`, and CSS-only chunks are resolved again from each
+ * importer that reaches them.
+ */
+function createStaticDependencyChunkResolver(
+  compilation: RspackCompilation,
+): GetStaticDependencyChunks {
+  const cache = new Map<RspackCompilationChunk, Array<RspackCompilationChunk>>()
+
+  return (chunk) => {
+    let importedChunks = cache.get(chunk)
+    if (!importedChunks) {
+      importedChunks = computeStaticDependencyChunks(compilation, chunk)
+      cache.set(chunk, importedChunks)
+    }
+    return importedChunks
+  }
+}
+
 /**
  * Collect CSS from dependency chunks that have no JavaScript asset of their
  * own, preserving dependency-before-importer order across nested CSS chunks.
  */
 function computeCssOnlyDependencyFiles(
-  compilation: RspackCompilation,
+  getStaticDependencyChunks: GetStaticDependencyChunks,
   chunks: Array<RspackCompilationChunk>,
 ): Array<string> {
   const cssFiles: Array<string> = []
@@ -284,10 +308,7 @@ function computeCssOnlyDependencyFiles(
     }
     seenChunks.add(chunk)
 
-    for (const importedChunk of computeStaticDependencyChunks(
-      compilation,
-      chunk,
-    )) {
+    for (const importedChunk of getStaticDependencyChunks(chunk)) {
       visit(importedChunk)
     }
 
@@ -336,6 +357,9 @@ export function normalizeRspackClientBuild(
     }
   }
 
+  const getStaticDependencyChunks =
+    createStaticDependencyChunkResolver(compilation)
+
   // Iterate ALL chunks (initial + async) to capture route-split chunks
   for (const chunk of compilation.chunks) {
     const modules = getModulesIncludingConcatenated(
@@ -353,12 +377,9 @@ export function normalizeRspackClientBuild(
 
     // Compute dynamicImports from chunk group children
     const dynamicImports = computeDynamicImports(chunk)
-    const staticDependencyChunks = computeStaticDependencyChunks(
-      compilation,
-      chunk,
-    )
+    const staticDependencyChunks = getStaticDependencyChunks(chunk)
     const dependencyCssFiles = computeCssOnlyDependencyFiles(
-      compilation,
+      getStaticDependencyChunks,
       staticDependencyChunks,
     ).filter((cssFile) => !cssFiles.includes(cssFile))
     if (dependencyCssFiles.length > 0) {
