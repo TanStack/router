@@ -4,7 +4,6 @@ import { is, walk } from 'yuku-ast'
 import {
   analyzeModule,
   cloneGeneratedNode,
-  cloneModuleAst,
   generateModule,
   parseStatements,
 } from '../src/ast'
@@ -327,18 +326,6 @@ describe('output liveness', () => {
     expect(output).not.toContain('function save')
   })
 
-  test('does not change original AST or symbol identities when generating multiple outputs', () => {
-    const module = analyzeModule({
-      code: 'const value = 1; export const Route = value;',
-    })
-    const original = generateModule(module.ast).code
-    const first = cloneModuleAst(module)
-    first.program.body.splice(0, 1)
-    const second = cloneModuleAst(module)
-    expect(generateModule(second.program).code).toBe(original)
-    expect(module.rootScope.find('value')!.references).toHaveLength(1)
-  })
-
   test('retains exported namespace members through the live namespace owner', () => {
     const module = analyzeModule({
       code: `namespace Labels { export const component = 'count' } export { Labels }`,
@@ -580,24 +567,13 @@ export const Route = createRoute({ component: () => <ThemeContext.Provider />, l
 
   test('removes a source import the transform emptied, not a side-effect import', () => {
     const code = `import { a } from './a'; import './side'; export const x = 1`
-    const inPlace = analyzeModule({ code })
-    const prepared = prepareBindingCleanup(inPlace)
-    ;(inPlace.ast.body[0] as ImportDeclaration).specifiers = []
-    removeUnusedBindings(inPlace, inPlace.ast, prepared)
-    const copied = analyzeModule({ code })
-    const { program, originalNodes } = cloneModuleAst(copied)
-    ;(program.body[0] as ImportDeclaration).specifiers = []
-    removeUnusedBindings(
-      copied,
-      program,
-      prepareBindingCleanup(copied),
-      originalNodes,
-    )
-    for (const output of [inPlace.ast, program]) {
-      const generated = generateModule(output).code
-      expect(generated).not.toContain('./a')
-      expect(generated).toContain("import './side'")
-    }
+    const module = analyzeModule({ code })
+    const prepared = prepareBindingCleanup(module)
+    ;(module.ast.body[0] as ImportDeclaration).specifiers = []
+    removeUnusedBindings(module, module.ast, prepared)
+    const generated = generateModule(module.ast).code
+    expect(generated).not.toContain('./a')
+    expect(generated).toContain("import './side'")
   })
 
   test('retains source dependencies introduced in generated nodes', () => {

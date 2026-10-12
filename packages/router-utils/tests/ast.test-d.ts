@@ -3,7 +3,6 @@ import { b } from 'yuku-ast'
 import {
   analyzeModule,
   cloneGeneratedNode,
-  cloneModuleAst,
   generateModule,
   linkGeneratedReference,
   prependStatements,
@@ -15,16 +14,15 @@ import type { Module } from 'yuku-analyzer'
 test('Yuku AST and semantic handles preserve their types', () => {
   const module = analyzeModule({ code: 'const value = 1' })
   expectTypeOf(module).toEqualTypeOf<Module>()
-  const clone = cloneModuleAst(module)
-  expectTypeOf(clone.program).toEqualTypeOf<Program>()
+  expectTypeOf(module.ast).toEqualTypeOf<Program>()
   const reference = linkGeneratedReference(
     b.Identifier({ name: 'value' }),
     'value',
   )
   expectTypeOf(reference).toEqualTypeOf<Identifier>()
   expectTypeOf(cloneGeneratedNode(reference)).toEqualTypeOf<Identifier>()
-  expectTypeOf(generateModule(clone.program).code).toEqualTypeOf<string>()
-  expectTypeOf(prependStatements(clone.program)).toEqualTypeOf<void>()
+  expectTypeOf(generateModule(module.ast).code).toEqualTypeOf<string>()
+  expectTypeOf(prependStatements(module.ast)).toEqualTypeOf<void>()
   expectTypeOf(sourcePosition('', 0)).toEqualTypeOf<{
     line: number
     column: number

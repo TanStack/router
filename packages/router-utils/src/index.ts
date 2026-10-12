@@ -4,7 +4,6 @@ export {
   filePragmas,
   keepFilePragmas,
   unwrapExport,
-  cloneModuleAst,
   cloneGeneratedNode,
   parseStatements,
   parseExpression,

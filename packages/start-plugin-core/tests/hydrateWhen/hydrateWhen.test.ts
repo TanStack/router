@@ -2,7 +2,6 @@ import { readFile, readdir } from 'node:fs/promises'
 import { walk } from 'yuku-ast'
 import {
   analyzeModule,
-  cloneModuleAst,
   generateModule,
   parseExpression,
   prepareBindingCleanup,
@@ -94,11 +93,11 @@ function compile(opts: {
   }
   const plugin = createHydrateCompilerPlugin()
   const module = analyzeModule({ code: options.code, filename: options.id })
-  const { program: ast, originalNodes } = cloneModuleAst(module)
+  const ast = module.ast
+  const cleanup = prepareBindingCleanup(module)
   const result = plugin.transformAst?.({
     ast,
     module,
-    originalNodes,
     code: options.code,
     id: options.id,
     root: options.root,
@@ -135,12 +134,7 @@ function compile(opts: {
     return null
   }
 
-  removeUnusedBindings(
-    module,
-    ast,
-    prepareBindingCleanup(module),
-    originalNodes,
-  )
+  removeUnusedBindings(module, ast, cleanup)
   const generated = generateModule(ast, {
     source: options.code,
     filename: options.id,

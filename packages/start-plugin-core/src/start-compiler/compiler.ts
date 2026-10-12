@@ -2,7 +2,6 @@ import crypto from 'node:crypto'
 import { is, walk } from 'yuku-ast'
 import {
   analyzeModule,
-  cloneModuleAst,
   extractModuleInfo,
   filePragmas,
   generateModule,
@@ -37,7 +36,42 @@ import type {
   StartCompilerTransformResult,
 } from '../types'
 
-type CompilerBinding = ModuleInfoBinding & {
+/**
+ * What kind resolution reads of an expression: its callee and object chain,
+ * down to an identifier; `null` for anything else. The module cache keeps it
+ * instead of a binding's `init` node, so that no output edit (this module's,
+ * or a concurrent compile's) changes how other modules resolve.
+ */
+type KindPath =
+  | { type: 'call'; callee: KindPath | null }
+  | { type: 'member'; object: KindPath | null; property: string }
+  | { type: 'identifier'; name: string }
+
+function kindPathOf(expr: t.Expression | t.Super | null): KindPath | null {
+  if (!expr || is.Super(expr)) {
+    return null
+  }
+  expr = unwrapExpression(expr)
+  if (is.CallExpression(expr)) {
+    return { type: 'call', callee: kindPathOf(expr.callee) }
+  }
+  if (is.MemberExpression(expr) && is.Identifier(expr.property)) {
+    return {
+      type: 'member',
+      object: kindPathOf(expr.object),
+      property: expr.property.name,
+    }
+  }
+  if (is.Identifier(expr)) {
+    return { type: 'identifier', name: expr.name }
+  }
+  return null
+}
+
+type CompilerBinding = (
+  | Extract<ModuleInfoBinding, { type: 'import' }>
+  | { type: 'var'; init: KindPath | null }
+) & {
   resolvedKind?: Kind
 }
 
@@ -610,10 +644,19 @@ export class StartCompiler {
    */
   private extractModuleInfo(module: Module, id: string): ModuleInfo {
     const extracted = extractModuleInfo(module)
+    const bindings = new Map<string, CompilerBinding>()
+    for (const [name, binding] of extracted.bindings) {
+      bindings.set(
+        name,
+        binding.type === 'var'
+          ? { type: 'var', init: kindPathOf(binding.init) }
+          : binding,
+      )
+    }
 
     const info: ModuleInfo = {
       id,
-      bindings: extracted.bindings,
+      bindings,
       exports: extracted.exports,
       reExportAllSources: extracted.reExportAllSources,
     }
@@ -811,14 +854,12 @@ export class StartCompiler {
       id,
       parserFilename,
     })
-    // A copy: the module cache keeps this module's source nodes, such as a
-    // binding's `init`, which resolving other modules reads after this output
-    const { program: ast, originalNodes } = cloneModuleAst(module)
+    // The output edits the analyzed tree: the module cache keeps no node of it
+    const ast = module.ast
     const editor = createAstEditor(ast)
     const context: CompilationContext = {
       ast,
       module,
-      originalNodes,
       ...editor,
       code,
       id,
@@ -872,7 +913,7 @@ export class StartCompiler {
           : is.Identifier(receiver)
             ? receiver
             : null
-        const binding = root && module.bindingOf(originalNodes.get(root)!)
+        const binding = root && module.bindingOf(root)
         const moduleBinding = binding && sourceInfo.bindings.get(binding.name)
         if (
           moduleBinding?.type === 'import' &&
@@ -918,8 +959,7 @@ export class StartCompiler {
         ) {
           return
         }
-        const original = originalNodes.get(node.openingElement.name)!
-        const binding = module.bindingOf(original)
+        const binding = module.bindingOf(node.openingElement.name)
         if (!binding || binding.scope !== module.rootScope) {
           return
         }
@@ -957,12 +997,12 @@ export class StartCompiler {
           }
         }
         if (is.Identifier(base)) {
-          const binding = module.bindingOf(originalNodes.get(base)!)
+          const binding = module.bindingOf(base)
           if (!binding || binding.scope !== module.rootScope) {
             return { node, kind: 'None' as Kind }
           }
         }
-        return { node, kind: await this.resolveExprKind(node, id) }
+        return { node, kind: await this.resolveExprKind(kindPathOf(node), id) }
       }),
     )
     for (const { node, kind } of resolved) {
@@ -1013,6 +1053,13 @@ export class StartCompiler {
       candidatesByKind.set(kind, candidates)
     }
     let modified = candidatesByKind.size > 0 || jsx.length > 0
+    const astTransforms = this.getAstTransformPluginsForCode(code)
+    if (!modified && !astTransforms.length) {
+      return null
+    }
+    // Read from the source tree before the first edit
+    const cleanup = prepareBindingCleanup(module)
+    const pragmas = filePragmas(module.ast)
     if (modified) {
       // A candidate inside code an earlier handler replaced (e.g. a server fn
       // handler a caller replaced with its RPC) is no longer in the output.
@@ -1032,22 +1079,13 @@ export class StartCompiler {
         handleClientOnlyJSX(element, { env: 'server' })
       }
     }
-    modified =
-      this.runAstTransforms(
-        context,
-        this.getAstTransformPluginsForCode(code),
-      ) || modified
+    modified = this.runAstTransforms(context, astTransforms) || modified
     if (!modified) {
       return null
     }
     // One liveness pass after every transform: AST plugins also orphan bindings.
-    removeUnusedBindings(
-      module,
-      ast,
-      prepareBindingCleanup(module),
-      originalNodes,
-    )
-    keepFilePragmas(filePragmas(module.ast), ast)
+    removeUnusedBindings(module, ast, cleanup)
+    keepFilePragmas(pragmas, ast)
     return generateModule(ast, { source: code, filename: id })
   }
 
@@ -1386,8 +1424,7 @@ export class StartCompiler {
       isLookupKind(resolvedKind) &&
       getLookupSetup(resolvedKind, this.externalLookupSetup)?.type ===
         'directCall' &&
-      binding.init &&
-      is.CallExpression(unwrapExpression(binding.init))
+      binding.init?.type === 'call'
     ) {
       binding.resolvedKind = 'None'
       return 'None'
@@ -1397,27 +1434,25 @@ export class StartCompiler {
   }
 
   private async resolveExprKind(
-    expr: t.Expression | t.Super | null,
+    expr: KindPath | null,
     fileId: string,
     visited = new Set<string>(),
   ): Promise<Kind> {
-    if (!expr || is.Super(expr)) {
+    if (!expr) {
       return 'None'
     }
 
-    expr = unwrapExpression(expr)
-
     let result: Kind = 'None'
 
-    if (is.CallExpression(expr)) {
-      const callee = unwrapExpression(expr.callee)
+    if (expr.type === 'call') {
+      const callee = expr.callee
       const calleeKind = await this.resolveCalleeKind(callee, fileId, visited)
       if (calleeKind === 'Root' || calleeKind === 'Builder') {
         return 'Builder'
       }
       // For method chain patterns (callee is MemberExpression like .server() or .client()),
       // return the resolved kind if valid
-      if (is.MemberExpression(callee)) {
+      if (callee?.type === 'member') {
         if (this.validLookupKinds.has(calleeKind as LookupKind)) {
           return calleeKind
         }
@@ -1428,16 +1463,16 @@ export class StartCompiler {
       // @tanstack/start-fn-stubs (via fast path or slow path through re-exports).
       // This handles both direct imports from @tanstack/react-start and imports
       // from intermediate packages that re-export from @tanstack/start-client-core.
-      if (is.Identifier(callee)) {
+      if (callee?.type === 'identifier') {
         if (this.validLookupKinds.has(calleeKind as LookupKind)) {
           return calleeKind
         }
       }
-    } else if (is.MemberExpression(expr) && is.Identifier(expr.property)) {
+    } else if (expr.type === 'member') {
       result = await this.resolveCalleeKind(expr.object, fileId, visited)
     }
 
-    if (result === 'None' && is.Identifier(expr)) {
+    if (result === 'None' && expr.type === 'identifier') {
       result = await this.resolveIdentifierKind(expr.name, fileId, visited)
     }
 
@@ -1445,17 +1480,19 @@ export class StartCompiler {
   }
 
   private async resolveCalleeKind(
-    callee: t.Expression | t.Super,
+    callee: KindPath | null,
     fileId: string,
     visited = new Set<string>(),
   ): Promise<Kind> {
-    callee = unwrapExpression(callee)
-    if (is.Identifier(callee)) {
+    if (!callee) {
+      return 'None'
+    }
+    if (callee.type === 'identifier') {
       return this.resolveIdentifierKind(callee.name, fileId, visited)
     }
 
-    if (is.MemberExpression(callee) && is.Identifier(callee.property)) {
-      const prop = callee.property.name
+    if (callee.type === 'member') {
+      const prop = callee.property
 
       // Check if this property matches any method chain pattern
       const possibleKinds = IdentifierToKinds.get(prop)
@@ -1494,8 +1531,8 @@ export class StartCompiler {
       }
 
       // Check if the object is a namespace import
-      const receiver = unwrapExpression(callee.object)
-      if (is.Identifier(receiver)) {
+      const receiver = callee.object
+      if (receiver?.type === 'identifier') {
         const info = await this.getModuleInfo(fileId)
         const binding = info.bindings.get(receiver.name)
         if (
@@ -1507,7 +1544,7 @@ export class StartCompiler {
             {
               type: 'import',
               source: binding.source,
-              importedName: callee.property.name,
+              importedName: callee.property,
             },
             fileId,
             visited,

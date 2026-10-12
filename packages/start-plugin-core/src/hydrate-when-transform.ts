@@ -90,8 +90,6 @@ function parseHydrateVirtualId(id: string) {
 interface HydrateAst {
   ast: t.Program
   module: Module
-  /** Maps a copy's nodes to the source's; without it, `ast` is `module.ast`. */
-  originalNodes?: WeakMap<t.Node, t.Node>
 }
 
 function getJSXElementName(node: t.JSXElement) {
@@ -156,21 +154,15 @@ function stripObjectExpressionProperty(node: t.ObjectExpression, name: string) {
   return before !== node.properties.length
 }
 
-function sourceNode(context: HydrateAst, node: t.Node) {
-  return context.originalNodes?.get(node) ?? node
-}
-
 function getSingleUseObjectExpressionBinding(
   context: HydrateAst,
   identifier: t.Identifier,
-  objectExpressions: WeakMap<t.Node, t.ObjectExpression>,
 ) {
-  const original = sourceNode(context, identifier)
-  const binding = context.module.bindingOf(original)
+  const binding = context.module.bindingOf(identifier)
   if (
     !binding ||
     binding.references.length !== 1 ||
-    binding.references[0]?.node !== original ||
+    binding.references[0]?.node !== identifier ||
     binding.references.some((reference) => reference.isWrite)
   ) {
     return undefined
@@ -182,10 +174,7 @@ function getSingleUseObjectExpressionBinding(
     return undefined
   }
   const init = unwrapExpression(declaration.init)
-  if (!is.ObjectExpression(init)) {
-    return undefined
-  }
-  return objectExpressions.get(init)
+  return is.ObjectExpression(init) ? init : undefined
 }
 
 function inspectSplitBoundary(
@@ -201,7 +190,7 @@ function inspectSplitBoundary(
   const captured = new Set<string>()
   let nestedBoundaryCount = 0
   const fail = (message: string): never => {
-    throw codeFrameError(options.code, sourceNode(context, node), message)
+    throw codeFrameError(options.code, node, message)
   }
   if (options.validate) {
     for (const child of node.children) {
@@ -218,13 +207,12 @@ function inspectSplitBoundary(
       }
     }
   }
-  const originalBoundary = sourceNode(context, node)
   walk(node, {
     enter(current) {
       if (!options.collectCaptured) {
         return
       }
-      const reference = context.module.referenceOf(sourceNode(context, current))
+      const reference = context.module.referenceOf(current)
       const binding = reference?.binding
       if (
         !reference ||
@@ -236,7 +224,7 @@ function inspectSplitBoundary(
       }
       for (const declaration of binding.declarations) {
         for (const ancestor of context.module.ancestors(declaration)) {
-          if (ancestor === originalBoundary) {
+          if (ancestor === node) {
             return
           }
         }
@@ -530,13 +518,6 @@ function transformHydrateAst(
     return name
   }
   const prepend: t.Program['body'] = []
-  // Index before mutation so spreads can resolve declarations later in the file.
-  const objectExpressions = new WeakMap<t.Node, t.ObjectExpression>()
-  walk(options.ast, {
-    ObjectExpression(node) {
-      objectExpressions.set(sourceNode(options, node), node)
-    },
-  })
   walk(options.ast, {
     JSXElement(node, visitor) {
       if (getJSXElementName(node) !== localName) {
@@ -558,11 +539,7 @@ function transformHydrateAst(
               const object = is.ObjectExpression(argument)
                 ? argument
                 : is.Identifier(argument)
-                  ? getSingleUseObjectExpressionBinding(
-                      options,
-                      argument,
-                      objectExpressions,
-                    )
+                  ? getSingleUseObjectExpressionBinding(options, argument)
                   : undefined
               if (object && stripObjectExpressionProperty(object, 'fallback')) {
                 transformation.modified = true
@@ -619,11 +596,7 @@ function transformHydrateAst(
         const object = is.ObjectExpression(argument)
           ? argument
           : is.Identifier(argument)
-            ? getSingleUseObjectExpressionBinding(
-                options,
-                argument,
-                objectExpressions,
-              )
+            ? getSingleUseObjectExpressionBinding(options, argument)
             : undefined
         return !object || objectExpressionMayHaveProperty(object, 'prefetch')
       })
@@ -878,7 +851,6 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
       const result = transformHydrateAst({
         ast: context.ast,
         module: context.module,
-        originalNodes: context.originalNodes,
         code: context.code,
         id: context.id,
         root: context.root,

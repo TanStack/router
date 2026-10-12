@@ -577,19 +577,15 @@ export function prepareBindingCleanup(module: Module): BindingCleanup {
  * removed: initially unused ones survive wherever their enclosing code does,
  * except imports only types reference, which survive with those references.
  * Callers decide output ownership before invoking this lexical binding cleanup.
- * `originalNodes` maps the nodes of a copy of `module.ast` to the source's;
- * without it, `program` is `module.ast` edited in place.
+ * `program` is `module.ast` edited in place.
  */
 export function removeUnusedBindings(
   module: Module,
   program: Program,
   { index, factories, preserved, erased }: BindingCleanup,
-  originalNodes?: WeakMap<Node, Node>,
 ): void {
   // Yuku decoded every source node, and gave each but `Program` a parent
-  const originOf = originalNodes
-    ? (node: Node) => originalNodes.get(node)
-    : (node: Node) => (module.parentOf(node) ? node : undefined)
+  const originOf = (node: Node) => (module.parentOf(node) ? node : undefined)
   stripTypeExports(program)
   const output = collectBindingUses(module, program, index, factories, originOf)
   const live = new Set(output.roots)

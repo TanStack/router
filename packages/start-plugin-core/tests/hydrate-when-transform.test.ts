@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import { walk } from 'yuku-ast'
 import {
   analyzeModule,
-  cloneModuleAst,
   generateModule,
   parseExpression,
   prepareBindingCleanup,
@@ -86,11 +85,11 @@ function compileHydrate(options: {
   const plugin = options.plugin ?? createHydrateCompilerPlugin()
   const envName = options.envName ?? options.env
   const module = analyzeModule({ code: options.code, filename: options.id })
-  const { program: ast, originalNodes } = cloneModuleAst(module)
+  const ast = module.ast
+  const cleanup = prepareBindingCleanup(module)
   const result = plugin.transformAst?.({
     ast,
     module,
-    originalNodes,
     code: options.code,
     id: options.id,
     root: options.root,
@@ -127,12 +126,7 @@ function compileHydrate(options: {
     return null
   }
 
-  removeUnusedBindings(
-    module,
-    ast,
-    prepareBindingCleanup(module),
-    originalNodes,
-  )
+  removeUnusedBindings(module, ast, cleanup)
   const generated = generateModule(ast, {
     source: options.code,
     filename: options.id,

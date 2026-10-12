@@ -244,35 +244,6 @@ export function generateModule(
   }
 }
 
-export interface ModuleAstClone {
-  program: Program
-  /** Resolve surviving copied nodes against the original semantic snapshot. */
-  originalNodes: WeakMap<Node, Node>
-}
-
-/**
- * A copy of `module.ast`, for an output that cannot edit the analyzed tree
- * because the source keeps being read after its edits. Pass `originalNodes` to
- * `removeUnusedBindings`.
- */
-export function cloneModuleAst(module: Module): ModuleAstClone {
-  const program = structuredClone(module.ast)
-  const originals: Array<Node> = []
-  walk(module.ast, {
-    enter(node) {
-      originals.push(node)
-    },
-  })
-  const originalNodes = new WeakMap<Node, Node>()
-  let index = 0
-  walk(program, {
-    enter(node) {
-      originalNodes.set(node, originals[index++]!)
-    },
-  })
-  return { program, originalNodes }
-}
-
 const generatedReferences = new WeakMap<Node, Binding | string>()
 
 /** Explicitly connect a new reference to a source binding; never infer local scope. */

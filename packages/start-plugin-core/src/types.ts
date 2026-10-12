@@ -42,7 +42,6 @@ export interface StartCompilerTransformCandidate {
 export interface StartCompilerTransformContext {
   readonly ast: Program
   readonly module: Module
-  readonly originalNodes: WeakMap<Node, Node>
   replaceNode: (node: Node, replacement: Node) => void
   parentOf: (node: Node) => Node | null
   readonly code: string
