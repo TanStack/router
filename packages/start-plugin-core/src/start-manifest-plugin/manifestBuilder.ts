@@ -400,12 +400,11 @@ export function createManifestAssetResolvers(
   }
 
   // One depth-first walk over the static import graph serves both preloads and
-  // stylesheets. Rollup hoists transitive imports into `imports`, but Rolldown
-  // and the Rsbuild build list direct imports only, so the list cannot be
-  // assumed to be complete. The walk records the file names it discovers for
-  // preloads and the chunks in post-order so dependency CSS precedes importer
-  // CSS. Cycles are cut by the seen set, so every chunk in a cycle still sees
-  // the whole cycle from its own walk.
+  // stylesheets. `imports` lists direct imports only, so transitive chunks are
+  // only reached by walking the graph. The walk records the file names it
+  // discovers for preloads and the chunks in post-order so dependency CSS
+  // precedes importer CSS. Cycles are cut by the seen set, so every chunk in a
+  // cycle still sees the whole cycle from its own walk.
   const getStaticImportClosure = (chunk: NormalizedClientChunk) => {
     const cachedClosure = closureByChunk.get(chunk)
     if (cachedClosure) {
