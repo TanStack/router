@@ -110,6 +110,11 @@ export interface NormalizedOutputDirectories {
 export interface NormalizedClientChunk {
   fileName: string
   isEntry: boolean
+  /**
+   * Chunks this chunk imports statically. Rollup hoists transitive imports into
+   * this list while Rolldown and Rsbuild report direct imports only, so
+   * consumers must walk the graph instead of treating the list as complete.
+   */
   imports: Array<string>
   dynamicImports: Array<string>
   css: Array<string>

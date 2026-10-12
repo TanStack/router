@@ -144,6 +144,45 @@ function getChunkJsFiles(chunk: RspackCompilationChunk): Array<string> {
 }
 
 /**
+ * Get unique CSS file names from both primary and auxiliary chunk assets.
+ */
+function getChunkCssFiles(chunk: RspackCompilationChunk): Array<string> {
+  const cssFiles: Array<string> = []
+  const seen = new Set<string>()
+
+  for (const file of [...chunk.auxiliaryFiles, ...chunk.files]) {
+    if (file.endsWith('.css') && !seen.has(file)) {
+      seen.add(file)
+      cssFiles.push(file)
+    }
+  }
+
+  return cssFiles
+}
+
+/**
+ * Include inner modules so concatenation does not hide route metadata or
+ * static dependency edges.
+ */
+function getModulesIncludingConcatenated(
+  modules: Array<RspackModule>,
+): Array<RspackModule> {
+  const allModules = new Set(modules)
+  for (const module of allModules) {
+    const concatenatedModules = (
+      module as RspackModule & { modules?: Array<RspackModule> }
+    ).modules
+    if (concatenatedModules) {
+      for (const concatenatedModule of concatenatedModules) {
+        allModules.add(concatenatedModule)
+      }
+    }
+  }
+
+  return Array.from(allModules)
+}
+
+/**
  * Compute dynamicImports for a chunk by traversing its chunk groups'
  * childrenIterable (async/dynamic import edges).
  *
@@ -173,36 +212,98 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
 }
 
 /**
- * Compute static imports (sibling chunks) for an async chunk.
- *
- * In rspack/webpack, an async chunk's ChunkGroup contains ALL chunks needed to
- * satisfy that dynamic import — the async chunk itself plus any shared/vendor
- * chunks it statically imports. This is analogous to Rollup's
- * `OutputChunk.imports` for async chunks.
- *
- * We collect JS files from all sibling chunks in the group (excluding the
- * current chunk's own file) to populate the `imports` field.
+ * Compute the emitted chunks reached by active static module dependencies.
+ * Dependencies nested in async blocks are deliberately excluded: those are
+ * represented by chunk-group children in `dynamicImports` instead.
  */
-function computeAsyncChunkImports(
+function computeStaticDependencyChunks(
+  compilation: RspackCompilation,
   chunk: RspackCompilationChunk,
-  currentFile: string,
-): Array<string> {
-  const imports: Array<string> = []
-  const seen = new Set<string>()
-  seen.add(currentFile)
+): Array<RspackCompilationChunk> {
+  const importedChunks: Array<RspackCompilationChunk> = []
+  const seen = new Set<RspackCompilationChunk>([chunk])
+  const modules = getModulesIncludingConcatenated(
+    compilation.chunkGraph.getChunkModules(chunk),
+  )
+  const localModules = new Set(modules)
+  const runtime = Array.from(chunk.runtime)
+  // A shared chunk can belong to several route groups. Group membership
+  // limits where dependencies can be loaded from; it does not establish
+  // an import from the shared chunk back to every route in those groups.
+  const availableChunks = new Set<RspackCompilationChunk>()
+  const groups = new Set(chunk.groupsIterable)
+  for (const group of groups) {
+    for (const availableChunk of group.chunks) {
+      availableChunks.add(availableChunk)
+    }
+    for (const parent of group.getParents()) {
+      groups.add(parent)
+    }
+  }
 
-  for (const group of chunk.groupsIterable) {
-    for (const siblingChunk of group.chunks) {
-      for (const file of siblingChunk.files) {
-        if (isManifestJsAsset(file) && !seen.has(file)) {
-          seen.add(file)
-          imports.push(file)
+  for (const module of modules) {
+    for (const dependency of module.dependencies) {
+      const connection = compilation.moduleGraph.getConnection(dependency)
+      const importedModule = connection?.module
+      if (!connection || !importedModule || localModules.has(importedModule)) {
+        continue
+      }
+      if (connection.getActiveState(runtime) === false) {
+        continue
+      }
+
+      for (const importedChunk of compilation.chunkGraph.getModuleChunksIterable(
+        importedModule,
+      )) {
+        if (availableChunks.has(importedChunk) && !seen.has(importedChunk)) {
+          seen.add(importedChunk)
+          importedChunks.push(importedChunk)
         }
       }
     }
   }
 
-  return imports
+  return importedChunks
+}
+
+/**
+ * Collect CSS from dependency chunks that have no JavaScript asset of their
+ * own, preserving dependency-before-importer order across nested CSS chunks.
+ */
+function computeCssOnlyDependencyFiles(
+  compilation: RspackCompilation,
+  chunks: Array<RspackCompilationChunk>,
+): Array<string> {
+  const cssFiles: Array<string> = []
+  const seenChunks = new Set<RspackCompilationChunk>()
+  const seenFiles = new Set<string>()
+
+  const visit = (chunk: RspackCompilationChunk) => {
+    if (seenChunks.has(chunk) || getChunkJsFiles(chunk).length > 0) {
+      return
+    }
+    seenChunks.add(chunk)
+
+    for (const importedChunk of computeStaticDependencyChunks(
+      compilation,
+      chunk,
+    )) {
+      visit(importedChunk)
+    }
+
+    for (const cssFile of getChunkCssFiles(chunk)) {
+      if (!seenFiles.has(cssFile)) {
+        seenFiles.add(cssFile)
+        cssFiles.push(cssFile)
+      }
+    }
+  }
+
+  for (const chunk of chunks) {
+    visit(chunk)
+  }
+
+  return cssFiles
 }
 
 /**
@@ -237,25 +338,12 @@ export function normalizeRspackClientBuild(
 
   // Iterate ALL chunks (initial + async) to capture route-split chunks
   for (const chunk of compilation.chunks) {
-    const modules = compilation.chunkGraph.getChunkModules(chunk)
+    const modules = getModulesIncludingConcatenated(
+      compilation.chunkGraph.getChunkModules(chunk),
+    )
     const routeFilePaths = getRouteFilePathsFromModules(modules)
     const hydrationIds = getHydrationIdsFromModules(modules)
-    const cssFiles: Array<string> = []
-    const seenCssFiles = new Set<string>()
-
-    for (const auxFile of chunk.auxiliaryFiles) {
-      if (auxFile.endsWith('.css') && !seenCssFiles.has(auxFile)) {
-        seenCssFiles.add(auxFile)
-        cssFiles.push(auxFile)
-      }
-    }
-
-    for (const mainFile of chunk.files) {
-      if (mainFile.endsWith('.css') && !seenCssFiles.has(mainFile)) {
-        seenCssFiles.add(mainFile)
-        cssFiles.push(mainFile)
-      }
-    }
+    const cssFiles = getChunkCssFiles(chunk)
 
     // The entry chunk is the one named 'index' in the 'index' entrypoint
     const isEntryChunk = chunk.name === 'index' && entryChunkSet.has(chunk)
@@ -265,16 +353,25 @@ export function normalizeRspackClientBuild(
 
     // Compute dynamicImports from chunk group children
     const dynamicImports = computeDynamicImports(chunk)
+    const staticDependencyChunks = computeStaticDependencyChunks(
+      compilation,
+      chunk,
+    )
+    const dependencyCssFiles = computeCssOnlyDependencyFiles(
+      compilation,
+      staticDependencyChunks,
+    ).filter((cssFile) => !cssFiles.includes(cssFile))
+    if (dependencyCssFiles.length > 0) {
+      cssFiles.unshift(...dependencyCssFiles)
+    }
 
     for (const file of jsFiles) {
       // For the entry chunk, `imports` contains all sibling initial chunks
-      // (vendor/shared). For async chunks, `imports` contains all sibling
-      // chunks from the ChunkGroup (shared dependencies the browser must
-      // load alongside this chunk). This mirrors Rollup's
-      // OutputChunk.imports which lists statically imported chunks.
+      // (vendor/shared). For other chunks, it contains the emitted chunks
+      // reached through active static module dependencies.
       const imports = isEntryChunk
         ? initialJsFileNames.filter((f) => f !== file)
-        : computeAsyncChunkImports(chunk, file)
+        : staticDependencyChunks.flatMap(getChunkJsFiles)
 
       const normalizedChunk: NormalizedClientChunk = {
         fileName: file,

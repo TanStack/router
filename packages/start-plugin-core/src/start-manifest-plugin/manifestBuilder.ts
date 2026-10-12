@@ -265,7 +265,10 @@ export function buildStartManifest(options: {
   >
 }): StartManifest {
   const scannedChunks = scanClientChunks(options.clientBuild)
-  const assetResolvers = createManifestAssetResolvers(options.basePath)
+  const assetResolvers = createManifestAssetResolvers(
+    options.basePath,
+    scannedChunks.chunksByFileName,
+  )
 
   const routes = buildRouteManifestRoutes({
     routeTreeRoutes: options.routeTreeRoutes,
@@ -355,9 +358,14 @@ export function scanClientChunks(
 
 export function createManifestAssetResolvers(
   basePath: string,
+  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>,
 ): ManifestAssetResolvers {
   const assetPathByFileName = new Map<string, string>()
   const stylesheetLinkByFileName = new Map<string, ManifestCssLink>()
+  const staticImportsByChunk = new Map<
+    NormalizedClientChunk,
+    ReadonlyArray<string>
+  >()
   const preloadsByChunk = new Map<NormalizedClientChunk, Array<string>>()
 
   const getAssetPath = (fileName: string) => {
@@ -384,16 +392,51 @@ export function createManifestAssetResolvers(
     return link
   }
 
+  // Every chunk reachable through static imports, nearest first. Rollup hoists
+  // transitive imports into `imports`, but Rolldown and the Rsbuild build list
+  // direct imports only, so the list cannot be assumed to be complete.
+  const getStaticImports = (chunk: NormalizedClientChunk) => {
+    const cachedImports = staticImportsByChunk.get(chunk)
+    if (cachedImports) {
+      return cachedImports
+    }
+
+    const seen = new Set<string>([chunk.fileName])
+    const staticImports: Array<string> = []
+    const queue = chunk.imports.slice()
+
+    for (let i = 0; i < queue.length; i++) {
+      const fileName = queue[i]!
+      if (seen.has(fileName)) {
+        continue
+      }
+
+      seen.add(fileName)
+      staticImports.push(fileName)
+
+      const importedChunk = chunksByFileName.get(fileName)
+      if (importedChunk) {
+        for (let j = 0; j < importedChunk.imports.length; j++) {
+          queue.push(importedChunk.imports[j]!)
+        }
+      }
+    }
+
+    staticImportsByChunk.set(chunk, staticImports)
+    return staticImports
+  }
+
   const getChunkPreloads = (chunk: NormalizedClientChunk) => {
     const cachedPreloads = preloadsByChunk.get(chunk)
     if (cachedPreloads) {
       return cachedPreloads
     }
 
+    const staticImports = getStaticImports(chunk)
     const preloads = [getAssetPath(chunk.fileName)]
 
-    for (let i = 0; i < chunk.imports.length; i++) {
-      preloads.push(getAssetPath(chunk.imports[i]!))
+    for (let i = 0; i < staticImports.length; i++) {
+      preloads.push(getAssetPath(staticImports[i]!))
     }
 
     preloadsByChunk.set(chunk, preloads)
@@ -491,13 +534,12 @@ function buildInlineCssManifestData(options: {
     )
   }
 
-  const { getAssetPath } = createManifestAssetResolvers(options.basePath)
   const styles: Record<string, string> = {}
   let templates: Record<string, InlineCssTemplate> | undefined
   const missingHrefs = new Set(stylesheetHrefs)
 
   for (const [cssFile, css] of options.cssContentByFileName) {
-    const cssHref = getAssetPath(cssFile)
+    const cssHref = joinURL(options.basePath, cssFile)
     if (!stylesheetHrefs.has(cssHref)) {
       continue
     }
