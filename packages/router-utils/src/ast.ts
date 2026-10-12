@@ -251,26 +251,40 @@ export interface ModuleAstClone {
 }
 
 /**
+ * Experiment (copyAst): a Yuku-provided copy, decoded again from the module's
+ * encoded buffer. Copied nodes share buffer indexes with `module.ast`'s, so
+ * their originals need no pairing walk.
+ */
+interface CopyAstModule {
+  copyAst: () => {
+    program: Program
+    originalOf: (node: Node) => Node | undefined
+  }
+}
+
+/** Overrides set by an output first, then the copy's buffer index. */
+class OriginalNodes extends WeakMap<Node, Node> {
+  readonly #originalOf: (node: Node) => Node | undefined
+  constructor(originalOf: (node: Node) => Node | undefined) {
+    super()
+    this.#originalOf = originalOf
+  }
+  override get(node: Node): Node | undefined {
+    return super.get(node) ?? this.#originalOf(node)
+  }
+  override has(node: Node): boolean {
+    return super.has(node) || this.#originalOf(node) !== undefined
+  }
+}
+
+/**
  * A copy of `module.ast`, for an output that cannot edit the analyzed tree
  * because the source keeps being read after its edits. Pass `originalNodes` to
  * `removeUnusedBindings`.
  */
 export function cloneModuleAst(module: Module): ModuleAstClone {
-  const program = structuredClone(module.ast)
-  const originals: Array<Node> = []
-  walk(module.ast, {
-    enter(node) {
-      originals.push(node)
-    },
-  })
-  const originalNodes = new WeakMap<Node, Node>()
-  let index = 0
-  walk(program, {
-    enter(node) {
-      originalNodes.set(node, originals[index++]!)
-    },
-  })
-  return { program, originalNodes }
+  const { program, originalOf } = (module as unknown as CopyAstModule).copyAst()
+  return { program, originalNodes: new OriginalNodes(originalOf) }
 }
 
 const generatedReferences = new WeakMap<Node, Binding | string>()
