@@ -346,11 +346,6 @@ export class StartCompiler {
   >()
   private externalLookupSetup = new Map<ExternalLookupKind, DirectCallSetup>()
   private compilerPlugins: Array<StartCompilerPlugin>
-  private resolveIdCache = new Map<string, string | null>()
-  private exportResolutionCache = new Map<
-    string,
-    Map<string, ExportResolution | null>
-  >()
   // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
   // Maps: libName → (exportName → Kind)
   // This allows O(1) resolution for the common case without async resolveId calls
@@ -369,10 +364,6 @@ export class StartCompiler {
       lookupKinds: Set<LookupKind>
       loadModule: (id: string) => Promise<void>
       resolveId: (id: string, importer?: string) => Promise<string | null>
-      /**
-       * In 'build' mode, resolution results are cached for performance.
-       * In 'dev' mode (default), caching is disabled to avoid invalidation complexity with HMR.
-       */
       mode?: 'dev' | 'build'
       /**
        * The framework being used (e.g., 'react', 'solid').
@@ -504,30 +495,6 @@ export class StartCompiler {
 
   private get mode(): 'dev' | 'build' {
     return this.options.mode ?? 'dev'
-  }
-
-  private async resolveIdCached(id: string, importer?: string) {
-    if (this.mode === 'dev') {
-      return this.options.resolveId(id, importer)
-    }
-
-    const cacheKey = importer ? `${importer}::${id}` : id
-    const cached = this.resolveIdCache.get(cacheKey)
-    if (cached !== undefined) {
-      return cached
-    }
-    const resolved = await this.options.resolveId(id, importer)
-    this.resolveIdCache.set(cacheKey, resolved)
-    return resolved
-  }
-
-  private getExportResolutionCache(moduleId: string) {
-    let cache = this.exportResolutionCache.get(moduleId)
-    if (!cache) {
-      cache = new Map()
-      this.exportResolutionCache.set(moduleId, cache)
-    }
-    return cache
   }
 
   private init() {
@@ -678,10 +645,6 @@ export class StartCompiler {
       }
     }
 
-    // Build-mode caches are cheap to rebuild and may point at removed entries.
-    this.resolveIdCache.clear()
-    this.exportResolutionCache.clear()
-
     return deletedModuleIds
   }
 
@@ -702,7 +665,7 @@ export class StartCompiler {
       let resolved = resolveCache.get(cacheKey)
 
       if (!resolved) {
-        resolved = this.resolveIdCached(source, importer)
+        resolved = this.options.resolveId(source, importer)
         resolveCache.set(cacheKey, resolved)
       }
 
@@ -1137,19 +1100,6 @@ export class StartCompiler {
     exportName: string,
     visitedModules = new Set<string>(),
   ): Promise<ExportResolution | undefined> {
-    const isBuildMode = this.mode === 'build'
-
-    // Check cache first (only for top-level calls in build mode)
-    if (isBuildMode && visitedModules.size === 0) {
-      const moduleCache = this.exportResolutionCache.get(moduleInfo.id)
-      if (moduleCache) {
-        const cached = moduleCache.get(exportName)
-        if (cached !== undefined) {
-          return cached ?? undefined
-        }
-      }
-    }
-
     // Prevent infinite loops in circular re-exports
     if (visitedModules.has(moduleInfo.id)) {
       return undefined
@@ -1161,12 +1111,7 @@ export class StartCompiler {
     if (localBindingName) {
       const binding = moduleInfo.bindings.get(localBindingName)
       if (binding) {
-        const result = { moduleInfo, localName: localBindingName, binding }
-        // Cache the result (build mode only)
-        if (isBuildMode) {
-          this.getExportResolutionCache(moduleInfo.id).set(exportName, result)
-        }
-        return result
+        return { moduleInfo, localName: localBindingName, binding }
       }
     }
 
@@ -1175,7 +1120,7 @@ export class StartCompiler {
     if (moduleInfo.reExportAllSources.length > 0) {
       const results = await Promise.all(
         moduleInfo.reExportAllSources.map(async (reExportSource) => {
-          const reExportTarget = await this.resolveIdCached(
+          const reExportTarget = await this.options.resolveId(
             reExportSource,
             moduleInfo.id,
           )
@@ -1194,19 +1139,11 @@ export class StartCompiler {
       // Return the first valid result
       for (const result of results) {
         if (result) {
-          // Cache the result (build mode only)
-          if (isBuildMode) {
-            this.getExportResolutionCache(moduleInfo.id).set(exportName, result)
-          }
           return result
         }
       }
     }
 
-    // Cache negative result (build mode only)
-    if (isBuildMode) {
-      this.getExportResolutionCache(moduleInfo.id).set(exportName, null)
-    }
     return undefined
   }
 
@@ -1224,7 +1161,7 @@ export class StartCompiler {
       return resolution
     }
 
-    const target = await this.resolveIdCached(
+    const target = await this.options.resolveId(
       resolution.binding.source,
       resolution.moduleInfo.id,
     )
@@ -1267,7 +1204,7 @@ export class StartCompiler {
 
       let targetId: string | null
       try {
-        targetId = await this.resolveIdCached(source, resolved.moduleInfo.id)
+        targetId = await this.options.resolveId(source, resolved.moduleInfo.id)
       } catch {
         continue
       }
@@ -1317,7 +1254,7 @@ export class StartCompiler {
       return 'None'
     }
 
-    const target = await this.resolveIdCached(binding.source, fileId)
+    const target = await this.options.resolveId(binding.source, fileId)
     if (!target) {
       return 'None'
     }

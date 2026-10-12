@@ -437,7 +437,7 @@ export function startCompilerPlugin(
           let compiler = compilers.get(this.environment.name)
 
           if (!compiler) {
-            // Default to 'dev' mode for unknown environments (conservative: no caching)
+            // Default to 'dev' mode for unknown environments
             const mode = this.environment.mode === 'build' ? 'build' : 'dev'
 
             compiler = createStartCompiler({

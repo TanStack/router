@@ -1227,6 +1227,59 @@ describe('re-export chain resolution', () => {
     expect(result).toBeNull()
   })
 
+  test('resolves an export reached through two export-star paths from each path', async () => {
+    // `./barrel` reaches `./shared` through both `./left` and `./right`
+    const virtualModules: Record<string, string> = {
+      './barrel': `
+        export * from './left'
+        export * from './right'
+      `,
+      './left': `
+        export * from './shared'
+      `,
+      './right': `
+        export * from './shared'
+      `,
+      './shared': `
+        export { createServerOnlyFn } from '@tanstack/start-fn-stubs'
+      `,
+    }
+
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'client',
+      envName: 'client',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(['ServerOnlyFn']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return virtualModules[id] ? id : null
+      },
+      mode: 'build',
+    })
+
+    for (const source of ['./barrel', './left', './right']) {
+      const result = await compiler.compile({
+        id: `from-${source.slice(2)}.ts`,
+        code: `
+          import { createServerOnlyFn } from '${source}'
+          export const myFn = createServerOnlyFn(() => 'server-only-value')
+        `,
+      })
+
+      expect(result, source).not.toBeNull()
+      expect(result!.code, source).not.toContain('server-only-value')
+    }
+  })
+
   test('ingestModule populates module metadata for later resolution', async () => {
     const compiler: StartCompiler = new StartCompiler({
       env: 'server',
