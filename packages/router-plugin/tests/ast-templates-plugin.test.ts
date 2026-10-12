@@ -185,7 +185,7 @@ const template = astTemplate(
     `)
   })
 
-  it('strips types and keeps comments and parentheses as written', async () => {
+  it('strips types, comments and parentheses', async () => {
     expect(
       await compile(`
 declare const window: { router?: { id: string } }
@@ -221,14 +221,6 @@ const template = astTemplate({}, () => {
               }),
             }),
           ],
-          comments: [
-            {
-              type: 'Line',
-              position: 'before',
-              sameLine: false,
-              value: ' The router of the page',
-            },
-          ],
         }),
         b.VariableDeclaration({
           kind: 'const',
@@ -246,11 +238,7 @@ const template = astTemplate({}, () => {
         }),
         b.ExpressionStatement({
           expression: b.MemberExpression({
-            object: b.ParenthesizedExpression({
-              expression: b.ParenthesizedExpression({
-                expression: b.Identifier({ name: 'router' }),
-              }),
-            }),
+            object: b.Identifier({ name: 'router' }),
             property: b.Identifier({ name: 'id' }),
             computed: false,
             optional: false,
@@ -270,17 +258,7 @@ const template = astTemplate({}, () => {
           }),
           handler: b.CatchClause({
             param: b.Identifier({ name: '_err' }),
-            body: b.BlockStatement({
-              body: [],
-              comments: [
-                {
-                  type: 'Block',
-                  position: 'inside',
-                  sameLine: false,
-                  value: ' noop ',
-                },
-              ],
-            }),
+            body: b.BlockStatement({ body: [] }),
           }),
           finalizer: null,
         }),

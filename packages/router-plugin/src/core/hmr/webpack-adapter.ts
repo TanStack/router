@@ -22,8 +22,7 @@ const webpackRouteHmr = astTemplate(
   ({ handleRouteUpdate, staticRouteId, refreshReact }) => {
     if (importMeta.webpackHot) {
       const hot = importMeta.webpackHot
-      // prettier-ignore
-      const hotData = hot.data ??= {}
+      const hotData = (hot.data ??= {})
       const routeId =
         hotData['tsr-route-id'] ??
         Route.id ??

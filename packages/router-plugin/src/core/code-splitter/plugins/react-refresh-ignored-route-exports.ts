@@ -24,8 +24,7 @@ const ignoreRouteExport = astTemplate(
     const hot = importMeta.hot
     if (hot && typeof window !== 'undefined') {
       hot.data ??= {}
-      // prettier-ignore
-      const tsrReactRefresh = window.__TSR_REACT_REFRESH__ ??= (() => {
+      const tsrReactRefresh = (window.__TSR_REACT_REFRESH__ ??= (() => {
         const ignoredExportsById = new Map<string, Array<string>>()
         const previousGetIgnoredExports = window.__getReactRefreshIgnoredExports
 
@@ -38,7 +37,7 @@ const ignoreRouteExport = astTemplate(
         return {
           ignoredExportsById,
         }
-      })()
+      })())
 
       tsrReactRefresh.ignoredExportsById.set(moduleId, ['Route'])
     }

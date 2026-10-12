@@ -24,8 +24,7 @@ const stableSplitComponent = astTemplate(
       return hotData?.[key] ?? lazyRouteComponent(importer, exportName)
     })()
     if (importMetaHot) {
-      // prettier-ignore
-      ;((importMetaHot).data ??= {})[key] = TSRSplitComponent
+      ;(importMetaHot.data ??= {})[key] = TSRSplitComponent
     }
   },
 )

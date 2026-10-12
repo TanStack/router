@@ -32,8 +32,8 @@ import type {
  * - Any other free name belongs to the route module: declare it in the
  *   template module (`declare const Route: AnyRoute`), and write `importMeta`
  *   for `import.meta`.
- * - Types are stripped. Parentheses and comments are kept as written, except
- *   `prettier-ignore` and `eslint-disable` comments.
+ * - Types, parentheses and comments are left out: the printer adds the
+ *   parentheses precedence needs, and comments only document the template.
  */
 export function astTemplate<
   THoles extends Record<string, Hole> = {},

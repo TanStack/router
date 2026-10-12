@@ -8,7 +8,6 @@ import { b, is, isValidIdentifier } from 'yuku-ast'
 import type { Binding } from 'yuku-analyzer'
 import type {
   ArrowFunctionExpression,
-  AttachedComment,
   CallExpression,
   Expression,
   Identifier,
@@ -351,18 +350,9 @@ export function compileAstTemplates(code: string, id: string) {
       if (is.Identifier(node)) {
         return identifier(node)
       }
-      if (isTypeAssertion(node)) {
+      // The printer adds the parentheses precedence needs
+      if (isTypeAssertion(node) || is.ParenthesizedExpression(node)) {
         return emit(node.expression)
-      }
-      if (is.ParenthesizedExpression(node)) {
-        // Parentheses only around a type assertion go with it
-        let inner: Node = node.expression
-        while (isTypeAssertion(inner)) {
-          inner = inner.expression
-        }
-        if (inner !== node.expression && isPrimary(inner)) {
-          return emit(inner)
-        }
       }
       if (is.Property(node) && node.shorthand && is.Identifier(node.value)) {
         // `{ name }` stays shorthand while the value keeps the name
@@ -398,20 +388,17 @@ export function compileAstTemplates(code: string, id: string) {
     function fieldsOf(node: Node) {
       const fields: Array<[string, Expression]> = []
       for (const [key, value] of Object.entries(node)) {
+        // Comments document the template, not the route module
         if (
           key === 'type' ||
           key === 'start' ||
           key === 'end' ||
+          key === 'comments' ||
           isDefaultField(node, key, value)
         ) {
           continue
         }
-        if (key === 'comments') {
-          const comments = keptComments(value as Array<AttachedComment>)
-          if (comments.length) {
-            fields.push([key, data(comments)])
-          }
-        } else if (statementLists.has(`${node.type}.${key}`)) {
+        if (statementLists.has(`${node.type}.${key}`)) {
           fields.push([key, statementList(value as Array<Node>)])
         } else if (Array.isArray(value)) {
           fields.push([
@@ -693,18 +680,6 @@ function isTypeAssertion(
   return typeAssertions.has(node.type)
 }
 
-/** Expressions that need no parentheses as an object or a callee. */
-function isPrimary(node: Node) {
-  return (
-    is.Identifier(node) ||
-    is.MemberExpression(node) ||
-    is.CallExpression(node) ||
-    is.MetaProperty(node) ||
-    is.ThisExpression(node) ||
-    is.ParenthesizedExpression(node)
-  )
-}
-
 const statementLists = new Set([
   'BlockStatement.body',
   'SwitchCase.consequent',
@@ -737,13 +712,6 @@ function isDefaultField(node: Node, key: string, value: unknown) {
     default:
       return false
   }
-}
-
-// Comments about the template's source
-const toolComment = /^\s*(?:prettier-ignore|eslint-disable|@ts-)/
-
-function keptComments(comments: Array<AttachedComment>) {
-  return comments.filter((comment) => !toolComment.test(comment.value))
 }
 
 /** Whether a compiled identifier keeps the name `name`. */

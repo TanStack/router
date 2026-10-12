@@ -15,8 +15,7 @@ const viteRouteHmr = astTemplate(
   ({ handleRouteUpdateFunction, routeIdFallback }) => {
     if (importMeta.hot) {
       const hot = importMeta.hot
-      // prettier-ignore
-      const hotData = hot.data ??= {}
+      const hotData = (hot.data ??= {})
       const handleRouteUpdate = handleRouteUpdateFunction
       const initialRouteId = routeIdFallback ?? hotData['tsr-route-id']
       if (initialRouteId) {
