@@ -573,22 +573,35 @@ export function LoginForm() {
 
 ### Remember Me Functionality
 
+Add the optional `rememberMe` argument to the `useAppSession` hook you created earlier. Use a ternary operator to set the value for the long-term cookie and the session cookie in the `cookie.maxAge` property (it is best not to use `undefined` for the session cookie, as modern browsers have a 'Pick up where you left off' setting, in which case the session cookie will be restored).
+
+```tsx
+export function useAppSession(rememberMe?: boolean) {
+  return useSession<SessionData>({
+    name: "app-session",
+    password: process.env.SESSION_SECRET!,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: rememberMe ? 30 * 24 * 60 * 60 : 4 * 60 * 60,
+    },
+  });
+}
+```
+
 ```tsx
 export const loginFn = createServerFn({ method: 'POST' })
   .validator(
     (data: { email: string; password: string; rememberMe?: boolean }) => data,
   )
   .handler(async ({ data }) => {
+    const session = await useAppSession(data.rememberMe)
+      
     const user = await authenticateUser(data.email, data.password)
     if (!user) return { error: 'Invalid credentials' }
 
-    const session = await useAppSession()
     await session.update(
       { userId: user.id },
-      {
-        // Extend session if remember me is checked
-        maxAge: data.rememberMe ? 30 * 24 * 60 * 60 : undefined, // 30 days vs session
-      },
     )
 
     return { success: true }
