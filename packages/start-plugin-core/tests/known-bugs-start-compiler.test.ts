@@ -400,7 +400,7 @@ export const read = createServerOnlyFn(() => db.secret()).bind(null)`)
   // neither extracted nor rejected. Rejecting it with a clear compile error
   // is a valid fix.
   // Impact: its handler and server-only imports ship to the client.
-  test.fails.each([
+  test.each([
     {
       name: 'a function body',
       code: `export function make() {
@@ -464,25 +464,22 @@ fn = createServerFn().handler(async () => db.inner())`,
   // extracted on the client, but its provider module exports a handler it
   // never declares.
   // Impact: the server build fails.
-  test.fails(
-    'a createServerFn nested in a function next to another factory yields a valid provider',
-    async () => {
-      await expectNoClientHandler(`import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+  test('a createServerFn nested in a function next to another factory yields a valid provider', async () => {
+    await expectNoClientHandler(`import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const serverOnly = createServerOnlyFn(() => db.top())
 export function make() {
   const inner = createServerFn().handler(async () => db.inner())
   return inner
 }`)
-    },
-  )
+  })
 
   // Bug: Start factories are matched by name without scope analysis, so a
   // parameter shadowing the imported factory or namespace is compiled as the
   // factory.
   // Impact: the client replaces the local call with the server-only stub,
   // which throws.
-  test.fails.each([
+  test.each([
     {
       name: 'a parenthesized namespace receiver',
       code: `import * as Start from '@tanstack/react-start'
@@ -545,7 +542,7 @@ export const fn = createServerFn().handler(async () => 'from the server')`)
   // into an RPC.
   // Impact: the server fn cannot be called (the client caller throws the
   // server-only error, the SSR caller is a bare id).
-  test.fails.each(['client', 'ssr'] as const)(
+  test.each(['client', 'ssr'] as const)(
     '%s: a createServerOnlyFn handler still produces an RPC caller',
     async (output) => {
       const code = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
@@ -647,14 +644,11 @@ export const Card = () => <div />`
   // router-plugin/tests/known-bugs-code-splitter.test.ts.
   // Impact: the module's components throw "h is not defined" or render
   // through another JSX factory than the one the module selects.
-  test.fails(
-    'client: the factory of a classic JSX pragma stays imported',
-    async () => {
-      const client = (await compileCode('client', pragmaModule)) ?? pragmaModule
-      const { Card } = await evaluateModule(client, pragmaStubs)
-      expect(settle(() => Card())).toBe('h(div)')
-    },
-  )
+  test('client: the factory of a classic JSX pragma stays imported', async () => {
+    const client = (await compileCode('client', pragmaModule)) ?? pragmaModule
+    const { Card } = await evaluateModule(client, pragmaStubs)
+    expect(settle(() => Card())).toBe('h(div)')
+  })
 })
 
 describe('Vue single-file components', () => {

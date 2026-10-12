@@ -134,24 +134,28 @@ export const read = () => lib.value`,
 
   // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
   // Impact: the route throws a ReferenceError or runs the declaration per module.
-  test.fails.each([
+  const declarationCases = [
     {
       name: 'a var in an if block',
+      pinned: true,
       declaration: `if (globalThis) { var value = init(1) }
 const read = () => value`,
     },
     {
       name: 'a var in a try block',
+      pinned: true,
       declaration: `try { var value = init(1) } catch {}
 const read = () => value`,
     },
     {
       name: 'a var in a for head',
+      pinned: true,
       declaration: `for (var value = init(0); value < 1; value++) {}
 const read = () => value`,
     },
     {
       name: 'a var in a for head, read directly',
+      pinned: true,
       declaration: `for (var value = init(0); value < 1; value++) {}`,
       read: 'value',
     },
@@ -165,7 +169,29 @@ const read = () => Value.One`,
       declaration: `namespace Value { export const one = init(1) }
 const read = () => Value.one`,
     },
-  ])(
+  ]
+  test.each(declarationCases.filter((item) => !item.pinned))(
+    'a binding declared by $name and read by the loader and the split component is initialized once',
+    async ({ declaration, read = 'read()' }) => {
+      const state = stateStub()
+      const { options, chunks } = await loadRouteModules(
+        `${head}import { init } from './state'
+${declaration}
+export const Route = createFileRoute('/')({
+  loader: () => ${read},
+  component: () => <p>{${read}}</p>,
+})`,
+        { './state': state },
+      )
+      expect([
+        options.loader(),
+        chunks.component!.component(),
+        state.calls,
+      ]).toEqual([1, '<p>1</p>', 1])
+    },
+  )
+  // Known bug for the pinned cases, remove `pinned` when fixed.
+  test.fails.each(declarationCases.filter((item) => item.pinned))(
     'a binding declared by $name and read by the loader and the split component is initialized once',
     async ({ declaration, read = 'read()' }) => {
       const state = stateStub()
@@ -407,7 +433,7 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  test.fails('split chunks do not re-export a module-level export *', () => {
+  test('split chunks do not re-export a module-level export *', () => {
     const { modules } = compileRouteModules(`${head}export * from './lib'
 export const Route = createFileRoute('/')({
   component: () => <p>index</p>,
@@ -439,7 +465,7 @@ export const Route = createFileRoute('/')({
   // (`export { GlobalPage as component }`), an export TypeScript erases.
   // Impact: the build fails with a missing export, e.g. for a constant
   // injected with Vite's `define`, or the split component is undefined.
-  test.fails.each([
+  const ambientCases = [
     {
       name: 'read by the loader and the split component',
       global: '1.0',
@@ -452,12 +478,30 @@ export const Route = createFileRoute('/')({
     },
     {
       name: 'used as the split component',
+      pinned: true,
       global: () => '<p>global</p>',
       route: `${head}declare const APP_VERSION: any
 export const Route = createFileRoute('/')({ component: APP_VERSION })`,
       expected: ['<p>global</p>'],
     },
-  ])(
+  ]
+  test.each(ambientCases.filter((item) => !item.pinned))(
+    'an ambient declare const $name stays a global',
+    async ({ global, route, expected }) => {
+      vi.stubGlobal('APP_VERSION', global)
+      try {
+        const { options, chunks } = await loadRouteModules(route)
+        expect([
+          ...(options.loader ? [options.loader()] : []),
+          chunks.component!.component!(),
+        ]).toEqual(expected)
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    },
+  )
+  // Known bug for the pinned cases, remove `pinned` when fixed.
+  test.fails.each(ambientCases.filter((item) => item.pinned))(
     'an ambient declare const $name stays a global',
     async ({ global, route, expected }) => {
       vi.stubGlobal('APP_VERSION', global)
@@ -513,16 +557,12 @@ export async function load() {
   // compiler throws "Unexpected splitNode type ☝️: ObjectExpression".
   // Impact: a route with an object-form loader cannot be built once the
   // loader is split.
-  test.fails(
-    'a split loader in object form loads route data',
-    async () => {
-      expect(await loadWithSplitLoader(`{ handler: () => 'loaded' }`)).toEqual([
-        null,
-        'loaded',
-      ])
-    },
-    30_000,
-  )
+  test('a split loader in object form loads route data', async () => {
+    expect(await loadWithSplitLoader(`{ handler: () => 'loaded' }`)).toEqual([
+      null,
+      'loaded',
+    ])
+  }, 30_000)
 
   // Bug: an object-form loader passed by reference (`loader` holding
   // `{ handler }`) is split as if it were the loader function, so the route
@@ -621,21 +661,18 @@ import { jsx } from '@emotion/react'
   // start-plugin-core/tests/known-bugs-start-compiler.test.ts and
   // known-bugs-hydrate.test.ts.
   // Impact: the split component throws "jsx is not defined".
-  test.fails(
-    'a split component renders through the factory of a classic JSX pragma',
-    async () => {
-      const { chunks } = await loadRouteModules(
-        `${pragma}${head}export const Route = createFileRoute('/')({
+  test('a split component renders through the factory of a classic JSX pragma', async () => {
+    const { chunks } = await loadRouteModules(
+      `${pragma}${head}export const Route = createFileRoute('/')({
   component: () => <div>page</div>,
   errorComponent: () => jsx('b', null, 'error'),
 })`,
-        { '@emotion/react': emotion },
-      )
-      expect(chunks.component!.component()).toBe(
-        '<emotion:div>page</emotion:div>',
-      )
-    },
-  )
+      { '@emotion/react': emotion },
+    )
+    expect(chunks.component!.component()).toBe(
+      '<emotion:div>page</emotion:div>',
+    )
+  })
 })
 
 describe('app paths', () => {

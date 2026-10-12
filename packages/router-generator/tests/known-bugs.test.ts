@@ -106,11 +106,23 @@ describe('route options', () => {
   // spread, a computed key or a method is missed.
   // Impact: Start prunes a route that also has client options as a
   // server-only route, so it is missing from the client route tree.
-  test.fails.each([
-    { name: 'a spread', options: `...clientOptions` },
-    { name: 'a computed key', options: `[key]: Page` },
+  const routeOptionCases = [
+    { name: 'a spread', options: `...clientOptions`, pinned: true },
+    { name: 'a computed key', options: `[key]: Page`, pinned: true },
     { name: 'a method', options: `component() { return null }` },
-  ])(
+  ]
+  test.each(routeOptionCases.filter((item) => !item.pinned))(
+    'a route with server handlers and $name is not server-only',
+    async ({ options }) => {
+      const { node } = await generateMovedRoute(
+        `${routeHead}export const Route = createFileRoute('/moved')({ server: { handlers: {} }, ${options} })`,
+      )
+      expect(node).toBeDefined()
+      expect(isServerOnly(node)).toBe(false)
+    },
+  )
+  // Known bug for the pinned cases, remove `pinned` when fixed.
+  test.fails.each(routeOptionCases.filter((item) => item.pinned))(
     'a route with server handlers and $name is not server-only',
     async ({ options }) => {
       const { node } = await generateMovedRoute(

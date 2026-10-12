@@ -291,7 +291,7 @@ export function Local() {
   // Impact: the injected lazy child overrides `children` passed through a
   // spread, so they never render; a self-closing `children={...}` boundary
   // ships an unused empty chunk.
-  test.fails.each([
+  const childrenCases = [
     {
       name: 'a spread on an element without children',
       code: `export function Page(props) {
@@ -313,13 +313,28 @@ export function Page() {
     {
       // A comment-only `{/* */}` child is no child for React either.
       name: 'a children prop next to a comment-only body',
+      pinned: true,
       code: `export function Page() {
   return <Hydrate children={<p>prop</p>}>{/* note */}</Hydrate>
 }`,
       props: {},
       html: '[<p>prop</p>]',
     },
-  ])(
+  ]
+  test.each(childrenCases.filter((item) => !item.pinned))(
+    'client: children passed through $name render without unused chunks',
+    async ({ code, props, html }) => {
+      const { module, lazyChunks } = await loadClientModule(`${head}${code}`, {
+        stubs: { './chart': { Chart: () => 'chart' } },
+      })
+      expect({
+        html: module.Page(props),
+        unusedChunks: lazyChunks.filter((chunk) => !chunk.rendered).length,
+      }).toEqual({ html, unusedChunks: 0 })
+    },
+  )
+  // Known bug for the pinned cases, remove `pinned` when fixed.
+  test.fails.each(childrenCases.filter((item) => item.pinned))(
     'client: children passed through $name render without unused chunks',
     async ({ code, props, html }) => {
       const { module, lazyChunks } = await loadClientModule(`${head}${code}`, {
@@ -510,33 +525,30 @@ export function Page() {
   // undeclared binding.
   // Impact: the boundary throws "Route is not defined" when it hydrates.
   // Rejecting it at compile time with a clear error is a valid fix.
-  test.fails(
-    'client: split children reading Route use the route of the parent module',
-    async () => {
-      const loaded = await loadClientModule(
-        `${head}import { createFileRoute } from '@tanstack/react-router'
+  test('client: split children reading Route use the route of the parent module', async () => {
+    const loaded = await loadClientModule(
+      `${head}import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: Page })
 export function Page() {
   return <Hydrate><p>{Route.id}</p></Hydrate>
 }`,
-        {
-          stubs: {
-            '@tanstack/react-router': {
-              createFileRoute: (id: string) => (options: unknown) => ({
-                id,
-                options,
-              }),
-            },
+      {
+        stubs: {
+          '@tanstack/react-router': {
+            createFileRoute: (id: string) => (options: unknown) => ({
+              id,
+              options,
+            }),
           },
         },
-      ).catch((error: Error) => error)
-      if (loaded instanceof Error) {
-        expect(compileErrorMessage(loaded)).toMatch(rejections.Route)
-        return
-      }
-      expect(loaded.module.Page()).toBe('[<p>/</p>]')
-    },
-  )
+      },
+    ).catch((error: Error) => error)
+    if (loaded instanceof Error) {
+      expect(compileErrorMessage(loaded)).toMatch(rejections.Route)
+      return
+    }
+    expect(loaded.module.Page()).toBe('[<p>/</p>]')
+  })
 
   // Bug: only declarations move into the chunk; the top-level statements that
   // complete them (member assignments, registrations) are dropped.
@@ -659,13 +671,10 @@ ${head}export function Page() {
   // router-plugin/tests/known-bugs-code-splitter.test.ts.
   // Impact: the client renders the parent's JSX through another factory than
   // the server (a hydration mismatch), or throws "h is not defined".
-  test.fails(
-    'client: a module with a classic JSX pragma renders through its factory',
-    async () => {
-      const { module } = await loadClientModule(pragmaModule, {
-        stubs: { preact },
-      })
-      expect(settle(() => module.Page())).toBe(pragmaHtml)
-    },
-  )
+  test('client: a module with a classic JSX pragma renders through its factory', async () => {
+    const { module } = await loadClientModule(pragmaModule, {
+      stubs: { preact },
+    })
+    expect(settle(() => module.Page())).toBe(pragmaHtml)
+  })
 })
