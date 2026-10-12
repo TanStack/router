@@ -18,11 +18,9 @@ const stableSplitComponent = astTemplate(
     exportName: hole.literal<string>(),
   },
   ({ importMetaHot, key, lazyRouteComponent, importer, exportName }) => {
-    const TSRSplitComponent = (() => {
-      const hot = importMetaHot
-      const hotData = hot ? (hot.data ??= {}) : undefined
-      return hotData?.[key] ?? lazyRouteComponent(importer, exportName)
-    })()
+    const TSRSplitComponent =
+      (importMetaHot ? (importMetaHot.data ??= {})[key] : undefined) ??
+      lazyRouteComponent(importer, exportName)
     if (importMetaHot) {
       ;(importMetaHot.data ??= {})[key] = TSRSplitComponent
     }

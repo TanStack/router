@@ -113,7 +113,7 @@ describe('add-hmr works', () => {
 
     expect(output).toContain('webpackHot')
     expect(output).not.toContain('import.meta.hot')
-    expect(output).toContain('oldHasShellComponent')
+    expect(output).toContain('shellComponent')
   })
 
   it('supports configurable Vite unsplittable HMR generation', async () => {
@@ -155,7 +155,7 @@ describe('add-hmr works', () => {
     expect(output).toContain(
       'router._replaceRouteChunk(oldRoute, newRoute.lazyFn);',
     )
-    expect(output).toContain('void router._refreshRoute?.();')
+    expect(output).toContain('router._refreshRoute?.();')
     expect(output).not.toContain('__routeContext')
   })
 

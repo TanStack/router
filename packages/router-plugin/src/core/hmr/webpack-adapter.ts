@@ -55,17 +55,12 @@ const enqueueReactRefresh = astTemplate({}, () => {
       typeof __react_refresh_utils__ !== 'undefined'
         ? __react_refresh_utils__
         : undefined
-    const tsrEnqueueUpdate =
-      tsrReactRefreshUtils &&
-      typeof tsrReactRefreshUtils.enqueueUpdate === 'function'
-        ? tsrReactRefreshUtils.enqueueUpdate
-        : undefined
-    if (tsrEnqueueUpdate) {
+    const tsrEnqueueUpdate = tsrReactRefreshUtils?.enqueueUpdate
+    if (typeof tsrEnqueueUpdate === 'function') {
       tsrEnqueueUpdate(() => {})
     }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-  } catch (_err) {
-    /* noop */
+  } catch {
+    // A failed refresh must not fail the route update
   }
 })
 

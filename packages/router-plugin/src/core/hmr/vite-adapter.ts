@@ -32,7 +32,7 @@ const viteRouteHmr = astTemplate(
       }
       hot.accept((newModule) => {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (Route && newModule && newModule.Route) {
+        if (Route && newModule?.Route) {
           const routeId = hotData['tsr-route-id'] ?? routeIdFallback
           if (routeId) {
             hotData['tsr-route-id'] = routeId
