@@ -13,11 +13,13 @@ import {
   RouterCore,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
+  notFound,
   redirect,
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
   createSsrStreamResponse,
+  getSsrStatus,
   transformReadableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
 import {
@@ -1637,7 +1639,7 @@ describe('createStartHandler direct server routes', () => {
       ),
     ),
   )(
-    'parses server handler params (component=$component, handler=$handlerKind, parser=$parserKind)',
+    'passes raw path params to server handlers (component=$component, handler=$handlerKind, parser=$parserKind)',
     async ({ component, handlerKind, parserKind }) => {
       const parse = (params: { itemId: string }) => ({
         itemId: Number(params.itemId),
@@ -1667,57 +1669,71 @@ describe('createStartHandler direct server routes', () => {
       )
 
       expect(response.status).toBe(200)
-      await expect(response.json()).resolves.toEqual({ itemId: 42 })
+      await expect(response.json()).resolves.toEqual({ itemId: '42' })
       expect(routeHandler).toHaveBeenCalledOnce()
       expect(render).not.toHaveBeenCalled()
     },
   )
 
-  it.each(['route', 'handler'] as const)(
-    'lets %s middleware catch terminal handler parameter parsing errors',
-    async (placement) => {
-      const error = new Error('Invalid item id')
-      const middleware = createMiddleware().server(async ({ next }) => {
-        try {
-          return await next()
-        } catch (caught) {
-          expect(caught).toBe(error)
-          return new Response(error.message, { status: 400 })
-        }
-      })
-      const routeHandler = vi.fn(() => new Response('must not run'))
+  describe('when params.parse throws', () => {
+    const makeParseFailureRouter = () => {
+      const routeHandler = vi.fn(({ request, next, params }: any) =>
+        request.headers.get('accept')?.includes('text/html')
+          ? next()
+          : Response.json(params),
+      )
       startMocks.router = makeRouter({
         path: '/items/$itemId',
-        component: undefined,
         params: {
-          parse: () => {
-            throw error
+          parse: (params: { itemId: string }) => {
+            const itemId = Number(params.itemId)
+            if (!Number.isFinite(itemId)) {
+              throw notFound()
+            }
+            return { itemId }
           },
         },
-        server: {
-          ...(placement === 'route' ? { middleware: [middleware] } : {}),
-          handlers: {
-            GET:
-              placement === 'handler'
-                ? { middleware: [middleware], handler: routeHandler }
-                : routeHandler,
-          },
-        },
+        server: { handlers: { GET: routeHandler } },
       })
-      const render = vi.fn(() => new Response('must not render'))
-      const handler = createStartHandler(render)
+      const render = vi.fn(
+        ({ router }: { router: AnyRouter }) =>
+          new Response('rendered document', { status: getSsrStatus(router) }),
+      )
+      return { routeHandler, render, handler: createStartHandler(render) }
+    }
+
+    it('still runs the server handler with raw params', async () => {
+      const { routeHandler, render, handler } = makeParseFailureRouter()
 
       const response = await handler(
-        new Request('http://localhost/items/nope'),
+        new Request('http://localhost/items/nope', {
+          headers: { accept: 'application/json' },
+        }),
         {},
       )
 
-      expect(response.status).toBe(400)
-      await expect(response.text()).resolves.toBe('Invalid item id')
-      expect(routeHandler).not.toHaveBeenCalled()
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({ itemId: 'nope' })
+      expect(routeHandler).toHaveBeenCalledOnce()
       expect(render).not.toHaveBeenCalled()
-    },
-  )
+    })
+
+    it('renders the not-found page when the handler defers to rendering', async () => {
+      const { routeHandler, render, handler } = makeParseFailureRouter()
+
+      const response = await handler(
+        new Request('http://localhost/items/nope', {
+          headers: { accept: 'text/html' },
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(404)
+      await expect(response.text()).resolves.toBe('rendered document')
+      expect(routeHandler).toHaveBeenCalledOnce()
+      expect(render).toHaveBeenCalledOnce()
+    })
+  })
 
   it.each(['route', 'handler'] as const)(
     'runs %s middleware instead of incorrectly taking the direct path',
