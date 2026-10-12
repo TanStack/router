@@ -83,16 +83,19 @@ describe('Hydrate builders', () => {
   })
 
   test('boundaryComponent', () => {
-    expect(print(boundaryComponent(0, [], parseExpression('<Card />'))))
-      .toMatchInlineSnapshot(`
+    const printAll = (nodes: Array<Node>) => nodes.map(print).join('\n')
+    expect(
+      printAll(boundaryComponent(0, 'H0', [], parseExpression('<Card />'))),
+    ).toMatchInlineSnapshot(`
       "export function H0() {
         return <Card />;
       }"
     `)
     expect(
-      print(
+      printAll(
         boundaryComponent(
           1,
+          'H1',
           ['count', 'title'],
           parseExpression('<Card title={title} count={count} />'),
         ),
@@ -101,6 +104,13 @@ describe('Hydrate builders', () => {
       "export function H1({ count, title }) {
         return <Card title={title} count={count} />;
       }"
+    `)
+    expect(printAll(boundaryComponent(0, 'H02', [], parseExpression('<H0 />'))))
+      .toMatchInlineSnapshot(`
+      "function H02() {
+        return <H0 />;
+      }
+      export { H02 as H0 };"
     `)
   })
 })

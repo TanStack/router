@@ -1,4 +1,8 @@
-import { analyzeModule, generateModule } from '@tanstack/router-utils'
+import {
+  analyzeModule,
+  createFreshNames,
+  generateModule,
+} from '@tanstack/router-utils'
 import { b, is, isValidIdentifier, nameOf } from 'yuku-ast'
 import { MOCK_MODULE_ID } from './constants'
 import type { SourceMapLike } from './sourceLocation'
@@ -85,16 +89,8 @@ export function rewriteDeniedImports(
 ): { code: string; map?: SourceMapLike } | undefined {
   const module = analyzeModule({ code, filename: id })
   const program = module.ast
-  const usedNames = new Set(module.bindings.map((binding) => binding.name))
+  const freshName = createFreshNames(module)
   let counter = 0
-  const uniqueName = (prefix: string) => {
-    let name = prefix
-    while (usedNames.has(name)) {
-      name = `${prefix}_${counter++}`
-    }
-    usedNames.add(name)
-    return name
-  }
   let modified = false
   for (let i = program.body.length - 1; i >= 0; i--) {
     const node = program.body[i]!
@@ -122,7 +118,7 @@ export function rewriteDeniedImports(
       continue
     }
     const mockIndex = counter++
-    const mockVar = uniqueName(`__tss_deny_${mockIndex}`)
+    const mockVar = freshName(`__tss_deny_${mockIndex}`)
     const replacements: Array<ProgramStatement> = [
       mockImport(mockVar, getMockModuleId(node.source.value)),
     ]
@@ -156,7 +152,7 @@ export function rewriteDeniedImports(
         }
         const local = nameOf(specifier.local)
         const exported = nameOf(specifier.exported)
-        const internal = uniqueName(
+        const internal = freshName(
           isValidIdentifier(local)
             ? `__tss_reexport_${local}`
             : `__tss_reexport_${mockIndex}`,

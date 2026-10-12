@@ -335,6 +335,18 @@ export const Route = createFileRoute('/')({ component: () => ${jsx} })${after}`,
     // `TSRPendingComponent` must stay an unresolved global inside `component`.
     expect(code).not.toMatch(declarationOf('TSRPendingComponent'))
   })
+
+  it('nor a user binding the injected HMR code would declare (hot)', async () => {
+    const { modules } = compileRouteModules(
+      `${head}export const hot = 'hot'
+export const Route = createFileRoute('/')({
+  component: () => <p>{hot}</p>,
+})`,
+      { hmr: true },
+    )
+    await expectValidModules(modules)
+    expect(exportedNames(modules.reference!)).toContain('hot')
+  })
 })
 
 describe('React Refresh hoisting of inline route components', () => {

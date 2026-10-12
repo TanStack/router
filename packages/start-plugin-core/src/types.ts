@@ -54,6 +54,12 @@ export interface StartCompilerTransformContext {
   readonly framework: CompileStartFrameworkOptions
   readonly providerEnvName: string
   parseExpression: (code: string) => Expression
+  /**
+   * Names an identifier a transform adds to the output: neither the source
+   * nor the code other transforms generate uses the name (see
+   * `createFreshNames` in `@tanstack/router-utils`).
+   */
+  freshName: (base: string) => string
   warn?: (message: string) => void
 }
 

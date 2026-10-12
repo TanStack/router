@@ -23,6 +23,7 @@ export {
   unwrapExpression,
   moduleDeclarationGraph,
   expandTransitively,
+  createFreshNames,
   prepareBindingCleanup,
   removeUnusedBindings,
 } from './compiler-helpers'

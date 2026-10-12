@@ -3,7 +3,6 @@ import { is } from 'yuku-ast'
 import { describe, expect, it } from 'vitest'
 import {
   getObjectPropertyKeyName,
-  getUniqueProgramIdentifier,
   normalizePath,
   routeFactoryCallCodeFilter,
 } from '../src/core/utils'
@@ -46,36 +45,6 @@ describe('normalizePath', () => {
   it('should handle path with query string', () => {
     expect(normalizePath('C:\\project\\file.tsx?tsr-split=component')).toBe(
       'C:/project/file.tsx?tsr-split=component',
-    )
-  })
-})
-
-describe('getUniqueProgramIdentifier', () => {
-  it('returns the base name when unused', () => {
-    expect(
-      getUniqueProgramIdentifier(new Set(['existing']), 'TSRComponent').name,
-    ).toBe('TSRComponent')
-  })
-
-  it('appends numeric suffixes for reserved names', () => {
-    expect(
-      getUniqueProgramIdentifier(
-        new Set(['TSRComponent', 'TSRComponent2']),
-        'TSRComponent',
-      ).name,
-    ).toBe('TSRComponent3')
-  })
-
-  it('avoids collisions across consecutive calls with the same base name', () => {
-    const reservedNames = new Set(['existing'])
-
-    const first = getUniqueProgramIdentifier(reservedNames, 'TSRComponent')
-    const second = getUniqueProgramIdentifier(reservedNames, 'TSRComponent')
-
-    expect(first.name).toBe('TSRComponent')
-    expect(second.name).toBe('TSRComponent2')
-    expect(reservedNames).toEqual(
-      new Set(['existing', 'TSRComponent', 'TSRComponent2']),
     )
   })
 })

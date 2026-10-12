@@ -34,11 +34,10 @@ export type ReferenceRouteCompilerPluginContext = {
   /** The module-level declarations of `module` and their dependencies. */
   graph: ReturnType<typeof moduleDeclarationGraph>
   /**
-   * The names the source declares or references, and the names given out for
-   * the output. A declaration a plugin adds must take a name not in it, and
-   * add that name.
+   * Names an identifier the plugin adds to the output: neither the source nor
+   * the other generated code uses the name (see `createFreshNames`).
    */
-  reservedNames: Set<string>
+  freshName: (base: string) => string
   insertBefore: (nodes: Array<ProgramStatement>) => void
   renameBinding: (node: Node, name: string) => void
   routeOptions: ObjectExpression
@@ -60,8 +59,8 @@ export type ReferenceRouteCompilerPluginResult = {
 
 export type VirtualRouteSplitNodeCompilerPluginContext = {
   program: Program
-  /** See `ReferenceRouteCompilerPluginContext['reservedNames']`. */
-  reservedNames: Set<string>
+  /** See `ReferenceRouteCompilerPluginContext['freshName']`. */
+  freshName: (base: string) => string
   renameBinding: (node: Node, name: string) => void
   splitNode: Node
   splitNodeMeta: SplitNodeMeta

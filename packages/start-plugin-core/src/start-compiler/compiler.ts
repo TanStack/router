@@ -3,6 +3,7 @@ import { is, walk } from 'yuku-ast'
 import {
   analyzeModule,
   cloneModuleAst,
+  createFreshNames,
   extractModuleInfo,
   filePragmas,
   generateModule,
@@ -829,6 +830,7 @@ export class StartCompiler {
       framework: this.options.framework,
       providerEnvName: this.options.providerEnvName,
       parseExpression,
+      freshName: createFreshNames(module),
       warn: warn ?? this.options.warn,
       generateFunctionId: (options) => this.generateFunctionId(options),
       getKnownServerFns: this.options.getKnownServerFns,

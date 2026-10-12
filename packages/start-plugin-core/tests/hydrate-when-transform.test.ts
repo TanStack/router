@@ -5,6 +5,7 @@ import { walk } from 'yuku-ast'
 import {
   analyzeModule,
   cloneModuleAst,
+  createFreshNames,
   generateModule,
   parseExpression,
   prepareBindingCleanup,
@@ -100,6 +101,7 @@ function compileHydrate(options: {
     framework: options.framework ?? 'react',
     providerEnvName: 'ssr',
     parseExpression,
+    freshName: createFreshNames(module),
     replaceNode(node, replacement) {
       walk(ast, {
         enter(current, context) {

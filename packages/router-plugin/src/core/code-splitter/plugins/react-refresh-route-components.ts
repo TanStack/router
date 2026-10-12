@@ -1,9 +1,6 @@
 import { b, is } from 'yuku-ast'
 import { unwrapExpression } from '@tanstack/router-utils'
-import {
-  getObjectPropertyKeyName,
-  getUniqueProgramIdentifier,
-} from '../../utils'
+import { getObjectPropertyKeyName } from '../../utils'
 import type { ObjectProperty, VariableDeclaration } from '@yuku-toolchain/types'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
@@ -73,12 +70,11 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
         continue
       }
 
-      const componentIdentifier = getUniqueProgramIdentifier(
-        ctx.reservedNames,
+      const componentName = ctx.freshName(
         `TSR${key[0]!.toUpperCase()}${key.slice(1)}`,
       )
 
-      ctx.renameBinding(prop.value, componentIdentifier.name)
+      ctx.renameBinding(prop.value, componentName)
       modified = true
       continue
     }
@@ -90,8 +86,7 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
       continue
     }
 
-    const hoistedIdentifier = getUniqueProgramIdentifier(
-      ctx.reservedNames,
+    const hoistedName = ctx.freshName(
       `TSR${key[0]!.toUpperCase()}${key.slice(1)}`,
     )
 
@@ -99,12 +94,15 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
       b.VariableDeclaration({
         kind: 'const',
         declarations: [
-          b.VariableDeclarator({ id: hoistedIdentifier, init: prop.value }),
+          b.VariableDeclarator({
+            id: b.Identifier({ name: hoistedName }),
+            init: prop.value,
+          }),
         ],
       }),
     )
 
-    prop.value = b.Identifier({ name: hoistedIdentifier.name })
+    prop.value = b.Identifier({ name: hoistedName })
     modified = true
   }
 
@@ -138,12 +136,9 @@ export function createReactRefreshRouteComponentsPlugin(): ReferenceRouteCompile
         return
       }
 
-      const componentIdentifier = getUniqueProgramIdentifier(
-        ctx.reservedNames,
-        ctx.splitNodeMeta.localExporterIdent,
-      )
+      const componentName = ctx.freshName(ctx.splitNodeMeta.localExporterIdent)
 
-      ctx.renameBinding(ctx.splitNode.id, componentIdentifier.name)
+      ctx.renameBinding(ctx.splitNode.id, componentName)
     },
   }
 }

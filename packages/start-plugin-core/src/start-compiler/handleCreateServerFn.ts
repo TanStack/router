@@ -43,8 +43,10 @@ export function handleCreateServerFn(
       : runtime === 'client'
         ? 'createClientRpc'
         : 'createSsrRpc'
+  const runtimeLocal = context.freshName(runtimeName)
   const functionNames = new Set<string>()
-  const exportNames = new Set<string>()
+  // The provider's handlers: export name (part of the function id) -> local
+  const handlerNames = new Map<string, string>()
   const serverFnsById: Record<string, ServerFn> = {}
   const [baseFilename] = context.id.split('?') as [string]
   const extractedFilename = `${baseFilename}?${TSS_SERVERFN_SPLIT_PARAM}`
@@ -140,38 +142,36 @@ export function handleCreateServerFn(
         isClientReferenced:
           context.env === 'client' || !!knownFn || runtime === 'ssr',
       }
-      context.replaceNode(handler.firstArg, rpcCall(runtimeName, functionId))
+      context.replaceNode(handler.firstArg, rpcCall(runtimeLocal, functionId))
       continue
     }
+    const handlerName = context.freshName(functionName)
     const extracted = extractedHandler({
-      functionName,
-      runtimeName,
+      functionName: handlerName,
+      runtimeName: runtimeLocal,
       functionId,
       variableName,
       relativeFilename,
     })
     context.ast.body.splice(context.ast.body.indexOf(statement), 0, extracted)
     // Move the existing handler node; its source-binding identity remains intact.
-    handler.call.arguments = [
-      generatedReference(functionName),
-      handler.firstArg,
-    ]
-    exportNames.add(functionName)
+    handler.call.arguments = [generatedReference(handlerName), handler.firstArg]
+    handlerNames.set(functionName, handlerName)
   }
 
   if (isProvider) {
     removeExports(context.ast)
-    if (exportNames.size) {
+    if (handlerNames.size) {
       context.ast.body.push(
         b.ExportNamedDeclaration({
           declaration: null,
           source: null,
           attributes: [],
           exportKind: 'value',
-          specifiers: [...exportNames].map((name) =>
+          specifiers: [...handlerNames].map(([exported, local]) =>
             b.ExportSpecifier({
-              local: b.Identifier({ name }),
-              exported: b.Identifier({ name }),
+              local: b.Identifier({ name: local }),
+              exported: b.Identifier({ name: exported }),
               exportKind: 'value',
             }),
           ),
@@ -204,7 +204,10 @@ export function handleCreateServerFn(
   }
   const importPath = runtime === 'provider' ? 'server-rpc' : `${runtime}-rpc`
   const source = `@tanstack/${context.framework}-start/${importPath}`
-  prependStatements(context.ast, runtimeImport(runtimeName, source))
+  prependStatements(
+    context.ast,
+    runtimeImport(runtimeName, runtimeLocal, source),
+  )
 }
 
 function incrementFunctionNameVersion(name: string): string {
@@ -267,6 +270,8 @@ export function extractedHandler({
   variableName: string
   relativeFilename: string
 }) {
+  // The wrapper only reads `variableName`
+  const param = variableName === 'opts' ? 'opts2' : 'opts'
   return b.VariableDeclaration({
     kind: 'const',
     declarations: [
@@ -300,7 +305,7 @@ export function extractedHandler({
               generator: false,
               async: false,
               expression: true,
-              params: [b.Identifier({ name: 'opts' })],
+              params: [b.Identifier({ name: param })],
               body: b.CallExpression({
                 callee: b.MemberExpression({
                   object: generatedReference(variableName),
@@ -308,7 +313,7 @@ export function extractedHandler({
                   computed: false,
                   optional: false,
                 }),
-                arguments: [b.Identifier({ name: 'opts' })],
+                arguments: [b.Identifier({ name: param })],
                 optional: false,
               }),
             }),
@@ -330,13 +335,17 @@ export function directiveStatement(directive: string) {
   })
 }
 
-/** `import { <runtimeName> } from '<source>';` */
-export function runtimeImport(runtimeName: string, source: string) {
+/** `import { <runtimeName> as <local> } from '<source>';` */
+export function runtimeImport(
+  runtimeName: string,
+  local: string,
+  source: string,
+) {
   return b.ImportDeclaration({
     specifiers: [
       b.ImportSpecifier({
         imported: b.Identifier({ name: runtimeName }),
-        local: b.Identifier({ name: runtimeName }),
+        local: b.Identifier({ name: local }),
         importKind: 'value',
       }),
     ],

@@ -59,10 +59,25 @@ describe('createServerFn builders', () => {
   test('runtimeImport', () => {
     expect(
       print(
-        runtimeImport('createServerRpc', '@tanstack/react-start/server-rpc'),
+        runtimeImport(
+          'createServerRpc',
+          'createServerRpc',
+          '@tanstack/react-start/server-rpc',
+        ),
       ),
     ).toMatchInlineSnapshot(
       `"import { createServerRpc } from '@tanstack/react-start/server-rpc';"`,
+    )
+    expect(
+      print(
+        runtimeImport(
+          'createServerRpc',
+          'createServerRpc2',
+          '@tanstack/react-start/server-rpc',
+        ),
+      ),
+    ).toMatchInlineSnapshot(
+      `"import { createServerRpc as createServerRpc2 } from '@tanstack/react-start/server-rpc';"`,
     )
   })
 })

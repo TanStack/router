@@ -3,6 +3,7 @@ import { BindingFlags } from 'yuku-analyzer'
 import {
   analyzeModule,
   collectModuleReferences,
+  createFreshNames,
   createIdentifier,
   expandTransitively,
   filePragmas,
@@ -20,7 +21,7 @@ import {
 } from '@tanstack/router-utils'
 import { tsrShared, tsrSplit } from '../constants'
 import { createRouteHmrStatement } from '../hmr'
-import { getObjectPropertyKeyName, getUniqueProgramIdentifier } from '../utils'
+import { getObjectPropertyKeyName } from '../utils'
 import { getFrameworkOptions } from './framework-options'
 import type { Binding, Module } from 'yuku-analyzer'
 import type {
@@ -498,10 +499,7 @@ function createOutput(analysis: RouteModuleAnalysis) {
   const program = module.ast
   const cleanup = prepareBindingCleanup(module)
   const pragmas = filePragmas(program)
-  const reservedNames = new Set([
-    ...module.bindings.map((binding) => binding.name),
-    ...module.unresolvedReferences.map((reference) => reference.name),
-  ])
+  const freshName = createFreshNames(module)
   // Most outputs never rename a binding: build the index on first use
   let declarationExports: Map<Node, typeof analysis.module.exports> | undefined
   const renameBinding = (node: Node, name: string) => {
@@ -588,7 +586,7 @@ function createOutput(analysis: RouteModuleAnalysis) {
     })
   }
   const removeUnused = () => removeUnusedBindings(module, program, cleanup)
-  return { program, pragmas, reservedNames, renameBinding, removeUnused }
+  return { program, pragmas, freshName, renameBinding, removeUnused }
 }
 
 /** Split modules export only their own split values; keep local declarations. */
@@ -713,7 +711,7 @@ export function compileCodeSplitReferenceRoute(
 ) {
   const analysis = sourceAnalysis(options)
   const output = createOutput(analysis)
-  const { program, reservedNames, renameBinding } = output
+  const { program, freshName, renameBinding } = output
   const framework = getFrameworkOptions(options.targetFramework)
   const lazyImports = new Map<string, string>()
   const knownExported = new Set<string>()
@@ -725,7 +723,7 @@ export function compileCodeSplitReferenceRoute(
       program,
       module: analysis.module,
       graph: analysis.graph,
-      reservedNames,
+      freshName,
       renameBinding,
       routeOptions,
       createRouteFn: route.factory,
@@ -780,10 +778,7 @@ export function compileCodeSplitReferenceRoute(
         const meta = splitMeta(key)
         let lazy = lazyImports.get(meta.splitStrategy)
         if (!lazy) {
-          lazy = getUniqueProgramIdentifier(
-            reservedNames,
-            meta.splitStrategy,
-          ).name
+          lazy = freshName(meta.splitStrategy)
           prependStatements(
             program,
             imports(
@@ -793,10 +788,7 @@ export function compileCodeSplitReferenceRoute(
           )
           lazyImports.set(meta.splitStrategy, lazy)
         }
-        meta.localImporterIdent = getUniqueProgramIdentifier(
-          reservedNames,
-          meta.localImporterIdent,
-        ).name
+        meta.localImporterIdent = freshName(meta.localImporterIdent)
         prependStatements(
           program,
           variable(
@@ -922,7 +914,7 @@ export function compileCodeSplitVirtualRoute(
 ) {
   const analysis = sourceAnalysis(options)
   const output = createOutput(analysis)
-  const { program, reservedNames, renameBinding } = output
+  const { program, freshName, renameBinding } = output
   if (!analysis.routes.some((route) => route.factory === 'createFileRoute')) {
     return generateRouteModule(analysis, output, options.filename)
   }
@@ -972,7 +964,7 @@ export function compileCodeSplitVirtualRoute(
           for (const plugin of options.compilerPlugins ?? []) {
             plugin.onVirtualRouteSplitNode?.({
               program,
-              reservedNames,
+              freshName,
               renameBinding,
               splitNode,
               splitNodeMeta: meta,
@@ -985,10 +977,7 @@ export function compileCodeSplitVirtualRoute(
           ]),
         )
       } else {
-        const name = getUniqueProgramIdentifier(
-          reservedNames,
-          meta.localExporterIdent,
-        ).name
+        const name = freshName(meta.localExporterIdent)
         generatedExports.push(
           variable(name, value),
           exports([{ local: name, exported: key }]),

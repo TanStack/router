@@ -193,6 +193,31 @@ export function moduleDeclarationGraph(module: Module): ModuleDeclarationGraph {
   return { declarations, declarationBindings, dependencies }
 }
 
+/**
+ * Names the identifiers that one output of `module` adds: `base` or, when it
+ * is taken, `base2`, `base3`, … A name is taken when a binding of the source
+ * declares it in any scope (an added declaration may be read from nested
+ * code), when the source reads it without declaring it (a global), or when
+ * this function returned it before. Create one per output and give it to
+ * everything that adds identifiers to that output.
+ */
+export function createFreshNames(module: Module): (base: string) => string {
+  let taken: Set<string> | undefined
+  return (base) => {
+    taken ??= new Set([
+      ...module.bindings.map((binding) => binding.name),
+      ...module.unresolvedReferences.map((reference) => reference.name),
+    ])
+    let name = base
+    let suffix = 2
+    while (taken.has(name)) {
+      name = `${base}${suffix++}`
+    }
+    taken.add(name)
+    return name
+  }
+}
+
 export function expandTransitively<T>(
   roots: Set<T>,
   dependencies: Map<T, Set<T>>,

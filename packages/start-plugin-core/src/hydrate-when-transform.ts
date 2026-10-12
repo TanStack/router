@@ -4,6 +4,7 @@ import { b, is, nameOf, walk } from 'yuku-ast'
 import {
   analyzeModule,
   collectModuleReferences,
+  createFreshNames,
   expandTransitively,
   filePragmas,
   generateModule,
@@ -401,47 +402,70 @@ export function boundaryChild(componentName: string, captured: Array<string>) {
   })
 }
 
-/** `export function H<boundaryIndex>({ <captures> }) { return <expression> }` */
+/**
+ * `export function H<boundaryIndex>({ <captures> }) { return <expression> }`,
+ * declared as `name` and exported as `H<boundaryIndex>` when `name` differs.
+ */
 export function boundaryComponent(
   boundaryIndex: number,
+  name: string,
   captures: Array<string>,
   expression: t.Expression,
-) {
-  return b.ExportNamedDeclaration({
-    declaration: b.FunctionDeclaration({
-      id: b.Identifier({ name: `H${boundaryIndex}` }),
-      generator: false,
-      async: false,
-      params: captures.length
-        ? [
-            b.ObjectPattern({
-              properties: captures.map(
-                // `b.Property` is typed as an object or a binding property
-                (name): t.BindingProperty => ({
-                  type: 'Property',
-                  start: 0,
-                  end: 0,
-                  kind: 'init',
-                  key: b.Identifier({ name }),
-                  value: b.Identifier({ name }),
-                  method: false,
-                  shorthand: true,
-                  computed: false,
-                }),
-              ),
-            }),
-          ]
-        : [],
-      body: b.BlockStatement({
-        body: [b.ReturnStatement({ argument: expression })],
-      }),
-      expression: false,
+): Array<t.ProgramStatement> {
+  const exportName = `H${boundaryIndex}`
+  const declaration = b.FunctionDeclaration({
+    id: b.Identifier({ name }),
+    generator: false,
+    async: false,
+    params: captures.length
+      ? [
+          b.ObjectPattern({
+            properties: captures.map(
+              // `b.Property` is typed as an object or a binding property
+              (name): t.BindingProperty => ({
+                type: 'Property',
+                start: 0,
+                end: 0,
+                kind: 'init',
+                key: b.Identifier({ name }),
+                value: b.Identifier({ name }),
+                method: false,
+                shorthand: true,
+                computed: false,
+              }),
+            ),
+          }),
+        ]
+      : [],
+    body: b.BlockStatement({
+      body: [b.ReturnStatement({ argument: expression })],
     }),
-    specifiers: [],
-    source: null,
-    attributes: [],
-    exportKind: 'value',
+    expression: false,
   })
+  const exported = (
+    declaration: t.FunctionDeclaration | null,
+    specifiers: Array<t.ExportSpecifier>,
+  ) =>
+    b.ExportNamedDeclaration({
+      declaration,
+      specifiers,
+      source: null,
+      attributes: [],
+      exportKind: 'value',
+    })
+  if (name === exportName) {
+    return [exported(declaration, [])]
+  }
+  return [
+    declaration,
+    exported(null, [
+      b.ExportSpecifier({
+        local: b.Identifier({ name }),
+        exported: b.Identifier({ name: exportName }),
+        exportKind: 'value',
+      }),
+    ]),
+  ]
 }
 
 function setChildren(node: t.JSXElement, children: t.JSXElement['children']) {
@@ -502,6 +526,7 @@ function transformHydrateAst(
     env: 'client' | 'server'
     framework: CompileStartFrameworkOptions
     indexOffset?: number
+    freshName: (base: string) => string
   },
 ) {
   if (!options.code.includes('Hydrate')) {
@@ -516,19 +541,6 @@ function transformHydrateAst(
   let nextBoundaryIndex = options.indexOffset ?? 0
   const transformation = { modified: false }
   let lazyName: string | undefined
-  const names = new Set([
-    ...options.module.bindings.map((binding) => binding.name),
-    ...options.module.unresolvedReferences.map((reference) => reference.name),
-  ])
-  const fresh = (base: string) => {
-    let name = `_${base}`
-    let count = 2
-    while (names.has(name)) {
-      name = `_${base}${count++}`
-    }
-    names.add(name)
-    return name
-  }
   const prepend: t.Program['body'] = []
   // Index before mutation so spreads can resolve declarations later in the file.
   const objectExpressions = new WeakMap<t.Node, t.ObjectExpression>()
@@ -628,7 +640,7 @@ function transformHydrateAst(
         return !object || objectExpressionMayHaveProperty(object, 'prefetch')
       })
       if (!lazyName) {
-        lazyName = fresh('lazyRouteComponent')
+        lazyName = options.freshName('_lazyRouteComponent')
         // import { lazyRouteComponent as <lazyName> } from "@tanstack/<framework>-router"
         prepend.push(
           importDeclaration(
@@ -639,7 +651,7 @@ function transformHydrateAst(
         )
       }
       const query = new URLSearchParams({ [tssHydrate]: id })
-      const componentName = fresh(exportName)
+      const componentName = options.freshName(`_${exportName}`)
       prepend.push(
         lazyComponent(
           componentName,
@@ -649,7 +661,7 @@ function transformHydrateAst(
         ),
       )
       if (needsPreload) {
-        const preloadName = fresh(`${exportName}_preload`)
+        const preloadName = options.freshName(`_${exportName}_preload`)
         prepend.push(preloadAlias(preloadName, componentName))
         node.openingElement.attributes.push(
           jsxAttribute('p', generatedReference(preloadName)),
@@ -813,7 +825,9 @@ function loadHydrateVirtualModule(options: {
     }
     return []
   })
-  ast.body.push(boundaryComponent(boundaryIndex, captures, expression))
+  // Moved declarations keep their names; the component takes a free one
+  const name = createFreshNames(module)(`H${boundaryIndex}`)
+  ast.body.push(...boundaryComponent(boundaryIndex, name, captures, expression))
   removeUnusedBindings(module, ast, cleanup)
   keepFilePragmas(pragmas, ast)
   return generateModule(ast, { source: options.code, filename: options.id })
@@ -885,6 +899,7 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
         env: context.env,
         framework: context.framework,
         indexOffset,
+        freshName: context.freshName,
       })
 
       if (result && virtualModule.boundaryIndex < 0) {

@@ -1,6 +1,5 @@
 import { b } from 'yuku-ast'
 import { parseStatements } from '@tanstack/router-utils'
-import { getUniqueProgramIdentifier } from '../../utils'
 import type { HmrStyle } from '../../config'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
@@ -14,8 +13,7 @@ export function createReactStableHmrSplitRouteComponentsPlugin(opts: {
         return
       }
       const exportName = ctx.splitNodeMeta.exporterIdent
-      const stable = getUniqueProgramIdentifier(
-        ctx.reservedNames,
+      const stable = ctx.freshName(
         `TSRSplit${exportName[0]!.toUpperCase()}${exportName.slice(1)}`,
       )
       const hot =
@@ -25,17 +23,17 @@ export function createReactStableHmrSplitRouteComponentsPlugin(opts: {
       const key = JSON.stringify(`tsr-split-component:${exportName}`)
       ctx.insertBefore(
         parseStatements(`
-const ${stable.name} = (() => {
+const ${stable} = (() => {
   const hot = ${hot}
   const hotData = hot ? (hot.data ??= {}) : undefined
   return hotData?.[${key}] ?? ${ctx.lazyRouteComponentIdent}(${ctx.splitNodeMeta.localImporterIdent}, ${JSON.stringify(exportName)})
 })()
 if (${hot}) {
-  ((${hot}).data ??= {})[${key}] = ${stable.name}
+  ((${hot}).data ??= {})[${key}] = ${stable}
 }
 `),
       )
-      return b.Identifier({ name: stable.name })
+      return b.Identifier({ name: stable })
     },
   }
 }

@@ -3,6 +3,7 @@ import { walk } from 'yuku-ast'
 import {
   analyzeModule,
   cloneModuleAst,
+  createFreshNames,
   generateModule,
   parseExpression,
   prepareBindingCleanup,
@@ -108,6 +109,7 @@ function compile(opts: {
     framework: 'react',
     providerEnvName: 'ssr',
     parseExpression,
+    freshName: createFreshNames(module),
     replaceNode(node, replacement) {
       walk(ast, {
         enter(current, context) {

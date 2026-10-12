@@ -371,3 +371,33 @@ export const fn = createServerFn().handler(async () => [await load(), helper(), 
     await callProvider(provider, 'fn', { './db.server': dbServer }),
   ).toEqual(['x', 'y', 'z', 'w'])
 })
+
+// Generated imports and handlers take names no user binding has, in every
+// output, and the provider still exports the handler under its function name.
+test.each([
+  'createClientRpc',
+  'createSsrRpc',
+  'createServerRpc',
+  'fn_createServerFn_handler',
+])(
+  'a user binding named %s does not collide with generated code',
+  async (binding) => {
+    const compiled =
+      await compileAll(`${head}const ${binding} = (value: unknown) => value
+export const used = ${binding}('user')
+export const fn = createServerFn().handler(async () => 'from the server')`)
+    const client = await evaluateModule(compiled.client)
+    expect(client.used).toBe('user')
+    expect(client.fn).toEqual({ rpc: { client: expect.any(String) } })
+    expect(await callProvider(compiled.provider, 'fn')).toBe('from the server')
+  },
+)
+
+// The provider's wrapper `(opts) => fn.__executeServer(opts)` must not shadow
+// a server fn named like its parameter.
+test('a server fn named opts runs on the server', async () => {
+  const { provider } = await compileAll(
+    `${head}export const opts = createServerFn().handler(async () => 'from the server')`,
+  )
+  expect(await callProvider(provider, 'opts')).toBe('from the server')
+})

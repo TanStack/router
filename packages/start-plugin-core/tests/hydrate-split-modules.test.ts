@@ -951,4 +951,14 @@ function Widget() {
       },
     )
   })
+
+  // The chunk component takes a name the moved module-level code does not use.
+  test('client: a helper named like the generated chunk export does not collide', async () => {
+    const { module } =
+      await loadClientModule(`${head}function H0() { return <b>helper</b> }
+export function Page() {
+  return <Hydrate><H0 /></Hydrate>
+}`)
+    expect(module.Page()).toBe('[<b>helper</b>]')
+  })
 })

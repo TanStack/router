@@ -10,6 +10,7 @@ import {
 } from '../src/ast'
 import {
   collectModuleReferences,
+  createFreshNames,
   extractModuleInfo,
   moduleDeclarationGraph,
   prepareBindingCleanup,
@@ -624,5 +625,36 @@ export const Route = createRoute({ component: () => <ThemeContext.Provider />, l
       `data:text/javascript;base64,${Buffer.from(output).toString('base64')}`
     )
     expect(evaluated.result).toBe(42)
+  })
+})
+
+describe('createFreshNames', () => {
+  test('returns the base name when nothing uses it', () => {
+    const freshName = createFreshNames(analyzeModule({ code: 'const a = 1' }))
+    expect(freshName('TSRComponent')).toBe('TSRComponent')
+  })
+
+  test('skips names bound in any scope and names read as globals', () => {
+    const freshName = createFreshNames(
+      analyzeModule({
+        code: `import { H } from './h'
+function f(H2) {
+  { let H3 }
+  return H4
+}`,
+      }),
+    )
+    expect(freshName('H')).toBe('H5')
+  })
+
+  test('remembers the names it returned', () => {
+    const freshName = createFreshNames(analyzeModule({ code: 'let x' }))
+    expect(['x', 'x', 'y', 'y'].map(freshName)).toEqual(['x2', 'x3', 'y', 'y2'])
+  })
+
+  test('outputs of one module do not share names', () => {
+    const module = analyzeModule({ code: '' })
+    expect(createFreshNames(module)('a')).toBe('a')
+    expect(createFreshNames(module)('a')).toBe('a')
   })
 })
