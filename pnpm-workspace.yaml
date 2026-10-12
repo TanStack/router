@@ -125,7 +125,6 @@ overrides:
   '@tanstack/eslint-plugin-router': 'workspace:*'
   '@tanstack/router-utils': 'workspace:*'
   '@tanstack/start-static-server-functions': 'workspace:*'
-  '@tanstack/nitro-v2-vite-plugin': 'workspace:*'
 
 allowBuilds:
   # root dependency
