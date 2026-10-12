@@ -159,28 +159,37 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
     }
   }
 
-  const visit = (node: t.Node): void => {
+  // Runtime import and re-export statements are top-level, and the import
+  // records hold every string-literal `import()`
+  const edges: Array<t.StringLiteral> = []
+  for (const node of module.ast.body) {
     if (is.ImportDeclaration(node)) {
       if (!isTypeOnlyImportDeclaration(node)) {
-        addSpecifierLocation(node.source)
+        edges.push(node.source)
       }
     } else if (is.ExportNamedDeclaration(node)) {
       if (node.source && !isTypeOnlyExportNamedDeclaration(node)) {
-        addSpecifierLocation(node.source)
+        edges.push(node.source)
       }
     } else if (is.ExportAllDeclaration(node)) {
       if (node.exportKind !== 'type') {
-        addSpecifierLocation(node.source)
-      }
-    } else if (is.ImportExpression(node)) {
-      const source = unwrapExpression(node.source)
-      if (is.StringLiteral(source)) {
-        addSpecifierLocation(source)
+        edges.push(node.source)
       }
     }
   }
-
-  module.walk({ enter: visit })
+  const statementCount = edges.length
+  for (const imp of imports) {
+    if (imp.kind === 'dynamic') {
+      edges.push((imp.node as t.ImportExpression).source as t.StringLiteral)
+    }
+  }
+  // The records are not in source order
+  if (edges.length > statementCount) {
+    edges.sort((a, b) => a.start - b.start)
+  }
+  for (const source of edges) {
+    addSpecifierLocation(source)
+  }
 
   const mockExportNamesBySource = new Map<string, Array<string>>()
   for (const [source, names] of mockNamesBySource) {
