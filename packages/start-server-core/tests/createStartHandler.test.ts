@@ -3640,7 +3640,7 @@ describe('createStartHandler router initialization', () => {
     expect(startAdapters).toEqual([startAdapter])
   })
 
-  it('normalizes a server function router URL while preserving the incoming URL', async () => {
+  it('keeps the query spelling in a server function router URL', async () => {
     const requestUrl =
       'http://localhost/_serverFn/test?space=a%20b&tilde=~&bad=%GG&a=1&a=2#part'
     let middlewarePathname: string | undefined
@@ -3678,7 +3678,7 @@ describe('createStartHandler router initialization', () => {
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({
-      href: '/_serverFn/test?space=a+b&tilde=%7E&bad=%25GG&a=1&a=2#part',
+      href: '/_serverFn/test?space=a%20b&tilde=~&bad=%GG&a=1&a=2#part',
       origin: 'http://localhost',
       requestUrl,
       sameRouter: true,
@@ -3729,7 +3729,7 @@ describe('createStartHandler router initialization', () => {
 
     expect(response.status).toBe(308)
     expect(response.headers.get('location')).toBe(
-      'http://localhost/_serverFn/test?space=a+b',
+      'http://localhost/_serverFn/test?space=a%20b',
     )
     expect(startMocks.serverFnCalls).toHaveLength(0)
   })
