@@ -1,15 +1,29 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Show, Suspense } from 'solid-js'
 import { RenderData, makeData } from '~/data'
 
 export const Route = createFileRoute('/ssr/stream')({
-  loader: () => {
-    const dataPromise = new Promise<ReturnType<typeof makeData>>((r) =>
-      setTimeout(() => r(makeData()), 1000),
-    )
+  validateSearch: (search): { gatePort?: number; secondGatePort?: number } => ({
+    gatePort: typeof search.gatePort === 'number' ? search.gatePort : undefined,
+    secondGatePort:
+      typeof search.secondGatePort === 'number'
+        ? search.secondGatePort
+        : undefined,
+  }),
+  loaderDeps: ({ search }) => search,
+  loader: ({ deps }) => {
+    const wait = (port?: number) =>
+      port
+        ? fetch(`http://127.0.0.1:${port}`).then((response) => response.text())
+        : new Promise<void>((resolve) => setTimeout(resolve, 1000))
+    const dataPromise = wait(deps.gatePort).then(() => makeData())
     return {
       someString: 'hello world',
       dataPromise,
+      // Reuse the same objects to exercise Solid's cross-chunk references.
+      secondPromise: deps.secondGatePort
+        ? wait(deps.secondGatePort).then(() => dataPromise)
+        : undefined,
     }
   },
 
@@ -28,6 +42,15 @@ function RouteComponent() {
           {(data) => <RenderData id="stream" data={data} />}
         </Await>
       </Suspense>
+      <Show when={loaderData().secondPromise}>
+        {(promise) => (
+          <Suspense fallback={<div>Waiting for the second stream...</div>}>
+            <Await promise={promise()}>
+              {(data) => <RenderData id="stream-second" data={data} />}
+            </Await>
+          </Suspense>
+        )}
+      </Show>
     </div>
   )
 }

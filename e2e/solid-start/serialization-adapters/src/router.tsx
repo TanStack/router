@@ -5,6 +5,7 @@ export function getRouter() {
   const router = createRouter({
     routeTree,
     scrollRestoration: true,
+    ssr: { nonce: 'serialization-adapters-test' },
   })
 
   return router

@@ -7,6 +7,7 @@ import {
   waitForRequest,
 } from '@tanstack/router-core/ssr/server'
 import { getSolidRenderOptions } from './renderOptions'
+import { deferHydrationScripts } from './deferHydrationScripts'
 import type { JSXElement } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
 
@@ -28,6 +29,7 @@ export const renderRouterToStream = async ({
   }
 
   try {
+    const tracker = { didRun: false }
     const docType = Solid.ssr('<!DOCTYPE html>')
     const stream = Solid.renderToStream(
       () => (
@@ -36,13 +38,31 @@ export const renderRouterToStream = async ({
           {children()}
         </>
       ),
-      getSolidRenderOptions(router),
+      getSolidRenderOptions(router, tracker),
     )
 
     // Cancelling the transform's reader errors this writable, which makes
     // Solid's later writes reject and be ignored. Solid exposes no disposal
     // handle for unresolved renderer work; see router-core's STREAMING.md.
-    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
+    let decoder: TextDecoder | undefined
+    let encoder: TextEncoder | undefined
+    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>({
+      transform(record, controller) {
+        // Native records are the doctype-prefixed shell, <script> tasks, or
+        // <template> markup. Templates cannot contain serializer tasks; avoid
+        // decoding potentially large markup records (116 is the initial 't').
+        if (tracker.didRun && record[1] !== 116) {
+          decoder ??= new TextDecoder()
+          const html = decoder.decode(record)
+          const deferred = deferHydrationScripts(html)
+          if (deferred !== html) {
+            encoder ??= new TextEncoder()
+            record = encoder.encode(deferred)
+          }
+        }
+        controller.enqueue(record)
+      },
+    })
     const rendererAbort = isbot(request.headers.get('User-Agent'))
       ? new AbortController()
       : undefined

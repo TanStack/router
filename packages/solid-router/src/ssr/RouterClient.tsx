@@ -2,6 +2,7 @@ import { hydrate } from '@tanstack/router-core/ssr/client'
 import { Await } from '../awaited'
 import { HeadContent } from '../HeadContent'
 import { RouterProvider } from '../RouterProvider'
+import { onHydrated } from './onHydrated'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 
@@ -10,7 +11,7 @@ let hydrationPromise: Promise<void> | undefined
 const Dummy = (props: { children?: JSXElement }) => <>{props.children}</>
 
 export function RouterClient(props: { router: AnyRouter }) {
-  hydrationPromise ??= hydrate(props.router).finally(() => window.$_TSR!.h())
+  hydrationPromise ??= hydrate(props.router).finally(onHydrated)
 
   return (
     <Await

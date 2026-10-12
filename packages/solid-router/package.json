@@ -108,6 +108,7 @@
     "@solidjs/meta": "^0.29.4",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
+    "acorn": "^8.18.0",
     "isbot": "catalog:"
   },
   "devDependencies": {
