@@ -3,6 +3,14 @@ export type ScriptFormat = 'module' | 'iife'
 
 export const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
 
+/**
+ * Window event dispatched in development once an HMR update has been applied.
+ * The dev styles link is a snapshot of the SSR-collected CSS; it must stay until
+ * the bundler injected the same styles on the client (server-rendered lazy
+ * components may still be loading after hydration), and becomes stale after HMR.
+ */
+export const DEV_STYLES_STALE_EVENT = 'tanstack-router:dev-styles-stale'
+
 export type AssetCrossOriginConfig =
   | AssetCrossOrigin
   | Partial<Record<'script' | 'stylesheet', AssetCrossOrigin>>
