@@ -104,7 +104,6 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@solid-primitives/refs": "^1.0.8",
     "@solidjs/meta": "^0.29.4",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",

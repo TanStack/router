@@ -1,7 +1,17 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
+import packageJson from './package.json'
 
-const config = defineConfig({})
+const config = defineConfig({
+  test: {
+    name: packageJson.name,
+    dir: './tests',
+    watch: false,
+  },
+  define: {
+    __TSR_VERSION__: JSON.stringify(packageJson.version),
+  },
+})
 
 export default mergeConfig(
   config,
