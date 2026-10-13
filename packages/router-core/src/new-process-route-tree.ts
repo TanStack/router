@@ -264,20 +264,28 @@ export function parseSegments<TRouteLike extends RouteLike>(
 
   const isLeaf = (route.path || !route.children) && !route.isRoot
   const isIndex = isLeaf && literalEnd < length
-  // params.parse must sit on a node only this route's subtree reaches. Static
-  // nodes and the parent's node (reached by pathless routes) can be shared.
+  // params.parse must sit on a node only this route's subtree reaches. A
+  // dynamic node with a parser is never shared, but static nodes, index slots
+  // and the parent's node (reached by pathless routes) can be.
   if (
     parseParams &&
-    !isIndex &&
-    (node === parentNode ? route.children : node.kind === SEGMENT_TYPE_PATHNAME)
+    (node === parentNode
+      ? route.children || isIndex
+      : node.kind === SEGMENT_TYPE_PATHNAME)
   ) {
     const pathlessNode = createSegmentNode(node, SEGMENT_TYPE_PATHLESS)
-    const pathless = (node.pathless ??= [])
-    pathless.push(pathlessNode)
-    if (pathless.length === 2) {
-      dynamicListsToSort?.push(pathless)
+    if ((node.pathless ??= []).push(pathlessNode) === 2) {
+      dynamicListsToSort?.push(node.pathless)
     }
     node = pathlessNode
+  }
+
+  // a pathless leaf has nothing to guard
+  if (parseParams && node !== parentNode) {
+    node.parse = parseParams
+    node.priority = options?.params?.priority ?? 0
+    // params.parse reads param names from the node it sits on
+    node.data = segmentData
   }
 
   // create index node
@@ -287,15 +295,11 @@ export function parseSegments<TRouteLike extends RouteLike>(
     node = indexNode
   }
 
-  // a pathless leaf has nothing to guard
-  if (parseParams && node !== parentNode) {
-    node.parse = parseParams
-    node.priority = options?.params?.priority ?? 0
-  }
   // A shared candidate keeps the original names of its first terminal route.
   if (!node.route) {
     node.data = segmentData
-    if (isLeaf) {
+    // a pathless leaf never owns its parent's URL
+    if (isLeaf && node !== parentNode) {
       node.route = route
     }
   }
@@ -434,7 +438,7 @@ type SegmentNode<T extends RouteLike> = {
 
   depth: number
 
-  /** route.options.params.parse function, set on the last node of the route */
+  /** route.options.params.parse function, set on a node only that route's subtree reaches */
   parse: null | ((params: Record<string, string>) => unknown)
 
   /** route.options.params.priority ?? 0 */
@@ -958,26 +962,19 @@ function getNodeMatch<T extends RouteLike>(
         extract,
         rawParams,
       }
-      let indexValid = true
-      if (node.index.parse) {
-        const result = validateParseParams(path, parts, indexFrame)
-        if (!result) indexValid = false
+      // perfect match, no need to continue
+      // this is an optimization, algorithm should work correctly without this block
+      if (
+        !dynamics &&
+        !optionals &&
+        !skipped &&
+        isPerfectStaticMatch(statics, partsLength)
+      ) {
+        return indexFrame
       }
-      if (indexValid) {
-        // perfect match, no need to continue
-        // this is an optimization, algorithm should work correctly without this block
-        if (
-          !dynamics &&
-          !optionals &&
-          !skipped &&
-          isPerfectStaticMatch(statics, partsLength)
-        ) {
-          return indexFrame
-        }
-        if (isFrameMoreSpecific(bestMatch, indexFrame)) {
-          // index matches skip the stack because they cannot have children
-          bestMatch = indexFrame
-        }
+      if (isFrameMoreSpecific(bestMatch, indexFrame)) {
+        // index matches skip the stack because they cannot have children
+        bestMatch = indexFrame
       }
     }
 
