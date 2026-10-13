@@ -109,7 +109,7 @@ export function parseSegments<TRouteLike extends RouteLike>(
   route: TRouteLike,
   start: number,
   node: AnySegmentNode<TRouteLike>,
-  dynamicListsToSort?: Array<Array<DynamicSegmentNode<TRouteLike>>>,
+  dynamicListsToSort?: Array<Array<AnySegmentNode<TRouteLike>>>,
   parentInterpolation?: RouteInterpolation,
 ): ParsedRoute<TRouteLike>
 export function parseSegments<TRouteLike extends RouteLike>(
@@ -117,8 +117,8 @@ export function parseSegments<TRouteLike extends RouteLike>(
   route: TRouteLike,
   start: number,
   node?: AnySegmentNode<TRouteLike>,
-  /** Each dynamic sibling list is recorded once, when it first needs sorting. */
-  dynamicListsToSort?: Array<Array<DynamicSegmentNode<TRouteLike>>>,
+  /** Each dynamic or pathless sibling list is recorded once, when it first needs sorting. */
+  dynamicListsToSort?: Array<Array<AnySegmentNode<TRouteLike>>>,
   parentInterpolation?: RouteInterpolation,
 ): RouteInterpolation | ParsedRoute<TRouteLike> {
   const parentNode = node
@@ -272,7 +272,11 @@ export function parseSegments<TRouteLike extends RouteLike>(
     (node === parentNode ? route.children : node.kind === SEGMENT_TYPE_PATHNAME)
   ) {
     const pathlessNode = createSegmentNode(node, SEGMENT_TYPE_PATHLESS)
-    ;(node.pathless ??= []).push(pathlessNode)
+    const pathless = (node.pathless ??= [])
+    pathless.push(pathlessNode)
+    if (pathless.length === 2) {
+      dynamicListsToSort?.push(pathless)
+    }
     node = pathlessNode
   }
 
@@ -299,20 +303,14 @@ export function parseSegments<TRouteLike extends RouteLike>(
 }
 
 function sortDynamic(
-  a: {
-    prefix: string
-    suffix: string
-    caseSensitive: boolean
-    parse: null | ((params: Record<string, string>) => unknown)
-    priority: number
-  },
-  b: {
-    prefix: string
-    suffix: string
-    caseSensitive: boolean
-    parse: null | ((params: Record<string, string>) => unknown)
-    priority: number
-  },
+  a: Pick<
+    AnySegmentNode<any>,
+    'prefix' | 'suffix' | 'caseSensitive' | 'parse' | 'priority'
+  >,
+  b: Pick<
+    AnySegmentNode<any>,
+    'prefix' | 'suffix' | 'caseSensitive' | 'parse' | 'priority'
+  >,
 ) {
   if (a.parse && !b.parse) return -1
   if (!a.parse && b.parse) return 1
@@ -489,7 +487,7 @@ export function processRouteMasks<
   processedTree: ProcessedTree<any, TRouteLike, any>,
 ) {
   const segmentTree = createSegmentNode<TRouteLike>()
-  const dynamicListsToSort: Array<Array<DynamicSegmentNode<TRouteLike>>> = []
+  const dynamicListsToSort: Array<Array<AnySegmentNode<TRouteLike>>> = []
   function visit(
     route: TRouteLike,
     start: number,
@@ -632,7 +630,7 @@ export function processRouteTree<
   caseSensitive: boolean = false,
 ): ProcessRouteTreeResult<TRouteLike> {
   const segmentTree = createSegmentNode<TRouteLike>()
-  const dynamicListsToSort: Array<Array<DynamicSegmentNode<TRouteLike>>> = []
+  const dynamicListsToSort: Array<Array<AnySegmentNode<TRouteLike>>> = []
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
   let index = 0
