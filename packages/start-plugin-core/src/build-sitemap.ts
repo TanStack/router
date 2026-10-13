@@ -1,7 +1,9 @@
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { z } from 'zod'
+import { pageBaseSchema } from './schema'
 import { createLogger } from './utils'
-import type { TanStackStartOutputConfig } from './schema'
+import type { PageBase, TanStackStartOutputConfig } from './schema'
 
 export type SitemapUrl = {
   loc: string
@@ -17,7 +19,7 @@ export type SitemapUrl = {
     | 'never'
   alternateRefs?: Array<{
     href: string
-    hreflang?: string
+    hreflang: string
   }>
   images?: Array<{
     loc: string
@@ -38,10 +40,7 @@ export type SitemapData = {
   urls: Array<SitemapUrl>
 }
 
-function buildSitemapJson(
-  pages: TanStackStartOutputConfig['pages'],
-  host: string,
-): SitemapData {
+function buildSitemapJson(pages: Array<PageBase>, host: string): SitemapData {
   const slash = checkSlash(host)
 
   const urls: Array<SitemapUrl> = pages
@@ -199,8 +198,20 @@ export function buildSitemap({
 
   logger.info('Building Sitemap...')
 
-  // Build the sitemap data
-  const sitemapData = buildSitemapJson(pages, host)
+  // Validate pages before writing anything. The schema strips private fields
+  // (prerender headers, extra data returned by `prerender.onSuccess`), so both
+  // public outputs are built from the same validated page data.
+  const publicPages = pages.map((page) => {
+    const result = pageBaseSchema.safeParse(page)
+    if (!result.success) {
+      throw new Error(
+        `Invalid sitemap data for page "${page.path}". Check the value returned by \`prerender.onSuccess\`.\n${z.prettifyError(result.error)}`,
+        { cause: result.error },
+      )
+    }
+    return result.data
+  })
+  const sitemapData = buildSitemapJson(publicPages, host)
 
   // Generate output paths
   const xmlOutputPath = path.join(publicDir, outputPath)
@@ -217,7 +228,7 @@ export function buildSitemap({
       pagesOutputPath,
       JSON.stringify(
         {
-          pages,
+          pages: publicPages,
           host,
           lastBuilt: new Date().toISOString(),
         },

@@ -1,5 +1,25 @@
 # @tanstack/router-plugin
 
+## 1.168.45
+
+### Patch Changes
+
+- Updated dependencies [[`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/router-core@1.171.37
+  - @tanstack/react-router@1.170.44
+  - @tanstack/router-generator@1.167.43
+
+## 1.168.44
+
+### Patch Changes
+
+- [#8655](https://github.com/TanStack/router/pull/8655) [`e66da18`](https://github.com/TanStack/router/commit/e66da18266859ab49e20a7b8c858232449ee5290) - Remove redundant string excludes from the reference code-splitter transform filter to avoid unnecessary glob compilation in unplugin bundler adapters.
+
+- Updated dependencies [[`57bd1a9`](https://github.com/TanStack/router/commit/57bd1a92f9839af5bf773c3b36d039569fb1a41e), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-generator@1.167.42
+  - @tanstack/router-core@1.171.36
+  - @tanstack/react-router@1.170.43
+
 ## 1.168.43
 
 ### Patch Changes

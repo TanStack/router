@@ -40,7 +40,7 @@ catalog:
   '@tanstack/vite-config': 0.5.2
   '@testing-library/jest-dom': ^6.6.3
   '@testing-library/react': ^16.2.0
-  '@vitejs/plugin-react': ^4.3.4
+  '@vitejs/plugin-react': ^6.0.1
   '@vitejs/plugin-vue-jsx': ^4.1.2
   '@vitest/ui': ^4.1.4
   react: ^19.2.3
@@ -125,7 +125,6 @@ overrides:
   '@tanstack/eslint-plugin-router': 'workspace:*'
   '@tanstack/router-utils': 'workspace:*'
   '@tanstack/start-static-server-functions': 'workspace:*'
-  '@tanstack/nitro-v2-vite-plugin': 'workspace:*'
 
 allowBuilds:
   # root dependency

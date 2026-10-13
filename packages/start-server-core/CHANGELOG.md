@@ -1,5 +1,47 @@
 # @tanstack/start-server-core
 
+## 1.169.42
+
+### Patch Changes
+
+- [#8451](https://github.com/TanStack/router/pull/8451) [`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8) - Skip request middleware bookkeeping when no request middleware is configured, and stop copying serialization adapters when the router adds none.
+
+  Server route handlers and route middleware now receive the router's decoded pathname, the same one used for route matching. Characters that would change how the path is read, such as `%2F`, `%3F`, and `%23`, stay encoded.
+
+- [#8441](https://github.com/TanStack/router/pull/8441) [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82) - Reuse the parsed request location during SSR instead of repeating input rewrites. Match server routes against the app router's parsed pathname while preserving encoded pathnames for server handlers and middleware.
+
+- Updated dependencies [[`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8), [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/start-storage-context@1.167.39
+  - @tanstack/router-core@1.171.37
+  - @tanstack/start-client-core@1.170.37
+
+## 1.169.41
+
+### Patch Changes
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Return 400 Bad Request for malformed percent-encoded request pathnames before running server entry callbacks. Preserve valid encoded paths and query handling.
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Reduce request middleware overhead, reuse loaded entries and transport header requirements, and avoid unnecessary URL normalization for server functions. Preserve response helper writes made during body cancellation and SSR cleanup.
+
+  Avoid allocating absent middleware headers and reply context, and construct RPC redirects with their final response state. Preserve middleware accessor evaluation and the documented undefined value for absent `sendContext`.
+
+  Reduce synchronous server-function response overhead while preserving cancellation cleanup and middleware response mutations.
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Keep streaming a page when request middleware returns a response that reads the page body, such as a copy made through a wrapped global `Response`, a copy in Bun, or a body piped through a transform. Start now disposes a replaced page stream only when nothing reads it. `transferResponseBodyOwnership` is removed: return the derived response directly.
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Let request middleware read the body of a `HEAD` response, and strip it when the response leaves the pipeline. Start no longer applies `Content-Encoding`, `Content-Length`, or other framing headers set through response helpers to error bodies and serialized server-function replies that it builds itself. A response that middleware assigns to `result.response` is now disposed when the middleware returns another response.
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Remove the built-in `useSession` API. Applications choose a session library, such as iron-session, and save or destroy sessions explicitly before returning or redirecting. Connect a cookie adapter through `getCookie` and `setCookie`, or append serialized cookies with `appendResponseHeader('set-cookie', cookie)`. Existing session cookies require a deliberate migration or signing in again with a new cookie name.
+
+  `createServerEntry` keeps the complete callback, including custom error handling, inside the request context and converts errors that escape it. The built-in entry still converts errors automatically. Raw `createStartHandler` handlers now rethrow the original error. For custom reporting, catch inside `createServerEntry`, then rethrow for default conversion or return `handleStartError(error)` to preserve response-helper status, headers, and cookies. Return an explicit `Response` when choosing a custom error payload.
+
+  Response helpers now apply consistently across server routes, SSR, server functions, redirects, errors, and middleware response replacements. Helper setters override returned values; cookie helpers preserve independent cookies and replace matching cookie identities. Use `appendResponseHeader('set-cookie', cookie)` when adding a serialized cookie without replacing other cookies. Changed responses receive copied headers and reuse the body stream, so applications should inspect the response returned by Start rather than relying on mutation of the original response.
+
+- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5), [`550f478`](https://github.com/TanStack/router/commit/550f47881070c0558a87e1acce7f38fbc85b9549), [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-core@1.171.36
+  - @tanstack/start-storage-context@1.167.38
+  - @tanstack/start-client-core@1.170.36
+
 ## 1.169.40
 
 ### Patch Changes
