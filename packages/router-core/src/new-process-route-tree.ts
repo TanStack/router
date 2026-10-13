@@ -121,6 +121,7 @@ export function parseSegments<TRouteLike extends RouteLike>(
   dynamicListsToSort?: Array<Array<DynamicSegmentNode<TRouteLike>>>,
   parentInterpolation?: RouteInterpolation,
 ): RouteInterpolation | ParsedRoute<TRouteLike> {
+  const parentNode = node
   let cursor = start
   const path = route.fullPath ?? route.from
   const options = route.options
@@ -261,29 +262,32 @@ export function parseSegments<TRouteLike extends RouteLike>(
     return segmentData!
   }
 
-  // create pathless node
+  const isLeaf = (route.path || !route.children) && !route.isRoot
+  const isIndex = isLeaf && literalEnd < length
+  // params.parse must sit on a node only this route's subtree reaches. Static
+  // nodes and the parent's node (reached by pathless routes) can be shared.
   if (
     parseParams &&
-    route.children &&
-    !route.isRoot &&
-    route.id &&
-    route.id.charCodeAt(route.id.lastIndexOf('/') + 1) === 95 /* '_' */
+    !isIndex &&
+    (node === parentNode ? route.children : node.kind === SEGMENT_TYPE_PATHNAME)
   ) {
     const pathlessNode = createSegmentNode(node, SEGMENT_TYPE_PATHLESS)
     ;(node.pathless ??= []).push(pathlessNode)
     node = pathlessNode
   }
 
-  const isLeaf = (route.path || !route.children) && !route.isRoot
   // create index node
-  if (isLeaf && literalEnd < length) {
+  if (isIndex) {
     const indexNode = createSegmentNode(node, SEGMENT_TYPE_INDEX)
     node.index = indexNode
     node = indexNode
   }
 
-  node.parse = parseParams ?? null
-  node.priority = options?.params?.priority ?? 0
+  // a pathless leaf has nothing to guard
+  if (parseParams && node !== parentNode) {
+    node.parse = parseParams
+    node.priority = options?.params?.priority ?? 0
+  }
   // A shared candidate keeps the original names of its first terminal route.
   if (!node.route) {
     node.data = segmentData
