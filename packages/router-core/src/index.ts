@@ -93,6 +93,7 @@ export type {
 } from './manifest'
 export {
   DEV_STYLES_ATTR,
+  DEV_STYLES_STALE_EVENT,
   appendUniqueUserTags,
   createInlineCssStyleAsset,
   getAssetCrossOrigin,

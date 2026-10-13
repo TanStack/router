@@ -1,3 +1,4 @@
+import { DEV_STYLES_STALE_EVENT } from '@tanstack/router-core'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { startInstance } from '#tanstack-start-entry'
 import {
@@ -12,6 +13,10 @@ import type { AnyStartInstanceOptions } from '../createStart'
 type HotContext = {
   data?: Record<string, unknown>
   dispose?: (cb: (data: Record<string, unknown>) => void) => void
+  // Vite
+  on?: (event: string, cb: () => void) => void
+  // webpack / rspack
+  addStatusHandler?: (cb: (status: string) => void) => void
 }
 
 declare global {
@@ -59,11 +64,30 @@ async function hydrateStart(): Promise<AnyRouter> {
   return router
 }
 
+function notifyDevStylesStale() {
+  window.dispatchEvent(new Event(DEV_STYLES_STALE_EVENT))
+}
+
 function hydrateStartWithHmr(): Promise<AnyRouter> {
   const hot = import.meta.hot ?? import.meta.webpackHot
 
   if (!hot) {
     return hydrateStart()
+  }
+
+  // Tell HeadContent that the SSR dev styles snapshot is outdated.
+  if (hot.on) {
+    hot.on('vite:afterUpdate', notifyDevStylesStale)
+  } else if (hot.addStatusHandler) {
+    let applied = false
+    hot.addStatusHandler((status) => {
+      if (status === 'apply') {
+        applied = true
+      } else if (status === 'idle' && applied) {
+        applied = false
+        notifyDevStylesStale()
+      }
+    })
   }
 
   const key = 'tss-hydrate-start-promise'
