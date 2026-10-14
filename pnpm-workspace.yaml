@@ -2,7 +2,7 @@ cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
 linkWorkspacePackages: true
 preferWorkspacePackages: true
-blockExoticSubdeps: true
+blockExoticSubdeps: false # TEMP(skew-protection): pkg.pr.new deployment-metadata deps; re-enable before merge
 trustPolicy: 'no-downgrade'
 
 trustPolicyExclude:

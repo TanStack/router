@@ -14969,7 +14969,7 @@ importers:
         version: 8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
         specifier: ^2.11.10 || ^3.0.0-0
-        version: 2.11.16(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
         version: 4.5.4
@@ -15454,6 +15454,9 @@ importers:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      '@vitejs/deployment-metadata-types':
+        specifier: https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-types@f4c7c495741afaacaebdf7d9bf52310caae707b7
+        version: https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-types@f4c7c495741afaacaebdf7d9bf52310caae707b7
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
@@ -15520,6 +15523,9 @@ importers:
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
+      '@vitejs/deployment-metadata-helper':
+        specifier: https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-helper@f4c7c49
+        version: https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-helper@f4c7c49(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       exsolve:
         specifier: ^1.1.3
         version: 1.2.0
@@ -15578,6 +15584,9 @@ importers:
       '@types/picomatch':
         specifier: ^4.0.2
         version: 4.0.2
+      '@vitejs/deployment-metadata-types':
+        specifier: https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-types@f4c7c495741afaacaebdf7d9bf52310caae707b7
+        version: https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-types@f4c7c495741afaacaebdf7d9bf52310caae707b7
       prettier:
         specifier: ^3.9.6
         version: 3.9.6
@@ -22883,6 +22892,18 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
+  '@vitejs/deployment-metadata-helper@https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-helper@f4c7c49':
+    resolution: {integrity: sha512-W2O6Y0Dzwb38AzCVVy5D0sktAlUE1g0P4Cr/GbIFdTaQ4bK08H+qA2oogSEcKx1WlNjHDCHFi5izp3AikciQLw==, tarball: https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-helper@f4c7c49}
+    version: 0.0.0
+    engines: {node: '>=22.12.0 || ^24.0.0'}
+    peerDependencies:
+      vite: ^8.3.8
+
+  '@vitejs/deployment-metadata-types@https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-types@f4c7c495741afaacaebdf7d9bf52310caae707b7':
+    resolution: {integrity: sha512-Z9k0PGtOhXOiOQ18bDhUhmt+NKuIgfkkEL2aQVsALQkE72/5v7D6rm+SY+3FOTkvKF5TbiRV5AEAxjmMo1GL0Q==, tarball: https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-types@f4c7c495741afaacaebdf7d9bf52310caae707b7}
+    version: 0.0.0
+    engines: {node: '>=22.12.0 || ^24.0.0'}
+
   '@vitejs/plugin-react@6.0.1':
     resolution: {integrity: sha512-l9X/E3cDb+xY3SWzlG1MOGt2usfEHGMNIaegaUGFsLkb3RCn/k8/TOXBcab+OndDI4TBtktT8/9BwwW8Vi9KUQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -29295,16 +29316,6 @@ packages:
     resolution: {integrity: sha512-YMZCXsLw9kyuvQFEdwLP27fuTQJLmjNoHy90AOJnbRuJ6DwShUxKFo38gdFrWn9v11hnGicKCZEaeI/TFs6JKw==}
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
-      solid-js: 1.9.12
-      vite: ^8.3.8
-    peerDependenciesMeta:
-      '@testing-library/jest-dom':
-        optional: true
-
-  vite-plugin-solid@2.11.16:
-    resolution: {integrity: sha512-qguFUmqY2ICuoGHrZjm+cWpvKkqVyWDMptipC/BIEGr9q6wEzwTWYOjM9pEWJ+yoTuF6T5OpysI2Okdy7rsVlQ==}
-    peerDependencies:
-      '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.0.0 || ^7.0.0
       solid-js: 1.9.12
       vite: ^8.3.8
     peerDependenciesMeta:
@@ -36994,6 +37005,13 @@ snapshots:
       - rollup
       - supports-color
 
+  '@vitejs/deployment-metadata-helper@https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-helper@f4c7c49(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))':
+    dependencies:
+      '@vitejs/deployment-metadata-types': https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-types@f4c7c495741afaacaebdf7d9bf52310caae707b7
+      vite: 8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+
+  '@vitejs/deployment-metadata-types@https://pkg.pr.new/vitejs/deployment-metadata/@vitejs/deployment-metadata-types@f4c7c495741afaacaebdf7d9bf52310caae707b7': {}
+
   '@vitejs/plugin-react@6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.0(supports-color@10.2.2))(rolldown@1.2.19)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))':
     dependencies:
       '@rolldown/pluginutils': 1.0.0-rc.7
@@ -44462,21 +44480,6 @@ snapshots:
       vitefu: 1.1.1(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
     optionalDependencies:
       '@testing-library/jest-dom': 7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.4)
-    transitivePeerDependencies:
-      - supports-color
-
-  vite-plugin-solid@2.11.16(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@types/babel__core': 7.20.5
-      babel-preset-solid: 1.9.10(@babel/core@7.29.7(supports-color@10.2.2))(solid-js@1.9.12)
-      merge-anything: 5.1.7
-      solid-js: 1.9.12
-      solid-refresh: 0.6.3(solid-js@1.9.12)(supports-color@10.2.2)
-      vite: 8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
-      vitefu: 1.1.3(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
-    optionalDependencies:
-      '@testing-library/jest-dom': 6.6.3
     transitivePeerDependencies:
       - supports-color
 
