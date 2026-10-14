@@ -20,8 +20,6 @@ export default defineConfig({
     baseURL,
   },
 
-  // Nx builds each toolchain into E2E_DIST_DIR first; this only starts the
-  // production server, since deployment metadata is resolved for builds only.
   webServer: {
     command: `PORT=${PORT} pnpm start`,
     wait: appServerReady,
