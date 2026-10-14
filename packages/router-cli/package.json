@@ -67,12 +67,11 @@
   },
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",
-    "chokidar": "catalog:",
-    "yargs": "^17.7.2"
+    "cac": "^7.1.0",
+    "chokidar": "catalog:"
   },
   "devDependencies": {
     "@types/node": ">=20",
-    "@types/yargs": "^17.0.33",
     "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
