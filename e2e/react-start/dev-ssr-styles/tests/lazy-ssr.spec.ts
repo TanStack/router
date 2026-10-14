@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import { createHmrFileEditor, test } from '@tanstack/router-e2e-utils'
-import { ssrStylesMode } from '../env'
+import { ssrStylesMode, viteBundledDev } from '../env'
 
 const whitelistErrors = [
   'Failed to load resource: net::ERR_NAME_NOT_RESOLVED',
@@ -14,6 +14,10 @@ test.describe('dev styles for a React.lazy component rendered during SSR', () =>
   test('stay applied after hydration while the lazy module is still loading', async ({
     page,
   }) => {
+    // Bundled dev runs the same HeadContent code path, but the lazy module is
+    // part of the client bundle, so its request cannot be held back here.
+    test.skip(viteBundledDev, 'Cannot block the lazy chunk in bundled dev')
+
     let releaseModule!: () => void
     const moduleReleased = new Promise<void>((resolve) => {
       releaseModule = resolve

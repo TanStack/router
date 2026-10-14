@@ -1,5 +1,5 @@
 import { MetaProvider } from '@solidjs/meta'
-import { For, createMemo, createSignal, onCleanup } from 'solid-js'
+import { For, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
 import { DEV_STYLES_ATTR, DEV_STYLES_STALE_EVENT } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
@@ -37,7 +37,9 @@ export function HeadContent(props: HeadContentProps) {
       .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
       .forEach((el) => el.remove())
   }
-  window.addEventListener(DEV_STYLES_STALE_EVENT, markStale)
+  onMount(() => {
+    window.addEventListener(DEV_STYLES_STALE_EVENT, markStale)
+  })
   onCleanup(() => window.removeEventListener(DEV_STYLES_STALE_EVENT, markStale))
 
   const filteredTags = createMemo(() => {
