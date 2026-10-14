@@ -7,18 +7,6 @@ import { useRouter } from './useRouter'
 import { useTags } from './headContentUtils'
 import type { HeadContentProps } from './HeadContent'
 
-// Tracked at module level so an update applied before HeadContent mounts is not missed.
-let devStylesStale = false
-
-function subscribeDevStylesStale(onChange: () => void) {
-  const listener = () => {
-    devStylesStale = true
-    onChange()
-  }
-  window.addEventListener(DEV_STYLES_STALE_EVENT, listener)
-  return () => window.removeEventListener(DEV_STYLES_STALE_EVENT, listener)
-}
-
 /**
  * Render route-managed head tags (title, meta, links, styles, head scripts).
  * Place inside the document head of your app shell.
@@ -33,21 +21,20 @@ export function HeadContent(props: HeadContentProps) {
   const tags = useTags(props.assetCrossOrigin)
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const stale = React.useSyncExternalStore(
-    subscribeDevStylesStale,
-    () => devStylesStale,
-    () => false,
-  )
+  const [stale, setStale] = React.useState(false)
 
-  // Stylesheet links are hoisted resources that React does not remove when
-  // they are filtered out, so drop them from the DOM explicitly.
   React.useEffect(() => {
-    if (stale) {
+    const markStale = () => {
+      setStale(true)
+      // Stylesheet links are hoisted resources that React does not remove
+      // when they are filtered out, so drop them from the DOM explicitly.
       document
         .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
         .forEach((el) => el.remove())
     }
-  }, [stale])
+    window.addEventListener(DEV_STYLES_STALE_EVENT, markStale)
+    return () => window.removeEventListener(DEV_STYLES_STALE_EVENT, markStale)
+  }, [])
 
   const filteredTags = stale
     ? tags.filter(

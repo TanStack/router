@@ -14,7 +14,7 @@ type HotContext = {
   data?: Record<string, unknown>
   dispose?: (cb: (data: Record<string, unknown>) => void) => void
   // Vite
-  on?: (event: string, cb: () => void) => void
+  on?: (event: string, cb: (payload?: unknown) => void) => void
   // webpack / rspack
   addStatusHandler?: (cb: (status: string) => void) => void
 }

@@ -8,6 +8,8 @@ export const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
  * The dev styles link is a snapshot of the SSR-collected CSS; it must stay until
  * the bundler injected the same styles on the client (server-rendered lazy
  * components may still be loading after hydration), and becomes stale after HMR.
+ *
+ * @internal
  */
 export const DEV_STYLES_STALE_EVENT = 'tanstack-router:dev-styles-stale'
 
