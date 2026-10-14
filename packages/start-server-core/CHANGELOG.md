@@ -1,5 +1,11 @@
 # @tanstack/start-server-core
 
+## 1.169.43
+
+### Patch Changes
+
+- [#8710](https://github.com/TanStack/router/pull/8710) [`71d9694`](https://github.com/TanStack/router/commit/71d9694da6346fbece2cda4ecde92b0b12a7ee08) - Update `fetchdts` to `^0.2.0`. The typed request and response header helpers keep the same header names and value types.
+
 ## 1.169.42
 
 ### Patch Changes

@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/router-plugin": "^1.168.45",
+    "@tanstack/router-plugin": "^1.168.46",
     "@tanstack/solid-router": "^1.170.41",
     "@tanstack/solid-router-devtools": "^1.167.2",
     "firebase": "^11.4.0",
