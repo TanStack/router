@@ -3130,8 +3130,8 @@ importers:
         specifier: ^9.22.0
         version: 9.22.0(jiti@2.7.0)(supports-color@10.2.2)
       srvx:
-        specifier: ^0.10.0
-        version: 0.10.1
+        specifier: ^1.0.0
+        version: 1.0.5
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -28000,11 +28000,6 @@ packages:
     resolution: {integrity: sha512-qC9iz2FlN7DQl3+wjwn3802RTyjCx7sDvfQEXchwa6CWOx07/WVfh91gBmQ9fahw8snwGEWU3xGzOt4tFyHLxg==}
     engines: {node: '>= 0.6'}
 
-  srvx@0.10.1:
-    resolution: {integrity: sha512-A//xtfak4eESMWWydSRFUVvCTQbSwivnGCEf8YGPe2eHU0+Z6znfUTCPF0a7oV3sObSOcrXHlL6Bs9vVctfXdg==}
-    engines: {node: '>=20.16.0'}
-    hasBin: true
-
   srvx@1.0.5:
     resolution: {integrity: sha512-KvSKRpgPG/oaq3cyT614OQ2bAa7DynuGamivCZeoZzIUULOdbQz6wUtnnVuC4+DCx2Zglzo8v5gBYmWIWYhDxA==}
     engines: {node: '>=20.16.0'}
@@ -43309,8 +43304,6 @@ snapshots:
       kysely: 0.27.6
 
   sqlstring@2.3.3: {}
-
-  srvx@0.10.1: {}
 
   srvx@1.0.5: {}
 
