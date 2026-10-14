@@ -3,7 +3,6 @@ import {
   parseExpression,
   parseStatements,
   prependStatements,
-  sourcePosition,
   unwrapExport,
 } from '@tanstack/router-utils'
 import path from 'pathe'
@@ -89,29 +88,15 @@ export function handleCreateServerFn(
       extractedFilename,
     })
     const knownFn = knownFns[functionId]
-    if (methodChain.inputValidator) {
-      const location = sourcePosition(
-        context.code,
-        methodChain.inputValidator.call.start,
-      )
-      context.warn?.(
-        `${context.id}:${location.line}:${location.column + 1} createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.`,
-      )
-    }
-    for (const [name, method] of [
-      ['validator', methodChain.validator],
-      ['inputValidator', methodChain.inputValidator],
-    ] as const) {
-      if (!method) {
-        continue
-      }
-      if (!method.call.arguments[0]) {
+    const validator = methodChain.validator
+    if (validator) {
+      if (!validator.call.arguments[0]) {
         throw new Error(
-          `createServerFn().${name}() must be called with a validator!`,
+          'createServerFn().validator() must be called with a validator!',
         )
       }
       if (context.env === 'client') {
-        stripMethodCall(method.call, context)
+        stripMethodCall(validator.call, context)
       }
     }
     const handler = methodChain.handler

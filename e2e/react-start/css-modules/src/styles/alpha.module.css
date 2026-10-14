@@ -1,0 +1,4 @@
+.page {
+  --repro-alpha: 1;
+  border: 4px solid #226844;
+}

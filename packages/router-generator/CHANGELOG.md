@@ -1,5 +1,28 @@
 # @tanstack/router-generator
 
+## 1.167.44
+
+### Patch Changes
+
+- Updated dependencies [[`923d98b`](https://github.com/TanStack/router/commit/923d98b18b6cd90b6219591e20e86115dc61048e)]:
+  - @tanstack/router-utils@1.162.4
+
+## 1.167.43
+
+### Patch Changes
+
+- Updated dependencies [[`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/router-core@1.171.37
+
+## 1.167.42
+
+### Patch Changes
+
+- [#8664](https://github.com/TanStack/router/pull/8664) [`57bd1a9`](https://github.com/TanStack/router/commit/57bd1a92f9839af5bf773c3b36d039569fb1a41e) - Avoid overwriting a route file with the scaffold template when an in-place save finishes while the generator is reading the file.
+
+- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-core@1.171.36
+
 ## 1.167.41
 
 ### Patch Changes

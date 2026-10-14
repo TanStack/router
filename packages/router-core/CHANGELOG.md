@@ -1,5 +1,17 @@
 # @tanstack/router-core
 
+## 1.171.37
+
+### Patch Changes
+
+- [#8441](https://github.com/TanStack/router/pull/8441) [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82) - Reuse the parsed request location during SSR instead of repeating input rewrites. Match server routes against the app router's parsed pathname while preserving encoded pathnames for server handlers and middleware.
+
+## 1.171.36
+
+### Patch Changes
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Reduce per-request work in Start: `getNormalizedURL` reads a `URL` input without cloning it, and `runWithStartContext` returns the callback's own result instead of wrapping it in a promise, so a synchronous throw from the callback now propagates synchronously.
+
 ## 1.171.35
 
 ### Patch Changes

@@ -978,7 +978,6 @@ export class StartCompiler {
       const methodChain: MethodChain = {
         middleware: null,
         validator: null,
-        inputValidator: null,
         handler: null,
         server: null,
         client: null,

@@ -4,7 +4,6 @@ import { rootRouteId } from '@tanstack/router-core'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../../constants'
 import {
   buildStartManifest,
-  createManifestAssetResolvers,
   serializeStartManifest,
 } from '../../start-manifest-plugin/manifestBuilder'
 import { createVirtualModule } from '../createVirtualModule'
@@ -117,10 +116,10 @@ function getViteAdditionalRouteAssets(options: {
     )
   }
 
-  const { getStylesheetLink } = createManifestAssetResolvers(options.basePath)
-
   return {
-    [rootRouteId]: [getStylesheetLink(options.cssCodeSplitDisabledFileName)],
+    [rootRouteId]: [
+      joinURL(options.basePath, options.cssCodeSplitDisabledFileName),
+    ],
   }
 }
 
