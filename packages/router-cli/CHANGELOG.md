@@ -1,5 +1,14 @@
 # @tanstack/router-cli
 
+## 1.167.44
+
+### Patch Changes
+
+- [#8711](https://github.com/TanStack/router/pull/8711) [`a80cd74`](https://github.com/TanStack/router/commit/a80cd7410591396aa203f754c34caff2628f21fd) - Replace `yargs` with the dependency-free `cac` for parsing `tsr` arguments. `tsr generate` and `tsr watch` work as before. Running `tsr` with no command now prints help, and unknown commands, unknown options, or extra arguments now print an error and exit with code 1 instead of being ignored.
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.44
+
 ## 1.167.43
 
 ### Patch Changes

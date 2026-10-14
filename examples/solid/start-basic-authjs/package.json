@@ -13,7 +13,7 @@
     "@auth/core": "^0.41.1",
     "@tanstack/solid-router": "^1.170.41",
     "@tanstack/solid-router-devtools": "^1.167.2",
-    "@tanstack/solid-start": "^1.169.1",
+    "@tanstack/solid-start": "^1.169.2",
     "solid-js": "^1.9.10",
     "start-authjs": "^1.0.0",
     "tailwind-merge": "^3.6.0"
