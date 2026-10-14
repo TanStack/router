@@ -1,8 +1,5 @@
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
-minimumReleaseAgeExclude:
-  # TODO: remove after 2026-10-14T10:34Z, once 0.5.37 is older than minimumReleaseAge
-  - '@vitejs/plugin-rsc@0.5.37'
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 blockExoticSubdeps: true
