@@ -110,7 +110,7 @@
     "@rspack/core": "2.2.7",
     "@testing-library/react": "catalog:",
     "@vitejs/plugin-react": "catalog:",
-    "@vitejs/plugin-rsc": "^0.5.30",
+    "@vitejs/plugin-rsc": "^0.5.36",
     "react-server-dom-rspack": "^0.0.2",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
