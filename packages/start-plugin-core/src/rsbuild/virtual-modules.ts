@@ -1,4 +1,5 @@
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
+import { generateDeploymentMetadataModule } from '../deployment-metadata-module'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { generateServerFnResolverModule } from '../start-compiler/server-fn-resolver-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'
@@ -16,6 +17,7 @@ import type {
 import type { InlineCssOptions } from '../start-manifest-plugin/manifestBuilder'
 import type { ServerFn } from '../start-compiler/types'
 import type { ScriptFormat } from '@tanstack/router-core'
+import type { ResolvedDeploymentMetadata } from '@tanstack/start-server-core'
 
 type RspackNamespace = typeof rspackNamespaceType
 type RspackVirtualModulesPlugin = InstanceType<
@@ -225,6 +227,8 @@ export interface RegisterVirtualModulesOptions {
   providerEnvName: string
   ssrIsProvider: boolean
   serializationAdapters: Array<SerializationAdapterConfig> | undefined
+  /** Resolved during builds; read once the config hooks have run. */
+  getDeploymentMetadata: () => ResolvedDeploymentMetadata | undefined
   /**
    * Get the URL at which the rsbuild dev server serves the client entry JS.
    * Called lazily inside modifyRspackConfig when getConfig() is available.
@@ -253,6 +257,7 @@ export function registerVirtualModules(
         manifest: string
         serverFnResolver: string
         pluginAdapters: string
+        deploymentMetadata: string
         rsc: {
           rscRuntime: string
           rscHmr: string
@@ -268,6 +273,10 @@ export function registerVirtualModules(
         manifest: virtualPath(root, VIRTUAL_MODULES.startManifest),
         serverFnResolver: virtualPath(root, VIRTUAL_MODULES.serverFnResolver),
         pluginAdapters: virtualPath(root, VIRTUAL_MODULES.pluginAdapters),
+        deploymentMetadata: virtualPath(
+          root,
+          VIRTUAL_MODULES.deploymentMetadata,
+        ),
         rsc: opts.rscEnabled
           ? {
               rscRuntime: virtualPath(root, RSC_RUNTIME_VIRTUAL_ID),
@@ -437,6 +446,10 @@ export function registerVirtualModules(
       })
     }
 
+    content[paths.deploymentMetadata] = generateDeploymentMetadataModule(
+      opts.getDeploymentMetadata(),
+    )
+
     // --- RSC virtual modules ---
     if (rscPaths) {
       // virtual:tanstack-rsc-runtime
@@ -476,6 +489,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     const aliasMap: Record<string, string> = {
       [VIRTUAL_MODULES.startManifest]: paths.manifest,
       [VIRTUAL_MODULES.serverFnResolver]: paths.serverFnResolver,
+      [VIRTUAL_MODULES.deploymentMetadata]: paths.deploymentMetadata,
     }
     if (hasSerializationAdapters) {
       aliasMap[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters

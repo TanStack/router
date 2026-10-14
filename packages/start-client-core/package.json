@@ -92,6 +92,10 @@
     "#tanstack-start-plugin-adapters": {
       "types": "./src/start-entry.d.ts",
       "default": "./dist/esm/empty-plugin-adapters.js"
+    },
+    "#tanstack-start-deployment-metadata": {
+      "types": "./src/start-entry.d.ts",
+      "default": "./dist/esm/empty-deployment-metadata.js"
     }
   },
   "sideEffects": false,
