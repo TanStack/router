@@ -24,9 +24,7 @@ test.describe('deployment metadata', () => {
       )
       await page.getByTestId(`call-${method}`).click()
 
-      // the client sent it...
       expect((await request).headers()[HEADER_CARRIER]).toBe(DEPLOYMENT_ID)
-      // ...and the server received it
       await expect(page.getByTestId(`result-${method}`)).toHaveText(
         DEPLOYMENT_ID,
       )

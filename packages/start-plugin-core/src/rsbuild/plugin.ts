@@ -341,8 +341,6 @@ export function tanStackStartRsbuild(
         environments: startCompilerEnvironments,
       })
 
-      // Rsbuild has no provider discovery, so only the explicit option is
-      // used. Registered after the config hook above so getConfig() is ready.
       let deploymentMetadata: ResolvedDeploymentMetadata | undefined
       api.modifyRsbuildConfig(async () => {
         const { startConfig } = getConfig()
