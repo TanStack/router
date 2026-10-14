@@ -132,6 +132,32 @@ describe('Search Params serialization and deserialization', () => {
     }
   })
 
+  test('skips JSON.parse for literal- and number-like strings that are not JSON', () => {
+    const values = {
+      word: 'trending',
+      kind: 'number',
+      style: 'fashion',
+      date: '2024-01-01',
+      id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      range: '7d',
+      sort: '-createdAt',
+      zip: '02134',
+    }
+    const parseSpy = vi.spyOn(JSON, 'parse')
+    try {
+      const parse = parseSearchWith(JSON.parse)
+      const stringify = stringifySearchWith(JSON.stringify, JSON.parse)
+      const str = stringify(values)
+      expect(str).toEqual(
+        '?word=trending&kind=number&style=fashion&date=2024-01-01&id=3fa85f64-5717-4562-b3fc-2c963f66afa6&range=7d&sort=-createdAt&zip=02134',
+      )
+      expect(parse(str)).toEqual(values)
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
+  })
+
   test('parse still parses strings that pass the jsonStart guard', () => {
     expect(defaultParseSearch('?n=123&flag=true&obj={"a":1}&arr=[1]')).toEqual({
       n: 123,
@@ -176,7 +202,18 @@ describe('Search Params serialization and deserialization', () => {
     ['"', '"'],
     ['-', '-'],
     ['01', '01'],
+    ['-01', '-01'],
+    ['1.', '1.'],
+    ['.5', '.5'],
     ['1e', '1e'],
+    ['1E+2', 100],
+    ['-1.5e-3', -0.0015],
+    ['1.50', 1.5],
+    ['true\n', true],
+    ['null null', 'null null'],
+    ['truex', 'truex'],
+    ['2024-01-01', '2024-01-01'],
+    ['-createdAt', '-createdAt'],
     ['+1', '+1'],
     ['雪', '雪'],
     ['\u00a0null', '\u00a0null'],
