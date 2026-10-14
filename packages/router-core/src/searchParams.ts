@@ -5,8 +5,7 @@ import type { AnySchema } from './validators'
 // character, literals and numbers in full. Skipping the others avoids a thrown
 // SyntaxError for values like `trending`, `2024-01-01` or `-createdAt`.
 // False positives safely fall through to JSON.parse.
-const jsonStart =
-  /^(?:[\s"[{]|(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)\s*$)/
+const jsonStart = /^([\s"[{]|(true|false|null|-?\d+(\.\d+)?(e[+-]?\d+)?)\s*$)/i
 
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
 export const defaultParseSearch = parseSearchWith(JSON.parse)

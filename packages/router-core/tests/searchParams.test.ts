@@ -141,7 +141,7 @@ describe('Search Params serialization and deserialization', () => {
       id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
       range: '7d',
       sort: '-createdAt',
-      zip: '02134',
+      version: '1.2.3',
     }
     const parseSpy = vi.spyOn(JSON, 'parse')
     try {
@@ -149,7 +149,7 @@ describe('Search Params serialization and deserialization', () => {
       const stringify = stringifySearchWith(JSON.stringify, JSON.parse)
       const str = stringify(values)
       expect(str).toEqual(
-        '?word=trending&kind=number&style=fashion&date=2024-01-01&id=3fa85f64-5717-4562-b3fc-2c963f66afa6&range=7d&sort=-createdAt&zip=02134',
+        '?word=trending&kind=number&style=fashion&date=2024-01-01&id=3fa85f64-5717-4562-b3fc-2c963f66afa6&range=7d&sort=-createdAt&version=1.2.3',
       )
       expect(parse(str)).toEqual(values)
       expect(parseSpy).not.toHaveBeenCalled()
