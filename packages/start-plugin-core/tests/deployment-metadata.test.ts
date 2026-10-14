@@ -3,8 +3,11 @@ import { defineDeploymentParticipant } from '@vitejs/deployment-metadata-helper'
 import {
   SUPPORTED_VDM0001_VERSIONS,
   discoverRequestMetadata,
-  resolveDeploymentMetadata,
 } from '../src/vite/deployment-metadata'
+import {
+  generateDeploymentMetadataModule,
+  resolveDeploymentMetadata,
+} from '../src/deployment-metadata-module'
 
 // types
 import type { Plugin } from 'vite'
@@ -184,5 +187,24 @@ describe('resolveDeploymentMetadata', () => {
         carriers: [headerCarrier],
       }),
     ).resolves.toBeUndefined()
+  })
+})
+
+describe('generateDeploymentMetadataModule', () => {
+  test('exports the resolved metadata as an object literal', () => {
+    const metadata = {
+      value: 'dpl_123',
+      carriers: [{ type: 'header', name: 'x-deployment-id' }],
+    } as const
+
+    expect(generateDeploymentMetadataModule(metadata)).toBe(
+      `export const deploymentMetadata = ${JSON.stringify(metadata)}`,
+    )
+  })
+
+  test('exports null without metadata', () => {
+    expect(generateDeploymentMetadataModule(undefined)).toBe(
+      'export const deploymentMetadata = null',
+    )
   })
 })
