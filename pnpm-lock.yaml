@@ -2487,12 +2487,6 @@ importers:
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
-      '@rsbuild/core':
-        specifier: ^2.1.0
-        version: 2.2.5
-      '@rsbuild/plugin-react':
-        specifier: ^2.0.0
-        version: 2.0.0(@rsbuild/core@2.2.5)(@rspack/core@2.2.7(@swc/helpers@0.5.23))
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils

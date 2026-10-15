@@ -37,11 +37,11 @@ test.describe('deployment metadata', () => {
     await gotoHydrated(page)
 
     const request = page.waitForRequest((request) =>
-      request.url().includes('/api/echo'),
+      request.url().includes('/api/user-fetch'),
     )
-    await page.getByTestId('call-echo').click()
+    await page.getByTestId('call-user-fetch').click()
 
     expect((await request).headers()[HEADER_CARRIER]).toBeUndefined()
-    await expect(page.getByTestId('result-echo')).toHaveText(MISSING)
+    await expect(page.getByTestId('result-user-fetch')).toHaveText(MISSING)
   })
 })
