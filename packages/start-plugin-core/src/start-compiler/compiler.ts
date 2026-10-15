@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { is, walk } from 'yuku-ast'
+import { is, isWrapper, walk } from 'yuku-ast'
 import {
   analyzeModule,
   cloneModuleAst,
@@ -837,10 +837,19 @@ export class StartCompiler {
     const jsx: Array<t.JSXElement> = []
     walk(ast, {
       CallExpression: (node, position) => {
-        if (
-          is.MemberExpression(position.parent) &&
-          is.CallExpression(editor.parentOf(position.parent))
-        ) {
+        // An inner link of a chain is compiled with the chain's last call, also
+        // when parentheses or a TypeScript assertion wrap it or its member
+        let member = position.parent
+        while (isWrapper(member)) {
+          member = editor.parentOf(member)
+        }
+        let caller = is.MemberExpression(member)
+          ? editor.parentOf(member)
+          : null
+        while (isWrapper(caller)) {
+          caller = editor.parentOf(caller)
+        }
+        if (is.CallExpression(caller)) {
           return
         }
         if (isMethodChainCandidate(node, fileKinds)) {
