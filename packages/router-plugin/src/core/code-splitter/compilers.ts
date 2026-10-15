@@ -315,7 +315,8 @@ export function computeSharedBindings(
     [...graph.declarations.keys()].filter(
       (binding) =>
         binding.name !== 'Route' &&
-        !binding.has(BindingFlags.Import | BindingFlags.Ambient),
+        !binding.has(BindingFlags.Import) &&
+        !isAmbient(module, binding),
     ),
   )
   for (const route of analysis.routes) {
@@ -503,6 +504,33 @@ export function computeSharedBindings(
     [...shared]
       .filter((binding) => !forbidden.has(binding))
       .map((binding) => binding.name),
+  )
+}
+
+/**
+ * Whether the environment provides a binding's value: its declarations are
+ * `declare`d or only types, as `declare var X` merged with `interface X`.
+ * Yuku's `Ambient` flag requires every declaration, interfaces included, to be
+ * `declare`d.
+ */
+function isAmbient(module: Module, binding: Binding) {
+  return (
+    binding.has(BindingFlags.Ambient) ||
+    (binding.has(BindingFlags.Interface | BindingFlags.TypeAlias) &&
+      binding.declarations.every((identifier) => {
+        const declaration = module.parentOf(identifier)
+        if (
+          is.TSInterfaceDeclaration(declaration) ||
+          is.TSTypeAliasDeclaration(declaration) ||
+          is.TSDeclareFunction(declaration)
+        ) {
+          return true
+        }
+        const statement = is.VariableDeclarator(declaration)
+          ? module.parentOf(declaration)
+          : declaration
+        return !!statement && 'declare' in statement && !!statement.declare
+      }))
   )
 }
 
