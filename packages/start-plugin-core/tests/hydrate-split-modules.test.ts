@@ -14,6 +14,7 @@ import {
   importSources,
   loadChunk,
   parentImportSources,
+  renderBoundaries,
   renderChunk,
 } from './regression-helpers'
 import { declarationOf, getModuleErrors } from './validate-module'
@@ -82,14 +83,13 @@ export function Page() {
   })
 
   test('client: a stale h attribute is replaced by the generated boundary id', async () => {
-    const { parent } = await compileHydrate(
-      'client',
-      `${head}export function Page() {
+    const code = `${head}export function Page() {
   return <Hydrate h="stale"><p>child</p></Hydrate>
-}`,
-    )
+}`
+    const { parent } = await compileHydrate('client', code)
     expect(parent).not.toContain('stale')
-    expect(getBoundaryIds(parent)).toHaveLength(1)
+    const { ids } = await renderBoundaries('client', code, (m) => m.Page())
+    expect(ids).toHaveLength(1)
   })
 
   // String values of `split` are accepted too, for untyped or JS callers.
@@ -299,17 +299,17 @@ export function Other({ early }) {
     const code = `${head}export function Page() {
   return <div><Hydrate><p>one</p></Hydrate><Hydrate><p>two</p></Hydrate></div>
 }`
-    const server = await compileHydrate('server', code)
     const plugin = createHydrateCompilerPlugin()
     const { compile } = createStartCompiler({
       env: 'client',
       compilerPlugins: [plugin],
     })
-    const parent = (await compile(
-      code,
-      '/test/src/module.tsx?tsr-split=component',
-    ))!
-    expect(getBoundaryIds(parent)).toEqual(getBoundaryIds(server.parent))
+    const id = '/test/src/module.tsx?tsr-split=component'
+    const parent = (await compile(code, id))!
+    const render = (m: Record<string, any>) => m.Page()
+    expect(
+      (await renderBoundaries('client', code, render, { id })).ids,
+    ).toEqual((await renderBoundaries('server', code, render)).ids)
     const rendered: Array<unknown> = []
     for (const chunkId of getChunkIds(parent)) {
       rendered.push(await renderChunk(loadChunk(plugin, 'client', chunkId)!))
@@ -321,9 +321,11 @@ export function Other({ early }) {
     const code = `${head}export function Page() {
   return <div><Hydrate><section><Hydrate split={false}><b>inline</b></Hydrate></section></Hydrate><Hydrate><p>second</p></Hydrate></div>
 }`
-    const server = await compileHydrate('server', code)
-    const { parent, chunks } = await compileHydrate('client', code)
-    expect(getBoundaryIds(parent)).toEqual(getBoundaryIds(server.parent))
+    const { chunks } = await compileHydrate('client', code)
+    const render = (m: Record<string, any>) => m.Page()
+    expect((await renderBoundaries('client', code, render)).ids).toEqual(
+      (await renderBoundaries('server', code, render)).ids,
+    )
     expect(await renderChunk(chunks[1]!)).toBe('<p>second</p>')
   })
 
@@ -617,14 +619,9 @@ export function Page() {
   return <Hydrate><p>{a}</p></Hydrate>
 }`,
       )
-      const { module, parentModuleStubs } = await evaluateHydrateParent(
-        plugin,
-        parent,
-      )
-      expect(module.fromRoot()).toContain('B')
-      expect(
-        await renderChunk(chunks[0]!, {}, await parentModuleStubs(chunks[0]!)),
-      ).toBe('<p>A</p>')
+      const linked = await evaluateHydrateParent(plugin, parent)
+      expect(linked.module.fromRoot()).toContain('B')
+      expect(await linked.renderChunk(chunks[0]!, {})).toBe('<p>A</p>')
     },
   )
 
@@ -643,13 +640,9 @@ export function App() {
 }`,
     )
     expect(chunks).toHaveLength(2)
-    const { module, parentModuleStubs } = await evaluateHydrateParent(
-      plugin,
-      parent,
-    )
-    expect(module.direct).toBe(2)
-    const render = async (chunk: string) =>
-      renderChunk(chunk, {}, await parentModuleStubs(chunk))
+    const linked = await evaluateHydrateParent(plugin, parent)
+    expect(linked.module.direct).toBe(2)
+    const render = (chunk: string) => linked.renderChunk(chunk, {})
     expect(await render(chunks[0]!)).toBe('<p>3</p>')
     expect(await render(chunks[1]!)).toBe('<p>4</p>')
   })
