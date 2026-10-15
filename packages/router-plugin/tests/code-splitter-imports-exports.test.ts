@@ -1,5 +1,5 @@
 import { transformWithOxc } from 'vite'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   compileRouteModules,
   componentChunk,
@@ -249,6 +249,29 @@ export const Route = createFileRoute('/')({
     expect(modules.reference).toMatch(/export \* from ['"]\.\/lib['"]/)
     expect(modules.reference).toMatch(/export \* as lib from ['"]\.\/lib['"]/)
     await expectValidModules(modules)
+  })
+
+  // The code splitter keeps an exported component in the route module, which
+  // the entry chunk loads, and tells the developer why.
+  it('are reported as not code-split when an exported component is a split option and another option is split', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    onTestFinished(() => warn.mockRestore())
+    const { modules } = compileRouteModules(`${head}export function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({
+  component: Page,
+  errorComponent: () => <p>error</p>,
+})
+`)
+    expect(modules.reference).toContain('errorComponent: lazyRouteComponent(')
+    expect(modules.reference).not.toMatch(
+      /component: lazyRouteComponent\(\S+, ['"]component['"]\)/,
+    )
+    expect(warn).toHaveBeenCalledOnce()
+    expect(warn.mock.calls[0]![0]).toContain(
+      '[tanstack-router] These exports from "route.tsx" will not be code-split and will increase your bundle size:\n- Page\n',
+    )
   })
 })
 
