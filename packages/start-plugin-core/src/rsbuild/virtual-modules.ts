@@ -17,7 +17,6 @@ import type {
 import type { InlineCssOptions } from '../start-manifest-plugin/manifestBuilder'
 import type { ServerFn } from '../start-compiler/types'
 import type { ScriptFormat } from '@tanstack/router-core'
-import type { ResolvedDeploymentMetadata } from '@tanstack/start-server-core'
 
 type RspackNamespace = typeof rspackNamespaceType
 type RspackVirtualModulesPlugin = InstanceType<
@@ -229,8 +228,6 @@ export interface RegisterVirtualModulesOptions {
   providerEnvName: string
   ssrIsProvider: boolean
   serializationAdapters: Array<SerializationAdapterConfig> | undefined
-  /** Resolved during builds; read once the config hooks have run. */
-  getDeploymentMetadata: () => ResolvedDeploymentMetadata | undefined
   /**
    * Get the URL at which the rsbuild dev server serves the client entry JS.
    * Called lazily inside modifyRspackConfig when getConfig() is available.
@@ -416,9 +413,9 @@ export function registerVirtualModules(
       })
     }
 
-    content[paths.deploymentMetadata] = generateDeploymentMetadataModule(
-      opts.getDeploymentMetadata(),
-    )
+    // Rsbuild has no deployment metadata discovery, so skew protection is disabled.
+    content[paths.deploymentMetadata] =
+      generateDeploymentMetadataModule(undefined)
 
     // --- RSC virtual modules ---
     if (rscPaths) {
