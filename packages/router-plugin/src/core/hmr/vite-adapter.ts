@@ -4,7 +4,11 @@ import type { ProgramStatement } from '@yuku-toolchain/types'
 
 /**
  * Emits HMR accept code for Vite / native ESM HMR: `import.meta.hot.accept`
- * with a callback that receives the freshly re-imported module.
+ * with a callback that receives the freshly re-imported module. The call must
+ * stay literal: Vite marks a module as an HMR boundary only when its code
+ * contains `import.meta.hot.accept(`, so accepting through an alias makes
+ * every edit of a route module that no framework refresh plugin accepts
+ * (Solid split routes, Vue routes) reload the page.
  *
  * `targetFramework` is currently unused — Vite's framework-specific fast-refresh
  * plugins handle component body patching via their own accept boundaries — but
@@ -40,7 +44,7 @@ if (import.meta.hot) {
     handleRouteUpdate(initialRouteId, Route)
     hotData['tsr-route-update-handled'] = Route
   }
-  hot.accept((newModule) => {
+  import.meta.hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? ${routeIdFallback}
       if (routeId) {
@@ -52,7 +56,7 @@ if (import.meta.hot) {
       }
       handleRouteUpdate(routeId, newModule.Route)
     }
-    })
+  })
 }
 `,
   )

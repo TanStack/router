@@ -117,7 +117,7 @@ if (import.meta.hot) {
     handleRouteUpdate(initialRouteId, Route)
     hotData['tsr-route-update-handled'] = Route
   }
-  hot.accept((newModule) => {
+  import.meta.hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? Route.id
       if (routeId) {
