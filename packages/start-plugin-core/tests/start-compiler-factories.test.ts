@@ -117,6 +117,31 @@ export default createMiddleware().server(async ({ next }) => {
     expect((await evaluateModule(client!)).default).toHaveProperty('server')
   })
 
+  // Regression in the Yuku migration, found by differential fuzzing: when a
+  // chain link is wrapped in parentheses or a cast before `.client()`, the
+  // client compile throws "Cannot replace a detached output node".
+  test.each([
+    { name: 'parenthesized', wrap: (link: string) => `(${link})` },
+    { name: 'cast', wrap: (link: string) => `(${link} as any)` },
+  ])(
+    'the client strips the server implementation of a $name middleware chain link',
+    async ({ wrap }) => {
+      const link = `createMiddleware().server(async ({ next }) => {
+  db.log()
+  return next()
+})`
+      const client = await compileCode(
+        'client',
+        `import { createMiddleware } from '@tanstack/react-start'
+import { db } from './db.server'
+export const mw = ${wrap(link)}.client(() => 'client')`,
+      )
+      expect(await getModuleErrors(client!)).toEqual([])
+      expect(importSources(client!)).toEqual([])
+      expect(client).toContain(`.client(() => 'client')`)
+    },
+  )
+
   // SolidStart rejects these captures because it hoists `"use server"`
   // functions; env-only functions stay where they are written.
   // Source: SolidStart directives validate.ts (assertHoistable), compile.spec.ts

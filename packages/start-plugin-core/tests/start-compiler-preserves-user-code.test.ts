@@ -1,7 +1,10 @@
+import { SourceMapConsumer } from 'source-map'
 import { describe, expect, test } from 'vitest'
+import { detectKindsInCode } from '../src/start-compiler/compiler'
 import {
   compileCode,
   compileHydrate,
+  createStartCompiler,
   evaluateModule,
   importSources,
 } from './regression-helpers'
@@ -32,6 +35,36 @@ import { createPersister } from './persist'
 const persister = createPersister({ onRestore: () => restore() })
 function restore() {
   persister.restore()
+}
+export const fn = createServerFn().handler(async () => 1)`,
+  },
+  {
+    // Regression in the Yuku migration: the only reads are an unused local
+    // inside the declaration itself, and the client output drops both
+    // declarations with their register() calls.
+    // Inputs adapted from @babel/plugin-proposal-decorators
+    // 2023-11-misc/destructuring-transform-integration and TypeScript's
+    // conformance test classes/propertyMemberDeclarations/autoAccessor10.ts.
+    name: 'declarations only an unused local inside them reads',
+    sideEffect: "register('widget')",
+    declared: ['plugin', 'Widget'],
+    code: `import { createServerFn } from '@tanstack/react-start'
+import { register } from './registry'
+const plugin = {
+  id: register('plugin'),
+  describe() {
+    const self = plugin
+    return 'plugin'
+  },
+}
+class Widget {
+  static {
+    register('widget')
+  }
+  render() {
+    const type = Widget
+    return 'widget'
+  }
 }
 export const fn = createServerFn().handler(async () => 1)`,
   },
@@ -257,4 +290,34 @@ export function Page() {
       }
     },
   )
+})
+
+// Regression in the Yuku migration: the source map maps the string value of a
+// JSX attribute to the start of the attribute name. Yuku codegen bug,
+// https://github.com/yuku-toolchain/yuku/issues/254; passes once Yuku ships the
+// fix.
+test('maps the string value of a JSX attribute to its own source column', async () => {
+  const code = `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 1)
+export const Box = () => <div className="box" />
+`
+  const { compiler } = createStartCompiler({ env: 'client' })
+  const result = await compiler.compile({
+    code,
+    id: '/test/src/module.tsx',
+    detectedKinds: detectKindsInCode(code, 'client'),
+  })
+  const lines = result!.code.split('\n')
+  const line = lines.findIndex((text) => text.includes('"box"'))
+  const consumer = await new SourceMapConsumer(result!.map as never)
+  try {
+    expect(
+      consumer.originalPositionFor({
+        line: line + 1,
+        column: lines[line]!.indexOf('"box"'),
+      }),
+    ).toMatchObject({ line: 3, column: code.split('\n')[2]!.indexOf('"box"') })
+  } finally {
+    consumer.destroy()
+  }
 })

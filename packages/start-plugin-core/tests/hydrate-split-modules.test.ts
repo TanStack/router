@@ -589,6 +589,26 @@ const __jsx = (type, props, ...children) => {
     ).toBeNull()
   })
 
+  // Regression in the Yuku migration: the chunk's source map names its
+  // virtual module id (`module.tsx?tss-hydrate=…`) as the source instead of
+  // the file the children come from, so devtools and error reporters cannot
+  // find the original file.
+  test('client: the source map of a chunk names the file the children come from', async () => {
+    const { parent, plugin } = await compileHydrate(
+      'client',
+      `${head}export function Page() {
+  return <Hydrate><p>chunk</p></Hydrate>
+}`,
+    )
+    const chunk = plugin.loadVirtualModule!({
+      id: getChunkIds(parent)[0]!,
+      root: '/test',
+      env: 'client',
+      envName: 'client',
+    })
+    expect(chunk?.map?.sources).toEqual(['/test/src/module.tsx'])
+  })
+
   // Source: Qwik optimizer example_capture_imports,
   // jsx_member_tag_object_is_captured, example_jsx
   test('client: default, namespace and aliased imports and namespaced names in the children', async () => {
