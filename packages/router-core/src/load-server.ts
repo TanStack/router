@@ -5,6 +5,7 @@ import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
 import { loadRouteChunk } from './load-client'
 import { waitForReason } from './await-signal'
+import { loaderChannel, maybeTraceOperation } from './tracing'
 import {
   getLocationChangeInfo,
   lifecycleEnd,
@@ -78,6 +79,10 @@ export type ServerLoadResult =
       matches: Array<AnyRouteMatch>
     }
   | { type: 'redirect'; redirect: AnyRedirect }
+
+function isRedirectOrNotFound(value: unknown): boolean {
+  return isRedirect(value) || isNotFound(value)
+}
 
 function getRoute(router: AnyRouter, match: AnyRouteMatch): AnyRoute {
   return router.routesById[match.routeId]
@@ -363,7 +368,12 @@ async function contextualize(
     }
 
     try {
-      const beforeLoadContext = await route.options.beforeLoad(options)
+      const beforeLoadContext = await maybeTraceOperation(
+        loaderChannel,
+        () => ({ type: 'beforeLoad' as const, routeId: route.id, match }),
+        () => route.options.beforeLoad!(options),
+        isRedirectOrNotFound,
+      )
       signal?.throwIfAborted()
       const outcome = stampNotFound(
         match,
@@ -452,9 +462,23 @@ function createLoaderTask(
       outcome = Promise.resolve<LoaderOutcome>([SUCCESS, undefined])
     } else {
       outcome = Promise.resolve()
-        .then(() =>
-          loader(getLoaderContext(router, lane, match, route, index, tasks)),
-        )
+        .then(() => {
+          const loaderContext = getLoaderContext(
+            router,
+            lane,
+            match,
+            route,
+            index,
+            tasks,
+          )
+
+          return maybeTraceOperation(
+            loaderChannel,
+            () => ({ type: 'loader' as const, routeId: route.id, match }),
+            () => loader(loaderContext),
+            isRedirectOrNotFound,
+          )
+        })
         .then(
           (result) => normalize(result, false),
           (cause) => normalize(cause, true),
