@@ -146,6 +146,9 @@ export type UnionToIntersection<T> = (
   ? T
   : never
 
+export type UnObject<T> = T extends object ? T[keyof T] : never
+export type ToObject<T> = Record<string, T>;
+
 /**
  * Merges everything in a union into one object.
  * This mapped type is homomorphic which means it preserves stuff! :)
