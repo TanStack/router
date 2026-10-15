@@ -50,21 +50,17 @@ test('restores fresh DOMs and route state and completes hash-link reactivity', a
   }
 })
 
-test('installs per-iteration preparation for the ordinary Vitest runner', async () => {
+test('prepares every sample without counting diagnostics', async () => {
   const scenario = setup()
-  const task: Parameters<typeof scenario.installIterationHooks>[0] = {
-    opts: {},
-  }
-  scenario.installIterationHooks(task)
   for (let iteration = 0; iteration < 2; iteration++) {
-    await task.opts.beforeEach!()
+    await scenario.before()
     try {
       expect(scenario.snapshot().diagnostics.mounted).toBe(false)
       expect(scenario.snapshot().diagnostics.clicks).toBe(0)
       await scenario.run()
       expect(scenario.snapshot().diagnostics.hashEvaluations).toBe(0)
     } finally {
-      await task.opts.afterEach!()
+      await scenario.after()
     }
   }
 })
