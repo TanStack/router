@@ -336,4 +336,22 @@ export const Route = createFileRoute('/compare')({
     )
     expect(sharedBindings).toEqual(['a', 'b', 'c', 'r'])
   })
+
+  // Source: @babel/generator using-declarations/using-and-await-using
+  it('keeps the using declarations of a split component', async () => {
+    const chunk = compileRouteModules(
+      pageRoute(`const log = []
+const resource = (name) => ({ [Symbol.dispose]: () => log.push(name) })
+function Page() {
+  {
+    using first = resource('first'), second = resource('second')
+    log.push('body')
+  }
+  return log.join()
+}`),
+      { filename: 'route.js' },
+    ).modules['virtual component']!
+    await expectValidModules({ chunk })
+    expect((await evaluateModule(chunk)).component!()).toBe('body,second,first')
+  })
 })

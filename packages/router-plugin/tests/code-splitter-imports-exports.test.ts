@@ -113,6 +113,17 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(importedNames(code, 'react')).toEqual(['*'])
     },
   )
+
+  it('keeps the React import of a split chunk with inline JSX when only a top-level type reads React', async () => {
+    const chunk = componentChunk(`import * as React from 'react'
+${head}type Title = React.ReactNode
+export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
+`)
+    const { code } = await transformWithOxc(chunk, 'module.tsx', {
+      jsx: { runtime: 'classic' },
+    })
+    expect(importedNames(code, 'react')).toEqual(['*'])
+  })
 })
 
 describe('exports of the route file', () => {
@@ -287,6 +298,44 @@ export const Route = createFileRoute('/')({
     const chunk = await evaluateModule(modules['virtual component']!)
     expect(chunk.component!()).toBe('<p>LOUD|label:x</p>')
   })
+
+  it.each([
+    {
+      // Source: @babel/plugin-transform-typescript enum/const
+      name: 'a const enum',
+      setup: `const enum Direction { Up = 1, Down }`,
+      render: '[Direction.Up, Direction.Down].join()',
+      expected: '1,2',
+    },
+    {
+      // Sources: @babel/plugin-transform-typescript class/parameter-properties
+      // and @babel/generator typescript/class-abstract
+      name: 'an abstract class with parameter properties',
+      setup: `abstract class Base {
+  constructor(protected readonly label: string, public count = 2) {}
+  abstract render(): string
+}
+class Item extends Base {
+  declare extra: number
+  render() { return this.label + this.count }
+}`,
+      render: "new Item('item').render()",
+      expected: 'item2',
+    },
+  ])(
+    'gives the split component $name it uses',
+    async ({ setup, render, expected }) => {
+      const { modules } = compileRouteModules(`${head}${setup}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>{${render}}</p>,
+})
+`)
+      await expectValidModules(modules)
+      const chunk = await evaluateModule(modules['virtual component']!)
+      expect(chunk.component!()).toBe(`<p>${expected}</p>`)
+    },
+  )
 
   // TypeScript lets a type and a value share a name; exporting both is valid.
   it.each([
