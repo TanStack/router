@@ -117,8 +117,7 @@ export function tanStackStartVite(
 
         if (command === 'build') {
           const deploymentMetadataSource =
-            startConfig.deploymentMetadata ??
-            (await discoverRequestMetadata(viteConfig))
+            await discoverRequestMetadata(viteConfig)
 
           if (deploymentMetadataSource) {
             deploymentMetadata = await resolveDeploymentMetadata(
