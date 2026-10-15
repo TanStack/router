@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start-rsc",
-  "version": "0.1.60",
+  "version": "0.1.63",
   "description": "React Server Components support for TanStack Start",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -110,7 +110,7 @@
     "@rspack/core": "2.2.7",
     "@testing-library/react": "catalog:",
     "@vitejs/plugin-react": "catalog:",
-    "@vitejs/plugin-rsc": "^0.5.30",
+    "@vitejs/plugin-rsc": "^0.5.37",
     "react-server-dom-rspack": "^0.0.2",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

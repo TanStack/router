@@ -1,6 +1,8 @@
+import { getIronSession } from 'iron-session'
 import { createServerFn } from '@tanstack/react-start'
 import {
-  useSession,
+  getCookie,
+  setCookie,
   setResponseStatus,
   setResponseHeader,
 } from '@tanstack/react-start/server'
@@ -11,16 +13,26 @@ async function session() {
   if (!password || password.length < 32) {
     throw new Error('Set SESSION_PASSWORD to at least 32 characters')
   }
-  return useSession<{ email: string; saved: boolean }>({
-    name: 'start-migration-session',
-    password,
-  })
+  return getIronSession<{ email: string; saved: boolean }>(
+    { read: getCookie, write: setCookie },
+    {
+      cookieName: 'start-migration-session',
+      password,
+      ttl: 7 * 24 * 60 * 60,
+      cookieOptions: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      },
+    },
+  )
 }
 export const getAccount = createServerFn({ method: 'GET' }).handler(
   async () => {
     const current = await session()
-    return current.data.email
-      ? { email: current.data.email, saved: current.data.saved ?? false }
+    return current.email
+      ? { email: current.email, saved: current.saved ?? false }
       : null
   },
 )
@@ -42,21 +54,24 @@ export const signIn = createServerFn({ method: 'POST' })
       return { error: 'Invalid credentials' }
     }
     const current = await session()
-    await current.update({ email: data.email, saved: false })
+    current.email = data.email
+    current.saved = false
+    await current.save()
     return { error: '' }
   })
 export const toggleSaved = createServerFn({ method: 'POST' }).handler(
   async () => {
     const current = await session()
-    if (!current.data.email) {
+    if (!current.email) {
       setResponseStatus(401)
       throw new Error('Unauthorized')
     }
-    await current.update({ saved: !current.data.saved })
+    current.saved = !current.saved
+    await current.save()
   },
 )
 export const signOut = createServerFn({ method: 'POST' }).handler(async () => {
   const current = await session()
-  await current.clear()
+  current.destroy()
   throw redirect({ to: '/login' })
 })

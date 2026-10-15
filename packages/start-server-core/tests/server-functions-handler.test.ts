@@ -14,20 +14,20 @@ import {
 } from '@tanstack/start-client-core/client-rpc'
 import { RawStream } from '@tanstack/router-core'
 import { defaultSerovalDeserializerPlugins } from '@tanstack/router-core/ssr/server'
-import { handleServerAction } from '../src/server-functions-handler'
+import {
+  DeferredResponse,
+  handleServerAction,
+} from '../src/server-functions-handler'
+import { createServerEntry, setResponseStatus } from '../src/request-response'
+import { getStartEvent } from '../src/internal-request-response'
 import type * as StartClientCore from '@tanstack/start-client-core'
 
 const mocks = vi.hoisted(() => ({
   action: vi.fn(),
-  response: { status: 200, statusText: 'OK' },
 }))
 
 vi.mock('../src/getServerFnById', () => ({
   getServerFnById: () => mocks.action,
-}))
-
-vi.mock('../src/request-response', () => ({
-  getResponse: () => mocks.response,
 }))
 
 vi.mock('@tanstack/start-client-core', async (importOriginal) => {
@@ -42,9 +42,18 @@ vi.mock('@tanstack/start-client-core', async (importOriginal) => {
 
 beforeEach(() => {
   mocks.action.mockReset()
-  mocks.response.status = 200
-  mocks.response.statusText = 'OK'
 })
+
+function callServerAction(options: Parameters<typeof handleServerAction>[0]) {
+  return createServerEntry({
+    fetch: async () => {
+      const result = await handleServerAction(options)
+      return result instanceof DeferredResponse
+        ? result.createResponse(getStartEvent())
+        : result
+    },
+  }).fetch(options.request)
+}
 
 async function readFrames(response: Response) {
   const frames: Array<{ type: number; payload: Uint8Array }> = []
@@ -86,7 +95,6 @@ test.each([false, 0, '', null])(
         request: new Request('http://localhost/_serverFn/test', {
           method: 'POST',
         }),
-        context: {},
         serverFnId: 'test',
       }),
     ).resolves.toBe(result)
@@ -96,12 +104,11 @@ test.each([false, 0, '', null])(
 test('serializes a complete direct JSON record without LF', async () => {
   mocks.action.mockResolvedValue({ result: { value: 'complete' } })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -118,12 +125,11 @@ test('cancelling a framed response disposes its serializer', async () => {
   })
   mocks.action.mockResolvedValue({ result: source })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -140,13 +146,12 @@ test('aborting the request disposes a handed-off framed response', async () => {
   const source = new ReadableStream({ cancel })
   mocks.action.mockResolvedValue({ result: new RawStream(source) })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
       signal: abortController.signal,
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -179,13 +184,12 @@ test('cancels synchronous RawStreams without pulling when the request is already
     result: sources.map(({ stream }) => new RawStream(stream)),
   })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
       signal: abortController.signal,
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -216,12 +220,11 @@ test('bounds and cancels synchronous RawStreams when their response remains unre
     result: sources.map(({ stream }) => new RawStream(stream)),
   })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -250,12 +253,11 @@ test('a synchronous serialization failure cancels registered raw streams', async
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
   try {
-    const response = await handleServerAction({
+    const response = await callServerAction({
       request: new Request('http://localhost/_serverFn/test', {
         method: 'POST',
         headers: { 'x-tsr-serverFn': 'true' },
       }),
-      context: {},
       serverFnId: 'test',
     })
 
@@ -265,9 +267,9 @@ test('a synchronous serialization failure cancels registered raw streams', async
     expect(response.headers.get(X_TSS_SERIALIZED)).toBe('true')
     expect(response.headers.get('content-type')).toBe('application/json')
     expect(
-      fromCrossJSON(await response.json(), {
+      fromCrossJSON<{ error: unknown }>(await response.json(), {
         plugins: defaultSerovalDeserializerPlugins,
-      }),
+      }).error,
     ).toBeInstanceOf(Error)
   } finally {
     consoleInfo.mockRestore()
@@ -287,12 +289,11 @@ test('admits replayed nested RawStream references before their chunks', async ()
   replayed.return(undefined)
   mocks.action.mockResolvedValue({ result: { replayed } })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -305,12 +306,11 @@ test('frames every record from a synchronously replayed Seroval stream', async (
   replayed.return(undefined)
   mocks.action.mockResolvedValue({ result: { replayed } })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -364,12 +364,11 @@ test('keeps work discovered after a transient synchronous completion', async () 
   })
   mocks.action.mockResolvedValue({ result: { replayed, late } })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
   resolveLate(
@@ -397,16 +396,15 @@ test('bounds synchronously replayed Seroval records before framing', async () =>
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
   try {
-    const response = await handleServerAction({
+    const response = await callServerAction({
       request: new Request('http://localhost/_serverFn/test', {
         method: 'POST',
         headers: { 'x-tsr-serverFn': 'true' },
       }),
-      context: {},
       serverFnId: 'test',
     })
 
-    const error = fromCrossJSON(await response.json(), {
+    const { error } = fromCrossJSON<{ error: unknown }>(await response.json(), {
       plugins: defaultSerovalDeserializerPlugins,
     })
     expect(error).toBeInstanceOf(Error)
@@ -424,12 +422,11 @@ test('admits late RawStream references before their chunks', async () => {
   })
   mocks.action.mockResolvedValue({ result: { lateRawStream } })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
   resolveRawStream(
@@ -449,8 +446,6 @@ test('admits late RawStream references before their chunks', async () => {
 test('rejects a non-ASCII JSON record larger than the wire limit', async () => {
   const cancel = vi.fn()
   const source = new ReadableStream<Uint8Array>({ cancel })
-  // h3 leaves the status unset until a handler sets one.
-  mocks.response.status = undefined as unknown as number
   mocks.action.mockResolvedValue({
     result: {
       // UTF-16 length is within the old limit, but UTF-8 is over 16 MiB.
@@ -459,12 +454,11 @@ test('rejects a non-ASCII JSON record larger than the wire limit', async () => {
     },
   })
 
-  const response = await handleServerAction({
+  const response = await callServerAction({
     request: new Request('http://localhost/_serverFn/test', {
       method: 'POST',
       headers: { 'x-tsr-serverFn': 'true' },
     }),
-    context: {},
     serverFnId: 'test',
   })
 
@@ -477,35 +471,41 @@ test('rejects a non-ASCII JSON record larger than the wire limit', async () => {
 })
 
 test.each(['RawStream', 'ReadableStream'])(
-  'cancels %s serialization when Response construction rejects it',
+  'serializes %s results despite a bodyless helper status',
   async (kind) => {
     const cancel = vi.fn()
     const source = new ReadableStream<Uint8Array>({ cancel })
-    mocks.response.status = 204
-    mocks.response.statusText = 'No Content'
-    mocks.action.mockResolvedValue({
-      result: kind === 'RawStream' ? new RawStream(source) : source,
+    mocks.action.mockImplementation(() => {
+      setResponseStatus(204, 'No Content')
+      return {
+        result: kind === 'RawStream' ? new RawStream(source) : source,
+      }
     })
     const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => {})
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     try {
-      const response = await handleServerAction({
+      const response = await callServerAction({
         request: new Request('http://localhost/_serverFn/test', {
           method: 'POST',
           headers: { 'x-tsr-serverFn': 'true' },
         }),
-        context: {},
         serverFnId: 'test',
       })
 
-      expect(response.status).toBe(500)
+      // Serialized replies always carry a body for the client to decode.
+      expect(response.status).toBe(200)
       expect(response.statusText).toBe('')
-      expect(cancel).toHaveBeenCalledOnce()
-      expect(source.locked).toBe(false)
+      expect(response.headers.get('x-tss-serialized')).toBe('true')
+      expect(consoleWarn).toHaveBeenCalledOnce()
+      const reason = new Error('client disconnected')
+      await response.body!.cancel(reason)
+      await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
     } finally {
       consoleInfo.mockRestore()
       consoleError.mockRestore()
+      consoleWarn.mockRestore()
     }
   },
 )
@@ -535,12 +535,11 @@ test('rejects excess RawStreams before starting their readers', async () => {
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
   try {
-    const response = await handleServerAction({
+    const response = await callServerAction({
       request: new Request('http://localhost/_serverFn/test', {
         method: 'POST',
         headers: { 'x-tsr-serverFn': 'true' },
       }),
-      context: {},
       serverFnId: 'test',
     })
 
