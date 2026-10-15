@@ -36,6 +36,14 @@
         {
           "toolchain": "vite",
           "mode": "ssr"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "no-metadata",
+          "env": {
+            "E2E_DEPLOYMENT_METADATA": "off"
+          }
         }
       ]
     }
