@@ -245,6 +245,25 @@ export function Page() {
     expect(parent).toBeNull()
   })
 
+  // Source: differential fuzzing (main failed the build with "Hydrate cannot
+  // code-split function-as-children").
+  test.each([
+    { name: 'satisfies', split: '(false satisfies boolean)' },
+    { name: 'cast', split: '(false as boolean)' },
+  ])(
+    'split={false} wrapped in a $name expression keeps function-as-children in place',
+    async ({ split }) => {
+      const code = `${head}export function Page() {
+  return <Hydrate split={${split}}>{() => <p>render prop</p>}</Hydrate>
+}`
+      for (const env of ['client', 'server'] as const) {
+        const { parent, chunks } = await compileHydrate(env, code)
+        expect(chunks, env).toEqual([])
+        expect(parent, env).toContain('render prop')
+      }
+    },
+  )
+
   test.each(['split', 'split="true"'])(
     'client: %s splits the children',
     async (split) => {

@@ -379,6 +379,24 @@ export const fn = createServerFn()
       './schema.server',
     ])
   })
+
+  // The validator only runs on the server, so the client drops it and the
+  // imports only it reads, also when a cast wraps the chain link. Source:
+  // differential fuzzing (main kept the validator and its import in the client
+  // bundle, code the client never runs).
+  test.each([
+    { name: 'satisfies', wrap: (link: string) => `(${link} satisfies any)` },
+    { name: 'cast', wrap: (link: string) => `(${link} as any)` },
+  ])(
+    'when the validator link is wrapped in a $name expression',
+    async ({ wrap }) => {
+      const compiled =
+        await compileAll(`${head}import { schema } from './schema'
+export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async () => 'ok')`)
+      expect(importSources(compiled.client)).toEqual([])
+      expect(importSources(compiled.provider)).toEqual(['./schema'])
+    },
+  )
 })
 
 // Source: Next.js server-actions fixtures server-graph/8 (comments in actions)

@@ -142,6 +142,29 @@ export const mw = ${wrap(link)}.client(() => 'client')`,
     },
   )
 
+  // Source: differential fuzzing (main lost the server implementation in the
+  // SSR and provider outputs).
+  test.each([
+    { name: 'satisfies', wrap: (link: string) => `(${link} satisfies any)` },
+    { name: 'cast', wrap: (link: string) => `(${link} as any)` },
+  ])(
+    'each output keeps its implementation of an isomorphic fn whose chain link is wrapped in a $name expression',
+    async ({ wrap }) => {
+      const code = `import { createIsomorphicFn } from '@tanstack/react-start'
+export const fn = ${wrap(`createIsomorphicFn().server(() => 'server')`)}.client(() => 'client')`
+      const results: Record<string, unknown> = {}
+      for (const output of outputs) {
+        const compiled = await compileCode(output, code)
+        results[output] = (await evaluateModule(compiled!)).fn!()
+      }
+      expect(results).toEqual({
+        client: 'client',
+        ssr: 'server',
+        provider: 'server',
+      })
+    },
+  )
+
   // SolidStart rejects these captures because it hoists `"use server"`
   // functions; env-only functions stay where they are written.
   // Source: SolidStart directives validate.ts (assertHoistable), compile.spec.ts

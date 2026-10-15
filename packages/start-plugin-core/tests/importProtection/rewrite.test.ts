@@ -156,6 +156,20 @@ describe('rewriteDeniedImports', () => {
     expect(out).not.toContain('./server-b')
   })
 
+  // Source: mutation testing of the rewrite (main named the mock import
+  // `__tss_deny_0` too, so the module declared it twice).
+  test('does not reuse a name the module declares for the mock import', () => {
+    const out = rewrite(
+      `const __tss_deny_0 = 'mine'
+import { foo } from './secret.server'
+export const both = [foo, __tss_deny_0]`,
+      ['./secret.server'],
+    )
+    const mockVar = out.match(/import (\w+) from/)![1]
+    expect(mockVar).not.toBe('__tss_deny_0')
+    expect(out).toContain(`const foo = ${mockVar}.foo`)
+  })
+
   test('returns a source map', () => {
     const result = rewriteDeniedImports(
       `import { foo } from './secret.server';`,

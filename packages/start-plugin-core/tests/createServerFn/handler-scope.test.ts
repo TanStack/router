@@ -119,6 +119,17 @@ export const later = createServerFn().handler(async () => 'later:')`,
 export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()))`,
     expected: 'x',
   },
+  {
+    // Source: corpus-diff, imaimai17468/tanstack-start-handler-call-expression-repro
+    name: 'a createIsomorphicFn call',
+    code: `import { createIsomorphicFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(
+  createIsomorphicFn()
+    .server(async () => db.x())
+    .client(() => 'client'),
+)`,
+    expected: 'x',
+  },
 ])(
   'the handler can be $name',
   async ({ code, expected, read = async (value) => value }) => {
