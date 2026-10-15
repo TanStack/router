@@ -26,7 +26,8 @@ export const ServerFunctionSerializationAdapter = createSerializationAdapter({
         },
         signal,
       )
-      if (result.error !== undefined) {
+      // Only a failed call has an `error` key, holding the thrown value.
+      if ('error' in result) {
         throw result.error
       }
       return result.result

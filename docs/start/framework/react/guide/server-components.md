@@ -86,7 +86,7 @@ export default defineConfig({
 
 <!-- ::end:tabs -->
 
-**Requirements:** React 19+, Vite 7+ or Rsbuild 2+
+**Requirements:** React 19+, Vite 8+ or Rsbuild 2+
 
 ## Quick Start
 

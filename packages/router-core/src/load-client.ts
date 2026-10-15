@@ -7,7 +7,7 @@ import {
   lifecycleEnd,
   runRouteLifecycle,
 } from './router'
-import { hydrateSsrMatchId } from './ssr/ssr-match-id'
+import { dehydrateSsrMatchId } from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { TsrSsrGlobal } from './ssr/types'
 import type { ParsedLocation } from './location'
@@ -2316,10 +2316,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   for (let index = 0; index < shared; index++) {
     const candidate = candidates[index]!
     const dehydrated = dehydratedMatches[index]!
-    if (
-      typeof dehydrated.i !== 'string' ||
-      hydrateSsrMatchId(dehydrated.i) !== candidate.id
-    ) {
+    if (dehydrated.i !== dehydrateSsrMatchId(candidate.id)) {
       pendingBoundary ??= index
       break
     }
