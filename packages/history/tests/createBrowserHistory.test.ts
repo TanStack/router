@@ -42,6 +42,46 @@ function createBrowserHistoryHarness(createHref?: (path: string) => string) {
 }
 
 describe('createBrowserHistory', () => {
+  test.each([
+    { key: 'legacy-key', custom: 'retained' },
+    { __TSR_key: 'existing-key', custom: 'retained' },
+    {
+      key: 'legacy-key',
+      __TSR_key: 'existing-key',
+      __TSR_index: 4,
+      custom: 'retained',
+    },
+  ])('preserves state and tracks back navigation from %j', async (state) => {
+    const originalHref = window.location.href
+    const originalState: unknown = window.history.state
+    window.history.replaceState(state, '')
+    const history = createBrowserHistory()
+    const initialIndex = state.__TSR_index ?? 0
+
+    try {
+      expect(history.location.state).toMatchObject({
+        ...state,
+        __TSR_index: initialIndex,
+      })
+      history.push('/about')
+      history.flush()
+      expect(history.location.state.__TSR_index).toBe(initialIndex + 1)
+
+      const action = new Promise<string>((resolve) => {
+        history.subscribe(({ action }) => resolve(action.type))
+      })
+      window.history.back()
+      expect(await action).toBe('BACK')
+      expect(history.location.state).toMatchObject({
+        ...state,
+        __TSR_index: initialIndex,
+      })
+    } finally {
+      history.destroy()
+      window.history.replaceState(originalState, '', originalHref)
+    }
+  })
+
   test('passes the original destination to a custom formatter', () => {
     const { history, pushState } = createBrowserHistoryHarness(
       (href) => '/mapped?value=' + encodeURIComponent(href),
