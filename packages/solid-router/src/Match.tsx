@@ -2,7 +2,7 @@ import * as Solid from 'solid-js'
 import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from '@solidjs/web'
-import { CatchBoundary, ErrorComponent } from './CatchBoundary'
+import { RouteCatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { CatchNotFound, getNotFound } from './not-found'
 import { nearestMatchContext } from './matchContext'
@@ -51,6 +51,7 @@ export const Match = (props: { routeId: string }) => {
       routeId: match.routeId,
       ssr: match.ssr,
       status: match.status,
+      error: match.error,
     }
   })
   const nearestMatch = [() => props.routeId, currentMatch] as const
@@ -173,7 +174,10 @@ export const Match = (props: { routeId: string }) => {
                 fallback={<RouteContent />}
               >
                 {(errorComponent) => (
-                  <CatchBoundary
+                  <RouteCatchBoundary
+                    hasError={() => currentMatchState().status === 'error'}
+                    getError={() => currentMatchState().error}
+                    isServer={router.isServer}
                     // Scope the reset key to this match and its
                     // descendants (whose errors bubble here when they
                     // have no errorComponent of their own): resetting on
@@ -297,36 +301,7 @@ export const MatchInner = (): any => {
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'error'}>
               {(_) => {
-                const matchError = Solid.untrack(
-                  () => currentMatch().error,
-                ) as Error
-                if (isServer ?? router.isServer) {
-                  const RouteErrorComponent =
-                    (route().options.errorComponent ??
-                      router.options.defaultErrorComponent) ||
-                    ErrorComponent
-
-                  return process.env.NODE_ENV !== 'production' ? (
-                    renderInNonRouteComponentContext(
-                      () => (
-                        <RouteErrorComponent
-                          error={matchError}
-                          reset={undefined as any}
-                          info={{ componentStack: '' }}
-                        />
-                      ),
-                      'errorComponent',
-                    )
-                  ) : (
-                    <RouteErrorComponent
-                      error={matchError}
-                      reset={undefined as any}
-                      info={{ componentStack: '' }}
-                    />
-                  )
-                }
-
-                throw matchError
+                throw Solid.untrack(() => currentMatch().error)
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'success'}>
