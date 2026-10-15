@@ -324,6 +324,30 @@ test('when creating a child route from the root route', () => {
   expectTypeOf(invoicesRoute.id).toEqualTypeOf<'/invoices'>()
 })
 
+test('when creating a child route with a trailing slash in its path', () => {
+  const rootRoute = createRootRoute()
+
+  const langIndexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '$lang/',
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'posts',
+  })
+
+  const postsIndexRoute = createRoute({
+    getParentRoute: () => postsRoute,
+    path: 'all/',
+  })
+
+  expectTypeOf(langIndexRoute.id).toEqualTypeOf<'/$lang/'>()
+  expectTypeOf(langIndexRoute.fullPath).toEqualTypeOf<'/$lang/'>()
+  expectTypeOf(postsIndexRoute.id).toEqualTypeOf<'/posts/all/'>()
+  expectTypeOf(postsIndexRoute.fullPath).toEqualTypeOf<'/posts/all/'>()
+})
+
 test('when creating a child route from the root route with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
