@@ -7,16 +7,16 @@ import {
   compileErrorMessage,
   compileHydrate,
   createStartCompiler,
-  evaluateHydrateParent,
   evaluateModule,
   getBoundaryIds,
   getChunkIds,
   hydrateParentStubs,
   loadChunk,
+  loadClientModule as loadHydrateClient,
+  renderBoundaries,
   settle,
 } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
-import type { ModuleStub } from './regression-helpers'
 
 const head = `import { Hydrate } from '@tanstack/react-start'\n`
 
@@ -39,56 +39,16 @@ const __jsx = (type, props, ...children) => {
 
 /**
  * Evaluates `code` compiled for the client once its `<Hydrate>` chunks have
- * loaded: each lazy chunk component renders the chunk export it loads, and
- * the modules are linked like a bundler would (`evaluateHydrateParent`).
- * `beforeChunksLoad` runs app code between the two.
+ * loaded, rendering through the React-like runtime (`loadClientModule`).
  */
-async function loadClientModule(
+function loadClientModule(
   code: string,
-  options: {
-    stubs?: Record<string, ModuleStub>
-    beforeChunksLoad?: (module: Record<string, any>) => void
-  } = {},
+  options: Omit<
+    NonNullable<Parameters<typeof loadHydrateClient>[1]>,
+    'runtime'
+  > = {},
 ) {
-  const { parent, chunks, plugin } = await compileHydrate('client', code)
-  const lazyChunks: Array<{ name: string; rendered: boolean }> = []
-  const chunkExports: Record<string, (props: unknown) => unknown> = {}
-  const userStubs = options.stubs ?? {}
-  const stubs: Record<string, ModuleStub> = {
-    ...hydrateParentStubs,
-    ...userStubs,
-    '@tanstack/react-router': {
-      ...(userStubs['@tanstack/react-router'] as Record<string, unknown>),
-      lazyRouteComponent: (_load: unknown, name = 'default') => {
-        const lazyChunk = { name, rendered: false }
-        lazyChunks.push(lazyChunk)
-        return (props: unknown) => {
-          lazyChunk.rendered = true
-          return chunkExports[name]!(props)
-        }
-      },
-    },
-  }
-  expect(await getModuleErrors(parent)).toEqual([])
-  const { module, parentModuleStubs } = await evaluateHydrateParent(
-    plugin,
-    parent,
-    stubs,
-    reactRuntime,
-  )
-  options.beforeChunksLoad?.(module)
-  for (const chunk of chunks) {
-    expect(await getModuleErrors(chunk)).toEqual([])
-    Object.assign(
-      chunkExports,
-      await evaluateModule(
-        chunk,
-        { ...stubs, ...(await parentModuleStubs(chunk)) },
-        reactRuntime,
-      ),
-    )
-  }
-  return { module, lazyChunks }
+  return loadHydrateClient(code, { ...options, runtime: reactRuntime })
 }
 
 /**
@@ -172,11 +132,12 @@ describe('boundaries and ids', () => {
     <Hydrate><p>second</p></Hydrate>
   </div>
 }`
-      const server = await compileHydrate('server', code)
-      const { parent } = await compileHydrate('client', code)
-      const serverIds = getBoundaryIds(server.parent)
+      const render = (m: Record<string, any>) => m.Page()
+      const serverIds = (await renderBoundaries('server', code, render)).ids
       expect(serverIds).toHaveLength(2)
-      expect(getBoundaryIds(parent)).toEqual(expect.arrayContaining(serverIds))
+      expect((await renderBoundaries('client', code, render)).ids).toEqual(
+        expect.arrayContaining(serverIds),
+      )
       const { module } = await loadClientModule(code)
       expect(module.Page()).toBe('<div>[<p>outer</p>][<p>second</p>]</div>')
     },

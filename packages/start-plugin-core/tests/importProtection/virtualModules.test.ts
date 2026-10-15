@@ -12,6 +12,7 @@ import {
   makeMockEdgeModuleId,
   mockRuntimeModuleIdFromViolation,
 } from '../../src/vite/import-protection-plugin/virtualModules'
+import { evaluateModule } from '../regression-helpers'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 
 type MockValue = {
@@ -24,14 +25,9 @@ type MockFunction = {
   (): MockValue
 }
 
-function evaluateGeneratedModule<T>(code: string): T {
-  const exports: Record<string, unknown> = {}
-  const runnableCode = code
-    .replace(/export default mock;?/g, 'exports.default = mock;')
-    .replace(/export const ([A-Za-z_$][\w$]*) = ([^;]+);/g, 'exports.$1 = $2;')
-
-  new Function('exports', runnableCode)(exports)
-  return exports as T
+/** Evaluates a generated module as an ES module (`evaluateModule`). */
+async function evaluateGeneratedModule<T>(code: string): Promise<T> {
+  return (await evaluateModule(code)) as T
 }
 
 describe('loadSilentMockModule', () => {
@@ -44,9 +40,11 @@ describe('loadSilentMockModule', () => {
     expect(result.code).toContain('@__PURE__')
   })
 
-  test('supports primitive conversion for called mocks', () => {
+  test('supports primitive conversion for called mocks', async () => {
     const result = loadSilentMockModule()
-    const mod = evaluateGeneratedModule<{ default: MockFunction }>(result.code)
+    const mod = await evaluateGeneratedModule<{ default: MockFunction }>(
+      result.code,
+    )
     const value = mod.default()
 
     expect(String(value)).toBe('[import-protection mock]')
@@ -302,9 +300,9 @@ describe('generateSelfContainedMockModule', () => {
     expect(result.code).not.toMatch(/^\s*import\s/m)
   })
 
-  test('supports primitive conversion for named export calls', () => {
+  test('supports primitive conversion for named export calls', async () => {
     const result = generateSelfContainedMockModule(['getSecret'])
-    const mod = evaluateGeneratedModule<{ getSecret: MockFunction }>(
+    const mod = await evaluateGeneratedModule<{ getSecret: MockFunction }>(
       result.code,
     )
 

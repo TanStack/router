@@ -110,7 +110,7 @@ test.each<{
   const field = 'value'
   return <Hydrate><p>${children}</p></Hydrate>
 }`)
-    expect(getChunkParams(chunk)).toEqual(params)
+    expect(await getChunkParams(chunk)).toEqual(params)
     expect(await renderChunk(chunk, { value: 'outer', field: 'value' })).toBe(
       expected,
     )
@@ -129,7 +129,7 @@ export function Page() {
   return seen
 })()}</p></Hydrate>
 }`)
-  expect(getChunkParams(chunk)).toEqual([])
+  expect(await getChunkParams(chunk)).toEqual([])
   expect(await renderChunk(chunk)).toBe('<p>module</p>')
 })
 
@@ -142,7 +142,7 @@ test('client: a catch parameter is captured', async () => {
     return <Hydrate><p>{error.message}</p></Hydrate>
   }
 }`)
-  expect(getChunkParams(chunk)).toEqual(['error'])
+  expect(await getChunkParams(chunk)).toEqual(['error'])
   expect(await renderChunk(chunk, { error: new Error('caught') })).toBe(
     '<p>caught</p>',
   )
@@ -161,7 +161,7 @@ export function Page({ entries }) {
   }
   return <ul>{out}</ul>
 }`)
-  expect(getChunkParams(chunk)).toEqual(['label', 'value'])
+  expect(await getChunkParams(chunk)).toEqual(['label', 'value'])
   // The helper only the children use leaves the parent with them.
   expect(parent).not.toMatch(declarationOf('Row'))
   expect(await renderChunk(chunk, { label: 'a-', value: 1 })).toBe(
@@ -193,7 +193,7 @@ export function Page() {
   async ({ code }) => {
     const { chunk } = await compileChunk(code)
     expect(chunk).not.toContain('sideEffect')
-    expect(getChunkParams(chunk)).toEqual([])
+    expect(await getChunkParams(chunk)).toEqual([])
     expect(await renderChunk(chunk)).toBe('<div>x</div>')
   },
 )
@@ -209,7 +209,7 @@ test('client: names the children declare themselves are not captured', async () 
     <p>{(() => { try { throw new Error('e') } catch (err) { const x = 'catch:' + err.message; return x } })()}</p>
   </Hydrate>
 }`)
-  expect(getChunkParams(chunk)).toEqual(['value'])
+  expect(await getChunkParams(chunk)).toEqual(['value'])
   expect(await renderChunk(chunk, { value: 'v' })).toBe(
     '<input></input><p>catch:e</p>',
   )
@@ -224,7 +224,7 @@ export function Page({ a: [b = 1], ...c }) {
   const extra = '!'
   return <Hydrate><p>{b}</p><Child {...c} {...{ extra }} /></Hydrate>
 }`)
-  expect(getChunkParams(chunk)).toEqual(['b', 'c', 'extra'])
+  expect(await getChunkParams(chunk)).toEqual(['b', 'c', 'extra'])
   expect(await renderChunk(chunk, { b: 1, c: { a: 'A' }, extra: '!' })).toBe(
     '<p>1</p><b>A!</b>',
   )
@@ -243,7 +243,7 @@ export function Page({ v }: { v: unknown }) {
   interface Box { value: Local }
   return <Hydrate><List<Box> items={[v] as Array<Shape>} /><p>{format<Local>(v as Local) + (v satisfies unknown as Box['value'] as Shape)}</p></Hydrate>
 }`)
-  expect(getChunkParams(chunk)).toEqual(['v'])
+  expect(await getChunkParams(chunk)).toEqual(['v'])
   expect(await renderChunk(chunk, { v: 'x' })).toBe('<ul>1</ul><p>xx</p>')
 })
 
@@ -277,7 +277,7 @@ export function Page() {
   const value = 'local-value'
   return <Hydrate><Row text={label} /><Show /><i>{value}</i></Hydrate>
 }`)
-  expect(getChunkParams(chunk)).toEqual(['label', 'value'])
+  expect(await getChunkParams(chunk)).toEqual(['label', 'value'])
   expect(
     await renderChunk(
       chunk,
@@ -299,10 +299,10 @@ test('client: a nested boundary receives the captures of its enclosing boundary'
   return <Hydrate><section><Hydrate><p>{label + ':' + (isOpen ? fee : 0)}</p></Hydrate></section></Hydrate>
 }`,
   )
-  expect(getChunkParams(chunks[0]!)).toEqual(['fee', 'isOpen', 'label'])
+  expect(await getChunkParams(chunks[0]!)).toEqual(['fee', 'isOpen', 'label'])
   const outer = await compileFirstChunk(plugin, parent)
   const inner = loadChunk(plugin, 'client', getChunkIds(outer.code!)[0]!)
-  expect(getChunkParams(inner!)).toEqual(['fee', 'isOpen', 'label'])
+  expect(await getChunkParams(inner!)).toEqual(['fee', 'isOpen', 'label'])
   expect(
     await renderChunk(inner!, { label: 'fee', isOpen: true, fee: 5 }),
   ).toBe('<p>fee:5</p>')

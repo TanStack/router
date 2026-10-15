@@ -5,6 +5,7 @@ import {
   getLookupKindsForEnv,
 } from '../src/start-compiler/compiler'
 import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
+import { evaluateModule } from './regression-helpers'
 import type { LookupConfig, LookupKind } from '../src/start-compiler/compiler'
 import type { StartCompilerImportTransform } from '../src/types'
 
@@ -1421,10 +1422,8 @@ test.each([
     })
 
     expect(result).not.toBeNull()
-    const evaluate = new Function(
-      `${result!.code.replace(/^import .+;$/gm, '').replace(/\bexport (?=const)/g, '')}\nreturn fn`,
-    )
-    expect(evaluate()()).toBe('server-value')
+    const { fn } = await evaluateModule(result!.code)
+    expect(fn()).toBe('server-value')
   },
 )
 
