@@ -1,6 +1,6 @@
 import { describe, expect, it, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, type SearchSerializer } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 describe('callbacks', () => {
@@ -224,6 +224,94 @@ describe('callbacks', () => {
       await router.navigate({ to: '/posts/$postId', params: { postId: '1' } })
       expect(loader).toHaveBeenCalledTimes(2)
       expect(router.state.matches.some((d) => d.id === post1MatchId)).toBe(true)
+    })
+  })
+
+  // `stringifyLoaderDeps` lets users provide a custom serializer for loader
+  // deps that contain values JSON.stringify cannot handle (bigint, Set, Map,
+  // circular refs, etc.). Default is defaultStringifyLoaderDeps (JSON.stringify
+  // with a safeStringify fallback), so this stays opt-in and does not add
+  // bundle weight for users that don't need it.
+  describe('stringifyLoaderDeps option', () => {
+    type LoaderDeps = { id: bigint }
+
+    const createBigintRouter = (stringifyLoaderDeps?: SearchSerializer) => {
+      const rootRoute = new BaseRootRoute({})
+      const fooRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/foo',
+        loaderDeps: (): LoaderDeps => ({ id: 123n }), // bigint breaks JSON.stringify
+        loader: () => 'data',
+      })
+      return createTestRouter({
+        routeTree: rootRoute.addChildren([fooRoute]),
+        history: createMemoryHistory(),
+        stringifyLoaderDeps,
+      })
+    }
+
+    it('uses the custom stringifier for loaderDepsHash and navigates successfully', async () => {
+      const { safeStringify } = await import('../src/utils')
+      const stringifyLoaderDeps = vi.fn((v: Record<string, any>) => safeStringify(v))
+      const router = createBigintRouter(stringifyLoaderDeps)
+
+      await expect(router.navigate({ to: '/foo' })).resolves.not.toThrow()
+
+      expect(stringifyLoaderDeps).toHaveBeenCalled()
+      // bigint must reach the stringifier as-is (not coerced to a plain number)
+      expect(stringifyLoaderDeps).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 123n }),
+      )
+    })
+
+    it('default serializer handles bigint loader deps without throwing', async () => {
+      const loader = vi.fn()
+      const router = createTestRouter({
+        routeTree: (() => {
+          const rootRoute = new BaseRootRoute({})
+          const fooRoute = new BaseRoute({
+            getParentRoute: () => rootRoute,
+            path: '/foo',
+            loaderDeps: (): LoaderDeps => ({ id: 123n }),
+            loader,
+            staleTime: 60_000,
+            gcTime: 60_000,
+          })
+          return rootRoute.addChildren([fooRoute])
+        })(),
+        history: createMemoryHistory(),
+      })
+
+      await expect(router.navigate({ to: '/foo' })).resolves.not.toThrow()
+      await router.navigate({ to: '/foo' })
+      // stable hash means the loader is cached and not re-run for equal deps
+      expect(loader).toHaveBeenCalledTimes(1)
+    })
+
+    it('produces a stable hash for bigint loader deps via safeStringify', async () => {
+      const { safeStringify } = await import('../src/utils')
+      const loader = vi.fn()
+      const router = createTestRouter({
+        routeTree: (() => {
+          const rootRoute = new BaseRootRoute({})
+          const fooRoute = new BaseRoute({
+            getParentRoute: () => rootRoute,
+            path: '/foo',
+            loaderDeps: (): LoaderDeps => ({ id: 123n }),
+            loader,
+            staleTime: 60_000,
+            gcTime: 60_000,
+          })
+          return rootRoute.addChildren([fooRoute])
+        })(),
+        history: createMemoryHistory(),
+        stringifyLoaderDeps: safeStringify,
+      })
+
+      await router.navigate({ to: '/foo' })
+      await router.navigate({ to: '/foo' })
+      // stable hash means the loader is cached and not re-run for equal deps
+      expect(loader).toHaveBeenCalledTimes(1)
     })
   })
 
