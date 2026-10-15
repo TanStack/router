@@ -92,8 +92,8 @@ export type RouteModuleAnalysis = {
    */
   moduleRoute: RouteDefinition | undefined
   /**
-   * The module's `Route` is not created by a module-scope factory call, but a
-   * function or block calls a route factory: it creates the module's route,
+   * The module's `Route` is not created by a factory call in module code, but a
+   * function calls a route factory: it creates the module's route,
    * which can be neither split nor updated by route HMR.
    */
   routeCreatedInFunction: boolean
@@ -140,6 +140,19 @@ function resolveExpression(
   return node
 }
 
+/** Whether code runs when the module does: at module level or in its blocks. */
+function isModuleCode(module: Module, node: Node) {
+  for (const scope of module.scopeOf(node).ancestors()) {
+    if (scope === module.rootScope) {
+      return true
+    }
+    if (scope.kind !== 'block') {
+      return false
+    }
+  }
+  return false
+}
+
 export function analyzeRouteModule(
   options: AnalyzeModuleOptions,
 ): RouteModuleAnalysis {
@@ -154,8 +167,8 @@ export function analyzeRouteModule(
     ? routeDeclarator.init && unwrapExpression(routeDeclarator.init)
     : undefined
   let moduleRoute: RouteDefinition | undefined
-  // A factory call inside a function or block, and one at module scope that
-  // initializes the exported `Route`
+  // A factory call inside a function, and one in module code that initializes
+  // the exported `Route`
   let nestedFactoryCall: Node | undefined
   let routeFactoryCall: Node | undefined
   const seen = new Set<Node>()
@@ -168,9 +181,11 @@ export function analyzeRouteModule(
       if (!is.Identifier(callee) || !factoryNames.has(callee.name)) {
         return
       }
-      // A factory call inside a function or block can close over local
-      // bindings, so its options cannot be split or hoisted to module scope.
-      if (module.scopeOf(node) !== module.rootScope) {
+      // A factory call inside a function can close over local bindings, so
+      // its options cannot be split or hoisted to module scope. A block at
+      // module level runs with the module: a `var` it declares, such as
+      // `if (x) { var Route = createFileRoute(...)(...) }`, is a module binding.
+      if (!isModuleCode(module, node)) {
         nestedFactoryCall ??= node
         return
       }
