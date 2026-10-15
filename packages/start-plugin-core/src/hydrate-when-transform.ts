@@ -677,7 +677,8 @@ function loadHydrateVirtualModule(options: {
   ast.body.push(output)
   removeUnusedBindings(module, ast, originalNodes)
   keepFilePragmas(module.ast, ast)
-  return generateModule(ast, { source: options.code, filename: options.id })
+  // The chunk's code comes from the file itself, not from the virtual module
+  return generateModule(ast, { source: options.code, filename: sourceId })
 }
 export function createHydrateCompilerPlugin(): StartCompilerPlugin {
   type SourceEntry = {
