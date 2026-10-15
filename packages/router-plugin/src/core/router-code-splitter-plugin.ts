@@ -453,7 +453,12 @@ export function createRouterCodeSplitterPlugin(
           }
 
           if (!sideEffectFree) {
-            return result
+            // Explicit, never omitted: rolldown reuses the flag an earlier
+            // build returned when a later one leaves it out, which kept an
+            // edited, now impure module side-effect free in `vite build
+            // --watch` (https://github.com/rolldown/rolldown/issues/11223).
+            // `true` is the default analysis.
+            return { ...result, moduleSideEffects: true }
           }
           // The bundler can then drop the route module's re-export of shared
           // bindings nothing imports through it, so that they load only with
