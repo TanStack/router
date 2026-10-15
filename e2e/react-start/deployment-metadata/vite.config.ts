@@ -5,6 +5,7 @@ import { deploymentMetadata } from './src/deployment-metadata.config'
 import type { Plugin } from 'vite'
 
 const outDir = process.env.E2E_DIST_DIR ?? 'dist'
+const withDeploymentMetadata = process.env.E2E_DEPLOYMENT_METADATA !== 'off'
 
 function fakeDeploymentProvider(): Plugin {
   return {
@@ -25,5 +26,9 @@ export default defineConfig({
   build: {
     outDir,
   },
-  plugins: [fakeDeploymentProvider(), tanstackStart(), viteReact()],
+  plugins: [
+    withDeploymentMetadata && fakeDeploymentProvider(),
+    tanstackStart(),
+    viteReact(),
+  ],
 })
