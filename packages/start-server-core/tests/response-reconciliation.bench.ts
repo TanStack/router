@@ -1,4 +1,4 @@
-import { afterAll, bench, describe, expect, vi } from 'vitest'
+import { afterAll, describe, expect, test, vi } from 'vitest'
 import { fromCrossJSON } from 'seroval'
 import { notFound, redirect } from '@tanstack/router-core'
 import {
@@ -330,9 +330,8 @@ afterAll(() => {
 
 describe('response reconciliation', () => {
   for (const scenario of scenarios) {
-    bench(
-      scenario.name,
-      () =>
+    test(scenario.name, async ({ bench }) => {
+      await bench(scenario.name, () =>
         runRequestLoop(handler, {
           seed: 0xdecafbad,
           concurrency: 8,
@@ -340,13 +339,16 @@ describe('response reconciliation', () => {
           buildRequest: (random) =>
             requestFor(scenario.id, Math.floor(random() * 1_000_000)),
         }),
-      { warmupIterations: 100, time: 5_000, throws: true },
-    )
+      ).run({
+        warmupIterations: 100,
+        time: 5_000,
+        throws: true,
+      })
+    })
   }
   for (const scenario of notFoundScenarios) {
-    bench(
-      scenario.name,
-      () =>
+    test(scenario.name, async ({ bench }) => {
+      await bench(scenario.name, () =>
         runRequestLoop(handler, {
           seed: 0xdecafbad,
           concurrency: 8,
@@ -355,13 +357,16 @@ describe('response reconciliation', () => {
             requestFor(scenario.id, Math.floor(random() * 1_000_000)),
           validateResponse: validateNotFoundResponse,
         }),
-      { warmupIterations: 100, time: 5_000, throws: true },
-    )
+      ).run({
+        warmupIterations: 100,
+        time: 5_000,
+        throws: true,
+      })
+    })
   }
   for (const scenario of redirectScenarios) {
-    bench(
-      scenario.name,
-      () =>
+    test(scenario.name, async ({ bench }) => {
+      await bench(scenario.name, () =>
         runRequestLoop(handler, {
           seed: 0xdecafbad,
           concurrency: 8,
@@ -376,7 +381,11 @@ describe('response reconciliation', () => {
             }
           },
         }),
-      { warmupIterations: 100, time: 5_000, throws: true },
-    )
+      ).run({
+        warmupIterations: 100,
+        time: 5_000,
+        throws: true,
+      })
+    })
   }
 })

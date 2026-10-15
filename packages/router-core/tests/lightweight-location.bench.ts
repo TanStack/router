@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -46,13 +46,20 @@ describe.each([false, true])(
       }
       run()
       expect(checksum).toBe(iterations * '/target'.length)
-      bench(`${count} source params`, run, {
-        time: 1000,
-        warmupTime: 200,
-        throws: true,
-        teardown: () => {
-          expect(checksum).toBe(iterations * '/target'.length)
-        },
+      test(`${count} source params`, async ({ bench }) => {
+        await bench(
+          `${count} source params`,
+          {
+            afterAll: () => {
+              expect(checksum).toBe(iterations * '/target'.length)
+            },
+          },
+          run,
+        ).run({
+          time: 1000,
+          warmupTime: 200,
+          throws: true,
+        })
       })
     }
   },

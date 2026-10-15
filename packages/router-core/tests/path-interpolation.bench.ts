@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   createMemoryHistory,
   normalizeProtocolRelative,
@@ -203,79 +203,88 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
       : parseSegments(false, { fullPath: input.path }, 0),
   }))
 
-  bench(
-    'interpolation and normalization batch',
-    () => {
-      let length = 0
-      for (const call of calls) {
-        length += canonicalPathname(call.path, call.params, call.route).length
-      }
-      checksum = length
-    },
-    {
+  test('interpolation and normalization batch', async ({ bench }) => {
+    await bench(
+      'interpolation and normalization batch',
+      {
+        afterAll: () => {
+          expect(checksum).toBe(cachedExpected)
+        },
+      },
+      () => {
+        let length = 0
+        for (const call of calls) {
+          length += canonicalPathname(call.path, call.params, call.route).length
+        }
+        checksum = length
+      },
+    ).run({
       time: 1500,
       warmupTime: 500,
       throws: true,
-      teardown: () => {
-        expect(checksum).toBe(cachedExpected)
-      },
-    },
-  )
+    })
+  })
 
-  bench(
-    'prepared pathname interpolation batch',
-    () => {
-      let length = 0
-      for (const input of preparedInputs) {
-        length += (
-          input.segments
-            ? interpolatePath(
-                input.path,
-                input.segments,
-                input.params,
-                input.decoder,
-              )
-            : input.path
-        ).length
-      }
-      checksum = length
-    },
-    {
+  test('prepared pathname interpolation batch', async ({ bench }) => {
+    await bench(
+      'prepared pathname interpolation batch',
+      {
+        afterAll: () => {
+          expect(checksum).toBe(expected)
+        },
+      },
+      () => {
+        let length = 0
+        for (const input of preparedInputs) {
+          length += (
+            input.segments
+              ? interpolatePath(
+                  input.path,
+                  input.segments,
+                  input.params,
+                  input.decoder,
+                )
+              : input.path
+          ).length
+        }
+        checksum = length
+      },
+    ).run({
       time: 1500,
       warmupTime: 500,
       throws: true,
-      teardown: () => {
-        expect(checksum).toBe(expected)
-      },
-    },
-  )
+    })
+  })
 
-  bench(
-    'prepared metadata interpolation batch',
-    () => {
-      let length = 0
-      for (const input of preparedInputs) {
-        length += (
-          input.segments
-            ? interpolatePath(
-                input.path,
-                input.segments,
-                input.params,
-                input.decoder,
-                Object.create(null),
-              )
-            : input.path
-        ).length
-      }
-      checksum = length
-    },
-    {
+  test('prepared metadata interpolation batch', async ({ bench }) => {
+    await bench(
+      'prepared metadata interpolation batch',
+      {
+        afterAll: () => {
+          expect(checksum).toBe(expected)
+        },
+      },
+      () => {
+        let length = 0
+        for (const input of preparedInputs) {
+          length += (
+            input.segments
+              ? interpolatePath(
+                  input.path,
+                  input.segments,
+                  input.params,
+                  input.decoder,
+                  Object.create(null),
+                )
+              : input.path
+          ).length
+        }
+        checksum = length
+      },
+    ).run({
       time: 1500,
       warmupTime: 500,
       throws: true,
-      teardown: () => {
-        expect(checksum).toBe(expected)
-      },
-    },
-  )
+    })
+  })
 })
