@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChildRouteImport } from './routes/child'
 import { Route as ComponentHmrRouteImport } from './routes/component-hmr'
+import { Route as ComponentHmrExportedSplitRouteImport } from './routes/component-hmr-exported-split'
 import { Route as ComponentHmrInlineErrorSplitRouteImport } from './routes/component-hmr-inline-error-split'
 import { Route as ComponentHmrInlineNosplitRouteImport } from './routes/component-hmr-inline-nosplit'
 import { Route as ComponentHmrInlineSplitRouteImport } from './routes/component-hmr-inline-split'
@@ -39,6 +40,12 @@ const ComponentHmrRoute = ComponentHmrRouteImport.update({
   path: '/component-hmr',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComponentHmrExportedSplitRoute =
+  ComponentHmrExportedSplitRouteImport.update({
+    id: '/component-hmr-exported-split',
+    path: '/component-hmr-exported-split',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ComponentHmrInlineErrorSplitRoute =
   ComponentHmrInlineErrorSplitRouteImport.update({
     id: '/component-hmr-inline-error-split',
@@ -105,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/child': typeof ChildRoute
   '/component-hmr': typeof ComponentHmrRoute
+  '/component-hmr-exported-split': typeof ComponentHmrExportedSplitRoute
   '/component-hmr-inline-error-split': typeof ComponentHmrInlineErrorSplitRoute
   '/component-hmr-inline-nosplit': typeof ComponentHmrInlineNosplitRoute
   '/component-hmr-inline-split': typeof ComponentHmrInlineSplitRoute
@@ -121,6 +129,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/child': typeof ChildRoute
   '/component-hmr': typeof ComponentHmrRoute
+  '/component-hmr-exported-split': typeof ComponentHmrExportedSplitRoute
   '/component-hmr-inline-error-split': typeof ComponentHmrInlineErrorSplitRoute
   '/component-hmr-inline-nosplit': typeof ComponentHmrInlineNosplitRoute
   '/component-hmr-inline-split': typeof ComponentHmrInlineSplitRoute
@@ -138,6 +147,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/child': typeof ChildRoute
   '/component-hmr': typeof ComponentHmrRoute
+  '/component-hmr-exported-split': typeof ComponentHmrExportedSplitRoute
   '/component-hmr-inline-error-split': typeof ComponentHmrInlineErrorSplitRoute
   '/component-hmr-inline-nosplit': typeof ComponentHmrInlineNosplitRoute
   '/component-hmr-inline-split': typeof ComponentHmrInlineSplitRoute
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/child'
     | '/component-hmr'
+    | '/component-hmr-exported-split'
     | '/component-hmr-inline-error-split'
     | '/component-hmr-inline-nosplit'
     | '/component-hmr-inline-split'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/'
     | '/child'
     | '/component-hmr'
+    | '/component-hmr-exported-split'
     | '/component-hmr-inline-error-split'
     | '/component-hmr-inline-nosplit'
     | '/component-hmr-inline-split'
@@ -188,6 +200,7 @@ export interface FileRouteTypes {
     | '/'
     | '/child'
     | '/component-hmr'
+    | '/component-hmr-exported-split'
     | '/component-hmr-inline-error-split'
     | '/component-hmr-inline-nosplit'
     | '/component-hmr-inline-split'
@@ -205,6 +218,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChildRoute: typeof ChildRoute
   ComponentHmrRoute: typeof ComponentHmrRoute
+  ComponentHmrExportedSplitRoute: typeof ComponentHmrExportedSplitRoute
   ComponentHmrInlineErrorSplitRoute: typeof ComponentHmrInlineErrorSplitRoute
   ComponentHmrInlineNosplitRoute: typeof ComponentHmrInlineNosplitRoute
   ComponentHmrInlineSplitRoute: typeof ComponentHmrInlineSplitRoute
@@ -238,6 +252,13 @@ declare module '@tanstack/react-router' {
       path: '/component-hmr'
       fullPath: '/component-hmr'
       preLoaderRoute: typeof ComponentHmrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/component-hmr-exported-split': {
+      id: '/component-hmr-exported-split'
+      path: '/component-hmr-exported-split'
+      fullPath: '/component-hmr-exported-split'
+      preLoaderRoute: typeof ComponentHmrExportedSplitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/component-hmr-inline-error-split': {
@@ -337,6 +358,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChildRoute: ChildRoute,
   ComponentHmrRoute: ComponentHmrRoute,
+  ComponentHmrExportedSplitRoute: ComponentHmrExportedSplitRoute,
   ComponentHmrInlineErrorSplitRoute: ComponentHmrInlineErrorSplitRoute,
   ComponentHmrInlineNosplitRoute: ComponentHmrInlineNosplitRoute,
   ComponentHmrInlineSplitRoute: ComponentHmrInlineSplitRoute,

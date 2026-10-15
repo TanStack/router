@@ -7,11 +7,13 @@ import { tanstackRouter } from '../src/vite'
 import {
   createCodeSplitterTransforms,
   createRouteHmrTransform,
+  declarationOf,
   expectValidModules,
   exportedNames,
   head,
   importSources,
   importedNames,
+  requestedSources,
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
@@ -197,8 +199,185 @@ export const Route = createFileRoute('/unshared')({
 })
 
 /**
+ * React Refresh hot-updates a module only when every export is a component;
+ * an edit of another module re-runs it and its importers, or reloads the page
+ * in Vite bundled dev. A React route file's shared components therefore go to
+ * `?tsr-shared=components`, which imports the other shared bindings from
+ * `?tsr-shared=1` and is never imported by it.
+ */
+describe('the shared modules of a route file', () => {
+  /** Every module of `code`, compiled through the plugin as `/card`. */
+  async function compile(
+    code: string,
+    target: 'react' | 'solid' = 'react',
+    splits: Array<string> = ['component'],
+  ) {
+    const file = routeFile('card')
+    const splitter = await createCodeSplitterTransforms(
+      { target },
+      { [file]: '/card' },
+    )
+    const ids = {
+      values: `${file}?tsr-shared=1`,
+      components: `${file}?tsr-shared=components`,
+    }
+    const reference = splitter.reference(code, file)!
+    const modules: Record<string, string> & { reference: string } = {
+      reference,
+    }
+    for (const split of splits) {
+      modules[split] = splitter.virtual(code, `${file}?tsr-split=${split}`)!
+    }
+    // The components module imports from the values module
+    for (const name of ['components', 'values'] as const) {
+      if (
+        Object.values(modules).some((module) =>
+          requestedSources(module).includes(ids[name]),
+        )
+      ) {
+        modules[name] = splitter.shared(code, ids[name])!
+      }
+    }
+    await expectValidModules(modules)
+    const declaredIn = (name: string) =>
+      Object.keys(modules).filter((module) =>
+        declarationOf(name).test(modules[module]!),
+      )
+    return { modules, ids, declaredIn }
+  }
+
+  const card = `const registry = new Map<string, number>()
+function label(size: number) {
+  return 'size ' + size
+}
+export function Card() {
+  registry.set('card', 1)
+  return <b>{label(registry.size)}</b>
+}
+export const Route = createFileRoute('/card')({ component: () => <Card /> })
+`
+
+  it('emits an exported component apart from the private values it reads', async () => {
+    const { modules, ids, declaredIn } = await compile(`${head}${card}`)
+    expect(exportedNames(modules.values!)).toEqual(['label', 'registry'])
+    expect(requestedSources(modules.values!)).toEqual([])
+    expect(exportedNames(modules.components!)).toEqual(['Card'])
+    expect(importedNames(modules.components!, ids.values)).toEqual([
+      'label',
+      'registry',
+    ])
+    expect(importedNames(modules.component!, ids.components)).toEqual(['Card'])
+    expect(requestedSources(modules.component!)).not.toContain(ids.values)
+    expect(exportedNames(modules.reference)).toEqual(['Card', 'Route'])
+    expect(requestedSources(modules.reference)).toContain(ids.components)
+    expect(declaredIn('Card')).toEqual(['components'])
+    expect(declaredIn('label')).toEqual(['values'])
+    expect(declaredIn('registry')).toEqual(['values'])
+  })
+
+  it('imports a helper the loader and an exported component read from the values module', async () => {
+    const { modules, ids, declaredIn } = await compile(
+      `${head}function format(value: string) {
+  return value.toUpperCase()
+}
+export function Card() {
+  return <b>{format('card')}</b>
+}
+export const Route = createFileRoute('/card')({
+  loader: () => format('data'),
+  component: () => <Card />,
+})
+`,
+    )
+    expect(exportedNames(modules.values!)).toEqual(['format'])
+    expect(exportedNames(modules.components!)).toEqual(['Card'])
+    expect(importedNames(modules.reference, ids.values)).toEqual(['format'])
+    expect(importedNames(modules.components!, ids.values)).toEqual(['format'])
+    expect(declaredIn('format')).toEqual(['values'])
+    expect(declaredIn('Card')).toEqual(['components'])
+  })
+
+  it('emits components that only components read without a values module', async () => {
+    const { modules, ids } = await compile(
+      `${head}function Badge() {
+  return <i>badge</i>
+}
+export const Card = () => <b><Badge /></b>
+export const Route = createFileRoute('/card')({ component: () => <Card /> })
+`,
+    )
+    expect(Object.keys(modules).sort()).toEqual([
+      'component',
+      'components',
+      'reference',
+    ])
+    expect(exportedNames(modules.components!)).toEqual(['Badge', 'Card'])
+    expect(requestedSources(modules.components!)).not.toContain(ids.values)
+  })
+
+  it('emits a component another shared value reads in the values module with it', async () => {
+    const { modules, ids, declaredIn } = await compile(
+      `${head}function Cell() {
+  return <i>cell</i>
+}
+const columns = [{ render: Cell }]
+export function Table() {
+  return <b>{columns.map((column) => <column.render />)}</b>
+}
+export const Route = createFileRoute('/card')({ component: () => <Table /> })
+`,
+    )
+    expect(exportedNames(modules.values!)).toEqual(['Cell', 'columns'])
+    expect(requestedSources(modules.values!)).toEqual([])
+    expect(exportedNames(modules.components!)).toEqual(['Table'])
+    expect(importedNames(modules.components!, ids.values)).toEqual(['columns'])
+    expect(declaredIn('Cell')).toEqual(['values'])
+  })
+
+  it('emits a component two split options render in the components module', async () => {
+    const { modules, ids } = await compile(
+      `${head}const greeting = 'hello'
+function Card() {
+  return <b>{greeting}</b>
+}
+export const Route = createFileRoute('/card')({
+  component: () => <Card />,
+  errorComponent: () => <Card />,
+})
+`,
+      'react',
+      ['component', 'errorComponent'],
+    )
+    expect(exportedNames(modules.values!)).toEqual(['greeting'])
+    expect(exportedNames(modules.components!)).toEqual(['Card'])
+    for (const split of ['component', 'errorComponent']) {
+      expect(importedNames(modules[split]!, ids.components)).toEqual(['Card'])
+    }
+  })
+
+  it('emits one shared module for Solid', async () => {
+    const { modules, ids, declaredIn } = await compile(
+      `import { createFileRoute } from '@tanstack/solid-router'\n${card}`,
+      'solid',
+    )
+    expect(Object.keys(modules).sort()).toEqual([
+      'component',
+      'reference',
+      'values',
+    ])
+    expect(exportedNames(modules.values!)).toEqual([
+      'Card',
+      'label',
+      'registry',
+    ])
+    expect(importedNames(modules.component!, ids.values)).toEqual(['Card'])
+    expect(declaredIn('Card')).toEqual(['values'])
+  })
+})
+
+/**
  * In dev, an edit invalidates every module of the route file: the route
- * module, its `?tsr-split=` chunks and its `?tsr-shared=1` module. The browser
+ * module, its `?tsr-split=` chunks and its `?tsr-shared=` modules. The browser
  * requests them again in no fixed order (unbundled Vite dev sends one request
  * each, in parallel), and Vite keeps each result until the next edit. These
  * tests request the chunks and the shared module before the route module, and
@@ -207,6 +386,7 @@ export const Route = createFileRoute('/unshared')({
 describe('a dev server compiling an edited route out of order', () => {
   const route = '/routes/page.tsx'
   const shared = `${route}?tsr-shared=1`
+  const sharedComponents = `${route}?tsr-shared=components`
 
   function startServer(root: string) {
     return createServer({
@@ -236,6 +416,7 @@ describe('a dev server compiling an edited route out of order', () => {
         errors: Array<string>
         exports: Array<string>
         fromShared: Array<string>
+        fromSharedComponents: Array<string>
       }
     > = {}
     for (const id of ids) {
@@ -244,6 +425,7 @@ describe('a dev server compiling an edited route out of order', () => {
         errors: await getModuleErrors(code),
         exports: exportedNames(code),
         fromShared: importedNames(code, shared),
+        fromSharedComponents: importedNames(code, sharedComponents),
       }
     }
     return modules
@@ -315,6 +497,7 @@ export const Route = createFileRoute('/page')({ component: () => <Card /> })
       const ids = [
         route,
         shared,
+        sharedComponents,
         ...splits.map((split) => `${route}?tsr-split=${split}`),
       ]
       // Keep the temporary app inside the package so runtime imports resolve.

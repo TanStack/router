@@ -144,4 +144,37 @@ export const Route = createFileRoute('/')({ component: Page })
     )
     expect(html).toBe('<p>true</p>')
   }, 30_000)
+
+  it('an exported function component and the private state it reads are the ones other modules import', async () => {
+    const html = await buildAndRun(
+      `${head}const registry = new Set<string>()
+function size() {
+  return registry.size
+}
+export function Card({ id }: { id: string }) {
+  registry.add(id)
+  return <b>{size()}</b>
+}
+function Page() {
+  return (
+    <p>
+      {String((globalThis as any).__Card === Card)}
+      <Card id="page" />
+    </p>
+  )
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      render,
+      {
+        files: {
+          'entry.ts': entryImporting(
+            'Card',
+            ";(globalThis as any).__Card = Card\nCard({ id: 'entry' })",
+          ),
+        },
+      },
+    )
+    expect(html).toBe('<p>true<b>2</b></p>')
+  }, 30_000)
 })

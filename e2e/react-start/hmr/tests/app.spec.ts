@@ -27,6 +27,7 @@ const routeFilePaths = {
   componentHmrNamedSplit: 'routes/component-hmr-named-split.tsx',
   componentHmrLowercaseNamedSplit:
     'routes/component-hmr-lowercase-named-split.tsx',
+  componentHmrExportedSplit: 'routes/component-hmr-exported-split.tsx',
   componentHmrNamedNosplit: 'routes/component-hmr-named-nosplit.tsx',
   componentHmrInlineErrorSplit: 'routes/component-hmr-inline-error-split.tsx',
   componentHmrNamedErrorSplit: 'routes/component-hmr-named-error-split.tsx',
@@ -121,6 +122,11 @@ const routeFileRestoreChecks: Partial<
     url: '/component-hmr-lowercase-named-split',
     testId: 'component-hmr-marker',
     text: 'component-hmr-lowercase-named-split-baseline',
+  },
+  componentHmrExportedSplit: {
+    url: '/component-hmr-exported-split',
+    testId: 'component-hmr-marker',
+    text: 'component-hmr-exported-split-baseline',
   },
   componentHmrNamedNosplit: {
     url: '/component-hmr-named-nosplit',
@@ -278,6 +284,10 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
     componentHmrLowercaseNamedSplit: [
       'component-hmr-lowercase-named-split-updated',
       'component-hmr-lowercase-named-split-baseline',
+    ],
+    componentHmrExportedSplit: [
+      'component-hmr-exported-split-updated',
+      'component-hmr-exported-split-baseline',
     ],
     componentHmrNamedNosplit: [
       'component-hmr-named-nosplit-updated',
@@ -1435,6 +1445,28 @@ test.describe('react-start hmr', () => {
       async () => {
         await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
           'component-hmr-lowercase-named-split-updated',
+        )
+      },
+    )
+
+    await expectComponentHmrStatePreserved(page)
+  })
+
+  // The split component renders an exported component that reads private
+  // values: all of them go to the route file's shared modules
+  test('updates an exported component that a code-split route component renders', async ({
+    page,
+  }) => {
+    await seedComponentHmrState(page, '/component-hmr-exported-split')
+
+    await replaceRouteTextAndWait(
+      page,
+      'componentHmrExportedSplit',
+      'component-hmr-exported-split-baseline',
+      'component-hmr-exported-split-updated',
+      async () => {
+        await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
+          'component-hmr-exported-split-updated',
         )
       },
     )
