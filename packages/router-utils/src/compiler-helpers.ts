@@ -529,6 +529,54 @@ interface InitiallyUnused {
   erased: Set<Binding>
 }
 
+/**
+ * The bindings that survive in a traced program: the roots, the preserved
+ * declarations wherever their enclosing code survives, and what surviving
+ * code uses.
+ */
+function survivingBindings(
+  uses: BindingUses,
+  { preserved, erased }: InitiallyUnused,
+): Set<Binding> {
+  const live = new Set(uses.roots)
+  const dependencies = new Map<Binding, Set<Binding>>()
+  for (const [from, targets] of uses.uses) {
+    for (const to of targets) {
+      addEdge(dependencies, from, to)
+    }
+  }
+  for (const [binding, parents] of uses.parents) {
+    for (const parent of parents) {
+      // A live nested declaration needs its enclosing code to exist
+      addEdge(dependencies, binding, parent)
+      // and a preserved one survives wherever its enclosing code does
+      if (preserved.has(binding)) {
+        addEdge(dependencies, parent, binding)
+      }
+    }
+  }
+  for (const binding of uses.present) {
+    if (preserved.has(binding) && !uses.parents.has(binding)) {
+      live.add(binding)
+    }
+  }
+  for (const [binding, owners] of uses.erasedReferences) {
+    if (!erased.has(binding)) {
+      continue
+    }
+    for (const owner of owners) {
+      if (!owner) {
+        live.add(binding)
+        continue
+      }
+      for (const from of owner) {
+        addEdge(dependencies, from, binding)
+      }
+    }
+  }
+  return expandTransitively(live, dependencies)
+}
+
 function initiallyUnused(
   module: Module,
   index: DeclarationIndex,
@@ -549,10 +597,17 @@ function initiallyUnused(
         binding.references.some((reference) => reference.inTypePosition),
     ),
   )
-  return {
-    preserved: new Set([...all].filter((binding) => !erased.has(binding))),
-    erased,
+  const preserved = new Set([...all].filter((binding) => !erased.has(binding)))
+  // Only uses by surviving code count: a declaration that only unused code
+  // inside it reads, as `const plugin = { m() { const self = plugin } }`, was
+  // unused too. The unchanged source keeps every declaration.
+  const surviving = survivingBindings(uses, { preserved, erased })
+  for (const binding of uses.present) {
+    if (!surviving.has(binding) && !erased.has(binding)) {
+      preserved.add(binding)
+    }
   }
+  return { preserved, erased }
 }
 
 /**
@@ -575,43 +630,7 @@ export function removeUnusedBindings(
   const output = collectBindingUses(module, program, index, factories, (node) =>
     originalNodes.get(node),
   )
-  const live = new Set(output.roots)
-  const dependencies = new Map<Binding, Set<Binding>>()
-  for (const [from, targets] of output.uses) {
-    for (const to of targets) {
-      addEdge(dependencies, from, to)
-    }
-  }
-  for (const [binding, parents] of output.parents) {
-    for (const parent of parents) {
-      // A live nested declaration needs its enclosing code to exist
-      addEdge(dependencies, binding, parent)
-      // and a preserved one survives wherever its enclosing code does
-      if (preserved.has(binding)) {
-        addEdge(dependencies, parent, binding)
-      }
-    }
-  }
-  for (const binding of output.present) {
-    if (preserved.has(binding) && !output.parents.has(binding)) {
-      live.add(binding)
-    }
-  }
-  for (const [binding, owners] of output.erasedReferences) {
-    if (!erased.has(binding)) {
-      continue
-    }
-    for (const owner of owners) {
-      if (!owner) {
-        live.add(binding)
-        continue
-      }
-      for (const from of owner) {
-        addEdge(dependencies, from, binding)
-      }
-    }
-  }
-  const retained = expandTransitively(live, dependencies)
+  const retained = survivingBindings(output, { preserved, erased })
   const removable = new Set(
     [...output.present].filter((binding) => !retained.has(binding)),
   )

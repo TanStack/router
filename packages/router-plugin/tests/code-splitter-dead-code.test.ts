@@ -156,7 +156,14 @@ export const Route = createFileRoute('/')({ component: () => ${component} })
           expect(binds(reference, name), `${module} binds ${name}`).toBe(true)
         }
       }
-      await expectValidModules(modules)
+      // Without code splitting, nothing moves.
+      const unsplit = transformWithRouteHmrPlugin(code)
+      for (const name of declared) {
+        expect(unsplit, `the route HMR output declares ${name}`).toMatch(
+          declarationOf(name),
+        )
+      }
+      await expectValidModules({ ...modules, 'route HMR': unsplit })
     },
   )
 
