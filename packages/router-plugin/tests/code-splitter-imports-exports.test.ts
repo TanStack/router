@@ -10,6 +10,7 @@ import {
   head,
   importSources,
   importedNames,
+  routeModuleSources,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
@@ -193,7 +194,7 @@ export { Route, title }
   })
 
   it("export only the file route's split option from the chunk when the module also creates a code-based route", async () => {
-    const { modules } =
+    const { modules, ids } =
       compileRouteModules(`import { createFileRoute, createRoute } from '@tanstack/react-router'
 export const legacy = createRoute({
   getParentRoute: () => null as any,
@@ -207,7 +208,7 @@ export const Route = createFileRoute('/')({
     const chunk = modules['virtual component']!
     expect(exportedNames(chunk)).toEqual(['component'])
     const { component } = await evaluateModule(chunk, {
-      'route.tsx': { legacy: {} },
+      [ids.reference!]: { legacy: {} },
       '@tanstack/react-router': { createRoute: () => ({}) },
     })
     expect(component!()).toBe('<p>file</p>')
@@ -226,10 +227,9 @@ export const Route = createFileRoute('/')({
     // From the route module, or from the shared module the route module
     // re-exports them from.
     expect(
-      [
-        ...importedNames(chunk, 'route.tsx'),
-        ...importedNames(chunk, 'route.tsx?tsr-shared=1'),
-      ].sort(),
+      routeModuleSources(chunk)
+        .flatMap((source) => importedNames(chunk, source))
+        .sort(),
     ).toEqual(['a', 'b'])
     expect(chunk).not.toMatch(declarationOf('a'))
     expect(chunk).not.toMatch(declarationOf('b'))
@@ -256,7 +256,8 @@ export const Route = createFileRoute('/')({
   it('are reported as not code-split when an exported component is a split option and another option is split', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     onTestFinished(() => warn.mockRestore())
-    const { modules } = compileRouteModules(`${head}export function Page() {
+    const { modules, ids } =
+      compileRouteModules(`${head}export function Page() {
   return <p>page</p>
 }
 export const Route = createFileRoute('/')({
@@ -270,7 +271,7 @@ export const Route = createFileRoute('/')({
     )
     expect(warn).toHaveBeenCalledOnce()
     expect(warn.mock.calls[0]![0]).toContain(
-      '[tanstack-router] These exports from "route.tsx" will not be code-split and will increase your bundle size:\n- Page\n',
+      `[tanstack-router] These exports from "${ids.reference}" will not be code-split and will increase your bundle size:\n- Page\n`,
     )
   })
 })

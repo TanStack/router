@@ -8,20 +8,28 @@
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import * as reactRouter from '@tanstack/react-router'
+import {
+  BaseRootRoute,
+  RouterCore,
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
+} from '@tanstack/router-core'
 import { createServer } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
+import { createMemoryHistory } from '../../history/src'
 import { tanstackRouter } from '../src/vite'
 import {
   compileRouteModules,
   evaluateModule,
   expectRefreshableRouteOption,
   expectValidModules,
-  exportedBinding,
   exportedNames,
   head,
-  reactRefresh,
+  loadRoute,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
+import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 
 /** Compiles every module the code splitter emits, with React HMR. */
 function compileWithCodeSplitting(code: string) {
@@ -92,22 +100,21 @@ export const Route = createRootRoute({
   )
 
   /**
-   * Compiles the component chunk of a route whose `component` option is
-   * `name`, declared by `declaration`, and returns the binding the chunk
-   * exports as `component` and the names React Refresh registers.
+   * Loads, with React HMR and React Refresh, a route whose `component` option
+   * is `name`, declared by `declaration`, and returns the component the route
+   * renders once its lazy option loaded, and the components React Refresh
+   * registers.
    */
   async function splitComponentRegistration(declaration: string, name: string) {
-    const chunk = compileWithCodeSplitting(`${head}${declaration}
-export const Route = createFileRoute('/')({ component: ${name} })`)[
-      'virtual component'
-    ]!
-    await expectValidModules({ chunk })
-    const binding = exportedBinding(chunk, 'component')
+    const route = await loadRoute(
+      `${head}${declaration}
+export const Route = createFileRoute('/')({ component: ${name} })`,
+      { hmr: true, refresh: true },
+    )
+    await expectValidModules(route.modules)
+    const binding = await route.load('component')
     expect(binding).toBeDefined()
-    return {
-      binding,
-      registered: (await reactRefresh(chunk)).registered,
-    }
+    return { binding, registered: [...route.registered.keys()] }
   }
 
   // Control for the lowercase pin below (same harness).
@@ -146,16 +153,8 @@ export const Route = createFileRoute('/')({ component: ${name} })`)[
 describe('generated code', () => {
   /** Evaluates the route module compiled with HMR and returns its route. */
   async function evaluateRoute(code: string) {
-    const { reference } = compileWithCodeSplitting(code)
-    const { Route } = await evaluateModule(reference!, {
-      '@tanstack/react-router': {
-        createRootRoute: (options: unknown) => ({ options }),
-        createFileRoute: () => (options: unknown) => ({ options }),
-        lazyRouteComponent: () => () => null,
-        Outlet: () => null,
-      },
-    })
-    return Route as unknown as { options: { component?: unknown } }
+    const { Route } = await loadRoute(code, { hmr: true })
+    return Route as { options: { component?: unknown } }
   }
 
   // Control for the options-in-a-variable pins below (same harness).
@@ -226,15 +225,15 @@ export const Route = createFileRoute('/')({
   )
 
   /**
-   * Compiles, with HMR, a route whose `page` component (declared by
-   * `declaration`) the loader also reads, so the code splitter moves it to the
-   * shared module. Evaluates the shared module, the route module and the
-   * component chunk, then renders the split component twice. `page` counts
+   * Loads, with HMR, a route whose `page` component (declared by
+   * `declaration`) the loader also reads, so the code splitter shares it with
+   * the loader. Loads the split component and renders it twice. `page` counts
    * its renders in a module-level `let` initialized by `init` from `./state`.
    * Returns both renders and how many times `init` ran.
    */
   async function renderSharedComponentTwice(declaration: string) {
-    const { modules } = compileRouteModules(
+    let inits = 0
+    const route = await loadRoute(
       `${head}import { init } from './state'
 let renders = init(0)
 ${declaration}
@@ -242,31 +241,20 @@ export const Route = createFileRoute('/')({
   loader: () => page.name,
   component: page,
 })`,
-      { hmr: true },
-    )
-    let inits = 0
-    const linked: Record<string, Record<string, unknown>> = {
-      './state': {
-        init: (value: number) => {
-          inits++
-          return value
+      {
+        hmr: true,
+        stubs: {
+          './state': {
+            init: (value: number) => {
+              inits++
+              return value
+            },
+          },
         },
       },
-      '@tanstack/react-router': {
-        createFileRoute: () => (options: unknown) => ({ options }),
-        lazyRouteComponent: () => () => null,
-      },
-    }
-    linked['route.tsx?tsr-shared=1'] = await evaluateModule(
-      modules.shared!,
-      linked,
     )
-    linked['route.tsx'] = await evaluateModule(modules.reference!, linked)
-    const { component } = await evaluateModule(
-      modules['virtual component']!,
-      linked,
-    )
-    return [component!(), component!(), inits]
+    const component = await route.load('component')
+    return [component(), component(), inits]
   }
 
   // Control for the lowercase shared component pin below (same harness).
@@ -343,15 +331,23 @@ export const Route = createFileRoute('/')({
 })
 
 describe('route updates', () => {
+  const getStoreConfig: GetStoreConfig = () => ({
+    createMutableStore: createNonReactiveMutableStore,
+    createReadonlyStore: createNonReactiveReadonlyStore,
+    batch: (fn) => fn(),
+  })
+
   /**
    * Compiles a route file at `/` with the route HMR plugin for `style`, then
-   * runs a hot update the way the bundler does: loads the module, registers
-   * its `Route` with a stub router (`window.__TSR_ROUTER__`), and loads it
-   * again with the same hot data (Vite: the first module's accept callback
-   * receives the new module; webpack: the module re-runs with the data its
-   * dispose handlers wrote). Returns whether the update reaches the page:
-   * the live route now has the new module's `option`, or the module asked
-   * the bundler for a full reload (`hot.invalidate()`).
+   * runs a hot update the way the bundler does: loads the module with the
+   * bundler's hot API on `import.meta`, adds its `Route` to a route tree as
+   * the generated route tree does and creates a router with it
+   * (`window.__TSR_ROUTER__`), and loads the module again with the same hot
+   * data (Vite: the first module's accept callback receives the new module;
+   * webpack: the module re-runs with the data its dispose handlers wrote).
+   * Returns whether the update reaches the page: the live route now has the
+   * new module's `option`, or the module asked the bundler for a full reload
+   * (`hot.invalidate()`).
    */
   async function hotUpdate(
     code: string,
@@ -363,24 +359,27 @@ describe('route updates', () => {
       plugin: { hmr: { style } },
     })
     const created: Array<Record<string, unknown>> = []
-    const router = {
-      routesById: {} as Record<string, { options: Record<string, unknown> }>,
-      buildRouteTree: () => ({}),
-      setRoutes: () => {},
-      _replaceRouteChunk: () => {},
-      resolvePathCache: { clear: () => {} },
-    }
     let data: Record<string, unknown> = {}
     let invalidated = false
     let accepted: Array<(module: unknown) => void> = []
     const disposers: Array<(data: Record<string, unknown>) => void> = []
     const load = () =>
       evaluateModule(
-        `import { hot as __hot } from 'hot'
-${compiled.replace(/import\.meta\.(?:webpackHot|hot)\b/g, '__hot')}`,
+        compiled,
         {
-          hot: {
-            hot: {
+          '@tanstack/react-router': {
+            ...reactRouter,
+            createFileRoute:
+              (path: string) => (options: Record<string, unknown>) => {
+                // A copy: the HMR code writes kept options into the new ones.
+                created.push({ ...options })
+                return (reactRouter.createFileRoute as any)(path)(options)
+              },
+          },
+        },
+        {
+          importMeta: {
+            [style === 'webpack' ? 'webpackHot' : 'hot']: {
               data,
               accept: (callback?: (module: unknown) => void) => {
                 if (callback) {
@@ -395,22 +394,27 @@ ${compiled.replace(/import\.meta\.(?:webpackHot|hot)\b/g, '__hot')}`,
               },
             },
           },
-          '@tanstack/react-router': {
-            createFileRoute: () => (options: Record<string, unknown>) => {
-              // A copy: the HMR code writes kept options into the new ones.
-              created.push({ ...options })
-              return { options, update: () => {} }
-            },
-            lazyRouteComponent: () => () => null,
-          },
         },
       )
-    vi.stubGlobal('window', { __TSR_ROUTER__: router })
+    const window: { __TSR_ROUTER__?: RouterCore<any, any, any, any, any> } = {}
+    vi.stubGlobal('window', window)
     try {
       const first = await load()
-      router.routesById['/'] = first.Route as unknown as {
-        options: Record<string, unknown>
-      }
+      const rootRoute = new BaseRootRoute({})
+      const route = (first.Route as unknown as AnyRoute).update({
+        id: '/',
+        path: '/',
+        getParentRoute: () => rootRoute,
+      } as never)
+      const router = new RouterCore(
+        {
+          routeTree: rootRoute.addChildren([route]),
+          history: createMemoryHistory({ initialEntries: ['/'] }),
+          isServer: true,
+        },
+        getStoreConfig,
+      )
+      window.__TSR_ROUTER__ = router
       if (style === 'webpack') {
         const next: Record<string, unknown> = {}
         disposers.forEach((dispose) => dispose(next))
@@ -420,10 +424,10 @@ ${compiled.replace(/import\.meta\.(?:webpackHot|hot)\b/g, '__hot')}`,
       accepted = []
       const second = await load()
       firstAccepted.forEach((accept) => accept(second))
-      return (
-        invalidated ||
-        router.routesById['/'].options[option] === created[1]![option]
-      )
+      const { options } = router.routesById['/'] as unknown as {
+        options: Record<string, unknown>
+      }
+      return invalidated || options[option] === created[1]![option]
     } finally {
       vi.unstubAllGlobals()
     }

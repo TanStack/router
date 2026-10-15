@@ -1,28 +1,24 @@
 /**
  * Helpers shared by the code-splitter and route HMR regression suites: compile
- * a route file into every module the code splitter emits, drive the bundler
- * plugins the way a bundler does, and inspect or evaluate an emitted module.
+ * a route file through the code-splitter plugin the way a bundler does,
+ * follow the imports of its output to every module it emits, evaluate those
+ * modules like a runtime, and inspect an emitted module.
  */
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
+import * as React from 'react'
 import { build, parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
-import {
-  compileCodeSplitReferenceRoute,
-  compileCodeSplitSharedRoute,
-  compileCodeSplitVirtualRoute,
-  computeSharedBindings,
-} from '../src/core/code-splitter/compilers'
-import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
-import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
-import { getModuleErrors } from './validate-module'
+import { createModuleSession, jsxPragma, moduleLang } from './module-runtime'
+import { freeIdentifiers, getModuleErrors } from './validate-module'
+import type { ModuleSession, ModuleStub } from './module-runtime'
 import type { Config } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
@@ -32,66 +28,325 @@ export { declarationOf } from './validate-module'
 
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
+type Stubs = Record<string, ModuleStub>
+
+type CompileOptions = {
+  /** Name of the route file; it is compiled as `/<filename>`. */
+  filename?: string
+  targetFramework?: 'react' | 'solid'
+  /** Compile for the dev server: route HMR and the framework's HMR code. */
+  hmr?: boolean
+}
+
 /**
- * Compiles a route file with the default groupings into every module the code
- * splitter emits for it: `reference`, one `virtual <split>` chunk per grouping
- * and, when bindings are shared, `shared`.
+ * The id the harness compiles a route file under: an absolute path, as
+ * bundlers pass module ids to plugins.
  */
-export function compileRouteModules(
+export function routeModuleId(filename = 'route.tsx') {
+  return normalizePath(path.resolve('/', filename))
+}
+
+/** Splits a module id or specifier into its path and its query. */
+function splitQuery(id: string): [string, string | undefined] {
+  const index = id.indexOf('?')
+  return index === -1
+    ? [id, undefined]
+    : [id.slice(0, index), id.slice(index + 1)]
+}
+
+/** The handler of a plugin hook given as a function or as `{ handler }`. */
+function hookHandler(
+  hook: unknown,
+): ((...args: Array<any>) => any) | undefined {
+  if (typeof hook === 'function') {
+    return hook as (...args: Array<any>) => any
+  }
+  if (hook && typeof hook === 'object' && 'handler' in hook) {
+    return (hook as { handler: (...args: Array<any>) => any }).handler
+  }
+  return undefined
+}
+
+/** Whether `value` matches an unplugin hook filter pattern. */
+function matchesPattern(pattern: unknown, value: string): boolean {
+  if (pattern instanceof RegExp) {
+    pattern.lastIndex = 0
+    return pattern.test(value)
+  }
+  if (Array.isArray(pattern)) {
+    return pattern.some((item) => matchesPattern(item, value))
+  }
+  if (pattern && typeof pattern === 'object') {
+    const { include, exclude } = pattern as {
+      include?: unknown
+      exclude?: unknown
+    }
+    if (exclude !== undefined && matchesPattern(exclude, value)) {
+      return false
+    }
+    return include === undefined || matchesPattern(include, value)
+  }
+  throw new Error(`unsupported hook filter: ${String(pattern)}`)
+}
+
+function passesFilter(hook: unknown, id: string, code?: string) {
+  const filter =
+    hook && typeof hook === 'object' && 'filter' in hook
+      ? (hook.filter as { id?: unknown; code?: unknown } | undefined)
+      : undefined
+  return (
+    (filter?.id === undefined || matchesPattern(filter.id, id)) &&
+    (filter?.code === undefined ||
+      code === undefined ||
+      matchesPattern(filter.code, code))
+  )
+}
+
+/** Fails on a hook result a synchronous harness cannot wait for. */
+function sync<T>(result: T, hook: string): T {
+  if (result instanceof Promise) {
+    throw new Error(`the harness only drives synchronous ${hook} hooks`)
+  }
+  return result
+}
+
+/** The `this` of plugin hooks: warnings go to the console, like Vite's. */
+const pluginContext = {
+  warn: (message: unknown) => console.warn(message),
+  error: (message: unknown) => {
+    throw message instanceof Error ? message : new Error(String(message))
+  },
+}
+
+/** Imports and re-exports of a module, static or dynamic (`import()`). */
+function moduleRequests(code: string, id: string) {
+  const { module } = parseSync(`module.${moduleLang(id)}`, code, {
+    sourceType: 'module',
+  })
+  const requests: Array<{ specifier: string; dynamic: boolean }> = []
+  for (const statement of module.staticImports) {
+    requests.push({ specifier: statement.moduleRequest.value, dynamic: false })
+  }
+  for (const statement of module.staticExports) {
+    for (const entry of statement.entries) {
+      if (entry.moduleRequest) {
+        requests.push({ specifier: entry.moduleRequest.value, dynamic: false })
+      }
+    }
+  }
+  for (const dynamicImport of module.dynamicImports) {
+    const source = code.slice(
+      dynamicImport.moduleRequest.start,
+      dynamicImport.moduleRequest.end,
+    )
+    const literal = /^(["'`])([^"'`$\\]*)\1$/.exec(source)
+    if (!literal) {
+      throw new Error(`cannot follow the dynamic import ${source}`)
+    }
+    requests.push({ specifier: literal[2]!, dynamic: true })
+  }
+  return requests
+}
+
+/**
+ * What a bundler gets from compiling a route file with the code-splitter
+ * plugin: the route module and every module its output imports, statically
+ * or dynamically, that resolves to the route file or that a plugin resolves.
+ */
+type RouteGraph = {
+  /** Id of the route module. */
+  id: string
+  /** Code of each module, by id, in the order the imports reach them. */
+  modules: Map<string, string>
+  /** Whether a module is imported statically by some module, or only lazily. */
+  importKinds: Map<string, 'static' | 'dynamic'>
+  /** Resolves an import of an emitted module to an emitted module's id. */
+  resolve: (specifier: string, importer: string) => string | undefined
+}
+
+function compileRouteGraph(
   code: string,
-  options: {
-    filename?: string
-    targetFramework?: 'react' | 'solid'
-    /** Compile with route HMR and the framework's HMR compiler plugins. */
-    hmr?: boolean
-  } = {},
-) {
+  options: CompileOptions = {},
+): RouteGraph {
   const {
     filename = 'route.tsx',
     targetFramework = 'react',
     hmr = false,
   } = options
-  const groupings = defaultCodeSplitGroupings
-  const compilerPlugins = hmr
-    ? getFrameworkHmrCompilerPlugins({ targetFramework })
-    : undefined
-  const computed = computeSharedBindings({
-    code,
-    filename,
-    codeSplitGroupings: groupings,
-  })
-  const sharedBindings = computed.size > 0 ? computed : undefined
-  const reference = compileCodeSplitReferenceRoute({
-    code,
-    filename,
-    id: filename,
-    addHmr: hmr,
-    codeSplitGroupings: groupings,
-    targetFramework,
-    sharedBindings,
-    compilerPlugins,
-  })
-  const modules: Record<string, string> = {
-    reference: reference?.code ?? code,
+  const id = routeModuleId(filename)
+  const context = createRouterPluginContext()
+  context.routesByFile.set(id, { routeId: '/' })
+  const created = createRouterCodeSplitterPlugin(
+    {
+      target: targetFramework,
+      autoCodeSplitting: true,
+      codeSplittingOptions: { addHmr: hmr },
+    },
+    context,
+  )
+  const plugins: Array<UnpluginOptions> = Array.isArray(created)
+    ? created
+    : [created]
+  const config = {
+    root: process.cwd(),
+    command: hmr ? 'serve' : 'build',
+    plugins: [],
   }
-  for (const targets of groupings) {
-    const split = targets.join('-')
-    modules[`virtual ${split}`] = compileCodeSplitVirtualRoute({
-      code,
-      filename: `${filename}?tsr-split=${split}`,
-      splitTargets: targets,
-      sharedBindings,
-      compilerPlugins,
-    }).code
+  for (const plugin of plugins) {
+    sync(
+      hookHandler(plugin.vite?.configResolved)?.call(
+        pluginContext,
+        config as never,
+      ),
+      'configResolved',
+    )
   }
-  if (sharedBindings) {
-    modules.shared = compileCodeSplitSharedRoute({
-      code,
-      sharedBindings,
-      filename: `${filename}?tsr-shared=1`,
-    }).code
+
+  const resolve = (specifier: string, importer: string) => {
+    for (const plugin of plugins) {
+      const hook = plugin.resolveId
+      if (!hookHandler(hook) || !passesFilter(hook, specifier)) {
+        continue
+      }
+      const resolved = sync(
+        hookHandler(hook)!.call(pluginContext, specifier, importer, {}),
+        'resolveId',
+      )
+      if (typeof resolved === 'string') {
+        return resolved
+      }
+      if (resolved && typeof resolved === 'object' && 'id' in resolved) {
+        return resolved.id as string
+      }
+    }
+    const [request, query] = splitQuery(specifier)
+    let file: string
+    if (/^(?:\/|[A-Za-z]:\/)/.test(request)) {
+      file = request
+    } else if (request.startsWith('./') || request.startsWith('../')) {
+      file = path.posix.join(
+        path.posix.dirname(splitQuery(importer)[0]),
+        request,
+      )
+    } else {
+      return undefined
+    }
+    // Only modules of the route file are compiled; other files are stubs.
+    if (file !== id) {
+      return undefined
+    }
+    return query === undefined ? file : `${file}?${query}`
   }
-  return { modules, sharedBindings: [...computed].sort() }
+
+  const load = (moduleId: string) => {
+    for (const plugin of plugins) {
+      const hook = plugin.load
+      if (!hookHandler(hook) || !passesFilter(hook, moduleId)) {
+        continue
+      }
+      const loaded = sync(
+        hookHandler(hook)!.call(pluginContext, moduleId),
+        'load',
+      ) as string | { code: string } | null | undefined
+      if (loaded != null) {
+        return typeof loaded === 'string' ? loaded : loaded.code
+      }
+    }
+    // Bundlers read a module id with a query from the file it names.
+    if (splitQuery(moduleId)[0] === id) {
+      return code
+    }
+    throw new Error(`no plugin loads ${moduleId}`)
+  }
+
+  const transform = (moduleId: string, source: string) => {
+    let current = source
+    for (const plugin of plugins) {
+      const hook = plugin.transform
+      if (
+        !hookHandler(hook) ||
+        !passesFilter(hook, moduleId, current) ||
+        (plugin.transformInclude && !plugin.transformInclude(moduleId))
+      ) {
+        continue
+      }
+      const result = sync(
+        hookHandler(hook)!.call(pluginContext, current, moduleId),
+        'transform',
+      ) as TransformResult | null | undefined
+      if (result != null) {
+        current = typeof result === 'string' ? result : result.code
+      }
+    }
+    return current
+  }
+
+  const modules = new Map<string, string>()
+  const importKinds = new Map<string, 'static' | 'dynamic'>()
+  const queue = [id]
+  while (queue.length > 0) {
+    const moduleId = queue.shift()!
+    if (modules.has(moduleId)) {
+      continue
+    }
+    const output = transform(moduleId, load(moduleId))
+    modules.set(moduleId, output)
+    for (const { specifier, dynamic } of moduleRequests(output, moduleId)) {
+      const target = resolve(specifier, moduleId)
+      if (target === undefined) {
+        continue
+      }
+      if (!dynamic) {
+        importKinds.set(target, 'static')
+      } else if (!importKinds.has(target)) {
+        importKinds.set(target, 'dynamic')
+      }
+      queue.push(target)
+    }
+  }
+  return { id, modules, importKinds, resolve }
+}
+
+/** Route file each `compileRouteModules` result was compiled from. */
+const routeSources = new WeakMap<object, { code: string; id: string }>()
+
+/**
+ * Compiles a route file through the code-splitter plugin (default groupings,
+ * unless the route sets its own) and returns every module a bundler would
+ * load for it, found by following the imports of the output.
+ *
+ * For the tests that inspect a module by its role, the modules are labelled:
+ * `reference` (the route module), `virtual <exports>` for a module only
+ * imported lazily (a split chunk, named by what it exports) and `shared` for
+ * another module imported statically. `ids` gives the module id of each
+ * label, and `sharedBindings` the names the shared modules export.
+ */
+export function compileRouteModules(
+  code: string,
+  options: CompileOptions = {},
+) {
+  const graph = compileRouteGraph(code, options)
+  const modules: Record<string, string> = {}
+  const ids: Record<string, string> = {}
+  const sharedBindings = new Set<string>()
+  for (const [id, output] of graph.modules) {
+    let label: string
+    if (id === graph.id) {
+      label = 'reference'
+    } else if (graph.importKinds.get(id) === 'dynamic') {
+      label = `virtual ${exportedNames(output, id).join('-')}`
+    } else {
+      label = 'shared'
+      exportedNames(output, id).forEach((name) => sharedBindings.add(name))
+    }
+    if (label in modules) {
+      label = `${label} (${id})`
+    }
+    modules[label] = output
+    ids[label] = id
+  }
+  routeSources.set(modules, { code, id: graph.id })
+  return { modules, ids, sharedBindings: [...sharedBindings].sort(), graph }
 }
 
 /** Compiles every module of a route file and returns the component chunk. */
@@ -99,19 +354,29 @@ export function componentChunk(code: string) {
   return compileRouteModules(code).modules['virtual component']!
 }
 
-/** Asserts that every module is valid, reporting the errors by module name. */
+/**
+ * Asserts that every module is valid, reporting the errors by module name.
+ * For the modules of `compileRouteModules`, the globals the route file reads
+ * itself may be read by its modules too.
+ */
 export async function expectValidModules(modules: Record<string, string>) {
+  const source = routeSources.get(modules)
+  const filename = source ? `module.${moduleLang(source.id)}` : undefined
+  const globals = source
+    ? await freeIdentifiers(source.code, filename)
+    : undefined
   const errors: Record<string, Array<string>> = {}
   for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code)
+    errors[name] = await getModuleErrors(code, filename, { globals })
   }
   expect(errors).toEqual(
     Object.fromEntries(Object.keys(modules).map((name) => [name, []])),
   )
 }
 
-function moduleRecord(code: string) {
-  return parseSync('module.tsx', code, { sourceType: 'module' }).module
+function moduleRecord(code: string, id = 'module.tsx') {
+  return parseSync(`module.${moduleLang(id)}`, code, { sourceType: 'module' })
+    .module
 }
 
 /** Sources a module imports, side-effect imports included, sorted. */
@@ -123,6 +388,14 @@ export function importSources(code: string) {
       ),
     ),
   ].sort()
+}
+
+/**
+ * Sources a module imports that name the compiled route file (`id`), with
+ * or without a query: the modules the code splitter emits for it.
+ */
+export function routeModuleSources(code: string, id = routeModuleId()) {
+  return importSources(code).filter((source) => splitQuery(source)[0] === id)
 }
 
 /**
@@ -148,27 +421,18 @@ export function importedNames(code: string, source: string) {
     .sort()
 }
 
-/** Value names a module exports (`default` for a default export), sorted. */
-export function exportedNames(code: string) {
-  return moduleRecord(code)
+/**
+ * Value names a module exports (`default` for a default export), sorted.
+ * `id` gives the module's language (TypeScript without JSX for `.ts`).
+ */
+export function exportedNames(code: string, id?: string) {
+  return moduleRecord(code, id)
     .staticExports.flatMap((statement) =>
       statement.entries
         .filter((entry) => !entry.isType && entry.exportName.kind !== 'None')
         .map((entry) => entry.exportName.name ?? 'default'),
     )
     .sort()
-}
-
-/** The local binding a module exports as `name`, if it exports one. */
-export function exportedBinding(code: string, name: string) {
-  for (const statement of moduleRecord(code).staticExports) {
-    for (const entry of statement.entries) {
-      if (!entry.isType && entry.exportName.name === name) {
-        return entry.localName.name ?? undefined
-      }
-    }
-  }
-  return undefined
 }
 
 /** Absolute, normalized path of a route file in the package's `src/routes`. */
@@ -267,61 +531,197 @@ export function transformWithRouteHmrPlugin(
   return output
 }
 
-/** Renders JSX to text: intrinsic elements become tags, components are called. */
-const jsxToText = `const Fragment = Symbol('Fragment')
-const h = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
-  if (type === Fragment) {
-    return text
+/**
+ * Exports of a router package, as much of them as route modules use: routes
+ * keep their options, and lazy route options (`lazyRouteComponent`,
+ * `lazyFn`) load their module when called or preloaded, like the real ones.
+ * `lazy` collects the loader of every lazy value created.
+ */
+function createRouterStub(lazy: Map<unknown, () => Promise<unknown>>) {
+  const route = (options: unknown) => ({ options })
+  return {
+    createFileRoute: () => route,
+    createLazyFileRoute: () => route,
+    createRootRoute: route,
+    createRootRouteWithContext: () => route,
+    createRoute: route,
+    Outlet: () => null,
+    lazyRouteComponent: (
+      importer: () => Promise<Record<string, any>>,
+      exportName = 'default',
+    ) => {
+      let component: ((props: unknown) => unknown) | undefined
+      const load = async () => {
+        component = (await importer())[exportName]
+        return component
+      }
+      const Lazy = Object.assign(
+        (props: unknown) => {
+          if (!component) {
+            throw new Error('a lazy route component rendered before it loaded')
+          }
+          return component(props)
+        },
+        { preload: load },
+      )
+      lazy.set(Lazy, load)
+      return Lazy
+    },
+    lazyFn: (importer: () => Promise<Record<string, any>>, key = 'default') => {
+      const fn = async (...args: Array<unknown>) =>
+        (await importer())[key](...args)
+      lazy.set(fn, async () => (await importer())[key])
+      return fn
+    },
   }
-  if (typeof type === 'function') {
-    return type({ ...props, children: text })
-  }
-  if (typeof type !== 'string') {
-    throw new Error('cannot render ' + String(type))
-  }
-  return '<' + type + '>' + text + '</' + type + '>'
 }
-`
 
-const stubsKey = '__regressionModuleStubs'
-let evaluations = 0
+const routerPackages = ['@tanstack/react-router', '@tanstack/solid-router']
+
+/** Stubs of the router packages, merged with the test's own stubs. */
+function withRouterStubs(
+  stubs: Stubs,
+  lazy: Map<unknown, () => Promise<unknown>>,
+): Stubs {
+  const linked: Stubs = { ...stubs }
+  for (const name of routerPackages) {
+    linked[name] = { ...createRouterStub(lazy), ...stubs[name] }
+  }
+  return linked
+}
+
+/** Compiles a module with the React Refresh transform `@vitejs/plugin-react` uses. */
+async function transformWithReactRefresh(code: string, id: string) {
+  const result = await transformWithOxc(code, 'module', {
+    lang: moduleLang(id),
+    jsx: { runtime: 'classic', ...jsxPragma, refresh: {} },
+  })
+  return result.code
+}
 
 /**
- * Evaluates an emitted module like a bundler would: JSX becomes plain calls
- * that render to text, and imports (named, namespace or side-effect only) are
- * linked to `stubs`, keyed by specifier. Every call evaluates a fresh module
- * instance.
+ * Records React Refresh registrations the way the refresh runtime receives
+ * them: `$RefreshReg$(type, name)` for each component the transform
+ * registers.
+ */
+function refreshScope(registered: Map<unknown, string>) {
+  return {
+    $RefreshReg$: (type: unknown, name: string) => {
+      registered.set(type, name)
+    },
+    $RefreshSig$: () => (type: unknown) => type,
+  }
+}
+
+type LoadRouteOptions = CompileOptions & {
+  /** The route file's other imports, by specifier. */
+  stubs?: Stubs
+  /**
+   * Compile every module with the React Refresh transform and record what it
+   * registers in `registered`.
+   */
+  refresh?: boolean
+}
+
+/**
+ * Compiles a route file like `compileRouteModules`, then evaluates it the
+ * way an app does: the route module (and what it imports statically) first,
+ * and each lazy module only when a route option loads it. Imports of the
+ * emitted modules link to each other; other imports link to `stubs` (the
+ * router package is stubbed). Route options are read from the evaluated
+ * `Route`; `load(option)` resolves a lazy option to what its module provides.
+ */
+export async function loadRoute(code: string, options: LoadRouteOptions = {}) {
+  const compiled = compileRouteModules(code, options)
+  const lazy = new Map<unknown, () => Promise<unknown>>()
+  const registered = new Map<unknown, string>()
+  const session = await createModuleSession({
+    modules: compiled.graph.modules,
+    stubs: withRouterStubs(
+      options.refresh
+        ? { react: React, ...options.stubs }
+        : (options.stubs ?? {}),
+      lazy,
+    ),
+    resolve: compiled.graph.resolve,
+    ...(options.refresh && {
+      scope: () => refreshScope(registered),
+      transform: transformWithReactRefresh,
+    }),
+  })
+  const { Route } = (await session.import(compiled.graph.id)) as {
+    Route?: { options: Record<string, any> }
+  }
+  if (!Route) {
+    throw new Error('the route module does not export `Route`')
+  }
+  return {
+    ...compiled,
+    Route,
+    options: Route.options,
+    /** Ids of the modules evaluated so far, in evaluation order. */
+    evaluated: session.evaluated,
+    /** Whether a route option loads lazily from another module. */
+    isLazy: (option: string) => lazy.has(Route.options[option]),
+    /** The value of a route option, once its lazy module (if any) loaded. */
+    load: (option: string): Promise<any> => {
+      const value = Route.options[option]
+      const loader = lazy.get(value)
+      return loader ? loader() : Promise.resolve(value)
+    },
+    /** Names React Refresh registered each component under (`refresh`). */
+    registered,
+  }
+}
+
+/**
+ * Evaluates an emitted module like a runtime would: JSX becomes plain calls
+ * that render to text, and imports of every form (named, default, namespace,
+ * side-effect only, re-exports) link to `stubs`, keyed by specifier, as real
+ * ES modules. `importMeta` is assigned to `import.meta` before the module
+ * runs. Every call evaluates a fresh module instance.
  */
 export async function evaluateModule(
   code: string,
-  stubs: Record<string, Record<string, unknown>> = {},
+  stubs: Stubs = {},
+  options: { importMeta?: Record<string, unknown>; filename?: string } = {},
 ): Promise<Record<string, (...args: Array<any>) => any>> {
-  const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
-    jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
+  const id = routeModuleId(options.filename ?? 'module.tsx')
+  const session: ModuleSession = await createModuleSession({
+    modules: new Map([[id, code]]),
+    stubs,
+    ...(options.importMeta && { importMeta: () => options.importMeta! }),
   })
-  const key = `${stubsKey}${evaluations++}`
-  ;(globalThis as Record<string, unknown>)[key] = stubs
-  // Imports are hoisted: link them before any other statement runs.
-  const imports: Array<string> = []
-  const body = javascript.replace(
-    /^import\s+(?:(\{[^}]*\}|\*\s*as\s+[\w$]+)\s+from\s+)?(["'])(.+?)\2;?$/gm,
-    (_, clause: string | undefined, __, source: string) => {
-      if (!(source in stubs)) {
-        throw new Error(`no stub for import ${source}`)
-      }
-      const exports = `globalThis.${key}[${JSON.stringify(source)}]`
-      if (clause?.startsWith('{')) {
-        imports.push(`const ${clause.replace(/\bas\b/g, ':')} = ${exports};`)
-      } else if (clause) {
-        imports.push(`const ${clause.replace(/^\*\s*as\s+/, '')} = ${exports};`)
-      }
-      return ''
-    },
-  )
-  return import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(`${jsxToText}${imports.join('\n')}\n${body}`)}`
-  )
+  return session.import(id)
+}
+
+/**
+ * Evaluates one compiled route module on its own with the React Refresh
+ * transform: the router package is stubbed, `react` is React, `stubs`
+ * provide other imports and any remaining import is a module whose imports
+ * are identity functions (`connect(Page)` returns `Page`). Returns its
+ * `Route` and what React Refresh registered.
+ */
+async function evaluateRouteModule(code: string, stubs: Stubs = {}) {
+  const id = routeModuleId()
+  const registered = new Map<unknown, string>()
+  const session = await createModuleSession({
+    modules: new Map([[id, code]]),
+    stubs: withRouterStubs({ react: React, ...stubs }, new Map()),
+    fallbackStub: (_, names) =>
+      Object.fromEntries(
+        [...names].map((name) => [name, (value: unknown) => value]),
+      ),
+    scope: () => refreshScope(registered),
+    transform: transformWithReactRefresh,
+  })
+  const { Route } = (await session.import(id)) as {
+    Route?: { options: Record<string, any> }
+  }
+  if (!Route) {
+    throw new Error('the route module does not export `Route`')
+  }
+  return { Route, registered }
 }
 
 /**
@@ -349,7 +749,7 @@ export async function reactRefresh(code: string) {
 }
 
 /** Parses a module, asserting that it has no syntax errors. */
-export function parseModule(code: string) {
+export function parseModule(code: string): ESTree.Program {
   const { program, errors } = parseSync('route.tsx', code, {
     sourceType: 'module',
   })
@@ -357,74 +757,45 @@ export function parseModule(code: string) {
   return program
 }
 
-/** Declarators of the top-level variable declarations, exported or not. */
-export function topLevelDeclarators(program: ESTree.Program) {
-  return program.body.flatMap((statement) => {
-    const declaration =
-      statement.type === 'ExportNamedDeclaration'
-        ? statement.declaration
-        : statement
-    return declaration?.type === 'VariableDeclaration'
-      ? declaration.declarations
-      : []
-  })
+/**
+ * The value of `option` on the `Route` a compiled route module creates, once
+ * evaluated (see `evaluateRouteModule` for how its imports are linked).
+ */
+export async function getRouteOption(
+  code: string,
+  option: string,
+  stubs: Stubs = {},
+) {
+  const { Route } = await evaluateRouteModule(code, stubs)
+  return Route.options[option] as unknown
 }
 
-export function declaratorName(declarator: ESTree.VariableDeclarator) {
-  return declarator.id.type === 'Identifier' ? declarator.id.name : undefined
-}
-
-/** The `Route` declarator and the value of its `option`. */
-export function getRouteOption(program: ESTree.Program, option: string) {
-  const route = topLevelDeclarators(program).find(
-    (declarator) => declaratorName(declarator) === 'Route',
-  )
-  const options =
-    route?.init?.type === 'CallExpression' ? route.init.arguments[0] : null
-  if (options?.type !== 'ObjectExpression') {
-    throw new Error('expected `Route` to be created with an options object')
-  }
-  const property = options.properties.find(
-    (candidate) =>
-      candidate.type === 'Property' &&
-      candidate.key.type === 'Identifier' &&
-      candidate.key.name === option,
-  )
-  if (property?.type !== 'Property') {
-    throw new Error(`expected the \`${option}\` route option`)
-  }
-  return { route: route!, value: property.value }
-}
-
-/** Asserts that `option` points to a binding React Refresh registers. */
+/**
+ * Asserts that the module is valid and that React Refresh registers the
+ * value of the `option` of the `Route` it creates, so that edits of that
+ * component hot-update. Returns the name it is registered under.
+ */
 export async function expectRegisteredRouteOption(
   code: string,
   option: string,
 ) {
   expect(await getModuleErrors(code)).toEqual([])
-  const { value } = getRouteOption(parseModule(code), option)
-  expect(value.type).toBe('Identifier')
-  const binding = (value as ESTree.IdentifierReference).name
-  expect((await reactRefresh(code)).registered).toContain(binding)
-  return binding
+  const { Route, registered } = await evaluateRouteModule(code)
+  const name = registered.get(Route.options[option])
+  expect(
+    name,
+    `\`${option}\` is not a component React Refresh registers (registered: ${[...registered.values()].join(', ')})`,
+  ).toBeDefined()
+  return name!
 }
 
-/** Whether a callee is `memo` or `forwardRef`, imported or namespaced. */
-function isMemoOrForwardRef(callee: ESTree.Expression | ESTree.Super) {
-  const name =
-    callee.type === 'Identifier'
-      ? callee.name
-      : callee.type === 'MemberExpression' &&
-          callee.property.type === 'Identifier'
-        ? callee.property.name
-        : undefined
-  return name === 'memo' || name === 'forwardRef'
-}
+const memoType = Symbol.for('react.memo')
+const forwardRefType = Symbol.for('react.forward_ref')
 
 /**
  * Asserts that React Refresh can hot-update the component of `option`: the
- * option is a binding React Refresh registers, or a `memo(...)` /
- * `forwardRef(...)` call (nested or not) of one, since React Refresh resolves
+ * option is a component React Refresh registers, or a `memo(...)` /
+ * `forwardRef(...)` (nested or not) of one, since React Refresh resolves
  * those wrappers through the function they wrap.
  */
 export async function expectRefreshableRouteOption(
@@ -432,18 +803,22 @@ export async function expectRefreshableRouteOption(
   option: string,
 ) {
   expect(await getModuleErrors(code)).toEqual([])
-  let node: ESTree.Expression | ESTree.Argument | undefined = getRouteOption(
-    parseModule(code),
-    option,
-  ).value as ESTree.Expression
-  while (node?.type === 'CallExpression' && isMemoOrForwardRef(node.callee)) {
-    node = node.arguments[0]
+  const { Route, registered } = await evaluateRouteModule(code)
+  let component: any = Route.options[option]
+  let refreshable = registered.has(component)
+  while (!refreshable && component && typeof component === 'object') {
+    if (component.$$typeof === memoType) {
+      component = component.type
+    } else if (component.$$typeof === forwardRefType) {
+      component = component.render
+    } else {
+      break
+    }
+    refreshable = registered.has(component)
   }
-  const binding = node?.type === 'Identifier' ? node.name : undefined
-  const { registered } = await reactRefresh(code)
   expect(
-    binding !== undefined && registered.includes(binding),
-    `\`${option}\` is neither a binding React Refresh registers nor a memo/forwardRef call of one (registered: ${registered.join(', ')})`,
+    refreshable,
+    `\`${option}\` is neither a component React Refresh registers nor a memo/forwardRef of one (registered: ${[...registered.values()].join(', ')})`,
   ).toBe(true)
 }
 

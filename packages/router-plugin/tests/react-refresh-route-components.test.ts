@@ -12,7 +12,6 @@ import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugin
 import {
   compileRouteModules,
   declarationOf,
-  declaratorName,
   evaluateModule,
   expectRegisteredRouteOption,
   exportedNames,
@@ -21,10 +20,8 @@ import {
   importedNames,
   parseModule,
   reactRefresh,
-  topLevelDeclarators,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
-import type { ESTree } from 'vite'
 
 /** Compiles every module the code splitter emits, with React HMR. */
 function compileWithCodeSplitting(code: string) {
@@ -114,13 +111,15 @@ ${Object.entries(options)
   )
 
   // Source: ReactFreshBabelPlugin-test "does not consider require-like methods to be HOCs"
-  it('but leaves an imported lowercase component to the module that declares it', () => {
+  it('but leaves an imported lowercase component to the module that declares it', async () => {
     const code = transformWithRouteHmrPlugin(
       `${head}import { page } from './page'
 export const Route = createFileRoute('/')({ component: page })`,
     )
-    const { value } = getRouteOption(parseModule(code), 'component')
-    expect((value as ESTree.IdentifierReference).name).toBe('page')
+    const page = () => null
+    expect(
+      await getRouteOption(code, 'component', { './page': { page } }),
+    ).toBe(page)
     expect(importedNames(code, './page')).toEqual(['page'])
   })
 
@@ -262,7 +261,7 @@ export const Route = createRootRoute({ component: () => <div /> })
     await expectRegisteredRouteOption(reference!, 'component')
   })
 
-  it('declares hoisted components before the route that uses them', () => {
+  it('declares hoisted components before the route that uses them', async () => {
     // The lowercase `page`, declared in the same statement as `Route`, is
     // renamed for React Refresh as well.
     const { reference } = compileWithCodeSplitting(`
@@ -272,17 +271,10 @@ export const page = () => <div />, Route = createRootRoute({
   pendingComponent: () => <div />,
 })
 `)
-    const program = parseModule(reference!)
-    const { route, value } = getRouteOption(program, 'pendingComponent')
-    expect(value.type).toBe('Identifier')
-    const name = (value as ESTree.IdentifierReference).name
-    const declaration = topLevelDeclarators(program).find(
-      (declarator) => declaratorName(declarator) === name,
-    )
     // A `const` used before its declaration throws a TDZ ReferenceError when
-    // the route is created.
-    expect(declaration).toBeDefined()
-    expect(declaration!.start).toBeLessThan(route.start)
+    // the route is created, which evaluating the route module reports; the
+    // hoisted component is bound to a top-level name React Refresh registers.
+    await expectRegisteredRouteOption(reference!, 'pendingComponent')
   })
 })
 
