@@ -576,6 +576,50 @@ const __jsx = (type, props, ...children) => {
     )
   })
 
+  // `<Hydrate children={…}>` is split like JSX children: the children prop
+  // moves into the chunk, the other props stay on the boundary.
+  test.each([
+    { name: 'last', attributes: 'when={idle()} children={<Chart />}' },
+    { name: 'first', attributes: 'children={<Chart />} when={idle()}' },
+  ])(
+    'client: a children prop ($name) moves into the chunk',
+    async ({ attributes }) => {
+      const { parent, chunks } = await compileHydrate(
+        'client',
+        `${head}import { idle } from '@tanstack/react-start/hydration'
+import { Chart } from './chart'
+export function Page() {
+  return <Hydrate ${attributes} />
+}`,
+      )
+      expect(importSources(parent)).not.toContain('./chart')
+      expect(parent).toContain('when={idle()}')
+      expect(chunks).toHaveLength(1)
+      expect(
+        await renderChunk(
+          chunks[0]!,
+          {},
+          { './chart': { Chart: () => 'chart' } },
+        ),
+      ).toBe('chart')
+    },
+  )
+
+  test('client: a self-closing boundary without a children prop keeps its props', async () => {
+    const { parent, chunks } = await compileHydrate(
+      'client',
+      `${head}import { idle } from '@tanstack/react-start/hydration'
+export function Page() {
+  return <Hydrate when={idle()} />
+}`,
+    )
+    expect(await getModuleErrors(parent)).toEqual([])
+    expect(parent).toContain('when={idle()}')
+    for (const chunk of chunks) {
+      expect(await renderChunk(chunk)).toBeNull()
+    }
+  })
+
   // Leaving such a boundary unsplit is valid too.
   test('client: empty, self-closing and comment-only boundaries load chunks that render nothing', async () => {
     const { parent, chunks } = await compileHydrate(
