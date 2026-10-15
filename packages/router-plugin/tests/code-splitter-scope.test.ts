@@ -230,6 +230,79 @@ export const Route = createFileRoute('/')({
   })
 })
 
+describe('names the compilers add', () => {
+  it('avoid the names a route file declares, with HMR and every option split', async () => {
+    const declared = [
+      'lazyRouteComponent',
+      'lazyFn',
+      '$$splitLoaderImporter',
+      '$$splitComponentImporter',
+      '$$splitPendingComponentImporter',
+      'SplitLoader',
+      'SplitComponent',
+      'SplitPendingComponent',
+      'TSRSplitComponent',
+      'TSRSplitPendingComponent',
+      'TSRComponent',
+      'TSRErrorComponent',
+      'TSRFastRefreshAnchor',
+    ]
+    const { modules } = compileRouteModules(
+      `${head}${declared
+        .map((name) => `export const ${name} = ${JSON.stringify(name)}`)
+        .join('\n')}
+function page() {
+  return <p>{[lazyRouteComponent, $$splitComponentImporter, SplitComponent, TSRSplitComponent].join()}</p>
+}
+function pending() {
+  return <p>{[$$splitPendingComponentImporter, SplitPendingComponent, TSRSplitPendingComponent].join()}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => [lazyFn, $$splitLoaderImporter, SplitLoader],
+  component: page,
+  pendingComponent: pending,
+  errorComponent: () => <p>{[TSRComponent, TSRErrorComponent, TSRFastRefreshAnchor].join()}</p>,
+})
+`,
+      {
+        hmr: true,
+        groupings: [['loader'], ['component'], ['pendingComponent']],
+      },
+    )
+    expect(modules.reference).toMatch(
+      declarationOf('\\$\\$splitComponentImporter2'),
+    )
+    expect(modules.reference).toMatch(declarationOf('TSRSplitComponent2'))
+    expect(modules.reference).toMatch(declarationOf('TSRErrorComponent2'))
+    expect(importedNames(modules.reference!, '@tanstack/react-router')).toEqual(
+      ['createFileRoute', 'lazyFn', 'lazyRouteComponent'],
+    )
+    expect(modules['virtual component']).toMatch(
+      declarationOf('SplitComponent2'),
+    )
+    await expectValidModules(modules)
+  })
+
+  it('avoid the globals a route file reads', async () => {
+    const { modules } = compileRouteModules(
+      `${head}export const Route = createFileRoute('/')({
+  component: () => <p>{[lazyRouteComponent, $$splitComponentImporter, SplitComponent].join()}</p>,
+})
+`,
+    )
+    expect(modules.reference).toMatch(
+      /\blazyRouteComponent as lazyRouteComponent2\b/,
+    )
+    expect(modules.reference).toMatch(
+      declarationOf('\\$\\$splitComponentImporter2'),
+    )
+    expect(modules['virtual component']).toMatch(
+      declarationOf('SplitComponent2'),
+    )
+    await expectValidModules(modules)
+  })
+})
+
 describe('imports read in nested positions follow the code that reads them', () => {
   // Source: React Router route-chunks-test.ts "default argument", "destructured
   // argument with default value", "for...of with destructuring and default
@@ -335,5 +408,77 @@ export const Route = createFileRoute('/compare')({
       { filename: 'route.js' },
     )
     expect(sharedBindings).toEqual(['a', 'b', 'c', 'r'])
+  })
+
+  // Regression in the Yuku migration: the chunk prints the comment between
+  // the operand and `++`, and the line break ends the statement there.
+  // Yuku codegen bug, https://github.com/yuku-toolchain/yuku/issues/255;
+  // passes once Yuku ships the fix.
+  // Source: @babel/generator edgecase/postfix-update-comments.
+  it('keeps a postfix update whose operand is followed by a comment', async () => {
+    const chunk = compileRouteModules(
+      pageRoute(`let count = 0
+function Page() {
+  (
+    count // the render count
+  )++
+  return count
+}`),
+      { filename: 'route.js' },
+    ).modules['virtual component']!
+    await expectValidModules({ chunk })
+    expect((await evaluateModule(chunk)).component!()).toBe(1)
+  })
+
+  // Regression in the Yuku migration: the parentheses must keep `c in d` as
+  // the alternate of the conditional, but the chunk regroups it as
+  // `(a ? b : c) in d`. Yuku parser bug,
+  // https://github.com/yuku-toolchain/yuku/issues/256; passes once Yuku ships
+  // the fix.
+  // Source: Oxc codegen esbuild.rs (ported from esbuild's printer tests).
+  it('keeps the operands of `in` inside a parenthesized for-loop head', async () => {
+    const chunk = compileRouteModules(
+      pageRoute(`function Page() {
+  const a = true, b = 'b', c = 'x', d = { x: 1 }
+  let result = 'unset'
+  for (result = (a ? b : c in d).toString(); ; ) break
+  return result
+}`),
+      { filename: 'route.js' },
+    ).modules['virtual component']!
+    await expectValidModules({ chunk })
+    expect((await evaluateModule(chunk)).component!()).toBe('b')
+  })
+
+  // Regression in the Yuku migration: a computed key belongs to the enclosing
+  // scope, here a derived constructor, so `super()` is valid in it, but
+  // compiling the route throws "'super()' is only valid in a constructor of a
+  // derived class". Yuku parser bug,
+  // https://github.com/yuku-toolchain/yuku/issues/259; passes once Yuku ships
+  // the fix.
+  // Shape adapted from @babel/plugin-proposal-decorators
+  // 2023-11-misc/initField-existing-derived-constructor.
+  it('keeps a super() call in the computed key of a class field in a derived constructor', async () => {
+    const chunk = compileRouteModules(
+      pageRoute(`class Base {
+  toString() {
+    return 'key'
+  }
+}
+class Derived extends Base {
+  constructor() {
+    class Field {
+      [super()] = 'field'
+    }
+    this.field = new Field()
+  }
+}
+function Page() {
+  return new Derived().field.key
+}`),
+      { filename: 'route.js' },
+    ).modules['virtual component']!
+    await expectValidModules({ chunk })
+    expect((await evaluateModule(chunk)).component!()).toBe('field')
   })
 })

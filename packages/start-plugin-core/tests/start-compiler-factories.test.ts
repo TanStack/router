@@ -1,5 +1,7 @@
+import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
+  callProvider,
   clientOnlyError,
   compileAll,
   compileCode,
@@ -20,6 +22,7 @@ import type { Output } from './regression-helpers'
 // factory, through any chain of project modules.
 
 const head = `import { createClientOnlyFn, createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'\n`
+type Wrap = (expression: string) => string
 
 describe('environment-specific functions', () => {
   // Source: Waku vite-plugin-allow-server.test.ts "keeps only allowServer
@@ -116,6 +119,258 @@ export default createMiddleware().server(async ({ next }) => {
     expect((await evaluateModule(client!)).default).toHaveProperty('server')
   })
 
+  describe('a middleware chain with a wrapped link', () => {
+    // A `.ts` module, so that `<any>x` is a type assertion.
+    const id = '/test/src/module.ts'
+    const serverLink = `.server(async ({ next }) => next({ context: db.read('SERVER_SECRET') }))`
+    const clientLink = `.client(async ({ next }) => next({ sendContext: 'client' }))`
+    const validatorLink = `.validator((data) => check(data, 'VALIDATOR_SECRET'))`
+    const middlewareModule = (chain: string) =>
+      [
+        `import { createMiddleware } from '@tanstack/react-start'`,
+        `import { db } from './db.server'`,
+        chain.includes('check(') && `import { check } from './check.server'`,
+        `export const mw = ${chain}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+
+    // Records the implementation of each chain link.
+    const chainOf = (links: Array<[string, any]>): Record<string, any> => {
+      const link = (method: string) => (impl: unknown) =>
+        chainOf([...links, [method, impl]])
+      return {
+        links,
+        middleware: link('middleware'),
+        validator: link('validator'),
+        server: link('server'),
+        client: link('client'),
+      }
+    }
+
+    // The links an output keeps, each with the result of its implementation.
+    async function runLinks(output: Output, code: string) {
+      // The server output leaves a module without env-only code untouched.
+      const compiled = (await compileCode(output, code, { id })) ?? code
+      expect(await getModuleErrors(compiled, 'module.ts'), output).toEqual([])
+      const { code: javascript } = await transformWithOxc(compiled, 'module.ts')
+      const { mw } = await evaluateModule(javascript, {
+        '@tanstack/react-start': { createMiddleware: () => chainOf([]) },
+        './db.server': `export const db = { read: (key) => 'db:' + key }`,
+        './check.server': `export const check = (data, key) => data + ':' + key`,
+      })
+      const links: Array<[string, unknown]> = []
+      for (const [method, impl] of mw.links) {
+        links.push([
+          method,
+          method === 'middleware'
+            ? impl
+            : await impl(
+                method === 'validator' ? 'data' : { next: (opts: any) => opts },
+              ),
+        ])
+      }
+      return { compiled, links }
+    }
+
+    // Parentheses and each TypeScript wrapper are different AST nodes; the
+    // last row nests three.
+    const wrappers = [
+      { name: 'parentheses', wrap: (x: string) => `(${x})` },
+      { name: 'double parentheses', wrap: (x: string) => `((${x}))` },
+      { name: 'as any', wrap: (x: string) => `(${x} as any)` },
+      {
+        name: 'as unknown as T',
+        wrap: (x: string) => `(${x} as unknown as Middleware)`,
+      },
+      { name: 'satisfies', wrap: (x: string) => `(${x} satisfies unknown)` },
+      { name: 'non-null', wrap: (x: string) => `${x}!` },
+      { name: 'angle-bracket', wrap: (x: string) => `(<any>${x})` },
+      {
+        name: 'parentheses, as and non-null',
+        wrap: (x: string) => `((${x}) as any)!`,
+      },
+    ]
+    const serverResult = { context: 'db:SERVER_SECRET' }
+    const clientResult = { sendContext: 'client' }
+
+    // Regression in the Yuku migration, found by differential fuzzing and
+    // confirmed in Vite and Rsbuild builds: when the wrapped part of the chain
+    // ends with `.server()` and another link follows, the client compile
+    // throws "Cannot replace a detached output node". `main` builds these.
+    test.each(
+      [
+        {
+          end: '.server()',
+          chain: (wrap: Wrap) =>
+            `${wrap(`createMiddleware({ type: 'function' })${serverLink}`)}${clientLink}`,
+          clientLinks: [['client', clientResult]],
+          ssrLinks: [
+            ['server', serverResult],
+            ['client', clientResult],
+          ],
+        },
+        {
+          end: '.server(), and the whole chain',
+          chain: (wrap: Wrap) =>
+            wrap(
+              `${wrap(`createMiddleware({ type: 'function' })${serverLink}`)}${clientLink}`,
+            ),
+          clientLinks: [['client', clientResult]],
+          ssrLinks: [
+            ['server', serverResult],
+            ['client', clientResult],
+          ],
+        },
+        {
+          end: '.middleware().validator().server()',
+          chain: (wrap: Wrap) =>
+            `${wrap(`createMiddleware({ type: 'function' }).middleware([])${validatorLink}${serverLink}`)}${clientLink}`,
+          clientLinks: [
+            ['middleware', []],
+            ['client', clientResult],
+          ],
+          ssrLinks: [
+            ['middleware', []],
+            ['validator', 'data:VALIDATOR_SECRET'],
+            ['server', serverResult],
+            ['client', clientResult],
+          ],
+        },
+      ].flatMap((chain) =>
+        wrappers.map((wrapper) => ({ ...chain, ...wrapper })),
+      ),
+    )(
+      'the client strips the server implementation when $name wraps the chain up to $end',
+      async ({ chain, wrap, clientLinks, ssrLinks }) => {
+        const code = middlewareModule(chain(wrap))
+        const client = await runLinks('client', code)
+        expect(importSources(client.compiled)).toEqual([])
+        expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
+        expect(client.links).toEqual(clientLinks)
+        expect((await runLinks('ssr', code)).links).toEqual(ssrLinks)
+      },
+    )
+
+    // The validator only runs on the server. Source: Vite and Rsbuild builds
+    // (main kept a wrapped validator link and its import in the client).
+    test.each([
+      { name: 'satisfies', wrap: (x: string) => `(${x} satisfies unknown)` },
+      { name: 'as any', wrap: (x: string) => `(${x} as any)` },
+    ])(
+      'the client strips a validator link wrapped in $name',
+      async ({ wrap }) => {
+        const code = middlewareModule(
+          `${wrap(`createMiddleware({ type: 'function' })${validatorLink}`)}${serverLink}${clientLink}`,
+        )
+        const client = await runLinks('client', code)
+        expect(importSources(client.compiled)).toEqual([])
+        expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
+        expect(client.links).toEqual([['client', clientResult]])
+        expect((await runLinks('ssr', code)).links).toEqual([
+          ['validator', 'data:VALIDATOR_SECRET'],
+          ['server', serverResult],
+          ['client', clientResult],
+        ])
+      },
+    )
+  })
+
+  // Source: differential fuzzing and Vite and Rsbuild builds (main lost the
+  // implementation of the wrapped link: the output that needs it returned
+  // undefined).
+  test.each([
+    `(createIsomorphicFn().server(() => 'server') satisfies any).client(() => 'client')`,
+    `(createIsomorphicFn().server(() => 'server') as any).client(() => 'client')`,
+    `(createIsomorphicFn().client(() => 'client') as any).server(() => 'server')`,
+  ])(
+    'each output keeps its implementation of an isomorphic fn with a wrapped chain link: %s',
+    async (chain) => {
+      const code = `import { createIsomorphicFn } from '@tanstack/react-start'
+export const fn = ${chain}`
+      const results: Record<string, unknown> = {}
+      for (const output of outputs) {
+        const compiled = await compileCode(output, code)
+        results[output] = (await evaluateModule(compiled!)).fn!()
+      }
+      expect(results).toEqual({
+        client: 'client',
+        ssr: 'server',
+        provider: 'server',
+      })
+    },
+  )
+
+  // Source: Vite and Rsbuild builds. `main` left these calls untransformed:
+  // the client bundle shipped the server implementation and its imports, and
+  // ran it in the browser; a client-only fn ran during SSR.
+  test.each(
+    [
+      {
+        shape: 'createServerOnlyFn(fn)',
+        code: (wrap: Wrap) =>
+          `${wrap('createServerOnlyFn')}(() => db.x('SERVER_SECRET'))`,
+        client: serverOnlyError,
+        server: 'db:SERVER_SECRET',
+      },
+      {
+        shape: 'createIsomorphicFn().server().client()',
+        code: (wrap: Wrap) =>
+          `${wrap('createIsomorphicFn')}().server(() => db.x('SERVER_SECRET')).client(() => chart())`,
+        client: 'chart',
+        server: 'db:SERVER_SECRET',
+      },
+      {
+        shape: 'createIsomorphicFn().client().server()',
+        code: (wrap: Wrap) =>
+          `${wrap('createIsomorphicFn')}().client(() => chart()).server(() => db.x('SERVER_SECRET'))`,
+        client: 'chart',
+        server: 'db:SERVER_SECRET',
+      },
+      {
+        shape: 'createClientOnlyFn(fn)',
+        code: (wrap: Wrap) => `${wrap('createClientOnlyFn')}(() => chart())`,
+        client: 'chart',
+        server: clientOnlyError,
+      },
+    ].flatMap((row) =>
+      [
+        { name: 'as any', wrap: (x: string) => `(${x} as any)` },
+        { name: 'non-null', wrap: (x: string) => `${x}!` },
+      ].map((wrapper) => ({ ...row, ...wrapper })),
+    ),
+  )(
+    'each output keeps its implementation of $shape with the callee in $name',
+    async ({ code: factory, wrap, client, server }) => {
+      const code = `export const fn = ${factory(wrap)}`
+      const source = [
+        head,
+        code.includes('db.x') && `import { db } from './db.server'\n`,
+        code.includes('chart()') && `import { chart } from './chart.client'\n`,
+        code,
+      ]
+        .filter(Boolean)
+        .join('')
+      const stubs = {
+        './db.server': `export const db = { x: (key) => 'db:' + key }`,
+        './chart.client': `export const chart = () => 'chart'`,
+      }
+      const compiled = {
+        client: (await compileCode('client', source)) ?? source,
+        ssr: (await compileCode('ssr', source)) ?? source,
+      }
+      expect(importSources(compiled.client)).not.toContain('./db.server')
+      expect(compiled.client).not.toContain('SERVER_SECRET')
+      expect(importSources(compiled.ssr)).not.toContain('./chart.client')
+      expect(settle((await evaluateModule(compiled.client, stubs)).fn)).toBe(
+        client,
+      )
+      expect(settle((await evaluateModule(compiled.ssr, stubs)).fn)).toBe(
+        server,
+      )
+    },
+  )
+
   // SolidStart rejects these captures because it hoists `"use server"`
   // functions; env-only functions stay where they are written.
   // Source: SolidStart directives validate.ts (assertHoistable), compile.spec.ts
@@ -172,28 +427,64 @@ export const mw = createMiddleware().server(async ({ next }) =>
   })
 
   // Source: babel-dead-code-elimination "variable" > "within for...in"
-  // Hook calls are different (dropping one changes the hook order; pinned
-  // separately); a plain server call like this one must go.
-  test('the client drops a var nested in a function block that only the server implementation reads', async () => {
+  // Hook calls are different (dropping one changes the hook order); a plain
+  // server call like these must go.
+  test('the client drops vars nested in blocks that only the server implementation reads', async () => {
     const client = await compileCode(
       'client',
-      `${head}import { serverCall } from './db.server'
+      `${head}import { connect, serverCall } from './db.server'
+if (typeof window === 'undefined') {
+  var connection = connect()
+}
 export function getValue(flag: boolean) {
   if (flag) {
     var local = serverCall()
   }
-  const read = createIsomorphicFn().server(() => local).client(() => 'client')
+  const read = createIsomorphicFn().server(() => [connection, local]).client(() => 'client')
   return read()
 }`,
     )
     expect(await getModuleErrors(client!)).toEqual([])
     expect(importSources(client!)).toEqual([])
-    expect(client).not.toContain('serverCall')
+    expect(client).not.toMatch(/\b(?:connect|serverCall)\b/)
+    expect((await evaluateModule(client!)).getValue(true)).toBe('client')
+  })
+
+  // Source: SolidStart directives plugin.ts transformFunction (directive
+  // functions nested in a server function are compiled too)
+  test('the provider compiles env-specific functions inside a server fn handler', async () => {
+    const provider = await compileCode(
+      'provider',
+      `import { createServerFn, createClientOnlyFn, createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'
+import { chart } from './chart.client'
+import { db } from './db.server'
+export const fn = createServerFn().handler(async () => {
+  const draw = createClientOnlyFn(() => chart())
+  const now = createIsomorphicFn().server(() => db.now()).client(() => chart())
+  const read = createServerOnlyFn(() => db.read())
+  return [settle(draw), now(), read()]
+})
+function settle(run: () => unknown) {
+  try {
+    return run()
+  } catch (error) {
+    return (error as Error).message
+  }
+}`,
+    )
+    expect(await getModuleErrors(provider!)).toEqual([])
+    expect(importSources(provider!)).toEqual(['./db.server'])
+    expect(
+      await callProvider(provider!, 'fn', {
+        './db.server': `export const db = { now: () => 'now', read: () => 'read' }`,
+      }),
+    ).toEqual([clientOnlyError.slice('throws: '.length), 'now', 'read'])
   })
 
   // Source: Waku vite-plugin-allow-server.test.ts "skips files without a use
   // client directive even if the string exists", "does not require
-  // allowServer to come from waku/client" (inverted)
+  // allowServer to come from waku/client" (inverted: only calls of the Start
+  // imports are compiled)
   test.each([
     {
       name: 'only mentions the factories in strings and comments',
@@ -219,6 +510,62 @@ export const value = createServerOnlyFn(() => 'mine')`,
       expect(await compileCode(output, code), output).toBeNull()
     }
   })
+
+  // Source: Waku vite-plugin-allow-server.test.ts "does not require
+  // allowServer to come from waku/client" (inverted)
+  test.each(outputs)(
+    '%s: parameters and locals shadowing the factories are left alone next to a compiled factory call',
+    async (output) => {
+      const code = `import * as Start from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn, createClientOnlyFn, createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+export const real = createServerOnlyFn(() => 'real')
+export function wrap(createServerOnlyFn) {
+  return createServerOnlyFn(() => 'param')
+}
+export function receiver(Start) {
+  return (Start).createServerOnlyFn(() => 'receiver')
+}
+export function local() {
+  const createClientOnlyFn = (fn: () => string) => fn
+  return createClientOnlyFn(() => 'local')
+}
+export function iso(createIsomorphicFn) {
+  return createIsomorphicFn().server(() => 's').client(() => 'c')
+}
+export function mw(createMiddleware) {
+  return createMiddleware().server(() => 's')
+}
+export function make(createServerFn) {
+  const made = createServerFn().handler(() => 'param')
+  return made
+}`
+      const module = await evaluateModule((await compileCode(output, code))!)
+      const identity = (fn: () => string) => fn
+      const builder = {
+        server: (server: () => string) => ({
+          client: (client: () => string) => [server(), client()],
+        }),
+        handler: (handler: () => string) => handler(),
+      }
+      expect({
+        real: settle(module.real),
+        wrap: module.wrap(identity)(),
+        receiver: module.receiver({ createServerOnlyFn: identity })(),
+        local: module.local()(),
+        iso: module.iso(() => builder),
+        mw: module.mw(() => ({ server: (fn: () => string) => fn() })),
+        make: module.make(() => builder),
+      }).toEqual({
+        real: output === 'client' ? serverOnlyError : 'real',
+        wrap: 'param',
+        receiver: 'receiver',
+        local: 'local',
+        iso: ['s', 'c'],
+        mw: 's',
+        make: 'param',
+      })
+    },
+  )
 
   // Source: Waku vite-plugin-allow-server.test.ts "throws when allowServer
   // receives zero arguments"
@@ -265,7 +612,7 @@ describe('factories resolved through project modules', () => {
         '/test/src/mw.ts': `import { createMiddleware } from '@tanstack/react-start'
 export default createMiddleware({ type: 'function' })`,
       },
-      // Known limitation on main: middleware is detected by the
+      // Known limitation: middleware is detected by the
       // `createMiddleware` text, so a module that only calls an imported
       // builder is not compiled and needs this import.
       code: `import { createMiddleware } from '@tanstack/react-start'

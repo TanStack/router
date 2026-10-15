@@ -15,9 +15,9 @@ function ActualComponent() {
 }
 export {
   ActualComponent,
-  createBits,
   DefaultComponent,
+  MyComponent,
+  createBits,
   defaultLoader,
   loader,
-  MyComponent,
 }

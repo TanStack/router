@@ -1,5 +1,5 @@
-import * as t from '@babel/types'
-import type babel from '@babel/core'
+import { b, nameOf } from 'yuku-ast'
+import type { Identifier, Property } from '@yuku-toolchain/types'
 
 export const debug =
   process.env.TSR_VITE_DEBUG &&
@@ -22,45 +22,31 @@ export const routeFactoryCallCodeFilter = [
   /\bcreateRootRouteWithContext\s*(?:<|\()/,
 ]
 
-export function getObjectPropertyKeyName(
-  prop: t.ObjectProperty,
-): string | undefined {
+export function getObjectPropertyKeyName(prop: Property): string | undefined {
   if (prop.computed) {
     return undefined
   }
 
-  if (t.isIdentifier(prop.key)) {
-    return prop.key.name
-  }
-
-  if (t.isStringLiteral(prop.key)) {
-    return prop.key.value
-  }
-
-  return undefined
+  return nameOf(prop.key) ?? undefined
 }
 
+/**
+ * A name not in `reservedNames`, which then holds it. An output's reserved
+ * names are the names its source declares or references, and the names given
+ * out for it: an identifier the output gains must be named by this function,
+ * or must not declare or reference a name a later call could choose
+ * (`baseName`, or it with a numeric suffix). The HMR snippets only declare and
+ * reference names such as `hot`, `hotData` and `window`.
+ */
 export function getUniqueProgramIdentifier(
-  programPath: babel.NodePath<t.Program>,
+  reservedNames: Set<string>,
   baseName: string,
-): t.Identifier {
+): Identifier {
   let name = baseName
   let suffix = 2
-
-  const programScope = programPath.scope.getProgramParent()
-
-  while (
-    programScope.hasBinding(name) ||
-    programScope.hasGlobal(name) ||
-    programScope.hasReference(name)
-  ) {
-    name = `${baseName}${suffix}`
-    suffix++
+  while (reservedNames.has(name)) {
+    name = `${baseName}${suffix++}`
   }
-
-  // Register the name so subsequent calls within the same traversal
-  // see it and avoid collisions
-  programScope.references[name] = true
-
-  return t.identifier(name)
+  reservedNames.add(name)
+  return b.Identifier({ name })
 }

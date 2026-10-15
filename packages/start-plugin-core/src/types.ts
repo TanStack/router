@@ -1,6 +1,11 @@
-import type * as babel from '@babel/core'
-import type * as t from '@babel/types'
-import type { GeneratorResult } from '@tanstack/router-utils'
+import type {
+  CallExpression,
+  Expression,
+  Node,
+  Program,
+} from '@yuku-toolchain/types'
+import type { Module } from 'yuku-analyzer'
+import type { GenerateResult } from '@tanstack/router-utils'
 import type { TanStackStartOutputConfig } from './schema'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
@@ -31,11 +36,15 @@ export interface StartCompilerImportTransformImport {
 }
 
 export interface StartCompilerTransformCandidate {
-  path: babel.NodePath<t.CallExpression>
+  node: CallExpression
 }
 
 export interface StartCompilerTransformContext {
-  readonly ast: t.File
+  readonly ast: Program
+  readonly module: Module
+  readonly originalNodes: WeakMap<Node, Node>
+  replaceNode: (node: Node, replacement: Node) => void
+  parentOf: (node: Node) => Node | null
   readonly code: string
   readonly id: string
   readonly env: StartCompilerEnvironment
@@ -44,8 +53,7 @@ export interface StartCompilerTransformContext {
   readonly root: string
   readonly framework: CompileStartFrameworkOptions
   readonly providerEnvName: string
-  readonly types: typeof t
-  parseExpression: (code: string) => t.Expression
+  parseExpression: (code: string) => Expression
   warn?: (message: string) => void
 }
 
@@ -66,7 +74,7 @@ export interface StartCompilerImportTransform {
 
 export interface StartCompilerTransformResult {
   code: string
-  map?: GeneratorResult['map'] | null
+  map?: GenerateResult['map'] | null
 }
 
 export interface StartCompilerVirtualModuleContext {

@@ -1,1721 +1,1830 @@
-import * as t from '@babel/types'
-import * as babel from '@babel/core'
-import * as template from '@babel/template'
+import { b, bindingIdentifiers, is, isIdentifierName, walk } from 'yuku-ast'
+import { BindingFlags } from 'yuku-analyzer'
 import {
-  buildDeclarationMap,
-  buildDependencyGraph,
-  collectIdentifiersFromPattern,
-  collectLocalBindingsFromStatement,
-  collectModuleLevelRefsFromNode,
+  analyzeModule,
+  cloneModuleAst,
+  collectModuleReferences,
   createIdentifier,
-  deadCodeElimination,
-  expandDestructuredDeclarations,
-  expandSharedDestructuredDeclarators,
   expandTransitively,
-  findReferencedIdentifiers,
-  generateFromAst,
-  parseAst,
-  removeBindingsTransitivelyDependingOn,
-  retainModuleLevelDeclarations,
-  stripUnreferencedTopLevelExpressionStatements,
-  unwrapExportedDeclarations,
+  generateModule,
+  keepFilePragmas,
+  linkGeneratedReference,
+  moduleDeclarationGraph,
+  parseStatements,
+  prependStatements,
+  removeUnusedBindings,
+  unwrapExport,
+  unwrapExpression,
 } from '@tanstack/router-utils'
 import { tsrShared, tsrSplit } from '../constants'
 import { createRouteHmrStatement } from '../hmr'
-import { getObjectPropertyKeyName } from '../utils'
+import { getObjectPropertyKeyName, getUniqueProgramIdentifier } from '../utils'
 import { getFrameworkOptions } from './framework-options'
+import type { Binding, Module } from 'yuku-analyzer'
+import type {
+  Expression,
+  Node,
+  ObjectExpression,
+  ObjectProperty,
+  Program,
+  ProgramStatement,
+  StringLiteral,
+} from '@yuku-toolchain/types'
+import type { AnalyzeModuleOptions } from '@tanstack/router-utils'
 import type {
   CodeSplitCompilerPlugin,
   CompileCodeSplitReferenceRouteOptions,
+  ReferenceRouteCompilerPluginContext,
 } from './plugins'
-import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 import type { SplitNodeMeta } from './types'
 
-export {
-  buildDeclarationMap,
-  buildDependencyGraph,
-  collectIdentifiersFromNode,
-  collectLocalBindingsFromStatement,
-  collectModuleLevelRefsFromNode,
-  expandDestructuredDeclarations,
-  expandSharedDestructuredDeclarators,
-  expandTransitively,
-  removeBindingsTransitivelyDependingOn,
-} from '@tanstack/router-utils'
-
-export function removeBindingsDependingOnRoute(
-  bindings: Set<string>,
-  dependencyGraph: Map<string, Set<string>>,
-) {
-  removeBindingsTransitivelyDependingOn(bindings, dependencyGraph, ['Route'])
-}
-
-const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
-  [
-    'loader',
-    {
-      routeIdent: 'loader',
-      localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
-      splitStrategy: 'lazyFn',
-      localExporterIdent: 'SplitLoader', // const SplitLoader = ...
-      exporterIdent: 'loader', // export { SplitLoader as loader }
-    },
-  ],
-  [
-    'component',
-    {
-      routeIdent: 'component',
-      localImporterIdent: '$$splitComponentImporter', // const $$splitComponentImporter = () => import('...')
-      splitStrategy: 'lazyRouteComponent',
-      localExporterIdent: 'SplitComponent', // const SplitComponent = ...
-      exporterIdent: 'component', // export { SplitComponent as component }
-    },
-  ],
-  [
-    'pendingComponent',
-    {
-      routeIdent: 'pendingComponent',
-      localImporterIdent: '$$splitPendingComponentImporter', // const $$splitPendingComponentImporter = () => import('...')
-      splitStrategy: 'lazyRouteComponent',
-      localExporterIdent: 'SplitPendingComponent', // const SplitPendingComponent = ...
-      exporterIdent: 'pendingComponent', // export { SplitPendingComponent as pendingComponent }
-    },
-  ],
-  [
-    'errorComponent',
-    {
-      routeIdent: 'errorComponent',
-      localImporterIdent: '$$splitErrorComponentImporter', // const $$splitErrorComponentImporter = () => import('...')
-      splitStrategy: 'lazyRouteComponent',
-      localExporterIdent: 'SplitErrorComponent', // const SplitErrorComponent = ...
-      exporterIdent: 'errorComponent', // export { SplitErrorComponent as errorComponent }
-    },
-  ],
-  [
-    'notFoundComponent',
-    {
-      routeIdent: 'notFoundComponent',
-      localImporterIdent: '$$splitNotFoundComponentImporter', // const $$splitNotFoundComponentImporter = () => import('...')
-      splitStrategy: 'lazyRouteComponent',
-      localExporterIdent: 'SplitNotFoundComponent', // const SplitNotFoundComponent = ...
-      exporterIdent: 'notFoundComponent', // export { SplitNotFoundComponent as notFoundComponent }
-    },
-  ],
-])
-
-const KNOWN_SPLIT_ROUTE_IDENTS = [...SPLIT_NODES_CONFIG.keys()] as const
-
-function addSplitSearchParamToFilename(
-  filename: string,
-  grouping: Array<string>,
-) {
-  const [bareFilename] = filename.split('?')
-
-  const params = new URLSearchParams()
-  params.append(tsrSplit, createIdentifier(grouping))
-
-  const result = `${bareFilename}?${params.toString()}`
-  return result
-}
-
-function removeSplitSearchParamFromFilename(filename: string) {
-  const [bareFilename] = filename.split('?')
-  return bareFilename!
-}
-
-export function addSharedSearchParamToFilename(filename: string) {
-  const [bareFilename] = filename.split('?')
-  return `${bareFilename}?${tsrShared}=1`
-}
-
-const splittableCreateRouteFns = ['createFileRoute']
-const unsplittableCreateRouteFns = [
+const splitKeys: Array<SplitRouteIdentNodes> = [
+  'loader',
+  'component',
+  'pendingComponent',
+  'errorComponent',
+  'notFoundComponent',
+]
+const factoryNames = new Set([
+  'createFileRoute',
+  'createRoute',
   'createRootRoute',
   'createRootRouteWithContext',
-]
-const allCreateRouteFns = [
-  ...splittableCreateRouteFns,
-  ...unsplittableCreateRouteFns,
-]
+])
 
-/**
- * Computes module-level bindings that are shared between split and non-split
- * route properties. These bindings need to be extracted into a shared virtual
- * module to avoid double-initialization.
- *
- * A binding is "shared" if it is referenced by at least one split property
- * AND at least one non-split property. Only locally-declared module-level
- * bindings are candidates (not imports — bundlers dedupe those).
- */
-export function computeSharedBindings(opts: {
-  code: string
-  filename?: string
-  codeSplitGroupings: CodeSplitGroupings
-}): Set<string> {
-  const ast = parseAst(opts)
-
-  // Early bailout: collect all module-level locally-declared binding names.
-  // This is a cheap loop over program.body (no traversal). If the file has
-  // no local bindings (aside from `Route`), nothing can be shared — skip
-  // the expensive babel.traverse entirely.
-  const localModuleLevelBindings = new Set<string>()
-  for (const node of ast.program.body) {
-    collectLocalBindingsFromStatement(node, localModuleLevelBindings)
+function splitMeta(key: SplitRouteIdentNodes): SplitNodeMeta {
+  const capitalized = `${key[0]!.toUpperCase()}${key.slice(1)}`
+  return {
+    routeIdent: key,
+    localImporterIdent: `$$split${capitalized}Importer`,
+    splitStrategy: key === 'loader' ? 'lazyFn' : 'lazyRouteComponent',
+    localExporterIdent: `Split${capitalized}`,
+    exporterIdent: key,
   }
+}
 
-  // File-based routes always export a route config binding (usually `Route`).
-  // This must never be extracted into the shared module.
-  localModuleLevelBindings.delete('Route')
+function bareFilename(filename: string) {
+  return filename.split('?')[0]!
+}
 
-  if (localModuleLevelBindings.size === 0) {
-    return new Set()
-  }
-
-  function findIndexForSplitNode(str: string) {
-    return opts.codeSplitGroupings.findIndex((group) =>
-      group.includes(str as any),
-    )
-  }
-
-  // Find the route options object — needs babel.traverse for scope resolution
-  let routeOptions: t.ObjectExpression | undefined
-
-  babel.traverse(ast, {
-    CallExpression(path) {
-      if (!t.isIdentifier(path.node.callee)) return
-      if (!splittableCreateRouteFns.includes(path.node.callee.name)) return
-
-      if (t.isCallExpression(path.parentPath.node)) {
-        const opts = resolveIdentifier(path, path.parentPath.node.arguments[0])
-        if (t.isObjectExpression(opts)) routeOptions = opts
-      } else if (t.isVariableDeclarator(path.parentPath.node)) {
-        const caller = resolveIdentifier(path, path.parentPath.node.init)
-        if (t.isCallExpression(caller)) {
-          const opts = resolveIdentifier(path, caller.arguments[0])
-          if (t.isObjectExpression(opts)) routeOptions = opts
-        }
-      }
-    },
-  })
-
-  if (!routeOptions) return new Set()
-
-  // Fast path: if fewer than 2 distinct groups are referenced by route options,
-  // nothing can be shared and we can skip the rest of the work.
-  const splitGroupsPresent = new Set<number>()
-  let hasNonSplit = false
-  for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop)) continue
-    const key = getObjectPropertyKeyName(prop)
-    if (!key) continue
-    if (key === 'codeSplitGroupings') continue
-    if (t.isIdentifier(prop.value) && prop.value.name === 'undefined') continue
-    const groupIndex = findIndexForSplitNode(key) // -1 if non-split
-    if (groupIndex === -1) {
-      hasNonSplit = true
-    } else {
-      splitGroupsPresent.add(groupIndex)
-    }
-  }
-
-  if (!hasNonSplit && splitGroupsPresent.size < 2) return new Set()
-
-  // Build dependency graph up front — needed for transitive expansion per-property.
-  // This graph excludes `Route` (deleted above) so group attribution works correctly.
-  const declMap = buildDeclarationMap(ast)
-  const depGraph = buildDependencyGraph(declMap, localModuleLevelBindings)
-
-  // Build a second dependency graph that includes `Route` so we can detect
-  // bindings that transitively depend on it. Such bindings must NOT be
-  // extracted into the shared module because they would drag the Route
-  // singleton with them, duplicating it across modules.
-  const allLocalBindings = new Set(localModuleLevelBindings)
-  allLocalBindings.add('Route')
-  const fullDepGraph = buildDependencyGraph(declMap, allLocalBindings)
-
-  // For each route property, track which "group" it belongs to.
-  // Non-split properties get group index -1.
-  // Split properties get their codeSplitGroupings index (0, 1, ...).
-  // A binding is "shared" if it appears in 2+ distinct groups.
-  // We expand each property's refs transitively BEFORE comparing groups,
-  // so indirect refs (e.g., component: MyComp where MyComp uses `shared`)
-  // are correctly attributed.
-  const refsByGroup = new Map<string, Set<number>>()
-
-  for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop)) continue
-    const key = getObjectPropertyKeyName(prop)
-    if (!key) continue
-
-    if (key === 'codeSplitGroupings') continue
-
-    const groupIndex = findIndexForSplitNode(key) // -1 if non-split
-
-    const directRefs = collectModuleLevelRefsFromNode(
-      prop.value,
-      localModuleLevelBindings,
-    )
-
-    // Expand transitively: if component references SharedComp which references
-    // `shared`, then `shared` is also attributed to component's group.
-    const allRefs = new Set(directRefs)
-    expandTransitively(allRefs, depGraph)
-
-    for (const ref of allRefs) {
-      let groups = refsByGroup.get(ref)
-      if (!groups) {
-        groups = new Set()
-        refsByGroup.set(ref, groups)
-      }
-      groups.add(groupIndex)
-    }
-  }
-
-  // Shared = bindings appearing in 2+ distinct groups
-  const shared = new Set<string>()
-  for (const [name, groups] of refsByGroup) {
-    if (groups.size >= 2) shared.add(name)
-  }
-
-  // Destructured declarators (e.g. `const { a, b } = fn()`) must be treated
-  // as a single initialization unit. Even if each binding is referenced by
-  // only one group, if *different* bindings from the same declarator are
-  // referenced by different groups, the declarator must be extracted to the
-  // shared module to avoid double initialization.
-  expandSharedDestructuredDeclarators(ast, refsByGroup, shared)
-
-  if (shared.size === 0) return shared
-
-  // If any binding from a destructured declaration is shared,
-  // all bindings from that declaration must be shared
-  expandDestructuredDeclarations(ast, shared)
-
-  // Remove shared bindings that transitively depend on `Route`.
-  // The Route singleton must stay in the reference file; extracting a
-  // binding that references it would duplicate Route in the shared module.
-  removeBindingsTransitivelyDependingOn(shared, fullDepGraph, ['Route'])
-
-  return shared
+function splitFilename(filename: string, grouping: Array<string>) {
+  return `${bareFilename(filename)}?${tsrSplit}=${createIdentifier(grouping)}`
 }
 
 /**
- * Find which shared bindings are user-exported in the original source.
- * These need to be re-exported from the shared module.
+ * A module of a route file's shared bindings: `values`, or `components` for
+ * those {@link partitionSharedBindings} emits in a module of their own.
  */
-function findExportedSharedBindings(
-  ast: t.File,
-  sharedBindings: Set<string>,
-): Set<string> {
-  const exported = new Set<string>()
-  for (const stmt of ast.program.body) {
-    if (!t.isExportNamedDeclaration(stmt) || !stmt.declaration) continue
+export type SharedModulePart = 'values' | 'components'
 
-    if (t.isVariableDeclaration(stmt.declaration)) {
-      for (const decl of stmt.declaration.declarations) {
-        for (const name of collectIdentifiersFromPattern(decl.id)) {
-          if (sharedBindings.has(name)) exported.add(name)
-        }
-      }
-    } else if (
-      t.isFunctionDeclaration(stmt.declaration) &&
-      stmt.declaration.id
+export function addSharedSearchParamToFilename(
+  filename: string,
+  part: SharedModulePart = 'values',
+) {
+  return `${bareFilename(filename)}?${tsrShared}=${part === 'components' ? part : '1'}`
+}
+
+type RouteDefinition = {
+  options: ObjectExpression
+  factory: string
+  statement: Node
+}
+
+/** Source syntax and semantic identities are immutable across all output chunks. */
+export type RouteModuleAnalysis = {
+  module: Module
+  routes: Array<RouteDefinition>
+  /**
+   * The route of the module, which route HMR updates: the one the exported
+   * `Route` holds, else the first one.
+   */
+  moduleRoute: RouteDefinition | undefined
+  /**
+   * The module's `Route` is not created by a factory call in module code, but a
+   * function calls a route factory: it creates the module's route,
+   * which can be neither split nor updated by route HMR.
+   */
+  routeCreatedInFunction: boolean
+  graph: ReturnType<typeof moduleDeclarationGraph>
+  /**
+   * Declaration dependencies without the `Route` singleton. Split and shared
+   * modules import `Route` rather than declare it, so reading it never brings
+   * the dependencies of every route option along.
+   */
+  chunkDependencies: Map<Binding, Set<Binding>>
+  exported: Map<Binding, Array<string>>
+}
+
+type SourceOptions = AnalyzeModuleOptions & { analysis?: RouteModuleAnalysis }
+
+function resolveExpression(
+  module: Module,
+  node: Node | null | undefined,
+  seen = new Set<Binding>(),
+): Node | undefined {
+  if (!node) {
+    return undefined
+  }
+  node = unwrapExpression(node)
+  if (is.Identifier(node)) {
+    const binding = module.bindingOf(node)
+    if (!binding || seen.has(binding)) {
+      return undefined
+    }
+    seen.add(binding)
+    let declaration: Node | null | undefined = binding.declarations[0]
+    while (
+      declaration &&
+      !is.VariableDeclarator(declaration) &&
+      !is.Program(declaration)
     ) {
-      if (sharedBindings.has(stmt.declaration.id.name))
-        exported.add(stmt.declaration.id.name)
-    } else if (t.isClassDeclaration(stmt.declaration) && stmt.declaration.id) {
-      if (sharedBindings.has(stmt.declaration.id.name))
-        exported.add(stmt.declaration.id.name)
+      declaration = module.parentOf(declaration)
     }
+    if (is.VariableDeclarator(declaration) && is.Identifier(declaration.id)) {
+      return resolveExpression(module, declaration.init, seen)
+    }
+    return undefined
   }
-  return exported
+  return node
 }
 
-/**
- * Remove declarations of shared bindings from the AST.
- * Handles both plain and exported declarations, including destructured patterns.
- * Removes the entire statement if all bindings in it are shared.
- */
-function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
-  ast.program.body = ast.program.body.filter((stmt) => {
-    const decl =
-      t.isExportNamedDeclaration(stmt) && stmt.declaration
-        ? stmt.declaration
-        : stmt
-
-    if (t.isVariableDeclaration(decl)) {
-      // Filter out declarators where all bound names are shared
-      decl.declarations = decl.declarations.filter((declarator) => {
-        const names = collectIdentifiersFromPattern(declarator.id)
-        return !names.every((n) => sharedBindings.has(n))
-      })
-      // If no declarators remain, remove the entire statement
-      if (decl.declarations.length === 0) return false
-    } else if (t.isFunctionDeclaration(decl) && decl.id) {
-      if (sharedBindings.has(decl.id.name)) return false
-    } else if (t.isClassDeclaration(decl) && decl.id) {
-      if (sharedBindings.has(decl.id.name)) return false
+/** Whether code runs when the module does: at module level or in its blocks. */
+function isModuleCode(module: Module, node: Node) {
+  for (const scope of module.scopeOf(node).ancestors()) {
+    if (scope === module.rootScope) {
+      return true
     }
+    if (scope.kind !== 'block') {
+      return false
+    }
+  }
+  return false
+}
 
-    return true
+export function analyzeRouteModule(
+  options: AnalyzeModuleOptions,
+): RouteModuleAnalysis {
+  const module = analyzeModule(options)
+  const routes: Array<RouteDefinition> = []
+  const { exports: moduleExports } = module
+  const routeIdentifier = moduleExports.find(
+    (entry) => entry.name === 'Route' && !entry.typeOnly,
+  )?.local?.declarations[0]
+  const routeDeclarator = routeIdentifier && module.parentOf(routeIdentifier)
+  const routeInit = is.VariableDeclarator(routeDeclarator)
+    ? routeDeclarator.init && unwrapExpression(routeDeclarator.init)
+    : undefined
+  let moduleRoute: RouteDefinition | undefined
+  // A factory call inside a function, and one in module code that initializes
+  // the exported `Route`
+  let nestedFactoryCall: Node | undefined
+  let routeFactoryCall: Node | undefined
+  const seen = new Set<Node>()
+  module.walk({
+    CallExpression(node, ctx) {
+      const outerCallee = unwrapExpression(node.callee)
+      const callee = unwrapExpression(
+        is.CallExpression(outerCallee) ? outerCallee.callee : outerCallee,
+      )
+      if (!is.Identifier(callee) || !factoryNames.has(callee.name)) {
+        return
+      }
+      // A factory call inside a function can close over local bindings, so
+      // its options cannot be split or hoisted to module scope. A block at
+      // module level runs with the module: a `var` it declares, such as
+      // `if (x) { var Route = createFileRoute(...)(...) }`, is a module binding.
+      if (!isModuleCode(module, node)) {
+        nestedFactoryCall ??= node
+        return
+      }
+      const ancestors = ctx.ancestors()
+      if (routeDeclarator && ancestors.includes(routeDeclarator)) {
+        routeFactoryCall ??= node
+      }
+      // The top-level statement, the ancestor after the program
+      const statement = ancestors[1] ?? node
+      const options = resolveExpression(module, node.arguments[0])
+      if (!is.ObjectExpression(options) || seen.has(options)) {
+        return
+      }
+      seen.add(options)
+      const route = { options, factory: callee.name, statement }
+      routes.push(route)
+      if (node === routeInit) {
+        moduleRoute = route
+      }
+    },
+  })
+  const exported = new Map<Binding, Array<string>>()
+  for (const entry of moduleExports) {
+    if (entry.local && entry.name !== null && !entry.typeOnly) {
+      const names = exported.get(entry.local) ?? []
+      if (!names.includes(entry.name)) {
+        names.push(entry.name)
+      }
+      exported.set(entry.local, names)
+    }
+  }
+  const graph = moduleDeclarationGraph(module)
+  const chunkDependencies = new Map<Binding, Set<Binding>>()
+  for (const [binding, dependencies] of graph.dependencies) {
+    if (binding.name !== 'Route') {
+      chunkDependencies.set(
+        binding,
+        new Set(
+          [...dependencies].filter((dependency) => dependency.name !== 'Route'),
+        ),
+      )
+    }
+  }
+  return {
+    module,
+    routes,
+    moduleRoute: moduleRoute ?? routes[0],
+    routeCreatedInFunction: !!nestedFactoryCall && !routeFactoryCall,
+    graph,
+    chunkDependencies,
+    exported,
+  }
+}
+
+function sourceAnalysis(options: SourceOptions) {
+  return options.analysis ?? analyzeRouteModule(options)
+}
+
+function isFallback(value: Expression) {
+  value = unwrapExpression(value)
+  return (
+    is.NullLiteral(value) ||
+    is.BooleanLiteral(value) ||
+    (is.Identifier(value) && value.name === 'undefined')
+  )
+}
+
+function properties(route: RouteDefinition) {
+  return route.options.properties.filter(
+    (property): property is ObjectProperty => is.Property(property),
+  )
+}
+
+/** The properties the runtime object keeps: a later duplicate key wins. */
+function runtimeProperties(route: RouteDefinition) {
+  const all = properties(route)
+  return all.filter((property, index) => {
+    const key = getObjectPropertyKeyName(property)
+    return (
+      !key ||
+      !all
+        .slice(index + 1)
+        .some((later) => getObjectPropertyKeyName(later) === key)
+    )
   })
 }
 
-export function compileCodeSplitReferenceRoute(
-  opts: ParseAstOptions &
-    CompileCodeSplitReferenceRouteOptions & {
-      compilerPlugins?: Array<CodeSplitCompilerPlugin>
-    },
-): GeneratorResult | null {
-  const ast = parseAst(opts)
+function isDataProperty(property: ObjectProperty) {
+  return !property.method && property.kind === 'init'
+}
 
-  const refIdents = findReferencedIdentifiers(ast)
-
-  const knownExportedIdents = new Set<string>()
-
-  function findIndexForSplitNode(str: string) {
-    return opts.codeSplitGroupings.findIndex((group) =>
-      group.includes(str as any),
-    )
+/**
+ * The property whose value a split moves into its chunk: the route option
+ * itself, or the `handler` of a loader in object form, since the router reads
+ * the other keys of that object (`staleReloadMode`) from the route options.
+ * Undefined when the option keeps its value in the route module.
+ */
+function splitProperty(key: string, property: ObjectProperty) {
+  const value = unwrapExpression(property.value)
+  if (key !== 'loader' || !is.ObjectExpression(value)) {
+    return property
   }
+  // The last `handler` wins, unless a spread or a computed key may override it
+  for (let index = value.properties.length - 1; index >= 0; index--) {
+    const candidate = value.properties[index]!
+    if (!is.Property(candidate) || candidate.computed) {
+      return undefined
+    }
+    if (getObjectPropertyKeyName(candidate) === 'handler') {
+      return isDataProperty(candidate) && !isFallback(candidate.value)
+        ? candidate
+        : undefined
+    }
+  }
+  return undefined
+}
 
-  const frameworkOptions = getFrameworkOptions(opts.targetFramework)
-  const PACKAGE = frameworkOptions.package
-  const LAZY_ROUTE_COMPONENT_IDENT = frameworkOptions.idents.lazyRouteComponent
-  const LAZY_FN_IDENT = frameworkOptions.idents.lazyFn
-  const stableRouteOptionKeys = [
-    ...new Set(
-      (opts.compilerPlugins ?? []).flatMap(
-        (plugin) => plugin.getStableRouteOptionKeys?.() ?? [],
-      ),
+/** Assign each initializer and its dependencies to the chunks that consume it. */
+export function computeSharedBindings(
+  options: SourceOptions & { codeSplitGroupings: CodeSplitGroupings },
+): Set<string> {
+  const analysis = sourceAnalysis(options)
+  const { module, graph, chunkDependencies } = analysis
+  const groupsByBinding = new Map<Binding, Set<number>>()
+  // Exported split targets are not split: they stay in the route module
+  const unsplitTargets = new Set<Binding>()
+  // What split modules read, up to the exported variables they import from
+  // the route module rather than declare
+  const splitReads = new Set<Binding>()
+  const splitDependencies = new Map(
+    [...chunkDependencies].filter(
+      ([binding]) =>
+        !(
+          analysis.exported.has(binding) &&
+          is.VariableDeclarator(graph.declarations.get(binding))
+        ),
     ),
-  ]
-
-  let createRouteFn: string
-
-  let modified = false as boolean
-  let hmrAdded = false as boolean
-  let sharedExportedNames: Set<string> | undefined
-  babel.traverse(ast, {
-    Program: {
-      enter(programPath) {
-        /**
-         * If the component for the route is being imported from
-         * another file, this is to track the path to that file
-         * the path itself doesn't matter, we just need to keep
-         * track of it so that we can remove it from the imports
-         * list if it's not being used like:
-         *
-         * `import '../shared/imported'`
-         */
-        const removableImportPaths = new Set<string>([])
-
-        programPath.traverse({
-          CallExpression: (path) => {
-            if (!t.isIdentifier(path.node.callee)) {
-              return
-            }
-
-            if (!allCreateRouteFns.includes(path.node.callee.name)) {
-              return
-            }
-
-            createRouteFn = path.node.callee.name
-
-            function babelHandleReference(routeOptions: t.Node | undefined) {
-              const hasImportedOrDefinedIdentifier = (name: string) => {
-                return programPath.scope.hasBinding(name)
-              }
-
-              const addRouteHmr = (
-                insertionPath: babel.NodePath,
-                routeOptions: t.ObjectExpression,
-              ) => {
-                if (!opts.addHmr || hmrAdded) {
-                  return
-                }
-
-                opts.compilerPlugins?.forEach((plugin) => {
-                  const pluginResult = plugin.onAddHmr?.({
-                    programPath,
-                    callExpressionPath: path,
-                    insertionPath,
-                    routeOptions,
-                    createRouteFn,
-                    opts: opts as CompileCodeSplitReferenceRouteOptions,
-                  })
-
-                  if (pluginResult?.modified) {
-                    modified = true
-                  }
-                })
-
-                programPath.pushContainer(
-                  'body',
-                  createRouteHmrStatement(stableRouteOptionKeys, {
-                    hmrStyle: opts.hmrStyle ?? 'vite',
-                    targetFramework: opts.targetFramework,
-                    routeId: opts.hmrRouteId,
-                  }),
-                )
-                modified = true
-                hmrAdded = true
-              }
-
-              if (t.isObjectExpression(routeOptions)) {
-                const insertionPath = path.getStatementParent() ?? path
-
-                opts.compilerPlugins?.forEach((plugin) => {
-                  const pluginResult = plugin.onRouteOptions?.({
-                    programPath,
-                    callExpressionPath: path,
-                    insertionPath,
-                    routeOptions,
-                    createRouteFn,
-                    opts: opts as CompileCodeSplitReferenceRouteOptions,
-                  })
-
-                  if (pluginResult?.modified) {
-                    modified = true
-                  }
-                })
-
-                if (opts.deleteNodes && opts.deleteNodes.size > 0) {
-                  routeOptions.properties = routeOptions.properties.filter(
-                    (prop) => {
-                      if (t.isObjectProperty(prop)) {
-                        const key = getObjectPropertyKeyName(prop)
-                        if (key && opts.deleteNodes!.has(key as any)) {
-                          modified = true
-                          return false
-                        }
-                      }
-                      return true
-                    },
-                  )
-                }
-                if (!splittableCreateRouteFns.includes(createRouteFn)) {
-                  opts.compilerPlugins?.forEach((plugin) => {
-                    const pluginResult = plugin.onUnsplittableRoute?.({
-                      programPath,
-                      callExpressionPath: path,
-                      insertionPath,
-                      routeOptions,
-                      createRouteFn,
-                      opts: opts as CompileCodeSplitReferenceRouteOptions,
-                    })
-
-                    if (pluginResult?.modified) {
-                      modified = true
-                    }
-                  })
-
-                  // we can't split this route but we still add HMR handling if enabled
-                  addRouteHmr(insertionPath, routeOptions)
-                  // exit traversal so this route is not split
-                  return programPath.stop()
-                }
-                routeOptions.properties.forEach((prop) => {
-                  if (t.isObjectProperty(prop)) {
-                    const key = getObjectPropertyKeyName(prop)
-
-                    if (key) {
-                      // If the user has not specified a split grouping for this key
-                      // then we should not split it
-                      const codeSplitGroupingByKey = findIndexForSplitNode(key)
-                      if (codeSplitGroupingByKey === -1) {
-                        return
-                      }
-                      const codeSplitGroup = [
-                        ...new Set(
-                          opts.codeSplitGroupings[codeSplitGroupingByKey],
-                        ),
-                      ]
-
-                      // find key in nodeSplitConfig
-                      const isNodeConfigAvailable = SPLIT_NODES_CONFIG.has(
-                        key as any,
-                      )
-
-                      if (!isNodeConfigAvailable) {
-                        return
-                      }
-
-                      // Exit early if the value is a boolean, null, or undefined.
-                      // These values mean "don't use this component, fallback to parent"
-                      // No code splitting needed to preserve fallback behavior
-                      if (
-                        t.isBooleanLiteral(prop.value) ||
-                        t.isNullLiteral(prop.value) ||
-                        (t.isIdentifier(prop.value) &&
-                          prop.value.name === 'undefined')
-                      ) {
-                        return
-                      }
-
-                      const splitNodeMeta = SPLIT_NODES_CONFIG.get(key as any)!
-
-                      // We need to extract the existing search params from the filename, if any
-                      // and add the relevant codesplitPrefix to them, then write them back to the filename
-                      const splitUrl = addSplitSearchParamToFilename(
-                        opts.filename,
-                        codeSplitGroup,
-                      )
-
-                      if (
-                        splitNodeMeta.splitStrategy === 'lazyRouteComponent'
-                      ) {
-                        const value = prop.value
-
-                        let shouldSplit = true
-
-                        if (t.isIdentifier(value)) {
-                          const existingImportPath =
-                            getImportSpecifierAndPathFromLocalName(
-                              programPath,
-                              value.name,
-                            ).path
-                          if (existingImportPath) {
-                            removableImportPaths.add(existingImportPath)
-                          }
-
-                          // exported identifiers should not be split
-                          // since they are already being imported
-                          // and need to be retained in the compiled file
-                          const isExported = hasExport(ast, value)
-                          if (isExported) {
-                            knownExportedIdents.add(value.name)
-                          }
-                          shouldSplit = !isExported
-
-                          if (shouldSplit) {
-                            removeIdentifierLiteral(path, value)
-                          }
-                        }
-
-                        if (!shouldSplit) {
-                          return
-                        }
-
-                        modified = true
-
-                        // Prepend the import statement to the program along with the importer function
-                        // Check to see if lazyRouteComponent is already imported before attempting
-                        // to import it again
-                        if (
-                          !hasImportedOrDefinedIdentifier(
-                            LAZY_ROUTE_COMPONENT_IDENT,
-                          )
-                        ) {
-                          programPath.unshiftContainer('body', [
-                            template.statement(
-                              `import { ${LAZY_ROUTE_COMPONENT_IDENT} } from '${PACKAGE}'`,
-                            )(),
-                          ])
-                        }
-
-                        // Check to see if the importer function is already defined
-                        // If not, define it with the dynamic import statement
-                        if (
-                          !hasImportedOrDefinedIdentifier(
-                            splitNodeMeta.localImporterIdent,
-                          )
-                        ) {
-                          programPath.unshiftContainer('body', [
-                            template.statement(
-                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
-                            )(),
-                          ])
-                        }
-
-                        const insertionPath = path.getStatementParent() ?? path
-                        let splitPropValue: t.Expression | undefined
-
-                        for (const plugin of opts.compilerPlugins ?? []) {
-                          const pluginPropValue = plugin.onSplitRouteProperty?.(
-                            {
-                              programPath,
-                              callExpressionPath: path,
-                              insertionPath,
-                              routeOptions,
-                              prop,
-                              splitNodeMeta,
-                              lazyRouteComponentIdent:
-                                LAZY_ROUTE_COMPONENT_IDENT,
-                              opts,
-                            },
-                          )
-
-                          if (!pluginPropValue) {
-                            continue
-                          }
-
-                          modified = true
-                          splitPropValue = pluginPropValue
-                          break
-                        }
-
-                        if (splitPropValue) {
-                          prop.value = splitPropValue
-                        } else {
-                          prop.value = template.expression(
-                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
-                          )()
-                        }
-
-                        // add HMR handling
-                        addRouteHmr(insertionPath, routeOptions)
-                      } else {
-                        // if (splitNodeMeta.splitStrategy === 'lazyFn') {
-                        const value = prop.value
-
-                        let shouldSplit = true
-
-                        if (t.isIdentifier(value)) {
-                          const existingImportPath =
-                            getImportSpecifierAndPathFromLocalName(
-                              programPath,
-                              value.name,
-                            ).path
-                          if (existingImportPath) {
-                            removableImportPaths.add(existingImportPath)
-                          }
-
-                          // exported identifiers should not be split
-                          // since they are already being imported
-                          // and need to be retained in the compiled file
-                          const isExported = hasExport(ast, value)
-                          if (isExported) {
-                            knownExportedIdents.add(value.name)
-                          }
-                          shouldSplit = !isExported
-
-                          if (shouldSplit) {
-                            removeIdentifierLiteral(path, value)
-                          }
-                        }
-
-                        if (!shouldSplit) {
-                          return
-                        }
-                        modified = true
-
-                        // Prepend the import statement to the program along with the importer function
-                        if (!hasImportedOrDefinedIdentifier(LAZY_FN_IDENT)) {
-                          programPath.unshiftContainer(
-                            'body',
-                            template.smart(
-                              `import { ${LAZY_FN_IDENT} } from '${PACKAGE}'`,
-                            )(),
-                          )
-                        }
-
-                        // Check to see if the importer function is already defined
-                        // If not, define it with the dynamic import statement
-                        if (
-                          !hasImportedOrDefinedIdentifier(
-                            splitNodeMeta.localImporterIdent,
-                          )
-                        ) {
-                          programPath.unshiftContainer('body', [
-                            template.statement(
-                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
-                            )(),
-                          ])
-                        }
-
-                        // Add the lazyFn call with the dynamic import to the prop value
-                        prop.value = template.expression(
-                          `${LAZY_FN_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
-                        )()
-                      }
-                    }
-                  }
-
-                  programPath.scope.crawl()
-                })
-
-                addRouteHmr(insertionPath, routeOptions)
-              }
-            }
-
-            if (t.isCallExpression(path.parentPath.node)) {
-              // createFileRoute('/')({ ... })
-              const options = resolveIdentifier(
-                path,
-                path.parentPath.node.arguments[0],
-              )
-
-              babelHandleReference(options)
-            } else if (t.isVariableDeclarator(path.parentPath.node)) {
-              // createFileRoute({ ... })
-              const caller = resolveIdentifier(path, path.parentPath.node.init)
-
-              if (t.isCallExpression(caller)) {
-                const options = resolveIdentifier(path, caller.arguments[0])
-                babelHandleReference(options)
-              }
-            }
-          },
-        })
-
-        /**
-         * If the component for the route is being imported,
-         * and it's not being used, remove the import statement
-         * from the program, by checking that the import has no
-         * specifiers
-         */
-        if (removableImportPaths.size > 0) {
-          modified = true
-          programPath.traverse({
-            ImportDeclaration(path) {
-              if (path.node.specifiers.length > 0) return
-              if (removableImportPaths.has(path.node.source.value)) {
-                path.remove()
-              }
-            },
-          })
-        }
-
-        // Handle shared bindings inside the Program visitor so we have
-        // access to programPath for cheap refIdents registration.
-        if (opts.sharedBindings && opts.sharedBindings.size > 0) {
-          sharedExportedNames = findExportedSharedBindings(
-            ast,
-            opts.sharedBindings,
+  )
+  // Only a top-level declaration with a runtime value can move to the shared
+  // module: an ambient one is provided by the environment and erased with types
+  const locals = new Set(
+    [...graph.declarations.keys()].filter(
+      (binding) =>
+        binding.name !== 'Route' &&
+        !binding.has(BindingFlags.Import) &&
+        !isAmbient(module, binding),
+    ),
+  )
+  for (const route of analysis.routes) {
+    if (route.factory !== 'createFileRoute') {
+      continue
+    }
+    for (const property of properties(route)) {
+      const key = getObjectPropertyKeyName(property)
+      if (!key || key === 'codeSplitGroupings' || isFallback(property.value)) {
+        continue
+      }
+      const group = isDataProperty(property)
+        ? options.codeSplitGroupings.findIndex((keys) =>
+            keys.includes(key as SplitRouteIdentNodes),
           )
-          removeSharedDeclarations(ast, opts.sharedBindings)
-
-          const sharedModuleUrl = addSharedSearchParamToFilename(opts.filename)
-
-          const sharedImportSpecifiers = [...opts.sharedBindings].map((name) =>
-            t.importSpecifier(t.identifier(name), t.identifier(name)),
-          )
-          const [sharedImportPath] = programPath.unshiftContainer(
-            'body',
-            t.importDeclaration(
-              sharedImportSpecifiers,
-              t.stringLiteral(sharedModuleUrl),
-            ),
-          )
-
-          // Register import specifier locals in refIdents so DCE can remove unused ones
-          sharedImportPath.traverse({
-            Identifier(identPath) {
-              if (
-                identPath.parentPath.isImportSpecifier() &&
-                identPath.key === 'local'
-              ) {
-                refIdents.add(identPath)
-              }
-            },
-          })
-
-          // Re-export user-exported shared bindings from the shared module
-          if (sharedExportedNames.size > 0) {
-            const reExportSpecifiers = [...sharedExportedNames].map((name) =>
-              t.exportSpecifier(t.identifier(name), t.identifier(name)),
-            )
-            programPath.pushContainer(
-              'body',
-              t.exportNamedDeclaration(
-                null,
-                reExportSpecifiers,
-                t.stringLiteral(sharedModuleUrl),
-              ),
-            )
+        : -1
+      const split = group === -1 ? undefined : splitProperty(key, property)
+      // What stays in the route module belongs to the reference group (-1)
+      const parts: Array<[Node, number]> =
+        split === property
+          ? [[property.value, group]]
+          : !split
+            ? [[property.value, -1]]
+            : [
+                [split.value, group],
+                ...(
+                  unwrapExpression(property.value) as ObjectExpression
+                ).properties
+                  .filter((other) => other !== split)
+                  .map((other): [Node, number] => [other, -1]),
+              ]
+      const target = split && unwrapExpression(split.value)
+      const targetBinding =
+        group !== -1 && is.Identifier(target) ? module.bindingOf(target) : null
+      const unsplit = !!targetBinding && analysis.exported.has(targetBinding)
+      if (unsplit) {
+        unsplitTargets.add(targetBinding)
+      }
+      for (const [node, partGroup] of parts) {
+        const direct = collectModuleReferences(module, node)
+        if (partGroup !== -1 && !unsplit) {
+          for (const binding of expandTransitively(direct, splitDependencies)) {
+            splitReads.add(binding)
           }
         }
-      },
-    },
-  })
-
-  if (!modified) {
-    return null
-  }
-
-  deadCodeElimination(ast, refIdents)
-
-  // if there are exported identifiers, then we need to add a warning
-  // to the file to let the user know that the exported identifiers
-  // will not in the split file but in the original file, therefore
-  // increasing the bundle size
-  if (knownExportedIdents.size > 0) {
-    const warningMessage = createNotExportableMessage(
-      opts.filename,
-      knownExportedIdents,
-    )
-    console.warn(warningMessage)
-
-    // append this warning to the file using a template
-    if (process.env.NODE_ENV !== 'production') {
-      const warningTemplate = template.statement(
-        `console.warn(${JSON.stringify(warningMessage)})`,
-      )()
-      ast.program.body.unshift(warningTemplate)
+        const references = expandTransitively(direct, chunkDependencies)
+        for (const binding of references) {
+          if (!locals.has(binding)) {
+            continue
+          }
+          const groups = groupsByBinding.get(binding) ?? new Set<number>()
+          groups.add(partGroup)
+          groupsByBinding.set(binding, groups)
+        }
+      }
     }
   }
-
-  const result = generateFromAst(ast, {
-    sourceMaps: true,
-    sourceFileName: opts.filename,
-    filename: opts.filename,
-  })
-
-  // @babel/generator does not populate sourcesContent because it only has
-  // the AST, not the original text.  Without this, Vite's composed
-  // sourcemap omits the original source, causing downstream consumers
-  // (e.g. import-protection snippet display) to fall back to the shorter
-  // compiled output and fail to resolve original line numbers.
-  if (result.map) {
-    result.map.sourcesContent = [opts.code]
+  const shared = new Set<Binding>()
+  for (const [binding, groups] of groupsByBinding) {
+    if (groups.size > 1) {
+      shared.add(binding)
+    }
   }
-
-  return result
-}
-
-export function compileCodeSplitVirtualRoute(
-  opts: ParseAstOptions & {
-    splitTargets: Array<SplitRouteIdentNodes>
-    filename: string
-    sharedBindings?: Set<string>
-    compilerPlugins?: Array<CodeSplitCompilerPlugin>
-  },
-): GeneratorResult {
-  const ast = parseAst(opts)
-  const refIdents = findReferencedIdentifiers(ast)
-
-  // Remove shared declarations BEFORE babel.traverse so the scope never sees
-  // conflicting bindings (avoids checkBlockScopedCollisions crash in DCE)
-  if (opts.sharedBindings && opts.sharedBindings.size > 0) {
-    removeSharedDeclarations(ast, opts.sharedBindings)
-  }
-
-  const intendedSplitNodes = new Set(opts.splitTargets)
-
-  const knownExportedIdents = new Set<string>()
-
-  babel.traverse(ast, {
-    Program: {
-      enter(programPath) {
-        const trackedNodesToSplitByType: Record<
-          SplitRouteIdentNodes,
-          { node: t.Node | undefined; meta: SplitNodeMeta } | undefined
-        > = {
-          component: undefined,
-          loader: undefined,
-          pendingComponent: undefined,
-          errorComponent: undefined,
-          notFoundComponent: undefined,
+  // A destructured initializer belongs to one module even when its individual
+  // bindings are used in different chunks.
+  for (const siblings of graph.declarationBindings.values()) {
+    const groups = new Set(
+      [...siblings].flatMap((binding) => [
+        ...(groupsByBinding.get(binding) ?? []),
+      ]),
+    )
+    if (
+      groups.size > 1 ||
+      [...siblings].some((binding) => shared.has(binding))
+    ) {
+      for (const binding of siblings) {
+        if (locals.has(binding)) {
+          shared.add(binding)
         }
-
-        // Find and track all the known split-able nodes
-        programPath.traverse({
-          CallExpression: (path) => {
-            if (!t.isIdentifier(path.node.callee)) {
-              return
-            }
-
-            if (!splittableCreateRouteFns.includes(path.node.callee.name)) {
-              return
-            }
-
-            function babelHandleVirtual(options: t.Node | undefined) {
-              if (t.isObjectExpression(options)) {
-                options.properties.forEach((prop) => {
-                  if (t.isObjectProperty(prop)) {
-                    // do not use `intendedSplitNodes` here
-                    // since we have special considerations that need
-                    // to be accounted for like (not splitting exported identifiers)
-                    KNOWN_SPLIT_ROUTE_IDENTS.forEach((splitType) => {
-                      if (getObjectPropertyKeyName(prop) !== splitType) {
-                        return
-                      }
-
-                      const value = prop.value
-
-                      // If the value for the `key` is `undefined`, then we don't need to include it
-                      // in the split file, so we can just return, since it will kept in-place in the
-                      // reference file
-                      // This is useful for cases like: `createFileRoute('/')({ component: undefined })`
-                      if (t.isIdentifier(value) && value.name === 'undefined') {
-                        return
-                      }
-
-                      let isExported = false
-                      if (t.isIdentifier(value)) {
-                        isExported = hasExport(ast, value)
-                        if (isExported) {
-                          knownExportedIdents.add(value.name)
-                        }
-                      }
-
-                      // If the node is exported, we need to remove
-                      // the export from the split file
-                      if (isExported && t.isIdentifier(value)) {
-                        removeExports(ast, value)
-                      } else {
-                        const meta = SPLIT_NODES_CONFIG.get(splitType)!
-                        trackedNodesToSplitByType[splitType] = {
-                          node: prop.value,
-                          meta,
-                        }
-                      }
-                    })
-                  }
-                })
-
-                // Remove all of the options
-                options.properties = []
-              }
-            }
-
-            if (t.isCallExpression(path.parentPath.node)) {
-              // createFileRoute('/')({ ... })
-              const options = resolveIdentifier(
-                path,
-                path.parentPath.node.arguments[0],
-              )
-
-              babelHandleVirtual(options)
-            } else if (t.isVariableDeclarator(path.parentPath.node)) {
-              // createFileRoute({ ... })
-              const caller = resolveIdentifier(path, path.parentPath.node.init)
-
-              if (t.isCallExpression(caller)) {
-                const options = resolveIdentifier(path, caller.arguments[0])
-                babelHandleVirtual(options)
-              }
-            }
-          },
-        })
-
-        // Start the transformation to only exported the intended split nodes
-        intendedSplitNodes.forEach((SPLIT_TYPE) => {
-          const splitKey = trackedNodesToSplitByType[SPLIT_TYPE]
-
-          if (!splitKey) {
-            return
+      }
+    }
+  }
+  const forbidden = new Set(
+    module.rootScope.bindings.filter((binding) => binding.name === 'Route'),
+  )
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const [binding, dependencies] of graph.dependencies) {
+      if (
+        !forbidden.has(binding) &&
+        [...dependencies].some((dependency) => forbidden.has(dependency))
+      ) {
+        forbidden.add(binding)
+        changed = true
+      }
+    }
+    for (const siblings of graph.declarationBindings.values()) {
+      if ([...siblings].some((binding) => forbidden.has(binding))) {
+        for (const binding of siblings) {
+          if (!forbidden.has(binding)) {
+            forbidden.add(binding)
+            changed = true
           }
-
-          let splitNode = splitKey.node
-          const splitMeta = { ...splitKey.meta, shouldRemoveNode: true }
-
-          // Track the original identifier name before resolving through bindings,
-          // needed for destructured patterns where the binding resolves to the
-          // entire VariableDeclarator (ObjectPattern) rather than the specific binding
-          let originalIdentName: string | undefined
-          if (t.isIdentifier(splitNode)) {
-            originalIdentName = splitNode.name
-          }
-
-          while (t.isIdentifier(splitNode)) {
-            const binding = programPath.scope.getBinding(splitNode.name)
-            splitNode = binding?.path.node
-          }
-
-          // Add the node to the program
-          if (splitNode) {
-            for (const plugin of opts.compilerPlugins ?? []) {
-              plugin.onVirtualRouteSplitNode?.({
-                programPath,
-                splitNode,
-                splitNodeMeta: splitMeta,
-              })
-            }
-
-            if (t.isFunctionDeclaration(splitNode)) {
-              // an anonymous function declaration should only happen for `export default function() {...}`
-              // so we should never get here
-              if (!splitNode.id) {
-                throw new Error(
-                  `Function declaration for "${SPLIT_TYPE}" must have an identifier.`,
-                )
-              }
-
-              splitMeta.shouldRemoveNode = false
-              splitMeta.localExporterIdent = splitNode.id.name
-            } else if (
-              t.isFunctionExpression(splitNode) ||
-              t.isArrowFunctionExpression(splitNode)
-            ) {
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    splitNode,
-                  ),
-                ]),
-              )
-            } else if (
-              t.isImportSpecifier(splitNode) ||
-              t.isImportDefaultSpecifier(splitNode)
-            ) {
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    splitNode.local,
-                  ),
-                ]),
-              )
-            } else if (t.isVariableDeclarator(splitNode)) {
-              if (t.isIdentifier(splitNode.id)) {
-                splitMeta.localExporterIdent = splitNode.id.name
-                splitMeta.shouldRemoveNode = false
-              } else if (t.isObjectPattern(splitNode.id)) {
-                // Destructured binding like `const { component: MyComp } = createBits()`
-                // Use the original identifier name that was tracked before resolving
-                if (originalIdentName) {
-                  splitMeta.localExporterIdent = originalIdentName
-                }
-                splitMeta.shouldRemoveNode = false
-              } else {
-                throw new Error(
-                  `Unexpected splitNode type ☝️: ${splitNode.type}`,
-                )
-              }
-            } else if (t.isCallExpression(splitNode)) {
-              const outputSplitNodeCode = generateFromAst(splitNode).code
-              const splitNodeAst = babel.parse(outputSplitNodeCode)
-
-              if (!splitNodeAst) {
-                throw new Error(
-                  `Failed to parse the generated code for "${SPLIT_TYPE}" in the node type "${splitNode.type}"`,
-                )
-              }
-
-              const statement = splitNodeAst.program.body[0]
-
-              if (!statement) {
-                throw new Error(
-                  `Failed to parse the generated code for "${SPLIT_TYPE}" in the node type "${splitNode.type}" as no statement was found in the program body`,
-                )
-              }
-
-              if (t.isExpressionStatement(statement)) {
-                const expression = statement.expression
-                programPath.pushContainer(
-                  'body',
-                  t.variableDeclaration('const', [
-                    t.variableDeclarator(
-                      t.identifier(splitMeta.localExporterIdent),
-                      expression,
-                    ),
-                  ]),
-                )
-              } else {
-                throw new Error(
-                  `Unexpected expression type encounter for "${SPLIT_TYPE}" in the node type "${splitNode.type}"`,
-                )
-              }
-            } else if (t.isConditionalExpression(splitNode)) {
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    splitNode,
-                  ),
-                ]),
-              )
-            } else if (t.isTSAsExpression(splitNode)) {
-              // remove the type assertion
-              splitNode = splitNode.expression
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    splitNode,
-                  ),
-                ]),
-              )
-            } else if (t.isBooleanLiteral(splitNode)) {
-              // Handle boolean literals
-              // This exits early here, since this value will be kept in the reference file
-              return
-            } else if (t.isNullLiteral(splitNode)) {
-              // Handle null literals
-              // This exits early here, since this value will be kept in the reference file
-              return
-            } else {
-              console.info('Unexpected splitNode type:', splitNode)
-              throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
-            }
-          }
-
-          if (splitMeta.shouldRemoveNode) {
-            // If the splitNode exists at the top of the program
-            // then we need to remove that copy
-            programPath.node.body = programPath.node.body.filter((node) => {
-              return node !== splitNode
-            })
-          }
-
-          // Export the node
-          programPath.pushContainer('body', [
-            t.exportNamedDeclaration(null, [
-              t.exportSpecifier(
-                t.identifier(splitMeta.localExporterIdent), // local variable name
-                t.identifier(splitMeta.exporterIdent), // as what name it should be exported as
-              ),
-            ]),
-          ])
-        })
-
-        // convert exports to imports from the original file
-        programPath.traverse({
-          ExportNamedDeclaration(path) {
-            // e.g. export const x = 1 or export { x }
-            // becomes
-            // import { x } from '${opts.id}'
-
-            if (path.node.declaration) {
-              if (t.isVariableDeclaration(path.node.declaration)) {
-                const specifiers = path.node.declaration.declarations.flatMap(
-                  (decl) => {
-                    if (t.isIdentifier(decl.id)) {
-                      return [
-                        t.importSpecifier(
-                          t.identifier(decl.id.name),
-                          t.identifier(decl.id.name),
-                        ),
-                      ]
-                    }
-
-                    if (t.isObjectPattern(decl.id)) {
-                      return collectIdentifiersFromPattern(decl.id).map(
-                        (name) =>
-                          t.importSpecifier(
-                            t.identifier(name),
-                            t.identifier(name),
-                          ),
-                      )
-                    }
-
-                    if (t.isArrayPattern(decl.id)) {
-                      return collectIdentifiersFromPattern(decl.id).map(
-                        (name) =>
-                          t.importSpecifier(
-                            t.identifier(name),
-                            t.identifier(name),
-                          ),
-                      )
-                    }
-
-                    return []
-                  },
-                )
-
-                if (specifiers.length === 0) {
-                  path.remove()
-                  return
-                }
-
-                const importDecl = t.importDeclaration(
-                  specifiers,
-                  t.stringLiteral(
-                    removeSplitSearchParamFromFilename(opts.filename),
-                  ),
-                )
-
-                path.replaceWith(importDecl)
-
-                // Track the imported identifier paths so deadCodeElimination can remove them if unused
-                // We need to traverse the newly created import to get the identifier paths
-                path.traverse({
-                  Identifier(identPath) {
-                    // Only track the local binding identifiers (the imported names)
-                    if (
-                      identPath.parentPath.isImportSpecifier() &&
-                      identPath.key === 'local'
-                    ) {
-                      refIdents.add(identPath)
-                    }
-                  },
-                })
-              }
-            }
-          },
-        })
-
-        // Add shared bindings import, registering specifiers in refIdents
-        // so DCE can remove unused ones (same pattern as import replacements above).
-        if (opts.sharedBindings && opts.sharedBindings.size > 0) {
-          const sharedImportSpecifiers = [...opts.sharedBindings].map((name) =>
-            t.importSpecifier(t.identifier(name), t.identifier(name)),
-          )
-          const sharedModuleUrl = addSharedSearchParamToFilename(
-            removeSplitSearchParamFromFilename(opts.filename),
-          )
-          const [sharedImportPath] = programPath.unshiftContainer(
-            'body',
-            t.importDeclaration(
-              sharedImportSpecifiers,
-              t.stringLiteral(sharedModuleUrl),
-            ),
-          )
-
-          sharedImportPath.traverse({
-            Identifier(identPath) {
-              if (
-                identPath.parentPath.isImportSpecifier() &&
-                identPath.key === 'local'
-              ) {
-                refIdents.add(identPath)
-              }
-            },
-          })
         }
-      },
-    },
-  })
-
-  deadCodeElimination(ast, refIdents)
-  stripUnreferencedTopLevelExpressionStatements(ast)
-
-  // If the body is empty after DCE, strip directive prologues too.
-  // A file containing only `'use client'` with no real code is useless.
-  if (ast.program.body.length === 0) {
-    ast.program.directives = []
+      }
+    }
   }
-
-  const result = generateFromAst(ast, {
-    sourceMaps: true,
-    sourceFileName: opts.filename,
-    filename: opts.filename,
-  })
-
-  // @babel/generator does not populate sourcesContent — see compileCodeSplitReferenceRoute.
-  if (result.map) {
-    result.map.sourcesContent = [opts.code]
+  // An exported function or class that a split module reads moves to the
+  // shared module with its private dependencies, and the route module
+  // re-exports it from there: one module instance holds it, and the bundler
+  // can leave it out of the route module's chunk when nothing else imports it.
+  const constructors = pureConstructors(module)
+  const effectful = module.ast.body.filter(
+    (statement) => !isPureStatement(statement, constructors),
+  )
+  for (const binding of splitReads) {
+    if (
+      shared.has(binding) ||
+      !analysis.exported.has(binding) ||
+      unsplitTargets.has(binding) ||
+      !locals.has(binding) ||
+      forbidden.has(binding) ||
+      !isFunctionOrClass(analysis, binding)
+    ) {
+      continue
+    }
+    // A destructuring moves with all of its bindings
+    const moved = new Set<Binding>()
+    for (const dependency of expandTransitively(
+      new Set([binding]),
+      chunkDependencies,
+    )) {
+      const declaration = graph.declarations.get(dependency)
+      for (const sibling of (declaration &&
+        graph.declarationBindings.get(declaration)) ?? [dependency]) {
+        if (locals.has(sibling)) {
+          moved.add(sibling)
+        }
+      }
+    }
+    const declarations = [...moved].map(
+      (dependency) => graph.declarations.get(dependency)!,
+    )
+    // A binding that code outside the moved declarations reassigns cannot
+    // become an import
+    const writtenOutside = [...moved].some((dependency) =>
+      dependency.references.some(
+        (reference) =>
+          reference.isWrite &&
+          !declarations.some((declaration) =>
+            contains(declaration, reference.node),
+          ),
+      ),
+    )
+    if (writtenOutside) {
+      continue
+    }
+    // The shared module runs before the route module's own statements, so a
+    // moved statement with effects cannot overtake one that stays behind
+    const moving = [
+      ...declarations,
+      ...[...shared].map((dependency) => graph.declarations.get(dependency)!),
+    ]
+    let staysBefore = false
+    let overtakes = false
+    for (const statement of effectful) {
+      if (!moving.some((declaration) => contains(statement, declaration))) {
+        staysBefore = true
+      } else if (
+        staysBefore &&
+        declarations.some((declaration) => contains(statement, declaration))
+      ) {
+        overtakes = true
+      }
+    }
+    if (overtakes) {
+      continue
+    }
+    for (const dependency of moved) {
+      shared.add(dependency)
+    }
   }
-
-  return result
+  return new Set(
+    [...shared]
+      .filter((binding) => !forbidden.has(binding))
+      .map((binding) => binding.name),
+  )
 }
 
 /**
- * Compile the shared virtual module (`?tsr-shared=1`).
- * Keeps only shared binding declarations, their transitive dependencies,
- * and imports they need. Exports all shared bindings.
+ * Whether the environment provides a binding's value: its declarations are
+ * `declare`d or only types, as `declare var X` merged with `interface X`.
+ * Yuku's `Ambient` flag requires every declaration, interfaces included, to be
+ * `declare`d.
  */
-export function compileCodeSplitSharedRoute(
-  opts: ParseAstOptions & {
-    sharedBindings: Set<string>
-    filename: string
-  },
-): GeneratorResult {
-  const ast = parseAst(opts)
-  const refIdents = findReferencedIdentifiers(ast)
-
-  // Collect all names that need to stay: shared bindings + their transitive deps
-  const localBindings = new Set<string>()
-  for (const node of ast.program.body) {
-    collectLocalBindingsFromStatement(node, localBindings)
-  }
-
-  // Route must never be extracted into the shared module.
-  // Excluding it from the dep graph prevents expandTransitively from
-  // pulling it in as a transitive dependency of a shared binding.
-  localBindings.delete('Route')
-
-  const declMap = buildDeclarationMap(ast)
-  const depGraph = buildDependencyGraph(declMap, localBindings)
-
-  // Start with shared bindings and expand transitively
-  const keepBindings = new Set(opts.sharedBindings)
-  keepBindings.delete('Route')
-  expandTransitively(keepBindings, depGraph)
-
-  retainModuleLevelDeclarations(ast, keepBindings)
-  unwrapExportedDeclarations(ast)
-
-  // Export all shared bindings (sorted for deterministic output)
-  const exportNames = [...opts.sharedBindings].sort((a, b) =>
-    a.localeCompare(b),
-  )
-  const exportSpecifiers = exportNames.map((name) =>
-    t.exportSpecifier(t.identifier(name), t.identifier(name)),
-  )
-  if (exportSpecifiers.length > 0) {
-    const exportDecl = t.exportNamedDeclaration(null, exportSpecifiers)
-    ast.program.body.push(exportDecl)
-
-    // Register export specifier locals in refIdents so DCE doesn't treat
-    // the exported bindings as unreferenced.
-    babel.traverse(ast, {
-      Program(programPath) {
-        const bodyPaths = programPath.get('body')
-        const last = bodyPaths[bodyPaths.length - 1]
-        if (last && last.isExportNamedDeclaration()) {
-          last.traverse({
-            Identifier(identPath) {
-              if (
-                identPath.parentPath.isExportSpecifier() &&
-                identPath.key === 'local'
-              ) {
-                refIdents.add(identPath)
-              }
-            },
-          })
+function isAmbient(module: Module, binding: Binding) {
+  return (
+    binding.has(BindingFlags.Ambient) ||
+    (binding.has(BindingFlags.Interface | BindingFlags.TypeAlias) &&
+      binding.declarations.every((identifier) => {
+        const declaration = module.parentOf(identifier)
+        if (
+          is.TSInterfaceDeclaration(declaration) ||
+          is.TSTypeAliasDeclaration(declaration) ||
+          is.TSDeclareFunction(declaration)
+        ) {
+          return true
         }
-        programPath.stop()
+        const statement = is.VariableDeclarator(declaration)
+          ? module.parentOf(declaration)
+          : declaration
+        return !!statement && 'declare' in statement && !!statement.declare
+      }))
+  )
+}
+
+function contains(outer: Node, inner: Node) {
+  return outer.start <= inner.start && inner.end <= outer.end
+}
+
+/** The initializer of a binding a `const` declares, without type syntax. */
+function constInitializer(analysis: RouteModuleAnalysis, binding: Binding) {
+  const declaration = analysis.graph.declarations.get(binding)
+  if (!is.VariableDeclarator(declaration) || !declaration.init) {
+    return undefined
+  }
+  const parent = analysis.module.parentOf(declaration)
+  return is.VariableDeclaration(parent) && parent.kind === 'const'
+    ? unwrapExpression(declaration.init)
+    : undefined
+}
+
+/** A function declaration or `const` function with the name of a component. */
+function isComponentLike(analysis: RouteModuleAnalysis, binding: Binding) {
+  const declaration = analysis.graph.declarations.get(binding)
+  const init = constInitializer(analysis, binding)
+  const fn = is.FunctionDeclaration(declaration)
+    ? declaration
+    : is.ArrowFunctionExpression(init) || is.FunctionExpression(init)
+      ? init
+      : undefined
+  return !!fn && !fn.async && !fn.generator && /^[A-Z]/.test(binding.name)
+}
+
+/**
+ * The modules a route file's shared bindings are emitted in. React Refresh
+ * hot-updates only a module whose exports are all components, so with
+ * `splitComponents` the shared bindings that look like components, and that
+ * no other shared binding reads, go to a `components` module. It imports the
+ * rest from the `values` module, which never imports it. A component that a
+ * shared value holds, as in `const columns = [{ render: Cell }]`, stays in the
+ * `values` module with the value, which React Refresh then cannot hot-update.
+ */
+export function partitionSharedBindings(
+  analysis: RouteModuleAnalysis,
+  shared: Set<string> | undefined,
+  splitComponents: boolean | undefined,
+): Array<[SharedModulePart, Set<string>]> {
+  if (!shared?.size) {
+    return []
+  }
+  if (!splitComponents) {
+    return [['values', shared]]
+  }
+  const bindings = analysis.module.rootScope.bindings.filter(
+    (binding) => binding.name !== 'Route' && shared.has(binding.name),
+  )
+  const components = new Set(
+    bindings.filter((binding) => isComponentLike(analysis, binding)),
+  )
+  // A value never reads a component, and a component never assigns a value:
+  // an imported binding cannot be assigned
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const binding of bindings) {
+      if (components.has(binding)) {
+        continue
+      }
+      for (const dependency of analysis.graph.dependencies.get(binding) ?? []) {
+        changed = components.delete(dependency) || changed
+      }
+      for (const reference of binding.references) {
+        if (!reference.isWrite) {
+          continue
+        }
+        for (const component of components) {
+          if (
+            contains(
+              analysis.graph.declarations.get(component)!,
+              reference.node,
+            )
+          ) {
+            components.delete(component)
+            changed = true
+          }
+        }
+      }
+    }
+  }
+  const componentNames = new Set([...components].map((binding) => binding.name))
+  const values = new Set(
+    [...shared].filter((name) => !componentNames.has(name)),
+  )
+  return (
+    [
+      ['values', values],
+      ['components', componentNames],
+    ] as Array<[SharedModulePart, Set<string>]>
+  ).filter(([, names]) => names.size > 0)
+}
+
+/** A function or class declaration, or a `const` holding a function. */
+function isFunctionOrClass(analysis: RouteModuleAnalysis, binding: Binding) {
+  const declaration = analysis.graph.declarations.get(binding)
+  const init = constInitializer(analysis, binding)
+  return (
+    is.FunctionDeclaration(declaration) ||
+    is.ClassDeclaration(declaration) ||
+    is.ArrowFunctionExpression(init) ||
+    is.FunctionExpression(init)
+  )
+}
+
+function identifier(name: string) {
+  return b.Identifier({ name })
+}
+function reference(name: string, binding?: Binding) {
+  const node = identifier(name)
+  linkGeneratedReference(node, binding ?? name)
+  return node
+}
+function string(value: string) {
+  return b.Literal({ value, raw: JSON.stringify(value) }) as StringLiteral
+}
+function moduleName(name: string) {
+  return isIdentifierName(name) ? identifier(name) : string(name)
+}
+function imports(
+  names: Array<{ local: string; imported: string }>,
+  source: string,
+) {
+  return b.ImportDeclaration({
+    source: string(source),
+    attributes: [],
+    phase: null,
+    specifiers: names.map(({ local, imported }) =>
+      b.ImportSpecifier({
+        local: identifier(local),
+        imported: moduleName(imported),
+      }),
+    ),
+  })
+}
+function exports(
+  names: Array<{ local: string; exported: string; binding?: Binding }>,
+  source: string | null = null,
+) {
+  return b.ExportNamedDeclaration({
+    declaration: null,
+    source: source === null ? null : string(source),
+    attributes: [],
+    specifiers: names.map(({ local, exported, binding }) =>
+      b.ExportSpecifier({
+        local: source === null ? reference(local, binding) : moduleName(local),
+        exported: moduleName(exported),
+      }),
+    ),
+  })
+}
+function variable(name: string, init: Expression) {
+  return b.VariableDeclaration({
+    kind: 'const',
+    declarations: [b.VariableDeclarator({ id: identifier(name), init })],
+  })
+}
+function call(name: string, args: Array<Expression>) {
+  return b.CallExpression({
+    callee: reference(name),
+    arguments: args,
+    optional: false,
+  })
+}
+
+/** Print a module emitted for a route file, led by the file's pragmas. */
+function generateRouteModule(
+  analysis: RouteModuleAnalysis,
+  program: Program,
+  filename: string,
+) {
+  keepFilePragmas(analysis.module.ast, program)
+  return generateModule(program, {
+    source: analysis.module.source,
+    filename,
+  })
+}
+
+function createOutput(analysis: RouteModuleAnalysis) {
+  const { program, originalNodes } = cloneModuleAst(analysis.module)
+  const reservedNames = new Set([
+    ...analysis.module.bindings.map((binding) => binding.name),
+    ...analysis.module.unresolvedReferences.map((reference) => reference.name),
+  ])
+  const copies = new Map<Node, Node>()
+  walk(program, {
+    enter(node) {
+      copies.set(originalNodes.get(node)!, node)
+    },
+  })
+  // Most outputs never rename a binding: build the index on first use
+  let declarationExports: Map<Node, typeof analysis.module.exports> | undefined
+  const renameBinding = (node: Node, name: string) => {
+    const original = originalNodes.get(node)
+    const binding = original ? analysis.module.bindingOf(original) : null
+    if (!binding) {
+      return
+    }
+    if (!declarationExports) {
+      declarationExports = new Map()
+      for (const entry of analysis.module.exports) {
+        if (!entry.local || entry.name === null || entry.typeOnly) {
+          continue
+        }
+        // The top-level statement, the last ancestor before the program
+        let statement: Node = entry.node
+        for (const ancestor of analysis.module.ancestors(entry.node)) {
+          if (is.Program(ancestor)) {
+            break
+          }
+          statement = ancestor
+        }
+        if (is.ExportNamedDeclaration(statement) && statement.declaration) {
+          const entries = declarationExports.get(statement) ?? []
+          declarationExports.set(statement, [...entries, entry])
+        }
+      }
+    }
+    const aliasedNames = new Set<string>()
+    for (const [statement, entries] of declarationExports) {
+      const copy = copies.get(statement)
+      if (
+        !entries.some((entry) => entry.local === binding) ||
+        !is.ExportNamedDeclaration(copy) ||
+        !copy.declaration
+      ) {
+        continue
+      }
+      const index = program.body.indexOf(copy)
+      if (index !== -1) {
+        const uniqueEntries = entries.filter((entry) => {
+          if (aliasedNames.has(entry.name!)) {
+            return false
+          }
+          aliasedNames.add(entry.name!)
+          return true
+        })
+        const aliases = exports(
+          uniqueEntries.map((entry) => ({
+            local: entry.local!.name,
+            exported: entry.name!,
+            binding: entry.local!,
+          })),
+        )
+        for (const [index, entry] of uniqueEntries.entries()) {
+          originalNodes.set(aliases.specifiers[index]!.local, entry.node)
+        }
+        program.body.splice(
+          index,
+          1,
+          copy.declaration,
+          ...(uniqueEntries.length ? [aliases] : []),
+        )
+      }
+    }
+    walk(program, {
+      enter(candidate, context) {
+        if (!is.Identifier(candidate) && !is.JSXIdentifier(candidate)) {
+          return
+        }
+        const source = originalNodes.get(candidate)
+        if (source && analysis.module.bindingOf(source) === binding) {
+          candidate.name = name
+          const parent = context.parent
+          if (
+            is.Property(parent) &&
+            parent.shorthand &&
+            is.Identifier(parent.key) &&
+            is.Identifier(parent.value) &&
+            parent.key.name !== parent.value.name
+          ) {
+            parent.shorthand = false
+          }
+        }
       },
     })
   }
+  return { program, originalNodes, reservedNames, copies, renameBinding }
+}
 
-  deadCodeElimination(ast, refIdents)
-
-  // If the body is empty after DCE, strip directive prologues too.
-  if (ast.program.body.length === 0) {
-    ast.program.directives = []
+/** Split modules export only their own split values; keep local declarations. */
+function withoutExportSyntax(
+  statement: ProgramStatement,
+): Array<ProgramStatement> {
+  if (is.ExportNamedDeclaration(statement)) {
+    return statement.declaration
+      ? [unwrapExport(statement, statement.declaration)]
+      : []
   }
+  if (is.ExportDefaultDeclaration(statement)) {
+    const { declaration } = statement
+    // An anonymous default declaration has no binding that could be used here
+    return (is.FunctionDeclaration(declaration) ||
+      is.ClassDeclaration(declaration)) &&
+      declaration.id
+      ? [unwrapExport(statement, declaration)]
+      : []
+  }
+  if (is.ExportAllDeclaration(statement)) {
+    return []
+  }
+  return [statement]
+}
 
-  const result = generateFromAst(ast, {
-    sourceMaps: true,
-    sourceFileName: opts.filename,
-    filename: opts.filename,
+function removeDeclarations(program: Program, names: Set<string>) {
+  const removedDefaultExports = new Set<Node>()
+  walk(program, {
+    enter(node, context) {
+      if (
+        (is.TSEnumDeclaration(node) ||
+          is.TSModuleDeclaration(node) ||
+          is.TSDeclareFunction(node)) &&
+        node.id &&
+        is.Identifier(node.id) &&
+        names.has(node.id.name) &&
+        (is.Program(context.parent) ||
+          is.ExportNamedDeclaration(context.parent))
+      ) {
+        context.remove()
+      }
+    },
+    VariableDeclaration(node, context) {
+      if (
+        is.Program(context.parent) ||
+        is.ExportNamedDeclaration(context.parent)
+      ) {
+        node.declarations = node.declarations.filter(
+          (declarator) =>
+            !bindingIdentifiers(declarator.id).every((id) =>
+              names.has(id.name),
+            ),
+        )
+      }
+    },
+    FunctionDeclaration(node, context) {
+      if (
+        node.id &&
+        names.has(node.id.name) &&
+        (is.Program(context.parent) ||
+          is.ExportNamedDeclaration(context.parent) ||
+          is.ExportDefaultDeclaration(context.parent))
+      ) {
+        if (is.ExportDefaultDeclaration(context.parent)) {
+          removedDefaultExports.add(context.parent)
+        }
+        context.remove()
+      }
+    },
+    ClassDeclaration(node, context) {
+      if (
+        node.id &&
+        names.has(node.id.name) &&
+        (is.Program(context.parent) ||
+          is.ExportNamedDeclaration(context.parent) ||
+          is.ExportDefaultDeclaration(context.parent))
+      ) {
+        if (is.ExportDefaultDeclaration(context.parent)) {
+          removedDefaultExports.add(context.parent)
+        }
+        context.remove()
+      }
+    },
+    leave(node, context) {
+      if (
+        (is.VariableDeclaration(node) && node.declarations.length === 0) ||
+        (is.ExportNamedDeclaration(node) &&
+          !node.declaration &&
+          node.specifiers.length === 0 &&
+          !node.source) ||
+        removedDefaultExports.has(node)
+      ) {
+        context.remove()
+      }
+    },
   })
+}
 
-  // @babel/generator does not populate sourcesContent — see compileCodeSplitReferenceRoute.
-  if (result.map) {
-    result.map.sourcesContent = [opts.code]
+function addSharedImports(
+  program: Program,
+  parts: Array<[SharedModulePart, Set<string>]>,
+  filename: string,
+) {
+  for (const [part, names] of parts) {
+    removeDeclarations(program, names)
+    prependStatements(
+      program,
+      imports(
+        [...names].map((name) => ({ local: name, imported: name })),
+        addSharedSearchParamToFilename(filename, part),
+      ),
+    )
   }
+}
 
-  return result
+export function compileCodeSplitReferenceRoute(
+  options: SourceOptions &
+    CompileCodeSplitReferenceRouteOptions & {
+      compilerPlugins?: Array<CodeSplitCompilerPlugin>
+    },
+) {
+  const analysis = sourceAnalysis(options)
+  const output = createOutput(analysis)
+  const { program, originalNodes, reservedNames, copies, renameBinding } =
+    output
+  const framework = getFrameworkOptions(options.targetFramework)
+  const lazyImports = new Map<string, string>()
+  const knownExported = new Set<string>()
+  // What split values read, which moves into their chunks
+  const splitReads = new Set<Binding>()
+  let modified = false
+  for (const route of analysis.routes) {
+    const routeOptions = copies.get(route.options) as ObjectExpression
+    const insertionStatement = copies.get(route.statement) as ProgramStatement
+    const context: ReferenceRouteCompilerPluginContext = {
+      program,
+      module: analysis.module,
+      graph: analysis.graph,
+      originalNodes,
+      reservedNames,
+      renameBinding,
+      routeOptions,
+      createRouteFn: route.factory,
+      opts: options,
+      insertBefore(nodes) {
+        // renameBinding unwraps an `export` declaration it renames
+        const index = program.body.findIndex(
+          (statement) =>
+            statement === insertionStatement ||
+            (is.ExportNamedDeclaration(insertionStatement) &&
+              statement === insertionStatement.declaration),
+        )
+        program.body.splice(index, 0, ...nodes)
+      },
+    }
+    for (const plugin of options.compilerPlugins ?? []) {
+      modified = !!plugin.onRouteOptions?.(context)?.modified || modified
+    }
+    if (options.deleteNodes?.size) {
+      routeOptions.properties = routeOptions.properties.filter((property) => {
+        const remove =
+          is.Property(property) &&
+          options.deleteNodes!.has(getObjectPropertyKeyName(property) ?? '')
+        modified ||= remove
+        return !remove
+      })
+    }
+    if (route.factory === 'createFileRoute') {
+      for (const prop of routeOptions.properties) {
+        if (!is.Property(prop) || !isDataProperty(prop)) {
+          continue
+        }
+        const key = getObjectPropertyKeyName(prop) as SplitRouteIdentNodes
+        const group = options.codeSplitGroupings.find((keys) =>
+          keys.includes(key),
+        )
+        if (!group || !splitKeys.includes(key) || isFallback(prop.value)) {
+          continue
+        }
+        const target = splitProperty(key, prop)
+        if (!target) {
+          continue
+        }
+        const original = originalNodes.get(unwrapExpression(target.value))
+        const binding =
+          original && is.Identifier(original)
+            ? analysis.module.bindingOf(original)
+            : null
+        if (binding && analysis.exported.has(binding)) {
+          knownExported.add(binding.name)
+          continue
+        }
+        const splitValue = originalNodes.get(target.value)
+        if (splitValue) {
+          for (const reference of collectModuleReferences(
+            analysis.module,
+            splitValue,
+          )) {
+            splitReads.add(reference)
+          }
+        }
+        const meta = splitMeta(key)
+        let lazy = lazyImports.get(meta.splitStrategy)
+        if (!lazy) {
+          lazy = getUniqueProgramIdentifier(
+            reservedNames,
+            meta.splitStrategy,
+          ).name
+          prependStatements(
+            program,
+            imports(
+              [{ local: lazy, imported: meta.splitStrategy }],
+              framework.package,
+            ),
+          )
+          lazyImports.set(meta.splitStrategy, lazy)
+        }
+        meta.localImporterIdent = getUniqueProgramIdentifier(
+          reservedNames,
+          meta.localImporterIdent,
+        ).name
+        prependStatements(
+          program,
+          variable(
+            meta.localImporterIdent,
+            b.ArrowFunctionExpression({
+              id: null,
+              generator: false,
+              async: false,
+              expression: true,
+              params: [],
+              body: b.ImportExpression({
+                source: string(splitFilename(options.filename, group)),
+                options: null,
+                phase: null,
+              }),
+            }),
+          ),
+        )
+        let value: Expression | undefined = undefined
+        for (const plugin of options.compilerPlugins ?? []) {
+          value =
+            plugin.onSplitRouteProperty?.({
+              ...context,
+              prop: target,
+              splitNodeMeta: meta,
+              lazyRouteComponentIdent: lazy,
+            }) ?? undefined
+          if (value) {
+            break
+          }
+        }
+        target.value =
+          value ??
+          call(lazy, [
+            reference(meta.localImporterIdent),
+            string(meta.exporterIdent),
+          ])
+        target.shorthand = false
+        modified = true
+      }
+    } else {
+      for (const plugin of options.compilerPlugins ?? []) {
+        modified = !!plugin.onUnsplittableRoute?.(context)?.modified || modified
+      }
+    }
+    if (options.addHmr && route === analysis.moduleRoute) {
+      for (const plugin of options.compilerPlugins ?? []) {
+        plugin.onAddHmr?.(context)
+      }
+      const stableKeys = [
+        ...new Set(
+          (options.compilerPlugins ?? []).flatMap(
+            (plugin) => plugin.getStableRouteOptionKeys?.() ?? [],
+          ),
+        ),
+      ]
+      program.body.push(
+        ...createRouteHmrStatement(stableKeys, {
+          hmrStyle: options.hmrStyle ?? 'vite',
+          targetFramework: options.targetFramework,
+          routeId: options.hmrRouteId,
+        }),
+      )
+      modified = true
+    }
+  }
+  if (!modified) {
+    return null
+  }
+  if (options.sharedBindings?.size) {
+    program.body = program.body.filter((statement) => {
+      if (
+        is.ExportNamedDeclaration(statement) &&
+        !statement.source &&
+        !statement.declaration
+      ) {
+        statement.specifiers = statement.specifiers.filter(
+          (specifier) =>
+            !is.Identifier(specifier.local) ||
+            !options.sharedBindings!.has(specifier.local.name),
+        )
+        return statement.specifiers.length > 0
+      }
+      return !(
+        is.ExportDefaultDeclaration(statement) &&
+        is.Identifier(statement.declaration) &&
+        options.sharedBindings!.has(statement.declaration.name)
+      )
+    })
+  }
+  const sharedParts = partitionSharedBindings(
+    analysis,
+    options.sharedBindings,
+    options.splitSharedComponents,
+  )
+  addSharedImports(program, sharedParts, options.filename)
+  for (const [part, names] of sharedParts) {
+    const sharedExports = [...analysis.exported]
+      .filter(([binding]) => names.has(binding.name))
+      .flatMap(([binding, exportedNames]) =>
+        exportedNames.map((name) => ({ local: binding.name, exported: name })),
+      )
+    if (sharedExports.length) {
+      program.body.push(
+        exports(
+          sharedExports,
+          addSharedSearchParamToFilename(options.filename, part),
+        ),
+      )
+    }
+  }
+  removeUnusedBindings(analysis.module, program, originalNodes, {
+    // Imports are not moved: each module that reads one imports it
+    moved: new Set(
+      [...expandTransitively(splitReads, analysis.chunkDependencies)].filter(
+        (binding) => !binding.has(BindingFlags.Import),
+      ),
+    ),
+  })
+  if (knownExported.size) {
+    const message = createNotExportableMessage(options.filename, knownExported)
+    console.warn(message)
+    if (process.env.NODE_ENV !== 'production') {
+      prependStatements(
+        program,
+        ...parseStatements(`console.warn(${JSON.stringify(message)})`),
+      )
+    }
+  }
+  return generateRouteModule(analysis, program, options.filename)
+}
+
+export function compileCodeSplitVirtualRoute(
+  options: SourceOptions & {
+    splitTargets: Array<SplitRouteIdentNodes>
+    filename: string
+    sharedBindings?: Set<string>
+    splitSharedComponents?: boolean
+    compilerPlugins?: Array<CodeSplitCompilerPlugin>
+  },
+) {
+  const analysis = sourceAnalysis(options)
+  const { program, originalNodes, reservedNames, copies, renameBinding } =
+    createOutput(analysis)
+  if (!analysis.routes.some((route) => route.factory === 'createFileRoute')) {
+    return generateRouteModule(analysis, program, options.filename)
+  }
+  const generatedExports: Array<ProgramStatement> = []
+  const splitReferences = new Set<Binding>()
+  for (const route of analysis.routes) {
+    if (route.factory !== 'createFileRoute') {
+      continue
+    }
+    for (const property of runtimeProperties(route)) {
+      if (!isDataProperty(property)) {
+        continue
+      }
+      const key = getObjectPropertyKeyName(property) as SplitRouteIdentNodes
+      if (!options.splitTargets.includes(key) || isFallback(property.value)) {
+        continue
+      }
+      const target = splitProperty(key, property)
+      if (!target) {
+        continue
+      }
+      const propertyValue = unwrapExpression(target.value)
+      const binding = is.Identifier(propertyValue)
+        ? analysis.module.bindingOf(propertyValue)
+        : null
+      if (binding && analysis.exported.has(binding)) {
+        continue
+      }
+      for (const reference of collectModuleReferences(
+        analysis.module,
+        propertyValue,
+      )) {
+        splitReferences.add(reference)
+      }
+      const value = copies.get(propertyValue) as Expression
+      const meta = splitMeta(key)
+      if (is.Identifier(value)) {
+        const declaration = binding
+          ? analysis.graph.declarations.get(binding)
+          : undefined
+        const splitNode = declaration ? copies.get(declaration) : undefined
+        if (splitNode) {
+          for (const plugin of options.compilerPlugins ?? []) {
+            plugin.onVirtualRouteSplitNode?.({
+              program,
+              reservedNames,
+              renameBinding,
+              splitNode,
+              splitNodeMeta: meta,
+            })
+          }
+        }
+        generatedExports.push(
+          exports([
+            { local: value.name, exported: key, binding: binding ?? undefined },
+          ]),
+        )
+      } else {
+        const name = getUniqueProgramIdentifier(
+          reservedNames,
+          meta.localExporterIdent,
+        ).name
+        generatedExports.push(
+          variable(name, value),
+          exports([{ local: name, exported: key }]),
+        )
+      }
+    }
+    ;(copies.get(route.options) as ObjectExpression).properties = []
+  }
+  const importedExports = exportsImportedBySplitModule(
+    analysis,
+    splitReferences,
+    options.sharedBindings,
+  )
+  program.body = program.body.flatMap(withoutExportSyntax)
+  removeDeclarations(
+    program,
+    new Set(importedExports.map(([binding]) => binding.name)),
+  )
+  if (importedExports.length) {
+    prependStatements(
+      program,
+      imports(
+        importedExports.map(([binding, names]) => ({
+          local: binding.name,
+          imported: names[0]!,
+        })),
+        bareFilename(options.filename),
+      ),
+    )
+  }
+  addSharedImports(
+    program,
+    partitionSharedBindings(
+      analysis,
+      options.sharedBindings,
+      options.splitSharedComponents,
+    ),
+    options.filename,
+  )
+  program.body.push(...generatedExports)
+  removeUnusedBindings(analysis.module, program, originalNodes, {
+    partialCopy: true,
+  })
+  stripUnownedExpressions(analysis.module, program, originalNodes)
+  return generateRouteModule(analysis, program, options.filename)
 }
 
 /**
- * This function should read get the options from by searching for the key `codeSplitGroupings`
- * on createFileRoute and return it's values if it exists, else return undefined
+ * User exports, including the Route singleton, that a split module imports from
+ * the reference module instead of initializing a second copy. Imports keep their
+ * source, a destructuring that also declares private bindings stays whole, and
+ * shared bindings come from the shared module, which holds most exported
+ * functions and classes split modules read (see `computeSharedBindings`).
+ * Exported variables are always imported so that every module sees one context
+ * or store instance. Another exported function is declared in the split module
+ * when it is stateless, and so is an exported function or class that depends
+ * on a stateful private binding the split module declares itself, so that both
+ * observe one module state.
  */
-export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
-  groupings: CodeSplitGroupings | undefined
-} {
-  const ast = parseAst(opts)
+function exportsImportedBySplitModule(
+  analysis: RouteModuleAnalysis,
+  splitReferences: Set<Binding>,
+  sharedBindings: Set<string> | undefined,
+) {
+  const { graph, exported, chunkDependencies } = analysis
+  const siblingsOf = (binding: Binding) => {
+    const declaration = graph.declarations.get(binding)
+    return declaration ? graph.declarationBindings.get(declaration) : undefined
+  }
+  const isShared = (binding: Binding) => !!sharedBindings?.has(binding.name)
+  const dependenciesUntil = (stop: (binding: Binding) => boolean) =>
+    new Map([...chunkDependencies].filter(([binding]) => !stop(binding)))
+  const privateDependencies = dependenciesUntil(isShared)
+  const imported = new Set(
+    [...exported.keys()].filter((binding) => {
+      const siblings = siblingsOf(binding)
+      return (
+        !binding.has(BindingFlags.Import) &&
+        !isShared(binding) &&
+        !!siblings &&
+        [...siblings].every((sibling) => exported.has(sibling))
+      )
+    }),
+  )
+  // A binding with the same value in every module that declares it: a function
+  // or constant literal that nothing reassigns
+  const isStateless = (binding: Binding) => {
+    const declaration = graph.declarations.get(binding)!
+    const init = constInitializer(analysis, binding)
+    return (
+      (is.FunctionDeclaration(declaration) ||
+        is.ArrowFunctionExpression(init) ||
+        is.FunctionExpression(init) ||
+        (is.Literal(init) && !is.RegExpLiteral(init)) ||
+        (is.TemplateLiteral(init) && init.expressions.length === 0)) &&
+      !binding.references.some(
+        (reference) =>
+          reference.isWrite && !contains(declaration, reference.node),
+      )
+    )
+  }
+  // An exported function the shared module does not take, such as one that
+  // reads `Route`, is declared in the split module, like what it reads that
+  // the split module does not import, when all of them are stateless and
+  // write no binding
+  const importedExports = new Set(imported)
+  const privateDeclarations = dependenciesUntil(
+    (binding) =>
+      importedExports.has(binding) ||
+      isShared(binding) ||
+      binding.has(BindingFlags.Import),
+  )
+  for (const binding of importedExports) {
+    if (!is.FunctionDeclaration(graph.declarations.get(binding))) {
+      continue
+    }
+    const declaredAlong = [
+      binding,
+      ...expandTransitively(
+        chunkDependencies.get(binding) ?? new Set<Binding>(),
+        privateDeclarations,
+      ),
+    ].filter(
+      (dependency) =>
+        dependency === binding ||
+        (graph.declarations.has(dependency) &&
+          !importedExports.has(dependency) &&
+          !isShared(dependency) &&
+          !dependency.has(BindingFlags.Import)),
+    )
+    const copyable = declaredAlong.every((dependency) => {
+      const declaration = graph.declarations.get(dependency)!
+      return (
+        isStateless(dependency) &&
+        ![...(chunkDependencies.get(dependency) ?? [])].some((read) =>
+          read.references.some(
+            (reference) =>
+              reference.isWrite && contains(declaration, reference.node),
+          ),
+        )
+      )
+    })
+    if (copyable) {
+      imported.delete(binding)
+    }
+  }
+  let changed = true
+  while (changed) {
+    changed = false
+    const declared = expandTransitively(
+      splitReferences,
+      dependenciesUntil(
+        (binding) => imported.has(binding) || isShared(binding),
+      ),
+    )
+    for (const binding of imported) {
+      // Every module reads one instance of an exported variable
+      if (is.VariableDeclarator(graph.declarations.get(binding))) {
+        continue
+      }
+      const dependencies = expandTransitively(
+        chunkDependencies.get(binding) ?? new Set<Binding>(),
+        privateDependencies,
+      )
+      if (
+        [...dependencies].some(
+          (dependency) =>
+            declared.has(dependency) &&
+            graph.declarations.has(dependency) &&
+            !dependency.has(BindingFlags.Import) &&
+            !imported.has(dependency) &&
+            !isShared(dependency) &&
+            // A second copy of a stateless binding holds the same value
+            !isStateless(dependency),
+        )
+      ) {
+        for (const sibling of siblingsOf(binding)!) {
+          imported.delete(sibling)
+        }
+        changed = true
+      }
+    }
+  }
+  return [...exported].filter(([binding]) => imported.has(binding))
+}
 
-  let codeSplitGroupings: CodeSplitGroupings | undefined = undefined
+function stripUnownedExpressions(
+  module: Module,
+  program: Program,
+  originalNodes: WeakMap<Node, Node>,
+) {
+  const localNames = new Set<string>()
+  for (const statement of program.body) {
+    if (is.VariableDeclaration(statement)) {
+      for (const declaration of statement.declarations) {
+        for (const id of bindingIdentifiers(declaration.id)) {
+          localNames.add(id.name)
+        }
+      }
+    } else if (
+      (is.FunctionDeclaration(statement) || is.ClassDeclaration(statement)) &&
+      statement.id
+    ) {
+      localNames.add(statement.id.name)
+    } else if (is.TSEnumDeclaration(statement) && !statement.declare) {
+      localNames.add(statement.id.name)
+    } else if (is.TSModuleDeclaration(statement) && !statement.declare) {
+      // `namespace A.B {}` declares `A`
+      let id: Node = statement.id
+      while (is.TSQualifiedName(id)) {
+        id = id.left
+      }
+      if (is.Identifier(id)) {
+        localNames.add(id.name)
+      }
+    }
+  }
+  program.body = program.body.filter((statement) => {
+    if (is.Directive(statement) || !is.ExpressionStatement(statement)) {
+      return true
+    }
+    const original = originalNodes.get(statement)
+    return (
+      !!original &&
+      [...collectModuleReferences(module, original)].some((binding) =>
+        localNames.has(binding.name),
+      )
+    )
+  })
+  if (program.body.every((statement) => is.Directive(statement))) {
+    program.body = []
+  }
+}
 
-  babel.traverse(ast, {
-    Program: {
-      enter(programPath) {
-        programPath.traverse({
-          CallExpression(path) {
-            if (!t.isIdentifier(path.node.callee)) {
-              return
-            }
+/**
+ * Whether the top-level statements that declare `names` and their
+ * dependencies have no effect: the values module keeps these declarations,
+ * or fewer of them.
+ */
+function declarationsArePure(
+  analysis: RouteModuleAnalysis,
+  names: Set<string>,
+  constructors: Set<string>,
+) {
+  const declarations = [
+    ...expandTransitively(
+      new Set(
+        analysis.module.rootScope.bindings.filter((binding) =>
+          names.has(binding.name),
+        ),
+      ),
+      analysis.graph.dependencies,
+    ),
+  ].flatMap((binding) => analysis.graph.declarations.get(binding) ?? [])
+  return analysis.module.ast.body.every(
+    (statement) =>
+      !declarations.some((declaration) => contains(statement, declaration)) ||
+      isPureStatement(statement, constructors),
+  )
+}
 
-            if (
-              !(
-                path.node.callee.name === 'createRoute' ||
-                path.node.callee.name === 'createFileRoute'
-              )
-            ) {
-              return
-            }
+export function compileCodeSplitSharedRoute(
+  options: SourceOptions & {
+    sharedBindings: Set<string>
+    filename: string
+    /** The shared module to emit, `values` by default. */
+    part?: SharedModulePart
+    splitSharedComponents?: boolean
+  },
+): ReturnType<typeof generateRouteModule> & { sideEffectFree: boolean } {
+  const analysis = sourceAnalysis(options)
+  const parts = new Map(
+    partitionSharedBindings(
+      analysis,
+      options.sharedBindings,
+      options.splitSharedComponents,
+    ),
+  )
+  const part = options.part ?? 'values'
+  const own = parts.get(part) ?? new Set<string>()
+  const values = part === 'components' ? parts.get('values') : undefined
+  const valuesId = addSharedSearchParamToFilename(options.filename, 'values')
+  const { program, originalNodes } = createOutput(analysis)
+  const keep = expandTransitively(
+    new Set(
+      analysis.module.rootScope.bindings.filter(
+        (binding) => binding.name !== 'Route' && own.has(binding.name),
+      ),
+    ),
+    analysis.graph.dependencies,
+  )
+  const names = new Set([...keep].map((binding) => binding.name))
+  const remove = new Set(
+    analysis.module.rootScope.bindings
+      .filter((binding) => !names.has(binding.name))
+      .map((binding) => binding.name),
+  )
+  program.body = program.body
+    .flatMap(withoutExportSyntax)
+    .filter(
+      (statement) =>
+        is.Declaration(statement) ||
+        is.ImportDeclaration(statement) ||
+        is.Directive(statement),
+    )
+  removeDeclarations(program, remove)
+  if (values) {
+    // After the module's own imports, which the source evaluates before any
+    // of its statements
+    removeDeclarations(program, values)
+    let index = 0
+    program.body.forEach((statement, position) => {
+      if (is.ImportDeclaration(statement)) {
+        index = position + 1
+      }
+    })
+    program.body.splice(
+      index,
+      0,
+      imports(
+        [...values].map((name) => ({ local: name, imported: name })),
+        valuesId,
+      ),
+    )
+  }
+  program.body.push(
+    exports([...own].sort().map((name) => ({ local: name, exported: name }))),
+  )
+  removeUnusedBindings(analysis.module, program, originalNodes)
+  const constructors = pureConstructors(analysis.module)
+  const importsValues = program.body.some(
+    (statement) =>
+      is.ImportDeclaration(statement) && statement.source.value === valuesId,
+  )
+  return {
+    ...generateRouteModule(analysis, program, options.filename),
+    // Evaluating the module has no effect of its own, so a bundler can leave it
+    // out of a chunk that only re-exports bindings nothing imports from it.
+    // The components module also evaluates the values module it imports.
+    sideEffectFree:
+      program.body.every((statement) =>
+        isPureStatement(statement, constructors),
+      ) &&
+      (!importsValues || declarationsArePure(analysis, values!, constructors)),
+  }
+}
 
-            function babelHandleSplittingGroups(
-              routeOptions: t.Node | undefined,
-            ) {
-              if (t.isObjectExpression(routeOptions)) {
-                routeOptions.properties.forEach((prop) => {
-                  if (t.isObjectProperty(prop)) {
-                    const key = getObjectPropertyKeyName(prop)
-                    if (key === 'codeSplitGroupings') {
-                      const value = prop.value
+/** A top-level statement whose evaluation has no observable effect. */
+function isPureStatement(statement: Node, constructors: Set<string>): boolean {
+  if (
+    is.ImportDeclaration(statement) ||
+    is.ExportAllDeclaration(statement) ||
+    is.Directive(statement) ||
+    is.FunctionDeclaration(statement) ||
+    is.TSTypeAliasDeclaration(statement) ||
+    is.TSInterfaceDeclaration(statement) ||
+    is.TSDeclareFunction(statement)
+  ) {
+    return true
+  }
+  if (is.ExportNamedDeclaration(statement)) {
+    return (
+      !statement.declaration ||
+      isPureStatement(statement.declaration, constructors)
+    )
+  }
+  if (is.ExportDefaultDeclaration(statement)) {
+    return isPureStatement(statement.declaration, constructors)
+  }
+  if (is.ClassDeclaration(statement)) {
+    return isPureClass(statement, constructors)
+  }
+  if (is.VariableDeclaration(statement)) {
+    return (
+      !!statement.declare ||
+      (statement.kind !== 'using' &&
+        statement.kind !== 'await using' &&
+        statement.declarations.every(
+          (declaration) =>
+            is.Identifier(declaration.id) &&
+            (!declaration.init ||
+              isPureExpression(declaration.init, constructors)),
+        ))
+    )
+  }
+  return isPureExpression(statement, constructors)
+}
 
-                      if (t.isArrayExpression(value)) {
-                        codeSplitGroupings = value.elements.map((group) => {
-                          if (t.isArrayExpression(group)) {
-                            return group.elements.map((node) => {
-                              if (!t.isStringLiteral(node)) {
-                                throw new Error(
-                                  'You must provide a string literal for the codeSplitGroupings',
-                                )
-                              }
-
-                              return node.value
-                            }) as Array<SplitRouteIdentNodes>
-                          }
-
-                          throw new Error(
-                            'You must provide arrays with codeSplitGroupings options.',
-                          )
-                        })
-                      } else {
-                        throw new Error(
-                          'You must provide an array of arrays for the codeSplitGroupings.',
-                        )
-                      }
-                    }
-                  }
-                })
-              }
-            }
-
-            // Extracting the codeSplitGroupings
-            if (t.isCallExpression(path.parentPath.node)) {
-              // createFileRoute('/')({ ... })
-              const options = resolveIdentifier(
-                path,
-                path.parentPath.node.arguments[0],
-              )
-
-              babelHandleSplittingGroups(options)
-            } else if (t.isVariableDeclarator(path.parentPath.node)) {
-              // createFileRoute({ ... })
-              const caller = resolveIdentifier(path, path.parentPath.node.init)
-
-              if (t.isCallExpression(caller)) {
-                const options = resolveIdentifier(path, caller.arguments[0])
-                babelHandleSplittingGroups(options)
-              }
-            }
-          },
-        })
-      },
+function isPureClass(node: Node, constructors: Set<string>): boolean {
+  if (
+    !(is.ClassDeclaration(node) || is.ClassExpression(node)) ||
+    (node.superClass && !is.Identifier(node.superClass))
+  ) {
+    return false
+  }
+  // Decorators run when the class is defined, including those of parameters
+  const decorators: Array<Node> = []
+  walk(node, {
+    enter(child) {
+      if (is.Decorator(child)) {
+        decorators.push(child)
+      }
     },
   })
+  return (
+    !decorators.length &&
+    node.body.body.every((member) => {
+      if (is.StaticBlock(member)) {
+        return false
+      }
+      if ('computed' in member && member.computed && !is.Literal(member.key)) {
+        return false
+      }
+      if (
+        (is.PropertyDefinition(member) || is.AccessorProperty(member)) &&
+        member.static &&
+        member.value
+      ) {
+        return isPureExpression(member.value, constructors)
+      }
+      return true
+    })
+  )
+}
 
-  return { groupings: codeSplitGroupings }
+/** The global constructors whose instances `new` creates without effect. */
+function pureConstructors(module: Module) {
+  const names = new Set(['Map', 'Set', 'WeakMap', 'WeakSet'])
+  for (const binding of module.rootScope.bindings) {
+    names.delete(binding.name)
+  }
+  return names
+}
+
+/**
+ * An expression whose evaluation has no observable effect. JSX is not one: it
+ * evaluates its attributes and children, and some frameworks call the
+ * component.
+ */
+function isPureExpression(node: Node, constructors: Set<string>): boolean {
+  node = unwrapExpression(node as Expression)
+  if (
+    is.Literal(node) ||
+    is.Identifier(node) ||
+    is.ArrowFunctionExpression(node) ||
+    is.FunctionExpression(node)
+  ) {
+    return true
+  }
+  if (is.ClassExpression(node)) {
+    return isPureClass(node, constructors)
+  }
+  // Interpolating or negating an object calls its `toString` or `valueOf`
+  if (is.TemplateLiteral(node)) {
+    return node.expressions.every((expression) => is.Literal(expression))
+  }
+  if (is.UnaryExpression(node)) {
+    return (
+      node.operator !== 'delete' &&
+      (['!', 'typeof', 'void'].includes(node.operator)
+        ? isPureExpression(node.argument, constructors)
+        : is.Literal(node.argument))
+    )
+  }
+  if (is.ArrayExpression(node)) {
+    return node.elements.every(
+      (element) =>
+        !element ||
+        (!is.SpreadElement(element) && isPureExpression(element, constructors)),
+    )
+  }
+  if (is.ObjectExpression(node)) {
+    return node.properties.every(
+      (property) =>
+        is.Property(property) &&
+        (!property.computed || is.Literal(property.key)) &&
+        isPureExpression(property.value, constructors),
+    )
+  }
+  if (is.NewExpression(node)) {
+    return (
+      is.Identifier(node.callee) &&
+      constructors.has(node.callee.name) &&
+      node.arguments.length === 0
+    )
+  }
+  if (is.LogicalExpression(node)) {
+    return (
+      isPureExpression(node.left, constructors) &&
+      isPureExpression(node.right, constructors)
+    )
+  }
+  if (is.ConditionalExpression(node)) {
+    return (
+      isPureExpression(node.test, constructors) &&
+      isPureExpression(node.consequent, constructors) &&
+      isPureExpression(node.alternate, constructors)
+    )
+  }
+  return false
+}
+
+export function detectCodeSplitGroupingsFromRoute(options: SourceOptions): {
+  groupings: CodeSplitGroupings | undefined
+} {
+  const analysis = sourceAnalysis(options)
+  for (const route of analysis.routes) {
+    if (
+      route.factory !== 'createFileRoute' &&
+      route.factory !== 'createRoute'
+    ) {
+      continue
+    }
+    for (const property of properties(route)) {
+      if (getObjectPropertyKeyName(property) !== 'codeSplitGroupings') {
+        continue
+      }
+      const value = unwrapExpression(property.value)
+      if (!is.ArrayExpression(value)) {
+        throw new Error(
+          'You must provide an array of arrays for the codeSplitGroupings.',
+        )
+      }
+      return {
+        groupings: value.elements.map((element) => {
+          const group = unwrapExpression(element)
+          if (!is.ArrayExpression(group)) {
+            throw new Error(
+              'You must provide arrays with codeSplitGroupings options.',
+            )
+          }
+          return group.elements.map((element) => {
+            const item = unwrapExpression(element)
+            if (!is.StringLiteral(item)) {
+              throw new Error(
+                'You must provide a string literal for the codeSplitGroupings',
+              )
+            }
+            return item.value as SplitRouteIdentNodes
+          })
+        }),
+      }
+    }
+  }
+  return { groupings: undefined }
 }
 
 function createNotExportableMessage(
   filename: string,
-  idents: Set<string>,
-): string {
-  const list = Array.from(idents).map((d) => `- ${d}`)
-
-  const message = [
+  identifiers: Set<string>,
+) {
+  return [
     `[tanstack-router] These exports from "${filename}" will not be code-split and will increase your bundle size:`,
-    ...list,
+    ...[...identifiers].map((name) => `- ${name}`),
     'For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.',
   ].join('\n')
-
-  return message
 }
 
-function getImportSpecifierAndPathFromLocalName(
-  programPath: babel.NodePath<t.Program>,
-  name: string,
-): {
-  specifier:
-    | t.ImportSpecifier
-    | t.ImportDefaultSpecifier
-    | t.ImportNamespaceSpecifier
-    | null
-  path: string | null
-} {
-  let specifier:
-    | t.ImportSpecifier
-    | t.ImportDefaultSpecifier
-    | t.ImportNamespaceSpecifier
-    | null = null
-  let path: string | null = null
-
-  programPath.traverse({
-    ImportDeclaration(importPath) {
-      const found = importPath.node.specifiers.find(
-        (targetSpecifier) => targetSpecifier.local.name === name,
-      )
-      if (found) {
-        specifier = found
-        path = importPath.node.source.value
-      }
-    },
-  })
-
-  return { specifier, path }
-}
-
-// Reusable function to get literal value or resolve variable to literal
-function resolveIdentifier(path: any, node: any): t.Node | undefined {
-  if (t.isIdentifier(node)) {
-    const binding = path.scope.getBinding(node.name)
-    if (
-      binding
-      // && binding.kind === 'const'
-    ) {
-      const declarator = binding.path.node
-      if (t.isObjectExpression(declarator.init)) {
-        return declarator.init
-      } else if (t.isFunctionDeclaration(declarator.init)) {
-        return declarator.init
-      }
-    }
-    return undefined
-  }
-
-  return node
-}
-
-function removeIdentifierLiteral(path: babel.NodePath, node: t.Identifier) {
-  const binding = path.scope.getBinding(node.name)
-  if (binding) {
-    // If the binding is a destructured property from an ObjectPattern,
-    // only remove that property instead of the entire declaration
-    if (
-      t.isVariableDeclarator(binding.path.node) &&
-      t.isObjectPattern(binding.path.node.id)
-    ) {
-      const objectPattern = binding.path.node.id
-      objectPattern.properties = objectPattern.properties.filter((prop) => {
-        if (!t.isObjectProperty(prop)) {
-          return true
-        }
-
-        if (t.isIdentifier(prop.value) && prop.value.name === node.name) {
-          return false
-        }
-
-        if (
-          t.isAssignmentPattern(prop.value) &&
-          t.isIdentifier(prop.value.left) &&
-          prop.value.left.name === node.name
-        ) {
-          return false
-        }
-
-        return true
-      })
-
-      // If no properties remain, remove the entire declaration
-      if (objectPattern.properties.length === 0) {
-        binding.path.remove()
-      }
-
-      return
-    }
-
-    binding.path.remove()
-  }
-}
-
-function hasExport(ast: t.File, node: t.Identifier): boolean {
-  let found = false
-
-  babel.traverse(ast, {
-    ExportNamedDeclaration(path) {
-      if (path.node.declaration) {
-        // declared as `const loaderFn = () => {}`
-        if (t.isVariableDeclaration(path.node.declaration)) {
-          path.node.declaration.declarations.forEach((decl) => {
-            if (t.isVariableDeclarator(decl)) {
-              if (t.isIdentifier(decl.id)) {
-                if (decl.id.name === node.name) {
-                  found = true
-                }
-              } else if (
-                t.isObjectPattern(decl.id) ||
-                t.isArrayPattern(decl.id)
-              ) {
-                // Handle destructured exports like `export const { a, b } = fn()`
-                const names = collectIdentifiersFromPattern(decl.id)
-                if (names.includes(node.name)) {
-                  found = true
-                }
-              }
-            }
-          })
-        }
-
-        // declared as `function loaderFn() {}`
-        if (t.isFunctionDeclaration(path.node.declaration)) {
-          if (t.isIdentifier(path.node.declaration.id)) {
-            if (path.node.declaration.id.name === node.name) {
-              found = true
-            }
-          }
-        }
-      }
-    },
-    ExportDefaultDeclaration(path) {
-      // declared as `export default loaderFn`
-      if (t.isIdentifier(path.node.declaration)) {
-        if (path.node.declaration.name === node.name) {
-          found = true
-        }
-      }
-
-      // declared as `export default function loaderFn() {}`
-      if (t.isFunctionDeclaration(path.node.declaration)) {
-        if (t.isIdentifier(path.node.declaration.id)) {
-          if (path.node.declaration.id.name === node.name) {
-            found = true
-          }
-        }
-      }
-    },
-  })
-
-  return found
-}
-
-function removeExports(ast: t.File, node: t.Identifier): boolean {
-  let removed = false
-
-  // The checks use sequential if/else if statements since it
-  // directly mutates the AST and as such doing normal checks
-  // (using only if statements) could lead to a situation where
-  // `path.node` is null since it has been already removed from
-  // the program tree but typescript doesn't know that.
-  babel.traverse(ast, {
-    ExportNamedDeclaration(path) {
-      if (path.node.declaration) {
-        if (t.isVariableDeclaration(path.node.declaration)) {
-          // declared as `const loaderFn = () => {}`
-          path.node.declaration.declarations.forEach((decl) => {
-            if (t.isVariableDeclarator(decl)) {
-              if (t.isIdentifier(decl.id)) {
-                if (decl.id.name === node.name) {
-                  path.remove()
-                  removed = true
-                }
-              } else if (
-                t.isObjectPattern(decl.id) ||
-                t.isArrayPattern(decl.id)
-              ) {
-                // Handle destructured exports like `export const { a, b } = fn()`
-                const names = collectIdentifiersFromPattern(decl.id)
-                if (names.includes(node.name)) {
-                  path.remove()
-                  removed = true
-                }
-              }
-            }
-          })
-        } else if (t.isFunctionDeclaration(path.node.declaration)) {
-          // declared as `export const loaderFn = () => {}`
-          if (t.isIdentifier(path.node.declaration.id)) {
-            if (path.node.declaration.id.name === node.name) {
-              path.remove()
-              removed = true
-            }
-          }
-        }
-      }
-    },
-    ExportDefaultDeclaration(path) {
-      // declared as `export default loaderFn`
-      if (t.isIdentifier(path.node.declaration)) {
-        if (path.node.declaration.name === node.name) {
-          path.remove()
-          removed = true
-        }
-      } else if (t.isFunctionDeclaration(path.node.declaration)) {
-        // declared as `export default function loaderFn() {}`
-        if (t.isIdentifier(path.node.declaration.id)) {
-          if (path.node.declaration.id.name === node.name) {
-            path.remove()
-            removed = true
-          }
-        }
-      }
-    },
-  })
-
-  return removed
+export function createRouteInFunctionMessage(filename: string) {
+  return `[tanstack-router] The route in "${filename}" is created inside a function. Route factories are not supported, so it will not be code-split, and edits to its components may need a full page reload. Create it at module level: export const Route = createFileRoute('/path')({ ... })`
 }

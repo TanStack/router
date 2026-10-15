@@ -1,19 +1,19 @@
-const _H3 = _lazyRouteComponent(
-  () =>
-    import('<fixtureRoot>/hydrateWhenObjectFallback.tsx?tss-hydrate=2_7f4dc3aa80'),
-  'H2',
-)
-const _H2 = _lazyRouteComponent(
-  () =>
-    import('<fixtureRoot>/hydrateWhenObjectFallback.tsx?tss-hydrate=1_7f4dc3aa80'),
-  'H1',
-)
-const _H = _lazyRouteComponent(
+import { lazyRouteComponent as _lazyRouteComponent } from '@tanstack/react-router'
+const _H0 = _lazyRouteComponent(
   () =>
     import('<fixtureRoot>/hydrateWhenObjectFallback.tsx?tss-hydrate=0_7f4dc3aa80'),
   'H0',
 )
-import { lazyRouteComponent as _lazyRouteComponent } from '@tanstack/react-router'
+const _H1 = _lazyRouteComponent(
+  () =>
+    import('<fixtureRoot>/hydrateWhenObjectFallback.tsx?tss-hydrate=1_7f4dc3aa80'),
+  'H1',
+)
+const _H2 = _lazyRouteComponent(
+  () =>
+    import('<fixtureRoot>/hydrateWhenObjectFallback.tsx?tss-hydrate=2_7f4dc3aa80'),
+  'H2',
+)
 import { Hydrate } from '@tanstack/react-start'
 import { idle, visible } from '@tanstack/react-start/hydration'
 const spreadProps = {
@@ -28,7 +28,7 @@ export function Page() {
         fallback={<div data-testid="direct-fallback">Direct</div>}
         h="0_7f4dc3aa80"
       >
-        {<_H />}
+        {<_H0 />}
       </Hydrate>
       <Hydrate
         {...{
@@ -37,10 +37,10 @@ export function Page() {
         }}
         h="1_7f4dc3aa80"
       >
-        {<_H2 />}
+        {<_H1 />}
       </Hydrate>
       <Hydrate {...spreadProps} h="2_7f4dc3aa80">
-        {<_H3 />}
+        {<_H2 />}
       </Hydrate>
     </>
   )

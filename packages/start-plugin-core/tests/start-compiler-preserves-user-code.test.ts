@@ -1,6 +1,10 @@
+import { SourceMapConsumer } from 'source-map'
 import { describe, expect, test } from 'vitest'
+import { detectKindsInCode } from '../src/start-compiler/compiler'
 import {
   compileCode,
+  compileHydrate,
+  createStartCompiler,
   evaluateModule,
   importSources,
 } from './regression-helpers'
@@ -31,6 +35,77 @@ import { createPersister } from './persist'
 const persister = createPersister({ onRestore: () => restore() })
 function restore() {
   persister.restore()
+}
+export const fn = createServerFn().handler(async () => 1)`,
+  },
+  {
+    // Regression in the Yuku migration: the only reads are an unused local
+    // inside the declaration itself, and the client output drops both
+    // declarations with their register() calls.
+    // Inputs adapted from @babel/plugin-proposal-decorators
+    // 2023-11-misc/destructuring-transform-integration and TypeScript's
+    // conformance test classes/propertyMemberDeclarations/autoAccessor10.ts.
+    name: 'declarations only an unused local inside them reads',
+    sideEffect: "register('widget')",
+    declared: ['plugin', 'Widget'],
+    code: `import { createServerFn } from '@tanstack/react-start'
+import { register } from './registry'
+const plugin = {
+  id: register('plugin'),
+  describe() {
+    const self = plugin
+    return 'plugin'
+  },
+}
+class Widget {
+  static {
+    register('widget')
+  }
+  render() {
+    const type = Widget
+    return 'widget'
+  }
+}
+export const fn = createServerFn().handler(async () => 1)`,
+  },
+  {
+    // Regression in the Yuku migration, same cause: the destructuring runs the
+    // getter, and the client output drops it with the register() call.
+    name: 'a destructuring only an unused local inside it reads',
+    sideEffect: "register('getter')",
+    declared: [],
+    code: `import { createServerFn } from '@tanstack/react-start'
+import { register } from './registry'
+const { plugin } = {
+  get plugin() {
+    register('getter')
+    return {
+      describe() {
+        const self = plugin
+        return 'plugin'
+      },
+    }
+  },
+}
+export const fn = createServerFn().handler(async () => 1)`,
+  },
+  {
+    // Regression in the Yuku migration, same cause inside a function body: an
+    // uncalled nested function that reads itself through an unused local is
+    // deleted, and then the statement only it read, with its register() call,
+    // which ran on every call of Page.
+    name: 'a statement in a function body that only an uncalled nested function reads',
+    sideEffect: "register('nested-effect')",
+    declared: ['effect'],
+    code: `import { createServerFn } from '@tanstack/react-start'
+import { register } from './registry'
+export function Page() {
+  function describe() {
+    const self = describe
+    return effect
+  }
+  const effect = register('nested-effect')
+  return 'page'
 }
 export const fn = createServerFn().handler(async () => 1)`,
   },
@@ -139,4 +214,151 @@ export const label = red
 export const fn = createServerFn().handler(async () => red)`,
   )
   expect((await evaluateModule(client!)).label).toBe('red')
+})
+
+// An empty destructuring pattern binds nothing, but its initializer still
+// runs.
+// Source: babel-dead-code-elimination "object pattern" > "unzips if all
+// variables are unused", "array pattern" > "unzips if all variables are
+// unused"
+test.each(['client', 'provider'] as const)(
+  '%s: keeps the initializers of empty destructuring patterns',
+  async (output) => {
+    const result = await compileCode(
+      output,
+      `import { createServerFn } from '@tanstack/react-start'
+import { init, other } from './init'
+const {} = init()
+const [] = other()
+const { a: {} } = init()
+export const fn = createServerFn().handler(async () => 'ok')`,
+    )
+    const calls: Array<string> = []
+    await evaluateModule(result!, {
+      './init': {
+        init: () => {
+          calls.push('init')
+          return { a: {} }
+        },
+        other: () => {
+          calls.push('other')
+          return []
+        },
+      },
+    })
+    expect(calls).toEqual(['init', 'other', 'init'])
+  },
+)
+
+// Source: typescript-eslint type-assertion/increment/as-increment.js,
+// type-assertion/increment/non-null-increment.js, type-assertion/satisfies.js
+test('keeps the parentheses of asserted update operands', async () => {
+  const client = await compileCode(
+    'client',
+    `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 1)
+let count = 0
+export function bump() {
+  ;(count as number)++
+  ;(count satisfies number)++
+  count!++
+  ;(count as any) += 1
+  return count
+}`,
+  )
+  expect(await getModuleErrors(client!)).toEqual([])
+  expect((await evaluateModule(client!)).bump()).toBe(4)
+})
+
+// Bundlers read these comments: minifiers keep legal comments, and Rollup and
+// Rolldown treat calls of functions annotated `__NO_SIDE_EFFECTS__` as pure.
+describe('keeps the comments bundlers read', () => {
+  const legal = '/*! Example Corp. | MIT License */'
+
+  test('client: a leading legal comment survives the removal of the import it leads', async () => {
+    const client = await compileCode(
+      'client',
+      `${legal}
+import { createIsomorphicFn } from '@tanstack/react-start'
+const where = createIsomorphicFn()
+  .server(() => 'server')
+  .client(() => 'client')
+export const label = () => where()`,
+    )
+    expect(client).toContain(legal)
+  })
+
+  test('client: a Hydrate chunk keeps the leading legal comment of its module', async () => {
+    const { chunks } = await compileHydrate(
+      'client',
+      `${legal}
+import { Hydrate } from '@tanstack/react-start'
+export function Page() {
+  return <Hydrate><p>hi</p></Hydrate>
+}`,
+    )
+    expect(chunks[0]).toContain(legal)
+  })
+
+  test.each([
+    {
+      name: 'function',
+      code: `/* #__NO_SIDE_EFFECTS__ */
+export function makeLabel() {
+  return 'label'
+}`,
+    },
+    {
+      name: 'arrow function',
+      code: `/* @__NO_SIDE_EFFECTS__ */
+export const makeLabel = () => 'label'`,
+    },
+  ])(
+    'the annotation of an exported $name copied to a Hydrate chunk and the provider',
+    async ({ code }) => {
+      const source = `import { Hydrate, createServerFn } from '@tanstack/react-start'
+${code}
+export const fn = createServerFn().handler(async () => makeLabel())
+export function Page() {
+  return <Hydrate><p>{makeLabel()}</p></Hydrate>
+}`
+      const { chunks } = await compileHydrate('client', source)
+      const provider = await compileCode('provider', source)
+      for (const output of [chunks[0]!, provider!]) {
+        expect(output).toMatch(
+          /__NO_SIDE_EFFECTS__ \*\/\s*(?:function|const) makeLabel\b/,
+        )
+      }
+    },
+  )
+})
+
+// Regression in the Yuku migration: the source map maps the string value of a
+// JSX attribute to the start of the attribute name. Yuku codegen bug,
+// https://github.com/yuku-toolchain/yuku/issues/254; passes once Yuku ships the
+// fix.
+test('maps the string value of a JSX attribute to its own source column', async () => {
+  const code = `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 1)
+export const Box = () => <div className="box" />
+`
+  const { compiler } = createStartCompiler({ env: 'client' })
+  const result = await compiler.compile({
+    code,
+    id: '/test/src/module.tsx',
+    detectedKinds: detectKindsInCode(code, 'client'),
+  })
+  const lines = result!.code.split('\n')
+  const line = lines.findIndex((text) => text.includes('"box"'))
+  const consumer = await new SourceMapConsumer(result!.map as never)
+  try {
+    expect(
+      consumer.originalPositionFor({
+        line: line + 1,
+        column: lines[line]!.indexOf('"box"'),
+      }),
+    ).toMatchObject({ line: 3, column: code.split('\n')[2]!.indexOf('"box"') })
+  } finally {
+    consumer.destroy()
+  }
 })

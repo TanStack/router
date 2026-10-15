@@ -1,38 +1,23 @@
-import * as t from '@babel/types'
+import { is } from 'yuku-ast'
+import { parseExpression } from '@tanstack/router-utils'
 import type { CompilationContext, RewriteCandidate } from './types'
 
-/**
- * Handles createIsomorphicFn transformations for a batch of candidates.
- *
- * @param candidates - All IsomorphicFn candidates to process
- * @param context - The compilation context
- */
 export function handleCreateIsomorphicFn(
   candidates: Array<RewriteCandidate>,
   context: CompilationContext,
 ): void {
-  for (const candidate of candidates) {
-    const { path, methodChain } = candidate
-
-    // Get the environment-specific call (.client() or .server())
-    const envCallInfo =
+  for (const { node, methodChain } of candidates) {
+    const selected =
       context.env === 'client' ? methodChain.client : methodChain.server
-
-    if (!envCallInfo) {
-      // No implementation for this environment - replace with no-op
-      path.replaceWith(t.arrowFunctionExpression([], t.blockStatement([])))
+    if (!selected) {
+      context.replaceNode(node, parseExpression('() => {}'))
       continue
     }
-
-    // Extract the function argument from the environment-specific call
-    const innerFn = envCallInfo.firstArgPath?.node
-
-    if (!t.isExpression(innerFn)) {
+    if (!is.Expression(selected.firstArg)) {
       throw new Error(
         `createIsomorphicFn().${context.env}(func) must be called with a function!`,
       )
     }
-
-    path.replaceWith(innerFn)
+    context.replaceNode(node, selected.firstArg)
   }
 }

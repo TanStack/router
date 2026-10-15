@@ -74,6 +74,18 @@ test.each<{
     expected: '<p>outer</p>',
   },
   {
+    // Source: Qwik optimizer should_not_auto_export_var_shadowed_in_labeled_block
+    name: 'only through references, not through a label of the same name',
+    children: `{(() => {
+  field: {
+    break field
+  }
+  return 'after'
+})()}`,
+    params: [],
+    expected: '<p>after</p>',
+  },
+  {
     // Source: @vitejs/plugin-rsc hoist/computed-destructuring-key-captures-outer-binding.js
     name: 'through a computed destructuring key',
     children: `{(({ [field]: picked }) => picked)({ value })}`,
@@ -167,6 +179,69 @@ export function Page({ entries }) {
   expect(await renderChunk(chunk, { label: 'a-', value: 1 })).toBe(
     '<li>a-1</li>',
   )
+})
+
+// Source: Qwik optimizer jsx_underscore_component_tag; React Compiler fixture
+// jsx-underscore-prefix-component.js
+test.each(['Local', '_Local', '$Local', 'ÉLocal', '组件'])(
+  'client: a local component named %s is captured',
+  async (name) => {
+    const { chunk } = await compileChunk(`export function Page({ label }) {
+  const ${name} = () => <b>{label}</b>
+  return <Hydrate><${name} /><i>{label}</i></Hydrate>
+}`)
+    expect(getChunkParams(chunk)).toEqual(['label', name].sort())
+    expect(
+      await renderChunk(chunk, { label: 'l', [name]: () => '<b>row</b>' }),
+    ).toBe('<b>row</b><i>l</i>')
+  },
+)
+
+// Source: Qwik optimizer jsx_member_tag_object_is_captured,
+// destructured_prop_used_as_member_tag
+test('client: the object of a member-expression tag is captured', async () => {
+  const { parent, chunk } =
+    await compileChunk(`function Home() { return <i>home</i> }
+export function Page({ Model }) {
+  const ui = { Home }
+  return <Hydrate><ui.Home /><Model.Item /></Hydrate>
+}`)
+  expect(getChunkParams(chunk)).toEqual(['Model', 'ui'])
+  expect(parent).toContain('ui={ui}')
+  expect(
+    await renderChunk(chunk, {
+      ui: { Home: () => '<i>home</i>' },
+      Model: { Item: () => '<b>item</b>' },
+    }),
+  ).toBe('<i>home</i><b>item</b>')
+})
+
+// Source: Qwik optimizer jsx_tag_names_are_not_segment_uses (non-reference
+// identifiers)
+test('client: property names, method keys and optional members are not captured', async () => {
+  // A spurious `later={later}` prop would read `later` before it is
+  // initialized and throw.
+  const { chunk } = await compileChunk(`export function Page({ obj }) {
+  const el = <Hydrate><p>{obj?.later + ({ later() { return '!' } }).later()}</p></Hydrate>
+  const later = 1
+  console.log(later)
+  return el
+}`)
+  expect(getChunkParams(chunk)).toEqual(['obj'])
+  expect(await renderChunk(chunk, { obj: { later: 'L' } })).toBe('<p>L!</p>')
+})
+
+// Source: Qwik optimizer example_ts_enums (component-local enum)
+test('client: a local enum is captured', async () => {
+  const { parent, chunk } = await compileChunk(`export function Page() {
+  enum Color {
+    Red = 'red',
+  }
+  return <Hydrate><p>{Color.Red}</p></Hydrate>
+}`)
+  expect(getChunkParams(chunk)).toEqual(['Color'])
+  expect(parent).toMatch(/Color=\{Color\}/)
+  expect(await renderChunk(chunk, { Color: { Red: 'red' } })).toBe('<p>red</p>')
 })
 
 // Source: Qwik optimizer jsx_tag_names_are_not_segment_uses,

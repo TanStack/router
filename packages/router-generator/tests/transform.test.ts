@@ -55,6 +55,24 @@ describe('transform', () => {
     }
   })
 
+  it('reads route call parts through parentheses and TypeScript wrappers', () => {
+    const node = makeNode()
+    const result = transform({
+      source:
+        "import { createFileRoute } from '@tanstack/react-router'\n" +
+        "export const Route = (createFileRoute as typeof createFileRoute)(('/old' as const))(({ component: Page, server: {} }) satisfies object)\n",
+      ctx: { target: 'react', routeId: '/new', lazy: false },
+      node,
+    })
+    expect(result).toEqual({
+      result: 'modified',
+      output:
+        "import { createFileRoute } from '@tanstack/react-router'\n" +
+        "export const Route = (createFileRoute as typeof createFileRoute)(('/new' as const))(({ component: Page, server: {} }) satisfies object)\n",
+    })
+    expect(node.createFileRouteProps).toEqual(new Set(['component', 'server']))
+  })
+
   it('does not treat root route exports as missing Route exports', async () => {
     const result = await transform({
       source: [
@@ -440,7 +458,19 @@ describe('transform', () => {
     expect(result.output).toContain("createFileRoute('/new')")
   })
 
-  it('returns an error for multiple exported route calls', async () => {
+  it.each([
+    "const MyRoute = createFileRoute('/old')({})\nexport type { MyRoute as Route }",
+    "const MyRoute = createFileRoute('/old')({})\nexport { type MyRoute as Route }",
+    'export declare const Route: unknown',
+  ])('does not treat a type-only Route export as a route: %s', (code) => {
+    const result = transformToNewRoute(
+      `import { createFileRoute } from '@tanstack/react-router'\n${code}`,
+    )
+
+    expect(result.result).toBe('no-route-export')
+  })
+
+  it('rejects duplicate Route exports as a syntax error', async () => {
     const result = await transform({
       source: [
         "import { createFileRoute } from '@tanstack/react-router'",
@@ -462,8 +492,32 @@ describe('transform', () => {
     if (result.result !== 'error') {
       throw new Error(`expected error result, got ${result.result}`)
     }
+    expect(String(result.error)).toContain("Duplicate export of 'Route'")
+  })
+
+  it('returns an error when a redeclared Route var holds two route calls', async () => {
+    const result = await transform({
+      source: [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        '',
+        "var Route = createFileRoute('/a')({})",
+        "var Route = createFileRoute('/b')({})",
+        'export { Route }',
+      ].join('\n'),
+      ctx: {
+        target: 'react',
+        routeId: '/new',
+        lazy: false,
+      },
+      node: makeNode(),
+    })
+
+    expect(result.result).toBe('error')
+    if (result.result !== 'error') {
+      throw new Error(`expected error result, got ${result.result}`)
+    }
     expect(String(result.error)).toContain(
-      'expected exactly one createFileRoute/createLazyFileRoute call',
+      'expected exactly one createFileRoute/createLazyFileRoute call in /new',
     )
   })
 
@@ -577,6 +631,24 @@ describe('transform', () => {
 
     expect(result).toEqual({ result: 'not-modified' })
     expect(node.createFileRouteProps).toEqual(new Set(['component', 'server']))
+  })
+
+  // A route with server handlers and a method-shorthand option is not a
+  // server-only route: Start must keep it in the client route tree.
+  it('records method, async method and accessor option keys', () => {
+    const node = makeNode()
+    const result = transformToNewRoute(
+      [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        "export const Route = createFileRoute('/new')({ server: {}, component() { return null }, async loader() {}, get head() { return () => ({}) } })",
+      ].join('\n'),
+      node,
+    )
+
+    expect(result).toEqual({ result: 'not-modified' })
+    expect(node.createFileRouteProps).toEqual(
+      new Set(['server', 'component', 'loader', 'head']),
+    )
   })
 })
 

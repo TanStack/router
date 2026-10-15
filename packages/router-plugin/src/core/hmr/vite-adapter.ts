@@ -1,10 +1,14 @@
-import * as template from '@babel/template'
+import { parseStatements } from '@tanstack/router-utils'
 import { getHandleRouteUpdateCode } from './handle-route-update'
-import type * as t from '@babel/types'
+import type { ProgramStatement } from '@yuku-toolchain/types'
 
 /**
  * Emits HMR accept code for Vite / native ESM HMR: `import.meta.hot.accept`
- * with a callback that receives the freshly re-imported module.
+ * with a callback that receives the freshly re-imported module. The call must
+ * stay literal: Vite marks a module as an HMR boundary only when its code
+ * contains `import.meta.hot.accept(`, so accepting through an alias makes
+ * every edit of a route module that no framework refresh plugin accepts
+ * (Solid split routes, Vue routes) reload the page.
  *
  * `targetFramework` is currently unused — Vite's framework-specific fast-refresh
  * plugins handle component body patching via their own accept boundaries — but
@@ -15,16 +19,15 @@ export function createViteHmrStatement(
   opts: {
     routeId?: string
   } = {},
-): Array<t.Statement> {
+): Array<ProgramStatement> {
   const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
   // The replacement Route object can be uninitialized; keep a generated id as
   // fallback for the existing router route we need to patch.
   const routeIdFallback =
     typeof opts.routeId === 'string' ? JSON.stringify(opts.routeId) : 'Route.id'
 
-  return [
-    template.statement(
-      `
+  return parseStatements(
+    `
 if (import.meta.hot) {
   const hot = import.meta.hot
   const hotData = hot.data ??= {}
@@ -41,7 +44,7 @@ if (import.meta.hot) {
     handleRouteUpdate(initialRouteId, Route)
     hotData['tsr-route-update-handled'] = Route
   }
-  hot.accept((newModule) => {
+  import.meta.hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? ${routeIdFallback}
       if (routeId) {
@@ -53,12 +56,8 @@ if (import.meta.hot) {
       }
       handleRouteUpdate(routeId, newModule.Route)
     }
-    })
+  })
 }
 `,
-      {
-        syntacticPlaceholders: true,
-      },
-    )(),
-  ]
+  )
 }

@@ -1,6 +1,6 @@
+import { Route } from 'arrow-function.tsx'
 import * as Solid from 'solid-js'
 import { Link, Outlet } from '@tanstack/solid-router'
-import { Route } from 'arrow-function.tsx'
 const PostsComponent = () => {
   const posts = Route.useLoaderData()
   return (

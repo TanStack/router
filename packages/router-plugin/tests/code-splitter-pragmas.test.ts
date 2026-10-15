@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
   componentChunk,
+  evaluateModule,
   head,
+  importedNames,
+  loadRouteModules,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
@@ -79,6 +82,132 @@ export const Route = createFileRoute('/pragma')({
   })
 })
 
+// With the classic runtime, the JSX of each module compiles to calls of the
+// factory its pragmas name, so the factory import must stay wherever JSX does.
+describe('split modules keep the classic JSX factories their JSX compiles to', () => {
+  /** Classic JSX factory rendering intrinsic elements to text. */
+  const render = (type: unknown, _props: unknown, ...children: Array<any>) => {
+    const text = children.flat(Infinity).join('')
+    if (typeof type === 'function') {
+      return type()
+    }
+    return type === Fragment ? text : `<${String(type)}>${text}</${type}>`
+  }
+  const Fragment = Symbol('Fragment')
+  const stubs = { '@emotion/react': { jsx: render, Frag: Fragment } }
+  const classicHead = `/** @jsxRuntime classic */
+/** @jsx jsx */
+${head}import { jsx } from '@emotion/react'
+`
+
+  it('in the route module, when the code calling the factory is split', async () => {
+    const { options } = await loadRouteModules(
+      `${classicHead}function Page() {
+  return jsx('div', null, 'page')
+}
+export const Route = createFileRoute('/')({
+  component: Page,
+  pendingComponent: () => <p>pending</p>,
+})`,
+      stubs,
+    )
+    expect(options.pendingComponent()).toBe('<p>pending</p>')
+  })
+
+  it('in a split chunk, when only other chunks call the factory', async () => {
+    const { chunks } = await loadRouteModules(
+      `${classicHead}export const Route = createFileRoute('/')({
+  component: () => <div>page</div>,
+  errorComponent: () => jsx('b', null, 'error'),
+})`,
+      stubs,
+    )
+    expect(chunks.component!.component()).toBe('<div>page</div>')
+    expect(chunks.errorComponent!.errorComponent()).toBe('<b>error</b>')
+  })
+
+  // Source: mutation testing of the dead code removal (main dropped the
+  // factory import, so the split component threw "jsx is not defined").
+  it('in a split chunk, imported from the route module that exports it', async () => {
+    /** Emotion's `jsx`, rendering intrinsic elements as `<emotion:tag>`. */
+    const emotionJsx = (
+      type: string,
+      _props: unknown,
+      ...children: Array<string>
+    ) => `<emotion:${type}>${children.join('')}</emotion:${type}>`
+    const { modules } = compileRouteModules(`/** @jsxRuntime classic */
+/** @jsx jsx */
+${head}import { jsx as emotion } from '@emotion/react'
+export const jsx = emotion
+export const Route = createFileRoute('/')({
+  component: () => <div>page</div>,
+})
+`)
+    const chunk = await evaluateModule(modules['virtual component']!, {
+      'route.tsx': { jsx: emotionJsx },
+    })
+    expect(chunk.component!()).toBe('<emotion:div>page</emotion:div>')
+  })
+
+  it('with the @jsxFrag factory of the fragments that remain', async () => {
+    const { chunks } = await loadRouteModules(
+      `/** @jsx jsx */
+/** @jsxFrag Frag */
+${head}import { jsx, Frag } from '@emotion/react'
+export const Route = createFileRoute('/')({
+  component: () => <>page</>,
+  errorComponent: () => jsx(Frag, null, 'error'),
+})`,
+      stubs,
+    )
+    expect(chunks.component!.component()).toBe('page')
+    expect(chunks.errorComponent!.errorComponent()).toBe('error')
+  })
+})
+
+// Dead code removal counts JSX as a use of the factories it compiles to, and
+// only of those: a module keeps a classic factory import only while it has
+// JSX (fragments, for the @jsxFrag factory) compiling to it.
+describe('split modules import only the classic JSX factories their JSX compiles to', () => {
+  it.each([
+    {
+      name: 'the @jsx factory in the route module, whose JSX all moved',
+      pragmas: '/** @jsx h */',
+      specifiers: 'h',
+      options: `loader: () => 1,
+  component: () => <div />,`,
+      module: 'reference',
+      imported: [],
+    },
+    {
+      name: 'the @jsx factory, under a pragma with extra spaces',
+      pragmas: '/** @jsx  h */',
+      specifiers: 'h',
+      options: `loader: () => 1,
+  component: () => <div />,`,
+      module: 'reference',
+      imported: [],
+    },
+    {
+      name: 'the @jsxFrag factory in a chunk without fragments',
+      pragmas: '/** @jsx h */\n/** @jsxFrag Fragment */',
+      specifiers: 'h, Fragment',
+      options: `loader: () => <>{1}</>,
+  component: () => <div />,`,
+      module: 'virtual component',
+      imported: ['h'],
+    },
+  ])('drops $name', ({ pragmas, specifiers, options, module, imported }) => {
+    const { modules } = compileRouteModules(`${pragmas}
+${head}import { ${specifiers} } from 'preact'
+export const Route = createFileRoute('/')({
+  ${options}
+})
+`)
+    expect(importedNames(modules[module]!, 'preact')).toEqual(imported)
+  })
+})
+
 // React Refresh and solid-refresh read these comments per module, so every
 // module holding route code must keep them.
 describe('split modules keep HMR pragma comments', () => {
@@ -121,4 +250,16 @@ export const Route = createFileRoute('/')({ component: Page })
     expect(modules.reference).toContain(pragma)
     expect(modules['virtual component']).toContain(pragma)
   })
+})
+
+// Minifiers keep legal comments in the modules that carry them.
+it('split modules keep the leading legal comment of the route file', () => {
+  const legal = '/*! Example Corp. | MIT License */'
+  const { modules } = compileRouteModules(
+    `${legal}\n${head}export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+})`,
+  )
+  expect(modules.reference).toContain(legal)
+  expect(modules['virtual component']).toContain(legal)
 })

@@ -1,6 +1,5 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
-import { stripVTControlCharacters } from 'node:util'
 import { describe, expect, test, vi } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
 import { formatSnapshot } from '../format-snapshot'
@@ -133,21 +132,22 @@ describe('createServerFn compiles correctly', async () => {
     ['U+2028', '\u2028'],
     ['U+2029', '\u2029'],
   ])(
-    'reports the location of a diagnostic with %s line endings',
+    'frames compile errors on the right line with %s line terminators',
     async (_name, eol) => {
-      const error = await compile({
-        code: [
-          `import { createServerFn } from '@tanstack/react-start'`,
-          `export const { fn } = createServerFn().handler(async () => 1)`,
-        ].join(eol),
-        env: 'client',
-        isProviderFile: false,
-        mode: 'build',
-      }).catch((caught: unknown) => caught)
+      const code = [
+        `import { createServerFn } from '@tanstack/react-start'`,
+        `const other = 1`,
+        `const { fn } = createServerFn().handler(async () => other)`,
+      ].join(eol)
 
-      expect(error).toBeInstanceOf(Error)
-      expect(stripVTControlCharacters((error as Error).message)).toMatch(
-        /> 2 \| export const \{ fn \} = createServerFn\(\)/,
+      await expect(
+        compile({ code, env: 'client', isProviderFile: false, mode: 'build' }),
+      ).rejects.toThrow(
+        [
+          `2 | const other = 1`,
+          `3 | const { fn } = createServerFn().handler(async () => other)`,
+          `  |       ^ createServerFn must be assigned to a simple identifier, not a destructuring pattern`,
+        ].join('\n'),
       )
     },
   )

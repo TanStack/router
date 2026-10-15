@@ -1,6 +1,5 @@
-import * as babel from '@babel/core'
-import * as t from '@babel/types'
-import { parseAst } from '@tanstack/router-utils'
+import { parseExpression } from '@tanstack/router-utils'
+import { is } from 'yuku-ast'
 import { describe, expect, it } from 'vitest'
 import {
   getObjectPropertyKeyName,
@@ -8,7 +7,6 @@ import {
   normalizePath,
   routeFactoryCallCodeFilter,
 } from '../src/core/utils'
-import type { NodePath } from '@babel/core'
 
 function matchesRouteFactoryCallCodeFilter(code: string) {
   return routeFactoryCallCodeFilter.some((pattern) => {
@@ -16,24 +14,6 @@ function matchesRouteFactoryCallCodeFilter(code: string) {
     pattern.lastIndex = 0
     return result
   })
-}
-
-function getProgramPath(code: string): NodePath<t.Program> {
-  const ast = parseAst({ code })
-  let programPath: NodePath<t.Program> | undefined
-
-  babel.traverse(ast, {
-    Program(path: NodePath<t.Program>) {
-      programPath = path
-      path.stop()
-    },
-  })
-
-  if (!programPath) {
-    throw new Error('Program path not found')
-  }
-
-  return programPath
 }
 
 describe('normalizePath', () => {
@@ -72,40 +52,31 @@ describe('normalizePath', () => {
 
 describe('getUniqueProgramIdentifier', () => {
   it('returns the base name when unused', () => {
-    const programPath = getProgramPath('const existing = 1')
-
-    expect(getUniqueProgramIdentifier(programPath, 'TSRComponent').name).toBe(
-      'TSRComponent',
-    )
+    expect(
+      getUniqueProgramIdentifier(new Set(['existing']), 'TSRComponent').name,
+    ).toBe('TSRComponent')
   })
 
-  it('appends numeric suffixes for existing bindings', () => {
-    const programPath = getProgramPath(
-      'const TSRComponent = 1\nconst TSRComponent2 = 2',
-    )
-
-    expect(getUniqueProgramIdentifier(programPath, 'TSRComponent').name).toBe(
-      'TSRComponent3',
-    )
-  })
-
-  it('avoids globals too', () => {
-    const programPath = getProgramPath('const existing = window')
-
-    expect(getUniqueProgramIdentifier(programPath, 'window').name).toBe(
-      'window2',
-    )
+  it('appends numeric suffixes for reserved names', () => {
+    expect(
+      getUniqueProgramIdentifier(
+        new Set(['TSRComponent', 'TSRComponent2']),
+        'TSRComponent',
+      ).name,
+    ).toBe('TSRComponent3')
   })
 
   it('avoids collisions across consecutive calls with the same base name', () => {
-    const programPath = getProgramPath('const existing = 1')
+    const reservedNames = new Set(['existing'])
 
-    const first = getUniqueProgramIdentifier(programPath, 'TSRComponent')
-    const second = getUniqueProgramIdentifier(programPath, 'TSRComponent')
+    const first = getUniqueProgramIdentifier(reservedNames, 'TSRComponent')
+    const second = getUniqueProgramIdentifier(reservedNames, 'TSRComponent')
 
     expect(first.name).toBe('TSRComponent')
     expect(second.name).toBe('TSRComponent2')
-    expect(first.name).not.toBe(second.name)
+    expect(reservedNames).toEqual(
+      new Set(['existing', 'TSRComponent', 'TSRComponent2']),
+    )
   })
 })
 
@@ -142,38 +113,19 @@ describe('routeFactoryCallCodeFilter', () => {
 })
 
 describe('getObjectPropertyKeyName', () => {
-  it('returns identifier keys', () => {
-    const prop = t.objectProperty(t.identifier('component'), t.identifier('x'))
-
-    expect(getObjectPropertyKeyName(prop)).toBe('component')
-  })
-
-  it('returns string literal keys', () => {
-    const prop = t.objectProperty(
-      t.stringLiteral('errorComponent'),
-      t.identifier('x'),
-    )
-
-    expect(getObjectPropertyKeyName(prop)).toBe('errorComponent')
-  })
-
-  it('returns undefined for computed identifier keys', () => {
-    const prop = t.objectProperty(
-      t.identifier('component'),
-      t.identifier('x'),
-      true,
-    )
-
-    expect(getObjectPropertyKeyName(prop)).toBeUndefined()
-  })
-
-  it('returns undefined for computed member expression keys', () => {
-    const prop = t.objectProperty(
-      t.memberExpression(t.identifier('foo'), t.identifier('bar')),
-      t.identifier('x'),
-      true,
-    )
-
-    expect(getObjectPropertyKeyName(prop)).toBeUndefined()
+  it.each([
+    ['component: x', 'component'],
+    ['"errorComponent": x', 'errorComponent'],
+    ['[component]: x', undefined],
+    ['[foo.bar]: x', undefined],
+  ])('reads static keys in %s', (source, expected) => {
+    const expression = parseExpression(`{${source}}`)
+    if (
+      !is.ObjectExpression(expression) ||
+      !is.Property(expression.properties[0])
+    ) {
+      throw new Error('Expected an object property')
+    }
+    expect(getObjectPropertyKeyName(expression.properties[0])).toBe(expected)
   })
 })

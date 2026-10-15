@@ -1,6 +1,6 @@
+import { Route } from 'function-declaration.tsx'
 import * as React from 'react'
 import { Link, Outlet } from '@tanstack/react-router'
-import { Route } from 'function-declaration.tsx'
 function PostsComponent() {
   const posts = Route.useLoaderData()
   return (

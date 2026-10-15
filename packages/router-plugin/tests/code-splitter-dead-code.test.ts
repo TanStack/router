@@ -7,6 +7,7 @@ import {
   head,
   importSources,
   importedNames,
+  loadRouteModules,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
@@ -78,18 +79,76 @@ function restore() {
     {
       // Source: babel-dead-code-elimination dead-code-elimination.test.ts "only
       // eliminates newly unreferenced identifiers", "unexported circular references"
-      // and "SCC with external caller used -> all preserved"
+      // and "SCC with external caller used -> all preserved". The helper of
+      // the split component moves into its chunk: `unused` stays as written,
+      // with a dangling reference nothing can reach, since nothing calls it.
       name: 'unused functions, one calling a helper of the split component',
       setup: `function helper() { return 'helper' }
 function unused() { return helper() }
 function ping(): number { return pong() }
 function pong(): number { return ping() }`,
       component: '<p>{helper()}</p>',
-      declared: ['helper', 'unused', 'ping', 'pong'],
+      declared: ['unused', 'ping', 'pong'],
+      moved: ['helper'],
+    },
+    {
+      // Regression in the Yuku migration: the only reads are an unused local
+      // inside the declaration itself, and the reference module drops both
+      // declarations with their register() calls.
+      // Inputs adapted from @babel/plugin-proposal-decorators
+      // 2023-11-misc/destructuring-transform-integration and TypeScript's
+      // conformance test classes/propertyMemberDeclarations/autoAccessor10.ts.
+      name: 'declarations only an unused local inside them reads',
+      setup: `import { register } from './registry'
+const plugin = {
+  id: register('plugin'),
+  describe() {
+    const self = plugin
+    return 'plugin'
+  },
+}
+class Widget {
+  static {
+    register('widget')
+  }
+  render() {
+    const type = Widget
+    return 'widget'
+  }
+}`,
+      declared: ['plugin', 'Widget'],
+    },
+    {
+      // Regression in the Yuku migration, same cause: deleting the declaration
+      // also deletes the ReferenceError its initializer threw when the route
+      // module loaded (`later` is read before its declaration).
+      name: 'a declaration only an unused local inside it reads, whose initializer reads a let before its declaration',
+      setup: `const plugin = {
+  id: later,
+  describe() {
+    const self = plugin
+    return 'plugin'
+  },
+}
+let later = 1`,
+      declared: ['plugin', 'later'],
+    },
+    {
+      // Regression in the Yuku migration, same cause: an uncalled function that
+      // reads itself through an unused local is deleted, and then the
+      // declaration only it read, with its register() call.
+      name: 'a declaration only an uncalled function reads, the function reading itself through a local',
+      setup: `import { register } from './registry'
+const effect = register('effect')
+function helper() {
+  const self = helper
+  return effect
+}`,
+      declared: ['effect'],
     },
   ])(
     'keeps $name that nothing used before splitting',
-    async ({ setup, component = '<div />', declared }) => {
+    async ({ setup, component = '<div />', declared, moved = [] }) => {
       const code = `${head}${setup}
 export const Route = createFileRoute('/')({ component: () => ${component} })
 `
@@ -100,8 +159,18 @@ export const Route = createFileRoute('/')({ component: () => ${component} })
         for (const name of declared) {
           expect(binds(reference, name), `${module} binds ${name}`).toBe(true)
         }
+        for (const name of moved) {
+          expect(binds(reference, name), `${module} binds ${name}`).toBe(false)
+        }
       }
-      await expectValidModules(modules)
+      // Without code splitting, nothing moves.
+      const unsplit = transformWithRouteHmrPlugin(code)
+      for (const name of [...declared, ...moved]) {
+        expect(unsplit, `the route HMR output declares ${name}`).toMatch(
+          declarationOf(name),
+        )
+      }
+      await expectValidModules({ ...modules, 'route HMR': unsplit })
     },
   )
 
@@ -124,6 +193,30 @@ export const Route = createFileRoute('/')({
     const { modules } = compileRouteModules(code)
     expect(modules['virtual component']).toMatch(declarationOf('ping'))
     expect(modules['virtual component']).toMatch(declarationOf('pong'))
+    await expectValidModules(modules)
+  })
+
+  // Source: tanstack.com src/routes/index.tsx (`type PrincipleProof` next to
+  // `function PrincipleProof`). TypeScript keeps types and values in separate
+  // namespaces: a type the reference module keeps that names the type is not
+  // a read of the value of the same name.
+  it('moves a component only the split component uses into its chunk when a kept type shares its name', async () => {
+    const code = `${head}import { heavy } from './heavy'
+type Panel = 'a' | 'b'
+export type Settings = { panel: Panel }
+function Panel() {
+  return <div>{heavy()}</div>
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <Panel />,
+})
+`
+    for (const reference of Object.values(referenceModules(code))) {
+      expect(importSources(reference)).not.toContain('./heavy')
+    }
+    const { modules } = compileRouteModules(code)
+    expect(importSources(modules['virtual component']!)).toContain('./heavy')
     await expectValidModules(modules)
   })
 
@@ -165,28 +258,57 @@ export const Route = createFileRoute('/')({
     await expectValidModules(modules)
   })
 
+  // Regression in the Yuku migration, found by differential fuzzing: the
+  // component chunk copies a namespace that no split option reads, with its
+  // body, so its initializer runs again when the chunk loads.
+  it('runs the initializer of a namespace no split option reads only in the reference module', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { shared } from './shared'
+namespace Unused { export const value = shared('side-effect-marker') }
+export const Route = createFileRoute('/')({
+  component: () => <div>{shared('component')}</div>,
+})
+`)
+    expect(modules.reference).toContain('side-effect-marker')
+    expect(modules['virtual component']).not.toContain('side-effect-marker')
+    await expectValidModules(modules)
+  })
+
   // TypeScript erases type positions, so a declaration whose binding only
   // appears in a type is still live code that runs when the route loads.
-  it.each([
-    {
-      name: 'the reference module',
-      compile: (code: string) => compileRouteModules(code).modules.reference!,
-    },
-    {
-      name: 'a route module compiled for HMR',
-      compile: (code: string) => transformWithRouteHmrPlugin(code),
-    },
-  ])(
-    'keeps a declaration only referenced from types in $name',
-    async ({ compile }) => {
-      const output =
-        compile(`${head}import { registerAnalytics } from './analytics'
-const analytics = registerAnalytics('/posts')
-declare module './analytics' {
+  it.each(
+    [
+      {
+        name: 'the reference module',
+        compile: (code: string) => compileRouteModules(code).modules.reference!,
+      },
+      {
+        name: 'a route module compiled for HMR',
+        compile: (code: string) => transformWithRouteHmrPlugin(code),
+      },
+    ].flatMap((target) =>
+      [
+        {
+          types: 'a module augmentation',
+          typeDeclaration: `declare module './analytics' {
   interface Registry {
     posts: typeof analytics
   }
-}
+}`,
+        },
+        {
+          types: 'an exported type alias',
+          typeDeclaration: 'export type Analytics = typeof analytics',
+        },
+      ].map((use) => ({ ...target, ...use })),
+    ),
+  )(
+    'keeps a declaration only referenced from $types in $name',
+    async ({ compile, typeDeclaration }) => {
+      const output =
+        compile(`${head}import { registerAnalytics } from './analytics'
+const analytics = registerAnalytics('/posts')
+${typeDeclaration}
 export const Route = createFileRoute('/posts')({
   component: () => <p>posts</p>,
 })
@@ -196,9 +318,205 @@ export const Route = createFileRoute('/posts')({
       await expectValidModules({ output })
     },
   )
+
+  // Inputs adapted from babel-dead-code-elimination dead-code-elimination.test.ts
+  // "object pattern" and "array pattern" > "unzips if all variables are
+  // unused", which removes the whole declaration: an empty pattern declares
+  // nothing, so splitting never left it unused and its initializer still runs.
+  it('keeps the initializers of empty destructuring patterns', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { init, other } from './init'
+const {} = init()
+const [] = other()
+const { a: {} } = init()
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>component</p>,
+})
+`)
+    expect(modules.reference!.match(/\binit\(\)/g)).toHaveLength(2)
+    expect(modules.reference).toContain('other()')
+    expect(importSources(modules['virtual component']!)).not.toContain('./init')
+    await expectValidModules(modules)
+  })
 })
 
 describe('code a split option needs moves with it', () => {
+  // Inputs adapted from babel-dead-code-elimination dead-code-elimination.test.ts
+  // "function" > "declaration" and "variable" > "identifier"
+  it.each([
+    {
+      name: 'an overloaded function',
+      declarations: `function load(id: string): string
+function load(id: number): string
+function load(id: any) { return lib.x(id) }`,
+      render: '{load(1)}',
+    },
+    {
+      name: 'a redeclared var',
+      declarations: `var load = lib.a()
+var load = lib.b()`,
+      render: '{load}',
+    },
+  ])(
+    'moves $name only the split component uses, and its import, into its chunk',
+    async ({ declarations, render }) => {
+      const { modules } =
+        compileRouteModules(`${head}import { lib } from './lib'
+${declarations}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>${render}</p>,
+})
+`)
+      expect(importSources(modules.reference!)).not.toContain('./lib')
+      expect(modules.reference).not.toMatch(/\bload\b/)
+      expect(importedNames(modules['virtual component']!, './lib')).toEqual([
+        'lib',
+      ])
+      await expectValidModules(modules)
+    },
+  )
+
+  // Source: Next.js ssg/getStaticProps/should-support-class-exports
+  it('moves a class component and the imports of its static fields into its chunk', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import * as React from 'react'
+import { format } from './format'
+class Page extends React.Component {
+  static title = format('home')
+  render() {
+    return <div>{Page.title}</div>
+  }
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: Page,
+})
+`)
+    expect(modules.reference).not.toMatch(declarationOf('Page'))
+    expect(importSources(modules.reference!)).not.toContain('./format')
+    expect(modules['virtual component']).toMatch(declarationOf('Page'))
+    expect(importedNames(modules['virtual component']!, './format')).toEqual([
+      'format',
+    ])
+    await expectValidModules(modules)
+  })
+
+  // Regression in the Yuku migration: an unused function that renders the
+  // split component keeps the component and its imports in the route module,
+  // which defeats the split. The unused function stays as written, with a
+  // dangling reference: nothing can call it.
+  // Source: corpus-diff, Jp-K/DmCompanionAi frontend_old/src/routes/_layout/chat.tsx.
+  it.each([
+    {
+      name: 'the split component',
+      setup: `function Page() {
+  return <p>{heavy()}</p>
+}
+function Unused() {
+  return <Page />
+}`,
+      component: 'Page',
+    },
+    {
+      name: 'a component the split component renders',
+      setup: `function Card() {
+  return <p>{heavy()}</p>
+}
+function Page() {
+  return <Card />
+}
+const Unused = () => <Card />`,
+      component: 'Page',
+    },
+    {
+      name: 'a component an inline split component renders',
+      setup: `function Page() {
+  return <p>{heavy()}</p>
+}
+function Unused() {
+  return <Page />
+}`,
+      component: '() => <Page />',
+    },
+  ])(
+    'moves the split component and its imports into its chunk when an unused function renders $name',
+    async ({ setup, component }) => {
+      const { modules } =
+        compileRouteModules(`${head}import { heavy } from './heavy'
+export const Route = createFileRoute('/')({
+  component: ${component},
+})
+${setup}
+`)
+      expect(importSources(modules.reference!)).not.toContain('./heavy')
+      expect(modules.reference).toMatch(declarationOf('Unused'))
+      expect(importSources(modules['virtual component']!)).toContain('./heavy')
+      await expectValidModules(modules)
+    },
+  )
+
+  // Imports do not move: the chunk imports what it reads itself, and the
+  // unused function keeps the imports it reads, as on main.
+  it('keeps the imports an unused function reads in the route module', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { format } from './format'
+function Page() {
+  return <p>{format('page')}</p>
+}
+function Unused() {
+  return <p>{format('unused')}<Page /></p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+    expect(modules.reference).not.toMatch(declarationOf('Page'))
+    expect(importedNames(modules.reference!, './format')).toEqual(['format'])
+    expect(importedNames(modules['virtual component']!, './format')).toEqual([
+      'format',
+    ])
+    await expectValidModules(modules)
+  })
+
+  // A function that code staying in the route module can call is no unused
+  // code: the component it renders stays declared there.
+  it.each([
+    {
+      name: 'module-level code registers',
+      setup: `registry.set('preview', Preview)`,
+    },
+    {
+      name: 'an unused subscription calls back',
+      setup: `const unsubscribe = subscribe((name) => registry.set(name, Preview))`,
+    },
+  ])(
+    'keeps the split component in the route module for a function $name',
+    async ({ setup }) => {
+      const { modules, options, chunks } = await loadRouteModules(
+        `${head}import { subscribe } from './subscribe'
+const registry = new Map()
+function Page() {
+  return <p>page</p>
+}
+function Preview() {
+  return <Page />
+}
+${setup}
+export const Route = createFileRoute('/')({
+  component: Page,
+  loader: () => registry.get('preview')(),
+})
+`,
+        {
+          './subscribe': { subscribe: (callback: any) => callback('preview') },
+        },
+      )
+      expect(options.loader()).toBe('<p>page</p>')
+      expect(chunks.component!.component()).toBe('<p>page</p>')
+      await expectValidModules(modules)
+    },
+  )
+
   // Source: Qwik optimizer test.rs should_not_move_over_side_effects,
   // example_drop_side_effects; Turbopack tree-shaker analyzer/route-kind
   it.each([
@@ -367,9 +685,12 @@ export const Route = createFileRoute('/')({
 })
 `)
     expect(sharedBindings).toEqual(['Page'])
-    expect(modules.shared).toMatch(declarationOf('Page'))
+    // A React component goes to the shared components module
+    expect(modules['shared components']).toMatch(declarationOf('Page'))
     expect(modules.reference).toMatch(declarationOf('Preview'))
-    expect(importedNames(modules.reference!, sharedModule)).toEqual(['Page'])
+    expect(
+      importedNames(modules.reference!, 'route.tsx?tsr-shared=components'),
+    ).toEqual(['Page'])
     expect(modules.reference).not.toMatch(declarationOf('Page'))
     expect(modules['virtual component']).not.toMatch(declarationOf('Page'))
     await expectValidModules(modules)
@@ -396,8 +717,8 @@ export const Route = createFileRoute('/')({
   component: () => <div>{value}</div>,
 })
 `)
-      // Known limitation on main: the statement runs in both modules instead
-      // of once in the shared module; only check that each module binds `value`.
+      // Known limitation: the statement runs in both modules instead of once
+      // in the shared module; only check that each module binds `value`.
       for (const name of ['reference', 'virtual component']) {
         expect(binds(modules[name]!, 'value'), `${name} binds value`).toBe(true)
       }

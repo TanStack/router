@@ -1,7 +1,12 @@
 import { readFile, readdir } from 'node:fs/promises'
-import { traverse } from '@babel/core'
-import * as t from '@babel/types'
-import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import { walk } from 'yuku-ast'
+import {
+  analyzeModule,
+  cloneModuleAst,
+  generateModule,
+  parseExpression,
+  removeUnusedBindings,
+} from '@tanstack/router-utils'
 import path from 'pathe'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../../src/hydrate-when-transform'
@@ -68,6 +73,14 @@ function getHydrateBoundariesFromCode(code: string): Array<HydrateBoundary> {
   return boundaries.sort((a, b) => a.index - b.index)
 }
 
+/**
+ * Runs only the Hydrate plugin's `transformAst` on a fresh AST, with a minimal
+ * editor and its own unused-binding cleanup, bypassing `StartCompiler` (no
+ * Start factories, generated-import insertion or file pragmas). It unit-tests
+ * the transform's output; tests of what compiled modules do belong in
+ * hydrate-split-modules.test.ts and hydrate-captures.test.ts, which compile
+ * through the real pipeline (`compileHydrate` in regression-helpers.ts).
+ */
 function compile(opts: {
   env: 'client' | 'server'
   code: string
@@ -79,9 +92,12 @@ function compile(opts: {
     root: opts.root ?? fixtureRoot,
   }
   const plugin = createHydrateCompilerPlugin()
-  const ast = parseAst({ code: options.code, sourceFilename: options.id })
+  const module = analyzeModule({ code: options.code, filename: options.id })
+  const { program: ast, originalNodes } = cloneModuleAst(module)
   const result = plugin.transformAst?.({
     ast,
+    module,
+    originalNodes,
     code: options.code,
     id: options.id,
     root: options.root,
@@ -90,14 +106,37 @@ function compile(opts: {
     mode: 'dev',
     framework: 'react',
     providerEnvName: 'ssr',
-    types: t,
-    parseExpression: (expressionCode) => t.identifier(expressionCode),
+    parseExpression,
+    replaceNode(node, replacement) {
+      walk(ast, {
+        enter(current, context) {
+          if (current === node) {
+            context.replace(replacement)
+            context.stop()
+          }
+        },
+      })
+    },
+    parentOf(node) {
+      let parent: import('@yuku-toolchain/types').Node | null = null
+      walk(ast, {
+        enter(current, context) {
+          if (current === node) {
+            parent = context.parent
+            context.stop()
+          }
+        },
+      })
+      return parent
+    },
   })
-  if (!result) return null
+  if (!result) {
+    return null
+  }
 
-  const generated = generateFromAst(ast, {
-    sourceMaps: true,
-    sourceFileName: options.id,
+  removeUnusedBindings(module, ast, originalNodes)
+  const generated = generateModule(ast, {
+    source: options.code,
     filename: options.id,
   })
 
@@ -166,16 +205,12 @@ describe('Hydrate compiler transform fixtures', async () => {
       code,
       id: fixtureId('global.tsx'),
     })!
-    const output = parseAst({ code: compiled.code })
-    const globalReferences: Array<string> = []
-    traverse(output, {
-      ReferencedIdentifier(path) {
-        if (path.node.name === '_H0' && !path.scope.hasBinding('_H0', true)) {
-          globalReferences.push(path.node.name)
-        }
-      },
-    })
-    expect(globalReferences).toEqual(['_H0'])
+    const output = analyzeModule({ code: compiled.code })
+    expect(
+      output.unresolvedReferences.filter(
+        (reference) => reference.name === '_H0',
+      ),
+    ).toHaveLength(1)
   })
 
   test('retains captured local components and values across extraction', async () => {
@@ -200,20 +235,25 @@ describe('Hydrate compiler transform fixtures', async () => {
       root: fixtureRoot,
     })
     expect(loaded).toBeTruthy()
-    const output = parseAst({ code: loaded!.code })
+    const output = analyzeModule({ code: loaded!.code })
+    expect(output.rootScope.find('Page')).toBeNull()
+    const capturedNames = ['Local', 'count', 'name']
     const capturedReferences = new Set<string>()
-    traverse(output, {
-      Program(path) {
-        expect(path.scope.getBinding('Page')).toBeUndefined()
-      },
-      ReferencedIdentifier(path) {
-        if (['Local', 'count', 'name'].includes(path.node.name)) {
-          capturedReferences.add(path.node.name)
-          expect(path.scope.hasBinding(path.node.name, true)).toBe(true)
+    output.walk({
+      enter(node) {
+        const reference = output.referenceOf(node)
+        if (reference && capturedNames.includes(reference.name)) {
+          capturedReferences.add(reference.name)
+          expect(reference.binding).toBeTruthy()
         }
       },
     })
-    expect([...capturedReferences].sort()).toEqual(['Local', 'count', 'name'])
+    expect([...capturedReferences].sort()).toEqual(capturedNames)
+    expect(
+      output.unresolvedReferences.filter((reference) =>
+        capturedNames.includes(reference.name),
+      ),
+    ).toHaveLength(0)
   })
 
   test('should extract virtual modules and keep nested ids stable', async () => {

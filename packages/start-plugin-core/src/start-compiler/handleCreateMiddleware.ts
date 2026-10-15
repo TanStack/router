@@ -19,7 +19,7 @@ export function handleCreateMiddleware(
     const { validator, server } = candidate.methodChain
 
     if (validator) {
-      const innerInputExpression = validator.callPath.node.arguments[0]
+      const innerInputExpression = validator.call.arguments[0]
 
       if (!innerInputExpression) {
         throw new Error(
@@ -28,12 +28,12 @@ export function handleCreateMiddleware(
       }
 
       // remove the validator call expression
-      stripMethodCall(validator.callPath)
+      stripMethodCall(validator.call, context)
     }
 
     if (server) {
       // remove the server call expression
-      stripMethodCall(server.callPath)
+      stripMethodCall(server.call, context)
     }
   }
 }

@@ -114,23 +114,21 @@
     "!skills/_artifacts"
   ],
   "engines": {
-    "node": ">=20.19"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
-    "@babel/core": "catalog:",
-    "@babel/template": "^7.29.7",
-    "@babel/types": "catalog:",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "chokidar": "catalog:",
     "unplugin": "^3.3.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@yuku-toolchain/types": "catalog:",
+    "yuku-analyzer": "catalog:",
+    "yuku-ast": "catalog:"
   },
   "devDependencies": {
     "@rsbuild/core": "catalog:",
-    "@types/babel__core": "^7.20.5",
-    "@types/babel__template": "^7.4.4",
     "@types/node": ">=20",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

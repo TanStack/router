@@ -80,6 +80,34 @@ describe('findPostCompileUsagePos', () => {
     expect(p!.line).toBe(3)
   })
 
+  test('ignores a member property named like the import but still finds later usage', () => {
+    const p = pos(
+      `import { eq } from 'denied';\nconst a = db.eq(1);\nconst b = eq`,
+      'denied',
+    )
+    expect(p).toEqual({ line: 3, column0: 'const b = '.length })
+  })
+
+  test('ignores type positions, which TypeScript erases', () => {
+    expect(
+      pos(
+        `import { Secret, secret } from 'denied';\nconst a: Secret = 1;\ntype S = typeof secret`,
+        'denied',
+      ),
+    ).toBeUndefined()
+  })
+
+  test.each([
+    { name: 'a JSX element', usage: '<Secret />' },
+    { name: 'a JSX member element', usage: '<ui.Secret />' },
+  ])('finds $name usage', ({ usage }) => {
+    const p = pos(
+      `import Secret, * as ui from 'denied';\nconst A = () => ${usage}`,
+      'denied',
+    )
+    expect(p).toEqual({ line: 2, column0: 'const A = () => <'.length })
+  })
+
   test('ignores shadowed identifiers in nested function scope', () => {
     const p = pos(
       `import { x } from 'denied';\nfunction inner(x: any){ return x }\nconst y = x;`,

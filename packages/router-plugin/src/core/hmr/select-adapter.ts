@@ -1,7 +1,7 @@
 import { createViteHmrStatement } from './vite-adapter'
 import { createWebpackHmrStatement } from './webpack-adapter'
 import type { Config, HmrStyle } from '../config'
-import type * as t from '@babel/types'
+import type { ProgramStatement } from '@yuku-toolchain/types'
 
 export type CreateRouteHmrStatementOpts = {
   hmrStyle: HmrStyle
@@ -17,7 +17,7 @@ export type CreateRouteHmrStatementOpts = {
 export function createRouteHmrStatement(
   stableRouteOptionKeys: Array<string>,
   opts: CreateRouteHmrStatementOpts,
-): Array<t.Statement> {
+): Array<ProgramStatement> {
   const routeId = opts.routeId === '/__root' ? '__root__' : opts.routeId
 
   if (opts.hmrStyle === 'webpack') {

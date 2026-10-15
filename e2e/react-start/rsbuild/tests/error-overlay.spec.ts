@@ -376,9 +376,9 @@ test('shows a module syntax error through the error overlay', async ({
       [
         {
           "title": "Build failed",
-          "description": "SyntaxError: Unexpected token (16:22)",
+          "description": "SyntaxError: <fixture-root>/src/routes/index.tsx: Unexpected token ';' (16:22)",
           "runtime": "client",
-          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <rsbuild-transform-loader>):\\n->   x SyntaxError: Unexpected token (16:22)",
+          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <rsbuild-transform-loader>):\\n->   x SyntaxError: <fixture-root>/src/routes/index.tsx: Unexpected token ';' (16:22)",
           "importTrace": [
             "../../../packages/react-start/dist/plugin/default-entry/client.tsx",
             "../../../packages/react-start/dist/esm/client.js",
@@ -389,9 +389,9 @@ test('shows a module syntax error through the error overlay', async ({
         },
         {
           "title": "Build failed",
-          "description": "SyntaxError: Unexpected token (16:22)",
+          "description": "SyntaxError: <fixture-root>/src/routes/index.tsx: Unexpected token ';' (16:22)",
           "runtime": "server",
-          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <rsbuild-transform-loader>):\\n->   x SyntaxError: Unexpected token (16:22)",
+          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <rsbuild-transform-loader>):\\n->   x SyntaxError: <fixture-root>/src/routes/index.tsx: Unexpected token ';' (16:22)",
           "importTrace": [
             "../../../packages/react-start/dist/plugin/default-entry/server.ts",
             "../../../packages/react-start/dist/esm/server.js",

@@ -1,5 +1,13 @@
-import type babel from '@babel/core'
-import type * as t from '@babel/types'
+import type { Module } from 'yuku-analyzer'
+import type { moduleDeclarationGraph } from '@tanstack/router-utils'
+import type {
+  Expression,
+  Node,
+  ObjectExpression,
+  ObjectProperty,
+  Program,
+  ProgramStatement,
+} from '@yuku-toolchain/types'
 import type { Config, DeletableNodes, HmrStyle } from '../config'
 import type { CodeSplitGroupings } from '../constants'
 import type { SplitNodeMeta } from './types'
@@ -14,35 +22,47 @@ export type CompileCodeSplitReferenceRouteOptions = {
   hmrStyle?: HmrStyle
   hmrRouteId?: string
   sharedBindings?: Set<string>
+  /** Emit the shared bindings that look like components in a module of their own */
+  splitSharedComponents?: boolean
 }
 
 export type ReferenceRouteCompilerPluginContext = {
-  programPath: babel.NodePath<t.Program>
-  callExpressionPath: babel.NodePath<t.CallExpression>
-  insertionPath: babel.NodePath
-  routeOptions: t.ObjectExpression
+  program: Program
+  module: Module
+  /** The module-level declarations of `module` and their dependencies. */
+  graph: ReturnType<typeof moduleDeclarationGraph>
+  originalNodes: WeakMap<Node, Node>
+  /**
+   * The names the source declares or references, and the names given out for
+   * the output. A declaration a plugin adds must take a name not in it, and
+   * add that name.
+   */
+  reservedNames: Set<string>
+  insertBefore: (nodes: Array<ProgramStatement>) => void
+  renameBinding: (node: Node, name: string) => void
+  routeOptions: ObjectExpression
   createRouteFn: string
   opts: CompileCodeSplitReferenceRouteOptions
 }
 
-export type ReferenceRouteSplitPropertyCompilerPluginContext = {
-  programPath: babel.NodePath<t.Program>
-  callExpressionPath: babel.NodePath<t.CallExpression>
-  insertionPath: babel.NodePath
-  routeOptions: t.ObjectExpression
-  prop: t.ObjectProperty
-  splitNodeMeta: SplitNodeMeta
-  lazyRouteComponentIdent: string
-  opts: CompileCodeSplitReferenceRouteOptions
-}
+export type ReferenceRouteSplitPropertyCompilerPluginContext =
+  ReferenceRouteCompilerPluginContext & {
+    prop: ObjectProperty
+    splitNodeMeta: SplitNodeMeta
+    lazyRouteComponentIdent: string
+    opts: CompileCodeSplitReferenceRouteOptions
+  }
 
 export type ReferenceRouteCompilerPluginResult = {
   modified?: boolean
 }
 
 export type VirtualRouteSplitNodeCompilerPluginContext = {
-  programPath: babel.NodePath<t.Program>
-  splitNode: t.Node
+  program: Program
+  /** See `ReferenceRouteCompilerPluginContext['reservedNames']`. */
+  reservedNames: Set<string>
+  renameBinding: (node: Node, name: string) => void
+  splitNode: Node
   splitNodeMeta: SplitNodeMeta
 }
 
@@ -60,7 +80,7 @@ export type CodeSplitCompilerPlugin = {
   ) => void | ReferenceRouteCompilerPluginResult
   onSplitRouteProperty?: (
     ctx: ReferenceRouteSplitPropertyCompilerPluginContext,
-  ) => void | t.Expression
+  ) => void | Expression
   onVirtualRouteSplitNode?: (
     ctx: VirtualRouteSplitNodeCompilerPluginContext,
   ) => void

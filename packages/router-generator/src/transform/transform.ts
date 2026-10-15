@@ -1,6 +1,7 @@
 import MagicString from 'magic-string'
-import * as t from '@babel/types'
-import { parseAst } from '@tanstack/router-utils'
+import { is, isCallOf, nameOf } from 'yuku-ast'
+import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
+import type * as t from '@yuku-toolchain/types'
 import type { TransformOptions, TransformResult } from './types'
 
 const routeConstructors = ['createFileRoute', 'createLazyFileRoute'] as const
@@ -51,10 +52,10 @@ export function transform({
   filename,
   node,
 }: TransformOptions): TransformResult {
-  let ast: ReturnType<typeof parseAst>
+  let ast: ReturnType<typeof analyzeModule>
 
   try {
-    ast = parseAst({ code: source, filename })
+    ast = analyzeModule({ code: source, filename })
   } catch (error) {
     return {
       result: 'error',
@@ -62,9 +63,17 @@ export function transform({
     }
   }
 
-  const exportedRouteNames = getExportedRouteNames(ast.program.body)
+  // A runtime `export { x as Route }` of any binding, or `export const Route`
+  const routeExport = ast.exports.find(
+    (exp) =>
+      exp.name === 'Route' &&
+      exp.local &&
+      !exp.typeOnly &&
+      (is.ExportSpecifier(exp.node) ||
+        is.VariableDeclarator(ast.parentOf(exp.node))),
+  )
 
-  if (exportedRouteNames.size === 0) {
+  if (!routeExport) {
     return { result: 'no-route-export' }
   }
 
@@ -72,7 +81,7 @@ export function transform({
     calls: routeCalls,
     hasUnsupportedRouteId,
     hasMalformedRouteCall,
-  } = findExportedRouteCalls(ast.program.body, exportedRouteNames)
+  } = findRouteCalls(ast, routeExport.local!.declarations)
 
   if (routeCalls.length === 0 && hasMalformedRouteCall) {
     return {
@@ -106,7 +115,7 @@ export function transform({
   }
 
   const routeCall = routeCalls[0]!
-  const routeIdQuote = getRouteIdQuote(source, routeCall.routeIdArg)
+  const routeIdQuote = getRouteIdQuote(routeCall.routeIdArg)
 
   const createFileRouteProps = getCreateFileRouteProps(routeCall.optionsArg)
   if (createFileRouteProps) {
@@ -116,24 +125,24 @@ export function transform({
   const expectedCallee = getExpectedRouteConstructor(ctx.lazy)
   const expectedRouteId = `${routeIdQuote}${ctx.routeId}${routeIdQuote}`
   const currentRouteId = source.slice(
-    routeCall.routeIdArg.start!,
-    routeCall.routeIdArg.end!,
+    routeCall.routeIdArg.start,
+    routeCall.routeIdArg.end,
   )
   const targetModule = `@tanstack/${ctx.target}-router`
-  const imports = parseTargetImports(ast.program.body, source, targetModule)
+  const imports = parseTargetImports(ast.ast.body, source, targetModule)
 
   const s = new MagicString(source)
   let modified = false
 
   if (routeCall.callee.name !== expectedCallee) {
-    s.update(routeCall.callee.start!, routeCall.callee.end!, expectedCallee)
+    s.update(routeCall.callee.start, routeCall.callee.end, expectedCallee)
     modified = true
   }
 
   if (currentRouteId !== expectedRouteId) {
     s.update(
-      routeCall.routeIdArg.start!,
-      routeCall.routeIdArg.end!,
+      routeCall.routeIdArg.start,
+      routeCall.routeIdArg.end,
       expectedRouteId,
     )
     modified = true
@@ -162,142 +171,58 @@ export function transform({
   }
 }
 
-function getExportedRouteNames(body: Array<t.Statement>) {
-  const exportedRouteNames = new Set<string>()
-
-  for (const statement of body) {
-    if (!t.isExportNamedDeclaration(statement) || statement.source) {
-      continue
-    }
-
-    if (t.isVariableDeclaration(statement.declaration)) {
-      for (const declarator of statement.declaration.declarations) {
-        if (t.isIdentifier(declarator.id) && declarator.id.name === 'Route') {
-          exportedRouteNames.add('Route')
-        }
-      }
-    }
-
-    for (const specifier of statement.specifiers) {
-      if (
-        !t.isExportSpecifier(specifier) ||
-        getExportedName(specifier.exported) !== 'Route'
-      ) {
-        continue
-      }
-
-      const localName = getLocalBindingName(specifier.local)
-      if (localName) {
-        exportedRouteNames.add(localName)
-      }
-    }
-  }
-
-  return exportedRouteNames
-}
-
-function findExportedRouteCalls(
-  body: Array<t.Statement>,
-  exportedRouteNames: Set<string>,
+function findRouteCalls(
+  module: ReturnType<typeof analyzeModule>,
+  declarations: Array<t.Node>,
 ): RouteCallAnalysis {
   const calls: Array<RouteCall> = []
   let hasUnsupportedRouteId = false
   let hasMalformedRouteCall = false
 
-  for (const statement of body) {
-    const declaration = getVariableDeclaration(statement)
-    if (!declaration) {
+  for (const declaration of declarations) {
+    const declarator = module.parentOf(declaration)
+    if (!is.VariableDeclarator(declarator)) {
       continue
     }
 
-    for (const declarator of declaration.declarations) {
-      if (
-        !t.isIdentifier(declarator.id) ||
-        !exportedRouteNames.has(declarator.id.name)
-      ) {
-        continue
+    const init = getRouteConstructorInit(declarator.init)
+    if (!init) {
+      if (isCallOf(unwrapExpression(declarator.init), routeConstructors)) {
+        hasMalformedRouteCall = true
       }
+      continue
+    }
 
-      const init = getRouteConstructorInit(declarator.init)
-      if (!init) {
-        if (isDirectRouteConstructorCall(declarator.init)) {
-          hasMalformedRouteCall = true
-        }
-        continue
-      }
-
-      const routeIdArg = init.innerCall.arguments[0]
-      if (isSupportedRouteId(routeIdArg)) {
-        calls.push({
-          callee: init.callee,
-          routeIdArg,
-          optionsArg: init.outerCall.arguments[0],
-        })
-      } else {
-        hasUnsupportedRouteId = true
-      }
+    const routeIdArg = unwrapExpression(init.innerCall.arguments[0])
+    if (isSupportedRouteId(routeIdArg)) {
+      calls.push({
+        callee: init.callee,
+        routeIdArg,
+        optionsArg: unwrapExpression(init.outerCall.arguments[0]),
+      })
+    } else {
+      hasUnsupportedRouteId = true
     }
   }
 
   return { calls, hasUnsupportedRouteId, hasMalformedRouteCall }
 }
 
-function getVariableDeclaration(statement: t.Statement) {
-  const declaration = t.isExportNamedDeclaration(statement)
-    ? statement.declaration
-    : statement
-
-  return t.isVariableDeclaration(declaration) ? declaration : null
-}
-
-function getExportedName(node: t.Identifier | t.StringLiteral) {
-  return t.isIdentifier(node) ? node.name : node.value
-}
-
-function getLocalBindingName(node: t.Identifier | t.StringLiteral) {
-  return t.isIdentifier(node) ? node.name : null
-}
-
-function getRouteConstructorInit(expression: t.Expression | null | undefined) {
-  if (!expression || !t.isCallExpression(expression)) {
+function getRouteConstructorInit(expression: t.Expression | null) {
+  const outerCall = unwrapExpression(expression)
+  if (!is.CallExpression(outerCall)) {
     return null
   }
-
-  if (!t.isCallExpression(expression.callee)) {
-    return null
-  }
-
-  const innerCall = expression.callee
-
-  if (
-    !t.isIdentifier(innerCall.callee) ||
-    !isRouteConstructor(innerCall.callee)
-  ) {
+  const innerCall = unwrapExpression(outerCall.callee)
+  if (!isCallOf(innerCall, routeConstructors)) {
     return null
   }
 
   return {
-    callee: innerCall.callee,
-    outerCall: expression,
+    callee: unwrapExpression(innerCall.callee) as RouteCall['callee'],
+    outerCall,
     innerCall,
   }
-}
-
-function isDirectRouteConstructorCall(
-  expression: t.Expression | null | undefined,
-) {
-  return (
-    !!expression &&
-    t.isCallExpression(expression) &&
-    t.isIdentifier(expression.callee) &&
-    isRouteConstructor(expression.callee)
-  )
-}
-
-function isRouteConstructor(callee: t.Identifier): callee is t.Identifier & {
-  name: RouteConstructorName
-} {
-  return routeConstructors.includes(callee.name as RouteConstructorName)
 }
 
 function isSupportedRouteId(
@@ -305,43 +230,32 @@ function isSupportedRouteId(
 ): arg is SupportedRouteId {
   return (
     !!arg &&
-    (t.isStringLiteral(arg) ||
-      (t.isTemplateLiteral(arg) && arg.expressions.length === 0))
+    (is.StringLiteral(arg) ||
+      (is.TemplateLiteral(arg) && arg.expressions.length === 0))
   )
 }
 
-function getRouteIdQuote(
-  source: string,
-  arg: SupportedRouteId,
-): '"' | "'" | '`' {
-  const raw = source.slice(arg.start!, arg.end!)
-
-  if (raw.startsWith("'")) return "'"
-  if (raw.startsWith('"')) return '"'
-  return '`'
+function getRouteIdQuote(arg: SupportedRouteId): '"' | "'" | '`' {
+  return is.StringLiteral(arg) ? (arg.raw[0] as '"' | "'") : '`'
 }
 
 function getCreateFileRouteProps(
   arg: t.CallExpression['arguments'][number] | undefined,
 ) {
-  if (!arg || !t.isObjectExpression(arg)) {
+  if (!arg || !is.ObjectExpression(arg)) {
     return undefined
   }
 
   const props = new Set<string>()
 
   for (const property of arg.properties) {
-    if (!t.isObjectProperty(property) || property.computed) {
+    if (!is.Property(property) || property.computed) {
       continue
     }
 
-    if (t.isIdentifier(property.key)) {
-      props.add(property.key.name)
-      continue
-    }
-
-    if (t.isStringLiteral(property.key)) {
-      props.add(property.key.value)
+    const name = nameOf(property.key)
+    if (name !== null) {
+      props.add(name)
     }
   }
 
@@ -349,7 +263,7 @@ function getCreateFileRouteProps(
 }
 
 function parseTargetImports(
-  body: Array<t.Statement>,
+  body: t.Program['body'],
   source: string,
   targetModule: string,
 ) {
@@ -357,35 +271,30 @@ function parseTargetImports(
 
   for (const statement of body) {
     if (
-      !t.isImportDeclaration(statement) ||
+      !is.ImportDeclaration(statement) ||
       statement.importKind === 'type' ||
       statement.source.value !== targetModule
     ) {
       continue
     }
 
-    const rawSource = source.slice(
-      statement.source.start!,
-      statement.source.end!,
-    )
-    const importStatement = source.slice(statement.start!, statement.end!)
+    const rawSource = source.slice(statement.source.start, statement.source.end)
+    const importStatement = source.slice(statement.start, statement.end)
 
     imports.push({
       declaration: statement,
       defaultImport: statement.specifiers.find((specifier) =>
-        t.isImportDefaultSpecifier(specifier),
+        is.ImportDefaultSpecifier(specifier),
       )?.local.name,
       namespace: statement.specifiers.find((specifier) =>
-        t.isImportNamespaceSpecifier(specifier),
+        is.ImportNamespaceSpecifier(specifier),
       )?.local.name,
       named: statement.specifiers
         .filter((specifier): specifier is t.ImportSpecifier =>
-          t.isImportSpecifier(specifier),
+          is.ImportSpecifier(specifier),
         )
         .map((specifier) => ({
-          imported: t.isIdentifier(specifier.imported)
-            ? specifier.imported.name
-            : specifier.imported.value,
+          imported: nameOf(specifier.imported),
           local: specifier.local.name,
           importKind: specifier.importKind ?? undefined,
         })),
@@ -420,8 +329,8 @@ function updateRouteImports({
   }
 
   if (analysis.kind === 'rename') {
-    s.update(analysis.imported.start!, analysis.imported.end!, analysis.next)
-    s.update(analysis.local.start!, analysis.local.end!, analysis.next)
+    s.update(analysis.imported.start, analysis.imported.end, analysis.next)
+    s.update(analysis.local.start, analysis.local.end, analysis.next)
     return true
   }
 
@@ -452,12 +361,12 @@ function analyzeRouteImports(
 
   for (const declaration of imports) {
     for (const specifier of declaration.declaration.specifiers) {
-      if (!t.isImportSpecifier(specifier)) {
+      if (!is.ImportSpecifier(specifier)) {
         continue
       }
 
       const imported = specifier.imported
-      if (!t.isIdentifier(imported)) {
+      if (!is.Identifier(imported)) {
         return { kind: 'normalize' }
       }
 
@@ -539,16 +448,16 @@ function normalizeRouteImports({
 
     if (replacement === null) {
       s.remove(
-        declaration.declaration.start!,
-        getRemovalEnd(source, declaration.declaration.end!),
+        declaration.declaration.start,
+        getRemovalEnd(source, declaration.declaration.end),
       )
       modified = true
       continue
     }
 
     s.update(
-      declaration.declaration.start!,
-      declaration.declaration.end!,
+      declaration.declaration.start,
+      declaration.declaration.end,
       replacement,
     )
     modified = true

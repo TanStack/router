@@ -104,7 +104,8 @@
     "@tanstack/start-fn-stubs": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
-    "pathe": "catalog:"
+    "pathe": "catalog:",
+    "yuku-ast": "catalog:"
   },
   "devDependencies": {
     "@rspack/core": "2.2.7",
