@@ -1,7 +1,7 @@
 import { bench, describe, expect } from 'vitest'
 import { commitMatches } from '../src/load-client'
 import type { AnyRouteMatch, AnyRouter } from '../src'
-import type { LoaderFlight, LoadTransaction } from '../src/load-client'
+import type { LoadTransaction, LoaderFlight } from '../src/load-client'
 
 type Match = AnyRouteMatch & { _flight?: LoaderFlight }
 
@@ -76,14 +76,24 @@ for (const family of ['snapshots', 'mixed flights', 'preload flights']) {
           },
           stores: { setMatches: () => {} },
         } as unknown as AnyRouter
-        const run = () => {
-          router._cache = cached
+        const batch = size <= 100 ? 100 : 1
+        let inputs: Array<Map<string, AnyRouteMatch>> = []
+        const reset = () => {
+          // Each timed expiration commit needs a populated map even when the
+          // implementation mutates it. Prepare batch inputs outside timing.
+          if (retainedFraction !== 1) {
+            inputs = Array.from({ length: batch }, () => new Map(cached))
+          }
+        }
+        const run = (index = 0) => {
+          router._cache = retainedFraction === 1 ? cached : inputs[index]!
           for (const entry of departing) {
             entry.match._flight = entry.flight
             entry.flight![2] = 1
           }
           commitMatches(router, tx, matches)
         }
+        reset()
         run()
         expect(router._cache.size).toBe(retainedCount)
         expect(aborts).toBe(departing.length)
@@ -98,15 +108,24 @@ for (const family of ['snapshots', 'mixed flights', 'preload flights']) {
             expect(entry.match._flight).toBeUndefined()
           }
         }
-        const batch = size <= 100 ? 100 : 1
+        reset()
+        run()
+        expect(router._cache.size).toBe(retainedCount)
+        expect(aborts).toBe(departing.length * 2)
         bench(
           `${retainedFraction * 100}% retained (${batch} commits)`,
           () => {
             for (let index = 0; index < batch; index++) {
-              run()
+              run(index)
             }
           },
-          { time: 500, warmupTime: 100 },
+          {
+            time: 500,
+            warmupTime: 100,
+            setup: (task) => {
+              task.opts.beforeEach = reset
+            },
+          },
         )
       }
     },
