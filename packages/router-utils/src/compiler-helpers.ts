@@ -678,8 +678,8 @@ export interface RemoveUnusedBindingsOptions {
   moved?: Set<Binding>
   /**
    * The program is a copy of the module for some of its code (a split chunk):
-   * an initially unused declaration that it reads only in types is not
-   * copied into it.
+   * an initially unused declaration that it reads only in types, or a
+   * namespace nothing in it reads, is not copied into it.
    */
   partialCopy?: boolean
 }
@@ -711,7 +711,16 @@ export function removeUnusedBindings(
   )
   const kept = options.partialCopy
     ? new Set(
-        [...preserved].filter((binding) => !output.typeReferenced.has(binding)),
+        [...preserved].filter(
+          (binding) =>
+            !output.typeReferenced.has(binding) &&
+            !(
+              binding.has(BindingFlags.ValueModule) &&
+              binding.declarations.every((identifier) =>
+                is.TSModuleDeclaration(module.parentOf(identifier)),
+              )
+            ),
+        ),
       )
     : preserved
   const { moved } = options
