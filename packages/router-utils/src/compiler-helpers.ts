@@ -260,6 +260,8 @@ interface BindingUses {
    * JSX that a classic JSX runtime compiles to `React.createElement` calls.
    */
   erasedReferences: Map<Binding, Set<Set<Binding> | null>>
+  /** Bindings a type references outside of their own declaration. */
+  typeReferenced: Set<Binding>
 }
 
 interface JsxFactoryNames {
@@ -326,6 +328,7 @@ function collectBindingUses(
     uses: new Map(),
     parents: new Map(),
     erasedReferences: new Map(),
+    typeReferenced: new Set(),
   }
   const reactImport = module.rootScope.find('React')
   const erasedReference = (owner: Set<Binding> | null, binding: Binding) => {
@@ -409,6 +412,9 @@ function collectBindingUses(
       const reference = original ? module.referenceOf(original) : null
       if (reference?.inTypePosition && reference.binding) {
         erasedReference(owner, reference.binding)
+        if (!owner?.has(reference.binding)) {
+          result.typeReferenced.add(reference.binding)
+        }
       }
       if (is.JSXElement(node) || is.JSXFragment(node)) {
         if (reactImport) {
@@ -670,6 +676,12 @@ export interface RemoveUnusedBindingsOptions {
    * dangling reference to them rather than keeping them in this one.
    */
   moved?: Set<Binding>
+  /**
+   * The program is a copy of the module for some of its code (a split chunk):
+   * an initially unused declaration that it reads only in types is not
+   * copied into it.
+   */
+  partialCopy?: boolean
 }
 
 /**
@@ -697,10 +709,15 @@ export function removeUnusedBindings(
   const output = collectBindingUses(module, program, index, factories, (node) =>
     originalNodes.get(node),
   )
+  const kept = options.partialCopy
+    ? new Set(
+        [...preserved].filter((binding) => !output.typeReferenced.has(binding)),
+      )
+    : preserved
   const { moved } = options
   const retained = survivingBindings(
     output,
-    { preserved, erased },
+    { preserved: kept, erased },
     moved && ((from, to) => runnable.has(from) || !moved.has(to)),
   )
   const removable = new Set(

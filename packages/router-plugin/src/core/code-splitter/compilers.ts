@@ -1156,7 +1156,9 @@ export function compileCodeSplitVirtualRoute(
   }
   addSharedImports(program, options.sharedBindings, options.filename)
   program.body.push(...generatedExports)
-  removeUnusedBindings(analysis.module, program, originalNodes)
+  removeUnusedBindings(analysis.module, program, originalNodes, {
+    partialCopy: true,
+  })
   stripUnownedExpressions(analysis.module, program, originalNodes)
   return generateRouteModule(analysis, program, options.filename)
 }
