@@ -1,3 +1,4 @@
+import { transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
@@ -8,6 +9,7 @@ import {
   importSources,
   importedNames,
 } from './regression-helpers'
+import { getModuleErrors } from './validate-module'
 
 const pageRoute = (body: string) => `${head}${body}
 export const Route = createFileRoute('/')({ component: Page })
@@ -385,5 +387,32 @@ function Page() {
     ).modules['virtual component']!
     await expectValidModules({ chunk })
     expect((await evaluateModule(chunk)).component!()).toBe('body,second,first')
+  })
+})
+
+describe('plain TypeScript route files', () => {
+  // Source: TanStack/router#7341. In a `.ts` file, `<T>value` is a type
+  // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
+  it('keeps angle-bracket type assertions in every module', async () => {
+    const { modules } = compileRouteModules(
+      `${head}const identity = <T>(value: T) => value
+export const Route = createFileRoute('/')({
+  loader: () => <number>identity(<unknown>1),
+  component: () => <string>identity(<unknown>'page'),
+})
+`,
+      { filename: 'route.ts' },
+    )
+    for (const [name, code] of Object.entries(modules)) {
+      expect(await getModuleErrors(code!, 'module.ts'), name).toEqual([])
+    }
+    const erase = async (code: string) =>
+      (await transformWithOxc(code, 'module.ts')).code
+    const shared = await evaluateModule(await erase(modules.shared!))
+    const chunk = await evaluateModule(
+      await erase(modules['virtual component']!),
+      { 'route.ts?tsr-shared=1': shared },
+    )
+    expect(chunk.component!()).toBe('page')
   })
 })
