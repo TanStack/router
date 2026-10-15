@@ -9,7 +9,6 @@ import {
 } from '../config-context'
 import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
-import { resolveDeploymentMetadata } from '../deployment-metadata-module'
 import { addWorkspaceWatchIgnored } from './watch-ignored'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
@@ -44,7 +43,6 @@ import type {
 } from '@rsbuild/core'
 import type { TanStackStartRsbuildInputConfig } from './schema'
 import type { ScriptFormat } from '@tanstack/router-core'
-import type { ResolvedDeploymentMetadata } from '@tanstack/start-server-core'
 
 // Detect whether this plugin source is running from inside the TanStack
 // Router monorepo (packages/start-plugin-core/src/rsbuild/plugin.ts). When
@@ -341,16 +339,6 @@ export function tanStackStartRsbuild(
         environments: startCompilerEnvironments,
       })
 
-      let deploymentMetadata: ResolvedDeploymentMetadata | undefined
-      api.modifyRsbuildConfig(async () => {
-        const { startConfig } = getConfig()
-        if (api.context.action === 'build' && startConfig.deploymentMetadata) {
-          deploymentMetadata = await resolveDeploymentMetadata(
-            startConfig.deploymentMetadata,
-          )
-        }
-      })
-
       // ---------------------------------------------------------------
       // 3. Virtual modules — manifest, server fn resolver, adapters,
       //    deployment metadata, RSC runtime, RSC HMR
@@ -362,7 +350,6 @@ export function tanStackStartRsbuild(
         providerEnvName: serverFnProviderEnv,
         ssrIsProvider,
         serializationAdapters: corePluginOpts.serializationAdapters,
-        getDeploymentMetadata: () => deploymentMetadata,
         getDevClientEntryUrl: (publicBase: string) =>
           joinURL(publicBase, RSBUILD_CLIENT_ASSETS_DIR, 'js/index.js'),
         rscEnabled,

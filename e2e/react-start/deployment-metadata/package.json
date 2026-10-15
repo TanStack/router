@@ -7,10 +7,8 @@
     "dev": "pnpm dev:vite --port 3000",
     "dev:e2e": "pnpm dev:vite",
     "dev:vite": "vite dev",
-    "dev:rsbuild": "rsbuild dev",
     "build": "pnpm build:vite",
     "build:vite": "vite build && tsc --noEmit",
-    "build:rsbuild": "rsbuild build && tsc --noEmit",
     "start": "node server.js",
     "test:e2e": "pnpm build && playwright test --project=chromium"
   },
@@ -22,8 +20,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
-    "@rsbuild/core": "^2.1.0",
-    "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
@@ -39,10 +35,6 @@
       "playwrightModes": [
         {
           "toolchain": "vite",
-          "mode": "ssr"
-        },
-        {
-          "toolchain": "rsbuild",
           "mode": "ssr"
         }
       ]
