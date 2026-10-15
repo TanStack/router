@@ -4,18 +4,15 @@
  * follow the imports of its output to every module it emits, evaluate those
  * modules like a runtime, and inspect an emitted module.
  */
-import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { promisify } from 'node:util'
 import * as React from 'react'
-import { build, parseSync, transformWithOxc } from 'vite'
+import { parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
+import { build, routeApp } from './build-harness'
 import { createModuleSession, jsxPragma, moduleLang } from './module-runtime'
 import { freeIdentifiers, getModuleErrors } from './validate-module'
 import type { ModuleSession, ModuleStub } from './module-runtime'
@@ -822,8 +819,6 @@ export async function expectRefreshableRouteOption(
   ).toBe(true)
 }
 
-const runNode = promisify(execFile)
-
 /**
  * Builds a small app with the real Vite plugin (code splitting on, default
  * groupings unless `groupings` is given): `routes/index.tsx` holds `route`,
@@ -833,6 +828,10 @@ const runNode = promisify(execFile)
  * imports the built entry in a separate Node process and returns the JSON
  * value returned by `script`, which has the entry's exports in scope as
  * `entry`.
+ *
+ * A production Vite SSR build of `build-harness.ts`, without minification and
+ * without an app `package.json` (the app inherits this package's
+ * `"sideEffects": false`).
  */
 export async function buildAndRun(
   route: string,
@@ -843,65 +842,20 @@ export async function buildAndRun(
     prefix?: string
   } = {},
 ) {
-  const { tanstackRouter } = await import('../src/vite')
-  // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(
-    path.join(__dirname, options.prefix ?? '.regression-build-'),
-  )
+  const app = await build({
+    bundler: 'vite',
+    env: 'ssr',
+    minify: false,
+    packageJson: null,
+    prefix: options.prefix ?? '.regression-build-',
+    files: routeApp(route, { files: options.files }),
+    pluginOptions: options.groupings && {
+      codeSplittingOptions: { defaultBehavior: options.groupings },
+    },
+  })
   try {
-    await mkdir(path.join(root, 'routes'))
-    const files: Record<string, string> = {
-      'routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({})`,
-      'routes/index.tsx': route,
-      'entry.ts': `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-export * from './routes/index'
-export async function render(component: any) {
-  await component.preload?.()
-  return renderToString(createElement(component))
-}
-`,
-      ...options.files,
-    }
-    for (const [file, code] of Object.entries(files)) {
-      await writeFile(path.join(root, file), code)
-    }
-    await build({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      plugins: [
-        tanstackRouter({
-          target: 'react',
-          routesDirectory: './routes',
-          generatedRouteTree: './routeTree.gen.ts',
-          autoCodeSplitting: true,
-          codeSplittingOptions: {
-            addHmr: false,
-            ...(options.groupings && { defaultBehavior: options.groupings }),
-          },
-        }),
-      ],
-      build: {
-        ssr: path.join(root, 'entry.ts'),
-        outDir: 'dist',
-        minify: false,
-        rollupOptions: {
-          output: { entryFileNames: 'entry.mjs', chunkFileNames: '[name].mjs' },
-        },
-      },
-    })
-    const entryUrl = pathToFileURL(path.join(root, 'dist/entry.mjs')).href
-    const { stdout } = await runNode(process.execPath, [
-      '--input-type=module',
-      '--eval',
-      `const entry = await import(${JSON.stringify(entryUrl)})
-const result = await (async () => { ${script} })()
-process.stdout.write(JSON.stringify(result))`,
-    ])
-    return JSON.parse(stdout) as unknown
+    return (await app.run(script)).result
   } finally {
-    await rm(root, { recursive: true, force: true })
+    await app.dispose()
   }
 }
