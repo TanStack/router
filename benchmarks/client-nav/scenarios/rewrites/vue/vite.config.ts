@@ -4,10 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
-import {
-  benchTestTimeout,
-  cpuSimulationExecArgv,
-} from '../../../../cpu-simulation'
+import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -39,7 +36,6 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
-    testTimeout: benchTestTimeout,
     name: '@benchmarks/client-nav rewrites (vue)',
     watch: false,
     environment: 'jsdom',

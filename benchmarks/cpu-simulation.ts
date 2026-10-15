@@ -38,13 +38,6 @@ export function cpuSimulationExecArgv() {
 }
 
 /**
- * Vitest 5 runs benchmarks inside tests with at least a 60 s timeout.
- * Instrumented CodSpeed runs are far slower than native ones, so allow each
- * benchmark test up to 10 minutes.
- */
-export const benchTestTimeout = 10 * 60_000
-
-/**
  * Per-bench lifecycle for apps that a bench prepares and disposes outside
  * timing. CodSpeed measures one invocation, so each invocation gets fresh
  * state. Tinybench samples thousands of iterations and keeps one instance per

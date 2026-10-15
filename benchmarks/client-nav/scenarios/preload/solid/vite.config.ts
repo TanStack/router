@@ -3,10 +3,7 @@ import { defineConfig } from 'vitest/config'
 import solid from 'vite-plugin-solid'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
-import {
-  benchTestTimeout,
-  cpuSimulationExecArgv,
-} from '../../../../cpu-simulation'
+import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -40,7 +37,6 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
-    testTimeout: benchTestTimeout,
     name: '@benchmarks/client-nav preload (solid)',
     watch: false,
     environment: 'jsdom',

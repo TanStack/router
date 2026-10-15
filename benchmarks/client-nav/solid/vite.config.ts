@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import solid from 'vite-plugin-solid'
 import codspeedPlugin from '@codspeed/vitest-plugin'
-import { benchTestTimeout, cpuSimulationExecArgv } from '../../cpu-simulation'
+import { cpuSimulationExecArgv } from '../../cpu-simulation'
 
 // Anchor the project root to the package directory so this config resolves
 // identically when run directly and as part of an aggregate `projects` config.
@@ -33,7 +33,6 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
-    testTimeout: benchTestTimeout,
     name: '@benchmarks/client-nav (solid)',
     watch: false,
     environment: 'jsdom',

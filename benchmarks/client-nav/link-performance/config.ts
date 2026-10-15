@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import codspeedPlugin from '@codspeed/vitest-plugin'
-import { benchTestTimeout } from '../../cpu-simulation'
 import type { UserConfig } from 'vite'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
@@ -54,7 +53,6 @@ export function createLinkPerformanceConfig(
     test: {
       name: `react-link-performance-${target}`,
       watch: false,
-      testTimeout: benchTestTimeout,
       environment: server ? 'node' : 'jsdom',
       setupFiles: server ? [] : ['../vitest.setup.ts'],
       server: {

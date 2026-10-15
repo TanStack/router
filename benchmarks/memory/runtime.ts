@@ -1,5 +1,4 @@
 import { fileURLToPath } from 'node:url'
-import { benchTestTimeout } from '../cpu-simulation'
 import { isMemoryInstrumented } from './turn'
 
 /** Worker settings for the CodSpeed memory instrument. */
@@ -29,7 +28,6 @@ export function memoryConfig(side: 'client' | 'server') {
   const execArgv = memoryExecArgv()
   return {
     execArgv,
-    testTimeout: benchTestTimeout,
     setupFiles:
       side === 'client'
         ? [fileURLToPath(new URL('./client/vitest.setup.ts', import.meta.url))]
