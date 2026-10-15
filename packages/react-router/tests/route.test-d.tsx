@@ -324,7 +324,7 @@ test('when creating a child route from the root route', () => {
   expectTypeOf(invoicesRoute.id).toEqualTypeOf<'/invoices'>()
 })
 
-test('when creating a child route with a trailing slash in its path', () => {
+test('when creating a child route with trailing and repeated slashes in its path', () => {
   const rootRoute = createRootRoute()
 
   const langIndexRoute = createRoute({
@@ -339,7 +339,7 @@ test('when creating a child route with a trailing slash in its path', () => {
 
   const postsIndexRoute = createRoute({
     getParentRoute: () => postsRoute,
-    path: 'all/',
+    path: 'all//',
   })
 
   expectTypeOf(langIndexRoute.id).toEqualTypeOf<'/$lang/'>()
