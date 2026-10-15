@@ -642,14 +642,20 @@ async function loadResource(
   }
 
   let flight = match._flight
-  setFetching(router, match, 'loader', owner)
+  // An accepted flight may still be running. A new loader only has a
+  // fetching window worth presenting once it returns a thenable.
+  if (flight) {
+    setFetching(router, match, 'loader', owner)
+  } else {
+    match.isFetching = 'loader'
+  }
   try {
     if (!flight) {
       const controller = new AbortController()
       flight = [
         Promise.resolve()
-          .then(() =>
-            loader(
+          .then(() => {
+            const value = loader(
               getLoaderContext(
                 router,
                 lane,
@@ -659,8 +665,14 @@ async function loadResource(
                 parentMatchPromise,
                 !!options[3 /* preload */],
               ),
-            ),
-          )
+            )
+            // The loader runs before this attempt's `finally` can reset
+            // isFetching, and supersession is gated by the owner.
+            if (typeof value?.then === 'function') {
+              setFetching(router, match, 'loader', owner)
+            }
+            return value
+          })
           .then(
             (value) => normalize(value, false, route.id),
             (cause) => normalize(cause, true, route.id),
