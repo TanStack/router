@@ -2,7 +2,10 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import codspeedPlugin from '@codspeed/vitest-plugin'
-import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
+import {
+  benchTestTimeout,
+  cpuSimulationExecArgv,
+} from '../../../../cpu-simulation'
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
@@ -26,6 +29,7 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
+    testTimeout: benchTestTimeout,
     name: '@benchmarks/client-nav hydration (react)',
     watch: false,
     environment: 'node',

@@ -3,7 +3,10 @@ import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
-import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
+import {
+  benchTestTimeout,
+  cpuSimulationExecArgv,
+} from '../../../../cpu-simulation'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -27,6 +30,7 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
+    testTimeout: benchTestTimeout,
     isolate: true,
     name: '@benchmarks/ssr rewrites (react)',
     watch: false,

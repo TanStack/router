@@ -2,7 +2,10 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import solid from 'vite-plugin-solid'
 import codspeedPlugin from '@codspeed/vitest-plugin'
-import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
+import {
+  benchTestTimeout,
+  cpuSimulationExecArgv,
+} from '../../../../cpu-simulation'
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
@@ -28,6 +31,7 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
+    testTimeout: benchTestTimeout,
     name: '@benchmarks/client-nav hydration (solid)',
     watch: false,
     environment: 'node',
