@@ -61,6 +61,18 @@ const jsonStrings = {
   object: '{"nested":true}',
   array: '[1,2,3]',
 }
+const numberAndLiteralPrefixedStrings = {
+  from: '2024-01-01',
+  id: '123abc',
+  offset: '-foo',
+  kind: 'transaction',
+}
+const digitLeadingNearMissStrings = {
+  version: '1.2.3',
+  uuid: '3f2a9c1e-7b4d',
+  time: '12:30',
+  code: '007',
+}
 const mixedValues = {
   tab: 'specs',
   page: 2,
@@ -95,6 +107,12 @@ expect(defaultStringifySearch(jsonLiteralWordStrings)).toBe(
 )
 expect(defaultStringifySearch(jsonLiteralBoundaryStrings)).toBe(
   '?truthy=true-value&falsy=false%2Fvalue&nullable=null.value',
+)
+expect(defaultStringifySearch(numberAndLiteralPrefixedStrings)).toBe(
+  '?from=2024-01-01&id=123abc&offset=-foo&kind=transaction',
+)
+expect(defaultStringifySearch(digitLeadingNearMissStrings)).toBe(
+  '?version=1.2.3&uuid=3f2a9c1e-7b4d&time=12%3A30&code=007',
 )
 expect(defaultStringifySearch(jsonStrings)).toBe(
   '?number=%22123%22&boolean=%22true%22&object=%22%7B%5C%22nested%5C%22%3Atrue%7D%22&array=%22%5B1%2C2%2C3%5D%22',
@@ -154,6 +172,14 @@ describe('default search serialization', () => {
 
   bench('JSON-literal prefixes followed by punctuation', () => {
     stringifyBatch(jsonLiteralBoundaryStrings)
+  })
+
+  bench('number- and literal-prefixed strings that are not JSON', () => {
+    stringifyBatch(numberAndLiteralPrefixedStrings)
+  })
+
+  bench('digit-leading near misses and leading-zero ids', () => {
+    stringifyBatch(digitLeadingNearMissStrings)
   })
 
   bench('JSON-compatible string values', () => {
