@@ -334,6 +334,50 @@ export const Route = createFileRoute('/card')({ component: () => <Table /> })
     expect(declaredIn('Cell')).toEqual(['values'])
   })
 
+  // An import cannot be assigned to
+  it('emits a component that assigns a shared value in the values module with it', async () => {
+    const { modules, declaredIn } = await compile(
+      `${head}let renders = 0
+export function Card() {
+  renders++
+  return <b>{renders}</b>
+}
+export const Route = createFileRoute('/card')({
+  loader: () => renders,
+  component: () => <Card />,
+})
+`,
+    )
+    expect(Object.keys(modules).sort()).toEqual([
+      'component',
+      'reference',
+      'values',
+    ])
+    expect(exportedNames(modules.values!)).toEqual(['Card', 'renders'])
+    expect(declaredIn('Card')).toEqual(['values'])
+    expect(declaredIn('renders')).toEqual(['values'])
+  })
+
+  it('re-exports a default-exported component under each of its names from the components module', async () => {
+    const { modules, ids } = await compile(
+      `${head}const greeting = 'hello'
+export default function Card() {
+  return <b>{greeting}</b>
+}
+export { Card as Other }
+export const Route = createFileRoute('/card')({ component: () => <Card /> })
+`,
+    )
+    expect(exportedNames(modules.components!)).toEqual(['Card'])
+    expect(exportedNames(modules.reference)).toEqual([
+      'Other',
+      'Route',
+      'default',
+    ])
+    expect(requestedSources(modules.reference)).toContain(ids.components)
+    expect(importedNames(modules.component!, ids.components)).toEqual(['Card'])
+  })
+
   it('emits a component two split options render in the components module', async () => {
     const { modules, ids } = await compile(
       `${head}const greeting = 'hello'

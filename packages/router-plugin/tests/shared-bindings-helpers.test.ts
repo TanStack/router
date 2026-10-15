@@ -471,4 +471,40 @@ export const Route = createFileRoute('/')({
     })
     expect(sideEffectFree).toBe(pure)
   })
+
+  // The components module evaluates the values module it imports
+  it.each([
+    { value: 'new Map()', pure: true },
+    { value: 'register()', pure: false },
+  ])(
+    'a React components module only when the values it reads have no effects: $value',
+    ({ value, pure }) => {
+      const code = `import { createFileRoute } from '@tanstack/react-router'
+import { register } from './effects'
+const value = ${value}
+export function Card() {
+  return <p>{String(value)}</p>
+}
+export const Route = createFileRoute('/')({
+  component: () => <Card />,
+})
+`
+      const sharedBindings = computeSharedBindings({
+        code,
+        filename: 'route.tsx',
+        codeSplitGroupings: defaultCodeSplitGroupings,
+      })
+      const compile = (part: 'values' | 'components') =>
+        compileCodeSplitSharedRoute({
+          code,
+          sharedBindings,
+          splitSharedComponents: true,
+          part,
+          filename: `route.tsx?tsr-shared=${part === 'values' ? '1' : part}`,
+        })
+      expect(compile('components').code).toContain('Card')
+      expect(compile('values').sideEffectFree).toBe(pure)
+      expect(compile('components').sideEffectFree).toBe(pure)
+    },
+  )
 })

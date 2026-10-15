@@ -10,7 +10,7 @@ export const Route = createFileRoute('/')({
   component: lazyRouteComponent($$splitComponentImporter, 'component'),
 })
 export {
-  Card,
   Store,
   countRender,
 } from 'exported-bindings-split-reads.tsx?tsr-shared=1'
+export { Card } from 'exported-bindings-split-reads.tsx?tsr-shared=components'

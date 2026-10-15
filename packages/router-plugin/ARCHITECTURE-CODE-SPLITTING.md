@@ -40,13 +40,14 @@ export const Route = createFileRoute('/about')({
 })
 ```
 
-The plugin produces up to three modules from the **same physical file**:
+The plugin produces up to four modules from the **same physical file**:
 
 | Module                                    | What it contains                                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `about.tsx` (reference)                   | Route config with `component` replaced by `lazyRouteComponent($$splitComponentImporter, 'component')` and an injected `const $$splitComponentImporter = () => import('about.tsx?tsr-split=component')` |
 | `about.tsx?tsr-split=component` (virtual) | Only the component function, exported as `component`                                                                                                                                                   |
 | `about.tsx?tsr-shared=1` (shared)         | Optional; created only when bindings are shared between split and non-split properties                                                                                                                 |
+| `about.tsx?tsr-shared=components`         | React only, optional: the shared bindings that look like components, so that React Refresh can hot-update them; imports the other shared bindings from `?tsr-shared=1`                                 |
 
 The bundler (Vite, Webpack, Rspack) treats query-parameterized imports as
 distinct modules, so `about.tsx` and `about.tsx?tsr-split=component` are
@@ -191,6 +192,11 @@ Excludes file IDs that include `tsr-split` or `tsr-shared`.
    - Strips `export` wrappers from kept declarations
    - Adds a single `export { ... }` statement for all shared bindings
    - Runs dead-code elimination to remove unused imports
+4. For React, emits the shared bindings that look like components and that no
+   other shared binding reads in `?tsr-shared=components`, and the rest in
+   `?tsr-shared=1`. React Refresh hot-updates only a module whose exports are
+   all components. The components module imports from the values module,
+   never the other way around.
 
 **Vite hooks:**
 

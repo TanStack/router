@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -10,6 +11,7 @@ import {
   compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
   computeSharedBindings,
+  partitionSharedBindings,
 } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
@@ -151,6 +153,7 @@ describe('code-splitter works', () => {
               targetFramework: framework,
               sharedBindings:
                 sharedBindings.size > 0 ? sharedBindings : undefined,
+              splitSharedComponents: framework === 'react',
             })
             if (compileResult) {
               analyzeModule({ code: compileResult.code, filename })
@@ -184,6 +187,7 @@ describe('code-splitter works', () => {
                 splitTargets: targets,
                 sharedBindings:
                   sharedBindings.size > 0 ? sharedBindings : undefined,
+                splitSharedComponents: framework === 'react',
               })
               analyzeModule({ code: splitResult.code, filename })
 
@@ -215,16 +219,25 @@ describe('code-splitter works', () => {
               groupName,
               `${filename.replace('.tsx', '')}@shared.tsx`,
             )
+            // Only route files with shared components have this snapshot
+            const componentsSnapshotFilename = path.join(
+              dirs.snapshots,
+              groupName,
+              `${filename.replace('.tsx', '')}@shared-components.tsx`,
+            )
 
             if (sharedBindings.size === 0) {
               // No shared module — snapshot should be empty string
               await expect('').toMatchFileSnapshot(snapshotFilename)
+              expect(existsSync(componentsSnapshotFilename)).toBe(false)
               return
             }
 
+            const splitSharedComponents = framework === 'react'
             const sharedResult = compileCodeSplitSharedRoute({
               code,
               sharedBindings,
+              splitSharedComponents,
               filename: `${filename}?tsr-shared=1`,
             })
             analyzeModule({ code: sharedResult.code, filename })
@@ -232,6 +245,28 @@ describe('code-splitter works', () => {
             await expect(
               await formatSnapshot(sharedResult.code, filename),
             ).toMatchFileSnapshot(snapshotFilename)
+
+            const components = partitionSharedBindings(
+              analyzeRouteModule({ code, filename }),
+              sharedBindings,
+              splitSharedComponents,
+            ).some(([part]) => part === 'components')
+            if (!components) {
+              expect(existsSync(componentsSnapshotFilename)).toBe(false)
+              return
+            }
+            const componentsResult = compileCodeSplitSharedRoute({
+              code,
+              sharedBindings,
+              splitSharedComponents,
+              part: 'components',
+              filename: `${filename}?tsr-shared=components`,
+            })
+            analyzeModule({ code: componentsResult.code, filename })
+
+            await expect(
+              await formatSnapshot(componentsResult.code, filename),
+            ).toMatchFileSnapshot(componentsSnapshotFilename)
           },
         )
       },

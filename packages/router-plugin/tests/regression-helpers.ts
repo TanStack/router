@@ -35,7 +35,8 @@ export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 /**
  * Compiles a route file (with the default groupings unless `groupings` is
  * given) into every module the code splitter emits for it: `reference`, one
- * `virtual <split>` chunk per grouping and, when bindings are shared, `shared`.
+ * `virtual <split>` chunk per grouping and, when bindings are shared, `shared`
+ * and, for the React components among them, `shared components`.
  */
 export function compileRouteModules(
   code: string,
@@ -62,6 +63,7 @@ export function compileRouteModules(
     codeSplitGroupings: groupings,
   })
   const sharedBindings = computed.size > 0 ? computed : undefined
+  const splitSharedComponents = targetFramework === 'react'
   const reference = compileCodeSplitReferenceRoute({
     code,
     filename,
@@ -70,6 +72,7 @@ export function compileRouteModules(
     codeSplitGroupings: groupings,
     targetFramework,
     sharedBindings,
+    splitSharedComponents,
     compilerPlugins,
   })
   const modules: Record<string, string> = {
@@ -82,15 +85,30 @@ export function compileRouteModules(
       filename: `${filename}?tsr-split=${split}`,
       splitTargets: targets,
       sharedBindings,
+      splitSharedComponents,
       compilerPlugins,
     }).code
   }
   if (sharedBindings) {
+    const components = `${filename}?tsr-shared=components`
+    const requested = Object.values(modules).some((module) =>
+      requestedSources(module).includes(components),
+    )
     modules.shared = compileCodeSplitSharedRoute({
       code,
       sharedBindings,
+      splitSharedComponents,
       filename: `${filename}?tsr-shared=1`,
     }).code
+    if (requested) {
+      modules['shared components'] = compileCodeSplitSharedRoute({
+        code,
+        sharedBindings,
+        splitSharedComponents,
+        part: 'components',
+        filename: components,
+      }).code
+    }
   }
   return { modules, sharedBindings: [...computed].sort() }
 }

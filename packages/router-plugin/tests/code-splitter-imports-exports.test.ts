@@ -505,10 +505,11 @@ export const Route = createFileRoute('/')({ component: Bar, errorComponent: NoFo
 `)
     const chunk = modules['virtual errorComponent']!
     expect(chunk).not.toMatch(declarationOf('Bar'))
-    // From the route module (its default export) or the shared module
+    // From the route module (its default export) or a shared module
     expect([
       ...importedNames(chunk, 'route.tsx'),
       ...importedNames(chunk, 'route.tsx?tsr-shared=1'),
+      ...importedNames(chunk, 'route.tsx?tsr-shared=components'),
     ]).toEqual([expect.stringMatching(/^(?:Bar|default)$/)])
     await expectValidModules(modules)
   })

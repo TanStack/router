@@ -72,8 +72,17 @@ function splitFilename(filename: string, grouping: Array<string>) {
   return `${bareFilename(filename)}?${tsrSplit}=${createIdentifier(grouping)}`
 }
 
-export function addSharedSearchParamToFilename(filename: string) {
-  return `${bareFilename(filename)}?${tsrShared}=1`
+/**
+ * A module of a route file's shared bindings: `values`, or `components` for
+ * those {@link partitionSharedBindings} emits in a module of their own.
+ */
+export type SharedModulePart = 'values' | 'components'
+
+export function addSharedSearchParamToFilename(
+  filename: string,
+  part: SharedModulePart = 'values',
+) {
+  return `${bareFilename(filename)}?${tsrShared}=${part === 'components' ? part : '1'}`
 }
 
 type RouteDefinition = {
@@ -565,6 +574,86 @@ function constInitializer(analysis: RouteModuleAnalysis, binding: Binding) {
     : undefined
 }
 
+/** A function declaration or `const` function with the name of a component. */
+function isComponentLike(analysis: RouteModuleAnalysis, binding: Binding) {
+  const declaration = analysis.graph.declarations.get(binding)
+  const init = constInitializer(analysis, binding)
+  const fn = is.FunctionDeclaration(declaration)
+    ? declaration
+    : is.ArrowFunctionExpression(init) || is.FunctionExpression(init)
+      ? init
+      : undefined
+  return !!fn && !fn.async && !fn.generator && /^[A-Z]/.test(binding.name)
+}
+
+/**
+ * The modules a route file's shared bindings are emitted in. React Refresh
+ * hot-updates only a module whose exports are all components, so with
+ * `splitComponents` the shared bindings that look like components, and that
+ * no other shared binding reads, go to a `components` module. It imports the
+ * rest from the `values` module, which never imports it. A component that a
+ * shared value holds, as in `const columns = [{ render: Cell }]`, stays in the
+ * `values` module with the value, which React Refresh then cannot hot-update.
+ */
+export function partitionSharedBindings(
+  analysis: RouteModuleAnalysis,
+  shared: Set<string> | undefined,
+  splitComponents: boolean | undefined,
+): Array<[SharedModulePart, Set<string>]> {
+  if (!shared?.size) {
+    return []
+  }
+  if (!splitComponents) {
+    return [['values', shared]]
+  }
+  const bindings = analysis.module.rootScope.bindings.filter(
+    (binding) => binding.name !== 'Route' && shared.has(binding.name),
+  )
+  const components = new Set(
+    bindings.filter((binding) => isComponentLike(analysis, binding)),
+  )
+  // A value never reads a component, and a component never assigns a value:
+  // an imported binding cannot be assigned
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const binding of bindings) {
+      if (components.has(binding)) {
+        continue
+      }
+      for (const dependency of analysis.graph.dependencies.get(binding) ?? []) {
+        changed = components.delete(dependency) || changed
+      }
+      for (const reference of binding.references) {
+        if (!reference.isWrite) {
+          continue
+        }
+        for (const component of components) {
+          if (
+            contains(
+              analysis.graph.declarations.get(component)!,
+              reference.node,
+            )
+          ) {
+            components.delete(component)
+            changed = true
+          }
+        }
+      }
+    }
+  }
+  const componentNames = new Set([...components].map((binding) => binding.name))
+  const values = new Set(
+    [...shared].filter((name) => !componentNames.has(name)),
+  )
+  return (
+    [
+      ['values', values],
+      ['components', componentNames],
+    ] as Array<[SharedModulePart, Set<string>]>
+  ).filter(([, names]) => names.size > 0)
+}
+
 /** A function or class declaration, or a `const` holding a function. */
 function isFunctionOrClass(analysis: RouteModuleAnalysis, binding: Binding) {
   const declaration = analysis.graph.declarations.get(binding)
@@ -851,16 +940,16 @@ function removeDeclarations(program: Program, names: Set<string>) {
 
 function addSharedImports(
   program: Program,
-  shared: Set<string> | undefined,
+  parts: Array<[SharedModulePart, Set<string>]>,
   filename: string,
 ) {
-  if (shared?.size) {
-    removeDeclarations(program, shared)
+  for (const [part, names] of parts) {
+    removeDeclarations(program, names)
     prependStatements(
       program,
       imports(
-        [...shared].map((name) => ({ local: name, imported: name })),
-        addSharedSearchParamToFilename(filename),
+        [...names].map((name) => ({ local: name, imported: name })),
+        addSharedSearchParamToFilename(filename, part),
       ),
     )
   }
@@ -1062,16 +1151,26 @@ export function compileCodeSplitReferenceRoute(
       )
     })
   }
-  addSharedImports(program, options.sharedBindings, options.filename)
-  const sharedExports = [...analysis.exported]
-    .filter(([binding]) => options.sharedBindings?.has(binding.name))
-    .flatMap(([binding, names]) =>
-      names.map((name) => ({ local: binding.name, exported: name })),
-    )
-  if (sharedExports.length) {
-    program.body.push(
-      exports(sharedExports, addSharedSearchParamToFilename(options.filename)),
-    )
+  const sharedParts = partitionSharedBindings(
+    analysis,
+    options.sharedBindings,
+    options.splitSharedComponents,
+  )
+  addSharedImports(program, sharedParts, options.filename)
+  for (const [part, names] of sharedParts) {
+    const sharedExports = [...analysis.exported]
+      .filter(([binding]) => names.has(binding.name))
+      .flatMap(([binding, exportedNames]) =>
+        exportedNames.map((name) => ({ local: binding.name, exported: name })),
+      )
+    if (sharedExports.length) {
+      program.body.push(
+        exports(
+          sharedExports,
+          addSharedSearchParamToFilename(options.filename, part),
+        ),
+      )
+    }
   }
   removeUnusedBindings(analysis.module, program, originalNodes, {
     // Imports are not moved: each module that reads one imports it
@@ -1099,6 +1198,7 @@ export function compileCodeSplitVirtualRoute(
     splitTargets: Array<SplitRouteIdentNodes>
     filename: string
     sharedBindings?: Set<string>
+    splitSharedComponents?: boolean
     compilerPlugins?: Array<CodeSplitCompilerPlugin>
   },
 ) {
@@ -1197,7 +1297,15 @@ export function compileCodeSplitVirtualRoute(
       ),
     )
   }
-  addSharedImports(program, options.sharedBindings, options.filename)
+  addSharedImports(
+    program,
+    partitionSharedBindings(
+      analysis,
+      options.sharedBindings,
+      options.splitSharedComponents,
+    ),
+    options.filename,
+  )
   program.body.push(...generatedExports)
   removeUnusedBindings(analysis.module, program, originalNodes, {
     partialCopy: true,
@@ -1393,16 +1501,59 @@ function stripUnownedExpressions(
   }
 }
 
-export function compileCodeSplitSharedRoute(
-  options: SourceOptions & { sharedBindings: Set<string>; filename: string },
+/**
+ * Whether the top-level statements that declare `names` and their
+ * dependencies have no effect: the values module keeps these declarations,
+ * or fewer of them.
+ */
+function declarationsArePure(
+  analysis: RouteModuleAnalysis,
+  names: Set<string>,
+  constructors: Set<string>,
 ) {
+  const declarations = [
+    ...expandTransitively(
+      new Set(
+        analysis.module.rootScope.bindings.filter((binding) =>
+          names.has(binding.name),
+        ),
+      ),
+      analysis.graph.dependencies,
+    ),
+  ].flatMap((binding) => analysis.graph.declarations.get(binding) ?? [])
+  return analysis.module.ast.body.every(
+    (statement) =>
+      !declarations.some((declaration) => contains(statement, declaration)) ||
+      isPureStatement(statement, constructors),
+  )
+}
+
+export function compileCodeSplitSharedRoute(
+  options: SourceOptions & {
+    sharedBindings: Set<string>
+    filename: string
+    /** The shared module to emit, `values` by default. */
+    part?: SharedModulePart
+    splitSharedComponents?: boolean
+  },
+): ReturnType<typeof generateRouteModule> & { sideEffectFree: boolean } {
   const analysis = sourceAnalysis(options)
+  const parts = new Map(
+    partitionSharedBindings(
+      analysis,
+      options.sharedBindings,
+      options.splitSharedComponents,
+    ),
+  )
+  const part = options.part ?? 'values'
+  const own = parts.get(part) ?? new Set<string>()
+  const values = part === 'components' ? parts.get('values') : undefined
+  const valuesId = addSharedSearchParamToFilename(options.filename, 'values')
   const { program, originalNodes } = createOutput(analysis)
   const keep = expandTransitively(
     new Set(
       analysis.module.rootScope.bindings.filter(
-        (binding) =>
-          binding.name !== 'Route' && options.sharedBindings.has(binding.name),
+        (binding) => binding.name !== 'Route' && own.has(binding.name),
       ),
     ),
     analysis.graph.dependencies,
@@ -1422,22 +1573,44 @@ export function compileCodeSplitSharedRoute(
         is.Directive(statement),
     )
   removeDeclarations(program, remove)
+  if (values) {
+    // After the module's own imports, which the source evaluates before any
+    // of its statements
+    removeDeclarations(program, values)
+    let index = 0
+    program.body.forEach((statement, position) => {
+      if (is.ImportDeclaration(statement)) {
+        index = position + 1
+      }
+    })
+    program.body.splice(
+      index,
+      0,
+      imports(
+        [...values].map((name) => ({ local: name, imported: name })),
+        valuesId,
+      ),
+    )
+  }
   program.body.push(
-    exports(
-      [...options.sharedBindings]
-        .sort()
-        .map((name) => ({ local: name, exported: name })),
-    ),
+    exports([...own].sort().map((name) => ({ local: name, exported: name }))),
   )
   removeUnusedBindings(analysis.module, program, originalNodes)
   const constructors = pureConstructors(analysis.module)
+  const importsValues = program.body.some(
+    (statement) =>
+      is.ImportDeclaration(statement) && statement.source.value === valuesId,
+  )
   return {
     ...generateRouteModule(analysis, program, options.filename),
     // Evaluating the module has no effect of its own, so a bundler can leave it
-    // out of a chunk that only re-exports bindings nothing imports from it
-    sideEffectFree: program.body.every((statement) =>
-      isPureStatement(statement, constructors),
-    ),
+    // out of a chunk that only re-exports bindings nothing imports from it.
+    // The components module also evaluates the values module it imports.
+    sideEffectFree:
+      program.body.every((statement) =>
+        isPureStatement(statement, constructors),
+      ) &&
+      (!importsValues || declarationsArePure(analysis, values!, constructors)),
   }
 }
 

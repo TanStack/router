@@ -19,6 +19,7 @@ import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framewor
 import {
   defaultCodeSplitGroupings,
   splitRouteIdentNodes,
+  tsrShared,
   tsrSplit,
 } from './constants'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
@@ -127,11 +128,13 @@ export function createRouterCodeSplitterPlugin(
   const getShouldSplitFn = () => {
     return userConfig.codeSplittingOptions?.splitBehavior
   }
+  // React Refresh hot-updates only a module whose exports are all components
+  const splitSharedComponents = () => userConfig.target === 'react'
 
   /**
    * The groupings of a route file and the bindings its split modules share,
    * from the code being compiled: the route module, its split chunks and its
-   * shared module can be compiled in any order, for example after an edit in
+   * shared modules can be compiled in any order, for example after an edit in
    * dev, so none of them may rely on what another one computed.
    */
   const resolveCodeSplitting = (
@@ -216,6 +219,7 @@ export function createRouterCodeSplitterPlugin(
       hmrStyle,
       hmrRouteId: generatorNodeInfo.routeId,
       sharedBindings,
+      splitSharedComponents: splitSharedComponents(),
       compilerPlugins,
     })
 
@@ -278,6 +282,7 @@ export function createRouterCodeSplitterPlugin(
       filename: id,
       splitTargets: grouping,
       sharedBindings: resolveSharedBindings(code, id, analysis),
+      splitSharedComponents: splitSharedComponents(),
       compilerPlugins: virtualRouteCompilerPlugins,
     })
 
@@ -445,6 +450,12 @@ export function createRouterCodeSplitterPlugin(
             analysis,
             sharedBindings,
             filename: normalizedId,
+            part:
+              new URLSearchParams(normalizedId.split('?')[1]).get(tsrShared) ===
+              'components'
+                ? 'components'
+                : 'values',
+            splitSharedComponents: splitSharedComponents(),
           })
 
           if (debug) {

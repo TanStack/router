@@ -22,6 +22,8 @@ export type CompileCodeSplitReferenceRouteOptions = {
   hmrStyle?: HmrStyle
   hmrRouteId?: string
   sharedBindings?: Set<string>
+  /** Emit the shared bindings that look like components in a module of their own */
+  splitSharedComponents?: boolean
 }
 
 export type ReferenceRouteCompilerPluginContext = {

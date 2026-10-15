@@ -1,0 +1,16 @@
+const $$splitComponentImporter = () =>
+  import('shared-components-and-values.tsx?tsr-split=component---errorComponent---notFoundComponent---pendingComponent')
+import { lazyRouteComponent } from '@tanstack/react-router'
+const $$splitLoaderImporter = () =>
+  import('shared-components-and-values.tsx?tsr-split=loader')
+import { lazyFn } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  loader: lazyFn($$splitLoaderImporter, 'loader'),
+  component: lazyRouteComponent($$splitComponentImporter, 'component'),
+})
+export {
+  Card,
+  Header,
+  Table,
+} from 'shared-components-and-values.tsx?tsr-shared=components'

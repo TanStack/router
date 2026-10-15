@@ -685,9 +685,12 @@ export const Route = createFileRoute('/')({
 })
 `)
     expect(sharedBindings).toEqual(['Page'])
-    expect(modules.shared).toMatch(declarationOf('Page'))
+    // A React component goes to the shared components module
+    expect(modules['shared components']).toMatch(declarationOf('Page'))
     expect(modules.reference).toMatch(declarationOf('Preview'))
-    expect(importedNames(modules.reference!, sharedModule)).toEqual(['Page'])
+    expect(
+      importedNames(modules.reference!, 'route.tsx?tsr-shared=components'),
+    ).toEqual(['Page'])
     expect(modules.reference).not.toMatch(declarationOf('Page'))
     expect(modules['virtual component']).not.toMatch(declarationOf('Page'))
     await expectValidModules(modules)

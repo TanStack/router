@@ -1,6 +1,6 @@
+import { Card } from 'exported-bindings-split-reads.tsx?tsr-shared=components'
 import {
   Store,
-  Card,
   countRender,
 } from 'exported-bindings-split-reads.tsx?tsr-shared=1'
 import { Route } from 'exported-bindings-split-reads.tsx'
