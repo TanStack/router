@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addSharedSearchParamToFilename,
+  compileCodeSplitSharedRoute,
   computeSharedBindings,
 } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
@@ -411,3 +412,63 @@ export const Route = createFileRoute('/mixed')({
 })
 
 // ─── removeBindingsDependingOnRoute ───────────────────────
+
+// A side-effect-free shared module lets the bundler drop the route module's
+// re-export of it, so its top-level code may run later or not at all.
+describe('the shared module is side-effect free', () => {
+  it.each([
+    {
+      name: 'functions, classes and new collections',
+      value: 'new Map()',
+      pure: true,
+    },
+    {
+      name: 'literals and functions',
+      value: "[1, 'a', () => 2, { a: `b` }]",
+      pure: true,
+    },
+    { name: 'a call', value: 'register()', pure: false },
+    { name: 'JSX', value: '<b>{track()}</b>', pure: false },
+    { name: 'an interpolated binding', value: '`${prefix}`', pure: false },
+    { name: 'a negated binding', value: '-prefix', pure: false },
+    {
+      name: 'a collection of a shadowed constructor',
+      imports: "import { Map } from 'immutable'\n",
+      value: 'new Map()',
+      pure: false,
+    },
+    {
+      name: 'a static accessor initialized by a call',
+      value: 'class { static accessor instance = register() }',
+      pure: false,
+    },
+    {
+      name: 'a class with a decorated parameter',
+      value: 'class { constructor(@inject() service: unknown) {} }',
+      pure: false,
+    },
+  ])('only without effects: $name', ({ imports = '', value, pure }) => {
+    const code = `${imports}import { createFileRoute } from '@tanstack/react-router'
+import { inject, prefix, register, track } from './effects'
+const value = ${value}
+export function read() {
+  return value
+}
+export const Route = createFileRoute('/')({
+  component: () => <p>{String(read())}</p>,
+})
+`
+    const sharedBindings = computeSharedBindings({
+      code,
+      filename: 'route.tsx',
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    expect([...sharedBindings].sort()).toEqual(['read', 'value'])
+    const { sideEffectFree } = compileCodeSplitSharedRoute({
+      code,
+      sharedBindings,
+      filename: 'route.tsx?tsr-shared=1',
+    })
+    expect(sideEffectFree).toBe(pure)
+  })
+})

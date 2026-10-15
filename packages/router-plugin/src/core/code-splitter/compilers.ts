@@ -295,6 +295,20 @@ export function computeSharedBindings(
   const analysis = sourceAnalysis(options)
   const { module, graph, chunkDependencies } = analysis
   const groupsByBinding = new Map<Binding, Set<number>>()
+  // Exported split targets are not split: they stay in the route module
+  const unsplitTargets = new Set<Binding>()
+  // What split modules read, up to the exported variables they import from
+  // the route module rather than declare
+  const splitReads = new Set<Binding>()
+  const splitDependencies = new Map(
+    [...chunkDependencies].filter(
+      ([binding]) =>
+        !(
+          analysis.exported.has(binding) &&
+          is.VariableDeclarator(graph.declarations.get(binding))
+        ),
+    ),
+  )
   // Only a top-level declaration with a runtime value can move to the shared
   // module: an ambient one is provided by the environment and erased with types
   const locals = new Set(
@@ -333,11 +347,21 @@ export function computeSharedBindings(
                   .filter((other) => other !== split)
                   .map((other): [Node, number] => [other, -1]),
               ]
+      const target = split && unwrapExpression(split.value)
+      const targetBinding =
+        group !== -1 && is.Identifier(target) ? module.bindingOf(target) : null
+      const unsplit = !!targetBinding && analysis.exported.has(targetBinding)
+      if (unsplit) {
+        unsplitTargets.add(targetBinding)
+      }
       for (const [node, partGroup] of parts) {
-        const references = expandTransitively(
-          collectModuleReferences(module, node),
-          chunkDependencies,
-        )
+        const direct = collectModuleReferences(module, node)
+        if (partGroup !== -1 && !unsplit) {
+          for (const binding of expandTransitively(direct, splitDependencies)) {
+            splitReads.add(binding)
+          }
+        }
+        const references = expandTransitively(direct, chunkDependencies)
         for (const binding of references) {
           if (!locals.has(binding)) {
             continue
@@ -400,10 +424,113 @@ export function computeSharedBindings(
       }
     }
   }
+  // An exported function or class that a split module reads moves to the
+  // shared module with its private dependencies, and the route module
+  // re-exports it from there: one module instance holds it, and the bundler
+  // can leave it out of the route module's chunk when nothing else imports it.
+  const constructors = pureConstructors(module)
+  const effectful = module.ast.body.filter(
+    (statement) => !isPureStatement(statement, constructors),
+  )
+  for (const binding of splitReads) {
+    if (
+      shared.has(binding) ||
+      !analysis.exported.has(binding) ||
+      unsplitTargets.has(binding) ||
+      !locals.has(binding) ||
+      forbidden.has(binding) ||
+      !isFunctionOrClass(analysis, binding)
+    ) {
+      continue
+    }
+    // A destructuring moves with all of its bindings
+    const moved = new Set<Binding>()
+    for (const dependency of expandTransitively(
+      new Set([binding]),
+      chunkDependencies,
+    )) {
+      const declaration = graph.declarations.get(dependency)
+      for (const sibling of (declaration &&
+        graph.declarationBindings.get(declaration)) ?? [dependency]) {
+        if (locals.has(sibling)) {
+          moved.add(sibling)
+        }
+      }
+    }
+    const declarations = [...moved].map(
+      (dependency) => graph.declarations.get(dependency)!,
+    )
+    // A binding that code outside the moved declarations reassigns cannot
+    // become an import
+    const writtenOutside = [...moved].some((dependency) =>
+      dependency.references.some(
+        (reference) =>
+          reference.isWrite &&
+          !declarations.some((declaration) =>
+            contains(declaration, reference.node),
+          ),
+      ),
+    )
+    if (writtenOutside) {
+      continue
+    }
+    // The shared module runs before the route module's own statements, so a
+    // moved statement with effects cannot overtake one that stays behind
+    const moving = [
+      ...declarations,
+      ...[...shared].map((dependency) => graph.declarations.get(dependency)!),
+    ]
+    let staysBefore = false
+    let overtakes = false
+    for (const statement of effectful) {
+      if (!moving.some((declaration) => contains(statement, declaration))) {
+        staysBefore = true
+      } else if (
+        staysBefore &&
+        declarations.some((declaration) => contains(statement, declaration))
+      ) {
+        overtakes = true
+      }
+    }
+    if (overtakes) {
+      continue
+    }
+    for (const dependency of moved) {
+      shared.add(dependency)
+    }
+  }
   return new Set(
     [...shared]
       .filter((binding) => !forbidden.has(binding))
       .map((binding) => binding.name),
+  )
+}
+
+function contains(outer: Node, inner: Node) {
+  return outer.start <= inner.start && inner.end <= outer.end
+}
+
+/** The initializer of a binding a `const` declares, without type syntax. */
+function constInitializer(analysis: RouteModuleAnalysis, binding: Binding) {
+  const declaration = analysis.graph.declarations.get(binding)
+  if (!is.VariableDeclarator(declaration) || !declaration.init) {
+    return undefined
+  }
+  const parent = analysis.module.parentOf(declaration)
+  return is.VariableDeclaration(parent) && parent.kind === 'const'
+    ? unwrapExpression(declaration.init)
+    : undefined
+}
+
+/** A function or class declaration, or a `const` holding a function. */
+function isFunctionOrClass(analysis: RouteModuleAnalysis, binding: Binding) {
+  const declaration = analysis.graph.declarations.get(binding)
+  const init = constInitializer(analysis, binding)
+  return (
+    is.FunctionDeclaration(declaration) ||
+    is.ClassDeclaration(declaration) ||
+    is.ArrowFunctionExpression(init) ||
+    is.FunctionExpression(init)
   )
 }
 
@@ -1020,11 +1147,13 @@ export function compileCodeSplitVirtualRoute(
  * User exports, including the Route singleton, that a split module imports from
  * the reference module instead of initializing a second copy. Imports keep their
  * source, a destructuring that also declares private bindings stays whole, and
- * shared bindings come from the shared module. Exported variables are always
- * imported so that every module sees one context or store instance. An
- * exported function or class that depends on a private binding the split
- * module declares itself is declared alongside it, so that both observe one
- * module state.
+ * shared bindings come from the shared module, which holds most exported
+ * functions and classes split modules read (see `computeSharedBindings`).
+ * Exported variables are always imported so that every module sees one context
+ * or store instance. Another exported function is declared in the split module
+ * when it is stateless, and so is an exported function or class that depends
+ * on a stateful private binding the split module declares itself, so that both
+ * observe one module state.
  */
 function exportsImportedBySplitModule(
   analysis: RouteModuleAnalysis,
@@ -1051,6 +1180,68 @@ function exportsImportedBySplitModule(
       )
     }),
   )
+  // A binding with the same value in every module that declares it: a function
+  // or constant literal that nothing reassigns
+  const isStateless = (binding: Binding) => {
+    const declaration = graph.declarations.get(binding)!
+    const init = constInitializer(analysis, binding)
+    return (
+      (is.FunctionDeclaration(declaration) ||
+        is.ArrowFunctionExpression(init) ||
+        is.FunctionExpression(init) ||
+        (is.Literal(init) && !is.RegExpLiteral(init)) ||
+        (is.TemplateLiteral(init) && init.expressions.length === 0)) &&
+      !binding.references.some(
+        (reference) =>
+          reference.isWrite && !contains(declaration, reference.node),
+      )
+    )
+  }
+  // An exported function the shared module does not take, such as one that
+  // reads `Route`, is declared in the split module, like what it reads that
+  // the split module does not import, when all of them are stateless and
+  // write no binding
+  const importedExports = new Set(imported)
+  const privateDeclarations = dependenciesUntil(
+    (binding) =>
+      importedExports.has(binding) ||
+      isShared(binding) ||
+      binding.has(BindingFlags.Import),
+  )
+  for (const binding of importedExports) {
+    if (!is.FunctionDeclaration(graph.declarations.get(binding))) {
+      continue
+    }
+    const declaredAlong = [
+      binding,
+      ...expandTransitively(
+        chunkDependencies.get(binding) ?? new Set<Binding>(),
+        privateDeclarations,
+      ),
+    ].filter(
+      (dependency) =>
+        dependency === binding ||
+        (graph.declarations.has(dependency) &&
+          !importedExports.has(dependency) &&
+          !isShared(dependency) &&
+          !dependency.has(BindingFlags.Import)),
+    )
+    const copyable = declaredAlong.every((dependency) => {
+      const declaration = graph.declarations.get(dependency)!
+      return (
+        isStateless(dependency) &&
+        ![...(chunkDependencies.get(dependency) ?? [])].some((read) =>
+          read.references.some(
+            (reference) =>
+              reference.isWrite && contains(declaration, reference.node),
+          ),
+        )
+      )
+    })
+    if (copyable) {
+      imported.delete(binding)
+    }
+  }
   let changed = true
   while (changed) {
     changed = false
@@ -1076,7 +1267,9 @@ function exportsImportedBySplitModule(
             graph.declarations.has(dependency) &&
             !dependency.has(BindingFlags.Import) &&
             !imported.has(dependency) &&
-            !isShared(dependency),
+            !isShared(dependency) &&
+            // A second copy of a stateless binding holds the same value
+            !isStateless(dependency),
         )
       ) {
         for (const sibling of siblingsOf(binding)!) {
@@ -1174,7 +1367,170 @@ export function compileCodeSplitSharedRoute(
     ),
   )
   removeUnusedBindings(analysis.module, program, originalNodes)
-  return generateRouteModule(analysis, program, options.filename)
+  const constructors = pureConstructors(analysis.module)
+  return {
+    ...generateRouteModule(analysis, program, options.filename),
+    // Evaluating the module has no effect of its own, so a bundler can leave it
+    // out of a chunk that only re-exports bindings nothing imports from it
+    sideEffectFree: program.body.every((statement) =>
+      isPureStatement(statement, constructors),
+    ),
+  }
+}
+
+/** A top-level statement whose evaluation has no observable effect. */
+function isPureStatement(statement: Node, constructors: Set<string>): boolean {
+  if (
+    is.ImportDeclaration(statement) ||
+    is.ExportAllDeclaration(statement) ||
+    is.Directive(statement) ||
+    is.FunctionDeclaration(statement) ||
+    is.TSTypeAliasDeclaration(statement) ||
+    is.TSInterfaceDeclaration(statement) ||
+    is.TSDeclareFunction(statement)
+  ) {
+    return true
+  }
+  if (is.ExportNamedDeclaration(statement)) {
+    return (
+      !statement.declaration ||
+      isPureStatement(statement.declaration, constructors)
+    )
+  }
+  if (is.ExportDefaultDeclaration(statement)) {
+    return isPureStatement(statement.declaration, constructors)
+  }
+  if (is.ClassDeclaration(statement)) {
+    return isPureClass(statement, constructors)
+  }
+  if (is.VariableDeclaration(statement)) {
+    return (
+      !!statement.declare ||
+      (statement.kind !== 'using' &&
+        statement.kind !== 'await using' &&
+        statement.declarations.every(
+          (declaration) =>
+            is.Identifier(declaration.id) &&
+            (!declaration.init ||
+              isPureExpression(declaration.init, constructors)),
+        ))
+    )
+  }
+  return isPureExpression(statement, constructors)
+}
+
+function isPureClass(node: Node, constructors: Set<string>): boolean {
+  if (
+    !(is.ClassDeclaration(node) || is.ClassExpression(node)) ||
+    (node.superClass && !is.Identifier(node.superClass))
+  ) {
+    return false
+  }
+  // Decorators run when the class is defined, including those of parameters
+  const decorators: Array<Node> = []
+  walk(node, {
+    enter(child) {
+      if (is.Decorator(child)) {
+        decorators.push(child)
+      }
+    },
+  })
+  return (
+    !decorators.length &&
+    node.body.body.every((member) => {
+      if (is.StaticBlock(member)) {
+        return false
+      }
+      if ('computed' in member && member.computed && !is.Literal(member.key)) {
+        return false
+      }
+      if (
+        (is.PropertyDefinition(member) || is.AccessorProperty(member)) &&
+        member.static &&
+        member.value
+      ) {
+        return isPureExpression(member.value, constructors)
+      }
+      return true
+    })
+  )
+}
+
+/** The global constructors whose instances `new` creates without effect. */
+function pureConstructors(module: Module) {
+  const names = new Set(['Map', 'Set', 'WeakMap', 'WeakSet'])
+  for (const binding of module.rootScope.bindings) {
+    names.delete(binding.name)
+  }
+  return names
+}
+
+/**
+ * An expression whose evaluation has no observable effect. JSX is not one: it
+ * evaluates its attributes and children, and some frameworks call the
+ * component.
+ */
+function isPureExpression(node: Node, constructors: Set<string>): boolean {
+  node = unwrapExpression(node as Expression)
+  if (
+    is.Literal(node) ||
+    is.Identifier(node) ||
+    is.ArrowFunctionExpression(node) ||
+    is.FunctionExpression(node)
+  ) {
+    return true
+  }
+  if (is.ClassExpression(node)) {
+    return isPureClass(node, constructors)
+  }
+  // Interpolating or negating an object calls its `toString` or `valueOf`
+  if (is.TemplateLiteral(node)) {
+    return node.expressions.every((expression) => is.Literal(expression))
+  }
+  if (is.UnaryExpression(node)) {
+    return (
+      node.operator !== 'delete' &&
+      (['!', 'typeof', 'void'].includes(node.operator)
+        ? isPureExpression(node.argument, constructors)
+        : is.Literal(node.argument))
+    )
+  }
+  if (is.ArrayExpression(node)) {
+    return node.elements.every(
+      (element) =>
+        !element ||
+        (!is.SpreadElement(element) && isPureExpression(element, constructors)),
+    )
+  }
+  if (is.ObjectExpression(node)) {
+    return node.properties.every(
+      (property) =>
+        is.Property(property) &&
+        (!property.computed || is.Literal(property.key)) &&
+        isPureExpression(property.value, constructors),
+    )
+  }
+  if (is.NewExpression(node)) {
+    return (
+      is.Identifier(node.callee) &&
+      constructors.has(node.callee.name) &&
+      node.arguments.length === 0
+    )
+  }
+  if (is.LogicalExpression(node)) {
+    return (
+      isPureExpression(node.left, constructors) &&
+      isPureExpression(node.right, constructors)
+    )
+  }
+  if (is.ConditionalExpression(node)) {
+    return (
+      isPureExpression(node.test, constructors) &&
+      isPureExpression(node.consequent, constructors) &&
+      isPureExpression(node.alternate, constructors)
+    )
+  }
+  return false
 }
 
 export function detectCodeSplitGroupingsFromRoute(options: SourceOptions): {

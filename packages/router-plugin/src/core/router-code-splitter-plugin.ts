@@ -409,7 +409,7 @@ export function createRouterCodeSplitterPlugin(
 
           if (debug) console.info('Compiling Shared Module: ', id)
 
-          const result = compileCodeSplitSharedRoute({
+          const { sideEffectFree, ...result } = compileCodeSplitSharedRoute({
             code,
             sharedBindings,
             filename: normalizedId,
@@ -420,7 +420,30 @@ export function createRouterCodeSplitterPlugin(
             console.log('Output:\n', result.code + '\n\n')
           }
 
-          return result
+          if (!sideEffectFree) {
+            return result
+          }
+          // The bundler can then drop the route module's re-export of shared
+          // bindings nothing imports through it, so that they load only with
+          // the split chunks that use them
+          const native = this.getNativeBuildContext?.()
+          if (
+            native?.framework === 'webpack' ||
+            native?.framework === 'rspack'
+          ) {
+            const module = (
+              native.loaderContext as
+                | { _module?: { factoryMeta?: object } }
+                | undefined
+            )?._module
+            if (module) {
+              module.factoryMeta = {
+                ...module.factoryMeta,
+                sideEffectFree: true,
+              }
+            }
+          }
+          return { ...result, moduleSideEffects: false }
         },
       },
 

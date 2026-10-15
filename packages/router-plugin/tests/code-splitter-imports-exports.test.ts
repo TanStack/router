@@ -370,8 +370,9 @@ register(Page)
   })
 
   // Source: Next.js ssg/getStaticProps/should-not-crash-for-class-declarations
-  it('are imported by the chunk when exported by specifier or as a class', async () => {
-    const { modules } = compileRouteModules(`${head}function getPaths() {
+  it('move to the shared module when exported by specifier or as a class', async () => {
+    const { modules, sharedBindings } =
+      compileRouteModules(`${head}function getPaths() {
   return []
 }
 export { getPaths }
@@ -381,14 +382,96 @@ function Page() {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `)
+    // One declaration, which the route module re-exports: a copied class
+    // would break `instanceof MyClass` checks across modules
+    expect(sharedBindings).toEqual(['MyClass', 'getPaths'])
+    expect(modules.shared).toMatch(declarationOf('MyClass'))
+    expect(modules.shared).toMatch(declarationOf('getPaths'))
     const component = modules['virtual component']!
-    // A copied class would break `instanceof MyClass` checks across modules
-    expect(component).not.toMatch(declarationOf('MyClass'))
-    expect(component).not.toMatch(declarationOf('getPaths'))
-    expect(importedNames(component, 'route.tsx')).toEqual([
+    expect(importedNames(component, 'route.tsx?tsr-shared=1')).toEqual([
       'MyClass',
       'getPaths',
     ])
+    for (const module of [component, modules.reference!]) {
+      expect(module).not.toMatch(declarationOf('MyClass'))
+      expect(module).not.toMatch(declarationOf('getPaths'))
+    }
+    expect(exportedNames(modules.reference!)).toEqual([
+      'MyClass',
+      'Route',
+      'getPaths',
+    ])
+    await expectValidModules(modules)
+  })
+
+  // The shared module cannot take a binding that reads `Route`, which the
+  // shared module would import from the route module that imports it.
+  it('are declared by the chunk when they read Route and hold no module state', async () => {
+    const { modules, sharedBindings } =
+      compileRouteModules(`${head}const prefix = 'route '
+export function useTitle() {
+  return prefix + Route.useLoaderData().title
+}
+let count = 0
+export function next() {
+  return prefix + Route.id + ++count
+}
+export let visits = 0
+export function visit() {
+  return Route.id + ++visits
+}
+function Page() {
+  return <p>{useTitle()}{next()}{visit()}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => ({ title: 'title' }),
+  component: Page,
+})
+`)
+    expect(sharedBindings).toEqual([])
+    const component = modules['virtual component']!
+    expect(component).toMatch(declarationOf('useTitle'))
+    // A copy of `next` would count separately from the route module's, and
+    // one of `visit` would assign the `visits` it imports
+    expect(component).not.toMatch(declarationOf('next'))
+    expect(component).not.toMatch(declarationOf('visit'))
+    expect(importedNames(component, 'route.tsx')).toEqual([
+      'Route',
+      'next',
+      'visit',
+    ])
+    await expectValidModules(modules)
+  })
+
+  it('stay in the route module when only an exported split target that stays there reads them', async () => {
+    const { modules, sharedBindings } =
+      compileRouteModules(`${head}export function Card() {
+  return <b>card</b>
+}
+export function Page() {
+  return <Card />
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+    expect(sharedBindings).toEqual([])
+    expect(modules.reference).toMatch(declarationOf('Card'))
+    await expectValidModules(modules)
+  })
+
+  it('stay in the route module when it reassigns a binding declared with what they read', async () => {
+    const { modules, sharedBindings } =
+      compileRouteModules(`${head}let { title, visits } = { title: 'Home', visits: 0 }
+export function reset() {
+  visits = 0
+}
+export function Title() {
+  return <h1>{title}</h1>
+}
+export const Route = createFileRoute('/')({
+  component: () => <Title />,
+})
+`)
+    expect(sharedBindings).toEqual([])
     await expectValidModules(modules)
   })
 

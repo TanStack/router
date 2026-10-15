@@ -20,6 +20,7 @@ A route created inside a function or IIFE (a route factory) is not code-split, a
 
 Other behaviour changes:
 
+- An exported function or class that a split route option uses (an exported page component the split component renders, an exported store class or helper) now moves into the route's shared module, which the route module re-exports it from, so the split chunk and every other importer use one instance: `instanceof` checks and module state agree across modules. When nothing else imports it, the bundler can leave it, and the imports only it uses, out of the route module's chunk, so the top-level side effects of those imports run when the split chunk loads. Previously the split chunk declared its own copy. An exported function that reads `Route` is still copied into the chunk when it holds no module state.
 - A class, enum, namespace or reassigned `let` that only a split route option uses now moves into that option's chunk, like other declarations already did, so its top-level side effects run when the chunk loads instead of when the route module loads.
 - A split route option that refers to an exported binding through a TypeScript cast (`errorComponent: ErrorComponent as any`) is no longer split, like the same option without the cast, and reports the existing "will not be code-split" warning. Previously the component was duplicated into the route module and the chunk.
 - A `<Hydrate>` whose content is passed as a `children` prop is now split like JSX children, so hooks or functions there require `split={false}`, as they do for JSX children.
