@@ -5,6 +5,11 @@
  * modules like a runtime, and inspect an emitted module.
  */
 import path from 'node:path'
+import {
+  createModuleGraph,
+  jsxPragma,
+  moduleLang,
+} from '@tanstack/compiler-test-utils/module-linker'
 import * as React from 'react'
 import { parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
@@ -13,9 +18,7 @@ import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
 import { build, routeApp } from './build-harness'
-import { createModuleSession, jsxPragma, moduleLang } from './module-runtime'
 import { freeIdentifiers, getModuleErrors } from './validate-module'
-import type { ModuleSession, ModuleStub } from './module-runtime'
 import type { Config } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
@@ -25,7 +28,8 @@ export { declarationOf } from './validate-module'
 
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
-type Stubs = Record<string, ModuleStub>
+/** Exports of each module provided by the test, by import specifier. */
+type Stubs = Record<string, Record<string, unknown>>
 
 type CompileOptions = {
   /** Name of the route file; it is compiled as `/<filename>`. */
@@ -632,8 +636,8 @@ export async function loadRoute(code: string, options: LoadRouteOptions = {}) {
   const compiled = compileRouteModules(code, options)
   const lazy = new Map<unknown, () => Promise<unknown>>()
   const registered = new Map<unknown, string>()
-  const session = await createModuleSession({
-    modules: compiled.graph.modules,
+  const moduleGraph = createModuleGraph({
+    modules: Object.fromEntries(compiled.graph.modules),
     stubs: withRouterStubs(
       options.refresh
         ? { react: React, ...options.stubs }
@@ -646,7 +650,7 @@ export async function loadRoute(code: string, options: LoadRouteOptions = {}) {
       transform: transformWithReactRefresh,
     }),
   })
-  const { Route } = (await session.import(compiled.graph.id)) as {
+  const { Route } = (await moduleGraph.import(compiled.graph.id)) as {
     Route?: { options: Record<string, any> }
   }
   if (!Route) {
@@ -657,7 +661,7 @@ export async function loadRoute(code: string, options: LoadRouteOptions = {}) {
     Route,
     options: Route.options,
     /** Ids of the modules evaluated so far, in evaluation order. */
-    evaluated: session.evaluated,
+    evaluated: moduleGraph.evaluated,
     /** Whether a route option loads lazily from another module. */
     isLazy: (option: string) => lazy.has(Route.options[option]),
     /** The value of a route option, once its lazy module (if any) loaded. */
@@ -684,12 +688,12 @@ export async function evaluateModule(
   options: { importMeta?: Record<string, unknown>; filename?: string } = {},
 ): Promise<Record<string, (...args: Array<any>) => any>> {
   const id = routeModuleId(options.filename ?? 'module.tsx')
-  const session: ModuleSession = await createModuleSession({
-    modules: new Map([[id, code]]),
+  const moduleGraph = createModuleGraph({
+    modules: { [id]: code },
     stubs,
     ...(options.importMeta && { importMeta: () => options.importMeta! }),
   })
-  return session.import(id)
+  return moduleGraph.import(id)
 }
 
 /**
@@ -702,8 +706,8 @@ export async function evaluateModule(
 async function evaluateRouteModule(code: string, stubs: Stubs = {}) {
   const id = routeModuleId()
   const registered = new Map<unknown, string>()
-  const session = await createModuleSession({
-    modules: new Map([[id, code]]),
+  const moduleGraph = createModuleGraph({
+    modules: { [id]: code },
     stubs: withRouterStubs({ react: React, ...stubs }, new Map()),
     fallbackStub: (_, names) =>
       Object.fromEntries(
@@ -712,7 +716,7 @@ async function evaluateRouteModule(code: string, stubs: Stubs = {}) {
     scope: () => refreshScope(registered),
     transform: transformWithReactRefresh,
   })
-  const { Route } = (await session.import(id)) as {
+  const { Route } = (await moduleGraph.import(id)) as {
     Route?: { options: Record<string, any> }
   }
   if (!Route) {

@@ -115,6 +115,7 @@
     "@types/picomatch": "^4.0.2",
     "prettier": "^3.9.6",
     "vite": "*",
+    "@tanstack/compiler-test-utils": "workspace:*",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",

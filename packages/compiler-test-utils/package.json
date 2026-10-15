@@ -1,0 +1,31 @@
+{
+  "name": "@tanstack/compiler-test-utils",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Test infrastructure shared by the compiler test suites: an ES module linker for compiled modules and a real-build harness",
+  "type": "module",
+  "exports": {
+    "./build-harness": "./src/build-harness.ts",
+    "./module-linker": "./src/module-linker.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test:unit": "vitest",
+    "test:types": "tsc",
+    "test:eslint": "eslint ./src ./tests"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "@rsbuild/core": "catalog:",
+    "esbuild": "^0.28.2",
+    "jsdom": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "webpack": "^5.104.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}

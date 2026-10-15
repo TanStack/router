@@ -1,13 +1,12 @@
 /**
- * Controls for the regression harness itself: module linking, module
- * discovery, lazy evaluation, output validation and snapshot formatting.
+ * Controls for the regression harness itself: module discovery, lazy
+ * evaluation, output validation and snapshot formatting (module linking:
+ * `@tanstack/compiler-test-utils`).
  */
 import { describe, expect, it } from 'vitest'
 import { formatSnapshot } from './format-snapshot'
-import { createModuleSession } from './module-runtime'
 import {
   compileRouteModules,
-  evaluateModule,
   expectRegisteredRouteOption,
   expectValidModules,
   head,
@@ -16,102 +15,6 @@ import {
   routeModuleSources,
 } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
-
-describe('evaluateModule links every import form like an ES module runtime', () => {
-  it('links default, named, namespace and side-effect imports', async () => {
-    const { read } = await evaluateModule(
-      `import './effects'
-import fallback, { value as renamed } from './lib'
-import * as lib from './lib'
-export const read = () => [fallback, renamed, lib.value, lib.default].join()`,
-      {
-        './effects': {},
-        './lib': { default: 'default', value: 'value' },
-      },
-    )
-    expect(read!()).toBe('default,value,value,default')
-  })
-
-  it('links re-exports', async () => {
-    const module = await evaluateModule(
-      `export * from './lib'
-export { value as renamed, default as fallback } from './lib'`,
-      { './lib': { default: 'default', value: 'value' } },
-    )
-    expect({ ...module }).toEqual({
-      fallback: 'default',
-      renamed: 'value',
-      value: 'value',
-    })
-  })
-
-  it('rejects an import of a name the module does not export', async () => {
-    await expect(
-      evaluateModule(`import { missing } from './lib'\nexport { missing }`, {
-        './lib': { value: 1 },
-      }),
-    ).rejects.toThrow("does not provide an export named 'missing'")
-  })
-
-  it('rejects an import that is neither stubbed nor emitted', async () => {
-    await expect(evaluateModule(`import './unknown'`)).rejects.toThrow(
-      'no stub for import ./unknown',
-    )
-  })
-
-  it('assigns import.meta properties before the module runs', async () => {
-    const hot = { data: {} }
-    const { read } = await evaluateModule(
-      `const seen = import.meta.hot\nexport const read = () => seen`,
-      {},
-      { importMeta: { hot } },
-    )
-    expect(read!()).toBe(hot)
-  })
-})
-
-describe('module sessions', () => {
-  const modules = new Map([
-    [
-      '/a.tsx',
-      `import { count, increment } from '/b.tsx'
-export const read = () => count
-export { increment }
-export const lazy = () => import('/c.tsx')`,
-    ],
-    ['/b.tsx', `export let count = 0\nexport function increment() { count++ }`],
-    ['/c.tsx', `export const loaded = <p>c</p>`],
-  ])
-  const resolve = (specifier: string) =>
-    modules.has(specifier) ? specifier : undefined
-
-  it('keeps imports live bindings', async () => {
-    const session = await createModuleSession({ modules, resolve })
-    const a = await session.import('/a.tsx')
-    a.increment()
-    a.increment()
-    expect(a.read()).toBe(2)
-  })
-
-  it('evaluates a dynamically imported module only when it is imported', async () => {
-    const session = await createModuleSession({ modules, resolve })
-    const a = await session.import('/a.tsx')
-    expect([...session.evaluated]).toEqual(['/b.tsx', '/a.tsx'])
-    expect((await a.lazy()).loaded).toBe('<p>c</p>')
-    expect([...session.evaluated]).toEqual(['/b.tsx', '/a.tsx', '/c.tsx'])
-  })
-
-  it('evaluates fresh module instances in every session', async () => {
-    const first = await (
-      await createModuleSession({ modules, resolve })
-    ).import('/a.tsx')
-    first.increment()
-    const second = await (
-      await createModuleSession({ modules, resolve })
-    ).import('/a.tsx')
-    expect([first.read(), second.read()]).toEqual([1, 0])
-  })
-})
 
 describe('compileRouteModules', () => {
   const route = `${head}export const Route = createFileRoute('/')({

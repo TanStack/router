@@ -10,7 +10,6 @@ import {
   callReportedServerFns,
   compileHydrate,
   evaluateHydrateParent,
-  evaluateModule,
   getBoundaryIds,
   getChunkIds,
   getChunkParams,
@@ -20,71 +19,6 @@ import {
   renderBoundaries,
   renderChunk,
 } from './regression-helpers'
-
-describe('evaluateModule', () => {
-  test('links every import and export form as ES modules', async () => {
-    const module = await evaluateModule(
-      `import def, { named as alias, 'string name' as str } from './dep'
-import * as ns from './dep'
-import config from './config.json' with { type: 'json' }
-export { named, 'string name' as 'other name' } from './dep'
-export * from './star'
-export * as starNs from './star'
-export default function () {
-  return [def, alias, str, ns.named, config.theme].join()
-}`,
-      {
-        './dep': { default: 'D', named: 'N', 'string name': 'S' },
-        './star': `export const starred = 1`,
-        './config.json': `{ "theme": "dark" }`,
-      },
-    )
-    expect(module.default()).toBe('D,N,S,N,dark')
-    expect([
-      module.named,
-      module['other name'],
-      module.starred,
-      module.starNs.starred,
-    ]).toEqual(['N', 'S', 1, 1])
-  })
-
-  test('exports are live bindings', async () => {
-    const module = await evaluateModule(`export let count = 0
-export function bump() { count++ }`)
-    module.bump()
-    expect(module.count).toBe(1)
-  })
-
-  test('an import of an unknown module, or of a name a stub lacks, fails to link', async () => {
-    await expect(
-      evaluateModule(`import { x } from './missing'\nexport const y = x`),
-    ).rejects.toThrow('No stub for import ./missing')
-    await expect(
-      evaluateModule(`import { other } from './dep'\nexport const y = other`, {
-        './dep': { x: 1 },
-      }),
-    ).rejects.toThrow(/other/)
-  })
-
-  test('a dynamic import resolves when it runs, and fails then if unknown', async () => {
-    const module = await evaluateModule(
-      `export const load = () => import('./dep')
-export const loadMissing = () => import('./missing')`,
-      { './dep': { x: 1 } },
-    )
-    expect((await module.load()).x).toBe(1)
-    await expect(module.loadMissing()).rejects.toThrow(
-      'No stub for import ./missing',
-    )
-  })
-
-  test('every call evaluates a fresh instance', async () => {
-    const code = `export const instance = {}`
-    expect((await evaluateModule(code)).instance).not.toBe(
-      (await evaluateModule(code)).instance,
-    )
-  })
-})
 
 describe('server functions', () => {
   const provider = `import { createServerRpc } from '@tanstack/react-start/server-rpc'
