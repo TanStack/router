@@ -66,7 +66,8 @@ return [await entry.render(component), await entry.render(component), entry.stor
 
   // A declaration the loader and a split component both read runs once, with
   // the route module, before any chunk loads; TypeScript enums and namespaces
-  // compile to such declarations too.
+  // compile to such declarations too. Source: mutation testing (main declared
+  // an enum or a namespace that both read directly in every module).
   it.each([
     {
       name: 'a const',
@@ -83,17 +84,27 @@ const read = () => Value.One`,
       declaration: `namespace Value { export const one = init(1) }
 const read = () => Value.one`,
     },
+    {
+      name: 'an enum (direct reads)',
+      declaration: `enum Value { One = init(1) }`,
+      read: 'Value.One',
+    },
+    {
+      name: 'a namespace (direct reads)',
+      declaration: `namespace Value { export const one = init(1) }`,
+      read: 'Value.one',
+    },
   ])(
     'initializes $name read by the loader and the split component once',
-    async ({ declaration }) => {
+    async ({ declaration, read = 'read()' }) => {
       const state = stateStub()
       let callsBeforeChunks: number | undefined
       const { options, chunks } = await loadRouteModules(
         `${head}import { init } from './state'
 ${declaration}
 export const Route = createFileRoute('/')({
-  loader: () => read(),
-  component: () => <p>{read()}</p>,
+  loader: () => ${read},
+  component: () => <p>{${read}}</p>,
   errorComponent: () => <p>error</p>,
 })`,
         { './state': state },

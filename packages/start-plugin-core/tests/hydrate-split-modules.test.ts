@@ -536,6 +536,32 @@ ${code}`,
       },
     )
 
+    // The chunk imports the route under its export name, quoted when it is
+    // not an identifier. Source: mutation testing (main dropped `Route` from
+    // the chunk).
+    test('client: children reading a Route exported under a string name import it', async () => {
+      const { chunks } = await compileHydrate(
+        'client',
+        `${head}import { createFileRoute } from '@tanstack/react-router'
+const Route = createFileRoute('/posts')({ component: Page })
+export { Route as 'the-route' }
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+      )
+      expect(await getModuleErrors(chunks[0]!)).toEqual([])
+      expect(
+        await renderChunk(
+          chunks[0]!,
+          {},
+          {
+            '/test/src/module.tsx': `const Route = { id: '/posts' }
+export { Route as 'the-route' }`,
+          },
+        ),
+      ).toBe('<p>/posts</p>')
+    })
+
     test('client: children reading a Route the module does not export are rejected', async () => {
       const error = await compileHydrate(
         'client',
