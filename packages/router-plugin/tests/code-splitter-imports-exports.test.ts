@@ -192,6 +192,27 @@ export { Route, title }
     await expectValidModules(modules)
   })
 
+  it("export only the file route's split option from the chunk when the module also creates a code-based route", async () => {
+    const { modules } =
+      compileRouteModules(`import { createFileRoute, createRoute } from '@tanstack/react-router'
+export const legacy = createRoute({
+  getParentRoute: () => null as any,
+  path: '/legacy',
+  component: () => <p>legacy</p>,
+})
+export const Route = createFileRoute('/')({
+  component: () => <p>file</p>,
+})
+`)
+    const chunk = modules['virtual component']!
+    expect(exportedNames(chunk)).toEqual(['component'])
+    const { component } = await evaluateModule(chunk, {
+      'route.tsx': { legacy: {} },
+      '@tanstack/react-router': { createRoute: () => ({}) },
+    })
+    expect(component!()).toBe('<p>file</p>')
+  })
+
   // Source: Next.js ssg/getStaticProps/issue-31855 and multi-declarator-export
   it('are imported by the chunk when declared in one statement', async () => {
     const { modules } = compileRouteModules(`${head}export const a = 1,
