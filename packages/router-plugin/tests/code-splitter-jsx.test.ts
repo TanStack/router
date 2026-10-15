@@ -86,3 +86,37 @@ it('splits a component whose JSX text after a fragment starts with an em dash', 
   expect(modules['virtual component']).toContain('— second')
   await expectValidModules(modules)
 })
+
+// A component option written as a call with JSX inside it (React's memo(),
+// Vue's defineComponent()) moves into its chunk as written.
+// Sources: differential fuzzing; dev servers of the e2e apps, where main's
+// `?tsr-split=component` module failed with HTTP 500 ("Support for the
+// experimental syntax 'jsx' isn't currently enabled").
+it.each([
+  {
+    name: 'memo of an inline arrow',
+    component: `memo(() => <p>page</p>)`,
+  },
+  {
+    name: 'memo of an inline named function',
+    component: `memo(function Page() {\n  return <p>page</p>\n})`,
+  },
+  { name: 'a call with a JSX argument', component: `memo(<p>page</p>)` },
+  {
+    name: 'a Vue defineComponent with a render function',
+    imports: `import { createFileRoute } from '@tanstack/vue-router'
+import { defineComponent } from 'vue'`,
+    component: `defineComponent({\n  setup: () => () => <div>page</div>,\n})`,
+  },
+])(
+  'compiles a component option written as $name into its chunk',
+  async ({ imports = `${head}import { memo } from 'react'`, component }) => {
+    const { modules } = compileRouteModules(`${imports}
+export const Route = createFileRoute('/')({ component: ${component} })
+`)
+    expect(modules.reference).toContain('tsr-split=component')
+    expect(modules.reference).not.toContain('page')
+    expect(modules['virtual component']).toContain('page')
+    await expectValidModules(modules)
+  },
+)

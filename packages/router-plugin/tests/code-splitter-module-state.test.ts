@@ -3,6 +3,7 @@ import {
   buildAndRun,
   compileRouteModules,
   declarationOf,
+  evaluateModule,
   expectValidModules,
   head,
   importSources,
@@ -131,6 +132,26 @@ export const Route = createFileRoute('/')({
     ])
   })
 
+  // TypeScript erases type positions, so a type that reads a declaration does
+  // not make a second module declare it. Source: corpus-diff, route files that
+  // derive a type with `type FormValues = z.infer<typeof schema>`.
+  it('initializes a declaration a type alias and the split component read once', async () => {
+    const state = stateStub()
+    const { chunks } = await loadRouteModules(
+      `${head}import { init } from './state'
+const value = init(1)
+type Value = typeof value
+export const Route = createFileRoute('/')({
+  component: () => <p>{value satisfies Value}</p>,
+})`,
+      { './state': state },
+    )
+    expect([chunks.component!.component(), state.calls]).toEqual([
+      '<p>1</p>',
+      1,
+    ])
+  })
+
   // A declaration only the split component reads moves into its chunk with the
   // module-level statements that write to it.
   it.each([
@@ -151,6 +172,22 @@ export const Route = createFileRoute('/')({
       expect(chunks.component!.component()).toBe('<p>7</p>')
     },
   )
+
+  // A dotted namespace declares its leftmost name, with the body of each
+  // nested namespace. Source: mutation testing (main emptied the namespace
+  // body in the chunk, so the split component threw reading `Labels.Page`).
+  it('keeps a dotted namespace the split component reads, with its body and the writes to it', async () => {
+    const { modules } = compileRouteModules(`${head}namespace Labels.Page {
+  export const title = 'title'
+}
+;(Labels as any).suffix = '!'
+export const Route = createFileRoute('/')({
+  component: () => <p>{Labels.Page.title}{(Labels as any).suffix}</p>,
+})
+`)
+    const chunk = await evaluateModule(modules['virtual component']!)
+    expect(chunk.component!()).toBe('<p>title!</p>')
+  })
 
   // Source: Next.js ssg/getStaticProps/should-support-export-named-as-default-with-other-specifiers
   it.each([

@@ -632,6 +632,24 @@ describe('transform', () => {
     expect(result).toEqual({ result: 'not-modified' })
     expect(node.createFileRouteProps).toEqual(new Set(['component', 'server']))
   })
+
+  // A route with server handlers and a method-shorthand option is not a
+  // server-only route: Start must keep it in the client route tree.
+  it('records method, async method and accessor option keys', () => {
+    const node = makeNode()
+    const result = transformToNewRoute(
+      [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        "export const Route = createFileRoute('/new')({ server: {}, component() { return null }, async loader() {}, get head() { return () => ({}) } })",
+      ].join('\n'),
+      node,
+    )
+
+    expect(result).toEqual({ result: 'not-modified' })
+    expect(node.createFileRouteProps).toEqual(
+      new Set(['server', 'component', 'loader', 'head']),
+    )
+  })
 })
 
 // The generator writes its output back over the user's route file, so every

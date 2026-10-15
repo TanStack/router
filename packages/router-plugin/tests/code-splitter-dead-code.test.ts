@@ -154,6 +154,30 @@ export const Route = createFileRoute('/')({
     await expectValidModules(modules)
   })
 
+  // Source: tanstack.com src/routes/index.tsx (`type PrincipleProof` next to
+  // `function PrincipleProof`). TypeScript keeps types and values in separate
+  // namespaces: a type the reference module keeps that names the type is not
+  // a read of the value of the same name.
+  it('moves a component only the split component uses into its chunk when a kept type shares its name', async () => {
+    const code = `${head}import { heavy } from './heavy'
+type Panel = 'a' | 'b'
+export type Settings = { panel: Panel }
+function Panel() {
+  return <div>{heavy()}</div>
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <Panel />,
+})
+`
+    for (const reference of Object.values(referenceModules(code))) {
+      expect(importSources(reference)).not.toContain('./heavy')
+    }
+    const { modules } = compileRouteModules(code)
+    expect(importSources(modules['virtual component']!)).toContain('./heavy')
+    await expectValidModules(modules)
+  })
+
   // Source: Next.js ssg/getStaticProps/should-remove-re-exported-function-declarations-dependents-variables-functions-imports
   it('keeps the import specifiers nothing used before splitting', async () => {
     const { modules } =
@@ -210,26 +234,39 @@ export const Route = createFileRoute('/')({
 
   // TypeScript erases type positions, so a declaration whose binding only
   // appears in a type is still live code that runs when the route loads.
-  it.each([
-    {
-      name: 'the reference module',
-      compile: (code: string) => compileRouteModules(code).modules.reference!,
-    },
-    {
-      name: 'a route module compiled for HMR',
-      compile: (code: string) => transformWithRouteHmrPlugin(code),
-    },
-  ])(
-    'keeps a declaration only referenced from types in $name',
-    async ({ compile }) => {
-      const output =
-        compile(`${head}import { registerAnalytics } from './analytics'
-const analytics = registerAnalytics('/posts')
-declare module './analytics' {
+  it.each(
+    [
+      {
+        name: 'the reference module',
+        compile: (code: string) => compileRouteModules(code).modules.reference!,
+      },
+      {
+        name: 'a route module compiled for HMR',
+        compile: (code: string) => transformWithRouteHmrPlugin(code),
+      },
+    ].flatMap((target) =>
+      [
+        {
+          types: 'a module augmentation',
+          typeDeclaration: `declare module './analytics' {
   interface Registry {
     posts: typeof analytics
   }
-}
+}`,
+        },
+        {
+          types: 'an exported type alias',
+          typeDeclaration: 'export type Analytics = typeof analytics',
+        },
+      ].map((use) => ({ ...target, ...use })),
+    ),
+  )(
+    'keeps a declaration only referenced from $types in $name',
+    async ({ compile, typeDeclaration }) => {
+      const output =
+        compile(`${head}import { registerAnalytics } from './analytics'
+const analytics = registerAnalytics('/posts')
+${typeDeclaration}
 export const Route = createFileRoute('/posts')({
   component: () => <p>posts</p>,
 })

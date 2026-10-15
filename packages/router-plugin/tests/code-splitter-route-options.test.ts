@@ -36,6 +36,43 @@ export const Route = createFileRoute('/posts')(options)
     await expectValidModules(modules)
   })
 
+  // Sources: corpus-diff, openalgon-alt/agri-prep-path
+  // src/routes/admin/access.tsx (`createFileRoute('/admin/access')({ … } as any)`);
+  // differential fuzzing (casts around the route factory call).
+  it.each([
+    {
+      name: 'options object wrapped in `as any`',
+      route: (options: string) => `createFileRoute('/')(${options} as any)`,
+    },
+    {
+      name: 'options object wrapped in `satisfies object`',
+      route: (options: string) =>
+        `createFileRoute('/')(${options} satisfies object)`,
+    },
+    {
+      name: 'route factory call wrapped in `as any`',
+      route: (options: string) => `(createFileRoute('/') as any)(${options})`,
+    },
+    {
+      name: 'route factory call wrapped in a non-null assertion',
+      route: (options: string) => `(createFileRoute('/'))!(${options})`,
+    },
+  ])('are split when the $name', async ({ route }) => {
+    const { modules } =
+      compileRouteModules(`${head}export const Route = ${route(`{
+  ssr: false,
+  component: Page,
+}`)}
+function Page() {
+  return <p>page</p>
+}
+`)
+    expect(modules.reference).toContain('tsr-split=component')
+    expect(modules.reference).not.toMatch(declarationOf('Page'))
+    expect(modules['virtual component']).toMatch(declarationOf('Page'))
+    await expectValidModules(modules)
+  })
+
   // Source: React Router route-chunks-test.ts "chunkable" detection of export values
   it.each([
     {
@@ -305,6 +342,43 @@ export const Route = createFileRoute('/posts')({
       await expectValidModules(modules)
     },
   )
+
+  // Source: corpus-diff, route files that declare `const Route` and export it
+  // at the end with `export { Route }` (rahulroy0322/RacketHub,
+  // mchar7/nohiki-monorepo).
+  it('read the route exported through export { Route } from the route module', async () => {
+    const { modules } =
+      compileRouteModules(`${head}const Route = createFileRoute('/')({
+  component: Page,
+})
+function Page() {
+  return <p>{Route.id}</p>
+}
+export { Route }
+`)
+    const component = modules['virtual component']!
+    expect(importedNames(component, 'route.tsx')).toEqual(['Route'])
+    expect(component).not.toContain('createFileRoute(')
+    await expectValidModules(modules)
+  })
+
+  // Bindings that read `Route` are never shared, so an unsplit option using
+  // the split component needs its own declaration in the route module.
+  // Source: corpus-diff, bex-co/bex src/routes/databases.$databaseId.tsx
+  // (`component: Page, pendingComponent: Page`).
+  it('keep a component read by a split and an unsplit option declared in the route module', async () => {
+    const { modules, options } =
+      await loadRouteModules(`${head}export const Route = createFileRoute('/')({
+  component: Page,
+  pendingComponent: Page,
+})
+function Page() {
+  return <p>{typeof Route}</p>
+}
+`)
+    expect(options.pendingComponent()).toBe('<p>object</p>')
+    await expectValidModules(modules)
+  })
 
   it('do not turn a reassigned loader-only binding into an import', () => {
     const { modules, sharedBindings } =

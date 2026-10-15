@@ -352,6 +352,23 @@ export const Route = createFileRoute('/')({ component: Page, errorComponent: Fal
     },
   )
 
+  // Module-level code that reads the split component runs when the route
+  // module loads, so the component stays declared there.
+  // Source: differential fuzzing (main removed the declaration and left the
+  // call reading it).
+  it('keep a component that a top-level call reads in the route module', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { register } from './registry'
+function Page() {
+  return <div>page</div>
+}
+export const Route = createFileRoute('/')({ component: Page })
+register(Page)
+`)
+    expect(modules.reference).toMatch(declarationOf('Page'))
+    await expectValidModules(modules)
+  })
+
   // Source: Next.js ssg/getStaticProps/should-not-crash-for-class-declarations
   it('are imported by the chunk when exported by specifier or as a class', async () => {
     const { modules } = compileRouteModules(`${head}function getPaths() {
@@ -469,6 +486,27 @@ export const Route = createFileRoute('/')({
       await expectValidModules(modules)
     },
   )
+
+  // TypeScript erases a value import that only types read, so the split
+  // chunks do not import it for the types of code left in the route module.
+  // Source: mutation testing of the dead code removal (main copied the import
+  // into every chunk, which then loaded a module none of its code reads).
+  it('do not import into the split chunks what only the types of a helper left in the route module read', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { Database } from './server/db'
+const load = (db: Database) => db.query()
+export const Route = createFileRoute('/')({
+  loader: ({ context }) => load(context.db),
+  component: () => <p>page</p>,
+})
+`)
+    expect(
+      Object.keys(modules).filter((name) =>
+        importSources(modules[name]!).includes('./server/db'),
+      ),
+    ).toEqual(['reference'])
+    await expectValidModules(modules)
+  })
 
   // Ambient declarations (`declare ...`) have no runtime binding: the
   // environment provides the value (a <script> tag, a bundler define, a global).

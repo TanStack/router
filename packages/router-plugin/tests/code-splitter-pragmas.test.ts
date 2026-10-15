@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
   componentChunk,
+  evaluateModule,
   head,
+  importedNames,
   loadRouteModules,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
@@ -124,6 +126,29 @@ export const Route = createFileRoute('/')({
     expect(chunks.errorComponent!.errorComponent()).toBe('<b>error</b>')
   })
 
+  // Source: mutation testing of the dead code removal (main dropped the
+  // factory import, so the split component threw "jsx is not defined").
+  it('in a split chunk, imported from the route module that exports it', async () => {
+    /** Emotion's `jsx`, rendering intrinsic elements as `<emotion:tag>`. */
+    const emotionJsx = (
+      type: string,
+      _props: unknown,
+      ...children: Array<string>
+    ) => `<emotion:${type}>${children.join('')}</emotion:${type}>`
+    const { modules } = compileRouteModules(`/** @jsxRuntime classic */
+/** @jsx jsx */
+${head}import { jsx as emotion } from '@emotion/react'
+export const jsx = emotion
+export const Route = createFileRoute('/')({
+  component: () => <div>page</div>,
+})
+`)
+    const chunk = await evaluateModule(modules['virtual component']!, {
+      'route.tsx': { jsx: emotionJsx },
+    })
+    expect(chunk.component!()).toBe('<emotion:div>page</emotion:div>')
+  })
+
   it('with the @jsxFrag factory of the fragments that remain', async () => {
     const { chunks } = await loadRouteModules(
       `/** @jsx jsx */
@@ -137,6 +162,49 @@ export const Route = createFileRoute('/')({
     )
     expect(chunks.component!.component()).toBe('page')
     expect(chunks.errorComponent!.errorComponent()).toBe('error')
+  })
+})
+
+// Dead code removal counts JSX as a use of the factories it compiles to, and
+// only of those: a module keeps a classic factory import only while it has
+// JSX (fragments, for the @jsxFrag factory) compiling to it.
+describe('split modules import only the classic JSX factories their JSX compiles to', () => {
+  it.each([
+    {
+      name: 'the @jsx factory in the route module, whose JSX all moved',
+      pragmas: '/** @jsx h */',
+      specifiers: 'h',
+      options: `loader: () => 1,
+  component: () => <div />,`,
+      module: 'reference',
+      imported: [],
+    },
+    {
+      name: 'the @jsx factory, under a pragma with extra spaces',
+      pragmas: '/** @jsx  h */',
+      specifiers: 'h',
+      options: `loader: () => 1,
+  component: () => <div />,`,
+      module: 'reference',
+      imported: [],
+    },
+    {
+      name: 'the @jsxFrag factory in a chunk without fragments',
+      pragmas: '/** @jsx h */\n/** @jsxFrag Fragment */',
+      specifiers: 'h, Fragment',
+      options: `loader: () => <>{1}</>,
+  component: () => <div />,`,
+      module: 'virtual component',
+      imported: ['h'],
+    },
+  ])('drops $name', ({ pragmas, specifiers, options, module, imported }) => {
+    const { modules } = compileRouteModules(`${pragmas}
+${head}import { ${specifiers} } from 'preact'
+export const Route = createFileRoute('/')({
+  ${options}
+})
+`)
+    expect(importedNames(modules[module]!, 'preact')).toEqual(imported)
   })
 })
 
