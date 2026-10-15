@@ -110,6 +110,27 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // Regression in the Yuku migration: TypeScript erases `typeof value`, so the
+  // split component does not need the declaration, but the chunk declares it
+  // again and its initializer runs twice.
+  // Source: corpus-diff, forms that cast `as z.infer<typeof schema>` in the
+  // split component (NFCC-Com/nfcc, sedrino/farm-app).
+  it('initializes a declaration the split component only reads in a type once', async () => {
+    const state = stateStub()
+    const { chunks } = await loadRouteModules(
+      `${head}import { init } from './state'
+const value = init(1)
+export const Route = createFileRoute('/')({
+  component: () => <p>{typeof ({} as typeof value)}</p>,
+})`,
+      { './state': state },
+    )
+    expect([chunks.component!.component(), state.calls]).toEqual([
+      '<p>object</p>',
+      1,
+    ])
+  })
+
   // A declaration only the split component reads moves into its chunk with the
   // module-level statements that write to it.
   it.each([

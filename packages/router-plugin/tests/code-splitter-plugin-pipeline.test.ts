@@ -192,10 +192,11 @@ export const Route = createFileRoute('/unshared')({
 describe('route HMR plugin without code splitting', () => {
   function transformWith(
     options: Partial<Config> & { target: 'solid' | 'vue' },
+    imports = '',
   ) {
     const code = `
 import { createFileRoute } from '@tanstack/${options.target}-router'
-export const Route = createFileRoute('/hmr')({
+${imports}export const Route = createFileRoute('/hmr')({
   component: () => <p>hmr</p>,
 })
 `
@@ -216,6 +217,22 @@ export const Route = createFileRoute('/hmr')({
       expect(await getModuleErrors(output)).toEqual([])
     },
   )
+
+  // Regression in the Yuku migration: the plugin reprints Solid and Vue
+  // routes and prints `import type {} from 'zod'` as `import type 'zod'`, a
+  // syntax error. Yuku codegen bug,
+  // https://github.com/yuku-toolchain/yuku/issues/258; passes once Yuku ships
+  // the fix.
+  // Source: corpus-diff, tinloof/tanstack-wsr src/types.ts (an empty type
+  // import fixes TypeScript's "inferred type cannot be named" error).
+  it('keeps routes with an empty type-only import valid', async () => {
+    const output = transformWith(
+      { target: 'solid' },
+      "import type {} from 'zod'\n",
+    )
+    expect(output).toContain('import.meta.hot')
+    expect(await getModuleErrors(output)).toEqual([])
+  })
 
   it('uses webpack HMR with the generated route id for non-React routes', async () => {
     const output = transformWith({

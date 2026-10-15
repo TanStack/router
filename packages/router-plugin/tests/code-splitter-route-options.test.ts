@@ -118,6 +118,23 @@ export const Route = createFileRoute('/')({
     expect(modules['virtual component']).not.toContain('first-marker')
     await expectValidModules(modules)
   })
+
+  // Regression in the Yuku migration, found by differential fuzzing: a `var`
+  // declared in a block at module level is a module-level binding, so the
+  // route it creates is no route factory, but it is left unsplit with a
+  // warning that it is created inside a function.
+  it('are split when the route is declared with var in a module-level block', async () => {
+    const { modules } = compileRouteModules(`${head}if (true) {
+  var Route = createFileRoute('/')({
+    component: () => <div>split-marker</div>,
+  })
+}
+export { Route }
+`)
+    expect(modules.reference).not.toContain('split-marker')
+    expect(modules['virtual component']).toContain('split-marker')
+    await expectValidModules(modules)
+  })
 })
 
 describe('route options written as methods or accessors', () => {

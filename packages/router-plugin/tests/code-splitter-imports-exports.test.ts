@@ -528,6 +528,34 @@ export const Route = createFileRoute('/')({
     }
   })
 
+  // Regression in the Yuku migration: an ambient var merged with an interface
+  // has no runtime declaration, but the shared module copies the interface
+  // and exports the var, so loading it fails with "Export 'readVersion' is
+  // not defined".
+  // Source: TypeScript conformance test
+  // expressions/functionCalls/overloadResolutionConstructors.ts.
+  it('leaves an ambient var merged with an interface a global when a shared declaration reads it', async () => {
+    vi.stubGlobal('readVersion', () => '1.0')
+    try {
+      const { options, chunks } =
+        await loadRouteModules(`${head}interface readVersion {
+  (): string
+}
+declare var readVersion: readVersion
+const version = readVersion()
+export const Route = createFileRoute('/')({
+  loader: () => version,
+  component: () => <p>{version}</p>,
+})`)
+      expect([options.loader(), chunks.component!.component()]).toEqual([
+        '1.0',
+        '<p>1.0</p>',
+      ])
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('keeps the namespace import that an import alias refers to', () => {
     const chunk = componentChunk(`${head}import * as lib from './lib'
 import Helper = lib.Helper
@@ -552,6 +580,33 @@ export const Route = createFileRoute('/')({
     await expectValidModules(modules)
     const chunk = await evaluateModule(modules['virtual component']!)
     expect(chunk.component!()).toBe('<p>LOUD|label:x</p>')
+  })
+
+  // Regression in the Yuku migration: TypeScript accepts overload signatures
+  // for a private method, but compiling the route throws "Duplicate private
+  // name '#parse'". Yuku analyzer bug,
+  // https://github.com/yuku-toolchain/yuku/issues/257; passes once Yuku ships
+  // the fix.
+  // Source: @babel/plugin-transform-typescript class/private-method-override.
+  it('gives the split component a class with an overloaded private method', async () => {
+    const { modules } = compileRouteModules(`${head}class Parser {
+  #parse(value: string): number
+  #parse(value: number): string
+  #parse(value: string | number): string | number {
+    return typeof value === 'string' ? value.length : String(value)
+  }
+  run() {
+    return [this.#parse('abc'), this.#parse(7)].join('|')
+  }
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>{new Parser().run()}</p>,
+})
+`)
+    await expectValidModules(modules)
+    const chunk = await evaluateModule(modules['virtual component']!)
+    expect(chunk.component!()).toBe('<p>3|7</p>')
   })
 
   it('gives the split component the namespace it uses', async () => {

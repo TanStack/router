@@ -87,6 +87,33 @@ function pong(): number { return ping() }`,
       component: '<p>{helper()}</p>',
       declared: ['helper', 'unused', 'ping', 'pong'],
     },
+    {
+      // Regression in the Yuku migration: the only reads are an unused local
+      // inside the declaration itself, and the reference module drops both
+      // declarations with their register() calls.
+      // Inputs adapted from @babel/plugin-proposal-decorators
+      // 2023-11-misc/destructuring-transform-integration and TypeScript's
+      // conformance test classes/propertyMemberDeclarations/autoAccessor10.ts.
+      name: 'declarations only an unused local inside them reads',
+      setup: `import { register } from './registry'
+const plugin = {
+  id: register('plugin'),
+  describe() {
+    const self = plugin
+    return 'plugin'
+  },
+}
+class Widget {
+  static {
+    register('widget')
+  }
+  render() {
+    const type = Widget
+    return 'widget'
+  }
+}`,
+      declared: ['plugin', 'Widget'],
+    },
   ])(
     'keeps $name that nothing used before splitting',
     async ({ setup, component = '<div />', declared }) => {
@@ -162,6 +189,22 @@ export const Route = createFileRoute('/')({
     expect(modules['virtual errorComponent']).not.toContain(
       'side-effect-marker',
     )
+    await expectValidModules(modules)
+  })
+
+  // Regression in the Yuku migration, found by differential fuzzing: the
+  // component chunk copies a namespace that no split option reads, with its
+  // body, so its initializer runs again when the chunk loads.
+  it('runs the initializer of a namespace no split option reads only in the reference module', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { shared } from './shared'
+namespace Unused { export const value = shared('side-effect-marker') }
+export const Route = createFileRoute('/')({
+  component: () => <div>{shared('component')}</div>,
+})
+`)
+    expect(modules.reference).toContain('side-effect-marker')
+    expect(modules['virtual component']).not.toContain('side-effect-marker')
     await expectValidModules(modules)
   })
 
@@ -279,6 +322,27 @@ export const Route = createFileRoute('/')({
       'format',
     ])
     await expectValidModules(modules)
+  })
+
+  // Regression in the Yuku migration: an unused function that renders the
+  // split component keeps the component and its imports in the route module,
+  // which defeats the split.
+  // Source: corpus-diff, Jp-K/DmCompanionAi frontend_old/src/routes/_layout/chat.tsx.
+  it('moves the split component and its imports into its chunk when an unused function renders it', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { heavy } from './heavy'
+export const Route = createFileRoute('/')({
+  component: Page,
+})
+function Page() {
+  return <p>{heavy()}</p>
+}
+function Unused() {
+  return <Page />
+}
+`)
+    expect(importSources(modules.reference!)).not.toContain('./heavy')
+    expect(importSources(modules['virtual component']!)).toContain('./heavy')
   })
 
   // Source: Qwik optimizer test.rs should_not_move_over_side_effects,

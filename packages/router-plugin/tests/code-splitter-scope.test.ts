@@ -409,4 +409,76 @@ export const Route = createFileRoute('/compare')({
     )
     expect(sharedBindings).toEqual(['a', 'b', 'c', 'r'])
   })
+
+  // Regression in the Yuku migration: the chunk prints the comment between
+  // the operand and `++`, and the line break ends the statement there.
+  // Yuku codegen bug, https://github.com/yuku-toolchain/yuku/issues/255;
+  // passes once Yuku ships the fix.
+  // Source: @babel/generator edgecase/postfix-update-comments.
+  it('keeps a postfix update whose operand is followed by a comment', async () => {
+    const chunk = compileRouteModules(
+      pageRoute(`let count = 0
+function Page() {
+  (
+    count // the render count
+  )++
+  return count
+}`),
+      { filename: 'route.js' },
+    ).modules['virtual component']!
+    await expectValidModules({ chunk })
+    expect((await evaluateModule(chunk)).component!()).toBe(1)
+  })
+
+  // Regression in the Yuku migration: the parentheses must keep `c in d` as
+  // the alternate of the conditional, but the chunk regroups it as
+  // `(a ? b : c) in d`. Yuku parser bug,
+  // https://github.com/yuku-toolchain/yuku/issues/256; passes once Yuku ships
+  // the fix.
+  // Source: Oxc codegen esbuild.rs (ported from esbuild's printer tests).
+  it('keeps the operands of `in` inside a parenthesized for-loop head', async () => {
+    const chunk = compileRouteModules(
+      pageRoute(`function Page() {
+  const a = true, b = 'b', c = 'x', d = { x: 1 }
+  let result = 'unset'
+  for (result = (a ? b : c in d).toString(); ; ) break
+  return result
+}`),
+      { filename: 'route.js' },
+    ).modules['virtual component']!
+    await expectValidModules({ chunk })
+    expect((await evaluateModule(chunk)).component!()).toBe('b')
+  })
+
+  // Regression in the Yuku migration: a computed key belongs to the enclosing
+  // scope, here a derived constructor, so `super()` is valid in it, but
+  // compiling the route throws "'super()' is only valid in a constructor of a
+  // derived class". Yuku parser bug,
+  // https://github.com/yuku-toolchain/yuku/issues/259; passes once Yuku ships
+  // the fix.
+  // Shape adapted from @babel/plugin-proposal-decorators
+  // 2023-11-misc/initField-existing-derived-constructor.
+  it('keeps a super() call in the computed key of a class field in a derived constructor', async () => {
+    const chunk = compileRouteModules(
+      pageRoute(`class Base {
+  toString() {
+    return 'key'
+  }
+}
+class Derived extends Base {
+  constructor() {
+    class Field {
+      [super()] = 'field'
+    }
+    this.field = new Field()
+  }
+}
+function Page() {
+  return new Derived().field.key
+}`),
+      { filename: 'route.js' },
+    ).modules['virtual component']!
+    await expectValidModules({ chunk })
+    expect((await evaluateModule(chunk)).component!()).toBe('field')
+  })
 })

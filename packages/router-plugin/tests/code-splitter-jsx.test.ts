@@ -3,6 +3,11 @@ import path from 'node:path'
 import { createServer } from 'vite'
 import { expect, it } from 'vitest'
 import { tanstackRouter } from '../src/vite'
+import {
+  compileRouteModules,
+  expectValidModules,
+  head,
+} from './regression-helpers'
 
 it.each(['Widget', '_Widget', '$Widget', 'ÉWidget', 'éWidget'])(
   'preserves the shared JSX component %s across separate loader and component chunks',
@@ -65,3 +70,19 @@ export const Route = createFileRoute('/widget')({
   },
   30_000,
 )
+
+// Regression in the Yuku migration, found by differential fuzzing: JSX text
+// right after a closing fragment that starts with non-ASCII punctuation (an
+// em dash, a middle dot) fails to parse with "Invalid character at start of
+// identifier". Yuku parser bug,
+// https://github.com/yuku-toolchain/yuku/issues/260; passes once Yuku ships
+// the fix.
+it('splits a component whose JSX text after a fragment starts with an em dash', async () => {
+  const { modules } =
+    compileRouteModules(`${head}export const Route = createFileRoute('/')({
+  component: () => <p><>first</> — second</p>,
+})
+`)
+  expect(modules['virtual component']).toContain('— second')
+  await expectValidModules(modules)
+})
