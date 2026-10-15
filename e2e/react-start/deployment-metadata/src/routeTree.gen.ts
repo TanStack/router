@@ -10,43 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiEchoRouteImport } from './routes/api/echo'
+import { Route as ApiUserFetchRouteImport } from './routes/api/user-fetch'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiEchoRoute = ApiEchoRouteImport.update({
-  id: '/api/echo',
-  path: '/api/echo',
+const ApiUserFetchRoute = ApiUserFetchRouteImport.update({
+  id: '/api/user-fetch',
+  path: '/api/user-fetch',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/echo': typeof ApiEchoRoute
+  '/api/user-fetch': typeof ApiUserFetchRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/echo': typeof ApiEchoRoute
+  '/api/user-fetch': typeof ApiUserFetchRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/echo': typeof ApiEchoRoute
+  '/api/user-fetch': typeof ApiUserFetchRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/echo'
+  fullPaths: '/' | '/api/user-fetch'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/echo'
-  id: '__root__' | '/' | '/api/echo'
+  to: '/' | '/api/user-fetch'
+  id: '__root__' | '/' | '/api/user-fetch'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiEchoRoute: typeof ApiEchoRoute
+  ApiUserFetchRoute: typeof ApiUserFetchRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,11 +58,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/echo': {
-      id: '/api/echo'
-      path: '/api/echo'
-      fullPath: '/api/echo'
-      preLoaderRoute: typeof ApiEchoRouteImport
+    '/api/user-fetch': {
+      id: '/api/user-fetch'
+      path: '/api/user-fetch'
+      fullPath: '/api/user-fetch'
+      preLoaderRoute: typeof ApiUserFetchRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -70,7 +70,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiEchoRoute: ApiEchoRoute,
+  ApiUserFetchRoute: ApiUserFetchRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

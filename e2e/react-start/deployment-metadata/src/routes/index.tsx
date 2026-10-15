@@ -38,15 +38,15 @@ function Home() {
       <span data-testid="result-get">{get}</span>
 
       <button
-        data-testid="call-echo"
+        data-testid="call-user-fetch"
         onClick={async () => {
-          const response = await fetch('/api/echo')
+          const response = await fetch('/api/user-fetch')
           setEcho(await response.text())
         }}
       >
         Plain fetch
       </button>
-      <span data-testid="result-echo">{echo}</span>
+      <span data-testid="result-user-fetch">{echo}</span>
     </div>
   )
 }
