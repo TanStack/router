@@ -30,10 +30,30 @@ import type {
 
 type DehydrationPhase = 'idle' | 'started' | 'disabled'
 
+/**
+ * The `updatedAt` a match is dehydrated with. `SOURCE_DATE_EPOCH` (seconds
+ * since the Unix epoch, the reproducible-builds convention:
+ * https://reproducible-builds.org/specs/source-date-epoch/) pins it, so a
+ * prerender of the same sources emits byte-identical HTML instead of
+ * stamping the millisecond each page happened to render. Unset or malformed,
+ * the match's own timestamp is used, unchanged.
+ */
+function dehydratedUpdatedAt(match: AnyRouteMatch): number {
+  const epoch =
+    typeof process !== 'undefined' ? process.env?.SOURCE_DATE_EPOCH : undefined
+  if (epoch !== undefined && /^\d+$/.test(epoch)) {
+    const ms = Number(epoch) * 1000
+    if (Number.isSafeInteger(ms)) {
+      return ms
+    }
+  }
+  return match.updatedAt
+}
+
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   const dehydratedMatch: DehydratedMatch = {
     i: dehydrateSsrMatchId(match.id),
-    u: match.updatedAt,
+    u: dehydratedUpdatedAt(match),
     s: match.status,
   }
 
