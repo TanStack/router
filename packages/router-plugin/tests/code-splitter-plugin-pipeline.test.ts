@@ -1,15 +1,22 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { createServer } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { normalizePath } from '../src/core/utils'
+import { tanstackRouter } from '../src/vite'
 import {
   createCodeSplitterTransforms,
   createRouteHmrTransform,
   expectValidModules,
+  exportedNames,
+  head,
   importSources,
+  importedNames,
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
+import type { ViteDevServer } from 'vite'
 import type { Config } from '../src/core/config'
 
 const routeSource = (name: string) => `
@@ -187,6 +194,163 @@ export const Route = createFileRoute('/unshared')({
       createCodeSplitterTransforms({}, {}, [reactPlugin, routerPlugin]),
     ).rejects.toThrow('Plugin order error')
   })
+})
+
+/**
+ * In dev, an edit invalidates every module of the route file: the route
+ * module, its `?tsr-split=` chunks and its `?tsr-shared=1` module. The browser
+ * requests them again in no fixed order (unbundled Vite dev sends one request
+ * each, in parallel), and Vite keeps each result until the next edit. These
+ * tests request the chunks and the shared module before the route module, and
+ * compare them with what a dev server started after the edit compiles.
+ */
+describe('a dev server compiling an edited route out of order', () => {
+  const route = '/routes/page.tsx'
+  const shared = `${route}?tsr-shared=1`
+
+  function startServer(root: string) {
+    return createServer({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      // No watcher: the test invalidates the edited file itself, as the
+      // watcher would
+      server: { middlewareMode: true, watch: null },
+      appType: 'custom',
+      plugins: [
+        tanstackRouter({
+          target: 'react',
+          autoCodeSplitting: true,
+          routesDirectory: './routes',
+          generatedRouteTree: './routeTree.gen.ts',
+        }),
+      ],
+    })
+  }
+
+  /** Requests `ids` in order: errors, exports and shared imports by id. */
+  async function inspect(server: ViteDevServer, ids: Array<string>) {
+    const modules: Record<
+      string,
+      {
+        errors: Array<string>
+        exports: Array<string>
+        fromShared: Array<string>
+      }
+    > = {}
+    for (const id of ids) {
+      const code = (await server.transformRequest(id))!.code
+      modules[id] = {
+        errors: await getModuleErrors(code),
+        exports: exportedNames(code),
+        fromShared: importedNames(code, shared),
+      }
+    }
+    return modules
+  }
+
+  const twoCards = `${head}function CardA() { return <b>A</b> }
+function CardB() { return <i>B</i> }
+export const Route = createFileRoute('/page')({
+  component: () => <p><CardA /><CardB /></p>,
+  errorComponent: () => <p><CardA /><CardB /></p>,
+})
+`
+  const oneCard = `${head}function CardA() { return <b>A</b> }
+export const Route = createFileRoute('/page')({
+  component: () => <p><CardA /></p>,
+  errorComponent: () => <p><CardA /></p>,
+})
+`
+
+  // Bug, already on main and much easier to hit since the Yuku migration: the
+  // route module's transform computes the bindings that go to the shared
+  // module and stores them by file, and the shared and split transforms read
+  // that stored set instead of deriving it from the code they compile.
+  // Requested before the route module after an edit, they compile the new
+  // source with the previous set: a removed binding is still exported
+  // ("Export 'suffix' is not defined", and the page stays broken until the
+  // next edit or a restart), an added one is copied into each chunk instead of
+  // shared. On main this needs a binding that two split options share (the
+  // last two rows fail on main too). The migration also moves an exported
+  // component's private dependencies to the shared module, so removing a
+  // helper of an exported component that a split component renders hits it
+  // too (the first row, which passes on main). Fails until the shared and
+  // split transforms compute the set from the code they receive.
+  it.each([
+    [
+      'removing a helper of an exported component a split component renders',
+      {
+        before: `${head}const prefix = 'a'
+const suffix = 'b'
+export function Card() { return <b>{prefix}{suffix}</b> }
+export const Route = createFileRoute('/page')({ component: () => <Card /> })
+`,
+        after: `${head}const prefix = 'a'
+export function Card() { return <b>{prefix}</b> }
+export const Route = createFileRoute('/page')({ component: () => <Card /> })
+`,
+        splits: ['component'],
+      },
+    ],
+    [
+      'removing a component two split options render',
+      {
+        before: twoCards,
+        after: oneCard,
+        splits: ['component', 'errorComponent'],
+      },
+    ],
+    [
+      'adding a component two split options render',
+      {
+        before: oneCard,
+        after: twoCards,
+        splits: ['component', 'errorComponent'],
+      },
+    ],
+  ])(
+    'compiles the shared module and chunks requested first from the edited source after %s',
+    async (_, { before, after, splits }) => {
+      const ids = [
+        route,
+        shared,
+        ...splits.map((split) => `${route}?tsr-split=${split}`),
+      ]
+      // Keep the temporary app inside the package so runtime imports resolve.
+      const root = await mkdtemp(path.join(__dirname, '.dev-edit-order-'))
+      const file = normalizePath(path.join(root, 'routes/page.tsx'))
+      let server: ViteDevServer | undefined
+      try {
+        await mkdir(path.join(root, 'routes'))
+        await writeFile(
+          path.join(root, 'routes/__root.tsx'),
+          `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({})`,
+        )
+        await writeFile(file, before)
+        server = await startServer(root)
+        // The page loads: the route module first, then the modules it imports
+        await inspect(server, ids)
+
+        await writeFile(file, after)
+        server.environments.client.moduleGraph.onFileChange(file)
+        const outOfOrder = await inspect(server, [...ids.slice(1), route])
+        await server.close()
+
+        server = await startServer(root)
+        const expected = await inspect(server, ids)
+        for (const module of Object.values(expected)) {
+          expect(module.errors).toEqual([])
+        }
+        expect(outOfOrder).toEqual(expected)
+      } finally {
+        await server?.close()
+        await rm(root, { recursive: true, force: true })
+      }
+    },
+    30_000,
+  )
 })
 
 describe('route HMR plugin without code splitting', () => {
