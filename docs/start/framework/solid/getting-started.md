@@ -38,7 +38,6 @@ To use a different example, replace `start-basic` with one of the slugs below.
 
 #### Examples
 
-- [Bare](https://github.com/TanStack/router/tree/main/examples/solid/start-bare) (`start-bare`)
 - [Basic](https://github.com/TanStack/router/tree/main/examples/solid/start-basic) (`start-basic`)
 - [Basic Static](https://github.com/TanStack/router/tree/main/examples/solid/start-basic-static) (`start-basic-static`)
 - [Counter](https://github.com/TanStack/router/tree/main/examples/solid/start-counter) (`start-counter`)
