@@ -170,6 +170,27 @@ export const both = [foo, __tss_deny_0]`,
     expect(out).toContain(`const foo = ${mockVar}.foo`)
   })
 
+  // Regression in the Yuku migration: the JSX pragma that follows a directive
+  // is printed with the denied import it precedes, so the rewrite drops it and
+  // the module compiles its JSX with the default runtime. In dev, the rewrite
+  // runs before JSX plugins that come later in the plugin list, such as
+  // @vitejs/plugin-vue-jsx, which reads `@jsx` from any comment.
+  // Source: crlf differential run (main kept the comment after the directive).
+  test('keeps a JSX pragma that follows a directive in effect', async () => {
+    const result = rewriteDeniedImports(
+      `'use client'
+/** @jsxImportSource preact */
+import { foo } from './secret.server'
+export const Page = () => <div>{foo}</div>`,
+      '/test.tsx',
+      new Set(['./secret.server']),
+    )
+    const { code } = await transformWithOxc(result!.code, 'module.tsx', {
+      jsx: { runtime: 'automatic', importSource: 'react' },
+    })
+    expect(code).toContain('preact/jsx-runtime')
+  })
+
   test('returns a source map', () => {
     const result = rewriteDeniedImports(
       `import { foo } from './secret.server';`,

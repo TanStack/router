@@ -114,6 +114,34 @@ class Widget {
 }`,
       declared: ['plugin', 'Widget'],
     },
+    {
+      // Regression in the Yuku migration, same cause: deleting the declaration
+      // also deletes the ReferenceError its initializer threw when the route
+      // module loaded (`later` is read before its declaration).
+      name: 'a declaration only an unused local inside it reads, whose initializer reads a let before its declaration',
+      setup: `const plugin = {
+  id: later,
+  describe() {
+    const self = plugin
+    return 'plugin'
+  },
+}
+let later = 1`,
+      declared: ['plugin', 'later'],
+    },
+    {
+      // Regression in the Yuku migration, same cause: an uncalled function that
+      // reads itself through an unused local is deleted, and then the
+      // declaration only it read, with its register() call.
+      name: 'a declaration only an uncalled function reads, the function reading itself through a local',
+      setup: `import { register } from './registry'
+const effect = register('effect')
+function helper() {
+  const self = helper
+  return effect
+}`,
+      declared: ['effect'],
+    },
   ])(
     'keeps $name that nothing used before splitting',
     async ({ setup, component = '<div />', declared }) => {

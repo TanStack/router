@@ -68,6 +68,47 @@ class Widget {
 }
 export const fn = createServerFn().handler(async () => 1)`,
   },
+  {
+    // Regression in the Yuku migration, same cause: the destructuring runs the
+    // getter, and the client output drops it with the register() call.
+    name: 'a destructuring only an unused local inside it reads',
+    sideEffect: "register('getter')",
+    declared: [],
+    code: `import { createServerFn } from '@tanstack/react-start'
+import { register } from './registry'
+const { plugin } = {
+  get plugin() {
+    register('getter')
+    return {
+      describe() {
+        const self = plugin
+        return 'plugin'
+      },
+    }
+  },
+}
+export const fn = createServerFn().handler(async () => 1)`,
+  },
+  {
+    // Regression in the Yuku migration, same cause inside a function body: an
+    // uncalled nested function that reads itself through an unused local is
+    // deleted, and then the statement only it read, with its register() call,
+    // which ran on every call of Page.
+    name: 'a statement in a function body that only an uncalled nested function reads',
+    sideEffect: "register('nested-effect')",
+    declared: ['effect'],
+    code: `import { createServerFn } from '@tanstack/react-start'
+import { register } from './registry'
+export function Page() {
+  function describe() {
+    const self = describe
+    return effect
+  }
+  const effect = register('nested-effect')
+  return 'page'
+}
+export const fn = createServerFn().handler(async () => 1)`,
+  },
 ])('keeps $name', async ({ code, sideEffect, declared }) => {
   const client = await compileCode('client', code)
   expect(client).toContain(sideEffect)
