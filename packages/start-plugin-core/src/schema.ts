@@ -41,9 +41,9 @@ const importProtectionOptionsSchema = z
      */
     mockAccess: z.enum(['error', 'warn', 'off']).optional(),
     onViolation: z
-      .custom<
-        (violation: unknown) => boolean | void | Promise<boolean | void>
-      >((value) => typeof value === 'function')
+      .custom<(violation: unknown) => boolean | void | Promise<boolean | void>>(
+        (value) => typeof value === 'function',
+      )
       .optional(),
     include: z.array(patternSchema).optional(),
     exclude: z.array(patternSchema).optional(),
@@ -203,24 +203,6 @@ const pageSchema = pageBaseSchema.extend({
   prerender: pagePrerenderOptionsSchema.optional(),
 })
 
-const requestMetadataCarrierSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('header'), name: z.string().min(1) }),
-  z.object({ type: z.literal('query'), name: z.string().min(1) }),
-])
-
-const deploymentMetadataOptionsSchema = z.object({
-  value: z.union([
-    z.string().min(1),
-    z.custom<() => string | Promise<string>>(
-      (value) => typeof value === 'function',
-    ),
-  ]),
-  carriers: z.array(requestMetadataCarrierSchema).min(1),
-})
-export type DeploymentMetadataOptions = z.infer<
-  typeof deploymentMetadataOptionsSchema
->
-
 export const tanstackStartOptionsObjectSchema = z.object({
   srcDirectory: z.string().optional().default('src'),
   start: z
@@ -290,9 +272,9 @@ export const tanstackStartOptionsObjectSchema = z.object({
       enabled: z.boolean().optional(),
       concurrency: z.number().optional(),
       filter: z
-        .custom<
-          (page: z.infer<typeof pageSchema>) => unknown
-        >((value) => typeof value === 'function')
+        .custom<(page: z.infer<typeof pageSchema>) => unknown>(
+          (value) => typeof value === 'function',
+        )
         .optional(),
       failOnError: z.boolean().optional(),
       autoStaticPathsDiscovery: z.boolean().optional(),
@@ -314,7 +296,6 @@ export const tanstackStartOptionsObjectSchema = z.object({
     .prefault({}),
   spa: spaSchema.optional(),
   importProtection: importProtectionOptionsSchema,
-  deploymentMetadata: deploymentMetadataOptionsSchema.optional(),
 })
 
 export const tanstackStartOptionsSchema = tanstackStartOptionsObjectSchema
