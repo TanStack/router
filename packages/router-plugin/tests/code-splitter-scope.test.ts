@@ -228,6 +228,38 @@ export const Route = createFileRoute('/')({
     expect(sharedBindings).toEqual(['kind'])
     await expectValidModules(modules)
   })
+
+  it('neither do declarations in helpers that move into the chunk, named like a shared binding', async () => {
+    const { modules, sharedBindings } =
+      compileRouteModules(`${head}import { createStore } from './store'
+const store = createStore()
+function readVar() {
+  const store = 'var,'
+  return store
+}
+function readFunction() {
+  function store() { return 'function,' }
+  return store()
+}
+function readClass() {
+  class store { static value = 'class,' }
+  return store.value
+}
+function readEnum() {
+  enum store { Value = 'enum,' }
+  return store.Value
+}
+export const Route = createFileRoute('/')({
+  loader: () => store.get(),
+  component: () => <p>{readVar()}{readFunction()}{readClass()}{readEnum()}{store.get()}</p>,
+})
+`)
+    expect(sharedBindings).toEqual(['store'])
+    const chunk = await evaluateModule(modules['virtual component']!, {
+      'route.tsx?tsr-shared=1': { store: { get: () => 'shared' } },
+    })
+    expect(chunk.component!()).toBe('<p>var,function,class,enum,shared</p>')
+  })
 })
 
 describe('imports read in nested positions follow the code that reads them', () => {

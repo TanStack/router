@@ -176,6 +176,22 @@ export default ${declaration}
     },
   )
 
+  it('stay exported through an export list when the route module imports shared bindings', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { createStore } from './store'
+const store = createStore()
+const Route = createFileRoute('/')({
+  loader: () => store.get(),
+  component: () => <p>{store.get()}</p>,
+})
+const title = 'title'
+export { Route, title }
+`)
+    expect(Object.keys(modules)).toContain('shared')
+    expect(exportedNames(modules.reference!)).toEqual(['Route', 'title'])
+    await expectValidModules(modules)
+  })
+
   // Source: Next.js ssg/getStaticProps/issue-31855 and multi-declarator-export
   it('are imported by the chunk when declared in one statement', async () => {
     const { modules } = compileRouteModules(`${head}export const a = 1,
