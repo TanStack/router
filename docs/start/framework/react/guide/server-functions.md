@@ -255,6 +255,48 @@ export const looseOutputServerFn = createServerFn({
 > [!WARNING]
 > `strict: false` only relaxes TypeScript's serialization checks. Values still need to be handled correctly by the runtime serialization layer when they are sent between the client and server. Prefer the default `strict: true` unless you know why the default serializability rules are too restrictive for a specific server function.
 
+## Custom Serialization Adapters
+
+TanStack Start uses registered serialization adapters both when hydrating server-rendered data on the client and when serializing server-function inputs, outputs, and errors.
+
+Create an adapter in a module that is available in both client and server environments:
+
+```tsx
+// src/serialization.ts
+import { createSerializationAdapter } from '@tanstack/react-router'
+
+export class Money {
+  constructor(
+    public readonly amount: bigint,
+    public readonly currency: string,
+  ) {}
+}
+
+export const moneyAdapter = createSerializationAdapter({
+  key: 'money',
+  test: (value): value is Money => value instanceof Money,
+  toSerializable: (money) => ({
+    amount: money.amount,
+    currency: money.currency,
+  }),
+  fromSerializable: ({ amount, currency }) => new Money(amount, currency),
+})
+```
+
+Register the adapter in `src/start.ts`:
+
+```tsx
+// src/start.ts
+import { createStart } from '@tanstack/react-start'
+import { moneyAdapter } from './serialization'
+
+export const startInstance = createStart(() => ({
+  serializationAdapters: [moneyAdapter],
+}))
+```
+
+The `key` uniquely identifies the adapter. The `test` function identifies values handled by the adapter. `toSerializable` converts the value to supported data, while `fromSerializable` reconstructs the original type.
+
 ## Error Handling & Redirects
 
 Server functions can throw errors, redirects, and not-found responses that are handled automatically when called from route lifecycles or components using `useServerFn()`.
