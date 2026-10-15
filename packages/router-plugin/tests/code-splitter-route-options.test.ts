@@ -10,7 +10,7 @@ import {
 
 describe('route options', () => {
   it('are split when declared in a variable', async () => {
-    const { modules } =
+    const { modules, ids } =
       compileRouteModules(`${head}import { fetchPosts } from './api'
 function Posts() {
   return <ul>{Route.useLoaderData().length}</ul>
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/posts')(options)
     const chunk = modules['virtual component']!
     expect(chunk).toMatch(declarationOf('Posts'))
     // The split component reads the Route singleton from the reference module
-    expect(importedNames(chunk, 'route.tsx')).toEqual(['Route'])
+    expect(importedNames(chunk, ids.reference!)).toEqual(['Route'])
     expect(importSources(chunk)).not.toContain('./api')
     await expectValidModules(modules)
   })

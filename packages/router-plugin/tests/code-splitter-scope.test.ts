@@ -232,7 +232,7 @@ export const Route = createFileRoute('/')({
   })
 
   it('neither do declarations in helpers that move into the chunk, named like a shared binding', async () => {
-    const { modules, sharedBindings } =
+    const { modules, ids, sharedBindings } =
       compileRouteModules(`${head}import { createStore } from './store'
 const store = createStore()
 function readVar() {
@@ -258,7 +258,7 @@ export const Route = createFileRoute('/')({
 `)
     expect(sharedBindings).toEqual(['store'])
     const chunk = await evaluateModule(modules['virtual component']!, {
-      'route.tsx?tsr-shared=1': { store: { get: () => 'shared' } },
+      [ids.shared!]: { store: { get: () => 'shared' } },
     })
     expect(chunk.component!()).toBe('<p>var,function,class,enum,shared</p>')
   })
@@ -394,7 +394,7 @@ describe('plain TypeScript route files', () => {
   // Source: TanStack/router#7341. In a `.ts` file, `<T>value` is a type
   // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
   it('keeps angle-bracket type assertions in every module', async () => {
-    const { modules } = compileRouteModules(
+    const { modules, ids } = compileRouteModules(
       `${head}const identity = <T>(value: T) => value
 export const Route = createFileRoute('/')({
   loader: () => <number>identity(<unknown>1),
@@ -411,7 +411,7 @@ export const Route = createFileRoute('/')({
     const shared = await evaluateModule(await erase(modules.shared!))
     const chunk = await evaluateModule(
       await erase(modules['virtual component']!),
-      { 'route.ts?tsr-shared=1': shared },
+      { [ids.shared!]: shared },
     )
     expect(chunk.component!()).toBe('page')
   })

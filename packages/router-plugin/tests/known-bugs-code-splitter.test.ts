@@ -12,70 +12,8 @@ import {
   expectValidModules,
   head,
   importSources,
+  loadRoute,
 } from './regression-helpers'
-
-type Stubs = Record<string, Record<string, unknown>>
-
-/**
- * The exports of an emitted module, as another emitted module imports them:
- * importing a name the module does not export throws, as in a bundler.
- */
-function linkable(specifier: string, exports: Record<string, unknown>) {
-  return new Proxy(exports, {
-    get(target, name) {
-      if (typeof name === 'string' && !(name in target)) {
-        throw new Error(`"${name}" is not exported by "${specifier}"`)
-      }
-      return Reflect.get(target, name)
-    },
-  })
-}
-
-/**
- * Compiles a route file, then evaluates the modules the code splitter emits,
- * linked by import specifier: the shared module, the reference module, then
- * every split chunk the reference module imports, as once all chunks have
- * loaded. `stubs` provides the route's other imports; `beforeChunksLoad` runs
- * once the route module has loaded. Returns the modules, the route options
- * and the exports of each chunk by split name.
- */
-async function loadRouteModules(
-  code: string,
-  stubs: Stubs = {},
-  beforeChunksLoad?: () => void,
-) {
-  const { modules } = compileRouteModules(code)
-  const linked: Stubs = {
-    ...stubs,
-    '@tanstack/react-router': {
-      createFileRoute: () => (options: unknown) => ({ options }),
-      lazyRouteComponent: () => () => null,
-    },
-  }
-  for (const [name, specifier] of [
-    ['shared', 'route.tsx?tsr-shared=1'],
-    ['reference', 'route.tsx'],
-  ] as const) {
-    if (modules[name]) {
-      linked[specifier] = linkable(
-        specifier,
-        await evaluateModule(modules[name], linked),
-      )
-    }
-  }
-  beforeChunksLoad?.()
-  const chunks: Record<string, Record<string, any>> = {}
-  for (const [, split] of modules.reference!.matchAll(
-    /\?tsr-split=([\w-]+)/g,
-  )) {
-    chunks[split!] ??= await evaluateModule(
-      modules[`virtual ${split}`]!,
-      linked,
-    )
-  }
-  const { Route } = linked['route.tsx'] as { Route: { options: any } }
-  return { modules, options: Route.options, chunks }
-}
 
 /** Stubs `./state`, counting the calls of `init` and `register`. */
 function stateStub() {
@@ -94,12 +32,11 @@ function stateStub() {
 }
 
 describe('module state shared with split chunks', () => {
-  // Control for loadRouteModules: a top-level const read by the loader and
-  // the split component moves to the shared module and is initialized once.
+  // Control for loadRoute: a top-level const read by the loader and the split
+  // component moves to the shared module and is initialized once.
   test('a const read by the loader and the split component is initialized once', async () => {
     const state = stateStub()
-    let callsBeforeChunks: number | undefined
-    const { options, chunks } = await loadRouteModules(
+    const route = await loadRoute(
       `${head}import { init } from './state'
 const value = init(1)
 export const Route = createFileRoute('/')({
@@ -107,15 +44,14 @@ export const Route = createFileRoute('/')({
   component: () => <p>{value}</p>,
   errorComponent: () => <p>error</p>,
 })`,
-      { './state': state },
-      () => {
-        callsBeforeChunks = state.calls
-      },
+      { stubs: { './state': state } },
     )
+    // The route module has loaded; the split chunks load on demand.
+    const callsBeforeChunks = state.calls
     expect([
-      options.loader(),
-      chunks.component!.component(),
-      chunks.errorComponent!.errorComponent(),
+      route.options.loader(),
+      (await route.load('component'))(),
+      (await route.load('errorComponent'))(),
       callsBeforeChunks,
       state.calls,
     ]).toEqual([1, '<p>1</p>', '<p>error</p>', 1, 1])
@@ -174,18 +110,18 @@ const read = () => Value.one`,
     'a binding declared by $name and read by the loader and the split component is initialized once',
     async ({ declaration, read = 'read()' }) => {
       const state = stateStub()
-      const { options, chunks } = await loadRouteModules(
+      const route = await loadRoute(
         `${head}import { init } from './state'
 ${declaration}
 export const Route = createFileRoute('/')({
   loader: () => ${read},
   component: () => <p>{${read}}</p>,
 })`,
-        { './state': state },
+        { stubs: { './state': state } },
       )
       expect([
-        options.loader(),
-        chunks.component!.component(),
+        route.options.loader(),
+        (await route.load('component'))(),
         state.calls,
       ]).toEqual([1, '<p>1</p>', 1])
     },
@@ -280,17 +216,18 @@ Page.displayName = 'PageDisplay'`,
     'top-level writes to $name stay with the binding they write',
     async ({ setup, loader, component, expected, inits = 0, split }) => {
       const state = stateStub()
-      const { modules, options, chunks } = await loadRouteModules(
+      const route = await loadRoute(
         `${head}${setup}
 export const Route = createFileRoute('/')({
   loader: () => ${loader},
   component: ${component},
 })`,
-        { './state': state },
+        { stubs: { './state': state } },
       )
+      const { modules } = route
       expect([
-        options.loader(),
-        chunks.component!.component(),
+        route.options.loader(),
+        (await route.load('component'))(),
         state.calls,
       ]).toEqual([...expected, inits])
       if (split) {
@@ -354,15 +291,18 @@ const key = 'staticData'`,
     'module state that the reference module keeps for $name is initialized once',
     async ({ declaration, options = '', render, html }) => {
       const state = stateStub()
-      const { chunks } = await loadRouteModules(
+      const route = await loadRoute(
         `${head}import { init, register } from './state'
 ${declaration}
 export const Route = createFileRoute('/')({
 ${options}  component: () => <p>${render}</p>,
 })`,
-        { './state': state },
+        { stubs: { './state': state } },
       )
-      expect([chunks.component!.component(), state.calls]).toEqual([html, 1])
+      expect([(await route.load('component'))(), state.calls]).toEqual([
+        html,
+        1,
+      ])
     },
   )
 
@@ -410,8 +350,7 @@ const b = () => a`,
     'an unreferenced top-level side effect ($name) runs once, with the route module',
     async ({ effect }) => {
       let calls = 0
-      let callsBeforeChunks: number | undefined
-      const { chunks } = await loadRouteModules(
+      const route = await loadRoute(
         `${head}import { subscribe, track } from './effects'
 ${effect}
 export const Route = createFileRoute('/')({
@@ -419,24 +358,30 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <p>error</p>,
 })`,
         {
-          './effects': {
-            track: () => calls++,
-            subscribe: (listener: () => void) => {
-              calls++
-              return listener
+          stubs: {
+            './effects': {
+              track: () => calls++,
+              subscribe: (listener: () => void) => {
+                calls++
+                return listener
+              },
             },
           },
         },
-        () => {
-          callsBeforeChunks = calls
-        },
       )
+      const callsBeforeChunks = calls
+      const loaded: Array<string> = []
+      for (const option of ['component', 'errorComponent']) {
+        if (typeof (await route.load(option)) === 'function') {
+          loaded.push(option)
+        }
+      }
       // Both chunks loaded, and the effect ran once, with the route module.
-      expect([
-        Object.keys(chunks).sort().join(),
-        callsBeforeChunks,
-        calls,
-      ]).toEqual(['component,errorComponent', 1, 1])
+      expect([loaded.join(), callsBeforeChunks, calls]).toEqual([
+        'component,errorComponent',
+        1,
+        1,
+      ])
     },
   )
 
@@ -495,10 +440,10 @@ export const Route = createFileRoute('/')({ component: APP_VERSION })`,
     async ({ global, route, expected }) => {
       vi.stubGlobal('APP_VERSION', global)
       try {
-        const { options, chunks } = await loadRouteModules(route)
+        const loaded = await loadRoute(route)
         expect([
-          ...(options.loader ? [options.loader()] : []),
-          chunks.component!.component!(),
+          ...(loaded.options.loader ? [loaded.options.loader()] : []),
+          (await loaded.load('component'))(),
         ]).toEqual(expected)
       } finally {
         vi.unstubAllGlobals()
@@ -577,14 +522,14 @@ export async function load() {
 
 describe('route options read from the environment', () => {
   /**
-   * The component the route renders: the route option itself, or the export
-   * of the chunk the option was split into.
+   * The component the route renders: the route option itself, or what the
+   * lazy option loads when it was split.
    */
-  async function routeComponent(code: string, stubs: Stubs = {}) {
-    const { modules, options, chunks } = await loadRouteModules(code, stubs)
-    return /\?tsr-split=component\b/.test(modules.reference!)
-      ? chunks.component?.component
-      : options.component
+  async function routeComponent(
+    code: string,
+    stubs: Record<string, Record<string, unknown>> = {},
+  ) {
+    return (await loadRoute(code, { stubs })).load('component')
   }
 
   // Control for the pins below (same harness).
@@ -657,14 +602,14 @@ import { jsx } from '@emotion/react'
   test.fails(
     'a split component renders through the factory of a classic JSX pragma',
     async () => {
-      const { chunks } = await loadRouteModules(
+      const route = await loadRoute(
         `${pragma}${head}export const Route = createFileRoute('/')({
   component: () => <div>page</div>,
   errorComponent: () => jsx('b', null, 'error'),
 })`,
-        { '@emotion/react': emotion },
+        { stubs: { '@emotion/react': emotion } },
       )
-      expect(chunks.component!.component()).toBe(
+      expect((await route.load('component'))()).toBe(
         '<emotion:div>page</emotion:div>',
       )
     },
@@ -681,7 +626,7 @@ import { jsx } from '@emotion/react'
     'a factory the route module creates and the loader reads is created once for the split component',
     async () => {
       let creations = 0
-      const { options, chunks } = await loadRouteModules(
+      const route = await loadRoute(
         `/** @jsxRuntime classic */
 /** @jsx jsx */
 ${head}import { createJsx } from './jsx'
@@ -691,17 +636,19 @@ export const Route = createFileRoute('/')({
   component: () => <div>page</div>,
 })`,
         {
-          './jsx': {
-            createJsx: () => {
-              creations++
-              return emotion.jsx
+          stubs: {
+            './jsx': {
+              createJsx: () => {
+                creations++
+                return emotion.jsx
+              },
             },
           },
         },
       )
       expect([
-        options.loader(),
-        chunks.component!.component(),
+        route.options.loader(),
+        (await route.load('component'))(),
         creations,
       ]).toEqual([
         '<emotion:span></emotion:span>',
@@ -722,16 +669,16 @@ describe('exported bindings', () => {
   // entry chunk.
   test.fails(
     'an exported component that is the only split candidate is split or reported as not code-split',
-    () => {
+    async () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       try {
-        const { modules } = compileRouteModules(`${head}export function Page() {
+        const route = await loadRoute(`${head}export function Page() {
   return <p>page</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
 `)
         expect({
-          split: /\?tsr-split=component\b/.test(modules.reference!),
+          split: route.isLazy('component'),
           warned: warn.mock.calls.some(([message]) =>
             String(message).includes('will not be code-split'),
           ),

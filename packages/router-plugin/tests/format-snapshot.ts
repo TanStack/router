@@ -8,7 +8,7 @@ import type { ParserOptions } from 'prettier'
  * code generator (object wrapping, blank lines, parentheses around JSX, ...).
  *
  * Comments are kept: they are part of the output. Output that does not parse
- * is returned unchanged.
+ * fails the test: it would be invalid code, not a snapshot.
  */
 export async function formatSnapshot(code: string, filepath: string) {
   try {
@@ -22,8 +22,11 @@ export async function formatSnapshot(code: string, filepath: string) {
       // over several lines.
       objectWrap: 'collapse',
     })
-  } catch {
-    return code
+  } catch (error) {
+    throw new Error(
+      `Cannot format the output for ${filepath}, it does not parse: ${(error as Error).message}\n\n${code}`,
+      { cause: error },
+    )
   }
 }
 

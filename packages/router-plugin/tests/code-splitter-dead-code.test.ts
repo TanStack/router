@@ -7,16 +7,21 @@ import {
   head,
   importSources,
   importedNames,
+  loadRoute,
+  routeModuleSources,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
-const sharedModule = 'route.tsx?tsr-shared=1'
-
-/** Whether a module declares `name` or imports it from the shared module. */
+/**
+ * Whether a module declares `name` or imports it from another module the
+ * code splitter emits for the route.
+ */
 function binds(module: string, name: string) {
   return (
     declarationOf(name).test(module) ||
-    importedNames(module, sharedModule).includes(name)
+    routeModuleSources(module).some((source) =>
+      importedNames(module, source).includes(name),
+    )
   )
 }
 
@@ -34,26 +39,15 @@ function referenceModules(code: string) {
 }
 
 /**
- * Renders the split component the way an app loads it: the shared module (if
- * any) and the reference module run first, then the component chunk, all
- * linked to one instance of the shared module. A top-level statement may then
- * reach the component by moving into its chunk or by staying in the
- * reference module and writing to a shared binding.
+ * Renders the split component the way an app loads it: the route module (and
+ * what it imports) runs first, then the component loads lazily, every module
+ * linked to the others. A top-level statement may then reach the component
+ * by moving into its chunk or by staying in the route module and writing to
+ * a shared binding.
  */
-async function renderSplitComponent(modules: Record<string, string>) {
-  const stubs: Record<string, Record<string, unknown>> = {}
-  if (modules.shared) {
-    stubs[sharedModule] = await evaluateModule(modules.shared)
-  }
-  await evaluateModule(modules.reference!, {
-    ...stubs,
-    '@tanstack/react-router': {
-      createFileRoute: () => (options: unknown) => ({ options }),
-      lazyRouteComponent: () => () => null,
-    },
-  })
-  const chunk = await evaluateModule(modules['virtual component']!, stubs)
-  return chunk.component!()
+async function renderSplitComponent(code: string) {
+  const route = await loadRoute(code)
+  return (await route.load('component'))()
 }
 
 describe('the reference module only drops code that splitting left unused', () => {
@@ -254,13 +248,14 @@ registry.set('a', 'A')`,
   ])(
     'renders a split component that relies on $name',
     async ({ setup, render, rendered }) => {
-      const { modules } = compileRouteModules(`${head}${setup}
+      const code = `${head}${setup}
 export const Route = createFileRoute('/')({
   component: () => ${render},
 })
-`)
+`
+      const { modules } = compileRouteModules(code)
       await expectValidModules(modules)
-      expect(await renderSplitComponent(modules)).toBe(rendered)
+      expect(await renderSplitComponent(code)).toBe(rendered)
     },
   )
 
@@ -326,7 +321,7 @@ export const Route = createFileRoute('/')({
 
   // Source: React Router remove-exports-test.ts "iife with dependencies"
   it('moves a component created by an IIFE with its dependencies and shares the helper the loader uses too', async () => {
-    const { modules, sharedBindings } =
+    const { modules, ids, sharedBindings } =
       compileRouteModules(`${head}import { removedLib } from 'removed-lib'
 import { keptLib } from 'kept-lib'
 import { sharedLib } from 'shared-lib'
@@ -343,16 +338,13 @@ export const Route = createFileRoute('/')({
 })
 `)
     expect(sharedBindings).toEqual(['sharedUtil'])
-    expect(importSources(modules.reference!)).toEqual([
-      '@tanstack/react-router',
-      'kept-lib',
-      'route.tsx?tsr-shared=1',
-    ])
+    expect(importSources(modules.reference!)).toEqual(
+      ['@tanstack/react-router', 'kept-lib', ids.shared!].sort(),
+    )
     expect(modules.reference).not.toContain('removedUtil')
-    expect(importSources(modules['virtual component']!)).toEqual([
-      'removed-lib',
-      'route.tsx?tsr-shared=1',
-    ])
+    expect(importSources(modules['virtual component']!)).toEqual(
+      ['removed-lib', ids.shared!].sort(),
+    )
     expect(modules['virtual component']).toMatch(declarationOf('Page'))
     expect(importSources(modules.shared!)).toEqual(['shared-lib'])
     await expectValidModules(modules)
@@ -399,7 +391,7 @@ export const Route = createFileRoute('/')({
   // Source: React Router route-chunks-test.ts "exported variable declarations
   // sharing an export statement"
   it('shares a declarator that a sibling declarator reads', async () => {
-    const { modules, sharedBindings } =
+    const { modules, ids, sharedBindings } =
       compileRouteModules(`${head}import { sharedMessage } from './messages'
 const Page = () => <div>{sharedMessage}</div>,
   Preview = Page
@@ -411,7 +403,7 @@ export const Route = createFileRoute('/')({
     expect(sharedBindings).toEqual(['Page'])
     expect(modules.shared).toMatch(declarationOf('Page'))
     expect(modules.reference).toMatch(declarationOf('Preview'))
-    expect(importedNames(modules.reference!, sharedModule)).toEqual(['Page'])
+    expect(importedNames(modules.reference!, ids.shared!)).toEqual(['Page'])
     expect(modules.reference).not.toMatch(declarationOf('Page'))
     expect(modules['virtual component']).not.toMatch(declarationOf('Page'))
     await expectValidModules(modules)
