@@ -2,7 +2,11 @@
  * Known Start compiler bugs. Each test asserts correct behaviour for a bug on
  * main and is marked .fails; remove .fails when the bug is fixed.
  */
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { createServer } from 'vite'
 import { describe, expect, test } from 'vitest'
+import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import {
   compileAll,
   compileCode,
@@ -777,5 +781,107 @@ exports.run = function (app) {
         expect((await compile(code, id)) ?? code).toBe(code)
       }
     },
+  )
+})
+
+describe('Vite dev server', () => {
+  /**
+   * Starts a Vite dev server (middleware mode, empty dependency cache) on a
+   * temporary project with the Start compiler, `src/fn.ts` = `code` and
+   * `files`, and returns the client transform of `src/fn.ts`, or `'timeout'`
+   * when it has not finished after 15 s. Start packages are stubbed.
+   */
+  async function transformClientModule(
+    code: string,
+    files: Record<string, string> = {},
+  ) {
+    // Keep the temporary project inside the package so dependencies resolve.
+    const root = await mkdtemp(path.join(__dirname, '.dev-transform-'))
+    let server: Awaited<ReturnType<typeof createServer>> | undefined
+    try {
+      await mkdir(path.join(root, 'src'))
+      for (const [file, content] of Object.entries({
+        'fn.ts': code,
+        ...files,
+      })) {
+        await writeFile(path.join(root, 'src', file), content)
+      }
+      server = await createServer({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        cacheDir: path.join(root, '.vite'),
+        appType: 'custom',
+        server: { middlewareMode: true, hmr: false, ws: false, watch: null },
+        plugins: [
+          {
+            name: 'stub-start-packages',
+            resolveId: (id) =>
+              id.startsWith('@tanstack/react-start') ? `\0${id}` : null,
+            load: (id) =>
+              id.startsWith('\0@tanstack/react-start')
+                ? `export const createServerFn = () => ({ handler: (fn) => fn })
+export const createClientRpc = (id) => id`
+                : null,
+          },
+          startCompilerPlugin({
+            framework: 'react',
+            environments: [
+              { name: 'client', type: 'client' },
+              { name: 'ssr', type: 'server' },
+            ],
+            providerEnvName: 'ssr',
+          }),
+        ],
+      })
+      const transformed = server.environments.client
+        .transformRequest('/src/fn.ts')
+        .then((result) => result?.code ?? null)
+      return await Promise.race([
+        transformed,
+        new Promise<'timeout'>((resolve) =>
+          setTimeout(() => resolve('timeout'), 15_000),
+        ),
+      ])
+    } finally {
+      await Promise.race([
+        server?.close(),
+        new Promise((resolve) => setTimeout(resolve, 3_000)),
+      ])
+      await rm(root, { recursive: true, force: true })
+    }
+  }
+
+  // Control for the pin below (same harness).
+  test('transforms a client module with a server fn and a top-level call of a project function', async () => {
+    const code = await transformClientModule(
+      `${head}import { define } from './define'
+export const schema = define()
+export const fn = createServerFn().handler(() => 1)`,
+      { 'define.ts': `export const define = () => ({})` },
+    )
+    expect(code).toContain('createClientRpc')
+  }, 30_000)
+
+  // Bug: next to a server fn, a top-level `const x = f()` may be a renamed or
+  // re-exported Start factory, so in dev the client compiler loads the module
+  // of `f` through the client environment, from inside the transform. For a
+  // pre-bundled dependency (here `zod`) with an empty dependency cache, that
+  // load waits for the dependency optimizer, which waits for this transform.
+  // Impact: with an empty dependency cache, such a module (a `z.object()`
+  // schema next to a server fn) never finishes transforming when it is
+  // requested as the dev server starts (`server.warmup`, the first request
+  // of a middleware-mode server, or `transformRequest()`), and the page hangs.
+  test.fails(
+    'transforms a client module with a server fn and a top-level call of a pre-bundled dependency',
+    async () => {
+      const code = await transformClientModule(
+        `${head}import { z } from 'zod'
+export const schema = z.object({})
+export const fn = createServerFn().handler(() => 1)`,
+      )
+      expect(code).toContain('createClientRpc')
+    },
+    30_000,
   )
 })

@@ -349,10 +349,15 @@ describe('route updates', () => {
    * its `Route` with a stub router (`window.__TSR_ROUTER__`), and loads it
    * again with the same hot data (Vite: the first module's accept callback
    * receives the new module; webpack: the module re-runs with the data its
-   * dispose handlers wrote). Returns whether the live route now has the
-   * options of the new module.
+   * dispose handlers wrote). Returns whether the update reaches the page:
+   * the live route now has the new module's `option`, or the module asked
+   * the bundler for a full reload (`hot.invalidate()`).
    */
-  async function hotUpdate(code: string, style: 'vite' | 'webpack') {
+  async function hotUpdate(
+    code: string,
+    style: 'vite' | 'webpack',
+    option = 'loader',
+  ) {
     const compiled = transformWithRouteHmrPlugin(code, {
       target: 'react',
       plugin: { hmr: { style } },
@@ -366,6 +371,7 @@ describe('route updates', () => {
       resolvePathCache: { clear: () => {} },
     }
     let data: Record<string, unknown> = {}
+    let invalidated = false
     let accepted: Array<(module: unknown) => void> = []
     const disposers: Array<(data: Record<string, unknown>) => void> = []
     const load = () =>
@@ -384,11 +390,15 @@ ${compiled.replace(/import\.meta\.(?:webpackHot|hot)\b/g, '__hot')}`,
               dispose: (callback: (data: Record<string, unknown>) => void) => {
                 disposers.push(callback)
               },
+              invalidate: () => {
+                invalidated = true
+              },
             },
           },
           '@tanstack/react-router': {
             createFileRoute: () => (options: Record<string, unknown>) => {
-              created.push(options)
+              // A copy: the HMR code writes kept options into the new ones.
+              created.push({ ...options })
               return { options, update: () => {} }
             },
             lazyRouteComponent: () => () => null,
@@ -410,7 +420,10 @@ ${compiled.replace(/import\.meta\.(?:webpackHot|hot)\b/g, '__hot')}`,
       accepted = []
       const second = await load()
       firstAccepted.forEach((accept) => accept(second))
-      return router.routesById['/'].options.loader === created[1]!.loader
+      return (
+        invalidated ||
+        router.routesById['/'].options[option] === created[1]![option]
+      )
     } finally {
       vi.unstubAllGlobals()
     }
@@ -473,6 +486,30 @@ export const Route = createFileRoute('/')({
   },
 })`,
           style,
+        ),
+      ).toBe(true)
+    },
+  )
+
+  // Bug: `handleRouteUpdate` keeps the previous component options for React
+  // Refresh to patch in place, also when no React Refresh runtime is installed
+  // (webpack or Rspack without a refresh plugin, like the webpack quickstart
+  // example with the default `addHmr`), so the new component never renders.
+  // With automatic code splitting, the kept component is the old chunk's.
+  // Impact: webpack reports the route (and its split chunk) as hot-updated,
+  // but the page shows the old component until a reload; without the route
+  // HMR code the same edit reloads the page.
+  test.fails(
+    'webpack: without React Refresh, a hot update renders the new component',
+    async () => {
+      expect(
+        await hotUpdate(
+          `${head}export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>page</p>,
+})`,
+          'webpack',
+          'component',
         ),
       ).toBe(true)
     },
