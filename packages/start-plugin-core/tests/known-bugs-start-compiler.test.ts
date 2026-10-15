@@ -16,6 +16,7 @@ import {
   serverOnlyError,
   settle,
 } from './regression-helpers'
+import { getModuleErrors } from './validate-module'
 import type { ModuleStub, Output } from './regression-helpers'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
@@ -687,6 +688,31 @@ export const Card = () => <div />`
       const client = (await compileCode('client', pragmaModule)) ?? pragmaModule
       const { Card } = await evaluateModule(client, pragmaStubs)
       expect(settle(() => Card())).toBe('h(div)')
+    },
+  )
+
+  // Bug: a type-only import re-exported without `type` (`export { Settings }`,
+  // which TypeScript accepts unless verbatimModuleSyntax is on) loses its
+  // import in the client and SSR outputs, which keep the export that the
+  // TypeScript transform can then no longer erase. The code splitter has the
+  // same bug (pin in router-plugin/tests/known-bugs-code-splitter.test.ts).
+  // Impact: the module fails to load ("Export 'Settings' is not defined").
+  test.fails.each([
+    `import type { Settings } from './settings'`,
+    `import { type Settings } from './settings'`,
+  ])(
+    'client and SSR: a type-only import re-exported as `export { Settings }` is erased (%s)',
+    async (importDeclaration) => {
+      const code = `${head}${importDeclaration}
+export { Settings }
+export const fn = createServerFn().handler(async () => 1)`
+      const errors: Record<string, Array<string>> = {}
+      for (const output of ['client', 'ssr'] as const) {
+        errors[output] = await getModuleErrors(
+          (await compileCode(output, code)) ?? code,
+        )
+      }
+      expect(errors).toEqual({ client: [], ssr: [] })
     },
   )
 })

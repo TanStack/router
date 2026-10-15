@@ -63,6 +63,44 @@ export const keep = 1`,
   expect(exports.ns).toBeDefined()
 })
 
+// Bug: rewriting a denied import to the mock drops the comments that lead
+// the import, such as a file's JSX pragma or legal comment.
+// Impact: in dev, a JSX plugin that runs after the rewrite (e.g.
+// @vitejs/plugin-vue-jsx listed after the Start plugin, which reads `@jsx`
+// from any comment) compiles the module with the default JSX runtime, and the
+// module loses its license comment.
+test.fails.each([
+  {
+    name: 'a JSX pragma',
+    comment: '/** @jsxImportSource preact */',
+    runtime: 'preact/jsx-runtime',
+  },
+  {
+    name: 'a legal comment',
+    comment: '/*! @license MIT */',
+    runtime: 'react/jsx-runtime',
+  },
+])(
+  '$name that leads a denied import stays in effect',
+  async ({ comment, runtime }) => {
+    const rewritten = rewriteDeniedImports(
+      `${comment}
+import { secret } from 'denied'
+export const Page = () => <div>{secret}</div>`,
+      '/test/module.tsx',
+      new Set(['denied']),
+      () => mockModule,
+    )
+    const { code } = await transformWithOxc(rewritten!.code, 'module.tsx', {
+      jsx: { runtime: 'automatic', importSource: 'react' },
+    })
+    expect([
+      rewritten!.code.includes(comment),
+      code.match(/from ["']([^"']+\/jsx-runtime)["']/)?.[1],
+    ]).toEqual([true, runtime])
+  },
+)
+
 // Bug: compiler-safe boundaries are recognized by the bare factory name
 // (`createServerFn().handler`, `createServerOnlyFn`), so the same calls through
 // a namespace import (`Start.createServerFn().handler`) are not safe.

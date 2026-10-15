@@ -9,6 +9,7 @@ import {
   compileRouteModules,
   declarationOf,
   evaluateModule,
+  expectValidModules,
   head,
   importSources,
 } from './regression-helpers'
@@ -822,6 +823,30 @@ export const Route = createFileRoute('/')({ component: Page })
       ).toEqual(['lazy'])
     },
     30_000,
+  )
+})
+
+describe('TypeScript-only syntax', () => {
+  // Bug: a type-only import re-exported without `type` (`export { Settings }`,
+  // which TypeScript accepts unless verbatimModuleSyntax is on) loses its
+  // import in the route module and the split chunks, which keep the export
+  // that the TypeScript transform can then no longer erase. The Start
+  // compiler has the same bug (pin in
+  // start-plugin-core/tests/known-bugs-start-compiler.test.ts).
+  // Impact: the route fails to load ("Export 'Settings' is not defined").
+  test.fails.each([
+    `import type { Settings } from './settings'`,
+    `import { type Settings } from './settings'`,
+  ])(
+    'a type-only import re-exported as `export { Settings }` is erased (%s)',
+    async (importDeclaration) => {
+      const { modules } = compileRouteModules(`${head}${importDeclaration}
+export { Settings }
+export const Route = createFileRoute('/')({
+  component: () => <p>index</p>,
+})`)
+      await expectValidModules(modules)
+    },
   )
 })
 
