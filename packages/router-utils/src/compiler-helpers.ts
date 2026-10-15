@@ -527,22 +527,31 @@ interface InitiallyUnused {
    * the JSX a classic runtime compiles with them) does.
    */
   erased: Set<Binding>
+  /**
+   * Bindings whose code can run: declarations that initialize when their
+   * enclosing code does, and the functions code that can run reads. An unused
+   * function, and what is declared inside it, cannot run.
+   */
+  runnable: Set<Binding>
 }
 
 /**
  * The bindings that survive in a traced program: the roots, the preserved
  * declarations wherever their enclosing code survives, and what surviving
- * code uses.
+ * code uses. `follows` filters the uses an output does not keep alive.
  */
 function survivingBindings(
   uses: BindingUses,
-  { preserved, erased }: InitiallyUnused,
+  { preserved, erased }: Pick<InitiallyUnused, 'preserved' | 'erased'>,
+  follows: (from: Binding, to: Binding) => boolean = () => true,
 ): Set<Binding> {
   const live = new Set(uses.roots)
   const dependencies = new Map<Binding, Set<Binding>>()
   for (const [from, targets] of uses.uses) {
     for (const to of targets) {
-      addEdge(dependencies, from, to)
+      if (follows(from, to)) {
+        addEdge(dependencies, from, to)
+      }
     }
   }
   for (const [binding, parents] of uses.parents) {
@@ -577,6 +586,17 @@ function survivingBindings(
   return expandTransitively(live, dependencies)
 }
 
+/** A declaration whose initialization runs no code of its own. */
+function isFunctionDeclaration(declaration: Node) {
+  if (is.VariableDeclarator(declaration)) {
+    const init = declaration.init && unwrap(declaration.init)
+    return is.ArrowFunctionExpression(init) || is.FunctionExpression(init)
+  }
+  return (
+    is.FunctionDeclaration(declaration) || is.TSDeclareFunction(declaration)
+  )
+}
+
 function initiallyUnused(
   module: Module,
   index: DeclarationIndex,
@@ -607,7 +627,49 @@ function initiallyUnused(
       preserved.add(binding)
     }
   }
-  return { preserved, erased }
+  const initializing = new Set<Binding>()
+  for (const [declaration, owners] of index.declarationBindings) {
+    if (!isFunctionDeclaration(declaration)) {
+      for (const binding of owners) {
+        initializing.add(binding)
+      }
+    }
+  }
+  const functions = new Set(
+    [...uses.present].filter((binding) => !initializing.has(binding)),
+  )
+  const nested = new Map<Binding, Set<Binding>>()
+  for (const [binding, parents] of uses.parents) {
+    for (const parent of parents) {
+      addEdge(nested, parent, binding)
+    }
+  }
+  const runnable = new Set(uses.roots)
+  for (const binding of uses.present) {
+    if (!uses.parents.has(binding) && !functions.has(binding)) {
+      runnable.add(binding)
+    }
+  }
+  for (const binding of runnable) {
+    for (const used of uses.uses.get(binding) ?? []) {
+      runnable.add(used)
+    }
+    for (const child of nested.get(binding) ?? []) {
+      if (!functions.has(child)) {
+        runnable.add(child)
+      }
+    }
+  }
+  return { preserved, erased, runnable }
+}
+
+export interface RemoveUnusedBindingsOptions {
+  /**
+   * Declarations that moved to another module, as split route options and
+   * what they read. Code that cannot run, such as an unused function, keeps a
+   * dangling reference to them rather than keeping them in this one.
+   */
+  moved?: Set<Binding>
 }
 
 /**
@@ -622,15 +684,25 @@ export function removeUnusedBindings(
   module: Module,
   program: Program,
   originalNodes: WeakMap<Node, Node>,
+  options: RemoveUnusedBindingsOptions = {},
 ): void {
   stripTypeExports(program)
   const index = declarationIndex(module, module.bindings)
   const factories = jsxFactoryNames(module)
-  const { preserved, erased } = initiallyUnused(module, index, factories)
+  const { preserved, erased, runnable } = initiallyUnused(
+    module,
+    index,
+    factories,
+  )
   const output = collectBindingUses(module, program, index, factories, (node) =>
     originalNodes.get(node),
   )
-  const retained = survivingBindings(output, { preserved, erased })
+  const { moved } = options
+  const retained = survivingBindings(
+    output,
+    { preserved, erased },
+    moved && ((from, to) => runnable.has(from) || !moved.has(to)),
+  )
   const removable = new Set(
     [...output.present].filter((binding) => !retained.has(binding)),
   )

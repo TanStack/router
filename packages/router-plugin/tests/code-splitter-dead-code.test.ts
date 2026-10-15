@@ -7,6 +7,7 @@ import {
   head,
   importSources,
   importedNames,
+  loadRouteModules,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
@@ -78,14 +79,17 @@ function restore() {
     {
       // Source: babel-dead-code-elimination dead-code-elimination.test.ts "only
       // eliminates newly unreferenced identifiers", "unexported circular references"
-      // and "SCC with external caller used -> all preserved"
+      // and "SCC with external caller used -> all preserved". The helper of
+      // the split component moves into its chunk: `unused` stays as written,
+      // with a dangling reference nothing can reach, since nothing calls it.
       name: 'unused functions, one calling a helper of the split component',
       setup: `function helper() { return 'helper' }
 function unused() { return helper() }
 function ping(): number { return pong() }
 function pong(): number { return ping() }`,
       component: '<p>{helper()}</p>',
-      declared: ['helper', 'unused', 'ping', 'pong'],
+      declared: ['unused', 'ping', 'pong'],
+      moved: ['helper'],
     },
     {
       // Regression in the Yuku migration: the only reads are an unused local
@@ -144,7 +148,7 @@ function helper() {
     },
   ])(
     'keeps $name that nothing used before splitting',
-    async ({ setup, component = '<div />', declared }) => {
+    async ({ setup, component = '<div />', declared, moved = [] }) => {
       const code = `${head}${setup}
 export const Route = createFileRoute('/')({ component: () => ${component} })
 `
@@ -155,10 +159,13 @@ export const Route = createFileRoute('/')({ component: () => ${component} })
         for (const name of declared) {
           expect(binds(reference, name), `${module} binds ${name}`).toBe(true)
         }
+        for (const name of moved) {
+          expect(binds(reference, name), `${module} binds ${name}`).toBe(false)
+        }
       }
       // Without code splitting, nothing moves.
       const unsplit = transformWithRouteHmrPlugin(code)
-      for (const name of declared) {
+      for (const name of [...declared, ...moved]) {
         expect(unsplit, `the route HMR output declares ${name}`).toMatch(
           declarationOf(name),
         )
@@ -398,24 +405,117 @@ export const Route = createFileRoute('/')({
 
   // Regression in the Yuku migration: an unused function that renders the
   // split component keeps the component and its imports in the route module,
-  // which defeats the split.
+  // which defeats the split. The unused function stays as written, with a
+  // dangling reference: nothing can call it.
   // Source: corpus-diff, Jp-K/DmCompanionAi frontend_old/src/routes/_layout/chat.tsx.
-  it('moves the split component and its imports into its chunk when an unused function renders it', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import { heavy } from './heavy'
-export const Route = createFileRoute('/')({
-  component: Page,
-})
-function Page() {
+  it.each([
+    {
+      name: 'the split component',
+      setup: `function Page() {
   return <p>{heavy()}</p>
 }
 function Unused() {
   return <Page />
+}`,
+      component: 'Page',
+    },
+    {
+      name: 'a component the split component renders',
+      setup: `function Card() {
+  return <p>{heavy()}</p>
 }
+function Page() {
+  return <Card />
+}
+const Unused = () => <Card />`,
+      component: 'Page',
+    },
+    {
+      name: 'a component an inline split component renders',
+      setup: `function Page() {
+  return <p>{heavy()}</p>
+}
+function Unused() {
+  return <Page />
+}`,
+      component: '() => <Page />',
+    },
+  ])(
+    'moves the split component and its imports into its chunk when an unused function renders $name',
+    async ({ setup, component }) => {
+      const { modules } =
+        compileRouteModules(`${head}import { heavy } from './heavy'
+export const Route = createFileRoute('/')({
+  component: ${component},
+})
+${setup}
 `)
-    expect(importSources(modules.reference!)).not.toContain('./heavy')
-    expect(importSources(modules['virtual component']!)).toContain('./heavy')
+      expect(importSources(modules.reference!)).not.toContain('./heavy')
+      expect(modules.reference).toMatch(declarationOf('Unused'))
+      expect(importSources(modules['virtual component']!)).toContain('./heavy')
+      await expectValidModules(modules)
+    },
+  )
+
+  // Imports do not move: the chunk imports what it reads itself, and the
+  // unused function keeps the imports it reads, as on main.
+  it('keeps the imports an unused function reads in the route module', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { format } from './format'
+function Page() {
+  return <p>{format('page')}</p>
+}
+function Unused() {
+  return <p>{format('unused')}<Page /></p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+    expect(modules.reference).not.toMatch(declarationOf('Page'))
+    expect(importedNames(modules.reference!, './format')).toEqual(['format'])
+    expect(importedNames(modules['virtual component']!, './format')).toEqual([
+      'format',
+    ])
+    await expectValidModules(modules)
   })
+
+  // A function that code staying in the route module can call is no unused
+  // code: the component it renders stays declared there.
+  it.each([
+    {
+      name: 'module-level code registers',
+      setup: `registry.set('preview', Preview)`,
+    },
+    {
+      name: 'an unused subscription calls back',
+      setup: `const unsubscribe = subscribe((name) => registry.set(name, Preview))`,
+    },
+  ])(
+    'keeps the split component in the route module for a function $name',
+    async ({ setup }) => {
+      const { modules, options, chunks } = await loadRouteModules(
+        `${head}import { subscribe } from './subscribe'
+const registry = new Map()
+function Page() {
+  return <p>page</p>
+}
+function Preview() {
+  return <Page />
+}
+${setup}
+export const Route = createFileRoute('/')({
+  component: Page,
+  loader: () => registry.get('preview')(),
+})
+`,
+        {
+          './subscribe': { subscribe: (callback: any) => callback('preview') },
+        },
+      )
+      expect(options.loader()).toBe('<p>page</p>')
+      expect(chunks.component!.component()).toBe('<p>page</p>')
+      await expectValidModules(modules)
+    },
+  )
 
   // Source: Qwik optimizer test.rs should_not_move_over_side_effects,
   // example_drop_side_effects; Turbopack tree-shaker analyzer/route-kind

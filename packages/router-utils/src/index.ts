@@ -23,4 +23,7 @@ export {
   expandTransitively,
   removeUnusedBindings,
 } from './compiler-helpers'
-export type { ModuleInfoBinding } from './compiler-helpers'
+export type {
+  ModuleInfoBinding,
+  RemoveUnusedBindingsOptions,
+} from './compiler-helpers'

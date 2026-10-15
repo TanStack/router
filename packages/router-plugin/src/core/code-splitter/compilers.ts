@@ -836,6 +836,8 @@ export function compileCodeSplitReferenceRoute(
   const framework = getFrameworkOptions(options.targetFramework)
   const lazyImports = new Map<string, string>()
   const knownExported = new Set<string>()
+  // What split values read, which moves into their chunks
+  const splitReads = new Set<Binding>()
   let modified = false
   for (const route of analysis.routes) {
     const routeOptions = copies.get(route.options) as ObjectExpression
@@ -897,6 +899,15 @@ export function compileCodeSplitReferenceRoute(
         if (binding && analysis.exported.has(binding)) {
           knownExported.add(binding.name)
           continue
+        }
+        const splitValue = originalNodes.get(target.value)
+        if (splitValue) {
+          for (const reference of collectModuleReferences(
+            analysis.module,
+            splitValue,
+          )) {
+            splitReads.add(reference)
+          }
         }
         const meta = splitMeta(key)
         let lazy = lazyImports.get(meta.splitStrategy)
@@ -1019,7 +1030,14 @@ export function compileCodeSplitReferenceRoute(
       exports(sharedExports, addSharedSearchParamToFilename(options.filename)),
     )
   }
-  removeUnusedBindings(analysis.module, program, originalNodes)
+  removeUnusedBindings(analysis.module, program, originalNodes, {
+    // Imports are not moved: each module that reads one imports it
+    moved: new Set(
+      [...expandTransitively(splitReads, analysis.chunkDependencies)].filter(
+        (binding) => !binding.has(BindingFlags.Import),
+      ),
+    ),
+  })
   if (knownExported.size) {
     const message = createNotExportableMessage(options.filename, knownExported)
     console.warn(message)
