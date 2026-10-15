@@ -371,6 +371,8 @@ ${options}  component: () => <p>${render}</p>,
   // `stripUnreferencedTopLevelExpressionStatements` only strips expression
   // statements, so an `if` block, a declaration whose binding is never read
   // or an `export * from` is copied into every split chunk.
+  // A reference cycle that nothing else reads keeps its own references, so a
+  // fix that drops only declarations nothing references still copies it.
   // Impact: side effects run again for every chunk that loads, even a chunk
   // holding only the errorComponent (duplicated subscriptions, logging); every
   // chunk depends on and re-exports all of the `export *` module through the
@@ -385,6 +387,11 @@ ${options}  component: () => <p>${render}</p>,
     {
       name: 'an unused subscription',
       effect: `const unsubscribe = subscribe(() => {})`,
+    },
+    {
+      name: 'an unused reference cycle',
+      effect: `const a = subscribe(() => b)
+const b = () => a`,
     },
     {
       name: 'a static field of an unused class',
@@ -660,6 +667,161 @@ import { jsx } from '@emotion/react'
         '<emotion:div>page</emotion:div>',
       )
     },
+  )
+
+  // Bug: the shared-binding analysis does not count the JSX of a split option
+  // as a read of the classic JSX factory it compiles to, so a factory that
+  // the route module creates and the loader reads is not shared with the
+  // split component: the chunk drops it (same root cause as the pin above),
+  // and keeping it in the chunk without sharing it creates it again there.
+  // Impact: the split component throws "jsx is not defined", or the route
+  // module and the chunk each create their own factory.
+  test.fails(
+    'a factory the route module creates and the loader reads is created once for the split component',
+    async () => {
+      let creations = 0
+      const { options, chunks } = await loadRouteModules(
+        `/** @jsxRuntime classic */
+/** @jsx jsx */
+${head}import { createJsx } from './jsx'
+const jsx = createJsx()
+export const Route = createFileRoute('/')({
+  loader: () => jsx('span', null),
+  component: () => <div>page</div>,
+})`,
+        {
+          './jsx': {
+            createJsx: () => {
+              creations++
+              return emotion.jsx
+            },
+          },
+        },
+      )
+      expect([
+        options.loader(),
+        chunks.component!.component(),
+        creations,
+      ]).toEqual([
+        '<emotion:span></emotion:span>',
+        '<emotion:div>page</emotion:div>',
+        1,
+      ])
+    },
+  )
+})
+
+describe('exported bindings', () => {
+  // Bug: the "will not be code-split" warning is only reported when the code
+  // splitter changes the route module. In a production build, a route whose
+  // only split candidate is an exported component is left as is, so the
+  // warning is never shown (route HMR changes the module in dev, which shows
+  // it).
+  // Impact: no diagnostic in production builds for a page that stays in the
+  // entry chunk.
+  test.fails(
+    'an exported component that is the only split candidate is split or reported as not code-split',
+    () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const { modules } = compileRouteModules(`${head}export function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+        expect({
+          split: /\?tsr-split=component\b/.test(modules.reference!),
+          warned: warn.mock.calls.some(([message]) =>
+            String(message).includes('will not be code-split'),
+          ),
+        }).not.toEqual({ split: false, warned: false })
+      } finally {
+        warn.mockRestore()
+      }
+    },
+  )
+
+  /**
+   * Builds an app whose entry imports the route, and returns where the code
+   * marked `MARK_DECLARATION` ends up: `entry` for a module the entry loads
+   * statically, `lazy` for a chunk it loads on demand.
+   */
+  function placeMarkedCode(route: string) {
+    return buildAndRun(
+      route,
+      `const fs = await import('node:fs')
+const path = await import('node:path')
+const url = await import('node:url')
+const dir = path.dirname(url.fileURLToPath(entry.entryUrl))
+const read = (file) => fs.readFileSync(path.join(dir, file), 'utf8')
+const eager = new Set()
+const visit = (file) => {
+  if (eager.has(file)) return
+  eager.add(file)
+  for (const [, specifier] of read(file).matchAll(/(?:\\bfrom\\s*|\\bimport\\s*)["']\\.\\/([^"']+)["']/g)) visit(specifier)
+}
+visit('entry.mjs')
+return [
+  ...new Set(
+    fs
+      .readdirSync(dir)
+      .filter((file) => file.endsWith('.mjs') && read(file).includes('MARK_DECLARATION'))
+      .map((file) => (eager.has(file) ? 'entry' : 'lazy')),
+  ),
+]`,
+      {
+        files: {
+          // Without it the app inherits the package's `sideEffects: false`
+          'package.json': JSON.stringify({
+            name: 'app',
+            private: true,
+            type: 'module',
+          }),
+          'entry.ts': `import { Route } from './routes/index'
+export { Route }
+export const entryUrl = import.meta.url
+`,
+          'heavy.ts': `export function heavy(label: string) {
+  return label
+}
+`,
+        },
+      },
+    )
+  }
+
+  // Control for the pin below (same app, `Card` not exported).
+  test('a const only a split component renders is loaded with its chunk', async () => {
+    expect(
+      await placeMarkedCode(`${head}import { heavy } from '../heavy'
+const Card = () => <b>{heavy('MARK_DECLARATION')}</b>
+function Page() {
+  return <Card />
+}
+export const Route = createFileRoute('/')({ component: Page })
+`),
+    ).toEqual(['lazy'])
+  }, 30_000)
+
+  // Bug: a split chunk imports an exported variable from the route module, so
+  // a component defined as `export const Card = () => ...` that only the
+  // split component renders stays in the route module, which the entry chunk
+  // loads, with everything it imports.
+  // Impact: page code exported for tests or reuse loads with the entry chunk.
+  test.fails(
+    'an exported const only a split component renders is loaded with its chunk',
+    async () => {
+      expect(
+        await placeMarkedCode(`${head}import { heavy } from '../heavy'
+export const Card = () => <b>{heavy('MARK_DECLARATION')}</b>
+function Page() {
+  return <Card />
+}
+export const Route = createFileRoute('/')({ component: Page })
+`),
+      ).toEqual(['lazy'])
+    },
+    30_000,
   )
 })
 
