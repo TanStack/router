@@ -5,6 +5,7 @@ import {
   cloneModuleAst,
   generateModule,
   parseExpression,
+  prepareBindingCleanup,
   removeUnusedBindings,
 } from '@tanstack/router-utils'
 import path from 'pathe'
@@ -134,7 +135,12 @@ function compile(opts: {
     return null
   }
 
-  removeUnusedBindings(module, ast, originalNodes)
+  removeUnusedBindings(
+    module,
+    ast,
+    prepareBindingCleanup(module),
+    originalNodes,
+  )
   const generated = generateModule(ast, {
     source: options.code,
     filename: options.id,

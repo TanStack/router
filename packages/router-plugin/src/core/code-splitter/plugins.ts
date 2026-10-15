@@ -25,11 +25,14 @@ export type CompileCodeSplitReferenceRouteOptions = {
 }
 
 export type ReferenceRouteCompilerPluginContext = {
+  /**
+   * `module.ast`, which the output edits in place: `module`'s semantic
+   * queries describe the source and know nothing of the nodes it generates.
+   */
   program: Program
   module: Module
   /** The module-level declarations of `module` and their dependencies. */
   graph: ReturnType<typeof moduleDeclarationGraph>
-  originalNodes: WeakMap<Node, Node>
   /**
    * The names the source declares or references, and the names given out for
    * the output. A declaration a plugin adds must take a name not in it, and

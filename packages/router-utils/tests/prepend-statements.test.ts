@@ -1,13 +1,8 @@
 import { describe, expect, test } from 'vitest'
-import {
-  analyzeModule,
-  cloneModuleAst,
-  generateModule,
-  prependStatements,
-} from '../src'
+import { analyzeModule, generateModule, prependStatements } from '../src'
 
 function parseProgram(code: string) {
-  return cloneModuleAst(analyzeModule({ code })).program
+  return analyzeModule({ code }).ast
 }
 
 describe('prependStatements', () => {

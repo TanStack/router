@@ -91,7 +91,8 @@ export function createRouterHmrPlugin(
           }
         }
 
-        // The reference compiler emits a copy, so the parsed module is intact
+        // The reference compiler edits the parsed module in place, but it
+        // returns null before its first edit: the module is intact
         const ast = analysis.module.ast
         ast.body.push(
           ...createRouteHmrStatement([], {

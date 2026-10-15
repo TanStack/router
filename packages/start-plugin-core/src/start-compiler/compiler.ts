@@ -4,9 +4,11 @@ import {
   analyzeModule,
   cloneModuleAst,
   extractModuleInfo,
+  filePragmas,
   generateModule,
   keepFilePragmas,
   parseExpression,
+  prepareBindingCleanup,
   removeUnusedBindings,
   unwrapExpression,
 } from '@tanstack/router-utils'
@@ -809,6 +811,8 @@ export class StartCompiler {
       id,
       parserFilename,
     })
+    // A copy: the module cache keeps this module's source nodes, such as a
+    // binding's `init`, which resolving other modules reads after this output
     const { program: ast, originalNodes } = cloneModuleAst(module)
     const editor = createAstEditor(ast)
     const context: CompilationContext = {
@@ -1036,8 +1040,13 @@ export class StartCompiler {
       return null
     }
     // One liveness pass after every transform: AST plugins also orphan bindings.
-    removeUnusedBindings(module, ast, originalNodes)
-    keepFilePragmas(module.ast, ast)
+    removeUnusedBindings(
+      module,
+      ast,
+      prepareBindingCleanup(module),
+      originalNodes,
+    )
+    keepFilePragmas(filePragmas(module.ast), ast)
     return generateModule(ast, { source: code, filename: id })
   }
 

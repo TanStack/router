@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
-import { analyzeModule, cloneModuleAst, generateModule } from '../src'
+import { analyzeModule, generateModule } from '../src'
 
 vi.mock('yuku-core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('yuku-core')>()),
@@ -37,8 +37,7 @@ export const render = (props: { id: string }) => <Page id={props.id} />
   const module = analyzeModule({ code, filename: 'route.tsx' })
   expect(module.rootScope.find('Page')!.references).toHaveLength(1)
   expect(module.rootScope.find('lazy')!.references).toHaveLength(1)
-  expect(generateModule(cloneModuleAst(module).program).code)
-    .toMatchInlineSnapshot(`
+  expect(generateModule(module.ast).code).toMatchInlineSnapshot(`
     "import { lazy } from 'react';
     const Page = lazy(() => import('./page'));
     export const render = (props: {
@@ -51,5 +50,5 @@ test('analyzes an empty module in WebContainers', () => {
   analyzeModule({ code: 'export const value = 1', filename: 'value.ts' })
   const module = analyzeModule({ code: '', filename: 'empty.ts' })
   expect(module.ast.body).toEqual([])
-  expect(generateModule(cloneModuleAst(module).program).code).toBe('')
+  expect(generateModule(module.ast).code).toBe('')
 })

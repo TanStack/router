@@ -118,13 +118,32 @@ returns an **array of 3 plugins** that share a closure containing:
 - `userConfig` — resolved plugin configuration
 - Helper functions for grouping resolution
 
-### Immutable analysis and output ownership
+### One analysis, one output
 
 `analyzeRouteModule()` parses and resolves bindings with Yuku once per
 transform. It records route options, exports, and the dependency graph using
 resolved symbol identities, so shadowed names and JSX references are distinct.
-Each output gets its own AST copy with a map back to the original nodes. Output
-mutation never changes the original semantic snapshot.
+Each transform analyzes its own file and produces one output, which edits the
+analyzed tree (`module.ast`) in place:
+
+- **Read-only passes come first.** What is read from the tree's structure is
+  read before the first edit: the declaration graph, the file pragmas, the
+  initial liveness of `removeUnusedBindings()` (`prepareBindingCleanup()`), and
+  the references of the source's expression statements. The reference
+  transform detects groupings and plans shared bindings with its analysis
+  before compiling.
+- **Semantic queries describe the source.** Yuku's tables are keyed by node
+  identity, so `bindingOf`, `referenceOf`, `scopeOf`, `lookup`, `parentOf` and
+  `ancestors` (the source's parent chain), the scope, binding, reference,
+  import and export records, and `comments` stay valid after edits. Nodes the
+  compiler creates are unknown to them: `bindingOf`, `referenceOf` and
+  `parentOf` return `null`, so a source node is one with a parent.
+- **Tree walks read the output.** `module.walk`, `findAll` and `nodeAt` see the
+  edits, so `collectModuleReferences()` and `moduleDeclarationGraph()` describe
+  the source only before them.
+
+The reference compiler returns `null` before its first edit, so the HMR plugin
+can print the analyzed module with only its HMR handling appended.
 
 ### Plugin 1: `tanstack-router:code-splitter:compile-reference-file`
 
@@ -165,7 +184,7 @@ Excludes file IDs that include `tsr-split` or `tsr-shared`.
    virtual file should export (e.g., `['component']`)
 3. Reads shared bindings from `sharedBindingsMap` for the base file
 4. Calls `compileCodeSplitVirtualRoute()` which:
-   - Constructs an output tree using the immutable source analysis
+   - Edits the analyzed source tree into the split module
    - Keeps only the intended split properties as named exports
    - Converts user-exported declarations to imports from the base file
    - Adds `import { ... } from '...?tsr-shared=1'` if shared bindings exist
@@ -527,7 +546,7 @@ eliminated.
 
 **Key steps:**
 
-1. Analyze the source and clone an output tree with semantic provenance
+1. Analyze the source; the output edits the analyzed tree
 2. For each split-able property in route options:
    - Check if the value is exported (if so, skip splitting — warn user)
    - Generate a dynamic import URL: `splitFilename()`
@@ -544,8 +563,8 @@ eliminated.
 
 ### `compileCodeSplitVirtualRoute()`
 
-**Purpose:** Transform a copy of the route file into a split module that
-exports only specific properties.
+**Purpose:** Transform the route file into a split module that exports only
+specific properties.
 
 **Input:** Original source code, split targets (e.g., `['component']`),
 shared bindings set.
@@ -554,7 +573,7 @@ shared bindings set.
 
 **Key steps:**
 
-1. Analyze the source and clone an output tree
+1. Analyze the source; the output edits the analyzed tree
 2. Resolve shared declaration ownership against the original symbols
 3. Track split-able nodes and their metadata
 4. For each intended split target:
@@ -578,7 +597,7 @@ transitive dependencies.
 
 **Key steps:**
 
-1. Analyze the source and clone an output tree
+1. Analyze the source; the output edits the analyzed tree
 2. Build dependency graph, expand shared bindings transitively
 3. Filter `program.body` to keep only:
    - Import declarations (DCE removes unused ones)
@@ -607,11 +626,11 @@ If found, extracts the array-of-arrays value and returns it.
 
 | Function                    | Purpose                                                                                       |
 | --------------------------- | --------------------------------------------------------------------------------------------- |
-| `analyzeRouteModule()`      | Build the immutable route syntax and semantic model.                                          |
+| `analyzeRouteModule()`      | Build the route syntax and semantic model one output edits.                                   |
 | `moduleDeclarationGraph()`  | Map resolved symbols to declaration units and runtime dependencies.                           |
 | `collectModuleReferences()` | Collect actual module-scope references, including JSX and excluding shadowed/type-only names. |
 | `expandTransitively()`      | Return a dependency closure without mutating its input.                                       |
-| `cloneModuleAst()`          | Create an output AST and preserve original-node provenance.                                   |
+| `prepareBindingCleanup()`   | Read what `removeUnusedBindings()` needs from the source, before the first edit.              |
 | `removeUnusedBindings()`    | Retain output dependencies using surviving semantic references.                               |
 | `generateModule()`          | Print native ASTs with Yuku and original-source maps.                                         |
 
@@ -624,7 +643,7 @@ Each compiler first decides which declarations belong to its output, then calls
 liveness from **surviving** references in the output tree; the original semantic
 tables are never assumed to update after mutation.
 
-Source nodes retain their original symbol identity through the clone map.
+Source nodes keep their symbol identity in the edited tree.
 Compiler-created references explicitly identify their intended symbol/name via
 `linkGeneratedReference()`. Parsed compiler snippets carry native reference
 provenance too. This avoids treating a new local or property name as a reference
@@ -756,8 +775,8 @@ graph, including their destructured declaration siblings.
 
 An output cannot retain both a shared declaration and its replacement import.
 The compiler removes the complete original declaration, then adds the shared
-import. All dependency decisions still use the immutable source module's
-symbols; output clones are never analyzed while partially transformed.
+import. All dependency decisions use the source module's symbols; the output
+is never analyzed again while partially transformed.
 Exports, including multiple aliases and quoted names, are redirected to the
 same shared binding.
 

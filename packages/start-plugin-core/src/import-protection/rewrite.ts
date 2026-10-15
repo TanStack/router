@@ -1,6 +1,5 @@
 import {
   analyzeModule,
-  cloneModuleAst,
   generateModule,
   parseStatements,
 } from '@tanstack/router-utils'
@@ -18,7 +17,7 @@ function exportName(name: string): string {
   return isValidIdentifier(name) ? name : JSON.stringify(name)
 }
 
-/** Rewrite denied static edges using one source analysis and an isolated output AST. */
+/** Rewrite denied static edges in the analyzed tree, which serves this one output. */
 export function rewriteDeniedImports(
   code: string,
   id: string,
@@ -26,7 +25,7 @@ export function rewriteDeniedImports(
   getMockModuleId: (source: string) => string = () => MOCK_MODULE_ID,
 ): { code: string; map?: SourceMapLike } | undefined {
   const module = analyzeModule({ code, filename: id })
-  const { program } = cloneModuleAst(module)
+  const program = module.ast
   const usedNames = new Set(module.bindings.map((binding) => binding.name))
   let counter = 0
   const uniqueName = (prefix: string) => {
