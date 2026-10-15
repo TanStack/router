@@ -16,7 +16,9 @@ afterEach(() => {
 
 type LayoutOptions = {
   beforeLoad?: () => unknown
-  loader?: () => unknown
+  loader?:
+    | (() => unknown)
+    | { handler: () => unknown; staleReloadMode?: 'background' | 'blocking' }
   shouldReload?: boolean | (() => boolean)
 }
 
@@ -127,6 +129,93 @@ describe('retained match isFetching', () => {
 
     expect(await screen.findByText('Page B')).toBeInTheDocument()
     await waitFor(() => expect(renderedFetching).toEqual(['loader', false]))
+  })
+
+  test('a synchronous loader reload does not re-render the retained route', async () => {
+    let loaderCalls = 0
+    const { router, renderedFetching } = await renderRetainedLayout({
+      shouldReload: true,
+      loader: () => ++loaderCalls,
+    })
+
+    await act(() => router.navigate({ to: '/b' }))
+
+    expect(await screen.findByText('Page B')).toBeInTheDocument()
+    await waitFor(() => expect(router.state.matches[1]?.loaderData).toBe(2))
+    expect(loaderCalls).toBe(2)
+    expect(renderedFetching).not.toContain('loader')
+  })
+
+  test('invalidating a synchronous loader does not re-render the retained route', async () => {
+    let loaderCalls = 0
+    const { router, renderedFetching } = await renderRetainedLayout({
+      loader: () => ++loaderCalls,
+    })
+
+    await act(() => router.invalidate())
+
+    await waitFor(() => expect(router.state.matches[1]?.loaderData).toBe(2))
+    expect(loaderCalls).toBe(2)
+    expect(renderedFetching).not.toContain('loader')
+  })
+
+  test('a blocking reload exposes an asynchronous loader window', async () => {
+    const gate = createControlledPromise<string>()
+    let loaderCalls = 0
+    const { router, renderedFetching } = await renderRetainedLayout({
+      shouldReload: true,
+      loader: {
+        handler: () => (loaderCalls++ ? gate : 'initial'),
+        staleReloadMode: 'blocking',
+      },
+    })
+
+    let navigation!: Promise<void>
+    await act(async () => {
+      navigation = router.navigate({ to: '/b' })
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(renderedFetching).toEqual(['loader']))
+    expect(screen.getByText('Page A')).toBeInTheDocument()
+
+    await act(async () => {
+      gate.resolve('reloaded')
+      await navigation
+    })
+
+    expect(await screen.findByText('Page B')).toBeInTheDocument()
+    expect(renderedFetching[0]).toBe('loader')
+    expect(renderedFetching.slice(1).every((value) => value === false)).toBe(
+      true,
+    )
+  })
+
+  test('invalidating an asynchronous loader exposes its fetching window', async () => {
+    const gate = createControlledPromise<string>()
+    let loaderCalls = 0
+    const { router, renderedFetching } = await renderRetainedLayout({
+      loader: () => (loaderCalls++ ? gate : 'initial'),
+    })
+
+    let invalidation!: Promise<void>
+    await act(async () => {
+      invalidation = router.invalidate()
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(renderedFetching).toEqual(['loader']))
+
+    await act(async () => {
+      gate.resolve('reloaded')
+      await invalidation
+    })
+
+    await waitFor(() =>
+      expect(router.state.matches[1]?.loaderData).toBe('reloaded'),
+    )
+    expect(renderedFetching.at(-1)).toBe(false)
+    expect(renderedFetching.slice(1).every((value) => value === false)).toBe(
+      true,
+    )
   })
 
   test('a superseding navigation clears the retained fetching state', async () => {
