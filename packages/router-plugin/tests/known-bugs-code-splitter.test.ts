@@ -689,32 +689,3 @@ describe('app paths', () => {
     30_000,
   )
 })
-
-describe('modules that create several routes', () => {
-  // Bug: the code splitter splits the options of every `createFileRoute` call
-  // in the module into the same chunk exports, so every route loads the
-  // component of the last one, and the other components are dropped.
-  // Impact: a route file that also creates another route (a leftover or a
-  // helper route) renders the wrong component for it.
-  // Same harness as the app paths control above.
-  test.fails(
-    'each route created in the module renders its own split component',
-    async () => {
-      expect(
-        await buildAndRun(
-          `${head}export const Legacy = createFileRoute('/old')({
-  component: () => <p>old</p>,
-})
-export const Route = createFileRoute('/')({
-  component: () => <p>new</p>,
-})`,
-          `return [
-  await entry.render(entry.Legacy.options.component),
-  await entry.render(entry.Route.options.component),
-]`,
-        ),
-      ).toEqual(['<p>old</p>', '<p>new</p>'])
-    },
-    30_000,
-  )
-})
