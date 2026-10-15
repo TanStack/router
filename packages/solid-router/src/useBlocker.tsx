@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
+import { dropRequest, holdRequest, noteRequest } from './observe'
 import type {
   BlockerFnArgs,
   HistoryAction,
@@ -194,6 +195,11 @@ export function useBlocker(
       }
 
       const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
+        // Called before the history's first `await` when this is the first
+        // blocker, so the request `commitLocation` noted outlives the
+        // commit. A later blocker finds it held by the first, or released
+        // (the navigation is then dated when the history notifies).
+        holdRequest(router)
         function getLocation(
           location: HistoryLocation,
         ): AnyShouldBlockFnLocation {
@@ -235,6 +241,7 @@ export function useBlocker(
           next,
         })
         if (!props.withResolver) {
+          if (shouldBlock) dropRequest(router)
           return shouldBlock
         }
 
@@ -248,7 +255,12 @@ export function useBlocker(
             current,
             next,
             action: blockerFnArgs.action,
-            proceed: () => resolve(false),
+            // The navigation goes ahead in the interaction that proceeds, as
+            // `@solidjs/router`'s `retry()` makes it.
+            proceed: () => {
+              noteRequest(router)
+              resolve(false)
+            },
             reset: () => resolve(true),
           })
         })
@@ -263,6 +275,7 @@ export function useBlocker(
           reset: undefined,
         })
 
+        if (canNavigateAsync) dropRequest(router)
         return canNavigateAsync
       }
 

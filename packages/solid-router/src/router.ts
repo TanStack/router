@@ -1,7 +1,9 @@
+import * as Solid from 'solid-js'
 import { RouterCore } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { getStoreFactory } from './routerStores'
 import { primeRouterFromRegistry } from './registryTransfer'
+import { noteRequest, releaseRequest } from './observe'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -112,6 +114,18 @@ export class Router<
     // so the first missing entry falls through to unchanged behavior.
     if (!(isServer ?? this.isServer)) {
       primeRouterFromRegistry(this)
+      // Solid's observe tier dates a navigation from its request and joins
+      // it to the interaction it was requested in, both gone by the time a
+      // blocked history notifies (see `noteRequest`).
+      if (Solid.OBSERVE !== undefined) {
+        const commitLocation = this.commitLocation
+        this.commitLocation = (opts) => {
+          noteRequest(this)
+          const committed = commitLocation(opts)
+          releaseRequest(this)
+          return committed
+        }
+      }
     }
   }
 }
