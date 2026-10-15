@@ -1472,3 +1472,52 @@ test.each([
     expect(result!.code).not.toContain('private-server-body')
   },
 )
+
+describe('external compiler transforms', () => {
+  test("run once each, in their order's phase", async () => {
+    const calls: Array<string> = []
+    const transform = (
+      name: string,
+      order?: 'pre' | 'post',
+    ): StartCompilerImportTransform => ({
+      name,
+      environment: 'server',
+      ...(order ? { order } : {}),
+      imports: [{ libName: '@example/runtime', rootExport: name }],
+      detect: new RegExp(`\\b${name}\\b`),
+      transform: (candidates) => {
+        calls.push(`${name}:${candidates.length}`)
+      },
+    })
+    // `idle` is detected in the code, but nothing calls it.
+    const compilerTransforms = [
+      transform('late', 'post'),
+      transform('early'),
+      transform('idle'),
+    ]
+    const compiler = new StartCompiler({
+      env: 'server',
+      envName: 'server',
+      root: '/test',
+      framework: 'react',
+      providerEnvName: 'server',
+      lookupKinds: getLookupKindsForEnv('server', { compilerTransforms }),
+      lookupConfigurations: getLookupConfigurationsForEnv('server', 'react', {
+        compilerTransforms,
+      }),
+      getKnownServerFns: () => ({}),
+      loadModule: async () => {},
+      resolveId: async (id) => id,
+      mode: 'build',
+      compilerTransforms,
+    })
+    await compiler.compile({
+      code: `import { late, early } from '@example/runtime'
+export const a = late(1)
+export const b = early(2)
+export const label = 'idle'`,
+      id: '/test/src/transforms.ts',
+    })
+    expect(calls).toEqual(['early:1', 'late:1'])
+  })
+})
