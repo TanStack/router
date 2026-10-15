@@ -345,6 +345,40 @@ export const fn = authed().handler(async () => db.x())`,
     },
   )
 
+  // Bug: chain methods are only recognized when called through a static
+  // member (`.handler(...)`), so one called through a computed member
+  // (`builder['handler'](...)`) leaves the module untransformed.
+  // Impact: the server implementation and its server-only imports ship to
+  // the client.
+  test.fails.each([
+    {
+      name: 'a server fn handler',
+      code: `${head}import { db } from './db.server'
+export const fn = createServerFn()['handler'](async () => db.x())`,
+    },
+    {
+      name: 'a middleware server implementation',
+      code: `import { createMiddleware } from '@tanstack/react-start'
+import { db } from './db.server'
+export const mw = createMiddleware()['server'](async ({ next }) => {
+  db.x()
+  return next()
+})`,
+    },
+    {
+      name: 'an isomorphic server implementation',
+      code: `import { createIsomorphicFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const fn = createIsomorphicFn()['server'](() => db.x()).client(() => 'client')`,
+    },
+  ])(
+    'client builds compile $name called through a computed member',
+    async ({ code }) => {
+      const client = (await compileCode('client', code)) ?? code
+      expect(client).not.toContain(serverOnly)
+    },
+  )
+
   // Bug: env-only factories nested in other code are found by the factory's
   // exported name (`isNestedDirectCallCandidate`), so a renamed import or a
   // local alias is only compiled as a top-level variable initializer.

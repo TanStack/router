@@ -538,6 +538,23 @@ export function Page() {
     },
   )
 
+  // Bug: the client chunk takes any module-level binding named `Route` for
+  // the route and removes it (the removal of the pin above), even when the
+  // module does not export it and it is a plain component.
+  // Impact: the boundary throws "Route is not defined" when it hydrates.
+  test.fails(
+    'client: an unexported component named Route that the children render reaches the chunk',
+    async () => {
+      const { module } = await loadClientModule(`${head}function Route() {
+  return <p>local</p>
+}
+export function Page() {
+  return <Hydrate><Route /></Hydrate>
+}`)
+      expect(module.Page()).toBe('[<p>local</p>]')
+    },
+  )
+
   // Bug: only declarations move into the chunk; the top-level statements that
   // complete them (member assignments, registrations) are dropped.
   // Impact: compound components such as `<Card.Title />` are undefined in
@@ -574,6 +591,24 @@ export function Page() {
   return <Hydrate>${children}</Hydrate>
 }`)
       expect(module.Page()).toBe(rendered)
+    },
+  )
+
+  // Bug: module bindings are collected from top-level declarations only
+  // (`collectLocalBindingsFromStatement`), so a module-level `var` declared
+  // in a nested block is dropped from the chunk. Same root cause as the
+  // nested `var` pins in router-plugin/tests/known-bugs-code-splitter.test.ts.
+  // Impact: the boundary throws "label is not defined" when it hydrates.
+  test.fails(
+    'client: a var declared in a nested block that the children read reaches the chunk',
+    async () => {
+      const { module } = await loadClientModule(`${head}{
+  var label = 'nested'
+}
+export function Page() {
+  return <Hydrate><p>{label}</p></Hydrate>
+}`)
+      expect(module.Page()).toBe('[<p>nested</p>]')
     },
   )
 

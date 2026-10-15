@@ -133,6 +133,10 @@ export const read = () => lib.value`,
   })
 
   // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
+  // The `var` is missed because module bindings are collected from top-level
+  // declarations only (`collectLocalBindingsFromStatement`); same root cause
+  // as the nested-block `var` pin in
+  // start-plugin-core/tests/known-bugs-hydrate.test.ts.
   // Impact: the route throws a ReferenceError or runs the declaration per module.
   test.fails.each([
     {
@@ -295,11 +299,12 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  // Bug: shared bindings are computed from the route options only
-  // (`computeSharedBindings`), so a declaration that one split chunk reads
-  // and that the reference module keeps as well (for an export, a top-level
-  // call, or another binding of the declaration) is not shared: the chunk
-  // declares its own copy.
+  // Bug: shared bindings are computed from the statically named route options
+  // only (`computeSharedBindings` skips computed keys), so a declaration that
+  // one split chunk reads and that the reference module keeps as well (for an
+  // export, a top-level call, another binding of the declaration, or a route
+  // option under a computed key) is not shared: the chunk declares its own
+  // copy.
   // Impact: module state is duplicated; the component reads another instance.
   test.fails.each([
     {
@@ -336,15 +341,23 @@ register(items)`,
       render: '{items.join()}',
       html: '<p>item</p>',
     },
+    {
+      name: 'a binding read by a computed-key route option',
+      declaration: `const store = init({ count: 1 })
+const key = 'staticData'`,
+      options: `  [key]: { read: () => store },\n`,
+      render: '{store.count}',
+      html: '<p>1</p>',
+    },
   ])(
     'module state that the reference module keeps for $name is initialized once',
-    async ({ declaration, render, html }) => {
+    async ({ declaration, options = '', render, html }) => {
       const state = stateStub()
       const { chunks } = await loadRouteModules(
         `${head}import { init, register } from './state'
 ${declaration}
 export const Route = createFileRoute('/')({
-  component: () => <p>${render}</p>,
+${options}  component: () => <p>${render}</p>,
 })`,
         { './state': state },
       )
@@ -372,6 +385,18 @@ export const Route = createFileRoute('/')({
     {
       name: 'an unused subscription',
       effect: `const unsubscribe = subscribe(() => {})`,
+    },
+    {
+      name: 'a static field of an unused class',
+      effect: `class Unused {
+  static value = track()
+}`,
+    },
+    {
+      name: 'a member initializer of an unused enum',
+      effect: `enum Unused {
+  Value = track(),
+}`,
     },
   ])(
     'an unreferenced top-level side effect ($name) runs once, with the route module',
@@ -660,6 +685,35 @@ describe('app paths', () => {
       expect(
         await buildAndRun(route, script, { prefix: '.regression-build-#' }),
       ).toBe('<p>index</p>')
+    },
+    30_000,
+  )
+})
+
+describe('modules that create several routes', () => {
+  // Bug: the code splitter splits the options of every `createFileRoute` call
+  // in the module into the same chunk exports, so every route loads the
+  // component of the last one, and the other components are dropped.
+  // Impact: a route file that also creates another route (a leftover or a
+  // helper route) renders the wrong component for it.
+  // Same harness as the app paths control above.
+  test.fails(
+    'each route created in the module renders its own split component',
+    async () => {
+      expect(
+        await buildAndRun(
+          `${head}export const Legacy = createFileRoute('/old')({
+  component: () => <p>old</p>,
+})
+export const Route = createFileRoute('/')({
+  component: () => <p>new</p>,
+})`,
+          `return [
+  await entry.render(entry.Legacy.options.component),
+  await entry.render(entry.Route.options.component),
+]`,
+        ),
+      ).toEqual(['<p>old</p>', '<p>new</p>'])
     },
     30_000,
   )
