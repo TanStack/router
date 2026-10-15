@@ -6,7 +6,11 @@
  * so that React Refresh can patch it in place; a component React Refresh does
  * not register keeps rendering the old code until a full reload.
  */
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { createServer } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
+import { tanstackRouter } from '../src/vite'
 import {
   compileRouteModules,
   evaluateModule,
@@ -472,5 +476,84 @@ export const Route = createFileRoute('/')({
         ),
       ).toBe(true)
     },
+  )
+})
+
+describe('Vite HMR boundaries', () => {
+  // Bug: the Vite route HMR code calls `accept` on a local alias
+  // (`const hot = import.meta.hot`), and Vite only marks a module
+  // self-accepting when its code contains a literal `import.meta.hot.accept(`.
+  // A route module is then never an HMR boundary of its own: the update
+  // propagates to the route tree and the app entry, and the page reloads.
+  // React apps are not affected because React Refresh makes route modules
+  // boundaries; Solid Refresh only does for modules that declare components,
+  // and Vue JSX only for exported components.
+  // Impact: every edit of a Solid route file with automatic code splitting,
+  // and of any Vue route file, reloads the page in Vite dev.
+  test.fails.each([
+    { target: 'solid', autoCodeSplitting: true },
+    { target: 'solid', autoCodeSplitting: false },
+    { target: 'vue', autoCodeSplitting: true },
+    { target: 'vue', autoCodeSplitting: false },
+  ] as const)(
+    'a $target route module accepts its own updates (autoCodeSplitting: $autoCodeSplitting)',
+    async ({ target, autoCodeSplitting }) => {
+      // Keep the temporary app inside the package so runtime imports resolve.
+      const root = await mkdtemp(path.join(__dirname, '.hmr-boundary-'))
+      const routerPackage = `@tanstack/${target}-router`
+      let server: Awaited<ReturnType<typeof createServer>> | undefined
+      try {
+        await mkdir(path.join(root, 'routes'))
+        await writeFile(
+          path.join(root, 'routes/__root.tsx'),
+          `import { createRootRoute } from '${routerPackage}'
+export const Route = createRootRoute({})`,
+        )
+        await writeFile(
+          path.join(root, 'routes/index.tsx'),
+          `import { createFileRoute } from '${routerPackage}'
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: Page,
+})
+function Page() {
+  return 'page'
+}`,
+        )
+        server = await createServer({
+          root,
+          configFile: false,
+          logLevel: 'silent',
+          server: { watch: null },
+          plugins: [
+            {
+              // The framework packages are not dependencies of this package.
+              name: 'stub-router-package',
+              enforce: 'pre',
+              resolveId: (id) => (id === routerPackage ? `\0${id}` : null),
+              load: (id) =>
+                id === `\0${routerPackage}`
+                  ? 'export const createRootRoute = (o) => o, createFileRoute = () => (o) => o, lazyRouteComponent = () => null'
+                  : null,
+            },
+            tanstackRouter({
+              target,
+              routesDirectory: './routes',
+              generatedRouteTree: './routeTree.gen.ts',
+              autoCodeSplitting,
+            }),
+          ],
+        })
+        const client = server.environments.client
+        await client.transformRequest('/routes/index.tsx')
+        const module =
+          await client.moduleGraph.getModuleByUrl('/routes/index.tsx')
+        expect(module?.isSelfAccepting).toBe(true)
+      } finally {
+        await server?.close()
+        await rm(root, { recursive: true, force: true })
+      }
+    },
+    30_000,
   )
 })
