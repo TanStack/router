@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
-import type { RouteById, RouteByPath, RouterCore } from '../src'
+import type { AllParams, RouteById, RouteByPath, RouterCore } from '../src'
 import type { RouterHistory } from '@tanstack/history'
 
 // Build a route tree with a pathless (layout) route so that the nested route's
@@ -39,5 +39,32 @@ describe('MatchRoute pathless (layout) route params', () => {
     type MatchParams = ReturnType<typeof router.matchRoute<'/', '/nested/$id'>>
     expectTypeOf<MatchParams>().not.toEqualTypeOf<false>()
     expectTypeOf<MatchParams>().toMatchTypeOf<false | { id: string }>()
+  })
+})
+
+// Two routes with different params: a broad `string` path cannot pick one.
+const multiRoot = new BaseRootRoute({})
+const postRoute = new BaseRoute({
+  getParentRoute: () => multiRoot,
+  path: '/posts/$postId',
+})
+const userRoute = new BaseRoute({
+  getParentRoute: () => multiRoot,
+  path: '/users/$userId',
+})
+const multiTree = multiRoot.addChildren([postRoute, userRoute])
+type MultiTree = typeof multiTree
+
+declare const multiRouter: RouterCore<MultiTree, 'never', true, RouterHistory>
+
+describe('MatchRoute with a non-literal path', () => {
+  test('falls back to the merged params of all routes', () => {
+    type BroadParams = ReturnType<typeof multiRouter.matchRoute<string, string>>
+    type Matched = Extract<BroadParams, object>
+
+    expectTypeOf<BroadParams>().toEqualTypeOf<false | AllParams<MultiTree>>()
+    // With a union of per-route params, both lookups are type errors.
+    expectTypeOf<Matched['postId']>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<Matched['userId']>().toEqualTypeOf<string | undefined>()
   })
 })
