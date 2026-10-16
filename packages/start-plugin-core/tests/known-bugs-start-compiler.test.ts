@@ -4,9 +4,10 @@
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { createServer } from 'vite'
+import { createServer, isRunnableDevEnvironment, transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
+import { buildStart } from './build-harness'
 import {
   callReportedServerFns,
   compileAll,
@@ -814,6 +815,181 @@ export const fn = createServerFn().handler(async () => 1)`
       expect(errors).toEqual({ client: [], ssr: [] })
     },
   )
+
+  /** A server-only module that fails loudly when a client module loads it. */
+  const serverModuleStub = {
+    [serverOnly]: `throw new Error('server module loaded on the client')
+export const db = {}`,
+  }
+
+  // Control for the pin below (same harness): a plain function only the
+  // server code uses leaves with its server-only import.
+  test('client: a function only server code uses does not load its server-only import', async () => {
+    const code = `${head}import { db } from './db.server'
+function find() { return db.users() }
+export const fn = createServerFn().handler(async () => find())`
+    const client = (await compileCode('client', code)) ?? code
+    const module = await evaluateModule(client, serverModuleStub)
+    expect(module.fn).toBeDefined()
+  })
+
+  // Bug: dead-code elimination (babel-dead-code-elimination) removes
+  // unreferenced functions and variables but never class declarations, TS
+  // enums, namespaces, overloaded functions or redeclared `var`s, so such a
+  // declaration that only server code used keeps its server-only import.
+  // Impact: the client (always in dev; in builds, the server module's
+  // top-level code, see the Vite build pin) loads the server-only module.
+  // Source: gap D2/D3 (gaps/dead-code.md); #8504 caller-dead-code.test.ts:563
+  // covers server fns.
+  test.fails.each([
+    {
+      name: 'a class used by a server fn handler',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+class Repo { get() { return db.users() } }
+export const fn = createServerFn().handler(async () => new Repo().get())`,
+      check: (module: Record<string, any>) => expect(module.fn).toBeDefined(),
+    },
+    {
+      name: 'an enum used by a server fn handler',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+enum Kind { A = db.a }
+export const fn = createServerFn().handler(async () => Kind.A)`,
+      check: (module: Record<string, any>) => expect(module.fn).toBeDefined(),
+    },
+    {
+      name: 'a namespace used by a server fn handler',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+namespace Repo { export const get = () => db.users() }
+export const fn = createServerFn().handler(async () => Repo.get())`,
+      check: (module: Record<string, any>) => expect(module.fn).toBeDefined(),
+    },
+    {
+      name: 'an overloaded function used by a server fn handler',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+function get(): string
+function get(id?: string) { return db.users(id) }
+export const fn = createServerFn().handler(async () => get())`,
+      check: (module: Record<string, any>) => expect(module.fn).toBeDefined(),
+    },
+    {
+      name: 'a redeclared var used by a server fn handler',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+var repo = db.a
+var repo = db.b
+export const fn = createServerFn().handler(async () => repo)`,
+      check: (module: Record<string, any>) => expect(module.fn).toBeDefined(),
+    },
+    {
+      name: 'a class used by a middleware .server()',
+      code: `import { createMiddleware } from '@tanstack/react-start'
+import { db } from './db.server'
+class Repo { get() { return db.users() } }
+export const mw = createMiddleware().server(async ({ next }) => {
+  new Repo().get()
+  return next()
+})`,
+      check: (module: Record<string, any>) => expect(module.mw).toBeDefined(),
+    },
+    {
+      name: 'a class used by an isomorphic .server()',
+      code: `import { createIsomorphicFn } from '@tanstack/react-start'
+import { db } from './db.server'
+class Repo { get() { return db.users() } }
+export const iso = createIsomorphicFn().server(() => new Repo().get()).client(() => 'client')`,
+      check: (module: Record<string, any>) =>
+        expect(module.iso()).toBe('client'),
+    },
+    {
+      name: 'an overloaded function used by a createServerOnlyFn',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+function get(): string
+function get(id?: string) { return db.users(id) }
+export const read = createServerOnlyFn(() => get())`,
+      check: (module: Record<string, any>) =>
+        expect(settle(() => module.read())).toBe(serverOnlyError),
+    },
+  ])(
+    'client: $name does not load its server-only import',
+    async ({ code, check }) => {
+      const client = (await compileCode('client', code)) ?? code
+      check(await evaluateModule(client, serverModuleStub))
+    },
+  )
+
+  /**
+   * The modules a compiled module still loads once TypeScript is erased with
+   * `verbatimModuleSyntax` semantics, where only `import type` declarations
+   * and `type` specifiers are dropped.
+   */
+  async function verbatimImportSources(code: string) {
+    const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
+      lang: 'tsx',
+      typescript: { onlyRemoveTypeImports: true },
+    })
+    return importSources(javascript)
+  }
+
+  // Control for the pin below (same harness): a server-only import that only
+  // the handler read leaves the client.
+  test('client: a server-only import only the handler reads is not loaded with verbatimModuleSyntax', async () => {
+    const code = `${head}import { auth } from './auth'
+export const fn = createServerFn().handler(async () => auth.get())`
+    expect(
+      await verbatimImportSources((await compileCode('client', code)) ?? code),
+    ).toEqual([])
+  })
+
+  // Bug: dead-code elimination counts a `typeof auth` type query in a
+  // top-level type alias as a use of the `auth` import, so a server-only
+  // import that the handler read and that such a type still mentions stays a
+  // value import in the client output.
+  // Impact: with `verbatimModuleSyntax` (TypeScript keeps value imports),
+  // the client loads the server-only module and its top-level code ships
+  // (see the Vite build pin).
+  // Source: gap D4 (gaps/dead-code.md)
+  test.fails(
+    'client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax',
+    async () => {
+      const code = `${head}import { auth } from './auth'
+type Session = typeof auth.session
+export const fn = createServerFn().handler(async () => auth.get() as Session)`
+      expect(
+        await verbatimImportSources(
+          (await compileCode('client', code)) ?? code,
+        ),
+      ).toEqual([])
+    },
+  )
+
+  // Bug: removing a server fn handler from the callers keeps the comments
+  // attached to it, which move to the RPC that replaces it. Middleware,
+  // isomorphic and server-only fns drop them.
+  // Impact: comments about server code (secrets, internals, `/*! */` legal
+  // comments that minifiers keep) ship in the client module (in dev, and in
+  // builds that do not minify).
+  // Source: gap D5 (gaps/dead-code.md); #8504 caller-dead-code.test.ts:403
+  test.fails.each([
+    `/*! uses SERVICE_ROLE_KEY */\n  async () => 1,`,
+    `// uses SERVICE_ROLE_KEY\n  async () => 1,`,
+    `/* SERVICE_ROLE_KEY */ async () => 1,`,
+    `async () => 1 /* SERVICE_ROLE_KEY */,`,
+  ])(
+    'client: comments around a server fn handler are dropped: %s',
+    async (handler) => {
+      const code = `${head}export const fn = createServerFn().handler(
+  ${handler}
+)`
+      expect((await compileCode('client', code)) ?? code).not.toContain(
+        'SERVICE_ROLE_KEY',
+      )
+    },
+  )
 })
 
 describe('Vue single-file components', () => {
@@ -876,6 +1052,164 @@ exports.run = function (app) {
         expect((await compile(code, id)) ?? code).toBe(code)
       }
     },
+  )
+})
+
+describe('Vite build', () => {
+  const timeout = 60_000
+
+  /** A server-only module whose top-level code marks the bundle it is in. */
+  const dbModule = `globalThis.MARK_DB_LOADED = true
+export const db = { users: () => 'users' }
+`
+
+  // Control for the pin below (same harness).
+  test(
+    'client: the server-only module of a function only server code uses is not bundled',
+    async () => {
+      const { client } = await buildStart({
+        files: {
+          'db.server.ts': dbModule,
+          'fns.ts': `${head}import { db } from './db.server'
+function find() { return db.users() }
+export const fn = createServerFn().handler(async () => find())
+`,
+          'entry.ts': `export { fn } from './fns'\n`,
+        },
+      })
+      expect(client.where('MARK_DB_LOADED')).toBe('nowhere')
+    },
+    timeout,
+  )
+
+  // Bug: the client output keeps a class only server code uses, with its
+  // server-only import (compiler pin "client: a class used by a server fn
+  // handler does not load its server-only import" above). Tree-shaking drops
+  // the unused class but keeps the import, so the server-only module's
+  // top-level code is bundled and runs in the browser.
+  // Impact: server-only modules (database clients, SDKs initialised with
+  // secrets) ship to the client and run their top-level code there.
+  // Source: gap D2 (gaps/dead-code.md), build canary.
+  test.fails(
+    'client: the server-only module of a class only server code uses is not bundled',
+    async () => {
+      const { client } = await buildStart({
+        files: {
+          'db.server.ts': dbModule,
+          'fns.ts': `${head}import { db } from './db.server'
+class Repo { get() { return db.users() } }
+export const fn = createServerFn().handler(async () => new Repo().get())
+`,
+          'entry.ts': `export { fn } from './fns'\n`,
+        },
+      })
+      expect(client.where('MARK_DB_LOADED')).toBe('nowhere')
+    },
+    timeout,
+  )
+
+  /** A server fn module whose `auth` import a type still mentions. */
+  const typeofFiles = (verbatimModuleSyntax: boolean) => ({
+    'tsconfig.json': JSON.stringify({
+      compilerOptions: { verbatimModuleSyntax },
+    }),
+    'auth.ts': `globalThis.MARK_AUTH_LOADED = true
+export const auth = { get: () => 'session', session: 'session' }
+`,
+    'fns.ts': `${head}import { auth } from './auth'
+type Session = typeof auth.session
+export const fn = createServerFn().handler(async () => auth.get() as Session)
+`,
+    'entry.ts': `export { fn } from './fns'\n`,
+  })
+
+  // Control for the pin below (same harness): without verbatimModuleSyntax,
+  // TypeScript erases the import that only a type mentions.
+  test(
+    'client: a server-only module a type mentions is not bundled',
+    async () => {
+      const { client } = await buildStart({ files: typeofFiles(false) })
+      expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
+    },
+    timeout,
+  )
+
+  // Bug: the client output keeps the server-only import that a `typeof` type
+  // query still mentions (compiler pin "client: a server-only import last
+  // mentioned by a type alias ..." above); with
+  // `verbatimModuleSyntax`, Vite's TypeScript transform keeps it.
+  // Impact: the server-only module's top-level code is bundled and runs in
+  // the browser.
+  // Source: gap D4 (gaps/dead-code.md), build canary.
+  test.fails(
+    'client: a server-only module a type mentions is not bundled with verbatimModuleSyntax',
+    async () => {
+      const { client } = await buildStart({ files: typeofFiles(true) })
+      expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
+    },
+    timeout,
+  )
+
+  // Bug: with SSR as the server fn provider, the SSR caller module and the
+  // provider module (`?tss-serverfn-split`) are two module instances of the
+  // same file in the SSR bundle, and the provider repeats the file's
+  // top-level code (exports-and-directives.test.ts "side-effect imports and
+  // top-level statements stay in every output" asserts this).
+  // Impact: in one server process, the file's top-level side effects run
+  // twice, handlers and SSR code of the file see different module state, and
+  // `instanceof` fails for a class of the file passed to a server fn.
+  // Source: gap SF17 (gaps/start-env.md), PR #8656 (class identity).
+  test.fails(
+    'SSR: a server fn module is initialised once and shares its state with SSR code',
+    async () => {
+      const { ssr } = await buildStart({
+        files: {
+          'fns.ts': `${head}globalThis.initialised = (globalThis.initialised ?? 0) + 1
+let count = 0
+export class Session {}
+export const readCount = () => count
+export const fn = createServerFn().handler(async ({ data }) => {
+  count++
+  return data instanceof Session
+})
+`,
+          'entry.ts': `export { fn, readCount, Session } from './fns'\n`,
+        },
+      })
+      const { result } =
+        await ssr.run(`const isSession = await entry.fn({ data: new entry.Session() })
+return { initialised: globalThis.initialised, isSession, count: entry.readCount() }`)
+      expect(result).toEqual({ initialised: 1, isSession: true, count: 1 })
+    },
+    timeout,
+  )
+
+  // Bug: the production server fn resolver is generated when the SSR build
+  // first loads it, from the server fns found so far. A server fn that only
+  // another server fn's handler (or a middleware `.server()`) calls is found
+  // later, when the SSR build compiles the provider that imports it, so it
+  // is missing from the resolver.
+  // Impact: in production, calling it throws "Server function info not
+  // found" (works in dev).
+  // Source: issue #7213.
+  test.fails(
+    'SSR: a server fn that only another server fn calls is callable',
+    async () => {
+      const { ssr } = await buildStart({
+        files: {
+          'inner.ts': `${head}export const inner = createServerFn().handler(async () => 'inner')
+`,
+          'outer.ts': `${head}import { inner } from './inner'
+export const outer = createServerFn().handler(async () => 'outer:' + (await inner()))
+`,
+          'entry.ts': `export { outer } from './outer'\n`,
+        },
+      })
+      expect((await ssr.run(`return await entry.outer()`)).result).toBe(
+        'outer:inner',
+      )
+    },
+    timeout,
   )
 })
 
@@ -976,6 +1310,126 @@ export const schema = z.object({})
 export const fn = createServerFn().handler(() => 1)`,
       )
       expect(code).toContain('createClientRpc')
+    },
+    30_000,
+  )
+
+  /** Start packages of the server fn dev servers: RPCs expose their id. */
+  const serverFnStubs: Record<string, string> = {
+    '@tanstack/react-start': `export const createServerFn = () => ({
+  handler: (rpc, impl) =>
+    impl ? Object.assign((opts) => impl(opts ?? {}), { __executeServer: (opts) => impl(opts ?? {}) }) : rpc,
+})`,
+    '@tanstack/react-start/server-rpc': `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`,
+    '@tanstack/react-start/ssr-rpc': `export const createSsrRpc = (id) => ({ functionId: id })`,
+    '@tanstack/react-start/client-rpc': `export const createClientRpc = (id) => ({ functionId: id })`,
+  }
+
+  /**
+   * Starts a Vite dev server (middleware mode) with the Start compiler on
+   * `root`, with SSR as the server fn provider.
+   */
+  function startServerFnDevServer(root: string) {
+    return createServer({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      cacheDir: path.join(root, '.vite'),
+      appType: 'custom',
+      server: { middlewareMode: true, hmr: false, ws: false, watch: null },
+      plugins: [
+        {
+          name: 'stub-start-packages',
+          resolveId: (id) => (id in serverFnStubs ? `\0stub:${id}` : null),
+          load: (id) =>
+            id.startsWith('\0stub:')
+              ? serverFnStubs[id.slice('\0stub:'.length)]
+              : null,
+        },
+        startCompilerPlugin({
+          framework: 'react',
+          environments: [
+            { name: 'client', type: 'client' },
+            { name: 'ssr', type: 'server' },
+          ],
+          providerEnvName: 'ssr',
+        }),
+      ],
+    })
+  }
+
+  /**
+   * In a temporary project with `src/fns.ts` = a `greet` server fn, reads the
+   * id of `greet` through a first dev server, then calls the id through the
+   * server fn resolver (`getServerFnById`, like the server fn router) of a
+   * dev server started with `fresh` (a new server, which has compiled
+   * nothing) or of the same server. Returns the result or the error message.
+   */
+  async function callServerFnId(fresh: boolean) {
+    const root = await mkdtemp(path.join(__dirname, '.dev-server-fn-'))
+    const servers: Array<Awaited<ReturnType<typeof createServer>>> = []
+    try {
+      await mkdir(path.join(root, 'src'))
+      await writeFile(
+        path.join(root, 'src', 'fns.ts'),
+        `${head}export const greet = createServerFn().handler(() => 'hello')\n`,
+      )
+      /** Imports a module in the SSR environment of a dev server. */
+      const importSsr = (
+        server: Awaited<ReturnType<typeof createServer>>,
+        id: string,
+      ) => {
+        const ssr = server.environments.ssr
+        if (!ssr || !isRunnableDevEnvironment(ssr)) {
+          throw new Error('expected a runnable SSR environment')
+        }
+        return ssr.runner.import(id)
+      }
+      const first = await startServerFnDevServer(root)
+      servers.push(first)
+      const { greet } = await importSsr(first, '/src/fns.ts')
+      let server = first
+      if (fresh) {
+        await first.close()
+        server = await startServerFnDevServer(root)
+        servers.push(server)
+      }
+      const { getServerFnById } = await importSsr(
+        server,
+        '#tanstack-start-server-fn-resolver',
+      )
+      try {
+        return await (
+          await getServerFnById(greet.functionId)
+        )({})
+      } catch (error) {
+        return `throws: ${(error as Error).message}`
+      }
+    } finally {
+      for (const server of servers) {
+        await server.close()
+      }
+      await rm(root, { recursive: true, force: true })
+    }
+  }
+
+  // Control for the pin below (same harness).
+  test('calls a server fn id on the dev server that compiled its module', async () => {
+    expect(await callServerFnId(false)).toBe('hello')
+  }, 30_000)
+
+  // Bug: when a server fn id is not registered yet, the dev validator
+  // (`validate-server-fn-id`) transforms the source file under
+  // `?server-fn-module-lookup`, the one id the compiling transform excludes,
+  // so the id is never registered and the validator rejects it.
+  // Impact: after a dev server restart, calling a server fn whose module the
+  // new server has not compiled yet (e.g. from a page loaded before the
+  // restart) fails with "Invalid server function ID" (500).
+  // Source: issue #8447, gap SF8 (gaps/start-env.md).
+  test.fails(
+    'calls a server fn id on a fresh dev server that has not compiled its module',
+    async () => {
+      expect(await callServerFnId(true)).toBe('hello')
     },
     30_000,
   )

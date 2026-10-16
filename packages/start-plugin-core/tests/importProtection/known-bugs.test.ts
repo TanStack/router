@@ -10,12 +10,15 @@ import {
   getNamedExports,
 } from '../../src/import-protection/analysis'
 import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
+import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
 import {
   generateSelfContainedMockModule,
   loadResolvedVirtualModule,
   makeMockEdgeModuleId,
   resolveInternalVirtualModuleId,
 } from '../../src/vite/import-protection-plugin/virtualModules'
+import { buildStart } from '../build-harness'
+import type { ImportProtectionPluginOptions } from '../../src/vite/import-protection-plugin/types'
 
 const mockModule = `data:text/javascript,${encodeURIComponent(
   `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
@@ -163,3 +166,68 @@ export const mocked = mock.delete === mock.default.delete`
   )
   expect({ exported, mocked }).toEqual({ exported: true, mocked: true })
 })
+
+/**
+ * The import protection plugin of a Start build that denies `files` to the
+ * client and fails the build on a violation.
+ */
+function denyToClient(files: Array<string>) {
+  const getConfig = () => ({
+    startConfig: { importProtection: { behavior: 'error', client: { files } } },
+    resolvedStartConfig: { srcDirectory: '' },
+  })
+  return importProtectionPlugin({
+    getConfig:
+      getConfig as unknown as ImportProtectionPluginOptions['getConfig'],
+    framework: 'react',
+    environments: [
+      { name: 'client', type: 'client' },
+      { name: 'ssr', type: 'server' },
+    ],
+    providerEnvName: 'ssr',
+  })
+}
+
+/** A denied module whose code marks the bundle it is in. */
+const corpusModule = `export const corpus = () => 'MARK_CORPUS' + Math.random()\n`
+
+// Control for the pin below (same harness): a denied module whose code the
+// client bundle contains fails the build.
+test('build: a denied module the client uses fails the build', async () => {
+  await expect(
+    buildStart({
+      files: {
+        'corpus.ts': corpusModule,
+        'entry.ts': `import { corpus } from './corpus'\nexport const read = () => corpus()\n`,
+      },
+      plugins: [denyToClient(['**/corpus.ts'])],
+    }),
+  ).rejects.toThrow(/Import denied in client environment/)
+}, 60_000)
+
+// Bug: the build check counts a denied module as surviving when a chunk
+// lists it in `modules`, but Rolldown also lists the modules it tree-shook to
+// nothing (`renderedLength: 0`).
+// Impact: a denied module that a client-reachable module imports, but whose
+// code the client bundle does not contain, still fails the build.
+// Source: issue #8101 (closed without a reproduction); gap IP6b
+// (gaps/start-env.md).
+test.fails(
+  'build: a denied module the client bundle drops does not fail the build',
+  async () => {
+    const { client } = await buildStart({
+      files: {
+        'corpus.ts': corpusModule,
+        'layout.ts': `import { createServerFn } from '@tanstack/react-start'
+import { corpus } from './corpus'
+export const size = () => corpus()
+export const nav = createServerFn().handler(async () => 1)
+`,
+        'entry.ts': `export { nav } from './layout'\n`,
+      },
+      plugins: [denyToClient(['**/corpus.ts'])],
+    })
+    expect(client.where('MARK_CORPUS')).toBe('nowhere')
+  },
+  60_000,
+)
