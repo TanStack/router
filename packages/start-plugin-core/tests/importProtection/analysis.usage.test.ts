@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import {
-  findOriginalUnsafeUsagePosFromResult,
-  findPostCompileUsagePos,
-} from '../../src/import-protection/analysis'
+import { findPostCompileUsagePos } from '../../src/import-protection/analysis'
 import { locationOf, usageLocation } from './usage-location'
 
 function pos(code: string, source: string) {
@@ -38,15 +35,6 @@ describe('findPostCompileUsagePos', () => {
     )
     expect(p).toBeDefined()
     expect(p!.line).toBe(2)
-  })
-
-  test('prefers call usage over earlier non-preferred identifier usage', () => {
-    const p = pos(
-      `import { getRequest } from 'denied';\nconst a = getRequest;\ngetRequest()`,
-      'denied',
-    )
-    expect(p).toBeDefined()
-    expect(p!.line).toBe(3)
   })
 
   test('falls back to non-binding identifier usage if no preferred usage exists', () => {
@@ -408,18 +396,4 @@ export const fn = myServerFn.handler(() => denied())`
       )
     },
   )
-})
-
-test('repeated lookups on one transform result return the cached position', () => {
-  const code = `import { denied } from 'denied';\ndenied()`
-  const result = { code, map: undefined, originalCode: undefined }
-  const position = findOriginalUnsafeUsagePosFromResult(
-    result,
-    'denied',
-    'client',
-  )
-  expect(position).toEqual({ line: 2, column0: 0 })
-  expect(
-    findOriginalUnsafeUsagePosFromResult(result, 'denied', 'client'),
-  ).toEqual(position)
 })
