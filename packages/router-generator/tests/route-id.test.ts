@@ -1,6 +1,6 @@
 /** Controls of the shared `routeIdOf` helper (route-id.ts). */
 import { describe, expect, test } from 'vitest'
-import { routeIdOf } from './route-id'
+import { evaluateRouteFile, routeIdOf } from './route-id'
 
 describe('routeIdOf', () => {
   test.each(['react', 'solid', 'vue'])(
@@ -30,5 +30,16 @@ export const Route = 1`),
       routeIdOf(`import { createFileRoute, Missing } from '@tanstack/react-router'
 export const Route = createFileRoute('/a')({ component: Missing })`),
     ).rejects.toThrow()
+  })
+
+  test('evaluateRouteFile provides the other router exports it is given', async () => {
+    const exports = await evaluateRouteFile(
+      `import Router, { createFileRoute, Link } from '@tanstack/react-router'
+export const used = [Router, Link]
+export const Route = createFileRoute('/a')({})`,
+      ['default', 'Link'],
+    )
+    expect(exports.used).toEqual(['default', 'Link'])
+    expect(exports.Route.id).toBe('/a')
   })
 })

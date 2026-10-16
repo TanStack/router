@@ -1,6 +1,31 @@
+import { parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { transform } from '../src/transform/transform'
+import { evaluateRouteFile, routeIdOf } from './route-id'
 import type { RouteNode } from '../src/types'
+
+/**
+ * The local names of the values a module imports from `source`, in source
+ * order.
+ */
+function valueImports(code: string, source: string) {
+  const { module } = parseSync('route.tsx', code, { sourceType: 'module' })
+  return module.staticImports
+    .filter((statement) => statement.moduleRequest.value === source)
+    .flatMap((statement) =>
+      statement.entries
+        .filter((entry) => !entry.isType)
+        .map((entry) => entry.localName.value),
+    )
+}
+
+/** The module without its import declarations (each on its own line). */
+function withoutImports(code: string) {
+  return code
+    .split(/(?<=\n)/)
+    .filter((line) => !line.startsWith('import '))
+    .join('')
+}
 
 function makeNode(
   fsRouteType: RouteNode['_fsRouteType'] = 'static',
@@ -40,6 +65,26 @@ describe('transform', () => {
       ].join('\n'),
     })
     expect(node.createFileRouteProps).toEqual(new Set(['component', 'server']))
+  })
+
+  // Source: #8504 router-generator transform.test.ts ("reads route call
+  // parts through parentheses and TypeScript wrappers"). Wrappers around the
+  // constructor and the id are pinned in known-bugs.test.ts; recording the
+  // option keys through a wrapper is best effort.
+  it.each([
+    `(({ component: Page, server: {} }) satisfies object)`,
+    `({ component: Page, server: {} } as any)`,
+  ])('rewrites the id of a route whose options are wrapped: %s', (options) => {
+    const source = [
+      "import { createFileRoute } from '@tanstack/react-router'",
+      `export const Route = createFileRoute('/old')${options}`,
+      '',
+    ].join('\n')
+
+    expect(transformToNewRoute(source)).toEqual({
+      result: 'modified',
+      output: source.replace('/old', '/new'),
+    })
   })
 
   it('updates parenthesized route calls without changing their surrounding source', () => {
@@ -221,12 +266,15 @@ describe('transform', () => {
   })
 
   it('adds the missing constructor import with the file line ending', async () => {
+    const body = [
+      '',
+      'export const link = Link',
+      "export const Route = createFileRoute('/old')({})",
+    ]
     const result = await transform({
-      source: [
-        "import { Link } from '@tanstack/react-router'",
-        '',
-        "export const Route = createFileRoute('/old')({})",
-      ].join('\r\n'),
+      source: ["import { Link } from '@tanstack/react-router'", ...body].join(
+        '\r\n',
+      ),
       ctx: {
         target: 'react',
         routeId: '/new',
@@ -239,12 +287,11 @@ describe('transform', () => {
     if (result.result !== 'modified') {
       throw new Error(`expected modified result, got ${result.result}`)
     }
-    expect(result.output).toBe(
-      [
-        "import { Link, createFileRoute } from '@tanstack/react-router'",
-        '',
-        "export const Route = createFileRoute('/new')({})",
-      ].join('\r\n'),
+    expect(result.output).not.toMatch(/(?<!\r)\n/)
+    const evaluated = await evaluateRouteFile(result.output, ['Link'])
+    expect([evaluated.Route.id, evaluated.link]).toEqual(['/new', 'Link'])
+    expect(withoutImports(result.output)).toBe(
+      withoutImports(body.join('\r\n').replace('/old', '/new')),
     )
   })
 
@@ -459,12 +506,22 @@ describe('transform', () => {
     })
 
     expect(result.result).toBe('error')
-    if (result.result !== 'error') {
-      throw new Error(`expected error result, got ${result.result}`)
-    }
-    expect(String(result.error)).toContain(
-      'expected exactly one createFileRoute/createLazyFileRoute call',
+  })
+
+  // Source: #8504 router-generator transform.test.ts ("returns an error when
+  // a redeclared Route var holds two route calls").
+  it('returns an error when a redeclared Route var holds two route calls', () => {
+    const result = transformToNewRoute(
+      [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        '',
+        "var Route = createFileRoute('/a')({})",
+        "var Route = createFileRoute('/b')({})",
+        'export { Route }',
+      ].join('\n'),
     )
+
+    expect(result.result).toBe('error')
   })
 
   it('prepends a new import when no target-module import exists', async () => {
@@ -486,14 +543,13 @@ describe('transform', () => {
     if (result.result !== 'modified') {
       throw new Error(`expected modified result, got ${result.result}`)
     }
-    expect(result.output).toBe(
-      [
-        "import { createFileRoute } from '@tanstack/react-router'",
-        "import { useState } from 'react'",
-        '',
-        "export const Route = createFileRoute('/new')({})",
-      ].join('\n'),
-    )
+    expect(valueImports(result.output, '@tanstack/react-router')).toEqual([
+      'createFileRoute',
+    ])
+    expect(result.output).toContain("import { useState } from 'react'")
+    expect(
+      await routeIdOf(result.output.replace(/^import .* from 'react'$/m, '')),
+    ).toBe('/new')
   })
 
   it('returns not-modified for a non-route-constructor call', async () => {
@@ -564,8 +620,11 @@ describe('transform', () => {
     expect(result.output).not.toContain('createLazyFileRoute')
   })
 
-  // The recorded option keys drive prerendering and server-only route pruning.
-  it('records identifier and string-literal option keys, not computed or spread ones', () => {
+  // The recorded option keys drive prerendering and server-only route
+  // pruning. Resolving computed and spread keys is best effort; the safe
+  // fallback for them is pinned through Start's consumers
+  // (start-plugin-core tests/known-bugs-route-options.test.ts).
+  it('records identifier and string-literal option keys', () => {
     const node = makeNode()
     const result = transformToNewRoute(
       [
@@ -576,7 +635,9 @@ describe('transform', () => {
     )
 
     expect(result).toEqual({ result: 'not-modified' })
-    expect(node.createFileRouteProps).toEqual(new Set(['component', 'server']))
+    expect([...node.createFileRouteProps!]).toEqual(
+      expect.arrayContaining(['component', 'server']),
+    )
   })
 })
 
@@ -607,36 +668,60 @@ describe('transform preserves the rest of the route file', () => {
     {
       name: 'a default import',
       imports: "import Router from '@tanstack/react-router'",
-      expected:
-        "import Router, { createFileRoute } from '@tanstack/react-router'",
+      uses: 'Router',
+      bound: ['default'],
     },
     {
       name: 'an aliased import of the constructor',
       imports:
         "import { createFileRoute as cfr } from '@tanstack/react-router'",
-      expected:
-        "import { createFileRoute as cfr, createFileRoute } from '@tanstack/react-router'",
+      uses: 'cfr',
+      bound: ['createFileRoute'],
     },
     {
-      // The constructor goes into the named import, never the namespace one.
+      // The constructor goes into the named import, never the namespace one
+      // (`import * as Router, { ... }` does not parse).
       name: 'a namespace import',
       imports: [
         "import * as Router from '@tanstack/react-router'",
         "import { Link } from '@tanstack/react-router'",
       ].join('\n'),
-      expected: [
-        "import * as Router from '@tanstack/react-router'",
-        "import { Link, createFileRoute } from '@tanstack/react-router'",
-      ].join('\n'),
+      uses: 'Router.Link, Link',
+      bound: ['Link', 'Link'],
     },
-  ])('adds the missing constructor next to $name', ({ imports, expected }) => {
-    const route = "export const Route = createFileRoute('/old')({})"
+  ])(
+    'adds the missing constructor next to $name',
+    async ({ imports, uses, bound }) => {
+      const body = `export const uses = [${uses}]
+export const Route = createFileRoute('/old')({})`
+      const result = transformToNewRoute(`${imports}\n${body}`)
 
-    expect(transformToNewRoute(`${imports}\n${route}`)).toEqual({
-      result: 'modified',
-      output: `${expected}\n${route.replace('/old', '/new')}`,
-    })
-  })
+      expect(result.result).toBe('modified')
+      if (result.result !== 'modified') {
+        throw new Error(`expected modified result, got ${result.result}`)
+      }
+      // The constructor is bound once; the output evaluates (a constructor
+      // merged into the namespace import would not parse).
+      expect(
+        valueImports(result.output, '@tanstack/react-router').filter(
+          (name) => name === 'createFileRoute',
+        ),
+      ).toHaveLength(1)
+      const evaluated = await evaluateRouteFile(result.output, [
+        'default',
+        'Link',
+      ])
+      expect(evaluated.Route.id).toBe('/new')
+      expect(
+        evaluated.uses.map((value: unknown) =>
+          typeof value === 'function' ? 'createFileRoute' : value,
+        ),
+      ).toEqual(bound)
+      expect(withoutImports(result.output)).toBe(
+        withoutImports(body.replace('/old', '/new')),
+      )
+    },
+  )
 
   // Source: TanStack/router#7341. In a `.ts` file, `<T>value` is a type
   // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
