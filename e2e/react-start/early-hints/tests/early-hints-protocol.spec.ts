@@ -103,7 +103,9 @@ test.describe('Early Hints - HTTP/2 Protocol', () => {
     const response = await makeRequest(baseURL, '/')
     const link = earlyHintsLinkHeader(response)
 
-    expect(link).toMatch(/<[^>]+>;\s*rel=modulepreload;\s*as=script/)
+    expect(link).toMatch(
+      /<[^>]+>;\s*rel=modulepreload;\s*as=script;\s*fetchpriority=low/,
+    )
   })
 
   test('CSS module assets are included in early hints', async () => {
@@ -145,7 +147,7 @@ test.describe('Early Hints - HTTP/2 Protocol', () => {
     const response = await makeRequest(baseURL, '/')
     const link = linkHeader(response.finalHeaders)
 
-    expect(link).toContain('rel=modulepreload; as=script')
+    expect(link).toContain('rel=modulepreload; as=script; fetchpriority=low')
     expect(link).toContain('<https://early-hints.test>; rel=preconnect')
   })
 
