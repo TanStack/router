@@ -3,12 +3,15 @@
  * checks behaviour through public contracts, not through the printed form of
  * the compiled code or generated names.
  */
+import { stripVTControlCharacters } from 'node:util'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import {
   callProvider,
   callReportedServerFns,
+  callServerFnThroughCallers,
   compileAll,
+  compileErrorMessage,
   compileFor,
   compileHydrate,
   compileServer,
@@ -112,6 +115,56 @@ export const bump = createServerFn().handler(async () => ++count)`)
       )
       expect(await callProvider(compiled, 'bump')).toBe(1)
     })
+  })
+})
+
+// Source: #8504 declaration-sites.test.ts "compileErrorMessage drops the
+// code frame that quotes the source"
+test('compileErrorMessage drops the code frame that quotes the source', async () => {
+  const error = await compileFor(
+    'client',
+    `import { createServerFn } from '@tanstack/react-start'
+const args: Array<() => unknown> = []
+export const fn = createServerFn().handler(...args)`,
+  ).catch((caught: unknown) => caught)
+  expect(stripVTControlCharacters((error as Error).message)).toContain(
+    'export const fn',
+  )
+  const message = compileErrorMessage(error)
+  expect(message).toMatch(/handler\(\) must be called with an expression/)
+  expect(message).not.toContain('export const fn')
+})
+
+/** A compiled module and the server fns its compilation reported. */
+const callableServerFn = async (code: string) => {
+  const compiled = await compileAll(code)
+  return { compiled, read: (module: Record<string, any>) => module.fn }
+}
+
+describe('callServerFnThroughCallers', () => {
+  test('calls a top-level server fn through the RPC the callers give', async () => {
+    const { compiled, read } = await callableServerFn(
+      `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'called')`,
+    )
+    expect(await callServerFnThroughCallers(compiled, read)).toBe('called')
+  })
+
+  test('fails when a caller keeps the handler instead of an RPC', async () => {
+    const { compiled, read } = await callableServerFn(
+      `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'called')`,
+    )
+    await expect(
+      callServerFnThroughCallers(
+        {
+          ...compiled,
+          client: `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'called')`,
+        },
+        read,
+      ),
+    ).rejects.toThrow('client')
   })
 })
 

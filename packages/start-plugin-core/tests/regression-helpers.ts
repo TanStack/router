@@ -707,6 +707,51 @@ export async function expectOutputsFreeOfHandler(
   }
 }
 
+/**
+ * Compiles every output of `code`, each on its own (an output may reject the
+ * code), and checks `expectOutputsFreeOfHandler`.
+ */
+export async function expectNoClientHandler(code: string) {
+  const results = {} as Record<Output, OutputResult>
+  for (const output of outputs) {
+    results[output] = await compileFor(output, code).catch(
+      (error: unknown) => ({ error }),
+    )
+  }
+  await expectOutputsFreeOfHandler(code, results)
+}
+
+/**
+ * Calls a server fn the way the app does, from where `read` finds it in the
+ * evaluated callers (e.g. `(module) => module.api.read`): the client and the
+ * SSR caller each give an RPC with the same id, the callers reported that id,
+ * and the handler the report names (the provider module and export, in the
+ * SSR bundle) carries that id in its metadata. Returns what the handler
+ * returns.
+ */
+export async function callServerFnThroughCallers(
+  compiled: Awaited<ReturnType<typeof compileAll>>,
+  read: (module: Record<string, any>) => unknown,
+  stubs: Record<string, ModuleStub> = {},
+) {
+  const client = read(
+    await evaluateModule(compiled.client, stubs, {
+      framework: compiled.framework,
+    }),
+  ) as { rpc: { client: string } }
+  expect(client, 'client').toEqual({ rpc: { client: expect.any(String) } })
+  const id = client.rpc.client
+  const graph = createServerGraph(compiled, stubs)
+  expect(read(await graph.ssr()), 'ssr').toEqual({ rpc: { ssr: id } })
+  const reported = compiled.serverFns[id]
+  expect(reported, 'reported server fn').toBeDefined()
+  const handler = (await graph.import(reported!.extractedFilename))[
+    reported!.functionName
+  ] as ProviderHandler
+  expect(handler?.meta?.id, 'provider handler id').toBe(id)
+  return handler({ data: undefined })
+}
+
 /** The directives of a module's directive prologue, in order. */
 export function directivePrologue(code: string) {
   const { program } = parseSync('module.tsx', code, { sourceType: 'module' })

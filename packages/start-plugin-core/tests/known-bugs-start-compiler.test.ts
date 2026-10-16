@@ -18,6 +18,7 @@ import {
   createStartCompiler,
   directivePrologue,
   evaluateModule,
+  expectNoClientHandler,
   expectOutputsFreeOfHandler,
   importSources,
   misplacedServerFnRejection,
@@ -28,7 +29,14 @@ import {
   settle,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import {
+  capturingPlacement,
+  placementHeads,
+  placementModule,
+  placements,
+} from './createServerFn/placements'
 import type { ModuleStub, Output, OutputResult } from './regression-helpers'
+import type { PlacementHead } from './createServerFn/placements'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -55,17 +63,6 @@ async function callServerFns(
     options.stubs,
   )
   return { ...compiled, results }
-}
-
-/** Compiles every output of `code` and checks `expectOutputsFreeOfHandler`. */
-async function expectNoClientHandler(code: string) {
-  const results = {} as Record<Output, OutputResult>
-  for (const output of outputs) {
-    results[output] = await compileFor(output, code).catch(
-      (error: unknown) => ({ error }),
-    )
-  }
-  await expectOutputsFreeOfHandler(code, results)
 }
 
 /**
@@ -479,83 +476,49 @@ export const read = createServerOnlyFn(() => db.secret()).bind(null)`)
 
   // Bug: when createServerFn is the only factory imported, the compiler only
   // visits top-level variable declarations, so a server fn anywhere else is
-  // neither extracted nor rejected. Rejecting it with a clear compile error
-  // is a valid fix.
-  // Impact: its handler and server-only imports ship to the client.
-  test.fails.each([
+  // neither extracted nor rejected. With another Start factory imported, a
+  // server fn initializing a declarator below the top level (in a function,
+  // a block or a switch case) is extracted on the client, but its provider
+  // module exports a handler it never declares. Rejecting a placement with a
+  // clear compile error is a valid fix; supporting it is the goal
+  // (createServerFn/declaration-sites.test.ts "supports a server fn in ...").
+  // Impact: the handler and its server-only imports ship to the client
+  // (createServerFn alone), or the server build fails (another factory).
+  describe.each([
+    { importHead: 'createServerFn alone' as const, rows: placements },
     {
-      name: 'a function body',
-      code: `export function make() {
-  const inner = createServerFn().handler(async () => db.inner())
-  return inner
-}`,
+      importHead: 'another Start factory' as const,
+      rows: placements.filter((placement) => placement.declarator),
     },
-    {
-      name: 'a function body next to a top-level server fn',
-      code: `export const top = createServerFn().handler(async () => db.top())
-export function make() {
-  const inner = createServerFn().handler(async () => db.inner())
-  return inner
-}`,
-    },
-    {
-      name: 'a switch case',
-      code: `export function pick(kind: string) {
-  switch (kind) {
-    case 'a':
-      const inner = createServerFn().handler(async () => db.inner())
-      return inner
-  }
-}`,
-    },
-    {
-      name: 'a top-level block',
-      code: `export const registry: Array<unknown> = []
-{
-  const inner = createServerFn().handler(async () => db.inner())
-  registry.push(inner)
-}`,
-    },
-    {
-      name: 'an object property',
-      code: `export const api = { read: createServerFn().handler(async () => db.inner()) }`,
-    },
-    {
-      name: 'a class field',
-      code: `export class Api { read = createServerFn().handler(async () => db.inner()) }`,
-    },
-    {
-      name: 'an anonymous default export',
-      code: `export default createServerFn().handler(async () => db.inner())`,
-    },
-    {
-      name: 'an assignment',
-      code: `export let fn
-fn = createServerFn().handler(async () => db.inner())`,
-    },
-  ])(
-    'a createServerFn in $name does not ship its handler to the client',
-    async ({ code }) => {
-      await expectNoClientHandler(
-        `${head}import { db } from './db.server'\n${code}`,
-      )
-    },
-  )
+  ])('with $importHead imported', ({ importHead, rows }) => {
+    test.fails.each(rows)(
+      'a createServerFn in $name does not ship its handler to the client',
+      async ({ code }) => {
+        await expectNoClientHandler(placementModule(importHead, code))
+      },
+    )
+  })
 
-  // Bug: with another factory imported, a server fn nested in a function is
-  // extracted on the client, but its provider module exports a handler it
-  // never declares.
-  // Impact: the server build fails.
-  test.fails(
-    'a createServerFn nested in a function next to another factory yields a valid provider',
-    async () => {
-      await expectNoClientHandler(`import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export const serverOnly = createServerOnlyFn(() => db.top())
-export function make() {
-  const inner = createServerFn().handler(async () => db.inner())
-  return inner
-}`)
+  // Bug: same cause as above; a server fn nested in a function whose
+  // handler reads a local of that function (here `id`) cannot run on its own
+  // in the provider, and is not rejected either.
+  // Impact: its handler and server-only imports ship to the client
+  // (createServerFn alone), or the server build fails (another factory).
+  // Source: user ruling D13 (the one placement that must be rejected).
+  test.fails.each(Object.keys(placementHeads) as Array<PlacementHead>)(
+    'with %s imported, a nested server fn whose handler reads a local of its function is rejected in every output',
+    async (importHead) => {
+      const code = placementModule(importHead, capturingPlacement.code)
+      for (const output of outputs) {
+        const error = await compileFor(output, code).then(
+          () => undefined,
+          (caught: unknown) => caught,
+        )
+        expect(error, output).toBeInstanceOf(Error)
+        expect(compileErrorMessage(error), output).toMatch(
+          misplacedServerFnRejection,
+        )
+      }
     },
   )
 
