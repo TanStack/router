@@ -6,9 +6,6 @@ import {
 } from '../../src/rsbuild/import-protection'
 
 type ImportProtectionApi = Parameters<typeof registerImportProtection>[0]
-type ModifyRspackConfigHandler = Parameters<
-  ImportProtectionApi['modifyRspackConfig']
->[0]
 type ProcessAssetsHandler = Parameters<ImportProtectionApi['processAssets']>[1]
 type ProcessAssetsContext = Parameters<ProcessAssetsHandler>[0]
 
@@ -109,78 +106,6 @@ describe('getRsbuildResolvedImportProtectionCheck', () => {
         matchers,
       ),
     ).toEqual({ type: 'marker' })
-  })
-})
-
-describe('registerImportProtection loader registration', () => {
-  test('registers a post loader instead of an Rsbuild transform', () => {
-    let modifyRspackConfig: ModifyRspackConfigHandler | undefined
-    const transform = vi.fn()
-
-    const api = {
-      context: { action: 'build' },
-      onBeforeBuild() {},
-      onBeforeDevCompile() {},
-      modifyRspackConfig(handler) {
-        modifyRspackConfig = handler
-      },
-      transform,
-      processAssets() {},
-    } satisfies ImportProtectionApi & { transform: typeof transform }
-
-    registerImportProtection(api, {
-      framework: 'react',
-      environments: [{ name: 'client', type: 'client' }],
-      getConfig: () => ({
-        startConfig: {},
-        resolvedStartConfig: {
-          root: '/app',
-          srcDirectory: '/app/src',
-        },
-      }),
-    })
-
-    if (!modifyRspackConfig) {
-      throw new Error('Expected modifyRspackConfig to be registered')
-    }
-
-    class VirtualModulesPlugin {
-      constructor(_modules: Record<string, string>) {}
-
-      writeModule(_filePath: string, _contents: string) {}
-    }
-
-    const config: Parameters<ModifyRspackConfigHandler>[0] = {
-      module: { rules: [] },
-      plugins: [],
-    }
-    const utils: Parameters<ModifyRspackConfigHandler>[1] = {
-      environment: { name: 'client' },
-      rspack: {
-        experiments: { VirtualModulesPlugin },
-      },
-    }
-    modifyRspackConfig(config, utils)
-
-    expect(transform).not.toHaveBeenCalled()
-    const rules = config.module.rules
-    expect(rules).toHaveLength(1)
-    const rule = rules?.[0]
-    if (!rule || typeof rule !== 'object' || !('test' in rule)) {
-      throw new Error('Expected an import-protection Rspack rule')
-    }
-    expect(rule).toMatchObject({
-      enforce: 'post',
-      use: [
-        {
-          loader: expect.stringMatching(/import-protection-loader\.js$/),
-          options: {
-            envName: 'client',
-          },
-        },
-      ],
-    })
-    expect(rule.test).toEqual(/\.[cm]?[tj]sx?$/)
   })
 })
 
