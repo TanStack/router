@@ -1300,11 +1300,11 @@ ${component}`,
       'an exported const with a pure initialiser',
       'exported-pure',
       `function makeLabel(value: string) {
-  return value.toUpperCase()
+  return { text: value }
 }
 export const label = /* @__PURE__ */ makeLabel('$MARK')
 function Page() {
-  return <p>{label}</p>
+  return <p>{label.text}</p>
 }
 ${component}`,
     ),
