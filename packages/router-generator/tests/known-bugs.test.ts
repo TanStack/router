@@ -5,9 +5,9 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { Generator, getConfig } from '../src'
+import { routeIdOf } from './route-id'
 import type { RouteNode } from '../src'
 
 /**
@@ -50,26 +50,6 @@ export const Route = createRootRoute()`,
   } finally {
     await rm(root, { recursive: true, force: true })
   }
-}
-
-/**
- * Evaluates a route file with stub route constructors and returns the id its
- * `Route` is created with. Like a bundler, fails on an invalid module.
- */
-async function routeIdOf(code: string) {
-  const { code: javascript } = await transformWithOxc(code, 'route.tsx')
-  const router = `data:text/javascript,${encodeURIComponent(
-    `export const createFileRoute = (id) => (options) => ({ id, options })
-export const createLazyFileRoute = createFileRoute`,
-  )}`
-  const linked = javascript.replaceAll(
-    /(["'])@tanstack\/react-router\1/g,
-    JSON.stringify(router),
-  )
-  const { Route } = await import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(linked)}`
-  )
-  return Route.id as string
 }
 
 /** Whether Start prunes the route as server-only (`pruneServerOnlySubtrees`). */
