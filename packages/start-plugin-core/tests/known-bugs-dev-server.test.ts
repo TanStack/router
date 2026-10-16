@@ -5,9 +5,11 @@
  * the same harness on a case that works.
  */
 import path from 'node:path'
+import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { describe, expect, test } from 'vitest'
 import { importProtectionPlugin } from '../src/vite/import-protection-plugin/plugin'
 import { startDevServer } from './dev-server'
+import { isMock } from './importProtection/mock-helpers'
 import type { ImportProtectionPluginOptions } from '../src/vite/import-protection-plugin/types'
 
 const timeout = 30_000
@@ -304,6 +306,89 @@ export const read = () => secret() + '!'
     async () => {
       const client = await removeMarker()
       expect(modulesContaining(client, 'MARK_B_CODE')).toEqual(['/src/b.ts'])
+    },
+    timeout,
+  )
+
+  /**
+   * Starts a dev server with import protection on an app of `files` and a
+   * denied file `src/request.server.ts`, and evaluates `src/c.ts` as the
+   * browser loads it. Returns `src/c.ts`'s namespace, or the error loading it
+   * throws, and the server logs.
+   */
+  async function evaluateClient(files: Record<string, string>) {
+    const server = await startDevServer({
+      files: {
+        'src/request.server.ts': `export const getRequest = () => ({ url: '/' })\n`,
+        ...files,
+      },
+      plugins: importProtection,
+    })
+    const module = await evaluateServed(server, '/src/c.ts').catch(
+      (error: unknown) => error,
+    )
+    return { module, logs: server.logs }
+  }
+
+  const deniedModules = [
+    {
+      name: 'a denied file',
+      denied: './request.server',
+      client: `import { getRequest } from './request.server'
+import * as server from './request.server'
+export const values = [getRequest, server.getRequest]
+`,
+    },
+    {
+      name: 'a denied specifier',
+      denied: '@tanstack/react-start/server',
+      client: `import { getRequest, "get-headers" as getHeaders } from '@tanstack/react-start/server'
+import * as server from '@tanstack/react-start/server'
+export const values = [getRequest, getHeaders, server.setCookie]
+`,
+    },
+  ]
+
+  // Control for the pin below (same harness): the names a client module
+  // imports from a denied module are mocks.
+  test.each(deniedModules)(
+    'client: names imported from $name are mocks',
+    async ({ client }) => {
+      const { module } = await evaluateClient({ 'src/c.ts': client })
+      const { values } = module as { values: Array<unknown> }
+      expect(values.map(isMock)).toEqual(values.map(() => true))
+    },
+    timeout,
+  )
+
+  /** Log lines without the code frames of import-protection warnings. */
+  const messages = (logs: Array<string>) =>
+    logs.flatMap((log) =>
+      log.split('\n').filter((line) => !/^\s*(>\s*)?\d*\s*\|/.test(line)),
+    )
+
+  // Bug: in dev, a client module's `export * from` a denied module re-exports
+  // nothing: the mock edge of a denied specifier exports only the names its
+  // importer uses, and `export *` uses none; a denied file's `export *` is
+  // removed from the importer.
+  // Impact: a client module importing a name that another module re-exports
+  // with `export *` from a denied module fails to load (missing export), so
+  // the page does not hydrate. The only warning is the usual "Import denied"
+  // one, which does not say that the re-exported names are not mocked.
+  // Source: gap IP12 (gaps/start-env.md); the rewrite of the same form
+  // (Rsbuild) also only removes the `export *`
+  // (importProtection/rewrite.test.ts).
+  test.fails.each(deniedModules)(
+    'client: a name re-exported with `export *` from $name is a mock, or the server warns about the `export *`',
+    async ({ denied }) => {
+      const { module, logs } = await evaluateClient({
+        'src/b.ts': `export * from '${denied}'\n`,
+        'src/c.ts': `import { getRequest } from './b'\nexport const v = getRequest\n`,
+      })
+      expect(
+        isMock((module as Record<string, unknown>).v) ||
+          messages(logs).some((line) => line.includes('export *')),
+      ).toBe(true)
     },
     timeout,
   )
