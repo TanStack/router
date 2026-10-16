@@ -410,22 +410,28 @@ export const Route = createFileRoute('/')({ loader: ${loader}, component: Page }
 describe('plain JavaScript route files', () => {
   // In JavaScript, `a < b > (c)` is two comparisons, not a call with a type
   // argument, so `b` is a value the expression reads.
-  it('reads every operand of a chained comparison', async () => {
-    const route = await loadRoute(
-      `${head}const a = 1, b = 2, c = 3
+  // Source: #8504 router-utils source-language.test.ts (the other JavaScript
+  // extensions).
+  it.each(['route.js', 'route.jsx', 'route.mjs'])(
+    'reads every operand of a chained comparison (%s)',
+    async (filename) => {
+      const route = await loadRoute(
+        `${head}const a = 1, b = 2, c = 3
 const r = a < b > (c)
 export const Route = createFileRoute('/compare')({
   loader: () => r,
   component: () => <p>{String(r)}</p>,
 })
 `,
-      { filename: 'route.js' },
-    )
-    await expectValidModules(route.modules)
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      [false, '<p>false</p>'],
-    )
-  })
+        { filename },
+      )
+      await expectValidModules(route.modules)
+      expect([
+        route.options.loader(),
+        (await route.load('component'))(),
+      ]).toEqual([false, '<p>false</p>'])
+    },
+  )
 
   // Source: @babel/generator using-declarations/using-and-await-using
   it('keeps the using declarations of a split component', async () => {

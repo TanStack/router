@@ -357,6 +357,66 @@ export const Route = createFileRoute('/directive')({
   }
 })
 
+// Source: #8504 router-utils prepend-statements.test.ts ("inserts after the
+// complete prologue", "leaves string statements outside the prologue in
+// their original position"), at compiler level: the route HMR code and the
+// splitter's imports go after the whole prologue, and a later string
+// statement does not join it.
+it.each([false, true])(
+  'keeps the whole directive prologue first, and only it (hmr: %s)',
+  (hmr) => {
+    const { modules } = compileRouteModules(
+      `'use client'
+'use strict'
+import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/directive')({
+  component: () => <div>page</div>,
+})
+'use server'
+`,
+      { hmr },
+    )
+    const prologue = (code: string) => {
+      const directives: Array<string> = []
+      for (const statement of parseModule(code).body) {
+        if (statement.type !== 'ExpressionStatement' || !statement.directive) {
+          break
+        }
+        directives.push(statement.directive)
+      }
+      return directives
+    }
+    expect(prologue(modules.reference!)).toEqual(['use client', 'use strict'])
+    const { body } = parseModule(modules.reference!)
+    expect(
+      body.some(
+        (statement) =>
+          statement.type === 'ExpressionStatement' &&
+          statement.expression.type === 'Literal' &&
+          statement.expression.value === 'use server',
+      ),
+    ).toBe(true)
+  },
+)
+
+// Source: #8504 router-utils diagnostics.test.ts ("reports actionable syntax
+// locations"), at plugin level. Bundlers name the file of a plugin error;
+// the plugin reports where in it the error is.
+it.each(['\n', '\r\n', '\r', '\u2028', '\u2029'])(
+  'reports the line and column of a syntax error in a route file with %j line endings and Unicode source',
+  (newline) => {
+    const code = `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({})
+// 😀é${newline}/* 😀é */ export const broken = ;`
+    expect(() => compileRouteModules(code, { hmr: true })).toThrow(
+      expect.objectContaining({
+        name: 'SyntaxError',
+        loc: expect.objectContaining({ line: 4, column: 32 }),
+      }),
+    )
+  },
+)
+
 describe('route HMR plugin without code splitting', () => {
   function transformWith(
     options: Partial<Config> & { target: 'solid' | 'vue' },

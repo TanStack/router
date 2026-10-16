@@ -663,6 +663,27 @@ export const Route = createFileRoute('/posts')({
     },
   )
 
+  // Source: TanStack/router#6480 (an exported type that reads an imported
+  // value kept the import in the client module); replaces router-utils
+  // stripTypeExports "handles the issue #6480 scenario", which never checked
+  // the symptom.
+  it('drops an import that only an exported type and a split component read from the route module', async () => {
+    const route = await loadRoute(
+      `${head}import { secret } from './server-thing'
+export type Secret = typeof secret
+export const Route = createFileRoute('/')({
+  component: () => <p>{secret}</p>,
+})
+`,
+      { stubs: { './server-thing': { secret: 'server' } } },
+    )
+    await expectValidModules(route.modules)
+    expect(importSources(route.modules.reference!)).not.toContain(
+      './server-thing',
+    )
+    expect((await route.load('component'))()).toBe('<p>server</p>')
+  })
+
   it('keeps decorators before `export` for legacy decorator transforms', () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only
     // accept decorators before the `export` keyword.
