@@ -38,6 +38,30 @@ export const fn = createServerFn().handler(async () => [ns.x, counter, Repo.get(
   ).toEqual(['ns', 4, 'repo', 'admin'])
 })
 
+const handlerStubs = {
+  './db.server': dbServer,
+  './auth.server': `export const withAuth = (fn) => async (opts) => 'auth:' + (await fn(opts))`,
+  './users.server': `export const getUsers = async () => 'users'`,
+}
+
+/**
+ * Compiles a module with the server fn `fn`: callers call it through its RPC
+ * and import nothing, and the provider runs the handler. Returns what the
+ * handler returns.
+ */
+async function callHandler(code: string) {
+  const compiled = await compileAll(
+    `${head}${code.includes('db.') ? `import { db } from './db.server'\n` : ''}${code}`,
+  )
+  for (const output of ['client', 'ssr'] as const) {
+    expect(importSources(compiled[output]), output).toEqual([])
+    expect((await evaluateModule(compiled[output])).fn, output).toEqual({
+      rpc: { [output]: expect.any(String) },
+    })
+  }
+  return callProvider(compiled, 'fn', handlerStubs)
+}
+
 test.each<{
   name: string
   code: string
@@ -113,6 +137,14 @@ export const later = createServerFn().handler(async () => 'later:')`,
     expected: 'later:x',
   },
   {
+    // Replaces createServerFn.test.ts "should remove imports used only as
+    // caller handler identifiers" (N10).
+    name: 'an imported function',
+    code: `import { getUsers } from './users.server'
+export const fn = createServerFn().handler(getUsers)`,
+    expected: 'users',
+  },
+  {
     name: 'a parenthesized non-null initializer',
     code: `export const fn = (createServerFn().handler(async () => db.x()))!`,
     expected: 'x',
@@ -129,19 +161,28 @@ export const fn = createServerFn().handler(async () =>
 ])(
   'the handler can be $name',
   async ({ code, expected, read = async (value) => value }) => {
-    const compiled = await compileAll(
-      `${head}import { db } from './db.server'\n${code}`,
-    )
-    for (const caller of [compiled.client, compiled.ssr]) {
-      expect(importSources(caller)).toEqual([])
-    }
-    const value = await callProvider(compiled, 'fn', {
-      './db.server': dbServer,
-      './auth.server': `export const withAuth = (fn) => async (opts) => 'auth:' + (await fn(opts))`,
-    })
-    expect(await read(value)).toEqual(expected)
+    expect(await read(await callHandler(code))).toEqual(expected)
   },
 )
+
+// Bug: when the handler passed to `.handler()` is a `createIsomorphicFn()`
+// chain, the chain is compiled first and the caller is never rewritten into
+// an RPC (same cause as the createServerOnlyFn handler pin in
+// known-bugs-start-compiler.test.ts).
+// Impact: the server fn cannot be called through an RPC; the client runs
+// the isomorphic fn's client implementation instead.
+// Source: TanStack/router#8446; #8504 handler-scope.test.ts (corpus-diff,
+// imaimai17468/tanstack-start-handler-call-expression-repro; red on main)
+test.fails('the handler can be a createIsomorphicFn call', async () => {
+  expect(
+    await callHandler(`import { createIsomorphicFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(
+  createIsomorphicFn()
+    .server(async () => db.x())
+    .client(() => 'client'),
+)`),
+  ).toBe('x')
+})
 
 // Source: TanStack/router#7341. In a `.ts` module, `<T>value` is a type
 // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
@@ -381,7 +422,7 @@ export const bump = createServerFn().handler(async () => ++count)`)
 })
 
 // Source: Next.js server-actions fixtures server-graph/27
-test('exported helpers the handler uses stay declared in the provider', async () => {
+test('exported helpers the handler uses are callable from the handler', async () => {
   const compiled = await compileAll(`${head}import { db } from './db.server'
 export async function load() {
   return db.x()

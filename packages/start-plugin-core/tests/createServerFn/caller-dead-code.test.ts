@@ -289,6 +289,64 @@ ${code}`,
     },
   )
 
+  // Bug: these TypeScript positions named like the import (an enum member,
+  // an overload signature parameter, a constructor parameter property) count
+  // as references to it, so the callers keep the server-only import after
+  // the handler that read it is gone.
+  // Impact: the client loads the server-only module (its top-level code
+  // runs in the browser).
+  // Source: #8504 caller-dead-code.test.ts (typescript-eslint scope fixtures;
+  // red on main)
+  test.fails.each<{
+    name: string
+    code: string
+    check: (client: Record<string, any>) => void
+  }>([
+    {
+      // Source: typescript-eslint ts-enum/member-ref.js; #8504
+      // caller-dead-code.test.ts
+      name: 'an enum member',
+      code: `export enum Flags {
+  db = 1,
+  other = db + 1,
+}`,
+      check: (client) => expect(client.Flags.other).toBe(2),
+    },
+    {
+      // Source: typescript-eslint functions/function-declaration/overload.js;
+      // #8504 caller-dead-code.test.ts
+      name: 'an overload signature parameter',
+      code: `export function call(db: string): string
+export function call(value: string) {
+  return value
+}`,
+      check: (client) => expect(client.call('call')).toBe('call'),
+    },
+    {
+      // Source: typescript-eslint class/declaration/parameter-properties.js;
+      // #8504 caller-dead-code.test.ts
+      name: 'a parameter property',
+      code: `export class Service {
+  constructor(private db: string) {}
+  read() {
+    return this.db
+  }
+}`,
+      check: (client) =>
+        expect(new client.Service('param').read()).toBe('param'),
+    },
+  ])('when client code uses its name in $name', async ({ code, check }) => {
+    const client = await compileCode(
+      'client',
+      `${head}import { db } from './db.server'
+export const fn = createServerFn().handler(async () => db.x())
+${code}`,
+    )
+    expect(await getModuleErrors(client!)).toEqual([])
+    expect(importSources(client!)).toEqual([])
+    check(await evaluateModule(client!))
+  })
+
   // Source: SolidStart compile.spec.ts "removes an import when only type
   // specifiers remain", "preserves live value specifiers from a mixed
   // import"; babel-dead-code-elimination "import" > "mixed default and named"
@@ -347,6 +405,28 @@ export const fn = createServerFn()
       './schema.server',
     ])
   })
+
+  // The validator only runs on the server, so the client drops it and the
+  // imports only it reads, also when a cast wraps the chain link.
+  // Bug: a `.validator()` link wrapped in `satisfies` / `as` is not stripped
+  // from the callers.
+  // Impact: the validator and its imports ship to the client, code the
+  // client never runs.
+  // Source: #8504 caller-dead-code.test.ts (differential fuzzing; red on
+  // main)
+  test.fails.each([
+    { name: 'satisfies', wrap: (link: string) => `(${link} satisfies any)` },
+    { name: 'cast', wrap: (link: string) => `(${link} as any)` },
+  ])(
+    'when the validator link is wrapped in a $name expression',
+    async ({ wrap }) => {
+      const compiled =
+        await compileAll(`${head}import { schema } from './schema'
+export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async () => 'ok')`)
+      expect(importSources(compiled.client)).toEqual([])
+      expect(importSources(compiled.provider)).toEqual(['./schema'])
+    },
+  )
 })
 
 // Source: @vitejs/plugin-rsc hoist/function-hoist-block.js,
@@ -489,9 +569,35 @@ export const currentTheme = theme`)
 })
 
 describe('declarations only the handler needs', () => {
+  // Bug: a function whose body declares a local of the function's own name
+  // (`function Report() { let Report = ... }`) counts as used by that
+  // local, so the callers keep it, and the server-only import it reads,
+  // after the handler that called it is gone.
+  // Impact: the client loads the server-only module.
+  // Source: React Compiler fixture context-variable-as-jsx-element-tag.js;
+  // #8504 caller-dead-code.test.ts (red on main)
+  test.fails(
+    'callers drop a handler-only function that declares a local of its own name',
+    async () => {
+      const compiled =
+        await compileAll(`${head}import { readSecret } from './server-only'
+function Report() {
+  let Report = readSecret()
+  return <Report />
+}
+export const getReport = createServerFn().handler(async () => Report())`)
+      for (const caller of [compiled.client, compiled.ssr]) {
+        expect(importSources(caller)).toEqual([])
+        expect(caller).not.toContain('readSecret')
+      }
+    },
+  )
+
+  // Whether the callers keep code nothing uses (`unusedA`, `unusedB`) is
+  // left open.
   // Source: babel-dead-code-elimination "SCC dead code elimination" (mutual
   // recursion, self-recursive functions, unexported circular references)
-  test('callers drop handler-only cycles and default parameters but keep cycles nothing used', async () => {
+  test('callers drop handler-only cycles and default parameters', async () => {
     const compiled =
       await compileAll(`${head}import { secret, defaultId } from './secret.server'
 function walk(n: number): number { return n > 0 ? walkBack(n - 1) : secret.length }
@@ -507,13 +613,11 @@ export const fn = createServerFn().handler(async () => [walk(3), loop(2), load()
         expect(caller).not.toMatch(declarationOf(name))
       }
     }
-    for (const name of ['walk', 'walkBack', 'loop', 'load']) {
-      expect(compiled.provider).toMatch(declarationOf(name))
-    }
-    for (const output of [compiled.client, compiled.ssr, compiled.provider]) {
-      expect(output).toMatch(declarationOf('unusedA'))
-      expect(output).toMatch(declarationOf('unusedB'))
-    }
+    expect(
+      await callProvider(compiled, 'fn', {
+        './secret.server': `export const secret = 'secret'; export const defaultId = () => 'id'`,
+      }),
+    ).toEqual([0, 0, 'id'])
   })
 
   // Source: babel-dead-code-elimination "assignment"
