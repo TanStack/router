@@ -1,13 +1,19 @@
 import path from 'node:path'
-import * as t from '@babel/types'
 import { describe, expect, it, vi } from 'vitest'
-import { parseAst } from '@tanstack/router-utils'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { unpluginRouterComposedFactory } from '../src/core/router-composed-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
+import {
+  createRouteLoader,
+  evaluateModule,
+  expectRegisteredRouteOption,
+  loadRoute,
+} from './regression-helpers'
 import type { Config } from '../src/core/config'
+import type { CodeSplitGroupings } from '../src/core/constants'
 import type { UnpluginOptions, TransformResult } from 'unplugin'
 
 const referencePluginName =
@@ -77,18 +83,6 @@ function getCode(result: TransformResult | null | undefined) {
   return result.code
 }
 
-function countProgramHotDeclarations(code: string) {
-  const ast = parseAst({ code })
-  return ast.program.body.filter((statement) => {
-    return (
-      t.isVariableDeclaration(statement) &&
-      statement.declarations.some((declaration) => {
-        return t.isIdentifier(declaration.id) && declaration.id.name === 'hot'
-      })
-    )
-  }).length
-}
-
 describe('router plugin context', () => {
   it('splits parenthesized route factories, option values, and grouping arrays', async () => {
     const routeFile = normalizePath(
@@ -133,111 +127,71 @@ export const Route = (createFileRoute('/wrapped'))({
   })
 
   it('refreshes chunk ownership after source changes and isolates split settings', async () => {
-    const routeFile = normalizePath(
-      path.join(process.cwd(), 'src/routes/changing.tsx'),
-    )
     const source = (name: string, value: string) => `
 import { createFileRoute } from '@tanstack/react-router'
 const ${name} = { value: ${JSON.stringify(value)} }
 export const Route = createFileRoute('/changing')({
   loader: () => ${name},
-  component: () => ${name}.value,
+  component: () => ${name},
 })`
-    const setup = async (combined: boolean) => {
-      const context = createRouterPluginContext()
-      context.routesByFile.set(routeFile, { routeId: '/changing' })
-      const plugins = createRouterCodeSplitterPlugin(
-        {
-          target: 'react',
-          autoCodeSplitting: true,
-          codeSplittingOptions: {
-            addHmr: false,
-            defaultBehavior: combined
-              ? [['component', 'loader']]
-              : [['component'], ['loader']],
-          },
+    // One plugin instance per split setting, each compiling every version of
+    // the file, as a dev server does.
+    const load = (groupings: CodeSplitGroupings) =>
+      createRouteLoader({
+        routeId: '/changing',
+        pluginOptions: {
+          codeSplittingOptions: { defaultBehavior: groupings },
         },
-        context,
-      )
-      await configurePlugin(getReferencePlugin(plugins), 'build')
-      return async (code: string) => {
-        const reference = getCode(
-          await transformReferenceRoute(
-            getReferencePlugin(plugins),
-            code,
-            routeFile,
-          ),
-        )!
-        const virtual = getCode(
-          await transformReferenceRoute(
-            getCodeSplitterPlugin(plugins, virtualPluginName),
-            code,
-            `${routeFile}?tsr-split=${combined ? 'component---loader' : 'component'}`,
-          ),
-        )!
-        const shared = getCode(
-          await transformReferenceRoute(
-            getCodeSplitterPlugin(
-              plugins,
-              'tanstack-router:code-splitter:compile-shared-file',
-            ),
-            code,
-            `${routeFile}?tsr-shared=1`,
-          ),
-        )!
-        return { reference, virtual, shared }
-      }
+      })
+    const separate = load([['component'], ['loader']])
+    const combined = load([['component', 'loader']])
+
+    /** The loader's data and the object the component reads. */
+    const read = async (route: Awaited<ReturnType<typeof separate>>) => {
+      expect([route.isLazy('loader'), route.isLazy('component')]).toEqual([
+        true,
+        true,
+      ])
+      const data = await (await route.load('loader'))()
+      expect((await route.load('component'))()).toBe(data)
+      return data
     }
-    const separate = await setup(false)
-    const combined = await setup(true)
-    const first = await separate(source('firstState', 'first version'))
-    expect(first.reference).toContain('tsr-split=component')
-    const virtualImports = parseAst({
-      code: first.virtual,
-    }).program.body.filter((statement) => t.isImportDeclaration(statement))
-    expect(virtualImports).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          source: expect.objectContaining({
-            value: expect.stringContaining('tsr-shared'),
-          }),
-          specifiers: expect.arrayContaining([
-            expect.objectContaining({
-              type: 'ImportSpecifier',
-              imported: expect.objectContaining({ name: 'firstState' }),
-              local: expect.objectContaining({ name: 'firstState' }),
-            }),
-          ]),
-        }),
-      ]),
-    )
-    expect(first.shared).toContain('first version')
+
+    expect(
+      await read(await separate(source('firstState', 'first version'))),
+    ).toEqual({ value: 'first version' })
 
     const second = await separate(source('secondState', 'second version'))
-    for (const output of Object.values(second)) {
+    for (const output of Object.values(second.modules)) {
       expect(output).not.toContain('firstState')
     }
-    expect(second.virtual).toContain('secondState')
-    expect(second.shared).toContain('second version')
-    const together = await combined(source('secondState', 'second version'))
-    expect(together.reference).not.toContain('tsr-shared')
-    expect(together.virtual).toContain('second version')
-    expect(together.virtual).not.toContain('tsr-shared')
-    expect(await separate(source('secondState', 'second version'))).toEqual(
-      second,
-    )
+    expect(await read(second)).toEqual({ value: 'second version' })
+    expect(
+      await read(await combined(source('secondState', 'second version'))),
+    ).toEqual({ value: 'second version' })
+    expect(
+      (await separate(source('secondState', 'second version'))).modules,
+    ).toEqual(second.modules)
   })
 
   it.each([
-    { mode: 'production', production: true },
-    { mode: 'development with addHmr disabled', production: false },
-  ])(
-    'does not run React HMR compiler plugins in $mode',
-    async ({ production }) => {
-      const routeFile = normalizePath(
-        path.join(process.cwd(), 'src/routes/lowercase.tsx'),
-      )
-      const routeCode = `
+    {
+      mode: 'production',
+      options: {
+        command: 'build',
+        pluginOptions: { codeSplittingOptions: { addHmr: undefined } },
+      },
+    },
+    {
+      mode: 'development with addHmr disabled',
+      options: { command: 'serve', hmr: false },
+    },
+  ] as const)('does not add HMR code in $mode', async ({ options }) => {
+    const window = {}
+    vi.stubGlobal('window', window)
+    try {
+      const route = await loadRoute(
+        `
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/lowercase')({ component })
@@ -245,51 +199,19 @@ export const Route = createFileRoute('/lowercase')({ component })
 function component() {
   return <div>Hello</div>
 }
-`
-
-      const context = createRouterPluginContext()
-      context.routesByFile.set(routeFile, { routeId: '/lowercase' })
-
-      if (production) {
-        vi.stubEnv('NODE_ENV', 'production')
+`,
+        { routeId: '/lowercase', ...options },
+      )
+      for (const [name, code] of Object.entries(route.modules)) {
+        expect(code, name).not.toMatch(/import\.meta\.(?:webpackHot|hot)\b/)
       }
-
-      try {
-        const plugins = createRouterCodeSplitterPlugin(
-          {
-            target: 'react',
-            autoCodeSplitting: true,
-            codeSplittingOptions: production ? undefined : { addHmr: false },
-          },
-          context,
-        )
-        const referencePlugin = getReferencePlugin(plugins)
-        const virtualPlugin = getCodeSplitterPlugin(plugins, virtualPluginName)
-
-        await configurePlugin(referencePlugin, production ? 'build' : 'serve')
-
-        const referenceCode = getCode(
-          await transformReferenceRoute(referencePlugin, routeCode, routeFile),
-        )
-        const virtualCode = getCode(
-          await transformReferenceRoute(
-            virtualPlugin,
-            routeCode,
-            `${routeFile}?tsr-split=component`,
-          ),
-        )
-
-        expect(referenceCode).not.toContain('TSRFastRefreshAnchor')
-        expect(virtualCode).toContain('function component()')
-        expect(virtualCode).toContain('export { component }')
-        expect(virtualCode).not.toContain('SplitComponent')
-      } finally {
-        if (production) {
-          vi.unstubAllEnvs()
-        }
-      }
-    },
-  )
+      expect(route.isLazy('component')).toBe(true)
+      expect((await route.load('component'))()).toBe('<div>Hello</div>')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+    expect(window).not.toHaveProperty('__getReactRefreshIgnoredExports')
+  })
 
   it('does not install the standalone route HMR plugin in production', () => {
     vi.stubEnv('NODE_ENV', 'production')
@@ -367,7 +289,8 @@ export const Route = createFileRoute('/owned')({
     const firstCode = getCode(firstResult)
 
     expect(firstCode).not.toBeNull()
-    expect(countProgramHotDeclarations(firstCode!)).toBe(1)
+    // Code added twice would declare its bindings twice.
+    expect(await getModuleErrors(firstCode!)).toEqual([])
 
     const secondResult = await transformReferenceRoute(
       splitterB,
@@ -408,6 +331,19 @@ export const Route = createFileRoute('/owned')({
     const hmrCode = getCode(hmrResult)
 
     expect(hmrCode).not.toBeNull()
-    expect(hmrCode).toContain('TSRFastRefreshAnchor')
+    // The route module accepts its hot updates, and React Refresh registers
+    // its component.
+    const accept = vi.fn()
+    await evaluateModule(
+      hmrCode!,
+      {
+        '@tanstack/react-router': {
+          createFileRoute: () => (options: unknown) => ({ options }),
+        },
+      },
+      { importMeta: { hot: { data: {}, accept, dispose() {} } } },
+    )
+    expect(accept).toHaveBeenCalled()
+    await expectRegisteredRouteOption(hmrCode!, 'component')
   })
 })

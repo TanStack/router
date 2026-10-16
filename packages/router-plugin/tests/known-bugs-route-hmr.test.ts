@@ -6,12 +6,11 @@
  * so that React Refresh can patch it in place; a component React Refresh does
  * not register keeps rendering the old code until a full reload.
  */
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { createServer } from 'vite'
+import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
+import react from '@vitejs/plugin-react'
 import { describe, expect, test } from 'vitest'
-import { tanstackRouter } from '../src/vite'
 import { build, routeApp } from './build-harness'
+import { routerDevServer, routerPackageStub } from './dev-server'
 import {
   compileRouteModules,
   evaluateModule,
@@ -20,9 +19,12 @@ import {
   exportedNames,
   head,
   hotUpdate,
+  isRefreshable,
   loadRoute,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
+import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
+import type { PluginOption } from 'vite'
 
 /** Compiles every module the code splitter emits, with React HMR. */
 function compileWithCodeSplitting(code: string) {
@@ -43,12 +45,26 @@ export const Route = createFileRoute('/')({ component: memo(Page) })`),
   })
 
   // Bug: inline component options that are not plain functions (`memo(...)`,
-  // `forwardRef(...)`, method shorthand) are neither hoisted nor registered,
-  // nor is the function they wrap.
+  // `forwardRef(...)`, method shorthand, a function wrapped in a TypeScript
+  // `as` / `satisfies` / `!`) are neither hoisted nor registered, nor is the
+  // function they wrap.
   // Impact: on unsplit routes (root routes, or file routes without automatic
   // code splitting), edits to these components are dropped until a reload.
-  // Source: ReactFreshBabelPlugin-test "registers likely HOCs with inline functions"
+  // Source: ReactFreshBabelPlugin-test "registers likely HOCs with inline
+  // functions" and "registers top-level variable declarations with arrow
+  // functions"; #8504 react-refresh-route-components ("written inline and
+  // wrapped in ..."), where the wrapped rows pass.
   test.fails.each([
+    ...[
+      ['as any', `(() => <p>hi</p>) as any`],
+      ['satisfies', `(() => <p>hi</p>) satisfies FC`],
+      ['a non-null assertion', `(() => <p>hi</p>)!`],
+    ].map(([wrapper, component]) => ({
+      name: `a function wrapped in ${wrapper}`,
+      code: `${head}import type { FC } from 'react'
+export const Route = createFileRoute('/')({ component: ${component} })`,
+      compile: transformWithRouteHmrPlugin,
+    })),
     {
       name: 'memo(() => ...)',
       code: `${head}import { memo } from 'react'
@@ -109,6 +125,67 @@ export const Route = createFileRoute('/')({ component: ${name} })`,
     expect(binding).toBeDefined()
     return { binding, registered: [...route.registered.keys()] }
   }
+
+  // Goal (split path of the method-shorthand row above): a method-shorthand
+  // component is refreshable whether the code splitter splits it or keeps it
+  // in the route module.
+  // Bug: same root cause as the method-shorthand row above.
+  // Source: ruling on #8721 "keeps a method-shorthand component option"
+  // (react-refresh-route-components.test.ts, loosened).
+  test.fails(
+    'registers a method-shorthand component of a split route',
+    async () => {
+      const route = await loadRoute(
+        `${head}export const Route = createFileRoute('/')({
+  component() {
+    return <p>hi</p>
+  },
+})`,
+        { hmr: true, refresh: true },
+      )
+      await expectValidModules(route.modules)
+      const component = await route.load('component')
+      expect(component()).toBe('<p>hi</p>')
+      expect(isRefreshable(component, route.registered)).toBe(true)
+    },
+  )
+
+  // Source: add-hmr snapshot fixture createFileRoute-lowercase-components:
+  // with the default groupings, the lowercase `component` and
+  // `errorComponent` are split and `pendingComponent` stays in the route
+  // module; each one is registered.
+  test('registers lowercase function components, split and unsplit, with the default groupings', async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/')({
+  pendingComponent: pendingComponent,
+  errorComponent: errorComponent,
+  component: component,
+})
+function pendingComponent() {
+  return <div>Pending</div>
+}
+function errorComponent() {
+  return <div>Error</div>
+}
+function component() {
+  return <div>Hello</div>
+}`,
+      { hmr: true, refresh: true },
+    )
+    await expectValidModules(route.modules)
+    expect(
+      ['component', 'errorComponent', 'pendingComponent'].map(route.isLazy),
+    ).toEqual([true, true, false])
+    for (const [option, text] of [
+      ['component', 'Hello'],
+      ['errorComponent', 'Error'],
+      ['pendingComponent', 'Pending'],
+    ]) {
+      const component = await route.load(option!)
+      expect(component()).toBe(`<div>${text}</div>`)
+      expect(route.registered.has(component), option).toBe(true)
+    }
+  })
 
   // Control for the lowercase pin below (same harness).
   test('registers a PascalCase split component', async () => {
@@ -298,6 +375,59 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // Bug: same root cause as the pin above, for a lowercase component that
+  // the split `component` and the unsplit `pendingComponent` share.
+  // Impact: in development, the route's component chunk fails to load
+  // (SyntaxError: Export 'SplitComponent' is not defined).
+  // Source: #8504 react-refresh-route-components ("that is also the unsplit
+  // pendingComponent"), where it passes.
+  test.fails(
+    'a lowercase function component that is also the unsplit pendingComponent is registered in both',
+    async () => {
+      const route = await loadRoute(
+        `${head}function page() {
+  return <p>hi</p>
+}
+export const Route = createFileRoute('/')({ component: page, pendingComponent: page })`,
+        { hmr: true, refresh: true },
+      )
+      await expectValidModules(route.modules)
+      const component = await route.load('component')
+      const pending = await route.load('pendingComponent')
+      expect([component(), pending()]).toEqual(['<p>hi</p>', '<p>hi</p>'])
+      expect(route.registered.has(component)).toBe(true)
+      expect(route.registered.has(pending)).toBe(true)
+    },
+  )
+
+  // Bug: with React HMR, the code splitter moves a component exported by an
+  // export list (`export { page }`) into its chunk and leaves the export list
+  // in the route module (same root cause as known-bugs-code-splitter.test.ts
+  // "a split component that an export list reads renders from both").
+  // Impact: in development, the route module fails to load
+  // (SyntaxError: Export 'page' is not defined).
+  // Source: ReactFreshBabelPlugin-test "registers top-level exported function
+  // declarations" (`export { Baz }`); #8504 react-refresh-route-components
+  // ("keeps a component exported by specifier in the route module"), where it
+  // passes. Whether the component is split is the code splitter's goal; either
+  // way the export and the route render the same, registered component.
+  test.fails(
+    'a component exported by an export list is the registered component the route renders',
+    async () => {
+      const route = await loadRoute(
+        `${head}const page = () => <p>hi</p>
+export { page }
+export const Route = createFileRoute('/')({ component: page })`,
+        { hmr: true, refresh: true },
+      )
+      await expectValidModules(route.modules)
+      const component = await route.load('component')
+      expect(route.exports.page).toBe(component)
+      expect(component()).toBe('<p>hi</p>')
+      expect(route.registered.has(component)).toBe(true)
+    },
+  )
+
   /**
    * Compiles a route with the route HMR plugin (automatic code splitting
    * off), evaluates it and returns its route.
@@ -432,97 +562,112 @@ export const Route = createFileRoute('/')({
   // Impact: webpack reports the route (and its split chunk) as hot-updated,
   // but the page shows the old component until a reload; without the route
   // HMR code the same edit reloads the page.
-  test.fails(
-    'webpack: without React Refresh, a hot update renders the new component',
-    async () => {
-      expect(
-        await updatesOption(
-          `${head}export const Route = createFileRoute('/')({
+  // The harness gives no React Refresh runtime and configures the plugins
+  // with a webpack compiler without a refresh plugin, so a fix may detect
+  // React Refresh at runtime or from the bundler configuration.
+  test.fails.each([false, true])(
+    'webpack: without React Refresh, a hot update renders the new component (autoCodeSplitting: %s)',
+    async (codeSplitting) => {
+      const route = (
+        text: string,
+      ) => `${head}export const Route = createFileRoute('/')({
   loader: () => 'data',
-  component: () => <p>page</p>,
-})`,
-          'webpack',
-          'component',
-        ),
+  component: () => <p>${text}</p>,
+})`
+      const update = await hotUpdate(route('old'), {
+        style: 'webpack',
+        codeSplitting,
+        updated: route('new'),
+      })
+      expect(
+        update.invalidated ||
+          (await update.load('component'))() === '<p>new</p>',
       ).toBe(true)
     },
   )
 })
 
 describe('Vite HMR boundaries', () => {
+  /**
+   * Starts a dev server (router package stubbed) on an app whose client
+   * entry imports the route tree, loads the entry and what it imports in the
+   * client environment, as a page does, edits `routes/index.tsx` and returns
+   * the HMR messages the client received.
+   */
+  async function editRoute(
+    target: 'react' | 'solid' | 'vue',
+    autoCodeSplitting: boolean,
+    plugins: Array<PluginOption> = [],
+  ) {
+    const route = (
+      text: string,
+    ) => `import { createFileRoute } from '@tanstack/${target}-router'
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: Page,
+})
+function Page() {
+  return '${text}'
+}`
+    const server = await routerDevServer({
+      pluginOptions: { target, autoCodeSplitting },
+      plugins: [routerPackageStub(target), ...plugins],
+      files: {
+        'routes/index.tsx': route('page'),
+        'entry.ts': `export { routeTree } from './routeTree.gen'`,
+      },
+    })
+    // The router package stub is a virtual module (`/@id/...`).
+    await server.load('/entry.ts', { skip: /^\/@id\// })
+    const messages = await server.edit({ 'routes/index.tsx': route('edited') })
+    return describeHmr(
+      messages.filter((message) => message.environment === 'client'),
+    )
+  }
+
+  // Control for the pin below (same harness): with `@vitejs/plugin-react`,
+  // React Refresh makes a React route module an HMR boundary.
+  // Source: gap H6a.
+  test.each([true, false])(
+    'an edit of a React route module is a hot update with @vitejs/plugin-react (autoCodeSplitting: %s)',
+    async (autoCodeSplitting) => {
+      const messages = await editRoute('react', autoCodeSplitting, [react()])
+      expect(
+        messages.some((message) => message.startsWith('client: update')),
+      ).toBe(true)
+      expect(
+        messages.filter((message) => message.startsWith('client: full-reload')),
+      ).toEqual([])
+    },
+    30_000,
+  )
+
   // Bug: the Vite route HMR code calls `accept` on a local alias
   // (`const hot = import.meta.hot`), and Vite only marks a module
   // self-accepting when its code contains a literal `import.meta.hot.accept(`.
   // A route module is then never an HMR boundary of its own: the update
   // propagates to the route tree and the app entry, and the page reloads.
   // React apps are not affected because React Refresh makes route modules
-  // boundaries; Solid Refresh only does for modules that declare components,
-  // and Vue JSX only for exported components.
+  // boundaries (control above); Solid Refresh only does for modules that
+  // declare components, and Vue JSX only for exported components.
   // Impact: every edit of a Solid route file with automatic code splitting,
   // and of any Vue route file, reloads the page in Vite dev.
+  // Any boundary (the route module or an importer that accepts it) passes.
   test.fails.each([
     { target: 'solid', autoCodeSplitting: true },
     { target: 'solid', autoCodeSplitting: false },
     { target: 'vue', autoCodeSplitting: true },
     { target: 'vue', autoCodeSplitting: false },
   ] as const)(
-    'a $target route module accepts its own updates (autoCodeSplitting: $autoCodeSplitting)',
+    'an edit of a $target route module is a hot update (autoCodeSplitting: $autoCodeSplitting)',
     async ({ target, autoCodeSplitting }) => {
-      // Keep the temporary app inside the package so runtime imports resolve.
-      const root = await mkdtemp(path.join(__dirname, '.hmr-boundary-'))
-      const routerPackage = `@tanstack/${target}-router`
-      let server: Awaited<ReturnType<typeof createServer>> | undefined
-      try {
-        await mkdir(path.join(root, 'routes'))
-        await writeFile(
-          path.join(root, 'routes/__root.tsx'),
-          `import { createRootRoute } from '${routerPackage}'
-export const Route = createRootRoute({})`,
-        )
-        await writeFile(
-          path.join(root, 'routes/index.tsx'),
-          `import { createFileRoute } from '${routerPackage}'
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: Page,
-})
-function Page() {
-  return 'page'
-}`,
-        )
-        server = await createServer({
-          root,
-          configFile: false,
-          logLevel: 'silent',
-          server: { watch: null },
-          plugins: [
-            {
-              // The framework packages are not dependencies of this package.
-              name: 'stub-router-package',
-              enforce: 'pre',
-              resolveId: (id) => (id === routerPackage ? `\0${id}` : null),
-              load: (id) =>
-                id === `\0${routerPackage}`
-                  ? 'export const createRootRoute = (o) => o, createFileRoute = () => (o) => o, lazyRouteComponent = () => null'
-                  : null,
-            },
-            tanstackRouter({
-              target,
-              routesDirectory: './routes',
-              generatedRouteTree: './routeTree.gen.ts',
-              autoCodeSplitting,
-            }),
-          ],
-        })
-        const client = server.environments.client
-        await client.transformRequest('/routes/index.tsx')
-        const module =
-          await client.moduleGraph.getModuleByUrl('/routes/index.tsx')
-        expect(module?.isSelfAccepting).toBe(true)
-      } finally {
-        await server?.close()
-        await rm(root, { recursive: true, force: true })
-      }
+      const messages = await editRoute(target, autoCodeSplitting)
+      expect(
+        messages.some((message) => message.startsWith('client: update')),
+      ).toBe(true)
+      expect(
+        messages.filter((message) => message.startsWith('client: full-reload')),
+      ).toEqual([])
     },
     30_000,
   )
@@ -530,16 +675,24 @@ function Page() {
 
 describe('production builds', () => {
   /**
-   * Builds a production client bundle with automatic code splitting off
-   * (the route HMR plugin's case), with `NODE_ENV` as given (`null`: unset),
-   * and returns where webpack's HMR API is used.
+   * Builds a production client bundle with automatic code splitting on or
+   * off (off: the route HMR plugin's case), the plugin's own `addHmr`
+   * default and `NODE_ENV` as given (`null`: unset), and returns where a
+   * bundler HMR API is used.
    */
-  async function hmrPlacement(bundler: 'rspack' | 'webpack', nodeEnv?: null) {
+  async function hmrPlacement(
+    bundler: Bundler,
+    autoCodeSplitting: boolean,
+    nodeEnv?: null,
+  ) {
     const app = await build({
       bundler,
       env: 'client',
       nodeEnv,
-      pluginOptions: { autoCodeSplitting: false },
+      pluginOptions: {
+        autoCodeSplitting,
+        codeSplittingOptions: { addHmr: undefined },
+      },
       files: routeApp(
         `${head}function Page() {
   return <p>page</p>
@@ -549,14 +702,27 @@ export const Route = createFileRoute('/')({ component: Page })
         { env: 'client' },
       ),
     })
-    return app.where(/\bwebpackHot\b|\bmodule\.hot\b/)
+    return app.where(/import\.meta\.(?:webpackHot|hot)\b|\bmodule\.hot\b/)
   }
 
-  // Control for the pin below: with `NODE_ENV=production` exported.
-  test.each(['rspack', 'webpack'] as const)(
+  // Control for the pin below: with `NODE_ENV=production` exported. The
+  // Vite row replaces router-plugin-context.test.ts "does not install the
+  // standalone route HMR plugin in production".
+  test.each(['vite', 'rspack', 'webpack'] as const)(
     'a production client bundle has no route HMR code (%s)',
     async (bundler) => {
-      expect(await hmrPlacement(bundler)).toBe('nowhere')
+      expect(await hmrPlacement(bundler, false)).toBe('nowhere')
+    },
+    60_000,
+  )
+
+  // Source: gap P1 / DV51. The esbuild row holds trivially today, since the
+  // esbuild plugin neither generates nor splits routes (pinned in
+  // build-harness.test.ts).
+  test.each(['vite', 'rspack', 'webpack', 'esbuild'] as const)(
+    'a production client bundle with automatic code splitting has no route HMR code (%s)',
+    async (bundler) => {
+      expect(await hmrPlacement(bundler, true)).toBe('nowhere')
     },
     60_000,
   )
@@ -571,7 +737,7 @@ export const Route = createFileRoute('/')({ component: Page })
   test.fails.each(['rspack', 'webpack'] as const)(
     'a production client bundle has no route HMR code when NODE_ENV is unset (%s)',
     async (bundler) => {
-      expect(await hmrPlacement(bundler, null)).toBe('nowhere')
+      expect(await hmrPlacement(bundler, false, null)).toBe('nowhere')
     },
     60_000,
   )

@@ -5,7 +5,13 @@
  * that runs the same harness on a case that works.
  */
 import { describe, expect, test } from 'vitest'
-import { rootRoute, routerDevServer } from './dev-server'
+import {
+  expectExportedRouteOptions,
+  expectSharedOverloads,
+  exportedComponentsLostWhenSplit,
+  rootRoute,
+  routerDevServer,
+} from './dev-server'
 import {
   exportedNames,
   head,
@@ -152,6 +158,52 @@ export const Route = createFileRoute('/page')({
     'compiles the shared module and chunks requested before the route module from the edited source',
     async () => {
       await editAndCompare((urls) => [...urls.slice(1), route])
+    },
+    timeout,
+  )
+})
+
+describe('route module exports with automatic code splitting', () => {
+  // Controls: react-refresh-route-components.test.ts "route module exports
+  // with React HMR and autoCodeSplitting" (same harness), where these cases
+  // pass without automatic code splitting.
+
+  // Bug: the code splitter moves a component the route module exports into
+  // its chunk and drops its export: a class cannot be split ("Unexpected
+  // splitNode type: ClassDeclaration") and loses its `export class`, and an
+  // aliased export list (`export { component as View }`) is left without its
+  // declaration (known-bugs-code-splitter.test.ts "class components" and "a
+  // split component that an export alias reads renders from both").
+  // Impact: in development, modules importing the export get `undefined`
+  // (Vite SSR) or fail to load (browsers: "Export 'component' is not
+  // defined"), and the route's component chunk fails to compile.
+  // Source: #8504 react-refresh-route-components ("route module exports with
+  // React HMR and autoCodeSplitting=true"), where they pass.
+  test.fails.each(exportedComponentsLostWhenSplit)(
+    'keep a $name component exported as the route option value',
+    async ({ declaration, options, exported }) => {
+      await expectExportedRouteOptions(
+        `${head}${declaration}
+export const Route = createFileRoute('/page')({ ${options} })`,
+        exported,
+        true,
+      )
+    },
+    timeout,
+  )
+
+  // Bug: the overload signatures of a function that the route module and a
+  // split loader share stay next to its import, and the alias loses the
+  // binding (known-bugs-code-splitter.test.ts "an overloaded function the
+  // route module and a split loader share keeps working").
+  // Impact: in development, `helperAlias` is undefined (Vite SSR) or the
+  // route module fails to load (browsers).
+  // Source: #8504 react-refresh-route-components ("keep exported overloads
+  // and their aliases that unsplit and split options call"), where it passes.
+  test.fails(
+    'keep exported overloads and their aliases that unsplit and split options call',
+    async () => {
+      await expectSharedOverloads(true)
     },
     timeout,
   )

@@ -257,8 +257,10 @@ describe('handleRouteUpdate', () => {
     expect(newRoute.path).toBe(itemRoute.path)
     expect(newRoute.fullPath).toBe(itemRoute.fullPath)
     expect(newRoute.to).toBe(itemRoute.to)
-    expect((newRoute as any).parentRoute).toBe(rootRoute)
-    expect((newRoute as any).options).toBe((itemRoute as any).options)
+    // Code holding the hot module's `Route` sees the live route's place in
+    // the tree and its options.
+    expect((newRoute as any).parentRoute.id).toBe(rootRoute.id)
+    expect((newRoute as any).options.path).toBe((itemRoute as any).options.path)
   })
 
   it('clears lazy ownership and delegates rematerialization to the router', () => {
@@ -284,7 +286,7 @@ describe('handleRouteUpdate', () => {
     expect(refreshRoute).toHaveBeenCalledWith()
   })
 
-  it('uses a fresh source lazy importer without erasing an omitted one', () => {
+  it('uses a fresh source lazy importer without erasing an omitted one', async () => {
     const oldImporter = vi.fn(async () => ({ options: {} }) as any)
     const newImporter = vi.fn(async () => ({ options: {} }) as any)
     const rootRoute = new BaseRootRoute({})
@@ -296,15 +298,31 @@ describe('handleRouteUpdate', () => {
       rootRoute.addChildren([asAnyRoute(itemRoute)]),
     )
 
+    await router.loadRouteChunk(itemRoute)
+    expect([
+      oldImporter.mock.calls.length,
+      newImporter.mock.calls.length,
+    ]).toEqual([1, 0])
+
+    // The update loads the edited module's lazy options...
     runHandleRouteUpdate(
       router,
       itemRoute.id,
       new BaseRoute({} as any).lazy(newImporter),
     )
-    expect(itemRoute.lazyFn).toBe(newImporter)
+    await router.loadRouteChunk(itemRoute)
+    expect([
+      oldImporter.mock.calls.length,
+      newImporter.mock.calls.length,
+    ]).toEqual([1, 1])
 
+    // ...and an update that has none keeps loading them.
     runHandleRouteUpdate(router, itemRoute.id, new BaseRoute({} as any))
-    expect(itemRoute.lazyFn).toBe(newImporter)
+    await router.loadRouteChunk(itemRoute)
+    expect([
+      oldImporter.mock.calls.length,
+      newImporter.mock.calls.length,
+    ]).toEqual([1, 2])
   })
 
   it('removes stale loader data when a hot route removes its loader', async () => {
