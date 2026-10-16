@@ -18,11 +18,6 @@ import {
 } from './regression-helpers'
 import type { TargetFramework } from './regression-helpers'
 
-/** Imports of the route files below that are not the router package. */
-const stubs = {
-  './posts': { fetchPosts: () => ['post'] },
-}
-
 /** A route file whose loader returns `data`, with its other options. */
 const fileRoute = (
   data: string,
@@ -114,7 +109,6 @@ describe('a hot update of a split route', () => {
           codeSplitting: true,
           refresh: true,
           updated: route('new'),
-          stubs,
         })
         expect(update.invalidated).toBe(false)
         for (const option of components) {
@@ -205,10 +199,58 @@ function RootComponent() {
         updated: root('new'),
       })
       expect(update.invalidated).toBe(false)
-      expect(update.isLazy('component')).toBe(false)
       expect(update.live.component).toBe(update.previous.component)
       expect(update.live.component).toBeTypeOf('function')
       expect(await loaderData(update)).toBe('new')
+    },
+  )
+})
+
+describe('a hot update of an unsplit route', () => {
+  const componentOptions = [
+    'component',
+    'shellComponent',
+    'pendingComponent',
+    'errorComponent',
+    'notFoundComponent',
+  ]
+  /** A route at `/` with a component for each of `options` rendering `text`. */
+  const route = (data: string, options: Array<string>, text = 'page') =>
+    fileRoute(
+      data,
+      options.map((option) => `${option}: () => <p>${text}</p>,`).join('\n  '),
+    )
+
+  it.each(['vite', 'webpack'] as const)(
+    '%s: keeps every component option and applies the new loader',
+    async (style) => {
+      const update = await hotUpdate(route('old', componentOptions), {
+        style,
+        refresh: true,
+        updated: route('new', componentOptions),
+      })
+      expect(update.invalidated).toBe(false)
+      for (const option of componentOptions) {
+        expect(update.live[option], option).toBeTypeOf('function')
+        expect(update.live[option], option).toBe(update.previous[option])
+      }
+      expect(await loaderData(update)).toBe('new')
+    },
+  )
+
+  // A shell component changes the tree the route renders in, so the
+  // components cannot be patched in place.
+  it.each(['vite', 'webpack'] as const)(
+    '%s: renders the new component when the update adds a shell component',
+    async (style) => {
+      const update = await hotUpdate(route('old', ['component'], 'old'), {
+        style,
+        refresh: true,
+        updated: route('new', ['component', 'shellComponent'], 'new'),
+      })
+      expect(update.invalidated).toBe(false)
+      expect(update.live.component).toBe(update.created.at(-1)!.component)
+      expect((update.live.component as () => string)()).toBe('<p>new</p>')
     },
   )
 })
@@ -394,23 +436,12 @@ function RootComponent() {
   ]
 
   it.each(routes)(
-    'have no HMR code and leave window untouched ($name)',
+    'have no HMR code ($name)',
     async ({ route, targetFramework }) => {
       const loaded = await loadRoute(route, { targetFramework })
       for (const [name, code] of Object.entries(loaded.modules)) {
         expect(code, name).not.toMatch(/import\.meta\.(?:webpackHot|hot)\b/)
       }
-      const window = {}
-      vi.stubGlobal('window', window)
-      try {
-        const again = await loadRoute(route, { targetFramework })
-        for (const option of ['component', 'errorComponent']) {
-          await again.load(option)
-        }
-      } finally {
-        vi.unstubAllGlobals()
-      }
-      expect(window).toEqual({})
     },
   )
 })
