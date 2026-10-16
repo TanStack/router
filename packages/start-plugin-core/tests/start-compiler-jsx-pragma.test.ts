@@ -1,7 +1,7 @@
 import { transformWithOxc } from 'vite'
 import { expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
-import { compileCode, compileHydrate } from './regression-helpers'
+import { compileCode, compileHydrate, outputs } from './regression-helpers'
 
 /**
  * A file-level JSX pragma decides which JSX runtime the bundler's own JSX
@@ -91,6 +91,33 @@ export function List() {
   expect(await transformJsx(client!)).toMatch(/\bh\(Fragment\b/)
 })
 
+// Oxc (Vite 8's JSX transform) only reads JSX pragmas from the comments that
+// lead the file, so the imports the compiler inserts must stay below them.
+// Bug: the server fn runtime import (RPC or `createServerRpc`) is inserted
+// above the pragma comment that leads the file.
+// Impact: with Vite 8, a module with a server fn compiles its JSX with the
+// default runtime: `css` props (Emotion) are ignored.
+// Source: #8504 start-compiler-jsx-pragma.test.ts (red on main); same root
+// cause as the code splitter's pragma pin
+// (router-plugin/tests/code-splitter-pragmas.test.ts).
+test.fails.each(outputs)(
+  '%s: inserted server function imports stay below the @jsxImportSource pragma',
+  async (output) => {
+    const compiled = await compileCode(
+      output,
+      `/** @jsxImportSource @emotion/react */
+import { createServerFn } from '@tanstack/react-start'
+export const getGreeting = createServerFn().handler(async () => (
+  <b css={{ color: 'hotpink' }}>hi</b>
+))
+export function Card() {
+  return <div css={{ color: 'hotpink' }}>card</div>
+}`,
+    )
+    expect(await jsxRuntimeOf(compiled!)).toBe('@emotion/react/jsx-runtime')
+  },
+)
+
 test('client: a pragma after a directive stays ahead of inserted server function imports', async () => {
   const client = await compileCode(
     'client',
@@ -122,14 +149,10 @@ export function Card() {
   expect(await jsxRuntimeOf(chunks[0]!)).toBe('@emotion/react/jsx-runtime')
 })
 
-test('client: the parent keeps the pragma when the import it sits on moves into a Hydrate chunk', async () => {
-  // Vite 7 and earlier transform JSX with esbuild, which honours the pragma
-  // wherever it appears; check the comment itself survives.
-  const parent = await compileCode(
-    'client',
-    `/** @jsxImportSource @emotion/react */
-import { Widget } from './widget'
-import { Hydrate } from '@tanstack/react-start'
+const hydrateParent = (
+  imports: string,
+) => `/** @jsxImportSource @emotion/react */
+${imports}
 export function Card() {
   return (
     <div css={{ color: 'hotpink' }}>
@@ -138,8 +161,46 @@ export function Card() {
       </Hydrate>
     </div>
   )
-}`,
-    { compilerPlugins: [createHydrateCompilerPlugin()] },
-  )
-  expect(parent).toContain('@jsxImportSource @emotion/react')
-})
+}`
+const hydrateParentImports = [
+  {
+    name: 'moves into a Hydrate chunk',
+    imports: `import { Widget } from './widget'
+import { Hydrate } from '@tanstack/react-start'`,
+  },
+  {
+    name: 'stays in the parent',
+    imports: `import { Hydrate } from '@tanstack/react-start'
+import { Widget } from './widget'`,
+  },
+]
+
+// Vite 7 and earlier transform JSX with esbuild, which honours the pragma
+// wherever it appears: the comment itself must survive, whether the import it
+// sits on moves into the chunk or stays.
+// Source: #8504 start-compiler-jsx-pragma.test.ts (adds the second row)
+test.each(hydrateParentImports)(
+  'client: the parent keeps the pragma when the import it sits on $name',
+  async ({ imports }) => {
+    const parent = await compileCode('client', hydrateParent(imports), {
+      compilerPlugins: [createHydrateCompilerPlugin()],
+    })
+    expect(parent).toContain('@jsxImportSource @emotion/react')
+  },
+)
+
+// Bug: the parent's Hydrate chunk loaders are inserted above the pragma
+// comment that leads the file.
+// Impact: with Vite 8 (Oxc only reads pragmas that lead the file), the
+// parent compiles its JSX with the default runtime: `css` props are ignored.
+// Source: #8504 start-compiler-jsx-pragma.test.ts (red on main); same root
+// cause as the server fn pin above.
+test.fails.each(hydrateParentImports)(
+  'client: the parent keeps selecting the pragma JSX runtime when the import it sits on $name',
+  async ({ imports }) => {
+    const parent = await compileCode('client', hydrateParent(imports), {
+      compilerPlugins: [createHydrateCompilerPlugin()],
+    })
+    expect(await jsxRuntimeOf(parent!)).toBe('@emotion/react/jsx-runtime')
+  },
+)
