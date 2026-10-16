@@ -469,8 +469,11 @@ export class Page extends Base {
   // Source: hydrateWhen ThisCapture and SuperCapture error fixtures (the
   // super fixture read a class field, which renders undefined).
   test.each([
-    { name: 'this', code: thisPage, message: /\bthis\b/ },
-    { name: 'super', code: superPage, message: /\bsuper\b/ },
+    // The message names what the children capture (`this` alone would also
+    // match the function-as-children advice "Use split={false} for this
+    // boundary").
+    { name: 'this', code: thisPage, message: /\bcaptur\w* `?this\b/i },
+    { name: 'super', code: superPage, message: /\bcaptur\w* `?super\b/i },
   ])(
     'the children reading $name render like on the server, or are rejected clearly',
     async ({ code, message }) => {
