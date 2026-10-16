@@ -9,6 +9,7 @@ import { describe, expect, test } from 'vitest'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { buildStart, startRuntimeFiles } from './build-harness'
 import { startDevServer } from './dev-server'
+import { startRsbuildDevServer } from './rsbuild-dev-server'
 import { getChunkComponent, getChunkIds } from './regression-helpers'
 
 const timeout = 60_000
@@ -254,6 +255,58 @@ export function Page() {
       await server.edit({ 'src/page.tsx': page('New') })
 
       expect(await render()).toBe('<p>New</p>')
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild dev server', () => {
+  // Rsbuild serves bundles: a chunk is only built through its parent's
+  // import, so only the edit half of the Vite test applies.
+  test(
+    'client: an edit of the file reaches the chunk of its boundary',
+    async () => {
+      const page = (
+        marker: string,
+      ) => `import { Hydrate } from '@tanstack/react-start'
+export function Page() {
+  return <Hydrate><p>${marker}</p></Hydrate>
+}
+`
+      const server = await startRsbuildDevServer({
+        files: {
+          ...hydrateRuntimeFiles,
+          'src/page.tsx': page('OLD_MARKER'),
+          'src/entry.ts': `import { Page } from './page'\nconsole.log(Page)\n`,
+        },
+      })
+      /** The output files containing each marker. */
+      const locate = async () => {
+        const outputs = Object.entries(await server.outputs())
+        const files = (marker: string) =>
+          outputs
+            .filter(([, code]) => code.includes(marker))
+            .map(([file]) => file)
+        return {
+          entry: files('console.log(Page)'),
+          old: files('OLD_MARKER'),
+          new: files('NEW_MARKER'),
+        }
+      }
+      const before = await locate()
+      expect(before.old).toHaveLength(1)
+      // The children are in a chunk of their own.
+      expect(before.entry).not.toContain(before.old[0])
+
+      await server.edit({ 'src/page.tsx': page('NEW_MARKER') })
+
+      expect(server.errors).toEqual([])
+      const after = await locate()
+      expect({ old: after.old, new: after.new }).toEqual({
+        old: [],
+        new: [expect.any(String)],
+      })
+      expect(after.entry).not.toContain(after.new[0])
     },
     timeout,
   )
