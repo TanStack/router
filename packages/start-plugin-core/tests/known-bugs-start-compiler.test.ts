@@ -1593,6 +1593,47 @@ export const outer = createServerFn().handler(async () => 'outer:' + (await inne
     },
     timeout,
   )
+
+  // Bug (Rsbuild): in the SSR build, compiling a module with an isomorphic
+  // fn makes the Start compiler resolve the module's `createMiddleware`
+  // import (the server lookup does not know that factory). The Rsbuild
+  // compiler host resolves it through the loader context, whose resolver
+  // does not match the package's `import`-only exports (those of
+  // `@tanstack/react-start`): the build fails with
+  // `PackagePathNotExported(".")` (start-compiler-host.ts `resolveId`).
+  // Impact: an app with a middleware and an isomorphic fn in one module
+  // does not build with Rsbuild.
+  // Source: lost-cases item 3 (BS-6 / K-13).
+  ;(bundler === 'rsbuild' ? test.fails : test)(
+    'a module with a middleware and an isomorphic fn builds, and its middleware runs on the server',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/both.ts': `import { createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+export const middleware = createMiddleware().server(({ next }) =>
+  next({ context: { marker: 'MARK_MIDDLEWARE_SERVER' } }),
+)
+export const isomorphic = createIsomorphicFn()
+  .server(() => 'server')
+  .client(() => 'client')
+`,
+          'src/entry.ts': `export { middleware, isomorphic } from './both'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expect(client.where('MARK_MIDDLEWARE_SERVER')).toBe('nowhere')
+      const { result } = await ssr.run(`return {
+  middleware: entry.middleware.options.server({ next: (options) => options }),
+  isomorphic: entry.isomorphic(),
+}`)
+      expect(result).toEqual({
+        middleware: { context: { marker: 'MARK_MIDDLEWARE_SERVER' } },
+        isomorphic: 'server',
+      })
+    },
+    timeout,
+  )
 })
 
 describe('Vite dev server', () => {
