@@ -885,10 +885,15 @@ export async function evaluateModule(
  * Evaluates one compiled route module on its own with the React Refresh
  * transform: the router package is stubbed, `react` is React, `stubs`
  * provide other imports and any remaining import is a module whose imports
- * are identity functions (`connect(Page)` returns `Page`). Returns its
- * exports, its `Route` and what React Refresh registered.
+ * are identity functions (`connect(Page)` returns `Page`). `importMeta` is
+ * assigned to `import.meta` before the module runs. Returns its exports, its
+ * `Route` and what React Refresh registered.
  */
-export async function evaluateRouteModule(code: string, stubs: Stubs = {}) {
+export async function evaluateRouteModule(
+  code: string,
+  stubs: Stubs = {},
+  options: { importMeta?: Record<string, unknown> } = {},
+) {
   const id = routeModuleId()
   const registered = new Map<unknown, string>()
   const moduleGraph = createModuleGraph({
@@ -900,6 +905,7 @@ export async function evaluateRouteModule(code: string, stubs: Stubs = {}) {
       ),
     scope: () => refreshScope(registered),
     transform: transformWithReactRefresh,
+    ...(options.importMeta && { importMeta: () => options.importMeta! }),
   })
   const exports = await moduleGraph.import(id)
   const Route = exports.Route as { options: Record<string, any> } | undefined

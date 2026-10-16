@@ -6,7 +6,10 @@
  * transform (the one `@vitejs/plugin-react` uses) on the output to see which
  * components are registered and how their hook signatures are computed.
  */
-import { describe, expect, it } from 'vitest'
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { describe, expect, it, vi } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   expectExportedRouteOptions,
@@ -27,6 +30,7 @@ import {
   isRefreshable,
   loadRoute,
   reactRefresh,
+  routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 import type { ExportedRouteOptionsCase } from './dev-server'
@@ -388,6 +392,118 @@ export const page = () => <div />, Route = createRootRoute({
     await expectRegisteredRouteOption(reference!, 'pendingComponent')
     const { exports, Route } = await evaluateRouteModule(reference!)
     expect(exports.page).toBe(Route.options.component)
+  })
+})
+
+/**
+ * `@vitejs/plugin-react` ends every module it compiles with React Refresh
+ * with a hot accept callback that runs its refresh runtime's
+ * `validateRefreshBoundaryAndEnqueueUpdate(id, previousExports, nextExports)`
+ * and invalidates the module (a full page reload) when it returns a message.
+ * A route module's `Route` export is a new object on every update, so the
+ * route module must have the runtime ignore it
+ * (`window.__getReactRefreshIgnoredExports`) and export at least one
+ * component.
+ */
+describe('a React route module compiled for Vite stays a Fast Refresh boundary', () => {
+  const refreshRuntimeUrl = pathToFileURL(
+    path.join(
+      path.dirname(
+        createRequire(import.meta.url).resolve('@vitejs/plugin-react'),
+      ),
+      'refresh-runtime.js',
+    ),
+  ).href
+
+  /**
+   * Loads the compiled route module twice with one Vite hot context, as a
+   * hot update does, and returns what plugin-react's refresh runtime decides
+   * for the update (`undefined`: refreshed in place), the exports the
+   * runtime does not ignore and whether React Refresh registered each.
+   */
+  async function refreshUpdate(code: string, id: string) {
+    const window: {
+      __getReactRefreshIgnoredExports?: (ctx: { id: string }) => Array<string>
+    } = {}
+    vi.stubGlobal('window', window)
+    try {
+      const runtime = await import(/* @vite-ignore */ refreshRuntimeUrl)
+      const hot = {
+        data: {},
+        accept() {},
+        dispose() {},
+        invalidate() {},
+        on() {},
+      }
+      const previous = await evaluateRouteModule(
+        code,
+        {},
+        { importMeta: { hot } },
+      )
+      const next = await evaluateRouteModule(code, {}, { importMeta: { hot } })
+      const invalidation: unknown =
+        runtime.validateRefreshBoundaryAndEnqueueUpdate(
+          id,
+          previous.exports,
+          next.exports,
+        )
+      const ignored = window.__getReactRefreshIgnoredExports?.({ id }) ?? []
+      const components = Object.fromEntries(
+        Object.keys(next.exports)
+          .filter((name) => !ignored.includes(name))
+          .map((name) => [name, next.registered.has(next.exports[name])]),
+      )
+      return { invalidation, components }
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  }
+
+  const routes = [
+    {
+      name: 'a route',
+      route: `${head}function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({ component: Page })`,
+    },
+    {
+      name: 'a route with an undefined component',
+      route: `${head}export const Route = createFileRoute('/')({ component: undefined })`,
+    },
+    {
+      name: 'a root route',
+      route: `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({ component: () => <div>root</div> })`,
+    },
+  ]
+
+  describe.each([
+    {
+      compiler: 'automatic code splitting',
+      compile: (route: string) => {
+        const { modules, ids } = compileRouteModules(route, { hmr: true })
+        return { code: modules.reference!, id: ids.reference! }
+      },
+    },
+    {
+      compiler: 'the route HMR plugin',
+      compile: (route: string) => ({
+        code: transformWithRouteHmrPlugin(route),
+        id: routeFile('index'),
+      }),
+    },
+  ])('with $compiler', ({ compile }) => {
+    it.each(routes)('$name', async ({ route }) => {
+      const { code, id } = compile(route)
+      const { invalidation, components } = await refreshUpdate(code, id)
+      expect(invalidation).toBeUndefined()
+      // Every export the runtime does not ignore is a registered component.
+      expect(Object.keys(components).length).toBeGreaterThan(0)
+      for (const [name, registered] of Object.entries(components)) {
+        expect(registered, name).toBe(true)
+      }
+    })
   })
 })
 
