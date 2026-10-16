@@ -153,6 +153,42 @@ console.log(Other)`,
     timeout,
   )
 
+  // Each boundary loads only its own children's code.
+  test(
+    'two boundaries each load their own children lazily',
+    async () => {
+      const { client, ssr } = await buildStart({
+        files: {
+          ...hydrateRuntimeFiles,
+          'src/chart.tsx': `export const Chart = () => <b>chart-marker</b>\n`,
+          'src/table.tsx': `export const Table = () => <i>table-marker</i>\n`,
+          'src/page.tsx': `import { Hydrate } from '@tanstack/react-start'
+import { idle, visible } from '@tanstack/react-start/hydration'
+import { Chart } from './chart'
+import { Table } from './table'
+export function Page() {
+  return <><Hydrate when={visible()}><Chart /></Hydrate><Hydrate when={idle()}><Table /></Hydrate></>
+}
+`,
+          'entry.ts': `export { Page } from './src/page'\n`,
+        },
+      })
+      const chart = client.locate('chart-marker')
+      const table = client.locate('table-marker')
+      expect({ chart: chart.eager, table: table.eager }).toEqual({
+        chart: [],
+        table: [],
+      })
+      expect(chart.lazy).toHaveLength(1)
+      expect(table.lazy).toHaveLength(1)
+      expect(chart.lazy[0]).not.toBe(table.lazy[0])
+      expect((await ssr.run(`return entry.Page()`)).result).toBe(
+        '[<b>chart-marker</b>][<i>table-marker</i>]',
+      )
+    },
+    timeout,
+  )
+
   /**
    * Builds a page whose split children render `Widget`, an export no other
    * module imports, declared as `export const Widget = <widget>`.
