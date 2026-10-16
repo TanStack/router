@@ -4,6 +4,7 @@
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { performance } from 'node:perf_hooks'
 import { createServer, isRunnableDevEnvironment, transformWithOxc } from 'vite'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
@@ -28,6 +29,7 @@ import {
   serverOnlyModule,
   settle,
 } from './regression-helpers'
+import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   capturingPlacement,
@@ -1638,10 +1640,69 @@ export const isomorphic = createIsomorphicFn()
 
 describe('Vite dev server', () => {
   /**
+   * Resolves `'hang'` once `pending` has made no progress for `quietMs`: no
+   * plugin hook ran (`lastActivity()`) and the main thread stayed idle (a
+   * dependency optimizer bundling, or any other work the request waits for,
+   * keeps it busy). Resolves `'settled'` when `pending` settles first, and
+   * `'hang'` after `limitMs` at the latest.
+   */
+  async function settledOrHung(
+    pending: Promise<unknown>,
+    lastActivity: () => number,
+    { quietMs = 1_500, limitMs = 15_000 } = {},
+  ): Promise<'settled' | 'hang'> {
+    let settled = false
+    pending.then(
+      () => (settled = true),
+      () => (settled = true),
+    )
+    const started = performance.now()
+    let busySince = started
+    let previous = performance.eventLoopUtilization()
+    while (!settled) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      if (settled) {
+        break
+      }
+      const current = performance.eventLoopUtilization()
+      if (
+        performance.eventLoopUtilization(current, previous).utilization > 0.05
+      ) {
+        busySince = performance.now()
+      }
+      previous = current
+      const now = performance.now()
+      const quietFor = now - Math.max(lastActivity(), busySince)
+      if (quietFor >= quietMs || now - started >= limitMs) {
+        return 'hang'
+      }
+    }
+    return 'settled'
+  }
+
+  /** Start packages of `transformClientModule`, by the names imported. */
+  const clientStubs = (_specifier: string, names: Set<string>) => {
+    if (names.has('createClientRpc')) {
+      return { createClientRpc: (id: string) => ({ functionId: id }) }
+    }
+    if (names.has('createServerFn')) {
+      return {
+        createServerFn: () => ({ handler: (rpc: unknown) => rpc }),
+      }
+    }
+    if (names.has('z')) {
+      return { z: { object: () => ({}) } }
+    }
+    return undefined
+  }
+
+  /**
    * Starts a Vite dev server (middleware mode, empty dependency cache) on a
    * temporary project with the Start compiler, `src/fn.ts` = `code` and
-   * `files`, and returns the client transform of `src/fn.ts`, or `'timeout'`
-   * when it has not finished after 15 s. Start packages are stubbed.
+   * `files`, and requests the client transform of `src/fn.ts`. Returns
+   * `'hang'` when the transform stops making progress before it finishes
+   * (`settledOrHung`); otherwise its code and the module evaluated with
+   * stubbed Start packages and `zod`. Start packages are stubbed.
    */
   async function transformClientModule(
     code: string,
@@ -1650,6 +1711,11 @@ describe('Vite dev server', () => {
     // Keep the temporary project inside the package so dependencies resolve.
     const root = await mkdtemp(path.join(__dirname, '.dev-transform-'))
     let server: Awaited<ReturnType<typeof createServer>> | undefined
+    let lastActivity = performance.now()
+    const active = () => {
+      lastActivity = performance.now()
+      return null
+    }
     try {
       await mkdir(path.join(root, 'src'))
       for (const [file, content] of Object.entries({
@@ -1666,6 +1732,13 @@ describe('Vite dev server', () => {
         appType: 'custom',
         server: { middlewareMode: true, hmr: false, ws: false, watch: null },
         plugins: [
+          {
+            name: 'record-activity',
+            enforce: 'pre',
+            resolveId: active,
+            load: active,
+            transform: active,
+          },
           {
             name: 'stub-start-packages',
             resolveId: (id) =>
@@ -1686,15 +1759,25 @@ export const createClientRpc = (id) => id`
           }),
         ],
       })
-      const transformed = server.environments.client
-        .transformRequest('/src/fn.ts')
-        .then((result) => result?.code ?? null)
-      return await Promise.race([
-        transformed,
-        new Promise<'timeout'>((resolve) =>
-          setTimeout(() => resolve('timeout'), 15_000),
-        ),
-      ])
+      const transformed =
+        server.environments.client.transformRequest('/src/fn.ts')
+      if ((await settledOrHung(transformed, () => lastActivity)) === 'hang') {
+        transformed.catch(() => {})
+        return 'hang' as const
+      }
+      const served = (await transformed)!.code
+      const client = server.environments.client
+      const module = await createModuleGraph({
+        modules: { '/src/fn.ts': served },
+        // Project modules as the dev server serves them.
+        load: async (id) =>
+          id.startsWith('/src/')
+            ? (await client.transformRequest(id))?.code
+            : null,
+        transform: (source) => source,
+        fallbackStub: clientStubs,
+      }).import('/src/fn.ts')
+      return { code: served, module }
     } finally {
       await Promise.race([
         server?.close(),
@@ -1704,15 +1787,29 @@ export const createClientRpc = (id) => id`
     }
   }
 
+  /**
+   * The client got `fn` as an RPC carrying its id, without the handler body
+   * (`MARK_HANDLER`).
+   */
+  function expectClientRpc(
+    result: Awaited<ReturnType<typeof transformClientModule>>,
+  ) {
+    expect(result).not.toBe('hang')
+    const { code, module } = result as Exclude<typeof result, 'hang'>
+    expect(code).not.toContain('MARK_HANDLER')
+    expect(module.fn).toEqual({ functionId: expect.any(String) })
+  }
+
   // Control for the pin below (same harness).
   test('transforms a client module with a server fn and a top-level call of a project function', async () => {
-    const code = await transformClientModule(
-      `${head}import { define } from './define'
+    expectClientRpc(
+      await transformClientModule(
+        `${head}import { define } from './define'
 export const schema = define()
-export const fn = createServerFn().handler(() => 1)`,
-      { 'define.ts': `export const define = () => ({})` },
+export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
+        { 'define.ts': `export const define = () => ({})` },
+      ),
     )
-    expect(code).toContain('createClientRpc')
   }, 30_000)
 
   // Bug: next to a server fn, a top-level `const x = f()` may be a renamed or
@@ -1727,12 +1824,13 @@ export const fn = createServerFn().handler(() => 1)`,
   test.fails(
     'transforms a client module with a server fn and a top-level call of a pre-bundled dependency',
     async () => {
-      const code = await transformClientModule(
-        `${head}import { z } from 'zod'
+      expectClientRpc(
+        await transformClientModule(
+          `${head}import { z } from 'zod'
 export const schema = z.object({})
-export const fn = createServerFn().handler(() => 1)`,
+export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
+        ),
       )
-      expect(code).toContain('createClientRpc')
     },
     30_000,
   )
