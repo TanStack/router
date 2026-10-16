@@ -395,18 +395,29 @@ export function importSources(code: string) {
 }
 
 /**
+ * Where an evaluated module runs: in the browser (`client`, the default) or
+ * in the server bundle (`server`).
+ */
+export type RuntimeEnv = 'client' | 'server'
+
+/**
  * Minimal Start package of a framework: callers keep the RPC they were given,
  * providers run the original handler. Builders record what they are given
  * in `options` (non-enumerable on a server fn): `createServerFn(options)`,
  * `.middleware([...])` (appended) and `.validator(v)`; a builder is also
  * callable, returning a builder with the same options (a factory such as
  * `createAuthServerFn = createServerFn().middleware([auth])` is called as
- * `createAuthServerFn()`). `createMiddleware(options)` records `.client(fn)`,
- * `.validator(v)` and `.middleware([...])`; its `.server()`, like the other
- * factories, throws when it is called uncompiled, so a client test only
- * passes if the compiler removed it.
+ * `createAuthServerFn()`). `createMiddleware(options)` (also
+ * `createStart(...).createMiddleware`) records `.client(fn)`,
+ * `.validator(v)` and `.middleware([...])`; in the client runtime its
+ * `.server()`, like the other factories, throws when it is called
+ * uncompiled, so a client test only passes if the compiler removed it. In
+ * the server runtime, `.server(fn)` is recorded too.
  */
-function startRuntime(framework: Framework): Record<string, string> {
+function startRuntime(
+  framework: Framework,
+  env: RuntimeEnv = 'client',
+): Record<string, string> {
   const start = `@tanstack/${framework}-start`
   return {
     [start]: `
@@ -435,13 +446,18 @@ const middlewareBuilder = (options) => ({
     middlewareBuilder({ ...options, middleware: [...(options.middleware ?? []), ...middleware] }),
   validator: (validator) => middlewareBuilder({ ...options, validator }),
   client: (client) => middlewareBuilder({ ...options, client }),
-  server: uncompiled,
+  server: ${env === 'server' ? '(server) => middlewareBuilder({ ...options, server })' : 'uncompiled'},
 })
 export const createServerFn = (options) => serverFnBuilder({ ...options })
 export const createServerOnlyFn = uncompiled
 export const createClientOnlyFn = uncompiled
 export const createIsomorphicFn = uncompiled
-export const createMiddleware = (options) => middlewareBuilder({ ...options })`,
+export const createMiddleware = (options) => middlewareBuilder({ ...options })
+export const createStart = (options) => ({
+  options,
+  createMiddleware: (middlewareOptions) =>
+    middlewareBuilder({ ...middlewareOptions }),
+})`,
     [`${start}/server-rpc`]: `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`,
     [`${start}/client-rpc`]: `export const createClientRpc = (id) => ({ client: id })`,
     [`${start}/ssr-rpc`]: `export const createSsrRpc = (id) => ({ ssr: id })`,
@@ -469,12 +485,12 @@ const __jsx = (type, props, ...children) => {
  * `jsxToText`).
  */
 function createTestModuleGraph(
-  options: ModuleGraphOptions & { framework?: Framework },
+  options: ModuleGraphOptions & { framework?: Framework; env?: RuntimeEnv },
 ) {
-  const { framework = 'react', ...graphOptions } = options
+  const { framework = 'react', env, ...graphOptions } = options
   return createModuleGraph({
     ...graphOptions,
-    stubs: { ...startRuntime(framework), ...graphOptions.stubs },
+    stubs: { ...startRuntime(framework, env), ...graphOptions.stubs },
     runtime: graphOptions.runtime ?? jsxToText,
   })
 }
@@ -483,20 +499,21 @@ function createTestModuleGraph(
  * Evaluates a compiled module like a bundler would: TypeScript is erased, JSX
  * becomes calls of `runtime` (which defines `__jsx` and `__Fragment`), and
  * every import is linked, as a real ES module, to the minimal Start runtime
- * of `framework` (default `react`) or to `stubs` (by specifier; `.json`
- * string stubs are JSON modules). Every call evaluates a fresh instance, even
- * for identical code.
+ * of `framework` (default `react`) for `env` (default `client`) or to
+ * `stubs` (by specifier; `.json` string stubs are JSON modules). Every call
+ * evaluates a fresh instance, even for identical code.
  */
 export async function evaluateModule(
   code: string,
   stubs: Record<string, ModuleStub> = {},
-  options: { runtime?: string; framework?: Framework } = {},
+  options: { runtime?: string; framework?: Framework; env?: RuntimeEnv } = {},
 ): Promise<Record<string, any>> {
   return createTestModuleGraph({
     modules: { [moduleId]: code },
     stubs,
     runtime: options.runtime ?? jsxToText,
     framework: options.framework,
+    env: options.env,
   }).import(moduleId)
 }
 
@@ -528,6 +545,7 @@ export function createServerGraph(
     modules,
     stubs,
     framework: server.framework,
+    env: 'server',
   })
   return {
     /** Evaluates (once) and returns the provider module. */

@@ -227,6 +227,25 @@ export const logger = createMiddleware({ type: 'function' })
       'uncompiled Start factory',
     )
   })
+
+  test('the server runtime records middleware .server() and createStart middleware', async () => {
+    const module = await evaluateModule(
+      `import { createMiddleware, createStart } from '@tanstack/react-start'
+export const server = () => 'server'
+export const logger = createMiddleware({ type: 'function' }).server(server)
+export const request = createStart(() => {}).createMiddleware({ type: 'request' }).server(server)`,
+      {},
+      { env: 'server' },
+    )
+    expect(module.logger.options).toEqual({
+      type: 'function',
+      server: module.server,
+    })
+    expect(module.request.options).toEqual({
+      type: 'request',
+      server: module.server,
+    })
+  })
 })
 
 describe('framework option', () => {
