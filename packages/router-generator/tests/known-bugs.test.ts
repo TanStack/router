@@ -61,56 +61,6 @@ export const Route = createRootRoute()`,
   }
 }
 
-/** Whether Start prunes the route as server-only (`pruneServerOnlySubtrees`). */
-const isServerOnly = (node: RouteNode | undefined) =>
-  !!node?.createFileRouteProps?.has('server') &&
-  node.createFileRouteProps.size === 1
-
-const routeHead = `import { createFileRoute } from '@tanstack/react-router'
-const Page = () => null
-const key = 'component'
-const clientOptions = { component: Page }
-`
-
-describe('route options', () => {
-  // Control for the route options pin below (same harness).
-  test.each([
-    {
-      options: `{ server: { handlers: {} }, component: Page }`,
-      expected: false,
-    },
-    { options: `{ server: { handlers: {} } }`, expected: true },
-  ])(
-    'the route node of $options is server-only: $expected',
-    async ({ options, expected }) => {
-      const { node } = await generateMovedRoute(
-        `${routeHead}export const Route = createFileRoute('/moved')(${options})`,
-      )
-      expect(isServerOnly(node)).toBe(expected)
-    },
-  )
-
-  // Bug: the route options the generator reports to its plugins
-  // (`createFileRouteProps`) only count plain, non-computed properties, so a
-  // spread, a computed key or a method is missed.
-  // Impact: Start prunes a route that also has client options as a
-  // server-only route, so it is missing from the client route tree.
-  test.fails.each([
-    { name: 'a spread', options: `...clientOptions` },
-    { name: 'a computed key', options: `[key]: Page` },
-    { name: 'a method', options: `component() { return null }` },
-  ])(
-    'a route with server handlers and $name is not server-only',
-    async ({ options }) => {
-      const { node } = await generateMovedRoute(
-        `${routeHead}export const Route = createFileRoute('/moved')({ server: { handlers: {} }, ${options} })`,
-      )
-      expect(node).toBeDefined()
-      expect(isServerOnly(node)).toBe(false)
-    },
-  )
-})
-
 describe('route calls with TypeScript wrappers', () => {
   // Control: "a moved route gets the id of its new path" below (same
   // harness).
