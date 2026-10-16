@@ -6,9 +6,10 @@ import {
   compileHydrate,
   compileServer,
   createStartCompiler,
+  directivePrologue,
   evaluateHydrateParent,
   evaluateModule,
-  evaluateProvider,
+  callReportedServerFns,
   getBoundaryIds,
   getChunkComponent,
   getChunkIds,
@@ -16,9 +17,11 @@ import {
   importSources,
   loadChunk,
   parentImportSources,
+  loadClientModule,
   renderBoundaries,
   renderChunk,
 } from './regression-helpers'
+import type { ModuleStub } from './regression-helpers'
 import {
   declarationOf,
   getModuleErrors,
@@ -33,19 +36,45 @@ const head = `import { Hydrate } from '@tanstack/react-start'\n`
 
 describe('the parent module', () => {
   const widgetPage = `${head}import { visible } from '@tanstack/react-start/hydration'
-import { Chart, FallbackPane } from './widgets'
+import { FallbackPane } from './widgets'
+import { Chart } from './chart'
 import { formatValue } from './format'
 const chartTitle = formatValue('Revenue')
 export function Page() {
   return <Hydrate when={visible()} fallback={<FallbackPane />}><Chart title={chartTitle} /></Hydrate>
 }`
 
-  test('client: bindings only the split children use leave the parent', async () => {
-    const { parent, chunks } = await compileHydrate('client', widgetPage)
-    expect(chunks[0]).toMatch(declarationOf('chartTitle'))
-    expect(parent).not.toMatch(declarationOf('chartTitle'))
-    expect(parent).not.toMatch(/\bChart\b/)
-    expect(importSources(parent)).toEqual(['./widgets'])
+  // Where the children's code ends up in the final bundle is the bundler's
+  // call (hydrate-build.test.ts); the parent must not need it before the
+  // chunk loads.
+  test('client: modules and bindings only the split children use are not needed before the chunk loads', async () => {
+    const events: Array<string> = []
+    const { module } = await loadClientModule(widgetPage, {
+      stubs: {
+        './widgets': { FallbackPane: () => 'fallback' },
+        './chart': {
+          get Chart() {
+            events.push('chart linked')
+            return ({ title }: { title: string }) => `<chart>${title}</chart>`
+          },
+        },
+        './format': {
+          get formatValue() {
+            events.push('format linked')
+            return (value: string) => {
+              events.push('formatValue called')
+              return `${value}!`
+            }
+          },
+        },
+      },
+      beforeChunksLoad: () => events.push('chunks load'),
+    })
+    expect(events[0]).toBe('chunks load')
+    expect(module.Page()).toBe('[<chart>Revenue!</chart>]')
+    expect(events.filter((event) => event === 'formatValue called')).toEqual([
+      'formatValue called',
+    ])
   })
 
   test('server: bindings only the stripped fallback uses are removed', async () => {
@@ -53,17 +82,19 @@ export function Page() {
     expect(parent).not.toContain('FallbackPane')
   })
 
-  test("client: 'use client' stays first in the parent module and the split chunk", async () => {
+  // Source: #8504 hydrate-split-modules.test.ts
+  test("client: the directive prologue stays first in the parent module and 'use client' in the split chunk", async () => {
     const { parent, chunks } = await compileHydrate(
       'client',
       `'use client'
+'use strict'
 ${head}import { Chart } from './chart'
 export function Page() {
   return <Hydrate><Chart /></Hydrate>
 }`,
     )
-    expect(parent).toMatch(/^\s*['"]use client['"]/)
-    expect(chunks[0]).toMatch(/^\s*['"]use client['"]/)
+    expect(directivePrologue(parent)).toEqual(['use client', 'use strict'])
+    expect(directivePrologue(chunks[0]!)[0]).toBe('use client')
   })
 
   test('client: a self-closing Hydrate with a children prop renders nothing next to its boundary', async () => {
@@ -123,34 +154,58 @@ export function Page() {
     },
   )
 
-  // An object spread into one boundary only is stripped of its fallback; a
-  // shared or computed object may be observed elsewhere and is kept.
-  test.each([
-    {
-      name: 'used once',
-      code: `const opts = { fallback: <p>server-fallback</p>, when: true }
+  // An object spread into one boundary only is stripped of its fallback.
+  test('server: a fallback in a spread object used once is removed', async () => {
+    const { parent } = await compileHydrate(
+      'server',
+      `${head}const opts = { fallback: <p>server-fallback</p>, when: true }
 export function Page() { return <Hydrate {...opts}><p>child</p></Hydrate> }`,
-      kept: false,
-    },
+    )
+    expect(await getModuleErrors(parent)).toEqual([])
+    expect(parent).not.toContain('server-fallback')
+  })
+
+  // An object that may be observed elsewhere (shared, or returned by a call)
+  // may keep its fallback on the server; the boundaries still render their
+  // children. Stripping the fallback of an object only Hydrate spreads read
+  // is the goal (pinned below); seeing through calls is best effort.
+  test.each([
     {
       name: 'shared by two boundaries',
       code: `const opts = { fallback: <p>server-fallback</p> }
 export function Page() { return <><Hydrate {...opts}><p>a</p></Hydrate><Hydrate {...opts}><p>b</p></Hydrate></> }`,
-      kept: true,
+      html: '[<p>a</p>][<p>b</p>]',
     },
     {
       name: 'returned by a call',
       code: `const makeOpts = () => ({ fallback: <p>server-fallback</p> })
 const opts = makeOpts()
 export function Page() { return <Hydrate {...opts}><p>child</p></Hydrate> }`,
-      kept: true,
+      html: '[<p>child</p>]',
     },
   ])(
-    'server: a fallback in a spread object $name is kept: $kept',
-    async ({ code, kept }) => {
+    'server: boundaries spreading an object $name render their children',
+    async ({ code, html }) => {
       const { parent } = await compileHydrate('server', `${head}${code}`)
       expect(await getModuleErrors(parent)).toEqual([])
-      expect(parent.includes('server-fallback')).toBe(kept)
+      const module = await evaluateModule(parent, hydrateParentStubs)
+      expect(module.Page()).toBe(html)
+    },
+  )
+
+  // Goal (N14): an object only `<Hydrate>` spreads read is used for its
+  // props only, so its client-only fallback is removed from the server
+  // module, like the fallback of an object spread once.
+  test.fails(
+    'server: a fallback in a spread object shared by two boundaries is removed',
+    async () => {
+      const { parent } = await compileHydrate(
+        'server',
+        `${head}const opts = { fallback: <p>server-fallback</p> }
+export function Page() { return <><Hydrate {...opts}><p>a</p></Hydrate><Hydrate {...opts}><p>b</p></Hydrate></> }`,
+      )
+      expect(await getModuleErrors(parent)).toEqual([])
+      expect(parent).not.toContain('server-fallback')
     },
   )
 
@@ -178,40 +233,132 @@ export function Page() {
     expect(parent).not.toContain('server-fallback')
   })
 
-  // The parent passes the chunk's preload function (`p`) to boundaries that
-  // may receive a `prefetch` prop, also when it comes from a spread.
+  /**
+   * Loads `code` for the client with a `<Hydrate>` stub recording the props
+   * of each boundary it renders.
+   */
+  async function loadRecordingBoundaries(
+    code: string,
+    stubs: Record<string, ModuleStub> = {},
+  ) {
+    const boundaries: Array<Record<string, any>> = []
+    const loaded = await loadClientModule(code, {
+      stubs: {
+        ...stubs,
+        '@tanstack/react-start': {
+          Hydrate: (props: Record<string, any>) => {
+            boundaries.push(props)
+            return `[${props.children ?? ''}]`
+          },
+        },
+      },
+    })
+    return { ...loaded, boundaries }
+  }
+
+  // A boundary that may receive a `prefetch` prop (directly or through a
+  // spread) gets the preload function of its own chunk (`p`).
+  // Source: hydrateWhen Basic fixture (direct prefetch), hydrateWhen
+  // PrefetchState fixture.
   test.each([
     {
-      name: 'an object literal with prefetch',
+      name: 'a direct prefetch prop',
       setup: '',
-      spread: '{...{ when: idle(), prefetch: idle() }}',
+      attributes: 'when={idle()} prefetch={idle({ timeout: 100 })}',
+      props: {},
     },
     {
-      name: 'a single-use object with prefetch',
+      name: 'a spread object literal with prefetch',
+      setup: '',
+      attributes: '{...{ when: idle(), prefetch: idle() }}',
+      props: {},
+    },
+    {
+      name: 'a spread single-use object with prefetch',
       setup: 'const opts = { prefetch: idle() }\n',
-      spread: '{...opts}',
+      attributes: '{...opts}',
+      props: {},
     },
     {
-      name: 'a computed key',
+      name: 'a spread with a computed key',
       setup: '',
-      spread: '{...{ [props.key]: idle() }}',
+      attributes: '{...{ [props.key]: idle() }}',
+      props: { key: 'prefetch' },
     },
-    { name: 'a nested spread', setup: '', spread: '{...{ ...props.rest }}' },
+    {
+      name: 'a nested spread',
+      setup: '',
+      attributes: '{...{ ...props.rest }}',
+      props: { rest: { prefetch: 'idle' } },
+    },
   ])(
-    'client: a spread with $name gives the boundary its preload',
-    async ({ setup, spread }) => {
-      const { parent } = await compileHydrate(
-        'client',
-        `${head}import { idle } from '@tanstack/react-start/hydration'
+    'client: a boundary with $name preloads its own chunk',
+    async ({ setup, attributes, props }) => {
+      const { module, boundaries, chunkIds, preloaded } =
+        await loadRecordingBoundaries(
+          `${head}import { idle } from '@tanstack/react-start/hydration'
 export function Page(props) {
-  ${setup}return <Hydrate ${spread}><p>child</p></Hydrate>
+  ${setup}return <><Hydrate><p>other</p></Hydrate><Hydrate ${attributes}><p>child</p></Hydrate></>
 }`,
-      )
-      expect(await getModuleErrors(parent)).toEqual([])
-      expect(parent).toMatch(/\sp=\{[\w$]+\}/)
-      expect(parent).toMatch(/=\s*[\w$]+\.preload\b/)
+        )
+      expect(module.Page(props)).toBe('[<p>other</p>][<p>child</p>]')
+      const boundary = boundaries[1]!
+      expect(boundary.p).toBeTypeOf('function')
+      await boundary.p()
+      expect(preloaded).toHaveLength(1)
+      expect(chunkIds).toContain(preloaded[0]!.id)
+      expect(getChunkComponent(preloaded[0]!.module)({})).toBe('<p>child</p>')
     },
   )
+
+  // Source: hydrateWhen PrefetchState fixture
+  test('client: a prefetch callback updates the state of the parent component', async () => {
+    const updates: Array<string> = []
+    const { module, boundaries, preloaded } = await loadRecordingBoundaries(
+      `import { useState } from 'react'
+${head}import { interaction } from '@tanstack/react-start/hydration'
+function Widget() {
+  return <button>Widget</button>
+}
+export function Page() {
+  const [status, setStatus] = useState('idle')
+  const [, setUnusedStatus] = useState('idle')
+  return (
+    <section>
+      <p>{status}</p>
+      <Hydrate
+        when={interaction()}
+        prefetch={async () => {
+          setStatus('prefetched')
+          setUnusedStatus('prefetched-unused')
+        }}
+      >
+        <Widget />
+      </Hydrate>
+    </section>
+  )
+}`,
+      {
+        react: {
+          useState: (initial: string) => [
+            initial,
+            (next: string) => updates.push(next),
+          ],
+        },
+      },
+    )
+    expect(module.Page()).toBe(
+      '<section><p>idle</p>[<button>Widget</button>]</section>',
+    )
+    const [boundary] = boundaries
+    await boundary!.prefetch()
+    expect(updates).toEqual(['prefetched', 'prefetched-unused'])
+    expect(boundary!.p).toBeTypeOf('function')
+    await boundary!.p()
+    expect(getChunkComponent(preloaded[0]!.module)({})).toBe(
+      '<button>Widget</button>',
+    )
+  })
 
   // Source: Qwik optimizer example_functional_component_capture_props
   test('server: params used only by the fallback keep later params in place', async () => {
@@ -258,8 +405,15 @@ export function Card(label, body) {
   })
 
   // Source: Qwik optimizer example_mutable_children, issue_5008
-  test('client: boundaries in conditionals and callbacks load the chunk the server id names', async () => {
-    const code = `${head}export function Page({ flag, items }) {
+  test.each([
+    { name: 'Page', props: { flag: true, items: ['x'] } },
+    { name: 'Page', props: { flag: false, items: ['x'] } },
+    { name: 'Other', props: { early: true } },
+    { name: 'Other', props: { early: false } },
+  ])(
+    'client: boundaries in conditionals and callbacks hydrate like the server renders them: $name $props',
+    async ({ name, props }) => {
+      const code = `${head}export function Page({ flag, items }) {
   return <div>
     {flag ? <Hydrate><p>yes</p></Hydrate> : <Hydrate><p>no</p></Hydrate>}
     {flag && <Hydrate><p>and</p></Hydrate>}
@@ -271,31 +425,12 @@ export function Other({ early }) {
   if (early) { return <Hydrate><p>early</p></Hydrate> }
   return <Hydrate><p>late</p></Hydrate>
 }`
-    const server = await compileHydrate('server', code)
-    const { parent, plugin } = await compileHydrate('client', code)
-    const serverIds = getBoundaryIds(server.parent)
-    expect(getBoundaryIds(parent)).toEqual(serverIds)
-    const rendered: Array<unknown> = []
-    for (const id of serverIds) {
-      const chunkId = getChunkIds(parent).find((chunk) =>
-        chunk.endsWith(`=${id}`),
-      )
-      rendered.push(
-        await renderChunk(loadChunk(plugin, 'client', chunkId!)!, {
-          item: 'x',
-        }),
-      )
-    }
-    expect(rendered).toEqual([
-      '<p>yes</p>',
-      '<p>no</p>',
-      '<p>and</p>',
-      '<p>fnx</p>',
-      '<p>arrowx</p>',
-      '<p>early</p>',
-      '<p>late</p>',
-    ])
-  })
+      const render = (module: Record<string, any>) => module[name](props)
+      const server = await renderBoundaries('server', code, render)
+      expect(server.ids).not.toEqual([])
+      expect(await renderBoundaries('client', code, render)).toEqual(server)
+    },
+  )
 
   // The route code splitter compiles a route's split component under the
   // route file's id with its own query (`?tsr-split=component`): the
@@ -372,12 +507,16 @@ export function Page() {
         compiled.code ?? loadChunk(plugin, 'client', getChunkIds(parent)[0]!)!
       expect(await getModuleErrors(chunk)).toEqual([])
       expect(chunk).not.toContain('greet-handler-marker')
-      const provider = await evaluateProvider(await compileServer(code))
-      // The chunk compiles its own caller of the provider, or imports the
-      // parent's caller.
-      const ids = Object.keys(compiled.serverFns)
-      if (ids.length > 0) {
-        expect(ids).toEqual([provider.greet_createServerFn_handler.meta.id])
+      // The chunk compiles its own caller of the server fn, which the SSR
+      // bundle's server-fn router runs, or imports the parent's caller.
+      if (Object.keys(compiled.serverFns).length > 0) {
+        const server = await compileServer(code)
+        expect(Object.keys(compiled.serverFns)).toEqual(
+          Object.keys(server.serverFns),
+        )
+        expect(await callReportedServerFns(server, compiled.serverFns)).toEqual(
+          ['greet-handler-marker'],
+        )
       } else {
         expect(parentImportSources(chunk)).not.toEqual([])
       }
@@ -386,71 +525,147 @@ export function Page() {
 })
 
 describe('the split chunk', () => {
+  // The server renders the children as JSX text. Multi-line text is pinned
+  // in known-bugs-hydrate.test.ts.
+  // Source: #8504 hydrate-split-modules.test.ts (exact equality, numeric
+  // entities)
   test.each([
     { name: 'entities', text: '&amp; &#38; &#x26;', rendered: '& & &' },
     {
-      name: 'multi-line text with entities',
-      text: '\n      Fish &amp;\n      Chips &copy;\n    ',
-      rendered: 'Fish & Chips ©',
+      name: 'numeric entities',
+      text: '&copy; &#169; &#xA9;',
+      rendered: '© © ©',
     },
   ])(
     'client: a text-only child renders like JSX text: $name',
     async ({ text, rendered }) => {
-      const { chunks } = await compileHydrate(
-        'client',
-        `${head}export function Page() {
+      const jsx = await evaluateModule(`export const text = <>${text}</>`)
+      expect(jsx.text).toBe(rendered)
+      const { module } = await loadClientModule(`${head}export function Page() {
   return <Hydrate>${text}</Hydrate>
-}`,
-      )
-      // Whitespace collapsing aside, the text must render like the
-      // server-rendered JSX text.
-      const output = await renderChunk(chunks[0]!)
-      expect(output.replace(/\s+/g, ' ').trim()).toBe(rendered)
+}`)
+      expect(module.Page()).toBe(`[${rendered}]`)
     },
   )
 
+  // Source: #8504 hydrate-split-modules.test.ts (click handler and IIFE)
   test('client: children may contain return statements', async () => {
-    const { chunks } = await compileHydrate(
-      'client',
+    // Render the click handler's result next to the element.
+    const runtime = `const __Fragment = Symbol('Fragment')
+const __jsx = (type, props, ...children) => {
+  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
+  if (type === __Fragment) return text
+  if (typeof type === 'function') return type(children.length ? { ...props, children: text } : { ...props })
+  const click = props?.onClick ? '(' + props.onClick() + ')' : ''
+  return '<' + type + '>' + click + text + '</' + type + '>'
+}
+`
+    const { module } = await loadClientModule(
       `${head}const letters = ['a', 'b']
 export function Page() {
-  return <Hydrate><ul>{letters.map((letter) => { const upper = letter.toUpperCase(); return <li>{upper}</li> })}</ul></Hydrate>
+  return <Hydrate><ul onClick={() => { return 'click' }}>{letters.map((letter) => { const upper = letter.toUpperCase(); return <li>{upper}</li> })}{(function () { return 'iife' })()}</ul></Hydrate>
 }`,
+      { runtime },
     )
-    expect(await getModuleErrors(chunks[0]!)).toEqual([])
-    expect(await renderChunk(chunks[0]!)).toBe('<ul><li>A</li><li>B</li></ul>')
+    expect(module.Page()).toBe('[<ul>(click)<li>A</li><li>B</li>iife</ul>]')
   })
 
   // Leaving such a boundary unsplit is valid too.
-  test('client: empty and comment-only boundaries load chunks that render nothing', async () => {
-    const { parent, chunks } = await compileHydrate(
-      'client',
-      `${head}export function Page() {
-  return <div><Hydrate></Hydrate><Hydrate>{/* nothing */}</Hydrate></div>
-}`,
-    )
-    expect(await getModuleErrors(parent)).toEqual([])
-    expect(chunks.length).toBeLessThanOrEqual(2)
-    for (const chunk of chunks) {
-      expect(await getModuleErrors(chunk)).toEqual([])
-      expect(await renderChunk(chunk)).toBeNull()
-    }
+  // Source: #8504 hydrate-split-modules.test.ts (self-closing row)
+  test('client: empty, self-closing and comment-only boundaries render nothing', async () => {
+    const { module, lazyChunks } =
+      await loadClientModule(`${head}export function Page() {
+  return <div><Hydrate></Hydrate><Hydrate /><Hydrate>{/* nothing */}</Hydrate></div>
+}`)
+    expect(module.Page()).toBe('<div>[][][]</div>')
+    expect(lazyChunks.length).toBeLessThanOrEqual(3)
   })
 
-  test('client: chunk ids stay loadable when the same source is compiled again', async () => {
+  // Source: #8504 hydrate-split-modules.test.ts
+  test('client: a self-closing boundary without a children prop keeps its props', async () => {
+    const boundaries: Array<Record<string, unknown>> = []
+    const { module } = await loadClientModule(
+      `${head}import { idle } from '@tanstack/react-start/hydration'
+export function Page() {
+  return <Hydrate when={idle()} />
+}`,
+      {
+        stubs: {
+          '@tanstack/react-start': {
+            Hydrate: (props: Record<string, unknown>) => {
+              boundaries.push(props)
+              return `[${props.children ?? ''}]`
+            },
+          },
+        },
+      },
+    )
+    expect(module.Page()).toBe('[]')
+    expect(boundaries.map((props) => props.when)).toEqual(['idle'])
+  })
+
+  // Goal: `<Hydrate children={…} />` defers its children like JSX children:
+  // the parent does not need their modules before the chunk loads.
+  // Source: #8504 hydrate-split-modules.test.ts "a children prop moves into
+  // the chunk"
+  test.fails.each([
+    { name: 'last', attributes: 'when={idle()} children={<Chart />}' },
+    { name: 'first', attributes: 'children={<Chart />} when={idle()}' },
+  ])(
+    'client: the children prop ($name) of a self-closing boundary is deferred',
+    async ({ attributes }) => {
+      const events: Array<string> = []
+      const { module, lazyChunks } = await loadClientModule(
+        `${head}import { idle } from '@tanstack/react-start/hydration'
+import { Chart } from './chart'
+export function Page() {
+  return <Hydrate ${attributes} />
+}`,
+        {
+          stubs: {
+            './chart': {
+              get Chart() {
+                events.push('chart linked')
+                return () => 'chart'
+              },
+            },
+          },
+          beforeChunksLoad: () => events.push('chunks load'),
+        },
+      )
+      expect(events).toEqual(['chunks load', 'chart linked'])
+      expect(module.Page()).toBe('[chart]')
+      expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true])
+    },
+  )
+
+  test('client: a chunk id renders the same children when the same source is compiled again', async () => {
     const source = `${head}export function Page() {
   return <Hydrate><p>chunk-marker</p></Hydrate>
 }`
     const { parent, plugin } = await compileHydrate('client', source)
     const [id] = getChunkIds(parent)
-    expect(loadChunk(plugin, 'client', id!)).toContain('chunk-marker')
+    const render = () => renderChunk(loadChunk(plugin, 'client', id!)!)
+    expect(await render()).toBe('<p>chunk-marker</p>')
     await compileCode('client', source, { compilerPlugins: [plugin] })
-    expect(loadChunk(plugin, 'client', id!)).toContain('chunk-marker')
-    // Unknown boundaries and ids without a split id are not Hydrate chunks.
-    expect(loadChunk(plugin, 'client', id!.replace(/=0_/, '=5_'))).toBeNull()
-    expect(
-      loadChunk(plugin, 'client', '/test/src/module.tsx?other=1'),
-    ).toBeNull()
+    expect(await render()).toBe('<p>chunk-marker</p>')
+  })
+
+  // Source: #8504 hydrate-split-modules.test.ts (gap H26)
+  test('client: the source map of a chunk names the file the children come from', async () => {
+    const { parent, plugin } = await compileHydrate(
+      'client',
+      `${head}export function Page() {
+  return <Hydrate><p>chunk</p></Hydrate>
+}`,
+    )
+    const chunk = plugin.loadVirtualModule!({
+      id: getChunkIds(parent)[0]!,
+      root: '/test',
+      env: 'client',
+      envName: 'client',
+    })
+    expect(chunk?.map?.sources).toEqual(['/test/src/module.tsx'])
   })
 
   test('client: the chunks of a module stay loadable after another module is compiled', async () => {
@@ -597,18 +812,14 @@ export function Page() {
     ).toBe('<p>A|d|{"extra":"x"}</p>')
   })
 
+  // A let the children only write is pinned in known-bugs-hydrate.test.ts.
   // Source: Qwik optimizer should_preserve_let_when_migrated_into_segment
-  test('client: a module-level let used only by the children stays mutable', async () => {
-    const { chunks } = await compileHydrate(
-      'client',
-      `${head}let renders = 0
+  test('client: a module-level let only the children use stays mutable', async () => {
+    const { module } = await loadClientModule(`${head}let renders = 0
 export function Page() {
   return <Hydrate><p>{++renders}</p></Hydrate>
-}`,
-    )
-    const component = getChunkComponent(await evaluateModule(chunks[0]!))
-    expect(component({})).toBe('<p>1</p>')
-    expect(component({})).toBe('<p>2</p>')
+}`)
+    expect([module.Page(), module.Page()]).toEqual(['[<p>1</p>]', '[<p>2</p>]'])
   })
 
   // Source: Qwik optimizer should_keep_non_migrated_binding_from_shared_destructuring_declarator
@@ -654,6 +865,60 @@ export function App() {
     const render = (chunk: string) => linked.renderChunk(chunk, {})
     expect(await render(chunks[0]!)).toBe('<p>3</p>')
     expect(await render(chunks[1]!)).toBe('<p>4</p>')
+  })
+
+  // Whether the chunk shares the parent's instance of these declarations or
+  // declares its own is pinned in known-bugs-hydrate.test.ts (module state
+  // initialized once), like a default-exported function, enums and
+  // namespaces; only the output is asserted here.
+  // Source: Qwik optimizer example_exports (#8504
+  // hydrate-split-modules.test.ts)
+  test('client: exported declarations of every form used by the children render', async () => {
+    const { module } =
+      await loadClientModule(`${head}export const [a, { b }] = ['a', { b: 'b' }]
+const exp1 = 'e1'
+const internal = 'i'
+export { exp1, internal as expr2 }
+export function foo() { return 'foo' }
+export class Bar { static id = 'bar' }
+export function Page() {
+  return <Hydrate><p>{[a, b, exp1, internal, foo(), Bar.id].join('|')}</p></Hydrate>
+}`)
+    expect(module.Page()).toBe('[<p>a|b|e1|i|foo|bar</p>]')
+  })
+
+  // The children render a component the route file exports; the route is
+  // created once.
+  // Source: hydrate-when-transform.test.ts "unwraps exported declarations
+  // needed by extracted virtual modules"
+  test('client: an exported component of a route file renders in the chunk, and the route is created once', async () => {
+    const created: Array<string> = []
+    const { module } = await loadClientModule(
+      `import { createFileRoute } from '@tanstack/react-router'
+${head}import { visible } from '@tanstack/react-start/hydration'
+export const Route = createFileRoute('/test')({
+  component: Page,
+})
+export const label = 'Ada'
+export const Widget = () => {
+  return <p>{label}</p>
+}
+function Page() {
+  return <Hydrate when={visible()}><Widget /></Hydrate>
+}`,
+      {
+        stubs: {
+          '@tanstack/react-router': {
+            createFileRoute: (id: string) => (options: unknown) => {
+              created.push(id)
+              return { id, options }
+            },
+          },
+        },
+      },
+    )
+    expect(module.Route.options.component()).toBe('[<p>Ada</p>]')
+    expect(created).toEqual(['/test'])
   })
 
   // Source: Qwik optimizer example_ts_enums (TypeScript-only declaration forms)
