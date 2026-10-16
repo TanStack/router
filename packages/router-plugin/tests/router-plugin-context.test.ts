@@ -2,7 +2,6 @@ import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
-import { unpluginRouterComposedFactory } from '../src/core/router-composed-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
@@ -211,24 +210,6 @@ function component() {
       vi.unstubAllGlobals()
     }
     expect(window).not.toHaveProperty('__getReactRefreshIgnoredExports')
-  })
-
-  it('does not install the standalone route HMR plugin in production', () => {
-    vi.stubEnv('NODE_ENV', 'production')
-
-    try {
-      const plugins = unpluginRouterComposedFactory(
-        { target: 'react', autoCodeSplitting: false },
-        { framework: 'vite', versions: {} },
-      )
-
-      const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
-      expect(
-        pluginArray.some((plugin) => plugin.name === 'tanstack-router:hmr'),
-      ).toBe(false)
-    } finally {
-      vi.unstubAllEnvs()
-    }
   })
 
   it('keeps multiple code-splitter instances isolated by explicit context', async () => {

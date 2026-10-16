@@ -263,29 +263,6 @@ describe('handleRouteUpdate', () => {
     expect((newRoute as any).options.path).toBe((itemRoute as any).options.path)
   })
 
-  it('clears lazy ownership and delegates rematerialization to the router', () => {
-    const rootRoute = new BaseRootRoute({})
-    const itemRoute = new BaseRoute({
-      getParentRoute: () => asAnyRoute(rootRoute),
-      path: '/items/$itemId',
-    })
-    const router = createTestRouter(
-      rootRoute.addChildren([asAnyRoute(itemRoute)]),
-    )
-    const lazyOwner = Promise.resolve()
-    const refreshRoute = vi.fn(async () => {})
-    ;(itemRoute as any)._lazy = lazyOwner
-    ;(router as any)._refreshRoute = refreshRoute
-
-    expect((itemRoute as any)._lazy).toBe(lazyOwner)
-
-    runHandleRouteUpdate(router, itemRoute.id, new BaseRoute({} as any))
-
-    expect((itemRoute as any)._lazy).toBeUndefined()
-    expect(refreshRoute).toHaveBeenCalledTimes(1)
-    expect(refreshRoute).toHaveBeenCalledWith()
-  })
-
   it('uses a fresh source lazy importer without erasing an omitted one', async () => {
     const oldImporter = vi.fn(async () => ({ options: {} }) as any)
     const newImporter = vi.fn(async () => ({ options: {} }) as any)

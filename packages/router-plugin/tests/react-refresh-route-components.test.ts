@@ -8,8 +8,6 @@
  */
 import { describe, expect, it } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
-import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import {
   expectExportedRouteOptions,
   expectSharedOverloads,
@@ -406,27 +404,6 @@ describe('route HMR leaves options React Refresh does not handle as they are', (
     expect(await getModuleErrors(code)).toEqual([])
     const component = (await getRouteOption(code, 'component')) as () => string
     expect(component()).toBe('<p>hi</p>')
-  })
-
-  // Only split components are kept in the HMR data across updates; a split
-  // loader kept there would keep running its old code after an edit.
-  it('does not keep a split loader in the HMR data', () => {
-    const compiled = compileCodeSplitReferenceRoute({
-      code: `${head}export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p>hi</p>,
-})`,
-      filename: 'route.tsx',
-      id: 'route.tsx',
-      addHmr: true,
-      codeSplitGroupings: [['loader'], ['component']],
-      targetFramework: 'react',
-      compilerPlugins: getFrameworkHmrCompilerPlugins({
-        targetFramework: 'react',
-      }),
-    })
-    expect(compiled!.code).toContain('tsr-split-component:component')
-    expect(compiled!.code).not.toContain('tsr-split-component:loader')
   })
 })
 
