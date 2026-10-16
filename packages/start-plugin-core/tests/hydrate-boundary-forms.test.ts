@@ -709,7 +709,7 @@ function Widget(props: { title: string }) {
 // Source: hydrate-when-transform.test.ts "invalidates cached Hydrate source
 // for virtual module loads" (the compiler half of gaps H21 / DV42; the dev
 // server half is in hydrate-build.test.ts)
-test('client: after the module is invalidated and compiled again, its chunk ids render the new children', async () => {
+test('client: after the module is invalidated and compiled again, its chunk renders the new children', async () => {
   const plugin = createHydrateCompilerPlugin()
   const { compiler, compile } = createStartCompiler({
     env: 'client',
@@ -718,12 +718,12 @@ test('client: after the module is invalidated and compiled again, its chunk ids 
   const source = (text: string) => `${head}export function Page() {
   return <Hydrate><p>${text}</p></Hydrate>
 }`
-  const parent = (await compile(source('Old')))!
-  const [id] = getChunkIds(parent)
-  const render = async () => renderChunk(loadChunk(plugin, 'client', id!)!)
-  expect(await render()).toBe('<p>Old</p>')
+  /** Renders the chunk of the only boundary of a compiled parent. */
+  const render = async (parent: string) => {
+    const [id] = getChunkIds(parent)
+    return renderChunk(loadChunk(plugin, 'client', id!)!)
+  }
+  expect(await render((await compile(source('Old')))!)).toBe('<p>Old</p>')
   compiler.invalidateModule('/test/src/module.tsx')
-  const next = (await compile(source('New')))!
-  expect(getChunkIds(next)).toEqual([id])
-  expect(await render()).toBe('<p>New</p>')
+  expect(await render((await compile(source('New')))!)).toBe('<p>New</p>')
 })

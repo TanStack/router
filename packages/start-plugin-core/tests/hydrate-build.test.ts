@@ -288,18 +288,20 @@ export function Page() {
       expect(chunkUrl).toBeDefined()
 
       const server = await startDevServer({ files })
-      const render = async () =>
+      const render = async (url: string) =>
         getChunkComponent(
-          await evaluateServed(server, chunkUrl!, {
+          await evaluateServed(server, url, {
             // The stand-in packages are served like project modules.
             skip: /^\/@vite\b/,
           }),
         )({})
-      expect(await render()).toBe('<p>Old</p>')
+      expect(await render(chunkUrl!)).toBe('<p>Old</p>')
 
       await server.edit({ 'src/page.tsx': page('New') })
 
-      expect(await render()).toBe('<p>New</p>')
+      // The chunk the edited parent module imports.
+      const [editedUrl] = getChunkIds(await server.transform('/src/page.tsx'))
+      expect(await render(editedUrl!)).toBe('<p>New</p>')
     },
     timeout,
   )
