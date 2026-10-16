@@ -20,10 +20,24 @@ export interface ResolvedStartEntryPlan {
   }
 }
 
+/**
+ * A relative public base ('.' / './') means the app is served from a path
+ * that is only known at request time, so nothing can be derived from it.
+ */
+export function isRelativePublicBase(base: string): boolean {
+  return base === '.' || base === './'
+}
+
 export function normalizePublicBase(base: string | undefined): string {
   const resolvedBase = base ?? '/'
 
   if (URL.canParse(resolvedBase)) {
+    return resolvedBase
+  }
+
+  // Preserve relative base paths ('.' / './') so that asset URLs built from
+  // the base stay relative instead of being rewritten to an absolute '/.'.
+  if (isRelativePublicBase(resolvedBase)) {
     return resolvedBase
   }
 
@@ -38,7 +52,9 @@ export function deriveRouterBasepath(opts: {
     return opts.configuredBasepath
   }
 
-  if (URL.canParse(opts.publicBase)) {
+  // An absolute or relative public base carries no router prefix: the slash
+  // stripping below would otherwise turn './' into a router basepath of '.'.
+  if (URL.canParse(opts.publicBase) || isRelativePublicBase(opts.publicBase)) {
     return '/'
   }
 
@@ -52,6 +68,12 @@ export function shouldRewriteDevBasepath(opts: {
   publicBase: string
 }): boolean {
   if (opts.command !== 'serve' || opts.middlewareMode) {
+    return false
+  }
+
+  // Vite resolves a relative base to '/' while serving, so dev requests already
+  // arrive without a prefix. Prepending '.' to every request URL would break them.
+  if (isRelativePublicBase(opts.publicBase)) {
     return false
   }
 
