@@ -1,9 +1,11 @@
 import { expect, test } from 'vitest'
 import {
   callProvider,
+  callServerFnThroughCallers,
   compileAll,
   compileCode,
   compileServer,
+  createServerGraph,
   evaluateModule,
   evaluateProvider,
   importSources,
@@ -45,21 +47,21 @@ const handlerStubs = {
 }
 
 /**
- * Compiles a module with the server fn `fn`: callers call it through its RPC
- * and import nothing, and the provider runs the handler. Returns what the
- * handler returns.
+ * Compiles a module with the server fn `fn`: the client imports nothing and
+ * calls it through its RPC, whose id runs the handler on the server, as does
+ * calling it from the SSR caller (`callServerFnThroughCallers`). Returns what
+ * the handler returns.
  */
 async function callHandler(code: string) {
   const compiled = await compileAll(
     `${head}${code.includes('db.') ? `import { db } from './db.server'\n` : ''}${code}`,
   )
-  for (const output of ['client', 'ssr'] as const) {
-    expect(importSources(compiled[output]), output).toEqual([])
-    expect((await evaluateModule(compiled[output])).fn, output).toEqual({
-      rpc: { [output]: expect.any(String) },
-    })
-  }
-  return callProvider(compiled, 'fn', handlerStubs)
+  expect(importSources(compiled.client), 'client').toEqual([])
+  return callServerFnThroughCallers(
+    compiled,
+    (module) => module.fn,
+    handlerStubs,
+  )
 }
 
 test.each<{
@@ -199,17 +201,14 @@ export const fn = createServerFn().handler(async () => <string>identity(<unknown
       output,
     ).toEqual([])
   }
-  for (const caller of [compiled.client, compiled.ssr]) {
-    expect(importSources(caller)).toEqual([])
-  }
+  expect(importSources(compiled.client)).toEqual([])
   // Linked under the `.ts` id, the modules are evaluated as TypeScript.
-  expect(
-    await callProvider(
-      { ssr: compiled.ssr, provider: compiled.provider, id },
-      'fn',
-      { './db.server': dbServer },
-    ),
-  ).toBe('x')
+  const server = { ssr: compiled.ssr, provider: compiled.provider, id }
+  const stubs = { './db.server': dbServer }
+  expect(await callProvider(server, 'fn', stubs)).toBe('x')
+  const serverFns = (await compileServer(code, { id })).serverFns
+  const ssr = await createServerGraph({ ...server, serverFns }, stubs).ssr()
+  expect(await ssr.fn()).toBe('x')
 })
 
 // Each handler reads the module binding `value` (or `key`) through a scope

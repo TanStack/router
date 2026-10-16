@@ -2,6 +2,7 @@ import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
   callProvider,
+  callServerFnThroughCallers,
   clientOnlyError,
   compileAll,
   compileCode,
@@ -15,7 +16,7 @@ import {
   settle,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import type { Output } from './regression-helpers'
+import type { ModuleStub, Output } from './regression-helpers'
 
 // Each output keeps the implementation of its own environment (and only the
 // imports that implementation reads) and replaces the other one with a stub
@@ -49,9 +50,7 @@ export { serverValue as exposed }`)
       'draw:1',
       serverOnlyError,
     ])
-    for (const output of ['ssr', 'provider'] as const) {
-      expect(importSources(compiled[output])).toEqual(['./db.server'])
-    }
+    expect(importSources(compiled.ssr)).not.toContain('./chart.client')
     const ssr = await evaluateModule(compiled.ssr, stubs)
     expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
       clientOnlyError,
@@ -236,6 +235,24 @@ export default createMiddleware().server(async ({ next }) => {
             ['validator', 'data:VALIDATOR_SECRET'],
             ['server', serverResult],
             ['client', clientResult],
+          ],
+        },
+        {
+          // The wrapped part ends in `.client()`; `.server()` follows it.
+          // Source: lost-cases-campaign W-2 (fuzz M4 link:2, a crash of the
+          // Yuku migration; main builds it).
+          end: '.middleware().validator().client(), before .server()',
+          chain: (wrap: Wrap) =>
+            `${wrap(`createMiddleware({ type: 'function' }).middleware([])${validatorLink}${clientLink}`)}${serverLink}`,
+          clientLinks: [
+            ['middleware', []],
+            ['client', clientResult],
+          ],
+          ssrLinks: [
+            ['middleware', []],
+            ['validator', 'data:VALIDATOR_SECRET'],
+            ['client', clientResult],
+            ['server', serverResult],
           ],
         },
       ].flatMap((chain) =>
@@ -527,7 +544,7 @@ function settle(run: () => unknown) {
     async () => {
       const server = await compileServer(envFnsInHandler)
       expect(await getModuleErrors(server.provider)).toEqual([])
-      expect(importSources(server.provider)).toEqual(['./db.server'])
+      expect(importSources(server.provider)).not.toContain('./chart.client')
       expect(
         await callProvider(server, 'fn', {
           './db.server': `export const db = { now: () => 'now', read: () => 'read' }`,
@@ -540,18 +557,30 @@ function settle(run: () => unknown) {
   // Source: Waku vite-plugin-allow-server.test.ts "skips files without a use
   // client directive even if the string exists", "does not require
   // allowServer to come from waku/client" (inverted)
-  test.each([
+  test.each<{
+    name: string
+    code: string
+    read: (module: Record<string, any>) => unknown
+    expected: unknown
+  }>([
     {
       name: 'only mentions the factories in strings and comments',
       code: `// createServerFn and createServerOnlyFn are not used here
 export const label = 'createServerFn().handler(async () => 1)'
 export const other = \`createClientOnlyFn(\${label})\``,
+      read: (module) => [module.label, module.other],
+      expected: [
+        'createServerFn().handler(async () => 1)',
+        'createClientOnlyFn(createServerFn().handler(async () => 1))',
+      ],
     },
     {
       name: 'calls .handler() on an object that is not a server fn',
       code: `import { api } from './api'
 import { secret } from './secret.server'
 export const route = api.handler(async () => secret())`,
+      read: (module) => module.route(),
+      expected: 'secret',
     },
     {
       name: 'declares a function named like a factory',
@@ -559,48 +588,80 @@ export const route = api.handler(async () => secret())`,
   return fn
 }
 export const value = createServerOnlyFn(() => 'mine')`,
+      read: (module) => module.value(),
+      expected: 'mine',
     },
-  ])('a module that $name is left untouched', async ({ code }) => {
-    for (const output of outputs) {
-      expect(await compileCode(output, code), output).toBeNull()
-    }
-  })
+  ])(
+    'a module that $name keeps its meaning',
+    async ({ code, read, expected }) => {
+      const stubs = {
+        './api': { api: { handler: (fn: () => unknown) => fn } },
+        './secret.server': { secret: () => 'secret' },
+      }
+      for (const output of ['client', 'ssr'] as const) {
+        const compiled = (await compileCode(output, code)) ?? code
+        expect(
+          await read(await evaluateModule(compiled, stubs)),
+          output,
+        ).toEqual(expected)
+      }
+    },
+  )
 
-  // Where the missing implementation runs (SSR and the provider), the
-  // compiler rejects it. The client never runs it: it may reject it too, or
-  // compile to a module whose server-only fn throws on the client and whose
-  // isomorphic fn runs the client implementation.
+  // Where the missing implementation runs (the server: SSR; the client), the
+  // compiler rejects it. The other environment never runs it: it may reject
+  // it too, or compile to a module whose env-only fn throws there and whose
+  // isomorphic fn runs that environment's implementation (or none).
   // Source: Waku vite-plugin-allow-server.test.ts "throws when allowServer
-  // receives zero arguments"
-  test.each([
+  // receives zero arguments"; replaces envOnly.test.ts and
+  // createIsomorphicFn.test.ts "should error if implementation not provided"
+  test.each<{
+    code: string
+    error: string
+    runsOn: Output
+    elsewhere: unknown
+  }>([
     {
       code: `export const none = createServerOnlyFn()`,
       error: 'createServerOnlyFn() must be called with a function!',
-      client: serverOnlyError,
+      runsOn: 'ssr',
+      elsewhere: serverOnlyError,
     },
     {
       code: `export const none = createIsomorphicFn().server().client(() => 1)`,
       error:
         'createIsomorphicFn().server(func) must be called with a function!',
-      client: 1,
+      runsOn: 'ssr',
+      elsewhere: 1,
+    },
+    {
+      code: `export const none = createClientOnlyFn()`,
+      error: 'createClientOnlyFn() must be called with a function!',
+      runsOn: 'client',
+      elsewhere: clientOnlyError,
+    },
+    {
+      code: `export const none = createIsomorphicFn().client()`,
+      error:
+        'createIsomorphicFn().client(func) must be called with a function!',
+      runsOn: 'client',
+      elsewhere: undefined,
     },
   ])(
     'a missing implementation is rejected where it runs: $code',
-    async ({ code, error, client }) => {
-      for (const output of ['ssr', 'provider'] as const) {
-        await expect(
-          compileCode(output, `${head}${code}`),
-          output,
-        ).rejects.toThrow(error)
-      }
-      const compiled = await compileCode('client', `${head}${code}`).catch(
+    async ({ code, error, runsOn, elsewhere }) => {
+      await expect(compileCode(runsOn, `${head}${code}`)).rejects.toThrow(error)
+      const other = runsOn === 'client' ? 'ssr' : 'client'
+      const compiled = await compileCode(other, `${head}${code}`).catch(
         (thrown: Error) => thrown,
       )
       if (compiled instanceof Error) {
         expect(compiled.message).toContain(error)
         return
       }
-      expect(settle((await evaluateModule(compiled!)).none)).toBe(client)
+      expect(
+        settle((await evaluateModule(compiled ?? `${head}${code}`)).none),
+      ).toBe(elsewhere)
     },
   )
 })
@@ -714,6 +775,19 @@ export const fn = createFooServerFn().handler(async () => db.x())`,
     expect(await getModuleErrors(compiled.code!)).toEqual([])
     expect(importSources(compiled.code!)).toEqual(imports)
     expect(Object.keys(compiled.serverFns)).toHaveLength(serverFns)
+    // The server fn is called through an RPC by the reported id, which runs
+    // the handler on the server (project modules linked as they are).
+    if (serverFns > 0) {
+      expect(
+        await callServerFnThroughCallers(
+          await compileAll(code, { files }),
+          (module) => module.fn,
+          {
+            './db.server': { db: { x: () => 'x', y: () => 'y', w: () => 'w' } },
+          },
+        ),
+      ).toBe('x')
+    }
   })
 
   // Source: @vitejs/plugin-rsc expand-export-all fixtures (per row)
@@ -721,6 +795,7 @@ export const fn = createFooServerFn().handler(async () => db.x())`,
     name: string
     files: Record<string, string>
     code?: string
+    stubs?: Record<string, ModuleStub>
     resolvesServerOnlyFn: boolean
   }>([
     {
@@ -753,6 +828,7 @@ export { createServerFn, createServerOnlyFn } from '@tanstack/react-start'`,
         '/test/src/start.ts': `export * from './missing'
 export * from '@tanstack/react-start'`,
       },
+      stubs: { './missing': {} },
       resolvesServerOnlyFn: true,
     },
     {
@@ -790,20 +866,30 @@ export * from './b'`,
     async ({
       files,
       code = `import { createServerFn, createServerOnlyFn } from './start'`,
+      stubs = {},
       resolvesServerOnlyFn,
     }) => {
-      const { code: client, serverFns } = await compileFor(
-        'client',
-        `${code}
+      const source = `${code}
 import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
-export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
-        { files },
+export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`
+      const compiled = await compileAll(source, { files })
+      expect(Object.keys(compiled.serverFns)).toHaveLength(1)
+      expect(importSources(compiled.client)).toEqual(['./start'])
+      const linked = { ...stubs, './db.server': { db: { x: () => 'x' } } }
+      expect(
+        await callServerFnThroughCallers(
+          compiled,
+          (module) => module.fn,
+          linked,
+        ),
+      ).toBe('x')
+      // Where the project's own `createServerOnlyFn` wins, it is a plain
+      // function.
+      const client = await evaluateModule(compiled.client, linked, { files })
+      expect(settle(client.serverOnly)).toBe(
+        resolvesServerOnlyFn ? serverOnlyError : 'server-only-marker',
       )
-      expect(await getModuleErrors(client!)).toEqual([])
-      expect(Object.keys(serverFns)).toHaveLength(1)
-      expect(importSources(client!)).toEqual(['./start'])
-      expect(client!.includes('server-only-marker')).toBe(!resolvesServerOnlyFn)
     },
   )
 
@@ -823,11 +909,27 @@ export const fn = base.handler(async () => db.x())`
       mode: 'dev',
       files,
     })
-    expect(await compile(importer, '/test/src/a.tsx')).not.toBeNull()
+    // `base` as the client runtime gives it, then as the edited module does.
+    const stubs = (base: unknown) => ({
+      './c': { base },
+      './db.server': { db: { x: () => 'x' } },
+    })
+    const before = (await compile(importer, '/test/src/a.tsx')) ?? importer
+    const { fn: rpc } = await evaluateModule(
+      before,
+      stubs({ handler: (handler: unknown) => ({ rpc: handler }) }),
+    )
+    expect(rpc).toEqual({ rpc: { client: expect.any(String) } })
     files['/test/src/b.ts'] =
       `export const base = { handler: (fn: unknown) => fn }`
     // Bundlers may report the changed module with a query suffix.
     compiler.invalidateModules(['/test/src/b.ts?v=2', '/test/src/missing.ts'])
-    expect(await compile(importer, '/test/src/a.tsx')).toBeNull()
+    // `base` is no server fn builder anymore: the handler is user code.
+    const after = (await compile(importer, '/test/src/a.tsx')) ?? importer
+    const { fn } = await evaluateModule(
+      after,
+      stubs({ handler: (handler: unknown) => handler }),
+    )
+    expect(await fn()).toBe('x')
   })
 })

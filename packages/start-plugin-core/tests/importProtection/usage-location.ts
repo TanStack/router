@@ -10,7 +10,8 @@
  * original code (`findOriginalUsageLocation`), the import statement.
  *
  * The Rsbuild adapter tries the two usage lookups in the opposite order; this
- * harness follows Vite.
+ * harness follows Vite. reported-location.test.ts reads the location real
+ * Vite and Rsbuild apps report.
  */
 import {
   ImportLocCache,

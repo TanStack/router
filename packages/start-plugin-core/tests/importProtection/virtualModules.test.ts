@@ -1,18 +1,22 @@
-import { describe, expect, test } from 'vitest'
+/**
+ * The mock modules import protection serves, evaluated as ES modules: what
+ * a mock is when used, that the build mock of a denied file stands alone,
+ * and that the dev mock of a client violation reports each use through the
+ * browser console. Which names each mock exposes is covered by
+ * analysis.exports.test.ts ("mock modules expose every importable name").
+ */
+import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
-  MOCK_EDGE_PREFIX,
-  MOCK_MODULE_ID,
-  MOCK_RUNTIME_PREFIX,
   generateDevSelfDenialModule,
   generateSelfContainedMockModule,
-  loadMarkerModule,
-  loadMockEdgeModule,
-  loadMockRuntimeModule,
   loadSilentMockModule,
-  makeMockEdgeModuleId,
   mockRuntimeModuleIdFromViolation,
+} from '../../src/import-protection/virtualModules'
+import {
+  loadResolvedVirtualModule,
+  resolveInternalVirtualModuleId,
 } from '../../src/vite/import-protection-plugin/virtualModules'
-import { evaluateModule } from '../regression-helpers'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 
 type MockValue = {
@@ -25,25 +29,32 @@ type MockFunction = {
   (): MockValue
 }
 
-/** Evaluates a generated module as an ES module (`evaluateModule`). */
-async function evaluateGeneratedModule<T>(code: string): Promise<T> {
-  return (await evaluateModule(code)) as T
+/**
+ * Evaluates a generated module as an ES module; its imports link to the
+ * virtual modules import protection serves (none when `standalone`).
+ */
+function evaluateGeneratedModule<T>(
+  code: string,
+  options: { standalone?: boolean } = {},
+): Promise<T> {
+  const id = '/test/mock.js'
+  return createModuleGraph({
+    modules: { [id]: code },
+    ...(!options.standalone && {
+      resolve: (specifier: string) => resolveInternalVirtualModuleId(specifier),
+      load: (virtualId: string) => loadResolvedVirtualModule(virtualId)?.code,
+    }),
+  }).import(id) as Promise<T>
 }
 
-describe('loadSilentMockModule', () => {
-  test('returns mock code', () => {
-    const result = loadSilentMockModule()
-    expect(result.code).toContain('export default mock')
-    expect(result.code).toContain('createMock')
-    expect(result.code).toContain('Proxy')
-    expect(result.code).toContain('@__NO_SIDE_EFFECTS__')
-    expect(result.code).toContain('@__PURE__')
-  })
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
+describe('the silent mock', () => {
   test('supports primitive conversion for called mocks', async () => {
-    const result = loadSilentMockModule()
     const mod = await evaluateGeneratedModule<{ default: MockFunction }>(
-      result.code,
+      loadSilentMockModule().code,
     )
     const value = mod.default()
 
@@ -52,110 +63,41 @@ describe('loadSilentMockModule', () => {
     expect(value.valueOf()).toBe('[import-protection mock]')
     expect(JSON.stringify(value)).toBe('"[import-protection mock]"')
   })
-})
 
-describe('loadMarkerModule', () => {
-  test('returns empty module', () => {
-    const result = loadMarkerModule()
-    expect(result.code).toBe('export {}')
+  // Replaces assertions on the purity annotations in the generated text; the
+  // build-level effect (an unused mock is dropped from the bundle) is pinned
+  // in known-bugs.test.ts.
+  test('links on its own, and evaluating and using it has no side effects', async () => {
+    const globals = Object.getOwnPropertyNames(globalThis)
+    const output = (['log', 'info', 'warn', 'error'] as const).map((method) =>
+      vi.spyOn(console, method).mockImplementation(() => {}),
+    )
+    const mod = await evaluateGeneratedModule<{
+      default: Record<string, MockFunction>
+    }>(loadSilentMockModule().code, { standalone: true })
+    String(mod.default.anything!())
+    expect(Object.getOwnPropertyNames(globalThis)).toEqual(globals)
+    expect(output.filter((spy) => spy.mock.calls.length > 0)).toEqual([])
   })
 })
 
-describe('loadMockEdgeModule', () => {
-  test('generates named exports from payload', () => {
-    const payload = JSON.stringify({
-      exports: ['getSecret', 'initDb'],
-      runtimeId: MOCK_MODULE_ID,
-    })
-    const encoded = Buffer.from(payload, 'utf8').toString('base64url')
-    const result = loadMockEdgeModule(encoded)
+describe('the build mock of a denied file', () => {
+  // Evaluated with nothing to link to: the build mock imports nothing.
+  test('supports primitive conversion for named export calls', async () => {
+    const mod = await evaluateGeneratedModule<{ getSecret: MockFunction }>(
+      generateSelfContainedMockModule(['getSecret']).code,
+      { standalone: true },
+    )
 
-    expect(result.code).toContain('export const getSecret')
-    expect(result.code).toContain('export const initDb')
-    expect(result.code).toContain('export default mock')
-  })
-
-  test('handles empty exports array', () => {
-    const payload = JSON.stringify({
-      exports: [],
-      runtimeId: MOCK_MODULE_ID,
-    })
-    const encoded = Buffer.from(payload, 'utf8').toString('base64url')
-    const result = loadMockEdgeModule(encoded)
-
-    expect(result.code).toContain('export default mock')
-    expect(result.code).not.toContain('export const')
-  })
-
-  test('handles string-keyed (non-identifier) export names via re-export', () => {
-    const payload = JSON.stringify({
-      exports: ['valid', 'default', '123invalid', 'also-invalid'],
-      runtimeId: MOCK_MODULE_ID,
-    })
-    const encoded = Buffer.from(payload, 'utf8').toString('base64url')
-    const result = loadMockEdgeModule(encoded)
-
-    // Valid identifier: direct const export
-    expect(result.code).toContain('export const valid')
-    // 'default' is filtered out
-    expect(result.code).not.toContain('export const default')
-    // Non-identifiers get string-keyed re-exports
-    expect(result.code).toContain('__tss_str_')
-    expect(result.code).toContain('"123invalid"')
-    expect(result.code).toContain('"also-invalid"')
-  })
-
-  test('handles malformed base64', () => {
-    const result = loadMockEdgeModule('not-valid-base64!!!')
-    expect(result.code).toContain('export default mock')
-  })
-
-  test('falls back to MOCK_MODULE_ID when runtimeId missing', () => {
-    const payload = JSON.stringify({
-      exports: ['a'],
-    })
-    const encoded = Buffer.from(payload, 'utf8').toString('base64url')
-    const result = loadMockEdgeModule(encoded)
-
-    expect(result.code).toContain(MOCK_MODULE_ID)
+    expect(String(mod.getSecret())).toBe('[import-protection mock]')
   })
 })
 
-describe('loadMockRuntimeModule', () => {
-  test('generates runtime diagnostic module with error mode', () => {
-    const payload = JSON.stringify({
-      mode: 'error',
-      env: 'client',
-      importer: '/src/routes/index.tsx',
-      specifier: './secret.server',
-      trace: ['src/main.tsx', 'src/routes/index.tsx'],
-    })
-    const encoded = Buffer.from(payload, 'utf8').toString('base64url')
-    const result = loadMockRuntimeModule(encoded)
-
-    expect(result.code).toContain('__report')
-    expect(result.code).toContain('console.error')
-    expect(result.code).toContain('"error"')
-    expect(result.code).toContain('export default mock')
-  })
-
-  test('generates warn mode module', () => {
-    const payload = JSON.stringify({ mode: 'warn' })
-    const encoded = Buffer.from(payload, 'utf8').toString('base64url')
-    const result = loadMockRuntimeModule(encoded)
-
-    expect(result.code).toContain('"warn"')
-    expect(result.code).toContain('console.warn')
-  })
-
-  test('handles malformed payload gracefully', () => {
-    const result = loadMockRuntimeModule('bad-data')
-    expect(result.code).toContain('export default mock')
-  })
-})
-
-describe('mockRuntimeModuleIdFromViolation', () => {
-  const baseViolation: ViolationInfo = {
+// In dev, the mock served in place of a denied file imports a mock runtime
+// chosen for the violation (`mockAccess`, the environment): in the client,
+// each use of the mock reports the violation in the browser console.
+describe('the dev mock of a denied file', () => {
+  const violation: ViolationInfo = {
     env: 'client',
     envType: 'client',
     type: 'file',
@@ -164,185 +106,67 @@ describe('mockRuntimeModuleIdFromViolation', () => {
     importer: '/project/src/routes/index.tsx',
     trace: [
       { file: '/project/src/main.tsx' },
-      { file: '/project/src/routes/index.tsx', specifier: './secret.server' },
+      {
+        file: '/project/src/routes/index.tsx',
+        specifier: './secret.server',
+        line: 5,
+        column: 10,
+      },
     ],
   }
 
-  test('returns MOCK_MODULE_ID when mode is off', () => {
-    const id = mockRuntimeModuleIdFromViolation(
-      baseViolation,
-      'off',
-      '/project',
-    )
-    expect(id).toBe(MOCK_MODULE_ID)
-  })
-
-  test('returns MOCK_MODULE_ID for non-client env', () => {
-    const ssrViolation = { ...baseViolation, env: 'ssr' }
-    const id = mockRuntimeModuleIdFromViolation(
-      ssrViolation,
-      'error',
-      '/project',
-    )
-    expect(id).toBe(MOCK_MODULE_ID)
-  })
-
-  test('returns runtime module ID for client env with error mode', () => {
-    const id = mockRuntimeModuleIdFromViolation(
-      baseViolation,
-      'error',
-      '/project',
-    )
-    expect(id.startsWith(MOCK_RUNTIME_PREFIX)).toBe(true)
-    const encoded = id.slice(MOCK_RUNTIME_PREFIX.length)
-    const payload = JSON.parse(
-      Buffer.from(encoded, 'base64url').toString('utf8'),
-    )
-    expect(payload.env).toBe('client')
-    expect(payload.mode).toBe('error')
-    expect(payload.specifier).toBe('./secret.server')
-  })
-
-  test('includes relative trace paths', () => {
-    const id = mockRuntimeModuleIdFromViolation(
-      baseViolation,
-      'warn',
-      '/project',
-    )
-    const encoded = id.slice(MOCK_RUNTIME_PREFIX.length)
-    const payload = JSON.parse(
-      Buffer.from(encoded, 'base64url').toString('utf8'),
-    )
-    expect(payload.trace[0]).toBe('src/main.tsx')
-  })
-
-  test('includes line numbers in trace when present', () => {
-    const violation: ViolationInfo = {
-      ...baseViolation,
-      trace: [
-        { file: '/project/src/main.tsx' },
-        {
-          file: '/project/src/routes/index.tsx',
-          specifier: './secret.server',
-          line: 5,
-          column: 10,
-        },
-      ],
+  /**
+   * Evaluates the dev mock of a denied file exporting `getSecret`, for
+   * `violation` with the `mockAccess` mode `mode`, calls `getSecret()`, and
+   * returns the messages the call logged, by console method.
+   */
+  async function useDevMock(
+    mode: 'error' | 'warn' | 'off',
+    info: ViolationInfo = violation,
+  ) {
+    const spies = {
+      warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
+      error: vi.spyOn(console, 'error').mockImplementation(() => {}),
     }
-    const id = mockRuntimeModuleIdFromViolation(violation, 'error', '/project')
-    const encoded = id.slice(MOCK_RUNTIME_PREFIX.length)
-    const payload = JSON.parse(
-      Buffer.from(encoded, 'base64url').toString('utf8'),
-    )
-    expect(payload.trace[1]).toBe('src/routes/index.tsx:5:10')
-  })
-})
-
-describe('makeMockEdgeModuleId', () => {
-  test('encodes exports into module ID payload', () => {
-    const id = makeMockEdgeModuleId(['foo', 'bar'], MOCK_MODULE_ID)
-    expect(id.startsWith(MOCK_EDGE_PREFIX)).toBe(true)
-    const encoded = id.slice(MOCK_EDGE_PREFIX.length)
-    const payload = JSON.parse(
-      Buffer.from(encoded, 'base64url').toString('utf8'),
-    )
-    expect(payload.exports).toEqual(['foo', 'bar'])
-    expect(payload.runtimeId).toBe(MOCK_MODULE_ID)
-  })
-
-  test('handles empty exports', () => {
-    const id = makeMockEdgeModuleId([], MOCK_MODULE_ID)
-    const encoded = id.slice(MOCK_EDGE_PREFIX.length)
-    const payload = JSON.parse(
-      Buffer.from(encoded, 'base64url').toString('utf8'),
-    )
-    expect(payload.exports).toEqual([])
-  })
-})
-
-describe('generateSelfContainedMockModule', () => {
-  test('generates module with named exports', () => {
-    const result = generateSelfContainedMockModule(['getSecret', 'initDb'])
-    expect(result.code).toContain('export const getSecret = mock.getSecret;')
-    expect(result.code).toContain('export const initDb = mock.initDb;')
-    expect(result.code).toContain('export default mock')
-    expect(result.code).toContain('createMock')
-    expect(result.code).toContain('Proxy')
-  })
-
-  test('handles empty exports', () => {
-    const result = generateSelfContainedMockModule([])
-    expect(result.code).toContain('export default mock')
-    expect(result.code).not.toContain('export const')
-  })
-
-  test('filters out default export', () => {
-    const result = generateSelfContainedMockModule(['default', 'foo'])
-    expect(result.code).toContain('export const foo = mock.foo;')
-    expect(result.code).not.toContain('export const default')
-  })
-
-  test('handles string-keyed (non-identifier) export names via re-export', () => {
-    const result = generateSelfContainedMockModule([
-      'valid',
-      '123invalid',
-      'also-invalid',
-    ])
-    expect(result.code).toContain('export const valid = mock.valid;')
-    expect(result.code).toContain('__tss_str_')
-    expect(result.code).toContain('"123invalid"')
-    expect(result.code).toContain('"also-invalid"')
-  })
-
-  test('is self-contained (no imports)', () => {
-    const result = generateSelfContainedMockModule(['foo'])
-    // Should not import from any other module
-    expect(result.code).not.toMatch(/^\s*import\s/m)
-  })
-
-  test('supports primitive conversion for named export calls', async () => {
-    const result = generateSelfContainedMockModule(['getSecret'])
+    const runtimeId = mockRuntimeModuleIdFromViolation(info, mode, '/project')
     const mod = await evaluateGeneratedModule<{ getSecret: MockFunction }>(
-      result.code,
+      generateDevSelfDenialModule(['getSecret'], runtimeId).code,
     )
+    mod.getSecret()
+    const messages = (spy: (typeof spies)['warn']) =>
+      spy.mock.calls.map(([logged]) => String((logged as Error).message))
+    return { warn: messages(spies.warn), error: messages(spies.error) }
+  }
 
-    expect(String(mod.getSecret())).toBe('[import-protection mock]')
-  })
-})
+  test.each([
+    { mode: 'error', method: 'error' },
+    { mode: 'warn', method: 'warn' },
+  ] as const)(
+    'mockAccess $mode: a use in the client is reported with console.$method, naming the import, importer and trace',
+    async ({ mode, method }) => {
+      const output = await useDevMock(mode)
+      expect(output[method === 'error' ? 'warn' : 'error']).toEqual([])
+      expect(output[method]).toEqual([expect.any(String)])
+      expect(output[method][0]).toContain('Mocked import used in dev client')
+      for (const text of [
+        './secret.server',
+        '/project/src/routes/index.tsx',
+        'src/main.tsx',
+        'src/routes/index.tsx:5:10',
+      ]) {
+        expect(output[method][0]).toContain(text)
+      }
+    },
+  )
 
-describe('generateDevSelfDenialModule', () => {
-  test('generates module with named exports and mock-runtime import', () => {
-    const runtimeId = 'tanstack-start-import-protection:mock-runtime:abc'
-    const result = generateDevSelfDenialModule(
-      ['getSecret', 'initDb'],
-      runtimeId,
-    )
-    expect(result.code).toContain(`import mock from "${runtimeId}"`)
-    expect(result.code).toContain('export const getSecret = mock.getSecret;')
-    expect(result.code).toContain('export const initDb = mock.initDb;')
-    expect(result.code).toContain('export default mock;')
-  })
-
-  test('handles empty exports', () => {
-    const runtimeId = MOCK_MODULE_ID
-    const result = generateDevSelfDenialModule([], runtimeId)
-    expect(result.code).toContain(`import mock from "${runtimeId}"`)
-    expect(result.code).toContain('export default mock;')
-    expect(result.code).not.toContain('export const')
-  })
-
-  test('filters out default export', () => {
-    const result = generateDevSelfDenialModule(['default', 'foo'], 'mock-rt:x')
-    expect(result.code).toContain('export const foo = mock.foo;')
-    expect(result.code).not.toContain('export const default')
-    expect(result.code).toContain('export default mock;')
-  })
-
-  test('imports mock-runtime (not self-contained)', () => {
-    const result = generateDevSelfDenialModule(['foo'], 'mock-rt:xyz')
-    expect(result.code).toMatch(/\bimport\b/)
-    // Should NOT contain inline createMock/Proxy (that's the build-mode mock)
-    expect(result.code).not.toContain('createMock')
-    expect(result.code).not.toContain('Proxy')
+  test.each([
+    { name: 'mockAccess off', mode: 'off', info: violation },
+    {
+      name: 'a server environment',
+      mode: 'error',
+      info: { ...violation, env: 'ssr', envType: 'server' },
+    },
+  ] as const)('$name: a use is not reported', async ({ mode, info }) => {
+    expect(await useDevMock(mode, info)).toEqual({ warn: [], error: [] })
   })
 })

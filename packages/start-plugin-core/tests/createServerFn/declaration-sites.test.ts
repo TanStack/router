@@ -171,9 +171,7 @@ test.fails.each<PlacementHead>([
       }
     }
     compiled.serverFns = serverFns
-    for (const output of ['client', 'ssr'] as const) {
-      expect(compiled[output], output).not.toContain('db.inner()')
-    }
+    expect(compiled.client, 'client').not.toContain('db.inner()')
     expect(
       typeof (await callServerFnThroughCallers(
         compiled,
@@ -226,11 +224,12 @@ test.fails(
 
 // Source: #8504 declaration-sites.test.ts
 test('a .ts module in a directory whose name contains # compiles as TypeScript', async () => {
-  const { code, serverFns } = await compileFor(
-    'client',
-    `${head}export const fn = createServerFn().handler(async ({ data }) => <string>data)`,
+  const compiled = await compileAll(
+    `${head}export const fn = createServerFn().handler(async ({ data }) => <string>(data ?? 'from the server'))`,
     { id: '/test/c#proj/src/module.ts' },
   )
-  expect(Object.keys(serverFns)).toHaveLength(1)
-  expect(code).not.toContain('<string>data')
+  expect(compiled.client).not.toContain('from the server')
+  expect(
+    await callServerFnThroughCallers(compiled, (module) => module.fn),
+  ).toBe('from the server')
 })

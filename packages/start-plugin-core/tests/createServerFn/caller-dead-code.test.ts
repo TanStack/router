@@ -1,20 +1,21 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   callProvider,
+  callServerFnThroughCallers,
   compileAll,
   compileCode,
   evaluateModule,
+  evaluateProvider,
   importSources,
 } from '../regression-helpers'
-import {
-  declarationOf,
-  getModuleErrors,
-} from '@tanstack/compiler-test-utils/validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { ModuleStub } from '../regression-helpers'
 
-// Client and SSR callers replace a server fn handler with an RPC, then drop
-// the module code only the handler read, so server-only imports never reach
-// them. Code the callers still read must survive with its values.
+// The client replaces a server fn handler with an RPC, then drops the module
+// code only the handler read, so server-only imports never reach it. Code the
+// client still reads must survive with its values. The SSR caller may do the
+// same or keep the handler in place: calling the server fn from it runs the
+// handler either way.
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const dbServer = `export const db = { x: () => 'x' }`
@@ -32,7 +33,6 @@ export const fn = createServerFn().handler(async () => {
   return format(db.x())
 })`,
       client: ['./format'],
-      provider: ['./db.server'],
       expected: 'local:x',
     },
     {
@@ -41,13 +41,11 @@ export const fn = createServerFn().handler(async () => {
 export const fn = createServerFn().handler(async ({ data: db }: { data: string }) => db)
 export const clientDb = db`,
       client: ['./db.server'],
-      provider: [],
       expected: 'param',
     },
-  ])('when $name', async ({ code, client, provider, expected }) => {
+  ])('when $name', async ({ code, client, expected }) => {
     const compiled = await compileAll(`${head}${code}`)
     expect(importSources(compiled.client)).toEqual(client)
-    expect(importSources(compiled.provider)).toEqual(provider)
     expect(
       await callProvider(compiled, 'fn', { './db.server': dbServer }, 'param'),
     ).toBe(expected)
@@ -354,38 +352,51 @@ ${code}`,
     {
       name: 'only type specifiers remain',
       code: `import { type Session, verify } from './server-module'`,
-      callers: [],
+      client: [],
+      value: undefined,
     },
     {
       name: 'a named client specifier remains',
       code: `import verify, { type Session, clientValue } from './server-module'
 export const value = clientValue`,
-      callers: ['./server-module'],
+      client: ['./server-module'],
+      value: 'client',
     },
     {
       name: 'a default client specifier remains',
       code: `import clientDefault, { type Session, verify } from './server-module'
 export const value = clientDefault`,
-      callers: ['./server-module'],
+      client: ['./server-module'],
+      value: 'default',
     },
   ])(
     'when it shares a mixed import in which $name',
-    async ({ code, callers }) => {
+    async ({ code, client, value }) => {
       const compiled = await compileAll(`${head}${code}
 export const fn = createServerFn().handler(async (): Promise<Session | null> => verify())`)
-      for (const caller of [compiled.client, compiled.ssr]) {
-        expect(importSources(caller)).toEqual(callers)
-        expect(caller).not.toMatch(/\bverify\b/)
+      expect(importSources(compiled.client)).toEqual(client)
+      expect(compiled.client).not.toMatch(/\bverify\b/)
+      // `verify` is the default export where the module imports it as such.
+      const verify = `() => 'verified'`
+      const stubs = {
+        './server-module': `export const clientValue = 'client'
+export const verify = ${verify}
+export default ${code.startsWith('import verify') ? verify : `'default'`}`,
       }
-      expect(compiled.provider).not.toMatch(/\bclient(?:Value|Default)\b/)
+      expect((await evaluateModule(compiled.client, stubs)).value).toBe(value)
       expect(
-        await callProvider(compiled, 'fn', {
-          './server-module': `export const clientValue = 'client'; export const verify = () => 'verified'; export default verify`,
-        }),
+        await callServerFnThroughCallers(
+          compiled,
+          (module) => module.fn,
+          stubs,
+        ),
       ).toBe('verified')
     },
   )
 
+  // The client keeps the middleware's `.client()` and drops its `.server()`
+  // and the server fn's validator (the client runtime's `.server()` throws
+  // uncompiled); the server runs both before the handler.
   // Source: Next.js server-actions fixtures server-graph/47, /58
   test('when the handler only reads it through a validator or a middleware', async () => {
     const compiled =
@@ -398,12 +409,26 @@ const auth = createMiddleware({ type: 'function' })
 export const fn = createServerFn()
   .middleware([auth])
   .validator((data: unknown) => schema.parse(data))
-  .handler(async () => 'ok')`)
+  .handler(async ({ data }) => data)`)
     expect(importSources(compiled.client)).toEqual([])
-    expect(importSources(compiled.provider)).toEqual([
-      './db.server',
-      './schema.server',
-    ])
+    const { fn } = await evaluateModule(compiled.client)
+    expect(fn.options.validator).toBeUndefined()
+    expect(fn.options.middleware).toHaveLength(1)
+    expect(fn.options.middleware[0].options.client).toBeTypeOf('function')
+    expect(fn.options.middleware[0].options.server).toBeUndefined()
+    const calls: Array<string> = []
+    const stubs = {
+      './db.server': {
+        db: { user: () => (calls.push('db.user'), 'user') },
+      },
+      './schema.server': {
+        schema: {
+          parse: (data: unknown) => (calls.push('schema.parse'), `${data}!`),
+        },
+      },
+    }
+    expect(await callProvider(compiled, 'fn', stubs, 'data')).toBe('data!')
+    expect(calls).toEqual(['db.user', 'schema.parse'])
   })
 
   // The validator only runs on the server, so the client drops it and the
@@ -422,9 +447,16 @@ export const fn = createServerFn()
     async ({ wrap }) => {
       const compiled =
         await compileAll(`${head}import { schema } from './schema'
-export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async () => 'ok')`)
+export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async ({ data }) => data)`)
       expect(importSources(compiled.client)).toEqual([])
-      expect(importSources(compiled.provider)).toEqual(['./schema'])
+      expect(
+        await callProvider(
+          compiled,
+          'fn',
+          { './schema': { schema: (data: string) => `${data}!` } },
+          'data',
+        ),
+      ).toBe('data!')
     },
   )
 })
@@ -586,18 +618,23 @@ function Report() {
   return <Report />
 }
 export const getReport = createServerFn().handler(async () => Report())`)
-      for (const caller of [compiled.client, compiled.ssr]) {
-        expect(importSources(caller)).toEqual([])
-        expect(caller).not.toContain('readSecret')
-      }
+      expect(importSources(compiled.client)).toEqual([])
+      expect(compiled.client).not.toContain('readSecret')
+      expect(
+        await callServerFnThroughCallers(
+          compiled,
+          (module) => module.getReport,
+          { './server-only': { readSecret: () => () => 'report' } },
+        ),
+      ).toBe('report')
     },
   )
 
-  // Whether the callers keep code nothing uses (`unusedA`, `unusedB`) is
-  // left open.
+  // Whether the client keeps code that reads no server code (`loop`,
+  // `unusedA`, `unusedB`) is left open.
   // Source: babel-dead-code-elimination "SCC dead code elimination" (mutual
   // recursion, self-recursive functions, unexported circular references)
-  test('callers drop handler-only cycles and default parameters', async () => {
+  test('the client drops handler-only cycles and default parameters', async () => {
     const compiled =
       await compileAll(`${head}import { secret, defaultId } from './secret.server'
 function walk(n: number): number { return n > 0 ? walkBack(n - 1) : secret.length }
@@ -607,14 +644,9 @@ function load(id = defaultId()) { return id }
 function unusedA(): number { return unusedB() }
 function unusedB(): number { return unusedA() }
 export const fn = createServerFn().handler(async () => [walk(3), loop(2), load()])`)
-    for (const caller of [compiled.client, compiled.ssr]) {
-      expect(importSources(caller)).toEqual([])
-      for (const name of ['walk', 'walkBack', 'loop', 'load']) {
-        expect(caller).not.toMatch(declarationOf(name))
-      }
-    }
+    expect(importSources(compiled.client)).toEqual([])
     expect(
-      await callProvider(compiled, 'fn', {
+      await callServerFnThroughCallers(compiled, (module) => module.fn, {
         './secret.server': `export const secret = 'secret'; export const defaultId = () => 'id'`,
       }),
     ).toEqual([0, 0, 'id'])
@@ -637,28 +669,36 @@ export const fn = createServerFn().handler(async () => [x, y])`)
   })
 
   // Source: babel-dead-code-elimination "repeated elimination"
-  test('callers drop a binding only the handler writes and keep a declarator a kept sibling reads', async () => {
+  test('a binding only the handler writes and a declarator a kept sibling reads keep working', async () => {
     const compiled =
       await compileAll(`${head}import { serverValue } from './db.server'
 let hits = 0
 let a = serverValue(), clientCopy = a
 export const fn = createServerFn().handler(async () => {
   hits++
-  return a
+  return [a, hits]
 })
 export const clientB = clientCopy`)
-    for (const caller of [compiled.client, compiled.ssr]) {
-      expect(caller).not.toMatch(declarationOf('hits'))
-      expect(caller).toMatch(declarationOf('a'))
-      expect(importSources(caller)).toEqual(['./db.server'])
-    }
-    expect(compiled.provider).toMatch(declarationOf('hits'))
-    expect(compiled.provider).not.toContain('clientCopy')
+    const stubs = { './db.server': { serverValue: () => 'value' } }
+    expect(importSources(compiled.client)).toEqual(['./db.server'])
+    expect((await evaluateModule(compiled.client, stubs)).clientB).toBe('value')
+    // Two calls on one server instance: the handler updates its own `hits`.
+    const provider = await evaluateProvider(compiled, stubs)
+    expect([
+      await callProvider(provider, 'fn'),
+      await callProvider(provider, 'fn'),
+    ]).toEqual([
+      ['value', 1],
+      ['value', 2],
+    ])
+    expect(
+      await callServerFnThroughCallers(compiled, (module) => module.fn, stubs),
+    ).toEqual(['value', 1])
   })
 
   // Source: babel-dead-code-elimination "variable" > "within for...in",
   // "within for...of" (var bindings declared inside nested statements)
-  test('callers drop handler-only vars declared inside top-level statements', async () => {
+  test('the client drops handler-only vars declared inside top-level statements', async () => {
     const calls = ['openFlag', 'connect', 'readMode', 'readLabel', 'createPool']
     const compiled =
       await compileAll(`${head}import { ${calls.join(', ')} } from './db.server'
@@ -678,14 +718,23 @@ outer: {
 }
 for (var i = 0, pool = createPool(); i < 1; i++) {}
 export const fn = createServerFn().handler(async () => [flag, conn, mode, labeled, pool])`)
-    for (const caller of [compiled.client, compiled.ssr]) {
-      expect(importSources(caller)).toEqual([])
-      for (const call of calls) {
-        expect(caller).not.toContain(call)
-      }
-    }
+    expect(importSources(compiled.client)).toEqual([])
     for (const call of calls) {
-      expect(compiled.provider).toContain(`${call}()`)
+      expect(compiled.client).not.toContain(call)
+    }
+    // On the server (no `window`, MODE unset), the handler reads what the
+    // statements it depends on assigned.
+    vi.stubEnv('MODE', '')
+    try {
+      expect(
+        await callServerFnThroughCallers(compiled, (module) => module.fn, {
+          './db.server': Object.fromEntries(
+            calls.map((call) => [call, () => call]),
+          ),
+        }),
+      ).toEqual(['openFlag', 'connect', undefined, 'readLabel', 'createPool'])
+    } finally {
+      vi.unstubAllEnvs()
     }
   })
 })

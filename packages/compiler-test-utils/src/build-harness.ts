@@ -326,10 +326,14 @@ interface BundlerConfig {
   conditions: Array<string>
 }
 
-interface RawChunk {
+/** An emitted chunk, as a bundler reports it. */
+export interface EmittedChunk {
+  /** Path relative to the output directory. */
   fileName: string
   isEntry: boolean
+  /** Chunks loaded with this one (see `Chunk.imports`). */
   imports: Array<string>
+  /** Chunks this chunk loads on demand. */
   dynamicImports: Array<string>
 }
 
@@ -367,10 +371,14 @@ async function bundle(
     () => builders[bundler](config, warnings),
   )
   const duration = performance.now() - started
-  return describeOutput({
-    config,
+  return describeBuild({
     bundler,
-    output,
+    env,
+    mode,
+    root,
+    outDir: config.outDir,
+    chunks: output,
+    sourcemap: config.sourcemap,
     warnings,
     consoleMessages,
     duration,
@@ -380,7 +388,10 @@ async function bundle(
 
 const builders: Record<
   Bundler,
-  (config: BundlerConfig, warnings: Array<string>) => Promise<Array<RawChunk>>
+  (
+    config: BundlerConfig,
+    warnings: Array<string>,
+  ) => Promise<Array<EmittedChunk>>
 > = {
   vite: buildWithVite,
   rspack: (config, warnings) => buildWithWebpackApi('rspack', config, warnings),
@@ -392,7 +403,7 @@ const builders: Record<
 async function buildWithVite(
   config: BundlerConfig,
   warnings: Array<string>,
-): Promise<Array<RawChunk>> {
+): Promise<Array<EmittedChunk>> {
   const { build: viteBuild } = await import('vite')
   const errors: Array<string> = []
   let result
@@ -457,20 +468,38 @@ async function buildWithVite(
   } catch (error) {
     throw new BuildError('vite', [...errors, errorMessage(error)], warnings)
   }
-  const chunks: Array<RawChunk> = []
+  const chunks: Array<EmittedChunk> = []
   for (const output of Array.isArray(result) ? result : [result]) {
     if (!('output' in output)) {
       throw new Error('Unexpected watcher from vite build')
     }
-    for (const item of output.output) {
-      if (item.type === 'chunk') {
-        chunks.push({
-          fileName: item.fileName,
-          isEntry: item.isEntry,
-          imports: item.imports,
-          dynamicImports: item.dynamicImports,
-        })
+    chunks.push(...chunksOfBundle(output.output))
+  }
+  return chunks
+}
+
+/** The chunks of a Vite (Rolldown) bundle: its output items. */
+export function chunksOfBundle(
+  items: Iterable<
+    | {
+        type: 'chunk'
+        fileName: string
+        isEntry: boolean
+        imports: Array<string>
+        dynamicImports: Array<string>
       }
+    | { type: 'asset' }
+  >,
+): Array<EmittedChunk> {
+  const chunks: Array<EmittedChunk> = []
+  for (const item of items) {
+    if (item.type === 'chunk') {
+      chunks.push({
+        fileName: item.fileName,
+        isEntry: item.isEntry,
+        imports: item.imports,
+        dynamicImports: item.dynamicImports,
+      })
     }
   }
   return chunks
@@ -481,7 +510,7 @@ async function buildWithWebpackApi(
   bundler: 'webpack' | 'rspack',
   config: BundlerConfig,
   warnings: Array<string>,
-): Promise<Array<RawChunk>> {
+): Promise<Array<EmittedChunk>> {
   const ssr = config.env === 'ssr'
   const development = config.mode === 'development'
   // TypeScript and JSX of the app's own files: Rspack's built-in SWC
@@ -592,31 +621,45 @@ async function buildWithWebpackApi(
     }
   })
 
-  const json = stats.toJson({
-    all: false,
-    ids: true,
-    chunks: true,
-    chunkRelations: true,
-    entrypoints: true,
-    errors: true,
-    warnings: true,
-  })
-  warnings.push(...(json.warnings ?? []).map(statsMessage))
+  const json = stats.toJson(statsOptions)
+  warnings.push(...statsMessages(json.warnings))
   if (json.errors?.length) {
-    throw new BuildError(bundler, json.errors.map(statsMessage), warnings)
+    throw new BuildError(bundler, statsMessages(json.errors), warnings)
   }
+  return chunksOfStats(json, { entry: 'entry', extension: '.mjs' })
+}
 
+/** The `toJson` options of the stats `chunksOfStats` reads. */
+export const statsOptions = {
+  all: false,
+  ids: true,
+  chunks: true,
+  chunkRelations: true,
+  entrypoints: true,
+  errors: true,
+  warnings: true,
+} as const
+
+/**
+ * The chunks of a webpack or Rspack compilation
+ * (`stats.toJson(statsOptions)`): the files ending with `extension` of each
+ * chunk, the chunks of the `entry` entrypoint being loaded eagerly.
+ */
+export function chunksOfStats(
+  json: StatsJson,
+  options: { entry: string; extension: string },
+): Array<EmittedChunk> {
   const filesById = new Map<string | number, Array<string>>()
   for (const chunk of json.chunks ?? []) {
     filesById.set(
       chunk.id!,
-      (chunk.files ?? []).filter((file) => file.endsWith('.mjs')),
+      (chunk.files ?? []).filter((file) => file.endsWith(options.extension)),
     )
   }
   const filesOf = (ids: Iterable<string | number> | undefined) =>
     [...(ids ?? [])].flatMap((id) => filesById.get(id) ?? [])
-  const entryChunkIds = new Set(json.entrypoints?.entry?.chunks ?? [])
-  const raw: Array<RawChunk> = []
+  const entryChunkIds = new Set(json.entrypoints?.[options.entry]?.chunks ?? [])
+  const raw: Array<EmittedChunk> = []
   for (const chunk of json.chunks ?? []) {
     const initial = entryChunkIds.has(chunk.id!)
     const loadedWith = initial
@@ -637,7 +680,7 @@ async function buildWithWebpackApi(
 async function buildWithEsbuild(
   config: BundlerConfig,
   warnings: Array<string>,
-): Promise<Array<RawChunk>> {
+): Promise<Array<EmittedChunk>> {
   const esbuild = await import('esbuild')
   const ssr = config.env === 'ssr'
   let result
@@ -704,27 +747,56 @@ const require = __createRequire(import.meta.url)`,
     }))
 }
 
-async function describeOutput(input: {
-  config: BundlerConfig
+/** Error or warning messages of a compilation's stats. */
+export function statsMessages(
+  items: Array<{ message: string; moduleName?: string }> | undefined,
+): Array<string> {
+  return (items ?? []).map(statsMessage)
+}
+
+export interface DescribeBuildInput {
   bundler: Bundler
-  output: Array<RawChunk>
+  env: BuildEnv
+  mode: BuildMode
+  /** App root on disk. */
+  root: string
+  /** Absolute output directory the chunk file names are relative to. */
+  outDir: string
+  chunks: Array<EmittedChunk>
+  /** Reads the source map of each chunk (`<file>.map`). */
+  sourcemap?: boolean
   warnings: Array<string>
   consoleMessages: Array<string>
   duration: number
   dispose: () => Promise<void>
-}): Promise<BuildResult> {
-  const { bundler, config } = input
-  const emitted = new Set(input.output.map((raw) => raw.fileName))
+  /**
+   * For an entry that exports nothing (an application entry): the global
+   * its module assigns the exports `run()` gives the script as `entry` to.
+   */
+  entryGlobal?: string
+}
+
+/**
+ * Describes what a build emitted (one entry chunk, the chunks loaded with it
+ * and the ones loaded on demand) and how to run it. Also for builds the
+ * harness did not run, e.g. one environment of a framework's
+ * multi-environment build.
+ */
+export async function describeBuild(
+  input: DescribeBuildInput,
+): Promise<BuildResult> {
+  const { bundler } = input
+  const emitted = new Set(input.chunks.map((raw) => raw.fileName))
   const chunks: Array<Chunk> = []
-  for (const raw of input.output) {
-    const file = path.join(config.outDir, raw.fileName)
+  for (const raw of input.chunks) {
+    const file = path.join(input.outDir, raw.fileName)
     chunks.push({
       ...raw,
       // Externals (e.g. `react` in SSR builds) are not chunks
       imports: raw.imports.filter((name) => emitted.has(name)),
       dynamicImports: raw.dynamicImports.filter((name) => emitted.has(name)),
       code: await readFile(file, 'utf8'),
-      ...(config.sourcemap && {
+      ...(input.sourcemap && {
         map: JSON.parse(await readFile(`${file}.map`, 'utf8')) as SourceMap,
       }),
     })
@@ -765,9 +837,9 @@ async function describeOutput(input: {
 
   return {
     bundler,
-    env: config.env,
-    root: config.root,
-    outDir: config.outDir,
+    env: input.env,
+    root: input.root,
+    outDir: input.outDir,
     chunks,
     entry,
     eager: [...eager],
@@ -788,10 +860,11 @@ async function describeOutput(input: {
     },
     run: (script = '') =>
       runEntry({
-        entryFile: path.join(config.outDir, entry.fileName),
-        env: config.env,
-        mode: config.mode,
+        entryFile: path.join(input.outDir, entry.fileName),
+        env: input.env,
+        mode: input.mode,
         script,
+        entryGlobal: input.entryGlobal,
       }),
     dispose: input.dispose,
   }
@@ -817,6 +890,7 @@ async function runEntry(input: {
   env: BuildEnv
   mode: BuildMode
   script: string
+  entryGlobal?: string
 }): Promise<RunResult> {
   const client = input.env === 'client'
   const program = `import { format } from 'node:util'
@@ -825,7 +899,8 @@ for (const level of ['log', 'info', 'warn', 'error', 'debug']) {
   console[level] = (...args) => { logs.push(format(...args)) }
 }
 ${client ? domSetup : ''}
-const entry = await import(${JSON.stringify(pathToFileURL(input.entryFile).href)})
+const entryModule = await import(${JSON.stringify(pathToFileURL(input.entryFile).href)})
+const entry = ${input.entryGlobal ? `globalThis[${JSON.stringify(input.entryGlobal)}]` : 'entryModule'}
 const result = await (async () => { ${input.script} })()
 process.stdout.write(JSON.stringify({ result, logs${client ? ', html: document.body.innerHTML' : ''} }))
 process.exit(0)
@@ -871,7 +946,7 @@ function swcOptions(
  * condition; `null` unsets it) and records `console.warn`/`console.error`
  * output.
  */
-async function withBuildEnvironment<T>(
+export async function withBuildEnvironment<T>(
   buildNodeEnv: string | null,
   messages: Array<string>,
   run: () => Promise<T>,
@@ -904,19 +979,22 @@ async function withBuildEnvironment<T>(
   }
 }
 
+/** What the harness reads of a webpack or Rspack stats JSON. */
+export interface StatsJson {
+  chunks?: Array<{
+    id?: string | number
+    files?: Array<string>
+    entry?: boolean
+    siblings?: Array<string | number>
+    children?: Array<string | number>
+  }>
+  entrypoints?: Record<string, { chunks?: Array<string | number> }>
+  errors?: Array<{ message: string; moduleName?: string }>
+  warnings?: Array<{ message: string; moduleName?: string }>
+}
+
 interface WebpackStats {
-  toJson: (options: Record<string, unknown>) => {
-    chunks?: Array<{
-      id?: string | number
-      files?: Array<string>
-      entry?: boolean
-      siblings?: Array<string | number>
-      children?: Array<string | number>
-    }>
-    entrypoints?: Record<string, { chunks?: Array<string | number> }>
-    errors?: Array<{ message: string; moduleName?: string }>
-    warnings?: Array<{ message: string; moduleName?: string }>
-  }
+  toJson: (options: Record<string, unknown>) => StatsJson
 }
 
 interface WebpackCompiler {
@@ -945,7 +1023,8 @@ function errorMessage(error: unknown) {
   return stripAnsi(error instanceof Error ? error.message : String(error))
 }
 
-function stripAnsi(text: string) {
+/** `text` without its terminal colour codes. */
+export function stripAnsi(text: string) {
   // eslint-disable-next-line no-control-regex
   return text.replace(/\u001b\[[0-9;]*m/g, '')
 }

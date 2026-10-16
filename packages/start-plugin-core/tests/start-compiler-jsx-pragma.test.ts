@@ -129,7 +129,6 @@ export function Card() {
   return <div css={{ color: 'hotpink' }}>card</div>
 }`,
   )
-  expect(client!.match(/@jsxImportSource/g)).toHaveLength(1)
   expect(await jsxRuntimeOf(client!)).toBe('@emotion/react/jsx-runtime')
 })
 

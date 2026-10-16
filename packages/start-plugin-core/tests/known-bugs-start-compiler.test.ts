@@ -4,10 +4,11 @@
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { performance } from 'node:perf_hooks'
 import { createServer, isRunnableDevEnvironment, transformWithOxc } from 'vite'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
-import { buildStart } from './build-harness'
+import { buildStart, startBundlers } from './build-harness'
 import {
   callReportedServerFns,
   clientOnlyError,
@@ -15,6 +16,8 @@ import {
   compileCode,
   compileErrorMessage,
   compileFor,
+  compileServer,
+  createServerGraph,
   createStartCompiler,
   directivePrologue,
   evaluateModule,
@@ -28,6 +31,7 @@ import {
   serverOnlyModule,
   settle,
 } from './regression-helpers'
+import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   capturingPlacement,
@@ -140,20 +144,24 @@ export const fn = createServerFn().handler(async () => db.inner())`
       })
     })
 
-    test.each(['client', 'ssr'] as const)(
-      'it rejects a %s output with the handler body next to rejecting outputs',
-      async (leaking) => {
-        const results = {
-          client: rejection,
+    test('it rejects a client output with the handler body next to rejecting outputs', async () => {
+      await expect(
+        expectOutputsFreeOfHandler(code, {
+          client: { code, serverFns: {} },
           ssr: rejection,
           provider: rejection,
-          [leaking]: { code, serverFns: {} },
-        }
-        await expect(expectOutputsFreeOfHandler(code, results)).rejects.toThrow(
-          leaking,
-        )
-      },
-    )
+        }),
+      ).rejects.toThrow('client')
+    })
+
+    // Only the client must be free of the handler: the SSR caller may keep
+    // it in place.
+    test('it accepts an SSR output that keeps the handler in place', async () => {
+      await expectOutputsFreeOfHandler(code, {
+        ...(await compileOutputs()),
+        ssr: { code, serverFns: {} },
+      })
+    })
 
     test('it rejects a provider that does not run the reported server fn', async () => {
       const results = await compileOutputs()
@@ -718,12 +726,13 @@ export const read = createServerOnlyFn(() => db.secret()).bind(null)`)
   // in the provider, and is not rejected either.
   // Impact: its handler and server-only imports ship to the client
   // (createServerFn alone), or the server build fails (another factory).
+  // Once the callers reject the module, no provider is requested for it.
   // Source: user ruling D13 (the one placement that must be rejected).
   test.fails.each(Object.keys(placementHeads) as Array<PlacementHead>)(
-    'with %s imported, a nested server fn whose handler reads a local of its function is rejected in every output',
+    'with %s imported, a nested server fn whose handler reads a local of its function is rejected by the callers',
     async (importHead) => {
       const code = placementModule(importHead, capturingPlacement.code)
-      for (const output of outputs) {
+      for (const output of ['client', 'ssr'] as const) {
         const error = await compileFor(output, code).then(
           () => undefined,
           (caught: unknown) => caught,
@@ -916,11 +925,20 @@ export const fn = createServerFn().handler(async () => 'from the server')`)
       const code = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()))`
-      const module = await evaluateModule(
-        (await compileCode(output, code)) ?? code,
-        { './db.server': { db: {} } },
-      )
-      expect(module.fn).toEqual({ rpc: { [output]: expect.any(String) } })
+      const stubs = { './db.server': { db: { x: () => 'x' } } }
+      if (output === 'client') {
+        const module = await evaluateModule(
+          (await compileCode('client', code)) ?? code,
+          stubs,
+        )
+        expect(module.fn).toEqual({ rpc: { client: expect.any(String) } })
+        return
+      }
+      const ssr = await createServerGraph(
+        await compileServer(code),
+        stubs,
+      ).ssr()
+      expect(await ssr.fn()).toBe('x')
     },
   )
 
@@ -1304,6 +1322,9 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
 })
 
 describe('CommonJS dependencies', () => {
+  /** What the dependencies below are called with. */
+  const app = { handler: (value: unknown) => ['handled', value] }
+
   // Bug: a module matching a detection pattern (`.handler(`) is parsed as strict ESM.
   // Impact: a sloppy-mode CommonJS dependency with such text fails the build.
   test.fails.each([
@@ -1314,6 +1335,7 @@ describe('CommonJS dependencies', () => {
 module.exports = function (app) {
   return app.handler(reset)
 }`,
+      run: (module: { exports: any }) => module.exports(app),
     },
     {
       name: 'a with statement',
@@ -1323,6 +1345,7 @@ module.exports = function (app) {
     return app.handler(PI)
   }
 }`,
+      run: (module: { exports: any }) => module.exports.run(app),
     },
     {
       name: 'a top-level return',
@@ -1331,19 +1354,29 @@ module.exports = function (app) {
 exports.run = function (app) {
   return app.handler(1)
 }`,
+      run: (module: { exports: any }) => module.exports.run,
     },
   ])(
-    'a CommonJS dependency with $name is left untouched',
-    async ({ id, code }) => {
+    'a CommonJS dependency with $name compiles and keeps its meaning',
+    async ({ id, code, run }) => {
+      // Runs a CommonJS module (sloppy mode) and reads what `run` reads.
+      const evaluate = (source: string) => {
+        const module = { exports: {} as any }
+        // eslint-disable-next-line @typescript-eslint/no-implied-eval
+        new Function('module', 'exports', source)(module, module.exports)
+        return run(module)
+      }
       for (const env of ['client', 'server'] as const) {
         const { compile } = createStartCompiler({ env })
-        expect((await compile(code, id)) ?? code).toBe(code)
+        expect(evaluate((await compile(code, id)) ?? code), env).toEqual(
+          evaluate(code),
+        )
       }
     },
   )
 })
 
-describe('Vite build', () => {
+describe.each(startBundlers)('%s build', (bundler) => {
   const timeout = 60_000
 
   /** A server-only module whose top-level code marks the bundle it is in. */
@@ -1356,6 +1389,7 @@ export const db = { users: () => 'users' }
     'client: the server-only module of a function only server code uses is not bundled',
     async () => {
       const { client } = await buildStart({
+        bundler,
         files: {
           'db.server.ts': dbModule,
           'fns.ts': `${head}import { db } from './db.server'
@@ -1382,6 +1416,7 @@ export const fn = createServerFn().handler(async () => find())
     'client: the server-only module of a class only server code uses is not bundled',
     async () => {
       const { client } = await buildStart({
+        bundler,
         files: {
           'db.server.ts': dbModule,
           'fns.ts': `${head}import { db } from './db.server'
@@ -1416,23 +1451,27 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
   test(
     'client: a server-only module a type mentions is not bundled',
     async () => {
-      const { client } = await buildStart({ files: typeofFiles(false) })
+      const { client } = await buildStart({
+        bundler,
+        files: typeofFiles(false),
+      })
       expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
     },
     timeout,
   )
 
-  // Bug: the client output keeps the server-only import that a `typeof` type
-  // query still mentions (compiler pin "client: a server-only import last
-  // mentioned by a type alias ..." above); with
-  // `verbatimModuleSyntax`, Vite's TypeScript transform keeps it.
+  // Bug (Vite): the client output keeps the server-only import that a
+  // `typeof` type query still mentions (compiler pin "client: a server-only
+  // import last mentioned by a type alias ..." above); with
+  // `verbatimModuleSyntax`, Vite's TypeScript transform keeps it. Rsbuild's
+  // transform of the same app drops it.
   // Impact: the server-only module's top-level code is bundled and runs in
   // the browser.
   // Source: gap D4 (gaps/dead-code.md), build canary.
-  test.fails(
+  ;(bundler === 'vite' ? test.fails : test)(
     'client: a server-only module a type mentions is not bundled with verbatimModuleSyntax',
     async () => {
-      const { client } = await buildStart({ files: typeofFiles(true) })
+      const { client } = await buildStart({ bundler, files: typeofFiles(true) })
       expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
     },
     timeout,
@@ -1451,6 +1490,7 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
     'SSR: a server fn module is initialised once and shares its state with SSR code',
     async () => {
       const { ssr } = await buildStart({
+        bundler,
         files: {
           'fns.ts': `${head}globalThis.initialised = (globalThis.initialised ?? 0) + 1
 let count = 0
@@ -1498,6 +1538,7 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
    */
   async function callClientAccess() {
     const { client, ssr } = await buildStart({
+      bundler,
       files: clientAccessFiles,
       entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
     })
@@ -1556,18 +1597,20 @@ return {
     timeout,
   )
 
-  // Bug: the production server fn resolver is generated when the SSR build
-  // first loads it, from the server fns found so far. A server fn that only
-  // another server fn's handler (or a middleware `.server()`) calls is found
-  // later, when the SSR build compiles the provider that imports it, so it
-  // is missing from the resolver.
+  // Bug (Vite): the production server fn resolver is generated when the SSR
+  // build first loads it, from the server fns found so far. A server fn that
+  // only another server fn's handler (or a middleware `.server()`) calls is
+  // found later, when the SSR build compiles the provider that imports it, so
+  // it is missing from the resolver. Rsbuild rebuilds the resolver after the
+  // SSR compilation found every server fn.
   // Impact: in production, calling it throws "Server function info not
   // found" (works in dev).
   // Source: issue #7213.
-  test.fails(
+  ;(bundler === 'vite' ? test.fails : test)(
     'SSR: a server fn that only another server fn calls is callable',
     async () => {
       const { ssr } = await buildStart({
+        bundler,
         files: {
           'inner.ts': `${head}export const inner = createServerFn().handler(async () => 'inner')
 `,
@@ -1583,14 +1626,169 @@ export const outer = createServerFn().handler(async () => 'outer:' + (await inne
     },
     timeout,
   )
+
+  // Control: start-build-env-separation.test.ts "a library's server fn"
+  // (a library exporting a top-level server fn).
+  // Bug: a library in node_modules that creates server fns for its users
+  // (`createLoggedServerFn(handler)` returning
+  // `createServerFn().handler(handler)`) is compiled like any module, but
+  // the user's module only calls the library's function, so the compiler
+  // never sees a server fn there, and nothing warns.
+  // Impact: the handler the user passes, and what it imports, ship to the
+  // client bundle and run there instead of on the server.
+  // Source: lost-cases-campaign item 13 (b); user ruling D13 (a server fn
+  // created inside a function is supported, or rejected clearly).
+  test.fails(
+    'a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly',
+    async () => {
+      const outcome = await buildStart({
+        bundler,
+        files: {
+          'node_modules/wrapper-lib/package.json': JSON.stringify({
+            name: 'wrapper-lib',
+            type: 'module',
+            exports: './index.js',
+            peerDependencies: { '@tanstack/react-start': '*' },
+          }),
+          'node_modules/wrapper-lib/index.js': `import { createServerFn } from '@tanstack/react-start'
+export function createLoggedServerFn(handler) {
+  return createServerFn().handler(handler)
+}
+`,
+          'src/db.ts': `export const db = { secret: () => 'MARK_WRAPPED_HANDLER' }\n`,
+          'src/fns.ts': `import { createLoggedServerFn } from 'wrapper-lib'
+import { db } from './db'
+export const fn = createLoggedServerFn(async () => db.secret())
+`,
+          'src/entry.ts': `export { fn } from './fns'\n`,
+        },
+        entry: 'src/entry.ts',
+      }).then(
+        async ({ client, ssr }) => ({
+          client: client.where('MARK_WRAPPED_HANDLER'),
+          ssr: (await ssr.run(`return await entry.fn()`)).result,
+        }),
+        (error: unknown) => ({ error: String(error) }),
+      )
+      if ('error' in outcome) {
+        expect(outcome.error).toMatch(/createServerFn/)
+      } else {
+        expect(outcome).toEqual({
+          client: 'nowhere',
+          ssr: 'MARK_WRAPPED_HANDLER',
+        })
+      }
+    },
+    timeout,
+  )
+
+  // Bug (Rsbuild): in the SSR build, compiling a module with an isomorphic
+  // fn makes the Start compiler resolve the module's `createMiddleware`
+  // import (the server lookup does not know that factory). The Rsbuild
+  // compiler host resolves it through the loader context, whose resolver
+  // does not match the package's `import`-only exports (those of
+  // `@tanstack/react-start`): the build fails with
+  // `PackagePathNotExported(".")` (start-compiler-host.ts `resolveId`).
+  // Impact: an app with a middleware and an isomorphic fn in one module
+  // does not build with Rsbuild.
+  // Source: lost-cases item 3 (BS-6 / K-13).
+  ;(bundler === 'rsbuild' ? test.fails : test)(
+    'a module with a middleware and an isomorphic fn builds, and its middleware runs on the server',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/both.ts': `import { createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+export const middleware = createMiddleware().server(({ next }) =>
+  next({ context: { marker: 'MARK_MIDDLEWARE_SERVER' } }),
+)
+export const isomorphic = createIsomorphicFn()
+  .server(() => 'server')
+  .client(() => 'client')
+`,
+          'src/entry.ts': `export { middleware, isomorphic } from './both'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expect(client.where('MARK_MIDDLEWARE_SERVER')).toBe('nowhere')
+      const { result } = await ssr.run(`return {
+  middleware: entry.middleware.options.server({ next: (options) => options }),
+  isomorphic: entry.isomorphic(),
+}`)
+      expect(result).toEqual({
+        middleware: { context: { marker: 'MARK_MIDDLEWARE_SERVER' } },
+        isomorphic: 'server',
+      })
+    },
+    timeout,
+  )
 })
 
 describe('Vite dev server', () => {
   /**
+   * Resolves `'hang'` once `pending` has made no progress for `quietMs`: no
+   * plugin hook ran (`lastActivity()`) and the main thread stayed idle (a
+   * dependency optimizer bundling, or any other work the request waits for,
+   * keeps it busy). Resolves `'settled'` when `pending` settles first, and
+   * `'hang'` after `limitMs` at the latest.
+   */
+  async function settledOrHung(
+    pending: Promise<unknown>,
+    lastActivity: () => number,
+    { quietMs = 1_500, limitMs = 15_000 } = {},
+  ): Promise<'settled' | 'hang'> {
+    let settled = false
+    pending.then(
+      () => (settled = true),
+      () => (settled = true),
+    )
+    const started = performance.now()
+    let busySince = started
+    let previous = performance.eventLoopUtilization()
+    while (!settled) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      if (settled) {
+        break
+      }
+      const current = performance.eventLoopUtilization()
+      if (
+        performance.eventLoopUtilization(current, previous).utilization > 0.05
+      ) {
+        busySince = performance.now()
+      }
+      previous = current
+      const now = performance.now()
+      const quietFor = now - Math.max(lastActivity(), busySince)
+      if (quietFor >= quietMs || now - started >= limitMs) {
+        return 'hang'
+      }
+    }
+    return 'settled'
+  }
+
+  /** Start packages of `transformClientModule`, by the names imported. */
+  const clientStubs = (specifier: string, names: Set<string>): ModuleStub => {
+    if (names.has('createClientRpc')) {
+      return { createClientRpc: (id: string) => ({ functionId: id }) }
+    }
+    if (names.has('createServerFn')) {
+      return {
+        createServerFn: () => ({ handler: (rpc: unknown) => rpc }),
+      }
+    }
+    if (names.has('z')) {
+      return { z: { object: () => ({}) } }
+    }
+    throw new Error(`no stub for ${specifier}`)
+  }
+
+  /**
    * Starts a Vite dev server (middleware mode, empty dependency cache) on a
    * temporary project with the Start compiler, `src/fn.ts` = `code` and
-   * `files`, and returns the client transform of `src/fn.ts`, or `'timeout'`
-   * when it has not finished after 15 s. Start packages are stubbed.
+   * `files`, and requests the client transform of `src/fn.ts`. Returns
+   * `'hang'` when the transform stops making progress before it finishes
+   * (`settledOrHung`); otherwise its code and the module evaluated with
+   * stubbed Start packages and `zod`. Start packages are stubbed.
    */
   async function transformClientModule(
     code: string,
@@ -1599,6 +1797,11 @@ describe('Vite dev server', () => {
     // Keep the temporary project inside the package so dependencies resolve.
     const root = await mkdtemp(path.join(__dirname, '.dev-transform-'))
     let server: Awaited<ReturnType<typeof createServer>> | undefined
+    let lastActivity = performance.now()
+    const active = () => {
+      lastActivity = performance.now()
+      return null
+    }
     try {
       await mkdir(path.join(root, 'src'))
       for (const [file, content] of Object.entries({
@@ -1615,6 +1818,13 @@ describe('Vite dev server', () => {
         appType: 'custom',
         server: { middlewareMode: true, hmr: false, ws: false, watch: null },
         plugins: [
+          {
+            name: 'record-activity',
+            enforce: 'pre',
+            resolveId: active,
+            load: active,
+            transform: active,
+          },
           {
             name: 'stub-start-packages',
             resolveId: (id) =>
@@ -1635,15 +1845,25 @@ export const createClientRpc = (id) => id`
           }),
         ],
       })
-      const transformed = server.environments.client
-        .transformRequest('/src/fn.ts')
-        .then((result) => result?.code ?? null)
-      return await Promise.race([
-        transformed,
-        new Promise<'timeout'>((resolve) =>
-          setTimeout(() => resolve('timeout'), 15_000),
-        ),
-      ])
+      const transformed =
+        server.environments.client.transformRequest('/src/fn.ts')
+      if ((await settledOrHung(transformed, () => lastActivity)) === 'hang') {
+        transformed.catch(() => {})
+        return 'hang' as const
+      }
+      const served = (await transformed)!.code
+      const client = server.environments.client
+      const module = await createModuleGraph({
+        modules: { '/src/fn.ts': served },
+        // Project modules as the dev server serves them.
+        load: async (id) =>
+          id.startsWith('/src/')
+            ? (await client.transformRequest(id))?.code
+            : null,
+        transform: (source) => source,
+        fallbackStub: clientStubs,
+      }).import('/src/fn.ts')
+      return { code: served, module }
     } finally {
       await Promise.race([
         server?.close(),
@@ -1653,15 +1873,29 @@ export const createClientRpc = (id) => id`
     }
   }
 
+  /**
+   * The client got `fn` as an RPC carrying its id, without the handler body
+   * (`MARK_HANDLER`).
+   */
+  function expectClientRpc(
+    result: Awaited<ReturnType<typeof transformClientModule>>,
+  ) {
+    expect(result).not.toBe('hang')
+    const { code, module } = result as Exclude<typeof result, 'hang'>
+    expect(code).not.toContain('MARK_HANDLER')
+    expect(module.fn).toEqual({ functionId: expect.any(String) })
+  }
+
   // Control for the pin below (same harness).
   test('transforms a client module with a server fn and a top-level call of a project function', async () => {
-    const code = await transformClientModule(
-      `${head}import { define } from './define'
+    expectClientRpc(
+      await transformClientModule(
+        `${head}import { define } from './define'
 export const schema = define()
-export const fn = createServerFn().handler(() => 1)`,
-      { 'define.ts': `export const define = () => ({})` },
+export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
+        { 'define.ts': `export const define = () => ({})` },
+      ),
     )
-    expect(code).toContain('createClientRpc')
   }, 30_000)
 
   // Bug: next to a server fn, a top-level `const x = f()` may be a renamed or
@@ -1676,12 +1910,13 @@ export const fn = createServerFn().handler(() => 1)`,
   test.fails(
     'transforms a client module with a server fn and a top-level call of a pre-bundled dependency',
     async () => {
-      const code = await transformClientModule(
-        `${head}import { z } from 'zod'
+      expectClientRpc(
+        await transformClientModule(
+          `${head}import { z } from 'zod'
 export const schema = z.object({})
-export const fn = createServerFn().handler(() => 1)`,
+export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
+        ),
       )
-      expect(code).toContain('createClientRpc')
     },
     30_000,
   )

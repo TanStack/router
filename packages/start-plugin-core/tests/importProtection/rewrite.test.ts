@@ -49,14 +49,53 @@ async function evaluateRewritten(
   return { module: await graph.import(id), graph }
 }
 
+/**
+ * Applies the rewrite of the denied imports `denied` to `code` (module
+ * `/test/module.ts`), or keeps `code` when there is nothing to rewrite, and
+ * evaluates the result with the project modules `files`. Returns the
+ * module's namespace and which project modules and mocks were loaded.
+ */
+async function evaluateAfterRewrite(
+  code: string,
+  denied: Array<string>,
+  files: Record<string, string> = {},
+) {
+  const id = '/test/module.ts'
+  const mocksLoaded: Array<string> = []
+  const rewritten = rewriteDeniedImports(
+    code,
+    id,
+    new Set(denied),
+    (source) => `mock-of:${source}`,
+  )
+  const graph = createModuleGraph({
+    modules: { ...files, [id]: rewritten?.code ?? code },
+    fallbackStub: (specifier) => {
+      mocksLoaded.push(specifier)
+      return { default: prefixMock('mock:') }
+    },
+  })
+  const module = await graph.import(id)
+  return {
+    module: { ...module },
+    loaded: graph.evaluated.filter((loaded) => loaded !== id),
+    mocksLoaded,
+  }
+}
+
+/** A denied module, listed in `loaded` when it is evaluated. */
+const secretServer = { '/test/secret.server.ts': `export const secret = 1` }
+
 describe('rewriteDeniedImports', () => {
-  test('skips type-only import declaration', () => {
-    const result = rewriteDeniedImports(
-      `import type { Foo } from './secret.server';`,
-      '/test.ts',
-      new Set(['./secret.server']),
-    )
-    expect(result).toBeUndefined()
+  test('a type-only import of a denied module evaluates unchanged', async () => {
+    expect(
+      await evaluateAfterRewrite(
+        `import type { Foo } from './secret.server'
+export const value: Foo = 1 as Foo`,
+        ['./secret.server'],
+        secretServer,
+      ),
+    ).toEqual({ module: { value: 1 }, loaded: [], mocksLoaded: [] })
   })
 
   // Loosened: the names `export *` re-exports from a denied module are not
@@ -72,13 +111,23 @@ describe('rewriteDeniedImports', () => {
     expect(graph.evaluated).not.toContain('/test/secret.server.ts')
   })
 
-  test('returns undefined when no denied imports are found', () => {
-    const result = rewriteDeniedImports(
-      `import { ok } from './safe';\nimport { also } from './fine';`,
-      '/test.ts',
-      new Set(['./secret.server']),
-    )
-    expect(result).toBeUndefined()
+  test('a module without denied imports evaluates unchanged', async () => {
+    expect(
+      await evaluateAfterRewrite(
+        `import { ok } from './safe'
+import { also } from './fine'
+export const values = [ok, also]`,
+        ['./secret.server'],
+        {
+          '/test/safe.ts': `export const ok = 'ok'`,
+          '/test/fine.ts': `export const also = 'also'`,
+        },
+      ),
+    ).toEqual({
+      module: { values: ['ok', 'also'] },
+      loaded: ['/test/safe.ts', '/test/fine.ts'],
+      mocksLoaded: [],
+    })
   })
 
   test('imports that are not denied keep their real values', async () => {
@@ -133,23 +182,28 @@ export const used = foo + unrelated`,
     }
   })
 
-  test('skips type-only export declaration', () => {
-    const result = rewriteDeniedImports(
-      `export type { Foo } from './secret.server';`,
-      '/test.ts',
-      new Set(['./secret.server']),
-    )
-    expect(result).toBeUndefined()
-  })
-
-  test('skips type-only export * from denied', () => {
-    const result = rewriteDeniedImports(
-      `export type * from './secret.server';`,
-      '/test.ts',
-      new Set(['./secret.server']),
-    )
-    expect(result).toBeUndefined()
-  })
+  test.each([
+    {
+      name: 'export type { … } from',
+      reexport: `export type { Foo } from './secret.server'`,
+    },
+    {
+      name: 'export type * from',
+      reexport: `export type * from './secret.server'`,
+    },
+  ])(
+    'a type-only $name a denied module evaluates unchanged',
+    async ({ reexport }) => {
+      expect(
+        await evaluateAfterRewrite(
+          `${reexport}
+export const value = 1`,
+          ['./secret.server'],
+          secretServer,
+        ),
+      ).toEqual({ module: { value: 1 }, loaded: [], mocksLoaded: [] })
+    },
+  )
 
   // Source: TanStack/router#7341. In a `.ts` module, `<T>value` is a type
   // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.

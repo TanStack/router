@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
 import {
   compileCode,
+  createStartCompiler,
   evaluateModule,
   importSources,
 } from '../regression-helpers'
@@ -19,6 +20,19 @@ function getDefaultTestOptions(env: 'client' | 'server') {
     framework: 'react' as const,
     providerEnvName: 'ssr',
   }
+}
+
+/** A Start factory left uncompiled: calling it fails the test. */
+const uncompiled = () => {
+  throw new Error('uncompiled Start factory')
+}
+
+/**
+ * Start's own middleware factory module, as the client runtime runs it:
+ * `.server()` throws, like the runtime stub's when it is called uncompiled.
+ */
+const middlewareFactoryStub = {
+  createMiddleware: () => ({ server: uncompiled }),
 }
 
 describe('createMiddleware compiles correctly', () => {
@@ -100,59 +114,51 @@ export const logger = createMiddleware().client(async ({ next }) => next())`
 
     expect(result).not.toBeNull()
     expect(result!.code).not.toContain('server-only-middleware')
-    expect(result!.code).not.toContain('createIsomorphicFn')
+    // On the client, the isomorphic fn without a client implementation is a
+    // no-op.
+    const { createCsrfMiddleware } = await evaluateModule(result!.code, {
+      '@tanstack/start-fn-stubs': {
+        createIsomorphicFn: () =>
+          Object.assign(() => undefined, {
+            server: uncompiled,
+            client: uncompiled,
+          }),
+      },
+      './createMiddleware': middlewareFactoryStub,
+    })
+    expect(createCsrfMiddleware()).toBeUndefined()
   })
 
   test('should resolve namespace createMiddleware from start-client-core implementation file', async () => {
-    const virtualModules: Record<string, string> = {
-      '@tanstack/start-client-core': `
-        export { createMiddleware } from './createMiddleware'
-      `,
-      '/virtual/compiler-known/middleware-factory.ts': `
-        export const createMiddleware = () => ({
-          server: () => createMiddleware(),
-        })
-      `,
-    }
-
-    const compiler = new StartCompiler({
+    // A module of Start's own client package (its middleware factory module
+    // is the one `@tanstack/start-client-core` re-exports).
+    const { compile } = createStartCompiler({
       env: 'client',
-      ...getDefaultTestOptions('client'),
-      loadModule: async (id) => {
-        const code = virtualModules[id]
-        if (code) {
-          compiler.ingestModule({ code, id })
-        }
-      },
-      lookupKinds: new Set(['Middleware']),
-      lookupConfigurations: [],
-      getKnownServerFns: () => ({}),
-      resolveId: async (source) => {
-        if (source === '@tanstack/start-client-core') {
-          return '@tanstack/start-client-core'
-        }
-
-        if (source === './createMiddleware') {
-          return '/virtual/compiler-known/middleware-factory.ts'
-        }
-
-        return null
+      files: {
+        '@tanstack/start-client-core': `export { createMiddleware } from './createMiddleware'`,
+        '/test/src/createMiddleware.ts': `export const createMiddleware = () => ({
+  server: () => createMiddleware(),
+})`,
       },
     })
 
-    const result = await compiler.compile({
-      id: '/repo/packages/start-client-core/src/internal.ts',
-      code: `
-        import * as middlewareModule from './createMiddleware'
+    const result = await compile(
+      `import * as middlewareModule from './createMiddleware'
 
-        export const middleware = middlewareModule.createMiddleware().server(() => {
-          return 'server-only-middleware'
-        })
-      `,
-    })
+export const middleware = middlewareModule.createMiddleware().server(() => {
+  return 'server-only-middleware'
+})`,
+      '/test/src/internal.ts',
+    )
 
     expect(result).not.toBeNull()
-    expect(result!.code).not.toContain('server-only-middleware')
+    expect(result).not.toContain('server-only-middleware')
+    // The client runtime's `.server()` throws: the module evaluates only
+    // without it.
+    const { middleware } = await evaluateModule(result!, {
+      './createMiddleware': middlewareFactoryStub,
+    })
+    expect(middleware).toBeDefined()
   })
 })
 

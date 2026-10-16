@@ -13,6 +13,7 @@ import {
   callProvider,
   clientOnlyError,
   compileFor,
+  createServerGraph,
   evaluateModule,
   importSources,
   serverOnlyError,
@@ -20,6 +21,7 @@ import {
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { Framework, ModuleStub, Output } from './regression-helpers'
+import type { ServerFn } from '../src/start-compiler/types'
 
 const frameworks: Array<Framework> = ['react', 'solid', 'vue']
 
@@ -69,6 +71,8 @@ interface Construct {
     provider: string
     framework: Framework
     serverImport: string
+    /** The server fns the client reported. */
+    serverFns: Record<string, ServerFn>
   }) => Promise<void>
 }
 
@@ -77,16 +81,22 @@ const constructs: Array<Construct> = [
     name: 'createServerFn',
     code: (callee, wrap) =>
       `export const fn = ${wrap(`${callee}({ method: 'GET' }).handler(async () => db.x())`)}`,
-    check: async ({ client, ssr, provider, framework }) => {
+    check: async ({ client, ssr, provider, framework, serverFns }) => {
       expect(importSources(client)).not.toContain('./db.server')
-      expect(importSources(ssr)).not.toContain('./db.server')
-      for (const [output, code] of [
-        ['client', client],
-        ['ssr', ssr],
+      const clientFn = (await evaluateModule(client, stubs, { framework })).fn
+      expect(clientFn).toEqual({ rpc: { client: expect.any(String) } })
+      expect(serverFns).toHaveProperty(clientFn.rpc.client)
+      const graph = createServerGraph(
+        { ssr, provider, framework, serverFns },
+        stubs,
+      )
+      const ssrFn = (await graph.ssr()).fn
+      expect(await ssrFn()).toBe('x')
+      // The callers keep the builder options (the runtime reads `method`).
+      for (const [output, fn] of [
+        ['client', clientFn],
+        ['ssr', ssrFn],
       ] as const) {
-        const { fn } = await evaluateModule(code, stubs, { framework })
-        expect(fn, output).toEqual({ rpc: { [output]: expect.any(String) } })
-        // The caller keeps the builder options (the runtime reads `method`).
         expect(fn.options, output).toEqual({ method: 'GET' })
       }
       expect(
@@ -161,12 +171,16 @@ const constructs: Array<Construct> = [
  */
 async function compileOutputs(code: string, framework: Framework) {
   const compiled = {} as Record<Output, string>
+  let serverFns: Record<string, ServerFn> = {}
   for (const output of ['client', 'ssr', 'provider'] as const) {
-    compiled[output] =
-      (await compileFor(output, code, { framework })).code ?? code
+    const result = await compileFor(output, code, { framework })
+    compiled[output] = result.code ?? code
     expect(await getModuleErrors(compiled[output]), output).toEqual([])
+    if (output === 'client') {
+      serverFns = result.serverFns
+    }
   }
-  return compiled
+  return { ...compiled, serverFns }
 }
 
 /** The imports a construct's code reads, besides the factory. */
@@ -189,6 +203,7 @@ ${construct.code(form.callee(construct.name), form.wrap)}`
         provider: compiled.provider,
         framework,
         serverImport: './db.server',
+        serverFns: compiled.serverFns,
       })
     })
   })
