@@ -1,5 +1,6 @@
 ---
 '@tanstack/router-core': patch
+'@tanstack/start-server-core': patch
 ---
 
-Render manifest script preloads with low fetch priority so they do not compete with render-blocking resources.
+Render generated script preloads (`modulepreload`, or `preload as="script"` for IIFE output) with `fetchPriority="low"` and forward it into static Early Hints, so they no longer compete with render-blocking stylesheets, fonts and images.
