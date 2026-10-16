@@ -74,6 +74,67 @@ type CompileOptions = {
    * `deleteNodes`) or `plugin.hmr.style`.
    */
   pluginOptions?: Partial<Config>
+  /**
+   * The Vite command the plugin is configured for. Default `serve` with
+   * `hmr`, else `build` (which the plugin takes for a production build).
+   */
+  command?: 'serve' | 'build'
+  /**
+   * Configure the plugins for webpack instead of Vite: their `webpack` hook
+   * gets this compiler (see `webpackCompiler`) instead of their Vite
+   * `configResolved` hook getting a Vite config.
+   */
+  webpackCompiler?: WebpackCompilerStub
+}
+
+/** What the plugins' `webpack(compiler)` hook can read of a compiler. */
+export type WebpackCompilerStub = {
+  options: { mode: 'development' | 'production'; plugins: Array<object> }
+}
+
+/**
+ * The React Refresh webpack plugin (`@pmmmwh/react-refresh-webpack-plugin`)
+ * as webpack's configuration lists it: an instance of `ReactRefreshPlugin`.
+ */
+class ReactRefreshPlugin {
+  apply() {}
+}
+
+/**
+ * A webpack development compiler whose configuration has the React Refresh
+ * plugin (`refresh`) or no refresh plugin, the way a webpack or Rspack app
+ * without React Refresh is configured.
+ */
+export function webpackCompiler(refresh: boolean): WebpackCompilerStub {
+  return {
+    options: {
+      mode: 'development',
+      plugins: refresh ? [new ReactRefreshPlugin()] : [],
+    },
+  }
+}
+
+/**
+ * Configures plugins the way a bundler does before any transform: Vite's
+ * `configResolved` with `vite`, or webpack's plugin hook with a compiler.
+ */
+function configurePlugins(
+  plugins: Array<UnpluginOptions>,
+  bundler: { vite: Record<string, unknown> } | { webpack: WebpackCompilerStub },
+) {
+  for (const plugin of plugins) {
+    if ('webpack' in bundler) {
+      plugin.webpack?.(bundler.webpack as never)
+    } else {
+      sync(
+        hookHandler(plugin.vite?.configResolved)?.call(
+          pluginContext,
+          bundler.vite as never,
+        ),
+        'configResolved',
+      )
+    }
+  }
 }
 
 /**
@@ -213,6 +274,17 @@ function compileRouteGraph(
   code: string,
   options: CompileOptions = {},
 ): RouteGraph {
+  return createRouteGraphCompiler(options)(code)
+}
+
+/**
+ * Creates one code-splitter plugin instance, configured like a bundler does,
+ * and returns a function that compiles a version of the route file with it
+ * (`compileRouteGraph`), as a dev server compiles each edit of the file.
+ */
+function createRouteGraphCompiler(
+  options: CompileOptions = {},
+): (code: string) => RouteGraph {
   const {
     filename = 'route.tsx',
     targetFramework = 'react',
@@ -220,6 +292,8 @@ function compileRouteGraph(
     deleteNodes,
     routeId = '/',
     pluginOptions = {},
+    command = hmr ? 'serve' : 'build',
+    webpackCompiler: compiler,
   } = options
   const id = routeModuleId(filename)
   const context = createRouterPluginContext()
@@ -240,20 +314,12 @@ function compileRouteGraph(
   const plugins: Array<UnpluginOptions> = Array.isArray(created)
     ? created
     : [created]
-  const config = {
-    root: process.cwd(),
-    command: hmr ? 'serve' : 'build',
-    plugins: [],
-  }
-  for (const plugin of plugins) {
-    sync(
-      hookHandler(plugin.vite?.configResolved)?.call(
-        pluginContext,
-        config as never,
-      ),
-      'configResolved',
-    )
-  }
+  configurePlugins(
+    plugins,
+    compiler
+      ? { webpack: compiler }
+      : { vite: { root: process.cwd(), command, plugins: [] } },
+  )
 
   const resolve = (specifier: string, importer: string) => {
     for (const plugin of plugins) {
@@ -291,7 +357,7 @@ function compileRouteGraph(
     return query === undefined ? file : `${file}?${query}`
   }
 
-  const load = (moduleId: string) => {
+  const load = (code: string, moduleId: string) => {
     for (const plugin of plugins) {
       const hook = plugin.load
       if (!hookHandler(hook) || !passesFilter(hook, moduleId)) {
@@ -334,30 +400,32 @@ function compileRouteGraph(
     return current
   }
 
-  const modules = new Map<string, string>()
-  const importKinds = new Map<string, 'static' | 'dynamic'>()
-  const queue = [id]
-  while (queue.length > 0) {
-    const moduleId = queue.shift()!
-    if (modules.has(moduleId)) {
-      continue
-    }
-    const output = transform(moduleId, load(moduleId))
-    modules.set(moduleId, output)
-    for (const { specifier, dynamic } of importRequests(output, moduleId)) {
-      const target = resolve(specifier, moduleId)
-      if (target === undefined) {
+  return (code) => {
+    const modules = new Map<string, string>()
+    const importKinds = new Map<string, 'static' | 'dynamic'>()
+    const queue = [id]
+    while (queue.length > 0) {
+      const moduleId = queue.shift()!
+      if (modules.has(moduleId)) {
         continue
       }
-      if (!dynamic) {
-        importKinds.set(target, 'static')
-      } else if (!importKinds.has(target)) {
-        importKinds.set(target, 'dynamic')
+      const output = transform(moduleId, load(code, moduleId))
+      modules.set(moduleId, output)
+      for (const { specifier, dynamic } of importRequests(output, moduleId)) {
+        const target = resolve(specifier, moduleId)
+        if (target === undefined) {
+          continue
+        }
+        if (!dynamic) {
+          importKinds.set(target, 'static')
+        } else if (!importKinds.has(target)) {
+          importKinds.set(target, 'dynamic')
+        }
+        queue.push(target)
       }
-      queue.push(target)
     }
+    return { id, modules, importKinds, resolve }
   }
-  return { id, modules, importKinds, resolve }
 }
 
 /** Route file each `compileRouteModules` result was compiled from. */
@@ -378,7 +446,11 @@ export function compileRouteModules(
   code: string,
   options: CompileOptions = {},
 ) {
-  const graph = compileRouteGraph(code, options)
+  return labelRouteModules(code, compileRouteGraph(code, options))
+}
+
+/** Labels the modules of a compiled route file (see `compileRouteModules`). */
+function labelRouteModules(code: string, graph: RouteGraph) {
   const modules: Record<string, string> = {}
   const ids: Record<string, string> = {}
   const sharedBindings = new Set<string>()
@@ -584,10 +656,15 @@ export function transformWithRouteHmrPlugin(
     file: routeFile('index'),
     routeId: '/',
   },
+  compiler?: WebpackCompilerStub,
 ) {
-  const output = createRouteHmrTransform(options, {
-    [route.file]: route.routeId,
-  })(code, route.file)
+  const output = createRouteHmrTransform(
+    options,
+    {
+      [route.file]: route.routeId,
+    },
+    compiler,
+  )(code, route.file)
   if (output === null) {
     throw new Error('expected the route HMR plugin to transform the route')
   }
@@ -597,11 +674,13 @@ export function transformWithRouteHmrPlugin(
 /**
  * The transform of one route HMR plugin instance (used when automatic code
  * splitting is off) for the given route files (absolute path to route id).
- * Returns `null` for a module it leaves as is.
+ * Returns `null` for a module it leaves as is. With `compiler`, the plugin is
+ * configured for webpack with it first.
  */
 export function createRouteHmrTransform(
   options: Partial<Config>,
   routes: Record<string, string>,
+  compiler?: WebpackCompilerStub,
 ) {
   const context = createRouterPluginContext()
   for (const [file, routeId] of Object.entries(routes)) {
@@ -609,6 +688,9 @@ export function createRouteHmrTransform(
   }
   const plugins = createRouterHmrPlugin(options, context)
   const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
+  if (compiler) {
+    configurePlugins([plugin], { webpack: compiler })
+  }
   return (code: string, id: string) => runTransform(plugin, code, id)
 }
 
@@ -717,7 +799,25 @@ type LoadRouteOptions = CompileOptions & {
  * `Route`; `load(option)` resolves a lazy option to what its module provides.
  */
 export async function loadRoute(code: string, options: LoadRouteOptions = {}) {
-  const compiled = compileRouteModules(code, options)
+  return createRouteLoader(options)(code)
+}
+
+/**
+ * Returns a function that loads a version of the route file like
+ * `loadRoute`, every version compiled by the same code-splitter plugin
+ * instance, as a dev server compiles each edit of a route file.
+ */
+export function createRouteLoader(options: LoadRouteOptions = {}) {
+  const compile = createRouteGraphCompiler(options)
+  return (code: string) => linkRoute(code, compile(code), options)
+}
+
+async function linkRoute(
+  code: string,
+  graph: RouteGraph,
+  options: LoadRouteOptions,
+) {
+  const compiled = labelRouteModules(code, graph)
   const lazy = new Map<unknown, () => Promise<unknown>>()
   const registered = new Map<unknown, string>()
   const moduleGraph = createModuleGraph({
@@ -786,9 +886,9 @@ export async function evaluateModule(
  * transform: the router package is stubbed, `react` is React, `stubs`
  * provide other imports and any remaining import is a module whose imports
  * are identity functions (`connect(Page)` returns `Page`). Returns its
- * `Route` and what React Refresh registered.
+ * exports, its `Route` and what React Refresh registered.
  */
-async function evaluateRouteModule(code: string, stubs: Stubs = {}) {
+export async function evaluateRouteModule(code: string, stubs: Stubs = {}) {
   const id = routeModuleId()
   const registered = new Map<unknown, string>()
   const moduleGraph = createModuleGraph({
@@ -801,13 +901,12 @@ async function evaluateRouteModule(code: string, stubs: Stubs = {}) {
     scope: () => refreshScope(registered),
     transform: transformWithReactRefresh,
   })
-  const { Route } = (await moduleGraph.import(id)) as {
-    Route?: { options: Record<string, any> }
-  }
+  const exports = await moduleGraph.import(id)
+  const Route = exports.Route as { options: Record<string, any> } | undefined
   if (!Route) {
     throw new Error('the route module does not export `Route`')
   }
-  return { Route, registered }
+  return { exports, Route, registered }
 }
 
 /**
@@ -890,22 +989,32 @@ export async function expectRefreshableRouteOption(
 ) {
   expect(await getModuleErrors(code)).toEqual([])
   const { Route, registered } = await evaluateRouteModule(code)
-  let component: any = Route.options[option]
-  let refreshable = registered.has(component)
-  while (!refreshable && component && typeof component === 'object') {
-    if (component.$$typeof === memoType) {
-      component = component.type
-    } else if (component.$$typeof === forwardRefType) {
-      component = component.render
-    } else {
-      break
-    }
-    refreshable = registered.has(component)
-  }
   expect(
-    refreshable,
+    isRefreshable(Route.options[option], registered),
     `\`${option}\` is neither a component React Refresh registers nor a memo/forwardRef of one (registered: ${[...registered.values()].join(', ')})`,
   ).toBe(true)
+}
+
+/**
+ * Whether React Refresh can hot-update `component`: it is registered
+ * (`registered`, as `loadRoute` and `hotUpdate` record it), or it is a
+ * `memo(...)` / `forwardRef(...)` (nested or not) of a registered component.
+ */
+export function isRefreshable(
+  component: unknown,
+  registered: Map<unknown, string>,
+) {
+  let current: any = component
+  while (!registered.has(current) && current && typeof current === 'object') {
+    if (current.$$typeof === memoType) {
+      current = current.type
+    } else if (current.$$typeof === forwardRefType) {
+      current = current.render
+    } else {
+      return false
+    }
+  }
+  return registered.has(current)
 }
 
 const getStoreConfig: GetStoreConfig = () => ({
@@ -937,7 +1046,9 @@ export type HotUpdateOptions = {
    * A React Refresh runtime is present: modules are compiled with the React
    * Refresh transform (`registered`) and the bundler's refresh utilities
    * (`__react_refresh_utils__`) record each update they are asked for
-   * (`refreshes`).
+   * (`refreshes`). With webpack, the plugins are also configured with a
+   * compiler that has the React Refresh plugin, or none
+   * (`webpackCompiler(refresh)`), as an app is.
    */
   refresh?: boolean
   /** The route file's other imports, by specifier. */
@@ -957,7 +1068,8 @@ export type HotUpdateOptions = {
  * Returns the options of the live route before (`previous`) and after
  * (`live`) the update, a copy of the options each module load created a
  * route with (`created`), whether a module asked the bundler for a full
- * reload (`invalidated`), what React Refresh registered and how many
+ * reload (`invalidated`), the `window` the modules ran with, what React
+ * Refresh registered and how many
  * refreshes were enqueued (`refresh`), and `load(option)`, which resolves a
  * lazy option of the live route to what its module provides.
  */
@@ -973,6 +1085,7 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
     target: targetFramework,
     plugin: { hmr: { style } },
   }
+  const compiler = style === 'webpack' ? webpackCompiler(refresh) : undefined
   const compile = (source: string) => {
     if (codeSplitting) {
       return compileRouteGraph(source, {
@@ -980,13 +1093,19 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
         hmr: true,
         routeId,
         pluginOptions,
+        webpackCompiler: compiler,
       })
     }
     const file = routeFile('index')
-    const compiled = transformWithRouteHmrPlugin(source, pluginOptions, {
-      file,
-      routeId,
-    })
+    const compiled = transformWithRouteHmrPlugin(
+      source,
+      pluginOptions,
+      {
+        file,
+        routeId,
+      },
+      compiler,
+    )
     return {
       id: file,
       modules: new Map([[file, compiled]]),
@@ -1165,6 +1284,8 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
       live,
       created,
       invalidated,
+      /** The `window` the modules ran with (the router is `__TSR_ROUTER__`). */
+      window,
       refresh: { registered, refreshes },
       /** Whether an option of the live route loads lazily from another module. */
       isLazy: (option: string) => lazy.has(live[option]),

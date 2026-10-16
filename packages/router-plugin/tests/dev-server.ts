@@ -9,7 +9,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
-import { onTestFinished } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
 import { tanstackRouter } from '../src/vite'
 import type {
   DevServer,
@@ -47,6 +47,136 @@ export interface RouterDevServerOptions extends Omit<
   plugins?:
     | Array<PluginOption>
     | ((app: { root: string }) => Array<PluginOption>)
+}
+
+/**
+ * A Vite plugin that serves a stub of the router package of `target` (the
+ * framework packages are not dependencies of this package, and the real
+ * React one needs a DOM): routes keep their options (`{ options }`), and lazy
+ * route options (`lazyRouteComponent`, `lazyFn`) call what their module
+ * provides and have `load()`, which resolves to it.
+ */
+export function routerPackageStub(
+  target: Config['target'] = 'react',
+): PluginOption {
+  const routerPackage = `@tanstack/${target}-router`
+  const stubId = `\0${routerPackage}-stub`
+  return {
+    name: 'router-package-stub',
+    enforce: 'pre',
+    resolveId: (id) => (id === routerPackage ? stubId : undefined),
+    load: (id) =>
+      id === stubId
+        ? `const route = (options) => ({ options })
+export const createFileRoute = () => route
+export const createRootRoute = route
+const lazy = (importer, name) => {
+  const load = async () => (await importer())[name]
+  return Object.assign(async (...args) => (await load())(...args), { load })
+}
+export const lazyRouteComponent = (importer, name = 'default') => lazy(importer, name)
+export const lazyFn = (importer, name = 'default') => lazy(importer, name)`
+        : undefined,
+  }
+}
+
+/**
+ * The value of a route option of a route module served with
+ * `routerPackageStub`, once its lazy module (if any) loaded.
+ */
+export async function loadRouteOption(value: any): Promise<unknown> {
+  return typeof value?.load === 'function' ? value.load() : value
+}
+
+/**
+ * Starts a dev server (`routerPackageStub` for the router package) on
+ * `routes/page.tsx` holding `route` and imports the route module in the SSR
+ * environment.
+ */
+export async function importRouteModule(
+  route: string,
+  pluginOptions: Partial<Config> = {},
+) {
+  const server = await routerDevServer({
+    pluginOptions,
+    plugins: [routerPackageStub(pluginOptions.target)],
+    files: { 'routes/page.tsx': route },
+  })
+  return server.import('/routes/page.tsx')
+}
+
+/**
+ * Serves `route` as `routes/page.tsx` (`importRouteModule`, with React HMR,
+ * `autoCodeSplitting` and the component and the loader in their own chunks)
+ * and asserts that each export named in `exported` is the value of the given
+ * route options, once loaded.
+ */
+export async function expectExportedRouteOptions(
+  route: string,
+  exported: Record<string, Array<string>>,
+  autoCodeSplitting: boolean,
+) {
+  const routeModule = await importRouteModule(route, {
+    autoCodeSplitting,
+    codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
+  })
+  for (const [name, keys] of Object.entries(exported)) {
+    expect(routeModule).toHaveProperty(name)
+    for (const key of keys) {
+      expect(routeModule[name], `${name} is the ${key} option`).toBe(
+        await loadRouteOption(routeModule.Route.options[key]),
+      )
+    }
+  }
+}
+
+/**
+ * Exported route components that a route module loses when the component is
+ * split (pinned in known-bugs-dev-server.test.ts), for
+ * `expectExportedRouteOptions`.
+ */
+export const exportedComponentsLostWhenSplit = [
+  {
+    name: 'class',
+    declaration: `import { Component } from 'react'
+export class component extends Component { render() { return null } }`,
+    options: 'component',
+    exported: { component: ['component'] },
+  },
+  {
+    name: 'aliased',
+    declaration:
+      'function component() { return null }; export { component as View }',
+    options: 'component',
+    exported: { View: ['component'] },
+  },
+]
+
+/**
+ * Serves a route whose `beforeLoad` and split `loader` call an exported,
+ * overloaded and aliased function, and asserts that the exports and both
+ * options keep working.
+ */
+export async function expectSharedOverloads(autoCodeSplitting: boolean) {
+  const routeModule = await importRouteModule(
+    `import { createFileRoute } from '@tanstack/react-router'
+export function helper(value: string): string
+export function helper(value: number): number
+export function helper(value: string | number) { return value }
+export { helper as helperAlias }
+export const Route = createFileRoute('/page')({
+  component: () => null,
+  beforeLoad: () => helper('before'),
+  loader: () => helper(42),
+})`,
+    {
+      autoCodeSplitting,
+      codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
+    },
+  )
+  expect(routeModule.helperAlias).toBe(routeModule.helper)
+  expect(routeModule.Route.options.beforeLoad()).toBe('before')
+  expect(await routeModule.Route.options.loader()).toBe(42)
 }
 
 /**

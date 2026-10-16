@@ -134,6 +134,7 @@
     "@types/node": ">=20",
     "@tanstack/compiler-test-utils": "workspace:*",
     "@tanstack/vite-config": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",
     "react": "catalog:",
