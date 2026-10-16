@@ -118,9 +118,12 @@ export const fn = base.handler(async () => db.x())
 
 describe('editing a server fn factory (SSR)', () => {
   /**
-   * Like `editFactory` above, in the SSR environment: returns the SSR
-   * transform of `src/a.tsx` after `src/b.ts` becomes a `createServerFn()`
-   * builder.
+   * Like `editFactory` above, in the SSR environment: `src/a.tsx` runs in SSR
+   * while `fn` is a plain function, then `src/b.ts` becomes a
+   * `createServerFn()` builder. Returns what `fn` is in SSR afterwards: its
+   * server fn id, what calling it returns, and what the server fn resolver
+   * (the server-fn router's lookup, which HTTP calls go through) runs for
+   * that id.
    */
   async function editFactorySsr(importFrom: string) {
     const server = await startDevServer({
@@ -135,20 +138,45 @@ export const fn = base.handler(async () => db.x())
 `,
       },
     })
-    expect(await server.transform('/src/a.tsx', 'ssr')).toContain('db.x()')
+    const before = (await server.import('/src/a.tsx')).fn
+    expect(before.functionId).toBeUndefined()
     await server.edit({
       'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
     })
-    return server.transform('/src/a.tsx', 'ssr')
+    const { fn } = await server.import('/src/a.tsx')
+    const { getServerFnById } = await server.import(
+      '#tanstack-start-server-fn-resolver',
+    )
+    const settle = async (run: () => unknown) => {
+      try {
+        return await run()
+      } catch (error) {
+        return `throws: ${(error as Error).message}`
+      }
+    }
+    return {
+      id: typeof fn.functionId,
+      called: await settle(() => fn()),
+      byId: await settle(async () =>
+        (await getServerFnById(fn.functionId, { origin: 'client' }))({}),
+      ),
+    }
+  }
+
+  /** `fn` is a server fn in SSR: it has an id, and runs its handler both ways. */
+  const serverFn = {
+    id: 'string',
+    called: 'MARK_DB_SECRET',
+    byId: 'MARK_DB_SECRET',
   }
 
   // Control for the pin below (same harness).
   test(
-    'SSR: a module importing an edited factory module directly calls the handler through its RPC',
+    'SSR: a module importing an edited factory module directly gets a server fn',
     async () => {
-      expect(await editFactorySsr('./b')).not.toContain('db.x()')
+      expect(await editFactorySsr('./b')).toEqual(serverFn)
     },
     timeout,
   )
@@ -160,8 +188,10 @@ export const base = createServerFn()
   // nodes of the importers two or more imports away are only
   // soft-invalidated, and their previous transform is served.
   // Impact: after a factory module is edited into a server fn builder, an
-  // SSR module importing it through a re-export keeps running the handler
-  // itself (and keeps an RPC stub in the opposite edit) until a restart.
+  // SSR module importing it through a re-export keeps the code compiled
+  // against the old factory until a restart: its `fn` is no server fn (no
+  // id, so no HTTP endpoint, e.g. for a form action), and in the opposite
+  // edit it keeps a server fn that no longer exists.
   // Source: N15 (replaces start-compiler-factories.test.ts "dev: modules
   // reaching a factory through imports and export * are its transitive
   // importers", which only checked the walk).
@@ -169,9 +199,9 @@ export const base = createServerFn()
     { name: 'export *', from: './c' },
     { name: 'an import and an export', from: './d' },
   ])(
-    'SSR: a module importing an edited factory module through a re-export ($name) calls the handler through its RPC',
+    'SSR: a module importing an edited factory module through a re-export ($name) gets a server fn',
     async ({ from }) => {
-      expect(await editFactorySsr(from)).not.toContain('db.x()')
+      expect(await editFactorySsr(from)).toEqual(serverFn)
     },
     timeout,
   )
