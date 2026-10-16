@@ -7,7 +7,7 @@ import path from 'node:path'
 import { createServer, isRunnableDevEnvironment, transformWithOxc } from 'vite'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
-import { buildStart } from './build-harness'
+import { buildStart, startBundlers } from './build-harness'
 import {
   callReportedServerFns,
   clientOnlyError,
@@ -1343,7 +1343,7 @@ exports.run = function (app) {
   )
 })
 
-describe('Vite build', () => {
+describe.each(startBundlers)('%s build', (bundler) => {
   const timeout = 60_000
 
   /** A server-only module whose top-level code marks the bundle it is in. */
@@ -1356,6 +1356,7 @@ export const db = { users: () => 'users' }
     'client: the server-only module of a function only server code uses is not bundled',
     async () => {
       const { client } = await buildStart({
+        bundler,
         files: {
           'db.server.ts': dbModule,
           'fns.ts': `${head}import { db } from './db.server'
@@ -1382,6 +1383,7 @@ export const fn = createServerFn().handler(async () => find())
     'client: the server-only module of a class only server code uses is not bundled',
     async () => {
       const { client } = await buildStart({
+        bundler,
         files: {
           'db.server.ts': dbModule,
           'fns.ts': `${head}import { db } from './db.server'
@@ -1416,23 +1418,27 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
   test(
     'client: a server-only module a type mentions is not bundled',
     async () => {
-      const { client } = await buildStart({ files: typeofFiles(false) })
+      const { client } = await buildStart({
+        bundler,
+        files: typeofFiles(false),
+      })
       expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
     },
     timeout,
   )
 
-  // Bug: the client output keeps the server-only import that a `typeof` type
-  // query still mentions (compiler pin "client: a server-only import last
-  // mentioned by a type alias ..." above); with
-  // `verbatimModuleSyntax`, Vite's TypeScript transform keeps it.
+  // Bug (Vite): the client output keeps the server-only import that a
+  // `typeof` type query still mentions (compiler pin "client: a server-only
+  // import last mentioned by a type alias ..." above); with
+  // `verbatimModuleSyntax`, Vite's TypeScript transform keeps it. Rsbuild's
+  // transform of the same app drops it.
   // Impact: the server-only module's top-level code is bundled and runs in
   // the browser.
   // Source: gap D4 (gaps/dead-code.md), build canary.
-  test.fails(
+  ;(bundler === 'vite' ? test.fails : test)(
     'client: a server-only module a type mentions is not bundled with verbatimModuleSyntax',
     async () => {
-      const { client } = await buildStart({ files: typeofFiles(true) })
+      const { client } = await buildStart({ bundler, files: typeofFiles(true) })
       expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
     },
     timeout,
@@ -1451,6 +1457,7 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
     'SSR: a server fn module is initialised once and shares its state with SSR code',
     async () => {
       const { ssr } = await buildStart({
+        bundler,
         files: {
           'fns.ts': `${head}globalThis.initialised = (globalThis.initialised ?? 0) + 1
 let count = 0
@@ -1498,6 +1505,7 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
    */
   async function callClientAccess() {
     const { client, ssr } = await buildStart({
+      bundler,
       files: clientAccessFiles,
       entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
     })
@@ -1556,18 +1564,20 @@ return {
     timeout,
   )
 
-  // Bug: the production server fn resolver is generated when the SSR build
-  // first loads it, from the server fns found so far. A server fn that only
-  // another server fn's handler (or a middleware `.server()`) calls is found
-  // later, when the SSR build compiles the provider that imports it, so it
-  // is missing from the resolver.
+  // Bug (Vite): the production server fn resolver is generated when the SSR
+  // build first loads it, from the server fns found so far. A server fn that
+  // only another server fn's handler (or a middleware `.server()`) calls is
+  // found later, when the SSR build compiles the provider that imports it, so
+  // it is missing from the resolver. Rsbuild rebuilds the resolver after the
+  // SSR compilation found every server fn.
   // Impact: in production, calling it throws "Server function info not
   // found" (works in dev).
   // Source: issue #7213.
-  test.fails(
+  ;(bundler === 'vite' ? test.fails : test)(
     'SSR: a server fn that only another server fn calls is callable',
     async () => {
       const { ssr } = await buildStart({
+        bundler,
         files: {
           'inner.ts': `${head}export const inner = createServerFn().handler(async () => 'inner')
 `,

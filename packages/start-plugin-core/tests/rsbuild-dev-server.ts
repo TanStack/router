@@ -13,9 +13,9 @@ import { fileURLToPath } from 'node:url'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { onTestFinished } from 'vitest'
 import { registerImportProtection } from '../src/rsbuild/import-protection'
-import importProtectionLoader from '../src/rsbuild/import-protection-loader'
 import { registerStartCompilerTransforms } from '../src/rsbuild/start-compiler-host'
 import { startRuntimeFiles } from './build-harness'
+import { testLoaderFiles, useTestLoaders } from './rsbuild-test-loaders'
 import type { ImportProtectionOptions } from '../src/schema'
 import type {
   RsbuildDevServer,
@@ -23,39 +23,6 @@ import type {
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
-
-/**
- * The compiler host registers its metadata loader by the path of its
- * compiled file, which does not exist when the tests run the TypeScript
- * sources. Rspack loads loaders from disk, so the app gets an equivalent
- * JavaScript loader (start-compiler-metadata-loader.ts).
- */
-const metadataLoader = `module.exports = function (source, map) {
-  const { metadataById } = this.getOptions()
-  const setBuildInfo = this['tanstack.start.setServerFnBuildInfo']
-  if (setBuildInfo) setBuildInfo(metadataById.get(this.resource) ?? null)
-  this.callback(null, source, map)
-}
-`
-
-/**
- * The import-protection loader is registered by the path of its compiled file
- * too, and shares its state with the plugin through its options; the app gets
- * a JavaScript loader that runs the TypeScript loader the tests import.
- */
-const importProtectionLoaderGlobal = '__tanstackStartTestImportProtectionLoader'
-;(globalThis as Record<string, unknown>)[importProtectionLoaderGlobal] =
-  importProtectionLoader
-const delegatingImportProtectionLoader = `module.exports = function (...args) {
-  return globalThis.${importProtectionLoaderGlobal}.apply(this, args)
-}
-`
-
-/** Loaders the app gets in place of the compiled ones, by name. */
-const loaderFiles = {
-  'start-compiler-metadata-loader': 'start-compiler-metadata-loader.cjs',
-  'import-protection-loader': 'import-protection-loader.cjs',
-}
 
 /**
  * Starts an Rsbuild dev server with the Start compiler on an app of `files`
@@ -76,8 +43,7 @@ export function startRsbuildDevServer(
     config: { environments: { client: {} }, ...devServerOptions.config },
     files: {
       ...startRuntimeFiles,
-      'start-compiler-metadata-loader.cjs': metadataLoader,
-      'import-protection-loader.cjs': delegatingImportProtectionLoader,
+      ...testLoaderFiles,
       ...files,
     },
     plugins: ({ root }) => [
@@ -103,23 +69,9 @@ export function startRsbuildDevServer(
               }),
             })
           }
-          api.modifyRspackConfig((config) => {
-            for (const rule of config.module?.rules ?? []) {
-              const uses = rule && typeof rule === 'object' ? rule.use : null
-              for (const use of Array.isArray(uses) ? uses : []) {
-                if (!use || typeof use !== 'object') {
-                  continue
-                }
-                for (const [name, file] of Object.entries(loaderFiles)) {
-                  if (use.loader?.includes(name)) {
-                    use.loader = path.join(root, file)
-                  }
-                }
-              }
-            }
-          })
         },
       },
+      useTestLoaders(root),
     ],
   })
 }
