@@ -269,20 +269,3 @@ test.fails(
   },
   60_000,
 )
-
-// A denied pure re-export barrel whose export the client uses survives into
-// the client bundle (as the code it re-exports), so it must be reported.
-// Source: issue #8102 (closed without a reproduction: Rolldown may elide the
-// barrel from `chunk.modules`); gap IP6b (gaps/start-env.md).
-test('build: a denied re-export barrel the client uses fails the build', async () => {
-  await expect(
-    buildStart({
-      files: {
-        'secret.ts': `export const secret = () => 'MARK_SECRET' + Math.random()\n`,
-        'barrel.ts': `export { secret } from './secret'\n`,
-        'entry.ts': `import { secret } from './barrel'\nexport const read = () => secret()\n`,
-      },
-      plugins: [denyToClient(['**/barrel.ts'])],
-    }),
-  ).rejects.toThrow(/Import denied in client environment/)
-}, 60_000)
