@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildAndRun,
-  compileRouteModules,
-  countAcrossModules,
-  declarationOf,
+  declaredNames,
   expectValidModules,
   head,
   importSources,
@@ -91,8 +89,12 @@ export const Route = createFileRoute('/')({
       (await route.load('component'))(),
       (await route.load('errorComponent'))(),
     ]).toEqual(['<b><i>a</i></b>', '<b><i>a</i></b>'])
-    expect(countAcrossModules(route.modules, declarationOf('A'))).toBe(1)
-    expect(countAcrossModules(route.modules, declarationOf('B'))).toBe(1)
+    for (const name of ['A', 'B']) {
+      const declaring = Object.values(route.modules).filter((code) =>
+        declaredNames(code).has(name),
+      )
+      expect(declaring, name).toHaveLength(1)
+    }
   })
 
   it('keeps one class with a static block and private members', async () => {
@@ -250,23 +252,29 @@ export const Route = createFileRoute('/')({
 describe('split chunks keep reassigned bindings next to their writers', () => {
   // Source: React Router route-chunks-test.ts "reassignment"; babel-dead-code-elimination
   // find-removable-bindings.test.ts "constant violations mark as external"
-  it('moves a binding that only the split component reassigns into its chunk', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import { next } from './next'
-let current = 'initial-marker'
+  it('keeps a binding that only the split component reassigns writable, and its imports out of the route module', async () => {
+    const route = await loadRoute(
+      `${head}import { next } from './next'
+let current = 'initial'
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => {
+    const previous = current
     current = next
-    return <p>{current}</p>
+    return <p>{previous}-{current}</p>
   },
 })
-`)
-    expect(modules.reference).not.toContain('initial-marker')
-    expect(importSources(modules.reference!)).not.toContain('./next')
-    expect(modules['virtual component']).toMatch(declarationOf('current'))
-    expect(modules['virtual component']).toContain('initial-marker')
-    await expectValidModules(modules)
+`,
+      { stubs: { './next': { next: 'next' } } },
+    )
+    expect(importSources(route.modules.reference!)).not.toContain('./next')
+    await expectValidModules(route.modules)
+    const component = await route.load('component')
+    expect([route.options.loader(), component(), component()]).toEqual([
+      'data',
+      '<p>initial-next</p>',
+      '<p>next-next</p>',
+    ])
   })
 
   // Source: Next.js ssg/getStaticProps/should-support-babel-style-memoized-function
@@ -323,8 +331,10 @@ export const Route = createFileRoute('/')({
 
 // Module-level bindings read by route options, across binding kinds,
 // groupings and readers: every reader gets the value, the binding is created
-// once with one identity, and a binding only one module needs is not
-// declared in the others.
+// once with one identity, a function only the component reads is not
+// declared in the route module, and a binding only the loader reads is not
+// declared in the component's chunk. (Where a const or class only the
+// component reads is initialised, and so when, is free.)
 describe('module-level bindings read by route options', () => {
   type Kind = 'const' | 'function' | 'class'
   type Reader = 'loader' | 'component' | 'beforeLoad'
@@ -524,30 +534,28 @@ ${options.join('\n')}
           }
         }
 
-        // A binding only the component reads is not declared in the route
-        // module; one only the loader reads is not in the component's chunk.
-        const componentChunks = Object.keys(route.modules).filter(
-          (label) =>
-            label.startsWith('virtual ') &&
-            label.slice('virtual '.length).split('-').includes('component'),
-        )
+        // A function only the component reads is not declared in the route
+        // module; a binding only the loader reads is not declared in the
+        // component's chunk.
+        const componentChunk = route.isLazy('component')
+          ? route.chunkOf('component')
+          : undefined
         const readBy = (name: string) =>
           (Object.keys(readers) as Array<Reader>).filter((reader) =>
             readers[reader]!.includes(name),
           )
         for (const name of new Set(Object.values(readers).flat())) {
           const readersOfName = readBy(name)
-          if (readersOfName.join() === 'component') {
-            expect(route.modules.reference, name).not.toMatch(
-              declarationOf(name),
+          if (
+            readersOfName.join() === 'component' &&
+            declarations.includes(`function ${name}(`)
+          ) {
+            expect(declaredNames(route.modules.reference!), name).not.toContain(
+              name,
             )
           }
-          if (readersOfName.join() === 'loader') {
-            for (const chunk of componentChunks) {
-              expect(route.modules[chunk], name).not.toMatch(
-                declarationOf(name),
-              )
-            }
+          if (readersOfName.join() === 'loader' && componentChunk) {
+            expect(declaredNames(componentChunk), name).not.toContain(name)
           }
         }
       }

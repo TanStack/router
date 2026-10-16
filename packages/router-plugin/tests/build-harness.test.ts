@@ -71,20 +71,27 @@ describe.each(bundlers.filter((bundler) => bundler !== 'esbuild'))(
       timeout,
     )
 
-    // The router plugin reports what it cannot split with `console.warn`
+    // The router plugin reports what it cannot split with `console.warn`;
+    // here a plugin option the build calls warns.
     test('records console warnings of the build', async () => {
       const app = await build({
         bundler,
-        files: routeApp(`${head}export function Page() {
-  return <p>page</p>
-}
-export const Route = createFileRoute('/')({
-  component: Page,
-  errorComponent: () => <p>error</p>,
+        pluginOptions: {
+          codeSplittingOptions: {
+            splitBehavior: ({ routeId }) => {
+              console.warn(`MARK_BUILD_WARNING ${routeId}`)
+              return undefined
+            },
+          },
+        },
+        files: routeApp(`${head}export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
 })
 `),
       })
-      expect(app.consoleMessages).toEqual([expect.stringContaining('Page')])
+      expect(app.consoleMessages).toContainEqual(
+        expect.stringContaining('MARK_BUILD_WARNING /'),
+      )
     })
   },
 )

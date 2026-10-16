@@ -1,15 +1,16 @@
-import { transformWithOxc } from 'vite'
+import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   compileRouteModules,
   componentChunk,
   evaluateModule,
   expectValidModules,
-  exportedNames,
   head,
   importSources,
   importedNames,
   loadRoute,
+  routeSpecifier,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
@@ -18,8 +19,8 @@ describe('each module imports only the specifiers it reads', () => {
   // identifiers"; babel-dead-code-elimination dead-code-elimination.test.ts
   // "import" > "mixed default and named" and "namespace"
   it('splits default, named and namespace specifiers between the modules', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import defaultMessage, { targetMessage, otherMessage } from './messages'
+    const route = await loadRoute(
+      `${head}import defaultMessage, { targetMessage, otherMessage } from './messages'
 import * as messages from './messages'
 import other, * as ns from './other'
 const getDefault = () => defaultMessage
@@ -34,59 +35,85 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <div>{getNamespaced()}</div>,
   notFoundComponent: () => <div>{getTarget()}</div>,
 })
-`)
-    const imports = (module: string, source: string) =>
-      importedNames(modules[module]!, source)
-    expect(imports('reference', './messages')).toEqual(['otherMessage'])
-    expect(imports('reference', './other')).toEqual(['default'])
-    expect(imports('virtual component', './messages')).toEqual(['default'])
-    expect(imports('virtual component', './other')).toEqual(['*'])
-    expect(imports('virtual errorComponent', './messages')).toEqual(['*'])
-    expect(imports('virtual notFoundComponent', './messages')).toEqual([
-      'targetMessage',
+`,
+      {
+        stubs: {
+          './messages': {
+            default: 'default',
+            targetMessage: 'target',
+            otherMessage: 'other',
+            namespaced: 'namespaced',
+          },
+          './other': { default: 'otherDefault', x: 'x' },
+        },
+      },
+    )
+    // The route module imports nothing only the split components read, and
+    // no split chunk imports what only the loader reads.
+    expect(importedNames(route.modules.reference!, './messages')).toEqual([
+      'otherMessage',
     ])
-    await expectValidModules(modules)
+    expect(importedNames(route.modules.reference!, './other')).toEqual([
+      'default',
+    ])
+    for (const option of ['component', 'errorComponent', 'notFoundComponent']) {
+      const chunk = route.chunkOf(option)
+      expect(importedNames(chunk, './messages'), option).not.toContain(
+        'otherMessage',
+      )
+      expect(importedNames(chunk, './other'), option).not.toContain('default')
+    }
+    await expectValidModules(route.modules)
+    expect([
+      route.options.loader(),
+      (await route.load('component'))(),
+      (await route.load('errorComponent'))(),
+      (await route.load('notFoundComponent'))(),
+    ]).toEqual([
+      ['other', 'otherDefault'],
+      '<div>defaultx</div>',
+      '<div>namespaced</div>',
+      '<div>target</div>',
+    ])
   })
 
   it('moves a specifier with a string name into the chunk', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import { "kebab-name" as Kebab } from './icons'
+    const route = await loadRoute(
+      `${head}import { "kebab-name" as Kebab } from './icons'
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <Kebab />,
 })
-`)
-    expect(importedNames(modules['virtual component']!, './icons')).toEqual([
-      'kebab-name',
-    ])
-    expect(importSources(modules.reference!)).not.toContain('./icons')
-    await expectValidModules(modules)
+`,
+      { stubs: { './icons': { 'kebab-name': () => 'kebab' } } },
+    )
+    expect(importSources(route.modules.reference!)).not.toContain('./icons')
+    await expectValidModules(route.modules)
+    expect((await route.load('component'))()).toBe('kebab')
   })
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "import" >
   // "mixed default and named: none used" and "side-effect"
-  it('removes an import whose specifiers all moved instead of leaving a side-effect import', async () => {
-    const code = `${head}import a, { b } from 'pkg'
+  it.each([{ hmr: false }, { hmr: true }])(
+    'removes an import whose specifiers all moved instead of leaving a side-effect import (hmr: $hmr)',
+    async ({ hmr }) => {
+      // React HMR rewrites the route module before unused code is removed.
+      const route = await loadRoute(
+        `${head}import a, { b } from 'pkg'
 import './styles.css'
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{a}{b}</p>,
 })
-`
-    const { modules } = compileRouteModules(code)
-    // React HMR rewrites the reference module before unused code is removed.
-    const hmrReference = compileRouteModules(code, { hmr: true }).modules
-      .reference!
-    for (const reference of [modules.reference!, hmrReference]) {
-      expect(importSources(reference)).toContain('./styles.css')
-      expect(importSources(reference)).not.toContain('pkg')
-    }
-    expect(importedNames(modules['virtual component']!, 'pkg')).toEqual([
-      'b',
-      'default',
-    ])
-    await expectValidModules(modules)
-  })
+`,
+        { hmr, stubs: { pkg: { default: 'a', b: 'b' }, './styles.css': {} } },
+      )
+      expect(importSources(route.modules.reference!)).toContain('./styles.css')
+      expect(importSources(route.modules.reference!)).not.toContain('pkg')
+      await expectValidModules(route.modules)
+      expect((await route.load('component'))()).toBe('<p>ab</p>')
+    },
+  )
 
   // Import attributes change what a module is (`type: 'json'`, a bundler
   // macro), so they move with the import.
@@ -98,9 +125,25 @@ export const Route = createFileRoute('/')({
 })
 `)
     expect(importSources(modules.reference!)).not.toContain('./test')
-    expect(modules['virtual component']).toMatch(
-      /import\s*\{\s*test\s*\}\s*from\s*["']\.\/test["']\s*with\s*\{\s*type:\s*["']macro["']\s*\}/,
+    // Every module that imports `./test` imports it with the attribute.
+    const attributes = Object.values(modules).flatMap((code) =>
+      parseSync('module.tsx', code, { sourceType: 'module' })
+        .program.body.filter(
+          (statement) =>
+            statement.type === 'ImportDeclaration' &&
+            statement.source.value === './test',
+        )
+        .map((statement: any) =>
+          Object.fromEntries(
+            statement.attributes.map((attribute: any) => [
+              attribute.key.name ?? attribute.key.value,
+              attribute.value.value,
+            ]),
+          ),
+        ),
     )
+    expect(attributes.length).toBeGreaterThan(0)
+    expect(attributes).toEqual(attributes.map(() => ({ type: 'macro' })))
     await expectValidModules(modules)
   })
 
@@ -137,12 +180,12 @@ export const Route = createFileRoute('/')({
     { name: 'split chunk', compile: componentChunk },
     {
       name: 'route module compiled for HMR',
-      compile: (code: string) => transformWithRouteHmrPlugin(code),
+      compile: async (code: string) => transformWithRouteHmrPlugin(code),
     },
   ])(
     'keeps the React import of the $name for classic JSX',
     async ({ compile }) => {
-      const output = compile(`import * as React from 'react'
+      const output = await compile(`import * as React from 'react'
 ${head}function Page({ title = 'classic' }: { title?: React.ReactNode }) {
   return <p>{title}</p>
 }
@@ -151,19 +194,20 @@ export const Route = createFileRoute('/')({ component: Page })
       const { code } = await transformWithOxc(output, 'module.tsx', {
         jsx: { runtime: 'classic' },
       })
-      expect(importedNames(code, 'react')).toEqual(['*'])
+      // `React.createElement` reads an imported `React`.
+      expect(await getModuleErrors(code)).toEqual([])
     },
   )
 
   it('keeps the React import of a split chunk with inline JSX when only a top-level type reads React', async () => {
-    const chunk = componentChunk(`import * as React from 'react'
+    const chunk = await componentChunk(`import * as React from 'react'
 ${head}type Title = React.ReactNode
 export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
 `)
     const { code } = await transformWithOxc(chunk, 'module.tsx', {
       jsx: { runtime: 'classic' },
     })
-    expect(importedNames(code, 'react')).toEqual(['*'])
+    expect(await getModuleErrors(code)).toEqual([])
   })
 })
 
@@ -226,7 +270,9 @@ export default ${declaration}
     },
   )
 
-  it('stay exported through an export list next to bindings the route module shares', async () => {
+  // Spec: what other modules import from the route file keeps working, as
+  // the instances the route uses (not the route module's export list).
+  it('stay importable through an export list next to bindings the route module shares', async () => {
     const route = await loadRoute(
       `${head}import { createStore } from './store'
 const store = createStore()
@@ -239,8 +285,10 @@ export { Route, title }
 `,
       { stubs: { './store': { createStore: () => ({ get: () => 'value' }) } } },
     )
-    expect(exportedNames(route.modules.reference!)).toEqual(['Route', 'title'])
-    expect(route.exports.title).toBe('title')
+    const other = await route.importFromRoute(
+      `export { Route, title } from '${routeSpecifier}'`,
+    )
+    expect([other.title, other.Route]).toEqual(['title', route.Route])
     expect([route.options.loader(), (await route.load('component'))()]).toEqual(
       ['value', '<p>value</p>'],
     )
@@ -287,10 +335,13 @@ export const Route = createFileRoute('/')({
   },
 })
 `)
-    expect(exportedNames(route.modules.reference!)).toEqual(['Route', 'a', 'b'])
+    const other = await route.importFromRoute(
+      `import { a, b } from '${routeSpecifier}'
+export const read = () => [a.n, b.n]`,
+    )
     expect((await route.load('component'))()).toBe('<div>11</div>')
-    // The component updated the object the route module exports.
-    expect(route.exports.a.n).toBe(1)
+    // The component updated the object other modules import.
+    expect(other.read()).toEqual([1, 10])
     await expectValidModules(route.modules)
   })
 
@@ -316,8 +367,9 @@ export const Route = createFileRoute('/')({
     ])
   })
 
-  it('keep module-level re-exports in the reference module', async () => {
-    const { modules } = compileRouteModules(`${head}export * from './lib'
+  it('keep module-level re-exports importable', async () => {
+    const route = await loadRoute(
+      `${head}export * from './lib'
 export * as lib from './lib'
 export {}
 const cache = new Map()
@@ -325,10 +377,18 @@ export const Route = createFileRoute('/')({
   loader: () => cache.size,
   component: () => <div>{cache.size}</div>,
 })
-`)
-    expect(modules.reference).toMatch(/export \* from ['"]\.\/lib['"]/)
-    expect(modules.reference).toMatch(/export \* as lib from ['"]\.\/lib['"]/)
-    await expectValidModules(modules)
+`,
+      { stubs: { './lib': { value: 'lib value' } } },
+    )
+    const other = await route.importFromRoute(
+      `import { value, lib } from '${routeSpecifier}'
+export const read = () => [value, lib.value]`,
+    )
+    expect(other.read()).toEqual(['lib value', 'lib value'])
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      [0, '<div>0</div>'],
+    )
+    await expectValidModules(route.modules)
   })
 
   // An exported split option keeps working and keeps its identity, the other
@@ -571,20 +631,23 @@ export const Route = createFileRoute('/')({
     )
   })
 
-  it('keeps the namespace import that an import alias refers to', () => {
-    const chunk = componentChunk(`${head}import * as lib from './lib'
+  it('keeps the namespace import that an import alias refers to', async () => {
+    const route = await loadRoute(
+      `${head}import * as lib from './lib'
 import Helper = lib.Helper
 export const Route = createFileRoute('/')({
   component: () => <div>{Helper.x}</div>,
 })
-`)
-    expect(importedNames(chunk, './lib')).toEqual(['*'])
-    expect(chunk).toMatch(/\bHelper\s*=\s*lib\.Helper\b/)
+`,
+      { stubs: { './lib': { Helper: { x: 'helper' } } } },
+    )
+    await expectValidModules(route.modules)
+    expect((await route.load('component'))()).toBe('<div>helper</div>')
   })
 
   // Source: Qwik optimizer test.rs example_ts_enums, example_exports
   it('gives the split component the enum and the overloaded function it uses', async () => {
-    const { modules } = compileRouteModules(`${head}enum Tone { Loud = 'LOUD' }
+    const route = await loadRoute(`${head}enum Tone { Loud = 'LOUD' }
 function label(value: string): string
 function label(value: unknown) { return 'label:' + String(value) }
 export const Route = createFileRoute('/')({
@@ -592,9 +655,8 @@ export const Route = createFileRoute('/')({
   component: () => <p>{[Tone.Loud, label('x')].join('|')}</p>,
 })
 `)
-    await expectValidModules(modules)
-    const chunk = await evaluateModule(modules['virtual component']!)
-    expect(chunk.component!()).toBe('<p>LOUD|label:x</p>')
+    await expectValidModules(route.modules)
+    expect((await route.load('component'))()).toBe('<p>LOUD|label:x</p>')
   })
 
   it.each([
@@ -623,15 +685,14 @@ class Item extends Base {
   ])(
     'gives the split component $name it uses',
     async ({ setup, render, expected }) => {
-      const { modules } = compileRouteModules(`${head}${setup}
+      const route = await loadRoute(`${head}${setup}
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{${render}}</p>,
 })
 `)
-      await expectValidModules(modules)
-      const chunk = await evaluateModule(modules['virtual component']!)
-      expect(chunk.component!()).toBe(`<p>${expected}</p>`)
+      await expectValidModules(route.modules)
+      expect((await route.load('component'))()).toBe(`<p>${expected}</p>`)
     },
   )
 
@@ -658,10 +719,22 @@ export const Route = createFileRoute('/posts')({
   component: () => <p>posts</p>,
 })
 `
-      const { modules } = compileRouteModules(code)
-      expect(exportedNames(modules.reference!)).toContain('Post')
-      expect(exportedNames(transformWithRouteHmrPlugin(code))).toContain('Post')
-      await expectValidModules(modules)
+      const stubs = {
+        './post-values': { Post: (id: string) => ({ id }) },
+      }
+      const route = await loadRoute(code, { stubs })
+      await expectValidModules(route.modules)
+      const other = await route.importFromRoute(
+        `export { Post } from '${routeSpecifier}'`,
+      )
+      expect(other.Post('1')).toEqual({ id: '1' })
+      const hmr = await evaluateModule(transformWithRouteHmrPlugin(code), {
+        ...stubs,
+        '@tanstack/react-router': {
+          createFileRoute: () => (options: unknown) => ({ options }),
+        },
+      })
+      expect(hmr.Post!('2')).toEqual({ id: '2' })
     },
   )
 

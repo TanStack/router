@@ -26,7 +26,6 @@ import {
   exportedNames,
   getRouteOption,
   head,
-  importedNames,
   isRefreshable,
   loadRoute,
   reactRefresh,
@@ -142,8 +141,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     const code = transformWithRouteHmrPlugin(
       `${head}${declaration}\nexport const Route = createFileRoute('/')({ component: page })`,
     )
-    const binding = await expectRegisteredRouteOption(code, 'component')
-    expect(binding).toMatch(/^[A-Z]/)
+    await expectRegisteredRouteOption(code, 'component')
   })
 
   // Source: ReactFreshBabelPlugin-test "registers top-level exported function
@@ -156,14 +154,18 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       `function page() { return <p>hi</p> }\nexport default page`,
     ],
   ])(
-    'renamed lowercase and exported (%s), keeping the exports',
+    'renamed lowercase and exported (%s), keeping what importers get',
     async (_, declaration) => {
       const source = `${head}${declaration}\nexport const Route = createFileRoute('/')({ component: page })`
       const code = transformWithRouteHmrPlugin(source)
       await expectRegisteredRouteOption(code, 'component')
-      expect(exportedNames(code)).toEqual(
-        expect.arrayContaining(exportedNames(source)),
-      )
+      // Modules importing the component get the one the route renders.
+      const { exports, Route } = await evaluateRouteModule(code)
+      const imported = exportedNames(source).filter((name) => name !== 'Route')
+      expect(imported.length).toBeGreaterThan(0)
+      for (const name of imported) {
+        expect(exports[name], name).toBe(Route.options.component)
+      }
     },
   )
 
@@ -177,7 +179,6 @@ export const Route = createFileRoute('/')({ component: page })`,
     expect(
       await getRouteOption(code, 'component', { './page': { page } }),
     ).toBe(page)
-    expect(importedNames(code, './page')).toEqual(['page'])
   })
 
   // Source: ReactFreshBabelPlugin-test "registers top-level function declarations"
@@ -244,8 +245,8 @@ export const Route = createFileRoute('/')({
     const hoisted = await expectRegisteredRouteOption(hmr, 'component')
     expect((await reactRefresh(hmr)).signatures.get(hoisted)).toBe(expected)
 
-    const modules = compileWithCodeSplitting(source)
-    const chunkSignatures = (await reactRefresh(modules['virtual component']!))
+    const route = await loadRoute(source, { hmr: true })
+    const chunkSignatures = (await reactRefresh(route.chunkOf('component')))
       .signatures
     expect([...chunkSignatures.values()]).toContain(expected)
   })

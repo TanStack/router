@@ -2,42 +2,23 @@ import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
   countAcrossModules,
-  declarationOf,
+  declaredNames,
   evaluateModule,
   expectValidModules,
   head,
   importSources,
   importedNames,
   loadRoute,
-  routeModuleSources,
+  routeSpecifier,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
 /**
- * Whether a module declares `name` or imports it from another module the
- * code splitter emits for the route.
+ * The route compiled without and with React HMR: HMR rewrites the route
+ * options (hoisted components, refresh anchor) before dead code is removed,
+ * so the removal runs on a different program.
  */
-function binds(module: string, name: string) {
-  return (
-    declarationOf(name).test(module) ||
-    routeModuleSources(module).some((source) =>
-      importedNames(module, source).includes(name),
-    )
-  )
-}
-
-/**
- * The reference module, compiled without and with React HMR: HMR rewrites the
- * route options (hoisted components, refresh anchor) before dead code is
- * removed, so the removal runs on a different program.
- */
-function referenceModules(code: string) {
-  return {
-    reference: compileRouteModules(code).modules.reference!,
-    'reference with HMR': compileRouteModules(code, { hmr: true }).modules
-      .reference!,
-  }
-}
+const hmrModes = [{ hmr: false }, { hmr: true }]
 
 /**
  * Renders the split component the way an app loads it: the route module (and
@@ -52,51 +33,82 @@ async function renderSplitComponent(code: string) {
 }
 
 describe('the reference module only drops code that splitting left unused', () => {
-  it.each([
-    {
-      name: 'a store subscription that unsubscribes itself',
-      setup: `import { store } from './store'
+  describe.each(hmrModes)('with hmr: $hmr', ({ hmr }) => {
+    it.each([
+      {
+        name: 'a store subscription that unsubscribes itself',
+        setup: `import { store } from './store'
 const unsubscribe = store.subscribe(() => {
   if (store.state.done) unsubscribe()
 })`,
-      declared: ['unsubscribe'],
-    },
-    {
-      name: 'mutually-referencing declarations',
-      setup: `import { createPersister } from './persist'
+        calls: ['subscribe'],
+      },
+      {
+        name: 'mutually-referencing declarations',
+        setup: `import { createPersister } from './persist'
 const persister = createPersister({ onRestore: () => restore() })
 function restore() {
   persister.restore()
 }`,
-      declared: ['persister', 'restore'],
-    },
-    {
-      // A reference cycle longer than two declarations: d closes it
-      name: 'a reference cycle of four declarations',
-      setup: `import { register } from './registry'
+        calls: ['createPersister', 'restore'],
+      },
+      {
+        // A reference cycle longer than two declarations: d closes it
+        name: 'a reference cycle of four declarations',
+        setup: `import { register } from './registry'
 const a = register(() => b)
 const b = register(() => c)
 const c = register(() => d)
 const d = register(() => a)`,
-      declared: ['a', 'b', 'c', 'd'],
-    },
-  ])(
-    'keeps $name that nothing used before splitting',
-    async ({ setup, declared }) => {
-      const code = `${head}${setup}
+        calls: ['register', 'register', 'register', 'register'],
+      },
+    ])(
+      'keeps $name that nothing used before splitting',
+      async ({ setup, calls: expected }) => {
+        // Each stub calls back what it is given, so a kept declaration that
+        // lost what it reads throws.
+        const calls: Array<string> = []
+        const route = await loadRoute(
+          `${head}${setup}
 export const Route = createFileRoute('/')({ component: () => <div /> })
-`
-      const modules = referenceModules(code)
-      // The validator does not report references to undeclared names. A
-      // binding the split component reads may come from the shared module.
-      for (const [module, reference] of Object.entries(modules)) {
-        for (const name of declared) {
-          expect(binds(reference, name), `${module} binds ${name}`).toBe(true)
-        }
-      }
-      await expectValidModules(modules)
-    },
-  )
+`,
+          {
+            hmr,
+            stubs: {
+              './store': {
+                store: {
+                  state: { done: true },
+                  subscribe: (listener: () => void) => {
+                    calls.push('subscribe')
+                    queueMicrotask(listener)
+                    return () => {}
+                  },
+                },
+              },
+              './persist': {
+                createPersister: ({ onRestore }: { onRestore: () => void }) => {
+                  calls.push('createPersister')
+                  queueMicrotask(onRestore)
+                  return { restore: () => calls.push('restore') }
+                },
+              },
+              './registry': {
+                register: (read: () => unknown) => {
+                  calls.push('register')
+                  queueMicrotask(read)
+                  return read
+                },
+              },
+            },
+          },
+        )
+        await new Promise((resolve) => setTimeout(resolve))
+        expect(calls).toEqual(expected)
+        await expectValidModules(route.modules)
+        expect((await route.load('component'))()).toBe('<div></div>')
+      },
+    )
+  })
 
   // A declaration that only an unused local inside it, or an uncalled
   // function, reads is still live code: its initializer runs when the route
@@ -104,13 +116,11 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
   // adapted from @babel/plugin-proposal-decorators
   // 2023-11-misc/destructuring-transform-integration and TypeScript's
   // conformance test classes/propertyMemberDeclarations/autoAccessor10.ts.
-  describe.each([{ hmr: false }, { hmr: true }])(
-    'with hmr: $hmr',
-    ({ hmr }) => {
-      it.each([
-        {
-          name: 'declarations only an unused local inside them reads',
-          setup: `const plugin = {
+  describe.each(hmrModes)('with hmr: $hmr', ({ hmr }) => {
+    it.each([
+      {
+        name: 'declarations only an unused local inside them reads',
+        setup: `const plugin = {
   id: register('plugin'),
   describe() {
     const self = plugin
@@ -126,44 +136,44 @@ class Widget {
     return 'widget'
   }
 }`,
-          registered: ['plugin', 'widget'],
-        },
-        {
-          name: 'a declaration only an uncalled function reads, the function reading itself through a local',
-          setup: `const effect = register('effect')
+        registered: ['plugin', 'widget'],
+      },
+      {
+        name: 'a declaration only an uncalled function reads, the function reading itself through a local',
+        setup: `const effect = register('effect')
 function helper() {
   const self = helper
   return effect
 }`,
-          registered: ['effect'],
-        },
-      ])(
-        'runs the initializers of $name when the route module loads',
-        async ({ setup, registered }) => {
-          const calls: Array<string> = []
-          const route = await loadRoute(
-            `${head}import { register } from './registry'
+        registered: ['effect'],
+      },
+    ])(
+      'runs the initializers of $name when the route module loads',
+      async ({ setup, registered }) => {
+        const calls: Array<string> = []
+        const route = await loadRoute(
+          `${head}import { register } from './registry'
 ${setup}
 export const Route = createFileRoute('/')({ component: () => <div /> })
 `,
-            {
-              hmr,
-              stubs: {
-                './registry': { register: (name: string) => calls.push(name) },
-              },
+          {
+            hmr,
+            stubs: {
+              './registry': { register: (name: string) => calls.push(name) },
             },
-          )
-          expect(calls).toEqual(registered)
-          expect((await route.load('component'))()).toBe('<div></div>')
-        },
-      )
+          },
+        )
+        expect(calls).toEqual(registered)
+        expect((await route.load('component'))()).toBe('<div></div>')
+      },
+    )
 
-      // Deleting the declaration would also delete the ReferenceError its
-      // initializer throws (`later` is read before its declaration).
-      it('keeps the ReferenceError of an initializer that reads a let before its declaration', async () => {
-        await expect(
-          loadRoute(
-            `${head}const plugin = {
+    // Deleting the declaration would also delete the ReferenceError its
+    // initializer throws (`later` is read before its declaration).
+    it('keeps the ReferenceError of an initializer that reads a let before its declaration', async () => {
+      await expect(
+        loadRoute(
+          `${head}const plugin = {
   id: later,
   describe() {
     const self = plugin
@@ -173,12 +183,11 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
 let later = 1
 export const Route = createFileRoute('/')({ component: () => <div /> })
 `,
-            { hmr },
-          ),
-        ).rejects.toThrow(/\blater\b/)
-      })
-    },
-  )
+          { hmr },
+        ),
+      ).rejects.toThrow(/\blater\b/)
+    })
+  })
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "only
   // eliminates newly unreferenced identifiers", "unexported circular references"
@@ -199,44 +208,47 @@ export const Route = createFileRoute('/')({ component: () => <p>{helper()}</p> }
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "SCC dead
   // code elimination" > "arrow functions in mutual recursion -> removed"
-  it('moves mutually recursive helpers only the component uses, and their imports, into its chunk', async () => {
-    const code = `${head}import { dep } from './dep'
+  it.each(hmrModes)(
+    'moves mutually recursive helpers only the component uses, and their imports, out of the route module (hmr: $hmr)',
+    async ({ hmr }) => {
+      const route = await loadRoute(
+        `${head}import { dep } from './dep'
 const ping = (n: number): number => (n > 0 ? pong(n - 1) : 0)
 const pong = function (n: number): number { return n > 0 ? ping(n - 1) : dep }
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{ping(3)}</p>,
 })
-`
-    for (const reference of Object.values(referenceModules(code))) {
-      expect(reference).not.toMatch(declarationOf('ping'))
-      expect(reference).not.toMatch(declarationOf('pong'))
+`,
+        { hmr, stubs: { './dep': { dep: 'dep' } } },
+      )
+      const reference = route.modules.reference!
+      expect(declaredNames(reference)).not.toContain('ping')
+      expect(declaredNames(reference)).not.toContain('pong')
       expect(importSources(reference)).not.toContain('./dep')
-    }
-    const { modules } = compileRouteModules(code)
-    expect(modules['virtual component']).toMatch(declarationOf('ping'))
-    expect(modules['virtual component']).toMatch(declarationOf('pong'))
-    await expectValidModules(modules)
-  })
+      await expectValidModules(route.modules)
+      expect((await route.load('component'))()).toBe('<p>dep</p>')
+    },
+  )
 
   // Source: Next.js ssg/getStaticProps/should-remove-re-exported-function-declarations-dependents-variables-functions-imports
   it('keeps requesting a module whose specifiers nothing used before splitting', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import { used, preUnused } from 'bar'
+    const route = await loadRoute(
+      `${head}import { used, preUnused } from 'bar'
 const b = function apples() { return used }
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{b()}</p>,
 })
-`)
+`,
+      { stubs: { bar: { used: 'used', preUnused: 'unused' } } },
+    )
     // The route module still loads `bar` (as a bare import or with the
     // unused specifier), but no longer for `used`.
-    expect(importSources(modules.reference!)).toContain('bar')
-    expect(importedNames(modules.reference!, 'bar')).not.toContain('used')
-    expect(importedNames(modules['virtual component']!, 'bar')).toContain(
-      'used',
-    )
-    await expectValidModules(modules)
+    expect(importSources(route.modules.reference!)).toContain('bar')
+    expect(importedNames(route.modules.reference!, 'bar')).not.toContain('used')
+    await expectValidModules(route.modules)
+    expect((await route.load('component'))()).toBe('<p>used</p>')
   })
 
   // That `track` runs once too is pinned in known-bugs-code-splitter.test.ts
@@ -244,6 +256,7 @@ export const Route = createFileRoute('/')({
   // once"): split chunks still copy it.
   it('creates a store the split component shares once, next to a side effect nothing reads', async () => {
     let created = 0
+    let tracked = 0
     const route = await loadRoute(
       `${head}import { createStore, track } from './store'
 const store = createStore()
@@ -260,12 +273,17 @@ export const Route = createFileRoute('/')({
               const id = ++created
               return { get: () => id }
             },
-            track: (listener: () => void) => listener,
+            track: (listener: () => void) => {
+              tracked++
+              return listener
+            },
           },
         },
       },
     )
     await expectValidModules(route.modules)
+    // The side effect runs when the route module loads.
+    expect(tracked).toBe(1)
     expect([
       route.options.beforeLoad(),
       (await route.load('component'))(),
@@ -275,21 +293,34 @@ export const Route = createFileRoute('/')({
 
   // Source: React Router route-chunks-test.ts "shared imports across chunks but
   // not main chunk with shared side effect usage"
-  it('runs a top-level call only in the reference module, even when the chunks import its callee', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import { shared } from './shared'
-shared('side-effect-marker')
+  it('runs a top-level call once, with the route module, even when the chunks import its callee', async () => {
+    const calls: Array<string> = []
+    const route = await loadRoute(
+      `${head}import { shared } from './shared'
+shared('top-level')
 export const Route = createFileRoute('/')({
   component: () => <div>{shared('component')}</div>,
   errorComponent: () => <div>{shared('error')}</div>,
 })
-`)
-    expect(modules.reference).toContain('side-effect-marker')
-    expect(modules['virtual component']).not.toContain('side-effect-marker')
-    expect(modules['virtual errorComponent']).not.toContain(
-      'side-effect-marker',
+`,
+      {
+        stubs: {
+          './shared': {
+            shared: (label: string) => {
+              calls.push(label)
+              return label
+            },
+          },
+        },
+      },
     )
-    await expectValidModules(modules)
+    expect(calls).toEqual(['top-level'])
+    expect([
+      (await route.load('component'))(),
+      (await route.load('errorComponent'))(),
+    ]).toEqual(['<div>component</div>', '<div>error</div>'])
+    expect(calls).toEqual(['top-level', 'component', 'error'])
+    await expectValidModules(route.modules)
   })
 
   // Source: #8504 (differential fuzzing). Other unused declarations with
@@ -326,17 +357,28 @@ export const Route = createFileRoute('/')({
   it.each([
     {
       name: 'the reference module',
-      compile: (code: string) => compileRouteModules(code).modules.reference!,
+      load: async (code: string, stubs: Record<string, any>) =>
+        (await loadRoute(code, { stubs })).modules.reference!,
     },
     {
       name: 'a route module compiled for HMR',
-      compile: (code: string) => transformWithRouteHmrPlugin(code),
+      load: async (code: string, stubs: Record<string, any>) => {
+        const output = transformWithRouteHmrPlugin(code)
+        await evaluateModule(output, {
+          ...stubs,
+          '@tanstack/react-router': {
+            createFileRoute: () => (options: unknown) => ({ options }),
+          },
+        })
+        return output
+      },
     },
   ])(
-    'keeps a declaration only referenced from types in $name',
-    async ({ compile }) => {
-      const output =
-        compile(`${head}import { registerAnalytics } from './analytics'
+    'runs a declaration only referenced from types in $name',
+    async ({ load }) => {
+      const registered: Array<string> = []
+      const output = await load(
+        `${head}import { registerAnalytics } from './analytics'
 const analytics = registerAnalytics('/posts')
 declare module './analytics' {
   interface Registry {
@@ -346,9 +388,14 @@ declare module './analytics' {
 export const Route = createFileRoute('/posts')({
   component: () => <p>posts</p>,
 })
-`)
-      expect(output).toMatch(declarationOf('analytics'))
-      expect(output).toContain('registerAnalytics(')
+`,
+        {
+          './analytics': {
+            registerAnalytics: (path: string) => registered.push(path),
+          },
+        },
+      )
+      expect(registered).toEqual(['/posts'])
       await expectValidModules({ output })
     },
   )
@@ -389,9 +436,9 @@ export const Route = createFileRoute('/')({
   component: () => ${render},
 })
 `
-      const { modules } = compileRouteModules(code)
-      await expectValidModules(modules)
-      expect(await renderSplitComponent(code)).toBe(rendered)
+      const route = await loadRoute(code)
+      await expectValidModules(route.modules)
+      expect((await route.load('component'))()).toBe(rendered)
     },
   )
 
@@ -422,7 +469,7 @@ function Unused() {
   // Bundlers drop unused calls of a function annotated #__NO_SIDE_EFFECTS__,
   // so the annotation must move with the function, also when every output
   // module repeats a file-level pragma comment.
-  it('keeps the #__NO_SIDE_EFFECTS__ annotation of a function moved into the chunk in a file with a pragma', () => {
+  it('keeps the #__NO_SIDE_EFFECTS__ annotation of a function in every module that declares it, in a file with a pragma', () => {
     const { modules } =
       compileRouteModules(`/** @jsxImportSource @emotion/react */
 ${head}/* #__NO_SIDE_EFFECTS__ */ function makeLabel() { return 'label' }
@@ -430,9 +477,15 @@ export const Route = createFileRoute('/')({
   component: () => <p>{makeLabel()}</p>,
 })
 `)
-    expect(modules['virtual component']).toMatch(
-      /\/\*\s*[#@]__NO_SIDE_EFFECTS__\s*\*\/\s*function makeLabel\(/,
+    const declaring = Object.entries(modules).filter(([, code]) =>
+      declaredNames(code).has('makeLabel'),
     )
+    expect(declaring.length).toBeGreaterThan(0)
+    for (const [name, code] of declaring) {
+      expect(code, name).toMatch(
+        /\/\*\s*[#@]__NO_SIDE_EFFECTS__\s*\*\/\s*function makeLabel\(/,
+      )
+    }
   })
 
   // Source: React Compiler hook-ref-callback.js and
@@ -473,16 +526,15 @@ export const Route = createFileRoute('/')({
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "object
   // pattern" > "within function param"
   it('keeps empty destructuring parameters of helpers moved into the chunk', async () => {
-    const { modules } =
-      compileRouteModules(`${head}function f(a: any, {}: any) { return a }
+    const route =
+      await loadRoute(`${head}function f(a: any, {}: any) { return a }
 const g = (a: any, []: any) => a
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{f.length}{g.length}</p>,
 })
 `)
-    const chunk = await evaluateModule(modules['virtual component']!)
-    expect(chunk.component!()).toBe('<p>22</p>')
+    expect((await route.load('component'))()).toBe('<p>22</p>')
   })
 
   // Source: React Router remove-exports-test.ts "iife with dependencies"
@@ -514,7 +566,7 @@ export const Route = createFileRoute('/')({
     const { modules } = route
     expect(importSources(modules.reference!)).not.toContain('removed-lib')
     for (const name of Object.keys(modules)) {
-      if (name.startsWith('virtual ')) {
+      if (name.startsWith('lazy ')) {
         expect(importSources(modules[name]!), name).not.toContain('kept-lib')
       }
     }
@@ -541,23 +593,34 @@ export const Route = createFileRoute('/')({
   ])(
     'gives each of the $name of one statement to the module that reads it',
     async ({ declarations }) => {
-      const { modules } =
-        compileRouteModules(`${head}import { chunkMessage, mainMessage } from './messages'
+      const route = await loadRoute(
+        `${head}import { chunkMessage, mainMessage } from './messages'
 ${declarations}
 export const Route = createFileRoute('/')({
   loader: () => main,
   component: Page,
 })
-`)
-      expect(importedNames(modules.reference!, './messages')).toEqual([
-        'mainMessage',
-      ])
-      expect(modules.reference).not.toMatch(/\bPage\b/)
+`,
+        {
+          stubs: {
+            './messages': { chunkMessage: 'chunk', mainMessage: 'main' },
+          },
+        },
+      )
+      // The route module holds nothing of the component, the chunk nothing
+      // of the loader.
       expect(
-        importedNames(modules['virtual component']!, './messages'),
-      ).toEqual(['chunkMessage'])
-      expect(modules['virtual component']).not.toMatch(/\bmain\b/)
-      await expectValidModules(modules)
+        importedNames(route.modules.reference!, './messages'),
+      ).not.toContain('chunkMessage')
+      expect(declaredNames(route.modules.reference!)).not.toContain('Page')
+      const chunk = route.chunkOf('component')
+      expect(importedNames(chunk, './messages')).not.toContain('mainMessage')
+      expect(declaredNames(chunk)).not.toContain('main')
+      await expectValidModules(route.modules)
+      expect([
+        route.options.loader(),
+        (await route.load('component'))(),
+      ]).toEqual(['main', '<div>chunk</div>'])
     },
   )
 
@@ -576,7 +639,6 @@ export const Route = createFileRoute('/')({
       { stubs: { './messages': { sharedMessage: 'shared' } } },
     )
     await expectValidModules(route.modules)
-    expect(countAcrossModules(route.modules, declarationOf('Page'))).toBe(1)
     const Component = await route.load('component')
     expect(route.options.loader()).toBe(Component)
     expect(Component()).toBe('<div>shared</div>')
@@ -588,49 +650,58 @@ describe('var declarations nested in top-level statements', () => {
     {
       name: 'a for loop head',
       setup: 'for (var value = 0; value < 3; value++) {}',
+      value: 3,
     },
-    { name: 'a for-of head', setup: "for (var value of ['a']) {}" },
+    { name: 'a for-of head', setup: "for (var value of ['a']) {}", value: 'a' },
     {
       name: 'an if block',
       setup: "if (typeof window === 'undefined') { var value = 'server' }",
+      value: 'server',
     },
   ])(
-    'stay bound in every module when $name declares a binding the loader and the component read',
-    async ({ setup }) => {
-      const { modules } = compileRouteModules(`${head}${setup}
+    'give the loader and the component the value of a binding $name declares',
+    async ({ setup, value }) => {
+      const route = await loadRoute(`${head}${setup}
 export const Route = createFileRoute('/')({
   loader: () => value,
   component: () => <div>{value}</div>,
 })
 `)
-      // Known limitation on main: the statement runs in both modules instead
-      // of once in the shared module; only check that each module binds `value`.
-      // Pinned in known-bugs-code-splitter.test.ts ("a binding declared by a var in …").
-      for (const name of ['reference', 'virtual component']) {
-        expect(binds(modules[name]!, 'value'), `${name} binds value`).toBe(true)
-      }
-      await expectValidModules(modules)
+      // That the statement runs once is pinned in
+      // known-bugs-code-splitter.test.ts ("a binding declared by a var in …").
+      await expectValidModules(route.modules)
+      expect([
+        route.options.loader(),
+        (await route.load('component'))(),
+      ]).toEqual([value, `<div>${value}</div>`])
     },
   )
 
-  it('stay bound in the reference module when exported and read by the component', async () => {
-    const { modules } =
-      compileRouteModules(`${head}if (typeof window === 'undefined') { var flag = 'server' }
+  it('stay exported when exported and read by the component', async () => {
+    const route =
+      await loadRoute(`${head}if (typeof window === 'undefined') { var flag = 'server' }
 export { flag }
 export const Route = createFileRoute('/')({
   component: () => <div>{flag}</div>,
 })
 `)
-    expect(binds(modules.reference!, 'flag')).toBe(true)
-    await expectValidModules(modules)
+    await expectValidModules(route.modules)
+    const { flag } = await route.importFromRoute(
+      `export { flag } from '${routeSpecifier}'`,
+    )
+    expect([flag, (await route.load('component'))()]).toEqual([
+      'server',
+      '<div>server</div>',
+    ])
   })
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "variable"
   // (var bindings declared inside nested statements)
-  it('follow the only option that reads them', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import { compute, connect } from './lib'
-if (typeof window !== 'undefined') {
+  it('run once and give each option its value', async () => {
+    const calls = { compute: 0, connect: 0 }
+    const route = await loadRoute(
+      `${head}import { compute, connect } from './lib'
+if (typeof globalThis !== 'undefined') {
   var flag = compute()
 }
 for (var index = 0; index < 3; index++) {}
@@ -641,14 +712,28 @@ export const Route = createFileRoute('/')({
   loader: () => block,
   component: () => <p>{String(flag)}{index}</p>,
 })
-`)
-    expect(modules.reference).not.toContain('compute()')
-    expect(modules.reference).toMatch(declarationOf('block'))
-    const chunk = modules['virtual component']!
-    expect(chunk).toMatch(declarationOf('flag'))
-    expect(chunk).toMatch(declarationOf('index'))
-    expect(chunk).not.toContain('connect()')
-    await expectValidModules(modules)
+`,
+      {
+        stubs: {
+          './lib': {
+            compute: () => {
+              calls.compute++
+              return 'flag'
+            },
+            connect: () => {
+              calls.connect++
+              return 'block'
+            },
+          },
+        },
+      },
+    )
+    await expectValidModules(route.modules)
+    expect([
+      route.options.loader(),
+      (await route.load('component'))(),
+      calls,
+    ]).toEqual(['block', '<p>flag3</p>', { compute: 1, connect: 1 }])
   })
 })
 

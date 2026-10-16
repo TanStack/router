@@ -9,10 +9,9 @@ import { build, routeApp } from './build-harness'
 import {
   buildAndRun,
   compileRouteModules,
-  declarationOf,
+  declaredNames,
   evaluateModule,
   expectValidModules,
-  exportedNames,
   head,
   importSources,
   loadRoute,
@@ -526,8 +525,7 @@ export const Route = createFileRoute('/')({
     expect(requested(modules.reference!)).toContain('./lib')
     const chunksRequestingLib = Object.keys(modules).filter(
       (name) =>
-        name.startsWith('virtual ') &&
-        requested(modules[name]!).includes('./lib'),
+        name.startsWith('lazy ') && requested(modules[name]!).includes('./lib'),
     )
     expect(chunksRequestingLib).toEqual([])
   })
@@ -1084,19 +1082,13 @@ export const Route = createFileRoute('/')({ component: Page })
         { stubs: { './heavy': { heavy: () => 'heavy' } } },
       )
       expect((await route.load('component'))()).toBe('<div>page</div>')
-      const chunks = [...route.graph.importKinds]
-        .filter(([, kind]) => kind === 'dynamic')
-        .map(([id]) => route.graph.modules.get(id)!)
-      expect(chunks).toHaveLength(1)
-      expect(
-        chunks.map((chunk) => ({
-          exports: exportedNames(chunk),
-          declares: ['helper', 'Api', 'Def'].filter((name) =>
-            declarationOf(name).test(chunk),
-          ),
-          importsHeavy: importSources(chunk).includes('./heavy'),
-        })),
-      ).toEqual([{ exports: ['component'], declares: [], importsHeavy: false }])
+      const chunk = route.chunkOf('component')
+      expect({
+        declares: ['helper', 'Api', 'Def'].filter((name) =>
+          declaredNames(chunk).has(name),
+        ),
+        importsHeavy: importSources(chunk).includes('./heavy'),
+      }).toEqual({ declares: [], importsHeavy: false })
     },
   )
 
@@ -1143,7 +1135,7 @@ export const Route = createFileRoute('/')({
           requests: requested(chunk).filter((source) =>
             ['./lib', './default-lib'].includes(source),
           ),
-          declaresTest: declarationOf('Test').test(chunk),
+          declaresTest: declaredNames(chunk).has('Test'),
         })),
       ).toEqual(chunks.map(() => ({ requests: [], declaresTest: false })))
     },
@@ -2834,7 +2826,6 @@ describe('`this` in split callbacks', () => {
         bundler: 'vite',
         env: 'ssr',
         minify: false,
-        packageJson: null,
         files: routeApp(
           `${head}export const Route = createFileRoute('/')({
   loader: ${loader},
@@ -3264,9 +3255,11 @@ export const Route = createFileRoute('/')({
 
 describe('production builds', () => {
   /**
-   * A production client build of a route whose exported component cannot
-   * be split, with `NODE_ENV` as given (`null`: unset); returns where the
-   * "will not be code-split" warning and the app's absolute path are.
+   * A production client build of a route the code splitter warns about
+   * (today: an exported component it cannot split), with `NODE_ENV` as
+   * given (`null`: unset); returns whether the build warned, naming the
+   * route file, and where the app's absolute path (which the warning names)
+   * is in the bundle.
    */
   async function warningPlacement(bundler: Bundler, nodeEnv?: null) {
     const app = await build({
@@ -3286,7 +3279,11 @@ export const Route = createFileRoute('/')({
       ),
     })
     return {
-      warning: app.where('will not be code-split'),
+      // Without a warning, the bundle has nothing to leak: once the code
+      // splitter splits this route, use another route it warns about.
+      warned: [...app.warnings, ...app.consoleMessages].some((message) =>
+        message.includes('routes/index.tsx'),
+      ),
       appPath: app.where(app.root),
     }
   }
@@ -3296,18 +3293,18 @@ export const Route = createFileRoute('/')({
     'a production client bundle has no development warning (%s)',
     async (bundler) => {
       expect(await warningPlacement(bundler)).toEqual({
-        warning: 'nowhere',
+        warned: true,
         appPath: 'nowhere',
       })
     },
     60_000,
   )
 
-  // Bug: the "will not be code-split" `console.warn` is injected into the
-  // route module unless the build process's `NODE_ENV` is `production`,
-  // instead of following the bundler's mode as the rest of the code
-  // splitter does. webpack and Rspack set `NODE_ENV` only inside the bundle.
-  // Source: gap CC-P2.
+  // Bug: the code splitter's `console.warn` (today: "will not be
+  // code-split") is injected into the route module unless the build
+  // process's `NODE_ENV` is `production`, instead of following the
+  // bundler's mode as the rest of the code splitter does. webpack and Rspack
+  // set `NODE_ENV` only inside the bundle. Source: gap CC-P2.
   // Impact: webpack/Rspack production bundles built from a shell without
   // `NODE_ENV` log a development warning in every user's console, with the
   // developer's absolute file path.
@@ -3315,7 +3312,7 @@ export const Route = createFileRoute('/')({
     'a production client bundle has no development warning when NODE_ENV is unset (%s)',
     async (bundler) => {
       expect(await warningPlacement(bundler, null)).toEqual({
-        warning: 'nowhere',
+        warned: true,
         appPath: 'nowhere',
       })
     },

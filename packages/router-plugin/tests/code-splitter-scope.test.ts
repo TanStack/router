@@ -1,12 +1,8 @@
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
-  compileRouteModules,
-  declarationOf,
-  evaluateModule,
   expectValidModules,
   head,
   importSources,
-  importedNames,
   loadRoute,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
@@ -145,10 +141,10 @@ const Page = () => <p>{getComponentName({ Page })}</p>`,
       expected: '<p>Page</p>',
     },
   ])('$name', async ({ body, expected }) => {
-    const { modules } = compileRouteModules(pageRoute(body))
-    await expectValidModules(modules)
-    const chunk = await evaluateModule(modules['virtual component']!)
-    expect(chunk.component!({})).toBe(expected)
+    const route = await loadRoute(pageRoute(body))
+    await expectValidModules(route.modules)
+    expect(route.isLazy('component')).toBe(true)
+    expect((await route.load('component'))({})).toBe(expected)
   })
 })
 
@@ -163,7 +159,7 @@ describe('names a route option declares itself do not reference module bindings'
     const obj = { a: function format(x: number) { return x } }
     return <div>{label}{obj.a(1)}</div>
   },`,
-      unread: 'virtual component',
+      unread: 'component',
     },
     {
       // Source: Next.js ssg/getServerSideProps/query-usage
@@ -173,14 +169,12 @@ describe('names a route option declares itself do not reference module bindings'
     return label
   },
   component: () => <div>{label}{format()}</div>,`,
-      unread: 'reference',
     },
     {
       // Source: Next.js ssg/getServerSideProps/query-usage
       name: 'destructured parameters',
       options: `loader: ({ label }: any) => [label, format()],
   component: ({ format }: any) => <div>{format}{label}</div>,`,
-      unread: 'reference',
     },
     {
       // Source: Qwik optimizer test.rs should_not_auto_export_var_shadowed_in_{catch,do_while,switch,labeled_block}
@@ -194,7 +188,7 @@ describe('names a route option declares itself do not reference module bindings'
     block: { const format = 'labeled'; if (format) break block }
     return <p>{i}</p>
   },`,
-      unread: 'virtual component',
+      unread: 'component',
     },
   ])('$name', async ({ options, unread }) => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -222,9 +216,12 @@ export const Route = createFileRoute('/')({
       },
     )
     await expectValidModules(route.modules)
-    // The option's own names do not make its module load the module-level
-    // `label`, which only the other option reads.
-    expect(importSources(route.modules[unread]!)).not.toContain('./load')
+    // The option's own names do not make the split component's module load
+    // the module-level `label`, which only the loader reads. (When only the
+    // split component reads it, when its initializer runs is free.)
+    if (unread) {
+      expect(importSources(route.chunkOf(unread))).not.toContain('./load')
+    }
     route.options.loader({})
     expect(typeof (await route.load('component'))({})).toBe('string')
     expect(loads).toBe(1)
@@ -232,7 +229,9 @@ export const Route = createFileRoute('/')({
 
   // Source: Next.js ssg/getStaticProps/should-not-remove-import-used-in-render
   it('neither do intrinsic tag and attribute names, unlike component tags and JSX expressions', async () => {
-    const { modules } = compileRouteModules(`${head}import { A, B } from './ui'
+    let loads = 0
+    const route = await loadRoute(
+      `${head}import { A, B } from './ui'
 import { load } from './load'
 const a = load()
 const p = load()
@@ -246,14 +245,30 @@ export const Route = createFileRoute('/')({
     </p>
   ),
 })
-`)
-    expect(importedNames(modules['virtual component']!, './ui')).toEqual([
-      'A',
-      'B',
-    ])
-    expect(importSources(modules.reference!)).not.toContain('./ui')
-    expect(importSources(modules['virtual component']!)).not.toContain('./load')
-    await expectValidModules(modules)
+`,
+      {
+        stubs: {
+          './ui': {
+            A: () => 'A',
+            B: { Deep: { C: () => '<c>' } },
+          },
+          './load': {
+            load: () => {
+              loads++
+              return 'loaded'
+            },
+          },
+        },
+      },
+    )
+    expect(importSources(route.modules.reference!)).not.toContain('./ui')
+    expect(importSources(route.chunkOf('component'))).not.toContain('./load')
+    await expectValidModules(route.modules)
+    expect([
+      route.options.loader(),
+      (await route.load('component'))(),
+      loads,
+    ]).toEqual([['loaded', 'loaded', 'loaded'], '<p><a>home</a><c></p>', 3])
   })
 
   // Source: React Router route-chunks-test.ts "computed object property"
@@ -273,9 +288,7 @@ export const Route = createFileRoute('/')({
       { stubs: { './load': { load: () => 'loaded' } } },
     )
     await expectValidModules(route.modules)
-    expect(importSources(route.modules['virtual component']!)).not.toContain(
-      './load',
-    )
+    expect(importSources(route.chunkOf('component'))).not.toContain('./load')
     expect([route.options.loader(), (await route.load('component'))()]).toEqual(
       [['loaded', 'kind'], '<div>12</div>'],
     )
@@ -325,10 +338,12 @@ describe('imports read in nested positions follow the code that reads them', () 
     {
       name: 'a default parameter',
       helper: 'const read = (value = x) => value',
+      rendered: 'x',
     },
     {
       name: 'a destructuring default',
       helper: 'const read = ([{ value }] = [{ value: x }]) => value',
+      rendered: 'x',
     },
     {
       name: 'a for-of destructuring default',
@@ -337,6 +352,7 @@ describe('imports read in nested positions follow the code that reads them', () 
     return value
   }
 }`,
+      rendered: 'x',
     },
     {
       name: 'a catch clause',
@@ -347,21 +363,33 @@ describe('imports read in nested positions follow the code that reads them', () 
     return x
   }
 }`,
+      rendered: 'x',
     },
-    { name: 'a generator', helper: 'const read = function* () { yield x }' },
-    { name: 'a typeof operand', helper: 'const read = () => typeof x' },
-  ])('$name', async ({ helper }) => {
-    const { modules } = compileRouteModules(`${head}import { x } from './x'
+    {
+      name: 'a generator',
+      helper: 'const read = function* () { yield x }',
+      call: 'read().next().value',
+      rendered: 'x',
+    },
+    {
+      name: 'a typeof operand',
+      helper: 'const read = () => typeof x',
+      rendered: 'string',
+    },
+  ])('$name', async ({ helper, call = 'read()', rendered }) => {
+    const route = await loadRoute(
+      `${head}import { x } from './x'
 ${helper}
 export const Route = createFileRoute('/')({
   loader: () => 'data',
-  component: () => <p>{String(read())}</p>,
+  component: () => <p>{String(${call})}</p>,
 })
-`)
-    expect(modules['virtual component']).toMatch(declarationOf('read'))
-    expect(importedNames(modules['virtual component']!, './x')).toEqual(['x'])
-    expect(importSources(modules.reference!)).not.toContain('./x')
-    await expectValidModules(modules)
+`,
+      { stubs: { './x': { x: 'x' } } },
+    )
+    expect(importSources(route.modules.reference!)).not.toContain('./x')
+    await expectValidModules(route.modules)
+    expect((await route.load('component'))()).toBe(`<p>${rendered}</p>`)
   })
 
   it.each([
@@ -395,15 +423,20 @@ export const Route = createFileRoute('/')({
 }`,
     },
   ])('keeps an import the loader reads $name', async ({ loader }) => {
-    const { modules } =
-      compileRouteModules(`${head}import { store } from './store'
+    const route = await loadRoute(
+      `${head}import { store } from './store'
 function Page() {
   return 'page'
 }
 export const Route = createFileRoute('/')({ loader: ${loader}, component: Page })
-`)
-    expect(importedNames(modules.reference!, './store')).toEqual(['store'])
-    await expectValidModules(modules)
+`,
+      { stubs: { './store': { store: { value: 'stored' } } } },
+    )
+    await expectValidModules(route.modules)
+    expect([
+      route.options.loader({}),
+      (await route.load('component'))(),
+    ]).toEqual(['stored', 'page'])
   })
 })
 
@@ -435,7 +468,7 @@ export const Route = createFileRoute('/compare')({
 
   // Source: @babel/generator using-declarations/using-and-await-using
   it('keeps the using declarations of a split component', async () => {
-    const chunk = compileRouteModules(
+    const route = await loadRoute(
       pageRoute(`const log = []
 const resource = (name) => ({ [Symbol.dispose]: () => log.push(name) })
 function Page() {
@@ -446,9 +479,10 @@ function Page() {
   return log.join()
 }`),
       { filename: 'route.js' },
-    ).modules['virtual component']!
-    await expectValidModules({ chunk })
-    expect((await evaluateModule(chunk)).component!()).toBe('body,second,first')
+    )
+    await expectValidModules(route.modules)
+    expect(route.isLazy('component')).toBe(true)
+    expect((await route.load('component'))()).toBe('body,second,first')
   })
 })
 

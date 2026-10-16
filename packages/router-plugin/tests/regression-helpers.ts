@@ -37,7 +37,7 @@ import type { TransformResult, UnpluginOptions } from 'unplugin'
 import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 import type { ESTree } from 'vite'
 
-export { declarationOf } from '@tanstack/compiler-test-utils/validate-module'
+export { declaredNames } from '@tanstack/compiler-test-utils/validate-module'
 
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
@@ -434,13 +434,14 @@ const routeSources = new WeakMap<object, { code: string; id: string }>()
 /**
  * Compiles a route file through the code-splitter plugin (default groupings,
  * unless the route sets its own) and returns every module a bundler would
- * load for it, found by following the imports of the output.
+ * load for it, found by following the imports of the output, without
+ * evaluating them.
  *
- * For the tests that inspect a module by its role, the modules are labelled:
- * `reference` (the route module), `virtual <exports>` for a module only
- * imported lazily (a split chunk, named by what it exports) and `shared` for
- * another module imported statically. `ids` gives the module id of each
- * label, and `sharedBindings` the names the shared modules export.
+ * The modules are labelled `reference` (the route module), `shared` for a
+ * module another one imports statically, and `lazy <n>` for a module only
+ * imported lazily, in discovery order. Which route option loads which lazy
+ * module is only known once the route is evaluated: `loadRoute` labels them
+ * by option. `ids` gives the module id of each label.
  */
 export function compileRouteModules(
   code: string,
@@ -449,20 +450,28 @@ export function compileRouteModules(
   return labelRouteModules(code, compileRouteGraph(code, options))
 }
 
-/** Labels the modules of a compiled route file (see `compileRouteModules`). */
-function labelRouteModules(code: string, graph: RouteGraph) {
+/**
+ * Labels the modules of a compiled route file (see `compileRouteModules`):
+ * a lazy module is labelled `lazy <options>` after the route options whose
+ * loading imports it (`lazyOptions`, by module id), else `lazy <n>`.
+ */
+function labelRouteModules(
+  code: string,
+  graph: RouteGraph,
+  lazyOptions: Map<string, Array<string>> = new Map(),
+) {
   const modules: Record<string, string> = {}
   const ids: Record<string, string> = {}
-  const sharedBindings = new Set<string>()
+  let unnamed = 0
   for (const [id, output] of graph.modules) {
     let label: string
     if (id === graph.id) {
       label = 'reference'
     } else if (graph.importKinds.get(id) === 'dynamic') {
-      label = `virtual ${exportedNames(output, id).join('-')}`
+      const options = lazyOptions.get(id)
+      label = options ? `lazy ${options.sort().join('+')}` : `lazy ${++unnamed}`
     } else {
       label = 'shared'
-      exportedNames(output, id).forEach((name) => sharedBindings.add(name))
     }
     if (label in modules) {
       label = `${label} (${id})`
@@ -471,7 +480,7 @@ function labelRouteModules(code: string, graph: RouteGraph) {
     ids[label] = id
   }
   routeSources.set(modules, { code, id: graph.id })
-  return { modules, ids, sharedBindings: [...sharedBindings].sort(), graph }
+  return { modules, ids, graph }
 }
 
 /** How many times `pattern` occurs across all emitted modules. */
@@ -486,9 +495,18 @@ export function countAcrossModules(
   )
 }
 
-/** Compiles every module of a route file and returns the component chunk. */
-export function componentChunk(code: string) {
-  return compileRouteModules(code).modules['virtual component']!
+/**
+ * Compiles a route file, evaluates its route module like `loadRoute` (every
+ * import the route file makes is stubbed by identity functions, unless
+ * `stubs` gives it) and returns the code of the module its `component`
+ * option loads lazily.
+ */
+export async function componentChunk(
+  code: string,
+  options: LoadRouteOptions = {},
+) {
+  const route = await loadRoute(code, { stubUnknownImports: true, ...options })
+  return route.chunkOf('component')
 }
 
 /**
@@ -788,7 +806,22 @@ type LoadRouteOptions = CompileOptions & {
    * registers in `registered`.
    */
   refresh?: boolean
+  /**
+   * Link every import that neither `stubs` nor the emitted modules provide
+   * to a module whose exports are identity functions, for tests that only
+   * inspect the emitted modules.
+   */
+  stubUnknownImports?: boolean
 }
+
+/** Import specifier of the route file in the modules `importFromRoute` adds. */
+export const routeSpecifier = '#route'
+
+/** A module stub whose exports are identity functions. */
+const identityStub = (_: string, names: Set<string>) =>
+  Object.fromEntries(
+    [...names].map((name) => [name, (value: unknown) => value]),
+  )
 
 /**
  * Compiles a route file like `compileRouteModules`, then evaluates it the
@@ -817,28 +850,50 @@ async function linkRoute(
   graph: RouteGraph,
   options: LoadRouteOptions,
 ) {
-  const compiled = labelRouteModules(code, graph)
   const lazy = new Map<unknown, () => Promise<unknown>>()
   const registered = new Map<unknown, string>()
   const moduleGraph = createModuleGraph({
-    modules: Object.fromEntries(compiled.graph.modules),
+    modules: Object.fromEntries(graph.modules),
     stubs: withRouterStubs(
       options.refresh
         ? { react: React, ...options.stubs }
         : (options.stubs ?? {}),
       lazy,
     ),
-    resolve: compiled.graph.resolve,
+    resolve: (specifier, importer) =>
+      specifier === routeSpecifier
+        ? graph.id
+        : graph.resolve(specifier, importer),
+    ...(options.stubUnknownImports && { fallbackStub: identityStub }),
     ...(options.refresh && {
       scope: () => refreshScope(registered),
       transform: transformWithReactRefresh,
     }),
   })
-  const exports = await moduleGraph.import(compiled.graph.id)
+  const exports = await moduleGraph.import(graph.id)
   const Route = exports.Route as { options: Record<string, any> } | undefined
   if (!Route) {
     throw new Error('the route module does not export `Route`')
   }
+  // The module each lazy option loads: what its loader imports, found
+  // without evaluating it.
+  const lazyModules = new Map<string, Array<string>>()
+  const lazyOptions = new Map<string, Array<string>>()
+  for (const option of Object.keys(Route.options)) {
+    const loader = lazy.get(Route.options[option])
+    if (!loader) {
+      continue
+    }
+    const ids = moduleGraph
+      .probeDynamicImports(loader)
+      .filter((id) => graph.modules.has(id))
+    lazyModules.set(option, ids)
+    for (const id of ids) {
+      lazyOptions.set(id, [...(lazyOptions.get(id) ?? []), option])
+    }
+  }
+  const compiled = labelRouteModules(code, graph, lazyOptions)
+  let importers = 0
   return {
     ...compiled,
     /** Exports of the route module. */
@@ -854,6 +909,29 @@ async function linkRoute(
       const value = Route.options[option]
       const loader = lazy.get(value)
       return loader ? loader() : Promise.resolve(value)
+    },
+    /**
+     * Code of the module a lazy route option loads (found by what its
+     * loader imports); fails for an option that is not lazy.
+     */
+    chunkOf: (option: string): string => {
+      const ids = lazyModules.get(option)
+      if (!ids || ids.length !== 1) {
+        throw new Error(
+          `\`${option}\` does not load one module of the route lazily (it loads ${JSON.stringify(ids ?? [])})`,
+        )
+      }
+      return graph.modules.get(ids[0]!)!
+    },
+    /**
+     * Evaluates `source` as another module of the app, next to the route
+     * module, and returns its exports: it imports the route file as
+     * `routeSpecifier` (`'#route'`) and gets the instance the route uses.
+     */
+    importFromRoute: (source: string) => {
+      const id = `/importer-${++importers}.tsx`
+      moduleGraph.add(id, source)
+      return moduleGraph.import(id)
     },
     /** Names React Refresh registered each component under (`refresh`). */
     registered,
@@ -1046,8 +1124,12 @@ export type HotUpdateOptions = {
   routeId?: string
   /** The edited route file the update loads. Default: `code` again. */
   updated?: string
-  /** Hot data (`hot.data`) the route module starts with. */
-  initialData?: Record<string, unknown>
+  /**
+   * Route id the route file was registered under when the first version
+   * was compiled, when the route tree registers it under another one since
+   * (`routeId`), e.g. after a route configuration change. Default `routeId`.
+   */
+  previousRouteId?: string
   /**
    * A React Refresh runtime is present: modules are compiled with the React
    * Refresh transform (`registered`) and the bundler's refresh utilities
@@ -1092,12 +1174,12 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
     plugin: { hmr: { style } },
   }
   const compiler = style === 'webpack' ? webpackCompiler(refresh) : undefined
-  const compile = (source: string) => {
+  const compile = (source: string, compiledRouteId = routeId) => {
     if (codeSplitting) {
       return compileRouteGraph(source, {
         targetFramework,
         hmr: true,
-        routeId,
+        routeId: compiledRouteId,
         pluginOptions,
         webpackCompiler: compiler,
       })
@@ -1108,7 +1190,7 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
       pluginOptions,
       {
         file,
-        routeId,
+        routeId: compiledRouteId,
       },
       compiler,
     )
@@ -1118,9 +1200,11 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
       resolve: () => undefined,
     }
   }
-  const first = compile(code)
+  const first = compile(code, options.previousRouteId)
   const second =
-    options.updated === undefined ? first : compile(options.updated)
+    options.updated === undefined && options.previousRouteId === undefined
+      ? first
+      : compile(options.updated ?? code)
 
   const created: Array<Record<string, unknown>> = []
   const lazy = new Map<unknown, () => Promise<unknown>>()
@@ -1137,7 +1221,7 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
     let state = hotStates.get(id)
     if (!state) {
       state = {
-        data: id === first.id ? { ...options.initialData } : {},
+        data: {},
         accepted: [],
         disposers: [],
       }
@@ -1316,9 +1400,9 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
  * value returned by `script`, which has the entry's exports in scope as
  * `entry`.
  *
- * A production Vite SSR build of `build-harness.ts`, without minification and
- * without an app `package.json` (the app inherits this package's
- * `"sideEffects": false`).
+ * A production Vite SSR build of `build-harness.ts`, without minification.
+ * The app's `package.json` declares no side-effect hint unless `sideEffects`
+ * gives one, like an app's.
  */
 export async function buildAndRun(
   route: string,
@@ -1327,13 +1411,14 @@ export async function buildAndRun(
     files?: Record<string, string>
     groupings?: CodeSplitGroupings
     prefix?: string
+    sideEffects?: boolean
   } = {},
 ) {
   const app = await build({
     bundler: 'vite',
     env: 'ssr',
     minify: false,
-    packageJson: null,
+    sideEffects: options.sideEffects,
     prefix: options.prefix ?? '.regression-build-',
     files: routeApp(route, { files: options.files }),
     pluginOptions: options.groupings && {

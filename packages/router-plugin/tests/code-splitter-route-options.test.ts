@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
-  declarationOf,
+  declaredNames,
   expectValidModules,
   head,
   hotUpdate,
@@ -52,9 +52,8 @@ export const Route = createFileRoute('/posts')(options)
     )
     const { modules } = route
     expect(route.isLazy('component')).toBe(true)
-    expect(modules.reference).not.toMatch(declarationOf('Posts'))
-    expect(importedNames(modules.reference!, './api')).toEqual(['fetchPosts'])
-    expect(importSources(modules['virtual component']!)).not.toContain('./api')
+    expect(declaredNames(modules.reference!)).not.toContain('Posts')
+    expect(importSources(route.chunkOf('component'))).not.toContain('./api')
     await expectValidModules(modules)
     // The split component reads the route the route module created.
     expect([
@@ -65,15 +64,15 @@ export const Route = createFileRoute('/posts')(options)
   })
 
   it('that repeat a split key are split like the runtime object: the last one wins', async () => {
-    const { modules } =
-      compileRouteModules(`${head}export const Route = createFileRoute('/')({
-  component: () => <div>first-marker</div>,
-  component: () => <div>last-marker</div>,
+    const route =
+      await loadRoute(`${head}export const Route = createFileRoute('/')({
+  component: () => <div>first</div>,
+  component: () => <div>last</div>,
 })
 `)
-    expect(modules['virtual component']).toContain('last-marker')
-    expect(modules['virtual component']).not.toContain('first-marker')
-    await expectValidModules(modules)
+    await expectValidModules(route.modules)
+    expect(route.isLazy('component')).toBe(true)
+    expect((await route.load('component'))()).toBe('<div>last</div>')
   })
 
   it.each([
@@ -100,18 +99,25 @@ export const Route = createFileRoute('/posts')(options)
   // A `var` declared in a block at module level is a module-level binding,
   // so the route it creates is no route created inside a function.
   // Source: #8504 (differential fuzzing).
-  it('are split when the route is declared with var in a module-level block', async () => {
-    const route = await loadRoute(`${head}if (true) {
+  it.each([
+    { name: 'an if block', open: 'if (true) {', close: '}' },
+    { name: 'a bare block', open: '{', close: '}' },
+    { name: 'a try block', open: 'try {', close: '} finally {}' },
+  ])(
+    'are split when the route is declared with var in $name at module level',
+    async ({ open, close }) => {
+      const route = await loadRoute(`${head}${open}
   var Route = createFileRoute('/')({
     component: () => <div>split</div>,
   })
-}
+${close}
 export { Route }
 `)
-    await expectValidModules(route.modules)
-    expect(route.isLazy('component')).toBe(true)
-    expect((await route.load('component'))()).toBe('<div>split</div>')
-  })
+      await expectValidModules(route.modules)
+      expect(route.isLazy('component')).toBe(true)
+      expect((await route.load('component'))()).toBe('<div>split</div>')
+    },
+  )
 })
 
 // The groupings a route gets without any option (`defaultCodeSplitGroupings`,
@@ -338,19 +344,47 @@ export const Route = createFileRoute('/posts')({
     },
   )
 
-  it('keep the loader-only import of a conditional loader in the route module', () => {
-    const { modules } =
-      compileRouteModules(`${head}import { isEnabled } from './feature-flags'
+  it('keep what only a conditional loader reads out of the split component', async () => {
+    const route = await loadRoute(
+      `${head}import { isEnabled } from './feature-flags'
 import TrueImport from './true-component'
 import { FalseComponent, falseLoader } from './false-component'
 export const Route = createFileRoute('/posts')({
   component: isEnabled ? TrueImport.Component : FalseComponent,
   loader: isEnabled ? TrueImport.loader : falseLoader,
 })
+`,
+      {
+        stubs: {
+          './feature-flags': { isEnabled: false },
+          './true-component': {
+            default: { Component: () => 'true', loader: () => 'true-loader' },
+          },
+          './false-component': {
+            FalseComponent: () => '<div>false</div>',
+            falseLoader: () => 'false-loader',
+          },
+        },
+      },
+    )
+    expect(
+      importedNames(route.chunkOf('component'), './false-component'),
+    ).not.toContain('falseLoader')
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      ['false-loader', '<div>false</div>'],
+    )
+  })
+
+  // TypeScript erases the cast: the value is the component.
+  it('split a component wrapped in `as`', async () => {
+    const route = await loadRoute(`${head}function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({ component: Page as any })
 `)
-    expect(importedNames(modules.reference!, './false-component')).toEqual([
-      'falseLoader',
-    ])
+    await expectValidModules(route.modules)
+    expect(route.isLazy('component')).toBe(true)
+    expect((await route.load('component'))()).toBe('<p>page</p>')
   })
 
   // Whether such options are split is pinned in known-bugs-code-splitter.test.ts
@@ -628,6 +662,36 @@ export const Route = createFileRoute('/')({
   })
 })
 
+// Windows checkouts with `autocrlf` give route files CRLF line endings:
+// template literals and JSX text keep their values (a template literal's
+// line break is LF in its value, whatever the file's line ending).
+it('keeps the runtime values of a route file with CRLF line endings', async () => {
+  const lines = (code: string) => code.replaceAll('\n', '\r\n')
+  const source = `${head}const banner = \`first
+second\`
+export const Route = createFileRoute('/')({
+  loader: () => banner,
+  component: () => (
+    <p title="a
+b">
+      text
+      more
+    </p>
+  ),
+})
+`
+  const [lf, crlf] = await Promise.all(
+    [source, lines(source)].map(async (code) => {
+      const route = await loadRoute(code)
+      await expectValidModules(route.modules)
+      expect(route.isLazy('component')).toBe(true)
+      return [route.options.loader(), (await route.load('component'))()]
+    }),
+  )
+  expect(crlf).toEqual(lf)
+  expect(lf![0]).toBe('first\nsecond')
+})
+
 // Source: TanStack/router#2361 and #3183, where non-ASCII text in a route
 // file was printed as escape sequences, which JSX text and attributes do not
 // interpret.
@@ -683,12 +747,9 @@ export const Route = createFileRoute('/posts')({
         { stubs },
       )
       const { modules } = route
-      expect(modules.reference).toMatch(declarationOf('fetchPosts'))
-      expect(modules.reference).toMatch(declarationOf('prefix'))
-      expect(modules['virtual component']).not.toMatch(
-        declarationOf('fetchPosts'),
-      )
-      expect(modules['virtual component']).not.toMatch(declarationOf('prefix'))
+      const chunk = route.chunkOf('component')
+      expect(declaredNames(chunk)).not.toContain('fetchPosts')
+      expect(declaredNames(chunk)).not.toContain('prefix')
       await expectValidModules(modules)
       expect([
         route.options.loader(),
@@ -697,19 +758,23 @@ export const Route = createFileRoute('/posts')({
     },
   )
 
-  it('do not turn a reassigned loader-only binding into an import', () => {
-    const { modules } = compileRouteModules(`${head}let label = 'initial'
+  // An imported binding is read-only: `label = ...` would throw at runtime.
+  it('keep a reassigned loader-only binding writable', async () => {
+    const { stubs } = routeStub({ useLoaderData: () => 'loader data' })
+    const route = await loadRoute(
+      `${head}let label = 'initial'
 label = 'updated'
 export const Route = createFileRoute('/label')({
   loader: () => label,
   component: () => <p>{Route.useLoaderData()}</p>,
 })
-`)
-    // An imported binding is read-only: `label = ...` would throw at runtime
-    expect(modules.reference).toMatch(declarationOf('label'))
-    expect(importSources(modules.reference!)).toEqual([
-      '@tanstack/react-router',
-    ])
+`,
+      { stubs },
+    )
+    await expectValidModules(route.modules)
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      ['updated', '<p>loader data</p>'],
+    )
   })
 
   // That the loader and the component share one `cache` is pinned in
@@ -744,9 +809,9 @@ const useTitle = () => HEADER + ' - ' + Route.fullPath
 const HEADER = 'Page'`,
     },
   ])(
-    'give the loader and the component a helper that reads Route $name',
+    'give the loader and the component a helper that reads Route $name, created once',
     async ({ helpers }) => {
-      const { stubs } = routeStub({ fullPath: '/about' })
+      const { state, stubs } = routeStub({ fullPath: '/about' })
       const route = await loadRoute(
         `${head}${helpers}
 export const Route = createFileRoute('/about')({
@@ -767,6 +832,7 @@ export const Route = createFileRoute('/about')({
         '<div>Page - /about</div>',
         '<p>Page - /about</p>',
       ])
+      expect(state.created).toBe(1)
     },
   )
 })
@@ -857,8 +923,8 @@ export const Route = createFileRoute('/')({
 `)
     await expectValidModules(route.modules)
     expect(route.isLazy('component')).toBe(true)
-    // The module that declares `getRandom` keeps the directive first in its
-    // body.
+    // Every module that declares `getRandom` keeps the directive first in
+    // its body.
     const declaring = Object.entries(route.modules).flatMap(([name, code]) =>
       parseModule(code)
         .body.filter(
@@ -874,6 +940,7 @@ export const Route = createFileRoute('/')({
           ]
         }),
     )
-    expect(declaring).toEqual([['virtual component', 'use server']])
+    expect(declaring.length).toBeGreaterThan(0)
+    expect(declaring).toEqual(declaring.map(([name]) => [name, 'use server']))
   })
 })

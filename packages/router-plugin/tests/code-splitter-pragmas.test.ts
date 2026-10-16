@@ -43,21 +43,20 @@ describe('split modules keep file-level JSX pragmas', () => {
       `/**\n * Header\n * @jsxImportSource @emotion/react\n */\n${head}`,
     ],
   ])('keeps @jsxImportSource %s in effect', async (_, header) => {
-    const chunk = componentChunk(styledRoute(header))
-    expect(chunk).toContain('@jsxImportSource @emotion/react')
+    const chunk = await componentChunk(styledRoute(header))
     expect(await jsxRuntimeOf(chunk)).toBe('@emotion/react/jsx-runtime')
   })
 
-  it('keeps @jsxImportSource written after the imports', () => {
+  it('keeps @jsxImportSource written after the imports', async () => {
     // Oxc only reads leading pragmas; esbuild and Babel read them anywhere.
-    const chunk = componentChunk(
+    const chunk = await componentChunk(
       styledRoute(`${head}/** @jsxImportSource @emotion/react */\n`),
     )
     expect(chunk).toContain('@jsxImportSource @emotion/react')
   })
 
   it('keeps @jsxRuntime classic and @jsx pragmas in effect', async () => {
-    const chunk = componentChunk(
+    const chunk = await componentChunk(
       styledRoute(`/** @jsxRuntime classic */
 /** @jsx jsx */
 ${head}import { jsx } from '@emotion/react'
@@ -184,14 +183,14 @@ export const Route = createFileRoute('/')({ component: Page })
       code: `${solidHead}// @refresh reload\n${page}`,
       pragma: '@refresh reload',
     },
-  ] as const)('keeps $name', ({ target, code, pragma }) => {
+  ] as const)('keeps $name', async ({ target, code, pragma }) => {
     expect(transformWithRouteHmrPlugin(code, { target })).toContain(pragma)
-    const { modules } = compileRouteModules(code, {
+    const route = await loadRoute(code, {
       hmr: true,
       targetFramework: target,
     })
-    expect(modules.reference).toContain(pragma)
-    expect(modules['virtual component']).toContain(pragma)
+    expect(route.modules.reference).toContain(pragma)
+    expect(route.chunkOf('component')).toContain(pragma)
   })
 })
 

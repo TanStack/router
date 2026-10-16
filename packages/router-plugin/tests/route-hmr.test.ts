@@ -121,6 +121,41 @@ describe('a hot update of a split route', () => {
     )
   })
 
+  // A split component that reads the route, next to a loader that calls an
+  // import. Source: add-hmr snapshot fixtures (main) whose component reads
+  // `Route.*`.
+  describe.each([
+    { style: 'vite', codeSplitting: true },
+    { style: 'webpack', codeSplitting: true },
+    { style: 'vite', codeSplitting: false },
+    { style: 'webpack', codeSplitting: false },
+  ] as const)('$style (codeSplitting: $codeSplitting)', (options) => {
+    it('updates a route whose component reads the route and whose loader calls an import', async () => {
+      const route = (
+        data: string,
+      ) => `import { createFileRoute } from '@tanstack/react-router'
+import { fetchData } from './api'
+function Page() {
+  return <div>{Route.fullPath}</div>
+}
+export const Route = createFileRoute('/posts')({
+  loader: () => fetchData('${data}'),
+  component: Page,
+})`
+      const update = await hotUpdate(route('old'), {
+        ...options,
+        refresh: true,
+        routeId: '/posts',
+        updated: route('new'),
+        stubs: { './api': { fetchData: (data: string) => data } },
+      })
+      expect(update.invalidated).toBe(false)
+      expect(update.live.component).toBe(update.previous.component)
+      expect(await loaderData(update)).toBe('new')
+      expect((await update.load('component'))()).toBe('<div>/posts</div>')
+    })
+  })
+
   /** A Solid or Vue split route, compiled for the dev server. */
   const frameworkRoute = (framework: TargetFramework) => (data: string) =>
     fileRoute(data, 'component: PostsComponent,', posts, framework)
@@ -257,13 +292,16 @@ describe('a hot update of an unsplit route', () => {
 
 describe('the route a hot update applies to', () => {
   // Source: add-hmr "prefers the current generated route id over stale Vite
-  // hot data". A route file moved to another path keeps its hot data, which
-  // still names the route of its old path.
-  it('is the route the file is registered under now, not the one in stale hot data', async () => {
+  // hot data". The route file was registered under another route id when
+  // its previous version loaded (e.g. before a route configuration change);
+  // the hot data its HMR code wrote still names that route.
+  // Vite only: the webpack HMR code deliberately reads the previous route id
+  // from hot data (webpack-adapter.ts).
+  it('vite: is the route the file is registered under now, not the one it was registered under before', async () => {
     const route = (data: string) => fileRoute(data, '')
     const update = await hotUpdate(route('old'), {
       codeSplitting: true,
-      initialData: { 'tsr-route-id': '/stale' },
+      previousRouteId: '/stale',
       updated: route('new'),
     })
     expect(await loaderData(update)).toBe('new')

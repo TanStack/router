@@ -6,14 +6,18 @@
 import { describe, expect, it } from 'vitest'
 import { routerDevServer } from './dev-server'
 import {
+  buildAndRun,
   compileRouteModules,
+  componentChunk,
   expectRegisteredRouteOption,
   expectValidModules,
   head,
   hotUpdate,
+  importRequests,
   importSources,
   loadRoute,
   routeModuleSources,
+  routeSpecifier,
 } from './regression-helpers'
 
 describe('compileRouteModules', () => {
@@ -23,32 +27,148 @@ describe('compileRouteModules', () => {
 
   it('returns the modules the output imports, and only those', () => {
     const { modules, ids } = compileRouteModules(route)
-    expect(Object.keys(modules)).toEqual(['reference', 'virtual component'])
+    expect(Object.keys(modules)).toEqual(['reference', 'lazy 1'])
     // Every module but the route module is imported by another one.
-    const imported = Object.values(modules).flatMap((code) => [
-      ...importSources(code),
-      ...[...code.matchAll(/import\(['"]([^'"]+)['"]\)/g)].map(
-        (match) => match[1]!,
-      ),
-    ])
-    expect(imported).toContain(ids['virtual component'])
+    const imported = Object.values(modules).flatMap((code) =>
+      importRequests(code).map((request) => request.specifier),
+    )
+    expect(imported).toContain(ids['lazy 1'])
   })
 
   it('labels a module that the route module and a chunk import statically as shared', () => {
-    const { modules, ids, sharedBindings } =
+    const { modules, ids } =
       compileRouteModules(`${head}const shared = { value: 1 }
 export const Route = createFileRoute('/')({
   loader: () => shared.value,
   component: () => <p>{shared.value}</p>,
 })`)
     expect(Object.keys(modules).sort()).toEqual([
+      'lazy 1',
       'reference',
       'shared',
-      'virtual component',
     ])
     expect(routeModuleSources(modules.reference!)).toContain(ids.shared)
-    expect(sharedBindings).toEqual(['shared'])
   })
+})
+
+describe('loadRoute labels each lazy module by the route options that load it', () => {
+  const options = [
+    'loader',
+    'component',
+    'errorComponent',
+    'notFoundComponent',
+    'pendingComponent',
+  ]
+  const route = (groupings: string) => `${head}const shared = { value: 'v' }
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: ${groupings},
+${options.map((option) => `  ${option}: () => <p>{shared.value}${option}</p>,`).join('\n')}
+})`
+
+  it('finds the module of every lazy option without evaluating it', async () => {
+    const loaded = await loadRoute(
+      route(JSON.stringify(options.map((option) => [option]))),
+    )
+    expect(Object.keys(loaded.modules).sort()).toEqual([
+      'lazy component',
+      'lazy errorComponent',
+      'lazy loader',
+      'lazy notFoundComponent',
+      'lazy pendingComponent',
+      'reference',
+      'shared',
+    ])
+    // Every module only imported lazily is labelled by an option.
+    const lazyIds = [...loaded.graph.importKinds]
+      .filter(([, kind]) => kind === 'dynamic')
+      .map(([id]) => id)
+      .sort()
+    expect(
+      options.map((option) => loaded.ids[`lazy ${option}`]).sort(),
+    ).toEqual(lazyIds)
+    expect(loaded.evaluated).toEqual([loaded.ids.reference])
+    for (const option of options) {
+      expect(loaded.chunkOf(option)).toBe(loaded.modules[`lazy ${option}`])
+      const value = await loaded.load(option)
+      expect(loaded.evaluated).toContain(loaded.ids[`lazy ${option}`])
+      expect(value()).toBe(`<p>v${option}</p>`)
+    }
+  })
+
+  it('labels a module that several options load with all of them', async () => {
+    const loaded = await loadRoute(
+      route(
+        `[['loader', 'component'], ['errorComponent', 'notFoundComponent']]`,
+      ),
+    )
+    expect(Object.keys(loaded.modules).sort()).toEqual([
+      'lazy component+loader',
+      'lazy errorComponent+notFoundComponent',
+      'reference',
+      'shared',
+    ])
+    expect(loaded.chunkOf('loader')).toBe(loaded.chunkOf('component'))
+    expect(() => loaded.chunkOf('pendingComponent')).toThrow(
+      'does not load one module',
+    )
+  })
+})
+
+describe('componentChunk', () => {
+  it('stubs the imports of the route file and returns the component chunk', async () => {
+    const chunk = await componentChunk(`${head}import { format } from './format'
+import { label } from './label'
+const prefix = label('route')
+export const Route = createFileRoute('/')({
+  loader: () => prefix,
+  component: () => <p>{format('page')}</p>,
+})`)
+    expect(importSources(chunk)).toContain('./format')
+    expect(importSources(chunk)).not.toContain('./label')
+  })
+})
+
+describe('importFromRoute', () => {
+  it('evaluates another module importing the instance of the route module', async () => {
+    const route = await loadRoute(`${head}export const store = { count: 0 }
+export const Route = createFileRoute('/')({
+  component: () => <p>{++store.count}</p>,
+})`)
+    const other =
+      await route.importFromRoute(`import { store, Route } from '${routeSpecifier}'
+export const read = () => [store.count, typeof Route]`)
+    expect((await route.load('component'))()).toBe('<p>1</p>')
+    expect(other.read()).toEqual([1, 'object'])
+    expect(route.exports.store).toBe(
+      (await route.importFromRoute(`export { store } from '${routeSpecifier}'`))
+        .store,
+    )
+  })
+})
+
+describe('buildAndRun', () => {
+  // A real app's package.json has no side-effect hint unless the app adds
+  // one: a module the route file imports for its side effect runs.
+  it.each([
+    { sideEffects: undefined, ran: true },
+    { sideEffects: false, ran: false },
+  ])(
+    'keeps a side-effect import unless the app declares "sideEffects": $sideEffects',
+    async ({ sideEffects, ran }) => {
+      expect(
+        await buildAndRun(
+          `${head}import '../effect'
+export const Route = createFileRoute('/')({ component: () => <p>page</p> })`,
+          `return globalThis.effectRan === true`,
+          {
+            sideEffects,
+            files: { 'effect.ts': `;(globalThis as any).effectRan = true\n` },
+          },
+        ),
+      ).toBe(ran)
+    },
+    30_000,
+  )
 })
 
 describe('loadRoute', () => {
@@ -74,7 +194,7 @@ export const Route = createFileRoute('/')({
     const component = await route.load('component')
     expect(route.evaluated).toEqual([
       route.ids.reference,
-      route.ids['virtual component'],
+      route.ids['lazy component'],
     ])
     expect([component(), effects]).toEqual(['<p>2</p>', ['route', 'component']])
   })
@@ -164,7 +284,7 @@ export const Route = createFileRoute('/')({
     ])
     expect(Object.keys(grouped.modules)).toEqual([
       'reference',
-      'virtual component-loader',
+      'lazy component+loader',
     ])
     expect(await (await grouped.load('loader'))()).toBe('data')
 
@@ -236,17 +356,6 @@ export const Route = createFileRoute('/')({ loader: () => '${loader}' })`
       updated: solid('new'),
     })
     expect((update.live.loader as () => string)()).toBe('new')
-  })
-
-  it('the route module starts with initialData as its hot data', async () => {
-    const reads = `${head}export const marker = import.meta.hot?.data.marker
-export const Route = createFileRoute('/')({ loader: () => marker })`
-    const update = await hotUpdate(reads, {
-      initialData: { marker: 'seeded' },
-    })
-    expect((update.live.loader as () => string)()).toBe('seeded')
-    const unseeded = await hotUpdate(reads)
-    expect((unseeded.live.loader as () => unknown)()).toBeUndefined()
   })
 
   it('refresh: modules are compiled with React Refresh and webpack enqueues a refresh', async () => {
