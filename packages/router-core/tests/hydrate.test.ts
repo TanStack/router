@@ -123,8 +123,8 @@ describe('hydrate', () => {
 
   it.each([
     { segment: '_authenticated', legacy: false },
-    { segment: '~0~r\uFFFD😀', legacy: false },
-    { segment: '~0~r\uFFFD😀', legacy: true },
+    { segment: '(posts)😀', legacy: false },
+    { segment: '(posts)😀', legacy: true },
   ])(
     'round-trips manifest assets and loader data for $segment (legacy: $legacy)',
     async ({ segment, legacy }) => {
@@ -160,7 +160,7 @@ describe('hydrate', () => {
 
       expect(
         Object.keys(mockWindow.$_TSR.router!.manifest!.routes).some(
-          (id) => id.includes('/') || id.includes('\0'),
+          (id) => id.includes('/'),
         ),
       ).toBe(false)
       expect(manifest.routes[serverProductRoute.id]?.preloads).toEqual([

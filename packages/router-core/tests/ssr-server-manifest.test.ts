@@ -199,8 +199,8 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
   test('omits unmatched route assets by default', async () => {
     const manifest = await dehydrateManifest()
 
-    expect(manifest.routes['\uFFFDposts']).toBeUndefined()
-    expect(manifest.routes['\uFFFD']?.preloads).toEqual(['/assets/index.js'])
+    expect(manifest.routes['#posts']).toBeUndefined()
+    expect(manifest.routes['#']?.preloads).toEqual(['/assets/index.js'])
   })
 
   test('preserves script format when dehydrating the manifest', async () => {
@@ -414,7 +414,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
           : asset.href === '/assets/shared.css',
       ),
     ).toBe(false)
-    expect(dehydratedManifest.routes['\uFFFD']?.preloads).toEqual([
+    expect(dehydratedManifest.routes['#']?.preloads).toEqual([
       '/assets/index.js',
     ])
   })
@@ -540,10 +540,10 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
         crossOrigin: 'anonymous',
       },
     ])
-    expect(dehydratedManifest.routes['\uFFFD']?.css).toEqual([
+    expect(dehydratedManifest.routes['#']?.css).toEqual([
       '/assets/index-linked.css',
     ])
-    expect(dehydratedManifest.routes['\uFFFD']?.preloads).toEqual([
+    expect(dehydratedManifest.routes['#']?.preloads).toEqual([
       '/assets/index.js',
     ])
   })

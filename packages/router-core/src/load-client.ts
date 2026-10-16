@@ -7,7 +7,10 @@ import {
   lifecycleEnd,
   runRouteLifecycle,
 } from './router'
-import { dehydrateSsrMatchId } from './ssr/ssr-match-id'
+import {
+  dehydrateSsrMatchId,
+  hydrateSsrManifestRouteId,
+} from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { TsrSsrGlobal } from './ssr/types'
 import type { ParsedLocation } from './location'
@@ -2227,7 +2230,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       ...manifest,
       routes: Object.fromEntries(
         Object.entries(manifest.routes).map(([id, route]) => [
-          id.startsWith('\uFFFD') ? hydrateSsrMatchId(id) : id,
+          hydrateSsrManifestRouteId(id),
           route,
         ]),
       ),
