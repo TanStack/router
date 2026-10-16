@@ -1097,39 +1097,6 @@ export function getChunkComponent(module: Record<string, any>) {
   return [...functions][0] as (props: Record<string, unknown>) => any
 }
 
-/**
- * The props the component of a split chunk reads when it renders, sorted:
- * the captured values it receives from its parent. Imports the chunk makes
- * resolve to `undefined` values; an error the render throws after reading
- * the props is ignored.
- */
-export async function getChunkParams(chunk: string) {
-  const module = await createTestModuleGraph({
-    modules: { [`${moduleId}?chunk`]: chunk },
-    stubs: hydrateParentStubs,
-    lenient: true,
-  }).import(`${moduleId}?chunk`)
-  const component = getChunkComponent(module)
-  const read = new Set<string>()
-  const props = new Proxy(
-    {},
-    {
-      get: (_, key) => {
-        if (typeof key === 'string') {
-          read.add(key)
-        }
-        return undefined
-      },
-    },
-  )
-  try {
-    component(props)
-  } catch {
-    // Rendering without the real prop values may fail after reading them.
-  }
-  return [...read].sort()
-}
-
 /** Renders the component a `<Hydrate>` chunk exports with the given props. */
 export async function renderChunk(
   chunk: string,

@@ -21,7 +21,6 @@ import {
   getBoundaryIds,
   getChunkComponent,
   getChunkIds,
-  getChunkParams,
   hydrateParentStubs,
   importSources,
   loadClientModule,
@@ -322,17 +321,6 @@ export function Other() {
       '<p>fourth</p>',
     ])
   })
-
-  test.each([
-    `export function Anything(props) { return props.b + props.a }`,
-    `export const Anything = ({ a, b }) => a + b`,
-  ])(
-    'getChunkParams lists the props the chunk component reads: %s',
-    async (chunk) => {
-      expect(await getChunkParams(chunk)).toEqual(['a', 'b'])
-      expect(await renderChunk(chunk, { a: 'A', b: 'B' })).toMatch(/^(AB|BA)$/)
-    },
-  )
 
   test('evaluateHydrateParent links a chunk to the evaluated parent', async () => {
     const linked = await evaluateHydrateParent(
