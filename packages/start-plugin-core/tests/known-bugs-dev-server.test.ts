@@ -109,6 +109,63 @@ export const fn = base.handler(async () => db.x())
   )
 })
 
+describe('editing a server fn factory (SSR)', () => {
+  /**
+   * Like `editFactory` above, in the SSR environment: returns the SSR
+   * transform of `src/a.tsx` after `src/b.ts` becomes a `createServerFn()`
+   * builder.
+   */
+  async function editFactorySsr(importFrom: string) {
+    const server = await startDevServer({
+      files: {
+        'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,
+        'src/c.ts': `export * from './b'\n`,
+        'src/db.server.ts': dbModule,
+        'src/a.tsx': `import { base } from '${importFrom}'
+import { db } from './db.server'
+export const fn = base.handler(async () => db.x())
+`,
+      },
+    })
+    expect(await server.transform('/src/a.tsx', 'ssr')).toContain('db.x()')
+    await server.edit({
+      'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+    })
+    return server.transform('/src/a.tsx', 'ssr')
+  }
+
+  // Control for the pin below (same harness).
+  test(
+    'SSR: a module importing an edited factory module directly calls the handler through its RPC',
+    async () => {
+      expect(await editFactorySsr('./b')).not.toContain('db.x()')
+    },
+    timeout,
+  )
+
+  // Bug: same as the client pin above, in the SSR environment: on a factory
+  // module edit, the server environments do walk the transitive importers
+  // (`getTransitiveImporters`), but only invalidate the compiler's state and
+  // the server-fn lookup modules of the importers it finds; Vite's module
+  // nodes of the importers two or more imports away are only
+  // soft-invalidated, and their previous transform is served.
+  // Impact: after a factory module is edited into a server fn builder, an
+  // SSR module importing it through a re-export keeps running the handler
+  // itself (and keeps an RPC stub in the opposite edit) until a restart.
+  // Source: N15 (replaces start-compiler-factories.test.ts "dev: modules
+  // reaching a factory through imports and export * are its transitive
+  // importers", which only checked the walk).
+  test.fails(
+    'SSR: a module importing an edited factory module through a re-export calls the handler through its RPC',
+    async () => {
+      expect(await editFactorySsr('./c')).not.toContain('db.x()')
+    },
+    timeout,
+  )
+})
+
 describe('import protection', () => {
   /** Import protection with the default rules, in its dev (mock) mode. */
   const importProtection = ({ root }: { root: string }) => [
