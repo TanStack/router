@@ -1445,6 +1445,21 @@ test('compiles a server function through a parenthesized namespace receiver', as
   expect(result!.code).toContain('createClientRpc')
 })
 
+// Source: #8504 compiler.test.ts "preserves a shadowed parenthesized
+// namespace receiver"
+test('leaves a server fn of a parameter shadowing the namespace receiver alone', async () => {
+  const code = `import * as Start from '@tanstack/react-start'
+export function make(Start) {
+  return (Start).createServerFn().handler(() => 'local-runtime-body')
+}`
+  const client = (await compileCode('client', code)) ?? code
+  const { make } = await evaluateModule(client)
+  const local = {
+    createServerFn: () => ({ handler: (fn: () => string) => fn }),
+  }
+  expect(make(local)()).toBe('local-runtime-body')
+})
+
 test.each([
   `(Start).createServerOnlyFn(() => 'private-server-body')`,
   `(Start).createIsomorphicFn().server(() => 'private-server-body').client(() => 'client-value')`,

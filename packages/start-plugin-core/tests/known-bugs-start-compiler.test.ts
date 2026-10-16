@@ -53,6 +53,7 @@ async function callServerFns(
   code: string,
   options: {
     directives?: Array<string>
+    files?: Record<string, string>
     stubs?: Record<string, ModuleStub>
   } = {},
 ) {
@@ -64,6 +65,13 @@ async function callServerFns(
   )
   return { ...compiled, results }
 }
+
+/**
+ * A clear compile error rejecting a chain method called through a computed
+ * member (`builder['handler'](...)`), matched against the message without
+ * its code frame.
+ */
+const computedCallRejection = /\b(computed|\[\s*['"](handler|server)['"]\s*\])/i
 
 /**
  * A clear compile error rejecting a server fn builder returned by a function,
@@ -349,10 +357,28 @@ export const fn = Start.createServerFn().handler(async () => db.x())`
     },
   )
 
+  /**
+   * Stub of the `./fns` module of the rows below, as the client (`rpc`
+   * only) and the provider (`rpc` and the implementation) call it.
+   */
+  const returnedBuilderStub = {
+    './fns': {
+      authed: () => ({
+        handler: (rpc: unknown, impl?: (opts: unknown) => unknown) =>
+          impl
+            ? Object.assign((opts: unknown) => impl(opts ?? {}), {
+                __executeServer: impl,
+              })
+            : { rpc },
+      }),
+    },
+  }
+
   // Bug: the builder of a `.handler()` chain is resolved through identifiers
   // and member expressions only, so a builder returned by a function call
   // (`authed().handler(...)`) is not traced. Rejecting it with a clear
-  // compile error is a valid fix.
+  // compile error is a valid fix; supporting it means the client calls an
+  // RPC and the provider runs the handler.
   // Impact: the module is left untransformed and ships its handler and
   // server-only imports to the client, without an RPC.
   test.fails.each<{
@@ -387,12 +413,22 @@ export const fn = authed().handler(async () => db.x())`,
         return
       }
       expect(importSources(client ?? code)).not.toContain(serverOnly)
+      const stubs = {
+        ...returnedBuilderStub,
+        [serverOnly]: { db: { x: () => 'from the server' } },
+      }
+      const { fn } = await evaluateModule(client ?? code, stubs)
+      expect(fn).toEqual({ rpc: { client: expect.any(String) } })
+      const { results } = await callServerFns(code, { files, stubs })
+      expect(results).toEqual(['from the server'])
     },
   )
 
   // Bug: chain methods are only recognized when called through a static
   // member (`.handler(...)`), so one called through a computed member
-  // (`builder['handler'](...)`) leaves the module untransformed.
+  // (`builder['handler'](...)`) leaves the module untransformed. Unusual
+  // input: rejecting it with a clear compile error naming the computed call
+  // is a valid fix; supporting it means each output follows its contract.
   // Impact: the server implementation and its server-only imports ship to
   // the client.
   test.fails.each([
@@ -400,6 +436,8 @@ export const fn = authed().handler(async () => db.x())`,
       name: 'a server fn handler',
       code: `${head}import { db } from './db.server'
 export const fn = createServerFn()['handler'](async () => db.x())`,
+      check: (module: Record<string, any>) =>
+        expect(module.fn).toEqual({ rpc: { client: expect.any(String) } }),
     },
     {
       name: 'a middleware server implementation',
@@ -409,18 +447,33 @@ export const mw = createMiddleware()['server'](async ({ next }) => {
   db.x()
   return next()
 })`,
+      // The client runtime's `.server()` throws: evaluating proves it is gone.
+      check: (module: Record<string, any>) => expect(module.mw).toBeDefined(),
     },
     {
       name: 'an isomorphic server implementation',
       code: `import { createIsomorphicFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const fn = createIsomorphicFn()['server'](() => db.x()).client(() => 'client')`,
+      check: (module: Record<string, any>) =>
+        expect(module.fn()).toBe('client'),
     },
   ])(
     'client builds compile $name called through a computed member',
-    async ({ code }) => {
-      const client = (await compileCode('client', code)) ?? code
-      expect(client).not.toContain(serverOnly)
+    async ({ code, check }) => {
+      const client = await compileCode('client', code).catch(
+        (error: Error) => error,
+      )
+      if (client instanceof Error) {
+        expect(compileErrorMessage(client)).toMatch(computedCallRejection)
+        return
+      }
+      expect(importSources(client ?? code)).not.toContain(serverOnly)
+      check(
+        await evaluateModule(client ?? code, {
+          [serverOnly]: { db: { x: () => 'x' } },
+        }),
+      )
     },
   )
 
