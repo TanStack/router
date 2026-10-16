@@ -132,7 +132,9 @@ interface RenderCall {
  * runtime renders: `renderToReadableStream` its payload,
  * `renderServerComponent` (async) and `createCompositeComponent` their
  * argument in the CSS envelope of the runtime when they receive CSS. Returns
- * the module's namespace, the calls and the compiler warnings.
+ * the module's namespace, the calls and the compiler warnings. `import.meta`
+ * has only the RSC provider (`viteRsc` or `rspackRsc`) that
+ * `loadCssExpression` uses.
  */
 async function evaluateCompiled(
   code: string,
@@ -165,6 +167,10 @@ async function evaluateCompiled(
     },
   }
   const loadCss = { loadCss: () => 'css' }
+  // Only the provider the configured load-CSS expression names exists.
+  const provider = options.loadCssExpression?.includes('import.meta.rspackRsc')
+    ? 'rspackRsc'
+    : 'viteRsc'
   const graph = createModuleGraph({
     modules: { [id]: compiled ?? code },
     stubs: {
@@ -178,7 +184,7 @@ async function evaluateCompiled(
       flag: true,
       args: ['x'],
     }),
-    importMeta: () => ({ viteRsc: loadCss, rspackRsc: loadCss }),
+    importMeta: () => ({ [provider]: loadCss }),
   })
   return { module: await graph.import(id), calls, warnings }
 }
