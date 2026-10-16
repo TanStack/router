@@ -171,9 +171,7 @@ test.fails.each<PlacementHead>([
       }
     }
     compiled.serverFns = serverFns
-    for (const output of ['client', 'ssr'] as const) {
-      expect(compiled[output], output).not.toContain('db.inner()')
-    }
+    expect(compiled.client, 'client').not.toContain('db.inner()')
     expect(
       typeof (await callServerFnThroughCallers(
         compiled,

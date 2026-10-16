@@ -232,7 +232,8 @@ export const greetUser = createServerFn().handler(async () => 'second')`,
     expect(Object.values(clientIds).sort()).toEqual([...ids].sort())
 
     // A second compiler instance (e.g. the SSR build) gives each server fn
-    // the id the first one gave it, and its provider handler carries it.
+    // the id the first one gave it: its provider handler carries it, and the
+    // SSR caller runs that handler.
     const server = createCompiler('server')
     for (const [id, code] of Object.entries(files)) {
       const ssr = (await server.compile({ code, id }))!.code
@@ -240,8 +241,15 @@ export const greetUser = createServerFn().handler(async () => 'second')`,
         code,
         id: `${id}?tss-serverfn-split`,
       }))!.code
-      const graph = createServerGraph({ ssr, provider, id })
-      expect((await graph.ssr()).greetUser.rpc.ssr).toBe(clientIds[id])
+      const graph = createServerGraph({
+        ssr,
+        provider,
+        id,
+        serverFns: serverFnsById,
+      })
+      expect(await (await graph.ssr()).greetUser()).toBe(
+        id.includes('formdata-redirect') ? 'second' : 'first',
+      )
       const handlers = Object.values(await graph.provider()).filter(
         (value) => typeof value === 'function',
       )

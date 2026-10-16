@@ -1,26 +1,27 @@
 import { SourceMapConsumer } from 'source-map'
 import { describe, expect, test, vi } from 'vitest'
 import {
+  callReportedServerFns,
   compileCode,
   compileFor,
   compileHydrate,
+  compileServer,
   evaluateModule,
   importSources,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import type { Output } from './regression-helpers'
+import type { ModuleStub, Output } from './regression-helpers'
 
 // The compiler removes code that only served a transformed call. Everything
 // else is user code that must survive, even when nothing seems to read it.
 
 /**
- * Evaluates `code` with recording stubs of the side effects the modules of
+ * Runs `evaluate` with recording stubs of the side effects the modules of
  * these tests run (`setInterval`, `./persist`, `./registry`, `./analytics`,
- * `./store`, `./init`) and returns what ran, in order.
+ * `./store`) and returns what ran, in order.
  */
-async function recordSideEffects(
-  code: string,
-  run: (module: Record<string, any>) => void = () => {},
+async function recordSideEffectsOf(
+  evaluate: (stubs: Record<string, ModuleStub>) => Promise<unknown>,
 ) {
   const calls: Array<string> = []
   const record =
@@ -34,17 +35,43 @@ async function recordSideEffects(
   vi.stubGlobal('setInterval', record('setInterval', 1))
   vi.stubGlobal('clearInterval', () => {})
   try {
-    const module = await evaluateModule(code, {
+    await evaluate({
       './persist': { createPersister: record('createPersister') },
       './registry': { register: record('register', 'registered') },
       './analytics': { registerAnalytics: record('registerAnalytics') },
       './store': { createStore: record('createStore') },
     })
-    run(module)
   } finally {
     vi.unstubAllGlobals()
   }
   return calls
+}
+
+/**
+ * Evaluates `code` with the recording stubs of `recordSideEffectsOf`, then
+ * `run` on its exports, and returns what ran, in order.
+ */
+function recordSideEffects(
+  code: string,
+  run: (module: Record<string, any>) => void = () => {},
+) {
+  return recordSideEffectsOf(async (stubs) =>
+    run(await evaluateModule(code, stubs)),
+  )
+}
+
+/**
+ * Compiles `code` into the modules of the SSR bundle, calls each server fn
+ * the SSR caller reports through the module and export the report names
+ * (like the server-fn resolver), with the recording stubs of
+ * `recordSideEffectsOf`, and returns what ran, in order. The SSR caller only
+ * runs if the provider imports it.
+ */
+async function recordServerSideEffects(code: string) {
+  const server = await compileServer(code)
+  return recordSideEffectsOf((stubs) =>
+    callReportedServerFns(server, server.serverFns, stubs),
+  )
 }
 
 // A declaration that only references itself, or a sibling that references
@@ -180,15 +207,21 @@ export const getKind = createIsomorphicFn()
   .client(() => 'client')`,
   }
 
-  test.each([
-    { output: 'client', ...typeQuery },
-    { output: 'client', ...globalAugmentation },
-    { output: 'provider', ...typeQuery },
-  ] as const)('$output: $name', async ({ output, code, call, imported }) => {
-    const compiled = await compileCode(output, code)
-    expect(await getModuleErrors(compiled!)).toEqual([])
-    expect(importSources(compiled!)).toContain(imported)
-    expect(await recordSideEffects(compiled!)).toEqual([call])
+  test.each([typeQuery, globalAugmentation])(
+    'client: $name',
+    async ({ code, call, imported }) => {
+      const compiled = await compileCode('client', code)
+      expect(await getModuleErrors(compiled!)).toEqual([])
+      expect(importSources(compiled!)).toContain(imported)
+      expect(await recordSideEffects(compiled!)).toEqual([call])
+    },
+  )
+
+  // Handling a server fn call runs the module's initializer, once.
+  test(`server: ${typeQuery.name}`, async () => {
+    expect(await recordServerSideEffects(typeQuery.code)).toEqual([
+      typeQuery.call,
+    ])
   })
 })
 
@@ -240,28 +273,26 @@ export const fn = createServerFn().handler(async () => red)`,
 })
 
 // An empty destructuring pattern binds nothing, but its initializer still
-// runs.
+// runs, once: when the client loads the module, and when the server handles
+// a call of the module's server fn.
 // Bug: dead-code elimination removes a declaration whose pattern binds no
 // name (`const {} = init()`, `const [] = other()`), initializer included.
 // Impact: the initializer's side effects (a registration, a setup call) no
-// longer run in the client or the provider.
+// longer run in the client or on the server.
 // Source: babel-dead-code-elimination "object pattern" > "unzips if all
 // variables are unused", "array pattern" > "unzips if all variables are
 // unused"; #8504 start-compiler-preserves-user-code.test.ts (red on main)
-test.fails.each(['client', 'provider'] as const)(
+test.fails.each(['client', 'server'] as const)(
   '%s: keeps the initializers of empty destructuring patterns',
-  async (output) => {
-    const result = await compileCode(
-      output,
-      `import { createServerFn } from '@tanstack/react-start'
+  async (env) => {
+    const code = `import { createServerFn } from '@tanstack/react-start'
 import { init, other } from './init'
 const {} = init()
 const [] = other()
 const { a: {} } = init()
-export const fn = createServerFn().handler(async () => 'ok')`,
-    )
+export const fn = createServerFn().handler(async () => 'ok')`
     const calls: Array<string> = []
-    await evaluateModule(result!, {
+    const stubs = {
       './init': {
         init: () => {
           calls.push('init')
@@ -272,7 +303,15 @@ export const fn = createServerFn().handler(async () => 'ok')`,
           return []
         },
       },
-    })
+    }
+    if (env === 'client') {
+      await evaluateModule((await compileCode('client', code))!, stubs)
+    } else {
+      const server = await compileServer(code)
+      expect(
+        await callReportedServerFns(server, server.serverFns, stubs),
+      ).toEqual(['ok'])
+    }
     expect(calls).toEqual(['init', 'other', 'init'])
   },
 )

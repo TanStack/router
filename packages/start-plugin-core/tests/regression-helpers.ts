@@ -301,22 +301,29 @@ export async function compileCode(
  */
 export async function compileAll(
   code: string,
-  options: Omit<StartCompilerOptions, 'env'> = {},
+  options: Omit<StartCompilerOptions, 'env'> & { id?: string } = {},
 ) {
   const compiled = {} as Record<Output, string>
   const errors = {} as Record<Output, Array<string>>
   let serverFns: Record<string, ServerFn> = {}
+  const file = (options.id ?? moduleId).replace(/^.*\//, '')
   for (const output of outputs) {
     const result = await compileFor(output, code, options)
     expect(result.code, output).not.toBeNull()
     compiled[output] = result.code!
-    errors[output] = await getModuleErrors(result.code!)
+    errors[output] = await getModuleErrors(result.code!, file)
     if (output === 'client') {
       serverFns = result.serverFns
     }
   }
   expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  return { ...compiled, serverFns, framework: options.framework }
+  return {
+    ...compiled,
+    serverFns,
+    id: options.id,
+    framework: options.framework,
+    files: options.files,
+  }
 }
 
 /**
@@ -333,6 +340,14 @@ export interface ServerOutputs {
   id?: string
   /** Default `react`. */
   framework?: Framework
+  /**
+   * The server fns the callers reported (`onServerFnsById`), which the
+   * server-fn resolver serves: an SSR call by id (`createSsrRpc`) runs the
+   * handler of the provider module and export the report names.
+   */
+  serverFns?: Record<string, ServerFn>
+  /** Project modules by absolute id, linked as they are (uncompiled). */
+  files?: Record<string, string>
 }
 
 /**
@@ -354,6 +369,7 @@ export async function compileServer(
     id: options.id,
     framework: options.framework,
     serverFns: ssr.serverFns,
+    files: options.files,
   }
 }
 
@@ -404,19 +420,49 @@ export function importSources(code: string) {
 export type RuntimeEnv = 'client' | 'server'
 
 /**
- * Minimal Start package of a framework: callers keep the RPC they were given,
- * providers run the original handler. Builders record what they are given
- * in `options` (non-enumerable on a server fn): `createServerFn(options)`,
- * `.middleware([...])` (appended) and `.validator(v)`; a builder is also
- * callable, returning a builder with the same options (a factory such as
+ * Minimal Start package of a framework: client callers keep the RPC they
+ * were given, providers run the original handler. Builders record what they
+ * are given in `options` (non-enumerable on a server fn):
+ * `createServerFn(options)`, `.middleware([...])` (appended) and
+ * `.validator(v)`; a builder is also callable, returning a builder with the
+ * same options (a factory such as
  * `createAuthServerFn = createServerFn().middleware([auth])` is called as
  * `createAuthServerFn()`). `createMiddleware(options)` (also
  * `createStart(...).createMiddleware`) records `.client(fn)`,
  * `.validator(v)` and `.middleware([...])`; in the client runtime its
  * `.server()`, like the other factories, throws when it is called
  * uncompiled, so a client test only passes if the compiler removed it. In
- * the server runtime, `.server(fn)` is recorded too.
+ * the server runtime, `.server(fn)` is recorded too, a server fn given a
+ * function alone (an SSR RPC, or a handler left in place) calls it, and
+ * running a handler first runs the `.server()` of its middleware and its
+ * validator (a function, or an object with `parse`).
  */
+/** Server runtime: runs a handler after its middleware and validator. */
+const serverRunHandler = `(options, impl, opts = {}) => {
+  for (const middleware of options.middleware ?? []) {
+    middleware?.options?.server?.({ data: opts.data, context: {}, next: (result) => result })
+  }
+  const { validator } = options
+  const data =
+    typeof validator === 'function'
+      ? validator(opts.data)
+      : typeof validator?.parse === 'function'
+        ? validator.parse(opts.data)
+        : opts.data
+  return impl({ ...opts, data })
+}`
+
+/**
+ * Server runtime: a server fn given only an SSR RPC (which carries its
+ * `serverFnMeta`, like Start's) calls it; given only its handler, it runs it.
+ */
+const serverCaller = `typeof rpc !== 'function'
+        ? record({ rpc }, options)
+        : record(
+            (opts) => (rpc.serverFnMeta ? rpc(opts ?? {}) : runHandler(options, rpc, opts ?? {})),
+            options,
+          )`
+
 function startRuntime(
   framework: Framework,
   env: RuntimeEnv = 'client',
@@ -427,6 +473,7 @@ function startRuntime(
 const uncompiled = () => { throw new Error('uncompiled Start factory') }
 const record = (target, options) =>
   Object.defineProperty(target, 'options', { value: options, enumerable: false })
+const runHandler = ${env === 'server' ? serverRunHandler : '(options, impl, opts) => impl(opts)'}
 const serverFnBuilder = (options) => {
   const builder = record(() => serverFnBuilder(options), options)
   builder.middleware = (middleware) =>
@@ -435,12 +482,12 @@ const serverFnBuilder = (options) => {
   builder.handler = (rpc, impl) =>
     impl
       ? record(
-          Object.assign((opts) => impl(opts ?? {}), {
-            __executeServer: (opts) => impl(opts),
+          Object.assign((opts) => runHandler(options, impl, opts ?? {}), {
+            __executeServer: (opts) => runHandler(options, impl, opts),
           }),
           options,
         )
-      : record({ rpc }, options)
+      : ${env === 'server' ? serverCaller : 'record({ rpc }, options)'}
   return builder
 }
 const middlewareBuilder = (options) => ({
@@ -540,13 +587,35 @@ export function createServerGraph(
 ) {
   const id = server.id ?? moduleId
   const providerId = `${id}?tss-serverfn-split`
-  const modules: Record<string, string> = { [providerId]: server.provider }
+  const modules: Record<string, string> = {
+    ...server.files,
+    [providerId]: server.provider,
+  }
   if (server.ssr !== undefined) {
     modules[id] = server.ssr
   }
+  // Like the server-fn resolver: the handler a reported id names, in the
+  // module of this bundle the report names.
+  const resolve = async (functionId: string) => {
+    const fn = server.serverFns?.[functionId]
+    if (!fn) {
+      throw new Error(`Server function info not found for ${functionId}`)
+    }
+    return (await graph.import(fn.extractedFilename))[fn.functionName]
+  }
   const graph = createTestModuleGraph({
     modules,
-    stubs,
+    stubs: {
+      [`@tanstack/${server.framework ?? 'react'}-start/ssr-rpc`]: {
+        createSsrRpc: (functionId: string) =>
+          Object.assign(
+            async (...args: Array<unknown>) =>
+              (await resolve(functionId))(...args),
+            { serverFnMeta: { id: functionId } },
+          ),
+      },
+      ...stubs,
+    },
     framework: server.framework,
     env: 'server',
   })
@@ -669,14 +738,12 @@ export type OutputResult =
 /**
  * Each output, on its own, either rejects the code with a clear
  * createServerFn error (not the internal statement-list crash), or is a
- * valid module free of the misplaced handler: the client neither imports the
- * server-only module (`serverOnlyModule`) nor contains the handler body
- * (`db.inner()`), the SSR
- * caller calls the handler through the provider like for a top-level server
- * fn (no handler body; it may import the server-only module for other server
- * code), and the provider exports and runs every server fn the callers that
- * compiled report, the misplaced one included. One output rejecting the code
- * does not excuse another.
+ * valid module: the client is free of the misplaced handler (it neither
+ * imports the server-only module, `serverOnlyModule`, nor contains the
+ * handler body, `db.inner()`), the SSR caller may keep the handler in place
+ * or call it through the provider, and the provider exports and runs every
+ * server fn the callers that compiled report, the misplaced one included.
+ * One output rejecting the code does not excuse another.
  */
 export async function expectOutputsFreeOfHandler(
   code: string,
@@ -703,11 +770,7 @@ export async function expectOutputsFreeOfHandler(
     expect(importSources(compiled.client), 'client').not.toContain(
       serverOnlyModule,
     )
-  }
-  for (const output of ['client', 'ssr'] as const) {
-    if (compiled[output] !== undefined) {
-      expect(compiled[output], output).not.toContain('db.inner()')
-    }
+    expect(compiled.client, 'client').not.toContain('db.inner()')
   }
   const errors: Partial<Record<Output, Array<string>>> = {}
   for (const [output, module] of Object.entries(compiled)) {
@@ -747,33 +810,42 @@ export async function expectNoClientHandler(code: string) {
 
 /**
  * Calls a server fn the way the app does, from where `read` finds it in the
- * evaluated callers (e.g. `(module) => module.api.read`): the client and the
- * SSR caller each give an RPC with the same id, the callers reported that id,
- * and the handler the report names (the provider module and export, in the
- * SSR bundle) carries that id in its metadata. Returns what the handler
- * returns.
+ * evaluated callers (e.g. `(module) => module.api.read`): the client gives an
+ * RPC by an id the callers reported, and the handler the report names (the
+ * provider module and export, in the SSR bundle) carries that id in its
+ * metadata; in an SSR bundle of its own, calling the server fn from the SSR
+ * caller returns what the handler returns, whether the SSR caller calls it
+ * by id or keeps it in place. Project modules (`compiled.files`) are linked
+ * as they are. Returns what the handler returns.
  */
 export async function callServerFnThroughCallers(
   compiled: Awaited<ReturnType<typeof compileAll>>,
   read: (module: Record<string, any>) => unknown,
   stubs: Record<string, ModuleStub> = {},
 ) {
+  const id = compiled.id ?? moduleId
   const client = read(
-    await evaluateModule(compiled.client, stubs, {
+    await createTestModuleGraph({
+      modules: { ...compiled.files, [id]: compiled.client },
+      stubs,
       framework: compiled.framework,
-    }),
+    }).import(id),
   ) as { rpc: { client: string } }
   expect(client, 'client').toEqual({ rpc: { client: expect.any(String) } })
-  const id = client.rpc.client
-  const graph = createServerGraph(compiled, stubs)
-  expect(read(await graph.ssr()), 'ssr').toEqual({ rpc: { ssr: id } })
-  const reported = compiled.serverFns[id]
+  const functionId = client.rpc.client
+  const reported = compiled.serverFns[functionId]
   expect(reported, 'reported server fn').toBeDefined()
-  const handler = (await graph.import(reported!.extractedFilename))[
-    reported!.functionName
-  ] as ProviderHandler
-  expect(handler?.meta?.id, 'provider handler id').toBe(id)
-  return handler({ data: undefined })
+  const handler = (
+    await createServerGraph(compiled, stubs).import(reported!.extractedFilename)
+  )[reported!.functionName] as ProviderHandler
+  expect(handler?.meta?.id, 'provider handler id').toBe(functionId)
+  const result = await handler({ data: undefined })
+  const ssr = read(await createServerGraph(compiled, stubs).ssr())
+  expect(ssr, 'ssr').toBeTypeOf('function')
+  expect(await (ssr as ProviderHandler)({ data: undefined }), 'ssr').toEqual(
+    result,
+  )
+  return result
 }
 
 /** The directives of a module's directive prologue, in order. */

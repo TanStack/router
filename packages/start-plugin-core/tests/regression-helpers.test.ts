@@ -109,10 +109,46 @@ throw new Error('SSR caller evaluated')`
       const compiled = await compileServer(`${head}export let count = 0
 export const bump = createServerFn().handler(async () => ++count)`)
       expect(Object.keys(compiled.serverFns)).toHaveLength(1)
-      expect((await createServerGraph(compiled).ssr()).bump.rpc).toHaveProperty(
-        'ssr',
-      )
+      expect(await (await createServerGraph(compiled).ssr()).bump()).toBe(1)
       expect(await callProvider(compiled, 'bump')).toBe(1)
+    })
+  })
+
+  describe('in the SSR bundle, a server fn the SSR caller calls', () => {
+    const ssrById = `import { createServerFn } from '@tanstack/react-start'
+import { createSsrRpc } from '@tanstack/react-start/ssr-rpc'
+export const fn = createServerFn().handler(createSsrRpc('id-1'))`
+
+    test('by id runs the handler the report names', async () => {
+      const ssr = await createServerGraph({
+        ssr: ssrById,
+        provider,
+        serverFns: report('/test/src/module.tsx?tss-serverfn-split'),
+      }).ssr()
+      expect(await ssr.fn({ data: 'data' })).toBe('called:data')
+    })
+
+    test('by an id nobody reported fails', async () => {
+      const ssr = await createServerGraph({ ssr: ssrById, provider }).ssr()
+      await expect(ssr.fn()).rejects.toThrow('id-1')
+    })
+
+    test('in place runs it after its middleware and validator', async () => {
+      const ssr = await createServerGraph({
+        ssr: `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+export const seen = []
+const auth = createMiddleware().server(({ next }) => {
+  seen.push('middleware')
+  return next()
+})
+export const fn = createServerFn()
+  .middleware([auth])
+  .validator({ parse: (data) => (seen.push('validator'), data + '!') })
+  .handler(({ data }) => (seen.push('handler'), data))`,
+        provider,
+      }).ssr()
+      expect(await ssr.fn({ data: 'data' })).toBe('data!')
+      expect(ssr.seen).toEqual(['middleware', 'validator', 'handler'])
     })
   })
 })
@@ -164,6 +200,32 @@ export const fn = createServerFn().handler(async () => 'called')`,
         read,
       ),
     ).rejects.toThrow('client')
+  })
+
+  test('accepts an SSR caller that keeps the handler in place', async () => {
+    const code = `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'called')`
+    const { compiled, read } = await callableServerFn(code)
+    expect(
+      await callServerFnThroughCallers({ ...compiled, ssr: code }, read),
+    ).toBe('called')
+  })
+
+  test('fails when the SSR caller does not run the handler', async () => {
+    const { compiled, read } = await callableServerFn(
+      `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'called')`,
+    )
+    await expect(
+      callServerFnThroughCallers(
+        {
+          ...compiled,
+          ssr: `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'other')`,
+        },
+        read,
+      ),
+    ).rejects.toThrow('ssr')
   })
 })
 

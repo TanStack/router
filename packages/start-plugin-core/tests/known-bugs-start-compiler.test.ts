@@ -16,6 +16,8 @@ import {
   compileCode,
   compileErrorMessage,
   compileFor,
+  compileServer,
+  createServerGraph,
   createStartCompiler,
   directivePrologue,
   evaluateModule,
@@ -142,20 +144,24 @@ export const fn = createServerFn().handler(async () => db.inner())`
       })
     })
 
-    test.each(['client', 'ssr'] as const)(
-      'it rejects a %s output with the handler body next to rejecting outputs',
-      async (leaking) => {
-        const results = {
-          client: rejection,
+    test('it rejects a client output with the handler body next to rejecting outputs', async () => {
+      await expect(
+        expectOutputsFreeOfHandler(code, {
+          client: { code, serverFns: {} },
           ssr: rejection,
           provider: rejection,
-          [leaking]: { code, serverFns: {} },
-        }
-        await expect(expectOutputsFreeOfHandler(code, results)).rejects.toThrow(
-          leaking,
-        )
-      },
-    )
+        }),
+      ).rejects.toThrow('client')
+    })
+
+    // Only the client must be free of the handler: the SSR caller may keep
+    // it in place.
+    test('it accepts an SSR output that keeps the handler in place', async () => {
+      await expectOutputsFreeOfHandler(code, {
+        ...(await compileOutputs()),
+        ssr: { code, serverFns: {} },
+      })
+    })
 
     test('it rejects a provider that does not run the reported server fn', async () => {
       const results = await compileOutputs()
@@ -918,11 +924,20 @@ export const fn = createServerFn().handler(async () => 'from the server')`)
       const code = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()))`
-      const module = await evaluateModule(
-        (await compileCode(output, code)) ?? code,
-        { './db.server': { db: {} } },
-      )
-      expect(module.fn).toEqual({ rpc: { [output]: expect.any(String) } })
+      const stubs = { './db.server': { db: { x: () => 'x' } } }
+      if (output === 'client') {
+        const module = await evaluateModule(
+          (await compileCode('client', code)) ?? code,
+          stubs,
+        )
+        expect(module.fn).toEqual({ rpc: { client: expect.any(String) } })
+        return
+      }
+      const ssr = await createServerGraph(
+        await compileServer(code),
+        stubs,
+      ).ssr()
+      expect(await ssr.fn()).toBe('x')
     },
   )
 

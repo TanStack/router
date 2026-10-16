@@ -1,19 +1,24 @@
+import { parseSync } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
 import {
   callProvider,
   callReportedServerFns,
+  callServerFnThroughCallers,
   compileAll,
   compileCode,
   compileFor,
   compileServer,
+  createServerGraph,
+  directivePrologue,
   evaluateModule,
   evaluateProvider,
   importSources,
 } from '../regression-helpers'
 
-// Callers keep the module's exports, with each server fn replaced by an RPC;
-// the provider module only exports the extracted handlers. Module directives,
-// ids and module formats must survive both rewrites.
+// Callers keep the module's exports: the client gets each server fn as an
+// RPC, and calling one from the SSR caller runs its handler; the provider
+// module exports the handlers the server-fn resolver runs by id. Module
+// directives, ids and module formats must survive these rewrites.
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -34,7 +39,7 @@ function handlersByName(provider: Record<string, any>) {
 describe('export forms', () => {
   // Source: Next.js server-actions fixtures server-graph/9, /12, /13, /29,
   // /66, /69, client-graph/4, /15
-  test('callers keep every export form and the provider exports only the handlers', async () => {
+  test('callers keep every export form, each server fn running its own handler', async () => {
     const compiled =
       await compileAll(`${head}const a = createServerFn().handler(async () => 'a')
 const b = createServerFn().handler(async () => 'b')
@@ -54,23 +59,23 @@ export { a as default, b as '📙', c as as }`)
       e: 'e',
       f: 'f',
     }
-    for (const output of ['client', 'ssr'] as const) {
-      const module = await evaluateModule(compiled[output])
-      expect({ ...module }, output).toEqual({
-        notAServerFn: 1,
-        ...Object.fromEntries(
-          Object.entries(exported).map(([name, local]) => [
-            name,
-            { rpc: { [output]: handlers[local]!.meta.id } },
-          ]),
-        ),
-      })
+    const client = await evaluateModule(compiled.client)
+    expect({ ...client }).toEqual({
+      notAServerFn: 1,
+      ...Object.fromEntries(
+        Object.entries(exported).map(([name, local]) => [
+          name,
+          { rpc: { client: handlers[local]!.meta.id } },
+        ]),
+      ),
+    })
+    const ssr = await createServerGraph(compiled).ssr()
+    expect(ssr.notAServerFn).toBe(1)
+    for (const [name, local] of Object.entries(exported)) {
+      expect(await ssr[name](), name).toBe(local)
     }
-    // One handler export per server fn, each running its own handler.
+    // Each reported server fn runs its own handler.
     expect(Object.keys(compiled.serverFns)).toHaveLength(6)
-    expect(
-      Object.values(provider).filter((value) => typeof value === 'function'),
-    ).toHaveLength(6)
     expect(
       await callReportedServerFns(compiled, compiled.serverFns).then(
         (results) => results.sort(),
@@ -160,12 +165,17 @@ export const fn = createServerFn().handler(async () => secrets.key)`)
       './data.json': `{ "data": true }`,
       './secrets.json': `{ "key": "s3cret" }`,
     }
-    for (const caller of [compiled.client, compiled.ssr]) {
-      expect(importSources(caller)).toEqual(['./config.json', './data.json'])
-      const module = await evaluateModule(caller, stubs)
-      expect([module.theme, module.data]).toEqual(['dark', { data: true }])
-    }
-    expect(await callProvider(compiled, 'fn', stubs)).toBe('s3cret')
+    expect(importSources(compiled.client)).toEqual([
+      './config.json',
+      './data.json',
+    ])
+    const client = await evaluateModule(compiled.client, stubs)
+    expect([client.theme, client.data]).toEqual(['dark', { data: true }])
+    const ssr = await createServerGraph(compiled, stubs).ssr()
+    expect([ssr.theme, ssr.data]).toEqual(['dark', { data: true }])
+    expect(
+      await callServerFnThroughCallers(compiled, (module) => module.fn, stubs),
+    ).toBe('s3cret')
   })
 
   // Source: Next.js server-actions fixtures server-graph/60, /62, /68, /72
@@ -275,6 +285,40 @@ export { fn }`
   )
 })
 
+/** The directive prologue of each function of a module, in source order. */
+function functionDirectives(code: string) {
+  const { program } = parseSync('module.tsx', code, { sourceType: 'module' })
+  const prologues: Array<Array<string>> = []
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(visit)
+      return
+    }
+    if (typeof node !== 'object' || node === null) {
+      return
+    }
+    const { type, body } = node as { type?: string; body?: any }
+    if (
+      (type === 'FunctionExpression' ||
+        type === 'FunctionDeclaration' ||
+        type === 'ArrowFunctionExpression') &&
+      body?.type === 'BlockStatement'
+    ) {
+      const directives: Array<string> = []
+      for (const statement of body.body) {
+        if (typeof statement.directive !== 'string') {
+          break
+        }
+        directives.push(statement.directive)
+      }
+      prologues.push(directives)
+    }
+    Object.values(node).forEach(visit)
+  }
+  visit(program)
+  return prologues
+}
+
 describe('directives', () => {
   // Source: Next.js server-actions fixtures server-graph/8
   test('handler directives stay in the provider', async () => {
@@ -284,9 +328,10 @@ describe('directives', () => {
   'use server'
   return 1
 })`)
-    expect(compiled.provider).toMatch(
-      /(["'])use strict\1;?\s*(["'])use server\2/,
-    )
+    expect(functionDirectives(compiled.provider)).toContainEqual([
+      'use strict',
+      'use server',
+    ])
     expect(await callProvider(compiled, 'fn')).toBe(1)
   })
 
@@ -315,21 +360,26 @@ describe('directives', () => {
     },
   )
 
-  // `serverFnProviderModuleDirectives` start the provider's prologue once,
-  // ahead of the generated imports.
+  // `serverFnProviderModuleDirectives` are in the provider's prologue, next
+  // to the directives the module already has.
   // Source: @vitejs/plugin-rsc utils.test.ts "recognizes directive prologues"
-  test.each([`'use server'\n`, `'use strict'\n'use server'\n`])(
-    'a provider whose prologue already has the configured directive keeps one: %j',
-    async (prologue) => {
-      const provider = await compileCode(
-        'provider',
+  test.each([
+    { prologue: `'use server'\n`, directives: ['use server'] },
+    {
+      prologue: `'use strict'\n'use server'\n`,
+      directives: ['use strict', 'use server'],
+    },
+  ])(
+    'a provider whose prologue already has the configured directive keeps it: $directives',
+    async ({ prologue, directives }) => {
+      const server = await compileServer(
         `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`,
         { directives: ['use server', '', 'use server'] },
       )
-      expect(provider).toMatch(
-        /^(?:\s*(["'])use strict\1;?)?\s*(["'])use server\2/,
+      expect(directivePrologue(server.provider)).toEqual(
+        expect.arrayContaining(directives),
       )
-      expect(provider!.match(/["']use server["']/g)).toHaveLength(1)
+      expect(await callProvider(server, 'fn')).toBe(1)
     },
   )
 
@@ -341,7 +391,7 @@ describe('directives', () => {
         `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`,
         { directives: ['use server'] },
       )
-      expect(provider).toMatch(/^\s*(["'])use server\1/)
+      expect(directivePrologue(provider!)).toContain('use server')
     },
   )
 })
@@ -468,15 +518,18 @@ describe('module formats', () => {
   test.each(['/test/src/fn.cts', '/test/src/fn.mts'])(
     '%s may use angle-bracket type assertions',
     async (id) => {
-      const { code, serverFns } = await compileFor(
-        'client',
+      const compiled = await compileAll(
         `${head}import { db } from './db.server'
 const n = <number>(1 as unknown)
 export const fn = createServerFn().handler(async () => [n, db.x()])`,
         { id },
       )
-      expect(Object.keys(serverFns)).toHaveLength(1)
-      expect(importSources(code!)).toEqual([])
+      expect(importSources(compiled.client)).toEqual([])
+      expect(
+        await callServerFnThroughCallers(compiled, (module) => module.fn, {
+          './db.server': { db: { x: () => 'x' } },
+        }),
+      ).toEqual([1, 'x'])
     },
   )
 })

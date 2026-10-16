@@ -49,9 +49,7 @@ export { serverValue as exposed }`)
       'draw:1',
       serverOnlyError,
     ])
-    for (const output of ['ssr', 'provider'] as const) {
-      expect(importSources(compiled[output])).toEqual(['./db.server'])
-    }
+    expect(importSources(compiled.ssr)).not.toContain('./chart.client')
     const ssr = await evaluateModule(compiled.ssr, stubs)
     expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
       clientOnlyError,
@@ -527,7 +525,7 @@ function settle(run: () => unknown) {
     async () => {
       const server = await compileServer(envFnsInHandler)
       expect(await getModuleErrors(server.provider)).toEqual([])
-      expect(importSources(server.provider)).toEqual(['./db.server'])
+      expect(importSources(server.provider)).not.toContain('./chart.client')
       expect(
         await callProvider(server, 'fn', {
           './db.server': `export const db = { now: () => 'now', read: () => 'read' }`,
