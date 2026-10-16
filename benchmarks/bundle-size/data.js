@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792157929753,
+  "lastUpdate": 1792184948132,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "me@florianpellet.com",
-            "name": "Flo",
-            "username": "Sheraff"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "208100b7c0a8491fc93c26358ffe30badec4b138",
-          "message": "feat(benchmarks): client-side CPU benchmark scenario suite (#7732)\n\n* feat(benchmarks): add client-side CPU benchmark scenario suite\n\nAdd 11 client-side CPU benchmark scenarios to benchmarks/client-nav, each\nimplemented identically across react/solid/vue and tracked by CodSpeed\nthrough the existing Benchmarks workflow (no CI changes needed):\n\nasync-pipeline, control-flow, head, history, links, loaders, mount,\nnested-params, preload, route-tree-scale, search-params\n\nEach scenario is an isolated file-based-routing app (route trees generated\nby @tanstack/router-plugin) built for production and driven in jsdom by a\nshared harness (scenarios/harness.ts): circular step sequences of real\n<Link> clicks (plus hover/preload/history-traversal/invalidate steps),\neach synchronized on the router's onRendered event, with a warm-up lap\nthat asserts every step's observable output. Determinism rules: no\nwall-clock timers (counted 0ms hops only), staleTime/gcTime pinned to 0 or\n1e9, deterministic preload staleness, stationary DOM and history depth.\n\nThe existing baseline apps and bench names are untouched for CodSpeed\ncontinuity; baseline vite configs only gain an explicit root/setupFiles so\nthey resolve identically under the new per-framework aggregate configs.\n\nNotable constraints encoded in the scenarios:\n- Component-level Await/Suspense is excluded from async-pipeline: React 19\n  throttles every Suspense reveal by ~300ms wall-clock, which is\n  inherently non-deterministic to benchmark.\n- control-flow/react silences React 19's onCaughtError reporting, which\n  otherwise dominates the measured loop with console I/O.\n- Vue route components must be defined before their createFileRoute call\n  (bundled var hoisting silently yields component: undefined otherwise).\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* ci: apply automated fixes\n\n* chore(benchmarks): prefix client-nav bench names with \"client-\"\n\nAll benches in @benchmarks/client-nav now start with \"client\" so they are\neasy to identify on the CodSpeed dashboard (the baseline already did).\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* fix(benchmarks): address review findings on client-nav scenario stability\n\nFixes from an adversarial review of the scenario suite:\n\n- mount: create the browser history explicitly and destroy() it on unmount.\n  The default per-router createBrowserHistory() monkey-patches\n  window.history.pushState/replaceState, chaining one wrapper per router —\n  per-mount cost degraded 1.8ms -> 6ms over 3000 mounts (O(N^2) drift in\n  the cold-start bench). Verified flat (~1.86ms) after the fix.\n- links: replace the five <MatchRoute> components with setup-scoped\n  useMatchRoute probes in all three apps. vue-router's MatchRoute calls\n  useMatchRoute() inside its render function, leaking one undisposed\n  watcher per render — the Vue bench accumulated ~5 dead subscribers per\n  navigation. Verified flat per-tick cost over 2000 ticks after the fix.\n- all scenarios: bound the scroll-restoration cache with\n  getScrollRestorationKey: (location) => location.pathname. The default\n  key is a fresh random per-entry location key, so the module-level cache\n  grew one entry per push navigation for the whole run.\n- harness hover step: dispatch a single mouseover instead of\n  mouseover+mouseenter. Solid/Vue attach intent-preload handlers to BOTH\n  events, so the old double dispatch ran the preload pipeline twice for\n  them but once for React. Verified all three adapters preload exactly\n  once per hover via cached-matches probes.\n- README: correct the loaders row (the invalidate step means cached routes\n  re-run once per lap), the links row, and document the session-history\n  growth characteristics.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* feat(benchmarks): cover client rewrites, lazy route chunks, encoded params\n\nCloses the three coverage gaps identified in the scenario-suite analysis:\n\n- new `rewrites` scenario (react/solid/vue): router basepath '/app' composed\n  with a locale input/output rewrite pair — the client analog of the SSR\n  rewrites scenario. Every href build runs the output rewrite and every\n  committed location runs the input rewrite; assertions check both the\n  internal router pathname and the external window pathname. The harness\n  gained an `initialUrl` option since a basepath app cannot start at '/'.\n- route-tree-scale now builds with `autoCodeSplitting: true`, so its\n  navigations also exercise lazy route-chunk resolution — the default shape\n  of real file-based apps, previously uncovered.\n- nested-params and route-tree-scale param sets now include characters that\n  need percent-encoding (spaces, `&`, `%`, `+`, unicode) so the segment\n  encode/decode paths run on every navigation.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* fix(benchmarks): reduce syscall time in measured loops, lengthen mount bench\n\nCodSpeed excludes syscall time from simulation measures, and past a\nthreshold it warns (\"cannot be consistently instrumented\") and skips the\nbenchmark; the exclusion is also inconsistent run-to-run, which was the\nroot cause of the two same-code CI swings (route-tree-scale react 13%,\nasync-pipeline react 3.6%) and of skipped runs on hop-heavy benches like\nasync-pipeline solid (579 calls / 12.1ms).\n\n- Replace all counted setTimeout(0) hops with setImmediate hops (harness\n  timerHop + async-pipeline hopDelay). Both are deterministic event-loop\n  turns that yield to timers and the React Node scheduler, but a timer\n  costs ~3-4 syscalls (timerfd + epoll) per hop vs ~1 for an immediate.\n  Same-machine instrumented before/after: preload solid 39.8ms -> 1.2ms of\n  syscall time, preload vue 30.1 -> 1.1, async-pipeline solid 23.5 -> 1.1,\n  async-pipeline vue 17.9 -> 0.9. head/route-tree-scale are unchanged\n  (their residual syscalls are GC/scheduler, and their measures were\n  already stable); history's syscalls come from jsdom's internal\n  timer-queued traversal and are not reachable from bench code (its\n  measured values are stable regardless).\n\n- mount: 6 ticks per iteration instead of 2. A single mount simulates to\n  only ~8ms and very short measures amplify allocator/GC quantization;\n  the bench now measures ~50ms+ of simulated CPU.\n\nAll 39 benches pass; full nx typecheck green.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* fix(benchmarks): stop history benches sleeping in jsdom's traversal timers\n\nThe history benches were skip-warned by CodSpeed for excessive syscall\ntime (5-26ms, highly variable across runs). Root cause: jsdom delivers\nhistory traversals through two nested window.setTimeout(0) tasks, and Node\nclamps zero timers to 1ms of wall time — so while awaiting onRendered\nafter back/forward/go, the event loop blocked in epoll_wait until each\ntimer expired. That blocked wall-time is recorded as syscall time, and its\nduration depends on host timer behavior, hence the variability.\n\nThe harness now reroutes zero-delay window.setTimeout calls onto\nsetImmediate for the duration of a benchmark (non-zero delays pass\nthrough; clearTimeout handles both). Zero-delay timeouts carry no ordering\nsemantics a check-phase immediate doesn't satisfy, and the suite's\nconventions already forbid real-delay timers in measured code.\n\nInstrumented A/A verification (2 runs per framework): history syscall time\nreact 23-26ms -> 2.5ms, solid 14-23ms -> 1.1ms, vue 11-12ms -> 1.2ms, with\nbit-identical syscall counts across runs and measured values stable to\n0.06%. The benches also stopped measuring sleep: locally an iteration\ndropped from ~42-49ms to ~5-11ms of actual CPU work. All 39 benches pass.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Fable 5 <noreply@anthropic.com>\nCo-authored-by: autofix-ci[bot] <114827586+autofix-ci[bot]@users.noreply.github.com>",
-          "timestamp": "2026-07-03T08:18:08+02:00",
-          "tree_id": "f99ca9c67e8aad6be6511ff4e87da1d9f041ad56",
-          "url": "https://github.com/TanStack/router/commit/208100b7c0a8491fc93c26358ffe30badec4b138"
-        },
-        "date": 1783059689617,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89469,
-            "unit": "bytes",
-            "extra": "raw=280455; brotli=77817; initial_gzip=89330"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93290,
-            "unit": "bytes",
-            "extra": "raw=292635; brotli=81047; initial_gzip=93148"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36416,
-            "unit": "bytes",
-            "extra": "raw=108624; brotli=32821; initial_gzip=36288"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41587,
-            "unit": "bytes",
-            "extra": "raw=124207; brotli=37419; initial_gzip=41459"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54340,
-            "unit": "bytes",
-            "extra": "raw=153723; brotli=48844; initial_gzip=54208"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 60450,
-            "unit": "bytes",
-            "extra": "raw=172932; brotli=54198; initial_gzip=60317"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104474,
-            "unit": "bytes",
-            "extra": "raw=330046; brotli=90438; initial_gzip=104332"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105227,
-            "unit": "bytes",
-            "extra": "raw=331454; brotli=91040; initial_gzip=104356"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107979,
-            "unit": "bytes",
-            "extra": "raw=340214; brotli=93421; initial_gzip=107840"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 102135,
-            "unit": "bytes",
-            "extra": "raw=324339; brotli=87871; initial_gzip=101961"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 102548,
-            "unit": "bytes",
-            "extra": "raw=325299; brotli=88284; initial_gzip=102379"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105432,
-            "unit": "bytes",
-            "extra": "raw=334635; brotli=90730; initial_gzip=105258"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50903,
-            "unit": "bytes",
-            "extra": "raw=155907; brotli=44934; initial_gzip=50772"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 54244,
-            "unit": "bytes",
-            "extra": "raw=164139; brotli=47977; initial_gzip=50830"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56846,
-            "unit": "bytes",
-            "extra": "raw=173363; brotli=50145; initial_gzip=56713"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 72838,
-            "unit": "bytes",
-            "extra": "raw=212349; brotli=64541; initial_gzip=72707"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 76934,
-            "unit": "bytes",
-            "extra": "raw=225288; brotli=67967; initial_gzip=76800"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -25891,6 +25765,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031"
         },
         "date": 1792157927585,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 86048,
+            "unit": "bytes",
+            "extra": "raw=267729; brotli=75041; initial_gzip=85907"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89678,
+            "unit": "bytes",
+            "extra": "raw=279899; brotli=78231; initial_gzip=89538"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34131,
+            "unit": "bytes",
+            "extra": "raw=97503; brotli=30895; initial_gzip=34004"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39172,
+            "unit": "bytes",
+            "extra": "raw=112668; brotli=35317; initial_gzip=39044"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50603,
+            "unit": "bytes",
+            "extra": "raw=139733; brotli=45875; initial_gzip=50476"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56325,
+            "unit": "bytes",
+            "extra": "raw=158343; brotli=50891; initial_gzip=56198"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99109,
+            "unit": "bytes",
+            "extra": "raw=309641; brotli=86129; initial_gzip=98970"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106710,
+            "unit": "bytes",
+            "extra": "raw=336860; brotli=92658; initial_gzip=106568"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99831,
+            "unit": "bytes",
+            "extra": "raw=311026; brotli=86735; initial_gzip=98970"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102249,
+            "unit": "bytes",
+            "extra": "raw=319111; brotli=88633; initial_gzip=102108"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102754,
+            "unit": "bytes",
+            "extra": "raw=320769; brotli=88706; initial_gzip=102579"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103170,
+            "unit": "bytes",
+            "extra": "raw=321745; brotli=89060; initial_gzip=103001"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 106013,
+            "unit": "bytes",
+            "extra": "raw=330671; brotli=91525; initial_gzip=105838"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47268,
+            "unit": "bytes",
+            "extra": "raw=138294; brotli=42120; initial_gzip=47141"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50387,
+            "unit": "bytes",
+            "extra": "raw=145802; brotli=44953; initial_gzip=47202"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52405,
+            "unit": "bytes",
+            "extra": "raw=153612; brotli=46552; initial_gzip=52278"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 66954,
+            "unit": "bytes",
+            "extra": "raw=190147; brotli=59850; initial_gzip=66825"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70768,
+            "unit": "bytes",
+            "extra": "raw=202293; brotli=63102; initial_gzip=70643"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "41898282+github-actions[bot]@users.noreply.github.com",
+            "name": "github-actions[bot]",
+            "username": "github-actions[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "caaf32da35e250c1344a350fdd80cfc631c24b3c",
+          "message": "ci: Version Packages (#8733)\n\nci: changeset release\n\nCo-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>",
+          "timestamp": "2026-10-16T23:05:28+02:00",
+          "tree_id": "555d195f1acdb01a59f1cd57fd29eec0ce79eba5",
+          "url": "https://github.com/TanStack/router/commit/caaf32da35e250c1344a350fdd80cfc631c24b3c"
+        },
+        "date": 1792184946073,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
