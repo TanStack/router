@@ -20,6 +20,16 @@ export const Route = createLazyFileRoute('/lazy')({})`),
     ).toBe('/lazy')
   })
 
+  test('reads the id of a route file with JSX', async () => {
+    expect(
+      await routeIdOf(`import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/jsx')({ component: Page })
+function Page() {
+  return <><h1>Title</h1><p>Body</p></>
+}`),
+    ).toBe('/jsx')
+  })
+
   test('fails on a module that does not evaluate', async () => {
     await expect(
       routeIdOf(`import { createFileRoute } from '@tanstack/react-router'
