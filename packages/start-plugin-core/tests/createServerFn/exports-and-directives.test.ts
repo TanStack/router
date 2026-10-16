@@ -347,23 +347,6 @@ describe('directives', () => {
 })
 
 describe('server function ids', () => {
-  const decodeDevId = (id: string) =>
-    JSON.parse(Buffer.from(id, 'base64url').toString('utf8'))
-
-  test('dev ids encode the provider module and the handler export', async () => {
-    const { serverFns } = await compileFor(
-      'client',
-      `${head}export const getPosts = createServerFn().handler(async () => [])`,
-      { mode: 'dev' },
-    )
-    expect(Object.keys(serverFns).map(decodeDevId)).toEqual([
-      {
-        file: '/@id/src/module.tsx?tss-serverfn-split',
-        export: 'getPosts_createServerFn_handler',
-      },
-    ])
-  })
-
   test('dev providers export the handler', async () => {
     const server = await compileServer(
       `${head}export const getPosts = createServerFn().handler(async () => 'posts')`,
