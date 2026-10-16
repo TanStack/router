@@ -586,26 +586,6 @@ export function Page({ Model }) {
     },
   )
 
-  // Bug: hook calls are only detected when the callee is a bare identifier,
-  // so `React.useId()` in the children moves into the chunk component.
-  // Impact: the hook runs in another component on the client than on the
-  // server (`useId` mismatches, hydration errors).
-  // Source: Qwik optimizer example_use_optimization
-  test.fails(
-    'client: a hook called through a namespace in the children is rejected',
-    async () => {
-      await expect(
-        compileHydrate(
-          'client',
-          `import * as React from 'react'
-${head}export function Page() {
-  return <Hydrate><p id={React.useId()}>x</p></Hydrate>
-}`,
-        ),
-      ).rejects.toThrow(/hook/i)
-    },
-  )
-
   // Bug: split children containing `await` (async server components) are
   // moved as is into the synchronous chunk component the client compile
   // emits, while the server renders them inline.
