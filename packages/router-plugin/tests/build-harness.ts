@@ -144,19 +144,23 @@ export function routeApp(
  * Builds an app with the router plugin of the bundler: file-based routes in
  * `routes/`, `framework` (default React, also the plugin's `target`), code
  * splitting on, HMR off; `pluginOptions` overrides these. `files` holds the
- * routes and the entry (see `routeApp`). `extraPlugins` creates more plugins
- * of the bundler, after the router plugin and the framework's.
+ * routes and the entry (see `routeApp`). `routerPlugins` creates the router
+ * plugins from the harness's plugin options instead of the bundler's
+ * `tanstackRouter` (e.g. other entry points); `extraPlugins` creates more
+ * plugins of the bundler, after the router plugins and the framework's.
  */
 export async function build(
   options: Omit<BundleOptions, 'dir'> & {
     pluginOptions?: RouterPluginOptions
     framework?: Framework
+    routerPlugins?: (config: RouterPluginOptions) => Array<unknown>
     extraPlugins?: (app: AppInfo) => Array<unknown>
   },
 ): Promise<BuildResult> {
   const {
     pluginOptions = {},
     framework = 'react',
+    routerPlugins: createRouterPlugins,
     extraPlugins,
     ...bundleOptions
   } = options
@@ -171,7 +175,7 @@ export async function build(
     ...bundleOptions,
     plugins: {
       [options.bundler]: (app: AppInfo) => {
-        const routerPlugin = tanstackRouter({
+        const config: RouterPluginOptions = {
           target: framework,
           autoCodeSplitting: true,
           ...pluginOptions,
@@ -189,20 +193,30 @@ export async function build(
             addHmr: false,
             ...pluginOptions.codeSplittingOptions,
           },
-        })
-        const others = [
+        }
+        const all = [
+          ...(createRouterPlugins?.(config) ?? [tanstackRouter(config)]),
           ...frameworkBuild.plugins(app),
           ...(extraPlugins?.(app) ?? []),
         ]
-        if (!others.length) {
-          return routerPlugin
+        if (all.length === 1) {
+          return all[0]
         }
-        if (options.bundler !== 'vite') {
-          throw new Error(
-            `${options.bundler}: one plugin per build (use sourceRules)`,
-          )
+        if (options.bundler === 'vite') {
+          return all
         }
-        return [routerPlugin, ...others]
+        if (options.bundler === 'esbuild') {
+          throw new Error('esbuild: one plugin per build')
+        }
+        // webpack and Rspack: one plugin applying them all
+        type WebpackPlugin = { apply: (compiler: unknown) => void }
+        return {
+          apply(compiler: unknown) {
+            for (const plugin of all) {
+              ;(plugin as WebpackPlugin).apply(compiler)
+            }
+          },
+        }
       },
     },
   })
