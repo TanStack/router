@@ -697,7 +697,7 @@ export const Route = createFileRoute('/')({
     },
   ])(
     'a component declared by an array destructuring $name renders',
-    async ({ code, loaded }) => {
+    async ({ code, loaded }: { code: string; loaded?: string }) => {
       const route = await loadRoute(`${head}${code}\n`, {
         stubs: {
           './factory': {
@@ -710,6 +710,55 @@ export const Route = createFileRoute('/')({
         (await route.load('component'))(),
       ]).toEqual([...(loaded ? [loaded] : []), '<div>page</div>'])
     },
+  )
+
+  // Bug: once the pins above are fixed, these split options must also end
+  // up split, or the build must say why (decision D11). A literal array can
+  // be split per element, so leaving the component in the entry is our
+  // limitation: the goal is a split component. Splitting the result of a
+  // call would change when the call runs, so the user has to change the
+  // pattern: a warning naming the file and the option is acceptable too.
+  // Today the build fails first (same root cause as the pins above).
+  // Impact: the component loads with the entry chunk.
+  test.fails.each([
+    {
+      name: 'a literal array shared with the loader',
+      code: `const [Page, main] = [() => <div>{'MARK_PAGE'}</div>, 'main']
+export const Route = createFileRoute('/')({
+  loader: () => main,
+  component: Page,
+})`,
+      reportable: false,
+    },
+    {
+      name: 'a call shared with the errorComponent',
+      code: `const createPair = () => [() => <div>{'MARK_PAGE'}</div>, () => <p>error</p>]
+const [Page, ErrorView] = createPair()
+export const Route = createFileRoute('/')({
+  component: Page,
+  errorComponent: ErrorView,
+})`,
+      reportable: true,
+    },
+  ])(
+    'a component declared by an array destructuring of $name is split or reported',
+    async ({ code, reportable }) => {
+      const app = await build({
+        bundler: 'vite',
+        env: 'client',
+        files: routeApp(`${head}${code}\n`, { env: 'client' }),
+      })
+      const reported = [...app.warnings, ...app.consoleMessages].some(
+        (message) =>
+          message.includes('routes/index.tsx') &&
+          /\b(?:component|Page)\b/.test(message),
+      )
+      expect({
+        lazy: app.where('MARK_PAGE') === 'lazy',
+        reported: reportable && reported,
+      }).not.toEqual({ lazy: false, reported: false })
+    },
+    60_000,
   )
 })
 
