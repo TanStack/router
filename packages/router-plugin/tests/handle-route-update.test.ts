@@ -176,15 +176,7 @@ describe('handleRouteUpdate', () => {
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        pathlessRoute.id,
-        asAnyRoute(new BaseRoute({} as any)),
-      )
-    } finally {
-      restoreWindow()
-    }
+    runHandleRouteUpdate(router, pathlessRoute.id, new BaseRoute({} as any))
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
     expect(router.routesByPath[key]?.id).toBe(
@@ -210,15 +202,7 @@ describe('handleRouteUpdate', () => {
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        parentRoute.id,
-        asAnyRoute(new BaseRoute({} as any)),
-      )
-    } finally {
-      restoreWindow()
-    }
+    runHandleRouteUpdate(router, parentRoute.id, new BaseRoute({} as any))
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
     expect(router.routesByPath[key]?.id).toBe(
@@ -242,21 +226,15 @@ describe('handleRouteUpdate', () => {
 
     expect(router.getMatchedRoutes('/items/abc')[2]?.id).toBeUndefined()
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        itemRoute.id,
-        asAnyRoute(
-          new BaseRoute({
-            params: {
-              parse: ({ itemId }: { itemId: string }) => ({ itemId }),
-            },
-          } as any),
-        ),
-      )
-    } finally {
-      restoreWindow()
-    }
+    runHandleRouteUpdate(
+      router,
+      itemRoute.id,
+      new BaseRoute({
+        params: {
+          parse: ({ itemId }: { itemId: string }) => ({ itemId }),
+        },
+      } as any),
+    )
 
     expect(router.getMatchedRoutes('/items/abc')[2]?.id).toBe(itemRoute.id)
   })
@@ -273,12 +251,7 @@ describe('handleRouteUpdate', () => {
 
     expect((newRoute as any).to).toBeUndefined()
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(itemRoute.id, asAnyRoute(newRoute))
-    } finally {
-      restoreWindow()
-    }
+    runHandleRouteUpdate(router, itemRoute.id, newRoute)
 
     expect(newRoute.id).toBe(itemRoute.id)
     expect(newRoute.path).toBe(itemRoute.path)
@@ -353,19 +326,14 @@ describe('handleRouteUpdate', () => {
     ])
     expect(router.state.matches[1]!.loaderData).toBe('stale loader data')
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(hotRoute.id, asAnyRoute(new BaseRoute({} as any)))
-      await vi.waitFor(() => {
-        expect(router.state.matches.map((match) => match.routeId)).toEqual([
-          rootRoute.id,
-          hotRoute.id,
-        ])
-        expect(router.state.matches[1]!.loaderData).toBeUndefined()
-      })
-    } finally {
-      restoreWindow()
-    }
+    runHandleRouteUpdate(router, hotRoute.id, new BaseRoute({} as any))
+    await vi.waitFor(() => {
+      expect(router.state.matches.map((match) => match.routeId)).toEqual([
+        rootRoute.id,
+        hotRoute.id,
+      ])
+      expect(router.state.matches[1]!.loaderData).toBeUndefined()
+    })
   })
 
   it('keeps hot loader data when an older refresh settles later', async () => {

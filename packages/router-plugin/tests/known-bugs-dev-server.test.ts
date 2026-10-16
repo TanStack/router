@@ -6,7 +6,12 @@
  */
 import { describe, expect, test } from 'vitest'
 import { rootRoute, routerDevServer } from './dev-server'
-import { exportedNames, head, importedNames } from './regression-helpers'
+import {
+  exportedNames,
+  head,
+  importRequests,
+  importedNames,
+} from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
@@ -14,13 +19,6 @@ const timeout = 30_000
 
 describe('a dev server compiling an edited route out of order', () => {
   const route = '/routes/page.tsx'
-  const shared = `${route}?tsr-shared=1`
-  const ids = [
-    route,
-    shared,
-    `${route}?tsr-split=component`,
-    `${route}?tsr-split=errorComponent`,
-  ]
 
   /** Without the HMR timestamps an edit adds to import URLs. */
   const withoutTimestamps = (code: string) =>
@@ -29,27 +27,58 @@ describe('a dev server compiling an edited route out of order', () => {
     )
 
   /**
-   * Requests `urls` in order (the route module, its shared module and its
-   * chunks): errors, exports and imports from the shared module by URL.
+   * The route module and the modules of the route file it reaches through
+   * static and dynamic imports (its split chunks and the modules they share,
+   * whatever their URLs), breadth first, as a page loading the route and
+   * its chunks requests them.
    */
-  async function inspect(server: DevServer, urls: Array<string>) {
-    const modules: Record<
+  async function routeModuleUrls(server: DevServer) {
+    const urls = [route]
+    for (let index = 0; index < urls.length; index++) {
+      const code = withoutTimestamps(await server.transform(urls[index]!))
+      for (const { specifier } of importRequests(code)) {
+        if (
+          specifier.replace(/\?.*$/, '') === route &&
+          !urls.includes(specifier)
+        ) {
+          urls.push(specifier)
+        }
+      }
+    }
+    return urls
+  }
+
+  /**
+   * Requests `urls` in order (modules of the route file): errors, exports
+   * and the names imported from each of the other modules of the route file
+   * (`modules`), by URL.
+   */
+  async function inspect(
+    server: DevServer,
+    urls: Array<string>,
+    modules: Array<string>,
+  ) {
+    const inspected: Record<
       string,
       {
         errors: Array<string>
         exports: Array<string>
-        fromShared: Array<string>
+        fromRouteModules: Record<string, Array<string>>
       }
     > = {}
     for (const url of urls) {
       const code = withoutTimestamps(await server.transform(url))
-      modules[url] = {
+      inspected[url] = {
         errors: await getModuleErrors(code),
         exports: exportedNames(code),
-        fromShared: importedNames(code, shared),
+        fromRouteModules: Object.fromEntries(
+          modules
+            .filter((imported) => imported !== url)
+            .map((imported) => [imported, importedNames(code, imported)]),
+        ),
       }
     }
-    return modules
+    return inspected
   }
 
   const twoCards = `${head}function CardA() { return <b>A</b> }
@@ -67,23 +96,28 @@ export const Route = createFileRoute('/page')({
 `
 
   /**
-   * Loads the route modules in order, edits the route from `twoCards` to
-   * `oneCard`, requests them again in `order`, and compares them with what a
-   * dev server started after the edit compiles.
+   * Loads the route modules in order (the URLs the route module imports, as
+   * the first load finds them), edits the route from `twoCards` to
+   * `oneCard`, requests them again in the order `reorder` gives, and compares
+   * them with what a dev server started after the edit compiles.
    */
-  async function editAndCompare(order: Array<string>) {
+  async function editAndCompare(
+    reorder: (urls: Array<string>) => Array<string>,
+  ) {
     const server = await routerDevServer({
       files: { 'routes/page.tsx': twoCards },
     })
     // The page loads: the route module first, then the modules it imports
-    await inspect(server, ids)
+    const urls = await routeModuleUrls(server)
+    expect(urls.length).toBeGreaterThan(1)
+    await inspect(server, urls, urls)
     await server.edit({ 'routes/page.tsx': oneCard })
-    const edited = await inspect(server, order)
+    const edited = await inspect(server, reorder(urls), urls)
 
     const fresh = await routerDevServer({
       files: { 'routes/page.tsx': oneCard },
     })
-    const expected = await inspect(fresh, ids)
+    const expected = await inspect(fresh, urls, urls)
     for (const module of Object.values(expected)) {
       expect(module.errors).toEqual([])
     }
@@ -94,7 +128,7 @@ export const Route = createFileRoute('/page')({
   test(
     'compiles the shared module and chunks requested after the route module from the edited source',
     async () => {
-      await editAndCompare(ids)
+      await editAndCompare((urls) => urls)
     },
     timeout,
   )
@@ -117,7 +151,7 @@ export const Route = createFileRoute('/page')({
   test.fails(
     'compiles the shared module and chunks requested before the route module from the edited source',
     async () => {
-      await editAndCompare([...ids.slice(1), route])
+      await editAndCompare((urls) => [...urls.slice(1), route])
     },
     timeout,
   )

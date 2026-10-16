@@ -10,9 +10,17 @@ import {
   jsxPragma,
   moduleLang,
 } from '@tanstack/compiler-test-utils/module-linker'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  RouterCore,
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
+} from '@tanstack/router-core'
 import * as React from 'react'
 import { parseSync, transformWithOxc } from 'vite'
-import { expect } from 'vitest'
+import { expect, vi } from 'vitest'
+import { createMemoryHistory } from '../../history/src'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
@@ -24,6 +32,7 @@ import {
 } from '@tanstack/compiler-test-utils/validate-module'
 import type { Config, DeletableNodes } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
+import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
 import type { ESTree } from 'vite'
 
@@ -34,10 +43,13 @@ export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 /** Exports of each module provided by the test, by import specifier. */
 type Stubs = Record<string, Record<string, unknown>>
 
+/** A framework the router plugin targets. */
+export type TargetFramework = 'react' | 'solid' | 'vue'
+
 type CompileOptions = {
   /** Name of the route file; it is compiled as `/<filename>`. */
   filename?: string
-  targetFramework?: 'react' | 'solid'
+  targetFramework?: TargetFramework
   /** Compile for the dev server: route HMR and the framework's HMR code. */
   hmr?: boolean
   /**
@@ -45,6 +57,14 @@ type CompileOptions = {
    * (`['ssr', 'server', 'headers']`).
    */
   deleteNodes?: Array<DeletableNodes>
+  /** Route id the route file is registered under. Default `/`. */
+  routeId?: string
+  /**
+   * Router plugin options over the harness's, e.g. `codeSplittingOptions`
+   * (`defaultBehavior`, `splitBehavior`; merged with `hmr` and
+   * `deleteNodes`) or `plugin.hmr.style`.
+   */
+  pluginOptions?: Partial<Config>
 }
 
 /**
@@ -127,8 +147,12 @@ const pluginContext = {
   },
 }
 
-/** Imports and re-exports of a module, static or dynamic (`import()`). */
-function moduleRequests(code: string, id: string) {
+/**
+ * Imports and re-exports of a module, static or dynamic (`import()`), by
+ * specifier, in source order (static ones first). `id` gives the module's
+ * language.
+ */
+export function importRequests(code: string, id = 'module.tsx') {
   const { module } = parseSync(`module.${moduleLang(id)}`, code, {
     sourceType: 'module',
   })
@@ -182,15 +206,22 @@ function compileRouteGraph(
     targetFramework = 'react',
     hmr = false,
     deleteNodes,
+    routeId = '/',
+    pluginOptions = {},
   } = options
   const id = routeModuleId(filename)
   const context = createRouterPluginContext()
-  context.routesByFile.set(id, { routeId: '/' })
+  context.routesByFile.set(id, { routeId })
   const created = createRouterCodeSplitterPlugin(
     {
       target: targetFramework,
       autoCodeSplitting: true,
-      codeSplittingOptions: { addHmr: hmr, deleteNodes },
+      ...pluginOptions,
+      codeSplittingOptions: {
+        addHmr: hmr,
+        deleteNodes,
+        ...pluginOptions.codeSplittingOptions,
+      },
     },
     context,
   )
@@ -301,7 +332,7 @@ function compileRouteGraph(
     }
     const output = transform(moduleId, load(moduleId))
     modules.set(moduleId, output)
-    for (const { specifier, dynamic } of moduleRequests(output, moduleId)) {
+    for (const { specifier, dynamic } of importRequests(output, moduleId)) {
       const target = resolve(specifier, moduleId)
       if (target === undefined) {
         continue
@@ -586,7 +617,11 @@ function createRouterStub(lazy: Map<unknown, () => Promise<unknown>>) {
   }
 }
 
-const routerPackages = ['@tanstack/react-router', '@tanstack/solid-router']
+const routerPackages = [
+  '@tanstack/react-router',
+  '@tanstack/solid-router',
+  '@tanstack/vue-router',
+]
 
 /** Stubs of the router packages, merged with the test's own stubs. */
 function withRouterStubs(
@@ -831,6 +866,274 @@ export async function expectRefreshableRouteOption(
     refreshable,
     `\`${option}\` is neither a component React Refresh registers nor a memo/forwardRef of one (registered: ${[...registered.values()].join(', ')})`,
   ).toBe(true)
+}
+
+const getStoreConfig: GetStoreConfig = () => ({
+  createMutableStore: createNonReactiveMutableStore,
+  createReadonlyStore: createNonReactiveReadonlyStore,
+  batch: (fn) => fn(),
+})
+
+export type HotUpdateOptions = {
+  /** The bundler HMR API the route is compiled for and run with. Default `vite`. */
+  style?: 'vite' | 'webpack'
+  /**
+   * Compile with automatic code splitting (the code splitter with HMR, its
+   * modules linked like `loadRoute`) instead of the route HMR plugin alone.
+   */
+  codeSplitting?: boolean
+  /** Default `react`. */
+  targetFramework?: TargetFramework
+  /**
+   * Route id the route file is registered under. Default `/`; `/__root`
+   * for a root route, which is then the route tree's root.
+   */
+  routeId?: string
+  /** The edited route file the update loads. Default: `code` again. */
+  updated?: string
+  /** Hot data (`hot.data`) the route module starts with. */
+  initialData?: Record<string, unknown>
+  /**
+   * A React Refresh runtime is present: modules are compiled with the React
+   * Refresh transform (`registered`) and the bundler's refresh utilities
+   * (`__react_refresh_utils__`) record each update they are asked for
+   * (`refreshes`).
+   */
+  refresh?: boolean
+  /** The route file's other imports, by specifier. */
+  stubs?: Stubs
+}
+
+/**
+ * Compiles a route file for the dev server, then runs a hot update the way
+ * the bundler does: loads the route module with the bundler's hot API on
+ * `import.meta` (one hot context per module, its `data` kept across the
+ * update), mounts its `Route` in a route tree as the generated route tree
+ * does and creates a router with it (`window.__TSR_ROUTER__`), then loads
+ * the modules again (`updated`) with the same hot data (Vite: each first
+ * module's accept callback receives its new module; webpack: the modules
+ * re-run with the data their dispose handlers wrote).
+ *
+ * Returns the options of the live route before (`previous`) and after
+ * (`live`) the update, a copy of the options each module load created a
+ * route with (`created`), whether a module asked the bundler for a full
+ * reload (`invalidated`), what React Refresh registered and how many
+ * refreshes were enqueued (`refresh`), and `load(option)`, which resolves a
+ * lazy option of the live route to what its module provides.
+ */
+export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
+  const {
+    style = 'vite',
+    codeSplitting = false,
+    targetFramework = 'react',
+    routeId = '/',
+    refresh = false,
+  } = options
+  const pluginOptions: Partial<Config> = {
+    target: targetFramework,
+    plugin: { hmr: { style } },
+  }
+  const compile = (source: string) => {
+    if (codeSplitting) {
+      return compileRouteGraph(source, {
+        targetFramework,
+        hmr: true,
+        routeId,
+        pluginOptions,
+      })
+    }
+    const file = routeFile('index')
+    const compiled = transformWithRouteHmrPlugin(source, pluginOptions, {
+      file,
+      routeId,
+    })
+    return {
+      id: file,
+      modules: new Map([[file, compiled]]),
+      resolve: () => undefined,
+    }
+  }
+  const first = compile(code)
+  const second =
+    options.updated === undefined ? first : compile(options.updated)
+
+  const created: Array<Record<string, unknown>> = []
+  const lazy = new Map<unknown, () => Promise<unknown>>()
+  const registered = new Map<unknown, string>()
+  let invalidated = false
+  let refreshes = 0
+  type HotState = {
+    data: Record<string, unknown>
+    accepted: Array<(module: unknown) => void>
+    disposers: Array<(data: Record<string, unknown>) => void>
+  }
+  const hotStates = new Map<string, HotState>()
+  const hotState = (id: string) => {
+    let state = hotStates.get(id)
+    if (!state) {
+      state = {
+        data: id === first.id ? { ...options.initialData } : {},
+        accepted: [],
+        disposers: [],
+      }
+      hotStates.set(id, state)
+    }
+    return state
+  }
+  const hotContext = (id: string) => {
+    const state = hotState(id)
+    return {
+      data: state.data,
+      accept: (callback?: (module: unknown) => void) => {
+        if (callback) {
+          state.accepted.push(callback)
+        }
+      },
+      dispose: (callback: (data: Record<string, unknown>) => void) => {
+        state.disposers.push(callback)
+      },
+      invalidate: () => {
+        invalidated = true
+      },
+    }
+  }
+
+  const recording =
+    (create: (options: Record<string, unknown>) => unknown) =>
+    (routeOptions: Record<string, unknown> = {}) => {
+      // A copy: the HMR code writes kept options into the new ones.
+      created.push({ ...routeOptions })
+      return create(routeOptions)
+    }
+  const createRoute = (routeOptions: Record<string, unknown>) => {
+    const route = new BaseRoute(routeOptions as never) as unknown as {
+      isRoot: boolean
+    }
+    route.isRoot = false
+    return route
+  }
+  const createRootRoute = (routeOptions: Record<string, unknown>) =>
+    new BaseRootRoute(routeOptions as never)
+  const lazyStubs = createRouterStub(lazy)
+  const routerPackage = `@tanstack/${targetFramework}-router`
+  // The route classes of the framework packages add hooks to the router-core
+  // ones; route HMR only uses what router-core provides.
+  const routerStub: Record<string, unknown> = {
+    ...lazyStubs,
+    createFileRoute: () => recording(createRoute),
+    createLazyFileRoute: () => recording(createRoute),
+    createRootRoute: recording(createRootRoute),
+    createRootRouteWithContext: () => recording(createRootRoute),
+  }
+  const load = (graph: Pick<RouteGraph, 'id' | 'modules' | 'resolve'>) =>
+    createModuleGraph({
+      modules: Object.fromEntries(graph.modules),
+      resolve: graph.resolve,
+      stubs: {
+        ...(refresh && { react: React }),
+        ...options.stubs,
+        [routerPackage]: { ...routerStub, ...options.stubs?.[routerPackage] },
+      },
+      importMeta: (id) => ({
+        [style === 'webpack' ? 'webpackHot' : 'hot']: hotContext(id),
+      }),
+      ...(refresh && {
+        scope: () => refreshScope(registered),
+        transform: transformWithReactRefresh,
+      }),
+    })
+
+  const window: { __TSR_ROUTER__?: RouterCore<any, any, any, any, any> } = {}
+  vi.stubGlobal('window', window)
+  if (refresh) {
+    vi.stubGlobal('__react_refresh_utils__', {
+      enqueueUpdate: (callback: () => void) => {
+        refreshes++
+        callback()
+      },
+    })
+  }
+  try {
+    const firstGraph = load(first)
+    const firstModule = await firstGraph.import(first.id)
+    const isRoot = routeId === '/__root'
+    const liveId = isRoot ? '__root__' : routeId
+    let routeTree: AnyRoute
+    if (isRoot) {
+      routeTree = firstModule.Route as AnyRoute
+    } else {
+      const rootRoute = new BaseRootRoute({})
+      const route = (firstModule.Route as AnyRoute).update({
+        id: routeId,
+        path: routeId,
+        getParentRoute: () => rootRoute,
+      } as never)
+      routeTree = rootRoute.addChildren([route]) as unknown as AnyRoute
+    }
+    const router = new RouterCore(
+      {
+        routeTree,
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        isServer: true,
+      },
+      getStoreConfig,
+    )
+    window.__TSR_ROUTER__ = router
+    const liveOptions = () =>
+      (
+        router.routesById[liveId] as unknown as {
+          options: Record<string, unknown>
+        }
+      ).options
+    const previous = { ...liveOptions() }
+
+    if (style === 'webpack') {
+      for (const state of hotStates.values()) {
+        const next: Record<string, unknown> = {}
+        state.disposers.forEach((dispose) => dispose(next))
+        state.data = next
+        state.disposers = []
+      }
+    }
+    const accepted = new Map(
+      [...hotStates].map(([id, state]) => [id, state.accepted]),
+    )
+    for (const state of hotStates.values()) {
+      state.accepted = []
+    }
+    const secondGraph = load(second)
+    await secondGraph.import(second.id)
+    // The route module's update first, then the other modules that accept
+    // their own updates, each with its new module.
+    const updates = [...accepted].sort(
+      ([a], [b]) => Number(b === first.id) - Number(a === first.id),
+    )
+    for (const [id, callbacks] of updates) {
+      if (callbacks.length === 0 || !second.modules.has(id)) {
+        continue
+      }
+      const updatedModule = await secondGraph.import(id)
+      callbacks.forEach((accept) => accept(updatedModule))
+    }
+
+    const live = liveOptions()
+    return {
+      previous,
+      live,
+      created,
+      invalidated,
+      refresh: { registered, refreshes },
+      /** Whether an option of the live route loads lazily from another module. */
+      isLazy: (option: string) => lazy.has(live[option]),
+      /** The value of an option of the live route, once its lazy module loaded. */
+      load: (option: string): Promise<any> => {
+        const loader = lazy.get(live[option])
+        return loader ? loader() : Promise.resolve(live[option])
+      },
+    }
+  } finally {
+    vi.unstubAllGlobals()
+  }
 }
 
 /**

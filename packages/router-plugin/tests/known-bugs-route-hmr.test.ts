@@ -8,16 +8,8 @@
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import * as reactRouter from '@tanstack/react-router'
-import {
-  BaseRootRoute,
-  RouterCore,
-  createNonReactiveMutableStore,
-  createNonReactiveReadonlyStore,
-} from '@tanstack/router-core'
 import { createServer } from 'vite'
-import { describe, expect, test, vi } from 'vitest'
-import { createMemoryHistory } from '../../history/src'
+import { describe, expect, test } from 'vitest'
 import { tanstackRouter } from '../src/vite'
 import { build, routeApp } from './build-harness'
 import {
@@ -27,10 +19,10 @@ import {
   expectValidModules,
   exportedNames,
   head,
+  hotUpdate,
   loadRoute,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
-import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 
 /** Compiles every module the code splitter emits, with React HMR. */
 function compileWithCodeSplitting(code: string) {
@@ -332,106 +324,21 @@ export const Route = createFileRoute('/')({
 })
 
 describe('route updates', () => {
-  const getStoreConfig: GetStoreConfig = () => ({
-    createMutableStore: createNonReactiveMutableStore,
-    createReadonlyStore: createNonReactiveReadonlyStore,
-    batch: (fn) => fn(),
-  })
-
   /**
-   * Compiles a route file at `/` with the route HMR plugin for `style`, then
-   * runs a hot update the way the bundler does: loads the module with the
-   * bundler's hot API on `import.meta`, adds its `Route` to a route tree as
-   * the generated route tree does and creates a router with it
-   * (`window.__TSR_ROUTER__`), and loads the module again with the same hot
-   * data (Vite: the first module's accept callback receives the new module;
-   * webpack: the module re-runs with the data its dispose handlers wrote).
-   * Returns whether the update reaches the page: the live route now has the
-   * new module's `option`, or the module asked the bundler for a full reload
-   * (`hot.invalidate()`).
+   * Compiles a route file at `/` with the route HMR plugin for `style` and
+   * runs a hot update (`hotUpdate`). Returns whether the update reaches the
+   * page: the live route now has the new module's `option`, or the module
+   * asked the bundler for a full reload (`hot.invalidate()`).
    */
-  async function hotUpdate(
+  async function updatesOption(
     code: string,
     style: 'vite' | 'webpack',
     option = 'loader',
   ) {
-    const compiled = transformWithRouteHmrPlugin(code, {
-      target: 'react',
-      plugin: { hmr: { style } },
-    })
-    const created: Array<Record<string, unknown>> = []
-    let data: Record<string, unknown> = {}
-    let invalidated = false
-    let accepted: Array<(module: unknown) => void> = []
-    const disposers: Array<(data: Record<string, unknown>) => void> = []
-    const load = () =>
-      evaluateModule(
-        compiled,
-        {
-          '@tanstack/react-router': {
-            ...reactRouter,
-            createFileRoute:
-              (path: string) => (options: Record<string, unknown>) => {
-                // A copy: the HMR code writes kept options into the new ones.
-                created.push({ ...options })
-                return (reactRouter.createFileRoute as any)(path)(options)
-              },
-          },
-        },
-        {
-          importMeta: {
-            [style === 'webpack' ? 'webpackHot' : 'hot']: {
-              data,
-              accept: (callback?: (module: unknown) => void) => {
-                if (callback) {
-                  accepted.push(callback)
-                }
-              },
-              dispose: (callback: (data: Record<string, unknown>) => void) => {
-                disposers.push(callback)
-              },
-              invalidate: () => {
-                invalidated = true
-              },
-            },
-          },
-        },
-      )
-    const window: { __TSR_ROUTER__?: RouterCore<any, any, any, any, any> } = {}
-    vi.stubGlobal('window', window)
-    try {
-      const first = await load()
-      const rootRoute = new BaseRootRoute({})
-      const route = (first.Route as unknown as AnyRoute).update({
-        id: '/',
-        path: '/',
-        getParentRoute: () => rootRoute,
-      } as never)
-      const router = new RouterCore(
-        {
-          routeTree: rootRoute.addChildren([route]),
-          history: createMemoryHistory({ initialEntries: ['/'] }),
-          isServer: true,
-        },
-        getStoreConfig,
-      )
-      window.__TSR_ROUTER__ = router
-      if (style === 'webpack') {
-        const next: Record<string, unknown> = {}
-        disposers.forEach((dispose) => dispose(next))
-        data = next
-      }
-      const firstAccepted = accepted
-      accepted = []
-      const second = await load()
-      firstAccepted.forEach((accept) => accept(second))
-      const { options } = router.routesById['/'] as unknown as {
-        options: Record<string, unknown>
-      }
-      return invalidated || options[option] === created[1]![option]
-    } finally {
-      vi.unstubAllGlobals()
-    }
+    const update = await hotUpdate(code, { style })
+    return (
+      update.invalidated || update.live[option] === update.created[1]![option]
+    )
   }
 
   // Control for the route update pins below (same harness).
@@ -439,7 +346,7 @@ describe('route updates', () => {
     '%s: a hot update gives the live route the new options',
     async (style) => {
       expect(
-        await hotUpdate(
+        await updatesOption(
           `${head}export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>page</p>,
@@ -460,7 +367,7 @@ describe('route updates', () => {
     '%s: a route exported under another local name is hot-updated',
     async (style) => {
       expect(
-        await hotUpdate(
+        await updatesOption(
           `${head}const MyRoute = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>page</p>,
@@ -480,7 +387,7 @@ export { MyRoute as Route }`,
     '%s: a route with a getter component option is hot-updated',
     async (style) => {
       expect(
-        await hotUpdate(
+        await updatesOption(
           `${head}function Page() {
   return <p>page</p>
 }
@@ -508,7 +415,7 @@ export const Route = createFileRoute('/')({
     'webpack: without React Refresh, a hot update renders the new component',
     async () => {
       expect(
-        await hotUpdate(
+        await updatesOption(
           `${head}export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>page</p>,
