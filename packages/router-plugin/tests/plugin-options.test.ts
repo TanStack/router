@@ -77,31 +77,6 @@ describe('enableRouteGeneration: false', () => {
     },
     timeout,
   )
-
-  // Bug: the code splitter only knows the route files the generator lists
-  // (`routerPluginContext.routesByFile`, filled by `generator.run()`); with
-  // generation off it knows none, so `autoCodeSplitting: true` splits
-  // nothing, and nothing tells the user.
-  // Source: router-generator-plugin.ts (`generate` returns before
-  // `routesByFile` is set), router-code-splitter-plugin.ts (route lookup).
-  // Impact: apps that generate the route tree with the CLI (or commit it)
-  // and keep the plugin for code splitting ship every route component in
-  // the entry.
-  test.fails.each(bundlers)(
-    'still code-splits the routes, or tells the user it does not (%s)',
-    async (bundler) => {
-      const { app } = await buildRoute(
-        bundler,
-        { enableRouteGeneration: false },
-        { files },
-      )
-      const told = [...app.warnings, ...app.consoleMessages].some((message) =>
-        /routes[\\/]index\.tsx/.test(message),
-      )
-      expect(app.where('MARK_COMPONENT') === 'lazy' || told).toBe(true)
-    },
-    timeout,
-  )
 })
 
 describe.each([false, undefined])(

@@ -123,10 +123,15 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
     expect(clientRoutes).toContain('/page')
   })
 
-  // Control for the cast pins below (same build). Rsbuild keeps server-only
-  // routes in the client route tree (only Vite prunes them), which is
-  // correct too: the route module has no server code left.
-  ;(bundler === 'vite' ? test : test.skip)(
+  // Vite: control for the pins below (same build).
+  // Rsbuild bug: Start prunes server-only routes from the client route tree
+  // only in its Vite plugin; Rsbuild keeps them (their route modules have
+  // no server code left).
+  // Source: only vite/start-router-plugin/plugin.ts calls
+  // `pruneServerOnlySubtrees`; Rsbuild parity is the intended behaviour.
+  // Impact: Rsbuild client bundles ship the route tree entries and route
+  // modules of server-only routes, which Vite builds leave out.
+  ;(bundler === 'vite' ? test : test.fails)(
     'a route with only server handlers is not in the client route tree',
     () => {
       expect(clientRoutes).not.toContain('/api')
@@ -144,7 +149,8 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   // method, async method and accessor option keys"), where the method and
   // accessor rows pass.
   describe.each(pageOptions)('$name', ({ name }) => {
-    // Rsbuild does not prune the client route tree, so the route stays.
+    // Rsbuild does not prune the client route tree yet (pinned above), so
+    // the route stays.
     ;(bundler === 'vite' ? test.fails : test)(
       'a route with server handlers and these options is in the client route tree',
       () => {
