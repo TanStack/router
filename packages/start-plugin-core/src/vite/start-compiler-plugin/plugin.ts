@@ -27,6 +27,7 @@ import {
   decodeViteDevServerModuleSpecifier,
 } from './module-specifier'
 import { mergeHotUpdateModules } from './hot-update'
+import { discoverProviderServerFns } from './server-fn-discovery'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
@@ -655,7 +656,7 @@ export function startCompilerPlugin(
       applyToEnvironment: (env) => {
         return appliedResolverEnvironments.has(env.name)
       },
-      load() {
+      async load() {
         if (this.environment.name !== opts.providerEnvName) {
           const mod = opts.environments.find(
             (e) => e.name === this.environment.name,
@@ -673,11 +674,15 @@ export function startCompilerPlugin(
           return getDevServerFnValidatorModule()
         }
 
-        // When SSR is the provider, server-only-referenced functions aren't in the manifest,
-        // so no isClientReferenced check is needed.
-        // When SSR is NOT the provider (custom provider env), server-only-referenced
-        // functions ARE in the manifest and need the isClientReferenced check to
-        // block direct client HTTP requests to server-only-referenced functions.
+        await discoverProviderServerFns({
+          load: (options) => this.load(options),
+          getServerFns: () => serverFnsById,
+        })
+
+        // When SSR is NOT the provider (custom provider env), the caller
+        // environments resolve through this manifest, so it needs the
+        // isClientReferenced check to block direct client HTTP requests to
+        // server-only-referenced functions.
         return generateServerFnResolverModule({
           serverFnsById,
           includeClientReferencedCheck: !ssrIsProvider,
