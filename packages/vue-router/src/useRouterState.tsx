@@ -16,7 +16,9 @@ export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected> = {
 export type UseRouterStateResult<
   TRouter extends AnyRouter,
   TSelected,
-> = unknown extends TSelected ? RouterState<TRouter['routeTree']> : TSelected
+> = unknown extends TSelected
+  ? RouterState<TRouter['routeTree']>
+  : NoInfer<TSelected>
 
 export function useRouterState<
   TRouter extends AnyRouter = RegisteredRouter,

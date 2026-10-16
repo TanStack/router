@@ -55,7 +55,7 @@ export type UseMatchResult<
   ? TStrict extends true
     ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
     : MakeRouteMatchUnion<TRouter>
-  : TSelected
+  : NoInfer<TSelected>
 
 export function useMatch<
   TRouter extends AnyRouter = RegisteredRouter,
