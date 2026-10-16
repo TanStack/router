@@ -1596,6 +1596,61 @@ export const outer = createServerFn().handler(async () => 'outer:' + (await inne
     timeout,
   )
 
+  // Control: start-build-env-separation.test.ts "a library's server fn"
+  // (a library exporting a top-level server fn).
+  // Bug: a library in node_modules that creates server fns for its users
+  // (`createLoggedServerFn(handler)` returning
+  // `createServerFn().handler(handler)`) is compiled like any module, but
+  // the user's module only calls the library's function, so the compiler
+  // never sees a server fn there, and nothing warns.
+  // Impact: the handler the user passes, and what it imports, ship to the
+  // client bundle and run there instead of on the server.
+  // Source: lost-cases-campaign item 13 (b); user ruling D13 (a server fn
+  // created inside a function is supported, or rejected clearly).
+  test.fails(
+    'a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly',
+    async () => {
+      const outcome = await buildStart({
+        bundler,
+        files: {
+          'node_modules/wrapper-lib/package.json': JSON.stringify({
+            name: 'wrapper-lib',
+            type: 'module',
+            exports: './index.js',
+            peerDependencies: { '@tanstack/react-start': '*' },
+          }),
+          'node_modules/wrapper-lib/index.js': `import { createServerFn } from '@tanstack/react-start'
+export function createLoggedServerFn(handler) {
+  return createServerFn().handler(handler)
+}
+`,
+          'src/db.ts': `export const db = { secret: () => 'MARK_WRAPPED_HANDLER' }\n`,
+          'src/fns.ts': `import { createLoggedServerFn } from 'wrapper-lib'
+import { db } from './db'
+export const fn = createLoggedServerFn(async () => db.secret())
+`,
+          'src/entry.ts': `export { fn } from './fns'\n`,
+        },
+        entry: 'src/entry.ts',
+      }).then(
+        async ({ client, ssr }) => ({
+          client: client.where('MARK_WRAPPED_HANDLER'),
+          ssr: (await ssr.run(`return await entry.fn()`)).result,
+        }),
+        (error: unknown) => ({ error: String(error) }),
+      )
+      if ('error' in outcome) {
+        expect(outcome.error).toMatch(/createServerFn/)
+      } else {
+        expect(outcome).toEqual({
+          client: 'nowhere',
+          ssr: 'MARK_WRAPPED_HANDLER',
+        })
+      }
+    },
+    timeout,
+  )
+
   // Bug (Rsbuild): in the SSR build, compiling a module with an isomorphic
   // fn makes the Start compiler resolve the module's `createMiddleware`
   // import (the server lookup does not know that factory). The Rsbuild

@@ -73,6 +73,53 @@ export const where = createIsomorphicFn()
     timeout,
   )
 
+  /** A library in `node_modules` whose module is `code`, built for Start. */
+  const library = (name: string, code: string) => ({
+    [`node_modules/${name}/package.json`]: JSON.stringify({
+      name,
+      type: 'module',
+      exports: './index.js',
+      peerDependencies: { '@tanstack/react-start': '*' },
+    }),
+    [`node_modules/${name}/index.js`]: code,
+  })
+
+  // Source: lost-cases-campaign item 13 (a), no test built a server fn
+  // defined in node_modules through Start's plugin.
+  test(
+    "a library's server fn: the client gets an RPC without the handler, and the SSR build runs it by that id",
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          ...library(
+            'server-fn-lib',
+            `import { createServerFn } from '@tanstack/react-start'
+export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
+`,
+          ),
+          'src/client-entry.ts': `export { libFn } from 'server-fn-lib'\n`,
+          'src/ssr-entry.ts': `export { libFn } from 'server-fn-lib'
+export { getServerFnById } from '#tanstack-start-server-fn-resolver'
+`,
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect(client.where('MARK_LIB_HANDLER')).toBe('nowhere')
+      const id = (await client.run(`return entry.libFn.functionId`)).result
+      expect(id).toEqual(expect.any(String))
+      const { result } = await ssr.run(`return {
+  called: await entry.libFn(),
+  byId: await (await entry.getServerFnById(${JSON.stringify(id)}, { origin: 'client' }))({}),
+}`)
+      expect(result).toEqual({
+        called: 'MARK_LIB_HANDLER',
+        byId: 'MARK_LIB_HANDLER',
+      })
+    },
+    timeout,
+  )
+
   describe('server code of each construct', () => {
     /**
      * `src/deps/<name>.ts`: an export returning `marker`, in a module whose
