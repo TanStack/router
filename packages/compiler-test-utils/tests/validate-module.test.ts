@@ -4,7 +4,7 @@
  * every way a module legitimately declares, imports or probes a name.
  */
 import { describe, expect, test } from 'vitest'
-import { getModuleErrors } from '../src/validate-module'
+import { declaredNames, getModuleErrors } from '../src/validate-module'
 
 describe('getModuleErrors', () => {
   test('rejects syntax errors and duplicate bindings', async () => {
@@ -59,5 +59,56 @@ export const Page = () => <div>{imported}</div>`),
         },
       ),
     ).toEqual([])
+  })
+})
+
+describe('declaredNames', () => {
+  test('lists every runtime declaration, at any depth, whatever its form', () => {
+    expect(
+      [
+        ...declaredNames(`const a = 1, b = 2
+let { c, d: [e = 1], ...f } = {} as any
+var g
+export function h() {
+  const inner = 1
+  return inner
+}
+export default class I {}
+enum J { One }
+namespace K.L { export const m = 1 }
+if (a) { var n = 1 }
+for (const o of []) {}`),
+      ].sort(),
+    ).toEqual(
+      [
+        'a',
+        'b',
+        'c',
+        'e',
+        'f',
+        'g',
+        'h',
+        'inner',
+        'I',
+        'J',
+        'K',
+        'm',
+        'n',
+        'o',
+      ].sort(),
+    )
+  })
+
+  test('does not count imports, parameters, types or ambient declarations', () => {
+    expect([
+      ...declaredNames(`import { imported } from './lib'
+import * as ns from './lib'
+type Alias = string
+interface Shape {}
+declare const ambient: string
+declare function ambientFn(): void
+declare module './lib' { const augmented: string }
+export const read = (param: Alias) => [param, imported, ns, ambient]`),
+    ]).toEqual(['read'])
   })
 })

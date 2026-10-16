@@ -176,3 +176,46 @@ export const lazy = () => import('/c.tsx')`,
     expect([first.read(), second.read()]).toEqual([1, 0])
   })
 })
+
+describe('probeDynamicImports', () => {
+  const modules: Record<string, string> = {
+    '/route.tsx': `export const loaders = {
+  first: async () => (await import('/first.tsx')).value,
+  second: () => import('/second.tsx'),
+  stub: () => import('lib'),
+  none: () => 'no import',
+}`,
+    '/first.tsx': `export const value = 'first'`,
+    '/second.tsx': `export const value = 'second'`,
+  }
+  const resolve = (specifier: string) =>
+    specifier in modules ? specifier : undefined
+
+  it('names the module each dynamic import targets without loading it', async () => {
+    const graph = createModuleGraph({
+      modules,
+      resolve,
+      stubs: { lib: { value: 'lib' } },
+    })
+    const { loaders } = await graph.import('/route.tsx')
+    const probe = (name: string) =>
+      graph.probeDynamicImports(() => loaders[name]())
+    expect([
+      probe('first'),
+      probe('second'),
+      probe('stub'),
+      probe('none'),
+    ]).toEqual([['/first.tsx'], ['/second.tsx'], ['lib'], []])
+    expect([...graph.evaluated]).toEqual(['/route.tsx'])
+    // The imports work as usual afterwards.
+    expect([await loaders.first(), (await loaders.second()).value]).toEqual([
+      'first',
+      'second',
+    ])
+    expect([...graph.evaluated]).toEqual([
+      '/route.tsx',
+      '/first.tsx',
+      '/second.tsx',
+    ])
+  })
+})

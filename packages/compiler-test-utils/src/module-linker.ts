@@ -83,6 +83,13 @@ export interface ModuleGraph {
   idOf: (code: string) => string | undefined
   /** Ids of the graph's modules, in the order they started evaluating. */
   evaluated: Array<string>
+  /**
+   * Runs `run` and returns the ids of the graph's modules (or the
+   * specifiers of stubs) whose dynamic `import()` it starts synchronously,
+   * without loading or evaluating them: those imports reject, and a promise
+   * `run` returns is settled silently. Later imports load as usual.
+   */
+  probeDynamicImports: (run: () => unknown) => Array<string>
 }
 
 /** The JSX factory names compiled modules call. */
@@ -117,6 +124,8 @@ interface Graph {
   /** Exports of each served object stub, by URL. */
   stubs: Map<string, Record<string, unknown>>
   evaluated: Array<string>
+  /** Targets of the dynamic imports started while probing, else undefined. */
+  probed?: Array<string>
 }
 
 interface Registry {
@@ -173,6 +182,12 @@ function getRegistry(): Registry {
               `No stub for import ${specifier} (imported by ${parent.id})`,
             )
           }
+          // Node resolves a dynamic import synchronously when it starts:
+          // while a graph probes, record its target instead of loading it.
+          if (parent.graph.probed) {
+            parent.graph.probed.push(lookup(url)?.id ?? specifier)
+            throw new ProbedImport()
+          }
           return { url, shortCircuit: true }
         }
         return nextResolve(specifier, context)
@@ -210,13 +225,19 @@ function graphUrl(graph: Graph, kind: UrlKind, id: string) {
   return `${scheme}//g${graph.id}/${kind}/${encodeURIComponent(id)}`
 }
 
-/** The served module of a URL of the linker, and its id. */
+/** The served module of a URL of the linker, its id and its graph. */
 function lookup(url: string) {
   const match = /^compiler-test-module:\/\/g(\d+)\/(\w+)\/(.*)$/.exec(url)
-  const module = match
-    ? getRegistry().graphs.get(Number(match[1]))?.served.get(url)
-    : undefined
-  return module && { module, id: decodeURIComponent(match![3]!) }
+  const graph = match ? getRegistry().graphs.get(Number(match[1])) : undefined
+  const module = graph?.served.get(url)
+  return module && { module, graph: graph!, id: decodeURIComponent(match![3]!) }
+}
+
+/** Rejects a dynamic import started while its graph probes imports. */
+class ProbedImport extends Error {
+  constructor() {
+    super('a dynamic import started while probing (not loaded)')
+  }
 }
 
 /** The modules a compiled module requests, and the names it imports. */
@@ -592,5 +613,19 @@ export function createModuleGraph(
       return undefined
     },
     evaluated: graph.evaluated,
+    probeDynamicImports(run) {
+      const probed: Array<string> = []
+      graph.probed = probed
+      let result: unknown
+      try {
+        result = run()
+      } finally {
+        graph.probed = undefined
+      }
+      if (result && typeof (result as Promise<unknown>).then === 'function') {
+        ;(result as Promise<unknown>).then(undefined, () => {})
+      }
+      return probed
+    },
   }
 }
