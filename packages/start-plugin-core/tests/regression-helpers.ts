@@ -536,6 +536,9 @@ export function createServerGraph(
     ssr: () => graph.import(id),
     /** Evaluates (once) and returns the module of the graph with this id. */
     import: (graphModuleId: string) => graph.import(graphModuleId),
+    /** Adds a module to the graph (e.g. a server fn resolver). */
+    add: (graphModuleId: string, code: string) =>
+      graph.add(graphModuleId, code),
     /** Ids of the modules evaluated so far, in order. */
     evaluated: graph.evaluated,
   }

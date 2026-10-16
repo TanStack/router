@@ -80,16 +80,22 @@ export const createMiddleware = uncompiled('createMiddleware')
   [`${startPackage}/marker.js`]: `export {}
 `,
   [`${startPackage}/ssr-rpc.js`]: `import { getServerFnById } from '#tanstack-start-server-fn-resolver'
-export const createSsrRpc = (id) => async (opts) =>
-  (await getServerFnById(id, { origin: 'server' }))(opts ?? {})
+export const createSsrRpc = (id) =>
+  Object.assign(
+    async (opts) => (await getServerFnById(id, { origin: 'server' }))(opts ?? {}),
+    { functionId: id },
+  )
 `,
 }
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 export interface StartBuildOptions extends Omit<AppOptions, 'dir'> {
-  /** Entry module of both builds, relative to the app root (default `entry.ts`). */
-  entry?: string
+  /**
+   * Entry module of both builds, or of each build, relative to the app root
+   * (default `entry.ts`).
+   */
+  entry?: string | { client: string; ssr: string }
   mode?: BuildMode
   minify?: boolean
   /**
@@ -138,15 +144,19 @@ export async function buildStart(
       config: () => ({ ssr: { noExternal: ['@tanstack/react-start'] } }),
     },
   ]
-  const target = { bundler: 'vite', entry, mode, minify } as const
+  const entries =
+    typeof entry === 'object' ? entry : { client: entry, ssr: entry }
+  const target = { bundler: 'vite', mode, minify } as const
   const client = await app.bundle({
     ...target,
+    entry: entries.client,
     env: 'client',
     outDir: 'dist/client',
     plugin: () => plugins,
   })
   const ssr = await app.bundle({
     ...target,
+    entry: entries.ssr,
     env: 'ssr',
     outDir: 'dist/ssr',
     plugin: () => plugins,

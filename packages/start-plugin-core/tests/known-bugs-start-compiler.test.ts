@@ -1243,6 +1243,90 @@ return { initialised: globalThis.initialised, isSession, count: entry.readCount(
     timeout,
   )
 
+  /**
+   * An app whose client imports one server fn (`clientFn`) and whose server
+   * entry imports another one only server code uses (`serverOnlyFn`), with
+   * the server fn resolver the server-fn HTTP handler calls. The resolver is
+   * imported by the server-only module, so the SSR build compiles that
+   * module (and reports its server fn) before it generates the resolver.
+   */
+  const clientAccessFiles = {
+    'client-fns.ts': `${head}export const clientFn = createServerFn().handler(async () => 'client fn')
+`,
+    'server-only-fns.ts': `${head}export const serverOnlyFn = createServerFn().handler(async () => 'server-only fn')
+export { getServerFnById } from '#tanstack-start-server-fn-resolver'
+`,
+    'client-entry.ts': `export { clientFn } from './client-fns'
+`,
+    'ssr-entry.ts': `export { serverOnlyFn, getServerFnById } from './server-only-fns'
+`,
+  }
+
+  /**
+   * Builds `clientAccessFiles` and, in the SSR build, resolves each server fn
+   * the way the server-fn HTTP handler resolves a request
+   * (`origin: 'client'`), and calls the server-only one from SSR code.
+   */
+  async function callClientAccess() {
+    const { client, ssr } = await buildStart({
+      files: clientAccessFiles,
+      entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+    })
+    expect(client.where("'server-only fn'")).toBe('nowhere')
+    const clientFnId = (await client.run(`return entry.clientFn.functionId`))
+      .result
+    const { result } = await ssr.run(`const settle = async (run) => {
+  try {
+    return await run()
+  } catch {
+    return 'rejected'
+  }
+}
+const overHttp = (id) =>
+  settle(async () => (await entry.getServerFnById(id, { origin: 'client' }))({}))
+return {
+  clientFn: await overHttp(${JSON.stringify(clientFnId)}),
+  serverOnlyFnOverHttp: await overHttp(entry.serverOnlyFn.functionId),
+  serverOnlyFnFromSsr: await settle(() => entry.serverOnlyFn()),
+}`)
+    return result
+  }
+
+  // Control for the pin below (same harness).
+  test(
+    'SSR: a server fn the client references is callable over HTTP, and a server-only one from SSR code',
+    async () => {
+      expect(await callClientAccess()).toMatchObject({
+        clientFn: 'client fn',
+        serverOnlyFnFromSsr: 'server-only fn',
+      })
+    },
+    timeout,
+  )
+
+  // Bug: with SSR as the provider, the production resolver lists every
+  // server fn the builds found and never checks the caller's origin
+  // (`includeClientReferencedCheck` is off, and the flag it would check is
+  // true for every SSR-caller compile, handleCreateServerFn.ts
+  // `isClientReferenced`).
+  // Impact: a server fn only server code uses (an SSR loader helper, a
+  // server-only module) is callable over HTTP by anyone who learns its id,
+  // bypassing what the server code around it checks.
+  // Source: user ruling D6 (only server fns client code references are
+  // HTTP-callable); the RSC-provider variant is pinned in
+  // createServerFn/createServerFn.test.ts.
+  test.fails(
+    'SSR: a server fn only server code references is not callable over HTTP',
+    async () => {
+      expect(await callClientAccess()).toEqual({
+        clientFn: 'client fn',
+        serverOnlyFnOverHttp: 'rejected',
+        serverOnlyFnFromSsr: 'server-only fn',
+      })
+    },
+    timeout,
+  )
+
   // Bug: the production server fn resolver is generated when the SSR build
   // first loads it, from the server fns found so far. A server fn that only
   // another server fn's handler (or a middleware `.server()`) calls is found
