@@ -6,92 +6,130 @@
  *
  * Start decides from the route generator's view of a route file which routes
  * are server-only (pruned from the client route tree) and which pages to
- * prerender. Resolving every option key is best effort, but a missed key must
- * never prune a route or skip prerendering a page.
+ * prerender, and strips the server options (`server`, `headers`, `ssr`) of
+ * route modules from the client. Resolving every option key is best effort,
+ * but a missed key must never prune a route or skip prerendering a page, and
+ * never leave server code in the client bundle.
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { Generator, getConfig } from '@tanstack/router-generator'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
 import { prerenderRoutesPlugin } from '../src/start-router-plugin/generator-plugins/prerender-routes-plugin'
-import { pruneServerOnlySubtrees } from '../src/start-router-plugin/pruneServerOnlySubtrees'
+import { buildStart, routerRuntimeFiles, startBundlers } from './build-harness'
+import type { StartBuild } from './build-harness'
 
-afterEach(() => {
-  globalThis.TSS_PRERENDABLE_PATHS = undefined
-})
-
-/**
- * Runs the route generator with Start's generator plugins on an app with a
- * root route and `routes/moved.tsx` holding `source`. Returns whether
- * `/moved` is in the client route tree (after Start prunes server-only
- * routes) and in the paths Start prerenders.
- */
-async function startRouteOf(source: string) {
-  const root = await mkdtemp(path.join(tmpdir(), 'tss-route-options-'))
-  try {
-    await mkdir(path.join(root, 'routes'))
-    await writeFile(
-      path.join(root, 'routes/__root.tsx'),
-      `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute()`,
-    )
-    await writeFile(path.join(root, 'routes/moved.tsx'), source)
-    const config = getConfig({
-      disableLogging: true,
-      routesDirectory: path.join(root, 'routes'),
-      generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-      // Same filesystem as the app, so the generator can rename its temp files
-      tmpDir: path.join(root, '.tanstack/tmp'),
-      plugins: [prerenderRoutesPlugin()],
-    })
-    const generator = new Generator({ config, root })
-    await generator.run()
-    const crawlingResult = await generator.getCrawlingResult()
-    if (!crawlingResult) {
-      throw new Error('the generator did not crawl the routes')
-    }
-    const client = pruneServerOnlySubtrees(crawlingResult)
-    return {
-      inClientTree: client.routeNodes.some(
-        (node) => node.routePath === '/moved',
-      ),
-      prerendered: (globalThis.TSS_PRERENDABLE_PATHS ?? []).some(
-        (page) => page.path === '/moved',
-      ),
-    }
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-}
+const timeout = 60_000
 
 const routeHead = `import { createFileRoute } from '@tanstack/react-router'
 const Page = () => null
-const key = 'component'
-const clientOptions = { component: Page }
 `
 
-describe('server-only routes', () => {
-  // Control for the pins below (same harness). Moved from router-generator
-  // known-bugs.test.ts, which asserted Start's rule on the generator's
-  // option keys instead of what Start does with them.
-  test.each([
-    {
-      options: `{ server: { handlers: {} }, component: Page }`,
-      expected: { inClientTree: true, prerendered: true },
-    },
-    {
-      options: `{ server: { handlers: {} } }`,
-      expected: { inClientTree: false, prerendered: false },
-    },
-  ])(
-    'a route with $options is in the client route tree and prerendered: $expected',
-    async ({ options, expected }) => {
-      expect(
-        await startRouteOf(
-          `${routeHead}export const Route = createFileRoute('/moved')(${options})`,
-        ),
-      ).toEqual(expected)
+/**
+ * Rows of route options that keep a route with server handlers a page, with
+ * the declarations they read.
+ */
+const pageOptions = [
+  {
+    name: 'a spread',
+    head: `const clientOptions = { component: Page }\n`,
+    options: `...clientOptions`,
+  },
+  {
+    name: 'a computed key',
+    head: `const key = 'component'\n`,
+    options: `[key]: Page`,
+  },
+  { name: 'a method', head: '', options: `component() { return null }` },
+  {
+    name: 'an async method',
+    head: '',
+    options: `async loader() { return null }`,
+  },
+  { name: 'an accessor', head: '', options: `get component() { return Page }` },
+]
+
+/** Casts real route files wrap their options in. */
+const casts = [
+  { name: 'as never', wrap: (options: string) => `(${options} as never)` },
+  { name: 'as any', wrap: (options: string) => `(${options} as any)` },
+  {
+    name: 'satisfies',
+    wrap: (options: string) => `(${options} satisfies Record<string, unknown>)`,
+  },
+]
+
+/** Route path (and file name) of a row. */
+const slug = (name: string) => name.replace(/\W+/g, '-')
+
+describe.each(startBundlers)('%s build: server-only routes', (bundler) => {
+  /**
+   * One app with a route file per row, each importing a module whose code
+   * carries the row's marker into its server handler.
+   */
+  const files: Record<string, string> = {
+    ...routerRuntimeFiles,
+    'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+    'src/routes/page.tsx': `${routeHead}export const Route = createFileRoute('/page')({ server: { handlers: {} }, component: Page })\n`,
+    'src/routes/api.tsx': `${routeHead}export const Route = createFileRoute('/api')({ server: { handlers: {} } })\n`,
+    'src/router.ts': `import { routeTree } from './routeTree.gen'
+export const getRouter = () => ({ routeTree })
+`,
+    'src/entry.ts': `export { getRouter } from './router'\n`,
+  }
+  for (const { name, head, options } of pageOptions) {
+    files[`src/routes/${slug(name)}.tsx`] =
+      `${routeHead}${head}export const Route = createFileRoute('/${slug(name)}')({ server: { handlers: {} }, ${options} })\n`
+  }
+  for (const { name, wrap } of casts) {
+    const marker = `MARK_CAST_${slug(name).toUpperCase().replace(/-/g, '_')}`
+    files[`src/deps/${slug(name)}.ts`] =
+      `export const handle = () => '${marker}'\n`
+    files[`src/routes/cast-${slug(name)}.tsx`] =
+      `import { createFileRoute } from '@tanstack/react-router'
+import { handle } from '../deps/${slug(name)}'
+export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
+        `{ server: { handlers: { GET: () => handle() } } }`,
+      )})
+`
+  }
+
+  let build: StartBuild
+  let dispose: (() => Promise<void>) | undefined
+  /** Ids of the routes of the client build's route tree. */
+  let clientRoutes: Array<string>
+  beforeAll(async () => {
+    build = await buildStart({
+      bundler,
+      files,
+      entry: 'src/entry.ts',
+      registerCleanup: (cleanup) => {
+        dispose = cleanup
+      },
+    })
+    clientRoutes = (
+      await build.client.run(
+        `return Object.values(entry.getRouter().routeTree.children ?? {}).map((route) => route.options.id)`,
+      )
+    ).result as Array<string>
+  }, timeout)
+  afterAll(() => dispose?.())
+
+  // Control for the pins below (same build).
+  test('a route with server handlers and a component is in the client route tree', () => {
+    expect(clientRoutes).toContain('/page')
+  })
+
+  // Control for the cast pins below (same build). Rsbuild keeps server-only
+  // routes in the client route tree (only Vite prunes them), which is
+  // correct too: the route module has no server code left.
+  ;(bundler === 'vite' ? test : test.skip)(
+    'a route with only server handlers is not in the client route tree',
+    () => {
+      expect(clientRoutes).not.toContain('/api')
     },
   )
 
@@ -105,43 +143,107 @@ describe('server-only routes', () => {
   // Source: gap G11; #8504 router-generator transform.test.ts ("records
   // method, async method and accessor option keys"), where the method and
   // accessor rows pass.
-  test.fails.each([
-    { name: 'a spread', options: `...clientOptions` },
-    { name: 'a computed key', options: `[key]: Page` },
-    { name: 'a method', options: `component() { return null }` },
-    { name: 'an async method', options: `async loader() { return null }` },
-    { name: 'an accessor', options: `get component() { return Page }` },
-  ])(
-    'a route with server handlers and $name is in the client route tree',
-    async ({ options }) => {
-      const { inClientTree } = await startRouteOf(
-        `${routeHead}export const Route = createFileRoute('/moved')({ server: { handlers: {} }, ${options} })`,
-      )
-      expect(inClientTree).toBe(true)
-    },
-  )
+  describe.each(pageOptions)('$name', ({ name }) => {
+    // Rsbuild does not prune the client route tree, so the route stays.
+    ;(bundler === 'vite' ? test.fails : test)(
+      'a route with server handlers and these options is in the client route tree',
+      () => {
+        expect(clientRoutes).toContain(`/${slug(name)}`)
+      },
+    )
+  })
+
+  // Bug: route options wrapped in a cast (`as never`, `as any`,
+  // `satisfies`) are not recognised: the code splitter's `deleteNodes`
+  // (Start's list: `server`, `headers`, `ssr`) skips them, and the route
+  // generator records no option keys, so Start does not prune the route
+  // either.
+  // Impact: the route's server handlers and their server-only imports ship
+  // to the client bundle.
+  // Source: lost-cases-campaign item 1 (SU-4/8; 4 corpus files in 3 repos
+  // wrap route options in `as never` / `as any`).
+  describe.each(casts)('options wrapped in $name', ({ name }) => {
+    test.fails(
+      'the server handler code of the route is not in the client bundle',
+      () => {
+        const marker = `MARK_CAST_${slug(name).toUpperCase().replace(/-/g, '_')}`
+        expect(build.client.where(marker)).toBe('nowhere')
+      },
+    )
+  })
 })
 
 describe('prerendered pages', () => {
-  // Control: "a route with { server: { handlers: {} }, component: Page }"
-  // above (same harness).
+  afterEach(() => {
+    globalThis.TSS_PRERENDABLE_PATHS = undefined
+  })
 
-  // Bug: same root cause as above: a page whose component comes from a
-  // spread, a computed key or a method has no recorded `component` key, and
-  // Start's prerender plugin skips it.
+  /**
+   * Runs the route generator with Start's prerender plugin on an app with a
+   * root route and `routes/moved.tsx` holding `source`. Returns whether
+   * `/moved` is in the paths Start prerenders. (The build harness has no
+   * preview server, which Start's prerender step needs, so this reads the
+   * pages the prerender plugin hands to it.)
+   */
+  async function prerendered(source: string) {
+    const root = await mkdtemp(path.join(tmpdir(), 'tss-route-options-'))
+    try {
+      await mkdir(path.join(root, 'routes'))
+      await writeFile(
+        path.join(root, 'routes/__root.tsx'),
+        `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()`,
+      )
+      await writeFile(path.join(root, 'routes/moved.tsx'), source)
+      const config = getConfig({
+        disableLogging: true,
+        routesDirectory: path.join(root, 'routes'),
+        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+        // Same filesystem as the app, so the generator can rename its temp
+        // files
+        tmpDir: path.join(root, '.tanstack/tmp'),
+        plugins: [prerenderRoutesPlugin()],
+      })
+      await new Generator({ config, root }).run()
+      return (globalThis.TSS_PRERENDABLE_PATHS ?? []).some(
+        (page) => page.path === '/moved',
+      )
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  }
+
+  // Control for the pins below (same harness).
+  test.each([
+    {
+      options: `{ server: { handlers: {} }, component: Page }`,
+      expected: true,
+    },
+    { options: `{ server: { handlers: {} } }`, expected: false },
+  ])(
+    'a page with $options is prerendered: $expected',
+    async ({ options, expected }) => {
+      expect(
+        await prerendered(
+          `${routeHead}export const Route = createFileRoute('/moved')(${options})`,
+        ),
+      ).toBe(expected)
+    },
+  )
+
+  // Bug: same root cause as the server-only routes above: a page whose
+  // component comes from a spread, a computed key or a method has no
+  // recorded `component` key, and Start's prerender plugin skips it.
   // Impact: the page is not prerendered.
   // Source: gap G11.
-  test.fails.each([
-    { name: 'a spread', options: `...clientOptions` },
-    { name: 'a computed key', options: `[key]: Page` },
-    { name: 'a method', options: `component() { return null }` },
-  ])(
+  test.fails.each(pageOptions.slice(0, 3))(
     'a page whose component comes from $name is prerendered',
-    async ({ options }) => {
-      const { prerendered } = await startRouteOf(
-        `${routeHead}export const Route = createFileRoute('/moved')({ ${options} })`,
-      )
-      expect(prerendered).toBe(true)
+    async ({ head, options }) => {
+      expect(
+        await prerendered(
+          `${routeHead}${head}export const Route = createFileRoute('/moved')({ ${options} })`,
+        ),
+      ).toBe(true)
     },
   )
 })
