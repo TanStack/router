@@ -154,6 +154,11 @@ function denyToClient(files: Array<string>) {
   return { importProtection: { behavior: 'error', client: { files } } } as const
 }
 
+/** Same as `denyToClient`, mocking the denied modules instead. */
+function mockToClient(files: Array<string>) {
+  return { importProtection: { behavior: 'mock', client: { files } } } as const
+}
+
 /** A denied module whose code marks the bundle it is in. */
 const corpusModule = `export const corpus = () => 'MARK_CORPUS' + Math.random()\n`
 
@@ -201,39 +206,68 @@ describe.each(startBundlers)('%s build', (bundler) => {
     expect(client.where('MARK_CORPUS')).toBe('nowhere')
   }, 60_000)
 
+  // Control for the pins below (same harness and files, import protection
+  // on): the build succeeds in mock mode, without the module's code.
+  test('in mock mode, the client bundle drops the unused module', async () => {
+    const { client } = await buildStart({
+      bundler,
+      files: droppedCorpusFiles,
+      entry: 'src/entry.ts',
+      start: mockToClient(['**/corpus.ts']),
+    })
+    expect(client.where('MARK_CORPUS')).toBe('nowhere')
+  }, 60_000)
+
   // Bug: the build check counts a denied module as surviving when the
-  // compilation contains it, whether or not its code is in the bundle. Vite:
-  // a chunk lists it in `modules`, and Rolldown also lists the modules it
-  // tree-shook to nothing (`renderedLength: 0`). Rsbuild: the report step
-  // walks every module of the module graph (connections are not filtered by
-  // whether they are used, INTERNALS-import-protection.md).
-  // Impact: a denied module that a client-reachable module imports, but whose
-  // code the client bundle does not contain, still fails the build.
+  // compilation contains it, whether or not the client uses it. Vite: the
+  // mock that replaces the module is never tree-shaken, because its exports
+  // read members of the mock (`export const corpus = mock.corpus`,
+  // import-protection/virtualModules.ts), which the bundler keeps (with
+  // side-effect-free exports, a scratch run passes this pin on Vite).
+  // Rsbuild: the report step walks every module of the module graph
+  // (connections are not filtered by whether they are used,
+  // INTERNALS-import-protection.md).
+  // Impact: a denied module that a client-reachable module imports, but that
+  // the client never uses, still fails the build.
   // Source: issue #8101 (closed without a reproduction); gap IP6b
   // (gaps/start-env.md).
   test.fails(
     'a denied module the client bundle drops does not fail the build',
     async () => {
-      let failure: unknown
-      const built = await buildStart({
+      const { client } = await buildStart({
         bundler,
         files: droppedCorpusFiles,
         entry: 'src/entry.ts',
         start: denyToClient(['**/corpus.ts']),
-      }).catch((error: unknown) => {
-        failure = error
-        return undefined
       })
-      if (
-        failure !== undefined &&
-        !/Import denied in client environment/.test(String(failure))
-      ) {
-        // Any other failure is a harness problem, not this bug: pass, so that
-        // `.fails` reports it.
-        return
-      }
-      expect(failure).toBeUndefined()
-      expect(built!.client.where('MARK_CORPUS')).toBe('nowhere')
+      expect(client.where('MARK_CORPUS')).toBe('nowhere')
+    },
+    60_000,
+  )
+
+  // Bug: same as above, in mock mode: the mock of a denied module the client
+  // never uses stays in the client bundle, and the build warns about it.
+  // The mock module is marked side-effect free (`@__NO_SIDE_EFFECTS__`,
+  // `@__PURE__`), but its exports read members of the mock.
+  // Impact: mock-mode builds ship mock code (a Proxy runtime) for unused
+  // imports, and report violations the client never reaches.
+  // Source: weak check virtualModules.test.ts "returns mock code" (asserted
+  // the purity annotations as text), oracle-gaps REPORT.md "Weak checks".
+  test.fails(
+    'in mock mode, an unused denied module leaves no mock in the client bundle and no warning',
+    async () => {
+      const { client } = await buildStart({
+        bundler,
+        files: droppedCorpusFiles,
+        entry: 'src/entry.ts',
+        start: mockToClient(['**/corpus.ts']),
+      })
+      expect({
+        mock: client.where('[import-protection mock]'),
+        warnings: client.warnings.filter((warning) =>
+          warning.includes('[import-protection]'),
+        ),
+      }).toEqual({ mock: 'nowhere', warnings: [] })
     },
     60_000,
   )
