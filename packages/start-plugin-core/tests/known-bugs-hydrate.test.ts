@@ -103,16 +103,15 @@ export function Page() {
   test('client: the rejection matchers ignore the code frame of an unrelated error', async () => {
     const error = await compileHydrate(
       'client',
-      `${head}import { useId } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+      `${head}import { createFileRoute } from '@tanstack/react-router'
 import { load } from './data'
 export const Route = createFileRoute('/')({ component: Page })
 export async function Page() {
-  return <Hydrate><p id={useId()}>{arguments[0]}{Route.id}{await load()}</p></Hydrate>
+  return <Hydrate>{async () => <p>{arguments[0]}{Route.id}{await load()}</p>}</Hydrate>
 }`,
     ).catch((caught: unknown) => caught)
     const message = compileErrorMessage(error)
-    expect(message).toMatch(/calls hooks/)
+    expect(message).toMatch(/function/)
     for (const rejection of Object.values(rejections)) {
       expect(message).not.toMatch(rejection)
     }
@@ -158,7 +157,10 @@ describe('boundaries and ids', () => {
       code: `export function Tree({ node }) {
   return <li>{node.label}<Hydrate><ul>{node.children.map((child) => <Tree node={child} />)}</ul></Hydrate></li>
 }`,
-      boundaries: 1,
+      render: (module: Record<string, any>) =>
+        module.Tree({
+          node: { label: 'a', children: [{ label: 'b', children: [] }] },
+        }),
     },
     {
       name: 'mutually recursive components',
@@ -166,7 +168,7 @@ describe('boundaries and ids', () => {
 export function Leaf({ depth }) {
   return <Hydrate><Branch depth={depth} /></Hydrate>
 }`,
-      boundaries: 1,
+      render: (module: Record<string, any>) => module.Leaf({ depth: 2 }),
     },
     {
       name: 'a component with its own boundary inside another boundary',
@@ -174,78 +176,57 @@ export function Leaf({ depth }) {
 export function Page() {
   return <Hydrate><section><Widget /></section></Hydrate>
 }`,
-      boundaries: 2,
+      render: (module: Record<string, any>) => module.Page(),
     },
   ])(
-    'client: $name keeps boundary ids aligned with the server',
-    async ({ code, boundaries }) => {
-      // Each boundary is rendered with a static id.
-      const server = await compileHydrate('server', `${head}${code}`)
-      const serverIds = getBoundaryIds(server.parent)
-      expect(serverIds).toHaveLength(boundaries)
-      const { parent, plugin } = await compileHydrate(
-        'client',
-        `${head}${code}`,
-      )
-      expect(getBoundaryIds(parent)).not.toEqual([])
-      for (const id of getBoundaryIds(parent)) {
-        expect(serverIds).toContain(id)
-      }
-      // The bundler compiles each chunk it loads like any other module.
-      for (const chunkId of getChunkIds(parent)) {
-        const { compile } = createStartCompiler({
-          env: 'client',
-          compilerPlugins: [plugin],
-        })
-        const loaded = loadChunk(plugin, 'client', chunkId)!
-        const chunk = (await compile(loaded, chunkId)) ?? loaded
-        expect(await getModuleErrors(chunk)).toEqual([])
-        // Every boundary the chunk renders (if it declares a component with
-        // a boundary again) has a static id the server emitted.
-        const chunkIds = getBoundaryIds(chunk)
-        expect(chunkIds).toHaveLength(chunk.match(/\sh=/g)?.length ?? 0)
-        for (const id of chunkIds) {
-          expect(serverIds).toContain(id)
-        }
-        for (const id of getChunkIds(chunk)) {
-          expect(loadChunk(plugin, 'client', id), id).not.toBeNull()
-        }
-      }
+    'client: $name hydrates like the server renders it',
+    async ({ code, render }) => {
+      const server = await renderBoundaries('server', `${head}${code}`, render)
+      expect(server.ids.length).toBeGreaterThan(1)
+      expect(
+        await renderBoundaries('client', `${head}${code}`, render),
+      ).toEqual(server)
     },
   )
 
   // Bug: Hydrate elements are matched by name instead of by binding.
-  // Impact: `<Start.Hydrate>` of a namespace import is not split (no boundary
-  // id), and a local component named `Hydrate` is split into a lazy chunk.
-  test.fails.each([
-    {
-      name: 'a namespace-imported <Start.Hydrate> is split',
-      code: `import * as Start from '@tanstack/react-start'
-export function Page() {
-  return <Start.Hydrate><p>child</p></Start.Hydrate>
-}`,
-      render: (module: Record<string, any>) => ({ page: module.Page() }),
-      expected: { page: '[<p>child</p>]', chunks: 1 },
-    },
-    {
-      name: 'a local component named Hydrate is left alone',
-      code: `${head}export function Page() {
+  // Impact: a local component named `Hydrate` is split into a lazy chunk.
+  test.fails(
+    'client: a local component named Hydrate is left alone',
+    async () => {
+      const { module, lazyChunks } =
+        await loadClientModule(`${head}export function Page() {
   return <Hydrate><p>real</p></Hydrate>
 }
 export function Local() {
   const Hydrate = (props: { children: unknown }) => props.children
   return <Hydrate><p>local</p></Hydrate>
-}`,
-      render: (module: Record<string, any>) => ({
+}`)
+      expect({
         page: module.Page(),
         local: module.Local(),
-      }),
-      expected: { page: '[<p>real</p>]', local: '<p>local</p>', chunks: 1 },
+        chunks: lazyChunks.length,
+      }).toEqual({ page: '[<p>real</p>]', local: '<p>local</p>', chunks: 1 })
     },
-  ])('client: $name', async ({ code, render, expected }) => {
-    const { module, lazyChunks } = await loadClientModule(code)
-    expect({ ...render(module), chunks: lazyChunks.length }).toEqual(expected)
-  })
+  )
+
+  // Goal (enhancement): the `Hydrate` member of a namespace import splits its
+  // children like a named import. Today it is left unsplit in both
+  // environments, which is safe (hydrate-split-modules.test.ts).
+  test.fails(
+    'client: a namespace-imported <Start.Hydrate> is split',
+    async () => {
+      const { module, lazyChunks } =
+        await loadClientModule(`import * as Start from '@tanstack/react-start'
+export function Page() {
+  return <Start.Hydrate><p>child</p></Start.Hydrate>
+}`)
+      expect({ page: module.Page(), chunks: lazyChunks.length }).toEqual({
+        page: '[<p>child</p>]',
+        chunks: 1,
+      })
+    },
+  )
 
   // Bug: the boundary's children are only read from JSX children, never from
   // a `children` prop or spread.
@@ -280,6 +261,17 @@ export function Page() {
       props: {},
       html: '[<p>prop</p>]',
     },
+    {
+      // Plain text has nothing to hydrate: splitting it or leaving it in
+      // place both render it once.
+      // Source: #8504 hydrate-split-modules.test.ts (red on main)
+      name: 'a string children prop',
+      code: `export function Page() {
+  return <Hydrate children="text" />
+}`,
+      props: {},
+      html: '[text]',
+    },
   ])(
     'client: children passed through $name render without unused chunks',
     async ({ code, props, html }) => {
@@ -290,6 +282,35 @@ export function Page() {
         html: module.Page(props),
         unusedChunks: lazyChunks.filter((chunk) => !chunk.rendered).length,
       }).toEqual({ html, unusedChunks: 0 })
+    },
+  )
+
+  // Bug: a multi-line text-only child moves into the chunk as a string
+  // literal of the raw text, without the line collapsing of JSX text.
+  // Impact: the client renders other text than the server (a hydration
+  // mismatch).
+  // Source: #8504 hydrate-split-modules.test.ts (exact JSX-text equality, red
+  // on main)
+  test.fails.each([
+    {
+      name: 'multi-line text with entities',
+      text: '\n      Fish &amp;\n      Chips &copy;\n    ',
+      rendered: 'Fish & Chips ©',
+    },
+    {
+      name: 'lines with trailing whitespace',
+      text: '\n      first line  \n      second line\n    ',
+      rendered: 'first line second line',
+    },
+  ])(
+    'client: a text-only child renders like JSX text: $name',
+    async ({ text, rendered }) => {
+      const jsx = await evaluateModule(`export const text = <>${text}</>`)
+      expect(jsx.text).toBe(rendered)
+      const { module } = await loadClientModule(`${head}export function Page() {
+  return <Hydrate>${text}</Hydrate>
+}`)
+      expect(module.Page()).toBe(`[${rendered}]`)
     },
   )
 
@@ -382,6 +403,26 @@ export function Page() {
 }`,
       client: '<div>[<p>b</p>]</div>',
     },
+    {
+      name: 'a boundary in an isomorphic .client() (removed on the server)',
+      code: `import { Hydrate, createIsomorphicFn } from '@tanstack/react-start'
+const panel = createIsomorphicFn()
+  .server(() => <i>server</i>)
+  .client(() => <Hydrate><p>a</p></Hydrate>)
+export function Page() {
+  return <div>{panel()}<Hydrate><p>b</p></Hydrate></div>
+}`,
+      client: '<div>[<p>a</p>][<p>b</p>]</div>',
+    },
+    {
+      name: 'a boundary in a createClientOnlyFn (a stub on the server)',
+      code: `import { Hydrate, createClientOnlyFn } from '@tanstack/react-start'
+export const panel = createClientOnlyFn(() => <Hydrate><p>a</p></Hydrate>)
+export function Page() {
+  return <div><Hydrate><p>b</p></Hydrate></div>
+}`,
+      client: '<div>[<p>b</p>]</div>',
+    },
   ])(
     'a later boundary keeps its id and its children next to $name',
     async ({ code, client }) => {
@@ -402,8 +443,6 @@ describe('values captured by the children', () => {
   // Bug: captured locals are passed to the lazy chunk component as props of
   // the same name, so locals named `key` or `ref` become React's `key`/`ref`.
   // Impact: the split children render without those values.
-  // Expected fix: rename only the reserved `key`/`ref` props; other captures
-  // keep their names as chunk props, which hydrate-captures.test.ts relies on.
   test.fails(
     'client: captured locals named key and ref reach the split children',
     async () => {
@@ -415,6 +454,82 @@ describe('values captured by the children', () => {
       expect(module.Page()).toBe('[<p>kr</p>]')
     },
   )
+
+  // Bug: a JSX tag is only taken for a read of a local when its name starts
+  // with an ASCII capital letter, so a local component named `_Local`,
+  // `$Local` or with a non-ASCII first letter is not passed to the chunk.
+  // Impact: the boundary throws "_Local is not defined" when it hydrates.
+  // Source: Qwik optimizer jsx_underscore_component_tag; React Compiler
+  // fixture jsx-underscore-prefix-component.js (#8504
+  // hydrate-captures.test.ts, red on main)
+  test.fails.each(['_Local', '$Local', 'ÉLocal', '组件'])(
+    'client: the split children render a local component named %s',
+    async (name) => {
+      const { module } =
+        await loadClientModule(`${head}export function Page({ label }) {
+  const ${name} = () => <b>{label}</b>
+  return <Hydrate><${name} /><i>{label}</i></Hydrate>
+}`)
+      expect(module.Page({ label: 'l' })).toBe('[<b>l</b><i>l</i>]')
+    },
+  )
+
+  // Bug: the object of a member-expression tag (`<ui.Home />`) is not taken
+  // for a read of a local.
+  // Impact: the boundary throws "ui is not defined" when it hydrates.
+  // Source: Qwik optimizer jsx_member_tag_object_is_captured,
+  // destructured_prop_used_as_member_tag (#8504 hydrate-captures.test.ts, red
+  // on main)
+  test.fails(
+    'client: the split children render member-expression tags of local objects',
+    async () => {
+      const { module } =
+        await loadClientModule(`${head}function Home() { return <i>home</i> }
+export function Page({ Model }) {
+  const ui = { Home }
+  return <Hydrate><ui.Home /><Model.Item /></Hydrate>
+}`)
+      expect(module.Page({ Model: { Item: () => '<b>item</b>' } })).toBe(
+        '[<i>home</i><b>item</b>]',
+      )
+    },
+  )
+
+  // Bug: property names, method keys and optional member names in the
+  // children are taken for reads of the local of the same name, which the
+  // parent then reads where the boundary renders.
+  // Impact: a boundary rendered before such a local is declared throws
+  // "Cannot access 'later' before initialization".
+  // Source: Qwik optimizer jsx_tag_names_are_not_segment_uses (non-reference
+  // identifiers) (#8504 hydrate-captures.test.ts, red on main)
+  test.fails(
+    'client: property names, method keys and optional members are no reads of a local',
+    async () => {
+      const { module } =
+        await loadClientModule(`${head}export function Page({ obj }) {
+  const el = <Hydrate><p>{obj?.later + ({ later() { return '!' } }).later()}</p></Hydrate>
+  const later = 1
+  console.log(later)
+  return el
+}`)
+      expect(module.Page({ obj: { later: 'L' } })).toBe('[<p>L!</p>]')
+    },
+  )
+
+  // Bug: a TypeScript enum declared in the component is not passed to the
+  // chunk.
+  // Impact: the boundary throws "Color is not defined" when it hydrates.
+  // Source: Qwik optimizer example_ts_enums (component-local enum) (#8504
+  // hydrate-captures.test.ts, red on main)
+  test.fails('client: the split children read a local enum', async () => {
+    const { module } = await loadClientModule(`${head}export function Page() {
+  enum Color {
+    Red = 'red',
+  }
+  return <Hydrate><p>{Color.Red}</p></Hydrate>
+}`)
+    expect(module.Page()).toBe('[<p>red</p>]')
+  })
 
   // Bug: split children reading the component's `arguments` are moved into
   // the chunk component unchanged, where `arguments` are the chunk's own
@@ -495,26 +610,28 @@ ${head}export function Page() {
   // moved as is into the synchronous chunk component the client compile
   // emits, while the server renders them inline.
   // Impact: the chunk does not parse (`await` outside an async function) and
-  // the client build fails without saying why. React client components cannot
-  // be async, so the fix is a clear compile-time error.
+  // the client build fails without saying why. A clear compile-time error is
+  // a valid fix (React client components cannot be async), and so is valid
+  // output that renders the awaited value.
   test.fails(
-    'client: await in split children is rejected clearly',
+    'client: await in split children is rejected clearly or renders',
     async () => {
-      const compiled = await compileHydrate(
-        'client',
-        `${head}import { load } from './data'
+      const code = `${head}import { load } from './data'
 export async function Page() {
   return <Hydrate><p>{await load()}</p></Hydrate>
-}`,
-      ).catch((error: Error) => error)
-      if (!(compiled instanceof Error)) {
-        // What happens on main: the emitted chunk is not a valid module.
-        for (const chunk of compiled.chunks) {
-          expect(await getModuleErrors(chunk)).toEqual([])
-        }
+}`
+      const compiled = await compileHydrate('client', code).catch(
+        (error: Error) => error,
+      )
+      if (compiled instanceof Error) {
+        expect(compileErrorMessage(compiled)).toMatch(rejections.await)
+        return
       }
-      expect(compiled).toBeInstanceOf(Error)
-      expect(compileErrorMessage(compiled)).toMatch(rejections.await)
+      // Every emitted module is valid (`loadClientModule`).
+      const { module } = await loadClientModule(code, {
+        stubs: { './data': { load: async () => 'data' } },
+      })
+      expect(await module.Page()).toBe('[<p>data</p>]')
     },
   )
 })
@@ -569,37 +686,146 @@ export function Page() {
     },
   )
 
+  // Bug (same root cause): an exported declaration the children use is
+  // copied into the chunk, so its initializer runs again there.
+  // Impact: the children use another instance than the module exports
+  // (e.g. another store), and the initializer's side effects run twice.
+  // Goal of hydrate-when-transform.test.ts "unwraps exported declarations
+  // needed by extracted virtual modules" (the copy is not required).
+  test.fails(
+    'client: an exported declaration the children use has one instance, initialized once',
+    async () => {
+      let stores = 0
+      const { module } = await loadClientModule(
+        `${head}import { makeStore } from './store'
+export const store = makeStore()
+export function Page() {
+  return <Hydrate><p>{store.id}</p></Hydrate>
+}`,
+        {
+          stubs: {
+            './store': { makeStore: () => ({ id: ++stores }) },
+          },
+        },
+      )
+      expect({
+        html: module.Page(),
+        exported: module.store.id,
+        stores,
+      }).toEqual({ html: '[<p>1</p>]', exported: 1, stores: 1 })
+    },
+  )
+
+  /** Router stub recording the routes it creates. */
+  const routerStub = (created: Array<string>) => ({
+    '@tanstack/react-router': {
+      createFileRoute:
+        (id: string) => (options: { loader?: () => unknown }) => {
+          created.push(id)
+          return { id, useLoaderData: () => options.loader?.() }
+        },
+    },
+  })
+
   // Bug: the client chunk removes the module's `Route`
   // (`removeModuleLevelBindings(ast, new Set(['Route']))`) without importing
   // it from the parent module, so split children reading it reference an
   // undeclared binding.
   // Impact: the boundary throws "Route is not defined" when it hydrates.
-  // Rejecting it at compile time with a clear error is a valid fix.
-  test.fails(
-    'client: split children reading Route use the route of the parent module',
-    async () => {
-      const loaded = await loadClientModule(
-        `${head}import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({ component: Page })
+  // Source: #8504 hydrate-split-modules.test.ts (rows directly, through a
+  // module helper, exported under a specifier, as default, and under a
+  // string name; red on main)
+  test.fails.each([
+    {
+      name: 'directly',
+      code: `export const Route = createFileRoute('/posts')({ component: Page })
 export function Page() {
   return <Hydrate><p>{Route.id}</p></Hydrate>
 }`,
-        {
-          stubs: {
-            '@tanstack/react-router': {
-              createFileRoute: (id: string) => (options: unknown) => ({
-                id,
-                options,
-              }),
-            },
-          },
-        },
-      ).catch((error: Error) => error)
-      if (loaded instanceof Error) {
-        expect(compileErrorMessage(loaded)).toMatch(rejections.Route)
+      rendered: '[<p>/posts</p>]',
+    },
+    {
+      name: 'through a module helper',
+      code: `export const Route = createFileRoute('/posts')({
+  loader: () => 'data',
+  component: Page,
+})
+function Comments() {
+  return <p>{Route.useLoaderData()}</p>
+}
+export function Page() {
+  return <Hydrate><Comments /></Hydrate>
+}`,
+      rendered: '[<p>data</p>]',
+    },
+    {
+      name: 'exported under a specifier',
+      code: `const Route = createFileRoute('/posts')({ component: Page })
+export { Route }
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+      rendered: '[<p>/posts</p>]',
+    },
+    {
+      name: 'exported as default',
+      code: `const Route = createFileRoute('/posts')({ component: Page })
+export default Route
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+      rendered: '[<p>/posts</p>]',
+    },
+    {
+      name: 'exported under a string name',
+      code: `const Route = createFileRoute('/posts')({ component: Page })
+export { Route as 'the-route' }
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`,
+      rendered: '[<p>/posts</p>]',
+    },
+  ])(
+    'client: split children reading Route $name use the one route',
+    async ({ code, rendered }) => {
+      const created: Array<string> = []
+      const { module } = await loadClientModule(
+        `${head}import { createFileRoute } from '@tanstack/react-router'
+${code}`,
+        { stubs: routerStub(created) },
+      )
+      expect(module.Page()).toBe(rendered)
+      expect(created).toEqual(['/posts'])
+    },
+  )
+
+  // Bug (same removal): split children reading a `Route` the module does
+  // not export reference an undeclared binding. A chunk cannot import it, so
+  // a clear compile error is a valid fix, like rendering with the one route.
+  // Impact: the boundary throws "Route is not defined" when it hydrates.
+  // Source: #8504 hydrate-split-modules.test.ts "children reading a Route
+  // the module does not export are rejected"
+  test.fails(
+    'client: split children reading an unexported Route are rejected clearly or use the one route',
+    async () => {
+      const code = `${head}import { createFileRoute } from '@tanstack/react-router'
+const Route = createFileRoute('/posts')({ component: Page })
+export function Page() {
+  return <Hydrate><p>{Route.id}</p></Hydrate>
+}`
+      const compiled = await compileHydrate('client', code).catch(
+        (error: Error) => error,
+      )
+      if (compiled instanceof Error) {
+        expect(compileErrorMessage(compiled)).toMatch(rejections.Route)
         return
       }
-      expect(loaded.module.Page()).toBe('[<p>/</p>]')
+      const created: Array<string> = []
+      const { module } = await loadClientModule(code, {
+        stubs: routerStub(created),
+      })
+      expect(module.Page()).toBe('[<p>/posts</p>]')
+      expect(created).toEqual(['/posts'])
     },
   )
 
@@ -704,6 +930,50 @@ export function Page() {
         },
       )
       expect(module.Page()).toBe('[<b>hi</b>]')
+    },
+  )
+
+  // Bug: module-level declarations the children use are only moved into the
+  // chunk for some declaration forms and uses: a default-exported function,
+  // TypeScript enums and namespaces, and a `let` the children only assign
+  // are neither declared in the chunk nor imported from the parent.
+  // Impact: the boundary throws "DefaultFn is not defined" (or `Tone`,
+  // `Labels`, `renders`) when it hydrates.
+  // Source: Qwik optimizer example_exports, example_ts_enums,
+  // should_preserve_let_when_migrated_into_segment; React Compiler fixture
+  // should-bailout-without-compilation-annotation-mode.js (#8504
+  // hydrate-split-modules.test.ts, red on main)
+  test.fails.each([
+    {
+      name: 'a default-exported function',
+      code: `export default function DefaultFn() { return 'default' }
+export function Page() {
+  return <Hydrate><p>{DefaultFn()}</p></Hydrate>
+}`,
+      rendered: ['[<p>default</p>]', '[<p>default</p>]'],
+    },
+    {
+      name: 'TypeScript enums and namespaces',
+      code: `export enum Tone { Loud = 'LOUD' }
+namespace Labels { export const quiet = 'quiet' }
+export function Page() {
+  return <Hydrate><p>{Tone.Loud + ':' + Labels.quiet}</p></Hydrate>
+}`,
+      rendered: ['[<p>LOUD:quiet</p>]', '[<p>LOUD:quiet</p>]'],
+    },
+    {
+      name: 'a let the children only assign',
+      code: `let renders = 0
+export function Page() {
+  return <Hydrate><p>{(() => { renders = 'set' })()}</p></Hydrate>
+}`,
+      rendered: ['[<p></p>]', '[<p></p>]'],
+    },
+  ])(
+    'client: $name used by the children reaches the chunk',
+    async ({ code, rendered }) => {
+      const { module } = await loadClientModule(`${head}${code}`)
+      expect([module.Page(), module.Page()]).toEqual(rendered)
     },
   )
 
