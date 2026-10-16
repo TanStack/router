@@ -362,6 +362,13 @@ export const greet = createServerFn().handler(async () => 'hi')`
   // Source: user ruling D6 (only server fns client code references are
   // HTTP-callable); the SSR-provider build pin is in
   // known-bugs-start-compiler.test.ts.
+  // Compiler-level pin: it generates the resolver itself, with the
+  // client-reference check on, from what the callers report, so it only
+  // flips if the fix is in what the compiler reports. A fix elsewhere in the
+  // host (which server fns reach the resolver, which check it runs) leaves it
+  // red: the host-level oracle is the build pin "SSR: a server fn only server
+  // code references is not callable over HTTP" (no build harness has an RSC
+  // provider environment yet).
   test.fails(
     'a server fn only a server environment compiles is not callable from the client',
     async () => {
