@@ -95,6 +95,22 @@ export const Route = createFileRoute('/posts')(options)
     expect(route.options[option]).toBe(value)
     expect(route.isLazy(option)).toBe(false)
   })
+
+  // A `var` declared in a block at module level is a module-level binding,
+  // so the route it creates is no route created inside a function.
+  // Source: #8504 (differential fuzzing).
+  it('are split when the route is declared with var in a module-level block', async () => {
+    const route = await loadRoute(`${head}if (true) {
+  var Route = createFileRoute('/')({
+    component: () => <div>split</div>,
+  })
+}
+export { Route }
+`)
+    await expectValidModules(route.modules)
+    expect(route.isLazy('component')).toBe(true)
+    expect((await route.load('component'))()).toBe('<div>split</div>')
+  })
 })
 
 describe('route option values', () => {

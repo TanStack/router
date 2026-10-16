@@ -3,6 +3,7 @@ import path from 'node:path'
 import { createServer } from 'vite'
 import { expect, it } from 'vitest'
 import { tanstackRouter } from '../src/vite'
+import { expectValidModules, head, loadRoute } from './regression-helpers'
 
 it.each(['Widget', '_Widget', '$Widget'])(
   'preserves the shared JSX component %s across separate loader and component chunks',
@@ -64,3 +65,17 @@ export const Route = createFileRoute('/widget')({
   },
   30_000,
 )
+
+// JSX text right after a closing fragment that starts with non-ASCII
+// punctuation (an em dash). Source: #8504 (differential fuzzing; a guard
+// against a parser bug, yuku-toolchain/yuku#260).
+it('splits a component whose JSX text after a fragment starts with an em dash', async () => {
+  const route =
+    await loadRoute(`${head}export const Route = createFileRoute('/')({
+  component: () => <p><>first</> — second</p>,
+})
+`)
+  await expectValidModules(route.modules)
+  expect(route.isLazy('component')).toBe(true)
+  expect((await route.load('component'))()).toBe('<p>first — second</p>')
+})

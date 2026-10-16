@@ -4,6 +4,7 @@ import {
   compileRouteModules,
   componentChunk,
   head,
+  loadRoute,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 
@@ -110,6 +111,46 @@ export const Route = createFileRoute('/pragma')({
   )
 })
 
+// With the classic runtime, the JSX of each module compiles to calls of the
+// factory its pragmas name, so the factory import must stay wherever JSX
+// does. Source: #8504. (A chunk whose only use of the factory is its JSX, or
+// that imports it from the route module: pinned in
+// known-bugs-code-splitter.test.ts, "classic JSX pragmas".)
+describe('split modules keep the classic JSX factories their JSX compiles to', () => {
+  /** Classic JSX factory rendering intrinsic elements to text. */
+  const render = (type: unknown, _props: unknown, ...children: Array<any>) => {
+    const text = children.flat(Infinity).join('')
+    if (typeof type === 'function') {
+      return type()
+    }
+    return type === Fragment ? text : `<${String(type)}>${text}</${type}>`
+  }
+  const Fragment = Symbol('Fragment')
+  const stubs = { '@emotion/react': { jsx: render, Frag: Fragment } }
+  const classicHead = `/** @jsxRuntime classic */
+/** @jsx jsx */
+${head}import { jsx } from '@emotion/react'
+`
+
+  it('in the route module, when the code calling the factory is split', async () => {
+    const route = await loadRoute(
+      `${classicHead}function Page() {
+  return jsx('div', null, 'page')
+}
+export const Route = createFileRoute('/')({
+  component: Page,
+  pendingComponent: () => <p>pending</p>,
+})`,
+      { stubs },
+    )
+    expect([
+      route.isLazy('pendingComponent'),
+      route.options.pendingComponent(),
+      (await route.load('component'))(),
+    ]).toEqual([false, '<p>pending</p>', '<div>page</div>'])
+  })
+})
+
 // React Refresh and solid-refresh read these comments per module, so every
 // module holding route code must keep them.
 describe('split modules keep HMR pragma comments', () => {
@@ -152,4 +193,18 @@ export const Route = createFileRoute('/')({ component: Page })
     expect(modules.reference).toContain(pragma)
     expect(modules['virtual component']).toContain(pragma)
   })
+})
+
+// Minifiers keep legal comments in the modules that carry them. Source: #8504.
+it('split modules keep the leading legal comment of the route file', () => {
+  const legal = '/*! Example Corp. | MIT License */'
+  const { modules } = compileRouteModules(
+    `${legal}\n${head}export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+})`,
+  )
+  expect(Object.keys(modules).length).toBeGreaterThan(1)
+  for (const [name, code] of Object.entries(modules)) {
+    expect(code, name).toContain(legal)
+  }
 })

@@ -98,6 +98,88 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
     },
   )
 
+  // A declaration that only an unused local inside it, or an uncalled
+  // function, reads is still live code: its initializer runs when the route
+  // module loads. Source: #8504 (regressions of the Yuku migration); inputs
+  // adapted from @babel/plugin-proposal-decorators
+  // 2023-11-misc/destructuring-transform-integration and TypeScript's
+  // conformance test classes/propertyMemberDeclarations/autoAccessor10.ts.
+  describe.each([{ hmr: false }, { hmr: true }])(
+    'with hmr: $hmr',
+    ({ hmr }) => {
+      it.each([
+        {
+          name: 'declarations only an unused local inside them reads',
+          setup: `const plugin = {
+  id: register('plugin'),
+  describe() {
+    const self = plugin
+    return 'plugin'
+  },
+}
+class Widget {
+  static {
+    register('widget')
+  }
+  render() {
+    const type = Widget
+    return 'widget'
+  }
+}`,
+          registered: ['plugin', 'widget'],
+        },
+        {
+          name: 'a declaration only an uncalled function reads, the function reading itself through a local',
+          setup: `const effect = register('effect')
+function helper() {
+  const self = helper
+  return effect
+}`,
+          registered: ['effect'],
+        },
+      ])(
+        'runs the initializers of $name when the route module loads',
+        async ({ setup, registered }) => {
+          const calls: Array<string> = []
+          const route = await loadRoute(
+            `${head}import { register } from './registry'
+${setup}
+export const Route = createFileRoute('/')({ component: () => <div /> })
+`,
+            {
+              hmr,
+              stubs: {
+                './registry': { register: (name: string) => calls.push(name) },
+              },
+            },
+          )
+          expect(calls).toEqual(registered)
+          expect((await route.load('component'))()).toBe('<div></div>')
+        },
+      )
+
+      // Deleting the declaration would also delete the ReferenceError its
+      // initializer throws (`later` is read before its declaration).
+      it('keeps the ReferenceError of an initializer that reads a let before its declaration', async () => {
+        await expect(
+          loadRoute(
+            `${head}const plugin = {
+  id: later,
+  describe() {
+    const self = plugin
+    return 'plugin'
+  },
+}
+let later = 1
+export const Route = createFileRoute('/')({ component: () => <div /> })
+`,
+            { hmr },
+          ),
+        ).rejects.toThrow(/\blater\b/)
+      })
+    },
+  )
+
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "only
   // eliminates newly unreferenced identifiers", "unexported circular references"
   // and "SCC with external caller used -> all preserved". Whether unused user
@@ -210,6 +292,35 @@ export const Route = createFileRoute('/')({
     await expectValidModules(modules)
   })
 
+  // Source: #8504 (differential fuzzing). Other unused declarations with
+  // side effects run again in every chunk: pinned in
+  // known-bugs-code-splitter.test.ts ("an unreferenced top-level side
+  // effect").
+  it('runs the initializer of a namespace no split option reads once, with the route module', async () => {
+    const calls: Array<string> = []
+    const route = await loadRoute(
+      `${head}import { track } from './track'
+namespace Unused { export const value = track('namespace') }
+export const Route = createFileRoute('/')({
+  component: () => <div>{track('component')}</div>,
+})
+`,
+      {
+        stubs: {
+          './track': {
+            track: (label: string) => {
+              calls.push(label)
+              return label
+            },
+          },
+        },
+      },
+    )
+    expect(calls).toEqual(['namespace'])
+    expect((await route.load('component'))()).toBe('<div>component</div>')
+    expect(calls).toEqual(['namespace', 'component'])
+  })
+
   // TypeScript erases type positions, so a declaration whose binding only
   // appears in a type is still live code that runs when the route loads.
   it.each([
@@ -283,6 +394,30 @@ export const Route = createFileRoute('/')({
       expect(await renderSplitComponent(code)).toBe(rendered)
     },
   )
+
+  // An unused function that renders the split component stays as written, or
+  // goes, without keeping the component's imports in the route module.
+  // Other shapes are pinned in known-bugs-code-splitter.test.ts ("page code
+  // left in the route module"). Source: #8504 (corpus-diff, Jp-K/DmCompanionAi
+  // frontend_old/src/routes/_layout/chat.tsx).
+  it('moves the split component and its imports into its chunk when an unused function renders it', async () => {
+    const route = await loadRoute(
+      `${head}import { heavy } from './heavy'
+export const Route = createFileRoute('/')({
+  component: Page,
+})
+function Page() {
+  return <p>{heavy()}</p>
+}
+function Unused() {
+  return <Page />
+}
+`,
+      { stubs: { './heavy': { heavy: () => 'heavy' } } },
+    )
+    expect(importSources(route.modules.reference!)).not.toContain('./heavy')
+    expect((await route.load('component'))()).toBe('<p>heavy</p>')
+  })
 
   // Bundlers drop unused calls of a function annotated #__NO_SIDE_EFFECTS__,
   // so the annotation must move with the function, also when every output

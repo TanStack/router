@@ -34,14 +34,23 @@ import type { Config, DeletableNodes } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
+import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 import type { ESTree } from 'vite'
 
 export { declarationOf } from '@tanstack/compiler-test-utils/validate-module'
 
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
-/** Exports of each module provided by the test, by import specifier. */
-type Stubs = Record<string, Record<string, unknown>>
+/**
+ * Modules provided by the test, by import specifier: their exports, or the
+ * source of a JSON module (`.json` specifiers).
+ */
+type Stubs = Record<string, ModuleStub>
+
+/** The exports of an object stub; a source stub has none to merge. */
+function stubExports(stub: ModuleStub | undefined) {
+  return typeof stub === 'object' ? stub : undefined
+}
 
 /** A framework the router plugin targets. */
 export type TargetFramework = 'react' | 'solid' | 'vue'
@@ -501,7 +510,7 @@ function runTransform(plugin: UnpluginOptions, code: string, id: string) {
   if (!transform || typeof transform === 'function') {
     throw new Error('Expected object transform')
   }
-  const result = transform.handler.call({} as never, code, id) as
+  const result = transform.handler.call(pluginContext as never, code, id) as
     | TransformResult
     | null
     | undefined
@@ -576,15 +585,31 @@ export function transformWithRouteHmrPlugin(
     routeId: '/',
   },
 ) {
-  const context = createRouterPluginContext()
-  context.routesByFile.set(route.file, { routeId: route.routeId })
-  const plugins = createRouterHmrPlugin(options, context)
-  const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
-  const output = runTransform(plugin, code, route.file)
+  const output = createRouteHmrTransform(options, {
+    [route.file]: route.routeId,
+  })(code, route.file)
   if (output === null) {
     throw new Error('expected the route HMR plugin to transform the route')
   }
   return output
+}
+
+/**
+ * The transform of one route HMR plugin instance (used when automatic code
+ * splitting is off) for the given route files (absolute path to route id).
+ * Returns `null` for a module it leaves as is.
+ */
+export function createRouteHmrTransform(
+  options: Partial<Config>,
+  routes: Record<string, string>,
+) {
+  const context = createRouterPluginContext()
+  for (const [file, routeId] of Object.entries(routes)) {
+    context.routesByFile.set(file, { routeId })
+  }
+  const plugins = createRouterHmrPlugin(options, context)
+  const plugin = Array.isArray(plugins) ? plugins[0]! : plugins
+  return (code: string, id: string) => runTransform(plugin, code, id)
 }
 
 /**
@@ -645,7 +670,7 @@ function withRouterStubs(
 ): Stubs {
   const linked: Stubs = { ...stubs }
   for (const name of routerPackages) {
-    linked[name] = { ...createRouterStub(lazy), ...stubs[name] }
+    linked[name] = { ...createRouterStub(lazy), ...stubExports(stubs[name]) }
   }
   return linked
 }
@@ -1047,7 +1072,10 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
       stubs: {
         ...(refresh && { react: React }),
         ...options.stubs,
-        [routerPackage]: { ...routerStub, ...options.stubs?.[routerPackage] },
+        [routerPackage]: {
+          ...routerStub,
+          ...stubExports(options.stubs?.[routerPackage]),
+        },
       },
       importMeta: (id) => ({
         [style === 'webpack' ? 'webpackHot' : 'hot']: hotContext(id),

@@ -446,6 +446,66 @@ function Page() {
   })
 })
 
+// Guards against codegen and parser bugs of the Yuku migration (#8504):
+// each split component keeps its meaning in plain JavaScript.
+describe('split components in plain JavaScript keep the syntax they were written with', () => {
+  it.each([
+    {
+      // yuku-toolchain/yuku#255; source: @babel/generator
+      // edgecase/postfix-update-comments
+      name: 'a postfix update whose operand is followed by a comment',
+      body: `let count = 0
+function Page() {
+  (
+    count // the render count
+  )++
+  return count
+}`,
+      expected: 1,
+    },
+    {
+      // yuku-toolchain/yuku#256; source: Oxc codegen esbuild.rs (ported
+      // from esbuild's printer tests)
+      name: 'the operands of `in` inside a parenthesized for-loop head',
+      body: `function Page() {
+  const a = true, b = 'b', c = 'x', d = { x: 1 }
+  let result = 'unset'
+  for (result = (a ? b : c in d).toString(); ; ) break
+  return result
+}`,
+      expected: 'b',
+    },
+    {
+      // yuku-toolchain/yuku#259; shape adapted from
+      // @babel/plugin-proposal-decorators
+      // 2023-11-misc/initField-existing-derived-constructor
+      name: 'a super() call in the computed key of a class field in a derived constructor',
+      body: `class Base {
+  toString() {
+    return 'key'
+  }
+}
+class Derived extends Base {
+  constructor() {
+    class Field {
+      [super()] = 'field'
+    }
+    this.field = new Field()
+  }
+}
+function Page() {
+  return new Derived().field.key
+}`,
+      expected: 'field',
+    },
+  ])('$name', async ({ body, expected }) => {
+    const route = await loadRoute(pageRoute(body), { filename: 'route.js' })
+    await expectValidModules(route.modules)
+    expect(route.isLazy('component')).toBe(true)
+    expect((await route.load('component'))()).toBe(expected)
+  })
+})
+
 describe('plain TypeScript route files', () => {
   // Source: TanStack/router#7341. In a `.ts` file, `<T>value` is a type
   // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.

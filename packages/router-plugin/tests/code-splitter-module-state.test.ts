@@ -131,6 +131,68 @@ export const Route = createFileRoute('/')({
       [[0], '<p>1</p>'],
     )
   })
+
+  // TypeScript erases type positions, so a declaration the split component
+  // only reads in a type is created once, by the route module. (Next to a
+  // type alias that reads it: pinned in known-bugs-code-splitter.test.ts.)
+  // Source: #8504 (corpus-diff, forms that cast `as z.infer<typeof schema>`
+  // in the split component).
+  it('creates a declaration the split component only reads in a type once', async () => {
+    let calls = 0
+    const route = await loadRoute(
+      `${head}import { init } from './state'
+const value = init(1)
+export const Route = createFileRoute('/')({
+  component: () => <p>{typeof ({} as typeof value)}</p>,
+})`,
+      {
+        stubs: {
+          './state': {
+            init: <T>(value: T) => {
+              calls++
+              return value
+            },
+          },
+        },
+      },
+    )
+    await expectValidModules(route.modules)
+    expect([(await route.load('component'))(), calls]).toEqual([
+      '<p>object</p>',
+      1,
+    ])
+  })
+
+  // Source: #8504 (code-splitter-exported-bindings-identity.test.ts).
+  it('gives the split component the state the route file configures before it creates it', async () => {
+    const html = await buildAndRun(
+      `${head}import { configure, createStore } from '../store'
+configure(5)
+const store = createStore()
+export function useCount() {
+  return store.count
+}
+function Page() {
+  return <p>{useCount()}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      `return await entry.render(entry.Route.options.component)`,
+      {
+        files: {
+          'store.ts': `let initial = 0
+export function configure(count: number) {
+  initial = count
+}
+export function createStore() {
+  return { count: initial }
+}
+`,
+        },
+      },
+    )
+    expect(html).toBe('<p>5</p>')
+  }, 30_000)
 })
 
 describe('split chunks keep reassigned bindings next to their writers', () => {
@@ -187,6 +249,24 @@ export const Route = createFileRoute('/')({
       ]).toEqual([loaded, '<div>memoized</div>', loaded, '<div>memoized</div>'])
     },
   )
+
+  // A const only the split component reads works with the module-level
+  // statements that write to it. Enums and namespaces do not: pinned in
+  // known-bugs-code-splitter.test.ts ("top-level writes to ... stay with the
+  // binding they write"). Source: #8504.
+  it('keeps the writes to a const the split component reads', async () => {
+    const route = await loadRoute(`${head}const State = { count: 0 }
+Object.assign(State, { extra: 7 })
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>{(State as any).extra}</p>,
+})
+`)
+    await expectValidModules(route.modules)
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      ['data', '<p>7</p>'],
+    )
+  })
 })
 
 // Module-level bindings read by route options, across binding kinds,

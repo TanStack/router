@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   compileRouteModules,
   createCodeSplitterTransforms,
+  createRouteHmrTransform,
   evaluateModule,
   expectValidModules,
   importRequests,
@@ -111,6 +112,42 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     expect(Object.keys(fresh).length).toBeGreaterThan(1)
     expect(compileAll(reused, code, files.first)).toEqual(fresh)
   })
+
+  // Bug: the shared and split transforms read the shared bindings the route
+  // module's transform stored for the file, so a chunk compiled before the
+  // route module (by a fresh plugin instance, e.g. after a dev-server
+  // restart) copies the shared state instead of importing it, and the
+  // shared module compiles to nothing. Same root cause as the out-of-order
+  // pin in known-bugs-dev-server.test.ts (gap DV8).
+  // Source: #8504 (code-splitter.test.ts), where it passes.
+  // Impact: the chunk gets its own copy of module state the route module
+  // shares.
+  it.fails(
+    'compiles the modules of a route the same way whatever order they are requested in',
+    async () => {
+      const file = routeFile('order')
+      const routes = { [file]: '/order' }
+      const code = `'use client'\n${routeSource('order')}`
+      const inOrder = compileAll(
+        await createCodeSplitterTransforms({}, routes),
+        code,
+        file,
+      )
+      const ids = Object.keys(inOrder)
+      expect(ids.length).toBeGreaterThan(2)
+      const reversed = await createCodeSplitterTransforms({}, routes)
+      const compiled: Record<string, string | null> = {}
+      for (const id of [...ids].reverse()) {
+        compiled[id] =
+          id === file
+            ? reversed.reference(code, id)
+            : id.includes('tsr-split=')
+              ? reversed.virtual(code, id)
+              : reversed.shared(code, id)
+      }
+      expect(compiled).toEqual(inOrder)
+    },
+  )
 
   it('splits by the plugin-level splitBehavior for the route id', async () => {
     const splitBehavior: NonNullable<
@@ -340,6 +377,29 @@ export const Route = createFileRoute('/hmr')({
     },
   )
 
+  // Source: corpus-diff, tinloof/tanstack-wsr src/types.ts (an empty type
+  // import fixes TypeScript's "inferred type cannot be named" error); #8504
+  // (a guard against a printer bug, yuku-toolchain/yuku#258).
+  it('keeps a route with an empty type-only import valid', async () => {
+    const output = transformWithRouteHmrPlugin(
+      `import type {} from 'zod'
+import { createFileRoute } from '@tanstack/solid-router'
+export const Route = createFileRoute('/hmr')({
+  component: () => <p>hmr</p>,
+})
+`,
+      { target: 'solid' },
+      { file: routeFile('hmr'), routeId: '/hmr' },
+    )
+    expect(await getModuleErrors(output)).toEqual([])
+    const { Route } = await evaluateModule(output, routerStubs('solid'), {
+      importMeta: {
+        hot: { data: {}, accept: () => {}, dispose: () => {} },
+      },
+    })
+    expect((Route as any).options.component()).toBe('<p>hmr</p>')
+  })
+
   it('uses webpack HMR with the generated route id for non-React routes', async () => {
     const output = transformWith({
       target: 'solid',
@@ -367,5 +427,122 @@ export const Route = createFileRoute('/hmr')({
     const data: Record<string, unknown> = {}
     disposers.forEach((dispose) => dispose(data))
     expect(Object.values(data)).toContain('/hmr')
+  })
+})
+
+// A route the route file creates inside a function (a helper, an IIFE) is
+// not split, and its route module keeps working. Source: #8504
+// (code-splitter-plugin-pipeline.test.ts).
+describe('a route created inside a function', () => {
+  const routeInHelper = `import { createFileRoute } from '@tanstack/react-router'
+function makeRoute() {
+  return createFileRoute('/made')({ component: () => <p>made</p> })
+}
+export const Route = makeRoute()
+`
+  const routeInIife = `import { createFileRoute } from '@tanstack/react-router'
+export const Route = (() =>
+  createFileRoute('/made')({ component: () => <p>made</p> }))()
+`
+  const moduleRoute = `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
+`
+  const moduleRouteWithCodeRouteInHelper = `import { createFileRoute, createRoute } from '@tanstack/react-router'
+export function makeChild(label: string) {
+  return createRoute({
+    getParentRoute: () => Route,
+    path: label,
+    component: () => <p>{label}</p>,
+  })
+}
+export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
+`
+
+  /** Calls of `console.warn` during `run`, as text. */
+  function warnings(run: () => void) {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      run()
+      return warn.mock.calls.map((args) => args.map(String).join(' '))
+    } finally {
+      warn.mockRestore()
+    }
+  }
+
+  // Each plugin path: a transform of route files registered as `/made`.
+  const pluginPaths = {
+    'code splitter': async (files: Array<string>) =>
+      (
+        await createCodeSplitterTransforms(
+          {},
+          Object.fromEntries(files.map((file) => [file, '/made'])),
+        )
+      ).reference,
+    'route HMR plugin': async (files: Array<string>) =>
+      createRouteHmrTransform(
+        { target: 'react' },
+        Object.fromEntries(files.map((file) => [file, '/made'])),
+      ),
+  }
+
+  it.each([
+    ['a helper function', routeInHelper],
+    ['an IIFE', routeInIife],
+  ])('built in %s keeps working', async (_, code) => {
+    const route = await loadRoute(code, { routeId: '/made' })
+    await expectValidModules(route.modules)
+    expect((await route.load('component'))()).toBe('<p>made</p>')
+  })
+
+  describe.each(Object.entries(pluginPaths))('through the %s', (_, create) => {
+    it.each([
+      ['a module-scope route', moduleRoute],
+      [
+        'a module-scope route next to a code route a function creates',
+        moduleRouteWithCodeRouteInHelper,
+      ],
+    ])('is not reported for %s', async (_, code) => {
+      const file = routeFile('made')
+      const transform = await create([file])
+      expect(warnings(() => transform(code, file))).toEqual([])
+    })
+
+    // Bug: a file route created inside a function is silently left
+    // unsplit; nothing tells the developer to create it at module scope
+    // (decision D11: the user can change the pattern, so the build warns
+    // once, naming the file).
+    // Impact: the route's components load with the entry chunk, silently.
+    it.fails.each([
+      ['a helper function', routeInHelper],
+      ['an IIFE', routeInIife],
+    ])(
+      'is reported once, naming the file, when built in %s',
+      async (_, code) => {
+        const file = routeFile('made')
+        const transform = await create([file])
+        expect(warnings(() => transform(code, file))).toEqual([
+          expect.stringContaining(file),
+        ])
+      },
+    )
+
+    // Bug: same as above.
+    it.fails(
+      'is reported once per file across repeated transforms',
+      async () => {
+        const files = [routeFile('made'), routeFile('other')]
+        const transform = await create(files)
+        const reported = warnings(() => {
+          for (let edit = 0; edit < 3; edit++) {
+            for (const file of files) {
+              transform(`${routeInHelper}// edit ${edit}\n`, file)
+            }
+          }
+        })
+        expect(reported).toEqual(
+          files.map((file) => expect.stringContaining(file)),
+        )
+      },
+    )
   })
 })

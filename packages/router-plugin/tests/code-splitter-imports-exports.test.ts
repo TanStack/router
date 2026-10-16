@@ -104,6 +104,32 @@ export const Route = createFileRoute('/')({
     await expectValidModules(modules)
   })
 
+  // Import assertions (`assert { type: 'json' }`) are the deprecated form of
+  // import attributes; the modules the code splitter emits use the `with`
+  // keyword, which current runtimes and bundlers accept.
+  it('compiles an import assertion of a route file into an import attribute', async () => {
+    const route = await loadRoute(
+      `${head}import data from './data.json' assert { type: 'json' }
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>{data.title}</p>,
+})
+`,
+      { stubs: { './data.json': '{ "title": "from json" }' } },
+    )
+    const importers = Object.values(route.modules).filter((code) =>
+      importSources(code).includes('./data.json'),
+    )
+    expect(importers.length).toBeGreaterThan(0)
+    for (const code of importers) {
+      expect(code).toMatch(
+        /from\s*["']\.\/data\.json["']\s*with\s*\{\s*type:\s*["']json["']\s*\}/,
+      )
+      expect(code).not.toMatch(/\bassert\s*\{/)
+    }
+    expect((await route.load('component'))()).toBe('<p>from json</p>')
+  })
+
   // With React's classic JSX runtime (`jsx: "react"` in tsconfig), JSX
   // compiles to `React.createElement`, so a React import that the TypeScript
   // code only uses in types must stay.
@@ -266,6 +292,28 @@ export const Route = createFileRoute('/')({
     // The component updated the object the route module exports.
     expect(route.exports.a.n).toBe(1)
     await expectValidModules(route.modules)
+  })
+
+  // Source: #8504.
+  it('keep working when the route module reassigns a binding declared with what the split component reads', async () => {
+    const route =
+      await loadRoute(`${head}let { title, visits } = { title: 'Home', visits: 0 }
+export function reset() {
+  visits = 0
+  return visits
+}
+export function Title() {
+  return <h1>{title}</h1>
+}
+export const Route = createFileRoute('/')({
+  component: () => <Title />,
+})
+`)
+    await expectValidModules(route.modules)
+    expect([route.exports.reset(), (await route.load('component'))()]).toEqual([
+      0,
+      '<h1>Home</h1>',
+    ])
   })
 
   it('keep module-level re-exports in the reference module', async () => {
@@ -453,6 +501,73 @@ export const Route = createFileRoute('/ambient')({
       ]).toEqual([expected, `<button>${expected}</button>`])
     },
   )
+
+  // An import the code only references from types (without `import type`)
+  // is not imported by the route module when only the split component's
+  // types reference it. (When only the loader's types do, the chunks import
+  // it: pinned in known-bugs-code-splitter.test.ts.) Source: #8504.
+  it('leaves an import only the split component references from types out of the route module', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { useState } from 'react'
+import { Framework } from './projects'
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => {
+    const [framework] = useState<Framework>('react')
+    return <p>{framework}</p>
+  },
+})
+`)
+    expect(importSources(modules.reference!)).not.toContain('./projects')
+    await expectValidModules(modules)
+  })
+
+  // Source: @babel/plugin-transform-typescript class/private-method-override;
+  // #8504 (a guard against a parser bug, yuku-toolchain/yuku#257).
+  it('gives the split component a class with an overloaded private method', async () => {
+    const route = await loadRoute(`${head}class Parser {
+  #parse(value: string): number
+  #parse(value: number): string
+  #parse(value: string | number): string | number {
+    return typeof value === 'string' ? value.length : String(value)
+  }
+  run() {
+    return [this.#parse('abc'), this.#parse(7)].join('|')
+  }
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>{new Parser().run()}</p>,
+})
+`)
+    await expectValidModules(route.modules)
+    expect((await route.load('component'))()).toBe('<p>3|7</p>')
+  })
+
+  // An ambient var merged with an interface has no runtime declaration:
+  // a declaration the loader and the split component share reads the
+  // global. Source: TypeScript conformance test
+  // expressions/functionCalls/overloadResolutionConstructors.ts; #8504.
+  it('reads an ambient var merged with an interface from the environment in a shared declaration', async () => {
+    vi.stubGlobal('readVersion', () => '1.0')
+    onTestFinished(() => {
+      vi.unstubAllGlobals()
+    })
+    const route = await loadRoute(`${head}interface readVersion {
+  (): string
+}
+declare var readVersion: readVersion
+const version = readVersion()
+export const Route = createFileRoute('/')({
+  loader: () => version,
+  component: () => <p>{version}</p>,
+})
+`)
+    await expectValidModules(route.modules)
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      ['1.0', '<p>1.0</p>'],
+    )
+  })
 
   it('keeps the namespace import that an import alias refers to', () => {
     const chunk = componentChunk(`${head}import * as lib from './lib'
