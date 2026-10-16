@@ -6,12 +6,8 @@ import { describe, expect, test } from 'vitest'
 import {
   compileErrorMessage,
   compileHydrate,
-  createStartCompiler,
   evaluateModule,
-  getBoundaryIds,
-  getChunkIds,
   hydrateParentStubs,
-  loadChunk,
   loadClientModule as loadHydrateClient,
   renderBoundaries,
   settle,

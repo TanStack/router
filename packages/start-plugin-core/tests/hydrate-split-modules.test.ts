@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import {
+  callReportedServerFns,
   compileCode,
   compileFirstChunk,
   compileHydrate,
@@ -9,23 +10,17 @@ import {
   directivePrologue,
   evaluateHydrateParent,
   evaluateModule,
-  callReportedServerFns,
-  getBoundaryIds,
   getChunkComponent,
   getChunkIds,
   hydrateParentStubs,
-  importSources,
   loadChunk,
-  parentImportSources,
   loadClientModule,
+  parentImportSources,
   renderBoundaries,
   renderChunk,
 } from './regression-helpers'
 import type { ModuleStub } from './regression-helpers'
-import {
-  declarationOf,
-  getModuleErrors,
-} from '@tanstack/compiler-test-utils/validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 // On the client `<Hydrate>` children move into a lazily loaded chunk module
 // and the parent renders the chunk component in their place; on the server
