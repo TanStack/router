@@ -159,8 +159,8 @@ describe('hydrate', () => {
       mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, manifest)
 
       expect(
-        Object.keys(mockWindow.$_TSR.router!.manifest!.routes).some(
-          (id) => id.includes('/'),
+        Object.keys(mockWindow.$_TSR.router!.manifest!.routes).some((id) =>
+          id.includes('/'),
         ),
       ).toBe(false)
       expect(manifest.routes[serverProductRoute.id]?.preloads).toEqual([
