@@ -180,6 +180,31 @@ export const fn = createServerFn().handler(async (): Promise<Stuff | string> => 
     expect(await callProvider(compiled, 'fn')).toBe('a')
   })
 
+  // Source: TanStack/router#6480 (an exported type that reads a schema built
+  // from an imported enum kept the enum's server module in the client);
+  // replaces router-utils stripTypeExports "handles the issue #6480
+  // scenario", which never checked the symptom.
+  test('an exported type reading a schema the handler uses keeps its imports out of the client', async () => {
+    const stubs = {
+      './PostService': `export const PostCategory = { News: 'news' }`,
+      zod: `export const z = {
+  object: (shape) => ({ parse: (value) => ({ category: shape.category.parse(value.category) }) }),
+  nativeEnum: (values) => ({ parse: (value) => Object.values(values).includes(value) ? value : 'invalid' }),
+}`,
+    }
+    const compiled = await compileAll(`${head}import { z } from 'zod'
+import { PostCategory } from './PostService'
+const postSchema = z.object({ category: z.nativeEnum(PostCategory) })
+export type CreatePostInput = z.infer<typeof postSchema>
+export const createPost = createServerFn().handler(async () =>
+  postSchema.parse({ category: 'news' }),
+)`)
+    expect(importSources(compiled.client)).not.toContain('./PostService')
+    expect(await callProvider(compiled, 'createPost', stubs)).toEqual({
+      category: 'news',
+    })
+  })
+
   // Source: Next.js server-actions fixtures client-graph/2
   test('side-effect imports and top-level statements stay in every output', async () => {
     const compiled = await compileAll(`${head}import './polyfill'
