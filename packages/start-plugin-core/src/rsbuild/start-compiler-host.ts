@@ -210,9 +210,14 @@ export function registerStartCompilerTransforms(
     }
 
     const rules = config.module.rules ?? []
-    rules.push({
+    // Pre loaders run right to left, so a pre rule placed first runs after
+    // every other pre loader, including the Start transform, and before the
+    // normal loaders such as builtin:swc-loader. That keeps the metadata write
+    // in the same JS loader pass as the transform. It must stay a pre loader:
+    // a `!` request prefix skips normal loaders but still runs the transform.
+    rules.unshift({
       test: TRANSFORM_ID_REGEX[0],
-      enforce: 'post',
+      enforce: 'pre',
       use: [
         {
           loader: metadataLoader,

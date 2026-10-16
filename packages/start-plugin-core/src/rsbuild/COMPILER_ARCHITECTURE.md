@@ -81,7 +81,7 @@ Rsbuild `api.transform()` is implemented as a loader, but its callback only expo
 
 Rspack persists custom `module.buildInfo` fields. To write metadata there, Start installs a small real loader after the transform:
 
-1. `start-compiler-host.ts` adds a rule with `enforce: 'post'` for Start transformable modules.
+1. `start-compiler-host.ts` adds a rule with `enforce: 'pre'` for Start transformable modules, as the first rule. Pre loaders run right to left, so this loader runs after every other pre loader, including the Start transform, and before normal loaders such as `builtin:swc-loader`. The metadata write therefore happens in the same JS loader pass as the transform instead of a second pass after SWC. It must stay a pre loader: a request with a leading `!` skips normal loaders but still runs the pre-phase transform.
 2. The rule points to the emitted `start-compiler-metadata-loader.js` file.
 3. The loader receives the environment's pending metadata map through loader options.
 4. A public `NormalModule.getCompilationHooks(compilation).loader` hook adds a setter to the loader context.
@@ -96,7 +96,7 @@ The metadata loader is installed regardless of `performance.buildCache`.
 
 When persistent cache is enabled, Rspack may later restore a module without rerunning the Start transform or the metadata loader. The `buildInfo` payload is then replayed from the cached module.
 
-When persistent cache is disabled, the same loader path still runs during normal compilation and writes in-memory `buildInfo`. Keeping one path avoids conditional behavior and keeps cold, watch, cache-disabled, and cache-enabled builds aligned. The overhead is one small post loader for modules that already match the Start transform test.
+When persistent cache is disabled, the same loader path still runs during normal compilation and writes in-memory `buildInfo`. Keeping one path avoids conditional behavior and keeps cold, watch, cache-disabled, and cache-enabled builds aligned. The overhead is one small loader for modules that already match the Start transform test, in the same JS loader pass as the transform.
 
 The cache-specific part is not the loader itself. The cache-specific part is that Rspack can persist and later restore the `buildInfo` field.
 
@@ -192,7 +192,7 @@ For a new server function in a normal cold compile:
 2. `StartCompiler.compile()` rewrites the caller module and discovers the server function.
 3. `onServerFnsById` merges the function into `serverFnsById` and the active module metadata object.
 4. The transform stores `{ version: 1, serverFnsById: discoveredServerFnsById }` in the environment metadata map under the module resource.
-5. The post metadata loader runs for the same resource.
+5. The metadata loader runs for the same resource, right after the transform.
 6. The loader writes that payload into `module.buildInfo['tanstack.start.serverFns']`.
 7. Rspack owns the module from there. If persistent cache is enabled, Rspack persists the module and its string-keyed `buildInfo` with its normal cache machinery.
 8. At `finishMake -20`, Start reads current module `buildInfo` and rebuilds the environment snapshot.
