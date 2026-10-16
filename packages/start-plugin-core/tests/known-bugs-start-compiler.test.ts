@@ -17,19 +17,21 @@ import {
   createStartCompiler,
   directivePrologue,
   evaluateModule,
+  expectOutputsFreeOfHandler,
   importSources,
+  misplacedServerFnRejection,
   outputs,
   serverOnlyError,
+  serverOnlyModule,
   settle,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import type { ModuleStub, Output } from './regression-helpers'
-import type { ServerFn } from '../src/start-compiler/types'
+import type { ModuleStub, Output, OutputResult } from './regression-helpers'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
 /** Server-only module that must never reach the client bundle. */
-const serverOnly = './db.server'
+const serverOnly = serverOnlyModule
 
 /**
  * Calls every server fn the client build reports through the provider
@@ -46,82 +48,11 @@ async function callServerFns(
 ) {
   const compiled = await compileAll(code, options)
   const results = await callReportedServerFns(
-    compiled.provider,
+    compiled,
     compiled.serverFns,
     options.stubs,
   )
   return { ...compiled, results }
-}
-
-/**
- * A clear compile error rejecting a createServerFn that is not assigned to a
- * top-level variable, matched against the message without its code frame
- * (`compileErrorMessage`).
- */
-const misplacedServerFnRejection =
-  /createServerFn\b[^]*\b(top[- ]level|module[- ]?(scope|level)|nested|assigned to a (top[- ]level )?variable)/i
-
-/** What compiling a module for one output gave: its code, or an error. */
-type OutputResult =
-  | { code: string | null; serverFns: Record<string, ServerFn> }
-  | { error: unknown }
-
-/**
- * Each output, on its own, either rejects the code with a clear
- * createServerFn error (not the internal statement-list crash), or is a
- * valid module free of the misplaced handler: the client neither imports the
- * server-only module nor contains the handler body (`db.inner()`), the SSR
- * caller calls the handler through the provider like for a top-level server
- * fn (no handler body; it may import the server-only module for other server
- * code), and the provider exports and runs every server fn the callers that
- * compiled report, the misplaced one included. One output rejecting the code
- * does not excuse another.
- */
-async function expectOutputsFreeOfHandler(
-  code: string,
-  results: Record<Output, OutputResult>,
-) {
-  const compiled: Partial<Record<Output, string>> = {}
-  let serverFns: Record<string, ServerFn> = {}
-  for (const output of outputs) {
-    const result = results[output]
-    if ('error' in result) {
-      const message = compileErrorMessage(result.error)
-      expect(message, output).toMatch(misplacedServerFnRejection)
-      expect(message, output).not.toMatch(
-        /Expected createServerFn declaration in a statement list/,
-      )
-      continue
-    }
-    compiled[output] = result.code ?? code
-    if (output !== 'provider') {
-      serverFns = { ...serverFns, ...result.serverFns }
-    }
-  }
-  if (compiled.client !== undefined) {
-    expect(importSources(compiled.client), 'client').not.toContain(serverOnly)
-  }
-  for (const output of ['client', 'ssr'] as const) {
-    if (compiled[output] !== undefined) {
-      expect(compiled[output], output).not.toContain('db.inner()')
-    }
-  }
-  const errors: Partial<Record<Output, Array<string>>> = {}
-  for (const [output, module] of Object.entries(compiled)) {
-    errors[output as Output] = await getModuleErrors(module)
-  }
-  expect(errors).toEqual(
-    Object.fromEntries(Object.keys(compiled).map((output) => [output, []])),
-  )
-  if (
-    compiled.provider !== undefined &&
-    (compiled.client !== undefined || compiled.ssr !== undefined)
-  ) {
-    const called = await callReportedServerFns(compiled.provider, serverFns, {
-      [serverOnly]: { db: { inner: () => 'inner', top: () => 'top' } },
-    })
-    expect(called).toContain('inner')
-  }
 }
 
 /** Compiles every output of `code` and checks `expectOutputsFreeOfHandler`. */

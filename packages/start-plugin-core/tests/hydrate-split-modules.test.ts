@@ -4,9 +4,11 @@ import {
   compileCode,
   compileFirstChunk,
   compileHydrate,
+  compileServer,
   createStartCompiler,
   evaluateHydrateParent,
   evaluateModule,
+  evaluateProvider,
   getBoundaryIds,
   getChunkComponent,
   getChunkIds,
@@ -370,9 +372,7 @@ export function Page() {
         compiled.code ?? loadChunk(plugin, 'client', getChunkIds(parent)[0]!)!
       expect(await getModuleErrors(chunk)).toEqual([])
       expect(chunk).not.toContain('greet-handler-marker')
-      const provider = await evaluateModule(
-        (await compileCode('provider', code))!,
-      )
+      const provider = await evaluateProvider(await compileServer(code))
       // The chunk compiles its own caller of the provider, or imports the
       // parent's caller.
       const ids = Object.keys(compiled.serverFns)
@@ -552,9 +552,15 @@ const __jsx = (type, props) => JSON.stringify(props)
     const expected = await evaluateModule(
       `export const H0 = () => ${element}`,
       {},
-      propsRuntime,
+      { runtime: propsRuntime },
     )
-    const module = await evaluateModule(chunks[0]!, {}, propsRuntime)
+    const module = await evaluateModule(
+      chunks[0]!,
+      {},
+      {
+        runtime: propsRuntime,
+      },
+    )
     expect(getChunkComponent(module)({})).toBe(expected.H0())
   })
 

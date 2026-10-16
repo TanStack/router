@@ -49,12 +49,7 @@ export const clientDb = db`,
     expect(importSources(compiled.client)).toEqual(client)
     expect(importSources(compiled.provider)).toEqual(provider)
     expect(
-      await callProvider(
-        compiled.provider,
-        'fn',
-        { './db.server': dbServer },
-        'param',
-      ),
+      await callProvider(compiled, 'fn', { './db.server': dbServer }, 'param'),
     ).toBe(expected)
   })
 
@@ -326,7 +321,7 @@ export const fn = createServerFn().handler(async (): Promise<Session | null> => 
       }
       expect(compiled.provider).not.toMatch(/\bclient(?:Value|Default)\b/)
       expect(
-        await callProvider(compiled.provider, 'fn', {
+        await callProvider(compiled, 'fn', {
           './server-module': `export const clientValue = 'client'; export const verify = () => 'verified'; export default verify`,
         }),
       ).toBe('verified')
@@ -447,9 +442,7 @@ export const fn = createServerFn().handler(async () => secretKey)`,
       const compiled = await compileAll(`${head}${code}`)
       const client = await evaluateModule(compiled.client, stubs)
       expect(client.clientValue).toEqual(clientValue)
-      expect(await callProvider(compiled.provider, 'fn', stubs)).toEqual(
-        handlerValue,
-      )
+      expect(await callProvider(compiled, 'fn', stubs)).toEqual(handlerValue)
     },
   )
 
@@ -533,7 +526,7 @@ export const fn = createServerFn().handler(async () => [x, y])`)
     // An assignment left without its declaration throws in a module.
     await evaluateModule(compiled.client)
     await evaluateModule(compiled.ssr)
-    expect(await callProvider(compiled.provider, 'fn')).toEqual([
+    expect(await callProvider(compiled, 'fn')).toEqual([
       'x-assigned',
       'y-assigned',
     ])

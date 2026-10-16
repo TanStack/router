@@ -1,10 +1,11 @@
-import { transformWithOxc } from 'vite'
 import { expect, test } from 'vitest'
 import {
   callProvider,
   compileAll,
   compileCode,
+  compileServer,
   evaluateModule,
+  evaluateProvider,
   importSources,
   outputs,
 } from '../regression-helpers'
@@ -20,8 +21,7 @@ const dbServer = `export const db = { x: () => 'x', y: () => 'y' }`
 
 // Source: Next.js server-actions fixtures server-graph/5, /6, /16
 test('the provider keeps every kind of module binding the handler reads', async () => {
-  const { client, provider } =
-    await compileAll(`${head}import * as ns from './ns'
+  const compiled = await compileAll(`${head}import * as ns from './ns'
 var counter = 4
 class Repo {
   static get() {
@@ -32,9 +32,9 @@ enum Role {
   Admin = 'admin',
 }
 export const fn = createServerFn().handler(async () => [ns.x, counter, Repo.get(), Role.Admin])`)
-  expect(importSources(client)).toEqual([])
+  expect(importSources(compiled.client)).toEqual([])
   expect(
-    await callProvider(provider, 'fn', { './ns': `export const x = 'ns'` }),
+    await callProvider(compiled, 'fn', { './ns': `export const x = 'ns'` }),
   ).toEqual(['ns', 4, 'repo', 'admin'])
 })
 
@@ -135,7 +135,7 @@ export const fn = createServerFn().handler(async () =>
     for (const caller of [compiled.client, compiled.ssr]) {
       expect(importSources(caller)).toEqual([])
     }
-    const value = await callProvider(compiled.provider, 'fn', {
+    const value = await callProvider(compiled, 'fn', {
       './db.server': dbServer,
       './auth.server': `export const withAuth = (fn) => async (opts) => 'auth:' + (await fn(opts))`,
     })
@@ -161,13 +161,14 @@ export const fn = createServerFn().handler(async () => <string>identity(<unknown
   for (const caller of [compiled.client, compiled.ssr]) {
     expect(importSources(caller)).toEqual([])
   }
-  const { code: provider } = await transformWithOxc(
-    compiled.provider,
-    'module.ts',
-  )
-  expect(await callProvider(provider, 'fn', { './db.server': dbServer })).toBe(
-    'x',
-  )
+  // Linked under the `.ts` id, the modules are evaluated as TypeScript.
+  expect(
+    await callProvider(
+      { ssr: compiled.ssr, provider: compiled.provider, id },
+      'fn',
+      { './db.server': dbServer },
+    ),
+  ).toBe('x')
 })
 
 // Each handler reads the module binding `value` (or `key`) through a scope
@@ -347,20 +348,19 @@ export const fn = createServerFn().handler(async () => ({ value }))`,
 ])(
   'the provider keeps a module binding the handler reads $name',
   async ({ code, data, expected }) => {
-    const provider = await compileCode('provider', `${head}${code}`)
-    expect(await callProvider(provider!, 'fn', {}, data)).toEqual(expected)
+    const server = await compileServer(`${head}${code}`)
+    expect(await callProvider(server, 'fn', {}, data)).toEqual(expected)
   },
 )
 
 // Source: @vitejs/plugin-rsc hoist/self-ref-nested-function.js,
 // hoist/direct-recursion-self-binding.js
 test('a handler can call its own server fn', async () => {
-  const provider = await compileCode(
-    'provider',
+  const server = await compileServer(
     `${head}export const fn = createServerFn().handler(async ({ data }) =>
   data > 0 ? fn({ data: data - 1 }) : 'done')`,
   )
-  expect(await callProvider(provider!, 'fn', {}, 2)).toBe('done')
+  expect(await callProvider(server, 'fn', {}, 2)).toBe('done')
 })
 
 // Source: @vitejs/plugin-rsc hoist/captured-local-assignment.js,
@@ -375,14 +375,14 @@ export const bump = createServerFn().handler(async () => ++count)`)
   const client = await evaluateModule(compiled.client)
   expect(client.changeCount()).toBe(1)
   expect(client.count).toBe(1)
-  const provider = await evaluateModule(compiled.provider)
+  const provider = await evaluateProvider(compiled)
   expect(await callProvider(provider, 'bump')).toBe(1)
   expect(await callProvider(provider, 'bump')).toBe(2)
 })
 
 // Source: Next.js server-actions fixtures server-graph/27
 test('exported helpers the handler uses stay declared in the provider', async () => {
-  const { provider } = await compileAll(`${head}import { db } from './db.server'
+  const compiled = await compileAll(`${head}import { db } from './db.server'
 export async function load() {
   return db.x()
 }
@@ -398,6 +398,6 @@ const local = () => 'w'
 export { local as alias }
 export const fn = createServerFn().handler(async () => [await load(), helper(), Repo.z(), local()])`)
   expect(
-    await callProvider(provider, 'fn', { './db.server': dbServer }),
+    await callProvider(compiled, 'fn', { './db.server': dbServer }),
   ).toEqual(['x', 'y', 'z', 'w'])
 })

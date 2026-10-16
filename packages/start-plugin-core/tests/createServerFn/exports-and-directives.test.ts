@@ -4,7 +4,9 @@ import {
   compileAll,
   compileCode,
   compileFor,
+  compileServer,
   evaluateModule,
+  evaluateProvider,
   importSources,
 } from '../regression-helpers'
 
@@ -58,7 +60,7 @@ export { a as default, b as '📙', c as as }`)
         ),
       })
     }
-    const provider = await evaluateModule(compiled.provider)
+    const provider = await evaluateProvider(compiled)
     const locals = ['a', 'b', 'c', 'd', 'e', 'f']
     expect(Object.keys(provider).sort()).toEqual(
       locals.map((local) => `${local}_createServerFn_handler`),
@@ -73,11 +75,13 @@ export { a as default, b as '📙', c as as }`)
     `export default async function () {\n  return fn()\n}`,
     `export default class {\n  call() {\n    return fn()\n  }\n}`,
   ])('an anonymous default export next to a server fn: %s', async (code) => {
-    const { client, provider } = await compileAll(
+    const compiled = await compileAll(
       `${head}export const fn = createServerFn().handler(async () => 1)\n${code}`,
     )
-    expect((await evaluateModule(client)).default).toBeTypeOf('function')
-    expect(await callProvider(provider, 'fn')).toBe(1)
+    expect((await evaluateModule(compiled.client)).default).toBeTypeOf(
+      'function',
+    )
+    expect(await callProvider(compiled, 'fn')).toBe(1)
   })
 
   // Source: @vitejs/plugin-rsc source-map/wrap-export/local-export-before-declaration.js
@@ -87,7 +91,7 @@ const fn = createServerFn().handler(async () => 'fn')`)
     const client = await evaluateModule(compiled.client)
     expect(client.alias).toBe(client.fn)
     expect(client.fn.rpc).toHaveProperty('client')
-    expect(await callProvider(compiled.provider, 'fn')).toBe('fn')
+    expect(await callProvider(compiled, 'fn')).toBe('fn')
   })
 
   // Source: @vitejs/plugin-rsc source-map/wrap-export/dependent-declarators.js
@@ -96,7 +100,7 @@ const fn = createServerFn().handler(async () => 'fn')`)
 export const base = createServerFn(), fn = base.handler(async () => db.x())`)
     expect(importSources(compiled.client)).toEqual([])
     expect(
-      await callProvider(compiled.provider, 'fn', {
+      await callProvider(compiled, 'fn', {
         './db.server': `export const db = { x: () => 'x' }`,
       }),
     ).toBe('x')
@@ -130,7 +134,7 @@ export const fn = createServerFn().handler(async () => 'fn')`)
         'x',
       ])
     }
-    expect(await callProvider(compiled.provider, 'fn', stubs)).toBe('fn')
+    expect(await callProvider(compiled, 'fn', stubs)).toBe('fn')
   })
 
   // JSON modules only load with their `type: 'json'` attribute.
@@ -153,12 +157,12 @@ export const fn = createServerFn().handler(async () => secrets.key)`)
       const module = await evaluateModule(caller, stubs)
       expect([module.theme, module.data]).toEqual(['dark', { data: true }])
     }
-    expect(await callProvider(compiled.provider, 'fn', stubs)).toBe('s3cret')
+    expect(await callProvider(compiled, 'fn', stubs)).toBe('s3cret')
   })
 
   // Source: Next.js server-actions fixtures server-graph/60, /62, /68, /72
   test('TypeScript-only exports and an enum next to a server fn', async () => {
-    const { provider } =
+    const compiled =
       await compileAll(`${head}import type { Stuff } from './stuff'
 export type X = string
 export { type A } from './a'
@@ -173,7 +177,7 @@ export enum E {
 export declare const declared: number
 export default interface D {}
 export const fn = createServerFn().handler(async (): Promise<Stuff | string> => E.A)`)
-    expect(await callProvider(provider, 'fn')).toBe('a')
+    expect(await callProvider(compiled, 'fn')).toBe('a')
   })
 
   // Source: Next.js server-actions fixtures client-graph/2
@@ -194,9 +198,7 @@ export { fn }`
     const { serverFns } = await compileFor('client', code)
     const names = ['fn_createServerFn_handler', 'fn_createServerFn_handler_1']
     expect(Object.keys(idsByName(serverFns)).sort()).toEqual(names)
-    const provider = await evaluateModule(
-      (await compileCode('provider', code))!,
-    )
+    const provider = await evaluateProvider(await compileServer(code))
     expect(Object.keys(provider).sort()).toEqual(names)
   })
 })
@@ -204,14 +206,16 @@ export { fn }`
 describe('directives', () => {
   // Source: Next.js server-actions fixtures server-graph/8
   test('handler directives stay in the provider', async () => {
-    const { provider } =
+    const compiled =
       await compileAll(`${head}export const fn = createServerFn().handler(async function () {
   'use strict'
   'use server'
   return 1
 })`)
-    expect(provider).toMatch(/(["'])use strict\1;?\s*(["'])use server\2/)
-    expect(await callProvider(provider, 'fn')).toBe(1)
+    expect(compiled.provider).toMatch(
+      /(["'])use strict\1;?\s*(["'])use server\2/,
+    )
+    expect(await callProvider(compiled, 'fn')).toBe(1)
   })
 
   // Source: Next.js server-actions fixtures server-graph/3, /4;
@@ -289,14 +293,13 @@ describe('server function ids', () => {
   })
 
   test('dev providers export the handler and accept HMR updates', async () => {
-    const provider = await compileCode(
-      'provider',
+    const server = await compileServer(
       `${head}export const getPosts = createServerFn().handler(async () => 'posts')`,
       { mode: 'dev' },
     )
-    expect(provider).toContain('import.meta.hot.accept(')
-    expect(provider).toContain('import.meta.webpackHot.accept(')
-    expect(await callProvider(provider!, 'getPosts')).toBe('posts')
+    expect(server.provider).toContain('import.meta.hot.accept(')
+    expect(server.provider).toContain('import.meta.webpackHot.accept(')
+    expect(await callProvider(server, 'getPosts')).toBe('posts')
   })
 
   /** `functionName -> functionId` of the server fns in `code`. */
@@ -350,9 +353,7 @@ export const save = createServerFn().handler(async () => 2)`
       const [functionId] = Object.keys(
         (await compileFor('client', code, { id })).serverFns,
       )
-      const provider = await evaluateModule(
-        (await compileCode('provider', code, { id }))!,
-      )
+      const provider = await evaluateProvider(await compileServer(code, { id }))
       expect(provider.load_createServerFn_handler.meta.id).toBe(functionId)
       ids.push(functionId!)
     }
@@ -374,7 +375,7 @@ export const save = createServerFn().handler(async () => 2)`
     expect(Object.keys(idsByName(compiled.serverFns)).sort()).toEqual(
       names.map((name) => `${name}_createServerFn_handler`).sort(),
     )
-    const provider = await evaluateModule(compiled.provider)
+    const provider = await evaluateProvider(compiled)
     for (const name of names) {
       expect(provider[`${name}_createServerFn_handler`].meta.name).toBe(name)
       expect(await callProvider(provider, name)).toBe(name)
@@ -393,12 +394,11 @@ describe('module formats', () => {
   ] as const)(
     '$mode: a provider for a module ending in a line comment without a newline: $end',
     async ({ end, mode }) => {
-      const provider = await compileCode(
-        'provider',
+      const server = await compileServer(
         `${head}export const fn = createServerFn().handler(async () => 'handler')${end}`,
         { mode },
       )
-      expect(await callProvider(provider!, 'fn')).toBe('handler')
+      expect(await callProvider(server, 'fn')).toBe('handler')
     },
   )
 

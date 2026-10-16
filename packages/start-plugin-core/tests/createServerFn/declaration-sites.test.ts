@@ -141,7 +141,7 @@ export const fn = createServerFn({ method: 'GET' })${handler}`,
   )
   expect(Object.keys(compiled.serverFns)).toHaveLength(1)
   expect(compiled.client).not.toMatch(/=>\s*(1|\(\{ secret: 1 \}\))/)
-  expect(await callProvider(compiled.provider, 'fn')).toEqual(
+  expect(await callProvider(compiled, 'fn')).toEqual(
     handler.includes('secret') ? { secret: 1 } : 1,
   )
 })

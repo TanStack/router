@@ -23,6 +23,7 @@ import type {
 } from '@tanstack/compiler-test-utils/module-linker'
 import type { ServerFn } from '../src/start-compiler/types'
 import type {
+  CompileStartFrameworkOptions,
   StartCompilerPlugin,
   StartCompilerTransformResult,
 } from '../src/types'
@@ -178,9 +179,14 @@ export type Output = 'client' | 'ssr' | 'provider'
 export const outputs: Array<Output> = ['client', 'ssr', 'provider']
 const moduleId = '/test/src/module.tsx'
 
+/** The framework a module is compiled for: its `@tanstack/<framework>-*` packages. */
+export type Framework = CompileStartFrameworkOptions
+
 interface StartCompilerOptions {
   env: 'client' | 'server'
   mode?: 'build' | 'dev'
+  /** Default `react`. */
+  framework?: Framework
   /** Project modules by absolute id; `./name` resolves to `/test/src/name.ts`. */
   files?: Record<string, string>
   /** `serverFnProviderModuleDirectives` */
@@ -189,21 +195,23 @@ interface StartCompilerOptions {
 }
 
 /**
- * Creates a React `StartCompiler` configured the way the bundler plugins do,
- * and records the server functions it reports.
+ * Creates a `StartCompiler` (React unless `framework` says otherwise)
+ * configured the way the bundler plugins do, and records the server
+ * functions it reports. `compile` returns the compiled code, `transform` the
+ * code and its source map (`null` when the module is left untouched).
  */
 export function createStartCompiler(options: StartCompilerOptions) {
-  const { env, files = {} } = options
+  const { env, files = {}, framework = 'react' } = options
   const serverFns: Record<string, ServerFn> = {}
   const compiler: StartCompiler = new StartCompiler({
     env,
     envName: env === 'client' ? 'client' : 'ssr',
     root: '/test',
-    framework: 'react',
+    framework,
     providerEnvName: 'ssr',
     mode: options.mode ?? 'build',
     lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
+    lookupConfigurations: getLookupConfigurationsForEnv(env, framework),
     getKnownServerFns: () => ({}),
     devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
       `/@id${extractedFilename.slice(root.length)}`,
@@ -224,36 +232,40 @@ export function createStartCompiler(options: StartCompilerOptions) {
     },
     compilerPlugins: options.compilerPlugins,
   })
-  const compile = async (code: string, id = moduleId) => {
-    const result = await compiler.compile({
+  const transform = async (
+    code: string,
+    id = moduleId,
+  ): Promise<StartCompilerTransformResult | null> =>
+    (await compiler.compile({
       code,
       id,
       detectedKinds: detectKindsInCode(code, env),
-    })
-    return result?.code ?? null
-  }
-  return { compiler, compile, serverFns }
+    })) ?? null
+  const compile = async (code: string, id = moduleId) =>
+    (await transform(code, id))?.code ?? null
+  return { compiler, compile, transform, serverFns }
 }
 
 /**
  * Compiles `code` for one output: the client, the SSR caller or the
- * server-function provider module (`?tss-serverfn-split`).
+ * server-function provider module (`?tss-serverfn-split`). Returns the code
+ * and its source map (both `null` when the module is left untouched).
  */
 export async function compileFor(
   output: Output,
   code: string,
   options: Omit<StartCompilerOptions, 'env'> & { id?: string } = {},
 ) {
-  const { compile, serverFns } = createStartCompiler({
+  const { transform, serverFns } = createStartCompiler({
     ...options,
     env: output === 'client' ? 'client' : 'server',
   })
   const id = options.id ?? moduleId
-  const result = await compile(
+  const result = await transform(
     code,
     output === 'provider' ? `${id}?tss-serverfn-split` : id,
   )
-  return { code: result, serverFns }
+  return { code: result?.code ?? null, map: result?.map ?? null, serverFns }
 }
 
 /** Like `compileFor`, returning only the code (null when untouched). */
@@ -285,7 +297,45 @@ export async function compileAll(
     }
   }
   expect(errors).toEqual({ client: [], ssr: [], provider: [] })
-  return { ...compiled, serverFns }
+  return { ...compiled, serverFns, framework: options.framework }
+}
+
+/**
+ * The modules of the SSR bundle compiled from one source module: the SSR
+ * caller, under the module's id, and the server-function provider, under the
+ * id with `?tss-serverfn-split`. The provider may import the SSR caller (or
+ * anything else) like any module of the bundle.
+ */
+export interface ServerOutputs {
+  /** The SSR caller; `undefined` when compiling it failed. */
+  ssr: string | undefined
+  provider: string
+  /** Id of the source module. Default `/test/src/module.tsx`. */
+  id?: string
+  /** Default `react`. */
+  framework?: Framework
+}
+
+/**
+ * Compiles `code` into the modules of the SSR bundle (`ServerOutputs`): the
+ * SSR caller (the source itself when the compiler leaves it untouched) and
+ * the provider, and returns them with the server functions the SSR caller
+ * reported.
+ */
+export async function compileServer(
+  code: string,
+  options: Omit<StartCompilerOptions, 'env'> & { id?: string } = {},
+) {
+  const ssr = await compileFor('ssr', code, options)
+  const provider = await compileFor('provider', code, options)
+  expect(provider.code, 'provider').not.toBeNull()
+  return {
+    ssr: ssr.code ?? code,
+    provider: provider.code!,
+    id: options.id,
+    framework: options.framework,
+    serverFns: ssr.serverFns,
+  }
 }
 
 /**
@@ -299,32 +349,57 @@ export function importSources(code: string) {
 }
 
 /**
- * Minimal Start package: callers keep the RPC they were given, providers run
- * the original handler. The other factories throw when they are called
- * uncompiled, so a test only passes if the compiler ran.
+ * Minimal Start package of a framework: callers keep the RPC they were given,
+ * providers run the original handler. Builders record what they are given
+ * in `options` (non-enumerable on a server fn): `createServerFn(options)`,
+ * `.middleware([...])` (appended) and `.validator(v)`; a builder is also
+ * callable, returning a builder with the same options (a factory such as
+ * `createAuthServerFn = createServerFn().middleware([auth])` is called as
+ * `createAuthServerFn()`). `createMiddleware(options)` records `.client(fn)`,
+ * `.validator(v)` and `.middleware([...])`; its `.server()`, like the other
+ * factories, throws when it is called uncompiled, so a client test only
+ * passes if the compiler removed it.
  */
-const startRuntime: Record<string, string> = {
-  '@tanstack/react-start': `
+function startRuntime(framework: Framework): Record<string, string> {
+  const start = `@tanstack/${framework}-start`
+  return {
+    [start]: `
 const uncompiled = () => { throw new Error('uncompiled Start factory') }
-const builder = () => {
-  const self = {
-    handler: (rpc, impl) =>
-      impl
-        ? Object.assign((opts) => impl(opts ?? {}), {
+const record = (target, options) =>
+  Object.defineProperty(target, 'options', { value: options, enumerable: false })
+const serverFnBuilder = (options) => {
+  const builder = record(() => serverFnBuilder(options), options)
+  builder.middleware = (middleware) =>
+    serverFnBuilder({ ...options, middleware: [...(options.middleware ?? []), ...middleware] })
+  builder.validator = (validator) => serverFnBuilder({ ...options, validator })
+  builder.handler = (rpc, impl) =>
+    impl
+      ? record(
+          Object.assign((opts) => impl(opts ?? {}), {
             __executeServer: (opts) => impl(opts),
-          })
-        : { rpc },
-  }
-  return self
+          }),
+          options,
+        )
+      : record({ rpc }, options)
+  return builder
 }
-export const createServerFn = builder
+const middlewareBuilder = (options) => ({
+  options,
+  middleware: (middleware) =>
+    middlewareBuilder({ ...options, middleware: [...(options.middleware ?? []), ...middleware] }),
+  validator: (validator) => middlewareBuilder({ ...options, validator }),
+  client: (client) => middlewareBuilder({ ...options, client }),
+  server: uncompiled,
+})
+export const createServerFn = (options) => serverFnBuilder({ ...options })
 export const createServerOnlyFn = uncompiled
 export const createClientOnlyFn = uncompiled
 export const createIsomorphicFn = uncompiled
-export const createMiddleware = () => ({ server: uncompiled })`,
-  '@tanstack/react-start/server-rpc': `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`,
-  '@tanstack/react-start/client-rpc': `export const createClientRpc = (id) => ({ client: id })`,
-  '@tanstack/react-start/ssr-rpc': `export const createSsrRpc = (id) => ({ ssr: id })`,
+export const createMiddleware = (options) => middlewareBuilder({ ...options })`,
+    [`${start}/server-rpc`]: `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`,
+    [`${start}/client-rpc`]: `export const createClientRpc = (id) => ({ client: id })`,
+    [`${start}/ssr-rpc`]: `export const createSsrRpc = (id) => ({ ssr: id })`,
+  }
 }
 
 /**
@@ -343,14 +418,18 @@ const __jsx = (type, props, ...children) => {
 
 /**
  * A graph of linked modules (`createModuleGraph`) whose imports resolve to
- * `stubs` (by specifier) over the minimal Start runtime, and whose JSX
- * renders through `runtime` (default: `jsxToText`).
+ * `stubs` (by specifier) over the minimal Start runtime of `framework`
+ * (default `react`), and whose JSX renders through `runtime` (default:
+ * `jsxToText`).
  */
-function createTestModuleGraph(options: ModuleGraphOptions) {
+function createTestModuleGraph(
+  options: ModuleGraphOptions & { framework?: Framework },
+) {
+  const { framework = 'react', ...graphOptions } = options
   return createModuleGraph({
-    ...options,
-    stubs: { ...startRuntime, ...options.stubs },
-    runtime: options.runtime ?? jsxToText,
+    ...graphOptions,
+    stubs: { ...startRuntime(framework), ...graphOptions.stubs },
+    runtime: graphOptions.runtime ?? jsxToText,
   })
 }
 
@@ -358,19 +437,70 @@ function createTestModuleGraph(options: ModuleGraphOptions) {
  * Evaluates a compiled module like a bundler would: TypeScript is erased, JSX
  * becomes calls of `runtime` (which defines `__jsx` and `__Fragment`), and
  * every import is linked, as a real ES module, to the minimal Start runtime
- * or to `stubs` (by specifier; `.json` string stubs are JSON modules). Every
- * call evaluates a fresh instance, even for identical code.
+ * of `framework` (default `react`) or to `stubs` (by specifier; `.json`
+ * string stubs are JSON modules). Every call evaluates a fresh instance, even
+ * for identical code.
  */
 export async function evaluateModule(
   code: string,
   stubs: Record<string, ModuleStub> = {},
-  runtime = jsxToText,
+  options: { runtime?: string; framework?: Framework } = {},
 ): Promise<Record<string, any>> {
   return createTestModuleGraph({
     modules: { [moduleId]: code },
     stubs,
-    runtime,
+    runtime: options.runtime ?? jsxToText,
+    framework: options.framework,
   }).import(moduleId)
+}
+
+function isServerOutputs(value: object): value is ServerOutputs {
+  return (
+    typeof (value as Partial<ServerOutputs>).provider === 'string' &&
+    'ssr' in value
+  )
+}
+
+/**
+ * Links the modules of the SSR bundle (`ServerOutputs`) into one graph, like
+ * the bundler does: a provider that imports the SSR caller (e.g. its shared
+ * state or helpers) gets the instance the SSR caller module is. A module is
+ * evaluated only when it is imported. Imports of other modules link to
+ * `stubs` (by specifier) over the minimal Start runtime.
+ */
+export function createServerGraph(
+  server: ServerOutputs,
+  stubs: Record<string, ModuleStub> = {},
+) {
+  const id = server.id ?? moduleId
+  const providerId = `${id}?tss-serverfn-split`
+  const modules: Record<string, string> = { [providerId]: server.provider }
+  if (server.ssr !== undefined) {
+    modules[id] = server.ssr
+  }
+  const graph = createTestModuleGraph({
+    modules,
+    stubs,
+    framework: server.framework,
+  })
+  return {
+    /** Evaluates (once) and returns the provider module. */
+    provider: () => graph.import(providerId),
+    /** Evaluates (once) and returns the SSR caller module. */
+    ssr: () => graph.import(id),
+    /** Evaluates (once) and returns the module of the graph with this id. */
+    import: (graphModuleId: string) => graph.import(graphModuleId),
+    /** Ids of the modules evaluated so far, in order. */
+    evaluated: graph.evaluated,
+  }
+}
+
+/** Evaluates the provider of `server` in its SSR bundle (`createServerGraph`). */
+export function evaluateProvider(
+  server: ServerOutputs,
+  stubs: Record<string, ModuleStub> = {},
+) {
+  return createServerGraph(server, stubs).provider()
 }
 
 /** A server fn handler a provider module exports. */
@@ -380,19 +510,21 @@ type ProviderHandler = ((opts: { data?: unknown }) => unknown) & {
 
 /**
  * Runs a provider's extracted handler the way the server-fn router does. The
- * handler is found through the metadata the provider gives it at runtime
- * (`meta.name`, the name of the server fn), not through its export name.
+ * provider is evaluated in its SSR bundle, linked to the SSR caller
+ * (`createServerGraph`), or given already evaluated (`evaluateProvider`, to
+ * call it several times on one instance). The handler is found through the
+ * metadata the provider gives it at runtime (`meta.name`, the name of the
+ * server fn), not through its export name.
  */
 export async function callProvider(
-  provider: string | Record<string, any>,
+  server: ServerOutputs | Record<string, any>,
   name: string,
   stubs: Record<string, ModuleStub> = {},
   data?: unknown,
 ) {
-  const module =
-    typeof provider === 'string'
-      ? await evaluateModule(provider, stubs)
-      : provider
+  const module = isServerOutputs(server)
+    ? await evaluateProvider(server, stubs)
+    : server
   const handlers = new Set(
     Object.values(module).filter(
       (value): value is ProviderHandler =>
@@ -406,19 +538,17 @@ export async function callProvider(
 
 /**
  * Calls every server fn the callers reported (`onServerFnsById`) the way the
- * server-fn router does: it imports the reported `extractedFilename` (the
- * provider, compiled under that id) and calls the reported `functionName`
- * export. Returns the results in the order of `serverFns`.
+ * server-fn router does: in the SSR bundle (`createServerGraph`), it imports
+ * the reported `extractedFilename` (the provider, compiled under that id) and
+ * calls the reported `functionName` export. Returns the results in the order
+ * of `serverFns`.
  */
 export async function callReportedServerFns(
-  provider: string,
+  server: ServerOutputs,
   serverFns: Record<string, ServerFn>,
   stubs: Record<string, ModuleStub> = {},
 ) {
-  const graph = createTestModuleGraph({
-    modules: { [`${moduleId}?tss-serverfn-split`]: provider },
-    stubs,
-  })
+  const graph = createServerGraph(server, stubs)
   const results: Array<unknown> = []
   for (const fn of Object.values(serverFns)) {
     const module = await graph.import(fn.extractedFilename)
@@ -448,6 +578,87 @@ export function compileErrorMessage(error: unknown) {
       return (marker ? marker[1]! : line).trim() || []
     })
     .join('\n')
+}
+
+/** Server-only module the server fns of the misplacement tests read. */
+export const serverOnlyModule = './db.server'
+
+/**
+ * A clear compile error rejecting a createServerFn that is not assigned to a
+ * top-level variable, matched against the message without its code frame
+ * (`compileErrorMessage`).
+ */
+export const misplacedServerFnRejection =
+  /createServerFn\b[^]*\b(top[- ]level|module[- ]?(scope|level)|nested|assigned to a (top[- ]level )?variable)/i
+
+/** What compiling a module for one output gave: its code, or an error. */
+export type OutputResult =
+  | { code: string | null; serverFns: Record<string, ServerFn> }
+  | { error: unknown }
+
+/**
+ * Each output, on its own, either rejects the code with a clear
+ * createServerFn error (not the internal statement-list crash), or is a
+ * valid module free of the misplaced handler: the client neither imports the
+ * server-only module (`serverOnlyModule`) nor contains the handler body
+ * (`db.inner()`), the SSR
+ * caller calls the handler through the provider like for a top-level server
+ * fn (no handler body; it may import the server-only module for other server
+ * code), and the provider exports and runs every server fn the callers that
+ * compiled report, the misplaced one included. One output rejecting the code
+ * does not excuse another.
+ */
+export async function expectOutputsFreeOfHandler(
+  code: string,
+  results: Record<Output, OutputResult>,
+) {
+  const compiled: Partial<Record<Output, string>> = {}
+  let serverFns: Record<string, ServerFn> = {}
+  for (const output of outputs) {
+    const result = results[output]
+    if ('error' in result) {
+      const message = compileErrorMessage(result.error)
+      expect(message, output).toMatch(misplacedServerFnRejection)
+      expect(message, output).not.toMatch(
+        /Expected createServerFn declaration in a statement list/,
+      )
+      continue
+    }
+    compiled[output] = result.code ?? code
+    if (output !== 'provider') {
+      serverFns = { ...serverFns, ...result.serverFns }
+    }
+  }
+  if (compiled.client !== undefined) {
+    expect(importSources(compiled.client), 'client').not.toContain(
+      serverOnlyModule,
+    )
+  }
+  for (const output of ['client', 'ssr'] as const) {
+    if (compiled[output] !== undefined) {
+      expect(compiled[output], output).not.toContain('db.inner()')
+    }
+  }
+  const errors: Partial<Record<Output, Array<string>>> = {}
+  for (const [output, module] of Object.entries(compiled)) {
+    errors[output as Output] = await getModuleErrors(module)
+  }
+  expect(errors).toEqual(
+    Object.fromEntries(Object.keys(compiled).map((output) => [output, []])),
+  )
+  if (
+    compiled.provider !== undefined &&
+    (compiled.client !== undefined || compiled.ssr !== undefined)
+  ) {
+    const called = await callReportedServerFns(
+      { ssr: compiled.ssr, provider: compiled.provider },
+      serverFns,
+      {
+        [serverOnlyModule]: { db: { inner: () => 'inner', top: () => 'top' } },
+      },
+    )
+    expect(called).toContain('inner')
+  }
 }
 
 /** The directives of a module's directive prologue, in order. */
@@ -688,10 +899,14 @@ function chunkBoundaryStart(
 export async function compileHydrate(
   env: 'client' | 'server',
   code: string,
-  options: { id?: string } = {},
+  options: { id?: string; framework?: Framework } = {},
 ) {
   const plugin = createHydrateCompilerPlugin()
-  const { compile } = createStartCompiler({ env, compilerPlugins: [plugin] })
+  const { compile } = createStartCompiler({
+    env,
+    compilerPlugins: [plugin],
+    framework: options.framework,
+  })
   const parent = (await compile(code, options.id)) ?? code
   const loaded = getChunkIds(parent).map((id) => {
     const chunk = loadChunkResult(plugin, env, id)
@@ -797,24 +1012,34 @@ export async function renderChunk(
   return getChunkComponent(await evaluateModule(chunk, stubs))(props)
 }
 
-/** Parent-module stubs: `<Hydrate>` marks where its children render, lazy chunks render their props. */
-export const hydrateParentStubs = {
-  '@tanstack/react-start': {
-    Hydrate: (props: { children: unknown }) => `[${props.children ?? ''}]`,
-  },
-  '@tanstack/react-start/hydration': {
-    idle: () => 'idle',
-    visible: () => 'visible',
-  },
-  '@tanstack/react-router': {
-    lazyRouteComponent: () => (props: Record<string, unknown>) =>
-      `lazy(${Object.keys(props)
-        .filter((name) => name !== 'children')
-        .sort()
-        .map((name) => `${name}=${String(props[name])}`)
-        .join(',')})`,
-  },
+/**
+ * Parent-module stubs of a framework (default `react`): `<Hydrate>` marks
+ * where its children render, lazy chunks render their props.
+ */
+export function hydrateStubs(
+  framework: Framework = 'react',
+): Record<string, Record<string, unknown>> {
+  return {
+    [`@tanstack/${framework}-start`]: {
+      Hydrate: (props: { children: unknown }) => `[${props.children ?? ''}]`,
+    },
+    [`@tanstack/${framework}-start/hydration`]: {
+      idle: () => 'idle',
+      visible: () => 'visible',
+    },
+    [`@tanstack/${framework}-router`]: {
+      lazyRouteComponent: () => (props: Record<string, unknown>) =>
+        `lazy(${Object.keys(props)
+          .filter((name) => name !== 'children')
+          .sort()
+          .map((name) => `${name}=${String(props[name])}`)
+          .join(',')})`,
+    },
+  }
 }
+
+/** The React parent-module stubs (`hydrateStubs('react')`). */
+export const hydrateParentStubs = hydrateStubs('react')
 
 /**
  * Import sources of a `<Hydrate>` module that name the parent module, with any
@@ -865,13 +1090,18 @@ export async function evaluateHydrateParent(
 }
 
 /**
- * Compiles `code` for the client and evaluates it once its `<Hydrate>` chunks
- * have loaded, like the browser does: the parent and the chunks are one
- * linked module graph (each chunk compiled like the bundler compiles the
- * virtual module), `lazyRouteComponent(load, exportName)` loads its chunk
- * through `load()` and renders the export it names. `beforeChunksLoad` runs
- * app code between the parent's evaluation and the chunks'. `lazyChunks`
- * lists every lazy chunk component and whether it rendered.
+ * Compiles `code` for the client (React unless `framework` says otherwise)
+ * and evaluates it once its `<Hydrate>` chunks have loaded, like the browser
+ * does: the parent and the chunks are one linked module graph (each chunk
+ * compiled like the bundler compiles the virtual module),
+ * `lazyRouteComponent(load, exportName)` loads its chunk through `load()` and
+ * renders the export it names, and its `preload()` loads the chunk too.
+ * `beforeChunksLoad` runs app code between the parent's evaluation and the
+ * chunks'. Returns the evaluated parent, the ids of the chunks it imports
+ * (`chunkIds`, in source order), `lazyChunks` (every lazy chunk component and
+ * whether it rendered) and `preloaded` (the chunk each `preload()` call
+ * loaded, by id and evaluated, in call order; loading the chunks here is not
+ * a preload).
  */
 export async function loadClientModule(
   code: string,
@@ -881,11 +1111,15 @@ export async function loadClientModule(
     runtime?: string
     /** Id the module is compiled under. */
     id?: string
+    /** Default `react`. */
+    framework?: Framework
   } = {},
 ) {
   const id = options.id ?? moduleId
+  const framework = options.framework ?? 'react'
   const { parent, chunks, plugin } = await compileHydrate('client', code, {
     id,
+    framework,
   })
   const lazyChunks: Array<{ name: string; rendered: boolean }> = []
   const loaders: Array<{
@@ -893,12 +1127,24 @@ export async function loadClientModule(
     load: () => Promise<Record<string, any>>
     component?: (props: unknown) => unknown
   }> = []
+  const preloaded: Array<{ id: string; module: Record<string, any> }> = []
+  const loadedChunkIds: Array<string> = []
+  /** Id of the chunk an evaluated chunk namespace is. */
+  const chunkIdOf = async (namespace: unknown) => {
+    for (const chunkId of loadedChunkIds) {
+      if ((await graph.import(chunkId)) === namespace) {
+        return chunkId
+      }
+    }
+    throw new Error('preload() loaded a module that is not a chunk')
+  }
+  const routerPackage = `@tanstack/${framework}-router`
   const userStubs = options.stubs ?? {}
   const stubs: Record<string, ModuleStub> = {
-    ...hydrateParentStubs,
+    ...hydrateStubs(framework),
     ...userStubs,
-    '@tanstack/react-router': {
-      ...(userStubs['@tanstack/react-router'] as Record<string, unknown>),
+    [routerPackage]: {
+      ...(userStubs[routerPackage] as Record<string, unknown>),
       lazyRouteComponent: (
         load: () => Promise<Record<string, any>>,
         name = 'default',
@@ -907,13 +1153,25 @@ export async function loadClientModule(
         const loader: (typeof loaders)[number] = { name, load }
         lazyChunks.push(lazyChunk)
         loaders.push(loader)
-        return (props: unknown) => {
-          lazyChunk.rendered = true
-          if (!loader.component) {
-            throw new Error(`lazy chunk ${name} rendered before it loaded`)
-          }
-          return loader.component(props)
-        }
+        return Object.assign(
+          (props: unknown) => {
+            lazyChunk.rendered = true
+            if (!loader.component) {
+              throw new Error(`lazy chunk ${name} rendered before it loaded`)
+            }
+            return loader.component(props)
+          },
+          {
+            preload: async () => {
+              const namespace = await load()
+              preloaded.push({
+                id: await chunkIdOf(namespace),
+                module: namespace,
+              })
+              return namespace
+            },
+          },
+        )
       },
     },
   }
@@ -921,15 +1179,21 @@ export async function loadClientModule(
   const { compile } = createStartCompiler({
     env: 'client',
     compilerPlugins: [plugin],
+    framework,
   })
   const graph = createTestModuleGraph({
     modules: { [id]: parent },
     stubs,
     runtime: options.runtime,
+    framework,
     // The bundler compiles each virtual module it loads like any other module.
     load: async (chunkId) => {
       const chunk = loadChunk(plugin, 'client', chunkId)
-      return chunk === null ? null : ((await compile(chunk, chunkId)) ?? chunk)
+      if (chunk === null) {
+        return null
+      }
+      loadedChunkIds.push(chunkId)
+      return (await compile(chunk, chunkId)) ?? chunk
     },
   })
   const module = await graph.import(id)
@@ -942,7 +1206,7 @@ export async function loadClientModule(
   for (const loader of loaders) {
     loader.component = (await loader.load())[loader.name]
   }
-  return { module, lazyChunks }
+  return { module, chunkIds: getChunkIds(parent), lazyChunks, preloaded }
 }
 
 /**
@@ -954,22 +1218,24 @@ export async function renderBoundaries(
   env: 'client' | 'server',
   code: string,
   render: (module: Record<string, any>) => unknown,
-  options: { id?: string } = {},
+  options: { id?: string; framework?: Framework } = {},
 ) {
+  const framework = options.framework ?? 'react'
   const ids: Array<unknown> = []
   const Hydrate = (props: { children?: unknown; h?: unknown }) => {
     ids.push(props.h)
     return `[${props.children ?? ''}]`
   }
   const stubs = {
-    ...hydrateParentStubs,
-    '@tanstack/react-start': { Hydrate },
+    ...hydrateStubs(framework),
+    [`@tanstack/${framework}-start`]: { Hydrate },
   }
   const module =
     env === 'server'
       ? await evaluateModule(
           (await compileHydrate('server', code, options)).parent,
           stubs,
+          { framework },
         )
       : (await loadClientModule(code, { ...options, stubs })).module
   const html = render(module)

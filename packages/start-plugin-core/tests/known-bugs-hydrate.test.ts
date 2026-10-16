@@ -321,7 +321,7 @@ export function Page() {
         ? await evaluateModule(
             (await compileHydrate('server', code)).parent,
             stubs,
-            reactRuntime,
+            { runtime: reactRuntime },
           )
         : (await loadClientModule(code, { stubs })).module
     const html = module.Page()
@@ -745,7 +745,7 @@ ${head}export function Page() {
     const { Page } = await evaluateModule(
       parent,
       { ...hydrateParentStubs, preact },
-      reactRuntime,
+      { runtime: reactRuntime },
     )
     expect(Page()).toBe(pragmaHtml)
   })
