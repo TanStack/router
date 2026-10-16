@@ -23,14 +23,16 @@ function modulesContaining(modules: Record<string, string>, marker: string) {
 describe('editing a server fn factory', () => {
   /**
    * `src/a.tsx` defines a server fn with the `base` builder of `src/b.ts`,
-   * imported from `importFrom`; `src/b.ts` starts as a plain object and
-   * becomes a `createServerFn()` builder.
+   * imported from `importFrom` (`./b`, or `./c` and `./d`, which re-export it
+   * with `export *` and with an import and an export); `src/b.ts` starts as
+   * a plain object and becomes a `createServerFn()` builder.
    */
   async function editFactory(importFrom: string) {
     const server = await startDevServer({
       files: {
         'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,
         'src/c.ts': `export * from './b'\n`,
+        'src/d.ts': `import { base } from './b'\nexport { base }\n`,
         'src/db.server.ts': dbModule,
         'src/a.tsx': `import { base } from '${importFrom}'
 import { db } from './db.server'
@@ -99,10 +101,13 @@ export const fn = base.handler(async () => db.x())
   // server fn, its handler and server-only imports still load in the browser
   // (and when it stops being one, the client keeps an RPC stub).
   // Source: gap DV26 (gaps/dev-hmr.md).
-  test.fails(
-    'client: a module importing an edited factory module through a re-export loads no server code',
-    async () => {
-      const { client } = await editFactory('./c')
+  test.fails.each([
+    { name: 'export *', from: './c' },
+    { name: 'an import and an export', from: './d' },
+  ])(
+    'client: a module importing an edited factory module through a re-export ($name) loads no server code',
+    async ({ from }) => {
+      const { client } = await editFactory(from)
       expect(modulesContaining(client, 'MARK_DB_SECRET')).toEqual([])
     },
     timeout,
@@ -120,6 +125,7 @@ describe('editing a server fn factory (SSR)', () => {
       files: {
         'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,
         'src/c.ts': `export * from './b'\n`,
+        'src/d.ts': `import { base } from './b'\nexport { base }\n`,
         'src/db.server.ts': dbModule,
         'src/a.tsx': `import { base } from '${importFrom}'
 import { db } from './db.server'
@@ -157,10 +163,13 @@ export const base = createServerFn()
   // Source: N15 (replaces start-compiler-factories.test.ts "dev: modules
   // reaching a factory through imports and export * are its transitive
   // importers", which only checked the walk).
-  test.fails(
-    'SSR: a module importing an edited factory module through a re-export calls the handler through its RPC',
-    async () => {
-      expect(await editFactorySsr('./c')).not.toContain('db.x()')
+  test.fails.each([
+    { name: 'export *', from: './c' },
+    { name: 'an import and an export', from: './d' },
+  ])(
+    'SSR: a module importing an edited factory module through a re-export ($name) calls the handler through its RPC',
+    async ({ from }) => {
+      expect(await editFactorySsr(from)).not.toContain('db.x()')
     },
     timeout,
   )
