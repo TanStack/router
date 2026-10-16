@@ -237,6 +237,24 @@ export default createMiddleware().server(async ({ next }) => {
             ['client', clientResult],
           ],
         },
+        {
+          // The wrapped part ends in `.client()`; `.server()` follows it.
+          // Source: lost-cases-campaign W-2 (fuzz M4 link:2, a crash of the
+          // Yuku migration; main builds it).
+          end: '.middleware().validator().client(), before .server()',
+          chain: (wrap: Wrap) =>
+            `${wrap(`createMiddleware({ type: 'function' }).middleware([])${validatorLink}${clientLink}`)}${serverLink}`,
+          clientLinks: [
+            ['middleware', []],
+            ['client', clientResult],
+          ],
+          ssrLinks: [
+            ['middleware', []],
+            ['validator', 'data:VALIDATOR_SECRET'],
+            ['client', clientResult],
+            ['server', serverResult],
+          ],
+        },
       ].flatMap((chain) =>
         wrappers.map((wrapper) => ({ ...chain, ...wrapper })),
       ),
