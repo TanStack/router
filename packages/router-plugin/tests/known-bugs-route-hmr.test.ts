@@ -119,6 +119,27 @@ export const Route = createFileRoute('/')({ component: ${name} })`,
     expect(registered).toContain(binding)
   })
 
+  // Control for the lowercase pin below: lowercase function declarations
+  // of each split component option are registered.
+  test.each(['component', 'pendingComponent', 'errorComponent'])(
+    'registers a split %s declared as a lowercase function',
+    async (option) => {
+      const route = await loadRoute(
+        `${head}export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['component'], ['pendingComponent'], ['errorComponent']],
+  ${option},
+})
+function ${option}() {
+  return <div>lowercase function declaration</div>
+}`,
+        { hmr: true, refresh: true },
+      )
+      await expectValidModules(route.modules)
+      expect(route.isLazy(option)).toBe(true)
+      expect(route.registered.has(await route.load(option))).toBe(true)
+    },
+  )
+
   // Bug: a lowercase component declared as a variable keeps its name in its
   // split chunk, and React Refresh registers PascalCase names only (a
   // lowercase `function` declaration is renamed, a variable is not).

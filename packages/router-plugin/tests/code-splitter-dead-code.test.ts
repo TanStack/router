@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
+  countAcrossModules,
   declarationOf,
   evaluateModule,
   expectValidModules,
@@ -70,18 +71,6 @@ function restore() {
       declared: ['persister', 'restore'],
     },
     {
-      // Source: babel-dead-code-elimination dead-code-elimination.test.ts "only
-      // eliminates newly unreferenced identifiers", "unexported circular references"
-      // and "SCC with external caller used -> all preserved"
-      name: 'unused functions, one calling a helper of the split component',
-      setup: `function helper() { return 'helper' }
-function unused() { return helper() }
-function ping(): number { return pong() }
-function pong(): number { return ping() }`,
-      component: '<p>{helper()}</p>',
-      declared: ['helper', 'unused', 'ping', 'pong'],
-    },
-    {
       // A reference cycle longer than two declarations: d closes it
       name: 'a reference cycle of four declarations',
       setup: `import { register } from './registry'
@@ -93,9 +82,9 @@ const d = register(() => a)`,
     },
   ])(
     'keeps $name that nothing used before splitting',
-    async ({ setup, component = '<div />', declared }) => {
+    async ({ setup, declared }) => {
       const code = `${head}${setup}
-export const Route = createFileRoute('/')({ component: () => ${component} })
+export const Route = createFileRoute('/')({ component: () => <div /> })
 `
       const modules = referenceModules(code)
       // The validator does not report references to undeclared names. A
@@ -108,6 +97,23 @@ export const Route = createFileRoute('/')({ component: () => ${component} })
       await expectValidModules(modules)
     },
   )
+
+  // Source: babel-dead-code-elimination dead-code-elimination.test.ts "only
+  // eliminates newly unreferenced identifiers", "unexported circular references"
+  // and "SCC with external caller used -> all preserved". Whether unused user
+  // code is kept or dropped is free; every module stays valid and the split
+  // component still reaches its helper.
+  it('keeps the modules of unused functions, one calling a helper of the split component, valid', async () => {
+    const code = `${head}function helper() { return 'helper' }
+function unused() { return helper() }
+function ping(): number { return pong() }
+function pong(): number { return ping() }
+export const Route = createFileRoute('/')({ component: () => <p>{helper()}</p> })
+`
+    await expectValidModules(compileRouteModules(code).modules)
+    await expectValidModules(compileRouteModules(code, { hmr: true }).modules)
+    expect(await renderSplitComponent(code)).toBe('<p>helper</p>')
+  })
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "SCC dead
   // code elimination" > "arrow functions in mutual recursion -> removed"
@@ -132,7 +138,7 @@ export const Route = createFileRoute('/')({
   })
 
   // Source: Next.js ssg/getStaticProps/should-remove-re-exported-function-declarations-dependents-variables-functions-imports
-  it('keeps the import specifiers nothing used before splitting', async () => {
+  it('keeps requesting a module whose specifiers nothing used before splitting', async () => {
     const { modules } =
       compileRouteModules(`${head}import { used, preUnused } from 'bar'
 const b = function apples() { return used }
@@ -141,29 +147,48 @@ export const Route = createFileRoute('/')({
   component: () => <p>{b()}</p>,
 })
 `)
-    expect(importedNames(modules.reference!, 'bar')).toEqual(['preUnused'])
-    expect(modules.reference).not.toContain('apples')
-    expect(modules['virtual component']).toMatch(declarationOf('b'))
+    // The route module still loads `bar` (as a bare import or with the
+    // unused specifier), but no longer for `used`.
+    expect(importSources(modules.reference!)).toContain('bar')
+    expect(importedNames(modules.reference!, 'bar')).not.toContain('used')
     expect(importedNames(modules['virtual component']!, 'bar')).toContain(
       'used',
     )
     await expectValidModules(modules)
   })
 
-  it('does not declare a side effect nothing reads in the shared module', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import { createStore, track } from './store'
+  // That `track` runs once too is pinned in known-bugs-code-splitter.test.ts
+  // ("an unreferenced top-level side effect (an unused subscription) runs
+  // once"): split chunks still copy it.
+  it('creates a store the split component shares once, next to a side effect nothing reads', async () => {
+    let created = 0
+    const route = await loadRoute(
+      `${head}import { createStore, track } from './store'
 const store = createStore()
 const stop = track(() => stop())
 export const Route = createFileRoute('/')({
   beforeLoad: () => store.get(),
   component: () => <p>{store.get()}</p>,
 })
-`)
-    expect(modules.shared).toMatch(declarationOf('store'))
-    expect(modules.shared).not.toMatch(declarationOf('stop'))
-    expect(modules.reference).toMatch(declarationOf('stop'))
-    await expectValidModules(modules)
+`,
+      {
+        stubs: {
+          './store': {
+            createStore: () => {
+              const id = ++created
+              return { get: () => id }
+            },
+            track: (listener: () => void) => listener,
+          },
+        },
+      },
+    )
+    await expectValidModules(route.modules)
+    expect([
+      route.options.beforeLoad(),
+      (await route.load('component'))(),
+      created,
+    ]).toEqual([1, '<p>1</p>', 1])
   })
 
   // Source: React Router route-chunks-test.ts "shared imports across chunks but
@@ -271,7 +296,7 @@ export const Route = createFileRoute('/')({
 })
 `)
     expect(modules['virtual component']).toMatch(
-      /\/\* #__NO_SIDE_EFFECTS__ \*\/\s*function makeLabel\(/,
+      /\/\*\s*[#@]__NO_SIDE_EFFECTS__\s*\*\/\s*function makeLabel\(/,
     )
   })
 
@@ -284,8 +309,9 @@ export const Route = createFileRoute('/')({
   ])(
     'keeps an unused local initialized by $name in a shared function',
     async ({ initializer }) => {
-      const { modules } =
-        compileRouteModules(`${head}import { track } from './track'
+      const calls: Array<string> = []
+      const route = await loadRoute(
+        `${head}import { track } from './track'
 function useShared(id) {
   const unused = ${initializer}
   return id
@@ -294,13 +320,18 @@ export const Route = createFileRoute('/')({
   loader: () => useShared('loader'),
   component: () => <p>{useShared('component')}</p>,
 })
-`)
-      const calls: Array<string> = []
-      const shared = await evaluateModule(modules.shared!, {
-        './track': { track: (label: string) => calls.push(label) },
-      })
-      expect(shared.useShared!('render')).toBe('render')
-      expect(calls).toEqual(['render'])
+`,
+        {
+          stubs: {
+            './track': { track: (label: string) => calls.push(label) },
+          },
+        },
+      )
+      expect([
+        route.options.loader(),
+        (await route.load('component'))(),
+        calls,
+      ]).toEqual(['loader', '<p>component</p>', ['loader', 'component']])
     },
   )
 
@@ -320,9 +351,9 @@ export const Route = createFileRoute('/')({
   })
 
   // Source: React Router remove-exports-test.ts "iife with dependencies"
-  it('moves a component created by an IIFE with its dependencies and shares the helper the loader uses too', async () => {
-    const { modules, ids, sharedBindings } =
-      compileRouteModules(`${head}import { removedLib } from 'removed-lib'
+  it('moves a component created by an IIFE with its dependencies, next to a helper the loader uses too', async () => {
+    const route = await loadRoute(
+      `${head}import { removedLib } from 'removed-lib'
 import { keptLib } from 'kept-lib'
 import { sharedLib } from 'shared-lib'
 const sharedUtil = (value?: unknown) => sharedLib(value)
@@ -336,18 +367,26 @@ export const Route = createFileRoute('/')({
   loader: () => keptUtil(),
   component: Page,
 })
-`)
-    expect(sharedBindings).toEqual(['sharedUtil'])
-    expect(importSources(modules.reference!)).toEqual(
-      ['@tanstack/react-router', 'kept-lib', ids.shared!].sort(),
+`,
+      {
+        stubs: {
+          'removed-lib': { removedLib: () => 'removed' },
+          'kept-lib': { keptLib: () => 'kept' },
+          'shared-lib': { sharedLib: (value: unknown) => `shared:${value}` },
+        },
+      },
     )
-    expect(modules.reference).not.toContain('removedUtil')
-    expect(importSources(modules['virtual component']!)).toEqual(
-      ['removed-lib', ids.shared!].sort(),
-    )
-    expect(modules['virtual component']).toMatch(declarationOf('Page'))
-    expect(importSources(modules.shared!)).toEqual(['shared-lib'])
+    const { modules } = route
+    expect(importSources(modules.reference!)).not.toContain('removed-lib')
+    for (const name of Object.keys(modules)) {
+      if (name.startsWith('virtual ')) {
+        expect(importSources(modules[name]!), name).not.toContain('kept-lib')
+      }
+    }
     await expectValidModules(modules)
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      ['shared:kept', '<div>shared:removed</div>'],
+    )
   })
 
   // Source: React Router route-chunks-test.ts "isolated exported variable
@@ -367,7 +406,7 @@ export const Route = createFileRoute('/')({
   ])(
     'gives each of the $name of one statement to the module that reads it',
     async ({ declarations }) => {
-      const { modules, sharedBindings } =
+      const { modules } =
         compileRouteModules(`${head}import { chunkMessage, mainMessage } from './messages'
 ${declarations}
 export const Route = createFileRoute('/')({
@@ -375,7 +414,6 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `)
-      expect(sharedBindings).toEqual([])
       expect(importedNames(modules.reference!, './messages')).toEqual([
         'mainMessage',
       ])
@@ -390,23 +428,23 @@ export const Route = createFileRoute('/')({
 
   // Source: React Router route-chunks-test.ts "exported variable declarations
   // sharing an export statement"
-  it('shares a declarator that a sibling declarator reads', async () => {
-    const { modules, ids, sharedBindings } =
-      compileRouteModules(`${head}import { sharedMessage } from './messages'
+  it('keeps one component that a sibling declarator reads', async () => {
+    const route = await loadRoute(
+      `${head}import { sharedMessage } from './messages'
 const Page = () => <div>{sharedMessage}</div>,
   Preview = Page
 export const Route = createFileRoute('/')({
-  loader: () => Preview.name,
+  loader: () => Preview,
   component: Page,
 })
-`)
-    expect(sharedBindings).toEqual(['Page'])
-    expect(modules.shared).toMatch(declarationOf('Page'))
-    expect(modules.reference).toMatch(declarationOf('Preview'))
-    expect(importedNames(modules.reference!, ids.shared!)).toEqual(['Page'])
-    expect(modules.reference).not.toMatch(declarationOf('Page'))
-    expect(modules['virtual component']).not.toMatch(declarationOf('Page'))
-    await expectValidModules(modules)
+`,
+      { stubs: { './messages': { sharedMessage: 'shared' } } },
+    )
+    await expectValidModules(route.modules)
+    expect(countAcrossModules(route.modules, declarationOf('Page'))).toBe(1)
+    const Component = await route.load('component')
+    expect(route.options.loader()).toBe(Component)
+    expect(Component()).toBe('<div>shared</div>')
   })
 })
 
@@ -491,7 +529,8 @@ export const Route = createFileRoute('/')({
   component: () => <div>{String(schema)}</div>,
 })
 `)
-    expect(modules.shared).toContain('.add(199)')
+    // The chain is evaluated once, whichever module holds it.
+    expect(countAcrossModules(modules, /\.add\(199\)/)).toBe(1)
     await expectValidModules(modules)
   })
 })

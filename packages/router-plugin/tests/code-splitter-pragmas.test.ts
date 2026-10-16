@@ -66,17 +66,48 @@ ${head}import { jsx } from '@emotion/react'
     expect(await compileJsx(chunk)).toMatch(/\bjsx\(\s*["']div["']/)
   })
 
-  it('keeps the pragma in effect in a shared module that contains JSX', async () => {
-    const { shared } =
-      compileRouteModules(`/** @jsxImportSource @emotion/react */
+  const sharedJsxRoute = `/** @jsxImportSource @emotion/react */
 ${head}const icon = <svg css={{ width: 1 }} />
 export const Route = createFileRoute('/pragma')({
   loader: () => ({ icon }),
   component: () => <div css={{ color: 'red' }}>{icon}</div>,
 })
-`).modules
-    expect(await jsxRuntimeOf(shared!)).toBe('@emotion/react/jsx-runtime')
+`
+
+  it('keeps the pragma in effect for JSX the loader and the component share', async () => {
+    const { modules } = compileRouteModules(sharedJsxRoute)
+    const holders = Object.values(modules).filter((code) =>
+      code.includes('<svg'),
+    )
+    expect(holders).toHaveLength(1)
+    expect(await jsxRuntimeOf(holders[0]!)).toBe('@emotion/react/jsx-runtime')
   })
+
+  // Bug: a split chunk that imports a binding it shares with the route
+  // module gets that import inserted above the file's leading pragma
+  // comment, and Oxc (Vite 8's JSX transform) only reads pragmas that lead
+  // the file.
+  // Impact: with Vite 8, the split component compiles with the default JSX
+  // runtime as soon as it shares a binding with the loader: `css` props
+  // are ignored and the component renders unstyled.
+  it.fails(
+    'keeps the pragma in effect in every module that contains JSX',
+    async () => {
+      const { modules } = compileRouteModules(sharedJsxRoute)
+      const runtimes: Record<string, string | undefined> = {}
+      for (const [name, code] of Object.entries(modules)) {
+        runtimes[name] = await jsxRuntimeOf(code)
+      }
+      // Modules without JSX import no runtime.
+      const withJsx = Object.entries(runtimes).filter(([, runtime]) => runtime)
+      expect(withJsx.length).toBeGreaterThan(0)
+      expect(Object.fromEntries(withJsx)).toEqual(
+        Object.fromEntries(
+          withJsx.map(([name]) => [name, '@emotion/react/jsx-runtime']),
+        ),
+      )
+    },
+  )
 })
 
 // React Refresh and solid-refresh read these comments per module, so every

@@ -111,9 +111,9 @@ export function render() {
       source.split('\n').findIndex((line) => line.includes('throw new Error')) +
       1
     const entryUrl = pathToFileURL(path.join(root, 'dist/entry.mjs')).href
-    const combined = groupings.some(
-      (group) => group.includes('component') && group.includes('loader'),
-    )
+    // When `createComponentLabel()` runs (with the route module or with the
+    // component's chunk) is free; that every initialiser runs exactly once,
+    // and the ones the route module reads before it is used, is not.
     const { stdout } = await runNode(process.execPath, [
       '--enable-source-maps',
       '--input-type=module',
@@ -122,7 +122,7 @@ export function render() {
 const messages = []
 console.log = (message) => messages.push(message)
 const { Route, render, firstState, secondState, 'odd-name': oddState } = await import(${JSON.stringify(entryUrl)})
-assert.deepEqual(messages, ['shared-runtime:seed', 'shared-runtime:state', 'shared-runtime:reference'])
+assert.deepEqual(messages.filter((message) => message !== 'shared-runtime:component'), ['shared-runtime:seed', 'shared-runtime:state', 'shared-runtime:reference'])
 const state = Route.options.beforeLoad({})
 assert.strictEqual(firstState, state)
 assert.strictEqual(secondState, state)
@@ -130,13 +130,12 @@ assert.strictEqual(oddState, state)
 assert.equal(state.count, 0)
 assert.strictEqual(await Route.options.loader({}), state)
 assert.equal(state.count, 1)
-assert.deepEqual(messages, ${JSON.stringify(combined ? ['shared-runtime:seed', 'shared-runtime:state', 'shared-runtime:reference', 'shared-runtime:component'] : ['shared-runtime:seed', 'shared-runtime:state', 'shared-runtime:reference'])})
 await Route.options.component.preload()
 assert.equal(render(), 'count:1')
 assert.strictEqual(await Route.options.loader({}), state)
 assert.equal(render(), 'count:2')
 await Route.options.component.preload()
-assert.deepEqual(messages, ['shared-runtime:seed', 'shared-runtime:state', 'shared-runtime:reference', 'shared-runtime:component'])
+assert.deepEqual([...messages].sort(), ['shared-runtime:component', 'shared-runtime:reference', 'shared-runtime:seed', 'shared-runtime:state'])
 await Route.options.loader({})
 assert.throws(render, (error) => {
   assert.equal(error.message, 'route source-map contract')

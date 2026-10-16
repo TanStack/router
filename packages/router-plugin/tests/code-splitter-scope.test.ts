@@ -1,5 +1,4 @@
-import { transformWithOxc } from 'vite'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   compileRouteModules,
   declarationOf,
@@ -8,6 +7,7 @@ import {
   head,
   importSources,
   importedNames,
+  loadRoute,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
@@ -124,6 +124,26 @@ function Page() {
 }`,
       expected: '<p>4</p>',
     },
+    {
+      // Code-splitter fixture circular-reference-function
+      name: 'when it reads itself through an object shorthand',
+      body: `function getComponentName(obj: Record<string, unknown>) {
+  return Object.keys(obj)[0]
+}
+function Page() {
+  return <p>{getComponentName({ Page })}</p>
+}`,
+      expected: '<p>Page</p>',
+    },
+    {
+      // Code-splitter fixture circular-reference-arrow-function
+      name: 'when an arrow component reads itself through an object shorthand',
+      body: `function getComponentName(obj: Record<string, unknown>) {
+  return Object.keys(obj)[0]
+}
+const Page = () => <p>{getComponentName({ Page })}</p>`,
+      expected: '<p>Page</p>',
+    },
   ])('$name', async ({ body, expected }) => {
     const { modules } = compileRouteModules(pageRoute(body))
     await expectValidModules(modules)
@@ -143,6 +163,7 @@ describe('names a route option declares itself do not reference module bindings'
     const obj = { a: function format(x: number) { return x } }
     return <div>{label}{obj.a(1)}</div>
   },`,
+      unread: 'virtual component',
     },
     {
       // Source: Next.js ssg/getServerSideProps/query-usage
@@ -152,12 +173,14 @@ describe('names a route option declares itself do not reference module bindings'
     return label
   },
   component: () => <div>{label}{format()}</div>,`,
+      unread: 'reference',
     },
     {
       // Source: Next.js ssg/getServerSideProps/query-usage
       name: 'destructured parameters',
       options: `loader: ({ label }: any) => [label, format()],
   component: ({ format }: any) => <div>{format}{label}</div>,`,
+      unread: 'reference',
     },
     {
       // Source: Qwik optimizer test.rs should_not_auto_export_var_shadowed_in_{catch,do_while,switch,labeled_block}
@@ -171,25 +194,45 @@ describe('names a route option declares itself do not reference module bindings'
     block: { const format = 'labeled'; if (format) break block }
     return <p>{i}</p>
   },`,
+      unread: 'virtual component',
     },
-  ])('$name', async ({ options }) => {
-    const { modules, sharedBindings } =
-      compileRouteModules(`${head}import { load } from './load'
+  ])('$name', async ({ options, unread }) => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    onTestFinished(() => {
+      vi.restoreAllMocks()
+    })
+    let loads = 0
+    const route = await loadRoute(
+      `${head}import { load } from './load'
 const label = load()
 function format() { return 'format' }
 export const Route = createFileRoute('/')({
   ${options}
 })
-`)
-    // A name both options really read would be shared between them.
-    expect(sharedBindings).toEqual([])
-    await expectValidModules(modules)
+`,
+      {
+        stubs: {
+          './load': {
+            load: () => {
+              loads++
+              return 'module'
+            },
+          },
+        },
+      },
+    )
+    await expectValidModules(route.modules)
+    // The option's own names do not make its module load the module-level
+    // `label`, which only the other option reads.
+    expect(importSources(route.modules[unread]!)).not.toContain('./load')
+    route.options.loader({})
+    expect(typeof (await route.load('component'))({})).toBe('string')
+    expect(loads).toBe(1)
   })
 
   // Source: Next.js ssg/getStaticProps/should-not-remove-import-used-in-render
   it('neither do intrinsic tag and attribute names, unlike component tags and JSX expressions', async () => {
-    const { modules, sharedBindings } =
-      compileRouteModules(`${head}import { A, B } from './ui'
+    const { modules } = compileRouteModules(`${head}import { A, B } from './ui'
 import { load } from './load'
 const a = load()
 const p = load()
@@ -204,36 +247,43 @@ export const Route = createFileRoute('/')({
   ),
 })
 `)
-    expect(sharedBindings).toEqual([])
     expect(importedNames(modules['virtual component']!, './ui')).toEqual([
       'A',
       'B',
     ])
     expect(importSources(modules.reference!)).not.toContain('./ui')
+    expect(importSources(modules['virtual component']!)).not.toContain('./load')
     await expectValidModules(modules)
   })
 
   // Source: React Router route-chunks-test.ts "computed object property"
   it('neither do object keys, unlike computed keys', async () => {
-    const { modules, sharedBindings } =
-      compileRouteModules(`${head}import { load } from './load'
+    const route = await loadRoute(
+      `${head}import { load } from './load'
 const label = load()
 const kind = 'kind'
 export const Route = createFileRoute('/')({
   loader: () => [label, kind],
   component: () => {
     const obj = { label: 1, [kind]: 2 }
-    return <div>{obj.label}</div>
+    return <div>{obj.label}{obj[kind]}</div>
   },
 })
-`)
-    expect(sharedBindings).toEqual(['kind'])
-    await expectValidModules(modules)
+`,
+      { stubs: { './load': { load: () => 'loaded' } } },
+    )
+    await expectValidModules(route.modules)
+    expect(importSources(route.modules['virtual component']!)).not.toContain(
+      './load',
+    )
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      [['loaded', 'kind'], '<div>12</div>'],
+    )
   })
 
   it('neither do declarations in helpers that move into the chunk, named like a shared binding', async () => {
-    const { modules, ids, sharedBindings } =
-      compileRouteModules(`${head}import { createStore } from './store'
+    const route = await loadRoute(
+      `${head}import { createStore } from './store'
 const store = createStore()
 function readVar() {
   const store = 'var,'
@@ -255,12 +305,15 @@ export const Route = createFileRoute('/')({
   loader: () => store.get(),
   component: () => <p>{readVar()}{readFunction()}{readClass()}{readEnum()}{store.get()}</p>,
 })
-`)
-    expect(sharedBindings).toEqual(['store'])
-    const chunk = await evaluateModule(modules['virtual component']!, {
-      [ids.shared!]: { store: { get: () => 'shared' } },
-    })
-    expect(chunk.component!()).toBe('<p>var,function,class,enum,shared</p>')
+`,
+      {
+        stubs: { './store': { createStore: () => ({ get: () => 'shared' }) } },
+      },
+    )
+    await expectValidModules(route.modules)
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      ['shared', '<p>var,function,class,enum,shared</p>'],
+    )
   })
 })
 
@@ -357,8 +410,8 @@ export const Route = createFileRoute('/')({ loader: ${loader}, component: Page }
 describe('plain JavaScript route files', () => {
   // In JavaScript, `a < b > (c)` is two comparisons, not a call with a type
   // argument, so `b` is a value the expression reads.
-  it('reads every operand of a chained comparison', () => {
-    const { sharedBindings } = compileRouteModules(
+  it('reads every operand of a chained comparison', async () => {
+    const route = await loadRoute(
       `${head}const a = 1, b = 2, c = 3
 const r = a < b > (c)
 export const Route = createFileRoute('/compare')({
@@ -368,7 +421,10 @@ export const Route = createFileRoute('/compare')({
 `,
       { filename: 'route.js' },
     )
-    expect(sharedBindings).toEqual(['a', 'b', 'c', 'r'])
+    await expectValidModules(route.modules)
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      [false, '<p>false</p>'],
+    )
   })
 
   // Source: @babel/generator using-declarations/using-and-await-using
@@ -394,7 +450,7 @@ describe('plain TypeScript route files', () => {
   // Source: TanStack/router#7341. In a `.ts` file, `<T>value` is a type
   // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
   it('keeps angle-bracket type assertions in every module', async () => {
-    const { modules, ids } = compileRouteModules(
+    const route = await loadRoute(
       `${head}const identity = <T>(value: T) => value
 export const Route = createFileRoute('/')({
   loader: () => <number>identity(<unknown>1),
@@ -403,16 +459,11 @@ export const Route = createFileRoute('/')({
 `,
       { filename: 'route.ts' },
     )
-    for (const [name, code] of Object.entries(modules)) {
-      expect(await getModuleErrors(code!, 'module.ts'), name).toEqual([])
+    for (const [name, code] of Object.entries(route.modules)) {
+      expect(await getModuleErrors(code, 'module.ts'), name).toEqual([])
     }
-    const erase = async (code: string) =>
-      (await transformWithOxc(code, 'module.ts')).code
-    const shared = await evaluateModule(await erase(modules.shared!))
-    const chunk = await evaluateModule(
-      await erase(modules['virtual component']!),
-      { [ids.shared!]: shared },
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      [1, 'page'],
     )
-    expect(chunk.component!()).toBe('page')
   })
 })

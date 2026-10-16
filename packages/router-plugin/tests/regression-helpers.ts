@@ -172,11 +172,14 @@ export function importRequests(code: string, id = 'module.tsx') {
       dynamicImport.moduleRequest.start,
       dynamicImport.moduleRequest.end,
     )
-    const literal = /^(["'`])([^"'`$\\]*)\1$/.exec(source)
+    // A string literal, or a template literal without substitutions.
+    const literal = /^(?:(["'])([^"'\\]*)\1|`((?:[^`\\$]|\$(?!\{))*)`)$/.exec(
+      source,
+    )
     if (!literal) {
       throw new Error(`cannot follow the dynamic import ${source}`)
     }
-    requests.push({ specifier: literal[2]!, dynamic: true })
+    requests.push({ specifier: (literal[2] ?? literal[3])!, dynamic: true })
   }
   return requests
 }
@@ -388,6 +391,18 @@ export function compileRouteModules(
   }
   routeSources.set(modules, { code, id: graph.id })
   return { modules, ids, sharedBindings: [...sharedBindings].sort(), graph }
+}
+
+/** How many times `pattern` occurs across all emitted modules. */
+export function countAcrossModules(
+  modules: Record<string, string>,
+  pattern: RegExp,
+) {
+  return Object.values(modules).reduce(
+    (count, code) =>
+      count + (code.match(new RegExp(pattern.source, 'g'))?.length ?? 0),
+    0,
+  )
 }
 
 /** Compiles every module of a route file and returns the component chunk. */
