@@ -705,10 +705,11 @@ export const Route = createFileRoute('/')({ component: Page })
     return app.where(/import\.meta\.(?:webpackHot|hot)\b|\bmodule\.hot\b/)
   }
 
-  // Control for the pin below: with `NODE_ENV=production` exported. The
-  // Vite row replaces router-plugin-context.test.ts "does not install the
-  // standalone route HMR plugin in production".
-  test.each(['vite', 'rspack', 'webpack'] as const)(
+  // No Vite rows: Vite replaces `import.meta.hot` with `undefined` in a
+  // build and drops the code it guards, so they could not fail.
+
+  // Control for the pin below: with `NODE_ENV=production` exported.
+  test.each(['rspack', 'webpack'] as const)(
     'a production client bundle has no route HMR code (%s)',
     async (bundler) => {
       expect(await hmrPlacement(bundler, false)).toBe('nowhere')
@@ -719,7 +720,7 @@ export const Route = createFileRoute('/')({ component: Page })
   // Source: gap P1 / DV51. The esbuild row holds trivially today, since the
   // esbuild plugin neither generates nor splits routes (pinned in
   // build-harness.test.ts).
-  test.each(['vite', 'rspack', 'webpack', 'esbuild'] as const)(
+  test.each(['rspack', 'webpack', 'esbuild'] as const)(
     'a production client bundle with automatic code splitting has no route HMR code (%s)',
     async (bundler) => {
       expect(await hmrPlacement(bundler, true)).toBe('nowhere')

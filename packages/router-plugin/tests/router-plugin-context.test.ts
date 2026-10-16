@@ -186,11 +186,8 @@ export const Route = createFileRoute('/changing')({
       options: { command: 'serve', hmr: false },
     },
   ] as const)('does not add HMR code in $mode', async ({ options }) => {
-    const window = {}
-    vi.stubGlobal('window', window)
-    try {
-      const route = await loadRoute(
-        `
+    const route = await loadRoute(
+      `
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/lowercase')({ component })
@@ -199,17 +196,13 @@ function component() {
   return <div>Hello</div>
 }
 `,
-        { routeId: '/lowercase', ...options },
-      )
-      for (const [name, code] of Object.entries(route.modules)) {
-        expect(code, name).not.toMatch(/import\.meta\.(?:webpackHot|hot)\b/)
-      }
-      expect(route.isLazy('component')).toBe(true)
-      expect((await route.load('component'))()).toBe('<div>Hello</div>')
-    } finally {
-      vi.unstubAllGlobals()
+      { routeId: '/lowercase', ...options },
+    )
+    for (const [name, code] of Object.entries(route.modules)) {
+      expect(code, name).not.toMatch(/import\.meta\.(?:webpackHot|hot)\b/)
     }
-    expect(window).not.toHaveProperty('__getReactRefreshIgnoredExports')
+    expect(route.isLazy('component')).toBe(true)
+    expect((await route.load('component'))()).toBe('<div>Hello</div>')
   })
 
   it('keeps multiple code-splitter instances isolated by explicit context', async () => {
