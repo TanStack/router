@@ -482,11 +482,14 @@ export function createModuleGraph(
           throw new Error(`No module ${id} in the graph`)
         }
         const javascript = await transform(code, id)
+        // A hashbang must stay first: the prologue goes after its line
+        const [, hashbang = '', body = javascript] =
+          /^(#![^\n]*\n)([\s\S]*)$/.exec(javascript) ?? []
         const module: ServedModule = {
           format: 'module',
           // The prologue is one line, so that line numbers in stack traces
           // stay those of the module (without `runtime`).
-          source: `${prologue(id)}${options.runtime ?? ''}${javascript}`,
+          source: `${hashbang}${prologue(id)}${options.runtime ?? ''}${body}`,
           imports: new Map(),
         }
         graph.served.set(graphUrl(graph, 'module', id), module)

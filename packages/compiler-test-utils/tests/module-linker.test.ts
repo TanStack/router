@@ -49,6 +49,16 @@ export default function () {
     ]).toEqual(['N', 'S', 1, 1])
   })
 
+  test('evaluates a module starting with a hashbang', async () => {
+    const module = await evaluateModule(
+      `#!/usr/bin/env node
+export const value = import.meta.flag + 1`,
+      {},
+      { importMeta: { flag: 1 } },
+    )
+    expect(module.value).toBe(2)
+  })
+
   test('exports are live bindings', async () => {
     const module = await evaluateModule(`export let count = 0
 export function bump() { count++ }`)
