@@ -2,8 +2,10 @@
  * Known code-splitter bugs. Each test asserts correct behaviour for a bug on
  * main and is marked .fails; remove .fails when the bug is fixed.
  */
+import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { parseSync } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
+import { build, routeApp } from './build-harness'
 import {
   buildAndRun,
   compileRouteModules,
@@ -14,6 +16,14 @@ import {
   importSources,
   loadRoute,
 } from './regression-helpers'
+import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
+import type { CodeSplitGroupings } from '../src/core/constants'
+
+/**
+ * Bundlers whose router plugin splits routes (the esbuild adapter does not;
+ * pinned in build-harness.test.ts).
+ */
+const clientBundlers: Array<Bundler> = ['vite', 'rspack', 'webpack']
 
 /** Stubs `./state`, counting the calls of `init` and `register`. */
 function stateStub() {
@@ -795,6 +805,51 @@ export const Route = createFileRoute('/')({
       await expectValidModules(modules)
     },
   )
+
+  /** A route whose `beforeLoad` and split loader both call `helper`. */
+  const sharedHelperRoute = (helper: string) => `${head}${helper}
+export { helper as helperAlias }
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['component'], ['loader']],
+  component: () => null,
+  beforeLoad: () => helper('before'),
+  loader: () => helper(42),
+})`
+
+  async function callSharedHelper(helper: string) {
+    const route = await loadRoute(sharedHelperRoute(helper))
+    return [
+      route.exports.helperAlias === route.exports.helper,
+      route.options.beforeLoad(),
+      await route.options.loader(),
+    ]
+  }
+
+  // Control for the overload pin below (same route, no overload signatures).
+  test('a function the route module and a split loader share keeps working', async () => {
+    expect(
+      await callSharedHelper(
+        `export function helper(value: string | number) { return value }`,
+      ),
+    ).toEqual([true, 'before', 42])
+  })
+
+  // Bug: the overload signatures of a function that the route module and a
+  // split chunk share stay in both modules, next to the import of the shared
+  // function, and the TypeScript transform then takes them for the binding's
+  // declaration and drops the import (dead-code elimination never removes
+  // overload signatures). Source: #8505.
+  // Impact: the route module fails to load ("Export 'helper' is not defined").
+  test.fails(
+    'an overloaded function the route module and a split loader share keeps working',
+    async () => {
+      expect(
+        await callSharedHelper(`export function helper(value: string): string
+export function helper(value: number): number
+export function helper(value: string | number) { return value }`),
+      ).toEqual([true, 'before', 42])
+    },
+  )
 })
 
 describe('app paths', () => {
@@ -821,5 +876,639 @@ describe('app paths', () => {
       ).toBe('<p>index</p>')
     },
     30_000,
+  )
+
+  // Bug: the route module's chunk importers are built by pasting the
+  // absolute file path into a single-quoted string
+  // (`import('${splitUrl}')`), so a `'` in the path ends the string early.
+  // Source: #7754.
+  // Impact: an app in a directory whose name contains `'` (e.g. a user
+  // folder) cannot be built or served once code splitting is on: every route
+  // fails with a syntax error.
+  test.fails(
+    "an app in a directory with ' in its name builds and preloads a split component",
+    async () => {
+      expect(
+        await buildAndRun(route, script, { prefix: ".regression-build-it's-" }),
+      ).toBe('<p>index</p>')
+    },
+    30_000,
+  )
+})
+
+describe('code that reads a split binding', () => {
+  /**
+   * Loads a route whose component is `Page`, declared next to `exports`, and
+   * returns what the route renders and what `read` gets from the route
+   * module's exports.
+   */
+  async function renderPage(
+    exports: string,
+    read: (moduleExports: Record<string, any>) => unknown,
+  ) {
+    const route = await loadRoute(
+      `${head}import { wrap } from './wrap'
+function Page() {
+  return <p>page</p>
+}
+${exports}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      { stubs: { './wrap': { wrap: (component: unknown) => component } } },
+    )
+    return [(await route.load('component'))(), read(route.exports)]
+  }
+
+  // Control for the pin below (same harness, an export that does not read
+  // `Page`).
+  test('a split component renders next to another export', async () => {
+    expect(
+      await renderPage(
+        `export const label = wrap('label')`,
+        (moduleExports) => moduleExports.label,
+      ),
+    ).toEqual(['<p>page</p>', 'label'])
+  })
+
+  // Bug: when a route option names a binding that the code splitter moves
+  // into a chunk, the splitter deletes the binding's declaration from the
+  // route module (`removeIdentifierLiteral`), even when other code there
+  // still reads it. Only `export function`/`export const` declarations are
+  // checked, so export lists, aliases and exports that use the binding lose
+  // it. Source: #8505 (`export { component as View }`), gap O7.
+  // Impact: the route module throws when it loads ("Page is not defined",
+  // "Export 'Page' is not defined"), so the route never renders.
+  test.fails.each([
+    {
+      name: 'an exported object',
+      exports: 'export const meta = { fn: Page }',
+      read: (moduleExports: Record<string, any>) => moduleExports.meta.fn(),
+    },
+    {
+      name: 'an exported function',
+      exports: 'export function Preview() { return <Page /> }',
+      read: (moduleExports: Record<string, any>) => moduleExports.Preview(),
+    },
+    {
+      name: 'a default export',
+      exports: 'export default wrap(Page)',
+      read: (moduleExports: Record<string, any>) => moduleExports.default(),
+    },
+    {
+      name: 'an export list',
+      exports: 'export { Page }',
+      read: (moduleExports: Record<string, any>) => moduleExports.Page(),
+    },
+    {
+      name: 'an export alias',
+      exports: 'export { Page as View }',
+      read: (moduleExports: Record<string, any>) => moduleExports.View(),
+    },
+  ])(
+    'a split component that $name reads renders from both',
+    async ({ exports, read }) => {
+      expect(await renderPage(exports, read)).toEqual([
+        '<p>page</p>',
+        '<p>page</p>',
+      ])
+    },
+  )
+})
+
+describe('class components', () => {
+  // Control for the class pin below (same harness, a function component).
+  test('a function component declared in the route file renders', async () => {
+    const route = await loadRoute(`${head}function Page() {
+  return 'page'
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+    expect((await route.load('component'))()).toBe('page')
+  })
+
+  // Bug: a route option that names a class cannot be split: the virtual
+  // compiler throws "Unexpected splitNode type ☝️: ClassDeclaration".
+  // Source: #8505 (`export class component {}`).
+  // Impact: a route whose component is a class component cannot be built
+  // once code splitting is on.
+  test.fails.each([
+    `class Page { render() { return 'page' } }`,
+    `export class Page { render() { return 'page' } }`,
+  ])(
+    'a class component declared in the route file renders (%s)',
+    async (declaration) => {
+      const route = await loadRoute(`${head}${declaration}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+      const Component = await route.load('component')
+      expect(new Component().render()).toBe('page')
+    },
+  )
+})
+
+describe('side-effect imports', () => {
+  /** Stubs of `./setup` and `./Page` that record when each module runs. */
+  function recordingStubs(log: Array<string>) {
+    const Page = () => '<p>page</p>'
+    return {
+      './setup': {
+        get ready() {
+          log.push('./setup')
+          return true
+        },
+      },
+      './Page': {
+        get Page() {
+          log.push('./Page')
+          return Page
+        },
+      },
+    }
+  }
+
+  // Control for the pin below: a side-effect import of another module runs
+  // when the route module loads.
+  test('a side-effect import runs when the route module loads', async () => {
+    const log: Array<string> = []
+    const route = await loadRoute(
+      `${head}import './setup'
+import { Page } from './Page'
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      { stubs: recordingStubs(log) },
+    )
+    expect(log).toEqual(['./setup'])
+    expect((await route.load('component'))()).toBe('<p>page</p>')
+  })
+
+  // Bug: when the split component is imported (`import { Page } from
+  // './Page'`), the code splitter also removes every bare import of that path
+  // from the route module (`removableImportPaths`), including the user's own
+  // `import './Page'`. Source: gap O2.
+  // Impact: what that module does when it loads (registrations, styles,
+  // polyfills) is deferred until the component chunk loads.
+  test.fails(
+    "a side-effect import of the split component's module runs when the route module loads",
+    async () => {
+      const log: Array<string> = []
+      const route = await loadRoute(
+        `${head}import './Page'
+import { Page } from './Page'
+export const Route = createFileRoute('/')({ component: Page })
+`,
+        { stubs: recordingStubs(log) },
+      )
+      expect(log).toEqual(['./Page'])
+      expect((await route.load('component'))()).toBe('<p>page</p>')
+    },
+  )
+})
+
+describe('`this` in split callbacks', () => {
+  /**
+   * Builds an app whose `/` route has `loader`, with the given groupings,
+   * loads `/` with a real router and returns the route's loader data; or
+   * `reported` when the build fails or warns about `this`.
+   */
+  async function loadWithLoader(loader: string, groupings: CodeSplitGroupings) {
+    let app
+    try {
+      app = await build({
+        bundler: 'vite',
+        env: 'ssr',
+        minify: false,
+        packageJson: null,
+        files: routeApp(
+          `${head}export const Route = createFileRoute('/')({
+  loader: ${loader},
+  component: () => <p>index</p>,
+})`,
+          {
+            files: {
+              'entry.ts': `import { createMemoryHistory, createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export async function load() {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.load()
+  return router.state.matches.at(-1)?.loaderData
+}`,
+            },
+          },
+        ),
+        pluginOptions: { codeSplittingOptions: { defaultBehavior: groupings } },
+      })
+    } catch (error) {
+      if (error instanceof BuildError && /\bthis\b/.test(error.message)) {
+        return 'reported'
+      }
+      throw error
+    }
+    if (
+      [...app.warnings, ...app.consoleMessages].some((message) =>
+        /\bthis\b/.test(message),
+      )
+    ) {
+      return 'reported'
+    }
+    return (await app.run('return await entry.load()')).result
+  }
+
+  const readsThis = `function () {
+  return this === undefined ? 'no this' : 'this: ' + Object.keys(this).join()
+}`
+
+  // Control for the pin below: the router calls an unsplit loader without a
+  // `this`.
+  test('an unsplit loader is called without a `this`', async () => {
+    expect(await loadWithLoader(readsThis, [['component']])).toBe('no this')
+  }, 60_000)
+
+  // Bug: a split loader is called as a method of its chunk's module
+  // namespace (`lazyFn` calls `imported[key](...args)`), so its `this` is
+  // the chunk's exports, where the router calls an unsplit loader without a
+  // `this`. Source: #8688.
+  // Impact: a loader that reads `this` behaves differently once split,
+  // without any diagnostic.
+  test.fails(
+    'a split loader sees the same `this` as an unsplit one, or the build reports it',
+    async () => {
+      expect(['no this', 'reported']).toContain(
+        await loadWithLoader(readsThis, [['loader'], ['component']]),
+      )
+    },
+    60_000,
+  )
+})
+
+describe('server-only route options on the client', () => {
+  /** Start's client configuration of the code splitter. */
+  const deleteNodes = ['ssr', 'server', 'headers']
+  const db = {
+    db: { flag: () => true, all: () => [], headers: () => ({}) },
+  }
+
+  /**
+   * Compiles a route for the client as Start does and reports whether any
+   * emitted module imports `./db.server`, which server-only options the
+   * route still has, and what it renders.
+   */
+  async function compileForClient(code: string) {
+    const route = await loadRoute(code, {
+      deleteNodes,
+      stubs: {
+        './db.server': db,
+        './opts': { makeOpts: (options: unknown) => options },
+      },
+    })
+    return {
+      serverImports: Object.values(route.modules).filter((module) =>
+        importSources(module).includes('./db.server'),
+      ).length,
+      serverOptions: deleteNodes.filter((key) => key in route.options),
+      rendered: (await route.load('component'))(),
+    }
+  }
+
+  const stripped = { serverImports: 0, serverOptions: [], rendered: '<p>x</p>' }
+
+  // Control for the pins below: options written as `key: value` are removed
+  // with their imports.
+  test('server-only options written as properties are removed with their imports', async () => {
+    expect(
+      await compileForClient(`${head}import { db } from './db.server'
+export const Route = createFileRoute('/')({
+  ssr: () => db.flag(),
+  server: { handlers: { GET: () => db.all() } },
+  headers: () => db.headers(),
+  component: () => <p>x</p>,
+})`),
+    ).toEqual(stripped)
+  })
+
+  // Bug: `deleteNodes` only removes route options written as `key: value`
+  // (`ObjectProperty`); a method (`ssr() {}`, `async ssr() {}`,
+  // `headers() {}`) is kept, with the imports it uses. Source: gap D11/S26
+  // (docs `selective-ssr.md` promise `ssr` is stripped).
+  // Impact: Start's client bundle ships the route's `ssr`/`headers` code and
+  // its server-only imports.
+  test.fails.each([
+    'ssr() { return db.flag() }',
+    'async ssr() { return db.flag() }',
+    'headers() { return db.headers() }',
+  ])(
+    'a server-only option written as a method is removed with its imports (%s)',
+    async (option) => {
+      expect(
+        await compileForClient(`${head}import { db } from './db.server'
+export const Route = createFileRoute('/')({
+  ${option},
+  component: () => <p>x</p>,
+})`),
+      ).toEqual(stripped)
+    },
+  )
+
+  // Bug: server-only options whose key is not written literally in the
+  // route options (a spread, a computed key, options built by a call) are
+  // kept, with their imports, and nothing reports it. Removing them is best
+  // effort; refusing the route with an error naming the option is a valid
+  // fix too. Source: gap D11.
+  // Impact: Start's client bundle silently ships server handlers and their
+  // server-only imports.
+  test.fails.each([
+    {
+      name: 'a spread',
+      code: `const serverOptions = { server: { handlers: { GET: () => db.all() } } }
+export const Route = createFileRoute('/')({
+  ...serverOptions,
+  component: () => <p>x</p>,
+})`,
+    },
+    {
+      name: 'a computed key',
+      code: `export const Route = createFileRoute('/')({
+  ['server']: { handlers: { GET: () => db.all() } },
+  component: () => <p>x</p>,
+})`,
+    },
+    {
+      name: 'a call',
+      code: `import { makeOpts } from './opts'
+export const Route = createFileRoute('/')(
+  makeOpts({
+    server: { handlers: { GET: () => db.all() } },
+    component: () => <p>x</p>,
+  }),
+)`,
+    },
+  ])(
+    'a server-only option given through $name is removed, or the route is refused',
+    async ({ code }) => {
+      let result
+      try {
+        result = await compileForClient(
+          `${head}import { db } from './db.server'\n${code}`,
+        )
+      } catch (error) {
+        expect(String(error)).toMatch(/\b(ssr|server|headers)\b/)
+        return
+      }
+      expect(result).toEqual(stripped)
+    },
+  )
+
+  /** A client build with Start's `deleteNodes`, reading a server secret. */
+  async function secretPlacement(bundler: Bundler, option: string) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      pluginOptions: { codeSplittingOptions: { deleteNodes } },
+      files: routeApp(
+        `${head}import { readSecret } from '../db.server'
+export const Route = createFileRoute('/')({
+  ${option},
+  component: () => <p>page</p>,
+})
+`,
+        {
+          env: 'client',
+          files: {
+            'db.server.ts': `export function readSecret() {
+  return (globalThis as any).MARK_SERVER_SECRET
+}
+`,
+          },
+        },
+      ),
+    })
+    return app.where('MARK_SERVER_SECRET')
+  }
+
+  // Control for the build-level canary below.
+  test.each(clientBundlers)(
+    'a client build has no server code of an `ssr` property (%s)',
+    async (bundler) => {
+      expect(await secretPlacement(bundler, 'ssr: () => !!readSecret()')).toBe(
+        'nowhere',
+      )
+    },
+    60_000,
+  )
+
+  // Bug: build-level canary of the method pin above (same root cause).
+  // Impact: the server code of an `ssr()` method reaches the client bundle.
+  test.fails.each(clientBundlers)(
+    'a client build has no server code of an `ssr()` method (%s)',
+    async (bundler) => {
+      expect(
+        await secretPlacement(bundler, 'ssr() { return !!readSecret() }'),
+      ).toBe('nowhere')
+    },
+    60_000,
+  )
+})
+
+describe('symlinked route files', () => {
+  /**
+   * A client build with `deleteNodes: ['server']` of a route file reached
+   * through `routes/index.tsx`, a symlink when `linked`; returns where the
+   * server handler's code is, or `refused` when the build fails.
+   */
+  async function serverCodePlacement(bundler: Bundler, linked: boolean) {
+    const route = `${head}import { readSecret } from '../db.server'
+export const Route = createFileRoute('/')({
+  server: { handlers: { GET: () => readSecret() } },
+  component: () => <p>page</p>,
+})
+`
+    const files = routeApp(route, {
+      env: 'client',
+      files: {
+        'db.server.ts': `export function readSecret() {
+  return (globalThis as any).MARK_SERVER_SECRET
+}
+`,
+      },
+    })
+    if (linked) {
+      delete files['routes/index.tsx']
+      files['linked/index.tsx'] = route
+    }
+    try {
+      const app = await build({
+        bundler,
+        env: 'client',
+        pluginOptions: { codeSplittingOptions: { deleteNodes: ['server'] } },
+        files,
+        symlinks: linked ? { 'routes/index.tsx': 'linked/index.tsx' } : {},
+      })
+      return app.where('MARK_SERVER_SECRET')
+    } catch (error) {
+      if (error instanceof BuildError) {
+        return 'refused'
+      }
+      throw error
+    }
+  }
+
+  // Control for the pin below (same app, a regular route file).
+  test.each(clientBundlers)(
+    'a client build has no server handler code (%s)',
+    async (bundler) => {
+      expect(await serverCodePlacement(bundler, false)).toBe('nowhere')
+    },
+    60_000,
+  )
+
+  // Bug: the code splitter looks route files up by the path the generator
+  // scanned (the symlink), but bundlers resolve modules to their real path,
+  // so a symlinked route file is never compiled: nothing is split or
+  // removed, silently. Failing the build is a valid fix too. Source: #8514.
+  // Impact: with symlinked sources (Bazel, Nix, linked checkouts), Start's
+  // client bundle ships `server.handlers` and their server-only imports.
+  test.fails.each(clientBundlers)(
+    'a client build of a symlinked route file has no server handler code (%s)',
+    async (bundler) => {
+      expect(['nowhere', 'refused']).toContain(
+        await serverCodePlacement(bundler, true),
+      )
+    },
+    60_000,
+  )
+})
+
+describe('source maps', () => {
+  /**
+   * Source files named by the source maps of a client build's chunks that
+   * hold the split component (`MARK_PAGE`) or a binding the route module
+   * shares with it (`MARK_SHARED`).
+   */
+  async function splitChunkSources(bundler: Bundler) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      minify: false,
+      sourcemap: true,
+      files: routeApp(
+        `${head}const shared = { label: 'MARK_SHARED' }
+function Page() {
+  return <p>MARK_PAGE {shared.label}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => shared,
+  component: Page,
+})
+`,
+        { env: 'client' },
+      ),
+    })
+    const chunks = app.chunks.filter(
+      (chunk) =>
+        chunk.code.includes('MARK_PAGE') || chunk.code.includes('MARK_SHARED'),
+    )
+    return [...new Set(chunks.flatMap((chunk) => chunk.map?.sources ?? []))]
+  }
+
+  /** Whether the sources name the route file, and none a virtual module. */
+  function namesRouteFile(sources: Array<string>) {
+    return {
+      routeFile: sources.some((source) => source.includes('routes/index.tsx')),
+      virtualModules: sources.filter((source) => /[?&]tsr-/.test(source)),
+    }
+  }
+
+  // Control for the pin below: Rspack and webpack name modules by their
+  // resource path.
+  test.each(['rspack', 'webpack'] as const)(
+    'split code maps to the route file (%s)',
+    async (bundler) => {
+      expect(namesRouteFile(await splitChunkSources(bundler))).toEqual({
+        routeFile: true,
+        virtualModules: [],
+      })
+    },
+    60_000,
+  )
+
+  // Bug: the split chunk and shared modules are compiled with their module
+  // id as the source file name, query included (`routes/index.tsx?tsr-split=
+  // component`), and Vite keeps the source names of the maps plugins return.
+  // Source: gap CC-S2 (plausible cause of #6667, #3828, #2991).
+  // Impact: devtools and error trackers show split code under a separate
+  // `index.tsx?tsr-split=…` file, so breakpoints set in the route file do
+  // not hit in split code.
+  test.fails(
+    'split code maps to the route file (vite)',
+    async () => {
+      expect(namesRouteFile(await splitChunkSources('vite'))).toEqual({
+        routeFile: true,
+        virtualModules: [],
+      })
+    },
+    60_000,
+  )
+})
+
+describe('production builds', () => {
+  /**
+   * A production client build of a route whose exported component cannot
+   * be split, with `NODE_ENV` as given (`null`: unset); returns where the
+   * "will not be code-split" warning and the app's absolute path are.
+   */
+  async function warningPlacement(bundler: Bundler, nodeEnv?: null) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      nodeEnv,
+      files: routeApp(
+        `${head}export function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({
+  component: Page,
+  errorComponent: () => <p>error</p>,
+})
+`,
+        { env: 'client' },
+      ),
+    })
+    return {
+      warning: app.where('will not be code-split'),
+      appPath: app.where(app.root),
+    }
+  }
+
+  // Control for the pin below: with `NODE_ENV=production` exported.
+  test.each(['rspack', 'webpack'] as const)(
+    'a production client bundle has no development warning (%s)',
+    async (bundler) => {
+      expect(await warningPlacement(bundler)).toEqual({
+        warning: 'nowhere',
+        appPath: 'nowhere',
+      })
+    },
+    60_000,
+  )
+
+  // Bug: the "will not be code-split" `console.warn` is injected into the
+  // route module unless the build process's `NODE_ENV` is `production`,
+  // instead of following the bundler's mode as the rest of the code
+  // splitter does. webpack and Rspack set `NODE_ENV` only inside the bundle.
+  // Source: gap CC-P2.
+  // Impact: webpack/Rspack production bundles built from a shell without
+  // `NODE_ENV` log a development warning in every user's console, with the
+  // developer's absolute file path.
+  test.fails.each(['rspack', 'webpack'] as const)(
+    'a production client bundle has no development warning when NODE_ENV is unset (%s)',
+    async (bundler) => {
+      expect(await warningPlacement(bundler, null)).toEqual({
+        warning: 'nowhere',
+        appPath: 'nowhere',
+      })
+    },
+    60_000,
   )
 })
