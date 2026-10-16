@@ -289,6 +289,10 @@
           "to": "guide/not-found-errors"
         },
         {
+          "label": "Error Handling",
+          "to": "guide/error-handling"
+        },
+        {
           "label": "Authenticated Routes",
           "to": "guide/authenticated-routes"
         },
