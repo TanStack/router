@@ -424,10 +424,12 @@ describe('TypeScript-only syntax', () => {
     // would fail to link.
     const route = await loadRoute(
       `${head}import type { User } from './types'
+import type * as Types from './types'
 import { type Settings, defaults } from './settings'
 export type * from './types'
+export type * as types from './types'
 export type { User }
-const current: User | Settings = defaults
+const current: User | Types.Admin | Settings = defaults
 export const Route = createFileRoute('/')({
   loader: () => current,
   component: () => <div>{String(current)}</div>,

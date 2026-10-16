@@ -192,11 +192,13 @@ export const getKind = createIsomorphicFn()
   })
 })
 
-test('accepts a TypeScript type and a value exported under the same name', async () => {
+test('accepts type-only namespace imports and exports, and a type and a value exported under the same name', async () => {
   const client = await compileCode(
     'client',
     `import { createServerFn } from '@tanstack/react-start'
-export type User = { name: string }
+import type * as Start from '@tanstack/react-start'
+export type * as start from '@tanstack/react-start'
+export type User = { name: string; register?: Start.Register }
 function User(name: string): User {
   return { name }
 }

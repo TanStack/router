@@ -637,11 +637,13 @@ export const iso = F.createIsomorphicFn().server(() => db.w()).client(() => 'cli
       output: 'client',
       files: {
         '/test/src/f.ts': `export { createServerFn as csf, createServerOnlyFn as so } from '@tanstack/react-start'
-export type { Register } from '@tanstack/react-start'`,
+export type { Register } from '@tanstack/react-start'
+export type * as types from '@tanstack/react-start'`,
       },
       code: `import { csf, so } from './f'
+import type * as F from './f'
 import { db } from './db.server'
-export const fn = csf().handler(async () => db.x())
+export const fn = csf().handler(async () => db.x() as F.types.Register)
 export const s = so(() => db.y())`,
       imports: ['./f'],
       serverFns: 1,
