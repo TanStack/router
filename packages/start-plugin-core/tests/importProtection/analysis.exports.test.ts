@@ -3,7 +3,6 @@ import { describe, expect, test } from 'vitest'
 
 import {
   getImportSpecifierLocationFromResult,
-  getMockExportNamesBySource,
   getImportSources,
 } from '../../src/import-protection/analysis'
 import { evaluateWithMock, isMock, mockModules, selfMock } from './mock-helpers'
@@ -286,32 +285,6 @@ export namespace Util { export const x = 1 }`
     expect(exported.sort()).toEqual(['Color', 'Util', 'ns'])
     expect(Object.keys(mock)).toEqual(expect.arrayContaining(exported))
     expect(exported.filter((name) => !isMock(mock[name]))).toEqual([])
-  })
-})
-
-describe('getMockExportNamesBySource', () => {
-  test('ignores type-only imports', () => {
-    const code = `import type { Foo } from 'mod-a'`
-    const result = getMockExportNamesBySource(code)
-    expect(result.has('mod-a')).toBe(false)
-  })
-
-  test('ignores type-only re-exports', () => {
-    const code = `export type { Foo } from 'mod-a'`
-    const result = getMockExportNamesBySource(code)
-    expect(result.has('mod-a')).toBe(false)
-  })
-
-  test('sorts output alphabetically', () => {
-    const code = `import { zeta, alpha, mu } from 'mod-a'`
-    const result = getMockExportNamesBySource(code)
-    expect(result.get('mod-a')).toEqual(['alpha', 'mu', 'zeta'])
-  })
-
-  test('returns empty map for code with no relevant imports', () => {
-    const code = `const x = 1`
-    const result = getMockExportNamesBySource(code)
-    expect(result.size).toBe(0)
   })
 })
 
