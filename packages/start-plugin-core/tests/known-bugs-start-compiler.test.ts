@@ -5,11 +5,12 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createServer, isRunnableDevEnvironment, transformWithOxc } from 'vite'
-import { describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import { buildStart } from './build-harness'
 import {
   callReportedServerFns,
+  clientOnlyError,
   compileAll,
   compileCode,
   compileErrorMessage,
@@ -21,6 +22,7 @@ import {
   importSources,
   misplacedServerFnRejection,
   outputs,
+  renderThingTransform,
   serverOnlyError,
   serverOnlyModule,
   settle,
@@ -261,11 +263,13 @@ export const via = base.handler(async () => db.${name}())`,
     },
   )
 
-  // Bug: middleware and isomorphic fns are detected by the `createMiddleware`
-  // / `createIsomorphicFn` text, so a module that only finishes a builder
-  // imported from another module is never compiled.
-  // Impact: the `.server()` implementation and its server-only imports ship
-  // to the client.
+  // Bug: middleware, isomorphic and env-only fns are detected by the
+  // `createMiddleware` / `createIsomorphicFn` / `createServerOnlyFn` text, so
+  // a module that only finishes a builder imported from another module, or
+  // calls a factory re-exported under another name, is never compiled.
+  // Impact: the `.server()` implementation (the server-only implementation,
+  // which the uncompiled factory returns as is) and its server-only imports
+  // ship to the client.
   test.fails.each<{
     name: string
     files: Record<string, string>
@@ -291,8 +295,20 @@ export const iso = createIsomorphicFn()`,
 import { db } from './db.server'
 export const fn = iso.server(() => db.x()).client(() => 'client')`,
     },
+    {
+      // Source: #8504 compiler.test.ts "resolves distinct re-export aliases
+      // without conflating their source bindings" (red on main with the
+      // detection the bundler plugins run)
+      name: 'a renamed createServerOnlyFn re-export',
+      files: {
+        '/test/src/env.ts': `export { createServerOnlyFn as serverOnly } from '@tanstack/react-start'`,
+      },
+      code: `import { serverOnly } from './env'
+import { db } from './db.server'
+export const read = serverOnly(() => db.x())`,
+    },
   ])(
-    'client builds compile $name finished in another module',
+    'client builds compile $name finished or called in another module',
     async ({ files, code }) => {
       const client = (await compileCode('client', code, { files })) ?? code
       expect(client).not.toContain(serverOnly)
@@ -540,6 +556,50 @@ export function make() {
   const inner = createServerFn().handler(async () => db.inner())
   return inner
 }`)
+    },
+  )
+
+  // Bug: the export a re-export forwards is looked up by its local name
+  // (`wrap`) only, so two re-exports of different modules' `wrap` under
+  // distinct names resolve to the same factory.
+  // Impact: here both aliases compile as createClientOnlyFn: the server-only
+  // implementation ships to the client and runs there, and throws on the
+  // server.
+  // Source: #8504 compiler.test.ts "resolves distinct re-export aliases
+  // without conflating their source bindings" (red on main).
+  test.fails(
+    'distinct re-export aliases of two factories keep their own kind',
+    async () => {
+      const files = {
+        '/test/src/barrel.ts': `export { wrap as allowed } from './server'
+export { wrap as denied } from './client'`,
+        '/test/src/server.ts': `export { createServerOnlyFn as wrap } from '@tanstack/start-fn-stubs'`,
+        '/test/src/client.ts': `export { createClientOnlyFn as wrap } from '@tanstack/start-fn-stubs'`,
+      }
+      // The direct createServerOnlyFn call makes the module a candidate of
+      // the compiler's text detection.
+      const code = `import { createServerOnlyFn } from '@tanstack/react-start'
+import { allowed, denied } from './barrel'
+export const a = allowed(() => 'server-value')
+export const b = denied(() => 'client-value')
+export const c = createServerOnlyFn(() => 'direct')`
+      const results: Record<string, Array<unknown>> = {}
+      for (const output of ['client', 'ssr'] as const) {
+        const { a, b } = await evaluateModule(
+          (await compileCode(output, code, { files })) ?? code,
+          {
+            './barrel': {
+              allowed: (fn: unknown) => fn,
+              denied: (fn: unknown) => fn,
+            },
+          },
+        )
+        results[output] = [settle(a), settle(b)]
+      }
+      expect(results).toEqual({
+        client: [serverOnlyError, 'client-value'],
+        ssr: ['server-value', clientOnlyError],
+      })
     },
   )
 
@@ -919,6 +979,49 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)`
       expect((await compileCode('client', code)) ?? code).not.toContain(
         'SERVICE_ROLE_KEY',
       )
+    },
+  )
+})
+
+describe('external import transforms', () => {
+  /** Runtime stubs: each function returns the arguments it got. */
+  const runtimeStubs = {
+    '@example/runtime': {
+      renderThing: (...args: Array<unknown>) => args,
+      other: (...args: Array<unknown>) => ['other', ...args],
+    },
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('loadThing', () => 'loaded')
+    return () => vi.unstubAllGlobals()
+  })
+
+  // Bug: a computed member call of the namespace import of a configured
+  // transform's library (`runtime[key](...)`) is matched by the name of the
+  // key expression, so `key`, a local variable that happens to be named like
+  // the configured export, makes the call a candidate whatever its value.
+  // Impact: the transform edits a call of another function of the library;
+  // with the RSC CSS transform (react-start-rsc), CSS options are passed to
+  // a function that does not expect them.
+  // Source: #8504 compiler.test.ts "only transforms direct calls to
+  // configured bindings" (the other rows pass on main).
+  test.fails(
+    'a transform leaves a computed member call named by a local variable alone',
+    async () => {
+      const code = `import * as runtime from '@example/runtime'
+const Card = () => 'card'
+const renderThing = 'other'
+export const rendered = runtime[renderThing](<Card />)`
+      const { compile } = createStartCompiler({
+        env: 'server',
+        compilerTransforms: [renderThingTransform],
+      })
+      const { rendered } = await evaluateModule(
+        (await compile(code)) ?? code,
+        runtimeStubs,
+      )
+      expect(rendered).toEqual(['other', 'card'])
     },
   )
 })

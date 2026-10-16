@@ -24,6 +24,7 @@ import type {
 import type { ServerFn } from '../src/start-compiler/types'
 import type {
   CompileStartFrameworkOptions,
+  StartCompilerImportTransform,
   StartCompilerPlugin,
   StartCompilerTransformResult,
 } from '../src/types'
@@ -192,6 +193,16 @@ interface StartCompilerOptions {
   /** `serverFnProviderModuleDirectives` */
   directives?: Array<string>
   compilerPlugins?: Array<StartCompilerPlugin>
+  /** External import transforms (`compilerTransforms` of the Start plugin). */
+  compilerTransforms?: Array<StartCompilerImportTransform>
+  /**
+   * Host hooks replacing the default ones (which resolve and load `files`
+   * and the `@tanstack/*` packages).
+   */
+  host?: {
+    resolveId?: (id: string, importer?: string) => Promise<string | null>
+    loadModule?: (id: string) => Promise<void>
+  }
 }
 
 /**
@@ -201,7 +212,7 @@ interface StartCompilerOptions {
  * code and its source map (`null` when the module is left untouched).
  */
 export function createStartCompiler(options: StartCompilerOptions) {
-  const { env, files = {}, framework = 'react' } = options
+  const { env, files = {}, framework = 'react', compilerTransforms } = options
   const serverFns: Record<string, ServerFn> = {}
   const compiler: StartCompiler = new StartCompiler({
     env,
@@ -210,8 +221,10 @@ export function createStartCompiler(options: StartCompilerOptions) {
     framework,
     providerEnvName: 'ssr',
     mode: options.mode ?? 'build',
-    lookupKinds: getLookupKindsForEnv(env),
-    lookupConfigurations: getLookupConfigurationsForEnv(env, framework),
+    lookupKinds: getLookupKindsForEnv(env, { compilerTransforms }),
+    lookupConfigurations: getLookupConfigurationsForEnv(env, framework, {
+      compilerTransforms,
+    }),
     getKnownServerFns: () => ({}),
     devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
       `/@id${extractedFilename.slice(root.length)}`,
@@ -231,6 +244,8 @@ export function createStartCompiler(options: StartCompilerOptions) {
       return file in files ? file : null
     },
     compilerPlugins: options.compilerPlugins,
+    compilerTransforms,
+    ...options.host,
   })
   const transform = async (
     code: string,
@@ -239,7 +254,8 @@ export function createStartCompiler(options: StartCompilerOptions) {
     (await compiler.compile({
       code,
       id,
-      detectedKinds: detectKindsInCode(code, env),
+      // Detected the way the bundler plugins detect them.
+      detectedKinds: detectKindsInCode(code, env, { compilerTransforms }),
     })) ?? null
   const compile = async (code: string, id = moduleId) =>
     (await transform(code, id))?.code ?? null
@@ -336,6 +352,36 @@ export async function compileServer(
     framework: options.framework,
     serverFns: ssr.serverFns,
   }
+}
+
+/**
+ * An external import transform (`compilerTransforms`), shaped like the RSC
+ * CSS transform: on the server, it injects `{ injected: loadThing() }` as
+ * the second argument of each direct call of `renderThing` from
+ * `@example/runtime` given one argument.
+ */
+export const renderThingTransform: StartCompilerImportTransform = {
+  name: 'test-render-option-injection',
+  environment: 'server',
+  imports: [{ libName: '@example/runtime', rootExport: 'renderThing' }],
+  detect: /\brenderThing\b/,
+  transform: (candidates, context) => {
+    const t = context.types
+    for (const candidate of candidates) {
+      const args = candidate.path.node.arguments
+      if (args.length !== 1) {
+        continue
+      }
+      args.push(
+        t.objectExpression([
+          t.objectProperty(
+            t.identifier('injected'),
+            context.parseExpression('loadThing()'),
+          ),
+        ]),
+      )
+    }
+  },
 }
 
 /**
@@ -682,6 +728,18 @@ export function directivePrologue(code: string) {
 export function settle(run: () => unknown) {
   try {
     return run()
+  } catch (error) {
+    return `throws: ${(error as Error).message}`
+  }
+}
+
+/**
+ * The value `run` resolves to, or the message of the error it throws or
+ * rejects with.
+ */
+export async function settleAsync(run: () => unknown) {
+  try {
+    return await run()
   } catch (error) {
     return `throws: ${(error as Error).message}`
   }

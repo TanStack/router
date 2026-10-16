@@ -1,11 +1,22 @@
-import { describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   StartCompiler,
   detectKindsInCode,
   getLookupKindsForEnv,
 } from '../src/start-compiler/compiler'
 import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
-import { evaluateModule } from './regression-helpers'
+import {
+  callProvider,
+  clientOnlyError,
+  compileCode,
+  createStartCompiler,
+  directivePrologue,
+  evaluateModule,
+  renderThingTransform,
+  serverOnlyError,
+  settle,
+  settleAsync,
+} from './regression-helpers'
 import type { LookupConfig, LookupKind } from '../src/start-compiler/compiler'
 import type { StartCompilerImportTransform } from '../src/types'
 
@@ -79,52 +90,9 @@ function createFullCompiler(
   })
 }
 
-function createExternalTransformCompiler() {
-  const compilerTransforms: Array<StartCompilerImportTransform> = [
-    {
-      name: 'test-render-option-injection',
-      environment: 'server',
-      imports: [
-        {
-          libName: '@example/runtime',
-          rootExport: 'renderThing',
-        },
-      ],
-      detect: /\brenderThing\b/,
-      transform: (candidates, context) => {
-        const t = context.types
-        for (const candidate of candidates) {
-          const args = candidate.path.node.arguments
-          if (args.length !== 1) continue
-          args.push(
-            t.objectExpression([
-              t.objectProperty(
-                t.identifier('injected'),
-                context.parseExpression('loadThing()'),
-              ),
-            ]),
-          )
-        }
-      },
-    },
-  ]
-
-  return new StartCompiler({
-    env: 'server',
-    envName: 'server',
-    root: '/test',
-    framework: 'react',
-    providerEnvName: 'server',
-    lookupKinds: getLookupKindsForEnv('server', { compilerTransforms }),
-    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react', {
-      compilerTransforms,
-    }),
-    getKnownServerFns: () => ({}),
-    loadModule: async () => {},
-    resolveId: async (id) => id,
-    mode: 'build',
-    compilerTransforms,
-  })
+/** A Start factory left uncompiled: calling it fails the test. */
+const uncompiled = () => {
+  throw new Error('uncompiled Start factory')
 }
 
 describe('detectKindsInCode', () => {
@@ -327,87 +295,57 @@ describe('detectKindsInCode', () => {
 
 describe('compiler handles multiple files with different kinds', () => {
   test('single compiler instance correctly processes files with different kinds in succession', async () => {
-    const compiler = createFullCompiler('client')
+    const { compile } = createStartCompiler({ env: 'client' })
+    const evaluate = async (code: string, id: string) =>
+      evaluateModule((await compile(code, id))!)
 
     // File 1: ServerFn only
-    const result1 = await compiler.compile({
-      code: `
-        import { createServerFn } from '@tanstack/react-start'
-        export const fn = createServerFn().handler(() => 'hello')
-      `,
-      id: 'file1.ts',
+    const file1 = await evaluate(
+      `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(() => 'hello')`,
+      '/test/src/file1.ts',
+    )
+    expect(file1.fn).toEqual({ rpc: { client: expect.any(String) } })
 
-      detectedKinds: new Set(['ServerFn']),
-    })
-    expect(result1).not.toBeNull()
-    expect(result1!.code).toContain('createClientRpc') // Client should have RPC stub
-    expect(result1!.code).not.toContain('createMiddleware')
-    expect(result1!.code).not.toContain('createIsomorphicFn')
-
-    // File 2: Middleware only
-    const result2 = await compiler.compile({
-      code: `
-        import { createMiddleware } from '@tanstack/react-start'
-        export const mw = createMiddleware().server(({ next }) => {
-          console.log('server only')
-          return next()
-        })
-      `,
-      id: 'file2.ts',
-
-      detectedKinds: new Set(['Middleware']),
-    })
-    expect(result2).not.toBeNull()
-    // .server() should be stripped on client
-    expect(result2!.code).not.toContain('console.log')
-    expect(result2!.code).not.toContain('createServerFn')
+    // File 2: Middleware only. The runtime stub's `.server()` throws, so the
+    // module only evaluates without it.
+    const file2 = await evaluate(
+      `import { createMiddleware } from '@tanstack/react-start'
+export const mw = createMiddleware().server(({ next }) => {
+  console.log('server only')
+  return next()
+})`,
+      '/test/src/file2.ts',
+    )
+    expect(file2.mw).toBeDefined()
 
     // File 3: IsomorphicFn only
-    const result3 = await compiler.compile({
-      code: `
-        import { createIsomorphicFn } from '@tanstack/react-start'
-        export const fn = createIsomorphicFn()
-          .client(() => 'client-value')
-          .server(() => 'server-value')
-      `,
-      id: 'file3.ts',
-
-      detectedKinds: new Set(['IsomorphicFn']),
-    })
-    expect(result3).not.toBeNull()
-    // Client should have client implementation
-    expect(result3!.code).toContain('client-value')
-    expect(result3!.code).not.toContain('server-value')
+    const file3 = await evaluate(
+      `import { createIsomorphicFn } from '@tanstack/react-start'
+export const fn = createIsomorphicFn()
+  .client(() => 'client-value')
+  .server(() => 'server-value')`,
+      '/test/src/file3.ts',
+    )
+    expect(file3.fn()).toBe('client-value')
 
     // File 4: ServerOnlyFn only
-    const result4 = await compiler.compile({
-      code: `
-        import { createServerOnlyFn } from '@tanstack/react-start'
-        export const fn = createServerOnlyFn(() => 'server only value')
-      `,
-      id: 'file4.ts',
-
-      detectedKinds: new Set(['ServerOnlyFn']),
-    })
-    expect(result4).not.toBeNull()
-    // Client should have error throw
-    expect(result4!.code).toContain('throw new Error')
-    expect(result4!.code).not.toContain('server only value')
+    const file4 = await evaluate(
+      `import { createServerOnlyFn } from '@tanstack/react-start'
+export const fn = createServerOnlyFn(() => 'server only value')`,
+      '/test/src/file4.ts',
+    )
+    expect(settle(file4.fn)).toBe(serverOnlyError)
 
     // File 5: Mix of ServerFn and IsomorphicFn
-    const result5 = await compiler.compile({
-      code: `
-        import { createServerFn, createIsomorphicFn } from '@tanstack/react-start'
-        export const serverFn = createServerFn().handler(() => 'hello')
-        export const isoFn = createIsomorphicFn().client(() => 'client-iso')
-      `,
-      id: 'file5.ts',
-
-      detectedKinds: new Set(['ServerFn', 'IsomorphicFn']),
-    })
-    expect(result5).not.toBeNull()
-    expect(result5!.code).toContain('createClientRpc') // ServerFn RPC
-    expect(result5!.code).toContain('client-iso') // IsomorphicFn client impl
+    const file5 = await evaluate(
+      `import { createServerFn, createIsomorphicFn } from '@tanstack/react-start'
+export const serverFn = createServerFn().handler(() => 'hello')
+export const isoFn = createIsomorphicFn().client(() => 'client-iso')`,
+      '/test/src/file5.ts',
+    )
+    expect(file5.serverFn).toEqual({ rpc: { client: expect.any(String) } })
+    expect(file5.isoFn()).toBe('client-iso')
   })
 
   test('compiler works correctly when processing same kind multiple times', async () => {
@@ -459,57 +397,92 @@ describe('compiler handles multiple files with different kinds', () => {
 })
 
 describe('compiler handles external import transforms', () => {
-  test('runs configured direct-call transforms before server function extraction', async () => {
-    const compiler = createExternalTransformCompiler()
+  /** `@example/runtime` stub: `renderThing` returns the arguments it got. */
+  const runtimeStubs = {
+    '@example/runtime': {
+      renderThing: (...args: Array<unknown>) => args,
+    },
+  }
+  /** The argument the test transform injects (`{ injected: loadThing() }`). */
+  const injected = { injected: 'loaded' }
 
-    const result = await compiler.compile({
-      code: `
+  beforeEach(() => {
+    // The injected expression reads a global, like the RSC CSS transform's
+    // runtime import would.
+    vi.stubGlobal('loadThing', () => 'loaded')
+    return () => vi.unstubAllGlobals()
+  })
+
+  /**
+   * Compiles `code` for the server with `renderThingTransform`, detected the
+   * way the bundler plugins detect it. Returns the code, or `null` when the
+   * module is left untouched.
+   */
+  function compileWithTransform(
+    code: string,
+    id = '/test/src/routes/card.tsx',
+    options: Omit<
+      Parameters<typeof createStartCompiler>[0],
+      'env' | 'compilerTransforms'
+    > = {},
+  ) {
+    return createStartCompiler({
+      ...options,
+      env: 'server',
+      compilerTransforms: [renderThingTransform],
+    }).compile(code, id)
+  }
+
+  test('runs configured direct-call transforms before server function extraction', async () => {
+    const id = '/test/src/routes/card.tsx'
+    const code = `
         import { createServerFn } from '@tanstack/react-start'
         import { renderThing as renderAlias } from '@example/runtime'
 
+        const ServerCard = () => 'card'
         export const getComponent = createServerFn({ method: 'GET' }).handler(async () => {
           return renderAlias(<ServerCard />)
         })
-      `,
-      id: '/test/src/routes/card.tsx?tss-serverfn-split',
-    })
+      `
 
-    expect(result).not.toBeNull()
-    expect(result!.code).toContain('injected: loadThing()')
-    expect(result!.code).toContain('renderAlias(<ServerCard />,')
+    const provider = await compileWithTransform(
+      code,
+      `${id}?tss-serverfn-split`,
+    )
+    const ssr = await compileWithTransform(code, id)
+
+    expect(provider).not.toBeNull()
+    expect(
+      await callProvider(
+        { id, ssr: ssr ?? code, provider: provider! },
+        'getComponent',
+        runtimeStubs,
+      ),
+    ).toEqual(['card', injected])
   })
 
   test('runs configured direct-call transforms for namespace imports', async () => {
-    const compiler = createExternalTransformCompiler()
-
-    const result = await compiler.compile({
-      code: `
+    const result = await compileWithTransform(`
         import * as runtime from '@example/runtime'
 
+        const ServerCard = () => 'card'
         export const component = runtime.renderThing(<ServerCard />)
-      `,
-      id: '/test/src/routes/card.tsx',
-    })
+      `)
 
     expect(result).not.toBeNull()
-    expect(result!.code).toContain('injected: loadThing()')
-    expect(result!.code).toContain('runtime.renderThing(<ServerCard />,')
+    const { component } = await evaluateModule(result!, runtimeStubs)
+    expect(component).toEqual(['card', injected])
   })
 
   test('does not run external transforms for shadowed import names', async () => {
-    const compiler = createExternalTransformCompiler()
-
-    const result = await compiler.compile({
-      code: `
+    const result = await compileWithTransform(`
         import { renderThing } from '@example/runtime'
 
         export function component() {
           const renderThing = (node: React.ReactNode) => node
           return renderThing(<LocalCard />)
         }
-      `,
-      id: '/test/src/routes/card.tsx',
-    })
+      `)
 
     expect(result).toBeNull()
   })
@@ -547,7 +520,7 @@ describe('compiler handles external import transforms', () => {
       // hoist/var-hoist-block.js
       name: 'after a var in a nested block shadows it',
       body: `if (Math.random() < 2) {
-    var renderThing = (element) => element
+    var renderThing = (element) => [element]
   }
   return renderThing(<Card />)`,
       transformed: false,
@@ -557,7 +530,7 @@ describe('compiler handles external import transforms', () => {
       name: 'before a hoisted function declaration shadows it',
       body: `return renderThing(<Card />)
   function renderThing(element) {
-    return element
+    return [element]
   }`,
       transformed: false,
     },
@@ -565,7 +538,7 @@ describe('compiler handles external import transforms', () => {
       // scope/catch-param.js
       name: 'in a catch block whose parameter shadows it',
       body: `try {
-    throw (element) => element
+    throw (element) => [element]
   } catch (renderThing) {
     return renderThing(<Card />)
   }`,
@@ -574,27 +547,154 @@ describe('compiler handles external import transforms', () => {
   ])(
     'runs external transforms on a call $name only if it reads the import',
     async ({ params = '', body, transformed }) => {
-      const compiler = createExternalTransformCompiler()
-
-      // The top-level call keeps the module transformed in every row.
-      const result = await compiler.compile({
-        code: `
+      // The top-level call keeps the module transformed in every row. Local
+      // shadowing functions return their argument alone.
+      const result = await compileWithTransform(`
         import { renderThing } from '@example/runtime'
+        const Card = () => 'card'
         export const transformed = renderThing(<Card />)
         export function render(${params}) {
           ${body}
         }
-      `,
-        id: '/test/src/routes/card.tsx',
-      })
+      `)
 
       expect(result).not.toBeNull()
-      const renderStart = result!.code.indexOf('function render(')
-      expect(renderStart).toBeGreaterThanOrEqual(0)
-      const render = result!.code.slice(renderStart)
-      expect(render.includes('injected: loadThing()')).toBe(transformed)
+      const { render } = await evaluateModule(result!, runtimeStubs)
+      expect(render()).toEqual(transformed ? ['card', injected] : ['card'])
     },
   )
+
+  // Source: #8504 compiler.test.ts "only transforms direct calls to
+  // configured bindings". A computed member named by a local variable is
+  // pinned in known-bugs-start-compiler.test.ts.
+  test.each([
+    {
+      name: '.bind()',
+      code: `import { renderThing } from '@example/runtime'
+const Card = () => 'card'
+const component = renderThing.bind(null)
+export const rendered = component(<Card />)`,
+      rendered: ['card'],
+    },
+    {
+      name: '.call()',
+      code: `import { renderThing } from '@example/runtime'
+export const rendered = renderThing.call(null)`,
+      rendered: [],
+    },
+    {
+      name: 'a parameter shadowing the namespace import',
+      code: `import * as runtime from '@example/runtime'
+const Card = () => 'card'
+const component = (runtime) => runtime.renderThing(<Card />)
+export const rendered = component({ renderThing: (...args) => ['local', ...args] })`,
+      rendered: ['local', 'card'],
+    },
+  ])(
+    'leaves the arguments of a call through $name alone',
+    async ({ code, rendered }) => {
+      const output = (await compileWithTransform(code)) ?? code
+      expect((await evaluateModule(output, runtimeStubs)).rendered).toEqual(
+        rendered,
+      )
+    },
+  )
+
+  // Source: #8504 compiler.test.ts "does not load unrelated virtual runtime
+  // imports". A call named like a configured transform but imported from
+  // another module is not transformed, and a module the host cannot load (a
+  // virtual runtime module has no file behind it, and the Rsbuild host loads
+  // compiler dependencies from the input file system) does not fail the
+  // build.
+  test.each([
+    'export const component = renderThing(<Card />)',
+    'export function component() { return renderThing(<Card />) }',
+    'export const component = runtime.renderThing(<Card />)',
+    'export function component() { return (runtime).renderThing(<Card />) }',
+  ])('leaves unrelated virtual runtime imports alone: %s', async (body) => {
+    const code = `import { renderThing } from 'virtual:rsc-runtime'
+import * as runtime from 'virtual:rsc-runtime'
+${body}`
+
+    const result = await compileWithTransform(code, '/test/src/runtime.tsx', {
+      host: {
+        resolveId: async (id) => `\0${id}`,
+        loadModule: async (id) => {
+          throw new Error(`cannot load ${id}`)
+        },
+      },
+    })
+
+    expect(result ?? code).not.toContain('loadThing')
+  })
+
+  // Source: #8504 compiler.test.ts "transforms configured aliases without
+  // tracing unrelated runtime calls"
+  test('transforms configured aliases next to an unrelated call of the same name', async () => {
+    const result = await compileWithTransform(
+      `
+        import { renderThing as renderCard } from '@example/runtime'
+        import * as configured from '@example/runtime'
+        import { renderThing } from 'virtual:rsc-runtime'
+        const Card = () => 'card'
+        const OtherCard = () => 'other'
+        const ForeignCard = () => 'foreign'
+        export const foreign = renderThing(<ForeignCard />)
+        export function component() {
+          return [renderCard(<Card />), (configured).renderThing(<OtherCard />)]
+        }
+      `,
+      '/test/src/card.tsx',
+      // A host that loads the unrelated module, like Vite's.
+      {
+        files: {
+          'virtual:rsc-runtime': `export const renderThing = (...args) => args`,
+        },
+      },
+    )
+
+    expect(result).not.toBeNull()
+    const { foreign, component } = await evaluateModule(result!, {
+      ...runtimeStubs,
+      'virtual:rsc-runtime': {
+        renderThing: (...args: Array<unknown>) => args,
+      },
+    })
+    expect({ foreign, component: component() }).toEqual({
+      foreign: ['foreign'],
+      component: [
+        ['card', injected],
+        ['other', injected],
+      ],
+    })
+  })
+
+  // A `g` flag makes `RegExp#test` stateful (`lastIndex`); detection must
+  // not depend on the modules detected before.
+  test('a transform whose detect pattern has the g flag runs for every module it detects', async () => {
+    const calls: Array<string> = []
+    const { compile } = createStartCompiler({
+      env: 'server',
+      compilerTransforms: [
+        {
+          name: 'global-detect',
+          environment: 'server',
+          imports: [{ libName: '@example/runtime', rootExport: 'renderThing' }],
+          detect: /\brenderThing\b/g,
+          transform: (candidates, context) => {
+            calls.push(`${context.id}:${candidates.length}`)
+          },
+        },
+      ],
+    })
+    const code = `import { renderThing } from '@example/runtime'
+export const rendered = renderThing()`
+
+    await compile(code, '/test/src/a.ts')
+    await compile(code, '/test/src/b.ts')
+
+    expect(calls).toEqual(['/test/src/a.ts:1', '/test/src/b.ts:1'])
+  })
 })
 
 describe('server function provider module directives', () => {
@@ -636,35 +736,19 @@ describe('server function provider module directives', () => {
   `
 
   test('does not add module directives without compiler configuration', async () => {
-    const compiler = createFullCompiler('server')
+    const provider = await compileCode('provider', code)
 
-    const result = await compiler.compile({
-      code,
-      id: '/test/src/routes/message.tsx?tss-serverfn-split',
-    })
-
-    expect(result).not.toBeNull()
-    expect(result!.code).not.toContain('"use server-entry"')
+    expect(provider).not.toBeNull()
+    expect(directivePrologue(provider!)).not.toContain('use server-entry')
   })
 
   test('adds configured module directives to provider files only', async () => {
-    const compiler = createFullCompiler('server', {
-      serverFnProviderModuleDirectives: ['use server-entry'],
-    })
+    const options = { directives: ['use server-entry'] }
+    const provider = await compileCode('provider', code, options)
+    const caller = await compileCode('ssr', code, options)
 
-    const providerResult = await compiler.compile({
-      code,
-      id: '/test/src/routes/message.tsx?tss-serverfn-split',
-    })
-    const callerResult = await compiler.compile({
-      code,
-      id: '/test/src/routes/message.tsx',
-    })
-
-    expect(providerResult).not.toBeNull()
-    expect(providerResult!.code).toContain('"use server-entry";')
-    expect(callerResult).not.toBeNull()
-    expect(callerResult!.code).not.toContain('"use server-entry"')
+    expect(directivePrologue(provider!)).toContain('use server-entry')
+    expect(directivePrologue(caller!)).not.toContain('use server-entry')
   })
 })
 
@@ -724,26 +808,24 @@ describe('edge cases for detectedKinds', () => {
   })
 })
 
-test('ingestModule handles empty code gracefully', () => {
-  const compiler = new StartCompiler({
+test('a server fn module importing an empty module compiles', async () => {
+  // `./empty` holds only whitespace, as a module of TypeScript types erased
+  // by an earlier transform does. Resolving `base` (a builder in the shape of
+  // a server fn) loads it.
+  const { compile, serverFns } = createStartCompiler({
     env: 'client',
-    ...getDefaultTestOptions('client'),
-    lookupKinds: new Set(['ServerFn']),
-    lookupConfigurations: [],
-    getKnownServerFns: () => ({}),
-    loadModule: async () => {},
-    resolveId: async (id) => id,
+    files: { '/test/src/empty.ts': '   \n\t  ' },
   })
 
-  // Should not throw when ingesting empty module
-  expect(() => {
-    compiler.ingestModule({ code: '', id: 'empty-types.ts' })
-  }).not.toThrow()
+  const result =
+    await compile(`import { createServerFn } from '@tanstack/react-start'
+import { base } from './empty'
+export const other = base.handler(async () => 'not a server fn')
+export const fn = createServerFn().handler(async () => 'server-secret')`)
 
-  // Should also handle whitespace-only modules
-  expect(() => {
-    compiler.ingestModule({ code: '   \n\t  ', id: 'whitespace.ts' })
-  }).not.toThrow()
+  expect(result).not.toBeNull()
+  expect(result).not.toContain('server-secret')
+  expect(Object.keys(serverFns)).toHaveLength(1)
 })
 
 test('compile caches modules without detected candidates for transitive importer traversal', async () => {
@@ -847,58 +929,40 @@ describe('calling result of createServerOnlyFn/createClientOnlyFn', () => {
 
   test('re-exported createServerOnlyFn still resolves correctly', async () => {
     // Ensure the fix doesn't break re-export chain resolution (issue #6583)
-    const virtualModules: Record<string, string> = {
-      '@tanstack/start-client-core': `
-        export { createServerOnlyFn } from '@tanstack/start-fn-stubs'
-      `,
-    }
-
-    const compiler: StartCompiler = new StartCompiler({
-      env: 'server',
-      envName: 'ssr',
-      root: '/test',
-      framework: 'react' as const,
-      providerEnvName: 'ssr',
-      lookupKinds: new Set(['ServerOnlyFn', 'ClientOnlyFn']),
-      lookupConfigurations: [],
-      getKnownServerFns: () => ({}),
-      loadModule: async (id) => {
-        const code = virtualModules[id]
-        if (code) {
-          compiler.ingestModule({ code, id })
-        }
-      },
-      resolveId: async (id) => {
-        return virtualModules[id] ? id : null
+    const { compile } = createStartCompiler({
+      env: 'client',
+      files: {
+        '@tanstack/start-client-core': `export { createServerOnlyFn } from '@tanstack/start-fn-stubs'`,
       },
     })
 
-    const code = `
-      import { createServerOnlyFn } from '@tanstack/start-client-core'
-      const myFn = createServerOnlyFn(() => 'server-only-value')
-    `
+    const result =
+      await compile(`import { createServerOnlyFn } from '@tanstack/start-client-core'
+export const myFn = createServerOnlyFn(() => 'server-only-value')`)
 
-    const result = await compiler.compile({ code, id: 'reexport-test.ts' })
     expect(result).not.toBeNull()
-    expect(result!.code).toContain('server-only-value')
+    expect(result).not.toContain('server-only-value')
+    const { myFn } = await evaluateModule(result!, {
+      '@tanstack/start-client-core': { createServerOnlyFn: uncompiled },
+    })
+    expect(settle(myFn)).toBe(serverOnlyError)
   })
 
   test('aliased factory is still detected as a candidate', async () => {
     // `const createSO = createServerOnlyFn` is an alias, not an invocation.
     // `createSO(() => ...)` should still be treated as ServerOnlyFn.
-    const compiler = createFullCompiler('server')
+    const result = await compileCode(
+      'client',
+      `import { createServerOnlyFn } from '@tanstack/react-start'
 
-    const code = `
-      import { createServerOnlyFn } from '@tanstack/react-start'
+const createSO = createServerOnlyFn
+export const myFn = createSO(() => 'aliased-server-only')`,
+    )
 
-      const createSO = createServerOnlyFn
-      const myFn = createSO(() => 'aliased-server-only')
-    `
-
-    const result = await compiler.compile({ code, id: 'alias-test.ts' })
     expect(result).not.toBeNull()
-    // The factory should be unwrapped on server env
-    expect(result!.code).toContain('aliased-server-only')
+    expect(result).not.toContain('aliased-server-only')
+    const { myFn } = await evaluateModule(result!)
+    expect(settle(myFn)).toBe(serverOnlyError)
   })
 })
 
@@ -972,53 +1036,65 @@ describe('re-export chain resolution', () => {
   const testCases: Array<{
     env: 'client' | 'server'
     fn: string
-    shouldContain: Array<string>
-    shouldNotContain: Array<string>
+    /** What the evaluated export returns, or the error it throws. */
+    value: string
+    /** Implementation code the output must not contain. */
+    absent?: string
   }> = [
     {
       env: 'client',
       fn: 'createIsomorphicFn',
-      shouldContain: ['client-theme'],
-      shouldNotContain: ['server-theme'],
+      value: 'client-theme',
+      absent: 'server-theme',
     },
     {
       env: 'server',
       fn: 'createIsomorphicFn',
-      shouldContain: ['server-theme'],
-      shouldNotContain: ['client-theme'],
+      value: 'server-theme',
+      absent: 'client-theme',
     },
     {
       env: 'client',
       fn: 'createClientOnlyFn',
-      shouldContain: ['client only initialization'],
-      shouldNotContain: [],
+      value: 'initialized',
     },
     {
       env: 'server',
       fn: 'createClientOnlyFn',
-      shouldContain: ['throw new Error'],
-      shouldNotContain: ['client only initialization'],
+      value: clientOnlyError,
+      absent: 'client only initialization',
     },
   ]
 
   test.each(testCases)(
     'resolves $fn via re-export chain on $env',
-    async ({ env, shouldContain, shouldNotContain }) => {
-      const compiler = createCompilerWithVirtualModules(env)
+    async ({ env, fn, value, absent }) => {
+      const { compile } = createStartCompiler({
+        env,
+        files: {
+          '@tanstack/start-client-core':
+            virtualModules['@tanstack/start-client-core']!,
+        },
+      })
       const code = virtualModules['@third-party/lib']!
 
-      const result = await compiler.compile({
-        code,
-        id: '@third-party/lib',
-      })
+      const result = await compile(code, '@third-party/lib')
 
       expect(result).not.toBeNull()
-      for (const str of shouldContain) {
-        expect(result!.code).toContain(str)
+      if (absent) {
+        expect(result).not.toContain(absent)
       }
-      for (const str of shouldNotContain) {
-        expect(result!.code).not.toContain(str)
-      }
+      const module = await evaluateModule(result!, {
+        '@tanstack/start-client-core': {
+          createIsomorphicFn: uncompiled,
+          createClientOnlyFn: uncompiled,
+        },
+      })
+      const exported =
+        fn === 'createIsomorphicFn'
+          ? module.getThemeData
+          : module.initClientFeature
+      expect(settle(exported)).toBe(value)
     },
   )
 
@@ -1174,64 +1250,27 @@ describe('re-export chain resolution', () => {
   })
 
   test('invalidateModule clears cached module resolution state', async () => {
-    const virtualModules: Record<string, string> = {
-      './factory': `
-        export { createServerOnlyFn } from './factory-inner'
-      `,
-      './factory-inner': `
-        export { createServerOnlyFn } from '@tanstack/start-fn-stubs'
-      `,
+    const files: Record<string, string> = {
+      '/test/src/factory.ts': `export { createServerOnlyFn } from './factory-inner'`,
+      '/test/src/factory-inner.ts': `export { createServerOnlyFn } from '@tanstack/start-fn-stubs'`,
+    }
+    const { compiler, compile } = createStartCompiler({ env: 'server', files })
+    const source = `import { createServerOnlyFn } from './factory'
+export const myFn = createServerOnlyFn(() => 'server-only-value')`
+    const run = async () => {
+      const { myFn } = await evaluateModule((await compile(source)) ?? source, {
+        './factory': { createServerOnlyFn: uncompiled },
+      })
+      return settle(myFn)
     }
 
-    const compiler: StartCompiler = new StartCompiler({
-      env: 'server',
-      envName: 'ssr',
-      root: '/test',
-      framework: 'react' as const,
-      providerEnvName: 'ssr',
-      lookupKinds: new Set(['ServerOnlyFn', 'ClientOnlyFn']),
-      lookupConfigurations: [],
-      getKnownServerFns: () => ({}),
-      loadModule: async (id) => {
-        const code = virtualModules[id]
-        if (code) {
-          compiler.ingestModule({ code, id })
-        }
-      },
-      resolveId: async (id) => {
-        return virtualModules[id] ? id : null
-      },
-      mode: 'build',
-    })
+    expect(await run()).toBe('server-only-value')
 
-    const source = `
-      import { createServerOnlyFn } from './factory'
-      const myFn = createServerOnlyFn(() => 'server-only-value')
-    `
+    files['/test/src/factory-inner.ts'] =
+      `export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/start-fn-stubs'`
+    compiler.invalidateModule('/test/src/factory-inner.ts')
 
-    const initialResult = await compiler.compile({
-      id: 'transitive-invalidation-test.ts',
-      code: source,
-    })
-
-    expect(initialResult).not.toBeNull()
-    expect(initialResult!.code).toContain('server-only-value')
-    expect(initialResult!.code).not.toContain('throw new Error')
-
-    virtualModules['./factory-inner'] = `
-      export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/start-fn-stubs'
-    `
-
-    expect(compiler.invalidateModule('./factory-inner')).toBe(true)
-
-    const updatedResult = await compiler.compile({
-      id: 'transitive-invalidation-test.ts',
-      code: source,
-    })
-
-    expect(updatedResult).not.toBeNull()
-    expect(updatedResult!.code).toContain('throw new Error')
-    expect(updatedResult!.code).not.toContain('server-only-value')
+    expect(await run()).toBe(clientOnlyError)
   })
 
   test('invalidateModule preserves root lookup metadata while clearing importer memoization', async () => {
@@ -1304,78 +1343,46 @@ describe('re-export chain resolution', () => {
     expect(updatedResult!.code).not.toContain('server-only-value')
   })
 
-  test('recompiles aliased env-only direct calls when only server function syntax is detected', async () => {
-    const virtualModules: Record<string, string> = {
-      './factory': `
-        export { createServerOnlyFn } from '@tanstack/start-fn-stubs'
-      `,
+  // The source module only mentions createServerFn: the factory module
+  // renames createServerOnlyFn, so the kind of the aliased call is only found
+  // by resolving it.
+  test('recompiles aliased env-only calls in a provider whose source only mentions createServerFn', async () => {
+    const files: Record<string, string> = {
+      '/test/src/factory.ts': `export { createServerOnlyFn as createServerFnHmrFactory } from '@tanstack/start-fn-stubs'`,
     }
+    const id = '/test/src/aliased-env-only-server-fn.ts'
+    const source = `import { createServerFn } from '@tanstack/react-start'
+import { createServerFnHmrFactory } from './factory'
 
-    const compiler: StartCompiler = new StartCompiler({
+const serverOnlyImpl = createServerFnHmrFactory(() => 'server-only-value')
+
+export const serverFn = createServerFn().handler(async () => {
+  return serverOnlyImpl()
+})`
+    const { compiler, compile } = createStartCompiler({
       env: 'server',
-      envName: 'ssr',
-      root: '/test',
-      framework: 'react' as const,
-      providerEnvName: 'ssr',
-      mode: 'build',
-      lookupKinds: new Set(['ServerFn', 'ServerOnlyFn', 'ClientOnlyFn']),
-      lookupConfigurations: [
-        {
-          libName: '@tanstack/react-start',
-          rootExport: 'createServerFn',
-          kind: 'Root',
-        },
-      ],
-      getKnownServerFns: () => ({}),
-      loadModule: async (id) => {
-        const code = virtualModules[id]
-        if (code) {
-          compiler.ingestModule({ code, id })
-        }
-      },
-      resolveId: async (id) => {
-        return virtualModules[id] ? id : null
-      },
+      files,
     })
+    const callServerFn = async () =>
+      settleAsync(async () =>
+        callProvider(
+          {
+            id,
+            ssr: (await compile(source, id)) ?? source,
+            provider: (await compile(source, `${id}?tss-serverfn-split`))!,
+          },
+          'serverFn',
+          { './factory': { createServerFnHmrFactory: uncompiled } },
+        ),
+      )
 
-    const source = `
-      import { createServerFn } from '@tanstack/react-start'
-      import { createServerOnlyFn as createServerFnHmrFactory } from './factory'
+    expect(await callServerFn()).toBe('server-only-value')
 
-      const serverOnlyImpl = createServerFnHmrFactory(() => 'server-only-value')
+    files['/test/src/factory.ts'] =
+      `export { createClientOnlyFn as createServerFnHmrFactory } from '@tanstack/start-fn-stubs'`
+    compiler.invalidateModule('/test/src/factory.ts')
 
-      export const serverFn = createServerFn().handler(async () => {
-        return serverOnlyImpl()
-      })
-    `
-
-    const providerId = 'aliased-env-only-server-fn.ts?tss-serverfn-split'
-
-    const initialResult = await compiler.compile({
-      id: providerId,
-      code: source,
-      detectedKinds: new Set(['ServerFn']),
-    })
-
-    expect(initialResult).not.toBeNull()
-    expect(initialResult!.code).toContain('server-only-value')
-    expect(initialResult!.code).not.toContain('throw new Error')
-
-    virtualModules['./factory'] = `
-      export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/start-fn-stubs'
-    `
-
-    expect(compiler.invalidateModule('./factory')).toBe(true)
-
-    const updatedResult = await compiler.compile({
-      id: providerId,
-      code: source,
-      detectedKinds: new Set(['ServerFn']),
-    })
-
-    expect(updatedResult).not.toBeNull()
-    expect(updatedResult!.code).toContain('throw new Error')
-    expect(updatedResult!.code).not.toContain('server-only-value')
+    expect(await callServerFn()).toBe(clientOnlyError)
   })
 })
 
@@ -1500,6 +1507,11 @@ export const b = early(2)
 export const label = 'idle'`,
       id: '/test/src/transforms.ts',
     })
-    expect(calls).toEqual(['early:1', 'late:1'])
+    // A transform detected in the code but never called may run with no
+    // candidates or not at all.
+    expect(calls.filter((call) => !call.endsWith(':0'))).toEqual([
+      'early:1',
+      'late:1',
+    ])
   })
 })
