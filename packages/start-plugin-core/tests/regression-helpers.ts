@@ -1316,6 +1316,18 @@ export async function loadClientModule(
 }
 
 /**
+ * The children were split and rendered through their chunks: the client
+ * created at least one lazy chunk component (`loadClientModule`), and every
+ * one rendered.
+ */
+export function expectRenderedThroughChunks(
+  lazyChunks: Array<{ rendered: boolean }>,
+) {
+  expect(lazyChunks.length).toBeGreaterThan(0)
+  expect(lazyChunks.filter((chunk) => !chunk.rendered)).toEqual([])
+}
+
+/**
  * Renders `code` compiled for `env` and records the boundary id (`h`) each
  * `<Hydrate>` renders with: on the server the id in its markup, on the client
  * the id it hydrates with (chunks loaded, `loadClientModule`). `stubs` are

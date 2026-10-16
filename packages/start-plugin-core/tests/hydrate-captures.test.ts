@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { loadClientModule } from './regression-helpers'
+import {
+  expectRenderedThroughChunks,
+  loadClientModule,
+} from './regression-helpers'
 import type { ModuleStub } from './regression-helpers'
 
 // `<Hydrate>` moves its children into a lazily loaded chunk on the client.
@@ -14,15 +17,20 @@ const head = `import { Hydrate } from '@tanstack/react-start'\n`
 
 /**
  * Compiles `code` for the client, loads it with its chunks (every module
- * valid, `loadClientModule`) and renders `Page(props)`.
+ * valid, `loadClientModule`) and renders `Page(props)`, which must render its
+ * children through their chunks.
  */
 async function renderPage(
   code: string,
   props?: Record<string, unknown>,
   stubs?: Record<string, ModuleStub>,
 ) {
-  const { module } = await loadClientModule(`${head}${code}`, { stubs })
-  return module.Page(props)
+  const { module, lazyChunks } = await loadClientModule(`${head}${code}`, {
+    stubs,
+  })
+  const html = module.Page(props)
+  expectRenderedThroughChunks(lazyChunks)
+  return html
 }
 
 test.each<{
@@ -267,12 +275,13 @@ describe('names the compiler generates', () => {
   // references"
   test('client: a global named like a generated binding keeps its value', async () => {
     ;(globalThis as { _H0?: unknown })._H0 = 'g'
-    const { module } = await loadClientModule(
+    const { module, lazyChunks } = await loadClientModule(
       `${head}export const before = _H0
 export function Page() { return <Hydrate><div /></Hydrate> }`,
     )
     expect(module.before).toBe('g')
     expect(module.Page()).toBe('[<div></div>]')
+    expectRenderedThroughChunks(lazyChunks)
   })
 
   // Source: Qwik optimizer example_qwik_conflict, import_collision_with_renaming

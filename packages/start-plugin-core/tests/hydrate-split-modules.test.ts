@@ -9,6 +9,7 @@ import {
   createStartCompiler,
   directivePrologue,
   evaluateHydrateParent,
+  expectRenderedThroughChunks,
   evaluateModule,
   getChunkComponent,
   getChunkIds,
@@ -503,10 +504,12 @@ describe('the split chunk', () => {
     async ({ text, rendered }) => {
       const jsx = await evaluateModule(`export const text = <>${text}</>`)
       expect(jsx.text).toBe(rendered)
-      const { module } = await loadClientModule(`${head}export function Page() {
+      const { module, lazyChunks } =
+        await loadClientModule(`${head}export function Page() {
   return <Hydrate>${text}</Hydrate>
 }`)
       expect(module.Page()).toBe(`[${rendered}]`)
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -522,7 +525,7 @@ const __jsx = (type, props, ...children) => {
   return '<' + type + '>' + click + text + '</' + type + '>'
 }
 `
-    const { module } = await loadClientModule(
+    const { module, lazyChunks } = await loadClientModule(
       `${head}const letters = ['a', 'b']
 export function Page() {
   return <Hydrate><ul onClick={() => { return 'click' }}>{letters.map((letter) => { const upper = letter.toUpperCase(); return <li>{upper}</li> })}{(function () { return 'iife' })()}</ul></Hydrate>
@@ -530,6 +533,7 @@ export function Page() {
       { runtime },
     )
     expect(module.Page()).toBe('[<ul>(click)<li>A</li><li>B</li>iife</ul>]')
+    expectRenderedThroughChunks(lazyChunks)
   })
 
   // Leaving such a boundary unsplit is valid too.
@@ -769,11 +773,13 @@ export function Page() {
   // A let the children only write is pinned in known-bugs-hydrate.test.ts.
   // Source: Qwik optimizer should_preserve_let_when_migrated_into_segment
   test('client: a module-level let only the children use stays mutable', async () => {
-    const { module } = await loadClientModule(`${head}let renders = 0
+    const { module, lazyChunks } =
+      await loadClientModule(`${head}let renders = 0
 export function Page() {
   return <Hydrate><p>{++renders}</p></Hydrate>
 }`)
     expect([module.Page(), module.Page()]).toEqual(['[<p>1</p>]', '[<p>2</p>]'])
+    expectRenderedThroughChunks(lazyChunks)
   })
 
   // Source: Qwik optimizer should_keep_non_migrated_binding_from_shared_destructuring_declarator
@@ -828,7 +834,7 @@ export function App() {
   // Source: Qwik optimizer example_exports (#8504
   // hydrate-split-modules.test.ts)
   test('client: exported declarations of every form used by the children render', async () => {
-    const { module } =
+    const { module, lazyChunks } =
       await loadClientModule(`${head}export const [a, { b }] = ['a', { b: 'b' }]
 const exp1 = 'e1'
 const internal = 'i'
@@ -839,6 +845,7 @@ export function Page() {
   return <Hydrate><p>{[a, b, exp1, internal, foo(), Bar.id].join('|')}</p></Hydrate>
 }`)
     expect(module.Page()).toBe('[<p>a|b|e1|i|foo|bar</p>]')
+    expectRenderedThroughChunks(lazyChunks)
   })
 
   // The children render a component the route file exports; the route is
@@ -847,7 +854,7 @@ export function Page() {
   // needed by extracted virtual modules"
   test('client: an exported component of a route file renders in the chunk, and the route is created once', async () => {
     const created: Array<string> = []
-    const { module } = await loadClientModule(
+    const { module, lazyChunks } = await loadClientModule(
       `import { createFileRoute } from '@tanstack/react-router'
 ${head}import { visible } from '@tanstack/react-start/hydration'
 export const Route = createFileRoute('/test')({
@@ -872,6 +879,7 @@ function Page() {
       },
     )
     expect(module.Route.options.component()).toBe('[<p>Ada</p>]')
+    expectRenderedThroughChunks(lazyChunks)
     expect(created).toEqual(['/test'])
   })
 
