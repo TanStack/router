@@ -142,6 +142,48 @@ describe.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   },
 )
 
+// Goal (N13, user ruling D13): a server fn created in the handler of another
+// one is supported. Callers get an RPC of the outer server fn, its handler
+// runs in the provider under the id the callers use and creates the inner
+// one there; how the inner one is compiled is left open. Today it is left
+// untransformed or extracted into an invalid provider (pins in
+// known-bugs-start-compiler.test.ts).
+// Source: SolidStart compile.spec.ts "keeps client and server ids aligned
+// around nested server functions"; #8504 declaration-sites.test.ts
+test.fails.each<PlacementHead>([
+  'createServerFn alone',
+  'another Start factory',
+])(
+  'with %s imported, supports a server fn in the handler of another server fn',
+  async (importHead) => {
+    const placement = placements.find(
+      ({ name }) => name === 'the handler of another server fn',
+    )!
+    const source = placementModule(importHead, placement.code)
+    const compiled = {} as Awaited<ReturnType<typeof compileAll>>
+    let serverFns: Record<string, ServerFn> = {}
+    for (const output of outputs) {
+      const result = await compileFor(output, source)
+      compiled[output] = result.code ?? source
+      expect(await getModuleErrors(compiled[output]), output).toEqual([])
+      if (output !== 'provider') {
+        serverFns = { ...serverFns, ...result.serverFns }
+      }
+    }
+    compiled.serverFns = serverFns
+    for (const output of ['client', 'ssr'] as const) {
+      expect(compiled[output], output).not.toContain('db.inner()')
+    }
+    expect(
+      typeof (await callServerFnThroughCallers(
+        compiled,
+        (module) => module.outer,
+        { './db.server': { db: { inner: () => 'inner', top: () => 'top' } } },
+      )),
+    ).toBe('string')
+  },
+)
+
 // Sources: TanStack/router#5496 and #5892, where `.handler<T>(...)` was not
 // recognized as a server fn and its body reached the client.
 test.each([
