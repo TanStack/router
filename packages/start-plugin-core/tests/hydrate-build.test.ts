@@ -324,16 +324,26 @@ export function Page() {
       timeout,
     )
 
-    // A route whose split options (here `component` and `pendingComponent`,
-    // each in its own grouping by default) contain boundaries: the client
-    // hydrates each boundary with the id the server renders it with, and
-    // loads its own children.
+    // A route whose split options (`component` and `pendingComponent`)
+    // contain boundaries: the client hydrates each boundary with the id the
+    // server renders it with, and loads its own children.
     // Source: gap H10 (round2/oracle-gaps)
-    test(
-      'boundaries in two split route options hydrate like the server renders them',
-      async () => {
+    test.each([
+      { name: 'in their own groupings (default)', groupings: undefined },
+      {
+        name: 'in one grouping',
+        groupings: [['component', 'pendingComponent']] as Array<
+          Array<'component' | 'pendingComponent'>
+        >,
+      },
+    ])(
+      'boundaries in two split route options $name hydrate like the server renders them',
+      async ({ groupings }) => {
         const build = await buildStart({
           bundler,
+          start: groupings && {
+            router: { codeSplittingOptions: { defaultBehavior: groupings } },
+          },
           files: {
             ...hydrateRuntimeFiles,
             'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
