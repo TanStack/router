@@ -310,7 +310,7 @@ exports.page = () => secret
       const server = await startRsbuildDevServer({
         importProtection: {
           onViolation: (info) => {
-            violations.push(info)
+            violations.push(info as ViolationInfo)
           },
         },
         files: {
