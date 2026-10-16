@@ -135,6 +135,23 @@ export interface BundleTarget {
   sourcemap?: boolean
   /** Creates the plugin (a Vite plugin array for Vite) of this build. */
   plugin?: (app: AppInfo) => unknown
+  /**
+   * Import source of the automatic JSX runtime the harness's own TypeScript
+   * and JSX transform uses (default `react`), e.g. `vue` for `vue/jsx-runtime`.
+   */
+  jsxImportSource?: string
+  /**
+   * webpack and Rspack: module rules that compile the app's TypeScript and
+   * JSX instead of the harness's (e.g. `babel-loader` with a framework's JSX
+   * preset). Each rule gets `include: <app root>` unless it sets `include`
+   * or `exclude`.
+   */
+  sourceRules?: Array<Record<string, unknown>>
+  /**
+   * webpack and Rspack: export conditions resolved before the bundler's
+   * defaults (e.g. `solid`, for packages that ship JSX source).
+   */
+  conditions?: Array<string>
 }
 
 export interface RunResult {
@@ -304,6 +321,9 @@ interface BundlerConfig {
   minify: boolean
   sourcemap: boolean
   plugin: (() => unknown) | undefined
+  jsxImportSource: string
+  sourceRules: Array<Record<string, unknown>> | undefined
+  conditions: Array<string>
 }
 
 interface RawChunk {
@@ -334,6 +354,9 @@ async function bundle(
     minify: target.minify ?? mode === 'production',
     sourcemap: target.sourcemap ?? false,
     plugin: plugin && (() => plugin({ root, env, mode })),
+    jsxImportSource: target.jsxImportSource ?? 'react',
+    sourceRules: target.sourceRules,
+    conditions: target.conditions ?? [],
   }
   const warnings: Array<string> = []
   const consoleMessages: Array<string> = []
@@ -396,6 +419,9 @@ async function buildWithVite(
         hasWarned: false,
       },
       plugins: config.plugin ? [config.plugin() as never] : [],
+      ...(config.jsxImportSource !== 'react' && {
+        oxc: { jsx: { importSource: config.jsxImportSource } },
+      }),
       build: {
         ssr: config.env === 'ssr' ? config.entry : false,
         outDir: config.outDir,
@@ -460,21 +486,26 @@ async function buildWithWebpackApi(
   const development = config.mode === 'development'
   // TypeScript and JSX of the app's own files: Rspack's built-in SWC
   // loader; webpack has none, so a small Oxc loader.
-  const sourceRules =
-    bundler === 'rspack'
+  const sourceRules = config.sourceRules
+    ? config.sourceRules.map((rule) =>
+        'include' in rule || 'exclude' in rule
+          ? rule
+          : { include: config.root, ...rule },
+      )
+    : bundler === 'rspack'
       ? [
           {
             test: /\.[cm]?tsx?$/,
             include: config.root,
             loader: 'builtin:swc-loader',
-            options: swcOptions(development, true),
+            options: swcOptions(development, true, config.jsxImportSource),
             type: 'javascript/auto',
           },
           {
             test: /\.[cm]?jsx$/,
             include: config.root,
             loader: 'builtin:swc-loader',
-            options: swcOptions(development, false),
+            options: swcOptions(development, false, config.jsxImportSource),
             type: 'javascript/auto',
           },
         ]
@@ -483,7 +514,7 @@ async function buildWithWebpackApi(
             test: /\.[cm]?(tsx?|jsx)$/,
             include: config.root,
             loader: oxcLoader,
-            options: { development },
+            options: { development, importSource: config.jsxImportSource },
           },
         ]
   const options = {
@@ -506,6 +537,9 @@ async function buildWithWebpackApi(
     experiments: { outputModule: true },
     resolve: {
       extensions: ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json'],
+      ...(config.conditions.length && {
+        conditionNames: [...config.conditions, '...'],
+      }),
     },
     module: {
       rules: [
@@ -621,6 +655,7 @@ async function buildWithEsbuild(
       chunkNames: '[name]-[hash]',
       jsx: 'automatic',
       jsxDev: config.mode === 'development',
+      jsxImportSource: config.jsxImportSource,
       minify: config.minify,
       sourcemap: config.sourcemap,
       metafile: true,
@@ -814,14 +849,18 @@ process.exit(0)
   }
 }
 
-function swcOptions(development: boolean, typescript: boolean) {
+function swcOptions(
+  development: boolean,
+  typescript: boolean,
+  importSource: string,
+) {
   return {
     jsc: {
       parser: typescript
         ? { syntax: 'typescript', tsx: true }
         : { syntax: 'ecmascript', jsx: true },
       target: 'esnext',
-      transform: { react: { runtime: 'automatic', development } },
+      transform: { react: { runtime: 'automatic', development, importSource } },
     },
   }
 }

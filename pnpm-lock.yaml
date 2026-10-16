@@ -14781,9 +14781,6 @@ importers:
       vite:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
-      vite-plugin-solid:
-        specifier: ^2.11.10 || ^3.0.0-0
-        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
         version: 4.5.4
@@ -14791,15 +14788,27 @@ importers:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
         version: 0.18.4
+      '@babel/preset-typescript':
+        specifier: ^7.28.5
+        version: 7.28.5(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
+      '@rolldown/plugin-babel':
+        specifier: ^0.2.0
+        version: 0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@rsbuild/core':
         specifier: 'catalog:'
         version: 2.2.5
       '@tanstack/compiler-test-utils':
         specifier: workspace:*
         version: link:../compiler-test-utils
+      '@tanstack/solid-router':
+        specifier: workspace:*
+        version: link:../solid-router
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../vue-router
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
@@ -14818,6 +14827,15 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.13)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+      babel-loader:
+        specifier: ^10.0.0
+        version: 10.0.0(@babel/core@7.29.7(supports-color@10.2.2))(webpack@5.110.3)
+      babel-plugin-react-compiler:
+        specifier: ^1.0.0
+        version: 1.0.0
+      babel-preset-solid:
+        specifier: ^1.9.10
+        version: 1.9.10(@babel/core@7.29.7(supports-color@10.2.2))(solid-js@1.9.12)
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
@@ -14833,9 +14851,18 @@ importers:
       rimraf:
         specifier: 'catalog:'
         version: 6.1.2
+      solid-js:
+        specifier: 1.9.12
+        version: 1.9.12
+      vite-plugin-solid:
+        specifier: 'catalog:'
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: 'catalog:'
         version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@25.0.9)(@vitest/ui@5.0.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+      vue:
+        specifier: 'catalog:'
+        version: 3.5.25(@typescript/typescript6@6.0.2)
       webpack:
         specifier: ^5.104.1
         version: 5.110.3(@swc/core@1.15.33(@swc/helpers@0.5.23))(clean-css@5.3.3)(csso@5.0.5)(esbuild@0.28.2)(html-minifier-terser@6.1.0)(lightningcss@1.33.0)(postcss@8.5.29)(sharp@0.35.4(@types/node@25.0.9))(svgo@4.0.0)(webpack-cli@5.1.4)
@@ -29997,12 +30024,12 @@ snapshots:
   '@babel/plugin-syntax-typescript@7.27.1(@babel/core@7.28.5(supports-color@10.2.2))':
     dependencies:
       '@babel/core': 7.28.5(supports-color@10.2.2)
-      '@babel/helper-plugin-utils': 7.27.1
+      '@babel/helper-plugin-utils': 7.28.6
 
   '@babel/plugin-syntax-typescript@7.27.1(@babel/core@7.29.7(supports-color@7.2.0))':
     dependencies:
       '@babel/core': 7.29.7(supports-color@7.2.0)
-      '@babel/helper-plugin-utils': 7.27.1
+      '@babel/helper-plugin-utils': 7.28.6
 
   '@babel/plugin-syntax-typescript@7.28.6(@babel/core@7.29.7(supports-color@10.2.2))':
     dependencies:
@@ -30115,8 +30142,8 @@ snapshots:
   '@babel/preset-typescript@7.28.5(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
       '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/helper-plugin-utils': 7.27.1
-      '@babel/helper-validator-option': 7.27.1
+      '@babel/helper-plugin-utils': 7.28.6
+      '@babel/helper-validator-option': 7.29.7
       '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))
       '@babel/plugin-transform-modules-commonjs': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
       '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
@@ -34434,7 +34461,6 @@ snapshots:
       rolldown: 1.2.13
     optionalDependencies:
       vite: 8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
-    optional: true
 
   '@rolldown/pluginutils@1.0.0-rc.2': {}
 
@@ -37761,6 +37787,12 @@ snapshots:
       '@babel/core': 7.28.5(supports-color@10.2.2)
       find-up: 5.0.0
       webpack: 5.97.1(@swc/core@1.15.33(@swc/helpers@0.5.23))(esbuild@0.28.2)(webpack-cli@5.1.4)
+
+  babel-loader@10.0.0(@babel/core@7.29.7(supports-color@10.2.2))(webpack@5.110.3):
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@10.2.2)
+      find-up: 5.0.0
+      webpack: 5.110.3(@swc/core@1.15.33(@swc/helpers@0.5.23))(clean-css@5.3.3)(csso@5.0.5)(esbuild@0.28.2)(html-minifier-terser@6.1.0)(lightningcss@1.33.0)(postcss@8.5.29)(sharp@0.35.4(@types/node@25.0.9))(svgo@4.0.0)(webpack-cli@5.1.4)
 
   babel-plugin-jsx-dom-expressions@0.40.3(@babel/core@7.28.5(supports-color@10.2.2)):
     dependencies:

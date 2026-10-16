@@ -144,7 +144,17 @@
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
     "rimraf": "catalog:",
-    "webpack": "^5.104.1"
+    "webpack": "^5.104.1",
+    "@babel/preset-typescript": "^7.28.5",
+    "@rolldown/plugin-babel": "^0.2.0",
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/vue-router": "workspace:*",
+    "babel-loader": "^10.0.0",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "babel-preset-solid": "^1.9.10",
+    "solid-js": "catalog:",
+    "vite-plugin-solid": "catalog:",
+    "vue": "catalog:"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2 || ^2.0.0",
