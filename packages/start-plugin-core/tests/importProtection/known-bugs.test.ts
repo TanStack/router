@@ -8,7 +8,6 @@ import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
 import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
 import { buildStart } from '../build-harness'
 import { evaluateWithMock, isMock, selfMock } from './mock-helpers'
-import { locationOf, usageLocation } from './usage-location'
 import type { ImportProtectionPluginOptions } from '../../src/vite/import-protection-plugin/types'
 
 const mockModule = `data:text/javascript,${encodeURIComponent(
@@ -119,36 +118,6 @@ test.fails.each(leadingComments)(
     expect(await rewriteWithPrologue(comment, comment)).toEqual([true, runtime])
   },
 )
-
-// Bug: compiler-safe boundaries are recognized by the bare factory name
-// (`createServerFn().handler`, `createServerOnlyFn`), so the same calls through
-// a namespace import (`Start.createServerFn().handler`) are not safe.
-// Impact: import-protection diagnostics point at a usage inside a server fn
-// handler, which the compiler removes from the client, instead of the real
-// cause.
-describe('client: a use through a namespace import of Start', () => {
-  const module = (
-    expression: string,
-  ) => `import * as Start from '@tanstack/react-start'
-import { denied } from 'denied'
-export const result = ${expression}`
-
-  // Control for the pins below (same harness): a use outside any boundary is
-  // reported.
-  test('is reported outside a safe boundary', async () => {
-    const code = module(`denied()`)
-    expect(await usageLocation(code, 'client')).toEqual(
-      locationOf(code, 3, 'denied()'),
-    )
-  })
-
-  test.fails.each([
-    `Start.createServerFn().handler(() => denied())`,
-    `Start.createServerOnlyFn(() => denied())`,
-  ])('is not reported inside %s', async (expression) => {
-    expect(await usageLocation(module(expression), 'client')).toBeUndefined()
-  })
-})
 
 // Bug: mock modules declare each mocked name as `export const <name>`, and
 // reserved words such as `delete` pass the identifier check.

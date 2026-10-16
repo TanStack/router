@@ -235,9 +235,10 @@ describe('findPostCompileUsagePos', () => {
   })
 })
 
-// The use of a denied import import protection reports in a module the Start
-// compiler compiled: none when every use is inside code the compiler removes
-// from the environment (a safe boundary), else the use that leaks.
+// The violation import protection reports for a denied import in a module the
+// Start compiler compiled: none when every use is inside code the compiler
+// removes from the environment (a safe boundary), so that the compiled module
+// no longer imports it, else one at the use that leaks.
 describe('usage location after the Start compiler', () => {
   const imports = `import { createServerFn, createServerOnlyFn, createClientOnlyFn, createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
 import { denied } from 'denied'
@@ -253,6 +254,23 @@ import { denied } from 'denied'
       name: 'a parenthesized createServerFn().handler argument',
       output: 'client',
       body: `export const fn = createServerFn().handler((() => denied()))`,
+    },
+    {
+      name: 'an immediately invoked createServerFn().handler argument',
+      output: 'client',
+      body: `export const fn = createServerFn().handler((() => denied())())`,
+    },
+    {
+      name: 'createServerFn().handler through a namespace import',
+      output: 'client',
+      body: `import * as Start from '@tanstack/react-start'
+export const fn = Start.createServerFn().handler(() => denied())`,
+    },
+    {
+      name: 'createServerOnlyFn through a namespace import',
+      output: 'client',
+      body: `import * as Start from '@tanstack/react-start'
+export const fn = Start.createServerOnlyFn(() => denied())`,
     },
     {
       name: 'a parenthesized createServerFn callee',
@@ -310,7 +328,7 @@ export const middleware = authMiddleware.server(() => denied())`,
       body: `export const fn = createIsomorphicFn().client((() => denied()))`,
     },
   ] as const)(
-    '$output: no use is reported inside $name',
+    '$output: no violation is reported for a use inside $name',
     async ({ output, body }) => {
       expect(await usageLocation(imports + body, output)).toBeUndefined()
     },
@@ -349,51 +367,13 @@ export function leakyReference() {
     )
   })
 
-  // Loosened: the client compile removes the whole handler argument,
-  // immediately invoked function included, so no use is left (see the goal
-  // below); reporting the use inside it is accepted.
-  test('client: a use in an immediately invoked handler argument is reported at most at a denied reference', async () => {
-    const code = `${imports}export const fn = createServerFn().handler((() => denied())())`
-    const location = await usageLocation(code, 'client')
-    if (location) {
-      expect(
-        code
-          .split('\n')
-          [location.line - 1]!.slice(location.column - 1)
-          .startsWith('denied'),
-      ).toBe(true)
-    }
-  })
-
-  // Bug: safe boundaries are recognized on the original code by name, and an
-  // immediately invoked function is not accepted as a safe handler argument,
-  // although the client compile removes the whole handler argument
-  // (start-compiler/handleCreateServerFn.ts).
-  // Impact: low: when the client compile removes the import, no violation is
-  // reported at all; the wrong location only shows when another use keeps
-  // the import.
-  test.fails(
-    'client: no use is reported in an immediately invoked handler argument',
-    async () => {
-      const code = `${imports}export const fn = createServerFn().handler((() => denied())())`
-      expect(await usageLocation(code, 'client')).toBeUndefined()
-    },
-  )
-
-  // Bug: safe boundaries are recognized by name on the original code: any
-  // `.handler()` of a value named `*ServerFn` counts as a server fn handler,
-  // which the client compile removes.
-  // Impact: a denied import used in the callback of another object's
-  // `handler` method, which stays in the client, is reported at the import
-  // instead of at the use.
-  test.fails(
-    'client: a use inside the handler method of an object named like a server fn is reported',
-    async () => {
-      const code = `${imports}const myServerFn = { handler: (fn: () => unknown) => fn() }
+  // A value named like a server fn builder (`*ServerFn`) is not one: the
+  // client keeps its `handler` callback and the use inside it.
+  test('client: a use inside the handler method of an object named like a server fn is reported', async () => {
+    const code = `${imports}const myServerFn = { handler: (fn: () => unknown) => fn() }
 export const fn = myServerFn.handler(() => denied())`
-      expect(await usageLocation(code, 'client')).toEqual(
-        locationOf(code, 4, 'denied()'),
-      )
-    },
-  )
+    expect(await usageLocation(code, 'client')).toEqual(
+      locationOf(code, 4, 'denied()'),
+    )
+  })
 })
