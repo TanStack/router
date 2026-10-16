@@ -16,7 +16,6 @@ import {
   expectRenderedThroughChunks,
   getChunkIds,
   hydrateStubs,
-  loadChunk,
   loadClientModule,
   renderBoundaries,
   renderChunk,
@@ -100,6 +99,21 @@ export function Page() {
 }`,
     },
     {
+      // Source: hydrateWhenSplitFalse.tsx fixture (main)
+      name: 'a module-level element',
+      code: `const fallback = <p>fallback-marker</p>
+export function Page() {
+  return <Hydrate when="visible" fallback={fallback}><p>child</p></Hydrate>
+}`,
+    },
+    {
+      name: 'a module-level element with split={false}',
+      code: `const fallback = <p>fallback-marker</p>
+export function Page() {
+  return <Hydrate when="visible" split={false} fallback={fallback}><p>child</p></Hydrate>
+}`,
+    },
+    {
       name: 'a computed fallback key',
       code: `export function Page() {
   return <Hydrate {...{ when: 'visible', ['fallback']: <p>fallback-marker</p> }}><p>child</p></Hydrate>
@@ -147,7 +161,7 @@ export function Page() {
     const boundaries: Array<Record<string, unknown>> = []
     const module = await evaluateModule(parent, recordingStubs(boundaries))
     expect(module.Page()).toBe('[<p>child</p>]')
-    expect(boundaries.map((props) => 'fallback' in props)).toEqual([false])
+    expect(boundaries.map((props) => props.fallback)).toEqual([undefined])
     expect(otherProps(boundaries)).toEqual(expectedProps(received))
     expect(parent).not.toContain('fallback-marker')
   })
@@ -164,6 +178,87 @@ export function Page() {
         '<p>fallback-marker</p>',
       ])
       expect(otherProps(boundaries)).toEqual(expectedProps(received))
+    },
+  )
+
+  // Whatever expression `when` is, both environments pass its value to the
+  // boundary (the server strips the fallback next to it).
+  test.each([
+    { name: 'a strategy call', when: 'idle()', expected: 'idle()' },
+    {
+      name: 'a strategy call with options',
+      when: `interaction({ events: 'focusin' })`,
+      expected: 'interaction({"events":"focusin"})',
+    },
+    { name: 'a prop', when: 'props.when', expected: 'from-props' },
+    {
+      name: 'a local',
+      setup: `const strategy = media('(min-width: 1px)')\n  `,
+      when: 'strategy',
+      expected: 'media("(min-width: 1px)")',
+    },
+    {
+      name: 'a conditional',
+      when: 'props.eager ? load() : visible()',
+      expected: 'visible()',
+    },
+    {
+      name: 'a custom function',
+      when: `() => 'custom'`,
+      expected: 'custom',
+    },
+  ])(
+    'when as $name reaches the boundary in both environments',
+    async ({ setup = '', when, expected }) => {
+      const code = `${head}import { idle, interaction, load, media, visible } from '@tanstack/react-start/hydration'
+export function Page(props) {
+  ${setup}return <Hydrate when={${when}} fallback={<p>fallback-marker</p>}><p>child</p></Hydrate>
+}`
+      /** Strategy stubs rendering their call. */
+      const strategy =
+        (name: string) =>
+        (...args: Array<unknown>) =>
+          `${name}(${args.map((arg) => JSON.stringify(arg)).join(',')})`
+      let lazyChunks: Array<{ rendered: boolean }> = []
+      const render = async (env: 'client' | 'server') => {
+        const boundaries: Array<Record<string, unknown>> = []
+        const stubs = {
+          ...recordingStubs(boundaries),
+          '@tanstack/react-start/hydration': Object.fromEntries(
+            ['idle', 'interaction', 'load', 'media', 'visible'].map((name) => [
+              name,
+              strategy(name),
+            ]),
+          ),
+        }
+        let module: Record<string, any>
+        if (env === 'server') {
+          const { parent } = await compileHydrate('server', code)
+          module = await evaluateModule(parent, stubs)
+        } else {
+          const loaded = await loadClientModule(code, { stubs })
+          module = loaded.module
+          lazyChunks = loaded.lazyChunks
+        }
+        return {
+          html: module.Page({ when: 'from-props', eager: false }),
+          when: boundaries.map((props) =>
+            typeof props.when === 'function' ? props.when() : props.when,
+          ),
+          fallback: boundaries.map((props) => props.fallback),
+        }
+      }
+      expect(await render('server')).toEqual({
+        html: '[<p>child</p>]',
+        when: [expected],
+        fallback: [undefined],
+      })
+      expect(await render('client')).toEqual({
+        html: '[<p>child</p>]',
+        when: [expected],
+        fallback: ['<p>fallback-marker</p>'],
+      })
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 })
@@ -227,6 +322,26 @@ describe('split={false}', () => {
   ])('$name keeps function-as-children in place', async ({ split }) => {
     await expectFunctionChildInPlace(split)
   })
+
+  // Only a literal opts out at compile time (docs): a dynamic value splits
+  // the children whatever its value, and they hydrate like the server
+  // renders them.
+  // Source: gap H14 (round2/oracle-gaps)
+  test.each([true, false])(
+    'a dynamic split={flag} (%s) still splits the children',
+    async (flag) => {
+      const code = `${head}export function Page({ flag }) {
+  return <Hydrate split={flag}><p>child</p></Hydrate>
+}`
+      const render = (module: Record<string, any>) => module.Page({ flag })
+      const server = await renderBoundaries('server', code, render)
+      expect(server.html).toBe('[<p>child</p>]')
+      expect(await renderBoundaries('client', code, render)).toEqual(server)
+      const { module, lazyChunks } = await loadClientModule(code)
+      expect(render(module)).toBe('[<p>child</p>]')
+      expectRenderedThroughChunks(lazyChunks)
+    },
+  )
 
   /**
    * Both environments render the function child of a `split` boundary in
@@ -487,17 +602,22 @@ export class Page extends Base {
   // Source: hydrateWhen ThisCapture and SuperCapture error fixtures (the
   // super fixture read a class field, which renders undefined).
   test.each([
-    // The message names what the children capture (`this` alone would also
-    // match the function-as-children advice "Use split={false} for this
-    // boundary").
-    { name: 'this', code: thisPage, message: /\bcaptur\w* `?this\b/i },
-    { name: 'super', code: superPage, message: /\bcaptur\w* `?super\b/i },
+    { name: 'this', code: thisPage },
+    { name: 'super', code: superPage },
   ])(
     'the children reading $name render like on the server, or are rejected clearly',
-    async ({ code, message }) => {
+    async ({ name, code }) => {
       const messages = rejections(await compileEnvs(code))
       if (messages.length > 0) {
-        expect(messages).toContainEqual(expect.stringMatching(message))
+        // The message names what the children read; the function-as-children
+        // rejection (which mentions "this boundary") does not count.
+        expect(
+          messages.filter(
+            (message) =>
+              new RegExp(`\\b${name}\\b`).test(message) &&
+              !/\bfunction\b/i.test(message),
+          ),
+        ).not.toEqual([])
         return
       }
       expect(await renderBoundaries('client', code, render)).toEqual(
@@ -724,24 +844,30 @@ function Widget(props: { title: string }) {
   })
 })
 
+// Rsbuild loads a chunk with the code of its source file, and may do so
+// before the edited parent module is compiled again: the chunk renders the
+// edited children. (Vite loads the source module first; dev servers of both
+// in hydrate-build.test.ts.)
 // Source: hydrate-when-transform.test.ts "invalidates cached Hydrate source
-// for virtual module loads" (the compiler half of gaps H21 / DV42; the dev
-// server half is in hydrate-build.test.ts)
-test('client: after the module is invalidated and compiled again, its chunk renders the new children', async () => {
+// for virtual module loads" (the compiler half of gaps H21 / DV42)
+test('client: a chunk loaded with the edited source before the parent is compiled again renders the new children', async () => {
   const plugin = createHydrateCompilerPlugin()
-  const { compiler, compile } = createStartCompiler({
+  const { compile } = createStartCompiler({
     env: 'client',
     compilerPlugins: [plugin],
   })
   const source = (text: string) => `${head}export function Page() {
   return <Hydrate><p>${text}</p></Hydrate>
 }`
-  /** Renders the chunk of the only boundary of a compiled parent. */
-  const render = async (parent: string) => {
-    const [id] = getChunkIds(parent)
-    return renderChunk(loadChunk(plugin, 'client', id!)!)
-  }
-  expect(await render((await compile(source('Old')))!)).toBe('<p>Old</p>')
-  compiler.invalidateModule('/test/src/module.tsx')
-  expect(await render((await compile(source('New')))!)).toBe('<p>New</p>')
+  const [id] = getChunkIds((await compile(source('Old')))!)
+  const load = (code?: string) =>
+    plugin.loadVirtualModule!({
+      id: id!,
+      code,
+      root: '/test',
+      env: 'client',
+      envName: 'client',
+    })!.code
+  expect(await renderChunk(load())).toBe('<p>Old</p>')
+  expect(await renderChunk(load(source('New')))).toBe('<p>New</p>')
 })
