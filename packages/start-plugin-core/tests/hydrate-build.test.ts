@@ -117,6 +117,15 @@ export { Other } from './other.js'
       widgetsManifest: undefined,
     },
     {
+      // The barrel is eager (the page logs `Other`); without the hint, the
+      // bundler still finds no side effect in the chart module, so its code
+      // stays lazy.
+      name: 'a package without side-effect hints',
+      chartImport: `import { Chart, Other } from 'widgets'
+console.log(Other)`,
+      widgetsManifest: { name: 'widgets', type: 'module' },
+    },
+    {
       name: 'a package marked "sideEffects": false',
       chartImport: `import { Chart, Other } from 'widgets'
 console.log(Other)`,
