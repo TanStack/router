@@ -48,6 +48,7 @@ import type {
   StatsJson,
 } from '@tanstack/compiler-test-utils/build-harness'
 import type { TanStackStartInputConfig } from '../src/schema'
+import type { StartCompilerImportTransform } from '../src/types'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { Plugin } from 'vite'
 
@@ -213,6 +214,11 @@ export interface StartBuildOptions {
   /** Start's plugin options (`tanstackStart(options)`). */
   start?: TanStackStartInputConfig
   /**
+   * External import transforms of the Start compiler, which a framework
+   * package passes to Start's plugin (e.g. React's RSC CSS transform).
+   */
+  compilerTransforms?: Array<StartCompilerImportTransform>
+  /**
    * Registers the removal of the app (default: when the current test
    * finishes). A build shared by several tests keeps the cleanup and runs
    * it in `afterAll`.
@@ -257,7 +263,8 @@ export const Route = createRootRoute()
 })
 
 /** The core options `@tanstack/react-start` passes to Start's plugin. */
-function reactStartCoreOptions(root: string) {
+function reactStartCoreOptions(target: BuildTarget) {
+  const { root } = target
   return {
     framework: 'react',
     defaultEntryPaths: {
@@ -267,6 +274,7 @@ function reactStartCoreOptions(root: string) {
     },
     providerEnvironmentName: 'ssr',
     ssrIsProvider: true,
+    compilerTransforms: target.compilerTransforms,
   } as const
 }
 
@@ -300,6 +308,7 @@ export async function buildStart(
     mode,
     minify: options.minify ?? mode === 'production',
     start: options.start ?? {},
+    compilerTransforms: options.compilerTransforms,
   }
   const warnings = { client: [], ssr: [] } as Record<Env, Array<string>>
   const consoleMessages: Array<string> = []
@@ -332,6 +341,7 @@ interface BuildTarget {
   mode: BuildMode
   minify: boolean
   start: TanStackStartInputConfig
+  compilerTransforms: Array<StartCompilerImportTransform> | undefined
 }
 
 type Outputs = Record<Env, { outDir: string; chunks: Array<EmittedChunk> }>
@@ -411,7 +421,7 @@ async function buildWithVite(
       plugins: [
         tanStackStartVite(
           {
-            ...reactStartCoreOptions(target.root),
+            ...reactStartCoreOptions(target),
             ssrResolverStrategy: { type: 'default' },
           },
           target.start,
@@ -489,10 +499,7 @@ async function buildWithRsbuild(
           },
         },
         plugins: [
-          tanStackStartRsbuild(
-            reactStartCoreOptions(target.root),
-            target.start,
-          ),
+          tanStackStartRsbuild(reactStartCoreOptions(target), target.start),
           useTestLoaders(target.root),
           outputPlugin,
         ],
