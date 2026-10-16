@@ -213,7 +213,91 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
   })
 })
 
+/** The server-only module, as the provider reads it. */
+const dbStub = { db: { x: () => 'from the server', log: () => 'logged' } }
+
+/**
+ * A server fn builder of a project module, as the client (`rpc` only) and
+ * the provider (`rpc` and the implementation) call it.
+ */
+const serverFnBuilderStub = {
+  handler: (rpc: unknown, impl?: (opts: unknown) => unknown) =>
+    impl
+      ? Object.assign((opts: unknown) => impl(opts ?? {}), {
+          __executeServer: impl,
+        })
+      : { rpc },
+}
+
+/**
+ * Asserts the client output of `code` (with project modules `files`, linked
+ * to `stubs` when evaluated) keeps no server-only import and calls its
+ * server fn `fn` through an RPC, and that the provider runs the handler.
+ */
+async function expectServerFnThroughRpc(
+  code: string,
+  client: string,
+  files: Record<string, string>,
+  stubs: Record<string, ModuleStub>,
+) {
+  expect(importSources(client)).not.toContain(serverOnly)
+  const linked = { ...stubs, [serverOnly]: dbStub }
+  const { fn } = await evaluateModule(client, linked)
+  expect(fn).toEqual({ rpc: { client: expect.any(String) } })
+  const { results } = await callServerFns(code, { files, stubs: linked })
+  expect(results).toEqual(['from the server'])
+}
+
 describe('server code in the client bundle', () => {
+  /**
+   * Compiles an importer of the `base` builder of `/test/src/d.ts` through
+   * each module of `reExports`, all with one client compiler like a
+   * production build, and checks that each calls its server fn `via`
+   * through an RPC and that the provider runs the handler.
+   */
+  async function expectImportersThroughRpc(reExports: Record<string, string>) {
+    const files = {
+      '/test/src/d.ts': `${head}export const base = createServerFn()`,
+      ...reExports,
+    }
+    const importers = Object.keys(reExports).map((file) => {
+      const name = path.posix.basename(file, '.ts')
+      return [
+        `/test/src/via-${name}.tsx`,
+        `import { base } from './${name}'
+import { db } from './db.server'
+export const via = base.handler(async () => db.x())`,
+      ] as const
+    })
+    const { compile } = createStartCompiler({ env: 'client', files })
+    const stubs = {
+      ...Object.fromEntries(
+        Object.keys(reExports).map((file) => [
+          `./${path.posix.basename(file, '.ts')}`,
+          { base: serverFnBuilderStub },
+        ]),
+      ),
+      [serverOnly]: dbStub,
+    }
+    for (const [id, code] of importers) {
+      const client = (await compile(code, id)) ?? code
+      expect(importSources(client), id).not.toContain(serverOnly)
+      const { via } = await evaluateModule(client, stubs)
+      expect(via, id).toEqual({ rpc: { client: expect.any(String) } })
+      const { results } = await callServerFns(code, { files, stubs })
+      expect(results, id).toEqual(['from the server'])
+    }
+  }
+
+  // Control for the pin below (same harness): a chain without a diamond or
+  // a cycle.
+  test('importers through an export * chain call their server fn through its RPC', async () => {
+    await expectImportersThroughRpc({
+      '/test/src/a.ts': `export * from './b'`,
+      '/test/src/b.ts': `export * from './d'`,
+    })
+  })
+
   // Bug: build-mode export lookups are cached per module, but parallel
   // `export *` branches share one visited set, so in a diamond or a cycle a
   // module that re-exports the builder is cached as "not found".
@@ -240,38 +324,59 @@ export * from './d'`,
   ])(
     'export * $name do not poison the build-mode export cache',
     async ({ reExports }) => {
-      // One importer of `base` through each re-exporting module.
-      const importers = Object.keys(reExports).map((file) => {
-        const name = file.slice('/test/src/'.length, -'.ts'.length)
-        return [
-          `/test/src/via-${name}.tsx`,
-          `import { base } from './${name}'
-import { db } from './db.server'
-export const via = base.handler(async () => db.${name}())`,
-        ] as const
-      })
-      // One compiler for every importer, like a production build.
-      const { compile } = createStartCompiler({
-        env: 'client',
-        files: {
-          '/test/src/d.ts': `${head}export const base = createServerFn()`,
-          ...reExports,
-        },
-      })
-      const leaked: Array<string> = []
-      for (const [id, code] of importers) {
-        if (((await compile(code, id)) ?? code).includes(serverOnly)) {
-          leaked.push(id)
-        }
-      }
-      expect(leaked).toEqual([])
+      await expectImportersThroughRpc(reExports)
     },
   )
+
+  /**
+   * Compiles `code` (with project modules `files`) for the client: it keeps
+   * no server-only import, and `check` passes on the client output
+   * evaluated with the project modules linked to `stubs`.
+   */
+  async function expectClientCompiled(
+    code: string,
+    files: Record<string, string>,
+    stubs: Record<string, ModuleStub>,
+    check?: (module: Record<string, any>) => void,
+  ) {
+    const client = (await compileCode('client', code, { files })) ?? code
+    expect(client).not.toContain(serverOnly)
+    check?.(await evaluateModule(client, { ...stubs, [serverOnly]: dbStub }))
+  }
+
+  /**
+   * A middleware builder of the client runtime: `.server()` throws, as the
+   * client runtime's does when called uncompiled.
+   */
+  const middlewareStub = (options: unknown) => ({
+    options,
+    server: () => {
+      throw new Error('uncompiled .server()')
+    },
+  })
+
+  // Control for the pin below (same harness): with `createMiddleware`
+  // imported too, the module is compiled.
+  test('client builds compile a middleware builder finished in another module when the module imports createMiddleware', async () => {
+    await expectClientCompiled(
+      `import { createMiddleware } from '@tanstack/react-start'
+import { mw } from './mw'
+import { db } from './db.server'
+export const logged = mw.server(async ({ next }) => { db.log(); return next() })`,
+      {
+        '/test/src/mw.ts': `import { createMiddleware } from '@tanstack/react-start'
+export const mw = createMiddleware({ type: 'function' })`,
+      },
+      { './mw': { mw: middlewareStub({ type: 'function' }) } },
+      (module) => expect(module.logged.options).toEqual({ type: 'function' }),
+    )
+  })
 
   // Bug: middleware, isomorphic and env-only fns are detected by the
   // `createMiddleware` / `createIsomorphicFn` / `createServerOnlyFn` text, so
   // a module that only finishes a builder imported from another module, or
-  // calls a factory re-exported under another name, is never compiled.
+  // calls a factory re-exported or aliased under another name, is never
+  // compiled.
   // Impact: the `.server()` implementation (the server-only implementation,
   // which the uncompiled factory returns as is) and its server-only imports
   // ship to the client.
@@ -279,6 +384,8 @@ export const via = base.handler(async () => db.${name}())`,
     name: string
     files: Record<string, string>
     code: string
+    stubs: Record<string, ModuleStub>
+    check: (module: Record<string, any>) => void
   }>([
     {
       name: 'a middleware builder',
@@ -289,6 +396,27 @@ export const mw = createMiddleware({ type: 'function' })`,
       code: `import { mw } from './mw'
 import { db } from './db.server'
 export const logged = mw.server(async ({ next }) => { db.log(); return next() })`,
+      stubs: { './mw': { mw: middlewareStub({ type: 'function' }) } },
+      check: (module) =>
+        expect(module.logged.options).toEqual({ type: 'function' }),
+    },
+    {
+      // Source: createMiddleware.test.ts "slow path for a factory alias"
+      // (asserted resolveId calls only).
+      name: 'a createMiddleware alias',
+      files: {
+        '/test/src/mw.ts': `import { createMiddleware } from '@tanstack/react-start'
+export const createFooMiddleware = createMiddleware`,
+      },
+      code: `import { createFooMiddleware } from './mw'
+import { db } from './db.server'
+export const logged = createFooMiddleware({ type: 'function' }).server(async ({ next }) => {
+  db.log()
+  return next()
+})`,
+      stubs: { './mw': { createFooMiddleware: middlewareStub } },
+      check: (module) =>
+        expect(module.logged.options).toEqual({ type: 'function' }),
     },
     {
       name: 'an isomorphic builder',
@@ -299,6 +427,18 @@ export const iso = createIsomorphicFn()`,
       code: `import { iso } from './iso'
 import { db } from './db.server'
 export const fn = iso.server(() => db.x()).client(() => 'client')`,
+      // Like the client runtime: `.server()` throws when called uncompiled.
+      stubs: {
+        './iso': {
+          iso: {
+            server: () => {
+              throw new Error('uncompiled .server()')
+            },
+            client: (impl: unknown) => impl,
+          },
+        },
+      },
+      check: (module) => expect(module.fn()).toBe('client'),
     },
     {
       // Source: #8504 compiler.test.ts "resolves distinct re-export aliases
@@ -311,14 +451,31 @@ export const fn = iso.server(() => db.x()).client(() => 'client')`,
       code: `import { serverOnly } from './env'
 import { db } from './db.server'
 export const read = serverOnly(() => db.x())`,
+      // Uncompiled, the factory returns the implementation as is.
+      stubs: { './env': { serverOnly: (impl: unknown) => impl } },
+      check: (module) => expect(settle(module.read)).toBe(serverOnlyError),
     },
   ])(
     'client builds compile $name finished or called in another module',
-    async ({ files, code }) => {
-      const client = (await compileCode('client', code, { files })) ?? code
-      expect(client).not.toContain(serverOnly)
+    async ({ files, code, stubs, check }) => {
+      await expectClientCompiled(code, files, stubs, check)
     },
   )
+
+  // Control for the two pins below (same harness): the builder imported by
+  // name.
+  test('client builds compile a builder imported by name', async () => {
+    const code = `import { authed } from './fns'
+import { db } from './db.server'
+export const fn = authed.handler(async () => db.x())`
+    const files = {
+      '/test/src/fns.ts': `${head}export const authed = createServerFn({ method: 'POST' })`,
+    }
+    const client = (await compileCode('client', code, { files })) ?? code
+    await expectServerFnThroughRpc(code, client, files, {
+      './fns': { authed: serverFnBuilderStub },
+    })
+  })
 
   // Bug: a server fn builder read as a member of a namespace import
   // (`F.authed.handler`) is not resolved, unlike the same builder imported by
@@ -335,7 +492,9 @@ export const fn = F.authed.handler(async () => db.x())`
         '/test/src/fns.ts': `${head}export const authed = createServerFn({ method: 'POST' })`,
       }
       const client = (await compileCode('client', code, { files })) ?? code
-      expect(client).not.toContain(serverOnly)
+      await expectServerFnThroughRpc(code, client, files, {
+        './fns': { authed: serverFnBuilderStub },
+      })
     },
   )
 
@@ -353,7 +512,9 @@ export const fn = Start.createServerFn().handler(async () => db.x())`
         '/test/src/start.ts': `export * as Start from '@tanstack/react-start'`,
       }
       const client = (await compileCode('client', code, { files })) ?? code
-      expect(client).not.toContain(serverOnly)
+      await expectServerFnThroughRpc(code, client, files, {
+        './start': { Start: { createServerFn: () => serverFnBuilderStub } },
+      })
     },
   )
 
