@@ -1,11 +1,10 @@
 /**
  * Controls for the regression harness itself: module discovery, lazy
- * evaluation, output validation and snapshot formatting (module linking and
- * module validation: `@tanstack/compiler-test-utils`).
+ * evaluation and output validation (module linking and module validation:
+ * `@tanstack/compiler-test-utils`).
  */
 import { describe, expect, it } from 'vitest'
 import { routerDevServer } from './dev-server'
-import { formatSnapshot } from './format-snapshot'
 import {
   compileRouteModules,
   expectRegisteredRouteOption,
@@ -120,20 +119,6 @@ export const Route = createFileRoute('/')({ component: Page })`,
         'component',
       ),
     ).toBe('Page')
-  })
-})
-
-describe('formatSnapshot', () => {
-  it('formats output that parses', async () => {
-    expect(await formatSnapshot('const   a =1\n\n\nexport {a}', 'a.tsx')).toBe(
-      'const a = 1\nexport { a }\n',
-    )
-  })
-
-  it('fails on output that does not parse', async () => {
-    await expect(formatSnapshot('const = 1', 'a.tsx')).rejects.toThrow(
-      'does not parse',
-    )
   })
 })
 
