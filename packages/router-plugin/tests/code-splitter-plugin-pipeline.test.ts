@@ -114,42 +114,6 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     expect(compileAll(reused, code, files.first)).toEqual(fresh)
   })
 
-  // Bug: the shared and split transforms read the shared bindings the route
-  // module's transform stored for the file, so a chunk compiled before the
-  // route module (by a fresh plugin instance, e.g. after a dev-server
-  // restart) copies the shared state instead of importing it, and the
-  // shared module compiles to nothing. Same root cause as the out-of-order
-  // pin in known-bugs-dev-server.test.ts (gap DV8).
-  // Source: #8504 (code-splitter.test.ts), where it passes.
-  // Impact: the chunk gets its own copy of module state the route module
-  // shares.
-  it.fails(
-    'compiles the modules of a route the same way whatever order they are requested in',
-    async () => {
-      const file = routeFile('order')
-      const routes = { [file]: '/order' }
-      const code = `'use client'\n${routeSource('order')}`
-      const inOrder = compileAll(
-        await createCodeSplitterTransforms({}, routes),
-        code,
-        file,
-      )
-      const ids = Object.keys(inOrder)
-      expect(ids.length).toBeGreaterThan(2)
-      const reversed = await createCodeSplitterTransforms({}, routes)
-      const compiled: Record<string, string | null> = {}
-      for (const id of [...ids].reverse()) {
-        compiled[id] =
-          id === file
-            ? reversed.reference(code, id)
-            : id.includes('tsr-split=')
-              ? reversed.virtual(code, id)
-              : reversed.shared(code, id)
-      }
-      expect(compiled).toEqual(inOrder)
-    },
-  )
-
   it('splits by the plugin-level splitBehavior for the route id', async () => {
     const splitBehavior: NonNullable<
       Config['codeSplittingOptions']
@@ -319,8 +283,10 @@ console.info(ReactUseMemoCall, UseMemoCall)
 `,
     },
   ])('are left as written: $name', ({ code }) => {
-    const { modules } = compileRouteModules(code)
-    expect(modules).toEqual({ reference: code })
+    for (const hmr of [false, true]) {
+      const { modules } = compileRouteModules(code, { hmr })
+      expect(modules, `hmr: ${hmr}`).toEqual({ reference: code })
+    }
   })
 })
 

@@ -374,25 +374,6 @@ export const Route = createFileRoute('/')({ 'component': Page, 'errorComponent':
     expect((await route.load('errorComponent'))()).toBe('<p>error</p>')
   })
 
-  // Source: add-hmr snapshot fixture destructuring.
-  it.each([true, false])(
-    'leave a module that creates no route as it is (hmr: %s)',
-    (hmr) => {
-      const code = `import thing from 'thing'
-export function test() {
-  const {
-    foo: {
-      bar: { destructured },
-    },
-  } = thing
-  return destructured
-}`
-      expect(compileRouteModules(code, { hmr }).modules).toEqual({
-        reference: code,
-      })
-    },
-  )
-
   // Source: add-hmr snapshot fixture explicit-undefined-component.
   it('keep an explicitly undefined component undefined', async () => {
     const route = await loadRoute(
@@ -473,13 +454,29 @@ function RootComponent() {
     },
   ]
 
-  it.each(routes)(
-    'have no HMR code ($name)',
-    async ({ route, targetFramework }) => {
-      const loaded = await loadRoute(route, { targetFramework })
-      for (const [name, code] of Object.entries(loaded.modules)) {
-        expect(code, name).not.toMatch(/import\.meta\.(?:webpackHot|hot)\b/)
-      }
+  // A production build (`addHmr` unset), and a dev server with `addHmr:
+  // false`.
+  describe.each([
+    {
+      mode: 'production',
+      options: {
+        command: 'build',
+        pluginOptions: { codeSplittingOptions: { addHmr: undefined } },
+      },
     },
-  )
+    {
+      mode: 'development with addHmr disabled',
+      options: { command: 'serve', hmr: false },
+    },
+  ] as const)('in $mode', ({ options }) => {
+    it.each(routes)(
+      'have no HMR code ($name)',
+      async ({ route, targetFramework }) => {
+        const loaded = await loadRoute(route, { targetFramework, ...options })
+        for (const [name, code] of Object.entries(loaded.modules)) {
+          expect(code, name).not.toMatch(/import\.meta\.(?:webpackHot|hot)\b/)
+        }
+      },
+    )
+  })
 })

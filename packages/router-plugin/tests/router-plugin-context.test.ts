@@ -116,38 +116,6 @@ export const Route = createFileRoute('/changing')({
     ).toEqual(second.modules)
   })
 
-  it.each([
-    {
-      mode: 'production',
-      options: {
-        command: 'build',
-        pluginOptions: { codeSplittingOptions: { addHmr: undefined } },
-      },
-    },
-    {
-      mode: 'development with addHmr disabled',
-      options: { command: 'serve', hmr: false },
-    },
-  ] as const)('does not add HMR code in $mode', async ({ options }) => {
-    const route = await loadRoute(
-      `
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/lowercase')({ component })
-
-function component() {
-  return <div>Hello</div>
-}
-`,
-      { routeId: '/lowercase', ...options },
-    )
-    for (const [name, code] of Object.entries(route.modules)) {
-      expect(code, name).not.toMatch(/import\.meta\.(?:webpackHot|hot)\b/)
-    }
-    expect(route.isLazy('component')).toBe(true)
-    expect((await route.load('component'))()).toBe('<div>Hello</div>')
-  })
-
   // Two router plugins in one dev server (each with its own routes
   // directory and route tree): each compiles its own route files, once.
   it('keeps two router plugins of one dev server to their own route files', async () => {
