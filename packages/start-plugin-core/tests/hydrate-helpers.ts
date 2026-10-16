@@ -2,6 +2,7 @@
  * `<Hydrate>` test helpers that are not part of the shared Start harness
  * (`regression-helpers.ts`).
  */
+import { SourceMapConsumer } from 'source-map'
 import { parseSync } from 'vite'
 import { compileHydrate } from './regression-helpers'
 import type { Framework } from './regression-helpers'
@@ -93,4 +94,43 @@ export async function generatedNames(
     }
   }
   return [...names].sort()
+}
+
+/** A 1-based line and 0-based column, like source map positions. */
+export interface Position {
+  line: number
+  column: number
+}
+
+/** The position of the first occurrence of `needle` in `code`. */
+export function positionOf(code: string, needle: string): Position {
+  const offset = code.indexOf(needle)
+  if (offset < 0) {
+    throw new Error(`${JSON.stringify(needle)} not found in:\n${code}`)
+  }
+  const before = code.slice(0, offset).split('\n')
+  return { line: before.length, column: before.at(-1)!.length }
+}
+
+/**
+ * Where the first occurrence of `needle` in the compiled `code` comes from,
+ * according to its source map: the original file and position.
+ */
+export async function originalPositionOf(
+  result: { code: string; map?: unknown },
+  needle: string,
+) {
+  if (!result.map) {
+    throw new Error('expected a source map')
+  }
+  const consumer = await new SourceMapConsumer(result.map as any)
+  try {
+    const { source, line, column } = consumer.originalPositionFor({
+      ...positionOf(result.code, needle),
+      bias: SourceMapConsumer.LEAST_UPPER_BOUND,
+    })
+    return { source, line, column }
+  } finally {
+    consumer.destroy()
+  }
 }

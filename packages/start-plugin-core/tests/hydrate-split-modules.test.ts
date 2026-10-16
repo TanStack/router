@@ -18,6 +18,7 @@ import {
   renderBoundaries,
   renderChunk,
 } from './regression-helpers'
+import { originalPositionOf, positionOf } from './hydrate-helpers'
 import type { ModuleStub } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
@@ -671,21 +672,43 @@ export function Page() {
     expect(await render()).toBe('<p>chunk-marker</p>')
   })
 
-  // Source: #8504 hydrate-split-modules.test.ts (gap H26)
-  test('client: the source map of a chunk names the file the children come from', async () => {
-    const { parent, plugin } = await compileHydrate(
-      'client',
-      `${head}export function Page() {
-  return <Hydrate><p>chunk</p></Hydrate>
-}`,
-    )
+  // Code in the chunk and in the parent maps back to where the user wrote
+  // it.
+  // Source: #8504 hydrate-split-modules.test.ts (gap H26); gap M1
+  test('client: the source maps of the chunk and the parent point at the original code', async () => {
+    const source = `${head}import { visible } from '@tanstack/react-start/hydration'
+export function Page() {
+  return (
+    <main>
+      <aside>parent-marker</aside>
+      <Hydrate when={visible()}>
+        <p>chunk-marker</p>
+      </Hydrate>
+    </main>
+  )
+}`
+    const plugin = createHydrateCompilerPlugin()
+    const { transform } = createStartCompiler({
+      env: 'client',
+      compilerPlugins: [plugin],
+    })
+    const parent = (await transform(source))!
     const chunk = plugin.loadVirtualModule!({
-      id: getChunkIds(parent)[0]!,
+      id: getChunkIds(parent.code)[0]!,
       root: '/test',
       env: 'client',
       envName: 'client',
+    })!
+    const original = (needle: string) => ({
+      source: '/test/src/module.tsx',
+      ...positionOf(source, needle),
     })
-    expect(chunk?.map?.sources).toEqual(['/test/src/module.tsx'])
+    expect(await originalPositionOf(chunk, '<p>chunk-marker')).toEqual(
+      original('<p>chunk-marker'),
+    )
+    expect(await originalPositionOf(parent, '<aside>parent-marker')).toEqual(
+      original('<aside>parent-marker'),
+    )
   })
 
   test('client: the chunks of a module stay loadable after another module is compiled', async () => {
