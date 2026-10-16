@@ -299,6 +299,11 @@ describe('ssr HeadContent', () => {
         .querySelector('link[rel="modulepreload"]')
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
+    expect(
+      document.head
+        .querySelector('link[rel="modulepreload"]')
+        ?.getAttribute('fetchpriority'),
+    ).toBe('low')
   })
 
   test('does not duplicate SSR head links and cleans up preloads on unmount', async () => {
@@ -732,7 +737,7 @@ describe('ssr HeadContent', () => {
     ).toBe('.runtime{color:red}')
   })
 
-  test('renders preload as script links for iife manifest preloads', async () => {
+  test('renders iife manifest preloads as low priority script links', async () => {
     const history = createTestBrowserHistory()
 
     const rootRoute = createRootRoute({
@@ -772,6 +777,11 @@ describe('ssr HeadContent', () => {
     })
 
     expect(document.head.querySelector('link[rel="modulepreload"]')).toBeFalsy()
+    expect(
+      document.head
+        .querySelector('link[rel="preload"][as="script"]')
+        ?.getAttribute('fetchpriority'),
+    ).toBe('low')
   })
 
   test('derives title, dedupes meta, and allows non-loader HeadContent', async () => {
