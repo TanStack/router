@@ -87,6 +87,11 @@ type CompileOptions = {
    */
   command?: 'serve' | 'build'
   /**
+   * Code-splitter plugin instances that transform each module in turn, as
+   * when an app registers the plugin twice. Default 1.
+   */
+  instances?: number
+  /**
    * Configure the plugins for webpack instead of Vite: their `webpack` hook
    * gets this compiler (see `webpackCompiler`) instead of their Vite
    * `configResolved` hook getting a Vite config.
@@ -303,24 +308,25 @@ function createRouteGraphCompiler(
     webpackCompiler: compiler,
   } = options
   const id = options.moduleId ?? routeModuleId(filename)
-  const context = createRouterPluginContext()
-  context.routesByFile.set(normalizePath(id), { routeId })
-  const created = createRouterCodeSplitterPlugin(
-    {
-      target: targetFramework,
-      autoCodeSplitting: true,
-      ...pluginOptions,
-      codeSplittingOptions: {
-        addHmr: hmr,
-        deleteNodes,
-        ...pluginOptions.codeSplittingOptions,
+  const plugins: Array<UnpluginOptions> = []
+  for (let instance = 0; instance < (options.instances ?? 1); instance++) {
+    const context = createRouterPluginContext()
+    context.routesByFile.set(normalizePath(id), { routeId })
+    const created = createRouterCodeSplitterPlugin(
+      {
+        target: targetFramework,
+        autoCodeSplitting: true,
+        ...pluginOptions,
+        codeSplittingOptions: {
+          addHmr: hmr,
+          deleteNodes,
+          ...pluginOptions.codeSplittingOptions,
+        },
       },
-    },
-    context,
-  )
-  const plugins: Array<UnpluginOptions> = Array.isArray(created)
-    ? created
-    : [created]
+      context,
+    )
+    plugins.push(...(Array.isArray(created) ? created : [created]))
+  }
   configurePlugins(
     plugins,
     compiler
