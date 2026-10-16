@@ -1,64 +1,25 @@
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
+import { tanstackRouter } from '../src/vite'
+import {
+  loadRouteOption,
+  rootRoute,
+  routerDevServer,
+  routerPackageStub,
+} from './dev-server'
 import {
   createRouteLoader,
   evaluateModule,
   expectRegisteredRouteOption,
+  expectValidModules,
   loadRoute,
 } from './regression-helpers'
-import type { Config } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { UnpluginOptions, TransformResult } from 'unplugin'
-
-const referencePluginName =
-  'tanstack-router:code-splitter:compile-reference-file'
-const virtualPluginName = 'tanstack-router:code-splitter:compile-virtual-file'
-
-function getCodeSplitterPlugin(
-  plugins: ReturnType<typeof createRouterCodeSplitterPlugin>,
-  pluginName: string,
-): UnpluginOptions {
-  const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
-  const plugin = pluginArray.find((item) => item.name === pluginName)
-  if (!plugin) {
-    throw new Error(`Code-splitter plugin "${pluginName}" not found`)
-  }
-  return plugin
-}
-
-function getReferencePlugin(
-  plugins: ReturnType<typeof createRouterCodeSplitterPlugin>,
-) {
-  return getCodeSplitterPlugin(plugins, referencePluginName)
-}
-
-async function configurePlugin(
-  plugin: UnpluginOptions,
-  command: 'serve' | 'build' = 'serve',
-) {
-  const hook = plugin.vite?.configResolved
-  if (!hook) {
-    return
-  }
-
-  const config = {
-    root: process.cwd(),
-    command,
-    plugins: [{ name: referencePluginName }],
-  } as never
-
-  if (typeof hook === 'function') {
-    await hook.call({} as never, config)
-    return
-  }
-
-  await hook.handler.call({} as never, config)
-}
 
 async function transformReferenceRoute(
   plugin: UnpluginOptions,
@@ -84,45 +45,27 @@ function getCode(result: TransformResult | null | undefined) {
 
 describe('router plugin context', () => {
   it('splits parenthesized route factories, option values, and grouping arrays', async () => {
-    const routeFile = normalizePath(
-      path.join(process.cwd(), 'src/routes/wrapped.tsx'),
-    )
-    const context = createRouterPluginContext()
-    context.routesByFile.set(routeFile, { routeId: '/wrapped' })
-    const plugins = createRouterCodeSplitterPlugin(
-      {
-        target: 'react',
-        autoCodeSplitting: true,
-        codeSplittingOptions: { addHmr: false },
-      },
-      context,
-    )
-    await configurePlugin(getReferencePlugin(plugins), 'build')
-    const code = `import { createFileRoute } from '@tanstack/react-router'
+    const route = await loadRoute(
+      `import { createFileRoute } from '@tanstack/react-router'
 const Component = () => 'wrapped component'
 const loader = () => 'wrapped loader'
 export const Route = (createFileRoute('/wrapped'))({
   component: (Component), loader: (loader),
   codeSplitGroupings: (([(['component']), (['loader'])])),
-})`
-    const reference = getCode(
-      await transformReferenceRoute(
-        getReferencePlugin(plugins),
-        code,
-        routeFile,
-      ),
+})`,
+      { routeId: '/wrapped' },
     )
-    expect(reference).toContain('lazyRouteComponent')
-    expect(reference).toContain('lazyFn')
-    const virtual = getCode(
-      await transformReferenceRoute(
-        getCodeSplitterPlugin(plugins, virtualPluginName),
-        code,
-        `${routeFile}?tsr-split=component`,
-      ),
-    )
-    expect(virtual).toContain('wrapped component')
-    expect(virtual).not.toContain('wrapped loader')
+    await expectValidModules(route.modules)
+    expect([route.isLazy('component'), route.isLazy('loader')]).toEqual([
+      true,
+      true,
+    ])
+    // Each group loads its own module.
+    expect(route.chunkOf('component')).not.toBe(route.chunkOf('loader'))
+    expect([
+      (await route.load('component'))(),
+      await route.options.loader(),
+    ]).toEqual(['wrapped component', 'wrapped loader'])
   })
 
   it('refreshes chunk ownership after source changes and isolates split settings', async () => {
@@ -205,75 +148,46 @@ function component() {
     expect((await route.load('component'))()).toBe('<div>Hello</div>')
   })
 
-  it('keeps multiple code-splitter instances isolated by explicit context', async () => {
-    const routeFile = normalizePath(
-      path.join(process.cwd(), 'src/routes-a/owned.tsx'),
-    )
-    const otherRouteFile = normalizePath(
-      path.join(process.cwd(), 'src/routes-b/other.tsx'),
-    )
-
-    const routeCode = `
-import { createFileRoute } from '@tanstack/react-router'
-
-function Component() {
-  return <div>Hello</div>
+  // Two router plugins in one dev server (each with its own routes
+  // directory and route tree): each compiles its own route files, once.
+  it('keeps two router plugins of one dev server to their own route files', async () => {
+    const route = (routePath: string, label: string) =>
+      `import { createFileRoute } from '@tanstack/react-router'
+function Page() {
+  return '${label}'
 }
-
-export const Route = createFileRoute('/owned')({
-  component: Component,
-})
+export const Route = createFileRoute('${routePath}')({ component: Page })
 `
-
-    const contextA = createRouterPluginContext()
-    contextA.routesByFile.set(routeFile, { routeId: '/owned' })
-
-    const contextB = createRouterPluginContext()
-    contextB.routesByFile.set(otherRouteFile, { routeId: '/other' })
-
-    const configA = {
-      target: 'react',
-      routesDirectory: './src/routes-a',
-      generatedRouteTree: './src/routeTree-a.gen.ts',
-      autoCodeSplitting: true,
-    } satisfies Partial<Config>
-
-    const configB = {
-      target: 'react',
-      routesDirectory: './src/routes-b',
-      generatedRouteTree: './src/routeTree-b.gen.ts',
-      autoCodeSplitting: true,
-    } satisfies Partial<Config>
-
-    const splitterA = getReferencePlugin(
-      createRouterCodeSplitterPlugin(configA, contextA),
-    )
-    const splitterB = getReferencePlugin(
-      createRouterCodeSplitterPlugin(configB, contextB),
-    )
-
-    await configurePlugin(splitterA)
-    await configurePlugin(splitterB)
-
-    const firstResult = await transformReferenceRoute(
-      splitterA,
-      routeCode,
-      routeFile,
-    )
-    const firstCode = getCode(firstResult)
-
-    expect(firstCode).not.toBeNull()
-    // Code added twice would declare its bindings twice.
-    expect(await getModuleErrors(firstCode!)).toEqual([])
-
-    const secondResult = await transformReferenceRoute(
-      splitterB,
-      firstCode!,
-      routeFile,
-    )
-
-    expect(secondResult).toBeNull()
-  })
+    const server = await routerDevServer({
+      plugins: [
+        routerPackageStub(),
+        tanstackRouter({
+          target: 'react',
+          routesDirectory: './routes-b',
+          generatedRouteTree: './routeTree-b.gen.ts',
+          autoCodeSplitting: true,
+        }),
+      ],
+      files: {
+        'routes/owned.tsx': route('/owned', 'owned'),
+        'routes-b/__root.tsx': rootRoute,
+        'routes-b/other.tsx': route('/other', 'other'),
+      },
+    })
+    for (const [url, label] of [
+      ['/routes/owned.tsx', 'owned'],
+      ['/routes-b/other.tsx', 'other'],
+    ]) {
+      // Code added twice would declare its bindings twice.
+      expect(await getModuleErrors(await server.transform(url!)), url).toEqual(
+        [],
+      )
+      const { Route } = await server.import(url!)
+      const component = await loadRouteOption(Route.options.component)
+      expect(component, url).not.toBe(Route.options.component)
+      expect((component as () => string)(), url).toBe(label)
+    }
+  }, 30_000)
 
   it('normalizes HMR options before the first transform', async () => {
     const routeFile = normalizePath(

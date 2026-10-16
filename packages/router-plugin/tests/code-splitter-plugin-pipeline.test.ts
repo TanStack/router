@@ -409,6 +409,17 @@ export const Route = createFileRoute('/')({})
   },
 )
 
+// An invalid route file (a `Route` both imported and declared) fails the
+// build. Source: the #8504 confidence campaign (DX-07).
+it('refuses a route file that imports and declares Route', () => {
+  expect(() =>
+    compileRouteModules(`import { createFileRoute } from '@tanstack/react-router'
+import { Route } from './other'
+export const Route = createFileRoute('/')({ component: () => <p>page</p> })
+`),
+  ).toThrow(/\bRoute\b/)
+})
+
 describe('route HMR plugin without code splitting', () => {
   function transformWith(
     options: Partial<Config> & { target: 'solid' | 'vue' },

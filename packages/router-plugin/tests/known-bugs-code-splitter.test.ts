@@ -14,7 +14,10 @@ import {
   expectValidModules,
   head,
   importSources,
+  importedNames,
   loadRoute,
+  parseModule,
+  transformWithRouteHmrPlugin,
 } from './regression-helpers'
 import type {
   BuildResult,
@@ -107,6 +110,25 @@ const read = () => Value.One`,
       name: 'a namespace',
       declaration: `namespace Value { export const one = init(1) }
 const read = () => Value.one`,
+    },
+    // Source: the #8504 confidence campaign (mutation testing MHR2/MHR3: a
+    // direct read takes another path than a read through a helper).
+    {
+      name: 'an enum, read directly',
+      declaration: `enum Value { One = init(1) }`,
+      read: 'Value.One',
+    },
+    {
+      name: 'a namespace, read directly',
+      declaration: `namespace Value { export const one = init(1) }`,
+      read: 'Value.one',
+    },
+    {
+      // Source: #8504 (a namespace merged across two declarations).
+      name: 'a namespace declared in two blocks',
+      declaration: `namespace Value { export const one = init(1) }
+namespace Value { export const two = one }`,
+      read: 'Value.two',
     },
   ])(
     'a binding declared by $name and read by the loader and the split component is initialized once',
@@ -467,6 +489,34 @@ const b = () => a`,
   Value = track(),
 }`,
     },
+    // Types read no value at runtime. Source: the #8504 confidence campaign
+    // (corpus-diff K-08 and K-21a).
+    {
+      name: 'an unused subscription only a type alias reads',
+      effect: `const unsubscribe = subscribe(() => {})
+type Unsubscribe = typeof unsubscribe`,
+    },
+    {
+      name: 'an unused subscription only a module augmentation reads',
+      effect: `const unsubscribe = subscribe(() => {})
+declare module './effects' {
+  interface Registry {
+    unsubscribe: typeof unsubscribe
+  }
+}`,
+    },
+    {
+      name: 'an unused subscription only a props type reads',
+      effect: `const unsubscribe = subscribe(() => {})
+export function Card(props: { stop: typeof unsubscribe }) {
+  return null
+}`,
+    },
+    {
+      name: 'an unused reassigned let',
+      effect: `let label = track()
+label = 'reassigned'`,
+    },
   ])(
     'an unreferenced top-level side effect ($name) runs once, with the route module',
     async ({ effect }) => {
@@ -612,6 +662,38 @@ export const Route = createFileRoute('/')({
         registered,
         '<p>component</p>',
       ])
+    },
+  )
+
+  // Bug: same as the type alias row above, in a route module compiled by the
+  // route HMR plugin (automatic code splitting off), which runs the same
+  // reference compiler. Source: the #8504 confidence campaign (F-06).
+  // Impact: as above, in development without automatic code splitting.
+  test.fails(
+    'the initializer of a declaration only an exported type alias reads runs when a route module compiled for HMR loads',
+    async () => {
+      const calls: Array<unknown> = []
+      await evaluateModule(
+        transformWithRouteHmrPlugin(`${head}import { init } from './init'
+const analytics = init('analytics')
+export type Analytics = typeof analytics
+export const Route = createFileRoute('/')({
+  component: () => <p>component</p>,
+})
+`),
+        {
+          './init': {
+            init: (value: unknown) => {
+              calls.push(value)
+              return value
+            },
+          },
+          '@tanstack/react-router': {
+            createFileRoute: () => (options: unknown) => ({ options }),
+          },
+        },
+      )
+      expect(calls).toEqual(['analytics'])
     },
   )
 })
@@ -1059,6 +1141,105 @@ export const Route = createFileRoute('/')({ component: ${component} })
   )
 })
 
+describe('route factories written in other shapes', () => {
+  // Bug: the code splitter only recognises `createFileRoute` under its own
+  // name, so a route whose factory is imported under an alias is not split,
+  // and nothing says so. Our limitation, so the goal is a split component
+  // (decision D11). Source: the #8504 confidence campaign (K-21b, DX-02).
+  // Impact: the route's components load with the entry chunk, silently.
+  test.fails(
+    'a component is split when createFileRoute is imported under an alias',
+    async () => {
+      const route =
+        await loadRoute(`import { createFileRoute as fileRoute } from '@tanstack/react-router'
+export const Route = fileRoute('/')({ component: Page })
+function Page() {
+  return <p>page</p>
+}
+`)
+      expect(route.isLazy('component')).toBe(true)
+      expect((await route.load('component'))()).toBe('<p>page</p>')
+    },
+  )
+
+  // Bug: route options returned by a call (`createFileRoute('/')(
+  // makeOptions())`) are neither split nor reported. The user can write the
+  // options inline, so a warning naming the file is an acceptable outcome
+  // (decision D11). Source: the #8504 confidence campaign (DX-02, RF-8).
+  // Impact: the route's components load with the entry chunk, silently.
+  test.fails(
+    'route options returned by a call are split or reported',
+    async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const route = await loadRoute(`${head}function Page() {
+  return <p>page</p>
+}
+const makeOptions = () => ({ component: Page })
+export const Route = createFileRoute('/')(makeOptions())
+`)
+        expect((await route.load('component'))()).toBe('<p>page</p>')
+        expect({
+          split: route.isLazy('component'),
+          warned: warn.mock.calls.some(([message]) =>
+            String(message).includes(route.ids.reference!),
+          ),
+        }).not.toEqual({ split: false, warned: false })
+      } finally {
+        warn.mockRestore()
+      }
+    },
+  )
+
+  // Bug: a route file that creates two file routes compiles both routes'
+  // split options into the same chunk names, so one route renders the
+  // other's component, silently. Supporting it, or refusing it with an error
+  // or a warning naming the file, are both valid fixes.
+  // Source: the #8504 confidence campaign (corpus-diff K-01; the #8630 pin
+  // was dropped without a ruling).
+  // Impact: a route renders another route's component.
+  test.fails(
+    'each of two file routes of one module renders its own component, or the module is reported',
+    async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        let route
+        try {
+          route =
+            await loadRoute(`${head}export const Legacy = createFileRoute('/old')({
+  component: () => <p>legacy</p>,
+})
+export const Route = createFileRoute('/')({
+  component: () => <p>index</p>,
+})
+`)
+        } catch (error) {
+          expect(String(error)).toContain('route.tsx')
+          return
+        }
+        if (
+          warn.mock.calls.some(([message]) =>
+            String(message).includes(route.ids.reference!),
+          )
+        ) {
+          return
+        }
+        /** Renders a route option, loading it first when it is lazy. */
+        const render = async (component: any) => {
+          await component.preload?.()
+          return component()
+        }
+        expect([
+          await render(route.exports.Legacy.options.component),
+          await render(route.options.component),
+        ]).toEqual(['<p>legacy</p>', '<p>index</p>'])
+      } finally {
+        warn.mockRestore()
+      }
+    },
+  )
+})
+
 describe('what split chunks hold', () => {
   // Bug: a split chunk keeps every exported `function`, `class` and
   // `export default function` declaration of the route file, with the
@@ -1138,6 +1319,54 @@ export const Route = createFileRoute('/')({
           declaresTest: declaredNames(chunk).has('Test'),
         })),
       ).toEqual(chunks.map(() => ({ requests: [], declaresTest: false })))
+    },
+  )
+
+  // Bug: the route module keeps importing the classic JSX factory its pragma
+  // names (and the chunk the fragment factory) after the JSX that compiles
+  // to it moved to a split chunk (D5 family). Source: #8504
+  // (code-splitter-pragmas.test.ts; mutation testing P-03), where it passes.
+  // Impact: the entry chunk loads the JSX library for nothing.
+  test.fails.each([
+    {
+      name: '@jsx',
+      header: `/** @jsx h */
+import { h } from 'preact'`,
+      module: 'reference',
+      unused: 'h',
+    },
+    {
+      name: '@jsx written with two spaces',
+      header: `/** @jsx  h */
+import { h } from 'preact'`,
+      module: 'reference',
+      unused: 'h',
+    },
+    {
+      name: '@jsxFrag, in a chunk without fragments',
+      header: `/** @jsx h */
+/** @jsxFrag Fragment */
+import { h, Fragment } from 'preact'`,
+      module: 'component',
+      unused: 'Fragment',
+    },
+  ])(
+    'a module without JSX does not import the classic factory ($name)',
+    async ({ header, module, unused }) => {
+      const route = await loadRoute(
+        `${header}
+${head}export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>page</p>,
+})
+`,
+        { stubs: { preact: { h: () => 'h', Fragment: 'Fragment' } } },
+      )
+      const code =
+        module === 'reference'
+          ? route.modules.reference!
+          : route.chunkOf('component')
+      expect(importedNames(code, 'preact')).not.toContain(unused)
     },
   )
 
@@ -1520,14 +1749,17 @@ describe('classic JSX pragmas', () => {
 import { jsx } from '@emotion/react'
 `
 
-  // Control for the JSX pragma pin below (same rendering).
-  test('evaluateModule renders JSX through the factory of a classic JSX pragma', async () => {
-    const { Page } = await evaluateModule(
-      `${pragma}export const Page = () => <div>page</div>`,
-      { '@emotion/react': emotion },
-    )
-    expect(Page!()).toBe('<emotion:div>page</emotion:div>')
-  })
+  // Control for the JSX pragma pins below (same rendering).
+  test.each([pragma, pragma.replace('@jsx jsx', '@jsx  jsx')])(
+    'evaluateModule renders JSX through the factory of a classic JSX pragma (%s)',
+    async (header) => {
+      const { Page } = await evaluateModule(
+        `${header}export const Page = () => <div>page</div>`,
+        { '@emotion/react': emotion },
+      )
+      expect(Page!()).toBe('<emotion:div>page</emotion:div>')
+    },
+  )
 
   // Bug: dead-code elimination does not count a classic JSX pragma
   // (`/** @jsx jsx */`) as a use of the factory it names, so a chunk whose
@@ -1575,6 +1807,19 @@ export const Route = createFileRoute('/')({
         Frag,
       },
       rendered: 'page',
+    },
+    {
+      // Source: #8504 (mutation testing P-03).
+      name: 'a pragma written with two spaces',
+      code: `/** @jsxRuntime classic */
+/** @jsx  jsx */
+${head}import { jsx } from '@emotion/react'
+export const Route = createFileRoute('/')({
+  component: () => <div>page</div>,
+  errorComponent: () => jsx('b', null, 'error'),
+})`,
+      stub: emotion,
+      rendered: '<emotion:div>page</emotion:div>',
     },
     {
       name: 'a factory the route module exports',
@@ -1671,6 +1916,15 @@ describe('exported bindings', () => {
   return <p>page</p>
 }
 export default Page`,
+      binding: 'Page',
+    },
+    {
+      // Source: #8504 (lost case L4).
+      name: 'a function exported as default by specifier',
+      declaration: `function Page() {
+  return <p>page</p>
+}
+export { Page as default }`,
       binding: 'Page',
     },
     {
@@ -2091,6 +2345,20 @@ ${component}`,
     // Whether it renders is pinned at the compiler level ("top-level writes
     // to the split component (property assignment) stay with the binding
     // they write"); a fix must keep the component in its chunk.
+    // Source: the #8504 confidence campaign (exported-bindings fixture L,
+    // where a candidate fix moved the component to the entry).
+    routeCase(
+      'an exported function component next to a helper the loader and the component share',
+      'shared-helper-export',
+      `const label = (value: string) => value + '!'
+export function Card() {
+  return <b>{'$MARK'}</b>
+}
+export const Route = createFileRoute('$PATH')({
+  loader: () => label('data'),
+  component: () => <p>{label('page')}<Card /></p>,
+})`,
+    ),
     routeCase(
       'a component the route file writes a property of',
       'display-name',
@@ -2151,7 +2419,43 @@ ${component}`,
 }
 ${component}`,
     ),
+    // Source: the #8504 confidence campaign (exported-bindings S5, G1 and
+    // fixture C).
+    routeCase(
+      'an exported const used as the component',
+      'exported-const-component',
+      `export const Page = () => <p>{'$MARK'}</p>
+${component}`,
+    ),
+    routeCase(
+      "an exported component another route's split component renders",
+      'exported-shared',
+      `export function Card() {
+  return <b>{'$MARK'}</b>
+}
+function Page() {
+  return <Card />
+}
+${component}`,
+    ),
   ]
+
+  // Bug: an exported component that two split options render goes to a
+  // module both chunks import, which the route module re-exports, so it
+  // loads with the entry chunk unless the app declares `"sideEffects":
+  // false` (then the bundler drops the unused re-export).
+  // Source: the #8504 confidence campaign (exported-bindings G1).
+  const exportedSharedByOptions = routeCase(
+    'an exported component two split options render',
+    'exported-two-options',
+    `export function Card() {
+  return <b>{'$MARK'}</b>
+}
+export const Route = createFileRoute('$PATH')({
+  component: () => <p><Card /></p>,
+  errorComponent: () => <p><Card /></p>,
+})`,
+  )
 
   // Goals for split options the code splitter leaves in the route module.
   const unsplit: Array<Case> = [
@@ -2227,6 +2531,7 @@ ${component}`,
     ...controls,
     ...exported,
     ...unsplit,
+    exportedSharedByOptions,
     destructured,
     unreadExport,
   ]
@@ -2237,6 +2542,14 @@ export const label = 'label'
     'heavy.ts': `export function heavy() {
   return 'MARK_heavy_dependency_END'
 }
+`,
+    // Renders the exported component of `exported-shared` in its split
+    // component.
+    'routes/imports-exported.tsx': `${head}import { Card } from './exported-shared'
+function Page() {
+  return <Card />
+}
+export const Route = createFileRoute('/imports-exported')({ component: Page })
 `,
     'routes/__root.tsx': rootRoute,
     ...Object.fromEntries(
@@ -2281,6 +2594,15 @@ export { routeTree }
         },
         timeout,
       )
+      ;(sideEffects === false ? test : test.fails)(
+        `${exportedSharedByOptions.name} loads with its chunk`,
+        async () => {
+          expect((await app()).where(exportedSharedByOptions.marker)).toBe(
+            'lazy',
+          )
+        },
+        timeout,
+      )
 
       test.fails.each(['errorComponent', 'notFoundComponent'] as const)(
         "a root route's %s loads lazily",
@@ -2319,6 +2641,32 @@ export { routeTree }
 })
 
 describe('TypeScript-only syntax', () => {
+  // Bug: the code splitter cannot parse a constructor parameter decorator
+  // (TypeScript `experimentalDecorators`, as dependency injection libraries
+  // use them) and fails the build. Source: the #8504 confidence campaign
+  // (F-22), where #8504 compiles it.
+  // Impact: a route file with such a class cannot be built once code
+  // splitting is on.
+  test.fails(
+    'a class with a parameter decorator that the split component uses compiles into parseable modules',
+    () => {
+      const { modules } =
+        compileRouteModules(`${head}import { Inject } from './di'
+class Service {
+  constructor(@Inject() readonly dep: unknown) {}
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>{String(new Service(1).dep)}</p>,
+})
+`)
+      expect(Object.keys(modules).length).toBeGreaterThan(1)
+      for (const code of Object.values(modules)) {
+        parseModule(code)
+      }
+    },
+  )
+
   // Bug: a type-only import re-exported without `type` (`export { Settings }`,
   // which TypeScript accepts unless verbatimModuleSyntax is on) loses its
   // import in the route module and the split chunks, which keep the export
@@ -2577,6 +2925,12 @@ export const Route = createFileRoute('/')({ component: Page })
       name: 'an export alias',
       exports: 'export { Page as View }',
       read: (moduleExports: Record<string, any>) => moduleExports.View(),
+    },
+    {
+      // Source: #8504 (lost case L4).
+      name: 'a default export by specifier',
+      exports: 'export { Page as default }',
+      read: (moduleExports: Record<string, any>) => moduleExports.default(),
     },
   ])(
     'a split component that $name reads renders from both',
@@ -3045,6 +3399,16 @@ export const Route = createFileRoute('/')(
   }),
 )`,
     },
+    // Real route files cast their options (`as never`, `as any`) when the
+    // handlers' types do not fit. Source: the #8504 confidence campaign
+    // (suspects SU-4/8; 4 corpus files in 3 repositories).
+    ...['as never', 'as any', 'satisfies object'].map((cast) => ({
+      name: `options wrapped in \`${cast}\``,
+      code: `export const Route = createFileRoute('/')({
+  server: { handlers: { GET: () => db.all() } },
+  component: () => <p>x</p>,
+} ${cast})`,
+    })),
   ])(
     'a server-only option given through $name is removed, or the route is refused',
     async ({ code }) => {

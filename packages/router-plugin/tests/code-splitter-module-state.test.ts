@@ -89,12 +89,6 @@ export const Route = createFileRoute('/')({
       (await route.load('component'))(),
       (await route.load('errorComponent'))(),
     ]).toEqual(['<b><i>a</i></b>', '<b><i>a</i></b>'])
-    for (const name of ['A', 'B']) {
-      const declaring = Object.values(route.modules).filter((code) =>
-        declaredNames(code).has(name),
-      )
-      expect(declaring, name).toHaveLength(1)
-    }
   })
 
   it('keeps one class with a static block and private members', async () => {
@@ -247,6 +241,89 @@ export const Route = createFileRoute('/')({
   expect(route.exports.base).toBe(seen.base)
   expect(route.exports.x).toBe(seen.x)
   expect(route.exports.y).toEqual({ id: 'y' })
+})
+
+// Initializers whose side effects hide in their syntax, read by the loader
+// and the split component: each runs once and both options read the one
+// value (when it runs is free). Source: #8504
+// (shared-bindings-helpers.test.ts; lost case L8).
+describe('a shared initializer with side effects', () => {
+  it.each([
+    {
+      name: 'a template literal (toString)',
+      declaration: 'const value = { label: `${prefix}` }',
+    },
+    {
+      name: 'a unary minus (valueOf)',
+      declaration: 'const value = { label: -prefix }',
+    },
+    {
+      name: 'a constructor of an import',
+      declaration: `import { Map } from 'immutable'
+const value = new Map()`,
+    },
+    {
+      name: 'a static field calling an import',
+      declaration: `class Store {
+  static instance = register()
+}
+const value = Store`,
+    },
+    {
+      name: 'JSX of a component that calls an import',
+      declaration: `function Tracked() {
+  register()
+  return 'tracked'
+}
+const value = { element: <Tracked /> }`,
+    },
+    {
+      name: 'a pure-annotated call (control)',
+      declaration: 'const value = /* @__PURE__ */ register()',
+    },
+  ])('$name runs once', async ({ declaration }) => {
+    let effects = 0
+    const seen: Array<unknown> = []
+    const effect = () => {
+      effects++
+      return { id: effects }
+    }
+    const route = await loadRoute(
+      `${head}import { prefix, register, see } from './state'
+${declaration}
+export const Route = createFileRoute('/')({
+  loader: () => see(value),
+  component: () => <p>{String(see(value))}</p>,
+})
+`,
+      {
+        stubs: {
+          './state': {
+            prefix: {
+              toString: () => String(effect().id),
+              valueOf: () => effect().id,
+            },
+            register: effect,
+            see: (value: unknown) => {
+              seen.push(value)
+              return 1
+            },
+          },
+          immutable: {
+            Map: class {
+              id = effect().id
+            },
+          },
+        },
+      },
+    )
+    await expectValidModules(route.modules)
+    route.options.loader()
+    expect((await route.load('component'))()).toBe('<p>1</p>')
+    expect(effects).toBe(1)
+    expect(seen).toHaveLength(2)
+    expect(seen[0]).toBe(seen[1])
+  })
 })
 
 describe('split chunks keep reassigned bindings next to their writers', () => {

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
-  countAcrossModules,
   declaredNames,
   evaluateModule,
   expectValidModules,
@@ -401,6 +400,52 @@ export const Route = createFileRoute('/posts')({
   )
 })
 
+// Type arguments name types only: TypeScript erases them, so a type, its
+// parameters and the values a `typeof` there names are no reads of module
+// bindings. Source: #8504 (shared-bindings helper tests; lost case L6).
+it.each([
+  { name: 'a function type', type: '(value: Item) => void' },
+  { name: 'a constructor type', type: 'new (value: Item) => object' },
+  { name: 'a method signature', type: '{ read(value: Item): void }' },
+  { name: 'a generic function type', type: '<T extends Item>(value: T) => T' },
+  {
+    name: 'a conditional type with infer',
+    type: 'Item extends Array<infer U> ? U : typeof item',
+  },
+])(
+  'keeps a context created with $name as type argument working in the split component',
+  async ({ type }) => {
+    let created = 0
+    const route = await loadRoute(
+      `${head}import { createContext } from 'react'
+type Item = { id: string }
+const item: Item = { id: 'item' }
+const Context = createContext<${type}>(null!)
+export const Route = createFileRoute('/')({
+  loader: () => item.id,
+  component: () => <p>{String(Context.value)}</p>,
+})
+`,
+      {
+        stubs: {
+          react: {
+            createContext: (value: unknown) => {
+              created++
+              return { value }
+            },
+          },
+        },
+      },
+    )
+    await expectValidModules(route.modules)
+    expect([
+      route.options.loader(),
+      (await route.load('component'))(),
+      created,
+    ]).toEqual(['item', '<p>null</p>', 1])
+  },
+)
+
 describe('code a split option needs moves with it', () => {
   // Source: Qwik optimizer test.rs should_not_move_over_side_effects,
   // example_drop_side_effects; Turbopack tree-shaker analyzer/route-kind
@@ -741,16 +786,39 @@ describe('robustness', () => {
   it('compiles a route with a long method chain', async () => {
     // Builder APIs (schemas, query builders) produce deep left-nested calls
     const chain = Array.from({ length: 200 }, (_, i) => `.add(${i})`).join('')
-    const { modules } =
-      compileRouteModules(`${head}import { builder } from './builder'
+    const calls = { builder: 0, add: 0 }
+    const schema = {
+      add: () => {
+        calls.add++
+        return schema
+      },
+      toString: () => 'schema',
+    }
+    const route = await loadRoute(
+      `${head}import { builder } from './builder'
 const schema = builder()${chain}
 export const Route = createFileRoute('/')({
   loader: () => schema,
   component: () => <div>{String(schema)}</div>,
 })
-`)
-    // The chain is evaluated once, whichever module holds it.
-    expect(countAcrossModules(modules, /\.add\(199\)/)).toBe(1)
-    await expectValidModules(modules)
+`,
+      {
+        stubs: {
+          './builder': {
+            builder: () => {
+              calls.builder++
+              return schema
+            },
+          },
+        },
+      },
+    )
+    await expectValidModules(route.modules)
+    // The chain runs once, whichever module holds it.
+    expect([
+      route.options.loader(),
+      (await route.load('component'))(),
+      calls,
+    ]).toEqual([schema, '<div>schema</div>', { builder: 1, add: 200 }])
   })
 })

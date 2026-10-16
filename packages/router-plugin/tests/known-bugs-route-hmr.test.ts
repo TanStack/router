@@ -717,10 +717,10 @@ export const Route = createFileRoute('/')({ component: Page })
     60_000,
   )
 
-  // Source: gap P1 / DV51. The esbuild row holds trivially today, since the
-  // esbuild plugin neither generates nor splits routes (pinned in
-  // build-harness.test.ts).
-  test.each(['rspack', 'webpack', 'esbuild'] as const)(
+  // Source: gap P1 / DV51. (No esbuild row: the esbuild plugin neither
+  // generates nor splits routes, pinned in build-harness.test.ts, so it
+  // could not fail.)
+  test.each(['rspack', 'webpack'] as const)(
     'a production client bundle with automatic code splitting has no route HMR code (%s)',
     async (bundler) => {
       expect(await hmrPlacement(bundler, true)).toBe('nowhere')
