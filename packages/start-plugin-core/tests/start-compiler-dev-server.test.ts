@@ -4,6 +4,7 @@
  * and handlers reach every environment without a restart.
  */
 import { describe, expect, test } from 'vitest'
+import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
 import { startDevServer } from './dev-server'
 
 const timeout = 30_000
@@ -75,6 +76,51 @@ export const greet = createServerFn().handler(() => 'after')
       })
 
       expect(await call()).toEqual({ id: before.id, result: 'after' })
+    },
+    timeout,
+  )
+
+  // The provider module accepts its own updates: an edit of a module only
+  // handlers read stops there instead of reloading the server.
+  // Source: the HMR half of exports-and-directives.test.ts "dev providers
+  // export the handler and accept HMR updates" (N16).
+  test(
+    'SSR: an edit of a module only the handler reads is a hot update, and the handler runs the new code',
+    async () => {
+      const server = await startDevServer({
+        files: {
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const greet = createServerFn().handler(() => db.x())
+`,
+          'src/db.server.ts': `export const db = { x: () => 'before' }\n`,
+        },
+      })
+      const call = async () => {
+        const { greet } = await server.import('/src/fns.ts')
+        const { getServerFnById } = await server.import(
+          '#tanstack-start-server-fn-resolver',
+        )
+        const handler = await getServerFnById(greet.functionId, {
+          origin: 'client',
+        })
+        return handler({})
+      }
+      expect(await call()).toBe('before')
+
+      const messages = describeHmr(
+        await server.edit({
+          'src/db.server.ts': `export const db = { x: () => 'after' }\n`,
+        }),
+      )
+
+      expect(
+        messages.filter((message) => message.includes('full-reload')),
+      ).toEqual([])
+      expect(
+        messages.some((message) => message.startsWith('ssr: update')),
+      ).toBe(true)
+      expect(await call()).toBe('after')
     },
     timeout,
   )
