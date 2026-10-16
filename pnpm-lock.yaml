@@ -14406,6 +14406,9 @@ importers:
       '@rspack/core':
         specifier: 2.2.7
         version: 2.2.7(@swc/helpers@0.5.23)
+      '@tanstack/compiler-test-utils':
+        specifier: workspace:*
+        version: link:../compiler-test-utils
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
