@@ -633,6 +633,68 @@ export function make(createServerOnlyFn) {
       expect(settle(() => make(local)())).toBe('local')
     },
   )
+
+  // Same bug, every factory and every output, next to a compiled factory
+  // call. Source: #8504 start-compiler-factories.test.ts "parameters and
+  // locals shadowing the factories are left alone next to a compiled factory
+  // call" (red on main).
+  test.fails.each(outputs)(
+    '%s: parameters and locals shadowing the factories are left alone next to a compiled factory call',
+    async (output) => {
+      const code = `import * as Start from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn, createClientOnlyFn, createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+export const real = createServerOnlyFn(() => 'real')
+export function wrap(createServerOnlyFn) {
+  return createServerOnlyFn(() => 'param')
+}
+export function receiver(Start) {
+  return (Start).createServerOnlyFn(() => 'receiver')
+}
+export function local() {
+  const createClientOnlyFn = (fn: () => string) => fn
+  return createClientOnlyFn(() => 'local')
+}
+export function iso(createIsomorphicFn) {
+  return createIsomorphicFn().server(() => 's').client(() => 'c')
+}
+export function mw(createMiddleware) {
+  return createMiddleware().server(() => 's')
+}
+export function make(createServerFn) {
+  const made = createServerFn().handler(() => 'param')
+  return made
+}`
+      const module = await evaluateModule((await compileCode(output, code))!)
+      const identity = (fn: () => string) => fn
+      const builder = {
+        server: (server: () => string) => ({
+          client: (client: () => string) => [server(), client()],
+        }),
+        handler: (handler: () => string) => handler(),
+      }
+      expect({
+        real: settle(module.real),
+        wrap: settle(() => module.wrap(identity)()),
+        receiver: settle(() =>
+          module.receiver({ createServerOnlyFn: identity })(),
+        ),
+        local: settle(() => module.local()()),
+        iso: settle(() => module.iso(() => builder)),
+        mw: settle(() =>
+          module.mw(() => ({ server: (fn: () => string) => fn() })),
+        ),
+        make: settle(() => module.make(() => builder)),
+      }).toEqual({
+        real: output === 'client' ? serverOnlyError : 'real',
+        wrap: 'param',
+        receiver: 'receiver',
+        local: 'local',
+        iso: ['s', 'c'],
+        mw: 's',
+        make: 'param',
+      })
+    },
+  )
 })
 
 describe('server function handlers', () => {
