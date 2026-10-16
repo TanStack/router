@@ -135,8 +135,9 @@ describe('boundaries and ids', () => {
       expect((await renderBoundaries('client', code, render)).ids).toEqual(
         expect.arrayContaining(serverIds),
       )
-      const { module } = await loadClientModule(code)
+      const { module, lazyChunks } = await loadClientModule(code)
       expect(module.Page()).toBe('<div>[<p>outer</p>][<p>second</p>]</div>')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -184,6 +185,9 @@ export function Page() {
       expect(
         await renderBoundaries('client', `${head}${code}`, render),
       ).toEqual(server)
+      const { module, lazyChunks } = await loadClientModule(`${head}${code}`)
+      render(module)
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -231,6 +235,9 @@ export function Page() {
   // Impact: the injected lazy child overrides `children` passed through a
   // spread, so they never render; a self-closing `children={...}` boundary
   // ships an unused empty chunk.
+  // `split`: JSX passed as the `children` prop is split like JSX children.
+  // Children that only exist at run time (a spread) or plain text have no
+  // code to load lazily, so leaving them in place is accepted.
   test.fails.each([
     {
       name: 'a spread on an element without children',
@@ -239,6 +246,7 @@ export function Page() {
 }`,
       props: { children: 'spread' },
       html: '[spread]',
+      split: false,
     },
     {
       name: 'a children prop of a self-closing element',
@@ -249,6 +257,7 @@ export function Page() {
 }`,
       props: {},
       html: '[chart]',
+      split: true,
     },
     {
       // A comment-only `{/* */}` child is no child for React either.
@@ -258,6 +267,7 @@ export function Page() {
 }`,
       props: {},
       html: '[<p>prop</p>]',
+      split: true,
     },
     {
       // Plain text has nothing to hydrate: splitting it or leaving it in
@@ -269,10 +279,11 @@ export function Page() {
 }`,
       props: {},
       html: '[text]',
+      split: false,
     },
   ])(
     'client: children passed through $name render without unused chunks',
-    async ({ code, props, html }) => {
+    async ({ code, props, html, split }) => {
       const { module, lazyChunks } = await loadClientModule(`${head}${code}`, {
         stubs: { './chart': { Chart: () => 'chart' } },
       })
@@ -280,6 +291,9 @@ export function Page() {
         html: module.Page(props),
         unusedChunks: lazyChunks.filter((chunk) => !chunk.rendered).length,
       }).toEqual({ html, unusedChunks: 0 })
+      if (split) {
+        expectRenderedThroughChunks(lazyChunks)
+      }
     },
   )
 
@@ -287,6 +301,8 @@ export function Page() {
   // literal of the raw text, without the line collapsing of JSX text.
   // Impact: the client renders other text than the server (a hydration
   // mismatch).
+  // Plain text has nothing to hydrate: splitting it or leaving it in place
+  // are both accepted, so the chunks are not asserted.
   // Source: #8504 hydrate-split-modules.test.ts (exact JSX-text equality, red
   // on main)
   test.fails.each([
@@ -315,7 +331,7 @@ export function Page() {
   /**
    * Renders `Page` of `code` compiled for `env` (on the client once its
    * chunks have loaded) and records each `<Hydrate>` it renders: its id and
-   * its children. `<ClientOnly>` renders its fallback on the server and its
+   * its children (and, on the client, `lazyChunks`). `<ClientOnly>` renders its fallback on the server and its
    * children on the client.
    */
   async function renderPage(env: 'client' | 'server', code: string) {
@@ -335,16 +351,19 @@ export function Page() {
           env === 'server' ? props.fallback : props.children,
       },
     }
-    const module =
+    const { module, lazyChunks } =
       env === 'server'
-        ? await evaluateModule(
-            (await compileHydrate('server', code)).parent,
-            stubs,
-            { runtime: reactRuntime },
-          )
-        : (await loadClientModule(code, { stubs })).module
+        ? {
+            module: await evaluateModule(
+              (await compileHydrate('server', code)).parent,
+              stubs,
+              { runtime: reactRuntime },
+            ),
+            lazyChunks: [],
+          }
+        : await loadClientModule(code, { stubs })
     const html = module.Page()
-    return { html, boundaries }
+    return { html, boundaries, lazyChunks }
   }
 
   // Bug: the Hydrate plugin numbers boundaries after the other Start
@@ -447,6 +466,7 @@ export function Page() {
         html: rendered.html,
         id: idOfB(rendered.boundaries),
       }).toEqual({ html: client, id: idOfB(server.boundaries) })
+      expectRenderedThroughChunks(rendered.lazyChunks)
     },
   )
 })
@@ -568,6 +588,7 @@ export function Page({ Model }) {
         return
       }
       expect(loaded.module.Page({ title: 'Hello' })).toBe('[<p>Hello</p>]')
+      expectRenderedThroughChunks(loaded.lazyChunks)
     },
   )
 
@@ -628,10 +649,11 @@ export async function Page() {
         return
       }
       // Every emitted module is valid (`loadClientModule`).
-      const { module } = await loadClientModule(code, {
+      const { module, lazyChunks } = await loadClientModule(code, {
         stubs: { './data': { load: async () => 'data' } },
       })
       expect(await module.Page()).toBe('[<p>data</p>]')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 })
@@ -824,11 +846,12 @@ export function Page() {
         return
       }
       const created: Array<string> = []
-      const { module } = await loadClientModule(code, {
+      const { module, lazyChunks } = await loadClientModule(code, {
         stubs: routerStub(created),
       })
       expect(module.Page()).toBe('[<p>/posts</p>]')
       expect(created).toEqual(['/posts'])
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 

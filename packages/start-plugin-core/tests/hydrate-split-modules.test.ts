@@ -781,29 +781,31 @@ export function Page() {
   test('client: string attributes keep their value', async () => {
     const element = `<span title="Fish &amp; Chips &copy;" data-q='say "hi"' data-n="a
 b" dangerouslySetInnerHTML={{ __html: "<h1>I'm an h1!</h1>" }} />`
-    const { chunks } = await compileHydrate(
-      'client',
-      `${head}export function Page() {
-  return <Hydrate>${element}</Hydrate>
-}`,
-    )
-    // Render the props instead of the element.
-    const propsRuntime = `const __Fragment = null
-const __jsx = (type, props) => JSON.stringify(props)
+    // Intrinsic elements render with their props, so every attribute value
+    // is compared.
+    const propsRuntime = `const __Fragment = Symbol('Fragment')
+const __jsx = (type, props, ...children) => {
+  const text = children.flat(Infinity).join('')
+  if (type === __Fragment) return text
+  if (typeof type === 'function') {
+    return type(children.length ? { ...props, children: text } : { ...props })
+  }
+  return '<' + type + ' ' + JSON.stringify(props) + '>' + text + '</' + type + '>'
+}
 `
     const expected = await evaluateModule(
-      `export const H0 = () => ${element}`,
+      `export const element = ${element}`,
       {},
       { runtime: propsRuntime },
     )
-    const module = await evaluateModule(
-      chunks[0]!,
-      {},
-      {
-        runtime: propsRuntime,
-      },
+    const { module, lazyChunks } = await loadClientModule(
+      `${head}export function Page() {
+  return <Hydrate>${element}</Hydrate>
+}`,
+      { runtime: propsRuntime },
     )
-    expect(getChunkComponent(module)({})).toBe(expected.H0())
+    expect(module.Page()).toBe(`[${expected.element}]`)
+    expectRenderedThroughChunks(lazyChunks)
   })
 
   // Source: Qwik optimizer example_default_export
