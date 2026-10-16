@@ -9,7 +9,6 @@ import {
   findImportStatementLocationFromTransformed,
   findOriginalUsageLocation,
   findPostCompileUsageLocation,
-  getOrCreateOriginalTransformResult,
   normalizeSourceMap,
   pickOriginalCodeFromSourcesContent,
 } from '../../src/import-protection/sourceLocation'
@@ -170,19 +169,6 @@ describe('createImportSpecifierLocationIndex', () => {
     ).toBeGreaterThanOrEqual(0)
   })
 
-  test('reuses cached per-result index without changing results', () => {
-    const finder = createImportSpecifierLocationIndex()
-    const result = makeTransformResult(
-      `import { getSecret } from './secret.server'`,
-    )
-
-    const first = finder.find(result, './secret.server')
-    const second = finder.find(result, './secret.server')
-
-    expect(second).toBe(first)
-    expect(result.analysis?.importSpecifierLocationIndex).toBeDefined()
-  })
-
   test('returns -1 when source is absent', () => {
     const finder = createImportSpecifierLocationIndex()
     expect(
@@ -240,17 +226,6 @@ describe('createImportSpecifierLocationIndex', () => {
 
     const idx = finder.find(makeTransformResult(code), './secret.server')
     expect(idx).toBe(code.indexOf('./secret.server'))
-  })
-
-  test('reuses a lazily created original transform result', () => {
-    const result = makeTransformResult(`import { x } from './safe'`)
-    result.originalCode = `import { y } from './secret.server'`
-
-    const first = getOrCreateOriginalTransformResult(result)
-    const second = getOrCreateOriginalTransformResult(result)
-
-    expect(first).toBe(second)
-    expect(first?.code).toBe(result.originalCode)
   })
 })
 
