@@ -8,6 +8,7 @@ import {
   importSources,
   importedNames,
   loadRoute,
+  parseModule,
 } from './regression-helpers'
 import type { CodeSplitGroupings } from '../src/core/constants'
 
@@ -110,6 +111,131 @@ export { Route }
     await expectValidModules(route.modules)
     expect(route.isLazy('component')).toBe(true)
     expect((await route.load('component'))()).toBe('<div>split</div>')
+  })
+})
+
+// The groupings a route gets without any option (`defaultCodeSplitGroupings`,
+// documented): each component that only renders on some navigations loads
+// lazily on its own; the loader and the pendingComponent, which render
+// before the route's data arrives, stay in the route module.
+it('split the component, errorComponent and notFoundComponent, each on its own, by default', async () => {
+  const route =
+    await loadRoute(`${head}export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>page</p>,
+  errorComponent: () => <p>error</p>,
+  notFoundComponent: () => <p>not found</p>,
+  pendingComponent: () => <p>pending</p>,
+})
+`)
+  const options = [
+    'loader',
+    'component',
+    'errorComponent',
+    'notFoundComponent',
+    'pendingComponent',
+  ]
+  expect(
+    Object.fromEntries(options.map((option) => [option, route.isLazy(option)])),
+  ).toEqual({
+    loader: false,
+    component: true,
+    errorComponent: true,
+    notFoundComponent: true,
+    pendingComponent: false,
+  })
+  const modulesLoaded = [route.evaluated.length]
+  for (const option of ['component', 'errorComponent', 'notFoundComponent']) {
+    await route.load(option)
+    modulesLoaded.push(route.evaluated.length)
+  }
+  // One module per lazy option.
+  expect(modulesLoaded).toEqual([
+    modulesLoaded[0],
+    modulesLoaded[0]! + 1,
+    modulesLoaded[0]! + 2,
+    modulesLoaded[0]! + 3,
+  ])
+})
+
+// Route options given by reference to imported or local bindings move with
+// their own module: the route module no longer imports what only split
+// options read, and each lazy option resolves to the same value.
+// Shapes of the deleted code-splitter snapshot fixtures imported*,
+// imported-default-component*, imported-errorComponent,
+// imported-notFoundComponent, imported-pendingComponent, arrow-function,
+// function-declaration and conditional-properties.
+describe('route options given by reference', () => {
+  const page = {
+    default: () => '<p>page</p>',
+    ErrorView: () => '<p>error</p>',
+    Pending: () => '<p>pending</p>',
+    loadData: () => 'data',
+    fallback: () => 'fallback',
+  }
+  const groupings = `[['loader'], ['component'], ['errorComponent'], ['pendingComponent']]`
+
+  it.each([
+    {
+      name: 'imports',
+      code: `import Page, { ErrorView, Pending, loadData } from './page'
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: ${groupings},
+  loader: loadData,
+  component: Page,
+  errorComponent: ErrorView,
+  pendingComponent: Pending,
+})`,
+      expected: {
+        loader: page.loadData,
+        component: page.default,
+        errorComponent: page.ErrorView,
+        pendingComponent: page.Pending,
+      },
+    },
+    {
+      name: 'a loader declared as a local function',
+      code: `import Page, { loadData } from './page'
+function load() {
+  return loadData()
+}
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: ${groupings},
+  loader: load,
+  component: Page,
+})`,
+      expected: { component: page.default },
+      loaded: 'data',
+    },
+    {
+      name: 'a conditional loader',
+      code: `import { isEnabled } from './flags'
+import Page, { loadData, fallback } from './page'
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: ${groupings},
+  loader: isEnabled ? loadData : fallback,
+  component: Page,
+})`,
+      expected: { component: page.default },
+      loaded: 'data',
+    },
+  ])('split $name', async ({ code, expected, loaded }) => {
+    const route = await loadRoute(`${head}${code}\n`, {
+      stubs: { './page': page, './flags': { isEnabled: true } },
+    })
+    await expectValidModules(route.modules)
+    expect(importSources(route.modules.reference!)).not.toContain('./page')
+    const lazy = Object.keys(expected).filter((option) => route.isLazy(option))
+    expect([...lazy, ...(loaded ? [route.isLazy('loader')] : [])]).toEqual([
+      ...Object.keys(expected),
+      ...(loaded ? [true] : []),
+    ])
+    for (const [option, value] of Object.entries(expected)) {
+      expect(await route.load(option), option).toBe(value)
+    }
+    if (loaded) {
+      expect(await route.options.loader()).toBe(loaded)
+    }
   })
 })
 
@@ -514,6 +640,7 @@ export const Route = createFileRoute('/')({
   component: () => <Labelled title="标题">Usuário 🤡</Labelled>,
 })
 `)
+  expect(route.isLazy('component')).toBe(true)
   expect([route.options.loader(), (await route.load('component'))()]).toEqual([
     { data: 'Usuário🤠' },
     '<div>标题: Usuário 🤡</div>',
@@ -681,5 +808,72 @@ export const Route = createRootRoute({
       (await route.load('notFoundComponent'))(),
       calls,
     ]).toEqual([42, '<div>42</div>', '<p>error 42</p>', '<p>not found</p>', 1])
+  })
+})
+
+describe('code next to the route options', () => {
+  // A top-level call on the route after its definition runs once, with the
+  // route module, also once a split option loads. Shape of the deleted
+  // code-splitter snapshot fixture inline.
+  it('runs a top-level Route.addChildren call once', async () => {
+    let calls = 0
+    const createRoute = (options: unknown) => {
+      const route = {
+        options,
+        addChildren: (children: Array<unknown>) => {
+          calls++
+          return Object.assign(route, { children })
+        },
+      }
+      return route
+    }
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+})
+Route.addChildren([])
+`,
+      {
+        stubs: {
+          '@tanstack/react-router': { createFileRoute: () => createRoute },
+        },
+      },
+    )
+    expect(route.isLazy('component')).toBe(true)
+    expect((await route.load('component'))()).toBe('<p>page</p>')
+    expect(calls).toBe(1)
+  })
+
+  // A directive in a function body applies to that function, wherever it
+  // moves. Shape of the deleted code-splitter snapshot fixture random-number.
+  it("keeps a 'use server' directive in the body of a function that moves into a chunk", async () => {
+    const route = await loadRoute(`${head}async function getRandom() {
+  'use server'
+  return 4
+}
+export const Route = createFileRoute('/')({
+  component: () => <p>{String(getRandom)}</p>,
+})
+`)
+    await expectValidModules(route.modules)
+    expect(route.isLazy('component')).toBe(true)
+    // The module that declares `getRandom` keeps the directive first in its
+    // body.
+    const declaring = Object.entries(route.modules).flatMap(([name, code]) =>
+      parseModule(code)
+        .body.filter(
+          (statement) =>
+            statement.type === 'FunctionDeclaration' &&
+            statement.id?.name === 'getRandom',
+        )
+        .map((statement) => {
+          const [first] = (statement as any).body.body
+          return [
+            name,
+            first?.type === 'ExpressionStatement' ? first.directive : undefined,
+          ]
+        }),
+    )
+    expect(declaring).toEqual([['virtual component', 'use server']])
   })
 })

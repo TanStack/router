@@ -125,7 +125,7 @@ function Page() {
       expected: '<p>4</p>',
     },
     {
-      // Code-splitter fixture circular-reference-function
+      // Shape of the deleted code-splitter snapshot fixture circular-reference-function
       name: 'when it reads itself through an object shorthand',
       body: `function getComponentName(obj: Record<string, unknown>) {
   return Object.keys(obj)[0]
@@ -136,7 +136,7 @@ function Page() {
       expected: '<p>Page</p>',
     },
     {
-      // Code-splitter fixture circular-reference-arrow-function
+      // Shape of the deleted code-splitter snapshot fixture circular-reference-arrow-function
       name: 'when an arrow component reads itself through an object shorthand',
       body: `function getComponentName(obj: Record<string, unknown>) {
   return Object.keys(obj)[0]

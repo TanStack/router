@@ -195,6 +195,58 @@ export function createStore() {
   }, 30_000)
 })
 
+// Exported destructurings whose bindings split options read: each
+// initializer runs once, and the route module exports the objects the
+// options read. Shapes of the deleted code-splitter snapshot fixtures
+// destructured-export-multiple, destructured-export-nested and
+// shared-destructured-export.
+it('keeps one instance of exported destructured bindings the loader and the component read', async () => {
+  const calls = { init: 0, init2: 0 }
+  const seen: Record<string, unknown> = {}
+  const route = await loadRoute(
+    `${head}import { init, init2, see } from './state'
+export const {
+  api: { base },
+  ...rest
+} = init({ api: { base: { url: '/api' } }, extra: { flag: true } })
+export const [x, y] = init2([{ id: 'x' }, { id: 'y' }])
+export const Route = createFileRoute('/')({
+  loader: () => rest,
+  component: () => <p>{see({ base, x }) + base.url + x.id}</p>,
+})
+`,
+    {
+      stubs: {
+        './state': {
+          init: <T>(value: T) => {
+            calls.init++
+            return value
+          },
+          init2: <T>(value: T) => {
+            calls.init2++
+            return value
+          },
+          see: (values: Record<string, unknown>) => {
+            Object.assign(seen, values)
+            return ''
+          },
+        },
+      },
+    },
+  )
+  await expectValidModules(route.modules)
+  const loaded = await (await route.load('loader'))()
+  expect([loaded, (await route.load('component'))(), calls]).toEqual([
+    { extra: { flag: true } },
+    '<p>/apix</p>',
+    { init: 1, init2: 1 },
+  ])
+  expect(route.exports.rest).toBe(loaded)
+  expect(route.exports.base).toBe(seen.base)
+  expect(route.exports.x).toBe(seen.x)
+  expect(route.exports.y).toEqual({ id: 'y' })
+})
+
 describe('split chunks keep reassigned bindings next to their writers', () => {
   // Source: React Router route-chunks-test.ts "reassignment"; babel-dead-code-elimination
   // find-removable-bindings.test.ts "constant violations mark as external"
@@ -291,6 +343,10 @@ describe('module-level bindings read by route options', () => {
       groupings: [['component'], ['errorComponent'], ['notFoundComponent']],
     },
     {
+      name: 'loader and component combined, errorComponent split',
+      groupings: [['loader', 'component'], ['errorComponent']],
+    },
+    {
       name: 'loader split, components combined',
       groupings: [
         ['loader'],
@@ -373,19 +429,19 @@ const a = { b, c }`,
 
   /**
    * Known bug, remove from here when fixed: a class whose static initializer
-   * calls a function, read by one split option only, is declared in that
-   * option's chunk and also kept in the route module (dead-code elimination
-   * keeps a class with a side-effectful static initializer), so the class is
-   * created twice.
+   * calls a function, read by the options of one split chunk only, is
+   * declared in that chunk and also kept in the route module (dead-code
+   * elimination keeps a class with a side-effectful static initializer), so
+   * the class is created twice.
    * Impact: what the static initializer does (registrations, counters) runs
    * again when the chunk loads, and the route module holds a second class.
    */
   const isKnownBug = (row: Case, codeSplitGroupings: CodeSplitGroupings) => {
-    const [reader, ...others] = Object.keys(row.readers) as Array<Reader>
-    const split = codeSplitGroupings.some((group) =>
-      group.includes(reader as never),
+    const readers = Object.keys(row.readers) as Array<Reader>
+    const oneChunk = codeSplitGroupings.some((group) =>
+      readers.every((reader) => group.includes(reader as never)),
     )
-    return row.name.startsWith('a class') && others.length === 0 && split
+    return row.name.startsWith('a class') && oneChunk
   }
 
   describe.each(groupings)(

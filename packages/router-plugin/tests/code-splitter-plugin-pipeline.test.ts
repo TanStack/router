@@ -7,6 +7,7 @@ import {
   expectValidModules,
   importRequests,
   importSources,
+  importedNames,
   loadRoute,
   parseModule,
   routeFile,
@@ -223,12 +224,28 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     ).rejects.toThrow('Plugin order error')
   })
 
-  it('imports the lazy route helpers of the Solid router for a Solid route', async () => {
-    const route = await loadRoute(
-      `import { createFileRoute, Outlet } from '@tanstack/solid-router'
+  // Each framework's route module imports the lazy route helpers from its
+  // own router package, and no module imports another framework's router.
+  describe.each(['solid', 'vue'] as const)('a %s route', (framework) => {
+    const routerPackage = `@tanstack/${framework}-router`
+    const otherRouters = ['react', 'solid', 'vue']
+      .filter((other) => other !== framework)
+      .map((other) => `@tanstack/${other}-router`)
+
+    it.each([
+      { groupings: undefined, lazyHelpers: ['lazyRouteComponent'] },
+      {
+        groupings: `[['loader'], ['component']]`,
+        lazyHelpers: ['lazyFn', 'lazyRouteComponent'],
+      },
+    ])(
+      'loads its split options with groupings $groupings',
+      async ({ groupings, lazyHelpers }) => {
+        const route = await loadRoute(
+          `import { createFileRoute, Outlet } from '${routerPackage}'
 import { fetchPosts } from './posts'
 export const Route = createFileRoute('/posts')({
-  loader: fetchPosts,
+${groupings ? `  codeSplitGroupings: ${groupings},\n` : ''}  loader: fetchPosts,
   component: PostsComponent,
 })
 const PostsComponent = () => {
@@ -236,35 +253,43 @@ const PostsComponent = () => {
   return <ul>{posts().length}<Outlet /></ul>
 }
 `,
-      {
-        targetFramework: 'solid',
-        stubs: {
-          './posts': { fetchPosts: () => [] },
-          '@tanstack/solid-router': {
-            createFileRoute: () => (options: unknown) => ({
-              options,
-              useLoaderData: () => () => ['a'],
-            }),
+          {
+            targetFramework: framework,
+            stubs: {
+              './posts': { fetchPosts: () => ['post'] },
+              [routerPackage]: {
+                createFileRoute: () => (options: unknown) => ({
+                  options,
+                  useLoaderData: () => () => ['a'],
+                }),
+              },
+            },
           },
-        },
+        )
+        await expectValidModules(route.modules)
+        for (const [name, code] of Object.entries(route.modules)) {
+          for (const other of otherRouters) {
+            expect(importSources(code), name).not.toContain(other)
+          }
+        }
+        expect(
+          importedNames(route.modules.reference!, routerPackage).filter(
+            (name) => name.startsWith('lazy'),
+          ),
+        ).toEqual(lazyHelpers)
+        expect(route.isLazy('component')).toBe(true)
+        expect((await route.load('component'))()).toBe('<ul>1</ul>')
+        expect(route.isLazy('loader')).toBe(lazyHelpers.includes('lazyFn'))
+        expect(await route.options.loader()).toEqual(['post'])
       },
     )
-    await expectValidModules(route.modules)
-    for (const code of Object.values(route.modules)) {
-      expect(importSources(code)).not.toContain('@tanstack/react-router')
-    }
-    expect(importSources(route.modules.reference!)).toContain(
-      '@tanstack/solid-router',
-    )
-    expect(route.isLazy('component')).toBe(true)
-    expect((await route.load('component'))()).toBe('<ul>1</ul>')
   })
 })
 
 describe('modules that are not route files', () => {
   it.each([
     {
-      // Code-splitter fixture destructuring
+      // Shape of the deleted code-splitter snapshot fixture destructuring
       name: 'a module without a route',
       code: `import thing from 'thing'
 
@@ -280,7 +305,7 @@ export function test() {
 `,
     },
     {
-      // Code-splitter fixture function-as-parameter
+      // Shape of the deleted code-splitter snapshot fixture function-as-parameter
       name: 'a module passing named function expressions',
       code: `import * as React from 'react'
 import { useMemo } from 'tan-react'
@@ -307,8 +332,8 @@ console.info(ReactUseMemoCall, UseMemoCall)
   })
 })
 
-// Source: code-splitter fixture directive-prologue. A directive only applies
-// as the first statement of a module.
+// Shape of the deleted code-splitter snapshot fixture directive-prologue. A
+// directive only applies as the first statement of a module.
 it('keeps the directive prologue of a route file first in every module', () => {
   const { modules } = compileRouteModules(`'use client'
 
