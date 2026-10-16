@@ -5,7 +5,7 @@ import {
   importSources,
 } from '../regression-helpers'
 import {
-  declarationOf,
+  declaredNames,
   getModuleErrors,
 } from '@tanstack/compiler-test-utils/validate-module'
 
@@ -106,8 +106,8 @@ export const clientThenServerFnAbstracted = createIsomorphicFn()
       serverThenClientFnAbstracted: 'server',
       clientThenServerFnAbstracted: 'server',
     })
-    expect(client.code).not.toMatch(declarationOf('abstractedServerFn'))
-    expect(ssr.code).not.toMatch(declarationOf('abstractedClientFn'))
+    expect(declaredNames(client.code)).not.toContain('abstractedServerFn')
+    expect(declaredNames(ssr.code)).not.toContain('abstractedClientFn')
   })
 
   // Source: snapshot fixture createIsomorphicFnFactory.tsx

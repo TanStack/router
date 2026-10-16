@@ -71,15 +71,6 @@ export async function freeIdentifiers(
 }
 
 /**
- * Matches a declaration of `name` in generated code: `const|let|var|function|
- * class name`. A text match: it misses the later declarators of a statement
- * and destructured bindings; `declaredNames` reads the syntax tree instead.
- */
-export function declarationOf(name: string): RegExp {
-  return new RegExp(String.raw`\b(?:const|let|var|function|class)\s+${name}\b`)
-}
-
-/**
  * Names a module declares at runtime, at any depth: variables (every
  * declarator, destructured bindings included), functions, classes, enums
  * and namespaces. Imports, parameters, types and ambient (`declare`)

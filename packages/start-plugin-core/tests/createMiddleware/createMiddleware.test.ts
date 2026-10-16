@@ -7,7 +7,7 @@ import {
   importSources,
 } from '../regression-helpers'
 import {
-  declarationOf,
+  declaredNames,
   getModuleErrors,
 } from '@tanstack/compiler-test-utils/validate-module'
 
@@ -224,8 +224,8 @@ export const withWrapper = createMiddleware({ id: 'wrapper' }).server(
   zodValidator(z.number(), (input) => ({ 'you gave': input })),
 )`)
     expect(importSources(client)).toEqual([])
-    expect(client).not.toMatch(declarationOf('abstractedFunction'))
-    expect(client).not.toMatch(declarationOf('zodValidator'))
+    expect(declaredNames(client)).not.toContain('abstractedFunction')
+    expect(declaredNames(client)).not.toContain('zodValidator')
     expect(
       ['withFunction', 'withArrow', 'withVariable', 'withWrapper'].map(
         (name) => module[name].options,
