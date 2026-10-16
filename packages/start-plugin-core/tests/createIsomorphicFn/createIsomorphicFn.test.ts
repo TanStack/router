@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'vitest'
 
 import { StartCompiler } from '../../src/start-compiler/compiler'
-import { compileCode, evaluateModule } from '../regression-helpers'
+import {
+  compileCode,
+  evaluateModule,
+  importSources,
+} from '../regression-helpers'
 import {
   declarationOf,
   getModuleErrors,
@@ -82,6 +86,21 @@ describe('each output runs the implementation of its environment', () => {
   /** Runtime stub of an isomorphic fn without implementations. */
   const stubs = {
     '@tanstack/react-start': { createIsomorphicFn: () => () => undefined },
+    './x.server': { server: (value: string) => value },
+    './x.client': { client: (value: string) => value },
+  }
+
+  /** Imports of the modules below whose implementations read `./x.*`. */
+  const envImports = `import { server } from './x.server'
+import { client } from './x.client'
+`
+
+  /** Each output imports only the module its implementations read. */
+  function expectEnvImports(
+    outputs: Record<'client' | 'ssr', { code: string }>,
+  ) {
+    expect(importSources(outputs.client.code)).toEqual(['./x.client'])
+    expect(importSources(outputs.ssr.code)).toEqual(['./x.server'])
   }
 
   /** Compiles `code` for the client and SSR, checks and evaluates both. */
@@ -163,23 +182,23 @@ export const clientThenServerFnAbstracted = createIsomorphicFn()
   test('isomorphic fns returned by factories', async () => {
     const { client, ssr } =
       await evaluateOutputs(`import { createIsomorphicFn } from '@tanstack/react-start'
-export function createPlatformFn(platform: string) {
+${envImports}export function createPlatformFn(platform: string) {
   return createIsomorphicFn()
-    .client(() => \`client-\${platform}\`)
-    .server(() => \`server-\${platform}\`)
+    .client(() => client(\`client-\${platform}\`))
+    .server(() => server(\`server-\${platform}\`))
 }
 export const createServerImplFn = (name: string) => {
-  return createIsomorphicFn().server(() => \`server-\${name}\`)
+  return createIsomorphicFn().server(() => server(\`server-\${name}\`))
 }
 export const createClientImplFn = (name: string) => {
-  return createIsomorphicFn().client(() => \`client-\${name}\`)
+  return createIsomorphicFn().client(() => client(\`client-\${name}\`))
 }
 export function createNoImplFn() {
   return createIsomorphicFn()
 }
 export const topLevelIsomorphicFn = createIsomorphicFn()
-  .client(() => 'client')
-  .server(() => 'server')`)
+  .client(() => client('client'))
+  .server(() => server('server'))`)
     const call = (module: Record<string, any>) => [
       module.createPlatformFn('web')(),
       module.createServerImplFn('a')(),
@@ -201,47 +220,49 @@ export const topLevelIsomorphicFn = createIsomorphicFn()
       undefined,
       'server',
     ])
+    expectEnvImports({ client, ssr })
   })
 
   // Source: snapshot fixture createIsomorphicFnInline.tsx
   test('isomorphic fns created and called inside functions', async () => {
     const { client, ssr } =
       await evaluateOutputs(`import { createIsomorphicFn } from '@tanstack/react-start'
-export function getPlatformValue() {
+${envImports}export function getPlatformValue() {
   const fn = createIsomorphicFn()
-    .client(() => 'client-value')
-    .server(() => 'server-value')
+    .client(() => client('client-value'))
+    .server(() => server('server-value'))
   return fn()
 }
 export const getEnvironment = () => {
   const envFn = createIsomorphicFn()
-    .server(() => 'running on server')
-    .client(() => 'running on client')
+    .server(() => server('running on server'))
+    .client(() => client('running on client'))
   return envFn()
 }
 export function getDirectValue() {
   return createIsomorphicFn()
-    .client(() => 'direct-client')
-    .server(() => 'direct-server')()
+    .client(() => client('direct-client'))
+    .server(() => server('direct-server'))()
 }
 export function getMultipleValues() {
   const first = createIsomorphicFn()
-    .client(() => 'first-client')
-    .server(() => 'first-server')
+    .client(() => client('first-client'))
+    .server(() => server('first-server'))
   const second = createIsomorphicFn()
-    .client(() => 'second-client')
-    .server(() => 'second-server')
+    .client(() => client('second-client'))
+    .server(() => server('second-server'))
   return [first(), second()]
 }
 export function getServerOnlyValue() {
-  const fn = createIsomorphicFn().server(() => 'server-only-value')
+  const fn = createIsomorphicFn().server(() => server('server-only-value'))
   return fn()
 }
 export function getClientOnlyValue() {
-  const fn = createIsomorphicFn().client(() => 'client-only-value')
+  const fn = createIsomorphicFn().client(() => client('client-only-value'))
   return fn()
-}`)
-    const call = (module: Record<string, any>) =>
+}
+export const moduleLevel = getEnvironment()`)
+    const call = ({ moduleLevel, ...module }: Record<string, any>) =>
       Object.fromEntries(
         Object.entries(module).map(([name, fn]) => [name, fn()]),
       )
@@ -261,5 +282,11 @@ export function getClientOnlyValue() {
       getServerOnlyValue: 'server-only-value',
       getClientOnlyValue: undefined,
     })
+    // Called while the module evaluates, at its top level.
+    expect([client.module.moduleLevel, ssr.module.moduleLevel]).toEqual([
+      'running on client',
+      'running on server',
+    ])
+    expectEnvImports({ client, ssr })
   })
 })
