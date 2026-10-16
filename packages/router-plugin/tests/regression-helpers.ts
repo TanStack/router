@@ -11,6 +11,10 @@ import {
   moduleLang,
 } from '@tanstack/compiler-test-utils/module-linker'
 import {
+  freeIdentifiers,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
+import {
   BaseRootRoute,
   BaseRoute,
   RouterCore,
@@ -26,10 +30,6 @@ import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
 import { build, routeApp } from './build-harness'
-import {
-  freeIdentifiers,
-  getModuleErrors,
-} from '@tanstack/compiler-test-utils/validate-module'
 import type { Config, DeletableNodes } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'

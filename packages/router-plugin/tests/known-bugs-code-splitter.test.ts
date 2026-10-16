@@ -3046,6 +3046,54 @@ register(Page)
       ]).toEqual([['<div>page</div>'], '<div>page</div>'])
     },
   )
+  /**
+   * Builds a route whose split component `Page` an unused module-level
+   * object also names, and mounts the component in the client bundle.
+   */
+  async function mountUnusedReader(bundler: Bundler) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      files: routeApp(
+        `${head}function Page() {
+  return <p>MARK_PAGE</p>
+}
+const opts = { component: Page }
+export const Route = createFileRoute('/')({ component: Page })
+`,
+        { env: 'client' },
+      ),
+    })
+    const run = await app.run(
+      `await entry.mount(entry.Route.options.component)`,
+    )
+    return run.html
+  }
+
+  // Control for the pin below: Rspack and webpack drop the unused object
+  // while minifying, together with its read of the deleted binding.
+  test.each(['rspack', 'webpack'] as const)(
+    'a split component that an unused object names renders (%s)',
+    async (bundler) => {
+      expect(await mountUnusedReader(bundler)).toContain('<p>MARK_PAGE</p>')
+    },
+    60_000,
+  )
+
+  // Bug: same root cause as above, for an unused module-level object that
+  // names the split component: the route module keeps the object but loses
+  // `Page`. Rolldown keeps the object, as reading an undeclared binding can
+  // throw.
+  // Source: Wave B (a Vite Start client bundle crashed on it).
+  // Impact: the client bundle throws when the route module loads ("Page is
+  // not defined"), so the app never renders.
+  test.fails(
+    'a split component that an unused object names renders (vite)',
+    async () => {
+      expect(await mountUnusedReader('vite')).toContain('<p>MARK_PAGE</p>')
+    },
+    60_000,
+  )
 })
 
 describe('class components', () => {
