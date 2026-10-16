@@ -18,7 +18,7 @@ import {
   symlink,
   writeFile,
 } from 'node:fs/promises'
-import { createRequire } from 'node:module'
+import { SourceMap as NodeSourceMap, createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { format, promisify } from 'node:util'
@@ -868,6 +868,72 @@ export async function describeBuild(
       }),
     dispose: input.dispose,
   }
+}
+
+/** A position in an original source file, according to a source map. */
+export interface OriginalPosition {
+  /** The source as the source map names it. */
+  source: string
+  /**
+   * The source file relative to the app root, without the query of a
+   * virtual module id (`source` keeps it).
+   */
+  file: string
+  /** 1-based. */
+  line: number
+  /** 1-based. */
+  column: number
+}
+
+/**
+ * Where the innermost frame of `stack` (an error stack of the build's
+ * output, e.g. returned by a `run()` script) that lies in a chunk of `build`
+ * comes from, according to the chunk's emitted source map (`sourcemap`
+ * builds). `undefined` when no frame lies in a chunk, or the map maps none
+ * of that frame's line.
+ */
+export function originalFrameOf(
+  build: Pick<BuildResult, 'root' | 'outDir' | 'chunks'>,
+  stack: string,
+): OriginalPosition | undefined {
+  for (const [, location, line, column] of stack.matchAll(
+    /((?:file:\/\/)?\/[^\s()]+?):(\d+):(\d+)/g,
+  )) {
+    const file = location!.startsWith('file:')
+      ? fileURLToPath(location!)
+      : location!
+    const chunk = build.chunks.find(
+      (candidate) => path.join(build.outDir, candidate.fileName) === file,
+    )
+    if (!chunk) {
+      continue
+    }
+    if (!chunk.map) {
+      throw new Error(
+        `${chunk.fileName} has no source map (build with sourcemap)`,
+      )
+    }
+    const origin = new NodeSourceMap(
+      chunk.map as ConstructorParameters<typeof NodeSourceMap>[0],
+    ).findOrigin(Number(line), Number(column))
+    if (!('fileName' in origin)) {
+      return undefined
+    }
+    // webpack and Rspack name sources `webpack://<namespace>/<path from the
+    // root>`; the others relative to the map.
+    const source = origin.fileName.split('?')[0]!
+    const webpackSource = /^webpack:\/\/[^/]*\/(.*)$/.exec(source)
+    const absolute = webpackSource
+      ? path.resolve(build.root, webpackSource[1]!)
+      : path.resolve(path.dirname(file), source)
+    return {
+      source: origin.fileName,
+      file: path.relative(build.root, absolute),
+      line: origin.lineNumber,
+      column: origin.columnNumber,
+    }
+  }
+  return undefined
 }
 
 const jsdomUrl = pathToFileURL(require.resolve('jsdom')).href

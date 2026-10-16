@@ -7,6 +7,7 @@
 import { describe, expect, onTestFinished, test } from 'vitest'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
 import {
   createDevServer,
   evaluateServed,
@@ -454,6 +455,55 @@ export function Page() {
         if (placement === 'eager') {
           expect(reported).not.toEqual([])
         }
+      },
+      timeout,
+    )
+
+    // Source maps point at the user's code: a throw in the children, which
+    // run from their lazy chunk on the client, maps through the chunk's
+    // emitted source map to its line in the page. The column is left out:
+    // minifiers map the throw to different tokens of the expression.
+    // Source: oracle-gaps M1 (round 2).
+    test.each([
+      { name: 'minified', minify: true },
+      { name: 'unminified', minify: false },
+    ])(
+      'client: a throw in the children maps to its line in the page ($name)',
+      async ({ minify }) => {
+        const page = `import { Hydrate } from '@tanstack/react-start'
+import { chart } from './chart'
+const title = 'title'
+export function Page() {
+  return (
+    <Hydrate>
+      <b>{title}{chart.missing.MARK_HYDRATE_THROW}</b>
+    </Hydrate>
+  )
+}
+`
+        const { client } = await buildStart({
+          bundler,
+          minify,
+          sourcemap: true,
+          files: {
+            ...hydrateRuntimeFiles,
+            'src/chart.ts': `export const chart: any = {}\n`,
+            'src/page.tsx': page,
+            'entry.ts': `export { Page } from './src/page'\n`,
+          },
+        })
+        expect(client.where('MARK_HYDRATE_THROW')).toBe('lazy')
+        const { result: stack } = await client.run(`try {
+  await (async () => { ${renderThroughChunks('entry.Page()')} })()
+} catch (error) {
+  return error.stack
+}`)
+        expect(stack).toMatch(/MARK_HYDRATE_THROW/)
+        const { file, line } = originalFrameOf(client, stack as string) ?? {}
+        expect({ file, line }).toEqual({
+          file: 'src/page.tsx',
+          line: page.slice(0, page.indexOf('chart.missing')).split('\n').length,
+        })
       },
       timeout,
     )

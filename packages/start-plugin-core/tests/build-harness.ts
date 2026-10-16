@@ -214,6 +214,11 @@ export interface StartBuildOptions {
   mode?: BuildMode
   /** Default `mode === 'production'`. */
   minify?: boolean
+  /**
+   * Emits a source map for each chunk (`Chunk.map` of both results). Default
+   * `false`.
+   */
+  sourcemap?: boolean
   /** Start's plugin options (`tanstackStart(options)`). */
   start?: TanStackStartInputConfig
   /**
@@ -310,6 +315,7 @@ export async function buildStart(
     root: app.root,
     mode,
     minify: options.minify ?? mode === 'production',
+    sourcemap: options.sourcemap ?? false,
     start: options.start ?? {},
     compilerTransforms: options.compilerTransforms,
   }
@@ -328,6 +334,7 @@ export async function buildStart(
       root: app.root,
       outDir: outputs[env].outDir,
       chunks: outputs[env].chunks,
+      sourcemap: target.sourcemap,
       warnings: warnings[env],
       consoleMessages,
       duration,
@@ -343,6 +350,7 @@ interface BuildTarget {
   root: string
   mode: BuildMode
   minify: boolean
+  sourcemap: boolean
   start: TanStackStartInputConfig
   compilerTransforms: Array<StartCompilerImportTransform> | undefined
 }
@@ -382,6 +390,7 @@ async function buildWithVite(
   const environmentBuild = (env: Env) => ({
     build: {
       minify: target.minify,
+      sourcemap: target.sourcemap,
       emptyOutDir: true,
       target: 'esnext',
       rolldownOptions: {
@@ -484,7 +493,7 @@ async function buildWithRsbuild(
         logLevel: 'silent',
         output: {
           minify: target.minify,
-          sourceMap: false,
+          sourceMap: target.sourcemap ? { js: 'source-map' } : false,
           cleanDistPath: true,
         },
         // React's JSX runtime, as `pluginReact()` of a React Start app

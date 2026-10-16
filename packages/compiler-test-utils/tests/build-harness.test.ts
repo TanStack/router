@@ -11,6 +11,7 @@ import {
   bundleApp as bundleAppIn,
   bundlers,
   createApp,
+  originalFrameOf,
 } from '../src/build-harness'
 import type { BundleOptions, Placement } from '../src/build-harness'
 
@@ -92,6 +93,33 @@ return [entry.value, await entry.load()]`)
     expect(
       lazyChunk?.map?.sources.map((source) => path.basename(source)),
     ).toContain('lazy.ts')
+  })
+
+  test('maps a frame of an error stack through the source map of its chunk', async () => {
+    const app = await bundleApp({
+      bundler,
+      files: {
+        'entry.ts': `export async function load() {
+  const { fail } = await import('./failing')
+  return fail()
+}
+`,
+        'failing.ts': `export function fail(): string {
+  // MARK_FAIL throws on line 3
+  throw new Error('MARK_FAIL')
+}
+`,
+      },
+      sourcemap: true,
+    })
+    const { result } = await app.run(
+      `try { await entry.load() } catch (error) { return error.stack }`,
+    )
+    const frame = originalFrameOf(app, result as string)
+    expect(frame && { file: frame.file, line: frame.line }).toEqual({
+      file: 'failing.ts',
+      line: 3,
+    })
   })
 
   test('builds an app with a symlinked module', async () => {
