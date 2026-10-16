@@ -33,7 +33,7 @@
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
     "test:types:ts60": "tsc6",
     "test:types:ts70": "tsc",
-    "test:unit": "vitest --typecheck",
+    "test:unit": "vitest --typecheck --passWithNoTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
