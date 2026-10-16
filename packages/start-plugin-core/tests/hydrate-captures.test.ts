@@ -319,6 +319,7 @@ ${page(`['child']`)}`,
     'client: $scope bindings named like the generated bindings keep their values',
     async ({ scope, reads }) => {
       const names = await introducedNames()
+      expect(names).not.toEqual([])
       const values = names.map((name) => `${scope}:${name}`).join('|')
       const declare = names
         .map((name) => `const ${name} = '${scope}:${name}'`)

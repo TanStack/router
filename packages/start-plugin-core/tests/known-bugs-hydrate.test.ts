@@ -1020,6 +1020,7 @@ export function Page() {
 }`
       // Whichever names the compiler picks for this page.
       const names = await generatedNames(page([]))
+      expect(names).not.toEqual([])
       const { module, lazyChunks } = await loadClientModule(page(names))
       expect(module.Page()).toBe(
         `[<p>${names.map(value).join('|')}</p>][<section>[<b>nested</b>]</section>]`,
