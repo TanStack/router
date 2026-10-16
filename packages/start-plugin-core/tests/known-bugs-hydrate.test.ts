@@ -292,6 +292,110 @@ export function Page() {
       }).toEqual({ html, unusedChunks: 0 })
     },
   )
+
+  /**
+   * Renders `Page` of `code` compiled for `env` (on the client once its
+   * chunks have loaded) and records each `<Hydrate>` it renders: its id and
+   * its children. `<ClientOnly>` renders its fallback on the server and its
+   * children on the client.
+   */
+  async function renderPage(env: 'client' | 'server', code: string) {
+    const boundaries: Array<{ h: unknown; children: unknown }> = []
+    const stubs = {
+      ...hydrateParentStubs,
+      '@tanstack/react-start': {
+        Hydrate: (props: { h?: unknown; children?: unknown }) => {
+          boundaries.push({ h: props.h, children: props.children })
+          return `[${props.children ?? ''}]`
+        },
+        createServerFn: () => ({ handler: (rpc: unknown) => rpc }),
+      },
+      '@tanstack/react-router': {
+        ...hydrateParentStubs['@tanstack/react-router'],
+        ClientOnly: (props: { children?: unknown; fallback?: unknown }) =>
+          env === 'server' ? props.fallback : props.children,
+      },
+    }
+    const module =
+      env === 'server'
+        ? await evaluateModule(
+            (await compileHydrate('server', code)).parent,
+            stubs,
+            reactRuntime,
+          )
+        : (await loadClientModule(code, { stubs })).module
+    const html = module.Page()
+    return { html, boundaries }
+  }
+
+  // Bug: the Hydrate plugin numbers boundaries after the other Start
+  // transforms removed environment-specific code (`<ClientOnly>` children on
+  // the server; server fn handlers, `createServerOnlyFn` bodies and
+  // isomorphic `.server()` implementations on the client), while the client
+  // chunk loader counts the boundaries of the original module.
+  // Impact: a boundary after such code hydrates with an id the server did
+  // not render it with, or loads the chunk of the removed boundary and
+  // renders its children instead of its own.
+  // Source: gap H9 (gaps/hydrate-rsc.md); start-compiler/compiler.ts
+  // (built-in handlers, `<ClientOnly>` removal and dead-code elimination run
+  // before the AST plugins) vs hydrate-when-transform.ts
+  // `loadHydrateVirtualModule`.
+  test.fails.each([
+    {
+      name: 'a boundary in <ClientOnly> children (removed on the server)',
+      code: `import { Hydrate } from '@tanstack/react-start'
+import { ClientOnly } from '@tanstack/react-router'
+export function Page() {
+  return <div>
+    <ClientOnly fallback={<i>fallback</i>}><Hydrate><p>a</p></Hydrate></ClientOnly>
+    <Hydrate><p>b</p></Hydrate>
+  </div>
+}`,
+      client: '<div>[<p>a</p>][<p>b</p>]</div>',
+    },
+    {
+      name: 'a boundary in an isomorphic .server() (removed on the client)',
+      code: `import { Hydrate, createIsomorphicFn } from '@tanstack/react-start'
+const panel = createIsomorphicFn()
+  .server(() => <Hydrate><p>a</p></Hydrate>)
+  .client(() => <i>client</i>)
+export function Page() {
+  return <div>{panel()}<Hydrate><p>b</p></Hydrate></div>
+}`,
+      client: '<div><i>client</i>[<p>b</p>]</div>',
+    },
+    {
+      name: 'a boundary in a createServerOnlyFn (removed on the client)',
+      code: `import { Hydrate, createServerOnlyFn } from '@tanstack/react-start'
+export const panel = createServerOnlyFn(() => <Hydrate><p>a</p></Hydrate>)
+export function Page() {
+  return <div><Hydrate><p>b</p></Hydrate></div>
+}`,
+      client: '<div>[<p>b</p>]</div>',
+    },
+    {
+      name: 'a boundary in a server fn handler (removed on the client)',
+      code: `import { Hydrate, createServerFn } from '@tanstack/react-start'
+export const panel = createServerFn().handler(async () => <Hydrate><p>a</p></Hydrate>)
+export function Page() {
+  return <div><Hydrate><p>b</p></Hydrate></div>
+}`,
+      client: '<div>[<p>b</p>]</div>',
+    },
+  ])(
+    'a later boundary keeps its id and its children next to $name',
+    async ({ code, client }) => {
+      const idOfB = (boundaries: Array<{ h: unknown; children: unknown }>) =>
+        boundaries.find((boundary) => boundary.children === '<p>b</p>')?.h
+      const server = await renderPage('server', code)
+      const rendered = await renderPage('client', code)
+      expect(idOfB(server.boundaries)).toBeDefined()
+      expect({
+        html: rendered.html,
+        id: idOfB(rendered.boundaries),
+      }).toEqual({ html: client, id: idOfB(server.boundaries) })
+    },
+  )
 })
 
 describe('values captured by the children', () => {

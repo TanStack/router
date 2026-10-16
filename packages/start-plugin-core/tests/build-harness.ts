@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { onTestFinished } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
+import type { PluginOption } from 'vite'
 import type {
   AppOptions,
   BuildMode,
@@ -84,6 +85,11 @@ export interface StartBuildOptions extends Omit<AppOptions, 'dir'> {
   entry?: string
   mode?: BuildMode
   minify?: boolean
+  /**
+   * Other Start Vite plugins of both builds (e.g. import protection), placed
+   * after the Start compiler plugin like in the Start plugin.
+   */
+  plugins?: Array<PluginOption>
 }
 
 /**
@@ -94,7 +100,14 @@ export interface StartBuildOptions extends Omit<AppOptions, 'dir'> {
 export async function buildStart(
   options: StartBuildOptions,
 ): Promise<{ client: BuildResult; ssr: BuildResult }> {
-  const { entry, mode, minify, files, ...appOptions } = options
+  const {
+    entry,
+    mode,
+    minify,
+    files,
+    plugins: extraPlugins = [],
+    ...appOptions
+  } = options
   const app = await createApp({
     dir: harnessDir,
     prefix: '.start-build-harness-',
@@ -111,6 +124,7 @@ export async function buildStart(
       ],
       providerEnvName: 'ssr',
     }),
+    ...extraPlugins,
     {
       name: 'start-build-harness',
       // The stand-in package imports the resolver virtual module
