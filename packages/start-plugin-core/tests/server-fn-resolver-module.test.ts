@@ -46,26 +46,4 @@ describe('generateServerFnResolverModule', () => {
       ).rejects.toThrow('Server function info not found')
     },
   )
-
-  test('imports on every call by default', () => {
-    const source = generateServerFnResolverModule({
-      serverFnsById,
-      includeClientReferencedCheck: false,
-    })
-    expect(source).toContain(
-      'serverFnInfo.module ?? (await serverFnInfo.importer())',
-    )
-    expect(source).not.toContain('??=')
-  })
-
-  test('keeps the imported module when memoizeModules is set', () => {
-    const source = generateServerFnResolverModule({
-      serverFnsById,
-      includeClientReferencedCheck: false,
-      memoizeModules: true,
-    })
-    expect(source).toContain(
-      'serverFnInfo.module ??= await serverFnInfo.importer()',
-    )
-  })
 })

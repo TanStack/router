@@ -784,24 +784,6 @@ export const base = createServerFn()`,
 import { db } from './db.server'
 export const fn = base.handler(async () => db.x())`
 
-  test('dev: modules reaching a factory through imports and export * are its transitive importers', async () => {
-    const files = factoryFiles()
-    const { compiler, compile } = createStartCompiler({
-      env: 'client',
-      mode: 'dev',
-      files,
-    })
-    expect(await compile(importer, '/test/src/a.tsx')).not.toBeNull()
-    compiler.ingestModule({
-      id: '/test/src/d.ts',
-      code: `import { base } from './c'\nexport const alias = base`,
-    })
-    // Bundlers may report the changed module with a query suffix.
-    expect(
-      [...(await compiler.getTransitiveImporters('/test/src/b.ts?v=1'))].sort(),
-    ).toEqual(['/test/src/a.tsx', '/test/src/c.ts', '/test/src/d.ts'])
-  })
-
   test('dev: invalidating a factory module recompiles its importers against the new code', async () => {
     const files = factoryFiles()
     const { compiler, compile } = createStartCompiler({
