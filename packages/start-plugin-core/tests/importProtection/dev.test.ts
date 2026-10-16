@@ -71,7 +71,7 @@ describe('a client import of a denied file', () => {
 
   // Source: oracle-gaps options table (`behavior: { dev, build }`), gap DV39
   // (`behavior: 'error'` in dev).
-  test.each<{ behavior: ImportProtectionOptions['behavior'] }>([
+  test.each<{ behavior: NonNullable<ImportProtectionOptions>['behavior'] }>([
     { behavior: 'error' },
     { behavior: { dev: 'error', build: 'mock' } },
   ])(
