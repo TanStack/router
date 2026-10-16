@@ -251,6 +251,47 @@ export const Route = createFileRoute('/about')({
     ]).toEqual([{ message: 'hello' }, '<div>About</div>', 1])
   })
 
+  // Splitting a component written as a method is pinned in
+  // known-bugs-code-splitter.test.ts ("a component written as a method
+  // loads with its chunk"), and so is state shared with a split option
+  // ("module state a method option shares with a split option is created
+  // once"); split or not, the options keep working.
+  // Source: #8504 code-splitter-route-options.test.ts "route options written
+  // as methods or accessors".
+  it('written as methods or accessors keep working next to split options', async () => {
+    const route = await loadRoute(`${head}const state = { count: 0 }
+export const Route = createFileRoute('/')({
+  loader() {
+    return state
+  },
+  get pendingComponent() {
+    return () => <div>pending {state.count}</div>
+  },
+  set pendingComponent(_value) {
+    state.count++
+  },
+  component() {
+    return <div>component {state.count}</div>
+  },
+  errorComponent: () => <div>error</div>,
+})
+`)
+    await expectValidModules(route.modules)
+    expect(route.isLazy('errorComponent')).toBe(true)
+    route.options.pendingComponent = null
+    expect([
+      route.options.loader().count,
+      (await route.load('pendingComponent'))(),
+      (await route.load('component'))(),
+      (await route.load('errorComponent'))(),
+    ]).toEqual([
+      1,
+      '<div>pending 1</div>',
+      '<div>component 1</div>',
+      '<div>error</div>',
+    ])
+  })
+
   // Spread and computed option keys are split on a best-effort basis; the
   // route must keep working either way.
   it.each([
