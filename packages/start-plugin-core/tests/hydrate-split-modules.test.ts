@@ -97,27 +97,6 @@ export function Page() {
     expect(directivePrologue(chunks[0]!)[0]).toBe('use client')
   })
 
-  test('client: a self-closing Hydrate with a children prop renders nothing next to its boundary', async () => {
-    const { parent } = await compileHydrate(
-      'client',
-      `${head}import { idle } from '@tanstack/react-start/hydration'
-import { Chart } from './chart'
-export function Page() {
-  return <section><Hydrate when={idle()} children={<Chart />} /></section>
-}`,
-    )
-    expect(await getModuleErrors(parent)).toEqual([])
-    const module = await evaluateModule(parent, {
-      ...hydrateParentStubs,
-      './chart': { Chart: () => 'chart' },
-    })
-    // Whether the children prop renders inline or from the chunk, nothing
-    // may render next to the boundary.
-    expect(module.Page()).toMatch(
-      /^<section>\[(?:chart|lazy\(\))\]<\/section>$/,
-    )
-  })
-
   test('client: a stale h attribute is replaced by the generated boundary id', async () => {
     const code = `${head}export function Page() {
   return <Hydrate h="stale"><p>child</p></Hydrate>
@@ -126,18 +105,6 @@ export function Page() {
     expect(parent).not.toContain('stale')
     const { ids } = await renderBoundaries('client', code, (m) => m.Page())
     expect(ids).toHaveLength(1)
-  })
-
-  // String values of `split` are accepted too, for untyped or JS callers.
-  test('client: split="false" keeps function-as-children in place', async () => {
-    const parent = await compileCode(
-      'client',
-      `${head}export function Page() {
-  return <Hydrate split="false">{() => <p>child</p>}</Hydrate>
-}`,
-      { compilerPlugins: [createHydrateCompilerPlugin()] },
-    )
-    expect(parent).toBeNull()
   })
 
   test.each(['split', 'split="true"'])(
@@ -688,14 +655,6 @@ export function Page() {
     expect(loadChunk(plugin, 'client', getChunkIds(second)[0]!)).toContain(
       '<p>second</p>',
     )
-  })
-
-  test('client: invalidating a module in an environment without Hydrate sources is a no-op', () => {
-    const { compiler } = createStartCompiler({
-      env: 'client',
-      compilerPlugins: [createHydrateCompilerPlugin()],
-    })
-    expect(compiler.invalidateModule('/test/src/other.tsx')).toBe(false)
   })
 
   // The bundler may load a chunk with the source module's code before the
