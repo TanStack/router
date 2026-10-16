@@ -70,7 +70,7 @@ describe('Vite prerender network sink', () => {
     vi.stubGlobal('fetch', fetch)
     const builder = {
       environments: {
-        ssr: { config: { configFile: '/vite.config.ts' } },
+        ssr: { config: { configFile: '/vite.config.ts', inlineConfig: {} } },
         client: { config: { build: { outDir: '/client' } } },
       },
     } as any
@@ -101,7 +101,7 @@ describe('Vite prerender network sink', () => {
     vi.stubGlobal('fetch', fetch)
     const builder = {
       environments: {
-        ssr: { config: { configFile: '/vite.config.ts' } },
+        ssr: { config: { configFile: '/vite.config.ts', inlineConfig: {} } },
         client: { config: { build: { outDir: '/client' } } },
       },
     } as any
