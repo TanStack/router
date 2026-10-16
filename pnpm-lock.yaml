@@ -15395,9 +15395,6 @@ importers:
       '@types/picomatch':
         specifier: ^4.0.2
         version: 4.0.2
-      prettier:
-        specifier: ^3.9.6
-        version: 3.9.6
       publint:
         specifier: 'catalog:'
         version: 0.3.17
