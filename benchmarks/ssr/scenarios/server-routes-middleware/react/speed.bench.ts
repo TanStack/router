@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertServerRouteMiddlewareResponse,
   runServerRouteMiddlewareLoop,
@@ -16,10 +16,8 @@ const { default: handler } = (await import(
 
 await assertServerRouteMiddlewareResponse(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr server-route middleware (react)',
-    () => runServerRouteMiddlewareLoop(handler),
-    serverRouteMiddlewareBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr server-route middleware (react)', async () =>
+    runServerRouteMiddlewareLoop(handler),
+  ).run(serverRouteMiddlewareBenchOptions)
 })

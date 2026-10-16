@@ -161,4 +161,55 @@ describe('RSC CSS compiler transforms', () => {
       detectKindsInCode(code, 'client', { compilerTransforms }),
     ).toMatchInlineSnapshot(`Set {}`)
   })
+
+  test('rewrites render APIs imported from @tanstack/react-start-rsc', async () => {
+    const code = await compileWithRscCssTransform({
+      code: `
+        import { renderServerComponent } from '@tanstack/react-start-rsc'
+
+        export const renderable = renderServerComponent(<Card />)
+      `,
+    })
+
+    expect(code).toContain(
+      '__tanstackStartRscCss: import.meta.viteRsc.loadCss()',
+    )
+  })
+
+  test.each([
+    { wrapped: '(<Card />)', bare: '<Card />' },
+    { wrapped: '<Card /> as any', bare: '<Card />' },
+    { wrapped: '<Card />!', bare: '<Card />' },
+    { wrapped: '(<><Card /></>) satisfies unknown', bare: '<><Card /></>' },
+  ])(
+    'streams $wrapped like the bare JSX it wraps',
+    async ({ wrapped, bare }) => {
+      const compileStream = (element: string) =>
+        compileWithRscCssTransform({
+          code: `
+            import { renderToReadableStream } from '@tanstack/react-start/rsc'
+
+            export const stream = renderToReadableStream(${element})
+          `,
+        })
+
+      const bareCode = await compileStream(bare)
+      expect(bareCode).toContain('import.meta.viteRsc.loadCss()')
+      expect(await compileStream(wrapped)).toBe(bareCode)
+    },
+  )
+
+  test('does not stream JSX that is not the whole argument', async () => {
+    const code = await compileWithRscCssTransform({
+      code: `
+        import { renderToReadableStream } from '@tanstack/react-start/rsc'
+
+        export const conditional = renderToReadableStream(flag ? <A /> : <B />)
+        export const spread = renderToReadableStream(...args)
+      `,
+    })
+
+    expect(code).toContain('renderToReadableStream(...args)')
+    expect(code).not.toContain('loadCss')
+  })
 })

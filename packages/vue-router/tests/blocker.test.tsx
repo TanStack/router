@@ -1,5 +1,4 @@
 import { defineComponent } from 'vue'
-import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 import combinate from 'combinate'

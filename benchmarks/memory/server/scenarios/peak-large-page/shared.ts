@@ -48,7 +48,7 @@ export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
-  const run = () =>
+  const run = async () =>
     runSequentialRequestLoop(handler, {
       seed: benchmarkSeed,
       iterations: peakLargePageIterations,

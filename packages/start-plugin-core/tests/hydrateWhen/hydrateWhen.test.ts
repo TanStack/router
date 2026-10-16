@@ -5,6 +5,7 @@ import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import path from 'pathe'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../../src/hydrate-when-transform'
+import { formatSnapshot } from '../format-snapshot'
 
 const fixtureRoot = path.resolve(import.meta.dirname, './test-files')
 const errorRoot = path.resolve(import.meta.dirname, './error-files')
@@ -13,8 +14,13 @@ function fixtureId(filename: string) {
   return path.join(fixtureRoot, filename)
 }
 
-function normalizeSnapshotCode(code: string) {
-  return code.split(fixtureRoot).join('<fixtureRoot>')
+// Replace the fixture root before formatting so that line breaks do not
+// depend on where the repository is checked out.
+async function normalizeSnapshotCode(code: string, filename: string) {
+  return await formatSnapshot(
+    code.split(fixtureRoot).join('<fixtureRoot>'),
+    filename,
+  )
 }
 
 async function readFixture(filename: string) {
@@ -136,7 +142,9 @@ describe('Hydrate compiler transform fixtures', async () => {
       const result = compile({ env: 'client', code, id })
 
       await expect(
-        normalizeSnapshotCode(result?.code ?? 'no-transform'),
+        result
+          ? await normalizeSnapshotCode(result.code, filename)
+          : 'no-transform',
       ).toMatchFileSnapshot(`./snapshots/client/${filename}`)
     })
 
@@ -144,7 +152,9 @@ describe('Hydrate compiler transform fixtures', async () => {
       const result = compile({ env: 'server', code, id })
 
       await expect(
-        normalizeSnapshotCode(result?.code ?? 'no-transform'),
+        result
+          ? await normalizeSnapshotCode(result.code, filename)
+          : 'no-transform',
       ).toMatchFileSnapshot(`./snapshots/server/${filename}`)
     })
   })
@@ -225,7 +235,9 @@ describe('Hydrate compiler transform fixtures', async () => {
       })
 
       await expect(
-        normalizeSnapshotCode(loaded?.code ?? 'no-virtual-module'),
+        loaded
+          ? await normalizeSnapshotCode(loaded.code, filename)
+          : 'no-virtual-module',
       ).toMatchFileSnapshot(
         `./snapshots/virtual/${filename}.${boundary.exportName}.tsx`,
       )
@@ -245,7 +257,9 @@ describe('Hydrate compiler transform fixtures', async () => {
     })
 
     await expect(
-      normalizeSnapshotCode(nestedPass?.code ?? 'no-transform'),
+      nestedPass
+        ? await normalizeSnapshotCode(nestedPass.code, filename)
+        : 'no-transform',
     ).toMatchFileSnapshot(`./snapshots/virtual/${filename}.H0.client.tsx`)
   })
 })

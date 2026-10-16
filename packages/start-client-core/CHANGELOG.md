@@ -1,5 +1,37 @@
 # @tanstack/start-client-core
 
+## 1.170.37
+
+### Patch Changes
+
+- Updated dependencies [[`740b0ce`](https://github.com/TanStack/router/commit/740b0ce17737d1f7398740136acdbeabe80df7d8), [`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
+  - @tanstack/start-storage-context@1.167.39
+  - @tanstack/router-core@1.171.37
+
+## 1.170.36
+
+### Patch Changes
+
+- [#8694](https://github.com/TanStack/router/pull/8694) [`550f478`](https://github.com/TanStack/router/commit/550f47881070c0558a87e1acce7f38fbc85b9549) - Remove the deprecated `.inputValidator()` from `createServerFn` and `createMiddleware`. Use `.validator()`, which takes the same validator.
+
+- [#7588](https://github.com/TanStack/router/pull/7588) [`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5) - Reduce request middleware overhead, reuse loaded entries and transport header requirements, and avoid unnecessary URL normalization for server functions. Preserve response helper writes made during body cancellation and SSR cleanup.
+
+  Avoid allocating absent middleware headers and reply context, and construct RPC redirects with their final response state. Preserve middleware accessor evaluation and the documented undefined value for absent `sendContext`.
+
+  Reduce synchronous server-function response overhead while preserving cancellation cleanup and middleware response mutations.
+
+- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
+  - @tanstack/router-core@1.171.36
+  - @tanstack/start-storage-context@1.167.38
+
+## 1.170.35
+
+### Patch Changes
+
+- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
+  - @tanstack/router-core@1.171.35
+  - @tanstack/start-storage-context@1.167.37
+
 ## 1.170.34
 
 ### Patch Changes

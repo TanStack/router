@@ -9,7 +9,6 @@ import {
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { valibotValidator } from '../src'
-import '@testing-library/jest-dom/vitest'
 
 afterEach(() => {
   vi.resetAllMocks()
