@@ -20,8 +20,8 @@ import type {
   AppInfo,
   BuildEnv,
   BuildResult,
-  Bundler,
   BundleOptions,
+  Bundler,
 } from '@tanstack/compiler-test-utils/build-harness'
 import type { Config } from '../src/core/config'
 
@@ -240,8 +240,9 @@ const frameworkBuilds: Record<
   Framework,
   (options: { bundler: Bundler; env?: BuildEnv }) => Promise<FrameworkBuild>
 > = {
-  react: async () => ({ target: {}, plugins: () => [] }),
-  vue: async () => ({ target: { jsxImportSource: 'vue' }, plugins: () => [] }),
+  react: () => Promise.resolve({ target: {}, plugins: () => [] }),
+  vue: () =>
+    Promise.resolve({ target: { jsxImportSource: 'vue' }, plugins: () => [] }),
   solid: async ({ bundler, env = 'ssr' }) => {
     if (bundler === 'vite') {
       const { default: solid } = await import('vite-plugin-solid')

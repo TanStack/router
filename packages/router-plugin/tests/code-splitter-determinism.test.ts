@@ -7,6 +7,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { build, routeApp } from './build-harness'
 import { head, loadRoute } from './regression-helpers'
+import type * as NodeUrl from 'node:url'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
 const route = `${head}import { format } from './format'
@@ -28,7 +29,7 @@ export const Route = createFileRoute('/')({
 // (drive letter first) they behave here as they do on Windows; other paths
 // are unaffected.
 vi.mock('node:url', async (importOriginal) => {
-  const url = await importOriginal<typeof import('node:url')>()
+  const url = await importOriginal<typeof NodeUrl>()
   const windowsPath = /^[A-Za-z]:[\\/]/
   return {
     ...url,
