@@ -51,8 +51,8 @@ export interface RouterDevServerOptions extends Omit<
 
 /**
  * A Vite plugin that serves a stub of the router package of `target` (the
- * framework packages are not dependencies of this package, and the real
- * React one needs a DOM): routes keep their options (`{ options }`), and lazy
+ * real packages need their framework's runtime and a DOM): routes keep
+ * their options (`{ options }`), and lazy
  * route options (`lazyRouteComponent`, `lazyFn`) call what their module
  * provides and have `load()`, which resolves to it.
  */

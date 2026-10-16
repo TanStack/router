@@ -378,6 +378,8 @@ describe('routerDevServer', () => {
       plugins: [
         {
           name: 'solid-router-stub',
+          // Before Vite's resolver, which finds the installed package
+          enforce: 'pre',
           resolveId: (id) =>
             id === '@tanstack/solid-router' ? stubId : undefined,
           load: (id) =>
