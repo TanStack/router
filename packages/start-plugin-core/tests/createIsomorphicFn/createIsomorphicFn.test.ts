@@ -1,9 +1,6 @@
-import { readFile, readdir } from 'node:fs/promises'
-import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
 import { StartCompiler } from '../../src/start-compiler/compiler'
-import { formatSnapshot } from '../format-snapshot'
 import { compileCode, evaluateModule } from '../regression-helpers'
 import {
   declarationOf,
@@ -52,35 +49,7 @@ async function compile(opts: {
   return result
 }
 
-async function getFilenames() {
-  return await readdir(path.resolve(import.meta.dirname, './test-files'))
-}
-
-describe('createIsomorphicFn compiles correctly', async () => {
-  const filenames = await getFilenames()
-
-  describe.each(filenames)('should handle "%s"', async (filename) => {
-    const file = await readFile(
-      path.resolve(import.meta.dirname, `./test-files/${filename}`),
-    )
-    const code = file.toString()
-
-    test.each(['client', 'server'] as const)(
-      `should compile for ${filename} %s`,
-      async (env) => {
-        const compiledResult = await compile({
-          env,
-          code,
-          id: filename,
-        })
-
-        await expect(
-          await formatSnapshot(compiledResult!.code, filename),
-        ).toMatchFileSnapshot(`./snapshots/${env}/${filename}`)
-      },
-    )
-  })
-
+describe('createIsomorphicFn compiles correctly', () => {
   test('should error if implementation not provided', async () => {
     await expect(
       compile({
@@ -108,7 +77,7 @@ describe('createIsomorphicFn compiles correctly', async () => {
 // without one for that environment is a no-op returning undefined, and the
 // other environment's implementation (and the function it references) is
 // absent. `noImpl` stays a runtime call (stubbed here).
-// Replaces the snapshot fixtures of this directory (N2).
+// Replaces the former snapshot fixtures of this directory (N2).
 describe('each output runs the implementation of its environment', () => {
   /** Runtime stub of an isomorphic fn without implementations. */
   const stubs = {

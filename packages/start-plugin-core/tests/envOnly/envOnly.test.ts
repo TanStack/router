@@ -1,9 +1,6 @@
-import { readFile, readdir } from 'node:fs/promises'
-import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
 import { StartCompiler } from '../../src/start-compiler/compiler'
-import { formatSnapshot } from '../format-snapshot'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -52,35 +49,7 @@ async function compile(opts: {
   return result
 }
 
-async function getFilenames() {
-  return await readdir(path.resolve(import.meta.dirname, './test-files'))
-}
-
-describe('envOnly functions compile correctly', async () => {
-  const filenames = await getFilenames()
-
-  describe.each(filenames)('should handle "%s"', async (filename) => {
-    const file = await readFile(
-      path.resolve(import.meta.dirname, `./test-files/${filename}`),
-    )
-    const code = file.toString()
-
-    test.each(['client', 'server'] as const)(
-      `should compile for ${filename} %s`,
-      async (env) => {
-        const compiledResult = await compile({
-          env,
-          code,
-          id: filename,
-        })
-
-        await expect(
-          await formatSnapshot(compiledResult!.code, filename),
-        ).toMatchFileSnapshot(`./snapshots/${env}/${filename}`)
-      },
-    )
-  })
-
+describe('envOnly functions compile correctly', () => {
   test('should error if implementation not provided', async () => {
     await expect(
       compile({
