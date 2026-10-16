@@ -71,6 +71,32 @@ return [entry.value, await entry.load()]`)
     timeout,
   )
 
+  test('emits source maps naming the source files', async () => {
+    const app = await bundleApp({
+      bundler,
+      files: dynamicImportApp,
+      sourcemap: true,
+    })
+    const lazyChunk = app.chunks.find(
+      (chunk) => chunk.fileName === app.locate('MARK_LAZY').lazy[0],
+    )
+    expect(
+      lazyChunk?.map?.sources.map((source) => path.basename(source)),
+    ).toContain('lazy.ts')
+  })
+
+  test('builds an app with a symlinked module', async () => {
+    const app = await bundleApp({
+      bundler,
+      files: {
+        'entry.ts': `export { linked } from './linked'\n`,
+        'real/linked.ts': `export const linked = 'MARK_LINKED'\n`,
+      },
+      symlinks: { 'linked.ts': 'real/linked.ts' },
+    })
+    expect((await app.run('return entry.linked')).result).toBe('MARK_LINKED')
+  })
+
   test('reports a build error through the bundler', async () => {
     await expect(
       bundleApp({
@@ -85,6 +111,25 @@ return [entry.value, await entry.load()]`)
       ]),
     })
   })
+})
+
+test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async () => {
+  const seen: Record<string, string | undefined> = {}
+  for (const nodeEnv of [undefined, null] as const) {
+    await bundleAppIn({
+      dir: testsDir,
+      bundler: 'vite',
+      files: { 'entry.ts': `export const value = 1\n` },
+      nodeEnv,
+      plugins: {
+        vite: () => {
+          seen[String(nodeEnv)] = process.env.NODE_ENV
+          return { name: 'record-node-env' }
+        },
+      },
+    })
+  }
+  expect(seen).toEqual({ undefined: 'production', null: undefined })
 })
 
 describe('side-effect hints', () => {

@@ -10,7 +10,14 @@
  * directory its apps live in (where their imports resolve).
  */
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -50,6 +57,16 @@ export interface Chunk {
   imports: Array<string>
   /** Chunks this chunk loads on demand (`import()`). */
   dynamicImports: Array<string>
+  /** Source map of the chunk (`sourcemap` builds only). */
+  map?: SourceMap
+}
+
+export interface SourceMap {
+  version: number
+  sources: Array<string>
+  sourcesContent?: Array<string | null>
+  names: Array<string>
+  mappings: string
 }
 
 export interface AppOptions {
@@ -69,6 +86,11 @@ export interface AppOptions {
   packageJson?: Record<string, unknown> | null
   /** Shorthand for `packageJson.sideEffects`. */
   sideEffects?: boolean | Array<string>
+  /**
+   * Symbolic links by path relative to the app root, each pointing to a path
+   * relative to the app root (e.g. a route file linked from elsewhere).
+   */
+  symlinks?: Record<string, string>
   /** Directory name prefix of the temporary app. */
   prefix?: string
 }
@@ -97,6 +119,14 @@ export interface BundleTarget {
   minify?: boolean
   /** Output directory relative to the app root (default `dist`). */
   outDir?: string
+  /**
+   * `NODE_ENV` of the build process: the mode by default, like a build
+   * command; `null` unsets it, like a shell that exports none (webpack and
+   * Rspack only set it inside the bundle).
+   */
+  nodeEnv?: string | null
+  /** Emits a source map for each chunk (`Chunk.map`). Default `false`. */
+  sourcemap?: boolean
   /** Creates the plugin (a Vite plugin array for Vite) of this build. */
   plugin?: (app: AppInfo) => unknown
 }
@@ -213,6 +243,10 @@ export async function createApp(options: AppOptions): Promise<App> {
       await mkdir(path.dirname(path.join(root, file)), { recursive: true })
       await writeFile(path.join(root, file), code)
     }
+    for (const [link, target] of Object.entries(options.symlinks ?? {})) {
+      await mkdir(path.dirname(path.join(root, link)), { recursive: true })
+      await symlink(path.join(root, target), path.join(root, link))
+    }
   } catch (error) {
     await dispose()
     throw error
@@ -231,13 +265,22 @@ export async function createApp(options: AppOptions): Promise<App> {
 export async function bundleApp(
   options: BundleOptions & { plugins?: BundlerPlugins },
 ): Promise<BuildResult> {
-  const { dir, files, packageJson, sideEffects, prefix, plugins, ...target } =
-    options
+  const {
+    dir,
+    files,
+    packageJson,
+    sideEffects,
+    symlinks,
+    prefix,
+    plugins,
+    ...target
+  } = options
   const app = await createApp({
     dir,
     files,
     packageJson,
     sideEffects,
+    symlinks,
     prefix: prefix ?? `.build-harness-${target.bundler}-`,
   })
   try {
@@ -255,6 +298,7 @@ interface BundlerConfig {
   mode: BuildMode
   env: BuildEnv
   minify: boolean
+  sourcemap: boolean
   plugin: (() => unknown) | undefined
 }
 
@@ -284,13 +328,16 @@ async function bundle(
     mode,
     env,
     minify: target.minify ?? mode === 'production',
+    sourcemap: target.sourcemap ?? false,
     plugin: plugin && (() => plugin({ root, env, mode })),
   }
   const warnings: Array<string> = []
   const consoleMessages: Array<string> = []
   const started = performance.now()
-  const output = await withBuildEnvironment(mode, consoleMessages, () =>
-    builders[bundler](config, warnings),
+  const output = await withBuildEnvironment(
+    target.nodeEnv === undefined ? mode : target.nodeEnv,
+    consoleMessages,
+    () => builders[bundler](config, warnings),
   )
   const duration = performance.now() - started
   return describeOutput({
@@ -350,6 +397,7 @@ async function buildWithVite(
         outDir: config.outDir,
         emptyOutDir: true,
         minify: config.minify,
+        sourcemap: config.sourcemap,
         target: 'esnext',
         modulePreload: { polyfill: false },
         rollupOptions: {
@@ -439,7 +487,7 @@ async function buildWithWebpackApi(
     context: config.root,
     entry: { entry: config.entry },
     target: ssr ? 'node' : 'web',
-    devtool: false,
+    devtool: config.sourcemap ? 'source-map' : false,
     output: {
       path: config.outDir,
       filename: '[name].mjs',
@@ -570,6 +618,7 @@ async function buildWithEsbuild(
       jsx: 'automatic',
       jsxDev: config.mode === 'development',
       minify: config.minify,
+      sourcemap: config.sourcemap,
       metafile: true,
       logLevel: 'silent',
       define: ssr
@@ -629,12 +678,16 @@ async function describeOutput(input: {
   const emitted = new Set(input.output.map((raw) => raw.fileName))
   const chunks: Array<Chunk> = []
   for (const raw of input.output) {
+    const file = path.join(config.outDir, raw.fileName)
     chunks.push({
       ...raw,
       // Externals (e.g. `react` in SSR builds) are not chunks
-      imports: raw.imports.filter((file) => emitted.has(file)),
-      dynamicImports: raw.dynamicImports.filter((file) => emitted.has(file)),
-      code: await readFile(path.join(config.outDir, raw.fileName), 'utf8'),
+      imports: raw.imports.filter((name) => emitted.has(name)),
+      dynamicImports: raw.dynamicImports.filter((name) => emitted.has(name)),
+      code: await readFile(file, 'utf8'),
+      ...(config.sourcemap && {
+        map: JSON.parse(await readFile(`${file}.map`, 'utf8')) as SourceMap,
+      }),
     })
   }
   const entries = chunks.filter((chunk) => chunk.isEntry)
@@ -770,17 +823,22 @@ function swcOptions(development: boolean, typescript: boolean) {
 }
 
 /**
- * Runs a build the way a build command does (`NODE_ENV` set to the mode,
- * which decides e.g. the JSX runtime and the `development` export
- * condition) and records `console.warn`/`console.error` output.
+ * Runs a build the way a build command does (`NODE_ENV` set to the mode by
+ * default, which decides e.g. the JSX runtime and the `development` export
+ * condition; `null` unsets it) and records `console.warn`/`console.error`
+ * output.
  */
 async function withBuildEnvironment<T>(
-  mode: BuildMode,
+  buildNodeEnv: string | null,
   messages: Array<string>,
   run: () => Promise<T>,
 ): Promise<T> {
   const nodeEnv = process.env.NODE_ENV
-  process.env.NODE_ENV = mode
+  if (buildNodeEnv === null) {
+    delete process.env.NODE_ENV
+  } else {
+    process.env.NODE_ENV = buildNodeEnv
+  }
   const original = { warn: console.warn, error: console.error }
   console.warn = (...args: Array<unknown>) => {
     messages.push(format(...args))
@@ -795,7 +853,11 @@ async function withBuildEnvironment<T>(
   } finally {
     console.warn = original.warn
     console.error = original.error
-    process.env.NODE_ENV = nodeEnv
+    if (nodeEnv === undefined) {
+      delete process.env.NODE_ENV
+    } else {
+      process.env.NODE_ENV = nodeEnv
+    }
   }
 }
 

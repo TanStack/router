@@ -19,7 +19,7 @@ import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
 import { build, routeApp } from './build-harness'
 import { freeIdentifiers, getModuleErrors } from './validate-module'
-import type { Config } from '../src/core/config'
+import type { Config, DeletableNodes } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
 import type { ESTree } from 'vite'
@@ -37,6 +37,11 @@ type CompileOptions = {
   targetFramework?: 'react' | 'solid'
   /** Compile for the dev server: route HMR and the framework's HMR code. */
   hmr?: boolean
+  /**
+   * Route options removed from the output, as Start configures the client
+   * (`['ssr', 'server', 'headers']`).
+   */
+  deleteNodes?: Array<DeletableNodes>
 }
 
 /**
@@ -173,6 +178,7 @@ function compileRouteGraph(
     filename = 'route.tsx',
     targetFramework = 'react',
     hmr = false,
+    deleteNodes,
   } = options
   const id = routeModuleId(filename)
   const context = createRouterPluginContext()
@@ -181,7 +187,7 @@ function compileRouteGraph(
     {
       target: targetFramework,
       autoCodeSplitting: true,
-      codeSplittingOptions: { addHmr: hmr },
+      codeSplittingOptions: { addHmr: hmr, deleteNodes },
     },
     context,
   )
@@ -650,14 +656,15 @@ export async function loadRoute(code: string, options: LoadRouteOptions = {}) {
       transform: transformWithReactRefresh,
     }),
   })
-  const { Route } = (await moduleGraph.import(compiled.graph.id)) as {
-    Route?: { options: Record<string, any> }
-  }
+  const exports = await moduleGraph.import(compiled.graph.id)
+  const Route = exports.Route as { options: Record<string, any> } | undefined
   if (!Route) {
     throw new Error('the route module does not export `Route`')
   }
   return {
     ...compiled,
+    /** Exports of the route module. */
+    exports,
     Route,
     options: Route.options,
     /** Ids of the modules evaluated so far, in evaluation order. */

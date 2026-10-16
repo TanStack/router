@@ -19,6 +19,7 @@ import { createServer } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '../../history/src'
 import { tanstackRouter } from '../src/vite'
+import { build, routeApp } from './build-harness'
 import {
   compileRouteModules,
   evaluateModule,
@@ -596,5 +597,54 @@ function Page() {
       }
     },
     30_000,
+  )
+})
+
+describe('production builds', () => {
+  /**
+   * Builds a production client bundle with automatic code splitting off
+   * (the route HMR plugin's case), with `NODE_ENV` as given (`null`: unset),
+   * and returns where webpack's HMR API is used.
+   */
+  async function hmrPlacement(bundler: 'rspack' | 'webpack', nodeEnv?: null) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      nodeEnv,
+      pluginOptions: { autoCodeSplitting: false },
+      files: routeApp(
+        `${head}function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+        { env: 'client' },
+      ),
+    })
+    return app.where(/\bwebpackHot\b|\bmodule\.hot\b/)
+  }
+
+  // Control for the pin below: with `NODE_ENV=production` exported.
+  test.each(['rspack', 'webpack'] as const)(
+    'a production client bundle has no route HMR code (%s)',
+    async (bundler) => {
+      expect(await hmrPlacement(bundler)).toBe('nowhere')
+    },
+    60_000,
+  )
+
+  // Bug: with automatic code splitting off, the composed router plugin adds
+  // the route HMR plugin unless `NODE_ENV` is `production` when the plugin is
+  // created (`router-composed-plugin.ts`), instead of following the
+  // bundler's mode. webpack and Rspack set `NODE_ENV` only inside the bundle.
+  // Source: gap CC-P1 / routes.md R7.
+  // Impact: webpack/Rspack production bundles built from a shell without
+  // `NODE_ENV` ship the route HMR code of every route.
+  test.fails.each(['rspack', 'webpack'] as const)(
+    'a production client bundle has no route HMR code when NODE_ENV is unset (%s)',
+    async (bundler) => {
+      expect(await hmrPlacement(bundler, null)).toBe('nowhere')
+    },
+    60_000,
   )
 })
