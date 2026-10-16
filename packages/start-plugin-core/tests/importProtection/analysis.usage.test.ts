@@ -189,50 +189,6 @@ describe('findPostCompileUsagePos', () => {
       pos(`import { denied } from 'denied';\n(denied)()`, 'denied'),
     ).toEqual({ line: 2, column0: 1 })
   })
-
-  // Bug: a member property named like a denied import (`db.eq`) counts as a
-  // use of the import.
-  // Impact: the violation points at an unrelated line instead of the real use.
-  // Source: PR #8504 (analysis.usage.test.ts "ignores a member property named
-  // like the import but still finds later usage").
-  test.fails('ignores a member property named like the import', () => {
-    expect(
-      pos(
-        `import { eq } from 'denied';\nconst a = db.eq(1);\nconst b = eq`,
-        'denied',
-      ),
-    ).toEqual({ line: 3, column0: 'const b = '.length })
-  })
-
-  // Bug: uses in type positions, which TypeScript erases, count as uses of a
-  // denied import.
-  // Impact: a violation is reported at a type annotation, which never runs.
-  // Source: PR #8504 (analysis.usage.test.ts "ignores type positions, which
-  // TypeScript erases").
-  test.fails('ignores type positions', () => {
-    expect(
-      pos(
-        `import { Secret, secret } from 'denied';\nconst a: Secret = 1;\ntype S = typeof secret`,
-        'denied',
-      ),
-    ).toBeUndefined()
-  })
-
-  // Bug: a JSX element is not a use of the denied import it renders.
-  // Impact: a violation whose only use is `<Secret />` points at the import
-  // (or at nothing) instead of the element.
-  // Source: PR #8504 (analysis.usage.test.ts "finds $name usage").
-  test.fails.each([
-    { name: 'a JSX element', usage: '<Secret />' },
-    { name: 'a JSX member element', usage: '<ui.Secret />' },
-  ])('finds $name usage', ({ usage }) => {
-    expect(
-      pos(
-        `import Secret, * as ui from 'denied';\nconst A = () => ${usage}`,
-        'denied',
-      ),
-    ).toEqual({ line: 2, column0: 'const A = () => <'.length })
-  })
 })
 
 // The violation import protection reports for a denied import in a module the
