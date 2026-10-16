@@ -101,13 +101,12 @@ esbuild.build({
 
 ### Core Options
 
-| Option                  | Type                          | Default                    | Description                                |
-| ----------------------- | ----------------------------- | -------------------------- | ------------------------------------------ |
-| `target`                | `'react' \| 'solid' \| 'vue'` | `'react'`                  | Target framework                           |
-| `routesDirectory`       | `string`                      | `'./src/routes'`           | Directory containing route files           |
-| `generatedRouteTree`    | `string`                      | `'./src/routeTree.gen.ts'` | Path for generated route tree              |
-| `autoCodeSplitting`     | `boolean`                     | `undefined`                | Enable automatic code splitting            |
-| `enableRouteGeneration` | `boolean`                     | `true`                     | Set to `false` to disable route generation |
+| Option               | Type                          | Default                    | Description                      |
+| -------------------- | ----------------------------- | -------------------------- | -------------------------------- |
+| `target`             | `'react' \| 'solid' \| 'vue'` | `'react'`                  | Target framework                 |
+| `routesDirectory`    | `string`                      | `'./src/routes'`           | Directory containing route files |
+| `generatedRouteTree` | `string`                      | `'./src/routeTree.gen.ts'` | Path for generated route tree    |
+| `autoCodeSplitting`  | `boolean`                     | `undefined`                | Enable automatic code splitting  |
 
 ### File Convention Options
 

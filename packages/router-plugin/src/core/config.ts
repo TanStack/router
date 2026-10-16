@@ -109,7 +109,6 @@ type FileRouteKeys = keyof (Parameters<
 export type DeletableNodes = FileRouteKeys | (string & {})
 
 export const configSchema = generatorConfigSchema.extend({
-  enableRouteGeneration: z.boolean().optional(),
   codeSplittingOptions: z
     .custom<CodeSplittingOptions>((v) => {
       return codeSplittingOptionsSchema.parse(v)
