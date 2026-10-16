@@ -16,7 +16,10 @@ import {
   getLookupKindsForEnv,
 } from '../src/start-compiler/compiler'
 import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import {
+  freeIdentifiers,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
 import type {
   ModuleGraphOptions,
   ModuleStub,
@@ -1150,6 +1153,10 @@ export function hydrateStubs(
     [`@tanstack/${framework}-start/hydration`]: {
       idle: () => 'idle',
       visible: () => 'visible',
+      interaction: () => 'interaction',
+      load: () => 'load',
+      media: () => 'media',
+      never: () => 'never',
     },
     [`@tanstack/${framework}-router`]: {
       lazyRouteComponent: () => (props: Record<string, unknown>) =>
@@ -1225,7 +1232,8 @@ export async function evaluateHydrateParent(
  * (`chunkIds`, in source order), `lazyChunks` (every lazy chunk component and
  * whether it rendered) and `preloaded` (the chunk each `preload()` call
  * loaded, by id and evaluated, in call order; loading the chunks here is not
- * a preload).
+ * a preload). The parent and every chunk must be valid modules; they may
+ * read the globals the source reads.
  */
 export async function loadClientModule(
   code: string,
@@ -1299,7 +1307,9 @@ export async function loadClientModule(
       },
     },
   }
-  expect(await getModuleErrors(parent)).toEqual([])
+  // The globals the source reads may be read by its modules too.
+  const globals = await freeIdentifiers(code)
+  expect(await getModuleErrors(parent, undefined, { globals })).toEqual([])
   const { compile } = createStartCompiler({
     env: 'client',
     compilerPlugins: [plugin],
@@ -1312,6 +1322,11 @@ export async function loadClientModule(
     framework,
     // The bundler compiles each virtual module it loads like any other module.
     load: async (chunkId) => {
+      // The linker also probes ids with extensions appended, which are no
+      // modules of this graph.
+      if (chunkId.split('?')[0] !== id.split('?')[0]) {
+        return null
+      }
       const chunk = loadChunk(plugin, 'client', chunkId)
       if (chunk === null) {
         return null
@@ -1323,7 +1338,7 @@ export async function loadClientModule(
   const module = await graph.import(id)
   options.beforeChunksLoad?.(module)
   for (const chunk of chunks) {
-    expect(await getModuleErrors(chunk)).toEqual([])
+    expect(await getModuleErrors(chunk, undefined, { globals })).toEqual([])
   }
   // Loading a chunk may create the lazy components of nested boundaries,
   // which the iteration reaches as they are appended.
@@ -1336,32 +1351,46 @@ export async function loadClientModule(
 /**
  * Renders `code` compiled for `env` and records the boundary id (`h`) each
  * `<Hydrate>` renders with: on the server the id in its markup, on the client
- * the id it hydrates with (chunks loaded, `loadClientModule`).
+ * the id it hydrates with (chunks loaded, `loadClientModule`). `stubs` are
+ * linked over the parent-module stubs (`hydrateStubs`); the recording
+ * `Hydrate` is added to the `@tanstack/<framework>-start` stub.
  */
 export async function renderBoundaries(
   env: 'client' | 'server',
   code: string,
   render: (module: Record<string, any>) => unknown,
-  options: { id?: string; framework?: Framework } = {},
+  options: {
+    id?: string
+    framework?: Framework
+    stubs?: Record<string, ModuleStub>
+    runtime?: string
+  } = {},
 ) {
+  const { stubs: userStubs = {}, runtime, ...compileOptions } = options
   const framework = options.framework ?? 'react'
   const ids: Array<unknown> = []
   const Hydrate = (props: { children?: unknown; h?: unknown }) => {
     ids.push(props.h)
     return `[${props.children ?? ''}]`
   }
+  const startPackage = `@tanstack/${framework}-start`
   const stubs = {
     ...hydrateStubs(framework),
-    [`@tanstack/${framework}-start`]: { Hydrate },
+    ...userStubs,
+    [startPackage]: {
+      ...(userStubs[startPackage] as Record<string, unknown> | undefined),
+      Hydrate,
+    },
   }
   const module =
     env === 'server'
       ? await evaluateModule(
-          (await compileHydrate('server', code, options)).parent,
+          (await compileHydrate('server', code, compileOptions)).parent,
           stubs,
-          { framework },
+          { framework, runtime },
         )
-      : (await loadClientModule(code, { ...options, stubs })).module
+      : (await loadClientModule(code, { ...compileOptions, stubs, runtime }))
+          .module
   const html = render(module)
   return { html, ids }
 }
