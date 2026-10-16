@@ -13,6 +13,7 @@ import {
   compileHydrate,
   createStartCompiler,
   evaluateModule,
+  expectRenderedThroughChunks,
   getChunkIds,
   hydrateStubs,
   loadChunk,
@@ -428,13 +429,26 @@ ${head}export function Page() {
   test.fails(
     "hooks in the children run in the parent's render, in source order",
     async () => {
-      const { server, client } =
-        await renderHooks(`${head}import { useA, useB, useC } from './hooks'
+      const code = `${head}import { useA, useB, useC } from './hooks'
 export function Page() {
   return <>{useA()}<Hydrate><p>{useB()}</p></Hydrate>{useC()}</>
-}`)
+}`
+      const { server, client } = await renderHooks(code)
       expect(server.calls).toEqual(['useA@0', 'useB@0', 'useC@0'])
       expect(client).toEqual(server)
+      // The children are still split.
+      const hook = (name: string) => () => name
+      const { module, lazyChunks } = await loadClientModule(code, {
+        stubs: {
+          './hooks': {
+            useA: hook('useA'),
+            useB: hook('useB'),
+            useC: hook('useC'),
+          },
+        },
+      })
+      expect(module.Page()).toBe('useA[<p>useB</p>]useC')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 })

@@ -7,6 +7,7 @@ import {
   compileErrorMessage,
   compileHydrate,
   evaluateModule,
+  expectRenderedThroughChunks,
   hydrateParentStubs,
   loadClientModule as loadHydrateClient,
   renderBoundaries,
@@ -411,6 +412,20 @@ export function Page() {
       client: '<div>[<p>a</p>][<p>b</p>]</div>',
     },
     {
+      // The component is only referenced from the removed handler, so the
+      // client drops it too.
+      name: 'a component with a boundary that only a server fn handler renders (removed on the client)',
+      code: `import { Hydrate, createServerFn } from '@tanstack/react-start'
+function ServerPanel() {
+  return <Hydrate><p>a</p></Hydrate>
+}
+export const panel = createServerFn().handler(async () => <ServerPanel />)
+export function Page() {
+  return <div><Hydrate><p>b</p></Hydrate></div>
+}`,
+      client: '<div>[<p>b</p>]</div>',
+    },
+    {
       name: 'a boundary in a createClientOnlyFn (a stub on the server)',
       code: `import { Hydrate, createClientOnlyFn } from '@tanstack/react-start'
 export const panel = createClientOnlyFn(() => <Hydrate><p>a</p></Hydrate>)
@@ -442,12 +457,14 @@ describe('values captured by the children', () => {
   test.fails(
     'client: captured locals named key and ref reach the split children',
     async () => {
-      const { module } = await loadClientModule(`${head}export function Page() {
+      const { module, lazyChunks } =
+        await loadClientModule(`${head}export function Page() {
   const key = 'k'
   const ref = 'r'
   return <Hydrate><p>{key}{ref}</p></Hydrate>
 }`)
       expect(module.Page()).toBe('[<p>kr</p>]')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -461,12 +478,13 @@ describe('values captured by the children', () => {
   test.fails.each(['_Local', '$Local', 'ÉLocal', '组件'])(
     'client: the split children render a local component named %s',
     async (name) => {
-      const { module } =
+      const { module, lazyChunks } =
         await loadClientModule(`${head}export function Page({ label }) {
   const ${name} = () => <b>{label}</b>
   return <Hydrate><${name} /><i>{label}</i></Hydrate>
 }`)
       expect(module.Page({ label: 'l' })).toBe('[<b>l</b><i>l</i>]')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -479,7 +497,7 @@ describe('values captured by the children', () => {
   test.fails(
     'client: the split children render member-expression tags of local objects',
     async () => {
-      const { module } =
+      const { module, lazyChunks } =
         await loadClientModule(`${head}function Home() { return <i>home</i> }
 export function Page({ Model }) {
   const ui = { Home }
@@ -488,6 +506,7 @@ export function Page({ Model }) {
       expect(module.Page({ Model: { Item: () => '<b>item</b>' } })).toBe(
         '[<i>home</i><b>item</b>]',
       )
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -501,7 +520,7 @@ export function Page({ Model }) {
   test.fails(
     'client: property names, method keys and optional members are no reads of a local',
     async () => {
-      const { module } =
+      const { module, lazyChunks } =
         await loadClientModule(`${head}export function Page({ obj }) {
   const el = <Hydrate><p>{obj?.later + ({ later() { return '!' } }).later()}</p></Hydrate>
   const later = 1
@@ -509,6 +528,7 @@ export function Page({ Model }) {
   return el
 }`)
       expect(module.Page({ obj: { later: 'L' } })).toBe('[<p>L!</p>]')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -518,13 +538,15 @@ export function Page({ Model }) {
   // Source: Qwik optimizer example_ts_enums (component-local enum) (#8504
   // hydrate-captures.test.ts, red on main)
   test.fails('client: the split children read a local enum', async () => {
-    const { module } = await loadClientModule(`${head}export function Page() {
+    const { module, lazyChunks } =
+      await loadClientModule(`${head}export function Page() {
   enum Color {
     Red = 'red',
   }
   return <Hydrate><p>{Color.Red}</p></Hydrate>
 }`)
     expect(module.Page()).toBe('[<p>red</p>]')
+    expectRenderedThroughChunks(lazyChunks)
   })
 
   // Bug: split children reading the component's `arguments` are moved into
@@ -575,10 +597,11 @@ export function Page({ Model }) {
       const code = `${head}export function Page({ items }) {
   return <Hydrate>${children}</Hydrate>
 }`
-      const { module } = await loadClientModule(code)
+      const { module, lazyChunks } = await loadClientModule(code)
       expect(module.Page({ items: ['a', 'b'] })).toBe(rendered)
       const server = await compileHydrate('server', code)
       expect(await getModuleErrors(server.parent)).toEqual([])
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -644,7 +667,7 @@ export function Page() {
     'client: the children use the module-level $name of the parent module',
     async ({ code, html }) => {
       let contexts = 0
-      const { module } = await loadClientModule(`${head}${code}`, {
+      const { module, lazyChunks } = await loadClientModule(`${head}${code}`, {
         stubs: {
           react: {
             createContext: () => ({
@@ -659,6 +682,7 @@ export function Page() {
         beforeChunksLoad: (parent) => parent.bump?.(),
       })
       expect(module.Page()).toBe(html)
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -672,7 +696,7 @@ export function Page() {
     'client: an exported declaration the children use has one instance, initialized once',
     async () => {
       let stores = 0
-      const { module } = await loadClientModule(
+      const { module, lazyChunks } = await loadClientModule(
         `${head}import { makeStore } from './store'
 export const store = makeStore()
 export function Page() {
@@ -689,6 +713,7 @@ export function Page() {
         exported: module.store.id,
         stores,
       }).toEqual({ html: '[<p>1</p>]', exported: 1, stores: 1 })
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -765,13 +790,14 @@ export function Page() {
     'client: split children reading Route $name use the one route',
     async ({ code, rendered }) => {
       const created: Array<string> = []
-      const { module } = await loadClientModule(
+      const { module, lazyChunks } = await loadClientModule(
         `${head}import { createFileRoute } from '@tanstack/react-router'
 ${code}`,
         { stubs: routerStub(created) },
       )
       expect(module.Page()).toBe(rendered)
       expect(created).toEqual(['/posts'])
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -812,13 +838,15 @@ export function Page() {
   test.fails(
     'client: an unexported component named Route that the children render reaches the chunk',
     async () => {
-      const { module } = await loadClientModule(`${head}function Route() {
+      const { module, lazyChunks } =
+        await loadClientModule(`${head}function Route() {
   return <p>local</p>
 }
 export function Page() {
   return <Hydrate><Route /></Hydrate>
 }`)
       expect(module.Page()).toBe('[<p>local</p>]')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -853,11 +881,12 @@ registry.set('a', 'A')`,
   ])(
     'client: $name that the children rely on reaches the chunk',
     async ({ setup, children, rendered }) => {
-      const { module } = await loadClientModule(`${head}${setup}
+      const { module, lazyChunks } = await loadClientModule(`${head}${setup}
 export function Page() {
   return <Hydrate>${children}</Hydrate>
 }`)
       expect(module.Page()).toBe(rendered)
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -869,13 +898,14 @@ export function Page() {
   test.fails(
     'client: a var declared in a nested block that the children read reaches the chunk',
     async () => {
-      const { module } = await loadClientModule(`${head}{
+      const { module, lazyChunks } = await loadClientModule(`${head}{
   var label = 'nested'
 }
 export function Page() {
   return <Hydrate><p>{label}</p></Hydrate>
 }`)
       expect(module.Page()).toBe('[<p>nested</p>]')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -887,7 +917,7 @@ export function Page() {
   test.fails(
     'client: a TypeScript import alias used by the split children is declared in the chunk',
     async () => {
-      const { module } = await loadClientModule(
+      const { module, lazyChunks } = await loadClientModule(
         `${head}import { visible } from '@tanstack/react-start/hydration'
 import * as ui from './ui'
 import Card = ui.Card
@@ -906,6 +936,7 @@ export function Page() {
         },
       )
       expect(module.Page()).toBe('[<b>hi</b>]')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -948,8 +979,9 @@ export function Page() {
   ])(
     'client: $name used by the children reaches the chunk',
     async ({ code, rendered }) => {
-      const { module } = await loadClientModule(`${head}${code}`)
+      const { module, lazyChunks } = await loadClientModule(`${head}${code}`)
       expect([module.Page(), module.Page()]).toEqual(rendered)
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -959,12 +991,13 @@ export function Page() {
   test.fails(
     'client: a helper named like the generated chunk export does not collide',
     async () => {
-      const { module } =
+      const { module, lazyChunks } =
         await loadClientModule(`${head}function H0() { return <b>helper</b> }
 export function Page() {
   return <Hydrate><H0 /></Hydrate>
 }`)
       expect(module.Page()).toBe('[<b>helper</b>]')
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 
@@ -1008,10 +1041,11 @@ ${head}export function Page() {
   test.fails(
     'client: a module with a classic JSX pragma renders through its factory',
     async () => {
-      const { module } = await loadClientModule(pragmaModule, {
+      const { module, lazyChunks } = await loadClientModule(pragmaModule, {
         stubs: { preact },
       })
       expect(settle(() => module.Page())).toBe(pragmaHtml)
+      expectRenderedThroughChunks(lazyChunks)
     },
   )
 })
