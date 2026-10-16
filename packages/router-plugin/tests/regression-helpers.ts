@@ -18,13 +18,16 @@ import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
 import { build, routeApp } from './build-harness'
-import { freeIdentifiers, getModuleErrors } from './validate-module'
+import {
+  freeIdentifiers,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
 import type { Config, DeletableNodes } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
 import type { ESTree } from 'vite'
 
-export { declarationOf } from './validate-module'
+export { declarationOf } from '@tanstack/compiler-test-utils/validate-module'
 
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 

@@ -5,7 +5,7 @@ import {
   compileFor,
   outputs,
 } from '../regression-helpers'
-import { getModuleErrors } from '../validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const top = `export const top = createServerFn().handler(async () => 'top')\n`

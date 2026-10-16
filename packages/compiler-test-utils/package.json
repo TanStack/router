@@ -2,13 +2,14 @@
   "name": "@tanstack/compiler-test-utils",
   "version": "0.0.0",
   "private": true,
-  "description": "Test infrastructure shared by the compiler test suites: an ES module linker for compiled modules, a real-build harness and dev-server harnesses (Vite, Rsbuild)",
+  "description": "Test infrastructure shared by the compiler test suites: an ES module linker for compiled modules, a real-build harness, dev-server harnesses (Vite, Rsbuild) and a validator of generated modules",
   "type": "module",
   "exports": {
     "./build-harness": "./src/build-harness.ts",
     "./dev-server": "./src/dev-server.ts",
     "./module-linker": "./src/module-linker.ts",
     "./rsbuild-dev-server": "./src/rsbuild-dev-server.ts",
+    "./validate-module": "./src/validate-module.ts",
     "./package.json": "./package.json"
   },
   "scripts": {

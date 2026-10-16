@@ -8,7 +8,7 @@ import {
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
-import { getModuleErrors } from './validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { Config } from '../src/core/config'
 
 const routeSource = (name: string) => `

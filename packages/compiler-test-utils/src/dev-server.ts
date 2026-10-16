@@ -32,9 +32,10 @@ import {
   mergeConfig,
   parseSync,
 } from 'vite'
-import { onTestFinished } from 'vitest'
 import { createApp } from './build-harness'
+import { createModuleGraph } from './module-linker'
 import type { AppOptions } from './build-harness'
+import type { ModuleGraphOptions, ModuleStub } from './module-linker'
 import type {
   DevEnvironment,
   HotPayload,
@@ -136,9 +137,9 @@ const ignoredDirectories = new Set(['node_modules', '.git', 'dist'])
 
 /**
  * Writes an app to a temporary directory in `options.dir` and starts a Vite
- * dev server on it, without a file watcher (see `settle()`). The server is
- * closed and the directory removed when the current test finishes, or by
- * `close()`.
+ * dev server on it, without a file watcher (see `settle()`). `close()`, which
+ * `registerCleanup` also receives, closes the server and removes the
+ * directory.
  */
 export async function createDevServer(
   options: DevServerOptions,
@@ -271,11 +272,7 @@ export async function createDevServer(
     })()
     return closed
   }
-  try {
-    onTestFinished(close)
-  } catch {
-    // Not inside a test: the caller closes.
-  }
+  options.registerCleanup?.(close)
 
   if (listen) {
     await vite.listen(0)
@@ -473,11 +470,69 @@ function staticImportUrls(code: string, url: string): Array<string> {
   for (const match of code.matchAll(/\b__vite_ssr_import__\(\s*"([^"]+)"/g)) {
     urls.push(match[1]!)
   }
-  return urls.map((imported) =>
-    imported.replace(/([?&])t=\d+(&|$)/, (_, before, after) =>
-      after ? before : '',
-    ),
+  return urls.map(withoutTimestamp)
+}
+
+/** A served URL without the HMR timestamp query Vite adds after an edit. */
+function withoutTimestamp(url: string) {
+  return url.replace(/([?&])t=\d+(&|$)/, (_, before, after) =>
+    after ? before : '',
   )
+}
+
+/** `/@vite/client` as the modules a test evaluates use it. */
+const viteClientStub = {
+  createHotContext: () => ({
+    data: {},
+    accept() {},
+    acceptExports() {},
+    dispose() {},
+    prune() {},
+    invalidate() {},
+    on() {},
+    off() {},
+    send() {},
+  }),
+}
+
+/**
+ * Evaluates a module as a browser loading it from the dev server would:
+ * `server.load(url)` transforms it and every module it imports statically
+ * (in an environment that serves ES modules, default `client`), and these
+ * are linked as real ES modules (`./module-linker`), so live bindings, cycles
+ * and module state behave like in the browser. Dynamic imports of served
+ * URLs are transformed when they run. Imports of modules `load()` skips
+ * (`skip`; by default dependencies and Vite's client) link to `stubs` by the
+ * URL the served code imports, to `fallbackStub`, or fail to link; Vite's
+ * client (`/@vite/client`) is stubbed with an inert hot context. Returns the
+ * module's namespace.
+ */
+export async function evaluateServed(
+  server: Pick<DevServer, 'load' | 'transform'>,
+  url: string,
+  options: {
+    environment?: string
+    skip?: RegExp
+    stubs?: Record<string, ModuleStub>
+    fallbackStub?: ModuleGraphOptions['fallbackStub']
+  } = {},
+): Promise<Record<string, any>> {
+  const environment = options.environment ?? 'client'
+  const skip = options.skip ?? defaultLoadSkip
+  const served = await server.load(url, { environment, skip })
+  const graph = createModuleGraph({
+    modules: served,
+    stubs: { '/@vite/client': viteClientStub, ...options.stubs },
+    resolve: (specifier) => {
+      const imported = withoutTimestamp(specifier)
+      return skip.test(imported) ? undefined : imported
+    },
+    load: (id) => server.transform(id, environment),
+    // Served code is already JavaScript
+    transform: (code) => code,
+    fallbackStub: options.fallbackStub,
+  })
+  return graph.import(url)
 }
 
 function hmrMessage(environment: string, args: Array<unknown>): HmrMessage {

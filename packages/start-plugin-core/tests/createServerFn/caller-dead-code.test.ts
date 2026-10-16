@@ -6,7 +6,10 @@ import {
   evaluateModule,
   importSources,
 } from '../regression-helpers'
-import { declarationOf, getModuleErrors } from '../validate-module'
+import {
+  declarationOf,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
 import type { ModuleStub } from '../regression-helpers'
 
 // Client and SSR callers replace a server fn handler with an RPC, then drop

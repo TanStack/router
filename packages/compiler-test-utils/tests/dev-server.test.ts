@@ -4,12 +4,14 @@
  * creations, renames and deletions (and the files plugins wrote meanwhile),
  * and the reported HMR payloads tell updates from full reloads.
  */
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import {
   createDevServer as createDevServerIn,
   describeHmr,
+  evaluateServed,
 } from '../src/dev-server'
 import type { DevServerOptions } from '../src/dev-server'
 import type { Plugin, ViteDevServer } from 'vite'
@@ -19,7 +21,11 @@ const timeout = 30_000
 const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
 function createDevServer(options: Omit<DevServerOptions, 'dir'>) {
-  return createDevServerIn({ dir: testsDir, ...options })
+  return createDevServerIn({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    ...options,
+  })
 }
 
 /**
@@ -213,6 +219,84 @@ describe('dev server harness', () => {
       await expect(
         server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
       ).rejects.toThrow('watchChange failed')
+    },
+    timeout,
+  )
+
+  test(
+    'registerCleanup receives close(), which stops the server and removes the app',
+    async () => {
+      const cleanups: Array<() => Promise<void>> = []
+      const server = await createDevServerIn({
+        dir: testsDir,
+        files,
+        registerCleanup: (cleanup) => cleanups.push(cleanup),
+      })
+      expect(existsSync(server.root)).toBe(true)
+      for (const cleanup of cleanups) {
+        await cleanup()
+      }
+      expect(existsSync(server.root)).toBe(false)
+    },
+    timeout,
+  )
+})
+
+describe('evaluateServed', () => {
+  test(
+    'evaluates the served module linked to the modules it imports, with live bindings',
+    async () => {
+      const server = await createDevServer({
+        files: {
+          'main.ts': `import { count, bump } from './counter'
+export const read = () => count
+export { bump }
+export const lazy = () => import('./chunk')
+if (import.meta.hot) {
+  import.meta.hot.accept()
+}
+`,
+          'counter.ts': `export let count = 0
+export const bump = () => ++count
+`,
+          'chunk.ts': `export const chunk = 'chunk'\n`,
+        },
+      })
+      const main = await evaluateServed(server, '/main.ts')
+      main.bump()
+      expect(main.read()).toBe(1)
+      expect((await main.lazy()).chunk).toBe('chunk')
+    },
+    timeout,
+  )
+
+  test(
+    'evaluates the edited code after settle()',
+    async () => {
+      const server = await createDevServer({ files })
+      expect((await evaluateServed(server, '/main.ts')).value).toBe('dep:v1')
+      await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` })
+      expect((await evaluateServed(server, '/main.ts')).value).toBe('dep:v2')
+    },
+    timeout,
+  )
+
+  test(
+    'links a skipped module to its stub, and fails to link it without one',
+    async () => {
+      const server = await createDevServer({ files })
+      const skip = /\/leaf\.ts$/
+      expect(
+        (
+          await evaluateServed(server, '/dep.ts', {
+            skip,
+            stubs: { '/leaf.ts': { leaf: 'stub' } },
+          })
+        ).dep,
+      ).toBe('dep:stub')
+      await expect(evaluateServed(server, '/dep.ts', { skip })).rejects.toThrow(
+        'No stub for import /leaf.ts',
+      )
     },
     timeout,
   )

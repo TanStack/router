@@ -8,7 +8,7 @@ import {
   importSources,
   outputs,
 } from '../regression-helpers'
-import { getModuleErrors } from '../validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { Output } from '../regression-helpers'
 
 // The provider module runs the extracted handler: it must keep every module

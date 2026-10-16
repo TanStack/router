@@ -22,7 +22,6 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { format, promisify } from 'node:util'
-import { onTestFinished } from 'vitest'
 
 export type Bundler = 'vite' | 'rspack' | 'webpack' | 'esbuild'
 
@@ -93,6 +92,13 @@ export interface AppOptions {
   symlinks?: Record<string, string>
   /** Directory name prefix of the temporary app. */
   prefix?: string
+  /**
+   * Registers a function to run when the current test finishes, e.g. the
+   * test runner's `onTestFinished`. The harness disposes of what it created
+   * (servers, temporary app directories) through it; without it, the caller
+   * disposes.
+   */
+  registerCleanup?: (cleanup: () => Promise<void>) => void
 }
 
 export interface AppInfo {
@@ -212,19 +218,15 @@ const ssrExternal = /^(react|react-dom)(\/.*)?$/
 
 /**
  * Writes an app to a temporary directory in `options.dir`, so that its
- * imports resolve from there. The directory is removed when the current test
- * finishes, or by `dispose()`.
+ * imports resolve from there. The directory is removed by `dispose()`, which
+ * `registerCleanup` also receives.
  */
 export async function createApp(options: AppOptions): Promise<App> {
   const root = await mkdtemp(
     path.join(options.dir, options.prefix ?? '.build-harness-'),
   )
   const dispose = () => rm(root, { recursive: true, force: true })
-  try {
-    onTestFinished(dispose)
-  } catch {
-    // Not inside a test: the caller disposes.
-  }
+  options.registerCleanup?.(dispose)
   try {
     const packageJson =
       options.packageJson === null
@@ -272,6 +274,7 @@ export async function bundleApp(
     sideEffects,
     symlinks,
     prefix,
+    registerCleanup,
     plugins,
     ...target
   } = options
@@ -282,6 +285,7 @@ export async function bundleApp(
     sideEffects,
     symlinks,
     prefix: prefix ?? `.build-harness-${target.bundler}-`,
+    registerCleanup,
   })
   try {
     return await app.bundle({ ...target, plugin: plugins?.[target.bundler] })

@@ -7,7 +7,7 @@
 import { describe, expect, test } from 'vitest'
 import { rootRoute, routerDevServer } from './dev-server'
 import { exportedNames, head, importedNames } from './regression-helpers'
-import { getModuleErrors } from './validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 const timeout = 30_000

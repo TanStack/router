@@ -14,7 +14,6 @@
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
-import { onTestFinished } from 'vitest'
 import { createApp } from './build-harness'
 import type { AppOptions } from './build-harness'
 import type {
@@ -61,8 +60,8 @@ export interface RsbuildDevServer {
 /**
  * Writes an app to a temporary directory in `options.dir` and starts an
  * Rsbuild dev server on it, without listening on a port; resolves after the
- * first compile. The server is stopped and the directory removed when the
- * current test finishes, or by `close()`.
+ * first compile. `close()`, which `registerCleanup` also receives, stops the
+ * server and removes the directory.
  */
 export async function createRsbuildDevServer(
   options: RsbuildDevServerOptions,
@@ -186,11 +185,7 @@ export async function createRsbuildDevServer(
     })()
     return closed
   }
-  try {
-    onTestFinished(close)
-  } catch {
-    // Not inside a test: the caller closes.
-  }
+  options.registerCleanup?.(close)
 
   return {
     root,

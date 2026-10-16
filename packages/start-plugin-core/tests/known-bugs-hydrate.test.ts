@@ -16,7 +16,7 @@ import {
   renderBoundaries,
   settle,
 } from './regression-helpers'
-import { getModuleErrors } from './validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 const head = `import { Hydrate } from '@tanstack/react-start'\n`
 

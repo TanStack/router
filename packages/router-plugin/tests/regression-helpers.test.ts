@@ -1,7 +1,7 @@
 /**
  * Controls for the regression harness itself: module discovery, lazy
- * evaluation, output validation and snapshot formatting (module linking:
- * `@tanstack/compiler-test-utils`).
+ * evaluation, output validation and snapshot formatting (module linking and
+ * module validation: `@tanstack/compiler-test-utils`).
  */
 import { describe, expect, it } from 'vitest'
 import { formatSnapshot } from './format-snapshot'
@@ -14,7 +14,6 @@ import {
   loadRoute,
   routeModuleSources,
 } from './regression-helpers'
-import { getModuleErrors } from './validate-module'
 
 describe('compileRouteModules', () => {
   const route = `${head}export const Route = createFileRoute('/')({
@@ -89,51 +88,6 @@ export const Route = createRootRoute({ component: () => <p>root</p> })`)
 })
 
 describe('output validation', () => {
-  it('rejects a reference to a name that is neither declared nor imported', async () => {
-    expect(
-      await getModuleErrors(`export const read = () => helper()
-export const Page = () => <Missing />`),
-    ).toEqual([
-      '`helper` is referenced but never declared or imported',
-      '`Missing` is referenced but never declared or imported',
-    ])
-  })
-
-  it('rejects a classic JSX pragma whose factory is not imported', async () => {
-    expect(
-      await getModuleErrors(`/** @jsxRuntime classic */
-/** @jsx jsx */
-export const Page = () => <div />`),
-    ).toEqual(['`jsx` is referenced but never declared or imported'])
-  })
-
-  it('accepts declared, hoisted, imported, probed and global names', async () => {
-    expect(
-      await getModuleErrors(`import { imported } from './lib'
-label: for (const item of [1]) { if (item) break label }
-export function read({ param = imported }, ...rest) {
-  try { hoisted() } catch (error) { return [error, param, rest, arguments] }
-  var later = 1
-  class Local { static value = Local.name; method() { return this } }
-  return [later, Local, { key: 1 }.key, typeof probed !== 'undefined' && probed, window, console]
-}
-function hoisted() {}
-export const Page = () => <div>{imported}</div>`),
-    ).toEqual([])
-  })
-
-  it('accepts names given as globals', async () => {
-    expect(
-      await getModuleErrors(
-        'export const read = () => APP_VERSION',
-        'module.ts',
-        {
-          globals: ['APP_VERSION'],
-        },
-      ),
-    ).toEqual([])
-  })
-
   it('lets the modules of a route read the globals the route file reads', async () => {
     const { modules } =
       compileRouteModules(`${head}export const Route = createFileRoute('/')({

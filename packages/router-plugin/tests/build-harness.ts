@@ -9,6 +9,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { bundleApp } from '@tanstack/compiler-test-utils/build-harness'
+import { onTestFinished } from 'vitest'
 import type {
   AppInfo,
   BuildEnv,
@@ -86,6 +87,7 @@ export async function build(
   ) => unknown
   return bundleApp({
     dir: harnessDir,
+    registerCleanup: onTestFinished,
     ...bundleOptions,
     plugins: {
       [options.bundler]: ({ root }: AppInfo) =>

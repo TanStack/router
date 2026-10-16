@@ -22,7 +22,7 @@ import {
   serverOnlyError,
   settle,
 } from './regression-helpers'
-import { getModuleErrors } from './validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { ModuleStub, Output } from './regression-helpers'
 import type { ServerFn } from '../src/start-compiler/types'
 

@@ -9,7 +9,7 @@ import {
   importSources,
   importedNames,
 } from './regression-helpers'
-import { getModuleErrors } from './validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 const pageRoute = (body: string) => `${head}${body}
 export const Route = createFileRoute('/')({ component: Page })

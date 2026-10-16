@@ -3,10 +3,15 @@
  * bundler, the harness reports eager and lazy placement correctly, `run()`
  * executes SSR and client output, and side-effect hints reach the bundler.
  */
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, test } from 'vitest'
-import { bundleApp as bundleAppIn, bundlers } from '../src/build-harness'
+import { describe, expect, onTestFinished, test } from 'vitest'
+import {
+  bundleApp as bundleAppIn,
+  bundlers,
+  createApp,
+} from '../src/build-harness'
 import type { BundleOptions, Placement } from '../src/build-harness'
 
 const timeout = 60_000
@@ -15,7 +20,11 @@ const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
 /** Builds a one-off app (`bundleApp`) in this directory, without a plugin. */
 function bundleApp(options: Omit<BundleOptions, 'dir'>) {
-  return bundleAppIn({ dir: testsDir, ...options })
+  return bundleAppIn({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    ...options,
+  })
 }
 
 /**
@@ -118,6 +127,7 @@ test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async (
   for (const nodeEnv of [undefined, null] as const) {
     await bundleAppIn({
       dir: testsDir,
+      registerCleanup: onTestFinished,
       bundler: 'vite',
       files: { 'entry.ts': `export const value = 1\n` },
       nodeEnv,
@@ -209,4 +219,32 @@ export const noSideEffects = recordAnnotated('MARK_NO_SIDE_EFFECTS')
     },
     timeout,
   )
+})
+
+describe('registerCleanup', () => {
+  test('receives the dispose() that removes the app directory', async () => {
+    const cleanups: Array<() => Promise<void>> = []
+    const app = await createApp({
+      dir: testsDir,
+      files: { 'entry.ts': `export const value = 1\n` },
+      registerCleanup: (cleanup) => cleanups.push(cleanup),
+    })
+    expect(cleanups).toEqual([app.dispose])
+    expect(existsSync(app.root)).toBe(true)
+    await cleanups[0]!()
+    expect(existsSync(app.root)).toBe(false)
+  })
+
+  test('without it, the app stays until dispose()', async () => {
+    const app = await createApp({
+      dir: testsDir,
+      files: { 'entry.ts': `export const value = 1\n` },
+    })
+    try {
+      expect(existsSync(app.root)).toBe(true)
+    } finally {
+      await app.dispose()
+    }
+    expect(existsSync(app.root)).toBe(false)
+  })
 })

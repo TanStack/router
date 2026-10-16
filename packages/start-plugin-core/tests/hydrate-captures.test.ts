@@ -9,7 +9,11 @@ import {
   loadChunk,
   renderChunk,
 } from './regression-helpers'
-import { declarationOf, getModuleErrors } from './validate-module'
+import {
+  declarationOf,
+  freeIdentifiers,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
 
 // `<Hydrate>` moves its children into a chunk component at module level. The
 // locals of the enclosing scopes the children read become props of that
@@ -20,12 +24,17 @@ import { declarationOf, getModuleErrors } from './validate-module'
 
 const head = `import { Hydrate } from '@tanstack/react-start'\n`
 
-/** Compiles for the client, checks every module and returns the single chunk. */
+/**
+ * Compiles for the client, checks every module (the globals the source reads
+ * may be read by its modules too) and returns the single chunk.
+ */
 async function compileChunk(code: string) {
-  const { parent, chunks } = await compileHydrate('client', `${head}${code}`)
+  const source = `${head}${code}`
+  const { parent, chunks } = await compileHydrate('client', source)
   expect(chunks).toHaveLength(1)
+  const globals = await freeIdentifiers(source)
   for (const module of [parent, chunks[0]!]) {
-    expect(await getModuleErrors(module)).toEqual([])
+    expect(await getModuleErrors(module, undefined, { globals })).toEqual([])
   }
   return { parent, chunk: chunks[0]! }
 }

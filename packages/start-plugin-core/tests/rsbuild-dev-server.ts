@@ -9,6 +9,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+import { onTestFinished } from 'vitest'
 import { registerStartCompilerTransforms } from '../src/rsbuild/start-compiler-host'
 import { startRuntimeFiles } from './build-harness'
 import type {
@@ -43,6 +44,7 @@ export function startRsbuildDevServer(
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-dev-server-',
+    registerCleanup: onTestFinished,
     ...devServerOptions,
     config: { environments: { client: {} }, ...devServerOptions.config },
     files: {

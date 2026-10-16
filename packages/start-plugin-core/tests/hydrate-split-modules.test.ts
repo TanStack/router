@@ -17,7 +17,10 @@ import {
   renderBoundaries,
   renderChunk,
 } from './regression-helpers'
-import { declarationOf, getModuleErrors } from './validate-module'
+import {
+  declarationOf,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
 
 // On the client `<Hydrate>` children move into a lazily loaded chunk module
 // and the parent renders the chunk component in their place; on the server

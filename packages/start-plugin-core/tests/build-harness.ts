@@ -118,10 +118,10 @@ export async function buildStart(
   const app = await createApp({
     dir: harnessDir,
     prefix: '.start-build-harness-',
+    registerCleanup: onTestFinished,
     ...appOptions,
     files: { ...startRuntimeFiles, ...files },
   })
-  onTestFinished(app.dispose)
   const plugins = [
     startCompilerPlugin({
       framework: 'react',

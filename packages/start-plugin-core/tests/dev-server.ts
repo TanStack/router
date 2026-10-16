@@ -9,6 +9,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { onTestFinished } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import { startRuntimeFiles } from './build-harness'
 import type { PluginOption } from 'vite'
@@ -41,6 +42,7 @@ export function startDevServer(
   return createDevServer({
     dir: harnessDir,
     prefix: '.start-dev-server-',
+    registerCleanup: onTestFinished,
     ...devServerOptions,
     files: { ...startRuntimeFiles, ...files },
     plugins: ({ root }) => [

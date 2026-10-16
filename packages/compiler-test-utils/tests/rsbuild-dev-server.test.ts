@@ -5,7 +5,7 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
 import { createRsbuildDevServer } from '../src/rsbuild-dev-server'
 
 const testsDir = path.dirname(fileURLToPath(import.meta.url))
@@ -13,6 +13,7 @@ const testsDir = path.dirname(fileURLToPath(import.meta.url))
 test('rebuilds the edited module and emits the edit', async () => {
   const server = await createRsbuildDevServer({
     dir: testsDir,
+    registerCleanup: onTestFinished,
     files: {
       'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
       'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,

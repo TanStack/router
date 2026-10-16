@@ -11,7 +11,7 @@ import {
   serverOnlyError,
   settle,
 } from './regression-helpers'
-import { getModuleErrors } from './validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { Output } from './regression-helpers'
 
 // Each output keeps the implementation of its own environment (and only the

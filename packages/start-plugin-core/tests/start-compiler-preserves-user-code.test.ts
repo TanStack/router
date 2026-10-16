@@ -4,7 +4,10 @@ import {
   evaluateModule,
   importSources,
 } from './regression-helpers'
-import { declarationOf, getModuleErrors } from './validate-module'
+import {
+  declarationOf,
+  getModuleErrors,
+} from '@tanstack/compiler-test-utils/validate-module'
 
 // The compiler removes code that only served a transformed call. Everything
 // else is user code that must survive, even when nothing seems to read it.

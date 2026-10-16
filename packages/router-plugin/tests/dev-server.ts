@@ -9,6 +9,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { onTestFinished } from 'vitest'
 import { tanstackRouter } from '../src/vite'
 import type {
   DevServer,
@@ -45,6 +46,7 @@ export function routerDevServer(
   return createDevServer({
     dir: harnessDir,
     prefix: '.router-dev-server-',
+    registerCleanup: onTestFinished,
     ...devServerOptions,
     files: { 'routes/__root.tsx': rootRoute, ...files },
     plugins: [
