@@ -1,0 +1,535 @@
+/**
+ * Dev-server harness for tests of what a dev server serves after edits:
+ * starts a real Vite dev server (JS API, unbundled dev) on a temporary app,
+ * lets the test create, edit, rename and delete files, replays the file
+ * events the way Vite's watcher reports them and waits until the server has
+ * handled them (plugin `watchChange` and `hotUpdate` hooks, HMR), and then
+ * requests modules per environment and reports the HMR payloads sent to each
+ * environment.
+ *
+ * File events are replayed deterministically instead of coming from a real
+ * file watcher: `settle()` compares the app's files with what it saw last,
+ * emits an `add`, `change` or `unlink` event for each difference (including
+ * files plugins wrote while handling earlier events, e.g. a generated route
+ * tree), waits for the server to handle each one, and repeats until the files
+ * are stable.
+ *
+ * Plugin-agnostic: the caller supplies the plugins and the directory the apps
+ * live in (where their imports resolve).
+ */
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  writeFile,
+} from 'node:fs/promises'
+import path from 'node:path'
+import {
+  createServer,
+  isRunnableDevEnvironment,
+  mergeConfig,
+  parseSync,
+} from 'vite'
+import { onTestFinished } from 'vitest'
+import { createApp } from './build-harness'
+import type { AppOptions } from './build-harness'
+import type {
+  DevEnvironment,
+  HotPayload,
+  InlineConfig,
+  LogErrorOptions,
+  Logger,
+  PluginOption,
+  ViteDevServer,
+} from 'vite'
+
+export interface DevServerOptions extends AppOptions {
+  /** Plugins of the dev server, or a function of the app root returning them. */
+  plugins?:
+    | Array<PluginOption>
+    | ((app: { root: string }) => Array<PluginOption>)
+  /** Vite configuration merged over the harness defaults. */
+  config?: InlineConfig
+  /** Serves over HTTP on a free port, for `fetch()`. Default `false`. */
+  listen?: boolean
+  /**
+   * How long `settle()` waits for the server to handle one file event, in
+   * milliseconds. Default 10 000.
+   */
+  eventTimeout?: number
+}
+
+export interface HmrMessage {
+  /** Environment the payload was sent to (`client`, `ssr`, ...). */
+  environment: string
+  /** `update`, `full-reload`, `prune`, `error` or `custom`. */
+  type: HotPayload['type']
+  /**
+   * `update`: the URL of each module that accepts an update (the HMR
+   * boundaries); `full-reload`: the reloaded path (`*` for every page).
+   */
+  paths: Array<string>
+  payload: HotPayload
+}
+
+export type FileEvent = 'add' | 'change' | 'unlink'
+
+export interface DevServer {
+  /** App root on disk. */
+  root: string
+  /** The Vite dev server. */
+  vite: ViteDevServer
+  /** Absolute path of a file given relative to the app root. */
+  file: (relative: string) => string
+  /** Content of an app file (relative to the app root). */
+  read: (relative: string) => Promise<string>
+  /**
+   * Writes app files (relative to the app root); `null` deletes a file. The
+   * server only sees the changes on the next `settle()`.
+   */
+  write: (files: Record<string, string | null>) => Promise<void>
+  /** Moves an app file. The server sees it on the next `settle()`. */
+  rename: (from: string, to: string) => Promise<void>
+  /**
+   * Reports every change to the app's files since the last call to the
+   * server as watcher events (deletions, then creations, then edits) and
+   * waits until it has handled each one, until no file changes anymore.
+   * Returns the HMR payloads sent meanwhile.
+   */
+  settle: () => Promise<Array<HmrMessage>>
+  /** `write(files)`, then `settle()`. */
+  edit: (files: Record<string, string | null>) => Promise<Array<HmrMessage>>
+  /** File events `settle()` reported, in order (paths relative to the root). */
+  events: Array<{ event: FileEvent; file: string }>
+  /**
+   * Transformed code of a module in an environment (default `client`), as
+   * the environment serves it. `url` is a URL of the dev server, e.g.
+   * `/src/a.ts`.
+   */
+  transform: (url: string, environment?: string) => Promise<string>
+  /**
+   * Transforms `url` and, like a browser loading it, every module it imports
+   * statically, transitively. Returns their code by URL. Modules whose URL
+   * matches `skip` (default: dependencies in `node_modules` and Vite's
+   * client) are not loaded.
+   */
+  load: (
+    url: string,
+    options?: { environment?: string; skip?: RegExp },
+  ) => Promise<Record<string, string>>
+  /** Requests a URL over HTTP (`listen: true` only). */
+  fetch: (url: string) => Promise<{ status: number; body: string }>
+  /** Imports a module in a runnable environment (default `ssr`). */
+  import: (url: string, environment?: string) => Promise<Record<string, any>>
+  /** HMR payloads sent to every environment since the server started. */
+  hmr: Array<HmrMessage>
+  /** Warnings and errors logged by Vite and the plugins. */
+  logs: Array<string>
+  /** Closes the server and removes the app directory. */
+  close: () => Promise<void>
+}
+
+/** Directories `settle()` never reports changes in. */
+const ignoredDirectories = new Set(['node_modules', '.git', 'dist'])
+
+/**
+ * Writes an app to a temporary directory in `options.dir` and starts a Vite
+ * dev server on it, without a file watcher (see `settle()`). The server is
+ * closed and the directory removed when the current test finishes, or by
+ * `close()`.
+ */
+export async function createDevServer(
+  options: DevServerOptions,
+): Promise<DevServer> {
+  const { plugins = [], config = {}, listen = false } = options
+  const eventTimeout = options.eventTimeout ?? 10_000
+  const app = await createApp({
+    ...options,
+    prefix: options.prefix ?? '.dev-server-',
+  })
+  const root = app.root
+  const logs: Array<string> = []
+  const hmr: Array<HmrMessage> = []
+  const events: Array<{ event: FileEvent; file: string }> = []
+  let pendingEvent:
+    | {
+        resolve: () => void
+        reject: (error: Error) => void
+      }
+    | undefined
+
+  const record =
+    (level: string) => (logged: string, logOptions?: LogErrorOptions) => {
+      // Vite logs the errors of its file event handlers as Error objects
+      const message: unknown = logged
+      const text = stripAnsi(
+        message instanceof Error
+          ? (message.stack ?? message.message)
+          : String(message),
+      )
+      logs.push(`${level}: ${text}`)
+      if (level === 'error' && pendingEvent) {
+        pendingEvent.reject(
+          message instanceof Error
+            ? message
+            : new Error(`dev server error: ${text}`, {
+                cause: logOptions?.error,
+              }),
+        )
+      }
+    }
+  const warned = new Set<string>()
+  const logger: Logger = {
+    info: () => {},
+    warn: record('warn'),
+    warnOnce: (message) => {
+      if (!warned.has(message)) {
+        warned.add(message)
+        record('warn')(message)
+      }
+    },
+    error: record('error'),
+    clearScreen: () => {},
+    hasErrorLogged: () => false,
+    hasWarned: false,
+  }
+
+  let vite: ViteDevServer
+  try {
+    vite = await createServer(
+      mergeConfig(
+        {
+          root,
+          configFile: false,
+          envDir: false,
+          publicDir: false,
+          appType: 'custom',
+          clearScreen: false,
+          customLogger: logger,
+          // Dependencies are served as they are, so that a first request
+          // never waits for the dependency optimizer or triggers a reload.
+          optimizeDeps: { noDiscovery: true, include: [] },
+          server: {
+            middlewareMode: !listen,
+            ws: false,
+            // `load()` requests the imports a test needs
+            preTransformRequests: false,
+            // `settle()` reports file events instead of a watcher
+            watch: null,
+            hotUpdateEnvironments: async (
+              server: ViteDevServer,
+              update: (environment: DevEnvironment) => Promise<void>,
+            ) => {
+              await Promise.all(Object.values(server.environments).map(update))
+              pendingEvent?.resolve()
+            },
+          },
+          plugins: typeof plugins === 'function' ? plugins({ root }) : plugins,
+        } satisfies InlineConfig,
+        config,
+      ),
+    )
+  } catch (error) {
+    await app.dispose()
+    throw error
+  }
+
+  /**
+   * Records the HMR payloads of the current environments (again after a
+   * server restart, which replaces them).
+   */
+  const recording = new WeakSet<object>()
+  let recordedEnvironments: ViteDevServer['environments'] | undefined
+  const recordHmr = () => {
+    recordedEnvironments = vite.environments
+    for (const [name, environment] of Object.entries(vite.environments)) {
+      const hot = environment.hot
+      if (recording.has(hot.send)) {
+        continue
+      }
+      const send = hot.send.bind(hot) as (...args: Array<unknown>) => void
+      const recordingSend = (...args: Array<unknown>) => {
+        hmr.push(hmrMessage(name, args))
+        send(...args)
+      }
+      recording.add(recordingSend)
+      hot.send = recordingSend as typeof hot.send
+    }
+  }
+  recordHmr()
+
+  let closed: Promise<void> | undefined
+  const close = () => {
+    closed ??= (async () => {
+      try {
+        await vite.close()
+      } finally {
+        await app.dispose()
+      }
+    })()
+    return closed
+  }
+  try {
+    onTestFinished(close)
+  } catch {
+    // Not inside a test: the caller closes.
+  }
+
+  if (listen) {
+    await vite.listen(0)
+  }
+
+  const file = (relative: string) => path.join(root, relative)
+  let snapshot = await readFiles(root)
+
+  /** Emits a watcher event and waits until the server has handled it. */
+  async function report(event: FileEvent, relative: string) {
+    events.push({ event, file: relative })
+    recordHmr()
+    const handled = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () =>
+          finish(
+            new Error(
+              `the dev server did not handle "${event} ${relative}" within ${eventTimeout} ms`,
+            ),
+          ),
+        eventTimeout,
+      )
+      // A server restart (e.g. a plugin restarting the server on a config
+      // file edit) abandons the HMR handling of the event: done once the
+      // restarted server's environments exist.
+      const restart = setInterval(() => {
+        if (vite.environments !== recordedEnvironments) {
+          recordHmr()
+          finish()
+        }
+      }, 20)
+      const finish = (error?: Error) => {
+        clearTimeout(timer)
+        clearInterval(restart)
+        if (error) {
+          reject(error)
+        } else {
+          resolve()
+        }
+      }
+      pendingEvent = { resolve: () => finish(), reject: finish }
+    })
+    try {
+      vite.watcher.emit(event, file(relative))
+      await handled
+      // The payloads are sent right after the last environment updates
+      await new Promise((resolve) => setImmediate(resolve))
+    } finally {
+      pendingEvent = undefined
+    }
+  }
+
+  async function settle() {
+    const from = hmr.length
+    for (let round = 0; ; round++) {
+      const current = await readFiles(root)
+      const removed = [...snapshot.keys()].filter((key) => !current.has(key))
+      const added = [...current.keys()].filter((key) => !snapshot.has(key))
+      const changed = [...current.keys()].filter(
+        (key) => snapshot.has(key) && snapshot.get(key) !== current.get(key),
+      )
+      snapshot = current
+      if (!removed.length && !added.length && !changed.length) {
+        break
+      }
+      if (round === 20) {
+        throw new Error(
+          `the app's files keep changing after 20 rounds of file events: ${[...removed, ...added, ...changed].join(', ')}`,
+        )
+      }
+      for (const relative of removed) {
+        await report('unlink', relative)
+      }
+      for (const relative of added) {
+        await report('add', relative)
+      }
+      for (const relative of changed) {
+        await report('change', relative)
+      }
+    }
+    return hmr.slice(from)
+  }
+
+  async function write(files: Record<string, string | null>) {
+    for (const [relative, code] of Object.entries(files)) {
+      if (code === null) {
+        await rm(file(relative), { force: true })
+      } else {
+        await mkdir(path.dirname(file(relative)), { recursive: true })
+        await writeFile(file(relative), code)
+      }
+    }
+  }
+
+  function environment(name: string) {
+    const found = vite.environments[name]
+    if (!found) {
+      throw new Error(
+        `no "${name}" environment (has ${Object.keys(vite.environments).join(', ')})`,
+      )
+    }
+    return found
+  }
+
+  async function transform(url: string, environmentName = 'client') {
+    const result = await environment(environmentName).transformRequest(url)
+    if (!result) {
+      throw new Error(`${environmentName}: no module at ${url}`)
+    }
+    return result.code
+  }
+
+  return {
+    root,
+    vite,
+    file,
+    read: (relative) => readFile(file(relative), 'utf8'),
+    write,
+    rename: async (from, to) => {
+      await mkdir(path.dirname(file(to)), { recursive: true })
+      await rename(file(from), file(to))
+    },
+    settle,
+    edit: async (files) => {
+      await write(files)
+      return settle()
+    },
+    events,
+    transform,
+    load: async (url, loadOptions = {}) => {
+      const environmentName = loadOptions.environment ?? 'client'
+      const skip = loadOptions.skip ?? defaultLoadSkip
+      const loaded: Record<string, string> = {}
+      const queue = [url]
+      while (queue.length) {
+        const next = queue.shift()!
+        if (next in loaded || skip.test(next)) {
+          continue
+        }
+        const code = await transform(next, environmentName)
+        loaded[next] = code
+        queue.push(...staticImportUrls(code, next))
+      }
+      return loaded
+    },
+    fetch: async (url) => {
+      const base = vite.resolvedUrls?.local[0]
+      if (!base) {
+        throw new Error('fetch() needs a server started with `listen: true`')
+      }
+      const response = await fetch(new URL(url, base))
+      return { status: response.status, body: await response.text() }
+    },
+    import: (url, environmentName = 'ssr') => {
+      const runnable = environment(environmentName)
+      if (!isRunnableDevEnvironment(runnable)) {
+        throw new Error(`the "${environmentName}" environment is not runnable`)
+      }
+      return runnable.runner.import(url)
+    },
+    hmr,
+    logs,
+    close,
+  }
+}
+
+/** Dependencies and the HMR clients, which no test inspects. */
+const defaultLoadSkip = /\/node_modules\/|^\/@(vite|react-refresh)\b/
+
+/**
+ * URLs a transformed module imports statically (client: `import`/`export
+ * from` declarations; SSR: `__vite_ssr_import__()` calls), without the HMR
+ * timestamp query.
+ */
+function staticImportUrls(code: string, url: string): Array<string> {
+  const urls: Array<string> = []
+  const { module } = parseSync(
+    url.replace(/[?#].*$/, '') || 'module.js',
+    code,
+    {
+      lang: 'js',
+      sourceType: 'module',
+    },
+  )
+  for (const declaration of module.staticImports) {
+    urls.push(declaration.moduleRequest.value)
+  }
+  for (const declaration of module.staticExports) {
+    for (const entry of declaration.entries) {
+      if (entry.moduleRequest) {
+        urls.push(entry.moduleRequest.value)
+      }
+    }
+  }
+  for (const match of code.matchAll(/\b__vite_ssr_import__\(\s*"([^"]+)"/g)) {
+    urls.push(match[1]!)
+  }
+  return urls.map((imported) =>
+    imported.replace(/([?&])t=\d+(&|$)/, (_, before, after) =>
+      after ? before : '',
+    ),
+  )
+}
+
+function hmrMessage(environment: string, args: Array<unknown>): HmrMessage {
+  const payload: HotPayload =
+    typeof args[0] === 'string'
+      ? { type: 'custom', event: args[0], data: args[1] }
+      : (args[0] as HotPayload)
+  let paths: Array<string> = []
+  if (payload.type === 'update') {
+    paths = [...new Set(payload.updates.map((update) => update.path))]
+  } else if (payload.type === 'full-reload') {
+    paths = [payload.path ?? '*']
+  } else if (payload.type === 'prune') {
+    paths = payload.paths
+  }
+  return { environment, type: payload.type, paths, payload }
+}
+
+/** Contents of the app's files by path relative to the root. */
+async function readFiles(root: string): Promise<Map<string, string>> {
+  const files = new Map<string, string>()
+  const visit = async (directory: string) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const full = path.join(directory, entry.name)
+      if (entry.isDirectory()) {
+        if (!ignoredDirectories.has(entry.name)) {
+          await visit(full)
+        }
+      } else if (entry.isFile() || entry.isSymbolicLink()) {
+        try {
+          files.set(
+            path.relative(root, full).split(path.sep).join('/'),
+            await readFile(full, 'utf8'),
+          )
+        } catch {
+          // Removed while reading, or a dangling link
+        }
+      }
+    }
+  }
+  await visit(root)
+  return files
+}
+
+function stripAnsi(text: string) {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\u001b\[[0-9;]*m/g, '')
+}
+
+/** One line per HMR message (`client: update /a.ts, /b.ts`), for assertions. */
+export function describeHmr(messages: Array<HmrMessage>): Array<string> {
+  return messages.map((message) =>
+    `${message.environment}: ${message.type} ${message.paths.join(', ')}`.trimEnd(),
+  )
+}

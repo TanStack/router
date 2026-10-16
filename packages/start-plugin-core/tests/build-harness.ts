@@ -37,6 +37,9 @@ export const startRuntimeFiles: Record<string, string> = {
       './client-rpc': './client-rpc.js',
       './server-rpc': './server-rpc.js',
       './ssr-rpc': './ssr-rpc.js',
+      './server': './server.js',
+      './server-only': './marker.js',
+      './client-only': './marker.js',
     },
   }),
   [`${startPackage}/index.js`]: `const uncompiled = (name) => () => {
@@ -71,6 +74,10 @@ export const createMiddleware = uncompiled('createMiddleware')
   )
 `,
   [`${startPackage}/server-rpc.js`]: `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })
+`,
+  [`${startPackage}/server.js`]: `export const getRequest = () => ({ url: '/' })
+`,
+  [`${startPackage}/marker.js`]: `export {}
 `,
   [`${startPackage}/ssr-rpc.js`]: `import { getServerFnById } from '#tanstack-start-server-fn-resolver'
 export const createSsrRpc = (id) => async (opts) =>
