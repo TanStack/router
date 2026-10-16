@@ -11,7 +11,7 @@ import type { CodeSplitGroupings } from '../src/core/constants'
 const runNode = promisify(execFile)
 const fixture = path.resolve(
   __dirname,
-  'code-splitter/test-files/react/shared-runtime.tsx',
+  'test-files/shared-runtime.tsx',
 )
 
 const groupings: Array<{ name: string; groupings: CodeSplitGroupings }> = [
