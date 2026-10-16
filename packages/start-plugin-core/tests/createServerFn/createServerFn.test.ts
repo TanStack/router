@@ -1021,7 +1021,11 @@ function RouteComponent() {
   // builder from another module (TanStack/router#7280 class).
   // Replaces compiler.test.ts "handles .handler with whitespace variations"
   // and "handles whitespace between . and handler" (N7).
-  describe.each([
+  describe.each<{
+    where: string
+    files: Record<string, string>
+    head: string
+  }>([
     {
       where: 'the module',
       files: {},
