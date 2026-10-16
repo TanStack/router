@@ -78,6 +78,18 @@ export const loadMissing = () => import('./missing')`,
       'No stub for import ./missing',
     )
   })
+
+  // Route files of apps live at paths such as `routes/{-$locale}/index.tsx`.
+  test('a dynamic import of a static specifier containing $ resolves', async () => {
+    const module = await evaluateModule(
+      `export const quoted = () => import('./{-$locale}/dep')
+export const template = () => import(\`./{-$locale}/dep\`)`,
+      { './{-$locale}/dep': { x: 1 } },
+    )
+    expect([(await module.quoted()).x, (await module.template()).x]).toEqual([
+      1, 1,
+    ])
+  })
 })
 
 describe('evaluateModule links every import form like an ES module runtime', () => {

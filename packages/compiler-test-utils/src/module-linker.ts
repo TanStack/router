@@ -262,11 +262,14 @@ function moduleRequests(javascript: string) {
       dynamicImport.moduleRequest.start,
       dynamicImport.moduleRequest.end,
     )
-    // Only a static specifier resolves ahead of time; any other fails when
+    // Only a static specifier (a string literal, or a template literal
+    // without substitutions) resolves ahead of time; any other fails when
     // the import runs.
-    const literal = /^(["'`])([^"'`$\\]*)\1$/.exec(source)
+    const literal = /^(?:(["'])([^"'\\]*)\1|`((?:[^`\\$]|\$(?!\{))*)`)$/.exec(
+      source,
+    )
     if (literal) {
-      dynamic.push(literal[2]!)
+      dynamic.push((literal[2] ?? literal[3])!)
     }
   }
   return { static: [...names.keys()], dynamic, names }
