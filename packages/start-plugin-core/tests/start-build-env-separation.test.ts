@@ -1,10 +1,16 @@
 /**
  * Start's environment separation in real builds, through Start's Vite and
  * Rsbuild plugins (build-harness.ts): server code never reaches the client
- * bundle, and the server build still runs it.
+ * bundle, and the server build still runs it. "Server code" is each
+ * construct whose server side the client must not get; each one imports a
+ * module whose code carries a marker (and whose top-level code sets it), so
+ * the marker is in the client bundle as soon as the module is.
+ * Route options go through Start's own router plugin wiring (its list of
+ * options deleted from client route modules).
  */
-import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from './build-harness'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { buildStart, routerRuntimeFiles, startBundlers } from './build-harness'
+import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
 
@@ -66,4 +72,210 @@ export const where = createIsomorphicFn()
     },
     timeout,
   )
+
+  describe('server code of each construct', () => {
+    /**
+     * `src/deps/<name>.ts`: an export returning `marker`, in a module whose
+     * top-level code also sets it.
+     */
+    const dependency = (name: string, marker: string) => ({
+      [`src/deps/${name}.ts`]: `;(globalThis as Record<string, unknown>).${marker} = 'loaded'
+export const ${name} = (..._args: Array<unknown>) => '${marker}'
+`,
+    })
+
+    /**
+     * One app with every construct; the client and SSR entries export them
+     * (`src/entry.ts`), and import `src/start.ts` and the router
+     * (`src/router.ts`) like Start's entries.
+     */
+    const files = {
+      ...routerRuntimeFiles,
+      ...dependency('handlerDep', 'MARK_HANDLER_DEP'),
+      ...dependency('middlewareServer', 'MARK_MIDDLEWARE_SERVER'),
+      ...dependency('middlewareValidator', 'MARK_MIDDLEWARE_VALIDATOR'),
+      ...dependency('isomorphicServer', 'MARK_ISOMORPHIC_SERVER'),
+      ...dependency('serverOnlyDep', 'MARK_SERVER_ONLY'),
+      ...dependency('routeHandler', 'MARK_ROUTE_HANDLER'),
+      ...dependency('routeHeaders', 'MARK_ROUTE_HEADERS'),
+      ...dependency('routeSsr', 'MARK_ROUTE_SSR'),
+      ...dependency('routeServerFn', 'MARK_ROUTE_SERVER_FN'),
+      ...dependency('serverRouteHandler', 'MARK_SERVER_ROUTE'),
+      ...dependency('startMiddleware', 'MARK_START_MIDDLEWARE'),
+      'src/middleware.ts': `import { createMiddleware } from '@tanstack/react-start'
+import { middlewareServer } from './deps/middlewareServer'
+import { middlewareValidator } from './deps/middlewareValidator'
+export const fnMiddleware = createMiddleware({ type: 'function' })
+  .validator((data: unknown) => middlewareValidator(data))
+  .server(({ next }) => next({ context: { marker: middlewareServer() } }))
+`,
+      'src/fns.ts': `import {
+  createIsomorphicFn,
+  createServerFn,
+  createServerOnlyFn,
+} from '@tanstack/react-start'
+import { fnMiddleware } from './middleware'
+import { handlerDep } from './deps/handlerDep'
+import { isomorphicServer } from './deps/isomorphicServer'
+import { serverOnlyDep } from './deps/serverOnlyDep'
+export const fn = createServerFn()
+  .middleware([fnMiddleware])
+  .handler(async () => handlerDep())
+export const isomorphic = createIsomorphicFn()
+  .server(() => isomorphicServer())
+  .client(() => 'MARK_ISOMORPHIC_CLIENT')
+export const serverOnly = createServerOnlyFn(() => serverOnlyDep())
+`,
+      'src/start.ts': `import { createMiddleware, createStart } from '@tanstack/react-start'
+import { startMiddleware } from './deps/startMiddleware'
+const marker = createMiddleware().server(({ next }) =>
+  next({ context: { marker: startMiddleware() } }),
+)
+export const startInstance = createStart(() => ({ requestMiddleware: [marker] }))
+`,
+      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { routeHandler } from '../deps/routeHandler'
+import { routeHeaders } from '../deps/routeHeaders'
+import { routeSsr } from '../deps/routeSsr'
+import { routeServerFn } from '../deps/routeServerFn'
+const getData = createServerFn().handler(async () => routeServerFn())
+export const Route = createFileRoute('/')({
+  server: { handlers: { GET: () => routeHandler() } },
+  headers: () => ({ 'x-marker': routeHeaders() }),
+  ssr: () => routeSsr() === 'MARK_ROUTE_SSR',
+  loader: () => getData(),
+  component: () => 'MARK_ROUTE_COMPONENT',
+})
+`,
+      'src/routes/api.ts': `import { createFileRoute } from '@tanstack/react-router'
+import { serverRouteHandler } from '../deps/serverRouteHandler'
+export const Route = createFileRoute('/api')({
+  server: { handlers: { GET: () => serverRouteHandler() } },
+})
+`,
+      'src/router.ts': `import { routeTree } from './routeTree.gen'
+export const getRouter = () => ({ routeTree })
+`,
+      'src/entry.ts': `export { fn, isomorphic, serverOnly } from './fns'
+export { fnMiddleware } from './middleware'
+export { startInstance } from './start'
+export { getRouter } from './router'
+`,
+    }
+
+    /** SSR script prelude: `route(id)` is the route with that id. */
+    const routes = `const route = (id) =>
+  Object.values(entry.getRouter().routeTree.children).find(
+    (candidate) => candidate.options.id === id,
+  )
+const next = (options) => options
+`
+
+    // One build for every row.
+    let build: StartBuild
+    let dispose: (() => Promise<void>) | undefined
+    beforeAll(async () => {
+      build = await buildStart({
+        bundler,
+        files,
+        entry: 'src/entry.ts',
+        registerCleanup: (cleanup) => {
+          dispose = cleanup
+        },
+      })
+    }, timeout)
+    afterAll(() => dispose?.())
+
+    // The markers are searchable: the client keeps the client side of the
+    // same modules.
+    test('the client keeps the client code of these modules', () => {
+      expect({
+        isomorphic: build.client.where('MARK_ISOMORPHIC_CLIENT'),
+        component: build.client.where('MARK_ROUTE_COMPONENT'),
+      }).toEqual({ isomorphic: 'eager', component: 'lazy' })
+    })
+
+    // Source: holes C1 (Rsbuild), C2 (Start's plugin wiring), C3 (each
+    // construct) in round2/oracle-gaps/REPORT.md.
+    test.each([
+      {
+        construct: 'a server fn handler',
+        marker: 'MARK_HANDLER_DEP',
+        run: `return await entry.fn()`,
+        expected: 'MARK_HANDLER_DEP',
+      },
+      {
+        construct: 'a function middleware .server()',
+        marker: 'MARK_MIDDLEWARE_SERVER',
+        run: `return entry.fnMiddleware.options.server({ next }).context.marker`,
+        expected: 'MARK_MIDDLEWARE_SERVER',
+      },
+      {
+        construct: 'a function middleware validator',
+        marker: 'MARK_MIDDLEWARE_VALIDATOR',
+        run: `return entry.fnMiddleware.options.validator({})`,
+        expected: 'MARK_MIDDLEWARE_VALIDATOR',
+      },
+      {
+        construct: 'an isomorphic fn .server()',
+        marker: 'MARK_ISOMORPHIC_SERVER',
+        run: `return entry.isomorphic()`,
+        expected: 'MARK_ISOMORPHIC_SERVER',
+      },
+      {
+        construct: 'a server-only fn',
+        marker: 'MARK_SERVER_ONLY',
+        run: `return entry.serverOnly()`,
+        expected: 'MARK_SERVER_ONLY',
+      },
+      {
+        construct: 'route server.handlers',
+        marker: 'MARK_ROUTE_HANDLER',
+        run: `return route('/').options.server.handlers.GET()`,
+        expected: 'MARK_ROUTE_HANDLER',
+      },
+      {
+        construct: 'route headers',
+        marker: 'MARK_ROUTE_HEADERS',
+        run: `return route('/').options.headers()['x-marker']`,
+        expected: 'MARK_ROUTE_HEADERS',
+      },
+      {
+        construct: 'route ssr',
+        marker: 'MARK_ROUTE_SSR',
+        run: `return route('/').options.ssr()`,
+        expected: true,
+      },
+      {
+        construct: 'a server fn of a route file the loader calls',
+        marker: 'MARK_ROUTE_SERVER_FN',
+        run: `return await route('/').options.loader()`,
+        expected: 'MARK_ROUTE_SERVER_FN',
+      },
+      {
+        construct: 'a server route',
+        marker: 'MARK_SERVER_ROUTE',
+        run: `return route('/api').options.server.handlers.GET()`,
+        expected: 'MARK_SERVER_ROUTE',
+      },
+      {
+        construct: 'a request middleware of src/start.ts',
+        marker: 'MARK_START_MIDDLEWARE',
+        run: `return entry.startInstance.getOptions().requestMiddleware[0].options.server({ next }).context.marker`,
+        expected: 'MARK_START_MIDDLEWARE',
+      },
+    ])(
+      '$construct: its server code is not in the client bundle, and runs in the SSR build',
+      async ({ marker, run, expected }) => {
+        expect(build.client.where(marker)).toBe('nowhere')
+        expect((await build.ssr.run(`${routes}${run}`)).result).toEqual(
+          expected,
+        )
+      },
+    )
+  })
 })
