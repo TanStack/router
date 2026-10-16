@@ -117,7 +117,9 @@ export default createMiddleware().server(async ({ next }) => {
     )
     expect(await getModuleErrors(client!)).toEqual([])
     expect(importSources(client!)).toEqual([])
-    expect((await evaluateModule(client!)).default).toHaveProperty('server')
+    // The client runtime's `.server()` throws: the module evaluates only
+    // without it, and the middleware records no server implementation.
+    expect((await evaluateModule(client!)).default.options).toEqual({})
   })
 
   describe('a middleware chain with a wrapped link', () => {
@@ -403,6 +405,34 @@ export class Api extends Base {
     const ssr = await evaluateModule(compiled.ssr)
     expect(new ssr.Api().read(1)()).toEqual(['s', 'base', 1])
   })
+
+  // Source: snapshot fixture envOnlyFactory (createClientOnlyFn half).
+  test.each([
+    {
+      name: 'a function',
+      code: `export function makeDraw() {
+  return createClientOnlyFn(() => chart())
+}`,
+    },
+    {
+      name: 'an arrow function',
+      code: `export const makeDraw = () => createClientOnlyFn(() => chart())`,
+    },
+  ])(
+    'a createClientOnlyFn returned by $name runs only on the client',
+    async ({ code }) => {
+      const compiled = await compileAll(
+        `${head}import { chart } from './chart.client'\n${code}`,
+      )
+      const stubs = { './chart.client': `export const chart = () => 'chart'` }
+      expect((await evaluateModule(compiled.client, stubs)).makeDraw()()).toBe(
+        'chart',
+      )
+      expect(importSources(compiled.ssr)).not.toContain('./chart.client')
+      const ssr = await evaluateModule(compiled.ssr, stubs)
+      expect(settle(() => ssr.makeDraw()())).toBe(clientOnlyError)
+    },
+  )
 
   // On the server, a middleware `.server()` next to an isomorphic fn stays a
   // middleware: it is not compiled as the isomorphic fn's `.server()`.
