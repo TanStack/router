@@ -38,6 +38,10 @@ function getDefaultParserPluginsForFilename(
     'typescript',
     'explicitResourceManagement',
     'importAttributes',
+    // Import assertions (`assert { type: 'json' }`) are the older syntax that
+    // import attributes (`with { type: 'json' }`) replaced. They are still
+    // parsed for older code; support can be dropped once nobody uses them
+    // anymore.
     'deprecatedImportAssert',
     ['decorators', { decoratorsBeforeExport: true }],
     'decoratorAutoAccessors',
