@@ -1,8 +1,8 @@
 /**
  * Every Start construct is recognised however its factory is imported (a
  * renamed import, a member of a namespace import) or its result wrapped (a
- * TypeScript `as`), in each framework: the client output keeps no server
- * code or import, and each output follows the runtime contract of its
+ * TypeScript `as` or `satisfies`), in each framework: the client output
+ * keeps no server code or import, and each output follows the runtime contract of its
  * environment (RPC, environment branch, throwing stub, fallback).
  * Replaces the Rename / StarImport snapshot fixtures of the createServerFn,
  * createMiddleware, createIsomorphicFn, envOnly and ClientOnly suites and
@@ -51,6 +51,11 @@ const forms: Record<string, Form> = {
     callee: () => 'renamed',
     wrap: (expression) => `(${expression}) as any`,
   },
+  'a call result wrapped in satisfies': {
+    imports: (pkg, name) => `import { ${name} as renamed } from '${pkg}'`,
+    callee: () => 'renamed',
+    wrap: (expression) => `(${expression}) satisfies unknown`,
+  },
 }
 
 /** A Start construct: the module creating it and the checks of each output. */
@@ -71,7 +76,7 @@ const constructs: Array<Construct> = [
   {
     name: 'createServerFn',
     code: (callee, wrap) =>
-      `export const fn = ${wrap(`${callee}().handler(async () => db.x())`)}`,
+      `export const fn = ${wrap(`${callee}({ method: 'GET' }).handler(async () => db.x())`)}`,
     check: async ({ client, ssr, provider, framework }) => {
       expect(importSources(client)).not.toContain('./db.server')
       expect(importSources(ssr)).not.toContain('./db.server')
@@ -79,9 +84,10 @@ const constructs: Array<Construct> = [
         ['client', client],
         ['ssr', ssr],
       ] as const) {
-        expect((await evaluateModule(code, stubs, { framework })).fn).toEqual({
-          rpc: { [output]: expect.any(String) },
-        })
+        const { fn } = await evaluateModule(code, stubs, { framework })
+        expect(fn, output).toEqual({ rpc: { [output]: expect.any(String) } })
+        // The caller keeps the builder options (the runtime reads `method`).
+        expect(fn.options, output).toEqual({ method: 'GET' })
       }
       expect(
         await callProvider({ ssr, provider, framework }, 'fn', stubs),
