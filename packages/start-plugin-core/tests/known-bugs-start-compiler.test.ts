@@ -1014,6 +1014,21 @@ export const fn = createServerFn().handler(async () => auth.get())`
     ).toEqual([])
   })
 
+  // With `verbatimModuleSyntax`, `import { type Db } from './db.server'`
+  // keeps the module as a side-effect import (`import {} from`); the client
+  // must still not load the server-only module for code it keeps that only
+  // mentions the type.
+  test('client: a server-only module imported only for a type specifier is not loaded with verbatimModuleSyntax', async () => {
+    const code = `${head}import { type Db } from './db.server'
+export function describeDb(db?: Db) {
+  return db ? 'custom' : 'default'
+}
+export const fn = createServerFn().handler(async () => describeDb())`
+    const client = (await compileCode('client', code)) ?? code
+    expect(await verbatimImportSources(client)).not.toContain('./db.server')
+    expect((await evaluateModule(client)).describeDb()).toBe('default')
+  })
+
   // Bug: dead-code elimination counts a `typeof auth` type query in a
   // top-level type alias as a use of the `auth` import, so a server-only
   // import that the handler read and that such a type still mentions stays a
