@@ -20,6 +20,7 @@ function createGraph(
     { imports?: Array<string>; dynamicImports?: Array<string> }
   >,
   discoveries: Record<string, Array<ServerFn>> = {},
+  externals: Array<string> = [],
 ) {
   const serverFns: Record<string, ServerFn> = {}
   const loaded: Array<string> = []
@@ -37,12 +38,19 @@ function createGraph(
       dynamicallyImportedIds: module.dynamicImports ?? [],
     }
   })
+  const resolve = vi.fn(async (id: string) => ({
+    external: externals.includes(id),
+  }))
   return {
     load,
     loaded,
     serverFns,
     run: () =>
-      discoverProviderServerFns({ load, getServerFns: () => serverFns }),
+      discoverProviderServerFns({
+        load,
+        resolve,
+        getServerFns: () => serverFns,
+      }),
   }
 }
 
@@ -106,18 +114,22 @@ describe('discoverProviderServerFns', () => {
     ])
   })
 
-  test('skips virtual modules, dependencies and non-module imports', async () => {
-    const graph = createGraph({
-      [`/app/outer.ts${SPLIT}`]: {
-        imports: [
-          '\0virtual:tanstack-start',
-          '/app/node_modules/dep/index.js',
-          '/app/styles.css',
-          '/app/data.json',
-          '/app/used.ts',
-        ],
+  test('skips virtual modules, externals and non-module imports', async () => {
+    const graph = createGraph(
+      {
+        [`/app/outer.ts${SPLIT}`]: {
+          imports: [
+            '\0virtual:tanstack-start',
+            'external-dep/index.js',
+            '/app/styles.css',
+            '/app/data.json',
+            '/app/used.ts',
+          ],
+        },
       },
-    })
+      {},
+      ['external-dep/index.js'],
+    )
     graph.serverFns['outer-id'] = serverFn('/app/outer.ts', 'outer')
 
     await graph.run()
@@ -126,6 +138,26 @@ describe('discoverProviderServerFns', () => {
       `/app/outer.ts${SPLIT}`,
       '/app/used.ts',
     ])
+  })
+
+  test('follows dependencies that are bundled', async () => {
+    const graph = createGraph(
+      {
+        [`/app/outer.ts${SPLIT}`]: {
+          imports: ['/app/node_modules/dep/index.js'],
+        },
+      },
+      {
+        '/app/node_modules/dep/index.js': [
+          serverFn('/app/node_modules/dep/index.js', 'dep'),
+        ],
+      },
+    )
+    graph.serverFns['outer-id'] = serverFn('/app/outer.ts', 'outer')
+
+    await graph.run()
+
+    expect(Object.keys(graph.serverFns).sort()).toEqual(['dep-id', 'outer-id'])
   })
 
   test('keeps going when a module cannot be loaded', async () => {
@@ -145,7 +177,11 @@ describe('discoverProviderServerFns', () => {
     })
 
     await expect(
-      discoverProviderServerFns({ load, getServerFns: () => serverFns }),
+      discoverProviderServerFns({
+        load,
+        resolve: async () => ({ external: false }),
+        getServerFns: () => serverFns,
+      }),
     ).resolves.toBeUndefined()
 
     expect(Object.keys(serverFns)).toContain('inner-id')

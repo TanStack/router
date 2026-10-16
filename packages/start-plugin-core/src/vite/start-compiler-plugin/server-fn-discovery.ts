@@ -11,8 +11,13 @@ export type ServerFnModuleLoader = (options: {
   resolveDependencies?: boolean
 }) => Promise<ServerFnModuleGraphInfo | null | undefined>
 
+export type ServerFnModuleResolver = (
+  id: string,
+  importer: string,
+) => Promise<{ external?: boolean | 'absolute' } | null>
+
 function canDeclareServerFns(id: string): boolean {
-  if (id.includes('\0') || id.includes('/node_modules/')) {
+  if (id.includes('\0')) {
     return false
   }
 
@@ -24,6 +29,7 @@ function canDeclareServerFns(id: string): boolean {
 
 export async function discoverProviderServerFns(opts: {
   load: ServerFnModuleLoader
+  resolve: ServerFnModuleResolver
   getServerFns: () => Record<string, ServerFn>
 }): Promise<void> {
   const visited = new Set<string>()
@@ -57,20 +63,31 @@ export async function discoverProviderServerFns(opts: {
       ),
     )
 
-    for (const info of infos) {
-      if (!info) {
-        continue
-      }
-
-      for (const importedId of [
-        ...(info.importedIds ?? []),
-        ...(info.dynamicallyImportedIds ?? []),
-      ]) {
-        if (canDeclareServerFns(importedId)) {
-          enqueue(importedId)
+    await Promise.all(
+      infos.map(async (info, index) => {
+        if (!info) {
+          return
         }
-      }
-    }
+
+        const importer = batch[index]!
+        const candidates = [
+          ...(info.importedIds ?? []),
+          ...(info.dynamicallyImportedIds ?? []),
+        ].filter((id) => !visited.has(id) && canDeclareServerFns(id))
+
+        const resolved = await Promise.all(
+          candidates.map((id) =>
+            opts.resolve(id, importer).catch(() => ({ external: true })),
+          ),
+        )
+
+        candidates.forEach((id, candidateIndex) => {
+          if (!resolved[candidateIndex]?.external) {
+            enqueue(id)
+          }
+        })
+      }),
+    )
 
     enqueueProviderModules()
   }

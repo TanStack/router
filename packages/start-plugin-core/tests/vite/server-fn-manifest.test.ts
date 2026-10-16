@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
@@ -7,7 +7,7 @@ import { build } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { startCompilerPlugin } from '../../src/vite/start-compiler-plugin/plugin'
 import { compileFor } from '../regression-helpers'
-import type { PluginOption } from 'vite'
+import type { PluginOption, SSROptions } from 'vite'
 
 const runNode = promisify(execFile)
 const testDir = path.dirname(fileURLToPath(import.meta.url))
@@ -47,7 +47,11 @@ function stubStartRuntime(root: string): PluginOption {
   }
 }
 
-async function buildAndRun(files: Record<string, string>, script: string) {
+async function buildAndRun(
+  files: Record<string, string>,
+  script: string,
+  ssr?: SSROptions,
+) {
   const root = await mkdtemp(path.join(testDir, '.server-fn-manifest-'))
   try {
     const sources = {
@@ -60,6 +64,7 @@ async function buildAndRun(files: Record<string, string>, script: string) {
       ...files,
     }
     for (const [file, code] of Object.entries(sources)) {
+      await mkdir(path.dirname(path.join(root, file)), { recursive: true })
       await writeFile(path.join(root, file), code)
     }
 
@@ -75,6 +80,7 @@ async function buildAndRun(files: Record<string, string>, script: string) {
           providerEnvName: 'ssr',
         }),
       ],
+      ssr,
       build: {
         ssr: path.join(root, 'entry.ts'),
         outDir: 'dist',
@@ -149,6 +155,56 @@ export const deepest = createServerFn().handler(async () => 'deepest')
         `return entry.outer()`,
       ),
     ).resolves.toBe('outer:middle:deepest')
+  })
+
+  test('resolves a server function from a bundled dependency only called by another server function', async () => {
+    await expect(
+      buildAndRun(
+        {
+          'entry.ts': `export { outer } from './outer'`,
+          'outer.ts': `import { createServerFn } from '@tanstack/react-start'
+import { innerFromDependency } from 'server-fn-dependency'
+export const outer = createServerFn().handler(
+  async () => \`outer:\${await innerFromDependency()}\`,
+)
+`,
+          'node_modules/server-fn-dependency/package.json': JSON.stringify({
+            name: 'server-fn-dependency',
+            type: 'module',
+            exports: './index.js',
+          }),
+          'node_modules/server-fn-dependency/index.js': `import { createServerFn } from '@tanstack/react-start'
+export const innerFromDependency = createServerFn().handler(
+  async () => 'dependency',
+)
+`,
+        },
+        `return entry.outer()`,
+        { noExternal: ['server-fn-dependency'] },
+      ),
+    ).resolves.toBe('outer:dependency')
+  })
+
+  test('builds when a server function imports an externalized dependency module', async () => {
+    await expect(
+      buildAndRun(
+        {
+          'entry.ts': `export { outer } from './outer'`,
+          'outer.ts': `import { createServerFn } from '@tanstack/react-start'
+import { greet } from 'external-dependency/greet.js'
+export const outer = createServerFn().handler(async () => greet())
+`,
+          'node_modules/external-dependency/package.json': JSON.stringify({
+            name: 'external-dependency',
+            type: 'module',
+            exports: { './greet.js': './greet.js' },
+          }),
+          'node_modules/external-dependency/greet.js': `export const greet = () => 'external'
+`,
+        },
+        `return entry.outer()`,
+      ),
+    ).resolves.toBe('external')
   })
 
   test('keeps resolving a server function the entry calls directly', async () => {

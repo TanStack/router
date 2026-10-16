@@ -676,6 +676,7 @@ export function startCompilerPlugin(
 
         await discoverProviderServerFns({
           load: (options) => this.load(options),
+          resolve: (id, importer) => this.resolve(id, importer),
           getServerFns: () => serverFnsById,
         })
 
