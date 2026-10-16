@@ -3,6 +3,7 @@ import {
   expectRenderedThroughChunks,
   loadClientModule,
 } from './regression-helpers'
+import { generatedNames } from './hydrate-helpers'
 import type { ModuleStub } from './regression-helpers'
 
 // `<Hydrate>` moves its children into a lazily loaded chunk on the client.
@@ -266,42 +267,81 @@ export function Page({ v }: { v: unknown }) {
 })
 
 describe('names the compiler generates', () => {
+  /**
+   * A page with a prefetched boundary and a nested one, whose children read
+   * `reads` (an array expression); `setup` runs first in the component.
+   */
+  const page = (reads: string, setup = '') => `${head}export function Page() {
+  ${setup}return <><Hydrate prefetch><p>{${reads}.join('|')}</p></Hydrate><Hydrate><section><Hydrate><b>nested</b></Hydrate></section></Hydrate></>
+}`
+  /**
+   * The names the compiler introduces for `page` (in any output), which the
+   * fixtures below declare themselves: no test depends on which names the
+   * compiler picks.
+   */
+  const introducedNames = () => generatedNames(page('[]'))
+
+  let globals: Array<string> = []
   afterEach(() => {
-    delete (globalThis as { _H0?: unknown })._H0
+    for (const name of globals) {
+      delete (globalThis as Record<string, unknown>)[name]
+    }
+    globals = []
   })
 
   // Source: Qwik optimizer example_qwik_conflict, import_collision_with_renaming;
   // hydrateWhen.test.ts "generated lazy names do not shadow existing global
   // references"
-  test('client: a global named like a generated binding keeps its value', async () => {
-    ;(globalThis as { _H0?: unknown })._H0 = 'g'
+  test('client: globals named like the generated bindings keep their values', async () => {
+    globals = await introducedNames()
+    expect(globals).not.toEqual([])
+    for (const name of globals) {
+      ;(globalThis as Record<string, unknown>)[name] = `global:${name}`
+    }
     const { module, lazyChunks } = await loadClientModule(
-      `${head}export const before = _H0
-export function Page() { return <Hydrate><div /></Hydrate> }`,
+      `export const before = [${globals.join(', ')}]
+${page(`['child']`)}`,
     )
-    expect(module.before).toBe('g')
-    expect(module.Page()).toBe('[<div></div>]')
+    expect(module.before).toEqual(globals.map((name) => `global:${name}`))
+    expect(module.Page()).toBe(
+      '[<p>child</p>][<section>[<b>nested</b>]</section>]',
+    )
     expectRenderedThroughChunks(lazyChunks)
   })
 
+  // Module-level bindings with these names that the children read (or
+  // shadow) are pinned in known-bugs-hydrate.test.ts.
   // Source: Qwik optimizer example_qwik_conflict, import_collision_with_renaming
-  test('client: user bindings and imports named like generated bindings keep their values', async () => {
-    const { module, chunkIds } = await loadClientModule(
-      `${head}import { lazyRouteComponent } from '@tanstack/react-router'
-const _lazyRouteComponent = 'user'
+  test.each([
+    { scope: 'module', reads: `['child']`, html: 'child' },
+    { scope: 'local', reads: 'names', html: 'values' },
+  ])(
+    'client: $scope bindings named like the generated bindings keep their values',
+    async ({ scope, reads }) => {
+      const names = await introducedNames()
+      expect(names).not.toEqual([])
+      const values = names.map((name) => `${scope}:${name}`).join('|')
+      const declare = names
+        .map((name) => `const ${name} = '${scope}:${name}'`)
+        .join('\n  ')
+      const read = reads === 'names' ? `[${names.join(', ')}]` : reads
+      const { module, lazyChunks } = await loadClientModule(
+        `import { lazyRouteComponent } from '@tanstack/react-router'
+${scope === 'module' ? declare : ''}
+export const fromModule = ${scope === 'module' ? `[${names.join(', ')}].join('|')` : 'null'}
 export const Lazy = lazyRouteComponent(() => import('./other'))
-export function Page() {
-  const _H0 = 'local'
-  const _H0_preload = 'preload'
-  return <Hydrate prefetch><p>{_lazyRouteComponent + _H0 + _H0_preload}</p></Hydrate>
-}`,
-      { stubs: { './other': { default: () => '<i>other</i>' } } },
-    )
-    expect(chunkIds).toHaveLength(1)
-    expect(module.Page()).toBe('[<p>userlocalpreload</p>]')
-    // The user's own lazy component still loads its module.
-    expect(module.Lazy()).toBe('<i>other</i>')
-  })
+${page(read, scope === 'local' ? `${declare}\n  ` : '')}`,
+        { stubs: { './other': { default: () => '<i>other</i>' } } },
+      )
+      expect(module.fromModule).toBe(scope === 'module' ? values : null)
+      expect(module.Page()).toBe(
+        `[<p>${scope === 'local' ? values : 'child'}</p>][<section>[<b>nested</b>]</section>]`,
+      )
+      // The user's own lazy component still loads its module.
+      expect(module.Lazy()).toBe('<i>other</i>')
+      expectRenderedThroughChunks(lazyChunks)
+    },
+  )
 })
 
 // Source: Qwik optimizer example_capture_imports, example_qwik_conflict

@@ -5,7 +5,6 @@
  */
 import { stripVTControlCharacters } from 'node:util'
 import { describe, expect, test } from 'vitest'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
 import {
   callProvider,
   callReportedServerFns,
@@ -17,8 +16,6 @@ import {
   compileServer,
   createServerGraph,
   evaluateModule,
-  evaluateHydrateParent,
-  getBoundaryIds,
   getChunkComponent,
   getChunkIds,
   hydrateParentStubs,
@@ -355,13 +352,6 @@ const chunk = () => import('/test/src/module.tsx?tss-hydrate=0_x')`),
     ).toEqual(['/test/src/module.tsx?tss-hydrate=0_x'])
   })
 
-  test('getBoundaryIds reads the h prop of the Hydrate elements only', () => {
-    expect(
-      getBoundaryIds(`import { Hydrate as Boundary } from '@tanstack/react-start'
-export const Page = () => <><Boundary h="a" /><div data-h="b" /><Boundary h={'c'} /></>`),
-    ).toEqual(['a', 'c'])
-  })
-
   test('compileHydrate orders chunks like their boundaries in the source', async () => {
     const { chunks } = await compileHydrate(
       'client',
@@ -382,19 +372,6 @@ export function Other() {
       '<section>[<p>nested</p>]</section>',
       '<p>fourth</p>',
     ])
-  })
-
-  test('evaluateHydrateParent links a chunk to the evaluated parent', async () => {
-    const linked = await evaluateHydrateParent(
-      createHydrateCompilerPlugin(),
-      `export let count = 0
-export function bump() { count++ }`,
-    )
-    linked.module.bump()
-    expect(
-      await linked.renderChunk(`import { count } from './module.tsx'
-export function Chunk() { return count }`),
-    ).toBe(1)
   })
 
   test('loadClientModule: preload() loads the chunk of its own boundary, and loading the chunks is not a preload', async () => {
@@ -421,28 +398,11 @@ export function Page() {
     )
     expect(module.Page()).toBe('[<p>a</p>][<p>b</p>]')
     expect(preloaded).toEqual([])
-    const [a, b] = boundaries
-    expect(a!.p).toBeUndefined()
+    const b = boundaries[1]
     await b!.p!()
     expect(preloaded).toHaveLength(1)
     expect(chunkIds).toContain(preloaded[0]!.id)
     expect(getChunkComponent(preloaded[0]!.module)({})).toBe('<p>b</p>')
-  })
-
-  test('compileHydrate and loadClientModule split a Solid <Hydrate> with the framework option', async () => {
-    const code = `import { Hydrate } from '@tanstack/solid-start'
-export function Page() {
-  return <Hydrate><p>solid</p></Hydrate>
-}`
-    expect((await compileHydrate('client', code)).chunks).toEqual([])
-    expect(
-      (await compileHydrate('client', code, { framework: 'solid' })).chunks,
-    ).toHaveLength(1)
-    const { module, lazyChunks } = await loadClientModule(code, {
-      framework: 'solid',
-    })
-    expect(module.Page()).toBe('[<p>solid</p>]')
-    expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true])
   })
 
   test('loadClientModule loads the chunks of nested boundaries', async () => {

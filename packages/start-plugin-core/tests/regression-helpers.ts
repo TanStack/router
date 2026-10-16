@@ -977,35 +977,6 @@ function hydrateElements(code: string) {
   return elements
 }
 
-/**
- * The static boundary ids (`h` props, the id `<Hydrate>` hydrates with) of
- * the `<Hydrate>` elements a compiled module declares, in source order.
- * Prefer `renderBoundaries`, which records the ids actually rendered.
- */
-export function getBoundaryIds(code: string) {
-  const ids: Array<string> = []
-  for (const element of hydrateElements(code)) {
-    for (const attribute of (element.openingElement as Node)
-      .attributes as Array<Node>) {
-      if (
-        attribute.type !== 'JSXAttribute' ||
-        (attribute.name as Node).name !== 'h'
-      ) {
-        continue
-      }
-      const value = attribute.value as Node | null
-      const literal =
-        value?.type === 'JSXExpressionContainer'
-          ? (value.expression as Node)
-          : value
-      if (literal?.type === 'Literal' && typeof literal.value === 'string') {
-        ids.push(literal.value)
-      }
-    }
-  }
-  return ids
-}
-
 /** Loads a `<Hydrate>` chunk the way the bundler loads the virtual module. */
 export function loadChunk(
   plugin: HydratePlugin,
@@ -1218,54 +1189,6 @@ export function hydrateStubs(
 export const hydrateParentStubs = hydrateStubs('react')
 
 /**
- * Import sources of a `<Hydrate>` module that name the parent module, with any
- * query or hash: a chunk may import the module bindings it shares with the
- * parent instead of declaring its own copy.
- */
-export function parentImportSources(code: string) {
-  return importSources(code).filter((source) =>
-    [moduleId, './module.tsx', './module'].includes(
-      source.replace(/[?#].*$/, ''),
-    ),
-  )
-}
-
-/**
- * Evaluates a client `<Hydrate>` parent and links its modules like a bundler:
- * the parent, the virtual modules the Hydrate plugin serves and the chunks
- * rendered with the returned `renderChunk` are one module graph, so an import
- * of the parent module is the evaluated parent (live bindings included) and
- * every module is evaluated once.
- */
-export async function evaluateHydrateParent(
-  plugin: HydratePlugin,
-  parent: string,
-  stubs: Record<string, ModuleStub> = hydrateParentStubs,
-  runtime?: string,
-) {
-  const graph = createTestModuleGraph({
-    modules: { [moduleId]: parent },
-    stubs,
-    runtime,
-    load: (id) => loadChunk(plugin, 'client', id),
-  })
-  const module = await graph.import(moduleId)
-  let extraChunks = 0
-  return {
-    module,
-    /** Renders a chunk of the parent, linked to the parent's module graph. */
-    renderChunk: async (chunk: string, props: Record<string, unknown> = {}) => {
-      let id = graph.idOf(chunk)
-      if (id === undefined) {
-        id = `${moduleId}?chunk=${extraChunks++}`
-        graph.add(id, chunk)
-      }
-      return getChunkComponent(await graph.import(id))(props)
-    },
-  }
-}
-
-/**
  * Compiles `code` for the client (React unless `framework` says otherwise)
  * and evaluates it once its `<Hydrate>` chunks have loaded, like the browser
  * does: the parent and the chunks are one linked module graph (each chunk
@@ -1278,7 +1201,10 @@ export async function evaluateHydrateParent(
  * whether it rendered) and `preloaded` (the chunk each `preload()` call
  * loaded, by id and evaluated, in call order; loading the chunks here is not
  * a preload). The parent and every chunk must be valid modules; they may
- * read the globals the source reads.
+ * read the globals the source reads. With `chunksFromSource`, the chunks
+ * load the way Rsbuild loads them: given the source file's code, from a
+ * Hydrate plugin that did not compile the parent (e.g. another build
+ * worker).
  */
 export async function loadClientModule(
   code: string,
@@ -1290,6 +1216,7 @@ export async function loadClientModule(
     id?: string
     /** Default `react`. */
     framework?: Framework
+    chunksFromSource?: boolean
   } = {},
 ) {
   const id = options.id ?? moduleId
@@ -1355,9 +1282,12 @@ export async function loadClientModule(
   // The globals the source reads may be read by its modules too.
   const globals = await freeIdentifiers(code)
   expect(await getModuleErrors(parent, undefined, { globals })).toEqual([])
+  const chunkPlugin = options.chunksFromSource
+    ? createHydrateCompilerPlugin()
+    : plugin
   const { compile } = createStartCompiler({
     env: 'client',
-    compilerPlugins: [plugin],
+    compilerPlugins: [chunkPlugin],
     framework,
   })
   const graph = createTestModuleGraph({
@@ -1372,7 +1302,15 @@ export async function loadClientModule(
       if (chunkId.split('?')[0] !== id.split('?')[0]) {
         return null
       }
-      const chunk = loadChunk(plugin, 'client', chunkId)
+      const chunk = options.chunksFromSource
+        ? (chunkPlugin.loadVirtualModule?.({
+            id: chunkId,
+            code,
+            root: '/test',
+            env: 'client',
+            envName: 'client',
+          })?.code ?? null)
+        : loadChunk(plugin, 'client', chunkId)
       if (chunk === null) {
         return null
       }
