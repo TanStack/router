@@ -94,7 +94,9 @@ export function createServerFn() {
       if (!impl) {
         return rpc
       }
-      const serverFn = (opts) => impl(opts ?? {})
+      // Like the real runtime, the server fn carries what the extracted fn
+      // carries (its id).
+      const serverFn = Object.assign((opts) => impl(opts ?? {}), rpc)
       serverFn.__executeServer = (opts) => impl(opts ?? {})
       return serverFn
     },
@@ -127,7 +129,8 @@ export const createStart = (getOptions) => ({ getOptions })
     { functionId: id },
   )
 `,
-  [`${startPackage}/server-rpc.js`]: `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })
+  [`${startPackage}/server-rpc.js`]: `export const createServerRpc = (meta, fn) =>
+  Object.assign(fn, { meta, functionId: meta.id })
 `,
   [`${startPackage}/server.js`]: `export const getRequest = () => ({ url: '/' })
 `,
