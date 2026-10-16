@@ -605,6 +605,23 @@ export function Page() {
     },
   )
 
+  // Deferring them is the goal above; either way they render, like on the
+  // server.
+  test('client: the children prop of a self-closing boundary renders like on the server', async () => {
+    const code = `${head}import { idle } from '@tanstack/react-start/hydration'
+import { Chart } from './chart'
+export function Page() {
+  return <section><Hydrate when={idle()} children={<Chart />} /></section>
+}`
+    const stubs = { './chart': { Chart: () => 'chart' } }
+    const render = (module: Record<string, any>) => module.Page()
+    const server = await renderBoundaries('server', code, render, { stubs })
+    expect(server.html).toBe('<section>[chart]</section>')
+    expect(await renderBoundaries('client', code, render, { stubs })).toEqual(
+      server,
+    )
+  })
+
   test('client: a chunk id renders the same children when the same source is compiled again', async () => {
     const source = `${head}export function Page() {
   return <Hydrate><p>chunk-marker</p></Hydrate>
