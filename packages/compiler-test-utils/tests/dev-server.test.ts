@@ -301,3 +301,48 @@ export const bump = () => ++count
     timeout,
   )
 })
+
+describe('bundledDev', () => {
+  /** The chunks of a client bundle that contain `marker`. */
+  const containing = (bundle: Record<string, string>, marker: string) =>
+    Object.keys(bundle).filter((fileName) => bundle[fileName]!.includes(marker))
+
+  test(
+    'clientBundle() bundles the client from the entry, again after settle(); the other environments are served as usual',
+    async () => {
+      const server = await createDevServer({
+        bundledDev: { entry: 'main.ts' },
+        files: {
+          'main.ts': `import { dep } from './dep'\nexport const value = dep\n`,
+          'dep.ts': `export const dep = 'MARK_V1'\n`,
+          'other.ts': `export const other = 'MARK_OTHER'\n`,
+        },
+      })
+      const before = await server.clientBundle()
+      expect(containing(before, 'MARK_V1')).toHaveLength(1)
+      expect(containing(before, 'MARK_OTHER')).toEqual([])
+
+      await server.edit({ 'dep.ts': `export const dep = 'MARK_V2'\n` })
+
+      const after = await server.clientBundle()
+      expect({
+        v1: containing(after, 'MARK_V1'),
+        v2: containing(after, 'MARK_V2').length,
+      }).toEqual({ v1: [], v2: 1 })
+      expect((await server.import('/dep.ts')).dep).toBe('MARK_V2')
+    },
+    timeout,
+  )
+
+  test(
+    'clientBundle() rejects when the client fails to bundle',
+    async () => {
+      const server = await createDevServer({
+        bundledDev: { entry: 'main.ts' },
+        files: { 'main.ts': `export { value } from './missing-module'\n` },
+      })
+      await expect(server.clientBundle()).rejects.toThrow(/missing-module/)
+    },
+    timeout,
+  )
+})

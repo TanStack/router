@@ -42,9 +42,17 @@ import type {
   InlineConfig,
   LogErrorOptions,
   Logger,
+  Plugin,
   PluginOption,
   ViteDevServer,
 } from 'vite'
+
+/** The part of Rolldown's dev engine (`bundledDev`) the harness uses. */
+interface BundledDevEngine {
+  ensureLatestBuildOutput: () => Promise<void>
+  triggerFullBuild: () => void
+  getBundleState: () => Promise<{ lastBuildErrored: boolean }>
+}
 
 export interface DevServerOptions extends AppOptions {
   /** Plugins of the dev server, or a function of the app root returning them. */
@@ -60,6 +68,15 @@ export interface DevServerOptions extends AppOptions {
    * milliseconds. Default 10 000.
    */
   eventTimeout?: number
+  /**
+   * Serves the client environment in Vite's full-bundle dev mode
+   * (`experimental.bundledDev`: Rolldown's dev engine bundles it) from
+   * `entry` (relative to the app root), eagerly (no lazy chunks).
+   * `clientBundle()` returns the output; the other environments are served
+   * as usual. `settle()` makes the dev engine rebuild the client bundle from
+   * the edited files.
+   */
+  bundledDev?: { entry: string }
 }
 
 export interface HmrMessage {
@@ -124,6 +141,12 @@ export interface DevServer {
   fetch: (url: string) => Promise<{ status: number; body: string }>
   /** Imports a module in a runnable environment (default `ssr`). */
   import: (url: string, environment?: string) => Promise<Record<string, any>>
+  /**
+   * `bundledDev` servers only: the latest client bundle (code of each chunk
+   * by file name), once the dev engine has bundled the current files.
+   * Rejects with the bundling error when bundling fails.
+   */
+  clientBundle: () => Promise<Record<string, string>>
   /** HMR payloads sent to every environment since the server started. */
   hmr: Array<HmrMessage>
   /** Warnings and errors logged by Vite and the plugins. */
@@ -144,7 +167,7 @@ const ignoredDirectories = new Set(['node_modules', '.git', 'dist'])
 export async function createDevServer(
   options: DevServerOptions,
 ): Promise<DevServer> {
-  const { plugins = [], config = {}, listen = false } = options
+  const { plugins = [], config = {}, listen = false, bundledDev } = options
   const eventTimeout = options.eventTimeout ?? 10_000
   const app = await createApp({
     ...options,
@@ -197,11 +220,42 @@ export async function createDevServer(
     hasWarned: false,
   }
 
+  /** Code of each chunk of the latest client bundle (`bundledDev`). */
+  let clientOutput: Record<string, string> = {}
+  const clientBundlePlugin: Plugin = {
+    name: 'dev-server-harness:client-bundle',
+    applyToEnvironment: (environment) => environment.name === 'client',
+    generateBundle(_outputOptions, bundle) {
+      clientOutput = {}
+      for (const output of Object.values(bundle)) {
+        if (output.type === 'chunk') {
+          clientOutput[output.fileName] = output.code
+        }
+      }
+    },
+  }
+  const bundledDevConfig: InlineConfig = bundledDev
+    ? {
+        experimental: { bundledDev: true },
+        build: {
+          rolldownOptions: { experimental: { devMode: { lazy: false } } },
+        },
+        environments: {
+          client: {
+            build: {
+              rolldownOptions: { input: path.join(root, bundledDev.entry) },
+            },
+          },
+        },
+      }
+    : {}
+
   let vite: ViteDevServer
   try {
     vite = await createServer(
       mergeConfig(
         {
+          ...bundledDevConfig,
           root,
           configFile: false,
           envDir: false,
@@ -227,7 +281,10 @@ export async function createDevServer(
               pendingEvent?.resolve()
             },
           },
-          plugins: typeof plugins === 'function' ? plugins({ root }) : plugins,
+          plugins: [
+            ...(typeof plugins === 'function' ? plugins({ root }) : plugins),
+            ...(bundledDev ? [clientBundlePlugin] : []),
+          ],
         } satisfies InlineConfig,
         config,
       ),
@@ -243,9 +300,22 @@ export async function createDevServer(
    */
   const recording = new WeakSet<object>()
   let recordedEnvironments: ViteDevServer['environments'] | undefined
+  /** The plugins' `watchChange` hooks running for the current file event. */
+  const watchChanges: Array<Promise<unknown>> = []
   const recordHmr = () => {
     recordedEnvironments = vite.environments
     for (const [name, environment] of Object.entries(vite.environments)) {
+      const container = environment.pluginContainer
+      if (!recording.has(container.watchChange)) {
+        const watchChange = container.watchChange.bind(container)
+        const recordingWatchChange: typeof watchChange = (...args) => {
+          const running = watchChange(...args)
+          watchChanges.push(running)
+          return running
+        }
+        recording.add(recordingWatchChange)
+        container.watchChange = recordingWatchChange
+      }
       const hot = environment.hot
       if (recording.has(hot.send)) {
         continue
@@ -285,6 +355,34 @@ export async function createDevServer(
   async function report(event: FileEvent, relative: string) {
     events.push({ event, file: relative })
     recordHmr()
+    if (bundledDev) {
+      // Vite's full-bundle mode sends no hot updates: the server has handled
+      // the event once the plugins' `watchChange` hooks have, and Vite has
+      // invalidated the file's modules right after.
+      watchChanges.length = 0
+      vite.watcher.emit(event, file(relative))
+      let timer: ReturnType<typeof setTimeout> | undefined
+      try {
+        await Promise.race([
+          Promise.all(watchChanges),
+          new Promise((_, reject) => {
+            timer = setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    `the dev server did not handle "${event} ${relative}" within ${eventTimeout} ms`,
+                  ),
+                ),
+              eventTimeout,
+            )
+          }),
+        ])
+      } finally {
+        clearTimeout(timer)
+      }
+      await new Promise((resolve) => setImmediate(resolve))
+      return
+    }
     const handled = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(
         () =>
@@ -325,6 +423,20 @@ export async function createDevServer(
     }
   }
 
+  /**
+   * Rolldown's dev engine, which bundles the client (`bundledDev`). Vite has
+   * no public API to await the bundled output (vitejs/vite#22991).
+   */
+  const devEngine = () => {
+    const client = vite.environments.client as
+      | { bundledDev?: { devEngine: BundledDevEngine } }
+      | undefined
+    if (!client?.bundledDev) {
+      throw new Error('the client is only bundled with `bundledDev`')
+    }
+    return client.bundledDev.devEngine
+  }
+
   async function settle() {
     const from = hmr.length
     for (let round = 0; ; round++) {
@@ -337,6 +449,10 @@ export async function createDevServer(
       snapshot = current
       if (!removed.length && !added.length && !changed.length) {
         break
+      }
+      // The dev engine watches no files: it bundles the edited files anew.
+      if (bundledDev) {
+        devEngine().triggerFullBuild()
       }
       if (round === 20) {
         throw new Error(
@@ -432,6 +548,16 @@ export async function createDevServer(
         throw new Error(`the "${environmentName}" environment is not runnable`)
       }
       return runnable.runner.import(url)
+    },
+    clientBundle: async () => {
+      const engine = devEngine()
+      await engine.ensureLatestBuildOutput()
+      if ((await engine.getBundleState()).lastBuildErrored) {
+        throw new Error(
+          `the client bundle failed:\n${logs.filter((log) => log.startsWith('error:')).join('\n')}`,
+        )
+      }
+      return { ...clientOutput }
     },
     hmr,
     logs,
