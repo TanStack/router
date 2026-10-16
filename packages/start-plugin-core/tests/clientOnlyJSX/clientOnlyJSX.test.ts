@@ -19,6 +19,8 @@ describe('<ClientOnly> children', () => {
     'audio-viz-lib': { AudioVisualizer: () => '<audio>' },
     'animation-library': { HeavyAnimation: () => '<animation>' },
     './WindowSize': { WindowSize: () => '<size>' },
+    'outer-lib': { OuterWidget: () => '<outer>' },
+    'inner-lib': { InnerWidget: () => '<inner>' },
     'some-other-package': {
       ClientOnly: (props: { children?: string }) => props.children ?? '',
     },
@@ -79,24 +81,26 @@ export function MyComponent() {
       // Source: snapshot fixture clientOnlyNested.tsx
       name: 'a nested boundary',
       code: `import { ClientOnly } from '@tanstack/react-router'
+import { OuterWidget } from 'outer-lib'
+import { InnerWidget } from 'inner-lib'
 export function MyComponent() {
   return (
     <div>
       <ClientOnly fallback={<div>Outer loading</div>}>
         <div>
           Outer content
+          <OuterWidget />
           <ClientOnly fallback={<span>Inner loading</span>}>
-            <span>Inner client only</span>
+            <InnerWidget />
           </ClientOnly>
         </div>
       </ClientOnly>
     </div>
   )
 }`,
-      childModules: [],
+      childModules: ['inner-lib', 'outer-lib'],
       ssr: '<div><div>Outer loading</div></div>',
-      client:
-        '<div><div>Outer content<span>Inner client only</span></div></div>',
+      client: '<div><div>Outer content<outer><inner></div></div>',
     },
     {
       // Source: snapshot fixture clientOnlyNoFallback.tsx
