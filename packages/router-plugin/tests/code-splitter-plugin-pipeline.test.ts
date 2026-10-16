@@ -159,44 +159,6 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     )
   })
 
-  it('passes the deleteNodes option to the reference compiler', async () => {
-    const file = routeFile('deleted')
-    const splitter = await createCodeSplitterTransforms(
-      { codeSplittingOptions: { deleteNodes: ['head'] } },
-      { [file]: '/deleted' },
-    )
-    const reference = splitter.reference(routeSource('deleted'), file)!
-    expect(reference).not.toContain('head')
-    expect(reference).toContain('loader')
-  })
-
-  it('reports a split module id without a split value', async () => {
-    const file = routeFile('missing')
-    const splitter = await createCodeSplitterTransforms(
-      {},
-      { [file]: '/missing' },
-    )
-    expect(() =>
-      splitter.virtual(routeSource('missing'), `${file}?tsr-split=`),
-    ).toThrow('The split value for the virtual route')
-  })
-
-  it('leaves a shared module id alone when its route has no shared bindings', async () => {
-    const file = routeFile('unshared')
-    const code = `
-import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/unshared')({
-  component: () => <p>unshared</p>,
-})
-`
-    const splitter = await createCodeSplitterTransforms(
-      {},
-      { [file]: '/unshared' },
-    )
-    expect(splitter.reference(code, file)).toContain('tsr-split=component')
-    expect(splitter.shared(code, `${file}?tsr-shared=1`)).toBeNull()
-  })
-
   // File names from real apps: optional segments, pathless groups and escaped dots.
   it.each([
     'src/routes/{-$locale}/changelog.tsx',

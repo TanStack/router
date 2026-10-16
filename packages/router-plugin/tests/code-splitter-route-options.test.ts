@@ -4,6 +4,7 @@ import {
   declarationOf,
   expectValidModules,
   head,
+  hotUpdate,
   importSources,
   importedNames,
   loadRoute,
@@ -293,8 +294,14 @@ export const Route = createFileRoute('/')({
   })
 
   // Spread and computed option keys are split on a best-effort basis; the
-  // route must keep working either way.
+  // route must keep working either way. A string key is a plain key.
   it.each([
+    {
+      name: 'a string key',
+      code: `const C = () => <p>C</p>
+export const Route = createFileRoute('/')({ 'component': C })`,
+      split: true,
+    },
     {
       name: 'a spread',
       code: `const base = { component: () => <p>C</p> }
@@ -305,10 +312,13 @@ export const Route = createFileRoute('/')({ ...base })`,
       code: `const C = () => <p>C</p>
 export const Route = createFileRoute('/')({ ['component']: C })`,
     },
-  ])('render a component given through $name', async ({ code }) => {
+  ])('render a component given through $name', async ({ code, split }) => {
     const route = await loadRoute(`${head}${code}\n`)
     await expectValidModules(route.modules)
     expect((await route.load('component'))()).toBe('<p>C</p>')
+    if (split) {
+      expect(route.isLazy('component')).toBe(true)
+    }
   })
 })
 
@@ -321,6 +331,33 @@ describe('route factories', () => {
 `)
     expect(route.isLazy('component')).toBe(true)
     expect((await route.load('component'))()).toBe('<p>spaced</p>')
+  })
+
+  // Source: utils.test.ts routeFactoryCallCodeFilter (type arguments and
+  // whitespace before the call).
+  it.each([
+    'createRootRoute({',
+    'createRootRoute ({',
+    'createRootRouteWithContext()({',
+    'createRootRouteWithContext<{ user: string }>()({',
+    'createRootRouteWithContext <{ user: string }>()({',
+  ])('hot-update a root route created with `%s`', async (call) => {
+    const source = (version: number) =>
+      `import { createRootRoute, createRootRouteWithContext } from '@tanstack/react-router'
+export const Route = ${call}
+  staticData: { version: ${version} },
+  component: () => <p>root</p>,
+})
+`
+    const update = await hotUpdate(source(1), {
+      codeSplitting: true,
+      routeId: '/__root',
+      updated: source(2),
+    })
+    expect([update.previous.staticData, update.live.staticData]).toEqual([
+      { version: 1 },
+      { version: 2 },
+    ])
   })
 
   it('keep a root route created with a context type valid when compiled for HMR', async () => {

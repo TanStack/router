@@ -9,10 +9,7 @@ import { tanstackRouter } from '../src/vite'
 import type { CodeSplitGroupings } from '../src/core/constants'
 
 const runNode = promisify(execFile)
-const fixture = path.resolve(
-  __dirname,
-  'test-files/shared-runtime.tsx',
-)
+const fixture = path.resolve(__dirname, 'test-files/shared-runtime.tsx')
 
 const groupings: Array<{ name: string; groupings: CodeSplitGroupings }> = [
   { name: 'eager loader', groupings: [['component']] },

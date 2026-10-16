@@ -72,18 +72,6 @@ export const Route = createFileRoute('/')({
     ]).toEqual([1, '<p>1</p>', '<p>error</p>', 1, 1])
   })
 
-  // Control for evaluateModule: a module may link a shared module through a
-  // side-effect or namespace import, as a fix might emit.
-  test('evaluateModule links side-effect and namespace imports', async () => {
-    const { read } = await evaluateModule(
-      `import './effects'
-import * as lib from './lib'
-export const read = () => lib.value`,
-      { './effects': {}, './lib': { value: 'lib' } },
-    )
-    expect(read!()).toBe('lib')
-  })
-
   // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
   // The `var` is missed because module bindings are collected from top-level
   // declarations only (`collectLocalBindingsFromStatement`); same root cause
@@ -424,38 +412,24 @@ export const Route = createFileRoute('/')({
   // Bug: an ambient `declare const` is handled as a module binding. Read by
   // the loader and the split component, it is shared: the shared module
   // exports a name that TypeScript erases, and the reference module and the
-  // chunk import it. Used as a split option, the chunk exports it
-  // (`export { GlobalPage as component }`), an export TypeScript erases.
+  // chunk import it. (Used as the split option itself: pinned in "route
+  // options read from the environment".)
   // Impact: the build fails with a missing export, e.g. for a constant
-  // injected with Vite's `define`, or the split component is undefined.
-  test.fails.each([
-    {
-      name: 'read by the loader and the split component',
-      global: '1.0',
-      route: `${head}declare const APP_VERSION: string
+  // injected with Vite's `define`.
+  test.fails(
+    'an ambient declare const read by the loader and the split component stays a global',
+    async () => {
+      vi.stubGlobal('APP_VERSION', '1.0')
+      try {
+        const loaded = await loadRoute(`${head}declare const APP_VERSION: string
 export const Route = createFileRoute('/')({
   loader: () => APP_VERSION,
   component: () => <p>{APP_VERSION}</p>,
-})`,
-      expected: ['1.0', '<p>1.0</p>'],
-    },
-    {
-      name: 'used as the split component',
-      global: () => '<p>global</p>',
-      route: `${head}declare const APP_VERSION: any
-export const Route = createFileRoute('/')({ component: APP_VERSION })`,
-      expected: ['<p>global</p>'],
-    },
-  ])(
-    'an ambient declare const $name stays a global',
-    async ({ global, route, expected }) => {
-      vi.stubGlobal('APP_VERSION', global)
-      try {
-        const loaded = await loadRoute(route)
+})`)
         expect([
-          ...(loaded.options.loader ? [loaded.options.loader()] : []),
+          loaded.options.loader(),
           (await loaded.load('component'))(),
-        ]).toEqual(expected)
+        ]).toEqual(['1.0', '<p>1.0</p>'])
       } finally {
         vi.unstubAllGlobals()
       }
