@@ -39,7 +39,7 @@ function rejections(results: Record<string, unknown>) {
     .map(compileErrorMessage)
 }
 
-describe('the server strips the client-only fallback', () => {
+describe('the server strips the client-only fallback, and only it', () => {
   // Source: hydrate-when-transform.test.ts "strips Hydrate fallback from the
   // server transform", "strips fallback from a parenthesized spread",
   // "strips a statically computed fallback property from server output",
@@ -49,14 +49,21 @@ describe('the server strips the client-only fallback', () => {
     {
       name: 'a direct fallback',
       code: `export function Page() {
-  return <Hydrate fallback={<p>fallback-marker</p>}><p>child</p></Hydrate>
+  return <Hydrate when="visible" fallback={<p>fallback-marker</p>}><p>child</p></Hydrate>
 }`,
     },
     {
       name: 'a direct fallback with split={false}',
       code: `export function Page() {
-  return <Hydrate split={false} fallback={<p>fallback-marker</p>}><p>child</p></Hydrate>
+  return <Hydrate when="visible" split={false} fallback={<p>fallback-marker</p>}><p>child</p></Hydrate>
 }`,
+    },
+    {
+      name: 'a direct fallback next to prefetch and onHydrated',
+      code: `export function Page() {
+  return <Hydrate when="visible" prefetch={() => 'prefetched'} fallback={<p>fallback-marker</p>} onHydrated={() => 'hydrated'}><p>child</p></Hydrate>
+}`,
+      received: { prefetch: 'prefetched', onHydrated: 'hydrated' },
     },
     {
       name: 'an inline spread',
@@ -67,7 +74,7 @@ describe('the server strips the client-only fallback', () => {
     {
       name: 'a parenthesized inline spread',
       code: `export function Page() {
-  return <Hydrate {...({ fallback: <p>fallback-marker</p> })}><p>child</p></Hydrate>
+  return <Hydrate {...({ when: 'visible', fallback: <p>fallback-marker</p> })}><p>child</p></Hydrate>
 }`,
     },
     {
@@ -86,7 +93,7 @@ const props = { when: 'visible', fallback: <p>fallback-marker</p> }`,
     },
     {
       name: 'a parenthesized spread used once',
-      code: `const props = ({ fallback: <p>fallback-marker</p> })
+      code: `const props = ({ when: 'visible', fallback: <p>fallback-marker</p> })
 export function Page() {
   return <Hydrate {...(props)}><p>child</p></Hydrate>
 }`,
@@ -94,8 +101,31 @@ export function Page() {
     {
       name: 'a computed fallback key',
       code: `export function Page() {
-  return <Hydrate {...{ ['fallback']: <p>fallback-marker</p> }}><p>child</p></Hydrate>
+  return <Hydrate {...{ when: 'visible', ['fallback']: <p>fallback-marker</p> }}><p>child</p></Hydrate>
 }`,
+    },
+  ] as Array<{
+    name: string
+    code: string
+    received?: { prefetch: string; onHydrated: string }
+  }>
+
+  /**
+   * The props other than the children and the fallback that each boundary
+   * received (`prefetch` and `onHydrated` called): every row passes `when`.
+   */
+  const otherProps = (boundaries: Array<Record<string, unknown>>) =>
+    boundaries.map((props) => ({
+      when: props.when,
+      prefetch: (props.prefetch as (() => unknown) | undefined)?.(),
+      onHydrated: (props.onHydrated as (() => unknown) | undefined)?.(),
+    }))
+  const expectedProps = (received: (typeof forms)[number]['received']) => [
+    {
+      when: 'visible',
+      prefetch: undefined,
+      onHydrated: undefined,
+      ...received,
     },
   ]
 
@@ -110,26 +140,31 @@ export function Page() {
     },
   })
 
-  test.each(forms)('server: $name is removed', async ({ code }) => {
+  test.each(forms)('server: $name is removed', async ({ code, received }) => {
     const { parent } = await compileHydrate('server', `${head}${code}`)
     expect(await getModuleErrors(parent)).toEqual([])
     const boundaries: Array<Record<string, unknown>> = []
     const module = await evaluateModule(parent, recordingStubs(boundaries))
     expect(module.Page()).toBe('[<p>child</p>]')
     expect(boundaries.map((props) => 'fallback' in props)).toEqual([false])
+    expect(otherProps(boundaries)).toEqual(expectedProps(received))
     expect(parent).not.toContain('fallback-marker')
   })
 
-  test.each(forms)('client: $name reaches the boundary', async ({ code }) => {
-    const boundaries: Array<Record<string, unknown>> = []
-    const { module } = await loadClientModule(`${head}${code}`, {
-      stubs: recordingStubs(boundaries),
-    })
-    expect(module.Page()).toBe('[<p>child</p>]')
-    expect(boundaries.map((props) => props.fallback)).toEqual([
-      '<p>fallback-marker</p>',
-    ])
-  })
+  test.each(forms)(
+    'client: $name reaches the boundary',
+    async ({ code, received }) => {
+      const boundaries: Array<Record<string, unknown>> = []
+      const { module } = await loadClientModule(`${head}${code}`, {
+        stubs: recordingStubs(boundaries),
+      })
+      expect(module.Page()).toBe('[<p>child</p>]')
+      expect(boundaries.map((props) => props.fallback)).toEqual([
+        '<p>fallback-marker</p>',
+      ])
+      expect(otherProps(boundaries)).toEqual(expectedProps(received))
+    },
+  )
 })
 
 /**
