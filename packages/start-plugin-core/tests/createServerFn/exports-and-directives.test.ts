@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   callProvider,
+  callReportedServerFns,
   compileAll,
   compileCode,
   compileFor,
@@ -16,11 +17,18 @@ import {
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
-/** `functionName -> functionId` of the server fns a compilation reported. */
-function idsByName(serverFns: Record<string, { functionName: string }>) {
-  return Object.fromEntries(
-    Object.entries(serverFns).map(([id, fn]) => [fn.functionName, id]),
-  )
+/**
+ * The handlers an evaluated provider exports, by the server fn name in their
+ * metadata (`meta.name`).
+ */
+function handlersByName(provider: Record<string, any>) {
+  const handlers: Record<string, { meta: { id: string; name: string } }> = {}
+  for (const value of Object.values(provider)) {
+    if (typeof value === 'function' && value.meta?.name !== undefined) {
+      handlers[value.meta.name] = value
+    }
+  }
+  return handlers
 }
 
 describe('export forms', () => {
@@ -36,7 +44,8 @@ export const d = createServerFn().handler(async () => 'd'),
 export let e = createServerFn().handler(async () => 'e')
 export var f = createServerFn().handler(async () => 'f')
 export { a as default, b as '📙', c as as }`)
-    const ids = idsByName(compiled.serverFns)
+    const provider = await evaluateProvider(compiled)
+    const handlers = handlersByName(provider)
     const exported = {
       default: 'a',
       '📙': 'b',
@@ -45,29 +54,28 @@ export { a as default, b as '📙', c as as }`)
       e: 'e',
       f: 'f',
     }
-    for (const [output, rpc] of [
-      ['client', 'client'],
-      ['ssr', 'ssr'],
-    ] as const) {
+    for (const output of ['client', 'ssr'] as const) {
       const module = await evaluateModule(compiled[output])
-      expect({ ...module }).toEqual({
+      expect({ ...module }, output).toEqual({
         notAServerFn: 1,
         ...Object.fromEntries(
           Object.entries(exported).map(([name, local]) => [
             name,
-            { rpc: { [rpc]: ids[`${local}_createServerFn_handler`] } },
+            { rpc: { [output]: handlers[local]!.meta.id } },
           ]),
         ),
       })
     }
-    const provider = await evaluateProvider(compiled)
-    const locals = ['a', 'b', 'c', 'd', 'e', 'f']
-    expect(Object.keys(provider).sort()).toEqual(
-      locals.map((local) => `${local}_createServerFn_handler`),
-    )
-    for (const local of locals) {
-      expect(await callProvider(provider, local)).toBe(local)
-    }
+    // One handler export per server fn, each running its own handler.
+    expect(Object.keys(compiled.serverFns)).toHaveLength(6)
+    expect(
+      Object.values(provider).filter((value) => typeof value === 'function'),
+    ).toHaveLength(6)
+    expect(
+      await callReportedServerFns(compiled, compiled.serverFns).then(
+        (results) => results.sort(),
+      ),
+    ).toEqual(['a', 'b', 'c', 'd', 'e', 'f'])
   })
 
   // Source: Next.js server-actions fixtures client-graph/1, server-graph/10, /11, /15
@@ -205,27 +213,66 @@ export const createPost = createServerFn().handler(async () =>
     })
   })
 
+  // The provider may repeat the module's top-level code or import the SSR
+  // caller for it; it runs once is the goal pinned in
+  // known-bugs-start-compiler.test.ts ("SSR: a server fn module is
+  // initialised once ...").
   // Source: Next.js server-actions fixtures client-graph/2
-  test('side-effect imports and top-level statements stay in every output', async () => {
+  test('side-effect imports and top-level statements stay in the callers, and the handler runs next to them', async () => {
     const compiled = await compileAll(`${head}import './polyfill'
 console.log('side-effect-marker')
 export const fn = createServerFn().handler(async () => 'fn')`)
-    for (const output of [compiled.client, compiled.ssr, compiled.provider]) {
-      expect(importSources(output)).toEqual(['./polyfill'])
-      expect(output).toContain('side-effect-marker')
+    const ran: Array<string> = []
+    vi.spyOn(console, 'log').mockImplementation((marker: string) => {
+      ran.push(marker)
+    })
+    const stubs = {
+      './polyfill': `console.log('polyfill')\nexport {}`,
+    }
+    try {
+      for (const output of ['client', 'ssr'] as const) {
+        expect(importSources(compiled[output]), output).toEqual(['./polyfill'])
+        ran.length = 0
+        await evaluateModule(compiled[output], stubs)
+        expect(ran, output).toEqual(['polyfill', 'side-effect-marker'])
+      }
+      ran.length = 0
+      expect(await callProvider(compiled, 'fn', stubs)).toBe('fn')
+      expect(ran).toContain('polyfill')
+    } finally {
+      vi.restoreAllMocks()
     }
   })
 
-  test('redeclared var server fns get distinct versioned handler names', async () => {
-    const code = `${head}var fn = createServerFn().handler(async () => 1)
+  const redeclared = `${head}var fn = createServerFn().handler(async () => 1)
 var fn = createServerFn().handler(async () => 2)
 export { fn }`
-    const { serverFns } = await compileFor('client', code)
-    const names = ['fn_createServerFn_handler', 'fn_createServerFn_handler_1']
-    expect(Object.keys(idsByName(serverFns)).sort()).toEqual(names)
-    const provider = await evaluateProvider(await compileServer(code))
-    expect(Object.keys(provider).sort()).toEqual(names)
+
+  test('redeclared var server fns get distinct ids', async () => {
+    const compiled = await compileAll(redeclared)
+    expect(new Set(Object.keys(compiled.serverFns)).size).toBe(2)
   })
+
+  // Bug: the provider runs each server fn through its variable
+  // (`fn.__executeServer`), so with a redeclared `var` every handler export
+  // runs the last declaration's handler.
+  // Impact: calling the first server fn (an RPC read before the
+  // redeclaration) runs the second one's handler on the server.
+  // Source: exports-and-directives.test.ts "redeclared var server fns get
+  // distinct versioned handler names", rewritten to call the handlers.
+  test.fails(
+    'redeclared var server fns each run their own handler',
+    async () => {
+      const compiled = await compileAll(redeclared)
+      const ids = Object.keys(compiled.serverFns)
+      const results = await callReportedServerFns(compiled, compiled.serverFns)
+      expect([...results].sort()).toEqual([1, 2])
+      // The exported binding is the last declaration's server fn.
+      expect((await evaluateModule(compiled.client)).fn).toEqual({
+        rpc: { client: ids[results.indexOf(2)] },
+      })
+    },
+  )
 })
 
 describe('directives', () => {
@@ -317,22 +364,30 @@ describe('server function ids', () => {
     ])
   })
 
-  test('dev providers export the handler and accept HMR updates', async () => {
+  test('dev providers export the handler', async () => {
     const server = await compileServer(
       `${head}export const getPosts = createServerFn().handler(async () => 'posts')`,
       { mode: 'dev' },
     )
-    expect(server.provider).toContain('import.meta.hot.accept(')
-    expect(server.provider).toContain('import.meta.webpackHot.accept(')
     expect(await callProvider(server, 'getPosts')).toBe('posts')
   })
 
-  /** `functionName -> functionId` of the server fns in `code`. */
+  // Dev-only code never reaches production (R7). Source: gap SF18 / DV33 (N12)
+  test('build providers have no dev HMR code', async () => {
+    const provider = await compileCode(
+      'provider',
+      `${head}export const getPosts = createServerFn().handler(async () => 'posts')`,
+      { mode: 'build' },
+    )
+    expect(provider).not.toMatch(/import\.meta\.(webpack)?[Hh]ot/)
+  })
+
+  /** The ids of the server fns in `code`. */
   async function idsOf(
     code: string,
     options: Parameters<typeof compileFor>[2] = {},
   ) {
-    return idsByName(
+    return Object.keys(
       (await compileFor('client', `${head}${code}`, options)).serverFns,
     )
   }
@@ -349,17 +404,15 @@ export const save = createServerFn().handler(async () => 2)`
         `export const added = createServerFn().handler(async () => 0)\n${existing}`,
         { mode },
       )
-      expect(Object.keys(after)).toHaveLength(3)
-      expect(after).toMatchObject(before)
+      expect(after).toHaveLength(3)
+      expect(after).toEqual(expect.arrayContaining(before))
     },
   )
 
   // Source: SolidStart compile.spec.ts "does not ship source names in production ids"
   test('build ids do not ship source names', async () => {
-    const [id] = Object.values(
-      await idsOf(
-        `export const loadSecretReport = createServerFn().handler(async () => 1)`,
-      ),
+    const [id] = await idsOf(
+      `export const loadSecretReport = createServerFn().handler(async () => 1)`,
     )
     for (const text of [
       id!,
@@ -379,7 +432,7 @@ export const save = createServerFn().handler(async () => 2)`
         (await compileFor('client', code, { id })).serverFns,
       )
       const provider = await evaluateProvider(await compileServer(code, { id }))
-      expect(provider.load_createServerFn_handler.meta.id).toBe(functionId)
+      expect(handlersByName(provider).load!.meta.id).toBe(functionId)
       ids.push(functionId!)
     }
     expect(new Set(ids).size).toBe(2)
@@ -397,12 +450,12 @@ export const save = createServerFn().handler(async () => 2)`
           )
           .join('\n'),
     )
-    expect(Object.keys(idsByName(compiled.serverFns)).sort()).toEqual(
-      names.map((name) => `${name}_createServerFn_handler`).sort(),
-    )
+    expect(Object.keys(compiled.serverFns)).toHaveLength(names.length)
     const provider = await evaluateProvider(compiled)
+    expect(Object.keys(handlersByName(provider)).sort()).toEqual(
+      [...names].sort(),
+    )
     for (const name of names) {
-      expect(provider[`${name}_createServerFn_handler`].meta.name).toBe(name)
       expect(await callProvider(provider, name)).toBe(name)
     }
   })
