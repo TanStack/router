@@ -219,6 +219,10 @@ describe('split={false}', () => {
   test.fails.each([
     { name: 'false satisfies boolean', split: '{(false satisfies boolean)}' },
     { name: 'false as boolean', split: '{(false as boolean)}' },
+    {
+      name: 'an unparenthesized false as boolean',
+      split: '{false as boolean}',
+    },
   ])('$name keeps function-as-children in place', async ({ split }) => {
     await expectFunctionChildInPlace(split)
   })
