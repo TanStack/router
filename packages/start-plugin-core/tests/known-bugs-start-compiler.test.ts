@@ -726,12 +726,13 @@ export const read = createServerOnlyFn(() => db.secret()).bind(null)`)
   // in the provider, and is not rejected either.
   // Impact: its handler and server-only imports ship to the client
   // (createServerFn alone), or the server build fails (another factory).
+  // Once the callers reject the module, no provider is requested for it.
   // Source: user ruling D13 (the one placement that must be rejected).
   test.fails.each(Object.keys(placementHeads) as Array<PlacementHead>)(
-    'with %s imported, a nested server fn whose handler reads a local of its function is rejected in every output',
+    'with %s imported, a nested server fn whose handler reads a local of its function is rejected by the callers',
     async (importHead) => {
       const code = placementModule(importHead, capturingPlacement.code)
-      for (const output of outputs) {
+      for (const output of ['client', 'ssr'] as const) {
         const error = await compileFor(output, code).then(
           () => undefined,
           (caught: unknown) => caught,
@@ -1321,6 +1322,9 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
 })
 
 describe('CommonJS dependencies', () => {
+  /** What the dependencies below are called with. */
+  const app = { handler: (value: unknown) => ['handled', value] }
+
   // Bug: a module matching a detection pattern (`.handler(`) is parsed as strict ESM.
   // Impact: a sloppy-mode CommonJS dependency with such text fails the build.
   test.fails.each([
@@ -1331,6 +1335,7 @@ describe('CommonJS dependencies', () => {
 module.exports = function (app) {
   return app.handler(reset)
 }`,
+      run: (module: { exports: any }) => module.exports(app),
     },
     {
       name: 'a with statement',
@@ -1340,6 +1345,7 @@ module.exports = function (app) {
     return app.handler(PI)
   }
 }`,
+      run: (module: { exports: any }) => module.exports.run(app),
     },
     {
       name: 'a top-level return',
@@ -1348,13 +1354,23 @@ module.exports = function (app) {
 exports.run = function (app) {
   return app.handler(1)
 }`,
+      run: (module: { exports: any }) => module.exports.run,
     },
   ])(
-    'a CommonJS dependency with $name is left untouched',
-    async ({ id, code }) => {
+    'a CommonJS dependency with $name compiles and keeps its meaning',
+    async ({ id, code, run }) => {
+      // Runs a CommonJS module (sloppy mode) and reads what `run` reads.
+      const evaluate = (source: string) => {
+        const module = { exports: {} as any }
+        // eslint-disable-next-line @typescript-eslint/no-implied-eval
+        new Function('module', 'exports', source)(module, module.exports)
+        return run(module)
+      }
       for (const env of ['client', 'server'] as const) {
         const { compile } = createStartCompiler({ env })
-        expect((await compile(code, id)) ?? code).toBe(code)
+        expect(evaluate((await compile(code, id)) ?? code), env).toEqual(
+          evaluate(code),
+        )
       }
     },
   )

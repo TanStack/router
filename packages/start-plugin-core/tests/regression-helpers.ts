@@ -549,17 +549,23 @@ function createTestModuleGraph(
  * Evaluates a compiled module like a bundler would: TypeScript is erased, JSX
  * becomes calls of `runtime` (which defines `__jsx` and `__Fragment`), and
  * every import is linked, as a real ES module, to the minimal Start runtime
- * of `framework` (default `react`) for `env` (default `client`) or to
- * `stubs` (by specifier; `.json` string stubs are JSON modules). Every call
- * evaluates a fresh instance, even for identical code.
+ * of `framework` (default `react`) for `env` (default `client`), to `stubs`
+ * (by specifier; `.json` string stubs are JSON modules) or to the project
+ * modules `files` (by absolute id, linked as they are). Every call evaluates
+ * a fresh instance, even for identical code.
  */
 export async function evaluateModule(
   code: string,
   stubs: Record<string, ModuleStub> = {},
-  options: { runtime?: string; framework?: Framework; env?: RuntimeEnv } = {},
+  options: {
+    runtime?: string
+    framework?: Framework
+    env?: RuntimeEnv
+    files?: Record<string, string>
+  } = {},
 ): Promise<Record<string, any>> {
   return createTestModuleGraph({
-    modules: { [moduleId]: code },
+    modules: { ...options.files, [moduleId]: code },
     stubs,
     runtime: options.runtime ?? jsxToText,
     framework: options.framework,
