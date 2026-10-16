@@ -296,11 +296,8 @@ describe('handleRouteUpdate', () => {
     const routeTree = rootRoute.addChildren([asAnyRoute(itemRoute)])
     const router = createTestRouter(routeTree)
 
-    const { Route: newRoute } = await hotUpdateRoute(
-      router,
-      itemRoute.id,
-      routeSource(),
-    )
+    const { Route } = await hotUpdateRoute(router, itemRoute.id, routeSource())
+    const newRoute = Route as unknown as AnyRoute
 
     expect(newRoute.id).toBe(itemRoute.id)
     expect(newRoute.path).toBe(itemRoute.path)
