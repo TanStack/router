@@ -13,6 +13,7 @@ import {
   renderBoundaries,
   settle,
 } from './regression-helpers'
+import { generatedNames } from './hydrate-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 const head = `import { Hydrate } from '@tanstack/react-start'\n`
@@ -985,18 +986,44 @@ export function Page() {
     },
   )
 
-  // Bug: a module-level helper moved into the chunk keeps its name, so a
-  // helper named like the generated chunk export (`H0`) collides with it.
-  // Impact: the chunk is not a valid module and the build fails.
-  test.fails(
-    'client: a helper named like the generated chunk export does not collide',
-    async () => {
-      const { module, lazyChunks } =
-        await loadClientModule(`${head}function H0() { return <b>helper</b> }
+  // Bug: the chunk keeps the module-level bindings the children name (by
+  // name, even when a local shadows them) under their own names, so a
+  // binding named like one the compiler generates in the chunk (its export)
+  // collides with it.
+  // Impact: compiling the chunk fails ("Duplicate declaration"), so the
+  // build fails.
+  test.fails.each([
+    {
+      name: 'helpers the children call',
+      module: (name: string) =>
+        `function ${name}() { return 'module:${name}' }`,
+      local: () => '',
+      read: (name: string) => `${name}()`,
+      value: (name: string) => `module:${name}`,
+    },
+    {
+      name: 'bindings the children shadow with locals',
+      module: (name: string) => `const ${name} = 'module:${name}'`,
+      local: (name: string) => `const ${name} = 'local:${name}'`,
+      read: (name: string) => name,
+      value: (name: string) => `local:${name}`,
+    },
+  ])(
+    'client: module-level $name, named like the generated bindings, do not collide',
+    async ({ module: declare, local, read, value }) => {
+      const page = (
+        names: Array<string>,
+      ) => `${head}${names.map(declare).join('\n')}
 export function Page() {
-  return <Hydrate><H0 /></Hydrate>
-}`)
-      expect(module.Page()).toBe('[<b>helper</b>]')
+  ${names.map(local).join('\n  ')}
+  return <><Hydrate prefetch><p>{[${names.map(read).join(', ')}].join('|')}</p></Hydrate><Hydrate><section><Hydrate><b>nested</b></Hydrate></section></Hydrate></>
+}`
+      // Whichever names the compiler picks for this page.
+      const names = await generatedNames(page([]))
+      const { module, lazyChunks } = await loadClientModule(page(names))
+      expect(module.Page()).toBe(
+        `[<p>${names.map(value).join('|')}</p>][<section>[<b>nested</b>]</section>]`,
+      )
       expectRenderedThroughChunks(lazyChunks)
     },
   )
