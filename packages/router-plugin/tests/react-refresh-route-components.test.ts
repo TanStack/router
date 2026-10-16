@@ -29,6 +29,7 @@ import {
   reactRefresh,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
+import type { ExportedRouteOptionsCase } from './dev-server'
 
 /** Compiles every module the code splitter emits, with React HMR. */
 function compileWithCodeSplitting(code: string) {
@@ -421,7 +422,7 @@ describe('route HMR leaves options React Refresh does not handle as they are', (
 describe.each([true, false])(
   'route module exports with React HMR and autoCodeSplitting=%s',
   (autoCodeSplitting) => {
-    const cases = [
+    const cases: Array<ExportedRouteOptionsCase> = [
       {
         name: 'function',
         declaration: 'export function component() { return null }',

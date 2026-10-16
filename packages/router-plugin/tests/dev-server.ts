@@ -84,8 +84,10 @@ export const lazyFn = (importer, name = 'default') => lazy(importer, name)`
  * The value of a route option of a route module served with
  * `routerPackageStub`, once its lazy module (if any) loaded.
  */
-export async function loadRouteOption(value: any): Promise<unknown> {
-  return typeof value?.load === 'function' ? value.load() : value
+export function loadRouteOption(value: any): Promise<unknown> {
+  return typeof value?.load === 'function'
+    ? value.load()
+    : Promise.resolve(value)
 }
 
 /**
@@ -131,26 +133,39 @@ export async function expectExportedRouteOptions(
 }
 
 /**
+ * A route file case of `expectExportedRouteOptions`: `declaration` declares
+ * and exports components, `options` are the route options, and `exported`
+ * maps each export to the route options whose value it is.
+ */
+export type ExportedRouteOptionsCase = {
+  name: string
+  declaration: string
+  options: string
+  exported: Record<string, Array<string>>
+}
+
+/**
  * Exported route components that a route module loses when the component is
  * split (pinned in known-bugs-dev-server.test.ts), for
  * `expectExportedRouteOptions`.
  */
-export const exportedComponentsLostWhenSplit = [
-  {
-    name: 'class',
-    declaration: `import { Component } from 'react'
+export const exportedComponentsLostWhenSplit: Array<ExportedRouteOptionsCase> =
+  [
+    {
+      name: 'class',
+      declaration: `import { Component } from 'react'
 export class component extends Component { render() { return null } }`,
-    options: 'component',
-    exported: { component: ['component'] },
-  },
-  {
-    name: 'aliased',
-    declaration:
-      'function component() { return null }; export { component as View }',
-    options: 'component',
-    exported: { View: ['component'] },
-  },
-]
+      options: 'component',
+      exported: { component: ['component'] },
+    },
+    {
+      name: 'aliased',
+      declaration:
+        'function component() { return null }; export { component as View }',
+      options: 'component',
+      exported: { View: ['component'] },
+    },
+  ]
 
 /**
  * Serves a route whose `beforeLoad` and split `loader` call an exported,
