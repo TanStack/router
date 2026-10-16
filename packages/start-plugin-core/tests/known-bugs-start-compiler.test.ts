@@ -1736,7 +1736,7 @@ describe('Vite dev server', () => {
   }
 
   /** Start packages of `transformClientModule`, by the names imported. */
-  const clientStubs = (_specifier: string, names: Set<string>) => {
+  const clientStubs = (specifier: string, names: Set<string>): ModuleStub => {
     if (names.has('createClientRpc')) {
       return { createClientRpc: (id: string) => ({ functionId: id }) }
     }
@@ -1748,7 +1748,7 @@ describe('Vite dev server', () => {
     if (names.has('z')) {
       return { z: { object: () => ({}) } }
     }
-    return undefined
+    throw new Error(`no stub for ${specifier}`)
   }
 
   /**

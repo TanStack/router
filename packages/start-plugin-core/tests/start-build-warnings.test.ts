@@ -23,7 +23,7 @@ const warningTransform: StartCompilerImportTransform = {
   transform: (candidates, context) => {
     for (const candidate of candidates) {
       if (candidate.path.node.arguments.length > 0) {
-        context.warn(`MARK_WARNING: cannot handle warnMe() in ${context.id}`)
+        context.warn?.(`MARK_WARNING: cannot handle warnMe() in ${context.id}`)
       }
     }
   },

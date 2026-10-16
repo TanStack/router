@@ -172,11 +172,15 @@ export const getRouter = () => ({ routeTree })
     {
       name: 'with a defaultBehavior grouping the loader with the component',
       router: {
-        codeSplittingOptions: { defaultBehavior: [['loader', 'component']] },
+        codeSplittingOptions: {
+          defaultBehavior: [['loader', 'component']] as Array<
+            Array<'loader' | 'component'>
+          >,
+        },
       },
       expected: { loader: 'lazy', component: 'lazy', oneChunk: true },
     },
-  ] as const)(
+  ])(
     'router.codeSplittingOptions: the client loads the route loader and component $name',
     async ({ router, expected }) => {
       const { client } = await buildStart({
