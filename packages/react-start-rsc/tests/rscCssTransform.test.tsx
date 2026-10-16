@@ -11,27 +11,40 @@ import type { StartCompilerImportTransform } from '../../start-plugin-core/src/t
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
 
+/**
+ * Compiles `code` with the RSC CSS transforms like the Start plugin does for
+ * the `rsc` environment (`env: 'server'`, the default) or for the client
+ * (`env: 'client'`). `warn` receives the warnings the compiler and its
+ * transforms report; `compilerTransforms` are added after the RSC CSS ones.
+ */
 async function compileWithRscCssTransform(opts: {
   code: string
   id?: string | undefined
+  env?: 'client' | 'server' | undefined
   loadCssExpression?: string | undefined
   serverFnProviderOnly?: boolean | undefined
+  warn?: ((message: string) => void) | undefined
+  compilerTransforms?: Array<StartCompilerImportTransform> | undefined
 }) {
-  const compilerTransforms = createRscCssCompilerTransforms({
-    loadCssExpression:
-      opts.loadCssExpression ?? 'import.meta.viteRsc.loadCss()',
-    serverFnProviderOnly: opts.serverFnProviderOnly,
-  })
+  const env = opts.env ?? 'server'
+  const compilerTransforms = [
+    ...createRscCssCompilerTransforms({
+      loadCssExpression:
+        opts.loadCssExpression ?? 'import.meta.viteRsc.loadCss()',
+      serverFnProviderOnly: opts.serverFnProviderOnly,
+    }),
+    ...(opts.compilerTransforms ?? []),
+  ]
 
   const compiler = new StartCompiler({
-    env: 'server',
-    envName: 'rsc',
+    env,
+    envName: env === 'client' ? 'client' : 'rsc',
     root: '/test',
     framework: 'react',
     providerEnvName: 'rsc',
     mode: 'build',
-    lookupKinds: getLookupKindsForEnv('server', { compilerTransforms }),
-    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react', {
+    lookupKinds: getLookupKindsForEnv(env, { compilerTransforms }),
+    lookupConfigurations: getLookupConfigurationsForEnv(env, 'react', {
       compilerTransforms,
     }),
     compilerTransforms,
@@ -43,13 +56,54 @@ async function compileWithRscCssTransform(opts: {
   const result = await compiler.compile({
     id: opts.id ?? '/test/src/route.tsx',
     code: opts.code,
-    detectedKinds: detectKindsInCode(opts.code, 'server', {
+    detectedKinds: detectKindsInCode(opts.code, env, {
       compilerTransforms,
     }),
+    warn: opts.warn,
   })
 
   return result?.code ?? null
 }
+
+describe('compileWithRscCssTransform', () => {
+  const code = `
+    import { renderServerComponent } from '@tanstack/react-start/rsc'
+
+    export const renderable = renderServerComponent(<Card />)
+  `
+
+  test('compiles for the rsc environment by default, and for the client with env', async () => {
+    expect(await compileWithRscCssTransform({ code })).toContain('loadCss')
+    expect(await compileWithRscCssTransform({ code, env: 'client' })).toBeNull()
+  })
+
+  test('warn receives the warnings of the compiler transforms', async () => {
+    const warnings: Array<string> = []
+    const warning: StartCompilerImportTransform = {
+      name: 'warns',
+      environment: 'server',
+      imports: [
+        {
+          libName: '@tanstack/react-start/rsc',
+          rootExport: 'renderServerComponent',
+        },
+      ],
+      detect: /\brenderServerComponent\b/,
+      transform: (_, context) => context.warn?.(`warned in ${context.id}`),
+    }
+    await compileWithRscCssTransform({
+      code,
+      compilerTransforms: [warning],
+      warn: (message) => warnings.push(message),
+    })
+    expect(warnings).toEqual(['warned in /test/src/route.tsx'])
+    await compileWithRscCssTransform({
+      code,
+      warn: (message) => warnings.push(message),
+    })
+    expect(warnings).toHaveLength(1)
+  })
+})
 
 describe('RSC CSS compiler transforms', () => {
   test('injects Vite CSS resources into all supported RSC render APIs', async () => {
