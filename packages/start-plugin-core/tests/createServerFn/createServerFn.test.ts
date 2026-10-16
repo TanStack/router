@@ -16,6 +16,7 @@ import {
   createServerGraph,
   createStartCompiler,
   evaluateModule,
+  evaluateProvider,
   importSources,
 } from '../regression-helpers'
 import type { ServerFn } from '../../src/start-compiler/types'
@@ -904,5 +905,178 @@ export const greet = createServerFn().handler()`,
     ).rejects.toThrow(
       'createServerFn must be called with a "handler" property!',
     )
+  })
+})
+
+// Builders, route files and formatting: replaces the factory and
+// isomorphic-fns snapshot fixtures (N5, N6) and the `.handler(` formatting
+// detection unit tests (N7).
+describe('server fns of builders, route files and reformatted code', () => {
+  // Source: snapshot fixture factory.tsx (N5)
+  test('a server fn builder with middleware is callable as a factory', async () => {
+    const compiled =
+      await compileAll(`import { createServerFn, createMiddleware } from '@tanstack/react-start'
+const authMiddleware = createMiddleware({ type: 'function' }).server(
+  ({ next }) => next({ context: { auth: 'auth' } }),
+)
+const adminMiddleware = createMiddleware({ type: 'function' }).server(
+  ({ next }) => next({ context: { admin: 'admin' } }),
+)
+export const createAuthServerFn = createServerFn().middleware([authMiddleware])
+const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware])
+export const myAuthedFn = createAuthServerFn().handler(() => {
+  return 'myAuthedFn'
+})
+export const deleteUserFn = createAdminServerFn().handler(() => {
+  return 'deleteUserFn'
+})
+function createFakeFn() {
+  return {
+    handler: (cb) => {
+      return cb()
+    },
+  }
+}
+export const x = createFakeFn().handler(() => {
+  return 'fakeFn'
+})`)
+    expect(compiled.client).not.toMatch(/['"](myAuthedFn|deleteUserFn)['"]/)
+    expect(Object.keys(compiled.serverFns)).toHaveLength(2)
+    const client = await evaluateModule(compiled.client)
+    expect(client.myAuthedFn).toEqual({ rpc: { client: expect.any(String) } })
+    expect(client.myAuthedFn.options.middleware).toHaveLength(1)
+    expect(client.deleteUserFn).toEqual({
+      rpc: { client: expect.any(String) },
+    })
+    expect(client.deleteUserFn.options.middleware).toHaveLength(2)
+    expect(client.x).toBe('fakeFn')
+    const provider = await evaluateProvider(compiled)
+    expect([
+      await callProvider(provider, 'myAuthedFn'),
+      await callProvider(provider, 'deleteUserFn'),
+    ]).toEqual(['myAuthedFn', 'deleteUserFn'])
+  })
+
+  // Source: snapshot fixture isomorphic-fns.tsx (N6; #8504
+  // start-compiler-factories.test.ts "provider compiles env fns")
+  test('a route file: the provider runs the server fns, each output runs its isomorphic branch', async () => {
+    const code = `import { createFileRoute } from '@tanstack/react-router'
+import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+
+const getEnv = createIsomorphicFn()
+  .server(() => 'server')
+  .client(() => 'client')
+
+const getServerEnv = createServerFn().handler(() => getEnv())
+
+const getEcho = createIsomorphicFn()
+  .server((input: string) => 'server received ' + input)
+  .client((input) => 'client received ' + input)
+
+const getServerEcho = createServerFn()
+  .validator((input: string) => input)
+  .handler(({ data }) => getEcho(data))
+
+export const Route = createFileRoute('/isomorphic-fns')({
+  component: RouteComponent,
+  loader() {
+    return { envOnLoad: getEnv() }
+  },
+})
+
+function RouteComponent() {
+  const [results, setResults] = useState<Partial<Record<string, string>>>()
+  async function handleClick() {
+    const [serverEnv, serverEcho] = await Promise.all([
+      getServerEnv(),
+      getServerEcho({ data: 'hello' }),
+    ])
+    setResults({ envOnClick: getEnv(), echo: getEcho('hello'), serverEnv, serverEcho })
+  }
+  return <button onClick={handleClick}>{JSON.stringify(results)}</button>
+}`
+    const stubs = {
+      '@tanstack/react-router': {
+        createFileRoute: () => (options: unknown) => ({ options }),
+      },
+      react: { useState: () => [undefined, () => {}] },
+    }
+    const compiled = await compileAll(code)
+    expect(importSources(compiled.provider)).not.toContain('react')
+    expect(await callProvider(compiled, 'getServerEnv', stubs)).toBe('server')
+    expect(await callProvider(compiled, 'getServerEcho', stubs, 'hello')).toBe(
+      'server received hello',
+    )
+    for (const [output, env] of [
+      ['client', 'client'],
+      ['ssr', 'server'],
+    ] as const) {
+      const { Route } = await evaluateModule(compiled[output], stubs)
+      expect(Route.options.loader(), output).toEqual({ envOnLoad: env })
+    }
+  })
+
+  // Reformatted code (Vite/Babel may move the dot to its own line) and a
+  // builder from another module (TanStack/router#7280 class).
+  // Replaces compiler.test.ts "handles .handler with whitespace variations"
+  // and "handles whitespace between . and handler" (N7).
+  describe.each([
+    {
+      where: 'the module',
+      files: {},
+      head: `import { createServerFn } from '@tanstack/react-start'
+const base = createServerFn()`,
+    },
+    {
+      where: 'another module',
+      files: {
+        '/test/src/builder.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()`,
+      },
+      head: `import { base } from './builder'`,
+    },
+  ])('with the builder of $where', ({ where, files, head }) => {
+    const calls = [
+      { name: 'spaces before the call', call: '.handler  (' },
+      { name: 'a newline before the call', call: '.handler\n(' },
+      { name: 'a newline after the dot', call: '.\n  handler(' },
+      { name: 'a tab before the call', call: '.handler\t(' },
+      { name: 'a comment after the dot', call: './* c */handler(' },
+    ]
+    for (const { name, call } of calls) {
+      // Bug: a module is only compiled when its text matches
+      // `createServerFn` or `.handler(` (whitespace allowed), so with the
+      // builder imported from another module, a comment between the dot and
+      // `handler` hides the server fn.
+      // Impact: the handler and its server-only imports ship to the client.
+      // Source: N7 (TanStack/router#7280 class).
+      const run =
+        where === 'another module' && name === 'a comment after the dot'
+          ? test.fails
+          : test
+      run(`a handler called with ${name} is extracted`, async () => {
+        const code = `${head}
+import { db } from './db.server'
+export const fn = base${call}async () => db.x())`
+        const compiled = await compileAll(code, { files })
+        expect(importSources(compiled.client)).not.toContain('./db.server')
+        expect(Object.keys(compiled.serverFns)).toHaveLength(1)
+        expect(
+          await callProvider(compiled, 'fn', {
+            './db.server': { db: { x: () => 'x' } },
+            // The provider keeps the import of the builder.
+            './builder': {
+              base: {
+                handler: (_rpc: unknown, impl: (opts: unknown) => unknown) =>
+                  Object.assign((opts: unknown) => impl(opts ?? {}), {
+                    __executeServer: impl,
+                  }),
+              },
+            },
+          }),
+        ).toBe('x')
+      })
+    }
   })
 })
