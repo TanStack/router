@@ -370,12 +370,7 @@ describe('generator works', async () => {
       const generator = new Generator({ config, root: folderRoot })
       const error = shouldThrow(folderName)
       if (error) {
-        try {
-          await generator.run()
-        } catch (e) {
-          expect(e).toBeInstanceOf(Error)
-          expect((e as Error).message.startsWith(error)).toBeTruthy()
-        }
+        await expect(generator.run()).rejects.toThrow(error)
       } else {
         await generator.run()
 
@@ -408,59 +403,108 @@ describe('generator works', async () => {
     })
   })
 
-  it.each(folderNames)(
-    'should create directory for routeTree if it does not exist',
-    async () => {
-      const folderName = 'only-root'
-      const folderRoot = makeFolderDir(folderName)
-      let pathCreated = false
+  it('should create directory for routeTree if it does not exist', async () => {
+    const folderName = 'only-root'
+    const folderRoot = makeFolderDir(folderName)
 
-      const config = await setupConfig(folderName)
+    const config = await setupConfig(folderName)
 
-      rewriteConfigByFolderName(folderName, config)
+    rewriteConfigByFolderName(folderName, config)
 
-      await preprocess(folderName)
-      config.generatedRouteTree = join(
-        folderRoot,
-        'generated',
-        `/routeTree.gen.ts`,
+    await preprocess(folderName)
+    config.generatedRouteTree = join(
+      folderRoot,
+      'generated',
+      `/routeTree.gen.ts`,
+    )
+    const generator = new Generator({ config, root: folderRoot })
+    await generator.run()
+
+    const generatedRouteTree = await getRouteTreeFileText(config)
+
+    await expect(generatedRouteTree).toMatchFileSnapshot(
+      join(
+        'generator',
+        folderName,
+        `routeTree.generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
+      ),
+    )
+
+    const pathCreated = await fs
+      .access(dirname(config.generatedRouteTree))
+      .then(
+        () => true,
+        () => false,
       )
-      const generator = new Generator({ config, root: folderRoot })
+    expect(pathCreated).toBe(true)
 
-      const error = shouldThrow(folderName)
-      if (error) {
-        try {
-          await generator.run()
-        } catch (e) {
-          expect(e).toBeInstanceOf(Error)
-          expect((e as Error).message.startsWith(error)).toBeTruthy()
-        }
-      } else {
-        await generator.run()
+    await postprocess(folderName)
+    await fs.rm(dirname(config.generatedRouteTree), { recursive: true })
+  })
+})
 
-        const generatedRouteTree = await getRouteTreeFileText(config)
+// Windows checkouts with `autocrlf` give route files CRLF line endings: the
+// route tree is the same as with LF sources, and a second run changes
+// nothing. Source: the #8504 confidence campaign (crlf-gen-run).
+describe('route files with CRLF line endings', () => {
+  const routes = {
+    '__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+    'index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component: () => null,
+})
+`,
+    'posts.$postId.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/posts/$postId')({
+  loader: () => 'post',
+})
+`,
+  }
 
-        await expect(generatedRouteTree).toMatchFileSnapshot(
-          join(
-            'generator',
-            folderName,
-            `routeTree.generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
+  /** Runs the generator twice on the routes with `newline` line endings. */
+  async function generate(newline: string) {
+    const root = await fs.mkdtemp(path.join(process.cwd(), '.tsr-crlf-'))
+    try {
+      await fs.mkdir(join(root, 'routes'))
+      for (const [file, code] of Object.entries(routes)) {
+        await fs.writeFile(
+          join(root, 'routes', file),
+          code.replaceAll('\n', newline),
+        )
+      }
+      const config = getConfig({
+        disableLogging: true,
+        routesDirectory: join(root, 'routes'),
+        generatedRouteTree: join(root, 'routeTree.gen.ts'),
+        tmpDir: join(root, '.tanstack/tmp'),
+      })
+      const read = async () => ({
+        tree: await fs.readFile(config.generatedRouteTree, 'utf8'),
+        routes: await Promise.all(
+          Object.keys(routes).map((file) =>
+            fs.readFile(join(root, 'routes', file), 'utf8'),
           ),
-        )
+        ),
+      })
+      await new Generator({ config, root }).run()
+      const first = await read()
+      await new Generator({ config, root }).run()
+      return { first, second: await read() }
+    } finally {
+      await fs.rm(root, { recursive: true, force: true })
+    }
+  }
 
-        pathCreated = await fs.access(dirname(config.generatedRouteTree)).then(
-          () => true,
-          () => false,
-        )
-
-        await expect(pathCreated).toBe(true)
-      }
-
-      await postprocess(folderName)
-
-      if (pathCreated) {
-        await fs.rm(dirname(config.generatedRouteTree), { recursive: true })
-      }
-    },
-  )
+  it('generates the route tree of LF sources, and a second run changes nothing', async () => {
+    const lf = await generate('\n')
+    const crlf = await generate('\r\n')
+    expect(crlf.first.tree).toBe(lf.first.tree)
+    expect(crlf.second).toEqual(crlf.first)
+    // The route files are left as written.
+    expect(crlf.first.routes).toEqual(
+      Object.values(routes).map((code) => code.replaceAll('\n', '\r\n')),
+    )
+  })
 })

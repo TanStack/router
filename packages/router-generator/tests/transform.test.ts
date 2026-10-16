@@ -64,7 +64,6 @@ describe('transform', () => {
         "export const Route = (createFileRoute)(('/new'))(({ component: Page, server: {} }))",
       ].join('\n'),
     })
-    expect(node.createFileRouteProps).toEqual(new Set(['component', 'server']))
   })
 
   // Source: #8504 router-generator transform.test.ts ("reads route call
@@ -199,7 +198,6 @@ describe('transform', () => {
       throw new Error(`expected modified result, got ${result.result}`)
     }
     expect(result.output).toContain("createFileRoute('/new')")
-    expect(node.createFileRouteProps).toEqual(new Set(['component']))
   })
 
   it('removes imports cleanly with CRLF line endings', async () => {
@@ -618,26 +616,6 @@ describe('transform', () => {
       "import { type LinkProps, createFileRoute } from '@tanstack/react-router'",
     )
     expect(result.output).not.toContain('createLazyFileRoute')
-  })
-
-  // The recorded option keys drive prerendering and server-only route
-  // pruning. Resolving computed and spread keys is best effort; the safe
-  // fallback for them is pinned through Start's consumers
-  // (start-plugin-core tests/known-bugs-route-options.test.ts).
-  it('records identifier and string-literal option keys', () => {
-    const node = makeNode()
-    const result = transformToNewRoute(
-      [
-        "import { createFileRoute } from '@tanstack/react-router'",
-        "export const Route = createFileRoute('/new')({ 'component': Page, [key]: load, ...rest, server: {} })",
-      ].join('\n'),
-      node,
-    )
-
-    expect(result).toEqual({ result: 'not-modified' })
-    expect([...node.createFileRouteProps!]).toEqual(
-      expect.arrayContaining(['component', 'server']),
-    )
   })
 })
 

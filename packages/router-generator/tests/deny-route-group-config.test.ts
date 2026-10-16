@@ -60,12 +60,7 @@ describe('deny-route-group-config throws', () => {
       const folderRoot = makeFolderDir(folder)
 
       const generator = new Generator({ config, root: folderRoot })
-      try {
-        await generator.run()
-      } catch (error) {
-        expect(error).toBeInstanceOf(Error)
-        expect((error as Error).message.startsWith(expectedError)).toBeTruthy()
-      }
+      await expect(generator.run()).rejects.toThrow(expectedError)
     },
   )
 })

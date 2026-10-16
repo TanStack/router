@@ -61,6 +61,48 @@ export const Route = createRootRoute()`,
   }
 }
 
+// What generator plugins (Start's prerendering and server-only route
+// pruning) learn of a route's options. Resolving computed and spread keys is
+// best effort (pinned through Start's consumers in start-plugin-core
+// tests/known-bugs-route-options.test.ts); plain keys are read through
+// parentheses and quotes.
+describe('route option keys', () => {
+  test.each([
+    {
+      name: 'identifier keys',
+      route: `createFileRoute('/old')({ component: Page, server: {} })`,
+      keys: ['component', 'server'],
+    },
+    {
+      name: 'string keys',
+      route: `createFileRoute('/old')({ 'component': Page, "server": {} })`,
+      keys: ['component', 'server'],
+    },
+    {
+      name: 'parentheses around the call parts',
+      route: `(createFileRoute)(('/old'))(({ component: Page, server: {} }))`,
+      keys: ['component', 'server'],
+    },
+    {
+      name: 'an aliased Route export',
+      route: `createFileRoute('/old')({ component: Page })
+export { MyRoute as Route }`,
+      binding: 'const MyRoute =',
+      keys: ['component'],
+    },
+  ])(
+    'a full run gives generator plugins the option keys of a route with $name',
+    async ({ route, keys, binding = 'export const Route =' }) => {
+      const { node, written } =
+        await generateMovedRoute(`import { createFileRoute } from '@tanstack/react-router'
+const Page = () => null
+${binding} ${route}`)
+      expect(await routeIdOf(written)).toBe('/moved')
+      expect([...(node?.createFileRouteProps ?? [])].sort()).toEqual(keys)
+    },
+  )
+})
+
 describe('route calls with TypeScript wrappers', () => {
   // Control: "a moved route gets the id of its new path" below (same
   // harness).
