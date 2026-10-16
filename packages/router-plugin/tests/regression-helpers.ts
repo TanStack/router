@@ -58,6 +58,13 @@ export type TargetFramework = 'react' | 'solid' | 'vue'
 type CompileOptions = {
   /** Name of the route file; it is compiled as `/<filename>`. */
   filename?: string
+  /**
+   * Module id of the route file as a bundler passes it, instead of
+   * `/<filename>`: e.g. under another project root, or a Windows path
+   * (`C:/app/…` from Vite, `C:\\app\\…` from webpack and Rspack). The
+   * route is registered under its forward-slash form.
+   */
+  moduleId?: string
   targetFramework?: TargetFramework
   /** Compile for the dev server: route HMR and the framework's HMR code. */
   hmr?: boolean
@@ -295,9 +302,9 @@ function createRouteGraphCompiler(
     command = hmr ? 'serve' : 'build',
     webpackCompiler: compiler,
   } = options
-  const id = routeModuleId(filename)
+  const id = options.moduleId ?? routeModuleId(filename)
   const context = createRouterPluginContext()
-  context.routesByFile.set(id, { routeId })
+  context.routesByFile.set(normalizePath(id), { routeId })
   const created = createRouterCodeSplitterPlugin(
     {
       target: targetFramework,
@@ -339,22 +346,22 @@ function createRouteGraphCompiler(
       }
     }
     const [request, query] = splitQuery(specifier)
+    const importerPath = splitQuery(importer)[0]
+    // Windows ids from webpack and Rspack use backslashes
+    const paths = importerPath.includes('\\') ? path.win32 : path.posix
     let file: string
-    if (/^(?:\/|[A-Za-z]:\/)/.test(request)) {
+    if (/^(?:\/|[A-Za-z]:[\\/])/.test(request)) {
       file = request
     } else if (request.startsWith('./') || request.startsWith('../')) {
-      file = path.posix.join(
-        path.posix.dirname(splitQuery(importer)[0]),
-        request,
-      )
+      file = paths.join(paths.dirname(importerPath), request)
     } else {
       return undefined
     }
     // Only modules of the route file are compiled; other files are stubs.
-    if (file !== id) {
+    if (normalizePath(file) !== normalizePath(id)) {
       return undefined
     }
-    return query === undefined ? file : `${file}?${query}`
+    return query === undefined ? id : `${id}?${query}`
   }
 
   const load = (code: string, moduleId: string) => {
