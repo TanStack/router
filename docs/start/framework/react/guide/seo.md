@@ -302,47 +302,98 @@ This approach works well when your site structure is known and doesn't change of
 
 ### Dynamic Sitemap
 
-For sites with dynamic content that can't be discovered at build time, you can create a dynamic sitemap using a [server route](./server-routes). Consider caching this at your CDN for performance:
+For content that can't be discovered at build time (blog posts from a CMS, products from a database, user profiles), serve the sitemap from a [server route](./server-routes) with `createSitemapHandler`. Return an array of entries and TanStack Start renders valid, escaped sitemap XML with the right `Content-Type`:
 
 ```ts
 // src/routes/sitemap[.]xml.ts
 import { createFileRoute } from '@tanstack/react-router'
+import { createSitemapHandler } from '@tanstack/react-start/server'
 
 export const Route = createFileRoute('/sitemap.xml')({
   server: {
     handlers: {
-      GET: async () => {
+      GET: createSitemapHandler(async () => {
         const posts = await fetchAllPosts()
 
-        const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://myapp.com/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  ${posts
-    .map(
-      (post) => `
-  <url>
-    <loc>https://myapp.com/posts/${post.id}</loc>
-    <lastmod>${post.updatedAt}</lastmod>
-    <changefreq>weekly</changefreq>
-  </url>`,
-    )
-    .join('')}
-</urlset>`
-
-        return new Response(sitemap, {
-          headers: {
-            'Content-Type': 'application/xml',
-          },
-        })
-      },
+        return [
+          { url: '/', changeFrequency: 'daily', priority: 1 },
+          ...posts.map((post) => ({
+            url: `/posts/${post.slug}`,
+            lastModified: post.updatedAt,
+            changeFrequency: 'weekly' as const,
+          })),
+        ]
+      }),
     },
   },
 })
 ```
+
+Relative URLs such as `/posts/hello` are resolved against the origin of the incoming request. If your app runs behind a proxy and sees an internal host, set `baseUrl` explicitly. You can also pass response headers, which is a good place to let your CDN cache the sitemap:
+
+```ts
+GET: createSitemapHandler(generateEntries, {
+  baseUrl: 'https://myapp.com',
+  headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=86400' },
+}),
+```
+
+Each entry supports `url`, `lastModified`, `changeFrequency`, `priority`, localized `alternates.languages`, `images` and `videos`. The shape matches Next.js' `MetadataRoute.Sitemap`, so an existing `sitemap.ts` generator can usually be reused as-is.
+
+The generator receives the server route context (`request`, `params`, `context`), so it can use request data or values from [middleware](./middleware).
+
+### Large Sitemaps
+
+A single sitemap file may contain at most 50,000 URLs. For larger sites, split the URLs across several sitemaps with a [prefix/suffix path param](/router/latest/docs/framework/react/guide/path-params) and list them in a sitemap index:
+
+```ts
+// src/routes/sitemap[.]xml.ts
+import { createFileRoute } from '@tanstack/react-router'
+import { createSitemapIndexHandler } from '@tanstack/react-start/server'
+
+const PAGE_SIZE = 50_000
+
+export const Route = createFileRoute('/sitemap.xml')({
+  server: {
+    handlers: {
+      GET: createSitemapIndexHandler(async () => {
+        const total = await countProducts()
+        const pages = Math.ceil(total / PAGE_SIZE)
+
+        return Array.from({ length: pages }, (_, id) => ({
+          url: `/sitemap-${id}.xml`,
+        }))
+      }),
+    },
+  },
+})
+```
+
+```ts
+// src/routes/sitemap-{$id}[.]xml.ts
+import { createFileRoute } from '@tanstack/react-router'
+import { createSitemapHandler } from '@tanstack/react-start/server'
+
+export const Route = createFileRoute('/sitemap-{$id}.xml')({
+  server: {
+    handlers: {
+      GET: createSitemapHandler(async ({ params }) => {
+        const products = await getProducts({
+          offset: Number(params.id) * PAGE_SIZE,
+          limit: PAGE_SIZE,
+        })
+
+        return products.map((product) => ({
+          url: `/products/${product.slug}`,
+          lastModified: product.updatedAt,
+        }))
+      }),
+    },
+  },
+})
+```
+
+If you need the XML string itself, for example to write it to storage, use `renderSitemap(entries, { baseUrl })` and `renderSitemapIndex(entries, { baseUrl })`.
 
 ## robots.txt
 
@@ -362,31 +413,35 @@ This file will be served automatically at `/robots.txt`. This is the most common
 
 ### Dynamic robots.txt
 
-For more complex scenarios (e.g., different rules per environment), you can create a robots.txt file using a [server route](./server-routes):
+For rules that depend on the environment or the request, use `createRobotsHandler`:
 
 ```ts
 // src/routes/robots[.]txt.ts
 import { createFileRoute } from '@tanstack/react-router'
+import { createRobotsHandler } from '@tanstack/react-start/server'
 
 export const Route = createFileRoute('/robots.txt')({
   server: {
     handlers: {
-      GET: async () => {
-        const robots = `User-agent: *
-Allow: /
+      GET: createRobotsHandler(() => {
+        if (process.env.DEPLOY_ENV !== 'production') {
+          return { rules: { userAgent: '*', disallow: '/' } }
+        }
 
-Sitemap: https://myapp.com/sitemap.xml`
-
-        return new Response(robots, {
-          headers: {
-            'Content-Type': 'text/plain',
-          },
-        })
-      },
+        return {
+          rules: [
+            { userAgent: '*', allow: '/', disallow: ['/admin', '/api'] },
+            { userAgent: 'GPTBot', disallow: '/' },
+          ],
+          sitemap: '/sitemap.xml',
+        }
+      }),
     },
   },
 })
 ```
+
+Relative `sitemap` URLs are resolved the same way as in `createSitemapHandler`. To get the text without a response, use `renderRobots(robots, { baseUrl })`.
 
 ## Best Practices
 
