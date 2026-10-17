@@ -1,34 +1,27 @@
 /**
  * Start's Rsbuild integration registers its loaders by the path of their
  * compiled files, which do not exist when the tests run the TypeScript
- * sources, and Rspack loads loaders from disk. The test apps get equivalent
- * JavaScript loaders (`testLoaderFiles`), and `useTestLoaders` points the
- * Rspack rules at them.
+ * sources, and Rspack loads loaders from disk. The test apps get JavaScript
+ * loaders (`testLoaderFiles`) that run the TypeScript loaders the tests
+ * import, and `useTestLoaders` points the Rspack rules at them.
  */
 import path from 'node:path'
 import importProtectionLoader from '../src/rsbuild/import-protection-loader'
+import metadataLoader from '../src/rsbuild/start-compiler-metadata-loader'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
-/** Same as start-compiler-metadata-loader.ts. */
-const metadataLoader = `module.exports = function (source, map) {
-  const { metadataById } = this.getOptions()
-  const setBuildInfo = this['tanstack.start.setServerFnBuildInfo']
-  if (setBuildInfo) setBuildInfo(metadataById.get(this.resource) ?? null)
-  this.callback(null, source, map)
-}
-`
-
 /**
- * The import-protection loader shares its state with the plugin through its
- * options; the app's loader runs the TypeScript loader the tests import.
+ * An app loader running `loader` (the TypeScript loader the tests import,
+ * which shares its state with the plugin through its options) through a
+ * global.
  */
-const importProtectionLoaderGlobal = '__tanstackStartTestImportProtectionLoader'
-;(globalThis as Record<string, unknown>)[importProtectionLoaderGlobal] =
-  importProtectionLoader
-const delegatingImportProtectionLoader = `module.exports = function (...args) {
-  return globalThis.${importProtectionLoaderGlobal}.apply(this, args)
+function delegatingLoader(global: string, loader: unknown) {
+  ;(globalThis as Record<string, unknown>)[global] = loader
+  return `module.exports = function (...args) {
+  return globalThis.${global}.apply(this, args)
 }
 `
+}
 
 /** Loader file of the app in place of each compiled loader, by name. */
 const loaderFileNames = {
@@ -38,9 +31,14 @@ const loaderFileNames = {
 
 /** The loader files an app needs (`useTestLoaders` points the rules at them). */
 export const testLoaderFiles: Record<string, string> = {
-  [loaderFileNames['start-compiler-metadata-loader']]: metadataLoader,
-  [loaderFileNames['import-protection-loader']]:
-    delegatingImportProtectionLoader,
+  [loaderFileNames['start-compiler-metadata-loader']]: delegatingLoader(
+    '__tanstackStartTestMetadataLoader',
+    metadataLoader,
+  ),
+  [loaderFileNames['import-protection-loader']]: delegatingLoader(
+    '__tanstackStartTestImportProtectionLoader',
+    importProtectionLoader,
+  ),
 }
 
 /**
