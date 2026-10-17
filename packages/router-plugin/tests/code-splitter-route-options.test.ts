@@ -43,6 +43,25 @@ export const Route = createFileRoute('/posts')(options)
     expect(modules['virtual component']).not.toContain('first-marker')
     await expectValidModules(modules)
   })
+
+  it('written as methods are split, unless they use super', async () => {
+    const { modules } =
+      compileRouteModules(`${head}export const Route = createFileRoute('/')({
+  component() {
+    return <div>method-marker</div>
+  },
+  errorComponent() {
+    return <div>{super.toString()}</div>
+  },
+})
+`)
+    expect(modules.reference).toContain('tsr-split=component')
+    expect(modules.reference).not.toContain('method-marker')
+    expect(modules['virtual component']).toContain('method-marker')
+    expect(modules.reference).toContain('errorComponent()')
+    expect(modules.reference).not.toContain('tsr-split=errorComponent')
+    await expectValidModules(modules)
+  })
 })
 
 describe('split options that read the Route singleton', () => {
