@@ -97,12 +97,15 @@ test('still hands off native restoration when a custom key throws', () => {
 
 test('hands off native restoration when storage persistence throws', () => {
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-    throw new Error('storage unavailable')
-  })
+  const persist = vi
+    .spyOn(Object.getPrototypeOf(sessionStorage), 'setItem')
+    .mockImplementation(() => {
+      throw new Error('storage unavailable')
+    })
   createRouter()
   dispatchEvent(new PageTransitionEvent('pagehide'))
   expect(history.scrollRestoration).toBe('auto')
+  expect(persist).toHaveBeenCalledOnce()
   expect(warn).toHaveBeenCalledOnce()
 })
 

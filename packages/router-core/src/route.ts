@@ -1591,11 +1591,20 @@ export type RouteMask<TRouteTree extends AnyRoute> = {
   from: RoutePaths<TRouteTree>
   to?: any
   params?: any
-  search?: any
   hash?: any
   state?: any
   unmaskOnReload?: boolean
-}
+} & (
+  | {
+      /** Use the fully resolved main location search without mask processing. */
+      inheritSearch: true
+      search?: never
+    }
+  | {
+      inheritSearch?: false
+      search?: any
+    }
+)
 
 /**
  * @deprecated Use `ErrorComponentProps` instead.
