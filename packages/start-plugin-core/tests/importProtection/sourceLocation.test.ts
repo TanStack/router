@@ -501,6 +501,53 @@ export const b = run(() => getSecret())`,
       body: `export const a = new Api().run(() => getSecret())`,
       line: 3,
     },
+    // Source: mutation run R3c (the rest of the ip-analysis "Rsbuild
+    // original-source usage lookup" cluster).
+    {
+      name: 'an immediately invoked function',
+      env: 'client',
+      body: `export const a = (() => getSecret())()`,
+      line: 3,
+    },
+    {
+      name: 'a computed handler member of a server fn builder',
+      env: 'client',
+      body: `const handler = 'handler'
+export const a = createServerFn()[handler](() => getSecret())`,
+      line: 4,
+    },
+    {
+      name: 'a callback of a private method',
+      env: 'client',
+      body: `export class Api { #run(fn: () => unknown) { return fn() } go() { return this.#run(() => getSecret()) } }`,
+      line: 3,
+    },
+    {
+      name: 'a .handler of a callee whose name only contains ServerFn',
+      env: 'client',
+      body: `export const a = ServerFnRegistry.handler(() => getSecret())`,
+      line: 3,
+    },
+    {
+      name: 'a .server of a callee whose name only contains Middleware',
+      env: 'client',
+      body: `export const a = MiddlewareRegistry.server(() => getSecret())`,
+      line: 3,
+    },
+    {
+      name: 'createIsomorphicFn().client, then another .client method',
+      env: 'server',
+      body: `export const a = createIsomorphicFn().client(() => getSecret())
+export const b = api.client(() => getSecret())`,
+      line: 4,
+    },
+    {
+      name: 'loops in createServerOnlyFn, then an ordinary callback',
+      env: 'client',
+      body: `export const a = createServerOnlyFn(() => { for (const i of [1]) { getSecret() } for (let i = 0; i < 1; i++) { getSecret() } })
+export const b = run(() => getSecret())`,
+      line: 4,
+    },
   ] as const)('$env: $name', ({ env, body, line }) => {
     const provider = makeProvider('export {}\n', imports + body)
     expect(
@@ -512,6 +559,52 @@ export const b = run(() => getSecret())`,
       )?.line,
     ).toBe(line)
   })
+
+  // Source: mutation run R3c (spc:326, 328).
+  test('a type-only import specifier is not a use', () => {
+    const code = `import { createServerFn } from '@tanstack/react-start'
+import { type Secret, getSecret } from './secret.server'
+export const v: Secret = 1 as any
+export const leak = getSecret`
+    const provider = makeProvider('export {}\n', code)
+    expect(
+      findOriginalUsageLocation(
+        provider,
+        '/test/src/a.ts',
+        './secret.server',
+        'client',
+      )?.line,
+    ).toBe(4)
+  })
+
+  // Bug: the original-source usage lookup skips only functions passed
+  // directly to a compiler-safe boundary call (import-protection/analysis.ts
+  // `isInsideCompilerSafeBoundaryNodes`), but the client compile replaces a
+  // whole `createServerOnlyFn(...)` call, whatever its argument is (here a
+  // function wrapped in a call), so the use inside it never runs in the
+  // client; the lookup reports it instead of the real leak on the next line.
+  // Impact: where the location comes from the original source (Rsbuild;
+  // Vite when the compiled code has no use), the violation points at code
+  // the client never runs, not at the leak (location only).
+  // Source: mutation round 3 ip-analysis pin P2.
+  test.fails(
+    'client: a wrapped createServerOnlyFn argument is not a use, the ordinary callback after it is',
+    () => {
+      const provider = makeProvider(
+        'export {}\n',
+        `${imports}export const a = createServerOnlyFn(wrap(() => getSecret()))
+export const b = run(() => getSecret())`,
+      )
+      expect(
+        findOriginalUsageLocation(
+          provider,
+          '/test/src/a.ts',
+          './secret.server',
+          'client',
+        )?.line,
+      ).toBe(4)
+    },
+  )
 })
 
 describe('findPostCompileUsageLocation', () => {
