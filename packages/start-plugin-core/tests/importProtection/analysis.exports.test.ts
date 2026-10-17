@@ -6,7 +6,10 @@ import {
   getMockExportNamesBySource,
   getNamedExports,
   getImportSources,
+  getOrCreateImportAnalysis,
+  findPostCompileUsagePosFromResult,
 } from '../../src/import-protection/analysis'
+import type { TransformResult } from '../../src/import-protection/sourceLocation'
 
 describe('isValidExportName', () => {
   test('rejects "default"', () => {
@@ -275,4 +278,24 @@ test('namespace and default re-exports are import sources without named exports'
     code.indexOf('denied-a'),
   )
   expect(getImportSpecifierLocationFromResult(result, 'denied-c')).toBe(-1)
+})
+
+describe('ImportAnalysis memory footprint', () => {
+  test('does not retain parsedAst or analysis.ast after buildImportAnalysis', () => {
+    const result: TransformResult = {
+      code: `import { foo } from 'bar';\nconsole.log(foo);`,
+      map: undefined,
+      originalCode: undefined,
+    }
+    const analysis = getOrCreateImportAnalysis(result)
+    expect(analysis.importSourcesInOrder).toEqual(['bar'])
+    expect(result.parsedAst).toBeUndefined()
+    expect(analysis.ast).toBeUndefined()
+
+    // When finding usage position, it finds the usage correctly and cleans up the AST
+    const usage = findPostCompileUsagePosFromResult(result, 'bar')
+    expect(usage).toBeDefined()
+    expect(usage?.line).toBe(2)
+    expect(result.parsedAst).toBeUndefined()
+  })
 })
