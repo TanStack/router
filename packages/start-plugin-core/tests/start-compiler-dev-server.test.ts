@@ -43,6 +43,38 @@ export const fn = base.handler(async () => db.x())
   )
 })
 
+describe('Vite dev: server fns by id', () => {
+  // A dev server compiles modules on demand: the resolver must find server
+  // fns of modules compiled after it first loaded.
+  // Source: mutation round 3 sc-hosts 3.
+  test(
+    'SSR: a server fn of a module compiled after the resolver first loaded runs by id',
+    async () => {
+      const server = await startDevServer({
+        files: {
+          'src/first.ts': `import { createServerFn } from '@tanstack/react-start'
+export const first = createServerFn().handler(() => 'MARK_FIRST')
+`,
+          'src/later.ts': `import { createServerFn } from '@tanstack/react-start'
+export const later = createServerFn().handler(() => 'MARK_LATER')
+`,
+        },
+      })
+      /** Calls the server fn `name` of `url` the way an HTTP call does: by id. */
+      const callById = async (url: string, name: string) => {
+        const fn = (await server.import(url))[name]
+        const { getServerFnById } = await server.import(
+          '#tanstack-start-server-fn-resolver',
+        )
+        return (await getServerFnById(fn.functionId, { origin: 'client' }))({})
+      }
+      expect(await callById('/src/first.ts', 'first')).toBe('MARK_FIRST')
+      expect(await callById('/src/later.ts', 'later')).toBe('MARK_LATER')
+    },
+    timeout,
+  )
+})
+
 describe('Vite dev: editing a server fn handler', () => {
   // Source: replaces server-fn-resolver-module.test.ts "imports on every call
   // by default" and "keeps the imported module when memoizeModules is set",
