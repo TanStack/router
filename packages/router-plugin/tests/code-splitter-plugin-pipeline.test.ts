@@ -460,9 +460,10 @@ export const Route = createFileRoute('/')({ component: () => <p>page</p> })
           { env: 'client', files: { 'other.ts': 'export const Route = 1\n' } },
         ),
       })
-      outcome = (
-        await app.run(`await entry.mount(entry.Route.options.component)`)
-      ).html
+      outcome = String(
+        (await app.run(`await entry.mount(entry.Route.options.component)`))
+          .html,
+      )
     } catch (error) {
       if (error instanceof BuildError && /\bRoute\b/.test(error.message)) {
         outcome = 'refused naming Route'
