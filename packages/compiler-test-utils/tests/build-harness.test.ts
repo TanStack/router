@@ -279,6 +279,79 @@ export const noSideEffects = recordAnnotated('MARK_NO_SIDE_EFFECTS')
   )
 })
 
+// User ruling 2026-10-17 (dead-code references, widened): a name that is
+// never declared or imported must not survive into production client
+// output. The harness checks every production client build of the supported
+// bundlers.
+describe.each(['vite', 'rspack', 'webpack'] as const)(
+  'dangling names in production client output (%s)',
+  (bundler) => {
+    test(
+      'a chunk that reads a dangling name fails the build description',
+      async () => {
+        await expect(
+          bundleApp({
+            bundler,
+            env: 'client',
+            files: {
+              'entry.ts': `export function read() {
+  return [notDeclaredAnywhere, document.title]
+}
+`,
+            },
+          }),
+        ).rejects.toMatchObject({
+          name: 'DanglingNameError',
+          names: { 'entry.mjs': ['notDeclaredAnywhere'] },
+        })
+      },
+      timeout,
+    )
+
+    test(
+      'chunks that read only globals, probe names with typeof, and drop dead code with a dangling name pass',
+      async () => {
+        const app = await bundleApp({
+          bundler,
+          env: 'client',
+          files: {
+            'entry.ts': `function unused() {
+  return notDeclaredAnywhere
+}
+export async function read() {
+  queueMicrotask(() => {})
+  const { lazy } = await import('./lazy')
+  return [
+    lazy(),
+    typeof maybeDefined === 'undefined',
+    structuredClone({ a: 1 }).a,
+    window.location.pathname,
+    document.getElementById('root')?.id,
+    new URL('http://localhost/x').pathname,
+    Math.max(1, 2),
+  ]
+}
+declare const maybeDefined: unknown
+`,
+            'lazy.ts': `export const lazy = () => new Map([[1, 'lazy']]).get(1)
+`,
+          },
+        })
+        expect((await app.run('return entry.read()')).result).toEqual([
+          'lazy',
+          true,
+          1,
+          '/',
+          'root',
+          '/x',
+          2,
+        ])
+      },
+      timeout,
+    )
+  },
+)
+
 describe('registerCleanup', () => {
   test('receives the dispose() that removes the app directory', async () => {
     const cleanups: Array<() => Promise<void>> = []

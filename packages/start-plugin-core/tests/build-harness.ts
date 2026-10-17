@@ -367,6 +367,7 @@ export async function buildStart(
       bundler: bundler === 'vite' ? 'vite' : 'rspack',
       env,
       mode,
+      minify: target.minify,
       root: app.root,
       outDir: outputs[env].outDir,
       chunks: outputs[env].chunks,

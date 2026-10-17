@@ -13932,6 +13932,9 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      globals:
+        specifier: ^16.2.0
+        version: 16.4.0
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)

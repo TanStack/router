@@ -4,7 +4,9 @@
  * change. Writes a small app to disk, builds it with one of the bundlers the
  * router plugin supports, describes the emitted chunks (entry, eager, lazy)
  * and runs the output in a separate Node process (with a jsdom document for
- * client builds).
+ * client builds). Describing a production client build of Vite, Rspack or
+ * webpack rejects chunks that read a name that is neither declared,
+ * imported nor a global (`DanglingNameError`).
  *
  * Plugin-agnostic: the caller supplies the plugin of each build, and the
  * directory its apps live in (where their imports resolve).
@@ -205,6 +207,27 @@ export interface BuildResult {
   dispose: () => Promise<void>
 }
 
+/**
+ * A production client build emitted code that reads names no chunk declares
+ * or imports and that are no global of a browser or of Node.js: that code
+ * throws a ReferenceError when it runs. `names` lists them by chunk.
+ */
+export class DanglingNameError extends Error {
+  constructor(
+    readonly bundler: Bundler,
+    readonly names: Record<string, Array<string>>,
+  ) {
+    super(
+      `${bundler}: the production client build reads names that are never declared or imported:\n${Object.entries(
+        names,
+      )
+        .map(([fileName, list]) => `  ${fileName}: ${list.join(', ')}`)
+        .join('\n')}`,
+    )
+    this.name = 'DanglingNameError'
+  }
+}
+
 /** A build failed; `errors` are the bundler's error messages. */
 export class BuildError extends Error {
   constructor(
@@ -386,6 +409,7 @@ async function bundle(
     bundler,
     env,
     mode,
+    minify: config.minify,
     root,
     outDir: config.outDir,
     chunks: output,
@@ -842,6 +866,8 @@ export interface DescribeBuildInput {
   bundler: Bundler
   env: BuildEnv
   mode: BuildMode
+  /** Whether the build minified its output (default: `mode === 'production'`). */
+  minify?: boolean
   /** App root on disk. */
   root: string
   /** Absolute output directory the chunk file names are relative to. */
@@ -884,6 +910,16 @@ export async function describeBuild(
         map: JSON.parse(await readFile(`${file}.map`, 'utf8')) as SourceMap,
       }),
     })
+  }
+  if (
+    input.env === 'client' &&
+    input.mode === 'production' &&
+    bundler !== 'esbuild' &&
+    // webpack and Rspack only drop unused code inside a module when
+    // minifying; Rolldown's tree-shaking does not depend on it.
+    ((input.minify ?? true) || bundler === 'vite')
+  ) {
+    await checkDanglingNames(bundler, chunks)
   }
   const entries = chunks.filter((chunk) => chunk.isEntry)
   if (entries.length !== 1) {
@@ -951,6 +987,54 @@ export async function describeBuild(
         entryGlobal: input.entryGlobal,
       }),
     dispose: input.dispose,
+  }
+}
+
+/**
+ * Names production client chunks may read without declaring or importing
+ * them: the globals of browsers, of Node.js (ES modules: no CommonJS
+ * wrapper variables) and of the language, as the `globals` package lists
+ * them, and the globals framework runtimes define for themselves.
+ */
+let clientGlobals: Set<string> | undefined
+
+/**
+ * Globals a framework's own code defines: `_$HY` is the hydration state the
+ * script of Solid's `generateHydrationScript()` creates, which `solid-js/web`
+ * reads while hydrating.
+ */
+const frameworkGlobals = ['_$HY']
+
+/**
+ * Throws a `DanglingNameError` when production client chunks read a name
+ * that is neither declared, imported nor a global (user ruling "Dead-code
+ * references, widened", 2026-10-17: a dangling name that survives into a
+ * production client bundle is a bug; one in code the bundler deletes is
+ * fine). Names the chunks probe with `typeof` are allowed. esbuild is not
+ * checked: it is no supported production bundler of the ruling.
+ */
+async function checkDanglingNames(bundler: Bundler, chunks: Array<Chunk>) {
+  const [{ unboundNames }, { default: globals }] = await Promise.all([
+    import('./validate-module'),
+    import('globals'),
+  ])
+  clientGlobals ??= new Set([
+    ...Object.keys(globals.builtin),
+    ...Object.keys(globals.browser),
+    ...Object.keys(globals.nodeBuiltin),
+    ...frameworkGlobals,
+  ])
+  const dangling: Record<string, Array<string>> = {}
+  for (const chunk of chunks) {
+    const names = [...unboundNames(chunk.code)].filter(
+      (name) => !clientGlobals!.has(name),
+    )
+    if (names.length > 0) {
+      dangling[chunk.fileName] = names
+    }
+  }
+  if (Object.keys(dangling).length > 0) {
+    throw new DanglingNameError(bundler, dangling)
   }
 }
 

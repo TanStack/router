@@ -1197,8 +1197,9 @@ export const Route = ${route}
   })
 
   // The unused `makeOptions` of the two rows above may name a `Page` its
-  // module no longer declares (user ruling 2026-10-17: it never runs), as
-  // long as that dead code does not reach a production client bundle.
+  // module no longer declares (user ruling 2026-10-17, widened: the bundlers
+  // delete it), as long as that dead code does not reach a production client
+  // bundle (which the build harness also checks for any dangling name).
   test.each(
     clientBundlers.flatMap((bundler) =>
       [
@@ -2774,8 +2775,6 @@ export const Route = createFileRoute('$PATH')({
   component: () => <p>{label('page')}<Card /></p>,
 })`,
     ),
-    // Its placement only; that it renders the property is the goal below.
-    displayName,
   ]
 
   // Bug: page code the route file exports as a variable, and an exported
@@ -2943,6 +2942,22 @@ ${component}`,
     destructured,
     unreadExport,
   ]
+  /** Mounts the component of the route at `path` into #root. */
+  const mountEntry = `import { createElement } from 'react'
+import { flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
+import { routeTree } from './routeTree.gen'
+export { routeTree }
+/** Mounts the component of the route at \`path\` into #root. */
+export async function mount(path: string) {
+  const route = (routeTree.children as Array<any>).find(
+    (child) => child.options.path === path,
+  )
+  await route.options.component.preload?.()
+  const root = createRoot(document.getElementById('root')!)
+  flushSync(() => root.render(createElement(route.options.component)))
+}
+`
   const files = {
     'label.ts': `;(globalThis as any).labelLoaded = true
 export const label = 'label'
@@ -2963,21 +2978,7 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
     ...Object.fromEntries(
       cases.map((row) => [`routes/${row.file}.tsx`, row.route]),
     ),
-    'entry.ts': `import { createElement } from 'react'
-import { flushSync } from 'react-dom'
-import { createRoot } from 'react-dom/client'
-import { routeTree } from './routeTree.gen'
-export { routeTree }
-/** Mounts the component of the route at \`path\` into #root. */
-export async function mount(path: string) {
-  const route = (routeTree.children as Array<any>).find(
-    (child) => child.options.path === path,
-  )
-  await route.options.component.preload?.()
-  const root = createRoot(document.getElementById('root')!)
-  flushSync(() => root.render(createElement(route.options.component)))
-}
-`,
+    'entry.ts': mountEntry,
   }
 
   describe.each(clientBundlers)('%s', (bundler) => {
@@ -3013,14 +3014,25 @@ export async function mount(path: string) {
       // writes to the split component (property assignment) stay with the
       // binding they write"). Keeping a copy of the component and its write
       // in the route module as well is no fix: the page code then loads
-      // with the entry chunk. The control above checks the placement only.
+      // with the entry chunk. Its own app: the build harness rejects the
+      // production client output, whose entry chunk reads the undeclared
+      // `Page`.
       // Source: the #8504 probe (memos/splitter.md B6).
       // Impact: the app's entry throws when it loads ("Page is not
       // defined").
       test.fails(
         `${displayName.name} loads with its chunk and renders the property`,
         async () => {
-          const built = await app()
+          const built = await build({
+            bundler,
+            env: 'client',
+            sideEffects,
+            files: {
+              'routes/__root.tsx': rootRoute,
+              [`routes/${displayName.file}.tsx`]: displayName.route,
+              'entry.ts': mountEntry,
+            },
+          })
           const { html } = await built.run(`await entry.mount('/display-name')`)
           expect({ placement: built.where(displayName.marker), html }).toEqual({
             placement: 'lazy',
@@ -3811,7 +3823,8 @@ export const Route = createFileRoute('/')({ component: Page })
   // Bug: same root cause as above, for an unused module-level object that
   // names the split component: the route module keeps the object but loses
   // `Page`. Rolldown keeps the object, as reading an undeclared binding can
-  // throw.
+  // throw. (The build harness now rejects that output before it runs: its
+  // entry chunk reads the undeclared `Page`.)
   // Source: Wave B (a Vite Start client bundle crashed on it).
   // Impact: the client bundle throws when the route module loads ("Page is
   // not defined"), so the app never renders.
