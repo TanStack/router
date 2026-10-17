@@ -78,15 +78,11 @@ runNodeProgram(${JSON.stringify(program)}, { timeout: 120_000 }).catch(() => {})
     ],
     { stdio: 'ignore' },
   )
-  let pid: number | undefined
   onTestFinished(async () => {
     starter.kill('SIGKILL')
-    if (pid !== undefined && isRunning(pid)) {
-      process.kill(pid, 'SIGKILL')
-    }
     await rm(dir, { recursive: true, force: true })
   })
-  pid = await poll(
+  const pid = await poll(
     () =>
       readFile(pidFile, 'utf8').then(
         (text) => (text ? Number(text) : undefined),
@@ -94,12 +90,17 @@ runNodeProgram(${JSON.stringify(program)}, { timeout: 120_000 }).catch(() => {})
       ),
     'the program did not start',
   )
+  onTestFinished(() => {
+    if (isRunning(pid)) {
+      process.kill(pid, 'SIGKILL')
+    }
+  })
   expect(isRunning(pid)).toBe(true)
 
   starter.kill('SIGKILL')
 
   await poll(
-    async () => (isRunning(pid!) ? undefined : true),
+    () => Promise.resolve(isRunning(pid) ? undefined : true),
     'the program still runs after the process that started it was killed',
   )
   expect(isRunning(pid)).toBe(false)
