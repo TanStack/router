@@ -139,6 +139,7 @@ export const ${name} = (..._args: Array<unknown>) => '${marker}'
     const files = {
       ...routerRuntimeFiles,
       ...dependency('handlerDep', 'MARK_HANDLER_DEP'),
+      ...dependency('baseHandlerDep', 'MARK_BASE_HANDLER_DEP'),
       ...dependency('middlewareServer', 'MARK_MIDDLEWARE_SERVER'),
       ...dependency('middlewareValidator', 'MARK_MIDDLEWARE_VALIDATOR'),
       ...dependency('isomorphicServer', 'MARK_ISOMORPHIC_SERVER'),
@@ -156,18 +157,24 @@ export const fnMiddleware = createMiddleware({ type: 'function' })
   .validator((data: unknown) => middlewareValidator(data))
   .server(({ next }) => next({ context: { marker: middlewareServer() } }))
 `,
+      'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
       'src/fns.ts': `import {
   createIsomorphicFn,
   createServerFn,
   createServerOnlyFn,
 } from '@tanstack/react-start'
+import { base } from './base'
 import { fnMiddleware } from './middleware'
 import { handlerDep } from './deps/handlerDep'
+import { baseHandlerDep } from './deps/baseHandlerDep'
 import { isomorphicServer } from './deps/isomorphicServer'
 import { serverOnlyDep } from './deps/serverOnlyDep'
 export const fn = createServerFn()
   .middleware([fnMiddleware])
   .handler(async () => handlerDep())
+export const fromBase = base.handler(async () => baseHandlerDep())
 export const isomorphic = createIsomorphicFn()
   .server(() => isomorphicServer())
   .client(() => 'MARK_ISOMORPHIC_CLIENT')
@@ -207,10 +214,14 @@ export const Route = createFileRoute('/api')({
       'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-      'src/entry.ts': `export { fn, isomorphic, serverOnly } from './fns'
+      'src/entry.ts': `export { fn, fromBase, isomorphic, serverOnly } from './fns'
 export { fnMiddleware } from './middleware'
 export { startInstance } from './start'
 export { getRouter } from './router'
+`,
+      // The server-fn HTTP handler calls server fns through the resolver.
+      'src/ssr-entry.ts': `export * from './entry'
+export { getServerFnById } from '#tanstack-start-server-fn-resolver'
 `,
     }
 
@@ -229,7 +240,7 @@ const next = (options) => options
       build = await buildStart({
         bundler,
         files,
-        entry: 'src/entry.ts',
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
         registerCleanup: (cleanup) => {
           dispose = cleanup
         },
@@ -254,6 +265,12 @@ const next = (options) => options
         marker: 'MARK_HANDLER_DEP',
         run: `return await entry.fn()`,
         expected: 'MARK_HANDLER_DEP',
+      },
+      {
+        construct: 'a server fn handler of a builder imported from another module',
+        marker: 'MARK_BASE_HANDLER_DEP',
+        run: `return await entry.fromBase()`,
+        expected: 'MARK_BASE_HANDLER_DEP',
       },
       {
         construct: 'a function middleware .server()',
@@ -324,5 +341,22 @@ const next = (options) => options
         )
       },
     )
+
+    // An HTTP call of a client RPC runs the server fn of its id.
+    // Source: mutation round 3 sc-hosts 1 (no Rsbuild build made the
+    // compiler load another module, here the builder's).
+    test('each server fn of the client runs by its id in the SSR build', async () => {
+      const ids = (
+        await build.client.run(
+          `return [entry.fn.functionId, entry.fromBase.functionId]`,
+        )
+      ).result
+      const { result } = await build.ssr.run(`const results = []
+for (const id of ${JSON.stringify(ids)}) {
+  results.push(await (await entry.getServerFnById(id, { origin: 'client' }))({}))
+}
+return results`)
+      expect(result).toEqual(['MARK_HANDLER_DEP', 'MARK_BASE_HANDLER_DEP'])
+    })
   })
 })
