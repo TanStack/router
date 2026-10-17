@@ -400,6 +400,53 @@ function Widget(props: { data: { key: string; value: string } }) {
   ).toBe('[<p>Ada</p>]')
 })
 
+// Like `style={{ color: color }}`.
+test('client: the children read locals through a property value and a computed member alone', async () => {
+  expect(
+    await renderPage(`export function Page() {
+  const label = 'Ada'
+  const key = 'name'
+  const items = { name: 'Lovelace' }
+  return <Hydrate><p>{({ text: label }).text}{items[key]}</p></Hydrate>
+}`),
+  ).toBe('[<p>AdaLovelace</p>]')
+})
+
+// Optional members, method keys and other property names are pinned in
+// known-bugs-hydrate.test.ts.
+test('client: member names and object keys are no reads of a local declared later', async () => {
+  expect(
+    await renderPage(
+      `export function Page({ obj }) {
+  const el = <Hydrate><p>{obj.later}{({ later: '!' }).later}</p></Hydrate>
+  const later = 1
+  console.log(later)
+  return el
+}`,
+      { obj: { later: 'L' } },
+    ),
+  ).toBe('[<p>L!</p>]')
+})
+
+describe('globals', () => {
+  afterEach(() => {
+    delete (globalThis as { GlobalWidget?: unknown }).GlobalWidget
+    delete (globalThis as { hydrateDefaults?: unknown }).hydrateDefaults
+  })
+
+  test('client: a boundary spreading a global splits children rendering a global component', async () => {
+    Object.assign(globalThis, {
+      GlobalWidget: () => '<g></g>',
+      hydrateDefaults: { when: 'idle' },
+    })
+    expect(
+      await renderPage(`export function Page() {
+  return <Hydrate {...hydrateDefaults}><GlobalWidget /></Hydrate>
+}`),
+    ).toBe('[<g></g>]')
+  })
+})
+
 // Source: hydrateWhen.test.ts "retains captured local components and values
 // across extraction"
 test('client: the children render a local component and read a local value', async () => {
