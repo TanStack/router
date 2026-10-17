@@ -1,0 +1,45 @@
+name: Core Package Qualification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  core-package:
+    name: Qualify the normal router-core package
+    if: github.repository == 'BleedingDev/router'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      NX_NO_CLOUD: 'true'
+      NX_DAEMON: 'false'
+    steps:
+      - name: Checkout the event commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Tools
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+      - name: Check qualification scripts
+        run: node --test scripts/qualify-router-core-package.test.mjs
+      - name: Build, test and accept the exact core package
+        run: node scripts/qualify-router-core-package.mjs "$RUNNER_TEMP/router-core-package"
+      - name: Retain the exact core-only qualification archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: router-core-package-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/router-core-package
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
