@@ -451,6 +451,18 @@ export class Api extends Base {
     },
   )
 
+  test('a createServerOnlyFn wrapped in two calls runs only on the server', async () => {
+    const compiled = await compileAll(`${head}import { db } from './db.server'
+const wrap = <T,>(fn: T) => fn
+export const read = wrap(wrap(createServerOnlyFn(() => db.secret())))`)
+    const stubs = { './db.server': { db: { secret: () => 'secret' } } }
+    expect(importSources(compiled.client)).not.toContain('./db.server')
+    expect(settle((await evaluateModule(compiled.client, stubs)).read)).toBe(
+      serverOnlyError,
+    )
+    expect((await evaluateModule(compiled.ssr, stubs)).read()).toBe('secret')
+  })
+
   // On the server, a middleware `.server()` next to an isomorphic fn stays a
   // middleware: it is not compiled as the isomorphic fn's `.server()`.
   test('isomorphic, server-only and middleware implementations in one module reach only their environment', async () => {
@@ -931,5 +943,24 @@ export const fn = base.handler(async () => db.x())`
       stubs({ handler: (handler: unknown) => handler }),
     )
     expect(await fn()).toBe('x')
+  })
+
+  test('dev: a server fn imported through an export * of the Start package compiles after an unrelated edit', async () => {
+    const files = {
+      '/test/src/start.ts': `export * from '@tanstack/react-start'`,
+      '/test/src/other.ts': `export const x = 1`,
+    }
+    const { compiler, compile } = createStartCompiler({
+      env: 'client',
+      mode: 'dev',
+      files,
+    })
+    const code = `import { createServerFn } from './start'
+export const fn = createServerFn().handler(async () => 'secret-body')`
+    expect(await compile(code, '/test/src/a.ts')).not.toContain('secret-body')
+    compiler.invalidateModules(['/test/src/other.ts'])
+    const after = await compile(code, '/test/src/b.ts')
+    expect(after).not.toBeNull()
+    expect(after).not.toContain('secret-body')
   })
 })

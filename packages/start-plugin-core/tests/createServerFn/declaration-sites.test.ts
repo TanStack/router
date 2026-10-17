@@ -91,6 +91,22 @@ test.each(placements.filter((placement) => !placement.declarator))(
   },
 )
 
+// A top-level server fn wrapped in calls (e.g. user helpers registering or
+// typing it) never ships its handler to the client, whatever factories the
+// module imports.
+test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
+  'with %s imported, a server fn wrapped in two calls does not ship its handler to the client',
+  async (importHead) => {
+    await expectNoClientHandler(
+      placementModule(
+        importHead,
+        `const wrap = <T,>(fn: T) => fn
+export const fn = wrap(wrap(createServerFn().handler(async () => db.inner())))`,
+      ),
+    )
+  },
+)
+
 // A user error, reported as such.
 test('rejects a validator call without a validator', async () => {
   for (const output of outputs) {
