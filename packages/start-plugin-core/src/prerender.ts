@@ -36,16 +36,20 @@ export async function prerender({
     let pages = startConfig.pages.length ? startConfig.pages : [{ path: '/' }]
 
     if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
-      const pagesMap = new Map(pages.map((item) => [getPageKey(item), item]))
+      const pagesMap = new Map(
+        pages
+          .filter((item) => !isSpaShellPage(item))
+          .map((item) => [item.path, item]),
+      )
       const discoveredPages = globalThis.TSS_PRERENDABLE_PATHS || []
 
       for (const page of discoveredPages) {
-        if (!pagesMap.has(getPageKey(page))) {
-          pagesMap.set(getPageKey(page), page)
+        if (!pagesMap.has(page.path)) {
+          pagesMap.set(page.path, page)
         }
       }
 
-      pages = Array.from(pagesMap.values())
+      pages = [...pagesMap.values(), ...pages.filter(isSpaShellPage)]
     }
 
     startConfig.pages = pages
@@ -96,9 +100,12 @@ export async function prerender({
       return page.path
     }
 
+    const routePage = startConfig.pages.find(
+      (candidate) => candidate.path === page.path && !isSpaShellPage(candidate),
+    )
     const shellFile = getOutputFilepath(getOutputFilename(page, 'text/html'))
     const routeFile = getOutputFilepath(
-      getOutputFilename({ path: page.path }, 'text/html'),
+      getOutputFilename(routePage ?? { path: page.path }, 'text/html'),
     )
     if (shellFile === routeFile) {
       return page.path

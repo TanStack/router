@@ -168,6 +168,46 @@ describe('prerendering with SPA mode', () => {
       expect(routeRequests).toEqual(['/about/'])
     },
   )
+
+  it.each([
+    { name: 'with static path discovery', prerender: { enabled: true } },
+    {
+      name: 'without static path discovery',
+      prerender: { enabled: true, autoStaticPathsDiscovery: false },
+    },
+  ])(
+    'keeps a listed "/" in the sitemap when the shell owns index.html $name',
+    async ({ prerender }) => {
+      const { read } = await build({
+        spa: { enabled: true, prerender: { outputPath: 'index.html' } },
+        prerender,
+        pages: [{ path: '/', sitemap: { priority: 1 } }, { path: '/about' }],
+      })
+
+      await expect(read('index.html')).resolves.toBe(shellDocument)
+      await expect(read('sitemap.xml')).resolves.toContain(
+        '<loc>https://example.com/</loc>',
+      )
+      expect(JSON.parse(await read('pages.json')).pages).toContainEqual({
+        path: '/',
+        sitemap: { priority: 1 },
+      })
+    },
+  )
+
+  it('keeps the shell file when "/" is configured to write it', async () => {
+    const { read, routeRequests } = await build({
+      spa: { enabled: true },
+      prerender: { enabled: true },
+      pages: [
+        { path: '/', prerender: { outputPath: '/_shell' } },
+        { path: '/about' },
+      ],
+    })
+
+    await expect(read('_shell.html')).resolves.toBe(shellDocument)
+    expect(routeRequests).toEqual(['/about/'])
+  })
 })
 
 describe('prerendering without SPA mode', () => {
