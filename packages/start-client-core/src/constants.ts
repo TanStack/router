@@ -3,6 +3,8 @@ export const TSS_SERVER_FUNCTION = Symbol.for('TSS_SERVER_FUNCTION')
 export const TSS_SERVER_FUNCTION_FACTORY = Symbol.for(
   'TSS_SERVER_FUNCTION_FACTORY',
 )
+/** Published by the client RPC module so revived server function references reuse it. */
+export const TSS_CLIENT_RPC = Symbol.for('TSS_CLIENT_RPC')
 
 export const X_TSS_SERIALIZED = 'x-tss-serialized'
 export const X_TSS_RAW_RESPONSE = 'x-tss-raw'
