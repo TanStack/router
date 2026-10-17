@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { afterAll, bench, describe, expect } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 import { runWithStartContext } from '@tanstack/start-storage-context'
 import { createMiddleware } from '../src/createMiddleware'
 import { executeMiddleware } from '../src/createServerFn'
@@ -284,17 +284,23 @@ for (const scenario of scenarios) {
   describe(`function middleware ${scenario.name}`, () => {
     let workload: ReturnType<typeof createWorkload> | undefined
 
-    bench('160 calls', () => workload!.batch(), {
-      ...benchOptions,
-      // Tinybench awaits setup before warmup and measurement. Only selected cases
-      // allocate fixtures, and the measured callback contains no assertions.
-      setup: async () => {
-        if (!workload) {
-          workload = createWorkload(scenario)
-          workloads.push(workload)
-        }
-        await workload.verify()
-      },
+    test('160 calls', async ({ bench }) => {
+      await bench(
+        '160 calls',
+        {
+          // Tinybench awaits beforeAll before warmup and measurement. Only
+          // selected cases allocate fixtures, and the measured callback
+          // contains no assertions.
+          beforeAll: async () => {
+            if (!workload) {
+              workload = createWorkload(scenario)
+              workloads.push(workload)
+            }
+            await workload.verify()
+          },
+        },
+        () => workload!.batch(),
+      ).run(benchOptions)
     })
   })
 }
@@ -303,15 +309,20 @@ for (const env of ['server', 'client'] as const) {
   describe(`function middleware ${env}-mixed-75-absent-25-supplied-layers-4`, () => {
     let workload: ReturnType<typeof createMixedWorkload> | undefined
 
-    bench('160 calls', () => workload!.batch(), {
-      ...benchOptions,
-      setup: async () => {
-        if (!workload) {
-          workload = createMixedWorkload(env)
-          workloads.push(workload)
-        }
-        await workload.verify()
-      },
+    test('160 calls', async ({ bench }) => {
+      await bench(
+        '160 calls',
+        {
+          beforeAll: async () => {
+            if (!workload) {
+              workload = createMixedWorkload(env)
+              workloads.push(workload)
+            }
+            await workload.verify()
+          },
+        },
+        () => workload!.batch(),
+      ).run(benchOptions)
     })
   })
 }

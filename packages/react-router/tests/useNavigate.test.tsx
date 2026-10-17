@@ -1,5 +1,4 @@
 import React, { act } from 'react'
-import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   cleanup,

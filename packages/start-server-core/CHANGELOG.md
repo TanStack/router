@@ -1,5 +1,16 @@
 # @tanstack/start-server-core
 
+## 1.169.44
+
+### Patch Changes
+
+- [#8212](https://github.com/TanStack/router/pull/8212) [`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031) - Render generated script preloads (`modulepreload`, or `preload as="script"` for IIFE output) with `fetchPriority="low"` and forward it into static Early Hints, so they no longer compete with render-blocking stylesheets, fonts and images.
+
+- Updated dependencies [[`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031)]:
+  - @tanstack/router-core@1.171.38
+  - @tanstack/start-client-core@1.170.38
+  - @tanstack/start-storage-context@1.167.40
+
 ## 1.169.43
 
 ### Patch Changes

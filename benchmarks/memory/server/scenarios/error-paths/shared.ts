@@ -136,7 +136,7 @@ export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
-  const runRedirect = () =>
+  const runRedirect = async () =>
     runSequentialRequestLoop(handler, {
       random: redirectRandom,
       iterations: errorPathsIterations,
@@ -144,7 +144,7 @@ export function createWorkloadGroup(
       validateResponse: validateRedirectResponse,
     })
 
-  const runNotFound = () =>
+  const runNotFound = async () =>
     runSequentialRequestLoop(handler, {
       random: notFoundRandom,
       iterations: errorPathsIterations,
@@ -152,7 +152,7 @@ export function createWorkloadGroup(
       validateResponse: validateNotFoundResponse,
     })
 
-  const runError = () =>
+  const runError = async () =>
     runSequentialRequestLoop(handler, {
       random: errorRandom,
       iterations: errorPathsIterations,
@@ -160,7 +160,7 @@ export function createWorkloadGroup(
       validateResponse: validateErrorResponse,
     })
 
-  const runUnmatched = () =>
+  const runUnmatched = async () =>
     runSequentialRequestLoop(handler, {
       random: unmatchedRandom,
       iterations: errorPathsIterations,
