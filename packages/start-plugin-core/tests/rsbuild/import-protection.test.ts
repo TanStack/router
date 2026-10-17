@@ -193,6 +193,28 @@ console.log(secret(), other)
     30_000,
   )
 
+  // Source: round 4 mutation testing (rsbuild host, entries without a
+  // module).
+  test.each([
+    { module: 'the entry module', file: 'src/entry.ts' },
+    { module: 'an imported module', file: 'src/other.ts' },
+  ])(
+    'a compile in which $module is missing reports only that',
+    async ({ file }) => {
+      const server = await startRsbuildDevServer({
+        importProtection: {},
+        files: app,
+      })
+      await server.edit({ [file]: null })
+      expect(server.errors).toEqual([
+        expect.stringMatching(
+          new RegExp(`Module not found.*${path.basename(file, '.ts')}`),
+        ),
+      ])
+    },
+    30_000,
+  )
+
   // Source: mutation run R3 ip-rsbuild R4 (the resolve cache of a previous
   // compile).
   test('a denied specifier that an edit makes resolve elsewhere is reported with its new target', async () => {
