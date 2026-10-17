@@ -69,9 +69,12 @@ test('a persistent observer releases an explicit match only with the destination
         select: (match) => match.routeId,
       })
       Solid.createRenderEffect(routeId, (currentRouteId) => {
-        observations.push({
-          routeId: currentRouteId,
-          destinationRendered: screen.queryByText('Next') !== null,
+        // Parent effects run before the Outlet's DOM swap in the same commit.
+        queueMicrotask(() => {
+          observations.push({
+            routeId: currentRouteId,
+            destinationRendered: screen.queryByText('Next') !== null,
+          })
         })
       })
       return <Outlet />
