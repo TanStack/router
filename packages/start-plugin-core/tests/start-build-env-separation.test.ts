@@ -460,3 +460,49 @@ export const greet = base.handler(async () => 'MARK_HANDLER')
     timeout,
   )
 })
+
+describe('Rsbuild: a build restored from the persistent cache', () => {
+  // With `performance.buildCache`, Rspack restores unchanged modules from
+  // its cache without running Start's compiler on them again; Start must
+  // still know their server fns.
+  // Source: mutation round 3 sc-hosts 9 (e2e apps custom-server-rsbuild and
+  // server-functions build with buildCache).
+  test(
+    'each server fn of the client runs by its id in the SSR build',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler: 'rsbuild',
+        builds: 2,
+        rsbuildConfig: { performance: { buildCache: true } },
+        files: {
+          'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { base } from './base'
+export const greet = createServerFn().handler(async () => 'MARK_GREET')
+export const fromBase = base.handler(async () => 'MARK_FROM_BASE')
+`,
+          'src/client-entry.ts': `export { greet, fromBase } from './fns'\n`,
+          'src/ssr-entry.ts': `export { greet, fromBase } from './fns'
+export { getServerFnById } from '#tanstack-start-server-fn-resolver'
+`,
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect(client.where(/MARK_GREET|MARK_FROM_BASE/)).toBe('nowhere')
+      const ids = (
+        await client.run(
+          `return [entry.greet.functionId, entry.fromBase.functionId]`,
+        )
+      ).result
+      const { result } = await ssr.run(`const results = []
+for (const id of ${JSON.stringify(ids)}) {
+  results.push(await (await entry.getServerFnById(id, { origin: 'client' }))({}))
+}
+return results`)
+      expect(result).toEqual(['MARK_GREET', 'MARK_FROM_BASE'])
+    },
+    timeout,
+  )
+})
