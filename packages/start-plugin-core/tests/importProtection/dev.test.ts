@@ -19,6 +19,7 @@ import {
   startProtectedDevServer,
 } from './start-apps'
 import type { ImportProtectionOptions } from '../../src/schema'
+import type { ViolationInfo } from '../../src/import-protection/trace'
 
 const timeout = 30_000
 
@@ -332,7 +333,7 @@ describe('onViolation', () => {
       const importers: Array<string> = []
       const server = await startProtectedDevServer(deniedFileApp, {
         onViolation: (info) => {
-          importers.push(info.importer)
+          importers.push((info as ViolationInfo).importer)
           return false
         },
       })

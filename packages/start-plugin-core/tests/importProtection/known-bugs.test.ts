@@ -14,6 +14,7 @@ import {
   serverFnFactoryApp,
   startProtectedDevServer,
 } from './start-apps'
+import type { RsbuildConfig } from '@rsbuild/core'
 
 const mockModule = `data:text/javascript,${encodeURIComponent(
   `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
@@ -349,13 +350,13 @@ describe('Vite dev, behavior "error"', () => {
 
 describe('Rsbuild dev', () => {
   /** A module type another loader compiles to JS (a stand-in for `.mdx`). */
-  const pageModules = {
+  const pageModules: RsbuildConfig = {
     tools: {
       rspack: {
         module: { rules: [{ test: /\.page$/, type: 'javascript/auto' }] },
       },
     },
-  } as const
+  }
 
   // Bug: Rsbuild import protection checks importers by file extension
   // (`isImportProtectionSourceFile`, rsbuild/import-protection.ts, only
@@ -368,7 +369,7 @@ describe('Rsbuild dev', () => {
   // Source: mutation run R3, ip-rsbuild R2 (REPORT §6 #2); the JS/TS
   // extensions are covered by rsbuild/import-protection.test.ts "is reported
   // and mocked when it is a .$extension file".
-  test.fails.each([
+  test.fails.each<{ name: string; files: Record<string, string> }>([
     {
       name: 'a denied file',
       files: {
