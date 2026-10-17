@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
+// A `!` prefix skips the configured normal loaders, such as builtin SWC, but
+// still runs pre loaders, including the Start compiler.
+// @ts-expect-error TypeScript can't resolve the inline loader prefix.
+import { getInlineLoaderGreeting } from '!../functions/inline-loader-fn.js'
 
 const getGreeting = createServerFn()
   .validator((d: { name: string }) => d)
@@ -22,6 +26,7 @@ function ServerFnsComponent() {
   const { loaderGreeting } = Route.useLoaderData()
   const [clientGreeting, setClientGreeting] = useState<string>('')
   const [echoResult, setEchoResult] = useState<string>('')
+  const [inlineLoaderGreeting, setInlineLoaderGreeting] = useState<string>('')
 
   return (
     <div className="p-2">
@@ -64,6 +69,23 @@ function ServerFnsComponent() {
           Call postMessage
         </button>
         {echoResult && <p data-testid="echo-result">{echoResult}</p>}
+      </section>
+
+      <section className="mt-2">
+        <h4>Server function imported with a `!` prefix</h4>
+        <button
+          type="button"
+          onClick={async () => {
+            const result = await getInlineLoaderGreeting()
+            setInlineLoaderGreeting(result.greeting)
+          }}
+          className="px-2 py-1 bg-blue-600 text-white rounded"
+        >
+          Call getInlineLoaderGreeting
+        </button>
+        {inlineLoaderGreeting && (
+          <p data-testid="inline-loader-greeting">{inlineLoaderGreeting}</p>
+        )}
       </section>
     </div>
   )
