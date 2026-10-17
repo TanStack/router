@@ -347,6 +347,27 @@ describe('Vite dev, behavior "error"', () => {
     },
     30_000,
   )
+
+  // Bug: same cause as the pin above, one module further: when the Start
+  // compiler's lookup of a server fn factory module resolves the module's
+  // imports, import protection records each imported module as a lookup
+  // module too (vite/import-protection-plugin/plugin.ts `resolveId`,
+  // "Propagate pre-transform status transitively"), by its path, so the
+  // client's own transform of that module is silenced as well.
+  // Impact: in dev with behavior "error", any module a server fn factory
+  // module imports gets the real denied module when it calls it at the top
+  // level, without any error (the control above fails to load).
+  // Source: mutation run R4 (spc:5168, 5169).
+  test.fails(
+    'a module a server fn factory module imports, calling a denied import at the top level, fails to load',
+    async () => {
+      const app = topLevelCallApp('src/other.ts')
+      app['src/factory.ts'] += `export { request } from './other'\n`
+      app['src/entry.ts'] = `export { fn } from './usage'\n`
+      expect(await loadOutcome(app)).toEqual(['client src/other.ts'])
+    },
+    30_000,
+  )
 })
 
 describe('Rsbuild dev', () => {
