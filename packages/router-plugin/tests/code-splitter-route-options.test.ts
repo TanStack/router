@@ -45,6 +45,20 @@ export const Route = createFileRoute('/posts')(options)
   })
 })
 
+// Source: TanStack/router#2361 and #3183, where non-ASCII text in a route
+// file was printed as escape sequences.
+it('keeps non-ASCII characters of strings and JSX text as written', () => {
+  const { modules } =
+    compileRouteModules(`${head}export const Route = createFileRoute('/')({
+  loader: () => ({ data: 'Usuário🤠' }),
+  component: () => <div title="标题">Usuário 🤡</div>,
+})
+`)
+  expect(modules.reference).toContain('Usuário🤠')
+  expect(modules['virtual component']).toContain('"标题"')
+  expect(modules['virtual component']).toContain('Usuário 🤡')
+})
+
 describe('split options that read the Route singleton', () => {
   // `Route` stays in the reference module, so reading it from a split option
   // must not attribute every dependency of the route options to that option.
