@@ -84,4 +84,53 @@ export const getRouter = () => ({ routeTree })
     },
     timeout,
   )
+
+  // The server starts before any browser loaded the client route tree.
+  // Source: mutation round 3 start-router I/J (spc:5972).
+  test(
+    'a route that becomes a page before the client loaded the route tree is in the client route tree',
+    async () => {
+      const server = await startDevServer({
+        start: {},
+        files: {
+          'src/routes/api.tsx': api(handlers('x')),
+          'src/router.ts': `import { routeTree } from './routeTree.gen'
+export const getRouter = () => ({ routeTree })
+`,
+        },
+      })
+      await server.edit({
+        'src/routes/api.tsx': api(`${handlers('x')}, ${component}`),
+      })
+      expect(Object.keys(await server.load('/src/routeTree.gen.ts'))).toContain(
+        '/src/routes/api.tsx',
+      )
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: route HMR', () => {
+  // Start's client code splitting adds route HMR, so an edited route module
+  // updates the live route in place (with the framework's refresh plugin,
+  // which this harness does not mount, the edit is then a hot update). Like
+  // route-hmr.test.ts "route HMR in a Vite dev server ...", this checks that
+  // the served client route module takes part in HMR; the server's does not
+  // need to.
+  // Source: mutation round 3 start-router I/J (spc:6046).
+  test(
+    'the client route module of a split page route takes part in HMR',
+    async () => {
+      const server = await startDevServer({
+        start: {},
+        files: {
+          'src/routes/page.tsx': `${head}export const Route = createFileRoute('/page')({ component: () => 'MARK_PAGE' })\n`,
+        },
+      })
+      expect(await server.transform('/src/routes/page.tsx')).toMatch(
+        /\bimport\.meta\.hot\b/,
+      )
+    },
+    timeout,
+  )
 })
