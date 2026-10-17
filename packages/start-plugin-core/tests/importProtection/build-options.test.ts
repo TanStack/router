@@ -223,6 +223,41 @@ export const read = () => getRequest()
       },
       timeout,
     )
+
+    // Source: round 4 mutation testing (rsbuild host, the pattern of a
+    // specifier violation).
+    test(
+      'a RegExp pattern is reported as the rule that matched',
+      async () => {
+        const seen: Array<Violation> = []
+        await rejection(
+          buildStart({
+            bundler,
+            files: {
+              ...dependency('db-lib'),
+              'src/entry.ts': userOf('db-lib'),
+            },
+            entry: 'src/entry.ts',
+            start: {
+              importProtection: {
+                client: { specifiers: [/^db-lib$/] },
+                onViolation: (info) => {
+                  seen.push(info as Violation)
+                },
+              },
+            },
+          }),
+        )
+        expect(
+          distinct(
+            seen
+              .filter((info) => info.envType === 'client')
+              .map((info) => `${info.specifier} ${String(info.pattern)}`),
+          ),
+        ).toEqual(['db-lib /^db-lib$/'])
+      },
+      timeout,
+    )
   })
 
   // `excludeFiles`: resolved files the file and marker rules skip; a value
@@ -340,6 +375,18 @@ export const secret = () => 'MARK_SECRET'
         reported: /^src\/marked\.ts:2:\d+$/,
         type: 'marker',
       },
+      // Source: round 4 mutation testing (rsbuild host, the type of a
+      // specifier violation).
+      {
+        name: 'a denied specifier',
+        files: {
+          'src/entry.ts': `import { getRequest } from '@tanstack/react-start/server'
+export const read = () => getRequest()
+`,
+        },
+        reported: /^src\/entry\.ts:2:\d+$/,
+        type: 'specifier',
+      },
     ])(
       'a callback that returns nothing does not allow $name: the build fails, and the callback gets a $type violation',
       async ({ files, reported, type }) => {
@@ -362,6 +409,37 @@ export const secret = () => 'MARK_SECRET'
           { environment: 'client', importer: expect.stringMatching(reported) },
         ])
         expect(distinct(seen.map((info) => info.type))).toEqual([type])
+      },
+      timeout,
+    )
+
+    // Source: mutation run R4 (spc:5137, the `specifier` type of the
+    // table above).
+    test(
+      'the callback gets a specifier violation for an import of a denied specifier',
+      async () => {
+        const seen: Array<Violation> = []
+        await rejection(
+          buildStart({
+            bundler,
+            files: {
+              'src/entry.ts': `import { getRequest } from '@tanstack/react-start/server'
+export const read = () => getRequest()
+`,
+            },
+            entry: 'src/entry.ts',
+            start: {
+              importProtection: {
+                onViolation: (info) => {
+                  seen.push(info as Violation)
+                },
+              },
+            },
+          }),
+        )
+        expect(
+          distinct(seen.map((info) => `${info.type} ${info.specifier}`)),
+        ).toEqual(['specifier @tanstack/react-start/server'])
       },
       timeout,
     )
@@ -517,4 +595,5 @@ interface Violation {
   specifier: string
   importer: string
   resolved?: string
+  pattern?: string | RegExp
 }

@@ -105,6 +105,31 @@ describe('Vue piece files', () => {
     })
   })
 
+  test('a component piece of a route with child routes leaves the children under the route', async () => {
+    const root = await createApp({
+      'src/routes/__root.ts': rootRoute('vue'),
+      'src/routes/posts.ts': fileRoute('/posts', '{}', 'vue'),
+      'src/routes/posts.component.vue': sfc('posts'),
+      'src/routes/posts.$postId.ts': fileRoute('/posts/$postId', '{}', 'vue'),
+      'src/routes/posts.$postId.edit.ts': fileRoute(
+        '/posts/$postId/edit',
+        '{}',
+        'vue',
+      ),
+    })
+    const { generatedRouteTree } = await generate(root, { target: 'vue' })
+
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.ts',
+      '/posts': 'routes/posts.ts',
+      '/posts/$postId': 'routes/posts.$postId.ts',
+      '/posts/$postId/edit': 'routes/posts.$postId.edit.ts',
+    })
+    expect((await routeOptionsOf(generatedRouteTree))['/posts']).toEqual({
+      component: lazyComponent('posts.component.vue'),
+    })
+  })
+
   // Control: the test above with pieces of other routes too.
 
   // Bug: when only the root route has piece files, the route tree calls

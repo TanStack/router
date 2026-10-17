@@ -4,7 +4,10 @@
  */
 import vm from 'node:vm'
 import { describe, expect, test } from 'vitest'
-import { startRsbuildDevServer } from '../rsbuild-dev-server'
+import {
+  startRsbuildDevServer,
+  startRsbuildStartDevServer,
+} from '../rsbuild-dev-server'
 
 const timeout = 30_000
 
@@ -67,6 +70,40 @@ console.log(fn1, fn2)
       expect(
         (await editFactory(importFrom, false)).match(/\bdb\.x\(\)/g),
       ).toHaveLength(2)
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild dev: removing a server fn module', () => {
+  // The generated server fn resolver lists every server fn by id; a module
+  // the app no longer has must leave it, or the next compile of the server
+  // never completes.
+  // Source: mutation round 3 sc-hosts 10 (spc:6802), with Start's whole
+  // Rsbuild plugin.
+  test(
+    'deleting a module with a server fn keeps the dev server compiling',
+    async () => {
+      const fn = (
+        name: string,
+      ) => `import { createServerFn } from '@tanstack/react-start'
+export const ${name} = createServerFn().handler(async () => 'MARK_${name}')
+`
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: 10_000,
+        files: {
+          'src/a.ts': fn('a'),
+          'src/b.ts': fn('b'),
+          'src/entry.ts': `export { a } from './a'\nexport { b } from './b'\n`,
+        },
+      })
+      await server.edit({
+        'src/b.ts': null,
+        'src/entry.ts': `export { a } from './a'\n`,
+      })
+      expect(server.errors).toEqual([])
+      const ssr = Object.values(await server.outputs('ssr')).join('\n')
+      expect(ssr).toContain('MARK_a')
     },
     timeout,
   )

@@ -75,6 +75,38 @@ export const later = createServerFn().handler(() => 'MARK_LATER')
   )
 })
 
+describe('Vite dev: virtual modules of other plugins', () => {
+  // Start's dev plugins load their own `\0` virtual modules; a virtual
+  // module of a plugin placed after Start's must still load from its plugin.
+  // Source: mutation round 3 sc-hosts 10 (spc:5579).
+  test(
+    'a virtual module of a plugin placed after the Start compiler loads',
+    async () => {
+      const resolvedId = '\0virtual:user-thing'
+      const server = await startDevServer({
+        plugins: [
+          {
+            name: 'user-virtual-module',
+            resolveId: (source) =>
+              source === 'virtual:user-thing' ? resolvedId : undefined,
+            load: (id) =>
+              id === resolvedId
+                ? `export const thing = 'MARK_USER_THING'\n`
+                : undefined,
+          },
+        ],
+        files: {
+          'src/uses-thing.ts': `export { thing } from 'virtual:user-thing'\n`,
+        },
+      })
+      expect((await server.import('/src/uses-thing.ts')).thing).toBe(
+        'MARK_USER_THING',
+      )
+    },
+    timeout,
+  )
+})
+
 describe('Vite dev: a server fn provider environment other than SSR', () => {
   // The RSC setup of a framework: the `rsc` environment runs the handlers,
   // and SSR forwards calls by id to it through the `getServerFnById` module

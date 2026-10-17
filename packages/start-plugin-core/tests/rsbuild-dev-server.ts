@@ -15,6 +15,7 @@ import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-de
 import { onTestFinished } from 'vitest'
 import { registerImportProtection } from '../src/rsbuild/import-protection'
 import { registerStartCompilerTransforms } from '../src/rsbuild/start-compiler-host'
+import { tanStackStartRsbuild } from '../src/rsbuild/plugin'
 import { startRuntimeFiles } from './build-harness'
 import { testLoaderFiles, useTestLoaders } from './rsbuild-test-loaders'
 import type { ImportProtectionOptions } from '../src/schema'
@@ -78,28 +79,87 @@ export function startRsbuildDevServer(
 }
 
 /**
+ * Starts an Rsbuild dev server with Start's whole Rsbuild plugin
+ * (`tanStackStartRsbuild`, with the options `@tanstack/react-start` passes):
+ * client and SSR environments, SSR as the server fn provider, and the
+ * generated server fn resolver. Both entries import `src/entry.ts`; the
+ * server entry also imports the server fn resolver, as Start's server
+ * handler does. `src/router.ts` and `src/routes/__root.tsx` are stubs unless
+ * the app has them.
+ */
+export function startRsbuildStartDevServer(
+  options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'>,
+): Promise<RsbuildDevServer> {
+  const { files, ...devServerOptions } = options
+  return createRsbuildDevServer({
+    dir: harnessDir,
+    prefix: '.start-rsbuild-start-dev-server-',
+    registerCleanup: onTestFinished,
+    ...devServerOptions,
+    files: {
+      ...startRuntimeFiles,
+      ...testLoaderFiles,
+      'harness/client-entry.ts': `import '../src/entry'\n`,
+      'harness/server-entry.ts': `import '../src/entry'
+import { getServerFnById } from '#tanstack-start-server-fn-resolver'
+export default { getServerFnById }
+`,
+      'harness/start.ts': `export const startInstance = undefined\n`,
+      'src/router.ts': `export const getRouter = () => undefined\n`,
+      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+      ...files,
+    },
+    plugins: ({ root }) => [
+      tanStackStartRsbuild({
+        framework: 'react',
+        defaultEntryPaths: {
+          client: path.join(root, 'harness/client-entry.ts'),
+          server: path.join(root, 'harness/server-entry.ts'),
+          start: path.join(root, 'harness/start.ts'),
+        },
+        providerEnvironmentName: 'ssr',
+        ssrIsProvider: true,
+      }),
+      useTestLoaders(root),
+    ],
+  })
+}
+
+/**
  * Runs the JavaScript the dev server's client environment emitted, like a
  * browser loading the page (in a fresh VM context). Returns what it logged
- * to the console, one message per call (`Error`s by their message).
+ * to the console, one message per call (`Error`s by their message), each
+ * prefixed with its console method (`warn: ...`) when `options.levels`.
  */
 export async function runRsbuildClient(
   server: Pick<RsbuildDevServer, 'outputs'>,
+  options: { levels?: boolean } = {},
 ): Promise<Array<string>> {
   const messages: Array<string> = []
-  const record = (...args: Array<unknown>) => {
-    messages.push(
-      args
-        .map((arg) =>
-          // errors of the VM context are not `instanceof Error` here
-          typeof arg === 'object' && arg !== null && 'message' in arg
-            ? String(arg.message)
-            : String(arg),
-        )
-        .join(' '),
-    )
-  }
+  const recorder =
+    (level: string) =>
+    (...args: Array<unknown>) => {
+      messages.push(
+        (options.levels ? `${level}: ` : '') +
+          args
+            .map((arg) =>
+              // errors of the VM context are not `instanceof Error` here
+              typeof arg === 'object' && arg !== null && 'message' in arg
+                ? String(arg.message)
+                : String(arg),
+            )
+            .join(' '),
+      )
+    }
   const context = vm.createContext({
-    console: { log: record, info: record, warn: record, error: record },
+    console: {
+      log: recorder('log'),
+      info: recorder('info'),
+      warn: recorder('warn'),
+      error: recorder('error'),
+    },
   })
   context.self = context
   context.globalThis = context
