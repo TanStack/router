@@ -5,6 +5,7 @@ import {
   getLookupKindsForEnv,
 } from '../src/start-compiler/compiler'
 import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
+import { createStartCompiler as createHostCompiler } from '../src/start-compiler/host'
 import {
   callProvider,
   clientOnlyError,
@@ -201,24 +202,43 @@ export const rendered = renderThing(<Card />)`)
   // The other shapes (a nested call; a module without a built-in factory)
   // are pinned in known-bugs-start-compiler.test.ts.
   test('runs configured transforms on a top-level call imported through a project re-export, next to a built-in factory', async () => {
-    const result = await compileWithTransform(
-      `import { renderThing } from './rt'
+    const files: Record<string, string> = {
+      '/test/src/rt.ts': `export { renderThing } from '@example/runtime'`,
+    }
+    const code = `import { renderThing } from './rt'
 import { createServerOnlyFn } from '@tanstack/react-start'
 export const only = createServerOnlyFn(() => 1)
-export const rendered = renderThing('card')`,
-      '/test/src/routes/card.tsx',
-      {
-        files: {
-          '/test/src/rt.ts': `export { renderThing } from '@example/runtime'`,
-        },
-        host: {
-          resolveId: async (id) =>
-            id.startsWith('./') ? `/test/src/${id.slice(2)}.ts` : id,
-        },
+export const rendered = renderThing('card')`
+    const compilerTransforms = [renderThingTransform]
+    // Created by the hosts' shared factory, as the bundler plugins do.
+    const compiler = createHostCompiler({
+      env: 'server',
+      envName: 'ssr',
+      root: '/test',
+      framework: 'react',
+      providerEnvName: 'ssr',
+      mode: 'build',
+      compilerTransforms,
+      getKnownServerFns: () => ({}),
+      loadModule: async (id) => {
+        if (files[id] !== undefined) {
+          compiler.ingestModule({ code: files[id], id })
+        }
       },
-    )
+      resolveId: async (id) =>
+        id.startsWith('./') ? `/test/src/${id.slice(2)}.ts` : id,
+    })
+    const result = (
+      await compiler.compile({
+        code,
+        id: '/test/src/routes/card.tsx',
+        detectedKinds: detectKindsInCode(code, 'server', {
+          compilerTransforms,
+        }),
+      })
+    )?.code
 
-    expect(result).not.toBeNull()
+    expect(result).toBeDefined()
     const { rendered } = await evaluateModule(result!, {
       './rt': runtimeStubs['@example/runtime'],
     })
