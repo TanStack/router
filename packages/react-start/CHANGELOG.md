@@ -1,5 +1,20 @@
 # @tanstack/react-start
 
+## 1.169.4
+
+### Patch Changes
+
+- [#8670](https://github.com/TanStack/router/pull/8670) [`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c) - Reference agent skills in other packages by their `intent load` identifier (`@tanstack/<package>#<skill>`) instead of relative file links that break once packages are installed.
+
+- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c), [`689a7c5`](https://github.com/TanStack/router/commit/689a7c5419de68bce0aaaef72b9a36f115ea1398)]:
+  - @tanstack/react-router@1.170.46
+  - @tanstack/start-client-core@1.170.39
+  - @tanstack/start-server-core@1.169.45
+  - @tanstack/react-start-client@1.168.44
+  - @tanstack/react-start-rsc@0.1.65
+  - @tanstack/react-start-server@1.167.52
+  - @tanstack/start-plugin-core@1.171.55
+
 ## 1.169.3
 
 ### Patch Changes
