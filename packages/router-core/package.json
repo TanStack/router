@@ -30,8 +30,19 @@
     "test:types:ts70": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "test:unit": "vitest",
+    "test:perf:server-load": "NODE_ENV=production vitest bench --config vitest.server-load.bench.config.ts --run",
     "test:unit:dev": "pnpm run test:unit --watch",
     "build": "vite build"
+  },
+  "nx": {
+    "targets": {
+      "test:perf:server-load": {
+        "dependsOn": [
+          "^build"
+        ],
+        "cache": false
+      }
+    }
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
