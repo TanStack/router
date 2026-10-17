@@ -34,8 +34,8 @@ benchmarks/memory/<server|client>/
 One app per scenario; apps and bench names are stable once landed (CodSpeed
 continuity). Never grow an existing scenario for a new case — add a scenario.
 `setup.ts` imports the built app and exports the concrete workload;
-`memory.bench.ts` registers `bench(...)` directly, and `memory.flame.ts` runs the
-same workload through the Flame profiler.
+`memory.bench.ts` registers it with Vitest's `bench` test fixture, and
+`memory.flame.ts` runs the same workload through the Flame profiler.
 
 ## How the memory instrument executes a bench
 
@@ -43,19 +43,21 @@ same workload through the Flame profiler.
   after a forced GC. Under plain `vitest bench` the suites only smoke-test:
   timing output is meaningless; real numbers come from CodSpeed.
 - Under CodSpeed the bench fn runs several warmup invocations plus the
-  measured one. Client suite hooks mount a fresh app before each invocation
-  and tear it down afterward, outside the measurement window. This prevents
-  warmup navigation history and caches from changing the starting state.
-  Module-level counters/LCGs keep generated URLs unique across invocations.
-- Plain `vitest bench` never runs suite hooks (`beforeEach`/`afterEach`) and
-  only honors tinybench's `setup`/`teardown` options; the CodSpeed runner
-  does the exact opposite. Client benches therefore register **both** — in
-  any given mode exactly one pair runs.
+  measured one. The bench's `beforeEach`/`afterEach` hooks
+  (`memoryBenchHooks`) run around every invocation, outside the measurement
+  window: client workloads mount a fresh app before each invocation and tear
+  it down afterward. This prevents warmup navigation history and caches from
+  changing the starting state. Plain `vitest bench` runs the same hooks around
+  its warmup and measured iteration. Module-level counters/LCGs keep generated
+  URLs unique across invocations.
+- Workload `run` functions must be `async` functions. CodSpeed's Vitest 5
+  provider awaits only `AsyncFunction`s; a plain function that returns a
+  promise would be measured only up to its first suspension.
 - Worker flags live in `runtime.ts` and apply only to the CodSpeed memory
   instrument. They supplement the integration's predictable execution flags;
   the retained overrides are described below.
-- Before each CodSpeed invocation, a setup hook yields to the event loop,
-  outside the measurement marker and before CodSpeed forces GC. Promise-only
+- Before each CodSpeed invocation, the `beforeEach` hook yields to the event
+  loop, outside the measurement marker and before CodSpeed forces GC. Promise-only
   warmup chains can keep WeakRef targets alive through a collection in the same
   job. Client app setup also runs before the forced GC.
 - Do not force GC inside a measured request loop or poll `heapUsed` to choose

@@ -1,5 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
+import { stripVTControlCharacters } from 'node:util'
 import { describe, expect, test, vi } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
 import { formatSnapshot } from '../format-snapshot'
@@ -27,7 +28,6 @@ async function compile(opts: {
   parserFilename?: string
   isProviderFile: boolean
   mode: 'dev' | 'build'
-  warn?: (message: string) => void
 }) {
   // Use an absolute path inside the test root to ensure consistent filename output
   let id = '/test/src/test.ts'
@@ -50,7 +50,6 @@ async function compile(opts: {
         kind: 'Root',
       },
     ],
-    warn: opts.warn,
     getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
@@ -127,8 +126,6 @@ describe('createServerFn compiles correctly', async () => {
 
   // Editors count \n, \r\n, a lone \r, U+2028 and U+2029 as line
   // terminators, so diagnostic locations must count every one.
-  // TODO remove upon stable with the inputValidator deprecation, after moving
-  // these line terminator cases to another located diagnostic.
   test.each([
     ['\\n', '\n'],
     ['\\r\\n', '\r\n'],
@@ -136,49 +133,24 @@ describe('createServerFn compiles correctly', async () => {
     ['U+2028', '\u2028'],
     ['U+2029', '\u2029'],
   ])(
-    'reports the inputValidator deprecation location with %s line endings',
+    'reports the location of a diagnostic with %s line endings',
     async (_name, eol) => {
-      const warn = vi.fn()
-      await compile({
+      const error = await compile({
         code: [
           `import { createServerFn } from '@tanstack/react-start'`,
-          `export const fn = createServerFn().inputValidator((x: string) => x).handler(async () => 1)`,
+          `export const { fn } = createServerFn().handler(async () => 1)`,
         ].join(eol),
         env: 'client',
         isProviderFile: false,
         mode: 'build',
-        warn,
-      })
+      }).catch((caught: unknown) => caught)
 
-      expect(warn).toHaveBeenCalledWith(
-        '/test/src/test.ts:2:19 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.',
+      expect(error).toBeInstanceOf(Error)
+      expect(stripVTControlCharacters((error as Error).message)).toMatch(
+        /> 2 \| export const \{ fn \} = createServerFn\(\)/,
       )
     },
   )
-
-  // TODO remove upon stable
-  test('should warn for deprecated inputValidator method', async () => {
-    const warn = vi.fn()
-    const code = `
-        import { createServerFn } from '@tanstack/react-start'
-        const myServerFn = createServerFn()
-          .inputValidator((input: string) => input)
-          .handler(({ input }) => input)`
-
-    await compile({
-      code,
-      env: 'client',
-      isProviderFile: false,
-      mode: 'build',
-      warn,
-    })
-
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.',
-      ),
-    )
-  })
 
   test('should work with identifiers of functions', async () => {
     const code = `

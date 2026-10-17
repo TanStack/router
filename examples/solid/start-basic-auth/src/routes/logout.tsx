@@ -1,11 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
-import { useAppSession } from '~/utils/session'
+import { getAppSession } from '~/utils/session'
 
 const logoutFn = createServerFn().handler(async () => {
-  const session = await useAppSession()
-
-  session.clear()
+  const session = await getAppSession()
+  session.destroy()
 
   throw redirect({
     href: '/',

@@ -1297,8 +1297,6 @@ export class StartCompiler {
         const methodChain: MethodChainPaths = {
           middleware: null,
           validator: null,
-          // TODO remove upon stable
-          inputValidator: null,
           handler: null,
           server: null,
           client: null,

@@ -36,23 +36,6 @@ test('restores data and context into fresh DOMs and includes follow-up renders',
   expect(schedulerTasks.size).toBe(1)
 })
 
-test('installs per-iteration preparation for the ordinary Vitest runner', async () => {
-  const scenario = setup()
-  const task: Parameters<typeof scenario.installIterationHooks>[0] = {
-    opts: {},
-  }
-  scenario.installIterationHooks(task)
-  for (let iteration = 0; iteration < 2; iteration++) {
-    await task.opts.beforeEach!()
-    try {
-      expect(scenario.snapshot().diagnostics.mounted).toBe(false)
-      await scenario.run()
-    } finally {
-      await task.opts.afterEach!()
-    }
-  }
-})
-
 test('rejects an empty measurement and still releases its sample', async () => {
   const scenario = setup()
   await scenario.before()

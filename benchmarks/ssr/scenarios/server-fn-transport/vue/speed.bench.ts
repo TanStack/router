@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertServerFnTransportScenario,
   runServerFnMultipartRequestLoop,
@@ -16,10 +16,8 @@ const context = await setupServerFnTransportBench(handler)
 
 await assertServerFnTransportScenario(handler, context)
 
-describe('ssr', () => {
-  bench(
-    'ssr server-fn multipart (vue)',
-    () => runServerFnMultipartRequestLoop(handler, context),
-    serverFnTransportBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr server-fn multipart (vue)', async () =>
+    runServerFnMultipartRequestLoop(handler, context),
+  ).run(serverFnTransportBenchOptions)
 })

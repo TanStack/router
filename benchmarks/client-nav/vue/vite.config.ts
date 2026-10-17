@@ -36,5 +36,6 @@ export default defineConfig({
     watch: false,
     environment: 'jsdom',
     setupFiles: [`${rootDir}vitest.setup.ts`],
+    benchmark: { include: ['vue/speed.bench.ts'] },
   },
 })
