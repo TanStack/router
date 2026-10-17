@@ -5,19 +5,28 @@
  * does more than silence the report; importers that are not exempt still get
  * the mock and a report. Client environment, mock mode. That nothing is
  * reported for an exempt importer is also checked in build-options.test.ts.
+ * Same ruling for a denied file `client.excludeFiles` / `server.excludeFiles`
+ * match (end of the file): its importers get the real module.
  */
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { afterAll, afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
 import { reportedViolations, startProtectedDevServer } from './start-apps'
-import type { StartBuild } from '../build-harness'
+import type { StartBuild, StartBundler } from '../build-harness'
 import type { ImportProtectionOptions } from '../../src/schema'
 
 const timeout = 60_000
 
 afterEach(() => {
   vi.restoreAllMocks()
-  delete (globalThis as { secretLoaded?: unknown }).secretLoaded
+  for (const loaded of [
+    'secretLoaded',
+    'vendorLoaded',
+    'widgetLoaded',
+    'packageLoaded',
+  ]) {
+    delete (globalThis as Record<string, unknown>)[loaded]
+  }
 })
 
 /**
@@ -223,3 +232,253 @@ describe.each(exemptions)(
     )
   },
 )
+
+/**
+ * `client.excludeFiles` / `server.excludeFiles` (user ruling 2026-10-17): a
+ * denied file the patterns match is not checked, so its importers get the
+ * real module and nothing is reported. Each use records whether its denied
+ * file ran:
+ * - `vendor`: `src/vendor/secret.server.ts`, denied to the client;
+ * - `widget`: `src/vendor/widget.client.ts`, denied to the server (SSR);
+ * - `package`: the `*.server.*` entry of the dependency `server-pkg`, which
+ *   the default patterns (`**\/node_modules/**`) match.
+ */
+const excludedFiles = {
+  'src/vendor/secret.server.ts': `;(globalThis as any).vendorLoaded = 'MARK_VENDOR_LOADED'
+export const secret = () => 'MARK_VENDOR'
+`,
+  'src/vendor/widget.client.ts': `;(globalThis as any).widgetLoaded = 'MARK_WIDGET_LOADED'
+export const widget = () => 'MARK_WIDGET'
+`,
+  'node_modules/server-pkg/package.json': JSON.stringify({
+    name: 'server-pkg',
+    type: 'module',
+    exports: { '.': './secret.server.js' },
+  }),
+  'node_modules/server-pkg/secret.server.js': `globalThis.packageLoaded = 'MARK_PACKAGE_LOADED'
+export const secret = () => 'MARK_PACKAGE'
+`,
+  'src/app/vendor-user.ts': `import { secret } from '../vendor/secret.server'
+export const vendorRead = () => secret()
+`,
+  'src/app/widget-user.ts': `import { widget } from '../vendor/widget.client'
+export const widgetRead = () => widget()
+`,
+  'src/app/package-user.ts': `import { secret } from 'server-pkg'
+export const packageRead = () => secret()
+`,
+  'src/entry.ts': `export { vendorRead } from './app/vendor-user'
+export { widgetRead } from './app/widget-user'
+export { packageRead } from './app/package-user'
+`,
+}
+
+type Use = { read: string; loaded: unknown }
+
+/** Each use of `excludedFiles`: what it returns, and whether its file ran. */
+type ExcludedOutcome = Record<'vendor' | 'widget' | 'package', Use> & {
+  reported: Array<string>
+}
+
+const excludedReadScript = `const read = (use, loaded) => {
+  let value
+  try { value = String(use()) } catch (error) { value = 'throws: ' + error }
+  return { read: value, loaded: globalThis[loaded] ?? null }
+}
+return {
+  vendor: read(entry.vendorRead, 'vendorLoaded'),
+  widget: read(entry.widgetRead, 'widgetLoaded'),
+  package: read(entry.packageRead, 'packageLoaded'),
+}`
+
+/** The real module of a use: its value, and its file ran. */
+const realModule = (name: string): Use => ({
+  read: `MARK_${name.toUpperCase()}`,
+  loaded: `MARK_${name.toUpperCase()}_LOADED`,
+})
+
+/** A mock: not the real value, and the denied file never ran. */
+const mockedModule = {
+  read: expect.not.stringMatching(/^MARK_/),
+  loaded: null,
+}
+
+/** Custom patterns that match `src/vendor`; `node_modules` stays excluded. */
+const vendorExcluded = ['**/vendor/**', '**/node_modules/**']
+
+const vendorExcludedOptions: ImportProtectionOptions = {
+  client: { excludeFiles: vendorExcluded },
+  server: { excludeFiles: vendorExcluded },
+}
+
+/**
+ * One mock-mode build of `excludedFiles` with `importProtection`, shared by
+ * the tests of the enclosing `describe`; what an environment's uses read,
+ * and the files it reports.
+ */
+function excludedBuild(
+  bundler: StartBundler,
+  importProtection: ImportProtectionOptions,
+) {
+  let built: Promise<StartBuild> | undefined
+  let dispose: (() => Promise<void>) | undefined
+  afterAll(() => dispose?.())
+  return async (environment: 'client' | 'ssr'): Promise<ExcludedOutcome> => {
+    built ??= buildStart({
+      bundler,
+      files: excludedFiles,
+      entry: 'src/entry.ts',
+      start: { importProtection: { ...importProtection, behavior: 'mock' } },
+      registerCleanup: (cleanup) => {
+        dispose = cleanup
+      },
+    })
+    const result = (await built)[environment]
+    const { result: read } = await result.run(excludedReadScript)
+    return {
+      ...(read as Omit<ExcludedOutcome, 'reported'>),
+      reported: reportedFiles(result.warnings),
+    }
+  }
+}
+
+describe.each(startBundlers)('%s build: excludeFiles', (bundler) => {
+  describe('custom patterns', () => {
+    const outcome = excludedBuild(bundler, vendorExcludedOptions)
+
+    test(
+      'client: the importer of a denied file client.excludeFiles matches gets the real module, and nothing is reported',
+      async () => {
+        const { vendor, reported } = await outcome('client')
+        expect({ vendor, reported }).toEqual({
+          vendor: realModule('vendor'),
+          reported: [],
+        })
+      },
+      timeout,
+    )
+    test(
+      'ssr: the importer of a denied file server.excludeFiles matches gets the real module, and nothing is reported',
+      async () => {
+        const { widget, reported } = await outcome('ssr')
+        expect({ widget, reported }).toEqual({
+          widget: realModule('widget'),
+          reported: [],
+        })
+      },
+      timeout,
+    )
+  })
+
+  describe('default patterns', () => {
+    const outcome = excludedBuild(bundler, {})
+
+    // Controls: the same files, which the default patterns do not match.
+    test(
+      'client: the importer of the same denied file outside the patterns gets the mock and is reported',
+      async () => {
+        const { vendor, reported } = await outcome('client')
+        expect({ vendor, reported }).toEqual({
+          vendor: mockedModule,
+          reported: expect.arrayContaining(['client src/app/vendor-user.ts']),
+        })
+      },
+      timeout,
+    )
+    test(
+      'ssr: the importer of the same denied file outside the patterns gets the mock and is reported',
+      async () => {
+        const { widget, reported } = await outcome('ssr')
+        expect({ widget, reported }).toEqual({
+          widget: mockedModule,
+          reported: expect.arrayContaining(['server src/app/widget-user.ts']),
+        })
+      },
+      timeout,
+    )
+    test(
+      'client: the importer of a denied file of a dependency gets the real module, and is not reported',
+      async () => {
+        const { package: used, reported } = await outcome('client')
+        expect({ package: used, reported }).toEqual({
+          package: realModule('package'),
+          reported: expect.not.arrayContaining([
+            'client src/app/package-user.ts',
+          ]),
+        })
+      },
+      timeout,
+    )
+  })
+})
+
+describe('vite dev: excludeFiles', () => {
+  /** Loads the entry as a browser would; what its uses read, and the logs. */
+  async function outcome(
+    importProtection: ImportProtectionOptions,
+  ): Promise<Omit<ExcludedOutcome, 'widget'>> {
+    const server = await startProtectedDevServer(
+      excludedFiles,
+      importProtection,
+    )
+    // The mock reports each use in the browser console.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    // Loads the dependency's files too (served from `/node_modules/`).
+    const module = await evaluateServed(server, '/src/entry.ts', {
+      skip: /^\/@(vite|react-refresh)\b/,
+    })
+    const read = (use: () => unknown, loaded: string): Use => {
+      let value: string
+      try {
+        value = String(use())
+      } catch (error) {
+        value = `throws: ${String(error)}`
+      }
+      return {
+        read: value,
+        loaded: (globalThis as Record<string, unknown>)[loaded] ?? null,
+      }
+    }
+    return {
+      vendor: read(module.vendorRead, 'vendorLoaded'),
+      package: read(module.packageRead, 'packageLoaded'),
+      reported: reportedFiles(server.logs),
+    }
+  }
+
+  test(
+    'custom patterns: the importer of a denied file client.excludeFiles matches gets the real module, and nothing is reported',
+    async () => {
+      const { vendor, reported } = await outcome(vendorExcludedOptions)
+      expect({ vendor, reported }).toEqual({
+        vendor: realModule('vendor'),
+        reported: [],
+      })
+    },
+    timeout,
+  )
+  test(
+    'default patterns: the importer of the same denied file outside the patterns gets the mock and is reported',
+    async () => {
+      const { vendor, reported } = await outcome({})
+      expect({ vendor, reported }).toEqual({
+        vendor: mockedModule,
+        reported: expect.arrayContaining(['client src/app/vendor-user.ts']),
+      })
+    },
+    timeout,
+  )
+  test(
+    'default patterns: the importer of a denied file of a dependency gets the real module, and is not reported',
+    async () => {
+      const { package: used, reported } = await outcome({})
+      expect({ package: used, reported }).toEqual({
+        package: realModule('package'),
+        reported: expect.not.arrayContaining([
+          'client src/app/package-user.ts',
+        ]),
+      })
+    },
+    timeout,
+  )
+})
