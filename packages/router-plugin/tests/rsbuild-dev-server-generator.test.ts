@@ -306,6 +306,21 @@ describe('route generator in webpack and Rspack watch mode', () => {
     }
   }
 
+  /**
+   * Polls `read` until its value contains `expected`, for at most 10 s, and
+   * returns the last value: the caller asserts on it, so that a missing
+   * outcome fails the test with what was read instead of a timeout.
+   */
+  async function readUntil(read: () => Promise<string>, expected: string) {
+    const deadline = Date.now() + 10_000
+    let value = await read()
+    while (!value.includes(expected) && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      value = await read()
+    }
+    return value
+  }
+
   test.each(['webpack', 'rspack'] as const)(
     '%s: a created route file is scaffolded and added to the route tree, and closing the watcher stops the generator',
     async (bundler) => {
@@ -369,15 +384,15 @@ describe('route generator in webpack and Rspack watch mode', () => {
       await until(() => builds > 0, 'the first build')
 
       await writeFile(file('routes/posts.js'), '')
-      await until(
-        async () =>
-          (await read('routes/posts.js')).includes("createFileRoute('/posts')"),
-        'the created route file to be scaffolded',
-      )
-      await until(
-        async () => (await read('routeTree.gen.js')).includes("path: '/posts'"),
-        'the route tree to have the created route',
-      )
+      expect(
+        await readUntil(
+          () => read('routes/posts.js'),
+          "createFileRoute('/posts')",
+        ),
+      ).toContain("createFileRoute('/posts')")
+      expect(
+        await readUntil(() => read('routeTree.gen.js'), "path: '/posts'"),
+      ).toContain("path: '/posts'")
 
       // Let the compiles the scaffolding caused finish, then close.
       let seen = -1
