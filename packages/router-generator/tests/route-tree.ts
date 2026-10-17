@@ -86,6 +86,12 @@ interface EvaluatedRoute {
   /** The route file, relative to the tree (null for a route without a file). */
   file: string | null
   options: Record<string, any>
+  /**
+   * The URL path the route matches: the `path` options of the route and its
+   * parents joined (a route without a `path`, such as a pathless layout,
+   * adds nothing to its parent's).
+   */
+  url: string
 }
 
 /**
@@ -154,16 +160,29 @@ async function evaluateRouteTree(treeFile: string) {
   )
 
   const routes: Array<EvaluatedRoute> = [
-    { id: '__root__', file: routeTree.file, options: routeTree.options },
+    {
+      id: '__root__',
+      file: routeTree.file,
+      options: routeTree.options,
+      url: '/',
+    },
   ]
-  const visit = (parentId: string, children: Record<string, any> = {}) => {
+  const visit = (
+    parentId: string,
+    parentUrl: string,
+    children: Record<string, any> = {},
+  ) => {
     for (const child of Object.values(children)) {
       const id = joinPaths(parentId, child.options.id)
-      routes.push({ id, file: child.file, options: child.options })
-      visit(id, child.children)
+      const url =
+        child.options.path === undefined
+          ? parentUrl
+          : joinPaths(parentUrl, child.options.path)
+      routes.push({ id, file: child.file, options: child.options, url })
+      visit(id, url, child.children)
     }
   }
-  visit('', routeTree.children)
+  visit('', '/', routeTree.children)
 
   /** The file a recorded lazy import (`() => import('…')…`) loads. */
   const lazyFile = async (importer: string) => {
@@ -229,4 +248,16 @@ export async function routeOptionsOf(
     result[route.id] = options
   }
   return result
+}
+
+/**
+ * Evaluates the generated route tree at `treeFile` (see `evaluateRouteTree`)
+ * and returns the URL path each route matches, by route id (the root route
+ * as `__root__`).
+ */
+export async function urlsOf(
+  treeFile: string,
+): Promise<Record<string, string>> {
+  const { routes } = await evaluateRouteTree(treeFile)
+  return Object.fromEntries(routes.map(({ id, url }) => [id, url]))
 }
