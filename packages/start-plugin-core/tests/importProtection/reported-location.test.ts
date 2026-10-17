@@ -9,7 +9,7 @@
  * Rsbuild: original source first), so each case runs on both.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../build-harness'
+import { buildStart, startBundlers } from '../build-harness'
 import { startRsbuildDevServer } from '../rsbuild-dev-server'
 import {
   distinct,
@@ -19,6 +19,9 @@ import {
   reportedViolations,
   startProtectedDevServer,
 } from './start-apps'
+import { violationReports } from './violation-report'
+import type { StartBundler } from '../build-harness'
+import type { ReportedTraceStep, ViolationReport } from './violation-report'
 
 const timeout = 60_000
 
@@ -184,6 +187,270 @@ describe('the reported location of a violation is the leaking use', () => {
       const reported = await reportedLocations(channel, code)
       expect(reported).toHaveLength(1)
       expect(expected).toContain(reported[0])
+    },
+    timeout,
+  )
+})
+
+/**
+ * The report of the one violation of a build of `files` (client entry
+ * `src/entry.ts`, default rules).
+ */
+async function buildReport(
+  bundler: StartBundler,
+  files: Record<string, string>,
+  { sourcemap = false } = {},
+): Promise<ViolationReport> {
+  const error = await rejection(
+    buildStart({ bundler, files, entry: 'src/entry.ts', sourcemap }),
+  )
+  const [report, ...others] = violationReports(error.message)
+  expect(others).toEqual([])
+  return report!
+}
+
+/** The modules of the steps of `trace`, without their locations. */
+const modulesOf = (trace: Array<ReportedTraceStep>) =>
+  trace.map(({ at }) => at.replace(/:\d+:\d+$/, ''))
+
+const secretServer = {
+  'src/secret.server.ts': `export const secret = () => 'secret'\n`,
+}
+
+/**
+ * The client entry imports `src/secret.server.ts` through `src/a.ts` and
+ * `src/b.ts`, each import after the first line of its module.
+ */
+const chain = {
+  ...secretServer,
+  'src/b.ts': `// helper
+export const one = 1
+import { secret } from './secret.server'
+export const leak = () => secret()
+`,
+  'src/a.ts': `export const two = 2
+export const three = 3
+import { leak } from './b'
+export const page = () => leak()
+`,
+  'src/entry.ts': `export const zero = 0
+export * from './a'
+`,
+}
+
+/** `src/b.ts` imports the denied module, and `src/a.ts` imports `b`. */
+const leakingB = {
+  ...secretServer,
+  'src/b.ts': `import { secret } from './secret.server'
+export const leak = () => secret()
+`,
+}
+
+// What a build reports about where a violation comes from: the trace of
+// imports from the entry to the importer, and the code frame of the use.
+describe.each(startBundlers)(
+  '%s build: the report of a violation',
+  (bundler) => {
+    let chainReport: Promise<ViolationReport> | undefined
+    /** The report of the `chain` build, built once. */
+    const reportOfChain = () =>
+      (chainReport ??= buildReport(bundler, chain, {}))
+
+    test(
+      'the trace lists each import from the entry, located at its specifier',
+      async () => {
+        const { importer, trace } = await reportOfChain()
+        expect(importer).toBe('src/b.ts:4:27')
+        expect(trace.map(({ entry }) => entry)).toEqual(
+          trace.map((_, index) => index === 0),
+        )
+        expect(
+          trace.slice(-3).map(({ at, imports }) => ({ at, imports })),
+        ).toEqual([
+          { at: 'src/entry.ts:2:16', imports: './a' },
+          { at: 'src/a.ts:3:23', imports: './b' },
+          { at: 'src/b.ts:4:27', imports: './secret.server' },
+        ])
+      },
+      timeout,
+    )
+
+    test(
+      'the code frame shows the import and the use, pointing at the use',
+      async () => {
+        expect((await reportOfChain()).code).toEqual({
+          line: 4,
+          pointsAt: 'secret()',
+          shows: expect.arrayContaining([
+            `import { secret } from './secret.server'`,
+            'export const leak = () => secret()',
+          ]),
+          location: 'src/b.ts:4:27',
+        })
+      },
+      timeout,
+    )
+
+    test(
+      'the trace is the shortest import chain',
+      async () => {
+        const { trace } = await buildReport(bundler, {
+          ...secretServer,
+          'src/s.ts': `import { secret } from './secret.server'
+export const s = () => secret()
+`,
+          'src/c.ts': `import { s } from './s'\nexport const c = () => s()\n`,
+          'src/a.ts': `import { c } from './c'
+import { s } from './s'
+export const page = () => c() + s()
+`,
+          'src/entry.ts': `export * from './a'\n`,
+        })
+        expect(modulesOf(trace).slice(-3)).toEqual([
+          'src/entry.ts',
+          'src/a.ts',
+          'src/s.ts',
+        ])
+      },
+      timeout,
+    )
+
+    // Bug (Vite): the trace of a Vite build starts at the first module of the
+    // trace that is in the source directory and not in `node_modules`: the
+    // Vite adapter does not record the imports of other modules in its import
+    // graph (vite/import-protection-plugin/plugin.ts). Rsbuild traces through
+    // them (and from the harness's client entry, outside `src`).
+    // Impact: the trace of a Vite build leaves out how the client reaches the
+    // importer when the chain goes through a module outside `src` (a shared
+    // directory of a monorepo, a dependency).
+    // Source: round 3 mutation testing (ip-location B2).
+    const outsideSrcTest = bundler === 'vite' ? test.fails : test
+    outsideSrcTest(
+      'the trace goes through modules outside the source directory',
+      async () => {
+        const { trace } = await buildReport(bundler, {
+          ...leakingB,
+          'shared/a.ts': `import { leak } from '../src/b'
+export const page = () => leak()
+`,
+          'src/entry.ts': `export * from '../shared/a'\n`,
+        })
+        expect(modulesOf(trace).slice(-3)).toEqual([
+          'src/entry.ts',
+          'shared/a.ts',
+          'src/b.ts',
+        ])
+      },
+      timeout,
+    )
+  },
+)
+
+// The trace locates each import on its line in the user's file, whatever
+// compiling the module moves.
+const movedImports: Record<
+  string,
+  { files: Record<string, string>; step: string; line: number }
+> = {
+  'a leading comment': {
+    files: {
+      ...leakingB,
+      'src/a.ts': `import { leak } from './b'\nexport const page = () => leak()\n`,
+      'src/entry.ts': `// entry
+export const zero = 0
+export * from './a'
+`,
+    },
+    step: 'src/entry.ts',
+    line: 3,
+  },
+  'a blank line': {
+    files: {
+      ...leakingB,
+      'src/a.ts': `export const two = 2
+
+import { leak } from './b'
+export const page = () => leak()
+`,
+      'src/entry.ts': `export * from './a'\n`,
+    },
+    step: 'src/a.ts',
+    line: 3,
+  },
+  'a type-only import': {
+    files: {
+      ...leakingB,
+      'src/types.ts': `export type Count = number\n`,
+      'src/a.ts': `import type { Count } from './types'
+export const count: Count = 1
+import { leak } from './b'
+export const page = () => leak() + count
+`,
+      'src/entry.ts': `export * from './a'\n`,
+    },
+    step: 'src/a.ts',
+    line: 3,
+  },
+}
+
+/** The rows of `movedImports` named `names`, built with `bundler`. */
+const movedImportRows = (
+  bundler: StartBundler,
+  sourcemap: boolean,
+  names: Array<string>,
+) =>
+  names.map((name) => ({
+    name,
+    build: `${bundler} build${sourcemap ? ' with source maps' : ''}`,
+    bundler,
+    sourcemap,
+    ...movedImports[name]!,
+  }))
+
+describe('the trace locates each import on its line after compiling moved it', () => {
+  async function stepLine({
+    bundler,
+    sourcemap,
+    files,
+    step,
+  }: ReturnType<typeof movedImportRows>[number]) {
+    const { trace } = await buildReport(bundler, files, { sourcemap })
+    const at = trace.find((candidate) => candidate.at.startsWith(`${step}:`))
+    return Number(at?.at.split(':')[1])
+  }
+
+  test.each([
+    ...movedImportRows('rsbuild', true, Object.keys(movedImports)),
+    ...movedImportRows('rsbuild', false, ['a leading comment']),
+  ])(
+    '$build: after $name',
+    async (row) => {
+      expect(await stepLine(row)).toBe(row.line)
+    },
+    timeout,
+  )
+
+  // Bug: a trace step's location is the import's position in the compiled
+  // code of the module unless import protection captured a source map of
+  // it: the Vite adapter captures one only for modules whose code names a
+  // denied file or specifier pattern or a marker
+  // (`shouldCaptureDiagnosticSourceMap` in
+  // vite/import-protection-plugin/plugin.ts), the Rsbuild adapter only when
+  // the build emits source maps. Compiling drops comments (Vite), blank
+  // lines and type-only imports, which moves the imports after them up.
+  // Impact: the trace points at the wrong line of the modules between the
+  // entry and the importer.
+  // Source: round 3 mutation testing (ip-location B1).
+  test.fails.each([
+    ...movedImportRows('vite', false, Object.keys(movedImports)),
+    ...movedImportRows('rsbuild', false, [
+      'a blank line',
+      'a type-only import',
+    ]),
+  ])(
+    '$build: after $name',
+    async (row) => {
+      expect(await stepLine(row)).toBe(row.line)
     },
     timeout,
   )
