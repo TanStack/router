@@ -53,6 +53,8 @@ export interface RsbuildDevServer {
   rebuilt: Array<string>
   /** Errors of the last compile. */
   errors: Array<string>
+  /** Warnings of the last compile. */
+  warnings: Array<string>
   /** Stops the dev server and removes the app directory. */
   close: () => Promise<void>
 }
@@ -77,6 +79,7 @@ export async function createRsbuildDevServer(
   let compiles = 0
   const rebuilt: Array<string> = []
   const errors: Array<string> = []
+  const warnings: Array<string> = []
   const waiters: Array<{ after: number; resolve: () => void }> = []
   /** Compiles start and finish in order: `compiles` counts the started ones. */
   let finished = 0
@@ -96,6 +99,7 @@ export async function createRsbuildDevServer(
         const all = 'stats' in stats ? stats.stats : [stats]
         rebuilt.length = 0
         errors.length = 0
+        warnings.length = 0
         for (const environmentStats of all) {
           const { compilation } = environmentStats
           for (const module of compilation.builtModules) {
@@ -106,6 +110,9 @@ export async function createRsbuildDevServer(
           }
           for (const error of compilation.errors) {
             errors.push(error.message)
+          }
+          for (const warning of compilation.warnings) {
+            warnings.push(warning.message)
           }
         }
         for (const waiter of [...waiters]) {
@@ -145,6 +152,8 @@ export async function createRsbuildDevServer(
 
   let rsbuild: RsbuildInstance
   let server: Awaited<ReturnType<RsbuildInstance['createDevServer']>>
+  /** The dev server once created, closed if its first compile fails. */
+  let created: typeof server | undefined
   try {
     rsbuild = await createRsbuild({
       cwd: root,
@@ -168,9 +177,15 @@ export async function createRsbuildDevServer(
       ),
     })
     server = await rsbuild.createDevServer()
+    created = server
     await compiled(0, 'the app')
   } catch (error) {
-    await app.dispose()
+    try {
+      // e.g. the first compile timed out: stop watching the app
+      await created?.close()
+    } finally {
+      await app.dispose()
+    }
     throw error
   }
 
@@ -214,6 +229,7 @@ export async function createRsbuildDevServer(
     },
     rebuilt,
     errors,
+    warnings,
     close,
   }
 }

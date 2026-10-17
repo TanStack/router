@@ -5,11 +5,12 @@
  * (`@tanstack/compiler-test-utils/rsbuild-dev-server`).
  * `@tanstack/react-start` is the stand-in package of the build harness
  * (`startRuntimeFiles`). With `importProtection`, Start's Rsbuild import
- * protection also runs on the `client` environment. The temporary apps live in
- * this directory.
+ * protection also runs on the `client` environment. `runRsbuildClient()` runs
+ * the emitted client code. The temporary apps live in this directory.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import vm from 'node:vm'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { onTestFinished } from 'vitest'
 import { registerImportProtection } from '../src/rsbuild/import-protection'
@@ -74,4 +75,36 @@ export function startRsbuildDevServer(
       useTestLoaders(root),
     ],
   })
+}
+
+/**
+ * Runs the JavaScript the dev server's client environment emitted, like a
+ * browser loading the page (in a fresh VM context). Returns what it logged
+ * to the console, one message per call (`Error`s by their message).
+ */
+export async function runRsbuildClient(
+  server: Pick<RsbuildDevServer, 'outputs'>,
+): Promise<Array<string>> {
+  const messages: Array<string> = []
+  const record = (...args: Array<unknown>) => {
+    messages.push(
+      args
+        .map((arg) =>
+          // errors of the VM context are not `instanceof Error` here
+          typeof arg === 'object' && arg !== null && 'message' in arg
+            ? String(arg.message)
+            : String(arg),
+        )
+        .join(' '),
+    )
+  }
+  const context = vm.createContext({
+    console: { log: record, info: record, warn: record, error: record },
+  })
+  context.self = context
+  context.globalThis = context
+  for (const code of Object.values(await server.outputs())) {
+    vm.runInContext(code, context)
+  }
+  return messages
 }
