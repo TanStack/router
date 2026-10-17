@@ -184,7 +184,8 @@ describe('compiler handles external import transforms', () => {
   })
 
   test('compiles IIFEs and curried calls in a module calling a configured transform', async () => {
-    const result = await compileWithTransform(`import { renderThing } from '@example/runtime'
+    const result =
+      await compileWithTransform(`import { renderThing } from '@example/runtime'
 const Card = () => 'card'
 export const value = (() => 1)()
 export const curried = ((a: number) => (b: number) => a + b)(1)(2)
@@ -424,18 +425,14 @@ export const so = createServerOnlyFn(() => 'server-body')`,
   ])(
     'leaves unrelated virtual runtime imports alone: $name',
     async ({ code }) => {
-      const result = await compileWithTransform(
-        code,
-        '/test/src/runtime.tsx',
-        {
-          host: {
-            resolveId: async (id) => `\0${id}`,
-            loadModule: async (id) => {
-              throw new Error(`cannot load ${id}`)
-            },
+      const result = await compileWithTransform(code, '/test/src/runtime.tsx', {
+        host: {
+          resolveId: async (id) => `\0${id}`,
+          loadModule: async (id) => {
+            throw new Error(`cannot load ${id}`)
           },
         },
-      )
+      })
 
       expect(result).not.toBeNull()
       expect(result).not.toContain('loadThing')

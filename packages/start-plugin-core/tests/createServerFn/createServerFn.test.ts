@@ -336,8 +336,7 @@ describe('server functions discovered in caller modules', () => {
         envName: env === 'client' ? 'client' : 'rsc',
         lookupKinds: getLookupKindsForEnv(env),
         lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
-        onServerFnsById: (serverFns) =>
-          mergeServerFnsById(reported, serverFns),
+        onServerFnsById: (serverFns) => mergeServerFnsById(reported, serverFns),
       })
       await caller.compile({ code, id: '/test/src/caller.ts' })
     }

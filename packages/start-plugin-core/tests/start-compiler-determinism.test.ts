@@ -180,10 +180,12 @@ export const a = createServerFn().handler(async () => 'from a')
 export const b = createServerFn().handler(async () => 'from b')
 export const c = createServerFn().handler(async () => 'from c')`
       const client = await evaluateModule(
-        (await compilerFor('client', '/app', registry, generateFunctionId)(
-          code,
-          id,
-        ))!,
+        (await compilerFor(
+          'client',
+          '/app',
+          registry,
+          generateFunctionId,
+        )(code, id))!,
       )
       const rpcs: Record<string, string> = {
         a: client.a.rpc.client,

@@ -983,22 +983,19 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()
 function Page() { return browserState }
 export default Page`,
     },
-  ])(
-    'a provider call does not evaluate $name',
-    async ({ code }) => {
-      const server = await compileServer(
-        `${head}export const getMessage = createServerFn().handler(() => 'server message')
+  ])('a provider call does not evaluate $name', async ({ code }) => {
+    const server = await compileServer(
+      `${head}export const getMessage = createServerFn().handler(() => 'server message')
 ${code}`,
-        { id: '/test/src/routes/message.tsx' },
-      )
-      expect(
-        await callProvider(server, 'getMessage', {
-          './browser': `throw new Error('browser-only module evaluated on the server')
+      { id: '/test/src/routes/message.tsx' },
+    )
+    expect(
+      await callProvider(server, 'getMessage', {
+        './browser': `throw new Error('browser-only module evaluated on the server')
 export const Widget = 1`,
-        }),
-      ).toBe('server message')
-    },
-  )
+      }),
+    ).toBe('server message')
+  })
 
   // Bug: the provider module (`?tss-serverfn-split`) keeps the `'use client'`
   // directive of its source module.

@@ -283,7 +283,8 @@ export { fn }`
   test.each(['fn', '_fn', '$fn', 'ñandú'])(
     'three redeclared var server fns named %s get distinct ids the provider serves',
     async (name) => {
-      const compiled = await compileAll(`${head}var ${name} = createServerFn().handler(async () => 1)
+      const compiled =
+        await compileAll(`${head}var ${name} = createServerFn().handler(async () => 1)
 var ${name} = createServerFn().handler(async () => 2)
 var ${name} = createServerFn().handler(async () => 3)
 export { ${name} }`)
