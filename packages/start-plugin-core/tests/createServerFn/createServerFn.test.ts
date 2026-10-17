@@ -5,6 +5,7 @@ import {
   getLookupKindsForEnv,
 } from '../../src/start-compiler/compiler'
 import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
+import { mergeServerFnsById } from '../../src/start-compiler/host'
 import { generateServerFnResolverModule } from '../../src/start-compiler/server-fn-resolver-module'
 import {
   callProvider,
@@ -59,6 +60,23 @@ describe('createServerFn compiles correctly', () => {
       )
     },
   )
+
+  test('reports the location of a diagnostic deep in the module', async () => {
+    const error = await compileFor(
+      'client',
+      [
+        `import { createServerFn } from '@tanstack/react-start'`,
+        ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
+        `export const { fn } = createServerFn().handler(async () => 1)`,
+      ].join('\n'),
+    ).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    const message = stripVTControlCharacters((error as Error).message)
+    expect(message).toMatch(/\b12\b[^\n]*export const \{ fn \}/)
+    // It points at that line: it does not quote the whole module.
+    expect(message).not.toContain('export const v0 = 0')
+  })
 
   test('should not remove handler identifier bindings that are still referenced', async () => {
     const compiled =
@@ -291,32 +309,38 @@ export const greetUser = createServerFn().handler(async () => 'second')`,
 // (N14).
 describe('server functions discovered in caller modules', () => {
   /**
-   * Compiles `code` in the caller environment `env` (the provider being a
-   * separate `rsc` environment), then generates the production resolver from
-   * the server fns the callers reported and links it to the provider, like
-   * the server-fn router. Returns the resolver's `getServerFnById` and the
-   * reported ids.
+   * Compiles `code` in each caller environment of `envs`, in order (the
+   * provider being a separate `rsc` environment), merging what they report
+   * into one registry like the hosts do, then generates the production
+   * resolver from it and links it to the provider, like the server-fn router.
+   * Returns the resolver's `getServerFnById` and the reported ids.
    */
-  async function resolverFor(env: 'client' | 'server', code: string) {
+  async function resolverFor(
+    envs: 'client' | 'server' | ReadonlyArray<'client' | 'server'>,
+    code: string,
+  ) {
     const reported: Record<string, ServerFn> = {}
     const options = {
-      envName: env === 'client' ? 'client' : 'rsc',
       root: '/test',
       framework: 'react' as const,
       providerEnvName: 'rsc',
       mode: 'build' as const,
       loadModule: async () => {},
-      lookupKinds: getLookupKindsForEnv(env),
-      lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
       resolveId: async (id: string) => id,
       getKnownServerFns: () => ({}),
     }
-    const caller = new StartCompiler({
-      ...options,
-      env,
-      onServerFnsById: (serverFns) => Object.assign(reported, serverFns),
-    })
-    await caller.compile({ code, id: '/test/src/caller.ts' })
+    for (const env of typeof envs === 'string' ? [envs] : envs) {
+      const caller = new StartCompiler({
+        ...options,
+        env,
+        envName: env === 'client' ? 'client' : 'rsc',
+        lookupKinds: getLookupKindsForEnv(env),
+        lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
+        onServerFnsById: (serverFns) =>
+          mergeServerFnsById(reported, serverFns),
+      })
+      await caller.compile({ code, id: '/test/src/caller.ts' })
+    }
     const provider = await new StartCompiler({
       ...options,
       env: 'server',
@@ -351,6 +375,21 @@ export const greet = createServerFn().handler(async () => 'hi')`
     const handler = await getServerFnById(ids[0], { origin: 'client' })
     expect(await handler({})).toBe('hi')
   })
+
+  // The client and a server caller both report it, in either order: the
+  // client's report keeps it callable from the client.
+  test.each([
+    ['client', 'server'],
+    ['server', 'client'],
+  ] as const)(
+    'a server fn the client and a server caller both compile is callable from the client (%s first)',
+    async (...envs) => {
+      const { getServerFnById, ids } = await resolverFor(envs, greet)
+      expect(ids).toHaveLength(1)
+      const handler = await getServerFnById(ids[0], { origin: 'client' })
+      expect(await handler({})).toBe('hi')
+    },
+  )
 
   // Bug: a server-environment caller reports every server fn it compiles as
   // client-referenced (handleCreateServerFn.ts: `isClientReferenced` is true
