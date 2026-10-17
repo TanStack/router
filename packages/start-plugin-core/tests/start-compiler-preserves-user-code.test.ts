@@ -441,3 +441,14 @@ export const Box = () => <div className="box" />
     }
   },
 )
+
+// Devtools and error reporters show the original source from the map. The
+// client is left out: whether client maps should carry stripped server code
+// (D1) is out of scope.
+test('ssr: the map carries the original source', async () => {
+  const code = `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'x')
+`
+  const result = await compileFor('ssr', code)
+  expect(result.map?.sourcesContent).toEqual([code])
+})

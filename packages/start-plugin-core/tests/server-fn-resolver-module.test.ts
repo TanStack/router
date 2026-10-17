@@ -46,4 +46,34 @@ describe('generateServerFnResolverModule', () => {
       ).rejects.toThrow('Server function info not found')
     },
   )
+
+  // Server fns are discovered in whatever order the bundler compiles the
+  // modules; the resolver (and so the bundle's content hash) must not
+  // depend on it (R4).
+  test('generates the same module whatever order the server fns were discovered in', () => {
+    const serverFn = (name: string) => ({
+      functionName: `${name}Fn`,
+      functionId: name,
+      filename: `/app/${name}.ts`,
+      extractedFilename: `/app/${name}.ts?tss-serverfn-split`,
+      isClientReferenced: true,
+    })
+    const names = ['b', 'c', 'a', 'd']
+    const orders = [
+      names,
+      [...names].reverse(),
+      ['a', 'b', 'c', 'd'],
+      ['c', 'a', 'd', 'b'],
+    ]
+    const sources = orders.map((order) =>
+      generateServerFnResolverModule({
+        serverFnsById: Object.fromEntries(
+          order.map((name) => [name, serverFn(name)]),
+        ),
+        includeClientReferencedCheck: true,
+        memoizeModules: true,
+      }),
+    )
+    expect(new Set(sources).size).toBe(1)
+  })
 })
