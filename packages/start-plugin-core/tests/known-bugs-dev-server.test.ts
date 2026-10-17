@@ -208,21 +208,30 @@ export const base = createServerFn()
 })
 
 describe('import protection', () => {
-  /** Import protection with the default rules, in its dev (mock) mode. */
-  const importProtection = ({ root }: { root: string }) => [
-    importProtectionPlugin({
-      getConfig: (() => ({
-        startConfig: { importProtection: {} },
-        resolvedStartConfig: { srcDirectory: path.join(root, 'src') },
-      })) as unknown as ImportProtectionPluginOptions['getConfig'],
-      framework: 'react',
-      environments: [
-        { name: 'client', type: 'client' },
-        { name: 'ssr', type: 'server' },
-      ],
-      providerEnvName: 'ssr',
-    }),
-  ]
+  /**
+   * Import protection with the default rules, in its dev (mock) mode, with
+   * `router` (the module the test loads first) registered as the app's router
+   * entry, like `tanStackStart()` registers `src/router.tsx`.
+   */
+  const importProtection =
+    (router: string) =>
+    ({ root }: { root: string }) => [
+      importProtectionPlugin({
+        getConfig: (() => ({
+          startConfig: { importProtection: {} },
+          resolvedStartConfig: {
+            srcDirectory: path.join(root, 'src'),
+            routerFilePath: path.join(root, router),
+          },
+        })) as unknown as ImportProtectionPluginOptions['getConfig'],
+        framework: 'react',
+        environments: [
+          { name: 'client', type: 'client' },
+          { name: 'ssr', type: 'server' },
+        ],
+        providerEnvName: 'ssr',
+      }),
+    ]
 
   /**
    * A client module with a server fn whose top-level code calls a function
@@ -244,7 +253,7 @@ export const fn = createServerFn().handler(async () => request)
     async () => {
       const server = await startDevServer({
         files: deniedCallFiles('./request.server'),
-        plugins: importProtection,
+        plugins: importProtection('src/a.ts'),
       })
       await expect(server.transform('/src/a.ts')).resolves.toEqual(
         expect.any(String),
@@ -267,7 +276,7 @@ export const fn = createServerFn().handler(async () => request)
     async () => {
       const server = await startDevServer({
         files: deniedCallFiles('@tanstack/react-start/server'),
-        plugins: importProtection,
+        plugins: importProtection('src/a.ts'),
       })
       await expect(server.transform('/src/a.ts')).resolves.toEqual(
         expect.any(String),
@@ -292,7 +301,7 @@ export const secret = () => 'MARK_B_CODE'
 export const read = () => secret()
 `,
       },
-      plugins: importProtection,
+      plugins: importProtection('src/a.ts'),
     })
     await server.load('/src/b.ts')
     expect(
@@ -352,7 +361,7 @@ export const read = () => secret() + '!'
         'src/request.server.ts': `export const getRequest = () => ({ url: '/' })\n`,
         ...files,
       },
-      plugins: importProtection,
+      plugins: importProtection('src/c.ts'),
     })
     const module = await evaluateServed(server, '/src/c.ts').catch(
       (error: unknown) => error,
