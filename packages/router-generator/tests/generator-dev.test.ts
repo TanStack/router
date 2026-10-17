@@ -342,7 +342,7 @@ describe('route files outside the routes directory', () => {
   // is compared with the configured relative path), and the config module
   // is loaded from jiti's cache anyway.
   // Source: src/generator.ts:1639-1644 (isFileRelevantForRouteTreeGeneration),
-  // src/filesystem/virtual/getRouteNodes.ts (config file loading).
+  // src/filesystem/virtual/loadConfigFile.ts (jiti import of the config).
   // Impact: in dev, changing the virtual route config has no effect until
   // the dev server restarts.
   test.fails(
