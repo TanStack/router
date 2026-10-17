@@ -1,14 +1,12 @@
-import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { promisify } from 'node:util'
 import { pathToFileURL } from 'node:url'
+import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { build } from 'vite'
 import { expect, it } from 'vitest'
 import { tanstackRouter } from '../src/vite'
 import type { CodeSplitGroupings } from '../src/core/constants'
 
-const runNode = promisify(execFile)
 const fixture = path.resolve(__dirname, 'test-files/shared-runtime.tsx')
 
 const groupings: Array<{ name: string; groupings: CodeSplitGroupings }> = [
@@ -111,10 +109,8 @@ export function render() {
     // When `createComponentLabel()` runs (with the route module or with the
     // component's chunk) is free; that every initialiser runs exactly once,
     // and the ones the route module reads before it is used, is not.
-    const { stdout } = await runNode(process.execPath, [
-      '--enable-source-maps',
-      '--input-type=module',
-      '--eval',
+    // In a child process that never outlives the test worker
+    const { stdout } = await runNodeProgram(
       `import assert from 'node:assert/strict'
 const messages = []
 console.log = (message) => messages.push(message)
@@ -140,7 +136,8 @@ assert.throws(render, (error) => {
   return true
 })
 process.stdout.write('route contracts passed')`,
-    ])
+      { nodeArgs: ['--enable-source-maps'] },
+    )
     expect(stdout).toBe('route contracts passed')
   } finally {
     await rm(root, { recursive: true, force: true })

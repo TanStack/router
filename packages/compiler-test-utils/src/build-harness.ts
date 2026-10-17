@@ -9,7 +9,6 @@
  * Plugin-agnostic: the caller supplies the plugin of each build, and the
  * directory its apps live in (where their imports resolve).
  */
-import { execFile } from 'node:child_process'
 import {
   mkdir,
   mkdtemp,
@@ -21,7 +20,8 @@ import {
 import { SourceMap as NodeSourceMap, createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { format, promisify } from 'node:util'
+import { format } from 'node:util'
+import { runNodeProgram } from './run-node'
 
 export type Bundler = 'vite' | 'rspack' | 'webpack' | 'esbuild'
 
@@ -226,7 +226,6 @@ export type BundlerPlugins = Partial<Record<Bundler, (app: AppInfo) => unknown>>
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 const oxcLoader = path.join(harnessDir, 'build-harness-oxc-loader.mjs')
 const require = createRequire(import.meta.url)
-const runNode = promisify(execFile)
 
 const defaultPackageJson = { name: 'app', private: true, type: 'module' }
 
@@ -972,15 +971,11 @@ process.stdout.write(JSON.stringify({ result, logs${client ? ', html: document.b
 process.exit(0)
 `
   try {
-    const { stdout } = await runNode(
-      process.execPath,
-      ['--input-type=module', '--eval', program],
-      {
-        cwd: path.dirname(input.entryFile),
-        env: { ...process.env, NODE_ENV: input.mode },
-        maxBuffer: 64 * 1024 * 1024,
-      },
-    )
+    // In a child process that never outlives the test worker (run-node.ts)
+    const { stdout } = await runNodeProgram(program, {
+      cwd: path.dirname(input.entryFile),
+      env: { ...process.env, NODE_ENV: input.mode },
+    })
     return JSON.parse(stdout) as RunResult
   } catch (error) {
     const failure = error as { stderr?: string }
@@ -1010,7 +1005,10 @@ function swcOptions(
  * Runs a build the way a build command does (`NODE_ENV` set to the mode by
  * default, which decides e.g. the JSX runtime and the `development` export
  * condition; `null` unsets it) and records `console.warn`/`console.error`
- * output.
+ * output. An error no one handles while the build runs fails the build: a
+ * bundler that loses a plugin's error (e.g. a throw in a hook Rspack calls
+ * without catching it) would otherwise never finish the build, and the test
+ * would wait for its timeout.
  */
 export async function withBuildEnvironment<T>(
   buildNodeEnv: string | null,
@@ -1032,9 +1030,24 @@ export async function withBuildEnvironment<T>(
     messages.push(format(...args))
     original.error.apply(console, args)
   }
+  let onUnhandled!: (error: unknown) => void
+  const unhandled = new Promise<never>((_, reject) => {
+    onUnhandled = (error) => {
+      reject(
+        new Error(
+          `the build failed with an error no one handled: ${errorMessage(error)}`,
+          { cause: error },
+        ),
+      )
+    }
+  })
+  process.on('unhandledRejection', onUnhandled)
+  process.on('uncaughtException', onUnhandled)
   try {
-    return await run()
+    return await Promise.race([run(), unhandled])
   } finally {
+    process.off('unhandledRejection', onUnhandled)
+    process.off('uncaughtException', onUnhandled)
     console.warn = original.warn
     console.error = original.error
     if (nodeEnv === undefined) {

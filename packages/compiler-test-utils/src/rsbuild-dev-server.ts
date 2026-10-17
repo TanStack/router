@@ -80,9 +80,18 @@ export async function createRsbuildDevServer(
   const rebuilt: Array<string> = []
   const errors: Array<string> = []
   const warnings: Array<string> = []
-  const waiters: Array<{ after: number; resolve: () => void }> = []
+  const waiters: Array<{
+    after: number
+    resolve: () => void
+    reject: (error: Error) => void
+  }> = []
   /** Compiles start and finish in order: `compiles` counts the started ones. */
   let finished = 0
+  /**
+   * The error of the last compile Rspack gave up on (a plugin hook threw or
+   * rejected), which never finishes: waits for it fail with this error.
+   */
+  let failure: { after: number; error: Error } | undefined
   /** Output directory of each environment. */
   const distPaths: Record<string, string> = {}
   const harnessPlugin: RsbuildPlugin = {
@@ -90,6 +99,28 @@ export async function createRsbuildDevServer(
     setup(api) {
       api.onBeforeDevCompile(() => {
         compiles++
+      })
+      api.onAfterCreateCompiler(({ compiler }) => {
+        const compilers =
+          'compilers' in compiler ? compiler.compilers : [compiler]
+        for (const environmentCompiler of compilers) {
+          environmentCompiler.hooks.failed.tap(
+            'rsbuild-dev-server-harness',
+            (cause) => {
+              const error = new Error(
+                `Rsbuild failed to compile the app: ${cause.message}`,
+                { cause },
+              )
+              failure = { after: compiles - 1, error }
+              for (const waiter of [...waiters]) {
+                if (compiles > waiter.after) {
+                  waiters.splice(waiters.indexOf(waiter), 1)
+                  waiter.reject(error)
+                }
+              }
+            },
+          )
+        }
       })
       api.onDevCompileDone(({ stats, environments }) => {
         finished = compiles
@@ -132,6 +163,10 @@ export async function createRsbuildDevServer(
         resolve()
         return
       }
+      if (failure && failure.after >= after) {
+        reject(failure.error)
+        return
+      }
       const timer = setTimeout(() => {
         waiters.splice(waiters.indexOf(waiter), 1)
         reject(
@@ -145,6 +180,10 @@ export async function createRsbuildDevServer(
         resolve: () => {
           clearTimeout(timer)
           resolve()
+        },
+        reject: (error: Error) => {
+          clearTimeout(timer)
+          reject(error)
         },
       }
       waiters.push(waiter)

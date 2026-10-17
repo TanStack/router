@@ -9,6 +9,7 @@
     "./dev-server": "./src/dev-server.ts",
     "./module-linker": "./src/module-linker.ts",
     "./rsbuild-dev-server": "./src/rsbuild-dev-server.ts",
+    "./run-node": "./src/run-node.ts",
     "./validate-module": "./src/validate-module.ts",
     "./package.json": "./package.json"
   },

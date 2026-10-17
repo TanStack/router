@@ -28,3 +28,31 @@ test('rebuilds the edited module and emits the edit', async () => {
   expect(await joined()).toContain('MARK_V2')
   expect(await joined()).not.toContain('MARK_V1')
 }, 30_000)
+
+test('a compile a plugin makes fail rejects the wait with its error, without waiting for the timeout', async () => {
+  let compile = 0
+  const server = await createRsbuildDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    compileTimeout: 20_000,
+    files: { 'src/entry.ts': `console.log('MARK_V1')\n` },
+    plugins: [
+      {
+        name: 'fails-the-second-compile',
+        setup(api) {
+          api.processAssets({ stage: 'summarize' }, () => {
+            compile++
+            if (compile === 2) {
+              throw new Error('MARK_PLUGIN_FAILURE')
+            }
+          })
+        },
+      },
+    ],
+  })
+  const started = Date.now()
+  await expect(
+    server.edit({ 'src/entry.ts': `console.log('MARK_V2')\n` }),
+  ).rejects.toThrow(/Rsbuild failed to compile[\s\S]*MARK_PLUGIN_FAILURE/)
+  expect(Date.now() - started).toBeLessThan(10_000)
+}, 30_000)
