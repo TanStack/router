@@ -1,4 +1,4 @@
-import { afterAll, bench, describe, expect } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createRequestHandler } from '../src/ssr/server'
@@ -237,12 +237,13 @@ try {
 describe('public server load completion', () => {
   for (const [name, workload] of workloads) {
     afterAll(workload.dispose)
-    // Preflight above is untimed; teardown checks the final timed batch.
-    bench(name, workload.run, {
-      time: 1000,
-      warmupTime: 200,
-      throws: true,
-      teardown: workload.verify,
+    // Preflight above is untimed; afterAll checks the final timed batch.
+    test(name, async ({ bench }) => {
+      await bench(name, { afterAll: workload.verify }, workload.run).run({
+        time: 1000,
+        warmupTime: 200,
+        throws: true,
+      })
     })
   }
 })

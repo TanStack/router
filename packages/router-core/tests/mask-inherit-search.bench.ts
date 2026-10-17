@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
@@ -8,7 +8,11 @@ const QUERY_SIZES = [0, 4, 64] as const
 
 type MaskMode = 'unmasked' | 'explicit' | 'configured'
 
-function createFixture(mode: MaskMode, inheritSearch: boolean, querySize: number) {
+function createFixture(
+  mode: MaskMode,
+  inheritSearch: boolean,
+  querySize: number,
+) {
   const search = Object.fromEntries(
     Array.from({ length: querySize }, (_, index) => [
       `field${index}`,
@@ -58,7 +62,11 @@ function createFixture(mode: MaskMode, inheritSearch: boolean, querySize: number
 }
 
 const variants = [
-  { name: 'unmasked ordinary', mode: 'unmasked' as const, inheritSearch: false },
+  {
+    name: 'unmasked ordinary',
+    mode: 'unmasked' as const,
+    inheritSearch: false,
+  },
   ...(['explicit', 'configured'] as const).flatMap((mode) =>
     [false, true].map((inheritSearch) => ({
       name: `${mode} ${inheritSearch ? 'inheritSearch' : 'ordinary'}`,
@@ -88,69 +96,78 @@ for (const distribution of distributions) {
       let builds: Array<ReturnType<typeof createFixture>> = []
       let expected = 0
       let checksum = 0
-      bench(
-        variant.name,
-        () => {
-          checksum = 0
-          for (const build of builds) {
-            const location = build()
-            checksum +=
-              location.href.length +
-              (location.maskedLocation ?? location).href.length
-          }
-        },
-        {
-          setup: () => {
-            const fixtures = QUERY_SIZES.map((querySize) => {
-              const build = createFixture(
-                variant.mode,
-                variant.inheritSearch,
-                querySize,
-              )
-              const location = build()
-              const ordinary = createFixture('explicit', false, querySize)()
-              expect(ordinary.pathname).toBe('/items/42')
-              expect(ordinary.maskedLocation?.pathname).toBe('/en/items/42')
-              expect(location.href).toBe(ordinary.href)
-              expect(location.publicHref).toBe(ordinary.publicHref)
-              expect(location.search).toEqual(ordinary.search)
-              if (variant.mode === 'unmasked') {
-                expect(location.maskedLocation).toBeUndefined()
-              } else {
-                expect(location.maskedLocation?.href).toBe(
-                  ordinary.maskedLocation?.href,
+      test(variant.name, async ({ bench }) => {
+        await bench(
+          variant.name,
+          {
+            beforeAll: () => {
+              const fixtures = QUERY_SIZES.map((querySize) => {
+                const build = createFixture(
+                  variant.mode,
+                  variant.inheritSearch,
+                  querySize,
                 )
-                expect(location.maskedLocation?.publicHref).toBe(
-                  ordinary.maskedLocation?.publicHref,
-                )
-                expect(location.maskedLocation?.search).toEqual(location.search)
-                expect(location.maskedLocation?.searchStr).toBe(location.searchStr)
-                if (variant.inheritSearch) {
-                  expect(location.maskedLocation?.search).toBe(location.search)
+                const location = build()
+                const ordinary = createFixture('explicit', false, querySize)()
+                expect(ordinary.pathname).toBe('/items/42')
+                expect(ordinary.maskedLocation?.pathname).toBe('/en/items/42')
+                expect(location.href).toBe(ordinary.href)
+                expect(location.publicHref).toBe(ordinary.publicHref)
+                expect(location.search).toEqual(ordinary.search)
+                if (variant.mode === 'unmasked') {
+                  expect(location.maskedLocation).toBeUndefined()
+                } else {
+                  expect(location.maskedLocation?.href).toBe(
+                    ordinary.maskedLocation?.href,
+                  )
+                  expect(location.maskedLocation?.publicHref).toBe(
+                    ordinary.maskedLocation?.publicHref,
+                  )
+                  expect(location.maskedLocation?.search).toEqual(
+                    location.search,
+                  )
+                  expect(location.maskedLocation?.searchStr).toBe(
+                    location.searchStr,
+                  )
+                  if (variant.inheritSearch) {
+                    expect(location.maskedLocation?.search).toBe(
+                      location.search,
+                    )
+                  }
                 }
-              }
-              return build
-            })
-            // Only selected benchmarks run setup, so ordinary controls also run
-            // against the parent without evaluating an inheritSearch oracle.
-            builds = distribution.indices.map((index) => fixtures[index]!)
-            expected = builds.reduce((sum, build) => {
+                return build
+              })
+              // Only selected benchmarks run setup, so ordinary controls also run
+              // against the parent without evaluating an inheritSearch oracle.
+              builds = distribution.indices.map((index) => fixtures[index]!)
+              expected = builds.reduce((sum, build) => {
+                const location = build()
+                return (
+                  sum +
+                  location.href.length +
+                  (location.maskedLocation ?? location).href.length
+                )
+              }, 0)
+            },
+            afterAll: () => {
+              expect(checksum).toBe(expected)
+            },
+          },
+          () => {
+            checksum = 0
+            for (const build of builds) {
               const location = build()
-              return (
-                sum +
+              checksum +=
                 location.href.length +
                 (location.maskedLocation ?? location).href.length
-              )
-            }, 0)
+            }
           },
+        ).run({
           time: 1000,
           warmupTime: 200,
           throws: true,
-          teardown: () => {
-            expect(checksum).toBe(expected)
-          },
-        },
-      )
+        })
+      })
     }
   })
 }
