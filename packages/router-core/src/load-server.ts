@@ -904,61 +904,73 @@ export async function loadServerRoute(
   router: AnyRouter,
   opts?: ServerLoadOptions,
 ): Promise<void> {
-  if (!opts?._skipLocationUpdate) {
-    router.updateLatestLocation()
-  }
-  const next = router.latestLocation
-  const previous = router._committed
-  const previousEnd = router._lifecycleEnd
-  let result: ServerLoadResult
+  router._serverLoads++
   try {
-    const canonical = router.buildLocation({
-      to: next.pathname,
-      search: true,
-      params: true,
-      hash: true,
-      state: true,
-      _includeValidateSearch: true,
+    router.stores.status.set('pending')
+    if (!opts?._skipLocationUpdate) {
+      router.updateLatestLocation()
+    }
+    const next = router.latestLocation
+    const previous = router._committed
+    const previousEnd = router._lifecycleEnd
+    let result: ServerLoadResult
+    try {
+      const canonical = router.buildLocation({
+        to: next.pathname,
+        search: true,
+        params: true,
+        hash: true,
+        state: true,
+        _includeValidateSearch: true,
+      })
+      if (next.publicHref !== canonical.publicHref) {
+        const href = canonical.publicHref || '/'
+        throw redirect({ href })
+      }
+
+      const fromLocation = router.stores.resolvedLocation.get()
+      const changeInfo = getLocationChangeInfo(next, fromLocation)
+      router.emit({ type: 'onBeforeNavigate', ...changeInfo })
+      router.emit({ type: 'onBeforeLoad', ...changeInfo })
+      opts?._signal?.throwIfAborted()
+      result = await waitFor(
+        executeServerLane(
+          router,
+          next,
+          router.matchRoutes(next),
+          opts?._signal,
+        ),
+        opts?._signal,
+      )
+      opts?._signal?.throwIfAborted()
+    } catch (cause) {
+      opts?._signal?.throwIfAborted()
+      if (!isRedirect(cause)) {
+        throw cause
+      }
+      cause.options._fromLocation = next
+      result = { type: 'redirect', redirect: router.resolveRedirect(cause) }
+    }
+
+    router._serverResult = result
+    let nextEnd = 0
+    router.batch(() => {
+      router.stores.location.set(next)
+      if (result.type === 'render') {
+        router._committed = result.matches
+        nextEnd = router._lifecycleEnd = lifecycleEnd(result.matches)
+        router.stores.setMatches(result.matches)
+        router.stores.resolvedLocation.set(next)
+      }
     })
-    if (next.publicHref !== canonical.publicHref) {
-      const href = canonical.publicHref || '/'
-      throw redirect({ href })
-    }
-
-    const fromLocation = router.stores.resolvedLocation.get()
-    const changeInfo = getLocationChangeInfo(next, fromLocation)
-    router.emit({ type: 'onBeforeNavigate', ...changeInfo })
-    router.emit({ type: 'onBeforeLoad', ...changeInfo })
-    opts?._signal?.throwIfAborted()
-    result = await waitFor(
-      executeServerLane(router, next, router.matchRoutes(next), opts?._signal),
-      opts?._signal,
-    )
-    opts?._signal?.throwIfAborted()
-  } catch (cause) {
-    opts?._signal?.throwIfAborted()
-    if (!isRedirect(cause)) {
-      throw cause
-    }
-    cause.options._fromLocation = next
-    result = { type: 'redirect', redirect: router.resolveRedirect(cause) }
-  }
-
-  router._serverResult = result
-  let nextEnd = 0
-  router.batch(() => {
-    router.stores.location.set(next)
-    router.stores.status.set('idle')
     if (result.type === 'render') {
-      router._committed = result.matches
-      nextEnd = router._lifecycleEnd = lifecycleEnd(result.matches)
-      router.stores.setMatches(result.matches)
-      router.stores.resolvedLocation.set(next)
+      runRouteLifecycle(router, previous, result.matches, previousEnd, nextEnd)
     }
-  })
-  if (result.type === 'render') {
-    runRouteLifecycle(router, previous, result.matches, previousEnd, nextEnd)
+    router._commitPromise?.resolve()
+    router._commitPromise = undefined
+  } finally {
+    if (--router._serverLoads === 0) {
+      router.stores.status.set('idle')
+    }
   }
-  router._commitPromise?.resolve()
-  router._commitPromise = undefined
 }

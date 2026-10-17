@@ -1158,6 +1158,8 @@ export class RouterCore<
   _cache = new Map<string, AnyRouteMatch>()
   /** Accepted semantic lane, excluding temporary pending presentation. */
   _committed: Array<AnyRouteMatch> = []
+  /** Server loads retain pending status until every active load has settled. */
+  _serverLoads = 0
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
