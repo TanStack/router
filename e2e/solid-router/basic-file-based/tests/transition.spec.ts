@@ -21,7 +21,7 @@ test('transitions/count/create-resource should keep old values visible during na
 
   // 1 click
 
-  page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
 
   await expect(page.getByTestId('n-value')).toContainText('n: 1', {
     timeout: 2_000,
@@ -41,8 +41,8 @@ test('transitions/count/create-resource should keep old values visible during na
 
   // 2 clicks
 
-  page.getByTestId('increase-button').click()
-  page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
 
   await expect(page.getByTestId('n-value')).toContainText('n: 2', {
     timeout: 2000,
@@ -62,9 +62,9 @@ test('transitions/count/create-resource should keep old values visible during na
 
   // 3 clicks
 
-  page.getByTestId('increase-button').click()
-  page.getByTestId('increase-button').click()
-  page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
 
   await expect(page.getByTestId('n-value')).toContainText('n: 4', {
     timeout: 2000,
