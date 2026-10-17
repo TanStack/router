@@ -416,37 +416,32 @@ describe('Rsbuild dev', () => {
     30_000,
   )
 
-  // Bug: in Rsbuild dev, an error thrown by `onViolation` is never reported:
-  // the compile does not finish (no done, no error), while a build fails with
-  // the error (rsbuild/import-protection.ts `reportViolation`, awaited in the
-  // `processAssets` hook).
-  // Impact: a throwing `onViolation` hangs the Rsbuild dev server on its
-  // first compile, with no message.
-  // Source: mutation run R3, ip-rsbuild (REPORT §6 #23). The wait is bounded
-  // (`compileTimeout`) so the pin fails fast; the harness closes the dev
-  // server when its first compile does not finish.
-  test.fails(
-    'an onViolation that throws ends the compile with its error',
-    async () => {
-      const outcome = await startRsbuildDevServer({
-        importProtection: {
-          onViolation: () => {
-            throw new Error('MARK_THROWN')
-          },
+  // In Rsbuild dev, an error thrown by `onViolation` (awaited in the
+  // `processAssets` hook, rsbuild/import-protection.ts `reportViolation`)
+  // fails the compile: Rspack gives up on it (`compiler.hooks.failed`, no
+  // `done`) and Rsbuild logs the error, like a build fails with it.
+  // Source: mutation run R3, ip-rsbuild (REPORT §6 #23). This was a pin
+  // ("never reported") while the dev harness only waited for `done`; the
+  // harness now fails the compile wait with the error Rspack reports
+  // (mutation run R3c).
+  test('an onViolation that throws ends the compile with its error', async () => {
+    const outcome = await startRsbuildDevServer({
+      importProtection: {
+        onViolation: () => {
+          throw new Error('MARK_THROWN')
         },
-        compileTimeout: 3_000,
-        files: {
-          'src/secret.server.ts': `export const secret = () => 'secret'\n`,
-          'src/entry.ts': `import { secret } from './secret.server'\nconsole.log(secret())\n`,
-        },
-      }).then(
-        (server) => server.errors.join('\n'),
-        (error: Error) => error.message,
-      )
-      expect(outcome).toContain('MARK_THROWN')
-    },
-    15_000,
-  )
+      },
+      compileTimeout: 3_000,
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'secret'\n`,
+        'src/entry.ts': `import { secret } from './secret.server'\nconsole.log(secret())\n`,
+      },
+    }).then(
+      (server) => server.errors.join('\n'),
+      (error: Error) => error.message,
+    )
+    expect(outcome).toContain('MARK_THROWN')
+  }, 15_000)
 })
 
 describe.each(startBundlers)('%s build', (bundler) => {
