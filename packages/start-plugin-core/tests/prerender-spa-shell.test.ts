@@ -128,19 +128,46 @@ describe('prerendering with SPA mode', () => {
     },
   )
 
-  it('keeps a shell written to index.html as the document for "/"', async () => {
-    const { read, routeRequests } = await build({
-      spa: { enabled: true, prerender: { outputPath: 'index.html' } },
-      prerender: { enabled: true },
-      pages: [{ path: '/about' }],
-    })
+  it.each([
+    {
+      outputPath: 'index.html',
+      name: 'reached by crawling',
+      config: { pages: [{ path: '/about' }] },
+    },
+    {
+      outputPath: './index.html',
+      name: 'reached by crawling',
+      config: { pages: [{ path: '/about' }] },
+    },
+    {
+      outputPath: 'index.html',
+      name: 'listed with static path discovery',
+      config: { pages: [{ path: '/' }, { path: '/about' }] },
+    },
+    {
+      outputPath: 'index.html',
+      name: 'listed without static path discovery',
+      config: {
+        prerender: { enabled: true, autoStaticPathsDiscovery: false },
+        pages: [{ path: '/' }, { path: '/about' }],
+      },
+    },
+  ])(
+    'keeps a shell written to $outputPath as the document when "/" is $name',
+    async ({ outputPath, config }) => {
+      const { read, routeRequests } = await build({
+        spa: { enabled: true, prerender: { outputPath } },
+        prerender: { enabled: true },
+        ...config,
+      })
 
-    await expect(read('index.html')).resolves.toBe(shellDocument)
-    await expect(read('about/index.html')).resolves.toBe(
-      routeDocuments['/about/'],
-    )
-    expect(routeRequests).toEqual(['/about/'])
-  })
+      await expect(read('index.html')).resolves.toBe(shellDocument)
+      await expect(read('about/index.html')).resolves.toBe(
+        routeDocuments['/about/'],
+      )
+      expect(routeRequests).toEqual(['/about/'])
+    },
+  )
 })
 
 describe('prerendering without SPA mode', () => {

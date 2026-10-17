@@ -87,18 +87,31 @@ export async function prerender({
     return links
   }
 
+  function isSpaShellPage(page: Page) {
+    return page.prerender?.headers?.[HEADERS.TSS_SHELL] === 'true'
+  }
+
   function getPageKey(page: Page) {
-    if (page.prerender?.headers?.[HEADERS.TSS_SHELL] !== 'true') {
+    if (!isSpaShellPage(page)) {
       return page.path
     }
 
-    const shellFile = getOutputFilename(page, 'text/html')
-    const routeFile = getOutputFilename({ path: page.path }, 'text/html')
-    if (shellFile.replace(/^\/+/, '') === routeFile.replace(/^\/+/, '')) {
+    const shellFile = getOutputFilepath(getOutputFilename(page, 'text/html'))
+    const routeFile = getOutputFilepath(
+      getOutputFilename({ path: page.path }, 'text/html'),
+    )
+    if (shellFile === routeFile) {
       return page.path
     }
 
     return `${page.path} (SPA shell)`
+  }
+
+  function getOutputFilepath(filename: string) {
+    return path.resolve(
+      handler.getClientOutputDirectory(),
+      filename.replace(/^\/+/, ''),
+    )
   }
 
   function getOutputFilename(page: Page, contentType: string) {
@@ -151,6 +164,9 @@ export async function prerender({
       routerBaseUrl,
     )
 
+    startConfig.pages
+      .filter(isSpaShellPage)
+      .forEach((page) => addCrawlPageTask(page))
     startConfig.pages.forEach((page) => addCrawlPageTask(page))
 
     if (queue.isSettled()) {
@@ -218,7 +234,7 @@ export async function prerender({
 
           const html = await res.text()
           const resolvedOutputDir = path.resolve(outputDir)
-          const filepath = path.resolve(outputDir, filename.replace(/^\/+/, ''))
+          const filepath = getOutputFilepath(filename)
           const outputPrefix = resolvedOutputDir.endsWith(path.sep)
             ? resolvedOutputDir
             : resolvedOutputDir + path.sep
