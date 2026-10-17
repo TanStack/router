@@ -10,6 +10,7 @@ import { runRsbuildClient, startRsbuildDevServer } from '../rsbuild-dev-server'
 import { evaluateWithMock, isMock, selfMock } from './mock-helpers'
 import {
   factoryTopLevelCall,
+  rejection,
   reportedViolations,
   serverFnFactoryApp,
   startProtectedDevServer,
@@ -445,5 +446,128 @@ describe('Rsbuild dev', () => {
       expect(outcome).toContain('MARK_THROWN')
     },
     15_000,
+  )
+})
+
+describe.each(startBundlers)('%s build', (bundler) => {
+  // Bug (Rsbuild): a dynamic `import('db-lib')` of a denied specifier is
+  // neither reported nor mocked: the Rsbuild loader only rewrites static
+  // imports and re-exports (`rewriteDeniedImports`,
+  // import-protection/rewrite.ts), and the build reports specifier
+  // violations only through the mock modules of rewritten imports
+  // (`processAssets` in rsbuild/import-protection.ts). Vite fails the build.
+  // Impact: the real module ships to the client in a lazy chunk and runs
+  // there, without any error or warning.
+  // Source: round 3 mutation testing (ip-misc P1).
+  const dynamicImportTest = bundler === 'rsbuild' ? test.fails : test
+  dynamicImportTest(
+    'a client dynamic import of a denied specifier fails the build, reporting one client violation',
+    async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'node_modules/db-lib/package.json': JSON.stringify({
+              name: 'db-lib',
+              type: 'module',
+              exports: { '.': './index.js' },
+            }),
+            'node_modules/db-lib/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+            'src/entry.ts': `export const read = () => import('db-lib').then((m) => m.secret())\n`,
+          },
+          entry: 'src/entry.ts',
+          start: { importProtection: { client: { specifiers: ['db-lib'] } } },
+        }),
+      )
+      expect(
+        reportedViolations(error.message).map(({ environment }) => environment),
+      ).toEqual(['client'])
+    },
+    60_000,
+  )
+
+  /**
+   * What the client gets in a mock-mode build of an entry that imports
+   * `secret` from the denied `file` (control: the mock-mode rows of
+   * build.test.ts, same harness).
+   */
+  async function mockModeOutcome(
+    file: string,
+    code: string,
+    importStatement: string,
+  ) {
+    const { client } = await buildStart({
+      bundler,
+      files: {
+        [`src/${file}`]: code,
+        'src/entry.ts': `${importStatement}
+export const read = () => String(secret)
+`,
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection: { behavior: 'mock' } },
+    })
+    return {
+      warned: reportedViolations(client.warnings).length > 0,
+      hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
+      read: (await client.run(`return entry.read()`)).result,
+    }
+  }
+
+  // Bug: in mock mode, a denied file that is not JavaScript or TypeScript
+  // keeps its content: Vite replaces a denied file with its mock in a
+  // transform hook whose filter only lets JS/TS modules through
+  // (`/\.[cm]?[tj]sx?($|\?)/`, transform-cache plugin of
+  // vite/import-protection-plugin/plugin.ts), and the Rsbuild loader rule
+  // only applies to JS/TS modules (`test: /\.[cm]?[tj]sx?$/`,
+  // rsbuild/import-protection.ts). Both warn.
+  // Impact: a mock-mode build ships the real content of a denied
+  // `*.server.json` (e.g. server configuration or credentials) to the client.
+  // Source: round 3 mutation testing (ip-vite B1).
+  test.fails(
+    'in mock mode, a denied .server.json file is mocked, with a warning',
+    async () => {
+      expect(
+        await mockModeOutcome(
+          'secret.server.json',
+          `{ "secret": "MARK_SECRET" }\n`,
+          `import data from './secret.server.json'
+const secret = data.secret`,
+        ),
+      ).toEqual({
+        warned: true,
+        hasRealCode: false,
+        read: '[import-protection mock]',
+      })
+    },
+    60_000,
+  )
+
+  // Bug: in mock mode, a denied CommonJS file (`.server.cjs`) fails the
+  // build: the mock that replaces the file is an ES module, which Vite's
+  // parser rejects in a `.cjs` file (`export default mock`), and whose named
+  // exports are the ES exports of the denied file, which a CommonJS file has
+  // none of, so Rspack cannot link the named import (`export 'secret' ...
+  // was not found`). With import protection off, both build the named
+  // import of the real module.
+  // Impact: a mock-mode build of a project with a `*.server.cjs` the client
+  // imports fails instead of mocking it.
+  // Source: round 3 mutation testing (ip-vite B1).
+  test.fails(
+    'in mock mode, a denied .server.cjs file is mocked, with a warning',
+    async () => {
+      expect(
+        await mockModeOutcome(
+          'secret.server.cjs',
+          `exports.secret = () => 'MARK_SECRET'\n`,
+          `import { secret } from './secret.server.cjs'`,
+        ),
+      ).toEqual({
+        warned: true,
+        hasRealCode: false,
+        read: '[import-protection mock]',
+      })
+    },
+    60_000,
   )
 })
