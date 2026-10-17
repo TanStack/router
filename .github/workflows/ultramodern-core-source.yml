@@ -1,0 +1,43 @@
+name: UltraModern router-core source release
+
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: Successful push/main Core Package Qualification run containing the accepted archive
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: ultramodern-router-core-source-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'BleedingDev/router' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify promotion guards
+        run: node --test scripts/ultramodern-core-release.test.mjs
+      # Before dispatch, the operator must enable and verify immutable releases
+      # with an authorized settings credential. GITHUB_TOKEN cannot read that
+      # Administration-scoped setting; finalized immutable bytes are verified.
+      - name: Publish exact archive accepted by merged-main qualification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+        run: node scripts/ultramodern-core-release.mjs "$CI_RUN_ID"

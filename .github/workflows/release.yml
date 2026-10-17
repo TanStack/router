@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   release:
+    if: github.repository == 'TanStack/router'
     name: Release
     runs-on: ubuntu-latest
     steps:
