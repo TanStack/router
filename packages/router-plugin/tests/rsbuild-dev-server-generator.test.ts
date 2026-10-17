@@ -5,15 +5,19 @@
  * the rest of the file untouched), the route tree in line with the route
  * files and the emitted client chunks in line with the route tree, without
  * compile errors; a new route's component is emitted in a chunk of its own.
- * The Rsbuild counterpart of dev-server-generator.test.ts.
+ * The Rsbuild counterpart of dev-server-generator.test.ts. Also the
+ * generator entries of webpack and Rspack in their compilers' watch mode.
  */
-import { stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { fileURLToPath } from 'node:url'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { routerRsbuildDevServer } from './rsbuild-dev-server'
 import type { RouterRsbuildDevServer } from './rsbuild-dev-server'
 
 const timeout = 60_000
+
+const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 /** A route file whose component renders `text`. */
 const route = (path: string, text: string) =>
@@ -285,5 +289,113 @@ describe('route generator failures in Rsbuild dev', () => {
       await expectComponentSplit(server, 'MARK_POSTS')
     },
     timeout,
+  )
+})
+
+// The generator entries of webpack and Rspack in the compiler's own watch
+// mode (`compiler.watch`, as webpack-dev-server and `--watch` use it).
+describe('route generator in webpack and Rspack watch mode', () => {
+  /** Waits for `check` to hold, polling. */
+  async function until(check: () => Promise<boolean> | boolean, what: string) {
+    const deadline = Date.now() + 15_000
+    while (!(await check())) {
+      if (Date.now() > deadline) {
+        throw new Error(`timed out waiting for ${what}`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  }
+
+  test.each(['webpack', 'rspack'] as const)(
+    '%s: a created route file is scaffolded and added to the route tree, and closing the watcher stops the generator',
+    async (bundler) => {
+      const root = await mkdtemp(path.join(harnessDir, '.generator-watch-'))
+      let close: () => Promise<unknown> = () => Promise.resolve()
+      onTestFinished(async () => {
+        await close()
+        await rm(root, { recursive: true, force: true })
+      })
+      const file = (relative: string) => path.join(root, relative)
+      const read = (relative: string) => readFile(file(relative), 'utf8')
+      await mkdir(file('routes'), { recursive: true })
+      await writeFile(
+        file('routes/__root.js'),
+        `import { createRootRoute } from '@tanstack/react-router'\nexport const Route = createRootRoute({})\n`,
+      )
+      await writeFile(
+        file('main.js'),
+        `import { routeTree } from './routeTree.gen.js'\nconsole.log(routeTree)\n`,
+      )
+      const pluginOptions = {
+        target: 'react' as const,
+        routesDirectory: file('routes'),
+        generatedRouteTree: file('routeTree.gen.js'),
+        disableTypes: true,
+        disableLogging: true,
+      }
+      const config = {
+        context: root,
+        mode: 'development',
+        entry: './main.js',
+        output: { path: file('dist') },
+        externals: {
+          '@tanstack/react-router': 'commonjs @tanstack/react-router',
+        },
+        infrastructureLogging: { level: 'none' },
+        stats: 'none',
+      }
+      let compiler: any
+      if (bundler === 'webpack') {
+        const { default: webpack } = await import('webpack')
+        const { TanStackRouterGeneratorWebpack } =
+          await import('../src/webpack')
+        compiler = webpack({
+          ...config,
+          plugins: [TanStackRouterGeneratorWebpack(pluginOptions)],
+        } as any)
+      } else {
+        const { rspack } = await import('@rsbuild/core')
+        const { TanStackRouterGeneratorRspack } = await import('../src/rspack')
+        compiler = rspack({
+          ...config,
+          plugins: [TanStackRouterGeneratorRspack(pluginOptions)],
+        } as any)
+      }
+      let builds = 0
+      const watching = compiler.watch({ aggregateTimeout: 50 }, () => {
+        builds++
+      })
+      close = () => new Promise((resolve) => watching.close(resolve))
+      await until(() => builds > 0, 'the first build')
+
+      await writeFile(file('routes/posts.js'), '')
+      await until(
+        async () =>
+          (await read('routes/posts.js')).includes("createFileRoute('/posts')"),
+        'the created route file to be scaffolded',
+      )
+      await until(
+        async () => (await read('routeTree.gen.js')).includes("path: '/posts'"),
+        'the route tree to have the created route',
+      )
+
+      // Let the compiles the scaffolding caused finish, then close.
+      let seen = -1
+      await until(async () => {
+        const quiet = seen === builds
+        seen = builds
+        await new Promise((resolve) => setTimeout(resolve, 700))
+        return quiet && seen === builds
+      }, 'the compiles to settle')
+      await close()
+      close = () => Promise.resolve()
+      // The generator's own watcher closes asynchronously after the
+      // compiler's; nothing signals it.
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      await writeFile(file('routes/after.js'), '')
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      expect(await read('routes/after.js')).toBe('')
+    },
+    30_000,
   )
 })
