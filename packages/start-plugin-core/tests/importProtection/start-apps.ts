@@ -7,13 +7,13 @@
  * text it prints.
  */
 import path from 'node:path'
-import { mergeConfig } from 'vite'
 import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
 import { startDevServer } from '../dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { ImportProtectionOptions } from '../../src/schema'
 import type { ImportProtectionPluginOptions } from '../../src/vite/import-protection-plugin/types'
-import type { InlineConfig, PluginOption } from 'vite'
+import type { StartDevServerOptions } from '../dev-server'
+import type { PluginOption } from 'vite'
 
 export interface ProtectedDevServerOptions {
   /**
@@ -32,7 +32,7 @@ export interface ProtectedDevServerOptions {
   /** Other plugins of the app, after import protection. */
   plugins?: Array<PluginOption>
   /** Vite configuration of the app (e.g. `server.warmup`). */
-  config?: InlineConfig
+  config?: StartDevServerOptions['config']
 }
 
 /**
@@ -57,9 +57,13 @@ export function startProtectedDevServer(
     config:
       providerEnvironment === 'ssr'
         ? config
-        : mergeConfig(config, {
-            environments: { [providerEnvironment]: { consumer: 'server' } },
-          }),
+        : {
+            ...config,
+            environments: {
+              ...config.environments,
+              [providerEnvironment]: { consumer: 'server' },
+            },
+          },
     plugins: ({ root }) => [
       importProtectionPlugin({
         getConfig: (() => ({
