@@ -120,7 +120,7 @@ console.log(page())
 // Source: round 4 mutation testing (rsbuild host, `behavior` in dev).
 describe('Rsbuild dev: behavior', () => {
   test.each<{
-    behavior: ImportProtectionOptions['behavior']
+    behavior: NonNullable<ImportProtectionOptions>['behavior']
     reportedAs: 'warnings' | 'errors'
     infoBehavior: ViolationInfo['behavior']
   }>([
@@ -412,7 +412,7 @@ console.log(a(), b(), query())
 // Source: round 4 mutation testing (rsbuild host, `mockAccess`).
 describe('Rsbuild dev: mockAccess', () => {
   test.each<{
-    mockAccess: ImportProtectionOptions['mockAccess']
+    mockAccess: NonNullable<ImportProtectionOptions>['mockAccess']
     reports: Array<string>
   }>([
     { mockAccess: undefined, reports: ['error'] },
