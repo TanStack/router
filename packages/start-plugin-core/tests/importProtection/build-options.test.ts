@@ -365,6 +365,37 @@ export const secret = () => 'MARK_SECRET'
       timeout,
     )
 
+    // Source: mutation run R4 (spc:5137, the `specifier` type of the
+    // table above).
+    test(
+      'the callback gets a specifier violation for an import of a denied specifier',
+      async () => {
+        const seen: Array<Violation> = []
+        await rejection(
+          buildStart({
+            bundler,
+            files: {
+              'src/entry.ts': `import { getRequest } from '@tanstack/react-start/server'
+export const read = () => getRequest()
+`,
+            },
+            entry: 'src/entry.ts',
+            start: {
+              importProtection: {
+                onViolation: (info) => {
+                  seen.push(info as Violation)
+                },
+              },
+            },
+          }),
+        )
+        expect(
+          distinct(seen.map((info) => `${info.type} ${info.specifier}`)),
+        ).toEqual(['specifier @tanstack/react-start/server'])
+      },
+      timeout,
+    )
+
     test(
       'in mock mode, it gets each import of a denied specifier with the file the specifier resolves to; the mocks are silent',
       async () => {
