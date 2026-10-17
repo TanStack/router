@@ -122,7 +122,9 @@ export interface BundleTarget {
   env?: BuildEnv
   /**
    * Defaults to `mode === 'production'`, like a real app build. webpack and
-   * Rspack only drop unused code inside a kept module when minifying.
+   * Rspack only drop unused code inside a kept module when minifying (the
+   * dangling-name check of an unminified production client build checks
+   * its chunks as the bundler's minifier emits them).
    */
   minify?: boolean
   /** Output directory relative to the app root (default `dist`). */
@@ -914,12 +916,9 @@ export async function describeBuild(
   if (
     input.env === 'client' &&
     input.mode === 'production' &&
-    bundler !== 'esbuild' &&
-    // webpack and Rspack only drop unused code inside a module when
-    // minifying; Rolldown's tree-shaking does not depend on it.
-    ((input.minify ?? true) || bundler === 'vite')
+    bundler !== 'esbuild'
   ) {
-    await checkDanglingNames(bundler, chunks)
+    await checkDanglingNames(bundler, chunks, input.minify ?? true)
   }
   const entries = chunks.filter((chunk) => chunk.isEntry)
   if (entries.length !== 1) {
@@ -991,43 +990,37 @@ export async function describeBuild(
 }
 
 /**
- * Names production client chunks may read without declaring or importing
- * them: the globals of browsers, of Node.js (ES modules: no CommonJS
- * wrapper variables) and of the language, as the `globals` package lists
- * them, and the globals framework runtimes define for themselves.
- */
-let clientGlobals: Set<string> | undefined
-
-/**
- * Globals a framework's own code defines: `_$HY` is the hydration state the
- * script of Solid's `generateHydrationScript()` creates, which `solid-js/web`
- * reads while hydrating.
- */
-const frameworkGlobals = ['_$HY']
-
-/**
  * Throws a `DanglingNameError` when production client chunks read a name
- * that is neither declared, imported nor a global (user ruling "Dead-code
- * references, widened", 2026-10-17: a dangling name that survives into a
- * production client bundle is a bug; one in code the bundler deletes is
- * fine). Names the chunks probe with `typeof` are allowed. esbuild is not
- * checked: it is no supported production bundler of the ruling.
+ * that is neither declared, imported nor a known global (`known-globals.ts`)
+ * (user ruling "Dead-code references, widened", 2026-10-17: a dangling name
+ * that survives into a production client bundle is a bug; one in code the
+ * bundler deletes is fine). Names the chunks probe with `typeof` are allowed.
+ * esbuild is not checked: it is no supported production bundler of the
+ * ruling.
+ *
+ * webpack and Rspack drop unused code inside a module only when minifying,
+ * as their production builds do. The chunks of a build that did not minify
+ * (`minified: false`, e.g. to test unminified source maps) are checked as the
+ * bundler's production minifier would emit them. Rolldown's tree-shaking
+ * does not depend on minifying.
  */
-async function checkDanglingNames(bundler: Bundler, chunks: Array<Chunk>) {
-  const [{ unboundNames }, { default: globals }] = await Promise.all([
+async function checkDanglingNames(
+  bundler: Exclude<Bundler, 'esbuild'>,
+  chunks: Array<Chunk>,
+  minified: boolean,
+) {
+  const [{ unboundNames }, { knownGlobals }] = await Promise.all([
     import('./validate-module'),
-    import('globals'),
-  ])
-  clientGlobals ??= new Set([
-    ...Object.keys(globals.builtin),
-    ...Object.keys(globals.browser),
-    ...Object.keys(globals.nodeBuiltin),
-    ...frameworkGlobals,
+    import('./known-globals'),
   ])
   const dangling: Record<string, Array<string>> = {}
   for (const chunk of chunks) {
-    const names = [...unboundNames(chunk.code)].filter(
-      (name) => !clientGlobals!.has(name),
+    const code =
+      minified || bundler === 'vite'
+        ? chunk.code
+        : await minifyAsInProduction(bundler, chunk.code)
+    const names = [...unboundNames(code)].filter(
+      (name) => !knownGlobals.has(name),
     )
     if (names.length > 0) {
       dangling[chunk.fileName] = names
@@ -1036,6 +1029,55 @@ async function checkDanglingNames(bundler: Bundler, chunks: Array<Chunk>) {
   if (Object.keys(dangling).length > 0) {
     throw new DanglingNameError(bundler, dangling)
   }
+}
+
+/**
+ * A chunk minified the way the bundler's production build minifies it:
+ * Rspack's `SwcJsMinimizerRspackPlugin` (which Rsbuild configures too) and
+ * webpack's terser both default to `compress: { passes: 2 }` and mangling,
+ * and minify ES module output as a module (its top level is not global).
+ */
+async function minifyAsInProduction(
+  bundler: 'rspack' | 'webpack',
+  code: string,
+): Promise<string> {
+  const { parseSync } = await import('vite')
+  const { program } = parseSync('chunk.js', code, { sourceType: 'module' })
+  const module = program.body.some((statement) =>
+    /^(Import|Export)/.test(statement.type),
+  )
+  if (bundler === 'rspack') {
+    const { rspack } = await import('@rsbuild/core')
+    const result = await rspack.experiments.swc.minify(code, {
+      compress: { passes: 2 },
+      mangle: true,
+      module,
+    })
+    return result.code
+  }
+  // The terser of webpack's own minimizer
+  const terser = resolveFrom(['webpack', 'minimizer-webpack-plugin', 'terser'])
+  const { minify } = (await import(pathToFileURL(terser).href)) as {
+    minify: (
+      code: string,
+      options: Record<string, unknown>,
+    ) => Promise<{ code?: string }>
+  }
+  const result = await minify(code, {
+    compress: { passes: 2 },
+    mangle: true,
+    module,
+  })
+  return result.code ?? ''
+}
+
+/** Resolves the last package of `chain`, each from the one before it. */
+function resolveFrom(chain: Array<string>): string {
+  let resolved = require.resolve(chain[0]!)
+  for (const name of chain.slice(1)) {
+    resolved = createRequire(resolved).resolve(name)
+  }
+  return resolved
 }
 
 /**

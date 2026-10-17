@@ -138,6 +138,20 @@ export const Page = () => <div>{imported}</div>`),
     ).toEqual([])
   })
 
+  // Browsers define window properties with generic names. A module that
+  // reads one without declaring it most likely lost a local binding.
+  test('rejects a read of a generic window property name', async () => {
+    expect(
+      await getModuleErrors(
+        `export const read = () => [name, status, event, parent, top]`,
+      ),
+    ).toEqual(
+      ['name', 'status', 'event', 'parent', 'top'].map(
+        (name) => `\`${name}\` is referenced but never declared or imported`,
+      ),
+    )
+  })
+
   // User ruling 2026-10-17 (dead-code references, widened): a reference to
   // an undefined name in code the bundlers delete from a production build is
   // no error of the module. The validator deletes what Rolldown's

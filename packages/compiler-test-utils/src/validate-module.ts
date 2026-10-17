@@ -12,6 +12,7 @@ import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { stripVTControlCharacters } from 'node:util'
 import { parseSync, transformWithOxc } from 'vite'
+import { knownGlobals } from './known-globals'
 import type { ESTree, Rolldown } from 'vite'
 
 /**
@@ -26,7 +27,7 @@ import type { ESTree, Rolldown } from 'vite'
  * in the module, once JSX is compiled the way a bundler compiles it (so a
  * classic `@jsx` or `@jsxFrag` pragma reads its factory or fragment, and
  * `@jsxImportSource` its runtime module): such a reference throws a
- * ReferenceError when it runs. Known globals of browsers and Node.js, names
+ * ReferenceError when it runs. Known globals (`known-globals.ts`), names
  * the module probes with `typeof`, and `globals` (e.g. the globals the route
  * file itself reads) are allowed, and so are references in code that
  * tree-shaking deletes (see the top of this file).
@@ -112,7 +113,7 @@ async function compileModule(code: string, filename: string) {
 
 function freeNamesOf(javascript: string): Set<string> {
   return new Set(
-    [...unboundNames(javascript)].filter((name) => !isKnownGlobal(name)),
+    [...unboundNames(javascript)].filter((name) => !knownGlobals.has(name)),
   )
 }
 
@@ -258,43 +259,6 @@ export function declaredNames(
   }
   visit(program)
   return names
-}
-
-/** Globals of browsers that Node.js does not define. */
-const browserGlobals = [
-  'window',
-  'document',
-  'navigator',
-  'location',
-  'history',
-  'self',
-  'top',
-  'parent',
-  'localStorage',
-  'sessionStorage',
-  'requestAnimationFrame',
-  'cancelAnimationFrame',
-  'requestIdleCallback',
-  'cancelIdleCallback',
-  'getComputedStyle',
-  'matchMedia',
-  'scrollTo',
-  'alert',
-  'HTMLElement',
-  'Element',
-  'Node',
-  'customElements',
-  'IntersectionObserver',
-  'ResizeObserver',
-  'MutationObserver',
-]
-const knownGlobals = new Set([
-  ...Object.getOwnPropertyNames(globalThis),
-  ...browserGlobals,
-])
-
-function isKnownGlobal(name: string) {
-  return knownGlobals.has(name)
 }
 
 type Scope = {

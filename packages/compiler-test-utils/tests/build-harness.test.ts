@@ -308,6 +308,31 @@ describe.each(['vite', 'rspack', 'webpack'] as const)(
       timeout,
     )
 
+    // Browsers define window properties with generic names: a chunk that
+    // reads one without declaring it most likely lost a local binding.
+    test(
+      'a chunk that reads a dropped local named like a window property fails the build description',
+      async () => {
+        await expect(
+          bundleApp({
+            bundler,
+            env: 'client',
+            files: {
+              'entry.ts': `export function read() {
+  return [name, status]
+}
+declare const name: string, status: string
+`,
+            },
+          }),
+        ).rejects.toMatchObject({
+          name: 'DanglingNameError',
+          names: { 'entry.mjs': ['name', 'status'] },
+        })
+      },
+      timeout,
+    )
+
     test(
       'chunks that read only globals, probe names with typeof, and drop dead code with a dangling name pass',
       async () => {
@@ -346,6 +371,64 @@ declare const maybeDefined: unknown
           '/x',
           2,
         ])
+      },
+      timeout,
+    )
+  },
+)
+
+// A build that does not minify (e.g. to test unminified source maps) keeps
+// the unused code webpack and Rspack only drop when minifying. Its chunks
+// are checked as the bundler's production minifier emits them.
+describe.each(['rspack', 'webpack'] as const)(
+  'dangling names in an unminified production client build (%s)',
+  (bundler) => {
+    test(
+      'a dangling name in code the minifier keeps fails the build description',
+      async () => {
+        await expect(
+          bundleApp({
+            bundler,
+            env: 'client',
+            minify: false,
+            files: {
+              'entry.ts': `export function read() {
+  return [notDeclaredAnywhere, document.title]
+}
+`,
+            },
+          }),
+        ).rejects.toMatchObject({
+          name: 'DanglingNameError',
+          names: { 'entry.mjs': ['notDeclaredAnywhere'] },
+        })
+      },
+      timeout,
+    )
+
+    test(
+      'a dangling name in code the minifier deletes passes',
+      async () => {
+        const app = await bundleApp({
+          bundler,
+          env: 'client',
+          minify: false,
+          files: {
+            'entry.ts': `function unused() {
+  return [notDeclaredAnywhere, 'MARK_UNUSED']
+}
+export function read() {
+  return 'MARK_USED'
+}
+`,
+          },
+        })
+        // The unminified output still has the unused function
+        expect({
+          used: app.where('MARK_USED'),
+          unused: app.where('MARK_UNUSED'),
+        }).toEqual({ used: 'eager', unused: 'eager' })
+        expect((await app.run('return entry.read()')).result).toBe('MARK_USED')
       },
       timeout,
     )
