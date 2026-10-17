@@ -167,6 +167,50 @@ export const ${name} = (..._args: Array<unknown>) => '${marker}'
       ...dependency('routeServerFn', 'MARK_ROUTE_SERVER_FN'),
       ...dependency('serverRouteHandler', 'MARK_SERVER_ROUTE'),
       ...dependency('startMiddleware', 'MARK_START_MIDDLEWARE'),
+      ...dependency('builderValidator', 'MARK_BUILDER_VALIDATOR'),
+      ...dependency(
+        'builderMiddlewareValidator',
+        'MARK_BUILDER_MIDDLEWARE_VALIDATOR',
+      ),
+      ...dependency(
+        'builderMiddlewareServer',
+        'MARK_BUILDER_MIDDLEWARE_SERVER',
+      ),
+      // A validator factory: the validator it returns returns the marker.
+      'src/deps/typedSchema.ts': `;(globalThis as Record<string, unknown>).MARK_TYPED_VALIDATOR = 'loaded'
+export const typedSchema = (_name: string) => (_data: unknown) =>
+  'MARK_TYPED_VALIDATOR'
+`,
+      // Builders stored in variables, and a validator schema that a type
+      // alias reads. The middleware module imports no server fn factory:
+      // with one, the Rsbuild SSR build fails to resolve its
+      // `createMiddleware` import (pin "a module with a middleware and an
+      // isomorphic fn builds ..." in known-bugs-start-compiler.test.ts).
+      'src/builder-middleware.ts': `import { createMiddleware } from '@tanstack/react-start'
+import { builderMiddlewareValidator } from './deps/builderMiddlewareValidator'
+import { builderMiddlewareServer } from './deps/builderMiddlewareServer'
+const validatedBase = createMiddleware({ type: 'function' }).validator(
+  (data: unknown) => builderMiddlewareValidator(data),
+)
+export const validatedMiddleware = validatedBase.server(({ next }) => next())
+const serverBase = createMiddleware({ type: 'function' }).server(({ next }) =>
+  next({ context: { marker: builderMiddlewareServer() } }),
+)
+export const serverMiddleware = serverBase.client(({ next }) => next())
+`,
+      'src/builders.ts': `import { createServerFn } from '@tanstack/react-start'
+import { builderValidator } from './deps/builderValidator'
+import { typedSchema } from './deps/typedSchema'
+const withValidator = createServerFn({ method: 'POST' }).validator(
+  (data: unknown) => builderValidator(data),
+)
+export const validatedFn = withValidator.handler(async ({ data }) => data)
+const themeValidator = typedSchema('theme')
+type Theme = ReturnType<typeof themeValidator>
+export const setTheme = createServerFn({ method: 'POST' })
+  .validator(themeValidator)
+  .handler(async ({ data }): Promise<Theme> => data)
+`,
       'src/middleware.ts': `import { createMiddleware } from '@tanstack/react-start'
 import { middlewareServer } from './deps/middlewareServer'
 import { middlewareValidator } from './deps/middlewareValidator'
@@ -232,6 +276,8 @@ export const Route = createFileRoute('/api')({
 export const getRouter = () => ({ routeTree })
 `,
       'src/entry.ts': `export { fn, fromBase, isomorphic, serverOnly } from './fns'
+export { setTheme, validatedFn } from './builders'
+export { serverMiddleware, validatedMiddleware } from './builder-middleware'
 export { fnMiddleware } from './middleware'
 export { startInstance } from './start'
 export { getRouter } from './router'
@@ -349,6 +395,55 @@ const next = (options) => options
         marker: 'MARK_START_MIDDLEWARE',
         run: `return entry.startInstance.getOptions().requestMiddleware[0].options.server({ next }).context.marker`,
         expected: 'MARK_START_MIDDLEWARE',
+      },
+      {
+        construct: 'a function middleware .server() on a builder variable',
+        marker: 'MARK_BUILDER_MIDDLEWARE_SERVER',
+        run: `return entry.serverMiddleware.options.server({ next }).context.marker`,
+        expected: 'MARK_BUILDER_MIDDLEWARE_SERVER',
+      },
+    ])(
+      '$construct: its server code is not in the client bundle, and runs in the SSR build',
+      async ({ marker, run, expected }) => {
+        expect(build.client.where(marker)).toBe('nowhere')
+        expect((await build.ssr.run(`${routes}${run}`)).result).toEqual(
+          expected,
+        )
+      },
+    )
+
+    // Bug: a `.validator()` link on a builder stored in a variable is not
+    // stripped from the client (server fn and middleware): the chain walk
+    // stops at the identifier. Pinned at compiler level in
+    // createServerFn/caller-dead-code.test.ts and
+    // start-compiler-factories.test.ts.
+    // Source: start-compiler/compiler.ts:1296-1330; fuzzing (oracle mode, N4).
+    // Bug: a validator schema that a type alias reads with `typeof` stays in
+    // the client output with its initializer. The root cause is upstream
+    // (babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a
+    // reference; no workaround here). Pinned at compiler level in
+    // known-bugs-start-compiler.test.ts.
+    // Source: router-utils/src/ast.ts:190; fuzzing (oracle mode, V1).
+    // Impact: the validators and what they import load eagerly in the
+    // client, which never runs them.
+    test.fails.each([
+      {
+        construct: 'a server fn validator on a builder variable',
+        marker: 'MARK_BUILDER_VALIDATOR',
+        run: `return await entry.validatedFn({ data: 'input' })`,
+        expected: 'MARK_BUILDER_VALIDATOR',
+      },
+      {
+        construct: 'a function middleware validator on a builder variable',
+        marker: 'MARK_BUILDER_MIDDLEWARE_VALIDATOR',
+        run: `return entry.validatedMiddleware.options.validator({})`,
+        expected: 'MARK_BUILDER_MIDDLEWARE_VALIDATOR',
+      },
+      {
+        construct: 'a server fn validator schema that a type alias reads',
+        marker: 'MARK_TYPED_VALIDATOR',
+        run: `return await entry.setTheme({ data: 'light' })`,
+        expected: 'MARK_TYPED_VALIDATOR',
       },
     ])(
       '$construct: its server code is not in the client bundle, and runs in the SSR build',

@@ -87,17 +87,26 @@ export const startRuntimeFiles: Record<string, string> = {
   throw new Error('uncompiled Start factory: ' + name)
 }
 export function createServerFn() {
+  let validator
   const builder = {
     middleware: () => builder,
     inputValidator: () => builder,
+    validator(value) {
+      validator = value
+      return builder
+    },
     handler(rpc, impl) {
       if (!impl) {
         return rpc
       }
+      // Like the real runtime, the server runs the validator (a function)
+      // on the input before the handler.
+      const run = (opts = {}) =>
+        impl(validator ? { ...opts, data: validator(opts.data) } : opts)
       // Like the real runtime, the server fn carries what the extracted fn
       // carries (its id).
-      const serverFn = Object.assign((opts) => impl(opts ?? {}), rpc)
-      serverFn.__executeServer = (opts) => impl(opts ?? {})
+      const serverFn = Object.assign((opts) => run(opts ?? {}), rpc)
+      serverFn.__executeServer = (opts) => run(opts ?? {})
       return serverFn
     },
   }
