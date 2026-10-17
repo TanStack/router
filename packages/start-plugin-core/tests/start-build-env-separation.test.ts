@@ -8,8 +8,25 @@
  * Route options go through Start's own router plugin wiring (its list of
  * options deleted from client route modules).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart, routerRuntimeFiles, startBundlers } from './build-harness'
+import { readdir } from 'node:fs/promises'
+import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { createApp } from '@tanstack/compiler-test-utils/build-harness'
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+} from 'vitest'
+import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
+import {
+  buildStart,
+  routerRuntimeFiles,
+  startBundlers,
+  startRuntimeFiles,
+} from './build-harness'
 import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
@@ -359,4 +376,87 @@ return results`)
       expect(result).toEqual(['MARK_HANDLER_DEP', 'MARK_BASE_HANDLER_DEP'])
     })
   })
+})
+
+describe('Vite: an environment built twice by one builder', () => {
+  // `@vitejs/plugin-rsc` runs a scan build of an environment before its real
+  // build, with the same plugins: the second build compiles server fns
+  // again, including ones whose builder the compiler loads from another
+  // module.
+  // Source: mutation round 3 sc-hosts 4.
+  test(
+    'the second build compiles the server fns of its modules',
+    async () => {
+      const app = await createApp({
+        dir: path.dirname(fileURLToPath(import.meta.url)),
+        prefix: '.start-build-twice-',
+        registerCleanup: onTestFinished,
+        files: {
+          ...startRuntimeFiles,
+          'src/direct.ts': `import { createServerFn } from '@tanstack/react-start'
+export const direct = createServerFn().handler(async () => 'MARK_DIRECT')
+`,
+          'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+          'src/fns.ts': `import { base } from './base'
+export const greet = base.handler(async () => 'MARK_HANDLER')
+`,
+        },
+      })
+      const { createBuilder } = await import('vite')
+      /** Entry module of each build of the SSR environment. */
+      const inputs = ['src/direct.ts', 'src/fns.ts']
+      let builds = 0
+      const builder = await createBuilder({
+        root: app.root,
+        configFile: false,
+        logLevel: 'silent',
+        environments: {
+          client: { build: { outDir: 'dist/client' } },
+          // `ssr` names an entry; `build-twice-input` sets each build's
+          ssr: { build: { outDir: 'dist/ssr', ssr: inputs[0] } },
+        },
+        ssr: { noExternal: true },
+        builder: {
+          async buildApp(appBuilder) {
+            for (const _input of inputs) {
+              await appBuilder.build(appBuilder.environments.ssr!)
+              builds++
+            }
+          },
+        },
+        plugins: [
+          {
+            name: 'build-twice-input',
+            applyToEnvironment: (environment) => environment.name === 'ssr',
+            options: (options) => ({
+              ...options,
+              input: path.join(app.root, inputs[builds]!),
+            }),
+          },
+          startCompilerPlugin({
+            framework: 'react',
+            environments: [
+              { name: 'client', type: 'client' },
+              { name: 'ssr', type: 'server' },
+            ],
+            providerEnvName: 'ssr',
+          }),
+        ],
+      })
+      await builder.buildApp()
+      expect(builds).toBe(2)
+      const outDir = path.join(app.root, 'dist/ssr')
+      const output = (await readdir(outDir)).find((file) =>
+        /^fns\.m?js$/.test(file),
+      )
+      const { greet } = await import(
+        pathToFileURL(path.join(outDir, output!)).href
+      )
+      expect(typeof greet.functionId).toBe('string')
+      expect(await greet()).toBe('MARK_HANDLER')
+    },
+    timeout,
+  )
 })
