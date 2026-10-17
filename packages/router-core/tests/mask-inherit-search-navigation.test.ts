@@ -3,7 +3,7 @@ import { isServer as serverEnvironment } from '@tanstack/router-core/isServer'
 import { describe, expect, test } from 'vitest'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
-import type { BuildNextOptions } from '../src'
+import type { ToOptions } from '../src'
 
 function setup(configuredMask: boolean, isServer = false) {
   const root = new BaseRootRoute({})
@@ -133,7 +133,7 @@ describe.each([false, true])(
               search: { q },
             }),
           )
-          const options: BuildNextOptions = {
+          const options: ToOptions = {
             to: '/items/$id',
             params: { id: 'destination' },
             ...fixture.mask('destination'),

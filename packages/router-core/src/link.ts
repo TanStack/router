@@ -638,7 +638,7 @@ export type ToPathOption<
 
 export type FromPathOption<TRouter extends AnyRouter, TFrom> = ConstrainLiteral<
   TFrom,
-  RoutePaths<TRouter['routeTree']>
+  RoutePaths<TRouter['routeTree']> & string
 >
 
 /**
