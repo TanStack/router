@@ -38,6 +38,13 @@ export const secret = () => 'MARK_SECRET'
 type DeniedModule = keyof typeof deniedModules
 const deniedModuleNames = Object.keys(deniedModules) as Array<DeniedModule>
 
+/** A client-only module (denied to the server by its marker). */
+const clientOnlyMarked = {
+  'src/marked.ts': `import '@tanstack/react-start/client-only'
+export const secret = () => 'MARK_SECRET'
+`,
+}
+
 /** An app whose client entry `src/entry.ts` uses `denied`. */
 function appUsing(denied: DeniedModule) {
   const { importedAs, files } = deniedModules[denied]
@@ -133,6 +140,16 @@ describe.each(startBundlers)('%s build, default rules', (bundler) => {
       reported: 'src/entry.ts:2:27',
     },
     {
+      name: 'a client import of a *.server.* file in a dot directory',
+      files: {
+        'src/.private/db.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/entry.ts': `import { secret } from './.private/db.server'
+export const read = () => secret()
+`,
+      },
+      reported: 'src/entry.ts:2:27',
+    },
+    {
       name: 'a client import of @tanstack/react-start/server',
       files: {
         'src/entry.ts': `import { getRequest } from '@tanstack/react-start/server'
@@ -176,17 +193,71 @@ export const read = () => getRequest()
   )
 
   test(
-    'the server build may import a server-only-marked module',
+    'a server import of a client-only-marked module fails the build, naming the module',
     async () => {
-      const { ssr } = await buildStart({
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            ...clientOnlyMarked,
+            'src/server.ts': `import { secret } from './marked'
+export const read = () => secret()
+`,
+            'src/client.ts': `export const read = () => 'client'\n`,
+          },
+          entry: { client: 'src/client.ts', ssr: 'src/server.ts' },
+        }),
+      )
+      expect(reportedViolations(error.message)).toEqual([
+        {
+          environment: 'server',
+          importer: expect.stringMatching(/^src\/marked\.ts/),
+        },
+      ])
+    },
+    timeout,
+  )
+
+  // Several modules import the marked module (directly and through a
+  // re-export), so the marker check sees it imported after it has seen its
+  // marker.
+  test.each([
+    { env: 'ssr', marker: 'server-only', build: 'server' },
+    { env: 'client', marker: 'client-only', build: 'client' },
+  ] as const)(
+    'the $build build may import a $marker-marked module from several modules, without any import-protection output',
+    async ({ env, marker }) => {
+      const built = await buildStart({
         bundler,
         files: {
-          ...appUsing('a server-only-marked module'),
-          'src/client.ts': `export const read = () => 'client'\n`,
+          'src/marked.ts': `import '@tanstack/react-start/${marker}'
+export const secret = () => 'MARK_SECRET'
+`,
+          'src/d.ts': `import { secret } from './marked'
+export const d = () => secret()
+`,
+          'src/c.ts': `export { d } from './d'\n`,
+          'src/user.ts': `import { secret } from './marked'
+import { d } from './c'
+export const read = () => secret() + '|' + d()
+`,
+          'src/other.ts': `export const read = () => 'other'\n`,
         },
-        entry: { client: 'src/client.ts', ssr: 'src/entry.ts' },
+        entry:
+          env === 'ssr'
+            ? { client: 'src/other.ts', ssr: 'src/user.ts' }
+            : { client: 'src/user.ts', ssr: 'src/other.ts' },
       })
-      expect((await ssr.run(`return entry.read()`)).result).toBe('MARK_SECRET')
+      expect((await built[env].run(`return entry.read()`)).result).toBe(
+        'MARK_SECRET|MARK_SECRET',
+      )
+      expect(
+        [
+          ...built.client.warnings,
+          ...built.ssr.warnings,
+          ...built.client.consoleMessages,
+        ].filter((message) => message.includes('import-protection')),
+      ).toEqual([])
     },
     timeout,
   )
@@ -205,59 +276,170 @@ export const read = () => getRequest()
 })
 
 // `behavior: 'mock'` builds: a denied import is replaced with a mock (and
-// a warning); the real module's code stays out of the client bundle.
+// a warning); the real module's code stays out of the bundle.
 describe.each(startBundlers)('%s build, mock mode', (bundler) => {
-  /** Whether the client gets a mock for `secret` in a mock-mode build. */
-  async function mockedRead(denied: DeniedModule) {
-    const { client } = await buildStart({
+  interface MockedImport {
+    /** The specifier `src/entry.ts` imports `secret` with. */
+    importedAs: string
+    files: Record<string, string>
+    /** Other imports of `src/entry.ts`. */
+    imports?: string
+    /** The environment that imports it (default `client`). */
+    env?: 'client' | 'ssr'
+  }
+
+  /**
+   * What the environment that imports `secret` gets for it in a mock-mode
+   * build.
+   */
+  async function mockedRead(denied: MockedImport) {
+    const env = denied.env ?? 'client'
+    const built = await buildStart({
       bundler,
       files: {
-        ...appUsing(denied),
-        'src/entry.ts': `import { secret } from '${deniedModules[denied].importedAs}'
+        ...denied.files,
+        'src/entry.ts': `${denied.imports ?? ''}import { secret } from '${denied.importedAs}'
 export const read = () => secret
 `,
+        'src/other.ts': `export const read = () => 'other'\n`,
       },
-      entry: 'src/entry.ts',
+      entry:
+        env === 'client'
+          ? 'src/entry.ts'
+          : { client: 'src/other.ts', ssr: 'src/entry.ts' },
       start: { importProtection: { behavior: 'mock' } },
     })
+    const { result, logs } = await built[env].run(`const secret = entry.read()
+return String(secret())`)
     return {
-      warned: reportedViolations(client.warnings).length > 0,
-      hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
-      /** What the client gets for `secret`, converted to a string. */
-      read: (await client.run(`return String(entry.read())`)).result,
+      warned: reportedViolations(built[env].warnings).length > 0,
+      hasRealCode: built[env].where('MARK_SECRET') !== 'nowhere',
+      /** What calling `secret` returns, converted to a string. */
+      read: result,
+      /** What using it logged. */
+      logs,
     }
   }
 
-  /** A mock converts to this text. */
+  /** A mock converts to this text; the mocks of a build are silent. */
   const mocked = {
     warned: true,
     hasRealCode: false,
     read: '[import-protection mock]',
+    logs: [],
   }
 
-  test(
-    'a denied file is mocked, with a warning',
-    async () => {
-      expect(await mockedRead('a denied file')).toEqual(mocked)
+  const deniedFile = (extension: string): MockedImport => ({
+    importedAs: `./secret.server.${extension}`,
+    files: {
+      [`src/secret.server.${extension}`]: `export const secret = () => 'MARK_SECRET'\n`,
+    },
+  })
+
+  const deniedFiles: Record<string, MockedImport> = {
+    'a denied file': deniedModules['a denied file'],
+    'a denied .server.mts file': deniedFile('mts'),
+    'a denied .server.mjs file': deniedFile('mjs'),
+    'a denied file of a module that imports CSS': {
+      ...deniedModules['a denied file'],
+      files: {
+        ...deniedModules['a denied file'].files,
+        'src/style.css': `.page { color: red }\n`,
+      },
+      imports: `import './style.css'\n`,
+    },
+  }
+
+  test.each(Object.keys(deniedFiles))(
+    '%s is mocked, with a warning',
+    async (name) => {
+      expect(await mockedRead(deniedFiles[name]!)).toEqual(mocked)
     },
     timeout,
   )
 
-  // Bug (Vite): in a build, a violation of a server-only marker only
-  // replaces the marker import itself with a mock (`handleViolation` in
+  const markedModules: Record<string, MockedImport> = {
+    'a server-only-marked module': deniedModules['a server-only-marked module'],
+    'a client-only-marked module imported by the server': {
+      importedAs: './marked',
+      files: clientOnlyMarked,
+      env: 'ssr',
+    },
+  }
+
+  // Bug (Vite): in a build, a violation of a marker (server-only in the
+  // client, client-only in the server) only replaces the marker import
+  // itself with a mock (`handleViolation` in
   // vite/import-protection-plugin/plugin.ts returns a mock edge for the
   // marker specifier); the marked module keeps its code, and its importers
   // import it. The Rsbuild adapter replaces the module with a mock
   // (self-denial in its import-protection loader). Vite dev mocks the
   // importers' import (see dev.test.ts).
-  // Impact: a mock-mode Vite build ships the server-only module's real code
-  // in the client bundle (only a warning is logged).
-  // Source: found writing the H2 rows (oracle-gaps REPORT.md).
+  // Impact: a mock-mode Vite build ships the marked module's real code in
+  // the bundle of the environment it is denied to (only a warning is
+  // logged).
+  // Source: found writing the H2 rows (oracle-gaps REPORT.md); client-only
+  // row: round 3 mutation testing (ip-misc P2).
   const markerMockTest = bundler === 'vite' ? test.fails : test
-  markerMockTest(
-    'a server-only-marked module is mocked, with a warning',
+  markerMockTest.each(Object.keys(markedModules))(
+    '%s is mocked, with a warning',
+    async (name) => {
+      expect(await mockedRead(markedModules[name]!)).toEqual(mocked)
+    },
+    timeout,
+  )
+
+  // A module that re-exports from a denied specifier is rewritten like a
+  // module that imports from it; re-exports of other modules keep their
+  // values.
+  test(
+    're-exports from a denied specifier are mocked; other re-exports keep their values',
     async () => {
-      expect(await mockedRead('a server-only-marked module')).toEqual(mocked)
+      const { client } = await buildStart({
+        bundler,
+        files: {
+          'node_modules/denied-pkg/package.json': JSON.stringify({
+            name: 'denied-pkg',
+            type: 'module',
+            main: 'index.js',
+            sideEffects: false,
+          }),
+          'node_modules/denied-pkg/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+          'node_modules/safe-pkg/package.json': JSON.stringify({
+            name: 'safe-pkg',
+            type: 'module',
+            main: 'index.js',
+          }),
+          'node_modules/safe-pkg/index.js': `export const ok = () => 'MARK_SAFE'
+export const fine = () => 'MARK_FINE'
+`,
+          'src/barrel.ts': `export { secret } from 'denied-pkg'\n`,
+          'src/mixed.ts': `import { secret as aliased } from 'denied-pkg'
+export { ok } from 'safe-pkg'
+export * from './fine'
+export const s = () => aliased
+`,
+          'src/fine.ts': `export { fine } from 'safe-pkg'\n`,
+          'src/entry.ts': `import { secret } from './barrel'
+import { ok, fine, s } from './mixed'
+export const read = () => [String(secret), ok(), fine(), String(s())].join(',')
+`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: {
+            behavior: 'mock',
+            client: { specifiers: ['denied-pkg'] },
+          },
+        },
+      })
+      expect({
+        hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
+        read: (await client.run(`return entry.read()`)).result,
+      }).toEqual({
+        hasRealCode: false,
+        read: '[import-protection mock],MARK_SAFE,MARK_FINE,[import-protection mock]',
+      })
     },
     timeout,
   )
