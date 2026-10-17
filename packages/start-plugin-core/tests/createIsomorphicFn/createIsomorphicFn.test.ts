@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   compileCode,
   evaluateModule,
@@ -220,5 +220,47 @@ export const moduleLevel = getEnvironment()`)
       'running on server',
     ])
     expectEnvImports({ client, ssr })
+  })
+})
+
+describe('isomorphic fns next to other code', () => {
+  test('a top-level call next to a server fn returns the value of each environment', async () => {
+    const code = `import { createServerFn, createIsomorphicFn } from '@tanstack/react-start'
+const getEnv = createIsomorphicFn().server(() => 'server').client(() => 'client')
+export const env = getEnv()
+export const fn = createServerFn().handler(async () => 'x')`
+    const client = await evaluateModule((await compileCode('client', code))!)
+    expect(client.env).toBe('client')
+    const ssr = await evaluateModule(
+      (await compileCode('ssr', code))!,
+      {},
+      { env: 'server' },
+    )
+    expect(ssr.env).toBe('server')
+  })
+
+  test('a builder kept in a variable', async () => {
+    const code = `import { createIsomorphicFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const iso = createIsomorphicFn()
+export const fn = iso.server(() => db.x()).client(() => 'client')`
+    const client = (await compileCode('client', code)) ?? code
+    expect(importSources(client)).not.toContain('./db.server')
+    expect((await evaluateModule(client)).fn()).toBe('client')
+  })
+
+  test('a .client() call on a global object is left alone', async () => {
+    const code = `import { createIsomorphicFn } from '@tanstack/react-start'
+export const fn = createIsomorphicFn().server(() => 'server').client(() => 'client')
+export const viaGlobal = () => ws.client()`
+    const client = (await compileCode('client', code)) ?? code
+    vi.stubGlobal('ws', { client: () => 'global' })
+    try {
+      const module = await evaluateModule(client)
+      expect(module.fn()).toBe('client')
+      expect(module.viaGlobal()).toBe('global')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
