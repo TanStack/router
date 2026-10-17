@@ -348,6 +348,62 @@ export default createMiddleware().server(async ({ next }) => {
     )
   })
 
+  /**
+   * Compiles `code` (which exports `getEnv`) for the client and SSR and
+   * calls `getEnv` in each output, with the Start runtime of its
+   * environment.
+   */
+  async function callIsomorphicFn(code: string) {
+    const client = (await compileCode('client', code)) ?? code
+    const ssr = (await compileCode('ssr', code)) ?? code
+    return {
+      client: settle((await evaluateModule(client)).getEnv),
+      ssr: settle((await evaluateModule(ssr, {}, { env: 'server' })).getEnv),
+    }
+  }
+
+  // Control for the pin below (same harness): the inline chain.
+  test('each output keeps its implementation of an isomorphic fn written as one chain', async () => {
+    expect(
+      await callIsomorphicFn(`import { createIsomorphicFn } from '@tanstack/react-start'
+export const getEnv = createIsomorphicFn().server(() => 'server').client(() => 'client')`),
+    ).toEqual({ client: 'client', ssr: 'server' })
+  })
+
+  // Bug: an isomorphic fn whose first link is stored in a variable
+  // (`const base = createIsomorphicFn().server(...)`, then
+  // `export const getEnv = base.client(...)`) loses that link's
+  // implementation: each call is compiled on its own, the chain walk from
+  // `base.client(...)` stops at the identifier, so the output of the stored
+  // link's environment gets a no-op. Same chain walk as the `.validator()`
+  // pin of a builder stored in a variable above (fuzz N4).
+  // Source: start-compiler/handleCreateIsomorphicFn.ts:17-25,
+  // start-compiler/compiler.ts:1296-1330; fuzzing (oracle mode, round 2,
+  // F3; Vite and Rsbuild builds return undefined too).
+  // Impact: the server (or client) call silently returns undefined instead
+  // of running its implementation.
+  test.fails.each([
+    {
+      name: '.server() link',
+      code: `const base = createIsomorphicFn().server(() => 'server')
+export const getEnv = base.client(() => 'client')`,
+    },
+    {
+      name: '.client() link',
+      code: `const base = createIsomorphicFn().client(() => 'client')
+export const getEnv = base.server(() => 'server')`,
+    },
+  ])(
+    'each output keeps its implementation of an isomorphic fn whose $name is stored in a variable',
+    async ({ code }) => {
+      expect(
+        await callIsomorphicFn(
+          `import { createIsomorphicFn } from '@tanstack/react-start'\n${code}`,
+        ),
+      ).toEqual({ client: 'client', ssr: 'server' })
+    },
+  )
+
   // Bug: an isomorphic chain link wrapped in `satisfies` / `as` is not
   // followed: the implementation of the wrapped link is lost.
   // Impact: the output that needs it gets a no-op isomorphic fn (the server

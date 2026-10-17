@@ -340,6 +340,32 @@ export function bump() {
   expect((await evaluateModule(client!)).bump()).toBe(4)
 })
 
+// Bug: the client output prints a type assertion that is the test of a
+// conditional whose branch starts with a unary minus without its parentheses
+// (`a as any ? -x : y`), which does not parse (`any ? -x` reads as the start
+// of a conditional type). The root cause is upstream: @babel/generator 7.29.8
+// drops the parentheses (parse+generate of `f = ((a) as any) ? -x : y` gives
+// `f = a as any ? -x : y;`; no workaround here; router-utils/src/ast.ts:72
+// `generateFromAst` prints with it). The code splitter has the same bug (pin
+// in router-plugin/tests/known-bugs-code-splitter.test.ts).
+// Impact: the module fails to parse, so the build fails.
+// Source: fuzzing (oracle mode, round 2).
+test.fails(
+  'keeps the parentheses of an asserted conditional test',
+  async () => {
+    const client = await compileCode(
+      'client',
+      `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 1)
+export function pick(flag: unknown, x: number, y: number) {
+  return ((flag) as any) ? -x : y
+}`,
+    )
+    expect(await getModuleErrors(client!)).toEqual([])
+    expect((await evaluateModule(client!)).pick(true, 1, 2)).toBe(-1)
+  },
+)
+
 /** Compiles a module whose `Page` returns `expression` for the client. */
 async function compilePageReturning(expression: string) {
   const client = await compileCode(
@@ -377,6 +403,10 @@ test.fails.each([
     rendered: '<i></i>',
   },
   { name: 'a member call', expression: '(<p>page</p>).valueOf()' },
+  {
+    name: 'an optional member call',
+    expression: '(<p>page</p>)?.valueOf()',
+  },
 ])(
   'client: keeps parenthesized JSX under $name working',
   async ({ expression, rendered = '<p>page</p>' }) => {

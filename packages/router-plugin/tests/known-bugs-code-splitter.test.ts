@@ -2596,6 +2596,146 @@ return globalThis.__inits === undefined ? [html] : [html, globalThis.__inits]`,
     },
     30_000,
   )
+
+  /**
+   * Loads a route whose errorComponent option is the exported
+   * `PostErrorComponent`, written as `value`, next to another module of the
+   * app that imports `PostErrorComponent` from the route file (ruling P1:
+   * through a real importer). `withAuth` (`./with-auth`) and `memo`
+   * (`react`) are identity stubs, so the option's value is the component
+   * itself. Returns whether the route renders the importer's instance, and
+   * whether the option is split or the user is told it is not (a warning
+   * naming the route file and the option or the component).
+   */
+  async function exportedErrorComponent(value: string) {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const route = await loadRoute(
+        `${head}import { withAuth } from './with-auth'
+import { memo } from 'react'
+export const Route = createFileRoute('/posts/$postId')({
+  errorComponent: ${value},
+  component: () => <p>post</p>,
+})
+export function PostErrorComponent() {
+  return <p>error</p>
+}
+`,
+        {
+          stubs: {
+            './with-auth': { withAuth: (component: unknown) => component },
+            react: { memo: (component: unknown) => component },
+          },
+        },
+      )
+      const importer = await route.importFromRoute(
+        `import { PostErrorComponent } from '${routeSpecifier}'
+export const imported = PostErrorComponent`,
+      )
+      const errorComponent = await route.load('errorComponent')
+      const file = route.ids.reference!
+      return {
+        rendered: errorComponent(),
+        sameInstance: errorComponent === importer.imported,
+        splitOrReported:
+          route.isLazy('errorComponent') ||
+          warn.mock.calls.some(([message]) => {
+            const text = String(message)
+            return (
+              text.includes(file) &&
+              /\b(?:PostErrorComponent|errorComponent)\b/.test(text)
+            )
+          }),
+      }
+    } finally {
+      warn.mockRestore()
+    }
+  }
+
+  // Control for the pin below (same harness): the bare identifier.
+  test('an exported errorComponent named by the option is the instance its importers get', async () => {
+    expect(await exportedErrorComponent('PostErrorComponent')).toEqual({
+      rendered: '<p>error</p>',
+      sameInstance: true,
+      splitOrReported: true,
+    })
+  })
+
+  // Bug: an exported component named by a split option is only recognised
+  // as an export when the option is a bare identifier. Written in another
+  // shape (`as any`, `as typeof X`, an HOC call such as `withAuth(X)` or
+  // `memo(X)`), the option is split and its chunk declares its own copy of
+  // the exported component, so the route renders another instance than the
+  // one other modules import (and no "not code-split" warning is shown).
+  // Either outcome of the bare identifier (one instance, split or unsplit
+  // with a warning) is fine (ruling P1, decision D11).
+  // Reach: the repository's examples (react and solid
+  // basic-virtual-file-based posts-detail.tsx) and e2e apps (react, solid
+  // and vue basic-file-based-code-splitting, virtual and rspack-virtual
+  // routes, solid-start virtual-routes) write `errorComponent:
+  // PostErrorComponent as any`; no other module imports it there, so they
+  // show no symptom.
+  // Source: compilers.ts:945-960 (the export check only handles a bare
+  // Identifier), :572-591, the copy via :1170-1242; fuzzing (oracle mode,
+  // round 2, F1).
+  // Impact: code that relies on the identity of the component (`===`
+  // checks, registries, memoised props) sees two of them, and the component
+  // code ships twice (see the build pin below).
+  test.fails.each([
+    'PostErrorComponent as any',
+    'PostErrorComponent as typeof PostErrorComponent',
+    'withAuth(PostErrorComponent)',
+    'memo(PostErrorComponent)',
+  ])(
+    'an exported errorComponent written as `%s` is the instance its importers get',
+    async (value) => {
+      expect(await exportedErrorComponent(value)).toEqual({
+        rendered: '<p>error</p>',
+        sameInstance: true,
+        splitOrReported: true,
+      })
+    },
+  )
+
+  // Bug: same as above, in a real client build whose entry imports the
+  // exported component (`export * from './routes/index'`): the component is
+  // in both the entry chunk and the split chunk. One instance (split, or
+  // unsplit with a warning naming the route file, decision D11) is the goal.
+  // Impact: the component's code ships twice and runs as two components.
+  test.fails.each(clientBundlers)(
+    'an exported errorComponent written as `PostErrorComponent as any` is in the client once (%s build)',
+    async (bundler) => {
+      const app = await build({
+        bundler,
+        env: 'client',
+        files: routeApp(
+          `${head}export const Route = createFileRoute('/posts/$postId')({
+  errorComponent: PostErrorComponent as any,
+  component: () => <p>post</p>,
+})
+export function PostErrorComponent() {
+  return <p>{'MARK_POST_ERROR_END'}</p>
+}
+`,
+          { env: 'client' },
+        ),
+      })
+      const { result: lazy } = await app.run(
+        `return typeof entry.Route.options.errorComponent.preload === 'function'`,
+      )
+      const reported = [...app.warnings, ...app.consoleMessages].some(
+        (message) =>
+          message.includes('routes/index.tsx') &&
+          /\b(?:PostErrorComponent|errorComponent)\b/.test(message),
+      )
+      const placement = app.where('MARK_POST_ERROR_END')
+      expect(['lazy', 'eager']).toContain(placement)
+      expect({ splitOrReported: lazy === true || reported }).toEqual({
+        splitOrReported: true,
+      })
+    },
+    60_000,
+  )
 })
 
 /**
@@ -3238,6 +3378,36 @@ export const Route = createFileRoute('/')({ component: Page })
     },
   )
 
+  // Bug: the split chunk prints a type assertion that is the test of a
+  // conditional whose branch starts with a unary minus without its
+  // parentheses (`a as any ? -x : y`), which does not parse (`any ? -x`
+  // reads as the start of a conditional type). The root cause is upstream:
+  // @babel/generator 7.29.8 drops the parentheses (parse+generate of
+  // `f = ((a) as any) ? -x : y` gives `f = a as any ? -x : y;`; no
+  // workaround here; router-utils/src/ast.ts:72 `generateFromAst` prints
+  // with it). The Start compiler has the same bug (pin in
+  // start-plugin-core/tests/start-compiler-preserves-user-code.test.ts).
+  // Source: fuzzing (oracle mode, round 2).
+  // Impact: the split component's chunk fails to compile, so the build
+  // fails.
+  test.fails(
+    'an asserted conditional test keeps its parentheses in a split component',
+    async () => {
+      const code = `${head}function pick(flag: unknown, x: number, y: number) {
+  return ((flag) as any) ? -x : y
+}
+function Page() {
+  return <p>{pick(true, 1, 2)}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`
+      await expectValidModules(compileRouteModules(code).modules)
+      expect((await (await loadRoute(code)).load('component'))()).toBe(
+        '<p>-1</p>',
+      )
+    },
+  )
+
   /**
    * Compiles a route whose split component returns `expression`, checks that
    * every emitted module is valid and returns what the component renders.
@@ -3273,6 +3443,10 @@ export const Route = createFileRoute('/')({ component: Page })
       rendered: '<i></i>',
     },
     { name: 'a member call', expression: '(<p>page</p>).valueOf()' },
+    {
+      name: 'an optional member call',
+      expression: '(<p>page</p>)?.valueOf()',
+    },
   ])(
     'parenthesized JSX under $name keeps working in a split component',
     async ({ expression, rendered = '<p>page</p>' }) => {
@@ -3586,6 +3760,33 @@ function Page() {
         (await route.load('pendingComponent'))(),
         (await route.load('component'))(),
       ]).toEqual(['<p>object</p>', '<p>object</p>'])
+    },
+  )
+
+  // Bug: same root cause as above, for an unsplit option that reads the
+  // split component (which reads `Route`, so it moves to its chunk) with
+  // `typeof`. Reading an undeclared name with `typeof` does not throw, so
+  // the route module loads and the option silently sees `'undefined'`.
+  // Source: fuzzing (oracle mode, round 2: `beforeLoad` and `loaderDeps`
+  // readers of components of the repository's e2e routes).
+  // Impact: code that checks the component (`typeof Page === 'function'`)
+  // takes the wrong branch on every navigation, with no error.
+  test.fails(
+    'an unsplit option that reads the split component with typeof sees a function',
+    async () => {
+      const route =
+        await loadRoute(`${head}export const Route = createFileRoute('/')({
+  component: Page,
+  beforeLoad: () => typeof Page,
+})
+function Page() {
+  return <p>{typeof Route}</p>
+}
+`)
+      expect([
+        route.options.beforeLoad(),
+        (await route.load('component'))(),
+      ]).toEqual(['function', '<p>object</p>'])
     },
   )
 

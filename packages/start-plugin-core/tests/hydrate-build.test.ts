@@ -4,7 +4,7 @@
  * bundler's decision (with the side-effect hints of the app), so it is
  * asserted on build output.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { afterAll, describe, expect, onTestFinished, test } from 'vitest'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
@@ -23,6 +23,7 @@ import { startDevServer } from './dev-server'
 import { startRsbuildDevServer } from './rsbuild-dev-server'
 import { getChunkComponent, getChunkIds } from './regression-helpers'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
+import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
 
@@ -325,6 +326,38 @@ export function Page() {
       timeout,
     )
 
+    /**
+     * A route whose split options `pendingComponent` and `component` render
+     * boundaries, with `reader` as more route options, and the router that
+     * imports the route tree.
+     */
+    const splitBoundariesFiles = (reader = '') => ({
+      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Hydrate } from '@tanstack/react-start'
+export const Route = createFileRoute('/')({
+  pendingComponent: Pending,
+  component: Page,${reader}
+})
+function Pending() {
+  return <Hydrate><p>pending-marker</p></Hydrate>
+}
+function Page() {
+  return <section><Hydrate><p>page-marker</p></Hydrate></section>
+}
+`,
+      'src/router.ts': `import { routeTree } from './routeTree.gen'
+export const getRouter = () => ({ routeTree })
+`,
+      'entry.ts': `export { getRouter } from './src/router'\n`,
+    })
+    /** Renders the split options of the route `/` of `splitBoundariesFiles`. */
+    const renderSplitBoundaries = `(() => {
+  const route = Object.values(entry.getRouter().routeTree.children).find(
+    (candidate) => candidate.options.id === '/',
+  )
+  return [route.options.pendingComponent(), route.options.component()]
+})()`
+
     // A route whose split options (`component` and `pendingComponent`)
     // contain boundaries: the client hydrates each boundary with the id the
     // server renders it with, and loads its own children.
@@ -345,43 +378,124 @@ export function Page() {
           start: groupings && {
             router: { codeSplittingOptions: { defaultBehavior: groupings } },
           },
-          files: {
-            ...hydrateRuntimeFiles,
-            'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { Hydrate } from '@tanstack/react-start'
-export const Route = createFileRoute('/')({
-  pendingComponent: Pending,
-  component: Page,
-})
-function Pending() {
-  return <Hydrate><p>pending-marker</p></Hydrate>
-}
-function Page() {
-  return <section><Hydrate><p>page-marker</p></Hydrate></section>
-}
-`,
-            'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
-`,
-            'entry.ts': `export { getRouter } from './src/router'\n`,
-          },
+          files: { ...hydrateRuntimeFiles, ...splitBoundariesFiles() },
         })
         expect(build.client.where('page-marker')).toBe('lazy')
         expect(build.client.where('pending-marker')).toBe('lazy')
         const server = await expectHydratesLikeServer(
           build,
-          `(() => {
-  const route = Object.values(entry.getRouter().routeTree.children).find(
-    (candidate) => candidate.options.id === '/',
-  )
-  return [route.options.pendingComponent(), route.options.component()]
-})()`,
+          renderSplitBoundaries,
         )
         expect(server.html).toEqual([
           '[<p>pending-marker</p>]',
           '<section>[<p>page-marker</p>]</section>',
         ])
         expect(new Set(server.ids).size).toBe(2)
+      },
+      timeout,
+    )
+
+    // Bug: a split component with a boundary that another route option
+    // reads (`head` reads `Page.name`) goes to a module the route module and
+    // the chunk share, without the lazy component of its boundary, which
+    // stays in the chunk: the shared module reads an undeclared name (the
+    // build harness rejects the client output). Root cause: the code
+    // splitter takes a JSX tag whose name starts with `_` for an intrinsic
+    // element and does not count it as a read of the binding, here a name
+    // the `<Hydrate>` transform generates (router-utils/src/
+    // compiler-helpers.ts:268; same root cause as the `_Widget` row in
+    // router-plugin/tests/code-splitter-jsx.test.ts).
+    // Control: the test above (same route, without `head`).
+    // Source: fuzzing (oracle mode, round 2, F4: real Start builds, Vite and
+    // Rsbuild).
+    // Impact: the route's component throws a ReferenceError when it
+    // renders, so the page never renders.
+    test.fails(
+      'boundaries in split route options that another option reads hydrate like the server renders them',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          files: {
+            ...hydrateRuntimeFiles,
+            ...splitBoundariesFiles(
+              `\n  head: () => ({ meta: [{ title: Page.name }] }),`,
+            ),
+          },
+        })
+        const server = await expectHydratesLikeServer(
+          build,
+          renderSplitBoundaries,
+        )
+        expect(server.html).toEqual([
+          '[<p>pending-marker</p>]',
+          '<section>[<p>page-marker</p>]</section>',
+        ])
+      },
+      timeout,
+    )
+
+    // One build for the control and the pin below: a module with unused
+    // exported components, one with a boundary
+    // (`src/hydrated-widgets.tsx`) and one without (`src/plain-widgets.tsx`);
+    // the entry imports only their used neighbours.
+    let widgetsBuild: Promise<StartBuild> | undefined
+    let disposeWidgets: (() => Promise<void>) | undefined
+    const widgetsApp = () =>
+      (widgetsBuild ??= buildStart({
+        bundler,
+        registerCleanup: (cleanup) => {
+          disposeWidgets = cleanup
+        },
+        files: {
+          ...hydrateRuntimeFiles,
+          'src/hydrated-widgets.tsx': `import { Hydrate } from '@tanstack/react-start'
+export function UnusedHydratedWidget() {
+  return <div><Hydrate><section>unused-hydrated-marker</section></Hydrate></div>
+}
+export function UsedHydratedWidget() {
+  return <p>used</p>
+}
+`,
+          'src/plain-widgets.tsx': `export function UnusedPlainWidget() {
+  return <div><section>unused-plain-marker</section></div>
+}
+export function UsedPlainWidget() {
+  return <p>used</p>
+}
+`,
+          'entry.ts': `export { UsedHydratedWidget } from './src/hydrated-widgets'
+export { UsedPlainWidget } from './src/plain-widgets'
+`,
+        },
+      }))
+    afterAll(() => disposeWidgets?.())
+
+    // Control for the pin below (same build): an unused export without a
+    // boundary is not in the client.
+    test(
+      'an unused exported component without a boundary is not in the client',
+      async () => {
+        expect((await widgetsApp()).client.where('unused-plain-marker')).toBe(
+          'nowhere',
+        )
+      },
+      timeout,
+    )
+
+    // Bug: the client parent declares the lazy component of each boundary
+    // with a module-level call (`lazyRouteComponent(() => import(...))`)
+    // that bundlers must keep (it is not marked pure), so the children of an
+    // unused exported component still ship: the call stays in the eager
+    // code, and its chunk is emitted.
+    // Source: hydrate-when-transform.ts:653-690 (the call at :676); fuzzing
+    // (oracle mode, round 2, F2).
+    // Impact: the code of components nothing renders loads in the client.
+    test.fails(
+      'an unused exported component with a boundary is not in the client',
+      async () => {
+        expect(
+          (await widgetsApp()).client.where('unused-hydrated-marker'),
+        ).toBe('nowhere')
       },
       timeout,
     )

@@ -211,6 +211,13 @@ export const setTheme = createServerFn({ method: 'POST' })
   .validator(themeValidator)
   .handler(async ({ data }): Promise<Theme> => data)
 `,
+      // Isomorphic fns whose first link is stored in a variable.
+      'src/iso-builders.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
+const serverBase = createIsomorphicFn().server(() => 'iso-var-server')
+export const isoServerVar = serverBase.client(() => 'iso-var-client')
+const clientBase = createIsomorphicFn().client(() => 'iso-var-client')
+export const isoClientVar = clientBase.server(() => 'iso-var-server')
+`,
       'src/middleware.ts': `import { createMiddleware } from '@tanstack/react-start'
 import { middlewareServer } from './deps/middlewareServer'
 import { middlewareValidator } from './deps/middlewareValidator'
@@ -277,6 +284,7 @@ export const getRouter = () => ({ routeTree })
 `,
       'src/entry.ts': `export { fn, fromBase, isomorphic, serverOnly } from './fns'
 export { setTheme, validatedFn } from './builders'
+export { isoClientVar, isoServerVar } from './iso-builders'
 export { serverMiddleware, validatedMiddleware } from './builder-middleware'
 export { fnMiddleware } from './middleware'
 export { startInstance } from './start'
@@ -452,6 +460,41 @@ const next = (options) => options
         expect((await build.ssr.run(`${routes}${run}`)).result).toEqual(
           expected,
         )
+      },
+    )
+
+    /** What `run` returns in the client and in the SSR build. */
+    const callInBoth = async (run: string) => ({
+      client: (await build.client.run(run)).result,
+      ssr: (await build.ssr.run(run)).result,
+    })
+
+    // Control for the pin below (same build): the inline chain.
+    test('an isomorphic fn written as one chain runs its implementation in each build', async () => {
+      expect(await callInBoth(`return entry.isomorphic()`)).toEqual({
+        client: 'MARK_ISOMORPHIC_CLIENT',
+        ssr: 'MARK_ISOMORPHIC_SERVER',
+      })
+    })
+
+    // Bug: an isomorphic fn whose first link is stored in a variable loses
+    // that link's implementation in its environment's build (no-op, returns
+    // undefined). Pinned at compiler level in
+    // start-compiler-factories.test.ts.
+    // Source: start-compiler/handleCreateIsomorphicFn.ts:17-25,
+    // start-compiler/compiler.ts:1296-1330; fuzzing (oracle mode, round 2,
+    // F3).
+    // Impact: the server (or client) call silently returns undefined.
+    test.fails.each([
+      { name: '.server() link', run: `return entry.isoServerVar()` },
+      { name: '.client() link', run: `return entry.isoClientVar()` },
+    ])(
+      'an isomorphic fn whose $name is stored in a variable runs its implementation in each build',
+      async ({ run }) => {
+        expect(await callInBoth(run)).toEqual({
+          client: 'iso-var-client',
+          ssr: 'iso-var-server',
+        })
       },
     )
 

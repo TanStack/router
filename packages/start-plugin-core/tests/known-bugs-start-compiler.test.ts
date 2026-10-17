@@ -597,6 +597,88 @@ export const fn = authed().handler(async () => db.x())`,
     },
   )
 
+  // Bug: same family as above, for a builder the user passes through a
+  // helper function (`applyStep(createServerFn().validator(schema))`): the
+  // `.handler()` chain is not traced through the call, so the module is
+  // left untransformed. Rejecting it with a clear compile error naming
+  // `createServerFn` is a valid fix; supporting it means the client gets
+  // neither the validator nor the handler, and the provider runs both.
+  // Source: fuzzing (oracle mode, round 2: builders passed through user
+  // helpers, 88 mutants).
+  // Impact: the validator, the handler and what they import ship to the
+  // client, and the client runs the handler instead of calling the server.
+  test.fails(
+    'client builds compile a server fn whose builder passes through a helper function',
+    async () => {
+      const code = `${head}import { schema } from './schema'
+function applyStep<T>(builder: T) {
+  return builder
+}
+export const fn = applyStep(
+  createServerFn({ method: 'POST' }).validator(schema),
+).handler(async ({ data }) => data)`
+      const client = await compileCode('client', code).catch(
+        (error: Error) => error,
+      )
+      if (client instanceof Error) {
+        expect(compileErrorMessage(client)).toMatch(/\bcreateServerFn\b/)
+        return
+      }
+      expect(importSources(client ?? code)).toEqual([])
+      const compiled = await compileAll(code)
+      expect(
+        await callProvider(
+          compiled,
+          'fn',
+          { './schema': { schema: (data: string) => `${data}!` } },
+          'data',
+        ),
+      ).toBe('data!')
+    },
+  )
+
+  // Bug: same family, for an isomorphic fn whose chain passes through a
+  // helper function (`withBuilder(createIsomorphicFn().server(f)).client(g)`):
+  // the inner `createIsomorphicFn().server(f)` is compiled on its own into a
+  // plain function, so `.client(g)` is then called on that function.
+  // Rejecting it with a clear compile error naming `createIsomorphicFn` is a
+  // valid fix; supporting it means each output runs its implementation.
+  // Source: fuzzing (oracle mode, round 2: builders passed through user
+  // helpers).
+  // Impact: the module throws when it loads ("withBuilder(...).client is not
+  // a function"), on the client and on the server.
+  test.fails(
+    'each output keeps its implementation of an isomorphic fn whose chain passes through a helper function',
+    async () => {
+      const code = `import { createIsomorphicFn } from '@tanstack/react-start'
+function withBuilder<T>(builder: T) {
+  return builder
+}
+export const getEnv = withBuilder(
+  createIsomorphicFn().server(() => 'server'),
+).client(() => 'client')`
+      const results: Record<string, unknown> = {}
+      for (const output of ['client', 'ssr'] as const) {
+        const compiled = await compileCode(output, code).catch(
+          (error: Error) => error,
+        )
+        if (compiled instanceof Error) {
+          expect(compileErrorMessage(compiled)).toMatch(
+            /\bcreateIsomorphicFn\b/,
+          )
+          return
+        }
+        const module = await evaluateModule(
+          compiled ?? code,
+          {},
+          { env: output === 'ssr' ? 'server' : 'client' },
+        )
+        results[output] = settle(module.getEnv)
+      }
+      expect(results).toEqual({ client: 'client', ssr: 'server' })
+    },
+  )
+
   // Bug: chain methods are only recognized when called through a static
   // member (`.handler(...)`), so one called through a computed member
   // (`builder['handler'](...)`) leaves the module untransformed. Unusual
@@ -1169,7 +1251,8 @@ export const fn = createServerFn().handler(async () => 1)`
   /** A server-only module that fails loudly when a client module loads it. */
   const serverModuleStub = {
     [serverOnly]: `throw new Error('server module loaded on the client')
-export const db = {}`,
+export const db = {}
+export const TaggedError = () => class {}`,
   }
 
   // Control for the pin below (same harness): a plain function only the
@@ -1198,6 +1281,20 @@ export const fn = createServerFn().handler(async () => find())`
 import { db } from './db.server'
 class Repo { get() { return db.users() } }
 export const fn = createServerFn().handler(async () => new Repo().get())`,
+      check: (module: Record<string, any>) => expect(module.fn).toBeDefined(),
+    },
+    {
+      // A class whose `extends` clause calls an imported factory, as error
+      // classes of effect (`Data.TaggedError('NotFound')<...>`) and
+      // better-result are written.
+      // Source: fuzzing (oracle mode, round 2; two corpus files).
+      name: 'a class with a call in its extends clause used by a server fn handler',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { TaggedError } from './db.server'
+class NotFound extends TaggedError('NotFound')<{ id: string }>() {}
+export const fn = createServerFn().handler(async () => {
+  throw new NotFound({ id: '1' })
+})`,
       check: (module: Record<string, any>) => expect(module.fn).toBeDefined(),
     },
     {
@@ -1374,6 +1471,47 @@ export const setTheme = createServerFn({ method: 'POST' })
       const code = schemaModule('type Theme = z.infer<typeof themeValidator>')
       expect(
         await erasedImportSources((await compileCode('client', code)) ?? code),
+      ).toEqual([])
+    },
+  )
+
+  /**
+   * A client-only fn whose implementation reads a module-level chart that a
+   * client-only module creates.
+   */
+  const clientOnlyChartModule = (
+    typeAlias: string,
+  ) => `import { createClientOnlyFn } from '@tanstack/react-start'
+import { createChart } from './chart.client'
+const chart = createChart()
+${typeAlias}
+export const draw = createClientOnlyFn(() => chart.draw())`
+
+  // Control for the pin below (same harness): a declaration only the
+  // client-only implementation reads leaves the SSR output with its import.
+  test('ssr: a declaration only a client-only fn reads is not loaded', async () => {
+    const code = clientOnlyChartModule('')
+    expect(
+      await erasedImportSources((await compileCode('ssr', code)) ?? code),
+    ).toEqual([])
+  })
+
+  // Bug: same root cause as the pin above (upstream
+  // babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a
+  // reference; no workaround here), mirrored on the server: a module-level
+  // declaration that only a client-only implementation and a `typeof` type
+  // query read stays in the SSR output, with its initializer and imports.
+  // Source: fuzzing (oracle mode, round 2, V1 mirror; an unmodified file of
+  // tanstack.com, src/components/ThemeProvider.tsx).
+  // Impact: the server loads the client-only module and runs the
+  // initializer (e.g. `window.matchMedia(...)`), which can throw during
+  // SSR.
+  test.fails(
+    'ssr: a declaration a client-only fn reads and a type alias reads with typeof is not loaded',
+    async () => {
+      const code = clientOnlyChartModule('type Chart = typeof chart')
+      expect(
+        await erasedImportSources((await compileCode('ssr', code)) ?? code),
       ).toEqual([])
     },
   )
