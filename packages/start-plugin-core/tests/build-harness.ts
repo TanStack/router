@@ -507,35 +507,38 @@ async function buildWithRsbuild(
     const rsbuild = await createRsbuild({
       cwd: target.root,
       loadEnv: false,
-      rsbuildConfig: mergeRsbuildConfig({
-        root: target.root,
-        mode: target.mode,
-        logLevel: 'silent',
-        output: {
-          minify: target.minify,
-          sourceMap: target.sourcemap ? { js: 'source-map' } : false,
-          cleanDistPath: true,
-        },
-        // React's JSX runtime, as `pluginReact()` of a React Start app
-        // configures it.
-        tools: {
-          swc: {
-            jsc: {
-              transform: {
-                react: {
-                  runtime: 'automatic',
-                  development: target.mode === 'development',
+      rsbuildConfig: mergeRsbuildConfig(
+        {
+          root: target.root,
+          mode: target.mode,
+          logLevel: 'silent',
+          output: {
+            minify: target.minify,
+            sourceMap: target.sourcemap ? { js: 'source-map' } : false,
+            cleanDistPath: true,
+          },
+          // React's JSX runtime, as `pluginReact()` of a React Start app
+          // configures it.
+          tools: {
+            swc: {
+              jsc: {
+                transform: {
+                  react: {
+                    runtime: 'automatic',
+                    development: target.mode === 'development',
+                  },
                 },
               },
             },
           },
+          plugins: [
+            tanStackStartRsbuild(reactStartCoreOptions(target), target.start),
+            useTestLoaders(target.root),
+            outputPlugin,
+          ],
         },
-        plugins: [
-          tanStackStartRsbuild(reactStartCoreOptions(target), target.start),
-          useTestLoaders(target.root),
-          outputPlugin,
-        ],
-      }, target.rsbuildConfig ?? {}),
+        target.rsbuildConfig ?? {},
+      ),
     })
     await rsbuild.build()
   } catch (error) {

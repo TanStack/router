@@ -74,8 +74,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
   /** The start manifest the SSR build renders with. */
   async function startManifest() {
-    return (await build.ssr.run(`return entry.tsrStartManifest()`))
-      .result as {
+    return (await build.ssr.run(`return entry.tsrStartManifest()`)).result as {
       routes: Record<
         string,
         { preloads?: Array<string>; css?: Array<string | { href: string }> }

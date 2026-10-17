@@ -284,7 +284,8 @@ const next = (options) => options
         expected: 'MARK_HANDLER_DEP',
       },
       {
-        construct: 'a server fn handler of a builder imported from another module',
+        construct:
+          'a server fn handler of a builder imported from another module',
         marker: 'MARK_BASE_HANDLER_DEP',
         run: `return await entry.fromBase()`,
         expected: 'MARK_BASE_HANDLER_DEP',
