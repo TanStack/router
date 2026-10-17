@@ -378,9 +378,19 @@ export type ToMaskOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TMaskFrom extends string = string,
   TMaskTo extends string = '.',
-> = ToSubOptions<TRouter, TMaskFrom, TMaskTo> & {
-  unmaskOnReload?: boolean
-}
+> = ToSubOptionsProps<TRouter, TMaskFrom, TMaskTo> &
+  PathParamOptions<TRouter, TMaskFrom, TMaskTo> & {
+    unmaskOnReload?: boolean
+  } & (
+    | {
+        /** Use the fully resolved main location search without mask processing. */
+        inheritSearch: true
+        search?: never
+      }
+    | (SearchParamOptions<TRouter, TMaskFrom, TMaskTo> & {
+        inheritSearch?: false
+      })
+  )
 
 export type ToSubOptions<
   TRouter extends AnyRouter = RegisteredRouter,
