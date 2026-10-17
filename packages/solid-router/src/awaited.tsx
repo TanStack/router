@@ -29,6 +29,16 @@ function InnerAwait<T>(props: {
         if (state.status === 'error') {
           throw state.error
         }
+        if (state.status === 'pending') {
+          // A streamed promise can settle before defer()'s .then records it; seroval marks it synchronously.
+          const streamed = props.deferred as { s?: number; v?: unknown }
+          if (streamed.s === 2) {
+            throw streamed.v
+          }
+          if (streamed.s === 1) {
+            return props.children(streamed.v as T) as any
+          }
+        }
         return props.children(state.data as T) as any
       }}
     </Solid.Show>
