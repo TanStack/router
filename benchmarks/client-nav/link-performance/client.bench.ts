@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, bench, describe } from 'vitest'
+import { test } from 'vitest'
+import { benchLifecycle } from '../../cpu-simulation'
 import { LINK_CASES } from './cases'
 import { createClientScenario, samplingOptions } from './scenario'
 import type * as App from './src/client'
@@ -10,7 +11,7 @@ if (app.serverEnvironment !== false) {
 }
 
 for (const { id, label } of LINK_CASES) {
-  describe(label, () => {
+  test(label, async ({ bench }) => {
     const scenario = createClientScenario(app, id)
     function finish() {
       try {
@@ -19,13 +20,11 @@ for (const { id, label } of LINK_CASES) {
         scenario.teardown()
       }
     }
-    beforeEach(scenario.setup)
-    afterEach(finish)
 
-    bench(`client Links: ${id}`, scenario.batch, {
-      ...samplingOptions,
-      setup: scenario.setup,
-      teardown: finish,
-    })
+    await bench(
+      `client Links: ${id}`,
+      benchLifecycle({ before: scenario.setup, after: finish }),
+      scenario.batch,
+    ).run(samplingOptions)
   })
 }
