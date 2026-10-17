@@ -138,6 +138,8 @@ export async function prerender({
       }
 
       const prerenderPage = async (retries: number) => {
+        if (errors.length) return
+
         logger.info(`Crawling: ${page.path}`)
 
         try {
