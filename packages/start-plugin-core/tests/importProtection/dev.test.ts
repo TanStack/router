@@ -220,6 +220,33 @@ describe('the trace of a client import of a denied file', () => {
   )
 })
 
+// Import protection checks only JavaScript and TypeScript modules; edits of
+// the app's other modules update as usual.
+// Source: mutation run R4 (spc:4497: the edit of a module import protection
+// never compiled).
+test(
+  'an edit of a CSS module and a JSON module the app imports updates them without an error',
+  async () => {
+    const server = await startProtectedDevServer({
+      'src/style.css': `.page { color: red }\n`,
+      'src/data.json': `{ "count": 1 }\n`,
+      'src/entry.ts': `import './style.css'
+import data from './data.json'
+export const count = () => data.count
+`,
+    })
+    await server.load('/src/entry.ts')
+    const logged = server.logs.length
+    const updates = await server.edit({
+      'src/style.css': `.page { color: blue }\n`,
+      'src/data.json': `{ "count": 2 }\n`,
+    })
+    expect(updates.filter(({ type }) => type === 'error')).toEqual([])
+    expect(server.logs.slice(logged)).toEqual([])
+  },
+  timeout,
+)
+
 describe('log', () => {
   /**
    * The violations logged when the client loads the app, and those logged
@@ -487,6 +514,122 @@ export const request = () => getRequest()
     },
     timeout,
   )
+
+  // Source: mutation run R4 (spc:4494: the names the mock exports, read from
+  // the importer, after an edit of the importer).
+  test(
+    'added to an importer by an edit is a mock the edited module can import',
+    async () => {
+      const server = await startProtectedDevServer({
+        'src/a.ts': `import { getRequest } from '@tanstack/react-start/server'
+export const read = () => String(getRequest())
+`,
+        'src/entry.ts': `export * from './a'\n`,
+      })
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect((await evaluateServed(server, '/src/entry.ts')).read()).toBe(
+        '[import-protection mock]',
+      )
+      await server.edit({
+        'src/a.ts': `import { getRequest, getResponse } from '@tanstack/react-start/server'
+export const read = () => String(getRequest()) + String(getResponse())
+`,
+      })
+      expect((await evaluateServed(server, '/src/entry.ts')).read()).toBe(
+        '[import-protection mock][import-protection mock]',
+      )
+    },
+    timeout,
+  )
+})
+
+// A module another Vite plugin compiles to JavaScript from a file that is
+// not JavaScript or TypeScript (MDX, Vue and Svelte components...).
+describe('a module of another compiler (`.mdx`)', () => {
+  /** A stand-in of an MDX plugin: drops the `# ` heading lines. */
+  const mdx: Plugin = {
+    name: 'mdx-stand-in',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.endsWith('.mdx')) {
+        return undefined
+      }
+      return { code: code.replace(/^# .*$/gm, ''), map: null }
+    },
+  }
+
+  // Source: mutation run R4 (spc:4639: the module has no compiled imports
+  // import protection could check its violations against; spc:4579: nor
+  // can it tell whether its imports survived compiling, so a module it
+  // imports is reachable through it).
+  test(
+    'importing a denied file, directly or through a module, gets the mock, and the dev server logs a warning at each importer',
+    async () => {
+      const leak = `import { secret } from './secret.server'
+export const leak = () => secret()
+`
+      const server = await startProtectedDevServer(
+        {
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/leak.ts': leak,
+          'src/page.mdx': `# Title
+import { secret } from './secret.server'
+import { leak } from './leak'
+export const read = () => secret() + leak()
+`,
+          'src/entry.ts': `export * from './page.mdx'\n`,
+        },
+        {},
+        { plugins: [mdx] },
+      )
+      const client = await server.load('/src/entry.ts')
+      expect(Object.keys(client)).toContain('/src/page.mdx')
+      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+      const importers = reportedViolations(server.logs).map(
+        ({ importer }) => importer,
+      )
+      expect(importers).toContainEqual(expect.stringMatching(/^src\/page\.mdx/))
+      expect(importers).toContain(
+        locationIn('src/leak.ts', leak, 2, 'secret()'),
+      )
+    },
+    timeout,
+  )
+
+  // Bug: to give the mock of a denied specifier the named exports its
+  // importer imports, import protection reads the importer's code from its
+  // own cache of compiled modules, which only has JavaScript and TypeScript
+  // files, and otherwise from Vite's `getModuleInfo(importer).code`, which
+  // Vite's dev server does not support: it throws "[vite] The "code"
+  // property of ModuleInfo is not supported."
+  // (vite/import-protection-plugin/plugin.ts
+  // `resolveExportsForDeniedSpecifier`).
+  // Impact: in dev, an `.mdx` (or other non-JS) module that imports a denied
+  // specifier fails to load with that internal error, instead of getting
+  // the mock and a warning.
+  // Source: found by mutation run R4 (spc:4365-4369).
+  test.fails(
+    'importing a denied specifier gets the mock, and the dev server logs a warning naming it',
+    async () => {
+      const server = await startProtectedDevServer(
+        {
+          'src/page.mdx': `# Title
+import { getRequest } from '@tanstack/react-start/server'
+export const request = () => getRequest()
+`,
+          'src/entry.ts': `export * from './page.mdx'\n`,
+        },
+        {},
+        { plugins: [mdx] },
+      )
+      const module = await evaluateServed(server, '/src/entry.ts')
+      expect(String(module.request())).toBe('[import-protection mock]')
+      expect(
+        reportedViolations(server.logs).map(({ importer }) => importer),
+      ).toContainEqual(expect.stringMatching(/^src\/page\.mdx/))
+    },
+    timeout,
+  )
 })
 
 describe('onViolation', () => {
@@ -534,6 +677,58 @@ export const read = () => getRequest()
       const client = await server.load('/src/entry.ts')
       expect(Object.keys(client)).toContain('/src/a.ts')
       expect(reportedViolations(server.logs)).toEqual([])
+    },
+    timeout,
+  )
+
+  // Only `false` overrides the denial (guide/import-protection.md): an
+  // `onViolation` that only records (returns nothing) changes nothing.
+  // Source: mutation run R4 (spc:4741).
+  test(
+    'that returns nothing keeps the warning; it receives the importer',
+    async () => {
+      const importers: Array<string> = []
+      const server = await startProtectedDevServer(deniedFileApp, {
+        onViolation: (info) => {
+          importers.push((info as ViolationInfo).importer)
+        },
+      })
+      const client = await server.load('/src/entry.ts')
+      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toEqual([`client ${deniedFileUse}`])
+      expect(
+        distinct(
+          importers.map((importer) => path.relative(server.root, importer)),
+        ),
+      ).toEqual(['src/a.ts'])
+    },
+    timeout,
+  )
+
+  // Source: mutation run R4 (spc:4763).
+  test.each([
+    { name: 'a denied file', files: deniedFileApp, use: deniedFileUse },
+    {
+      name: 'a denied specifier',
+      files: {
+        'src/a.ts': `import { getRequest } from '@tanstack/react-start/server'
+export const read = () => getRequest()
+`,
+        'src/entry.ts': `export * from './a'\n`,
+      },
+      use: 'src/a.ts:2:27',
+    },
+  ])(
+    'with behavior "error", an import of $name it does not return false for fails to load',
+    async ({ files, use }) => {
+      const server = await startProtectedDevServer(files, {
+        behavior: 'error',
+        onViolation: () => true,
+      })
+      const error = await rejection(server.load('/src/entry.ts'))
+      expect(reportedViolations(error.message)).toEqual([
+        { environment: 'client', importer: use },
+      ])
     },
     timeout,
   )
@@ -731,6 +926,30 @@ describe('reachability from the router entry', () => {
     timeout,
   )
 
+  // The start entry (`src/start.ts`) is an entry like the router entry: the
+  // client loads it, and so what it imports.
+  // Source: mutation run R4 (spc:4524).
+  test(
+    'a denied import reached only from the start entry is mocked and logged',
+    async () => {
+      const server = await startProtectedDevServer({
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/leak.ts': `import { secret } from './secret.server'
+export const leak = () => secret()
+`,
+        'src/start.ts': `import { leak } from './leak'
+export const startInstance = { leak }
+`,
+        'src/entry.ts': `export const getRouter = () => undefined\n`,
+      })
+      const client = await server.load('/src/start.ts')
+      expect(Object.keys(client)).toContain('/src/leak.ts')
+      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toEqual(['client src/leak.ts:2:27'])
+    },
+    timeout,
+  )
+
   // Source: mutation run R3 ip-vite V4(b); a control of the harness
   // registering Start's router entry: the factory module is a module the
   // Start compiler looked up, whose violations are only logged once they
@@ -889,6 +1108,61 @@ export const q = () => [read(), request(), slow]
     },
     timeout,
   )
+
+  /**
+   * `src/late.ts` uses the denied file `src/secret.server.ts`; `src/a.ts`,
+   * which the router entry re-exports, imports it dynamically. The client
+   * loads the app, the server renders it (`ssr`), then the client loads
+   * `src/late.ts`. The violations logged.
+   */
+  async function logsOfALateModule(perEnvironmentStartEndDuringDev: boolean) {
+    const server = await startProtectedDevServer(
+      {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/late.ts': `import { secret } from './secret.server'
+export const read = () => secret()
+`,
+        'src/a.ts': `export const late = () => import('./late')\n`,
+        'src/entry.ts': `export * from './a'\n`,
+      },
+      {},
+      { config: { server: { perEnvironmentStartEndDuringDev } } },
+    )
+    await server.load('/src/entry.ts')
+    await server.load('/src/entry.ts', { environment: 'ssr' })
+    await server.load('/src/late.ts')
+    return loggedViolations(server.logs)
+  }
+
+  // Control for the pin below (same harness).
+  test(
+    'a denied import of a module the client loads after the server rendered is logged',
+    async () => {
+      expect(await logsOfALateModule(false)).toEqual([
+        'client src/late.ts:2:27',
+      ])
+    },
+    timeout,
+  )
+
+  // Bug: with Vite's `server.perEnvironmentStartEndDuringDev`, each
+  // environment runs `buildStart` when it first handles a module, and import
+  // protection's `buildStart` clears the state of every environment
+  // (vite/import-protection-plugin/plugin.ts `clearEnvState` for each), so
+  // the server's first request drops the client's import graph: a module the
+  // client loads afterwards is unreachable from Start's entries and its
+  // violations are discarded.
+  // Impact: with that Vite option, dev import protection mocks the denied
+  // imports of modules loaded after the first server request without any
+  // warning (low: opt-in option).
+  // Source: found by mutation run R4 (clearEnvState mutants).
+  test.fails(
+    'with perEnvironmentStartEndDuringDev, a denied import of a module the client loads after the server rendered is logged',
+    async () => {
+      expect(await logsOfALateModule(true)).toEqual(['client src/late.ts:2:27'])
+    },
+    timeout,
+  )
 })
 
 describe("an app's client entry, with Start's whole plugin", () => {
@@ -998,6 +1272,83 @@ describe('full-bundle dev', () => {
     },
     timeout,
   )
+
+  // Source: mutation run R4 (full-bundle dev had no import-protection test).
+  test(
+    'denied imports are mocked in the client bundle, and the dev server logs a warning at each use',
+    async () => {
+      const x = `import { getRequest } from '@tanstack/react-start/server'
+export const request = () => getRequest()
+`
+      const server = await startProtectedDevServer(
+        {
+          ...deniedFileApp,
+          'src/x.ts': x,
+          'src/entry.ts': `export * from './a'\nexport * from './x'\n`,
+        },
+        {},
+        { bundledDev: { entry: 'src/entry.ts' } },
+      )
+      const bundle = await server.clientBundle()
+      expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs).sort()).toEqual([
+        `client ${deniedFileUse}`,
+        `client ${locationIn('src/x.ts', x, 2, 'getRequest()')}`,
+      ])
+    },
+    timeout,
+  )
+})
+
+// The router plugin splits a route's component into a module of its own,
+// which the route module imports dynamically (the browser loads it when the
+// route renders).
+describe("a split route component, with Start's whole plugin", () => {
+  // Source: mutation run R4 (spc:4529 and the cache of compiled split
+  // modules: the denied import, and the import of the module using the
+  // denied file, are only in the split module).
+  test(
+    'using a denied file, directly or through a module, gets the mock, and the dev server logs a warning at each use',
+    async () => {
+      const route = `import { createFileRoute } from '@tanstack/react-router'
+import { secret } from '../secret.server'
+import { widget } from '../widget'
+export const Route = createFileRoute('/')({
+  component: () => String(secret()) + widget(),
+})
+`
+      const widget = `import { secret } from './secret.server'
+export const widget = () => String(secret())
+`
+      const server = await startDevServer({
+        start: {},
+        files: {
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/widget.ts': widget,
+          'src/routes/index.tsx': route,
+          'src/router.ts': `import { routeTree } from './routeTree.gen'
+export const getRouter = () => ({ routeTree })
+`,
+        },
+        config: { server: { hmr: false } },
+      })
+      const app = await server.load('/src/router.ts')
+      // (the route module's dynamic imports: its split modules)
+      const split = [
+        ...app['/src/routes/index.tsx']!.matchAll(/\bimport\("([^"]+)"\)/g),
+      ].map((match) => match[1]!)
+      expect(split).not.toEqual([])
+      for (const url of split) {
+        const served = await server.load(url)
+        expect(modulesContaining(served, 'MARK_SECRET')).toEqual([])
+      }
+      expect(loggedViolations(server.logs).sort()).toEqual([
+        `client ${locationIn('src/routes/index.tsx', route, 5, 'secret()')}`,
+        `client ${locationIn('src/widget.ts', widget, 2, 'secret()')}`,
+      ])
+    },
+    timeout,
+  )
 })
 
 describe('diagnostics', () => {
@@ -1089,6 +1440,101 @@ export const Page = () => <div>{String(secret())}</div>
       expect(
         loggedViolations(server.logs).filter((v) => /:\d+:\d+$/.test(v)),
       ).toEqual(['client src/a.tsx:2:40'])
+    },
+    timeout,
+  )
+
+  // Source: mutation run R4 (spc:4174: a pattern rule cannot be found in
+  // the module's code as text, unlike the specifiers of the rows above).
+  test(
+    'in a JSX module, a use of a specifier denied by a custom pattern rule (client) is located on its source line',
+    async () => {
+      const server = await startProtectedDevServer(
+        {
+          ...reactRuntimeFiles,
+          'node_modules/@acme/private/package.json': JSON.stringify({
+            name: '@acme/private',
+            type: 'module',
+            exports: { '.': './index.js' },
+          }),
+          'node_modules/@acme/private/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/a.tsx': `import { secret } from '@acme/private'
+export const Page = () => <div>{String(secret())}</div>
+`,
+          'src/entry.ts': `export * from './a'\n`,
+        },
+        { client: { specifiers: ['@acme/*'] } },
+      )
+      await server.load('/src/entry.ts')
+      expect(loggedViolations(server.logs)).toEqual(['client src/a.tsx:2:40'])
+    },
+    timeout,
+  )
+
+  /**
+   * The client imports `src/secret.server.ts` through a chain of modules
+   * (`src/b.ts` uses it).
+   */
+  const chainApp = {
+    'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+    'src/b.ts': `import { secret } from './secret.server'
+export const read = () => secret()
+`,
+    'src/a.ts': `import { read } from './b'\nexport const page = () => read()\n`,
+    'src/entry.ts': `export * from './a'\n`,
+  }
+
+  /** The trace steps of each warning logged when the client loads the app. */
+  async function tracesOf(importProtection: ImportProtectionOptions) {
+    const server = await startProtectedDevServer(chainApp, importProtection)
+    await server.load('/src/entry.ts')
+    const reports = violationReports(server.logs)
+    expect(reports).not.toEqual([])
+    return reports.map(({ trace }) =>
+      trace.map(({ at, imports }) => ({
+        file: at.replace(/:\d+:\d+$/, ''),
+        imports,
+      })),
+    )
+  }
+
+  // Source: mutation run R4 (the trace from Vite's module graph, which dev
+  // import protection prefers when it is longer than its own: here, its own
+  // stops at `maxTraceDepth`).
+  test(
+    'with maxTraceDepth, the trace ends at the importer, each step naming the import of the next',
+    async () => {
+      for (const trace of await tracesOf({ maxTraceDepth: 1 })) {
+        expect(trace.at(-1)?.file).toBe('src/b.ts')
+        for (const [index, step] of trace.slice(0, -1).entries()) {
+          expect(step.imports).toBe(
+            `./${path.basename(trace[index + 1]!.file, '.ts')}`,
+          )
+        }
+      }
+    },
+    timeout,
+  )
+
+  // Bug: dev import protection replaces its trace (cut at `maxTraceDepth`)
+  // with the trace it finds in Vite's module graph whenever that one is
+  // longer (vite/import-protection-plugin/plugin.ts
+  // `rebuildAndAnnotateTrace`); the module graph trace runs from the entry
+  // and is only cut at `maxTraceDepth + 2` steps, from the entry side (so in
+  // a chain deeper than that, it does not reach the importer). A build cuts
+  // the trace, keeping the importer (build-options.test.ts "cuts a deeper
+  // trace, keeping the importer").
+  // Impact: in dev, `maxTraceDepth` does not cut traces (low: diagnostics
+  // only).
+  // Source: found by mutation run R4 (module graph trace mutants).
+  test.fails(
+    'with maxTraceDepth, a deeper trace is cut, keeping the importer',
+    async () => {
+      for (const trace of await tracesOf({ maxTraceDepth: 1 })) {
+        expect(trace.length).toBeLessThanOrEqual(2)
+        expect(trace.at(-1)?.file).toBe('src/b.ts')
+        expect(trace.map(({ file }) => file)).not.toContain('src/entry.ts')
+      }
     },
     timeout,
   )
