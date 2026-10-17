@@ -245,6 +245,100 @@ console.log(secret(), other)
   }, 30_000)
 })
 
+// Rsbuild's `source.transformImport` rewrites a library's named imports
+// into imports of its submodules (`import { button } from 'ui-lib'` ->
+// `import { button } from 'ui-lib/button'`) before import protection sees
+// the module.
+// Source: round 4 mutation testing (rsbuild host, the location of a
+// rewritten import).
+describe('Rsbuild build: an import source.transformImport rewrites', () => {
+  /** Builds an entry using `button` of `ui-lib`, denying `specifiers`. */
+  const build = (specifiers: Array<string | RegExp>) =>
+    buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'node_modules/ui-lib/package.json': JSON.stringify({
+          name: 'ui-lib',
+          type: 'module',
+          exports: { '.': './index.js', './*': './*.js' },
+        }),
+        'node_modules/ui-lib/index.js': `export { button } from './button.js'\n`,
+        'node_modules/ui-lib/button.js': `export const button = () => 'MARK_SECRET'\n`,
+        'src/entry.ts': `import { button } from 'ui-lib'
+export const read = () => button()
+`,
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection: { client: { specifiers } } },
+      rsbuildConfig: {
+        source: {
+          transformImport: [
+            {
+              libraryName: 'ui-lib',
+              customName: 'ui-lib/{{ member }}',
+              transformToDefaultImport: false,
+            },
+          ],
+        },
+      },
+    })
+  let rewrittenDenied: Promise<Error> | undefined
+  /** The build error when the rewritten specifier is denied, built once. */
+  const rewrittenDeniedError = () =>
+    (rewrittenDenied ??= rejection(build([/^ui-lib\//])))
+
+  test('denied as rewritten, it is reported on the line of its use', async () => {
+    expect(reportedViolations((await rewrittenDeniedError()).message)).toEqual([
+      {
+        environment: 'client',
+        importer: expect.stringMatching(/^src\/entry\.ts:2:\d+$/),
+      },
+    ])
+  }, 60_000)
+
+  // Bug: the report points at `read` (src/entry.ts:2:16), not at the use of
+  // the import (`button()`, 2:27), which is what other violations point at.
+  // The location is only found in the rewritten code (through the mock
+  // module's path), whose positions do not map back to the use (a build
+  // without source maps).
+  // Source: rsbuild/import-protection.ts resolveImporterLocation
+  // (transformedSources lookup).
+  // Impact: low; the code frame's caret points at the wrong column.
+  test.fails(
+    'denied as rewritten, it is reported at its use',
+    async () => {
+      expect(
+        reportedViolations((await rewrittenDeniedError()).message),
+      ).toEqual([{ environment: 'client', importer: 'src/entry.ts:2:27' }])
+    },
+    60_000,
+  )
+
+  // Bug: a specifier denied as the user wrote it is not denied once
+  // `source.transformImport` rewrote it: the loader matches the specifiers
+  // of the code SWC already transformed (`ui-lib/button`), so `'ui-lib'`
+  // never matches, and the build ships the library to the client without
+  // any error or warning.
+  // Source: rsbuild/import-protection-loader.ts transformImportProtection
+  // (`matchesAny(source, matchers.specifiers)` on the post-SWC imports).
+  // Impact: a client.specifiers rule on a library the app also lists in
+  // source.transformImport is silently bypassed.
+  test.fails(
+    'denied as written, the build fails on it',
+    async () => {
+      expect(
+        reportedViolations((await rejection(build(['ui-lib']))).message),
+      ).toEqual([
+        {
+          environment: 'client',
+          importer: expect.stringMatching(/^src\/entry\.ts/),
+        },
+      ])
+    },
+    60_000,
+  )
+})
+
 // `rsbuild build --watch`: each build reports the violations it bundles,
 // whatever an earlier build reported.
 // Source: round 4 mutation testing (rsbuild host, the state of a previous
