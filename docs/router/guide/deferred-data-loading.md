@@ -199,6 +199,12 @@ function SlowDataComponent() {
 
 Streamed promises follow the same lifecycle as the loader data they are associated with. They can even be preloaded!
 
+## Deferred Data That Is Not Sent
+
+> **Experimental:** `dehydrate` and `hydrate` are experimental and subject to change.
+
+A loader with `dehydrate: false` or a custom `dehydrate` (see [What crosses the wire](./ssr.md#what-crosses-the-wire)) does not send its data as is, so the SSR stream never sees its promises. On the server, return such promises as top-level fields of a plain object. The router then handles their rejections, so a rejected promise that nothing awaits does not become an unhandled rejection. Promises inside arrays, class instances or nested objects get no such handler. When the response is done, the router aborts the loader's `abortController`, so work tied to its signal stops.
+
 <!-- ::start:framework -->
 
 # React

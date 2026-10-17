@@ -208,6 +208,14 @@
               "to": "framework/react/guide/selective-ssr"
             },
             {
+              "label": "SSR Data Transport",
+              "to": "framework/react/guide/ssr-data-transport"
+            },
+            {
+              "label": "Serialization Adapters",
+              "to": "framework/react/guide/serialization-adapters"
+            },
+            {
               "label": "SPA Mode",
               "to": "framework/react/guide/spa-mode"
             },
@@ -251,6 +259,14 @@
             {
               "label": "Selective SSR",
               "to": "framework/solid/guide/selective-ssr"
+            },
+            {
+              "label": "SSR Data Transport",
+              "to": "framework/solid/guide/ssr-data-transport"
+            },
+            {
+              "label": "Serialization Adapters",
+              "to": "framework/solid/guide/serialization-adapters"
             },
             {
               "label": "SPA Mode",

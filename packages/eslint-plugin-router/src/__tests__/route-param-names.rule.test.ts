@@ -269,3 +269,38 @@ ruleTester.run(name, rule, {
     },
   ],
 })
+
+// The factories are resolved through their import from a TanStack Router
+// package: an alias or a namespace import is checked, a local binding with the
+// same name is not.
+ruleTester.run(`${name} (router imports)`, rule, {
+  valid: [
+    {
+      name: 'a local binding that shadows the import is not checked',
+      code: `
+        import { createFileRoute } from '@tanstack/react-router'
+        function make(createFileRoute: any) {
+          return createFileRoute('/users/$123')({})
+        }
+      `,
+    },
+  ],
+  invalid: [
+    {
+      name: 'an aliased import',
+      code: `
+        import { createFileRoute as cfr } from '@tanstack/react-router'
+        export const Route = cfr('/users/$123')({})
+      `,
+      errors: [{ messageId: 'invalidParamName', data: { paramName: '123' } }],
+    },
+    {
+      name: 'a namespace import',
+      code: `
+        import * as Router from '@tanstack/react-router'
+        export const Route = Router.createRoute({ path: '/users/$123' })
+      `,
+      errors: [{ messageId: 'invalidParamName', data: { paramName: '123' } }],
+    },
+  ],
+})

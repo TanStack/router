@@ -100,12 +100,114 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(params: TParams) => Record<string, string>`
 - A function that will be called when this route's parsed params are being used to build a location. This function should return a valid object of `Record<string, string>` mapping.
 
+### Lifecycle object form
+
+> **Experimental:** the route `context` option and the `dehydrate` and `hydrate` keys of `beforeLoad` and `loader` are experimental and subject to change.
+
+`context`, `beforeLoad` and `loader` each accept either a function or an object with a `handler` function and a few keys next to it:
+
+```tsx
+type context =
+  | contextFn
+  | {
+      handler: contextFn
+      dehydrate?: boolean | DehydrateFn
+      hydrate?: HydrateFn
+      revalidate?: boolean | RevalidateFn
+    }
+
+type beforeLoad =
+  | beforeLoadFn
+  | {
+      handler: beforeLoadFn
+      dehydrate?: boolean | DehydrateFn
+      hydrate?: HydrateFn
+    }
+
+type loader =
+  | loaderFn
+  | {
+      handler: loaderFn
+      dehydrate?: boolean | DehydrateFn
+      hydrate?: HydrateFn
+      staleReloadMode?: 'background' | 'blocking'
+    }
+
+type DehydrateFn = (opts: HandlerOpts & { data: TData }) => TWire // server; TWire must be serializable
+type HydrateFn = (opts: HandlerOpts & { data: TWire | TData }) => TData // client; data is TWire when dehydrate is a function
+type RevalidateFn = (
+  opts: HandlerOpts & { prev: TData | undefined },
+) => Promise<TData> | TData
+```
+
+- `handler` is the lifecycle function. It is required in the object form and receives the same options as the function form.
+- `dehydrate` and `hydrate` control what the server sends to the client during SSR. `dehydrate: true` sends the handler's result; `dehydrate: false` keeps it on the server, and the client runs the handler again during hydration; a `dehydrate` function receives the handler's options plus `data` (the awaited result) and returns the wire value; `hydrate` receives the options plus `data` (the wire value when `dehydrate` is a function, otherwise the full result) and returns the value the app uses on the client. Defaults: `context` is not sent, `beforeLoad` and `loader` are. A sent value must be serializable. TanStack Start type-checks this, and so does router-only SSR when `Register` has `ssr: true` (see [SSR](../../guide/ssr.md#what-crosses-the-wire)). Routes with `ssr: false` are not checked.
+- `revalidate` exists on `context` only; `staleReloadMode` on `loader` only.
+- A `dehydrate` function requires `hydrate`. `hydrate` requires `dehydrate` (`true` or a function); without a `dehydrate` key, or with `dehydrate: false`, `hydrate` is rejected.
+- Write the keys in this order: `handler`, `dehydrate`, `hydrate`, then `revalidate` or `staleReloadMode`. The parameters of the later keys are inferred from the earlier ones. The [`create-route-property-order`](../../eslint/create-route-property-order.md) lint rule checks the order and can fix it. TypeScript does not check the order. A wrong order shows up as a type error only when it breaks that inference, and the error rarely says so:
+  - A `handler` that reads its options, written after a function that reads `data` or `prev`, gets an error that says to write `handler` first. This is the error when the object has a `dehydrate` function or `dehydrate: false`.
+  - With `dehydrate: true`, or without a `dehydrate` key, the same `handler` gets an error that its result is not assignable to `never`. That error needs the serializability check from the item above. Without the check, the order compiles next to `dehydrate: true`, and without a `dehydrate` key the error says that `dehydrate` is missing.
+  - A `hydrate` that reads `data`, written before a `dehydrate` function, gets an error that the `dehydrate` function is not assignable to `true`.
+  - A `revalidate` that reads `prev`, written before a `hydrate` that returns a different shape, gets an error about the type `hydrate` returns.
+
+  Other wrong orders compile. When one of these errors appears, fix the key order. Do not add `dehydrate: true` or switch to it to make the error go away: that sends the handler's full result to the client.
+
+- Never annotate the parameters of `dehydrate`, `hydrate` or `revalidate`. They are inferred. Next to `dehydrate: true`, write `hydrate` inline: a `hydrate` passed by reference or typed through `satisfies` or `as` decides the type of `data` itself, and neither TypeScript nor the lint rule checks it against `handler`.
+- `dehydrate` and `hydrate` may be async; the awaited value is used. They only transform a value; throw `redirect()` or `notFound()` from `handler`. A throw from `dehydrate`, a `redirect()` or `notFound()` included, is an ordinary error of that match. A throw from `hydrate`, or a `redirect()` or `notFound()` returned from the `hydrate` of `beforeLoad` or `loader`, is a failure during hydration (next item): the client load runs `handler` instead, and `hydrate` itself never shows the `errorComponent` or calls `onError`.
+- A lifecycle that fails while the client runs it during hydration (an error, a thrown `redirect()` or `notFound()` or one returned from `beforeLoad` or `loader`, or a throwing `hydrate`) is not handled by hydration. The route is shown as pending and the client load that follows hydration runs it again; that run's outcome (data, error, redirect or not-found) is handled as on a client navigation. A lifecycle that the client re-ran during hydration and that failed there therefore runs twice on the client, and so do its side effects; some lifecycles that succeeded during hydration run again as well. A route the server already rendered as an error or not-found, and the root route when it shows the not-found page, keep that result: during hydration only their `context` and the `hydrate` of sent results run there. A `beforeLoad` or `loader` result that was not sent is missing there in the browser. A failure there makes nothing run again, and the result that failed is missing too. See [When a lifecycle fails during hydration](/start/latest/docs/framework/react/guide/ssr-data-transport#when-a-lifecycle-fails-during-hydration).
+- `hydrate` may return a different type than `handler`. The lifecycle's data type is then the union of both; a `hydrate` result that is assignable to the handler's data reduces to it, so a property that only `hydrate` adds to a matching shape is not visible. Narrow on a literal written with `as const` on both sides that says which function produced the value (`hydrated: false` in `handler`, `hydrated: true` in `hydrate`), not on server versus client: `handler` also runs in the browser on client navigations. See [Narrow with a discriminant](/start/latest/docs/framework/react/guide/ssr-data-transport#narrow-with-a-discriminant).
+- On a route with `ssr: true`, a lifecycle with `dehydrate: false` must produce the same value on the client as on the server, and a `hydrate` result must render the same as the server's value; otherwise the first client render differs from the server HTML. Use `ssr: 'data-only'` when they cannot be the same.
+- Removing `dehydrate` from the client bundle and `hydrate`/`revalidate` from the server bundle is done by the TanStack Start build; see [SSR Data Transport](/start/latest/docs/framework/react/guide/ssr-data-transport). In a router-only setup both halves stay in both bundles unless each production build gets its own `deleteNodes` list; see [Removing route options from a build](../../guide/automatic-code-splitting.md#removing-route-options-from-a-build-deletenodes).
+
+### `context` method
+
+> **Experimental:** the route `context` option is experimental and subject to change.
+
+- Type:
+
+```tsx
+type contextFn = (opts: {
+  abortController: AbortController
+  preload: boolean
+  params: TAllParams
+  deps: TLoaderDeps
+  context: TParentContext
+  location: ParsedLocation
+  matches: Array<RouteMatch>
+  routeId: TRouteId
+  navigate: NavigateFn<AnyRoute> // @deprecated
+  buildLocation: BuildLocationFn<AnyRoute>
+  cause: 'preload' | 'enter' | 'stay'
+  serverContext?: TServerContext // TanStack Start only, undefined on the client
+}) => Promise<TRouteContext> | TRouteContext | void
+
+type context =
+  | contextFn
+  | {
+      handler: contextFn
+      dehydrate?: boolean | DehydrateFn
+      hydrate?: HydrateFn
+      revalidate?: boolean | RevalidateFn
+    }
+```
+
+- Optional
+- [`ParsedLocation`](./ParsedLocationType.md)
+- Runs before this route's `beforeLoad`. The lifecycles run serially, one route after the other, parent first: `context` then `beforeLoad` of the first match, then `context` then `beforeLoad` of the second match, and so on. Loaders run after that.
+- `opts.context` is the parent's effective context: the router context plus every ancestor's `context` result and `beforeLoad` result. The returned object is merged into the context that this route's `beforeLoad`, `loader`, components and child routes see.
+- May return a promise. The route is pending while it resolves and the awaited value is merged.
+- Receives `deps`, the result of `loaderDeps`, and not `search`. The result is cached per match, and a match is keyed by its params and `loaderDeps`, so a `context` must not depend on search params outside `loaderDeps`.
+- Computed once per match and reused on later loads. `router.invalidate()` does not re-run it unless `revalidate` is set. A navigation that starts while a preload's async `context` for the same match is still running runs it again.
+- `revalidate: true` runs `handler` again on `router.invalidate()`. `revalidate: fn` runs that function instead; it receives `prev`, the current context data (the last successful `handler`, `hydrate` or `revalidate` result, or `undefined` if none has succeeded yet), and must return the handler's shape. There is no time-based revalidation of context.
+- If it throws, this route's `beforeLoad`, its loader and its descendants do not run, and the error becomes the match's error state.
+- During SSR the result is not sent to the client by default; the client computes it again during hydration. `dehydrate: true` sends it. See [Lifecycle object form](#lifecycle-object-form).
+
 ### `beforeLoad` method
 
 - Type:
 
 ```tsx
-type beforeLoad = (
+type beforeLoadFn = (
   opts: RouteMatch & {
     search: TFullSearchSchema
     abortController: AbortController
@@ -118,14 +220,24 @@ type beforeLoad = (
     cause: 'preload' | 'enter' | 'stay'
   },
 ) => Promise<TRouteContext> | TRouteContext | void
+
+type beforeLoad =
+  | beforeLoadFn
+  | {
+      handler: beforeLoadFn
+      dehydrate?: boolean | DehydrateFn
+      hydrate?: HydrateFn
+    }
 ```
 
 - Optional
 - [`ParsedLocation`](./ParsedLocationType.md)
-- This async function is called before a route is loaded. If it fails, the route's loader and its descendants will not run. During navigation, ordinary errors become the match's error state and are passed to the `onError` function. During a preload, ordinary errors and not-found results are represented in the returned speculative match lane instead of rejecting the `preloadRoute` promise.
+- This async function is called before a route is loaded, after the route's `context`. It runs on every load; it is not cached. If it fails, the route's loader and its descendants will not run. During navigation, ordinary errors become the match's error state and are passed to the `onError` function. During a preload, ordinary errors and not-found results are represented in the returned speculative match lane instead of rejecting the `preloadRoute` promise.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TRouteContext` object, that object will be merged into the route's context and be made available in the `loader` and other related route components/methods.
+- `opts.context` is the parent context plus this route's own `context` result.
 - It's common to use this function to check if a user is authenticated and redirect them to a login page if they are not. To do this, you can either return or throw a `redirect` object from this function.
+- During SSR the result is sent to the client by default. The object form adds `dehydrate` and `hydrate` (experimental); see [Lifecycle object form](#lifecycle-object-form).
 
 > 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](./redirectFunction.md).
 
@@ -153,6 +265,8 @@ type loader =
   | loaderFn
   | {
       handler: loaderFn
+      dehydrate?: boolean | DehydrateFn
+      hydrate?: HydrateFn
       staleReloadMode?: 'background' | 'blocking'
     }
 ```
@@ -163,9 +277,11 @@ type loader =
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TLoaderData` object, that object will be stored on the route match and can remain available in the in-memory cache after the match becomes inactive. Navigation-owned data uses `gcTime` for retention, while preload-owned data uses `preloadGcTime`. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
 - Deps must be returned by your `loaderDeps` function in order to appear.
-- Use the object form to configure loader-specific behavior like `staleReloadMode`.
+- `opts.context` is the parent context plus this route's own `context` and `beforeLoad` results.
+- Use the object form to configure loader-specific behavior like `staleReloadMode`, `dehydrate` and `hydrate` (`dehydrate` and `hydrate` are experimental); see [Lifecycle object form](#lifecycle-object-form).
 - `staleReloadMode: 'background'` preserves stale-while-revalidate behavior for stale successful matches.
 - `staleReloadMode: 'blocking'` waits for the stale loader reload to complete before continuing.
+- During SSR the loader data is sent to the client by default. In TanStack Start apps its type is checked for serializability; `dehydrate: false` or a serialization adapter lifts that requirement.
 
 > 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](./redirectFunction.md).
 

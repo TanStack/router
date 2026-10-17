@@ -530,7 +530,11 @@ It clears the request router's `router.ssr` and `router.serverSsr` slots.
 Cleanup listeners receive one boolean, `settled`.
 It is true when every value the router dehydrated has settled.
 Rejected hydration output, including a backlog failure, stops serialization without marking deferred values as settled.
-Router aborts the request's route-match controllers only when `settled` is false, because only then can loader work still be pending.
+Router aborts the request's route-match controllers when `settled` is false, or when the payload does not carry a loader's data itself (`dehydrate: false`, or a custom `dehydrate` that returns another value), because only then can loader work still be pending.
+For a loader with `dehydrate: false` or a custom `dehydrate`, Seroval may never see the promises in its data, so Router handles the rejections of the native promises in the top-level fields of a plain-object result (prototype `Object.prototype` or `null`) as soon as the loader settles.
+It reads the own enumerable fields the way Seroval reads them, with ordinary property access, so a getter runs as it would during serialization; a getter that throws is skipped, because this data is never serialized as is.
+It skips arrays, buffers and class instances, so their size costs nothing; a plain object costs one read per top-level field.
+A custom `dehydrate` that throws drops the loader's data, so Router aborts that match's controller right away.
 
 Canceling a RawStream that the SSR or JSON bridge reconstructs removes Router's Seroval-stream listener.
 Seroval and its official plugins remain responsible for work that they create.

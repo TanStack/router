@@ -72,6 +72,51 @@ Resolved loader data fetched by routes is automatically dehydrated and rehydrate
 
 For more information on how to utilize data loading, see the [Data Loading](./data-loading.md) guide.
 
+### What crosses the wire
+
+> **Experimental:** the route `context` option and the `dehydrate` and `hydrate` keys of `beforeLoad` and `loader` are experimental and subject to change.
+
+The server runs each matched route's `context`, `beforeLoad` and `loader`. Which of their results are sent to the client is decided per lifecycle:
+
+| Lifecycle    | Sent to the client by default |
+| ------------ | ----------------------------- |
+| `context`    | no                            |
+| `beforeLoad` | yes                           |
+| `loader`     | yes                           |
+
+A result that is sent is restored from the payload during hydration; the lifecycle does not run again on the client. A result that is not sent is recomputed on the client during hydration, in the same order the server used. A recomputed value must come out the same on the client as on the server, otherwise the first client render does not match the HTML.
+
+To change the default, use the object form of the lifecycle. `dehydrate: false` keeps a `beforeLoad` or `loader` result on the server, `dehydrate: true` sends a `context` result, and a `dehydrate` function paired with a `hydrate` function sends a custom wire value that `hydrate` turns back into the value the app uses on the client:
+
+```tsx
+export const Route = createFileRoute('/_authed')({
+  ssr: 'data-only', // lifecycles run on the server, the component renders on the client only
+  context: {
+    handler: async ({ context }) => ({
+      session: await context.auth.getSession(),
+    }),
+    dehydrate: true, // context is not sent by default; send this one
+  },
+  beforeLoad: {
+    handler: () => ({ editorSession: createEditorSession() }),
+    dehydrate: false, // beforeLoad is sent by default; keep this one on the server
+  },
+})
+```
+
+`createEditorSession()` produces a different value on every run, so the client's recomputed `editorSession` cannot match the server's. `ssr: 'data-only'` (see [Selective SSR](/start/latest/docs/framework/react/guide/selective-ssr)) still runs the lifecycles on the server but renders that route's component on the client only, so the server's value never ends up in the HTML. Without it, `dehydrate: false` is only safe for values that come out the same on both sides.
+
+If a recomputed lifecycle or a `hydrate` fails during hydration, hydration does not handle it. A failure is a thrown error, a thrown `redirect()` or `notFound()`, or a `redirect()` or `notFound()` returned from `beforeLoad` or `loader`. The route is shown as pending and the client load that follows hydration runs it again (after a throwing `hydrate`, it runs `handler`); that run's outcome (data, error, redirect or not-found) is handled as on a client navigation. A recomputed lifecycle that fails therefore runs twice on the client, and so do its side effects. A route the server rendered as an error or not-found, and the root route when it shows the not-found page, follow different rules; see [When a lifecycle fails during hydration](/start/latest/docs/framework/react/guide/ssr-data-transport#when-a-lifecycle-fails-during-hydration).
+
+The full description, including custom `dehydrate`/`hydrate` pairs, async transforms and the rules the type checker enforces, is on the TanStack Start page [SSR Data Transport](/start/latest/docs/framework/react/guide/ssr-data-transport). That page applies to a router-only SSR setup as well, with these differences:
+
+- The type check that a sent result is serializable runs only when the `Register` interface has `ssr: true`. TanStack Start's generated route tree adds it. In a router-only setup, add `ssr: true` next to `router` in your `Register` declaration (see [Router Creation](#router-creation)). Routes with `ssr: false` are not checked. Without the check, some wrong key orders give a different type error than that page lists, or none; [RouteOptions](../api/router/RouteOptionsType.md#lifecycle-object-form) lists both cases.
+- Serialization adapters are registered on TanStack Start's `createStart`. `createRouter` has no option for them.
+- `createIsomorphicFn`, used in some examples there, is a TanStack Start API.
+- Removing `dehydrate` from the client bundle, and `hydrate` and `context.revalidate` from the server bundle, is done by the TanStack Start build. With a plain router setup they stay in both bundles unless you give each production build its own `deleteNodes` list, as shown in [Removing route options from a build](./automatic-code-splitting.md#removing-route-options-from-a-build-deletenodes).
+
+The option reference is in [RouteOptions](../api/router/RouteOptionsType.md#lifecycle-object-form).
+
 ### Router Creation
 
 Since your router will exist both on the server and the client, it's important that you create your router in a way that is consistent between both of these environments. The easiest way to do this is to expose a `createRouter` function in a shared file that can be imported and called by both your server and client entry files.
@@ -374,4 +419,4 @@ Out of the box, the following types are supported:
 
 If you feel that there are other types that should be supported by default, please open an issue on the TanStack Router repository.
 
-If you are using more complex data types like `Map`, `Set`, `BigInt`, etc, you may need to use a custom serializer to ensure that your type-definitions are accurate and your data is correctly serialized and deserialized. We are currently working on both a more robust serializer and a way to customize the serializer for your application. Open an issue if you are interested in helping out!
+For a type the serializer does not know, such as a class instance, create a serialization adapter with `createSerializationAdapter` (exported from `@tanstack/react-router` and `@tanstack/solid-router`) and register it on TanStack Start's `createStart`; `createRouter` has no option for adapters. The adapter API is described on the Start page [Serialization Adapters](/start/latest/docs/framework/react/guide/serialization-adapters).

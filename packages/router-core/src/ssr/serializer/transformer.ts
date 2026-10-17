@@ -5,6 +5,7 @@ import type {
   SSROption,
 } from '../../router'
 import type { LooseReturnType } from '../../utils'
+import type { NotFoundError } from '../../not-found'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 import type { RawStream } from './RawStream'
 
@@ -222,7 +223,25 @@ export type RegisteredSSROption<TRegister> =
     ? SSROption
     : RegisteredConfigType<TRegister, 'defaultSsr'>
 
+// The gate sits in the check type of an `infer` conditional: inference walks the
+// branches of a conditional return type, never its check type, so a lifecycle function
+// whose return is inferred against this does not instantiate the gate's branches.
 export type ValidateSerializableLifecycleResult<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TFn,
+> =
+  ValidateSerializableLifecycleResultGate<
+    TRegister,
+    TParentRoute,
+    TSSR,
+    TFn
+  > extends infer TInput
+    ? TInput
+    : never
+
+type ValidateSerializableLifecycleResultGate<
   TRegister,
   TParentRoute extends AnyRoute,
   TSSR,
@@ -230,14 +249,7 @@ export type ValidateSerializableLifecycleResult<
 > =
   false extends RegisteredSsr<TRegister>
     ? any
-    : ValidateSerializableLifecycleResultSSR<
-          TRegister,
-          TParentRoute,
-          TSSR,
-          TFn
-        > extends infer TInput
-      ? TInput
-      : never
+    : ValidateSerializableLifecycleResultSSR<TRegister, TParentRoute, TSSR, TFn>
 
 export type ValidateSerializableLifecycleResultSSR<
   TRegister,
@@ -249,7 +261,64 @@ export type ValidateSerializableLifecycleResultSSR<
     ? any
     : RegisteredSSROption<TRegister> extends false
       ? any
-      : ValidateSerializableInput<TRegister, LooseReturnType<TFn>>
+      : LooseReturnType<TFn> extends infer TReturn
+        ? [TReturn] extends [Promise<infer TAwaited>]
+          ? Promise<ValidateSerializableLifecycleData<TRegister, TAwaited>>
+          : ValidateSerializableLifecycleData<TRegister, TReturn>
+        : never
+
+// A returned redirect or notFound is control flow, not data, so only the rest is
+// validated. Next to control flow, a valid result is the target as written: a
+// union of the validated data and the all-optional NotFoundError would accept any
+// object in the function form's intersection check. For the same reason the
+// result is not distributed over its members.
+type ValidateSerializableLifecycleData<TRegister, T> = [
+  LifecycleControlFlow<T>,
+] extends [never]
+  ? ValidateSerializableInput<TRegister, T>
+  : ValidateSerializableInput<TRegister, LifecycleData<T>> extends infer TValid
+    ? [LifecycleData<T>] extends [TValid]
+      ? T
+      : TValid
+    : never
+
+// A redirect is a Response with `options`, as `isRedirect` checks; its router
+// type does not matter. An object that is only assignable to NotFoundError
+// (`{ data: () => 1 }`) is data.
+type LifecycleControlFlow<T> = T extends Response & { options: object }
+  ? T
+  : T extends NotFoundError
+    ? NotFoundError extends T
+      ? T
+      : never
+    : never
+
+type LifecycleData<T> = T extends LifecycleControlFlow<T> ? never : T
+
+/**
+ * Same gate as ValidateSerializableLifecycleResult, but for the WIRE value returned
+ * by a `dehydrate` function. Used as an intersection target (`TWire & ...`), so every
+ * exit is `unknown` (an `any` exit would collapse the intersection).
+ */
+// The first exit lets a real `unknown` or `any` wire through; route.ts never passes
+// one, because LifecycleDehydrateReturn returns `unknown` for the uninferred wire
+// (LifecycleNoWire, also `any` and `never`) and hands an `unknown` wire over as
+// `symbol`. Keep the first exit anyway: it defers the whole gate while TWire is
+// still generic, and deleting it measured as more type instantiations.
+export type ValidateSerializableLifecycleWire<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TWire,
+> = unknown extends TWire
+  ? unknown
+  : false extends RegisteredSsr<TRegister>
+    ? unknown
+    : ResolveAllSSR<TParentRoute, TSSR> extends false
+      ? unknown
+      : RegisteredSSROption<TRegister> extends false
+        ? unknown
+        : ValidateSerializableInput<TRegister, TWire>
 
 export type RegisteredReadableStream =
   unknown extends SerializerExtensions['ReadableStream']

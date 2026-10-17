@@ -24,6 +24,7 @@ import type {
   Assign,
   Awaitable,
   Constrain,
+  ConstrainLiteral,
   Expand,
   IntersectAssign,
   LooseAsyncReturnType,
@@ -44,7 +45,10 @@ import type {
   ValidatorFn,
   ValidatorObj,
 } from './validators'
-import type { ValidateSerializableLifecycleResult } from './ssr/serializer/transformer'
+import type {
+  ValidateSerializableLifecycleResult,
+  ValidateSerializableLifecycleWire,
+} from './ssr/serializer/transformer'
 
 export type AnyPathParams = {}
 
@@ -194,30 +198,11 @@ export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
 ) => ResolveParams<TPath>
 
-export type ParamsOptions<in out TPath extends string, in out TParams> = {
-  params?: {
-    parse?: ParseParamsFn<TPath, TParams> & ValidateParsedParams<TPath, TParams>
-    /**
-     * When multiple route candidates use `params.parse` during matching,
-     * higher priorities are tried first.
-     *
-     * @default 0
-     */
-    priority?: number
-    stringify?: StringifyParamsFn<TPath, TParams>
-  }
-
-  /** 
-  @deprecated Use params.parse instead
-  */
-  parseParams?: ParseParamsFn<TPath, TParams> &
-    ValidateParsedParams<TPath, TParams>
-
-  /** 
-  @deprecated Use params.stringify instead
-  */
-  stringifyParams?: StringifyParamsFn<TPath, TParams>
-}
+// The members are declared in FileBaseRouteOptions (type-check cost, see there).
+export type ParamsOptions<TPath extends string, TParams> = Pick<
+  FileBaseRouteOptions<unknown, AnyRoute, string, TPath, undefined, TParams>,
+  'params' | 'parseParams' | 'stringifyParams'
+>
 
 interface RequiredStaticDataRouteOption {
   staticData: StaticDataRouteOption
@@ -309,15 +294,9 @@ export type ContextAsyncReturnType<TContextFn> = unknown extends TContextFn
     : LooseAsyncReturnType<TContextFn>
 
 export type ResolveRouteContext<TRouteContextFn, TBeforeLoadFn> = Assign<
-  ContextReturnType<TRouteContextFn>,
+  ContextAsyncReturnType<TRouteContextFn>,
   ContextAsyncReturnType<TBeforeLoadFn>
 >
-
-export type ResolveRouteLoaderFn<TLoaderFn> = TLoaderFn extends {
-  handler: infer THandler
-}
-  ? THandler
-  : TLoaderFn
 
 export type RouteLoaderObject<
   TRegister,
@@ -348,9 +327,9 @@ export type RouteLoaderObject<
 
 export type ResolveLoaderData<TLoaderFn> = unknown extends TLoaderFn
   ? TLoaderFn
-  : LooseAsyncReturnType<ResolveRouteLoaderFn<TLoaderFn>> extends never
+  : LooseAsyncReturnType<TLoaderFn> extends never
     ? undefined
-    : LooseAsyncReturnType<ResolveRouteLoaderFn<TLoaderFn>>
+    : LooseAsyncReturnType<TLoaderFn>
 
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
@@ -388,7 +367,7 @@ export type BeforeLoadContextParameter<
   TRouteContextFn,
 > = Assign<
   RouteContextParameter<TParentRoute, TRouterContext>,
-  ContextReturnType<TRouteContextFn>
+  ContextAsyncReturnType<TRouteContextFn>
 >
 
 export type ResolveAllContext<
@@ -698,7 +677,13 @@ export interface Route<
     TBeforeLoadFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
   lazyFn?: () => Promise<
@@ -862,6 +847,748 @@ export type AnyRouteWithContext<TContext> = AnyRoute & {
   types: { allContext: TContext }
 }
 
+// ---------------------------------------------------------------------------
+// Lifecycle options: context / beforeLoad / loader
+// ---------------------------------------------------------------------------
+
+/** The awaited result of a lifecycle handler. */
+// `any` while the handler slot is still at its default (not yet inferred), so
+// sibling members (`dehydrate`, `hydrate`, `revalidate`) written as named
+// functions do not fail the first (context-insensitive) applicability pass.
+export type LifecycleHandlerData<TFn> = TFn extends (
+  ...args: Array<any>
+) => infer TResult
+  ? Awaited<TResult>
+  : any
+
+/**
+ * Default of the wire generics (`TContextWire`, `TBeforeLoadWire`, `TLoaderWire`): no
+ * `dehydrate` function has been inferred.
+ */
+// A dedicated type rather than `unknown`, so a `dehydrate` that returns `unknown`
+// is an `unknown` wire, not a missing one; and not `never`, so default-wired
+// option types stay assignable to the `any`-wired class constructors.
+export interface LifecycleNoWire {
+  readonly '~lifecycleNoWire': true
+}
+
+/**
+ * Client-side reconstruction. `data` is the AWAITED wire value when a `dehydrate`
+ * function is present (TWire is inferred from its return, sync or async), otherwise
+ * the handler's full awaited value. Shared by every arm that allows `hydrate` so the
+ * contextual signature is identical.
+ */
+// The ctx-plus-data parameter types carry an alias on purpose: when the user's
+// (contextually typed) function is inferred against the arm, TS then infers
+// type-argument-wise instead of comparing the two intersections structurally. A
+// structural comparison walks ContextOptions.matches -> MakeRouteMatchUnion ->
+// RegisteredRouter -> Register.router -> the route tree -> this very route, which
+// surfaces as "referenced directly or indirectly in its own initializer".
+// `[TWire] extends [LifecycleNoWire]` also holds for `any` and `never`; the inner
+// `[TWire] extends [string]` tells those two (they pass it) from the sentinel (it
+// does not), so a real wire costs one check. LifecycleHydrateOrderGuard does the same.
+export type LifecycleHydrateContext<TCtx, TFn, TWire> = TCtx & {
+  data: [TWire] extends [LifecycleNoWire]
+    ? [TWire] extends [string]
+      ? TWire
+      : LifecycleHandlerData<TFn>
+    : Awaited<TWire>
+}
+
+export type LifecycleDehydrateContext<TCtx, TFn> = TCtx & {
+  data: LifecycleHandlerData<TFn>
+}
+
+export type RouteContextRevalidateContext<
+  TCtx,
+  TFn,
+  THydrate = never,
+> = TCtx & {
+  // on the client the context entry may hold the (awaited) hydrate result, so `prev` is the resolved data
+  prev: LifecycleHandlerData<ResolveLifecycleSlot<TFn, THydrate>> | undefined
+}
+
+/** `any` once the handler slot is inferred; a brand while it is still at its default. */
+export type LifecycleHandlerResult<TFn> = TFn extends (
+  ...args: Array<any>
+) => any
+  ? any
+  : {
+      'TanStack Router: write `handler` first: `dehydrate`, `hydrate` and (on `context`) `revalidate` are typed from it': true
+    }
+
+/**
+ * The declared return of `hydrate`: the handler data (this is what gives an inline
+ * hydrate its contextual return type, so literal discriminants stay literal) or
+ * THydrate, the inference-only slot that captures a hydrate returning a DIFFERENT
+ * (possibly Promise-wrapped) type. THydrate is `never` while no hydrate has been seen.
+ */
+export type LifecycleHydrateReturn<TFn, THydrate> =
+  | LifecycleHandlerData<TFn>
+  | THydrate
+
+/**
+ * Appended to the codec arm's hydrate return: rejects a `hydrate` written before
+ * `dehydrate`, whose `data` would fix the wire type before `dehydrate` is seen and
+ * leave the `dehydrate` return unvalidated.
+ */
+// `unknown` once TWire is inferred (also `any`, and `never` for a `dehydrate` that
+// always throws); a brand while TWire is still LifecycleNoWire at the final check.
+// It sits on hydrate (not dehydrate) because the error for a missing `hydrate` key
+// or a typo next to a dehydrate function is reported from a context-insensitive
+// instantiation in which TWire is still at its default; a brand on dehydrate would
+// hijack those messages.
+export type LifecycleHydrateOrderGuard<TWire> = [TWire] extends [
+  LifecycleNoWire,
+]
+  ? [TWire] extends [string]
+    ? unknown
+    : {
+        'TanStack Router: write `dehydrate` before `hydrate`: the wire type is inferred from `dehydrate`': true
+      }
+  : unknown
+
+/**
+ * A parameter-less `hydrate`: it never reads the wire, so the order guard has nothing
+ * to protect. Its return has no contextual type: literal discriminants need `as const`.
+ */
+// Accepted even while TWire is still LifecycleNoWire in the first
+// (context-insensitive) overload pass, where an inline `dehydrate` is skipped, and
+// its return is typed in that pass. `never` while THydrate is uninferred (and on the
+// `any` class paths), so it never adds a second contextual signature to the arm.
+export type LifecycleParamlessHydrateFn<THydrate> = 0 extends 1 & THydrate
+  ? never
+  : [THydrate] extends [never]
+    ? never
+    : () => THydrate
+
+/** Codec arm: hydrate next to a dehydrate function. */
+export type LifecycleCodecHydrateFn<TCtx, TFn, TWire, THydrate> =
+  | ((
+      ctx: LifecycleHydrateContext<TCtx, TFn, TWire>,
+    ) => LifecycleHydrateReturn<TFn, THydrate> &
+      LifecycleHydrateOrderGuard<TWire>)
+  | LifecycleParamlessHydrateFn<THydrate>
+
+/** `dehydrate: true` arm. Same parameter type as the codec arm (one contextual signature). */
+export type LifecycleHydrateFn<TCtx, TFn, TWire, THydrate> = (
+  ctx: LifecycleHydrateContext<TCtx, TFn, TWire>,
+) => LifecycleHydrateReturn<TFn, THydrate>
+
+/**
+ * The declared return of `dehydrate` and the inference site of TWire. `unknown` while
+ * TWire is still LifecycleNoWire, so a `dehydrate` checked before TWire is inferred is
+ * not held against the sentinel; otherwise the wire intersected with the
+ * serializability gate (an intersection, not `Constrain`, so union wires survive
+ * inference). The gate lets `unknown` through, so an `unknown` wire is validated as
+ * `symbol` instead: like an `unknown` handler result, it is rejected in Start apps
+ * with "Type may not be serializable".
+ */
+export type LifecycleDehydrateReturn<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TWire,
+> = [TWire] extends [LifecycleNoWire]
+  ? unknown
+  : TWire &
+      ValidateSerializableLifecycleWire<
+        TRegister,
+        TParentRoute,
+        TSSR,
+        unknown extends TWire ? symbol : TWire
+      >
+
+/**
+ * `dehydrate` may be sync or async: TWire is the raw return (`Promise<W>` for an
+ * async dehydrate), consumers read `Awaited<TWire>`, and the serializability gate
+ * walks into the Promise (ValidateSerializable has a Promise branch), so a function
+ * inside an async wire is reported at that property.
+ */
+export type LifecycleDehydrateFn<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TCtx,
+  TFn,
+  TWire,
+> = (
+  ctx: LifecycleDehydrateContext<TCtx, TFn>,
+) => LifecycleDehydrateReturn<TRegister, TParentRoute, TSSR, TWire>
+
+export type RouteContextRevalidateFn<TCtx, TFn, THydrate = never> = (
+  ctx: RouteContextRevalidateContext<TCtx, TFn, THydrate>,
+) => Awaitable<LifecycleHandlerData<TFn>>
+
+/**
+ * Folds a hydrate that returns a DIFFERENT type into the lifecycle slot that reaches
+ * Route (Route, RouteTypes and AnyRoute are unchanged): the slot becomes a function
+ * returning `Awaited<handler return> | Awaited<hydrate return>`. Identity while no
+ * hydrate exists (THydrate = never), for an `any` hydrate, and when hydrate's awaited
+ * return is assignable to the handler data (a same-shape hydrate changes nothing).
+ */
+export type ResolveLifecycleSlot<TFn, THydrate> = [THydrate] extends [never]
+  ? TFn
+  : unknown extends Awaited<THydrate>
+    ? TFn // `any`, and an unresolved generic hydrate (`<T = unknown>`), must not collapse the data
+    : [Awaited<THydrate>] extends [LifecycleHandlerData<TFn>]
+      ? TFn
+      : (
+          ...args: Array<any>
+        ) =>
+          | LifecycleHandlerData<TFn>
+          | Exclude<Awaited<THydrate>, LifecycleHandlerData<TFn>>
+
+/**
+ * `context`: cached serial lifecycle, may be async, NOT transported by default.
+ * Arm order: fn, {dehydrate?: false}, codec, {dehydrate: true} (validated) last.
+ * `hydrate` requires `dehydrate` (a function, or `true`).
+ */
+export type RouteContextOption<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TParams,
+  TRouterContext,
+  TLoaderDeps,
+  TId,
+  TServerMiddlewares,
+  THandlers,
+  TRouteContextFn,
+  TContextWire,
+  TContextHydrate,
+  TCtx = RouteContextOptions<
+    TParentRoute,
+    TParams,
+    TRouterContext,
+    TLoaderDeps,
+    TId,
+    TRegister,
+    TServerMiddlewares,
+    THandlers
+  >,
+> =
+  | ConstrainLiteral<TRouteContextFn, (ctx: TCtx) => any>
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate`, `hydrate` and `revalidate` are typed from it.
+       */
+      handler: (ctx: TCtx) => LifecycleHandlerResult<TRouteContextFn>
+      /**
+       * `false` is the default for `context`: the result is not sent to the client.
+       * The server still runs `handler`; the client re-runs it during hydration (on `ssr: true`
+       * routes both runs must produce the same value). `hydrate` is not allowed with `dehydrate: false`.
+       *
+       * @experimental
+       */
+      dehydrate?: false
+      /**
+       * Not allowed here: `hydrate` requires `dehydrate: true` or a `dehydrate` function.
+       */
+      hydrate?: undefined
+      /**
+       * `context` only; write it after `hydrate`. Runs on `router.invalidate()` and nothing else
+       * (there is no time-based revalidation of context). `true` re-runs `handler`; a function runs
+       * instead and receives `prev`, the current context data (the last successful `handler`,
+       * `hydrate` or `revalidate` result, `undefined` if none has succeeded for this match yet), and
+       * must return the handler's data type; may be async. Parameters are inferred: do not annotate them.
+       */
+      revalidate?:
+        | boolean
+        | RouteContextRevalidateFn<TCtx, TRouteContextFn, TContextHydrate>
+    }
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate`, `hydrate` and `revalidate` are typed from it.
+       */
+      handler: (ctx: TCtx) => LifecycleHandlerResult<TRouteContextFn>
+      /**
+       * Server-side transform of `data` (the handler's awaited result) into the value sent to the
+       * client; may be async. The returned value must be serializable (checked in Start apps,
+       * which also reject a return typed `unknown`). A `dehydrate` function requires `hydrate`.
+       * Parameters are inferred: do not annotate them. This is a transform, not a lifecycle:
+       * throwing `redirect` or `notFound` here is an error.
+       *
+       * @experimental
+       */
+      dehydrate: LifecycleDehydrateFn<
+        TRegister,
+        TParentRoute,
+        TSSR,
+        TCtx,
+        TRouteContextFn,
+        TContextWire
+      >
+      /**
+       * Client-side reconstruction during hydration; `data` is the awaited `dehydrate` result and the
+       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
+       * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
+       * says which function produced the value (for example `hydrated: false` in `handler`, `true`
+       * here), not server versus client: `handler` also runs in the browser on client navigations. A
+       * result assignable to the handler data reduces to it (no union, extra properties invisible).
+       * Parameters are inferred: do not annotate them. If `hydrate` throws (`redirect` and `notFound`
+       * included), the client recovers with a normal client load, which runs `handler` again;
+       * `hydrate` itself calls no `onError`.
+       *
+       * @experimental
+       */
+      hydrate: LifecycleCodecHydrateFn<
+        TCtx,
+        TRouteContextFn,
+        TContextWire,
+        TContextHydrate
+      >
+      /**
+       * `context` only; write it after `hydrate`. Runs on `router.invalidate()` and nothing else
+       * (there is no time-based revalidation of context). `true` re-runs `handler`; a function runs
+       * instead and receives `prev`, the current context data (the last successful `handler`,
+       * `hydrate` or `revalidate` result, `undefined` if none has succeeded for this match yet), and
+       * must return the handler's data type; may be async. Parameters are inferred: do not annotate them.
+       */
+      revalidate?:
+        | boolean
+        | RouteContextRevalidateFn<TCtx, TRouteContextFn, TContextHydrate>
+    }
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate`, `hydrate` and `revalidate` are typed from it.
+       * The result is transported to the client, so it must be serializable (checked in Start apps).
+       */
+      handler: Constrain<
+        TRouteContextFn,
+        (
+          ctx: TCtx,
+        ) => ValidateSerializableLifecycleResult<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TRouteContextFn
+        >
+      >
+      /**
+       * Send the context result to the client as is (it must be serializable, checked in Start apps).
+       * With `dehydrate: true`, `hydrate` receives the full value as `data`.
+       *
+       * @experimental
+       */
+      dehydrate: true
+      /**
+       * Optional client-side step during hydration; `data` is the handler's full awaited value and the
+       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
+       * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
+       * says which function produced the value (for example `hydrated: false` in `handler`, `true`
+       * here), not server versus client: `handler` also runs in the browser on client navigations. A
+       * result assignable to the handler data reduces to it (no union, extra properties invisible).
+       * Parameters are inferred: do not annotate them. If `hydrate` throws (`redirect` and `notFound`
+       * included), the client recovers with a normal client load, which runs `handler` again;
+       * `hydrate` itself calls no `onError`.
+       *
+       * @experimental
+       */
+      hydrate?: LifecycleHydrateFn<
+        TCtx,
+        TRouteContextFn,
+        TContextWire,
+        TContextHydrate
+      >
+      /**
+       * `context` only; write it after `hydrate`. Runs on `router.invalidate()` and nothing else
+       * (there is no time-based revalidation of context). `true` re-runs `handler`; a function runs
+       * instead and receives `prev`, the current context data (the last successful `handler`,
+       * `hydrate` or `revalidate` result, `undefined` if none has succeeded for this match yet), and
+       * must return the handler's data type; may be async. Parameters are inferred: do not annotate them.
+       */
+      revalidate?:
+        | boolean
+        | RouteContextRevalidateFn<TCtx, TRouteContextFn, TContextHydrate>
+    }
+
+/**
+ * `beforeLoad`: transported by default.
+ * Arm order: fn, {dehydrate: false}, codec, {dehydrate: true}, {dehydrate omitted}
+ * (validated) last. `hydrate` requires `dehydrate` (a function, or `true`).
+ */
+export type RouteBeforeLoadOption<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TSearchValidator,
+  TParams,
+  TRouterContext,
+  TRouteContextFn,
+  TId,
+  TServerMiddlewares,
+  THandlers,
+  TBeforeLoadFn,
+  TBeforeLoadWire,
+  TBeforeLoadHydrate,
+  TCtx = BeforeLoadContextOptions<
+    TRegister,
+    TParentRoute,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TId,
+    TServerMiddlewares,
+    THandlers
+  >,
+> =
+  | ConstrainLiteral<
+      TBeforeLoadFn,
+      (
+        ctx: TCtx,
+      ) => ValidateSerializableLifecycleResult<
+        TRegister,
+        TParentRoute,
+        TSSR,
+        TBeforeLoadFn
+      >
+    >
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate` and `hydrate` are typed from it.
+       */
+      handler: (ctx: TCtx) => LifecycleHandlerResult<TBeforeLoadFn>
+      /**
+       * Opt out of the default transport: the result is not sent to the client.
+       * The server still runs `handler`; the client re-runs it during hydration (on `ssr: true`
+       * routes both runs must produce the same value). `hydrate` is not allowed with `dehydrate: false`.
+       *
+       * @experimental
+       */
+      dehydrate: false
+      /**
+       * Not allowed here: `hydrate` requires `dehydrate: true` or a `dehydrate` function.
+       */
+      hydrate?: undefined
+    }
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate` and `hydrate` are typed from it.
+       */
+      handler: (ctx: TCtx) => LifecycleHandlerResult<TBeforeLoadFn>
+      /**
+       * Server-side transform of `data` (the handler's awaited result) into the value sent to the
+       * client; may be async. The returned value must be serializable (checked in Start apps,
+       * which also reject a return typed `unknown`). A `dehydrate` function requires `hydrate`.
+       * Parameters are inferred: do not annotate them. This is a transform, not a lifecycle:
+       * throwing `redirect` or `notFound` here is an error.
+       *
+       * @experimental
+       */
+      dehydrate: LifecycleDehydrateFn<
+        TRegister,
+        TParentRoute,
+        TSSR,
+        TCtx,
+        TBeforeLoadFn,
+        TBeforeLoadWire
+      >
+      /**
+       * Client-side reconstruction during hydration; `data` is the awaited `dehydrate` result and the
+       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
+       * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
+       * says which function produced the value (for example `hydrated: false` in `handler`, `true`
+       * here), not server versus client: `handler` also runs in the browser on client navigations. A
+       * result assignable to the handler data reduces to it (no union, extra properties invisible).
+       * Parameters are inferred: do not annotate them. If `hydrate` throws, or returns a `redirect` or
+       * `notFound`, the client recovers with a normal client load, which runs `handler` again;
+       * `hydrate` itself calls no `onError`.
+       *
+       * @experimental
+       */
+      hydrate: LifecycleCodecHydrateFn<
+        TCtx,
+        TBeforeLoadFn,
+        TBeforeLoadWire,
+        TBeforeLoadHydrate
+      >
+    }
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate` and `hydrate` are typed from it.
+       * The result is transported to the client, so it must be serializable (checked in Start apps).
+       */
+      handler: Constrain<
+        TBeforeLoadFn,
+        (
+          ctx: TCtx,
+        ) => ValidateSerializableLifecycleResult<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TBeforeLoadFn
+        >
+      >
+      /**
+       * Send the result to the client as is (the default; it must be serializable, checked in Start apps).
+       * With `dehydrate: true`, `hydrate` receives the full value as `data`.
+       *
+       * @experimental
+       */
+      dehydrate: true
+      /**
+       * Optional client-side step during hydration; `data` is the handler's full awaited value and the
+       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
+       * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
+       * says which function produced the value (for example `hydrated: false` in `handler`, `true`
+       * here), not server versus client: `handler` also runs in the browser on client navigations. A
+       * result assignable to the handler data reduces to it (no union, extra properties invisible).
+       * Parameters are inferred: do not annotate them. If `hydrate` throws, or returns a `redirect` or
+       * `notFound`, the client recovers with a normal client load, which runs `handler` again;
+       * `hydrate` itself calls no `onError`.
+       *
+       * @experimental
+       */
+      hydrate?: LifecycleHydrateFn<
+        TCtx,
+        TBeforeLoadFn,
+        TBeforeLoadWire,
+        TBeforeLoadHydrate
+      >
+    }
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate` and `hydrate` are typed from it.
+       * The result is transported to the client, so it must be serializable (checked in Start apps).
+       */
+      handler: Constrain<
+        TBeforeLoadFn,
+        (
+          ctx: TCtx,
+        ) => ValidateSerializableLifecycleResult<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TBeforeLoadFn
+        >
+      >
+      /**
+       * Omitted: the default transport applies (`beforeLoad` is sent to the client and must be
+       * serializable). `hydrate` requires an explicit `dehydrate: true` or a `dehydrate` function.
+       *
+       * @experimental
+       */
+      dehydrate?: undefined
+      /**
+       * Not allowed here: `hydrate` requires `dehydrate: true` or a `dehydrate` function.
+       */
+      hydrate?: undefined
+    }
+
+/**
+ * `loader`: transported by default; keeps `staleReloadMode` in the object form.
+ * Arm order: fn, {dehydrate: false}, codec, {dehydrate: true}, {dehydrate omitted}
+ * (validated) last. `hydrate` requires `dehydrate` (a function, or `true`).
+ */
+export type RouteLoaderOption<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TId extends string,
+  TParams,
+  TLoaderDeps,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TServerMiddlewares,
+  THandlers,
+  TLoaderFn,
+  TLoaderWire,
+  TLoaderHydrate,
+  TCtx = LoaderFnContext<
+    TRegister,
+    TParentRoute,
+    TId,
+    TParams,
+    TLoaderDeps,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TServerMiddlewares,
+    THandlers
+  >,
+> =
+  | ConstrainLiteral<
+      TLoaderFn,
+      (
+        ctx: TCtx,
+      ) => ValidateSerializableLifecycleResult<
+        TRegister,
+        TParentRoute,
+        TSSR,
+        TLoaderFn
+      >
+    >
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate` and `hydrate` are typed from it.
+       */
+      handler: (ctx: TCtx) => LifecycleHandlerResult<TLoaderFn>
+      /**
+       * Opt out of the default transport: the result is not sent to the client.
+       * The server still runs `handler`; the client re-runs it during hydration (on `ssr: true`
+       * routes both runs must produce the same value). `hydrate` is not allowed with `dehydrate: false`.
+       *
+       * @experimental
+       */
+      dehydrate: false
+      /**
+       * Not allowed here: `hydrate` requires `dehydrate: true` or a `dehydrate` function.
+       */
+      hydrate?: undefined
+      /**
+       * `loader` only; write it last. How a stale match reloads: `'background'` shows the cached data
+       * and re-runs the loader in the background, `'blocking'` waits for the loader. Defaults to the
+       * router's `defaultStaleReloadMode` (`'background'` unless set).
+       */
+      staleReloadMode?: LoaderStaleReloadMode
+    }
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate` and `hydrate` are typed from it.
+       */
+      handler: (ctx: TCtx) => LifecycleHandlerResult<TLoaderFn>
+      /**
+       * Server-side transform of `data` (the handler's awaited result) into the value sent to the
+       * client; may be async. The returned value must be serializable (checked in Start apps,
+       * which also reject a return typed `unknown`). A `dehydrate` function requires `hydrate`.
+       * Parameters are inferred: do not annotate them. This is a transform, not a lifecycle:
+       * throwing `redirect` or `notFound` here is an error.
+       *
+       * @experimental
+       */
+      dehydrate: LifecycleDehydrateFn<
+        TRegister,
+        TParentRoute,
+        TSSR,
+        TCtx,
+        TLoaderFn,
+        TLoaderWire
+      >
+      /**
+       * Client-side reconstruction during hydration; `data` is the awaited `dehydrate` result and the
+       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
+       * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
+       * says which function produced the value (for example `hydrated: false` in `handler`, `true`
+       * here), not server versus client: `handler` also runs in the browser on client navigations. A
+       * result assignable to the handler data reduces to it (no union, extra properties invisible).
+       * Parameters are inferred: do not annotate them. If `hydrate` throws, or returns a `redirect` or
+       * `notFound`, the client recovers with a normal client load, which runs `handler` again;
+       * `hydrate` itself calls no `onError`.
+       *
+       * @experimental
+       */
+      hydrate: LifecycleCodecHydrateFn<
+        TCtx,
+        TLoaderFn,
+        TLoaderWire,
+        TLoaderHydrate
+      >
+      /**
+       * `loader` only; write it last. How a stale match reloads: `'background'` shows the cached data
+       * and re-runs the loader in the background, `'blocking'` waits for the loader. Defaults to the
+       * router's `defaultStaleReloadMode` (`'background'` unless set).
+       */
+      staleReloadMode?: LoaderStaleReloadMode
+    }
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate` and `hydrate` are typed from it.
+       * The result is transported to the client, so it must be serializable (checked in Start apps).
+       */
+      handler: Constrain<
+        TLoaderFn,
+        (
+          ctx: TCtx,
+        ) => ValidateSerializableLifecycleResult<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TLoaderFn
+        >
+      >
+      /**
+       * Send the result to the client as is (the default; it must be serializable, checked in Start apps).
+       * With `dehydrate: true`, `hydrate` receives the full value as `data`.
+       *
+       * @experimental
+       */
+      dehydrate: true
+      /**
+       * Optional client-side step during hydration; `data` is the handler's full awaited value and the
+       * rest of the lifecycle ctx is available; may be async. Write `dehydrate` before `hydrate`.
+       * `hydrate` may return a different type than `handler`: the lifecycle's data is then the union of
+       * both, narrowed on a literal discriminant written on both sides (`as const`). The discriminant
+       * says which function produced the value (for example `hydrated: false` in `handler`, `true`
+       * here), not server versus client: `handler` also runs in the browser on client navigations. A
+       * result assignable to the handler data reduces to it (no union, extra properties invisible).
+       * Parameters are inferred: do not annotate them. If `hydrate` throws, or returns a `redirect` or
+       * `notFound`, the client recovers with a normal client load, which runs `handler` again;
+       * `hydrate` itself calls no `onError`.
+       *
+       * @experimental
+       */
+      hydrate?: LifecycleHydrateFn<TCtx, TLoaderFn, TLoaderWire, TLoaderHydrate>
+      /**
+       * `loader` only; write it last. How a stale match reloads: `'background'` shows the cached data
+       * and re-runs the loader in the background, `'blocking'` waits for the loader. Defaults to the
+       * router's `defaultStaleReloadMode` (`'background'` unless set).
+       */
+      staleReloadMode?: LoaderStaleReloadMode
+    }
+  | {
+      /**
+       * The lifecycle function; its awaited return value is the lifecycle's data. Write it first:
+       * `dehydrate` and `hydrate` are typed from it.
+       * The result is transported to the client, so it must be serializable (checked in Start apps).
+       */
+      handler: Constrain<
+        TLoaderFn,
+        (
+          ctx: TCtx,
+        ) => ValidateSerializableLifecycleResult<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TLoaderFn
+        >
+      >
+      /**
+       * Omitted: the default transport applies (`loader` is sent to the client and must be
+       * serializable). `hydrate` requires an explicit `dehydrate: true` or a `dehydrate` function.
+       *
+       * @experimental
+       */
+      dehydrate?: undefined
+      /**
+       * Not allowed here: `hydrate` requires `dehydrate: true` or a `dehydrate` function.
+       */
+      hydrate?: undefined
+      /**
+       * `loader` only; write it last. How a stale match reloads: `'background'` shows the cached data
+       * and re-runs the loader in the background, `'blocking'` waits for the loader. Defaults to the
+       * router's `defaultStaleReloadMode` (`'background'` unless set).
+       */
+      staleReloadMode?: LoaderStaleReloadMode
+    }
+
 export type RouteOptions<
   TRegister,
   TParentRoute extends AnyRoute = AnyRoute,
@@ -879,6 +1606,12 @@ export type RouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
+  TContextHydrate = never,
+  TBeforeLoadHydrate = never,
+  TLoaderHydrate = never,
 > = BaseRouteOptions<
   TRegister,
   TParentRoute,
@@ -894,7 +1627,13 @@ export type RouteOptions<
   TBeforeLoadFn,
   TSSR,
   TServerMiddlewares,
-  THandlers
+  THandlers,
+  TContextWire,
+  TBeforeLoadWire,
+  TLoaderWire,
+  TContextHydrate,
+  TBeforeLoadHydrate,
+  TLoaderHydrate
 > &
   UpdatableRouteOptions<
     NoInfer<TParentRoute>,
@@ -902,11 +1641,11 @@ export type RouteOptions<
     NoInfer<TFullPath>,
     NoInfer<TParams>,
     NoInfer<TSearchValidator>,
-    NoInfer<TLoaderFn>,
+    NoInfer<ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>>,
     NoInfer<TLoaderDeps>,
     NoInfer<TRouterContext>,
-    NoInfer<TRouteContextFn>,
-    NoInfer<TBeforeLoadFn>
+    NoInfer<ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>>,
+    NoInfer<ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>>
   >
 
 export type RouteContextFn<
@@ -925,6 +1664,24 @@ export type RouteContextFn<
   >,
 ) => any
 
+// The three lifecycle keys (plus `shouldReload`, which receives the loader's ctx) are
+// declared here, not on the augmented FilebaseRouteOptionsInterface, so the wire /
+// hydrate generics do not have to be mirrored by every module augmentation.
+// Downstream ctx types (beforeLoad's, the loader's and shouldReload's `context`) see
+// the RESOLVED upstream slots: a context/beforeLoad hydrate that returns a different
+// type is visible to the same route's later steps.
+//
+// Type-check cost, paid by every route whether it uses these options or not:
+// - The keys are an inline object type, not a type alias. TypeScript measures the
+//   variance of an object type alias the first time it compares two instantiations of
+//   it (every app does, when its root route is checked against `AnyRoute`), and
+//   measuring these option unions resolves the registered router's types.
+// - The upstream slots are read in the downstream ctx types, never inferred from them,
+//   so they are wrapped in the intrinsic `NoInfer` (router-core's own `NoInfer` is a
+//   conditional type). Otherwise inference from every loader function would expand
+//   each branch of ResolveLifecycleSlot.
+// - The `params` keys are declared in the same object type (ParamsOptions picks them
+//   from here), so a route instantiates one object type for them instead of two.
 export type FileBaseRouteOptions<
   TRegister,
   TParentRoute extends AnyRoute = AnyRoute,
@@ -941,24 +1698,145 @@ export type FileBaseRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
-> = ParamsOptions<TPath, TParams> &
-  FilebaseRouteOptionsInterface<
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
+  TContextHydrate = never,
+  TBeforeLoadHydrate = never,
+  TLoaderHydrate = never,
+> = FilebaseRouteOptionsInterface<
+  TRegister,
+  TParentRoute,
+  TId,
+  TPath,
+  TSearchValidator,
+  TParams,
+  TLoaderDeps,
+  TLoaderFn,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TRemountDepsFn,
+  TSSR,
+  TServerMiddlewares,
+  THandlers
+> & {
+  params?: {
+    parse?: ParseParamsFn<TPath, TParams> & ValidateParsedParams<TPath, TParams>
+    /**
+     * When multiple route candidates use `params.parse` during matching,
+     * higher priorities are tried first.
+     *
+     * @default 0
+     */
+    priority?: number
+    stringify?: StringifyParamsFn<TPath, TParams>
+  }
+
+  /** @deprecated Use params.parse instead */
+  parseParams?: ParseParamsFn<TPath, TParams> &
+    ValidateParsedParams<TPath, TParams>
+
+  /** @deprecated Use params.stringify instead */
+  stringifyParams?: StringifyParamsFn<TPath, TParams>
+
+  /**
+   * Route context: a cached, serial lifecycle (parent to child, before `beforeLoad`), computed once
+   * per match and visible to `beforeLoad`, `loader` and every child; may be async. Not sent to the
+   * client by default (`dehydrate: false`): during SSR hydration the client re-runs it unless the
+   * object form opts in with `dehydrate: true` or a `dehydrate` function. Accepts a function or
+   * `{ handler, dehydrate?, hydrate?, revalidate? }` with the keys in that order.
+   *
+   * @experimental The `context` option may still change in a minor release.
+   */
+  context?: RouteContextOption<
     TRegister,
     TParentRoute,
+    TSSR,
+    TParams,
+    TRouterContext,
+    TLoaderDeps,
     TId,
-    TPath,
+    TServerMiddlewares,
+    THandlers,
+    TRouteContextFn,
+    TContextWire,
+    TContextHydrate
+  >
+
+  /**
+   * Runs before the route's loader on every load. If an error is thrown here the loader is not
+   * called; during a navigation the error becomes the match's error and reaches `onError`, during a
+   * preload it is part of the returned matches. Sent to the client by default (`dehydrate: true`),
+   * so the result must be serializable (checked in Start apps). Accepts a function or
+   * `{ handler, dehydrate?, hydrate? }` with the keys in that order. `dehydrate` and `hydrate` are
+   * experimental and may still change in a minor release.
+   */
+  beforeLoad?: RouteBeforeLoadOption<
+    TRegister,
+    TParentRoute,
+    TSSR,
     TSearchValidator,
     TParams,
-    TLoaderDeps,
-    TLoaderFn,
     TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TRemountDepsFn,
-    TSSR,
+    globalThis.NoInfer<ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>>,
+    TId,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TBeforeLoadFn,
+    TBeforeLoadWire,
+    TBeforeLoadHydrate
   >
+
+  /**
+   * Loads the route's data; follows the router's caching rules. Sent to the client by default
+   * (`dehydrate: true`), so the result must be serializable (checked in Start apps). Accepts a
+   * function or `{ handler, dehydrate?, hydrate?, staleReloadMode? }` with the keys in that order.
+   * `dehydrate` and `hydrate` are experimental and may still change in a minor release.
+   */
+  loader?: RouteLoaderOption<
+    TRegister,
+    TParentRoute,
+    TSSR,
+    TId,
+    TParams,
+    TLoaderDeps,
+    TRouterContext,
+    globalThis.NoInfer<ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>>,
+    globalThis.NoInfer<ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>>,
+    TServerMiddlewares,
+    THandlers,
+    TLoaderFn,
+    TLoaderWire,
+    TLoaderHydrate
+  >
+
+  /**
+   * `false` keeps a successful match's loader data on later matches, `true` reloads it, `undefined`
+   * follows the stale-while-revalidate rules. A function receives the loader's ctx and returns one
+   * of those; its `context` includes what a context or beforeLoad `hydrate` returned.
+   */
+  shouldReload?:
+    | boolean
+    | ((
+        match: LoaderFnContext<
+          TRegister,
+          TParentRoute,
+          TId,
+          TParams,
+          TLoaderDeps,
+          TRouterContext,
+          globalThis.NoInfer<
+            ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>
+          >,
+          globalThis.NoInfer<
+            ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>
+          >,
+          TServerMiddlewares,
+          THandlers
+        >,
+      ) => any)
+}
 
 export interface FilebaseRouteOptionsInterface<
   TRegister,
@@ -979,36 +1857,6 @@ export interface FilebaseRouteOptionsInterface<
 > {
   validateSearch?: Constrain<TSearchValidator, AnyValidator, DefaultValidator>
 
-  shouldReload?:
-    | boolean
-    | ((
-        match: LoaderFnContext<
-          TRegister,
-          TParentRoute,
-          TId,
-          TParams,
-          TLoaderDeps,
-          TRouterContext,
-          TRouteContextFn,
-          TBeforeLoadFn,
-          TServerMiddlewares,
-          THandlers
-        >,
-      ) => any)
-
-  context?: Constrain<
-    TRouteContextFn,
-    (
-      ctx: RouteContextOptions<
-        TParentRoute,
-        TParams,
-        TRouterContext,
-        TLoaderDeps,
-        TId
-      >,
-    ) => any
-  >
-
   ssr?: Constrain<
     TSSR,
     | undefined
@@ -1016,32 +1864,6 @@ export interface FilebaseRouteOptionsInterface<
     | ((
         ctx: SsrContextOptions<TParentRoute, TSearchValidator, TParams>,
       ) => Awaitable<undefined | SSROption>)
-  >
-
-  // This async function is called before a route is loaded.
-  // If an error is thrown here, the route's loader will not be called.
-  // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function.
-  // If thrown during a preload event, the error will be logged to the console.
-  beforeLoad?: Constrain<
-    TBeforeLoadFn,
-    (
-      ctx: BeforeLoadContextOptions<
-        TRegister,
-        TParentRoute,
-        TSearchValidator,
-        TParams,
-        TRouterContext,
-        TRouteContextFn,
-        TId,
-        TServerMiddlewares,
-        THandlers
-      >,
-    ) => ValidateSerializableLifecycleResult<
-      TRegister,
-      TParentRoute,
-      TSSR,
-      TBeforeLoadFn
-    >
   >
 
   loaderDeps?: (
@@ -1058,34 +1880,6 @@ export interface FilebaseRouteOptionsInterface<
         TLoaderDeps
       >,
     ) => any
-  >
-
-  loader?: Constrain<
-    TLoaderFn,
-    | RouteLoaderFn<
-        TRegister,
-        TParentRoute,
-        TId,
-        TParams,
-        TLoaderDeps,
-        TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn,
-        TServerMiddlewares,
-        THandlers
-      >
-    | RouteLoaderObject<
-        TRegister,
-        TParentRoute,
-        TId,
-        TParams,
-        TLoaderDeps,
-        TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn,
-        TServerMiddlewares,
-        THandlers
-      >
   >
 }
 
@@ -1105,6 +1899,12 @@ export type BaseRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
+  TContextHydrate = never,
+  TBeforeLoadHydrate = never,
+  TLoaderHydrate = never,
 > = RoutePathOptions<TCustomId, TPath> &
   FileBaseRouteOptions<
     TRegister,
@@ -1121,7 +1921,13 @@ export type BaseRouteOptions<
     AnyContext,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire,
+    TContextHydrate,
+    TBeforeLoadHydrate,
+    TLoaderHydrate
   > & {
     getParentRoute: () => TParentRoute
   }
@@ -1145,12 +1951,20 @@ export interface ContextOptions<
   routeId: TRouteId
 }
 
+/**
+ * The `context` lifecycle's ctx. The last three type arguments type Start's `serverContext`. Their
+ * defaults (the registered `Register`, then `any`) let a helper annotated with only the first five
+ * accept any route, and keep the route's `Register`, so its results are still validated.
+ */
 export interface RouteContextOptions<
   in out TParentRoute extends AnyRoute,
   in out TParams,
   in out TRouterContext,
   in out TLoaderDeps,
   in out TRouteId,
+  in out TRegister = Register,
+  in out TServerMiddlewares = any,
+  in out THandlers = any,
 > extends ContextOptions<TParentRoute, TParams, TRouteId> {
   deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
@@ -1254,6 +2068,12 @@ export interface DefaultUpdatableRouteOptionsExtensions {
 
 export interface UpdatableRouteOptionsExtensions extends DefaultUpdatableRouteOptionsExtensions {}
 
+// The hydrate generics are folded into the lifecycle slots here, when a member is read.
+// `createFileRoute(path)` instantiates the factory signature once per route before its
+// type arguments are inferred, so the file-route factories pass the raw slots plus the
+// hydrate generics here, and return their Route through a conditional on `TRegister`
+// (always true, but deferred in that pass): folding the slots or building the Route
+// there would cost every route.
 export interface UpdatableRouteOptions<
   in out TParentRoute extends AnyRoute,
   in out TRouteId,
@@ -1265,6 +2085,9 @@ export interface UpdatableRouteOptions<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TBeforeLoadFn,
+  in out TContextHydrate = never,
+  in out TBeforeLoadHydrate = never,
+  in out TLoaderHydrate = never,
 >
   extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
   /**
@@ -1313,12 +2136,12 @@ export interface UpdatableRouteOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
-      ResolveLoaderData<TLoaderFn>,
+      ResolveLoaderData<ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>>,
       ResolveAllContext<
         TParentRoute,
         TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn
+        ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
+        ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>
       >,
       TLoaderDeps
     >,
@@ -1329,12 +2152,12 @@ export interface UpdatableRouteOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
-      ResolveLoaderData<TLoaderFn>,
+      ResolveLoaderData<ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>>,
       ResolveAllContext<
         TParentRoute,
         TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn
+        ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
+        ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>
       >,
       TLoaderDeps
     >,
@@ -1345,12 +2168,12 @@ export interface UpdatableRouteOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
-      ResolveLoaderData<TLoaderFn>,
+      ResolveLoaderData<ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>>,
       ResolveAllContext<
         TParentRoute,
         TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn
+        ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
+        ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>
       >,
       TLoaderDeps
     >,
@@ -1362,10 +2185,10 @@ export interface UpdatableRouteOptions<
       TParentRoute,
       TParams,
       TSearchValidator,
-      TLoaderFn,
+      ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
       TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
+      ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
+      ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
       TLoaderDeps
     >,
   ) => Awaitable<Record<string, string> | undefined>
@@ -1376,10 +2199,10 @@ export interface UpdatableRouteOptions<
       TParentRoute,
       TParams,
       TSearchValidator,
-      TLoaderFn,
+      ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
       TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
+      ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
+      ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
       TLoaderDeps
     >,
   ) => Awaitable<{
@@ -1395,10 +2218,10 @@ export interface UpdatableRouteOptions<
       TParentRoute,
       TParams,
       TSearchValidator,
-      TLoaderFn,
+      ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
       TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
+      ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
+      ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
       TLoaderDeps
     >,
   ) => Awaitable<AnyRouteMatch['scripts']>
@@ -1532,6 +2355,12 @@ export interface RootRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
+  TContextHydrate = never,
+  TBeforeLoadHydrate = never,
+  TLoaderHydrate = never,
 >
   extends
     Omit<
@@ -1551,7 +2380,13 @@ export interface RootRouteOptions<
         TBeforeLoadFn,
         TSSR,
         TServerMiddlewares,
-        THandlers
+        THandlers,
+        TContextWire,
+        TBeforeLoadWire,
+        TLoaderWire,
+        TContextHydrate,
+        TBeforeLoadHydrate,
+        TLoaderHydrate
       >,
       | 'path'
       | 'id'
@@ -1662,7 +2497,13 @@ export class BaseRoute<
     TBeforeLoadFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
   >
 
   // The following properties are set up in this.init()
@@ -1739,7 +2580,13 @@ export class BaseRoute<
       TBeforeLoadFn,
       TSSR,
       TServerMiddlewares,
-      THandlers
+      THandlers,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any
     >,
   ) {
     this.options = (options as any) || {}
@@ -2116,7 +2963,13 @@ export class BaseRootRoute<
       TLoaderFn,
       TSSR,
       TServerMiddlewares,
-      THandlers
+      THandlers,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any
     >,
   ) {
     super(options as any)

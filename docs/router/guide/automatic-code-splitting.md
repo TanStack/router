@@ -224,3 +224,85 @@ export default defineConfig({
 ```
 
 We highly discourage splitting the `loader` unless you have a specific use case that requires it. In most cases, not splitting off the `loader` and keep it in the main bundle is the best choice for performance.
+
+> **Experimental:** the route `context` option and the `dehydrate` and `hydrate` keys of `beforeLoad` and `loader` are experimental and subject to change.
+
+A loader written in the object form, `loader: { handler, dehydrate, hydrate, staleReloadMode }`, is split by its `handler` only: the chunk exports the handler, while `dehydrate`, `hydrate` and `staleReloadMode` stay in the reference file, where the router reads them without loading the chunk. The same applies to an object declared as a `const` in the same file and passed by name (`const postsLoader = { handler, dehydrate: true }` and `loader: postsLoader`) when `loader` is the only place that reads it: the object stays in the reference file with its `handler` replaced. A type that names the object, such as `Awaited<ReturnType<typeof postsLoader.handler>>`, does not count as a reader. A `handler` written as a getter (`get handler() { ... }`) or as a method that uses `super` is not split. Neither is an object held in a variable that is exported, reassigned, or read anywhere else in the file (another option such as `head` calling `postsLoader.handler(ctx)`, top-level code, or the handler itself): replacing the handler in the object would hand every reader the lazy wrapper instead of your function. When a split option such as `component` or `errorComponent` reads that variable, the object moves to the shared module, so the route and the chunk read one object. An object-form loader imported from another module or returned by a function cannot be told apart from a function: do not put `loader` in a split group for such a route, or the chunk exports the object and calling the loader fails.
+
+### Removing route options from a build (`deleteNodes`)
+
+> **Experimental:** the route `context` option and the `dehydrate` and `hydrate` keys of `beforeLoad` and `loader` are experimental and subject to change.
+
+`deleteNodes` lists route options that the plugin removes from the compiled route file. An entry is a key of the route options object (`'ssr'`) or a dot path into an option written in the object form (`'loader.dehydrate'`, `'context.hydrate'`). The removed code and any import that only this code used disappear from the output; the rest of the file is unchanged.
+
+The list applies to every module the plugin instance compiles, for the browser and for the server alike. A router-only setup that renders on the server compiles both builds with one `tanstackRouter()`, and in development the dev server compiles the modules it renders on the server through that same plugin. The two builds need different keys: only the server reads `ssr` and `dehydrate`, and only the client reads `hydrate`. So give each production build its own list, and none in development:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+
+export default defineConfig(({ command, isSsrBuild }) => ({
+  plugins: [
+    tanstackRouter({
+      autoCodeSplitting: true,
+      codeSplittingOptions: {
+        // `vite build` is the client build, `vite build --ssr` the server
+        // build; the dev server compiles both, so it removes nothing
+        deleteNodes:
+          command !== 'build'
+            ? undefined
+            : isSsrBuild
+              ? ['loader.hydrate']
+              : ['ssr', 'loader.dehydrate'],
+      },
+    }),
+  ],
+}))
+```
+
+With this configuration, the route file
+
+```tsx
+import { fetchPosts } from './posts'
+import { toWire } from './server-only'
+import { fromWire } from './client-only'
+
+export const Route = createFileRoute('/posts')({
+  ssr: 'data-only',
+  loader: {
+    handler: ({ params }) => fetchPosts(params),
+    dehydrate: ({ data }) => toWire(data),
+    hydrate: ({ data }) => fromWire(data),
+  },
+})
+```
+
+compiles to this in the client build:
+
+```tsx
+import { fetchPosts } from './posts'
+import { fromWire } from './client-only'
+
+export const Route = createFileRoute('/posts')({
+  loader: {
+    handler: ({ params }) => fetchPosts(params),
+    hydrate: ({ data }) => fromWire(data),
+  },
+})
+```
+
+The server build keeps `ssr` and `dehydrate` and drops `hydrate` together with the `./client-only` import.
+
+The plugin visits:
+
+- The options object literal passed to `createFileRoute`, `createRootRoute` or `createRootRouteWithContext`, written inline or held in a variable of the same file and passed by name, also behind `satisfies` or `as`.
+- Object-form values written inline, or held in a variable of the same file that is never reassigned and passed by name (`loader: postsLoader`), also behind a TypeScript wrapper such as `satisfies`, `as`, `!` or parentheses. Such a variable is stripped in every module that keeps it: the route file, the shared module when a split option reads it, and a chunk that keeps a copy for top-level code reading it. If it is exported, the modules that import it get it without the removed keys too. An object-form value held in a variable that is reassigned is left as written.
+
+It does not visit spread members (`...sharedOptions`), computed keys, or option objects that are imported from another module or returned by a function. Those are left as they are, without a build error.
+
+A function or variable that only the removed code used is removed with it, and so are its imports. A class declaration is not: it stays, and keeps its imports.
+
+Removing an option is a bundle-size optimization, not a way to hide code. A value that must not reach the client has to live in a module the client never imports.
+
+TanStack Start configures these lists itself: its client build removes `ssr`, `server`, `headers` and the `dehydrate` key of `context`, `beforeLoad` and `loader`; its server build removes the `hydrate` key of the three and `context.revalidate`. A `deleteNodes` list in your own Start router configuration applies to both the client and the server build, with the built-in entries added after it, so it should only name options that neither build reads.

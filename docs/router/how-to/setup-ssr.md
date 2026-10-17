@@ -422,6 +422,20 @@ export default defineConfig(({ isSsrBuild }) => ({
 }))
 ```
 
+## What Crosses the Wire
+
+> **Experimental:** the route `context` option and the `dehydrate` and `hydrate` keys of `beforeLoad` and `loader` are experimental and subject to change.
+
+The server runs each matched route's `context`, `beforeLoad` and `loader`. By default the `beforeLoad` and `loader` results are sent to the client in the HTML payload and restored during hydration; the `context` result is not sent and the client computes it again.
+
+| Lifecycle    | Sent to the client by default | Change it with                                 |
+| ------------ | ----------------------------- | ---------------------------------------------- |
+| `context`    | no                            | `dehydrate: true`, or `dehydrate` + `hydrate`  |
+| `beforeLoad` | yes                           | `dehydrate: false`, or `dehydrate` + `hydrate` |
+| `loader`     | yes                           | `dehydrate: false`, or `dehydrate` + `hydrate` |
+
+These keys live in the object form of the lifecycle, `{ handler, dehydrate, hydrate }`. A result that is not sent is recomputed on the client during hydration and must come out the same as on the server. See [What crosses the wire](../guide/ssr.md#what-crosses-the-wire) in the SSR guide and the TanStack Start page [SSR Data Transport](/start/latest/docs/framework/react/guide/ssr-data-transport) for the details. Note that stripping `dehydrate` from the client bundle, and `hydrate` and `context.revalidate` from the server bundle, is done by the TanStack Start build; in a manual setup they stay in both bundles unless you give each production build its own `deleteNodes` list, as shown in [Removing route options from a build](../guide/automatic-code-splitting.md#removing-route-options-from-a-build-deletenodes).
+
 ## Common Problems
 
 > [!TIP]

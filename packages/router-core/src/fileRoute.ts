@@ -4,6 +4,8 @@ import type {
   AnyPathParams,
   AnyRoute,
   FileBaseRouteOptions,
+  LifecycleNoWire,
+  ResolveLifecycleSlot,
   ResolveParams,
   Route,
   RouteConstraints,
@@ -49,6 +51,12 @@ export interface FileRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
+  TContextHydrate = never,
+  TBeforeLoadHydrate = never,
+  TLoaderHydrate = never,
 >
   extends
     FileBaseRouteOptions<
@@ -66,7 +74,13 @@ export interface FileRouteOptions<
       AnyContext,
       TSSR,
       TServerMiddlewares,
-      THandlers
+      THandlers,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire,
+      TContextHydrate,
+      TBeforeLoadHydrate,
+      TLoaderHydrate
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -78,9 +92,13 @@ export interface FileRouteOptions<
       TLoaderDeps,
       AnyContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      TContextHydrate,
+      TBeforeLoadHydrate,
+      TLoaderHydrate
     > {}
 
+// The return type is a conditional on purpose, see UpdatableRouteOptions.
 export type CreateFileRoute<
   TFilePath extends string,
   TParentRoute extends AnyRoute,
@@ -98,6 +116,12 @@ export type CreateFileRoute<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = LifecycleNoWire,
+  TBeforeLoadWire = LifecycleNoWire,
+  TLoaderWire = LifecycleNoWire,
+  TContextHydrate = never,
+  TBeforeLoadHydrate = never,
+  TLoaderHydrate = never,
 >(
   options?: FileRouteOptions<
     TRegister,
@@ -114,28 +138,36 @@ export type CreateFileRoute<
     TLoaderFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire,
+    TContextHydrate,
+    TBeforeLoadHydrate,
+    TLoaderHydrate
   >,
-) => Route<
-  TRegister,
-  TParentRoute,
-  TPath,
-  TFullPath,
-  TFilePath,
-  TId,
-  TSearchValidator,
-  TParams,
-  AnyContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
-  TLoaderDeps,
-  TLoaderFn,
-  unknown,
-  unknown,
-  TSSR,
-  TServerMiddlewares,
-  THandlers
->
+) => TRegister extends unknown
+  ? Route<
+      TRegister,
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TFilePath,
+      TId,
+      TSearchValidator,
+      TParams,
+      AnyContext,
+      ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
+      ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
+      TLoaderDeps,
+      ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
+      unknown,
+      unknown,
+      TSSR,
+      TServerMiddlewares,
+      THandlers
+    >
+  : never
 
 export type LazyRouteOptions = Pick<
   UpdatableRouteOptions<

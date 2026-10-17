@@ -223,7 +223,7 @@ describe('hydrate', () => {
     }
   })
 
-  it('restores undefined loader data without serializing it', async () => {
+  it('restores undefined loader data from a present `l` key', async () => {
     const serverRootRoute = new BaseRootRoute({})
     const serverRoute = new BaseRoute({
       getParentRoute: () => serverRootRoute,
@@ -237,7 +237,9 @@ describe('hydrate', () => {
     })
 
     mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
-    expect(mockWindow.$_TSR.router?.matches[1]).not.toHaveProperty('l')
+    // Presence protocol: the loader ran and was transported, so `l` is emitted
+    // even though its value is `undefined`.
+    expect(mockWindow.$_TSR.router?.matches[1]).toHaveProperty('l', undefined)
 
     const clientLoader = vi.fn(() => undefined)
     const clientRootRoute = new BaseRootRoute({})
@@ -283,7 +285,7 @@ describe('hydrate', () => {
     })
 
     mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
-    expect(mockWindow.$_TSR.router?.matches[1]).not.toHaveProperty('l')
+    expect(mockWindow.$_TSR.router?.matches[1]).toHaveProperty('l', undefined)
 
     const parentError = new Error('parent reload failed')
     const childError = new Error('child guard failed')

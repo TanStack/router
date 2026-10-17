@@ -264,7 +264,10 @@ describe('public hydration contracts', () => {
     expect(headLanes).toEqual([fullLane])
     expect(router.state.matches.map((match) => match.routeId)).toEqual(fullLane)
     expect(router.state.matches[0]?.context).toMatchObject({ hydrated: true })
-    expect(router.state.matches[0]?.meta).toEqual([{ title: 'undefined' }])
+    // The server marked the client-only route success without running a
+    // loader; the client declares one, so it runs in place during hydration
+    // and the head projection already sees its data.
+    expect(router.state.matches[0]?.meta).toEqual([{ title: 'client data' }])
 
     await router.load()
 
@@ -624,6 +627,9 @@ describe('public hydration contracts', () => {
       isServer: true,
     })
     const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
+    // The guard-only child beforeLoad returned nothing; the key still says it
+    // ran, so the client does not run it again.
+    expect(bootstrap.router!.matches[2]).toHaveProperty('b', undefined)
 
     expect(serverParentBeforeLoad).toHaveBeenCalledTimes(1)
     expect(serverChildBeforeLoad).toHaveBeenCalledTimes(1)
@@ -690,16 +696,21 @@ describe('public hydration contracts', () => {
     expect(childLoader).not.toHaveBeenCalled()
   })
 
-  test('keeps an ssr-false route-context error authoritative', async () => {
-    const serverError = new Error('server route context failed')
+  test('does not run the route context of an ssr-false route on the server', async () => {
+    // `context` is a lifecycle like `beforeLoad` and `loader`: an `ssr: false`
+    // subtree runs nothing on the server, so a server-side context failure
+    // cannot exist for it. The client owns that subtree's whole lifecycle.
+    const serverContext = vi.fn(() => {
+      throw new Error('server route context must not run')
+    })
+    const serverLoader = vi.fn(() => 'server data')
     const serverRootRoute = new BaseRootRoute({})
     const serverPageRoute = new BaseRoute({
       getParentRoute: () => serverRootRoute,
       path: '/page',
       ssr: false,
-      context: () => {
-        throw serverError
-      },
+      context: serverContext,
+      loader: serverLoader,
     })
     const serverRouter = createTestRouter({
       routeTree: serverRootRoute.addChildren([serverPageRoute]),
@@ -707,16 +718,17 @@ describe('public hydration contracts', () => {
       isServer: true,
     })
     const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
-    const transportedError = bootstrap.router?.matches.at(-1)?.e
 
-    expect(transportedError).toMatchObject({
-      name: serverError.name,
-      message: serverError.message,
-    })
+    expect(serverContext).not.toHaveBeenCalled()
+    expect(serverLoader).not.toHaveBeenCalled()
+    const dehydratedPage = bootstrap.router?.matches.at(-1)
+    expect(dehydratedPage).toMatchObject({ s: 'pending', ssr: false })
+    expect(dehydratedPage).not.toHaveProperty('e')
+    expect(dehydratedPage).not.toHaveProperty('m')
 
     const context = vi.fn(() => ({ source: 'client' }))
-    const beforeLoad = vi.fn()
-    const loader = vi.fn()
+    const beforeLoad = vi.fn(() => ({ guard: true }))
+    const loader = vi.fn(({ context }) => context.source)
     const rootRoute = new BaseRootRoute({})
     const pageRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -738,7 +750,9 @@ describe('public hydration contracts', () => {
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: pageRoute.id,
       status: 'pending',
-      error: transportedError,
+      ssr: false,
+      error: undefined,
+      context: { source: 'client' },
     })
     expect(context).toHaveBeenCalledTimes(1)
     expect(beforeLoad).not.toHaveBeenCalled()
@@ -748,12 +762,13 @@ describe('public hydration contracts', () => {
 
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: pageRoute.id,
-      status: 'error',
-      error: transportedError,
+      status: 'success',
+      error: undefined,
+      loaderData: 'client',
     })
     expect(context).toHaveBeenCalledTimes(1)
-    expect(beforeLoad).not.toHaveBeenCalled()
-    expect(loader).not.toHaveBeenCalled()
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 
   test('aborts the hydrated route context generation when the route is later left', async () => {

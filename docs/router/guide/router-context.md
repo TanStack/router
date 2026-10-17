@@ -15,7 +15,7 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `createRootRouteWithContext<YourContextTypeHere>()(routeOptions)` function to create a new router context instead of the `createRootRoute()` function to create your root route. Here's an example:
+Like everything else, the root router context is strictly typed. This type can be augmented via any route's `context` or `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `createRootRouteWithContext<YourContextTypeHere>()(routeOptions)` function to create a new router context instead of the `createRootRoute()` function to create your root route. Here's an example:
 
 <!-- ::start:framework -->
 
@@ -76,7 +76,7 @@ const router = createRouter({
 <!-- ::end:framework -->
 
 > [!TIP]
-> `MyRouterContext` only needs to contain content that will be passed directly to `createRouter` below. All other context added in `beforeLoad` will be inferred.
+> `MyRouterContext` only needs to contain content that will be passed directly to `createRouter` below. All other context added in `context` or `beforeLoad` will be inferred.
 
 ## Passing the initial Router Context
 
@@ -123,9 +123,9 @@ const router = createRouter({
 
 <!-- ::end:framework -->
 
-### Invalidating the Router Context
+### Reloading after the context changed
 
-If you need to invalidate the context state you are passing into the router, you can call the `invalidate` method to tell the router to recompute the context. This is useful when you need to update the context state and have the router recompute the context for all routes.
+When the state behind the router context changes, call `router.invalidate()`. The router reloads the matched routes: every `beforeLoad` and every loader runs again and sees the current context. A route's own `context` option is cached per match and is not re-run by `invalidate()` unless the route sets `revalidate`; see [The route `context` option](#the-route-context-option) below.
 
 <!-- ::start:framework -->
 
@@ -380,7 +380,7 @@ export const Route = createFileRoute('/posts')({
 
 ## Modifying the Router Context
 
-The router context is passed down the route tree and is merged at each route. This means that you can modify the context at each route and the modifications will be available to all child routes. Here's an example:
+The router context is passed down the route tree and is merged at each route. This means that you can modify the context at each route and the modifications will be available to all child routes. Two route options contribute to it: `context`, which runs first and is cached per match, and `beforeLoad`, which runs on every load. This example uses `beforeLoad`; the `context` option is described in [The route `context` option](#the-route-context-option). Here's an example:
 
 <!-- ::start:framework -->
 
@@ -497,6 +497,113 @@ export const Route = createFileRoute('/todos')({
 <!-- ::end:tabs -->
 
 <!-- ::end:framework -->
+
+## The route `context` option
+
+> **Experimental:** the route `context` option is experimental and subject to change.
+
+A route can contribute to the context with the `context` option. It runs before the route's `beforeLoad`, its result is merged into the context that `beforeLoad`, `loader`, the components and every child route see, and it is computed once per match.
+
+```tsx
+// src/routes/posts.$postId.tsx
+export const Route = createFileRoute('/posts/$postId')({
+  context: ({ params }) => ({
+    postQueryOptions: postQueryOptions(params.postId),
+  }),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(context.postQueryOptions),
+})
+```
+
+This is the common case: the context holds functions (a `queryFn` inside the options), so it is never sent to the client during SSR, and it is recomputed in the browser during hydration from `params`. Because it is cached per match, the options object stays the same across renders and across `router.invalidate()` calls.
+
+### Execution order
+
+The router runs `context` and `beforeLoad` serially, one route after the other, parent first: for the first match it runs `context`, then `beforeLoad`; then for the second match `context`, then `beforeLoad`; and so on down to the leaf. Loaders start after that serial phase, with the accumulated context.
+
+That order determines what each function sees:
+
+- A route's `context` sees the parent's complete context: the router context plus every ancestor's `context` result and `beforeLoad` result.
+- A route's `beforeLoad` sees the parent context plus the route's own `context` result.
+- A route's `loader` sees all of that plus the route's own `beforeLoad` result.
+
+### What `context` receives
+
+`context` receives one object with these properties:
+
+- `context` - The parent's effective context as described above.
+- `params` - The route's path params.
+- `deps` - The result of this route's `loaderDeps`. A route without `loaderDeps` gets an empty string (`''`).
+- `location` - The current location.
+- `cause` - `'enter'`, `'stay'` or `'preload'`.
+- `preload` - `true` while the route is being preloaded.
+- `abortController` - The controller of this load.
+- `matches` - The matches of this load.
+- `routeId` - This route's id.
+- `serverContext` - In a TanStack Start app, the request's server context from the route's server middleware, as `beforeLoad` and `loader` receive it; `undefined` on the client.
+- `buildLocation`, and the deprecated `navigate`.
+
+`search` is not among them, on purpose: `context` is memoized per match, and a match is keyed by its params and its `loaderDeps`, so a context that read search params outside `loaderDeps` would keep a stale value when those params change. Return the search params you need from `loaderDeps` and read `deps`.
+
+`context` may be async. The route is pending while it resolves and the awaited value is merged.
+
+### Cached per match
+
+`context` runs once per match and the result is reused on every later load of that match. `beforeLoad` runs on every load. A different match (other `params` or other `loaderDeps`) computes its own context. A preload shares its context once it has resolved: when a navigation to the match starts while the preload's async `context` is still running, the navigation runs `context` again.
+
+### `revalidate` and `router.invalidate()`
+
+By default `router.invalidate()` reloads the loaders and re-runs `beforeLoad`, but leaves a cached `context` alone. The reason is identity: `useRouteContext` hands components the match's context object itself. If every `invalidate()` rebuilt the context, consumers would get new objects (new `queryOptions`, for example), every component reading the context would re-render, and effect and memo dependencies keyed on those objects would fire again.
+
+A route opts in with `revalidate` in the object form:
+
+- `revalidate: true` runs `handler` again on `router.invalidate()`.
+- `revalidate: fn` runs that function instead. It receives the same options as `handler` plus `prev`, the current context data (the last successful `handler`, `hydrate` or `revalidate` result, or `undefined` if none has succeeded for this match yet), and must return the handler's shape. Use it to refresh part of the context and keep the rest stable.
+
+There is no time-based revalidation of context. Freshness of data belongs to the data layer (a query's own `staleTime`); the router owns structural caching and explicit invalidation.
+
+An auth lookup that must not run on every client navigation:
+
+```tsx
+// src/routes/_authed.tsx
+export const Route = createFileRoute('/_authed')({
+  context: {
+    handler: async ({ context }) => ({
+      session: await context.auth.getSession(),
+    }),
+    dehydrate: true, // SSR: send the result to the client instead of recomputing it there
+    revalidate: true, // re-run on router.invalidate() (login/logout)
+  },
+  beforeLoad: ({ context }) => {
+    if (!context.session) throw redirect({ to: '/login' })
+  },
+})
+```
+
+Call `router.invalidate()` after logout, and after login too. A layout that also has a `loader` keeps its revalidated context even when that load redirects away (here to `/login`). Without `router.invalidate()` after login, the next visit would reuse the logged-out context.
+
+Refreshing one part of the context and keeping the rest stable:
+
+```tsx
+// src/routes/account.tsx
+export const Route = createFileRoute('/account')({
+  context: {
+    handler: async () => ({
+      accountQueryOptions: accountQueryOptions(),
+      authStatus: await getAuthStatus(),
+    }),
+    dehydrate: false, // SSR: holds query options, so the client runs it again
+    revalidate: async ({ prev }) => ({
+      accountQueryOptions: prev?.accountQueryOptions ?? accountQueryOptions(),
+      authStatus: await getAuthStatus(),
+    }),
+  },
+})
+```
+
+### Sending context to the client
+
+During SSR a route's `context` result is not sent to the client by default; the client computes it again during hydration. `dehydrate: true` in the object form sends it, as in the auth example above, and a `dehydrate`/`hydrate` pair sends a custom wire value. These keys are described in [What crosses the wire](./ssr.md#what-crosses-the-wire) and, for TanStack Start, in [SSR Data Transport](/start/latest/docs/framework/react/guide/ssr-data-transport). The full option reference is in [RouteOptions](../api/router/RouteOptionsType.md#context-method).
 
 ## Processing Accumulated Route Context
 

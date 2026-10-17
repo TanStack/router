@@ -655,7 +655,7 @@ export interface MatchRoutesOpts {
   _rematerialize?: boolean
 }
 
-function routeNeedsLoad(route: AnyRoute): unknown {
+export function routeNeedsLoad(route: AnyRoute): unknown {
   return (
     route.options.loader ||
     route.options.beforeLoad ||
@@ -1007,9 +1007,10 @@ export function runRouteLifecycle(
       return
     }
     if (!matches.some((candidate) => candidate.routeId === match.routeId)) {
-      ;(router.routesById as Record<string, AnyRoute>)[
+      // A departing match may belong to a route that `router.update` removed.
+      ;(router.routesById as Record<string, AnyRoute | undefined>)[
         match.routeId
-      ]!.options.onLeave?.(match)
+      ]?.options.onLeave?.(match)
     }
   }
   for (const match of matches) {
@@ -2523,13 +2524,18 @@ export class RouterCore<
     }
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
       if (invalidIds.has(d.id)) {
-        const route = this.routesById[d.routeId] as AnyRoute
+        // A retained match may outlive its route when `router.update` replaced
+        // the route tree; such a match is never re-run and is left as is.
+        const route = this.routesById[d.routeId] as AnyRoute | undefined
         const next = {
           ...d,
           invalid: true,
+          // Only an explicit invalidation re-runs an opted-in `context`.
+          _ctxInvalid: true,
           ...((opts?.forcePending ||
             d.status === 'error' ||
             d.status === 'notFound') &&
+          route &&
           routeNeedsLoad(route)
             ? ({ status: 'pending', error: undefined } as const)
             : undefined),
@@ -2542,11 +2548,12 @@ export class RouterCore<
     }
 
     this._committed = committedMatches.map(invalidate)
-    // Cache entries are settled successes. Retiring matching active preload
-    // owners makes an in-place stale mark sufficient while preserving data.
+    // Cache entries are settled successes, or the context result of a lane
+    // that did not commit. Retiring matching active preload owners makes an
+    // in-place stale mark sufficient while preserving data.
     for (const [id, match] of this._cache) {
       if (invalidIds.has(id)) {
-        match.invalid = true
+        match.invalid = match._ctxInvalid = true
         if (opts?.forcePending) {
           match.status = 'pending'
         }
@@ -2824,6 +2831,14 @@ export function lazyFn<
     ...args: Parameters<T[TKey]>
   ): Promise<Awaited<ReturnType<T[TKey]>>> => {
     const imported = await fn()
+    if (process.env.NODE_ENV !== 'production') {
+      const exported: any = imported[key || 'default']
+      if (typeof exported !== 'function' && exported?.handler) {
+        throw new Error(
+          `TanStack Router: the lazily imported \`${String(key || 'default')}\` is an object-form loader, which cannot be code split as a whole. Write it in the route file, inline or in a \`const\` there.`,
+        )
+      }
+    }
     return imported[key || 'default'](...args)
   }
 }

@@ -20,8 +20,10 @@ import type {
   FileBaseRouteOptions,
   FileRoutesByPath,
   LazyRouteOptions,
+  LifecycleNoWire,
   Register,
   RegisteredRouter,
+  ResolveLifecycleSlot,
   ResolveParams,
   Route,
   RouteById,
@@ -74,6 +76,7 @@ export class FileRoute<
     this.silent = _opts?.silent
   }
 
+  // The return type is a conditional on purpose, see UpdatableRouteOptions.
   createRoute = <
     TRegister = Register,
     TSearchValidator = undefined,
@@ -86,6 +89,12 @@ export class FileRoute<
     TSSR = unknown,
     TMiddlewares = unknown,
     THandlers = undefined,
+    TContextWire = LifecycleNoWire,
+    TBeforeLoadWire = LifecycleNoWire,
+    TLoaderWire = LifecycleNoWire,
+    TContextHydrate = never,
+    TBeforeLoadHydrate = never,
+    TLoaderHydrate = never,
   >(
     options?: FileBaseRouteOptions<
       TRegister,
@@ -102,7 +111,13 @@ export class FileRoute<
       AnyContext,
       TSSR,
       TMiddlewares,
-      THandlers
+      THandlers,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire,
+      TContextHydrate,
+      TBeforeLoadHydrate,
+      TLoaderHydrate
     > &
       UpdatableRouteOptions<
         TParentRoute,
@@ -114,28 +129,33 @@ export class FileRoute<
         TLoaderDeps,
         AnyContext,
         TRouteContextFn,
-        TBeforeLoadFn
+        TBeforeLoadFn,
+        TContextHydrate,
+        TBeforeLoadHydrate,
+        TLoaderHydrate
       >,
-  ): Route<
-    TRegister,
-    TParentRoute,
-    TPath,
-    TFullPath,
-    TFilePath,
-    TId,
-    TSearchValidator,
-    TParams,
-    AnyContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren,
-    unknown,
-    TSSR,
-    TMiddlewares,
-    THandlers
-  > => {
+  ): TRegister extends unknown
+    ? Route<
+        TRegister,
+        TParentRoute,
+        TPath,
+        TFullPath,
+        TFilePath,
+        TId,
+        TSearchValidator,
+        TParams,
+        AnyContext,
+        ResolveLifecycleSlot<TRouteContextFn, TContextHydrate>,
+        ResolveLifecycleSlot<TBeforeLoadFn, TBeforeLoadHydrate>,
+        TLoaderDeps,
+        ResolveLifecycleSlot<TLoaderFn, TLoaderHydrate>,
+        TChildren,
+        unknown,
+        TSSR,
+        TMiddlewares,
+        THandlers
+      >
+    : never => {
     if (process.env.NODE_ENV !== 'production') {
       if (!this.silent) {
         console.warn(

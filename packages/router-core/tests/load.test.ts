@@ -16,7 +16,10 @@ import type {
 } from '../src'
 
 type AnyRouteOptions = RootRouteOptions<any>
-type BeforeLoad = NonNullable<AnyRouteOptions['beforeLoad']>
+type BeforeLoad = Extract<
+  NonNullable<AnyRouteOptions['beforeLoad']>,
+  (...args: Array<any>) => any
+>
 type Loader = NonNullable<AnyRouteOptions['loader']>
 type LoaderEntry = Exclude<Loader, Function>
 
