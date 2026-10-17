@@ -12,6 +12,7 @@ import {
   startBundlers,
   startRuntimeFiles,
 } from './build-harness'
+import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
 
@@ -258,9 +259,10 @@ export const getRouter = () => ({ routeTree })
     'src/entry.ts': `export { getRouter } from './router'\n`,
   }
 
-  // Start passes the router options through to the code splitter (only
-  // replacing the options it owns: the route options it deletes from client
-  // builds, and HMR). By default the loader stays with the route.
+  // Start passes the router options through to the code splitter of each
+  // build (only replacing the options it owns: the route options it deletes
+  // from client builds, and HMR). By default the loader stays with the
+  // route.
   // Source: oracle-gaps "Start options never exercised"
   // (router.codeSplittingOptions through Start).
   test.each([
@@ -281,21 +283,27 @@ export const getRouter = () => ({ routeTree })
       expected: { loader: 'lazy', component: 'lazy', oneChunk: true },
     },
   ])(
-    'router.codeSplittingOptions: the client loads the route loader and component $name',
+    'router.codeSplittingOptions: the client and SSR builds load the route loader and component $name',
     async ({ router, expected }) => {
-      const { client } = await buildStart({
+      const { client, ssr } = await buildStart({
         bundler,
         files: routeFiles,
         entry: 'src/entry.ts',
         start: { router },
       })
-      expect({
-        loader: client.where('MARK_LOADER'),
-        component: client.where('MARK_COMPONENT'),
+      /** Where a build has the loader and the component. */
+      const placement = (build: StartBuild['client']) => ({
+        loader: build.where('MARK_LOADER'),
+        component: build.where('MARK_COMPONENT'),
         oneChunk:
-          client.locate('MARK_LOADER').lazy[0] ===
-          client.locate('MARK_COMPONENT').lazy[0],
-      }).toEqual(expected)
+          build.locate('MARK_LOADER').lazy[0] ===
+          build.locate('MARK_COMPONENT').lazy[0],
+      })
+      // Source: mutation round 3 start-router H for the SSR build.
+      expect({ client: placement(client), ssr: placement(ssr) }).toEqual({
+        client: expected,
+        ssr: expected,
+      })
     },
     timeout,
   )
