@@ -167,6 +167,31 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
+  // Source: mutation round 3 sc-hosts 6 (a generator returning an id was
+  // never built).
+  test(
+    'serverFns.generateFunctionId returning an id: the client calls that id, which the SSR build resolves',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: greetFiles,
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        start: { serverFns: { generateFunctionId: () => 'my-custom-id' } },
+      })
+      expect((await client.run(`return entry.greet.functionId`)).result).toBe(
+        'my-custom-id',
+      )
+      expect(
+        (
+          await ssr.run(
+            `return await (await entry.getServerFnById('my-custom-id', { origin: 'client' }))({})`,
+          )
+        ).result,
+      ).toBe('MARK_HANDLER')
+    },
+    timeout,
+  )
+
   /**
    * What `process.env.NODE_ENV` reads in the SSR build when the server runs
    * with `NODE_ENV=staging`.
