@@ -133,7 +133,7 @@ export const value = 1
 // Source: oracle-gaps H2 / gap IP1 (the default rules were never built in
 // error mode: every build test replaced `client.files`).
 describe.each(startBundlers)('%s build, default rules', (bundler) => {
-  test.each([
+  test.each<{ name: string; files: Record<string, string>; reported: string }>([
     {
       name: 'a client import of a *.server.* file',
       files: appUsing('a denied file'),

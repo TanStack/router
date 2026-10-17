@@ -314,7 +314,12 @@ export const secret = () => 'MARK_SECRET'
   describe('onViolation', () => {
     // Only `false` allows an import: a callback that returns nothing (one
     // that logs, say) leaves the import denied.
-    test.each([
+    test.each<{
+      name: string
+      files: Record<string, string>
+      reported: RegExp
+      type: Violation['type']
+    }>([
       {
         name: 'a denied file',
         files: { ...secretServer, 'src/entry.ts': userOf('./secret.server') },
