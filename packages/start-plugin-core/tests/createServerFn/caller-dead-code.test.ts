@@ -459,6 +459,45 @@ export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async ({
       ).toBe('data!')
     },
   )
+
+  // Bug: a `.validator()` link on a builder stored in a variable is not
+  // stripped from the callers: the client follows the handler's chain only
+  // up to the identifier (`withPost.handler(...)`), so the variable's
+  // declaration keeps its validator. An inline chain is stripped ("when the
+  // handler only reads it through a validator or a middleware", above).
+  // Source: start-compiler/compiler.ts:1296-1330 (the chain walk stops at an
+  // identifier), start-compiler/handleCreateServerFn.ts:277-290; fuzzing (oracle
+  // mode, N4).
+  // Impact: the validator and its imports (schemas, server-only modules)
+  // ship to the client, which never runs them.
+  test.fails.each([
+    {
+      name: 'one handler',
+      handlers: `export const fn = withPost.handler(async ({ data }) => data)`,
+    },
+    {
+      name: 'two handlers',
+      handlers: `export const fn = withPost.handler(async ({ data }) => data)
+export const other = withPost.handler(async ({ data }) => data)`,
+    },
+  ])(
+    'when the validator link is on a builder stored in a variable ($name)',
+    async ({ handlers }) => {
+      const compiled =
+        await compileAll(`${head}import { schema } from './schema'
+const withPost = createServerFn({ method: 'POST' }).validator(schema)
+${handlers}`)
+      expect(importSources(compiled.client)).toEqual([])
+      expect(
+        await callProvider(
+          compiled,
+          'fn',
+          { './schema': { schema: (data: string) => `${data}!` } },
+          'data',
+        ),
+      ).toBe('data!')
+    },
+  )
 })
 
 // Source: @vitejs/plugin-rsc hoist/function-hoist-block.js,

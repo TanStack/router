@@ -564,6 +564,77 @@ export function Page() {
     },
   )
 
+  /** `Icons` picks a component per id: `<Icon />` renders it. */
+  const iconStubs = {
+    './icons': { icons: { a: () => '<i>a</i>', b: () => '<i>b</i>' } },
+  }
+  const renderIcons = (module: Record<string, any>) =>
+    module.Icons({ ids: ['a', 'b'] })
+
+  // Control for the pin below (same harness): a component the component body
+  // binds outside the boundary is a capture, passed to the chunk.
+  test('client: the split children render a component bound outside the boundary', async () => {
+    const code = `${head}import { icons } from './icons'
+export function Icons({ ids }) {
+  const Icon = icons[ids[0]]
+  return (
+    <Hydrate>
+      <ul>{ids.map((id) => <li key={id}><Icon /></li>)}</ul>
+    </Hydrate>
+  )
+}`
+    const server = await renderBoundaries('server', code, renderIcons, {
+      stubs: iconStubs,
+    })
+    expect(server.html).toBe('[<ul><li><i>a</i></li><li><i>a</i></li></ul>]')
+    expect(
+      (
+        await renderBoundaries('client', code, renderIcons, {
+          stubs: iconStubs,
+        })
+      ).html,
+    ).toBe(server.html)
+  })
+
+  // Bug: a JSX tag naming a binding declared inside the children (`const Icon
+  // = icons[id]` in a `.map()` callback) is taken for a capture of the
+  // component: the client parent passes `Icon={Icon}` to the chunk, where no
+  // `Icon` exists. The identifier visitor checks where a binding is declared,
+  // the JSX tag visitor does not.
+  // Source: hydrate-when-transform.ts:439-447 (JSXIdentifier, without the
+  // declared-inside check of :426-434); fuzzing (oracle mode, N5).
+  // Impact: the parent throws "Icon is not defined" when it renders, so the
+  // page fails on the client.
+  test.fails(
+    'client: the split children render a component bound inside them',
+    async () => {
+      const code = `${head}import { icons } from './icons'
+export function Icons({ ids }) {
+  return (
+    <Hydrate>
+      <ul>
+        {ids.map((id) => {
+          const Icon = icons[id]
+          return <li key={id}><Icon /></li>
+        })}
+      </ul>
+    </Hydrate>
+  )
+}`
+      const server = await renderBoundaries('server', code, renderIcons, {
+        stubs: iconStubs,
+      })
+      expect(server.html).toBe('[<ul><li><i>a</i></li><li><i>b</i></li></ul>]')
+      expect(
+        (
+          await renderBoundaries('client', code, renderIcons, {
+            stubs: iconStubs,
+          })
+        ).html,
+      ).toBe(server.html)
+    },
+  )
+
   // Bug: property names, method keys and optional member names in the
   // children are taken for reads of the local of the same name, which the
   // parent then reads where the boundary renders.

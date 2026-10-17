@@ -1094,6 +1094,50 @@ export const Card = () => <div />`
     },
   )
 
+  /**
+   * A module with a classic JSX runtime pragma whose `Hero` renders `Chart`
+   * in `<ClientOnly>`; `heroBody` runs first in `Hero`.
+   */
+  const classicRuntimeModule = (heroBody: string) => `/** @jsxRuntime classic */
+import * as React from 'react'
+import { ClientOnly } from '@tanstack/react-router'
+export function Hero() {
+  ${heroBody}
+  return <div><ClientOnly><Chart /></ClientOnly></div>
+}
+function Chart() {
+  const ref = React.useRef(false)
+  return <canvas data-rendered={ref.current} />
+}`
+
+  // Control for the pin below (same harness): code the SSR output keeps
+  // still reads `React`.
+  test('ssr: a module with a classic JSX runtime pragma that reads React elsewhere stays valid', async () => {
+    const code = classicRuntimeModule('React.useId()')
+    expect(
+      await getModuleErrors((await compileCode('ssr', code)) ?? code),
+    ).toEqual([])
+  })
+
+  // Bug: same family as the pin above: under a classic JSX runtime pragma
+  // (`/** @jsxRuntime classic */`, whose JSX reads `React`), the SSR output
+  // removes the `<ClientOnly>` children, then dead-code elimination drops
+  // `import * as React`, which only the JSX still reads.
+  // Source: start-compiler/handleClientOnlyJSX.ts:26-27 (children removed),
+  // start-compiler/compiler.ts:1349,1410 (dead-code elimination does not
+  // count the JSX as a read of `React`); fuzzing (oracle mode); one
+  // unmodified corpus file (a charts hero background).
+  // Impact: the server render throws "React is not defined".
+  test.fails(
+    'ssr: a module with a classic JSX runtime pragma keeps its React import',
+    async () => {
+      const code = classicRuntimeModule('')
+      expect(
+        await getModuleErrors((await compileCode('ssr', code)) ?? code),
+      ).toEqual([])
+    },
+  )
+
   // Bug: a type-only import re-exported without `type` (`export { Settings }`,
   // which TypeScript accepts unless verbatimModuleSyntax is on) loses its
   // import in the client and SSR outputs, which keep the export that the
@@ -1281,6 +1325,52 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)`
         await verbatimImportSources(
           (await compileCode('client', code)) ?? code,
         ),
+      ).toEqual([])
+    },
+  )
+
+  /** A server fn whose validator is a module-level schema. */
+  const schemaModule = (typeAlias: string) => `${head}import { z } from 'zod'
+const themeValidator = z.union([z.literal('light'), z.literal('dark')])
+${typeAlias}
+export const setTheme = createServerFn({ method: 'POST' })
+  .validator(themeValidator)
+  .handler(async ({ data }) => data)`
+
+  /** The modules a compiled module loads once TypeScript is erased. */
+  async function erasedImportSources(code: string) {
+    const { code: javascript } = await transformWithOxc(code, 'module.tsx', {
+      lang: 'tsx',
+    })
+    return importSources(javascript)
+  }
+
+  // Control for the pin below (same harness): a schema only the validator
+  // reads leaves the client with its import.
+  test('client: a validator schema only the validator reads is not loaded', async () => {
+    const code = schemaModule('')
+    expect(
+      await erasedImportSources((await compileCode('client', code)) ?? code),
+    ).toEqual([])
+  })
+
+  // Bug: same family as above, for a module-level declaration: a validator
+  // schema that a type alias also reads (`z.infer<typeof themeValidator>`)
+  // stays in the client output, with what its initializer imports, although
+  // types read no value at runtime. The root cause is upstream:
+  // babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a
+  // reference (no workaround here; `deadCodeElimination` at
+  // router-utils/src/ast.ts:190 runs it).
+  // Source: fuzzing (oracle mode, V1); one unmodified corpus file.
+  // Impact: the schema and its library (or server-only modules) ship to the
+  // client, which never runs them (see the build pin in
+  // start-build-env-separation.test.ts).
+  test.fails(
+    'client: a validator schema that a type alias reads with typeof is not loaded',
+    async () => {
+      const code = schemaModule('type Theme = z.infer<typeof themeValidator>')
+      expect(
+        await erasedImportSources((await compileCode('client', code)) ?? code),
       ).toEqual([])
     },
   )

@@ -297,6 +297,55 @@ export default createMiddleware().server(async ({ next }) => {
         ])
       },
     )
+
+    /** A module whose middleware chain continues a builder variable. */
+    const builderVariableModule = (base: string, rest: string) =>
+      [
+        `import { createMiddleware } from '@tanstack/react-start'`,
+        `import { db } from './db.server'`,
+        base.includes('check(') && `import { check } from './check.server'`,
+        `const base = createMiddleware({ type: 'function' })${base}`,
+        `export const mw = base${rest}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+
+    // Control for the pin below (same harness): the `.server()` link of a
+    // builder stored in a variable is stripped on the client.
+    test('the client strips a .server() link of a builder stored in a variable', async () => {
+      const code = builderVariableModule(serverLink, clientLink)
+      const client = await runLinks('client', code)
+      expect(importSources(client.compiled)).toEqual([])
+      expect(client.compiled).not.toMatch(/SERVER_SECRET/)
+      expect(client.links).toEqual([['client', clientResult]])
+      expect((await runLinks('ssr', code)).links).toEqual([
+        ['server', serverResult],
+        ['client', clientResult],
+      ])
+    })
+
+    // Bug: a `.validator()` link of a middleware builder stored in a variable
+    // is not stripped on the client: the chain walk from `base.server(...)`
+    // stops at the identifier, so the variable's declaration keeps its
+    // validator (its `.server()` link is stripped, the control above).
+    // Source: start-compiler/compiler.ts:1296-1330 (the chain walk stops at
+    // an identifier), start-compiler/handleCreateMiddleware.ts:21-32;
+    // fuzzing (oracle mode, N4).
+    // Impact: the validator and its server-only imports ship to the client.
+    test.fails(
+      'the client strips a validator link of a builder stored in a variable',
+      async () => {
+        const code = builderVariableModule(validatorLink, serverLink)
+        const client = await runLinks('client', code)
+        expect(importSources(client.compiled)).toEqual([])
+        expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
+        expect(client.links).toEqual([])
+        expect((await runLinks('ssr', code)).links).toEqual([
+          ['validator', 'data:VALIDATOR_SECRET'],
+          ['server', serverResult],
+        ])
+      },
+    )
   })
 
   // Bug: an isomorphic chain link wrapped in `satisfies` / `as` is not
