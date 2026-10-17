@@ -144,6 +144,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     await expectRegisteredRouteOption(code, 'component')
   })
 
+  it('declared as a lowercase function whose name starts with $, by renaming it', async () => {
+    const code = transformWithRouteHmrPlugin(
+      `${head}function $page() { return <p>hi</p> }\nexport const Route = createFileRoute('/')({ component: $page })`,
+    )
+    await expectRegisteredRouteOption(code, 'component')
+  })
+
   // Source: ReactFreshBabelPlugin-test "registers top-level exported function
   // declarations" and "registers top-level exported named arrow functions"
   it.each([

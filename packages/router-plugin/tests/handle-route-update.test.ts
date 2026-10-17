@@ -26,6 +26,7 @@ import { Scripts } from '../../react-router/src/Scripts'
 import { Router as ReactRouter } from '../../react-router/src/router'
 import {
   evaluateModule,
+  generatedRouteId,
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
@@ -133,7 +134,8 @@ function withWindowRouter(router: RouterCore<any, any, any, any, any>) {
 /**
  * Applies a hot update the way a dev server does: compiles the edited route
  * file (`source`, its other imports given by `stubs`) with the route HMR
- * plugin for `routeId` (`/__root` for a root route) and evaluates it next to
+ * plugin for `routeId` (for a root route, the id the route generator
+ * registers its file under: `generatedRouteId`) and evaluates it next to
  * the live `router`, with Vite's hot API, so that its HMR code updates the
  * live route. Returns the route module's exports.
  */
@@ -287,6 +289,41 @@ describe('handleRouteUpdate', () => {
     expect(router.getMatchedRoutes('/items/abc')[2]?.id).toBe(itemRoute.id)
   })
 
+  // E.g. a page with several routers, or a route the live route tree does
+  // not include: the update leaves the router as it is.
+  it('ignores an update of a route the live router does not have', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const router = createTestRouter(rootRoute)
+    const code = transformWithRouteHmrPlugin(
+      routeSource(`{ loader: () => 'x' }`),
+      { target: 'react' },
+      { file: routeFile('hot'), routeId: '/hot' },
+    )
+    const accepted: Array<(module: unknown) => void> = []
+    const hot = {
+      data: {},
+      accept: (callback: (module: unknown) => void) => accepted.push(callback),
+      dispose() {},
+    }
+    const stubs = {
+      '@tanstack/react-router': {
+        createFileRoute: () => (options: any) => new BaseRoute(options),
+      },
+    }
+    const restoreWindow = withWindowRouter(router)
+    try {
+      await evaluateModule(code, stubs, { importMeta: { hot } })
+      const next = await evaluateModule(code, stubs, {
+        importMeta: { hot: { ...hot, accept() {} } },
+      })
+      expect(accepted).toHaveLength(1)
+      expect(() => accepted[0]!(next)).not.toThrow()
+      expect(Object.keys(router.routesById)).toEqual([rootRoute.id])
+    } finally {
+      restoreWindow()
+    }
+  })
+
   it('hydrates the hot module route export with generated route tree state', async () => {
     const rootRoute = new BaseRootRoute({})
     const itemRoute = new BaseRoute({
@@ -402,7 +439,7 @@ export const Route = createFileRoute('/items/$itemId')({}).lazy(newImporter)
 
     await hotUpdateRoute(
       router,
-      '/__root',
+      await generatedRouteId('__root.tsx'),
       `import { createRootRoute } from '@tanstack/react-router'
 import { newLoader } from './loader'
 export const Route = createRootRoute({ loader: newLoader })

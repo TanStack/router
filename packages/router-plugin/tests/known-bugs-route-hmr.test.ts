@@ -441,6 +441,40 @@ export const Route = createFileRoute('/')({ component: page })`,
     return Route as unknown as { options: Record<string, () => unknown> }
   }
 
+  // Control for the lowercase shared component pins above: a lowercase
+  // `function` loader that the split component also calls.
+  test('a lowercase function loader the split component calls loads from its chunk', async () => {
+    const route = await loadRoute(
+      `${head}function getData() {
+  return 'data'
+}
+export const Route = createFileRoute('/')({
+  loader: getData,
+  component: () => <p>{getData()}</p>,
+  codeSplitGroupings: [['loader'], ['component']],
+})`,
+      { hmr: true },
+    )
+    await expectValidModules(route.modules)
+    expect(route.isLazy('loader')).toBe(true)
+    expect(await route.options.loader()).toBe('data')
+    expect((await route.load('component'))()).toBe('<p>data</p>')
+  })
+
+  // Control for the hoisted inline component pin below: an inline option
+  // that is not a component, reading a lowercase component a later option
+  // passes.
+  test('an inline loader reading a lowercase component a later option passes runs it', async () => {
+    const Route =
+      await evaluateUnsplitRoute(`${head}const page = () => <p>page</p>
+export const Route = createFileRoute('/')({
+  loader: () => page(),
+  component: page,
+})`)
+    expect(Route.options.loader!()).toBe('<p>page</p>')
+    expect(Route.options.component!()).toBe('<p>page</p>')
+  })
+
   // Control for the hoisted inline component pin below (same harness).
   test('an inline component reading a lowercase component renders it', async () => {
     const Route =
@@ -598,32 +632,40 @@ describe('Vite HMR boundaries', () => {
     target: 'react' | 'solid' | 'vue',
     autoCodeSplitting: boolean,
     plugins: Array<PluginOption> = [],
-  ) {
-    const route = (
-      text: string,
-    ) => `import { createFileRoute } from '@tanstack/${target}-router'
+    {
+      file = 'routes/index.tsx',
+      route = (
+        text,
+      ) => `import { createFileRoute } from '@tanstack/${target}-router'
 export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: Page,
 })
 function Page() {
   return '${text}'
-}`
+}`,
+    }: { file?: string; route?: (text: string) => string } = {},
+  ) {
     const server = await routerDevServer({
       pluginOptions: { target, autoCodeSplitting },
       plugins: [routerPackageStub(target), ...plugins],
       files: {
-        'routes/index.tsx': route('page'),
+        [file]: route('page'),
         'entry.ts': `export { routeTree } from './routeTree.gen'`,
       },
     })
     // The router package stub is a virtual module (`/@id/...`).
     await server.load('/entry.ts', { skip: /^\/@id\// })
-    const messages = await server.edit({ 'routes/index.tsx': route('edited') })
+    const messages = await server.edit({ [file]: route('edited') })
     return describeHmr(
       messages.filter((message) => message.environment === 'client'),
     )
   }
+
+  /** Whether the HMR messages are a hot update without a full reload. */
+  const isHotUpdate = (messages: Array<string>) =>
+    messages.some((message) => message.startsWith('client: update')) &&
+    !messages.some((message) => message.startsWith('client: full-reload'))
 
   // Control for the pin below (same harness): with `@vitejs/plugin-react`,
   // React Refresh makes a React route module an HMR boundary.
@@ -638,6 +680,41 @@ function Page() {
       expect(
         messages.filter((message) => message.startsWith('client: full-reload')),
       ).toEqual([])
+    },
+    30_000,
+  )
+
+  // Control (same harness): the route HMR plugin runs before React Refresh,
+  // so a route whose components are all inline arrows still becomes a
+  // boundary.
+  test('an edit of a React route with only inline components is a hot update with @vitejs/plugin-react (autoCodeSplitting: false)', async () => {
+    const messages = await editRoute('react', false, [react()], {
+      route: (text) => `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  loader: () => '${text}',
+  component: () => <p>${text}</p>,
+})`,
+    })
+    expect(isHotUpdate(messages)).toBe(true)
+  }, 30_000)
+
+  // Bug: same root cause as the pin below, for a React route file without
+  // JSX (`.ts`): React Refresh registers no component in it, so it is not a
+  // boundary either.
+  // Source: round-3 mutation testing (route HMR side finding).
+  // Impact: every edit of a React `.ts` route file reloads the page in Vite
+  // dev when automatic code splitting is off.
+  test.fails(
+    'an edit of a React .ts route module is a hot update with @vitejs/plugin-react (autoCodeSplitting: false)',
+    async () => {
+      const messages = await editRoute('react', false, [react()], {
+        file: 'routes/index.ts',
+        route: (
+          text,
+        ) => `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ loader: () => '${text}' })`,
+      })
+      expect(isHotUpdate(messages)).toBe(true)
     },
     30_000,
   )
