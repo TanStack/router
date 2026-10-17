@@ -2,6 +2,7 @@ import { promises as fsp } from 'node:fs'
 import os from 'node:os'
 import path from 'pathe'
 import { joinURL, withBase, withTrailingSlash, withoutBase } from 'ufo'
+import { HEADERS } from '@tanstack/start-server-core/constants'
 import { createLogger } from './utils'
 import { Queue } from './queue'
 import type { Page, TanStackStartOutputConfig } from './schema'
@@ -25,16 +26,22 @@ export async function prerender({
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
 
+  const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
+  const routerBaseUrl = new URL(
+    routerBasePath,
+    handler.getOrigin?.() ?? 'http://localhost',
+  )
+
   if (startConfig.prerender?.enabled) {
     let pages = startConfig.pages.length ? startConfig.pages : [{ path: '/' }]
 
     if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
-      const pagesMap = new Map(pages.map((item) => [item.path, item]))
+      const pagesMap = new Map(pages.map((item) => [getPageKey(item), item]))
       const discoveredPages = globalThis.TSS_PRERENDABLE_PATHS || []
 
       for (const page of discoveredPages) {
-        if (!pagesMap.has(page.path)) {
-          pagesMap.set(page.path, page)
+        if (!pagesMap.has(getPageKey(page))) {
+          pagesMap.set(getPageKey(page), page)
         }
       }
 
@@ -43,12 +50,6 @@ export async function prerender({
 
     startConfig.pages = pages
   }
-
-  const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
-  const routerBaseUrl = new URL(
-    routerBasePath,
-    handler.getOrigin?.() ?? 'http://localhost',
-  )
 
   startConfig.pages = validateAndNormalizePrerenderPages(
     startConfig.pages,
@@ -86,6 +87,57 @@ export async function prerender({
     return links
   }
 
+  function getPageKey(page: Page) {
+    if (page.prerender?.headers?.[HEADERS.TSS_SHELL] !== 'true') {
+      return page.path
+    }
+
+    const shellFile = getOutputFilename(page, 'text/html')
+    const routeFile = getOutputFilename({ path: page.path }, 'text/html')
+    if (shellFile.replace(/^\/+/, '') === routeFile.replace(/^\/+/, '')) {
+      return page.path
+    }
+
+    return `${page.path} (SPA shell)`
+  }
+
+  function getOutputFilename(page: Page, contentType: string) {
+    const prerenderOptions = {
+      ...startConfig.prerender,
+      ...page.prerender,
+    }
+
+    const cleanPagePath = (prerenderOptions.outputPath || page.path).split(
+      /[?#]/,
+    )[0]!
+
+    const isImplicitHTML =
+      !cleanPagePath.endsWith('.html') && contentType.includes('html')
+
+    const routeWithIndex = cleanPagePath.endsWith('/')
+      ? cleanPagePath + 'index'
+      : cleanPagePath
+
+    const isSpaShell = startConfig.spa?.prerender.outputPath === cleanPagePath
+
+    let htmlPath: string
+    if (isSpaShell) {
+      htmlPath = cleanPagePath + '.html'
+    } else if (
+      cleanPagePath.endsWith('/') ||
+      (prerenderOptions.autoSubfolderIndex ?? true)
+    ) {
+      htmlPath = joinURL(cleanPagePath, 'index.html')
+    } else {
+      htmlPath = cleanPagePath + '.html'
+    }
+
+    return withoutBase(
+      isImplicitHTML ? htmlPath : routeWithIndex,
+      routerBasePath,
+    )
+  }
+
   async function prerenderPages({ outputDir }: { outputDir: string }) {
     const seen = new Set<string>()
     const prerendered = new Set<string>()
@@ -111,9 +163,10 @@ export async function prerender({
     return Array.from(prerendered)
 
     function addCrawlPageTask(page: Page) {
-      if (seen.has(page.path)) return
+      const pageKey = getPageKey(page)
+      if (seen.has(pageKey)) return
 
-      seen.add(page.path)
+      seen.add(pageKey)
 
       if (page.fromCrawl) {
         startConfig.pages.push(page)
@@ -135,7 +188,7 @@ export async function prerender({
 
       queue.add(async () => {
         logger.info(`Crawling: ${page.path}`)
-        const retries = retriesByPath.get(page.path) || 0
+        const retries = retriesByPath.get(pageKey) || 0
 
         try {
           const res = await requestWithRedirects(
@@ -158,36 +211,9 @@ export async function prerender({
             })
           }
 
-          const cleanPagePath = (
-            prerenderOptions.outputPath || page.path
-          ).split(/[?#]/)[0]!
-
-          const contentType = res.headers.get('content-type') || ''
-          const isImplicitHTML =
-            !cleanPagePath.endsWith('.html') && contentType.includes('html')
-
-          const routeWithIndex = cleanPagePath.endsWith('/')
-            ? cleanPagePath + 'index'
-            : cleanPagePath
-
-          const isSpaShell =
-            startConfig.spa?.prerender.outputPath === cleanPagePath
-
-          let htmlPath: string
-          if (isSpaShell) {
-            htmlPath = cleanPagePath + '.html'
-          } else if (
-            cleanPagePath.endsWith('/') ||
-            (prerenderOptions.autoSubfolderIndex ?? true)
-          ) {
-            htmlPath = joinURL(cleanPagePath, 'index.html')
-          } else {
-            htmlPath = cleanPagePath + '.html'
-          }
-
-          const filename = withoutBase(
-            isImplicitHTML ? htmlPath : routeWithIndex,
-            routerBasePath,
+          const filename = getOutputFilename(
+            page,
+            res.headers.get('content-type') || '',
           )
 
           const html = await res.text()
@@ -211,7 +237,7 @@ export async function prerender({
 
           await fsp.writeFile(filepath, html)
 
-          prerendered.add(page.path)
+          prerendered.add(pageKey)
 
           const newPage = await prerenderOptions.onSuccess?.({ page, html })
 
@@ -232,7 +258,7 @@ export async function prerender({
               `Encountered error, retrying: ${page.path} in ${retryDelay}ms`,
             )
             await new Promise((resolve) => setTimeout(resolve, retryDelay))
-            retriesByPath.set(page.path, retries + 1)
+            retriesByPath.set(pageKey, retries + 1)
             addCrawlPageTask(page)
           } else if (prerenderOptions.failOnError ?? true) {
             throw error
