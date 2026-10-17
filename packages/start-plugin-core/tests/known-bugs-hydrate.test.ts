@@ -297,6 +297,29 @@ export function Page() {
     },
   )
 
+  // Bug: same root cause as above, for a `children` prop that holds another
+  // boundary: the client does not compile the JSX of the prop, so the nested
+  // boundary hydrates without the id the server renders it with.
+  // Source: fuzzing (oracle mode, round 2; mutants of the repository's
+  // e2e/react-start/deferred-hydration EnhancedNestedWidget.tsx).
+  // Impact: the nested boundary hydrates without its id (a hydration
+  // mismatch).
+  test.fails(
+    'client: a boundary nested in a children prop hydrates with the id the server renders',
+    async () => {
+      const code = `${head}export function Page() {
+  return <Hydrate children={<section><Hydrate><p>inner</p></Hydrate></section>} />
+}`
+      const render = (module: Record<string, any>) => module.Page()
+      const server = await renderBoundaries('server', code, render)
+      expect(server).toEqual({
+        html: '[<section>[<p>inner</p>]</section>]',
+        ids: [expect.any(String), expect.any(String)],
+      })
+      expect(await renderBoundaries('client', code, render)).toEqual(server)
+    },
+  )
+
   // Bug: a multi-line text-only child moves into the chunk as a string
   // literal of the raw text, without the line collapsing of JSX text.
   // Impact: the client renders other text than the server (a hydration
