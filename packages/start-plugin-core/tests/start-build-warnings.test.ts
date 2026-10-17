@@ -8,27 +8,9 @@
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from './build-harness'
-import type { StartCompilerImportTransform } from '../src/types'
+import { warnMeTransform as warningTransform } from './compiler-transforms-seam'
 
 const timeout = 60_000
-
-/**
- * A server transform of `warnMe()` calls from `warn-lib` that warns about
- * each call it cannot handle (one with an argument).
- */
-const warningTransform: StartCompilerImportTransform = {
-  name: 'test-warning-transform',
-  environment: 'server',
-  imports: [{ libName: 'warn-lib', rootExport: 'warnMe' }],
-  detect: /\bwarnMe\b/,
-  transform: (candidates, context) => {
-    for (const candidate of candidates) {
-      if (candidate.path.node.arguments.length > 0) {
-        context.warn?.(`MARK_WARNING: cannot handle warnMe() in ${context.id}`)
-      }
-    }
-  },
-}
 
 const files = {
   'node_modules/warn-lib/package.json': JSON.stringify({

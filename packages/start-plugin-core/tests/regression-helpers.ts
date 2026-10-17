@@ -373,35 +373,8 @@ export async function compileServer(
   }
 }
 
-/**
- * An external import transform (`compilerTransforms`), shaped like the RSC
- * CSS transform: on the server, it injects `{ injected: loadThing() }` as
- * the second argument of each direct call of `renderThing` from
- * `@example/runtime` given one argument.
- */
-export const renderThingTransform: StartCompilerImportTransform = {
-  name: 'test-render-option-injection',
-  environment: 'server',
-  imports: [{ libName: '@example/runtime', rootExport: 'renderThing' }],
-  detect: /\brenderThing\b/,
-  transform: (candidates, context) => {
-    const t = context.types
-    for (const candidate of candidates) {
-      const args = candidate.path.node.arguments
-      if (args.length !== 1) {
-        continue
-      }
-      args.push(
-        t.objectExpression([
-          t.objectProperty(
-            t.identifier('injected'),
-            context.parseExpression('loadThing()'),
-          ),
-        ]),
-      )
-    }
-  },
-}
+// The `compilerTransforms` test transform lives in the seam module.
+export { renderThingTransform } from './compiler-transforms-seam'
 
 /**
  * Project-local sources of a module's import and re-export declarations
