@@ -97,6 +97,21 @@ export { a as default, b as '📙', c as as }`)
     expect(await callProvider(compiled, 'fn')).toBe(1)
   })
 
+  // E.g. a Vue options-API component or a config object.
+  test.each([
+    { code: 'export default { a: 1, b: 2 }', value: { a: 1, b: 2 } },
+    { code: 'export default 42', value: 42 },
+  ])(
+    'a default-exported expression next to a server fn: $code',
+    async ({ code, value }) => {
+      const compiled = await compileAll(
+        `${head}export const fn = createServerFn().handler(async () => 1)\n${code}`,
+      )
+      expect((await evaluateModule(compiled.client)).default).toEqual(value)
+      expect(await callProvider(compiled, 'fn')).toBe(1)
+    },
+  )
+
   // Source: @vitejs/plugin-rsc source-map/wrap-export/local-export-before-declaration.js
   test('an export list before the server fn declaration', async () => {
     const compiled = await compileAll(`${head}export { fn, fn as alias }
@@ -262,6 +277,22 @@ export { fn }`
     const compiled = await compileAll(redeclared)
     expect(new Set(Object.keys(compiled.serverFns)).size).toBe(2)
   })
+
+  // Which handler each one runs is pinned below; here every reported server
+  // fn has a handler in the provider.
+  test.each(['fn', '_fn', '$fn', 'ñandú'])(
+    'three redeclared var server fns named %s get distinct ids the provider serves',
+    async (name) => {
+      const compiled = await compileAll(`${head}var ${name} = createServerFn().handler(async () => 1)
+var ${name} = createServerFn().handler(async () => 2)
+var ${name} = createServerFn().handler(async () => 3)
+export { ${name} }`)
+      expect(new Set(Object.keys(compiled.serverFns)).size).toBe(3)
+      expect(
+        await callReportedServerFns(compiled, compiled.serverFns),
+      ).toHaveLength(3)
+    },
+  )
 
   // Bug: the provider runs each server fn through its variable
   // (`fn.__executeServer`), so with a redeclared `var` every handler export
