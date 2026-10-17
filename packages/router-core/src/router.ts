@@ -592,11 +592,19 @@ export interface BuildNextOptions {
   mask?: {
     to?: string | number | null
     params?: true | Updater<unknown>
-    search?: true | Updater<unknown>
     hash?: true | Updater<string>
     state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
     unmaskOnReload?: boolean
-  }
+  } & (
+    | {
+        inheritSearch: true
+        search?: never
+      }
+    | {
+        inheritSearch?: false
+        search?: true | Updater<unknown>
+      }
+  )
   from?: string
   href?: string
   _fromLocation?: ParsedLocation
@@ -1904,6 +1912,7 @@ export class RouterCore<
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
       } = {},
+      inheritedLocation?: ParsedLocation,
     ): ParsedLocation => {
       if (dest.href) {
         const parsed = parseHref(dest.href, {} as ParsedHistoryState)
@@ -2072,47 +2081,54 @@ export class RouterCore<
         }
       }
 
-      // Resolve the next search
-      const middlewares = getSearchMiddlewares(
-        destRoutes,
-        opts._includeValidateSearch,
-      )
-      const fromSearch = () => {
-        let search = currentMatch()[2 /* search */]
-        if (opts._includeValidateSearch && this.options.search?.strict) {
-          const validatedSearch = {}
-          destRoutes.forEach((route) => {
-            if (route.options.validateSearch) {
-              try {
-                Object.assign(
-                  validatedSearch,
-                  validateSearch(route.options.validateSearch, {
-                    ...validatedSearch,
-                    ...search,
-                  }),
-                )
-              } catch {
-                // ignore errors here because they are already handled in matchRoutes
+      let nextSearch: Record<string, unknown>
+      let searchStr: string
+      if (inheritedLocation) {
+        nextSearch = inheritedLocation.search
+        searchStr = inheritedLocation.searchStr
+      } else {
+        // Resolve the next search
+        const middlewares = getSearchMiddlewares(
+          destRoutes,
+          opts._includeValidateSearch,
+        )
+        const fromSearch = () => {
+          let search = currentMatch()[2 /* search */]
+          if (opts._includeValidateSearch && this.options.search?.strict) {
+            const validatedSearch = {}
+            destRoutes.forEach((route) => {
+              if (route.options.validateSearch) {
+                try {
+                  Object.assign(
+                    validatedSearch,
+                    validateSearch(route.options.validateSearch, {
+                      ...validatedSearch,
+                      ...search,
+                    }),
+                  )
+                } catch {
+                  // ignore errors here because they are already handled in matchRoutes
+                }
               }
-            }
-          })
-          search = validatedSearch
+            })
+            search = validatedSearch
+          }
+          return search
         }
-        return search
-      }
-      // A literal search never reads the current one. The result is not
-      // structurally shared with the current search: `parseLocation` keeps
-      // equal nested values stable once the location is committed.
-      const nextSearch: Record<string, unknown> = middlewares.length
-        ? applySearchMiddleware(middlewares, fromSearch(), dest)
-        : dest.search === true
-          ? fromSearch()
-          : typeof dest.search === 'function'
-            ? dest.search(fromSearch())
-            : (dest.search as Record<string, unknown>) || EMPTY_RECORD
+        // A literal search never reads the current one. The result is not
+        // structurally shared with the current search: `parseLocation` keeps
+        // equal nested values stable once the location is committed.
+        nextSearch = middlewares.length
+          ? applySearchMiddleware(middlewares, fromSearch(), dest)
+          : dest.search === true
+            ? fromSearch()
+            : typeof dest.search === 'function'
+              ? dest.search(fromSearch())
+              : (dest.search as Record<string, unknown>) || EMPTY_RECORD
 
-      // Stringify the next search
-      const searchStr = this.options.stringifySearch(nextSearch)
+        // Stringify the next search
+        searchStr = this.options.stringifySearch(nextSearch)
+      }
 
       // Resolve the next hash
       const hash =
@@ -2183,12 +2199,13 @@ export class RouterCore<
 
     const next = build(opts)
 
-    if (opts.mask) {
-      next.maskedLocation = build({
-        from: opts.from,
-        ...opts.mask,
-      })
-    } else if (this.options.routeMasks) {
+    let mask:
+      | (BuildNextOptions & {
+          unmaskOnReload?: boolean
+          inheritSearch?: boolean
+        })
+      | undefined = opts.mask && { from: opts.from, ...opts.mask }
+    if (!mask && this.options.routeMasks) {
       const match = findFlatMatch<RouteMask<TRouteTree>>(
         next.pathname,
         this.processedTree,
@@ -2201,12 +2218,15 @@ export class RouterCore<
         // Otherwise, use the matched params or the provided params value
         const nextParams = resolveNextParams(maskParams, params)
 
-        next.maskedLocation = build({
-          from: opts.from,
-          ...maskProps,
-          params: nextParams,
-        })
+        mask = { from: opts.from, ...maskProps, params: nextParams }
       }
+    }
+    if (mask) {
+      const inheritSearch = mask.inheritSearch === true
+      if (inheritSearch && mask.search !== undefined) {
+        throw new Error('A route mask cannot combine inheritSearch with search')
+      }
+      next.maskedLocation = build(mask, inheritSearch ? next : undefined)
     }
 
     // A mask that reads the current location marks the whole result through
