@@ -11,6 +11,7 @@ import {
   componentChunk,
   expectRegisteredRouteOption,
   expectValidModules,
+  generatedRouteId,
   head,
   hotUpdate,
   importRequests,
@@ -340,7 +341,7 @@ export const Route = createFileRoute('/')({
     ) => `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({ loader: () => '${loader}' })`
     const update = await hotUpdate(root('old'), {
-      routeId: '/__root',
+      routeId: await generatedRouteId('__root.tsx'),
       updated: root('new'),
     })
     expect((update.live.loader as () => string)()).toBe('new')

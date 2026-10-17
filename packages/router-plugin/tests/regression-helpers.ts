@@ -4,7 +4,9 @@
  * follow the imports of its output to every module it emits, evaluate those
  * modules like a runtime, and inspect an emitted module.
  */
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   createModuleGraph,
   jsxPragma,
@@ -26,6 +28,7 @@ import { parseSync, transformWithOxc } from 'vite'
 import { expect, vi } from 'vitest'
 import { createMemoryHistory } from '../../history/src'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
+import { createRouterGeneratorPlugin } from '../src/core/router-generator-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
@@ -38,6 +41,8 @@ import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 import type { ESTree } from 'vite'
 
 export { declaredNames } from '@tanstack/compiler-test-utils/validate-module'
+
+const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
@@ -677,6 +682,56 @@ export async function createCodeSplitterTransforms(
 }
 
 /**
+ * The route id the router plugin registers a route file under: runs the
+ * plugin's route generator, as the Vite plugin does when the dev server
+ * starts, on a temporary routes directory holding `files` (route files by
+ * path relative to it; an empty root route unless given), and returns the
+ * route id it registered `file` (relative to the routes directory) under.
+ */
+export async function generatedRouteId(
+  file: string,
+  files: Record<string, string> = {},
+) {
+  const root = await mkdtemp(path.join(harnessDir, '.generated-route-id-'))
+  try {
+    const routes = {
+      '__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({})
+`,
+      ...files,
+    }
+    for (const [name, code] of Object.entries(routes)) {
+      const target = path.join(root, 'routes', name)
+      await mkdir(path.dirname(target), { recursive: true })
+      await writeFile(target, code)
+    }
+    const context = createRouterPluginContext()
+    const plugin = createRouterGeneratorPlugin(
+      {
+        target: 'react',
+        routesDirectory: './routes',
+        generatedRouteTree: './routeTree.gen.ts',
+        disableLogging: true,
+      },
+      context,
+    ) as UnpluginOptions
+    await hookHandler(plugin.vite!.configResolved)!.call(
+      {} as never,
+      { root } as never,
+    )
+    const routeId = context.routesByFile.get(
+      normalizePath(path.join(root, 'routes', file)),
+    )?.routeId
+    if (routeId === undefined) {
+      throw new Error(`the route generator registered no route for ${file}`)
+    }
+    return routeId
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+}
+
+/**
  * Runs the route HMR plugin (used when automatic code splitting is off) on
  * the route file `file`, registered under `routeId`.
  */
@@ -1131,8 +1186,9 @@ export type HotUpdateOptions = {
   /** Default `react`. */
   targetFramework?: TargetFramework
   /**
-   * Route id the route file is registered under. Default `/`; `/__root`
-   * for a root route, which is then the route tree's root.
+   * Route id the route file is registered under. Default `/`. A root route
+   * (`createRootRoute`) is the route tree's root; its file is registered
+   * under the id the route generator gives it (`generatedRouteId`).
    */
   routeId?: string
   /** The edited route file the update loads. Default: `code` again. */
@@ -1274,8 +1330,13 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
     route.isRoot = false
     return route
   }
-  const createRootRoute = (routeOptions: Record<string, unknown>) =>
-    new BaseRootRoute(routeOptions as never)
+  // Root routes the modules created: the route tree's root.
+  const rootRoutes = new WeakSet<object>()
+  const createRootRoute = (routeOptions: Record<string, unknown>) => {
+    const route = new BaseRootRoute(routeOptions as never)
+    rootRoutes.add(route)
+    return route
+  }
   const lazyStubs = createRouterStub(lazy)
   const routerPackage = `@tanstack/${targetFramework}-router`
   // The route classes of the framework packages add hooks to the router-core
@@ -1321,8 +1382,7 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
   try {
     const firstGraph = load(first)
     const firstModule = await firstGraph.import(first.id)
-    const isRoot = routeId === '/__root'
-    const liveId = isRoot ? '__root__' : routeId
+    const isRoot = rootRoutes.has(firstModule.Route as object)
     let routeTree: AnyRoute
     if (isRoot) {
       routeTree = firstModule.Route as AnyRoute
@@ -1344,6 +1404,8 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
       getStoreConfig,
     )
     window.__TSR_ROUTER__ = router
+    // The id the route tree gave the route (`__root__` for the root)
+    const liveId = (firstModule.Route as AnyRoute).id
     const liveOptions = () =>
       (
         router.routesById[liveId] as unknown as {
