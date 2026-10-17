@@ -5,6 +5,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { parseSync } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
 import { Generator, getConfig } from '../src'
 import { routeIdOf } from './route-id'
@@ -204,6 +205,30 @@ export const Route = createFileRoute('/old')({})`,
     async ({ source }) => {
       const { written } = await generateMovedRoute(source)
       expect(await routeIdOf(written)).toBe('/moved')
+    },
+  )
+
+  // Bug: same root cause as above, for `createFileRoute` imported from a
+  // module of the app (a wrapper re-exporting it): no import from the
+  // router package names it, so the generator prepends one, next to the
+  // user's import of the same name.
+  // Source: router-generator/src/transform/transform.ts:502-565
+  // (`normalizeRouteImports` adds the import when no import of the router
+  // package owns the constructor); fuzzing (oracle mode, V2), 7 unmodified
+  // corpus files.
+  // Impact: the written route file declares `createFileRoute` twice and no
+  // longer parses, so the app fails to build.
+  test.fails(
+    'a moved route importing createFileRoute from a module of the app stays a valid module',
+    async () => {
+      const { written } =
+        await generateMovedRoute(`import { createFileRoute } from '@/lib/router'
+export const Route = createFileRoute('/old')({})`)
+      const { errors } = parseSync('route.tsx', written, {
+        sourceType: 'module',
+        showSemanticErrors: true,
+      })
+      expect(errors.map((error) => error.message)).toEqual([])
     },
   )
 })
