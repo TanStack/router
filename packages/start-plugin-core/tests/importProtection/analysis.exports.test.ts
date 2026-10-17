@@ -21,6 +21,11 @@ describe('mock modules expose every importable name', () => {
     'foo-bar',
     'foo.bar',
     'foo bar',
+    '~lead',
+    'a~b',
+    'a:b',
+    '|x',
+    'a^b',
     'default',
   ]
 
@@ -235,6 +240,10 @@ export type { Foo } from 'mod-a'`,
     { name: 'object destructuring', code: `export const { a, b } = obj` },
     { name: 'array destructuring', code: `export const [x, y] = arr` },
     {
+      name: 'an array destructuring rest element',
+      code: `export const [first, ...others] = arr`,
+    },
+    {
       name: 'renamed destructuring',
       code: `export const { a: renamed } = obj`,
     },
@@ -269,20 +278,40 @@ export { local as "foo-bar" }`,
     expect(exported.filter((name) => !isMock(mock[name]))).toEqual([])
   })
 
+  // The exports the mock misses (pinned below) must not cost the others.
+  test('an enum next to other exports', async () => {
+    const mock = await selfMock(`export enum Color { Red }
+export const secret = 1`)
+    expect(isMock(mock.secret)).toBe(true)
+  })
+
   // Bug: the export names of a denied file skip namespace re-exports
-  // (`export * as ns from`), enums and namespaces.
+  // (`export * as ns from`).
+  // Source: src/import-protection/analysis.ts:270-275 (only the names of
+  // `ExportSpecifier`s are collected).
+  // Impact: the mock served in place of the file has no `ns`, so an importer
+  // of `ns` fails to link (build: missing export error; dev: the page fails
+  // to load).
+  test.fails('a namespace re-export', async () => {
+    const code = `export * as ns from './foo'`
+    const exported = Object.keys(await evaluateOriginal(code))
+    const mock = await selfMock(code)
+    expect(exported).toEqual(['ns'])
+    expect(isMock(mock.ns)).toBe(true)
+  })
+
+  // Bug: the export names of a denied file skip enums and namespaces.
   // Impact: the mock served in place of the file misses these exports, so
-  // an importer of `ns`, `Color` or `Util` fails to link (build: missing
-  // export error; dev: the page fails to load).
+  // an importer of `Color` or `Util` fails to link (build: missing export
+  // error; dev: the page fails to load).
   // Source: PR #8504 (analysis.exports.test.ts "collects namespace
   // re-exports, enums and namespaces").
-  test.fails('a namespace re-export, an enum and a namespace', async () => {
-    const code = `export * as ns from './foo'
-export enum Color { Red }
+  test.fails('an enum and a namespace', async () => {
+    const code = `export enum Color { Red }
 export namespace Util { export const x = 1 }`
     const exported = Object.keys(await evaluateOriginal(code))
     const mock = await selfMock(code)
-    expect(exported.sort()).toEqual(['Color', 'Util', 'ns'])
+    expect(exported.sort()).toEqual(['Color', 'Util'])
     expect(Object.keys(mock)).toEqual(expect.arrayContaining(exported))
     expect(exported.filter((name) => !isMock(mock[name]))).toEqual([])
   })
