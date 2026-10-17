@@ -24,42 +24,49 @@ afterEach(async () => {
 })
 
 describe('prerender failOnError', () => {
-  it('stops requesting queued pages after a page fails', async () => {
-    const publicDir = await mkdtemp(path.join(tmpdir(), 'tss-prerender-fail-'))
-    publicDirs.push(publicDir)
-    const request = vi.fn(async (requestPath: string) => {
-      if (requestPath === '/missing/') {
-        return new Response('Not Found', {
-          status: 404,
-          statusText: 'Not Found',
+  it.each([0, 1])(
+    'stops requesting queued pages after a page fails with retryCount %i',
+    async (retryCount) => {
+      const publicDir = await mkdtemp(
+        path.join(tmpdir(), 'tss-prerender-fail-'),
+      )
+      publicDirs.push(publicDir)
+      const request = vi.fn(async (requestPath: string) => {
+        if (requestPath === '/missing/') {
+          return new Response('Not Found', {
+            status: 404,
+            statusText: 'Not Found',
+          })
+        }
+        return new Response(`<html><body>${requestPath}</body></html>`, {
+          headers: { 'content-type': 'text/html' },
         })
-      }
-      return new Response(`<html><body>${requestPath}</body></html>`, {
-        headers: { 'content-type': 'text/html' },
       })
-    })
-    const startConfig = parseStartConfig(
-      {
-        prerender: {
-          enabled: true,
-          autoStaticPathsDiscovery: false,
-          crawlLinks: false,
-          concurrency: 1,
+      const startConfig = parseStartConfig(
+        {
+          prerender: {
+            enabled: true,
+            autoStaticPathsDiscovery: false,
+            crawlLinks: false,
+            concurrency: 1,
+            retryCount,
+            retryDelay: 0,
+          },
+          pages: [{ path: '/missing' }, { path: '/about' }],
         },
-        pages: [{ path: '/missing' }, { path: '/about' }],
-      },
-      { framework: 'react' },
-      process.cwd(),
-    )
+        { framework: 'react' },
+        process.cwd(),
+      )
 
-    await expect(
-      prerender({
-        startConfig,
-        handler: { getClientOutputDirectory: () => publicDir, request },
-      }),
-    ).rejects.toThrow('Failed to fetch /missing: Not Found')
-    expect(request.mock.calls.map(([requestPath]) => requestPath)).toEqual([
-      '/missing/',
-    ])
-  })
+      await expect(
+        prerender({
+          startConfig,
+          handler: { getClientOutputDirectory: () => publicDir, request },
+        }),
+      ).rejects.toThrow('Failed to fetch /missing: Not Found')
+      expect(request.mock.calls.map(([requestPath]) => requestPath)).toEqual(
+        Array(1 + retryCount).fill('/missing/'),
+      )
+    },
+  )
 })

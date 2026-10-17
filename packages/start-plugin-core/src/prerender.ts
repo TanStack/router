@@ -237,7 +237,7 @@ export async function prerender({
               `Encountered error, retrying: ${page.path} in ${retryDelay}ms`,
             )
             await new Promise((resolve) => setTimeout(resolve, retryDelay))
-            queue.add(() => prerenderPage(retries + 1))
+            queue.add(() => prerenderPage(retries + 1), { priority: true })
           } else if (prerenderOptions.failOnError ?? true) {
             errors.push(error)
           }
