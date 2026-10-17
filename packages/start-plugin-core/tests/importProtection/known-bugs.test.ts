@@ -452,7 +452,9 @@ describe('Rsbuild dev', () => {
           throw new Error('MARK_THROWN')
         },
       },
-      compileTimeout: 3_000,
+      // Only a guard: the failed compile ends the wait (a slow first
+      // compile on a loaded machine must not fail the test).
+      compileTimeout: 10_000,
       files: {
         'src/secret.server.ts': `export const secret = () => 'secret'\n`,
         'src/entry.ts': `import { secret } from './secret.server'\nconsole.log(secret())\n`,

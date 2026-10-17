@@ -24,7 +24,6 @@
  * Import protection is on, with Start's defaults unless the test configures
  * it; it checks the modules of the source directory (`src`) only.
  */
-import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -38,6 +37,7 @@ import {
   stripAnsi,
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
+import { trackCompiles } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { onTestFinished } from 'vitest'
 import { tanStackStartVite } from '../src/vite/plugin'
 import { tanStackStartRsbuild } from '../src/rsbuild/plugin'
@@ -500,14 +500,17 @@ async function buildWithRsbuild(
   const { createRsbuild, mergeRsbuildConfig } = await import('@rsbuild/core')
   const outputs: Partial<Outputs> = {}
   const errors: Array<string> = []
-  /** Resolves when the current (watch mode) build is done. */
-  let built = deferred()
+  /** The compiles of a watch mode build. */
+  const compiles = trackCompiles()
   /** Records what each environment emitted. */
   const outputPlugin: RsbuildPlugin = {
     name: 'start-build-harness:outputs',
     setup(api) {
+      api.onAfterCreateCompiler(({ compiler }) => {
+        compiles.track(compiler)
+      })
       api.onAfterBuild(() => {
-        built.resolve()
+        compiles.done()
       })
       api.onAfterEnvironmentCompile(({ stats, environment }) => {
         const env = environment.name as Env
@@ -565,19 +568,16 @@ async function buildWithRsbuild(
       ),
     })
     if (target.watchEdits) {
-      await watchRebuild(target.root, target.watchEdits, {
-        build: () => rsbuild.build({ watch: true }),
-        nextBuild: () => {
-          built = deferred()
-          return built.promise
-        },
-        firstBuild: () => built.promise,
-        reset: () => {
-          errors.length = 0
-          warnings.client.length = 0
-          warnings.ssr.length = 0
-        },
-      })
+      const watching = await rsbuild.build({ watch: true })
+      try {
+        await compiles.first(watchTimeout)
+        errors.length = 0
+        warnings.client.length = 0
+        warnings.ssr.length = 0
+        await compiles.edit(target.root, target.watchEdits, watchTimeout)
+      } finally {
+        await watching?.close()
+      }
     } else {
       await rsbuild.build()
     }
@@ -597,61 +597,10 @@ async function buildWithRsbuild(
 }
 
 /**
- * Starts a watch mode build (`build`), waits for its first build, applies
- * `edits` to the app at `root`, waits for the rebuild they cause (at most
- * 20 s) and stops watching.
+ * How long a watch mode build waits for a compile: only a guard against a
+ * compile that never comes (see `trackCompiles`).
  */
-async function watchRebuild(
-  root: string,
-  edits: Record<string, string | null>,
-  watcher: {
-    build: () => Promise<{ close: () => Promise<void> } | undefined>
-    firstBuild: () => Promise<void>
-    nextBuild: () => Promise<void>
-    reset: () => void
-  },
-): Promise<void> {
-  const firstBuild = watcher.firstBuild()
-  const result = await watcher.build()
-  try {
-    await withTimeout(firstBuild, 'the first watch mode build')
-    watcher.reset()
-    const rebuild = watcher.nextBuild()
-    for (const [file, code] of Object.entries(edits)) {
-      const filePath = path.join(root, file)
-      if (code === null) {
-        await fs.rm(filePath, { force: true })
-      } else {
-        await fs.mkdir(path.dirname(filePath), { recursive: true })
-        await fs.writeFile(filePath, code)
-      }
-    }
-    await withTimeout(rebuild, 'the watch mode rebuild of the edits')
-  } finally {
-    await result?.close()
-  }
-}
-
-function deferred(): { promise: Promise<void>; resolve: () => void } {
-  let resolve = () => {}
-  const promise = new Promise<void>((done) => {
-    resolve = done
-  })
-  return { promise, resolve }
-}
-
-function withTimeout(promise: Promise<void>, what: string): Promise<void> {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  return Promise.race([
-    promise,
-    new Promise<void>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`${what} did not finish within 20 s`)),
-        20_000,
-      )
-    }),
-  ]).finally(() => clearTimeout(timer))
-}
+const watchTimeout = 20_000
 
 function checkOutputs(outputs: Partial<Outputs>): Outputs {
   if (!outputs.client || !outputs.ssr) {

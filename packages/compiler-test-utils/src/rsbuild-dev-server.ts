@@ -5,8 +5,8 @@
  * the rebuild the edit causes, and reads what each environment emitted.
  *
  * Unlike the Vite harness, file events come from Rspack's own file watcher:
- * `edit()` writes the files and waits for the next compile that starts after
- * the write.
+ * `edit()` writes the files and waits for the compile that includes them
+ * (`trackCompiles`).
  *
  * Plugin-agnostic: the caller supplies the Rsbuild plugins and the directory
  * the apps live in (where their imports resolve).
@@ -20,6 +20,7 @@ import type {
   RsbuildConfig,
   RsbuildInstance,
   RsbuildPlugin,
+  Rspack,
 } from '@rsbuild/core'
 
 export interface RsbuildDevServerOptions extends AppOptions {
@@ -31,7 +32,11 @@ export interface RsbuildDevServerOptions extends AppOptions {
   entry?: string
   /** Rsbuild configuration merged over the harness defaults. */
   config?: RsbuildConfig
-  /** How long a compile may take, in milliseconds. Default 20 000. */
+  /**
+   * How long to wait for a compile, in milliseconds: only a guard against a
+   * compile that never comes (default 20 000). The wait ends as soon as the
+   * compile ends or fails.
+   */
   compileTimeout?: number
 }
 
@@ -41,7 +46,8 @@ export interface RsbuildDevServer {
   rsbuild: RsbuildInstance
   /**
    * Writes app files (relative to the app root; `null` deletes a file) and
-   * waits for the compile Rspack's watcher starts for them.
+   * waits for the compile that includes them; rejects with the error of a
+   * compile of them Rspack gave up on.
    */
   edit: (files: Record<string, string | null>) => Promise<void>
   /**
@@ -76,54 +82,19 @@ export async function createRsbuildDevServer(
   })
   const root = app.root
 
-  let compiles = 0
   const rebuilt: Array<string> = []
   const errors: Array<string> = []
   const warnings: Array<string> = []
-  const waiters: Array<{
-    after: number
-    resolve: () => void
-    reject: (error: Error) => void
-  }> = []
-  /** Compiles start and finish in order: `compiles` counts the started ones. */
-  let finished = 0
-  /**
-   * The error of the last compile Rspack gave up on (a plugin hook threw or
-   * rejected), which never finishes: waits for it fail with this error.
-   */
-  let failure: { after: number; error: Error } | undefined
+  const compiles = trackCompiles()
   /** Output directory of each environment. */
   const distPaths: Record<string, string> = {}
   const harnessPlugin: RsbuildPlugin = {
     name: 'rsbuild-dev-server-harness',
     setup(api) {
-      api.onBeforeDevCompile(() => {
-        compiles++
-      })
       api.onAfterCreateCompiler(({ compiler }) => {
-        const compilers =
-          'compilers' in compiler ? compiler.compilers : [compiler]
-        for (const environmentCompiler of compilers) {
-          environmentCompiler.hooks.failed.tap(
-            'rsbuild-dev-server-harness',
-            (cause) => {
-              const error = new Error(
-                `Rsbuild failed to compile the app: ${cause.message}`,
-                { cause },
-              )
-              failure = { after: compiles - 1, error }
-              for (const waiter of [...waiters]) {
-                if (compiles > waiter.after) {
-                  waiters.splice(waiters.indexOf(waiter), 1)
-                  waiter.reject(error)
-                }
-              }
-            },
-          )
-        }
+        compiles.track(compiler)
       })
       api.onDevCompileDone(({ stats, environments }) => {
-        finished = compiles
         for (const [name, environment] of Object.entries(environments)) {
           distPaths[name] = environment.distPath
         }
@@ -146,48 +117,10 @@ export async function createRsbuildDevServer(
             warnings.push(warning.message)
           }
         }
-        for (const waiter of [...waiters]) {
-          if (finished > waiter.after) {
-            waiters.splice(waiters.indexOf(waiter), 1)
-            waiter.resolve()
-          }
-        }
+        compiles.done()
       })
     },
   }
-
-  /** Waits until a compile that started after `after` compiles finished. */
-  const compiled = (after: number, what: string) =>
-    new Promise<void>((resolve, reject) => {
-      if (finished > after) {
-        resolve()
-        return
-      }
-      if (failure && failure.after >= after) {
-        reject(failure.error)
-        return
-      }
-      const timer = setTimeout(() => {
-        waiters.splice(waiters.indexOf(waiter), 1)
-        reject(
-          new Error(
-            `Rsbuild did not compile ${what} within ${compileTimeout} ms`,
-          ),
-        )
-      }, compileTimeout)
-      const waiter = {
-        after,
-        resolve: () => {
-          clearTimeout(timer)
-          resolve()
-        },
-        reject: (error: Error) => {
-          clearTimeout(timer)
-          reject(error)
-        },
-      }
-      waiters.push(waiter)
-    })
 
   let rsbuild: RsbuildInstance
   let server: Awaited<ReturnType<RsbuildInstance['createDevServer']>>
@@ -217,7 +150,7 @@ export async function createRsbuildDevServer(
     })
     server = await rsbuild.createDevServer()
     created = server
-    await compiled(0, 'the app')
+    await compiles.first(compileTimeout)
   } catch (error) {
     try {
       // e.g. the first compile timed out: stop watching the app
@@ -244,18 +177,7 @@ export async function createRsbuildDevServer(
   return {
     root,
     rsbuild,
-    edit: async (files) => {
-      for (const [relative, code] of Object.entries(files)) {
-        const file = path.join(root, relative)
-        if (code === null) {
-          await rm(file, { force: true })
-        } else {
-          await mkdir(path.dirname(file), { recursive: true })
-          await writeFile(file, code)
-        }
-      }
-      await compiled(compiles, Object.keys(files).join(', '))
-    },
+    edit: (files) => compiles.edit(root, files, compileTimeout),
     outputs: async (environment) => {
       const name = environment ?? Object.keys(distPaths)[0]!
       const distPath = distPaths[name]
@@ -270,6 +192,298 @@ export async function createRsbuildDevServer(
     errors,
     warnings,
     close,
+  }
+}
+
+export interface CompileTracker {
+  /**
+   * Follows the compiles of an Rspack compiler, or of each compiler of a
+   * multi-compiler (one per Rsbuild environment).
+   */
+  track: (compiler: Rspack.Compiler | Rspack.MultiCompiler) => void
+  /**
+   * To call once the outputs of a compile of every compiler are recorded
+   * (e.g. Rsbuild's `onDevCompileDone`): settles the waits it completes.
+   */
+  done: () => void
+  /**
+   * Waits for the first compile; rejects with the error of a compile Rspack
+   * gave up on (a plugin hook threw), or after `timeout` ms.
+   */
+  first: (timeout: number) => Promise<void>
+  /**
+   * Writes files (relative to `root`; `null` deletes a file) and waits for
+   * the compile that includes the edit (see `CompileTracker`).
+   */
+  edit: (
+    root: string,
+    files: Record<string, string | null>,
+    timeout: number,
+  ) => Promise<void>
+}
+
+/**
+ * Follows the compiles of a watch mode Rspack build, to wait for the
+ * compile that includes an edit, by what each compile reports changed
+ * (`compiler.modifiedFiles` and `removedFiles`) rather than by when it
+ * starts: the watcher may start the compile of an edit before the writes
+ * finish, all the more on a loaded machine.
+ *
+ * The wait for an edit begins before the files are written. It ends at the
+ * end of a compile once a compile reported an edited file (or a directory
+ * of one) changed, every compiler that read an edited file reported it
+ * changed, and every other written file (e.g. a new module) was read or is
+ * looked for by no compile (which then failed to find it, before the
+ * write). A compile Rspack gives up on (a plugin hook threw) fails the waits
+ * for the edits it includes, with its error. `timeout` only guards against
+ * a compile that never comes.
+ */
+export function trackCompiles(): CompileTracker {
+  interface EditWait {
+    files: Array<string>
+    /** Edited files a compiler read and did not report changed yet. */
+    pending: Map<Rspack.Compiler, Set<string>>
+    /** Written files no compiler read. */
+    unread: Array<string>
+    written: boolean
+    /** A compile reported an edited file (or a directory of one). */
+    reached: boolean
+    /** `started` when a compile last reported an edited file. */
+    lastReport: number
+    resolve: () => void
+    reject: (error: Error) => void
+  }
+  const compilers: Array<Rspack.Compiler> = []
+  /**
+   * The dependencies of each compiler's last compile: the files it read,
+   * and the paths it looked for and did not find.
+   */
+  const dependencies = new Map<
+    Rspack.Compiler,
+    { files: Set<string>; missing: Set<string> }
+  >()
+  const waits = new Set<EditWait>()
+  /** Compiles started, by any compiler. */
+  let started = 0
+  /** `started` at the end of the last compile of every compiler. */
+  let startedBeforeDone = 0
+  let finished = 0
+  let failure: Error | undefined
+  const firstWaits = new Set<{
+    resolve: () => void
+    reject: (error: Error) => void
+  }>()
+
+  const touches = (changed: string, file: string) =>
+    file === changed || file.startsWith(changed + path.sep)
+
+  const isRead = (file: string) =>
+    compilers.some((compiler) => dependencies.get(compiler)?.files.has(file))
+
+  /** Whether a compile looked for the file, or a directory of it. */
+  const isMissing = (file: string) =>
+    compilers.some((compiler) =>
+      [...(dependencies.get(compiler)?.missing ?? [])].some(
+        (missing) => missing !== '/' && touches(missing, file),
+      ),
+    )
+
+  const unreported = (wait: EditWait) => [
+    ...new Set([...wait.pending.values()].flatMap((files) => [...files])),
+  ]
+
+  /** Written files a compile still has to read. */
+  const unreadButNeeded = (wait: EditWait) =>
+    wait.unread.filter((file) => !isRead(file) && isMissing(file))
+
+  /**
+   * Whether the compiles include the whole edit, and the last one that
+   * reported part of it ended (no compiler compiles when `done()` is called).
+   */
+  const settled = (wait: EditWait) =>
+    wait.written &&
+    wait.reached &&
+    unreported(wait).length === 0 &&
+    unreadButNeeded(wait).length === 0 &&
+    startedBeforeDone >= wait.lastReport
+
+  const withTimeout = (
+    timeout: number,
+    message: () => string,
+    register: (handlers: {
+      resolve: () => void
+      reject: (error: Error) => void
+    }) => () => void,
+  ) =>
+    new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        unregister()
+        reject(new Error(message()))
+      }, timeout)
+      const unregister = register({
+        resolve: () => {
+          clearTimeout(timer)
+          unregister()
+          resolve()
+        },
+        reject: (error) => {
+          clearTimeout(timer)
+          unregister()
+          reject(error)
+        },
+      })
+    })
+
+  return {
+    track(compiler) {
+      for (const environmentCompiler of 'compilers' in compiler
+        ? compiler.compilers
+        : [compiler]) {
+        compilers.push(environmentCompiler)
+        const name = 'compile-tracker'
+        environmentCompiler.hooks.watchRun.tap(name, () => {
+          started++
+          const changed = [
+            ...(environmentCompiler.modifiedFiles ?? []),
+            ...(environmentCompiler.removedFiles ?? []),
+          ]
+          for (const wait of waits) {
+            const pending = wait.pending.get(environmentCompiler)
+            for (const file of changed) {
+              pending?.delete(file)
+            }
+            if (
+              wait.files.some((file) =>
+                changed.some((changedPath) => touches(changedPath, file)),
+              )
+            ) {
+              wait.reached = true
+              wait.lastReport = started
+            }
+          }
+        })
+        // Before Rsbuild's own `done` taps, which announce the end of the
+        // compile: the next edit may begin right then.
+        environmentCompiler.hooks.done.tap({ name, stage: -100 }, (stats) => {
+          const { compilation } = stats
+          dependencies.set(environmentCompiler, {
+            files: new Set(compilation.fileDependencies),
+            missing: new Set(compilation.missingDependencies),
+          })
+        })
+        environmentCompiler.hooks.failed.tap(name, (cause) => {
+          const error = new Error(
+            `Rsbuild failed to compile the app: ${cause.message}`,
+            { cause },
+          )
+          if (finished === 0) {
+            failure = error
+            for (const wait of firstWaits) {
+              wait.reject(error)
+            }
+          }
+          for (const wait of waits) {
+            if (wait.reached) {
+              wait.reject(error)
+            }
+          }
+        })
+      }
+    },
+    done() {
+      finished++
+      startedBeforeDone = started
+      for (const wait of firstWaits) {
+        wait.resolve()
+      }
+      for (const wait of waits) {
+        if (settled(wait)) {
+          wait.resolve()
+        }
+      }
+    },
+    first(timeout) {
+      if (finished > 0) {
+        return Promise.resolve()
+      }
+      if (failure) {
+        return Promise.reject(failure)
+      }
+      return withTimeout(
+        timeout,
+        () => `Rsbuild did not finish the first compile within ${timeout} ms`,
+        (handlers) => {
+          firstWaits.add(handlers)
+          return () => firstWaits.delete(handlers)
+        },
+      )
+    },
+    async edit(root, edits, timeout) {
+      const files = Object.keys(edits).map((file) => path.join(root, file))
+      const startedBefore = started
+      const wait: EditWait = {
+        files,
+        pending: new Map(
+          compilers.map((compiler) => [
+            compiler,
+            new Set(
+              files.filter((file) =>
+                dependencies.get(compiler)?.files.has(file),
+              ),
+            ),
+          ]),
+        ),
+        unread: Object.entries(edits)
+          .filter(([, code]) => code !== null)
+          .map(([file]) => path.join(root, file))
+          .filter((file) => !isRead(file)),
+        written: false,
+        reached: false,
+        lastReport: 0,
+        resolve: () => {},
+        reject: () => {},
+      }
+      // Listens before writing: the watcher may start the compile of the
+      // edit before the writes finish.
+      const compiled = withTimeout(
+        timeout,
+        () => {
+          const missing = [...unreported(wait), ...unreadButNeeded(wait)]
+          return `Rsbuild did not finish a compile of the edit of ${Object.keys(edits).join(', ')} within ${timeout} ms (${started - startedBefore} compiles started since the edit; no compile included ${
+            missing.length
+              ? missing.map((file) => path.relative(root, file)).join(', ')
+              : 'an edited file'
+          })`
+        },
+        (handlers) => {
+          wait.resolve = handlers.resolve
+          wait.reject = handlers.reject
+          waits.add(wait)
+          return () => waits.delete(wait)
+        },
+      )
+      // A compile of the edit may fail while the writes finish
+      compiled.catch(() => {})
+      try {
+        for (const [relative, code] of Object.entries(edits)) {
+          const file = path.join(root, relative)
+          if (code === null) {
+            await rm(file, { force: true })
+          } else {
+            await mkdir(path.dirname(file), { recursive: true })
+            await writeFile(file, code)
+          }
+        }
+      } catch (error) {
+        wait.reject(error as Error)
+      }
+      wait.written = true
+      // The compile of the edit may have ended while the writes finished
+      if (settled(wait)) {
+        wait.resolve()
+      }
+      return compiled
+    },
   }
 }
 

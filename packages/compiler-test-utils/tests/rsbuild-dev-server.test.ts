@@ -29,6 +29,29 @@ test('rebuilds the edited module and emits the edit', async () => {
   expect(await joined()).not.toContain('MARK_V1')
 }, 30_000)
 
+// The watcher may start the compile of an edit before its writes finish
+// (on a loaded machine, before the harness even sees the write done): the
+// wait must still end with that compile. Here a large file nothing imports
+// keeps the writes going after the module's.
+test('a compile that starts before the writes of the edit finish ends the wait', async () => {
+  const server = await createRsbuildDevServer({
+    dir: testsDir,
+    registerCleanup: onTestFinished,
+    files: {
+      'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
+      'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
+    },
+  })
+
+  await server.edit({
+    'src/leaf.ts': `export const leaf = 'MARK_V2'\n`,
+    'notes/large.txt': 'x'.repeat(64 * 1024 * 1024),
+  })
+
+  expect(server.rebuilt).toContain('src/leaf.ts')
+  expect(Object.values(await server.outputs()).join('\n')).toContain('MARK_V2')
+}, 30_000)
+
 test('a compile a plugin makes fail rejects the wait with its error, without waiting for the timeout', async () => {
   let compile = 0
   const server = await createRsbuildDevServer({
