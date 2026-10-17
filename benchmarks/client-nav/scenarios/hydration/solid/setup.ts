@@ -8,13 +8,6 @@ import type { FixtureArtifact } from './fixture'
 import type * as Client from './src/client'
 
 type ClientApp = typeof Client
-type TaskHooks = {
-  opts: {
-    beforeEach?: () => void | Promise<void>
-    afterEach?: () => void | Promise<void>
-  }
-}
-
 const turn = () => new Promise<void>((resolve) => setImmediate(resolve))
 const maxSettleTurns = 100
 
@@ -329,11 +322,5 @@ export function setup({ countUpdates = false } = {}) {
     run,
     after,
     snapshot,
-    // Vitest's Bench setup runs once per warmup/run stage. Install Tinybench's
-    // public Task hooks to prepare and dispose outside every measured call.
-    installIterationHooks(task: TaskHooks) {
-      task.opts.beforeEach = before
-      task.opts.afterEach = after
-    },
   }
 }

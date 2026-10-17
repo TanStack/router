@@ -1,4 +1,4 @@
-import { bench, describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   createNull,
   deepEqual,
@@ -199,213 +199,303 @@ const iterations = 1_000
 let sink: unknown
 
 describe('isPlainObject', () => {
-  bench('literal', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = isPlainObject(search)
-    }
+  test('literal', async ({ bench }) => {
+    await bench('literal', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = isPlainObject(search)
+      }
+    }).run()
   })
 
-  bench('null-proto record', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = isPlainObject(emptyNull)
-    }
+  test('null-proto record', async ({ bench }) => {
+    await bench('null-proto record', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = isPlainObject(emptyNull)
+      }
+    }).run()
   })
 
-  bench('null-proto record with a constructor key', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = isPlainObject(searchWithConstructorKey)
-    }
+  test('null-proto record with a constructor key', async ({ bench }) => {
+    await bench('null-proto record with a constructor key', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = isPlainObject(searchWithConstructorKey)
+      }
+    }).run()
   })
 
-  bench('class instance', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = isPlainObject(instance)
-    }
+  test('class instance', async ({ bench }) => {
+    await bench('class instance', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = isPlainObject(instance)
+      }
+    }).run()
   })
 })
 
 describe('replaceEqualDeep', () => {
-  bench('equal empty objects', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(empty, {})
-    }
+  test('equal empty objects', async ({ bench }) => {
+    await bench('equal empty objects', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(empty, {})
+      }
+    }).run()
   })
 
-  bench('equal empty null-proto objects', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(emptyNull, createNull())
-    }
+  test('equal empty null-proto objects', async ({ bench }) => {
+    await bench('equal empty null-proto objects', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = nullReplaceEqualDeep(emptyNull, createNull())
+      }
+    }).run()
   })
 
-  bench('equal null-proto search with a constructor key', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(
-        searchWithConstructorKey,
-        searchWithConstructorKeyCopy,
-      )
-    }
+  test('equal null-proto search with a constructor key', async ({ bench }) => {
+    await bench('equal null-proto search with a constructor key', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = nullReplaceEqualDeep(
+          searchWithConstructorKey,
+          searchWithConstructorKeyCopy,
+        )
+      }
+    }).run()
   })
 
-  bench('equal flat search', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(search, searchCopy)
-    }
+  test('equal flat search', async ({ bench }) => {
+    await bench('equal flat search', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(search, searchCopy)
+      }
+    }).run()
   })
 
-  bench('flat search with one changed leaf', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(search, searchChanged)
-    }
+  test('flat search with one changed leaf', async ({ bench }) => {
+    await bench('flat search with one changed leaf', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(search, searchChanged)
+      }
+    }).run()
   })
 
-  bench('equal parsed null-proto search', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(nullSearch, nullSearchCopy)
-    }
+  test('equal parsed null-proto search', async ({ bench }) => {
+    await bench('equal parsed null-proto search', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = nullReplaceEqualDeep(nullSearch, nullSearchCopy)
+      }
+    }).run()
   })
 
-  bench('equal ordinary search against a null-proto previous value', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(nullSearch, searchCopy)
-    }
+  test('equal ordinary search against a null-proto previous value', async ({
+    bench,
+  }) => {
+    await bench(
+      'equal ordinary search against a null-proto previous value',
+      () => {
+        for (let i = 0; i < iterations; i++) {
+          sink = nullReplaceEqualDeep(nullSearch, searchCopy)
+        }
+      },
+    ).run()
   })
 
-  bench('parsed null-proto search with one changed leaf', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(nullSearch, nullSearchChanged)
-    }
+  test('parsed null-proto search with one changed leaf', async ({ bench }) => {
+    await bench('parsed null-proto search with one changed leaf', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = nullReplaceEqualDeep(nullSearch, nullSearchChanged)
+      }
+    }).run()
   })
 
-  bench('ordinary search update in null-proto mode', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(nullSearch, searchChanged)
-    }
+  test('ordinary search update in null-proto mode', async ({ bench }) => {
+    await bench('ordinary search update in null-proto mode', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = nullReplaceEqualDeep(nullSearch, searchChanged)
+      }
+    }).run()
   })
 
-  bench('equal ordinary search in null-proto mode', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(search, searchCopy)
-    }
+  test('equal ordinary search in null-proto mode', async ({ bench }) => {
+    await bench('equal ordinary search in null-proto mode', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = nullReplaceEqualDeep(search, searchCopy)
+      }
+    }).run()
   })
 
-  bench('successive ordinary search update in null-proto mode', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(search, searchChanged)
-    }
+  test('successive ordinary search update in null-proto mode', async ({
+    bench,
+  }) => {
+    await bench('successive ordinary search update in null-proto mode', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = nullReplaceEqualDeep(search, searchChanged)
+      }
+    }).run()
   })
 
-  bench('changed selector followed by the same incoming reference', () => {
-    for (let i = 0; i < iterations; i++) {
-      const current = replaceEqualDeep(search, searchChanged)
-      sink = replaceEqualDeep(current, searchChanged)
-    }
+  test('changed selector followed by the same incoming reference', async ({
+    bench,
+  }) => {
+    await bench(
+      'changed selector followed by the same incoming reference',
+      () => {
+        for (let i = 0; i < iterations; i++) {
+          const current = replaceEqualDeep(search, searchChanged)
+          sink = replaceEqualDeep(current, searchChanged)
+        }
+      },
+    ).run()
   })
 
-  bench('equal record with decimal values', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(decimalRecord, decimalRecordCopy)
-    }
+  test('equal record with decimal values', async ({ bench }) => {
+    await bench('equal record with decimal values', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(decimalRecord, decimalRecordCopy)
+      }
+    }).run()
   })
 
-  bench('changed record with decimal values', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(decimalRecord, decimalRecordChanged)
-    }
+  test('changed record with decimal values', async ({ bench }) => {
+    await bench('changed record with decimal values', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(decimalRecord, decimalRecordChanged)
+      }
+    }).run()
   })
 
-  bench('equal nested search', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(nested, nestedCopy)
-    }
+  test('equal nested search', async ({ bench }) => {
+    await bench('equal nested search', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(nested, nestedCopy)
+      }
+    }).run()
   })
 
-  bench('nested search sharing unchanged subtrees', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(nested, nestedLeafChanged)
-    }
+  test('nested search sharing unchanged subtrees', async ({ bench }) => {
+    await bench('nested search sharing unchanged subtrees', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(nested, nestedLeafChanged)
+      }
+    }).run()
   })
 
-  bench('nested search sharing unchanged subtrees in null-proto mode', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(nested, nestedLeafChanged)
-    }
+  test('nested search sharing unchanged subtrees in null-proto mode', async ({
+    bench,
+  }) => {
+    await bench(
+      'nested search sharing unchanged subtrees in null-proto mode',
+      () => {
+        for (let i = 0; i < iterations; i++) {
+          sink = nullReplaceEqualDeep(nested, nestedLeafChanged)
+        }
+      },
+    ).run()
   })
 
-  bench('equal array of objects', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(list, listCopy)
-    }
+  test('equal array of objects', async ({ bench }) => {
+    await bench('equal array of objects', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(list, listCopy)
+      }
+    }).run()
   })
 
-  bench('array of objects with one changed item', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(list, listChanged)
-    }
+  test('array of objects with one changed item', async ({ bench }) => {
+    await bench('array of objects with one changed item', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(list, listChanged)
+      }
+    }).run()
   })
 
-  bench('wide flat object with one changed leaf', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(wide, wideChanged)
-    }
+  test('wide flat object with one changed leaf', async ({ bench }) => {
+    await bench('wide flat object with one changed leaf', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(wide, wideChanged)
+      }
+    }).run()
   })
 
-  bench('wide flat object with one changed leaf (null-proto)', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = nullReplaceEqualDeep(wide, wideChanged)
-    }
+  test('wide flat object with one changed leaf (null-proto)', async ({
+    bench,
+  }) => {
+    await bench('wide flat object with one changed leaf (null-proto)', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = nullReplaceEqualDeep(wide, wideChanged)
+      }
+    }).run()
   })
 
-  bench('flat search with all leaves changed', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(search, searchAllChanged)
-    }
+  test('flat search with all leaves changed', async ({ bench }) => {
+    await bench('flat search with all leaves changed', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(search, searchAllChanged)
+      }
+    }).run()
   })
 
-  bench('equal flat search with reordered keys', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(search, searchReordered)
-    }
+  test('equal flat search with reordered keys', async ({ bench }) => {
+    await bench('equal flat search with reordered keys', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(search, searchReordered)
+      }
+    }).run()
   })
 
-  bench('flat search with a key removed', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(search, searchSubset)
-    }
+  test('flat search with a key removed', async ({ bench }) => {
+    await bench('flat search with a key removed', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(search, searchSubset)
+      }
+    }).run()
   })
 
-  bench('array of shared objects with one changed item', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(list, listShared)
-    }
+  test('array of shared objects with one changed item', async ({ bench }) => {
+    await bench('array of shared objects with one changed item', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(list, listShared)
+      }
+    }).run()
   })
 
-  bench('wider flat object (64 keys) with the last leaf changed', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(wider, widerChangedLast)
-    }
+  test('wider flat object (64 keys) with the last leaf changed', async ({
+    bench,
+  }) => {
+    await bench(
+      'wider flat object (64 keys) with the last leaf changed',
+      () => {
+        for (let i = 0; i < iterations; i++) {
+          sink = replaceEqualDeep(wider, widerChangedLast)
+        }
+      },
+    ).run()
   })
 
-  bench('flat object growing from 8 to 64 keys', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(widerSubset, wider)
-    }
+  test('flat object growing from 8 to 64 keys', async ({ bench }) => {
+    await bench('flat object growing from 8 to 64 keys', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(widerSubset, wider)
+      }
+    }).run()
   })
 
   for (const [name, next] of [
     ['first leaf changed', widerChangedFirst],
     ['all leaves changed', widerAllChanged],
   ] as const) {
-    bench(`wider flat object (64 keys) with ${name}`, () => {
-      for (let i = 0; i < iterations; i++) {
-        sink = replaceEqualDeep(wider, next)
-      }
+    test(`wider flat object (64 keys) with ${name}`, async ({ bench }) => {
+      await bench(`wider flat object (64 keys) with ${name}`, () => {
+        for (let i = 0; i < iterations; i++) {
+          sink = replaceEqualDeep(wider, next)
+        }
+      }).run()
     })
   }
 
-  bench('equal long array of shared objects', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(longList, longListCopy)
-    }
+  test('equal long array of shared objects', async ({ bench }) => {
+    await bench('equal long array of shared objects', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(longList, longListCopy)
+      }
+    }).run()
   })
 
   for (const [name, next] of [
@@ -413,10 +503,17 @@ describe('replaceEqualDeep', () => {
     ['changed', longListChangedLast],
     ['changed after a cloned but equal item', longListClonedThenChanged],
   ] as const) {
-    bench(`long array of shared objects with the last item ${name}`, () => {
-      for (let i = 0; i < iterations; i++) {
-        sink = replaceEqualDeep(longList, next)
-      }
+    test(`long array of shared objects with the last item ${name}`, async ({
+      bench,
+    }) => {
+      await bench(
+        `long array of shared objects with the last item ${name}`,
+        () => {
+          for (let i = 0; i < iterations; i++) {
+            sink = replaceEqualDeep(longList, next)
+          }
+        },
+      ).run()
     })
   }
 
@@ -424,23 +521,29 @@ describe('replaceEqualDeep', () => {
     const prev = Array.from({ length }, (_, index) => index)
     const next = [...prev]
     expect(replaceEqualDeep(prev, next)).toBe(prev)
-    bench(`equal primitive array of length ${length}`, () => {
-      for (let i = 0; i < iterations; i++) {
-        sink = replaceEqualDeep(prev, next)
-      }
+    test(`equal primitive array of length ${length}`, async ({ bench }) => {
+      await bench(`equal primitive array of length ${length}`, () => {
+        for (let i = 0; i < iterations; i++) {
+          sink = replaceEqualDeep(prev, next)
+        }
+      }).run()
     })
   }
 
-  bench('equal long primitive array', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(numbers, numbersCopy)
-    }
+  test('equal long primitive array', async ({ bench }) => {
+    await bench('equal long primitive array', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(numbers, numbersCopy)
+      }
+    }).run()
   })
 
-  bench('long primitive array with the last item changed', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(numbers, numbersChangedLast)
-    }
+  test('long primitive array with the last item changed', async ({ bench }) => {
+    await bench('long primitive array with the last item changed', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(numbers, numbersChangedLast)
+      }
+    }).run()
   })
 
   for (const [name, next] of [
@@ -450,88 +553,112 @@ describe('replaceEqualDeep', () => {
     ['shortened', numbersShorter],
     ['appended undefined values', numbersLonger],
   ] as const) {
-    bench(`long primitive array with ${name}`, () => {
-      for (let i = 0; i < iterations; i++) {
-        sink = replaceEqualDeep(numbers, next)
-      }
+    test(`long primitive array with ${name}`, async ({ bench }) => {
+      await bench(`long primitive array with ${name}`, () => {
+        for (let i = 0; i < iterations; i++) {
+          sink = replaceEqualDeep(numbers, next)
+        }
+      }).run()
     })
   }
 
-  bench('small primitive array with the first item changed', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = replaceEqualDeep(smallNumbers, smallNumbersChanged)
-    }
+  test('small primitive array with the first item changed', async ({
+    bench,
+  }) => {
+    await bench('small primitive array with the first item changed', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(smallNumbers, smallNumbersChanged)
+      }
+    }).run()
   })
 
-  bench('mixed search and array updates', () => {
-    for (let i = 0; i < iterations; i++) {
-      const [prev, next] = mixedPairs[i % mixedPairs.length]!
-      sink = replaceEqualDeep(prev, next)
-    }
+  test('mixed search and array updates', async ({ bench }) => {
+    await bench('mixed search and array updates', () => {
+      for (let i = 0; i < iterations; i++) {
+        const [prev, next] = mixedPairs[i % mixedPairs.length]!
+        sink = replaceEqualDeep(prev, next)
+      }
+    }).run()
   })
 
   for (const { name, prev, next } of numericResults) {
-    bench(`long ${name} array with the last item changed`, () => {
-      for (let i = 0; i < iterations; i++) {
-        sink = replaceEqualDeep(prev, next)
-      }
+    test(`long ${name} array with the last item changed`, async ({ bench }) => {
+      await bench(`long ${name} array with the last item changed`, () => {
+        for (let i = 0; i < iterations; i++) {
+          sink = replaceEqualDeep(prev, next)
+        }
+      }).run()
     })
   }
 })
 
 describe('consume structurally shared arrays', () => {
-  bench('sum changed primitive array by index', () => {
-    for (let i = 0; i < iterations; i++) {
-      let sum = 0
-      for (let j = 0; j < consumedNumbers.length; j++) {
-        sum += consumedNumbers[j]!
-      }
-      sink = sum
-    }
-  })
-
-  bench('reduce changed primitive array', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = consumedNumbers.reduce((sum, value) => sum + value, 0)
-    }
-  })
-
-  for (const { name, result } of numericResults) {
-    bench(`sum changed ${name} array by index`, () => {
+  test('sum changed primitive array by index', async ({ bench }) => {
+    await bench('sum changed primitive array by index', () => {
       for (let i = 0; i < iterations; i++) {
         let sum = 0
-        for (let j = 0; j < result.length; j++) {
-          sum += result[j]!
+        for (let j = 0; j < consumedNumbers.length; j++) {
+          sum += consumedNumbers[j]!
         }
         sink = sum
       }
+    }).run()
+  })
+
+  test('reduce changed primitive array', async ({ bench }) => {
+    await bench('reduce changed primitive array', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = consumedNumbers.reduce((sum, value) => sum + value, 0)
+      }
+    }).run()
+  })
+
+  for (const { name, result } of numericResults) {
+    test(`sum changed ${name} array by index`, async ({ bench }) => {
+      await bench(`sum changed ${name} array by index`, () => {
+        for (let i = 0; i < iterations; i++) {
+          let sum = 0
+          for (let j = 0; j < result.length; j++) {
+            sum += result[j]!
+          }
+          sink = sum
+        }
+      }).run()
     })
 
-    bench(`reduce changed ${name} array`, () => {
-      for (let i = 0; i < iterations; i++) {
-        sink = result.reduce((sum, value) => sum + value, 0)
-      }
+    test(`reduce changed ${name} array`, async ({ bench }) => {
+      await bench(`reduce changed ${name} array`, () => {
+        for (let i = 0; i < iterations; i++) {
+          sink = result.reduce((sum, value) => sum + value, 0)
+        }
+      }).run()
     })
   }
 })
 
 describe('deepEqual', () => {
-  bench('equal empty objects', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = deepEqual(empty, {})
-    }
+  test('equal empty objects', async ({ bench }) => {
+    await bench('equal empty objects', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = deepEqual(empty, {})
+      }
+    }).run()
   })
 
-  bench('equal flat search (partial)', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = deepEqual(search, searchCopy, true)
-    }
+  test('equal flat search (partial)', async ({ bench }) => {
+    await bench('equal flat search (partial)', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = deepEqual(search, searchCopy, true)
+      }
+    }).run()
   })
 
-  bench('nested search with one changed leaf', () => {
-    for (let i = 0; i < iterations; i++) {
-      sink = deepEqual(nested, nestedLeafChanged)
-    }
+  test('nested search with one changed leaf', async ({ bench }) => {
+    await bench('nested search with one changed leaf', () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = deepEqual(nested, nestedLeafChanged)
+      }
+    }).run()
   })
 })
 

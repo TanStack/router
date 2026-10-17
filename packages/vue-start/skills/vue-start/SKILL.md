@@ -36,7 +36,7 @@ This skill covers the Vue-specific bindings, setup, and patterns for TanStack St
 
 All core APIs (`createServerFn`, `createMiddleware`, `createStart`, `createIsomorphicFn`, `createServerOnlyFn`, `createClientOnlyFn`) are available from `@tanstack/vue-start`.
 
-Server utilities (`getRequest`, `getRequestHeader`, `setResponseHeader`, `setCookie`, `getCookie`, `useSession`) are imported from `@tanstack/vue-start/server`.
+Server utilities (`getRequest`, `getRequestHeader`, `setResponseHeader`, `setCookie`, `getCookie`) are imported from `@tanstack/vue-start/server`.
 
 ## Full Project Setup
 

@@ -1,4 +1,5 @@
 ---
+'@tanstack/react-router': patch
 '@tanstack/react-start': patch
 '@tanstack/router-core': patch
 '@tanstack/router-plugin': patch

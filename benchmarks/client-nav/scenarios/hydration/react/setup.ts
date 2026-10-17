@@ -9,13 +9,6 @@ import type { FixtureArtifact } from './fixture'
 import type * as Client from './src/client'
 
 type ClientApp = typeof Client
-type TaskHooks = {
-  opts: {
-    beforeEach?: () => void | Promise<void>
-    afterEach?: () => void | Promise<void>
-  }
-}
-
 const turn = () => new Promise<void>((resolve) => setImmediate(resolve))
 
 // React's scheduler ends a time slice once performance.now() has advanced 5 ms.
@@ -319,11 +312,5 @@ export function setup({ countRenders = false } = {}) {
     after,
     snapshot,
     schedulerTasks,
-    // Vitest passes setup to the Tinybench Bench, where it runs once per
-    // warmup/run stage. Install the Task's public per-iteration hooks there.
-    installIterationHooks(task: TaskHooks) {
-      task.opts.beforeEach = before
-      task.opts.afterEach = after
-    },
   }
 }
