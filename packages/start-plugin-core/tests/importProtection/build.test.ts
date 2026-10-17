@@ -275,6 +275,46 @@ export const read = () => secret() + '|' + d()
   )
 })
 
+// A build reports the denied imports that survive tree-shaking: "If an import
+// is eliminated from the final bundle, no violation is reported"
+// (guide/import-protection.md, "False Positives: Dev vs Build"; its example is a marked file
+// re-exported through a mixed barrel that the client never uses).
+// Source: mutation run R4 (generateBundle's survival check, spc:5266, 5268,
+// 5275).
+describe.each(startBundlers)('%s build, tree-shaken imports', (bundler) => {
+  // Bug (Rsbuild): same as the pins "a denied module the client bundle drops
+  // does not fail the build" (known-bugs.test.ts): the Rsbuild report step
+  // walks every module of the module graph, used or not, so the marked
+  // module the client bundle drops still fails the build.
+  // Impact: on Rsbuild, a mixed barrel re-exporting a server-only-marked
+  // module fails the build even when the client only uses its other exports.
+  const barrelTest = bundler === 'rsbuild' ? test.fails : test
+  barrelTest(
+    'a server-only-marked module re-exported by a barrel the client uses other exports of builds without any report',
+    async () => {
+      const { client } = await buildStart({
+        bundler,
+        files: {
+          ...deniedModules['a server-only-marked module'].files,
+          'src/barrel.ts': `export { secret } from './marked'
+export const label = () => 'client'
+`,
+          'src/entry.ts': `import { label } from './barrel'
+export const read = () => label()
+`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expect({
+        reported: reportedViolations(client.warnings),
+        hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
+        read: (await client.run(`return entry.read()`)).result,
+      }).toEqual({ reported: [], hasRealCode: false, read: 'client' })
+    },
+    timeout,
+  )
+})
+
 // `behavior: 'mock'` builds: a denied import is replaced with a mock (and
 // a warning); the real module's code stays out of the bundle.
 describe.each(startBundlers)('%s build, mock mode', (bundler) => {
@@ -440,6 +480,43 @@ export const read = () => [String(secret), ok(), fine(), String(s())].join(',')
         hasRealCode: false,
         read: '[import-protection mock],MARK_SAFE,MARK_FINE,[import-protection mock]',
       })
+    },
+    timeout,
+  )
+
+  // The route module and its split component are two modules of the bundle
+  // that import the denied file for the same import of the source.
+  // Source: mutation run R4 (spc:5296, 5299).
+  test(
+    'a denied import of a route used by its loader and its split component is warned once',
+    async () => {
+      const { client } = await buildStart({
+        bundler,
+        files: {
+          ...routerRuntimeFiles,
+          ...deniedModules['a denied file'].files,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { secret } from '../secret.server'
+export const Route = createFileRoute('/')({
+  loader: () => String(secret()),
+  component: () => String(secret()),
+})
+`,
+          'src/router.ts': `import { routeTree } from './routeTree.gen'
+export const getRouter = () => ({ routeTree })
+`,
+          'src/entry.ts': `export { getRouter } from './router'\n`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'mock' } },
+      })
+      expect(client.where('MARK_SECRET')).toBe('nowhere')
+      expect(reportedViolations(client.warnings)).toEqual([
+        {
+          environment: 'client',
+          importer: expect.stringMatching(/^src\/routes\/index\.tsx/),
+        },
+      ])
     },
     timeout,
   )
