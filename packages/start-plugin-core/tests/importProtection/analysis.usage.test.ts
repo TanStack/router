@@ -189,6 +189,85 @@ describe('findPostCompileUsagePos', () => {
       pos(`import { denied } from 'denied';\n(denied)()`, 'denied'),
     ).toEqual({ line: 2, column0: 1 })
   })
+
+  // Line 2 does not use the import (it shadows or merely names `x`, or does
+  // not mention it); the use of the import is on line 3.
+  test.each([
+    ['a for-in on an identifier', `let k; for (k in {}) { console.log(k) }`],
+    ['a for without clauses', `for (;;) { break }`],
+    ['a for without a test', `for (let i = 0; ; i++) { break }`],
+    ['a for without an update', `for (let i = 0; i < 1; ) { break }`],
+    ['array holes', `function f() { const [, a] = [1, 2]; return a }`],
+    ['an object pattern parameter', `function a({ x }) { return x }`],
+    ['an object rest parameter', `function a({ ...x }) { return x }`],
+    ['an array pattern parameter', `function a([, x]) { return x }`],
+    ['a default parameter', `function a(x = 1) { return x }`],
+    ['a rest parameter', `function a(...x) { return x }`],
+    ['a block class', `function a(ok) { if (ok) { class x {} return x } }`],
+    [
+      'a block function',
+      `function a(ok) { if (ok) { function x() {} return x } }`,
+    ],
+    ['a named function expression', `const g = function x() { return x }`],
+    ['a class expression name', `const C = class x { static y = 1 }`],
+    ['a for-let', `for (let x = 0; x < 1; x++) { console.log(x) }`],
+    ['a for-of', `for (const x of [1]) { console.log(x) }`],
+    ['an object key', `const o = { x: 1 }`],
+  ])('skips %s', (_name, line2) => {
+    const code = `import { x } from 'denied'\n${line2}\nexport const later = x`
+    expect(pos(code, 'denied')?.line).toBe(3)
+  })
+
+  test('a var of a nested function does not shadow the enclosing function', () => {
+    const code = `import { x } from 'denied'
+function a() { function b() { var x = 1 } return x }
+export const later = x`
+    expect(pos(code, 'denied')?.line).toBe(2)
+  })
+
+  // Line 2 uses the import inside a loop or a catch clause.
+  test.each([
+    ['a for initialiser', `for (let i = x(); i < 1; i++) {}`],
+    ['a for test', `for (let i = 0; x(i); i++) {}`],
+    ['a for update', `for (let i = 0; i < 1; i = x(i)) {}`],
+    ['a for body', `for (let i = 0; i < 1; i++) { x() }`],
+    ['a for-of right side', `for (const i of x()) {}`],
+    ['a for-of body', `for (const i of [1]) { x() }`],
+    ['a catch body', `try {} catch { x() }`],
+  ])('finds a use in %s', (_name, line2) => {
+    const code = `import { x } from 'denied'\n${line2}\nexport const later = x`
+    expect(pos(code, 'denied')?.line).toBe(2)
+  })
+
+  // A call (or `new`, or a namespace member read) is the clearest place to
+  // report a use; otherwise the first use is reported.
+  test.each([
+    ['a call after a read', `export const first = x\nx()`, 3],
+    ['a call after a call argument', `foo(x)\nx()`, 3],
+    ['`new` after a read', `export const first = x\nnew x()`, 3],
+    ['a call after a `new` argument', `new Map(x)\nx()`, 3],
+    [
+      'the first read before a computed key',
+      `export const first = x\nobj[x]`,
+      2,
+    ],
+    ['an object value', `export const o = { a: x }`, 2],
+    ['a re-export', `export { x }`, 2],
+    ['an aliased re-export', `export { x as leaked }`, 2],
+  ])('reports %s', (_name, rest, line) => {
+    expect(pos(`import { x } from 'denied'\n${rest}`, 'denied')?.line).toBe(
+      line,
+    )
+  })
+
+  test('reports a namespace member read after a read of the namespace', () => {
+    expect(
+      pos(
+        `import * as ns from 'denied'\nexport const first = ns\nns.read`,
+        'denied',
+      )?.line,
+    ).toBe(3)
+  })
 })
 
 // The violation import protection reports for a denied import in a module the
