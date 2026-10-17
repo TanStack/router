@@ -236,6 +236,7 @@ describe('route names', () => {
       files: ['users.tsx', 'users/$id.tsx', 'users/id.tsx'],
       ids: ['/users', '/users/$id', '/users/id'],
     },
+    { files: ['a b.tsx', 'ab.tsx'], ids: ['/a b', '/ab'] },
   ])('routes $ids get their own routes', async ({ files, ids }) => {
     const root = await appWithRoutes(files)
     const { generatedRouteTree } = await generate(root)
