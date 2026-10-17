@@ -93,6 +93,7 @@ export async function prerender({
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
+    const failures: Array<unknown> = []
 
     startConfig.pages = validateAndNormalizePrerenderPages(
       startConfig.pages,
@@ -107,6 +108,10 @@ export async function prerender({
     }
 
     await queue.start()
+
+    if (failures.length) {
+      throw failures[0]
+    }
 
     return Array.from(prerendered)
 
@@ -134,6 +139,8 @@ export async function prerender({
       }
 
       queue.add(async () => {
+        if (failures.length) return
+
         logger.info(`Crawling: ${page.path}`)
         const retries = retriesByPath.get(page.path) || 0
 
@@ -235,7 +242,7 @@ export async function prerender({
             retriesByPath.set(page.path, retries + 1)
             addCrawlPageTask(page)
           } else if (prerenderOptions.failOnError ?? true) {
-            throw error
+            failures.push(error)
           }
         }
       })
