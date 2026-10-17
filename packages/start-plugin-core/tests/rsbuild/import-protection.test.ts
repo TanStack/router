@@ -2,7 +2,8 @@ import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { compileMatchers } from '../../src/import-protection/matchers'
 import { getRsbuildResolvedImportProtectionCheck } from '../../src/rsbuild/import-protection'
-import { reportedViolations } from '../importProtection/start-apps'
+import { buildStart } from '../build-harness'
+import { reportedViolations, rejection } from '../importProtection/start-apps'
 import { runRsbuildClient, startRsbuildDevServer } from '../rsbuild-dev-server'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 import type { ImportProtectionOptions } from '../../src/schema'
@@ -243,6 +244,31 @@ console.log(secret(), other)
     expect(resolved).toEqual(['src/lib.ts', 'src/lib/index.ts'])
   }, 30_000)
 })
+
+// `rsbuild build --watch`: each build reports the violations it bundles,
+// whatever an earlier build reported.
+// Source: round 4 mutation testing (rsbuild host, the state of a previous
+// build).
+test('Rsbuild build --watch: a rebuild for an unrelated edit fails on the violation again', async () => {
+  const error = await rejection(
+    buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/other.ts': `export const other = 1\n`,
+        'src/entry.ts': `import { secret } from './secret.server'
+import { other } from './other'
+export const read = () => secret() + other
+`,
+      },
+      entry: 'src/entry.ts',
+      watchEdits: { 'src/other.ts': `export const other = 2\n` },
+    }),
+  )
+  expect(reportedViolations(error.message)).toEqual([
+    { environment: 'client', importer: 'src/entry.ts:3:27' },
+  ])
+}, 60_000)
 
 // Source: mutation run R3 ip-rsbuild R7 and ip-misc P10.
 test('Rsbuild dev: the client mock of each denied import reports its own use in the browser console', async () => {
