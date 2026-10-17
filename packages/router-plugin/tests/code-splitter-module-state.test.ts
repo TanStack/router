@@ -649,3 +649,426 @@ ${options.join('\n')}
     },
   )
 })
+
+// A binding the loader (route module) and the split component both read
+// (directly or through what they call) is created once, and both get it.
+describe('a binding the loader and the split component share', () => {
+  // `useQuery({ ... })` in a split component: only `createFileRoute(...)`
+  // gives the route options.
+  it('is created once when the component calls a hook with an options object', async () => {
+    const route = await loadRoute(
+      `${head}import { useThing } from './thing'
+const state = { count: 0 }
+export const Route = createFileRoute('/')({
+  loader: () => ++state.count,
+  component: () => {
+    const value = useThing({ label: 'x' })
+    return <p>{state.count}{value.label}</p>
+  },
+})
+`,
+      { stubs: { './thing': { useThing: (options: unknown) => options } } },
+    )
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      [1, '<p>1x</p>'],
+    )
+  })
+
+  it('keeps exported classes next to it importable, with one identity', async () => {
+    const route = await loadRoute(`${head}export class AppError extends Error {}
+export class Cache {
+  value = 'cached'
+}
+class Local {
+  value = 'local'
+}
+export const Route = createFileRoute('/')({
+  loader: () => ({ AppError, cached: new Cache().value, local: new Local().value }),
+  component: () => AppError,
+})
+`)
+    await expectValidModules(route.modules)
+    const imported = await route.importFromRoute(
+      `export { AppError, Cache } from '#route'\n`,
+    )
+    const loaded = route.options.loader()
+    expect({
+      sameInLoader: loaded.AppError === imported.AppError,
+      sameInComponent: (await route.load('component'))() === imported.AppError,
+      cached: loaded.cached,
+      local: loaded.local,
+      cache: new imported.Cache().value,
+    }).toEqual({
+      sameInLoader: true,
+      sameInComponent: true,
+      cached: 'cached',
+      local: 'local',
+      cache: 'cached',
+    })
+  })
+
+  /**
+   * Loads a route whose loader passes `loader` and whose split component
+   * passes `component` (expressions over `declarations`) to `see`, and
+   * checks that both ran with what the route file declares: `init` (called
+   * once by `declarations`) ran once, and the loader and the component got
+   * the same value when they read the same expression.
+   */
+  async function expectSharedOnce({
+    declarations,
+    loader = 'value',
+    component = 'value',
+  }: {
+    declarations: string
+    loader?: string
+    component?: string
+  }) {
+    let inits = 0
+    const seen: Array<unknown> = []
+    const route = await loadRoute(
+      `${head}import { init, see, UI } from './state'
+${declarations}
+export const Route = createFileRoute('/')({
+  loader: () => see(${loader}),
+  component: () => <p>{String(see(${component}))}</p>,
+})
+`,
+      {
+        stubs: {
+          './state': {
+            init: <T>(value: T) => {
+              inits++
+              return value
+            },
+            see: (value: any) => {
+              seen.push(value)
+              return typeof value?.read === 'function'
+                ? value.read().name
+                : 'ok'
+            },
+            UI: { Title: () => 'title' },
+          },
+        },
+      },
+    )
+    await expectValidModules(route.modules)
+    const loaded = route.options.loader()
+    expect((await route.load('component'))()).toBe(`<p>${loaded}</p>`)
+    expect(seen).toHaveLength(2)
+    if (loader === component) {
+      expect(seen[0]).toBe(seen[1])
+    }
+    expect(inits).toBe(1)
+  }
+
+  it.each([
+    {
+      name: 'a class that reads another binding',
+      declarations: `const config = init({ name: 'config' })
+class Store { settings = config }
+const value = new Store()`,
+    },
+    {
+      name: 'an array destructuring',
+      declarations: `const [a, b] = init([{ id: 'a' }, { id: 'b' }])`,
+      loader: 'a',
+      component: 'b',
+    },
+    {
+      name: 'an array destructuring with a rest element',
+      declarations: `const [first, ...rest] = init([1, 2, 3])`,
+      loader: 'first',
+      component: 'rest',
+    },
+    {
+      name: 'an object read as a JSX member tag',
+      declarations: `const Parts = init({ Title: () => 'title' })
+const Header = () => <Parts.Title />`,
+      loader: 'Header()',
+      component: 'Header()',
+    },
+    {
+      name: 'a helper with a block-scoped local of the same name in one branch',
+      declarations: `const config = init({ name: 'config' })
+function read() {
+  if (Math.random() > 2) { const config = { name: 'local' }; return config }
+  return config
+}
+const value = { read }`,
+    },
+    {
+      name: 'an object with a var of the same name in a sibling method',
+      declarations: `const config = init({ name: 'config' })
+const value = {
+  local() { var config = 'local'; return config },
+  read() { return config },
+}`,
+    },
+  ])('reaches the split component through $name', expectSharedOnce)
+
+  // Each row declares a module-level `title` (or component) that reads
+  // `Route`, and a local of the same name inside the shared value: the local
+  // is not a read of the module-level binding.
+  it.each([
+    ['an arrow function parameter', `init({ format: (title) => title })`],
+    [
+      'a function expression parameter',
+      `init({ format: function (title) { return title } })`,
+    ],
+    ['an object method parameter', `init({ format(title) { return title } })`],
+    [
+      'a class method parameter',
+      `init(new (class { format(title) { return title } })())`,
+    ],
+    [
+      'a private method parameter',
+      `init(new (class { #format(title) { return title } run() { return this.#format(1) } })())`,
+    ],
+    ['a destructured parameter', `init({ format: ({ title }) => title })`],
+    ['a rest parameter', `init({ f: (...title) => title })`],
+    [
+      'a catch parameter',
+      `init({ run: () => { try { return 1 } catch (title) { return title } } })`,
+    ],
+    ['a local const', `init({ run: () => { const title = 1; return title } })`],
+    [
+      'a const in a nested block',
+      `init({ run: () => { if (Math.random() < 2) { const title = 1; return title } return 0 } })`,
+    ],
+    [
+      'a var in a nested block',
+      `init({ run: () => { if (Math.random() < 2) { var title = 1 } return title } })`,
+    ],
+    [
+      'a function declared after its use',
+      `init({ run: () => { return title(); function title() { return 1 } } })`,
+    ],
+    [
+      'a const read by a closure before its declaration',
+      `init({ run: () => { const get = () => title; const title = 1; return get() } })`,
+    ],
+    [
+      'a class declared after its use',
+      `init({ run: () => { const make = () => new title(); class title {} return make() } })`,
+    ],
+    [
+      'a for-of binding',
+      `init({ run: () => { for (const title of [1]) { return title } } })`,
+    ],
+    [
+      'the name of a class expression',
+      `init(class title { static self = () => title })`,
+    ],
+    [
+      'a class declared in a function',
+      `init({ run: () => { class title {} return new title() } })`,
+    ],
+    [
+      'the name of a function expression',
+      `init({ run: function title() { return title } })`,
+    ],
+    [
+      'a function declared in a function',
+      `init({ run: () => { function title() { return 1 } return title() } })`,
+    ],
+    [
+      'a local type alias',
+      `init({ run: () => { type title = number; const x: title = 1; return x } })`,
+    ],
+    [
+      'a local enum',
+      `init({ run: () => { enum title { A } return title.A } })`,
+    ],
+  ])(
+    'is not tied to a module-level helper reading Route by %s of the same name',
+    (_, value) =>
+      expectSharedOnce({
+        declarations: `const title = () => Route.id
+const value = ${value}`,
+      }),
+  )
+
+  it.each([
+    [
+      'a destructured prop rendered as JSX',
+      `const Icon = () => <i>{Route.id}</i>
+const value = init({ render: ({ Icon }) => <Icon /> })`,
+    ],
+    [
+      'the property of a JSX member tag',
+      `const Title = () => <i>{Route.id}</i>
+const value = init({ render: () => <UI.Title /> })`,
+    ],
+    [
+      'a JSX attribute name',
+      `const Title = () => Route.id
+const value = init({ render: () => <div Title="x" /> })`,
+    ],
+  ])(
+    'is not tied to a module-level component reading Route by %s of the same name',
+    (_, declarations) => expectSharedOnce({ declarations }),
+  )
+})
+
+// The route module keeps what the rest of the app imports from the route
+// file working when a split component comes from the same declaration.
+describe('a split component declared next to other bindings', () => {
+  it.each([
+    { name: 'plain', pattern: '{ Panel, usePanel }' },
+    {
+      name: 'with defaults',
+      pattern: '{ Panel = Fallback, usePanel = useFallback }',
+    },
+  ])(
+    'keeps the sibling of a destructuring working ($name)',
+    async ({ pattern }) => {
+      const route = await loadRoute(
+        `${head}import { createPanel } from './panel'
+const Fallback = () => <p>fallback</p>
+const useFallback = () => 'fallback'
+const ${pattern} = createPanel()
+export function usePanelState() {
+  return usePanel()
+}
+export const Route = createFileRoute('/')({ component: Panel })
+`,
+        {
+          stubs: {
+            './panel': {
+              createPanel: () => ({
+                Panel: () => '<p>panel</p>',
+                usePanel: () => 'state',
+              }),
+            },
+          },
+        },
+      )
+      await expectValidModules(route.modules)
+      expect([
+        route.exports.usePanelState(),
+        (await route.load('component'))(),
+      ]).toEqual(['state', '<p>panel</p>'])
+    },
+  )
+
+  it('reads an exported object destructuring created once', async () => {
+    let calls = 0
+    const route = await loadRoute(
+      `${head}import { getConfig } from './config'
+export const { title } = getConfig()
+export const Route = createFileRoute('/')({
+  component: () => <p>{title}</p>,
+})
+`,
+      {
+        stubs: {
+          './config': {
+            getConfig: () => {
+              calls++
+              return { title: 't' }
+            },
+          },
+        },
+      },
+    )
+    await expectValidModules(route.modules)
+    expect([
+      (await route.load('component'))(),
+      calls,
+      route.exports.title,
+    ]).toEqual(['<p>t</p>', 1, 't'])
+  })
+})
+
+// In a JavaScript route file, imports are not elided by a type-aware
+// transform, so the route module itself must not import what only split
+// options read.
+describe('state only split options read, in a .jsx route file', () => {
+  const stateRoute = (options: string) => `${head}import { init } from './init'
+const store = init({ label: 'shared' })
+export const Route = createFileRoute('/')({
+${options}
+})
+`
+
+  it('is created once, when the first of them loads', async () => {
+    let inits = 0
+    const route = await loadRoute(
+      stateRoute(`  component: () => <p>{store.label}</p>,
+  errorComponent: () => <p>{store.label}</p>,`),
+      {
+        filename: 'route.jsx',
+        stubs: {
+          './init': {
+            init: (value: unknown) => {
+              inits++
+              return value
+            },
+          },
+        },
+      },
+    )
+    const atLoad = inits
+    const rendered = [
+      (await route.load('component'))(),
+      (await route.load('errorComponent'))(),
+    ]
+    expect({ atLoad, rendered, inits }).toEqual({
+      atLoad: 0,
+      rendered: ['<p>shared</p>', '<p>shared</p>'],
+      inits: 1,
+    })
+  })
+
+  it('is not created by loading a split option that does not read it', async () => {
+    let inits = 0
+    const route = await loadRoute(
+      stateRoute(`  component: () => <p>{store.label}</p>,
+  errorComponent: () => <p>{store.label}</p>,
+  notFoundComponent: () => <p>nf</p>,`),
+      {
+        filename: 'route.jsx',
+        stubs: {
+          './init': {
+            init: (value: unknown) => {
+              inits++
+              return value
+            },
+          },
+        },
+      },
+    )
+    expect((await route.load('notFoundComponent'))()).toBe('<p>nf</p>')
+    expect(inits).toBe(0)
+    expect((await route.load('component'))()).toBe('<p>shared</p>')
+    expect(inits).toBe(1)
+  })
+
+  it('does not load what only the split component imports with the state the loader shares', async () => {
+    const loaded: Array<string> = []
+    const route = await loadRoute(
+      `${head}import { createStore } from './store'
+import { Chart } from './chart'
+const store = createStore()
+export const Route = createFileRoute('/')({
+  loader: () => store.get(),
+  component: () => <Chart data={store.get()} />,
+})
+`,
+      {
+        filename: 'route.jsx',
+        stubs: {
+          './store': { createStore: () => ({ get: () => 'v' }) },
+          './chart': {
+            get Chart() {
+              loaded.push('./chart')
+              return ({ data }: { data: string }) => `<p>${data}</p>`
+            },
+          },
+        },
+      },
+    )
+    expect([route.options.loader(), loaded]).toEqual(['v', []])
+    expect((await route.load('component'))()).toBe('<p>v</p>')
+  })
+})

@@ -4,6 +4,7 @@ import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   compileRouteModules,
   componentChunk,
+  declaredNames,
   evaluateModule,
   expectValidModules,
   head,
@@ -75,6 +76,23 @@ export const Route = createFileRoute('/')({
       '<div>namespaced</div>',
       '<div>target</div>',
     ])
+  })
+
+  it('keeps the other specifiers of the import a split component comes from', async () => {
+    const route = await loadRoute(
+      `${head}import { Page, title } from './page'
+export const Route = createFileRoute('/')({
+  loader: () => title,
+  component: Page,
+})
+`,
+      { stubs: { './page': { Page: () => '<p>page</p>', title: 'title' } } },
+    )
+    await expectValidModules(route.modules)
+    expect(route.isLazy('component')).toBe(true)
+    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
+      ['title', '<p>page</p>'],
+    )
   })
 
   it('moves a specifier with a string name into the chunk', async () => {
@@ -450,9 +468,24 @@ export const Route = createFileRoute('/_layout')({
       binding: 'loaderFn',
       value: { foo: 'bar' },
     },
+    {
+      name: 'a component default-exported by name, with the errorComponent split',
+      code: `${head}const Page = () => <p>page</p>
+export default Page
+export const Route = createFileRoute('/')({
+  component: Page,
+  errorComponent: () => <p>error</p>,
+})
+`,
+      split: 'errorComponent',
+      option: 'component',
+      binding: 'default',
+      declared: 'Page',
+      value: '<p>page</p>',
+    },
   ])(
     'keep working, and are reported once when not code-split: $name',
-    async ({ code, split, option, binding, value }) => {
+    async ({ code, split, option, binding, value, ...row }) => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       onTestFinished(() => warn.mockRestore())
       const { ids } = compileRouteModules(code)
@@ -468,12 +501,104 @@ export const Route = createFileRoute('/_layout')({
         expect(loaded).toBe(route.exports[binding])
       }
       if (!route.isLazy(option)) {
-        const name = binding === 'default' ? 'Home' : binding
+        const name =
+          'declared' in row
+            ? row.declared
+            : binding === 'default'
+              ? 'Home'
+              : binding
         expect(warnings).toEqual([expect.stringContaining(ids.reference!)])
         expect(warnings[0]).toMatch(
           new RegExp(String.raw`\b(?:${name}|${option})\b`),
         )
       }
+    },
+  )
+
+  it.each([
+    {
+      name: 'a default export of another binding',
+      exports: `const meta = { title: 'home' }
+export default meta`,
+    },
+    {
+      name: 'an exported object destructuring',
+      exports: `const config = { title: 't' }
+export const { title } = config`,
+    },
+  ])(
+    'do not keep an unexported component from being split: $name',
+    async ({ exports }) => {
+      const route = await loadRoute(`${head}${exports}
+function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`)
+      await expectValidModules(route.modules)
+      expect(route.isLazy('component')).toBe(true)
+      expect((await route.load('component'))()).toBe('<p>page</p>')
+    },
+  )
+
+  it.each([
+    {
+      name: 'export function',
+      declaration: `export function helper() {\n  return 'h'\n}`,
+    },
+    { name: 'export const', declaration: `export const helper = () => 'h'` },
+  ])(
+    'stay readable by a split component next to an exported option component ($name)',
+    async ({ declaration }) => {
+      const route = await loadRoute(`${head}${declaration}
+export function NotFound() {
+  return <i>nf</i>
+}
+export const Route = createFileRoute('/')({
+  component: () => <p>{helper()}</p>,
+  notFoundComponent: NotFound,
+})
+`)
+      expect((await route.load('component'))()).toBe('<p>h</p>')
+      expect(route.exports.helper()).toBe('h')
+    },
+  )
+
+  // The chunk of a split option holds only what that option needs: an
+  // exported component of another option is not copied into it.
+  it.each([
+    {
+      name: 'export default function',
+      declaration: `export default function NotFound() {\n  return <i>MARK_NF</i>\n}`,
+    },
+    {
+      name: 'export default by name',
+      declaration: `function NotFound() {\n  return <i>MARK_NF</i>\n}\nexport default NotFound`,
+    },
+    {
+      name: 'export function',
+      declaration: `export function NotFound() {\n  return <i>MARK_NF</i>\n}`,
+    },
+    {
+      name: 'export const',
+      declaration: `export const NotFound = () => <i>MARK_NF</i>`,
+    },
+  ])(
+    "are not copied into another option's chunk ($name)",
+    async ({ declaration }) => {
+      const route = await loadRoute(`${head}${declaration}
+export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+  notFoundComponent: NotFound,
+})
+`)
+      expect((await route.load('component'))()).toBe('<p>page</p>')
+      expect((await route.load('notFoundComponent'))()).toBe('<i>MARK_NF</i>')
+      const chunk = route.chunkOf('component')
+      expect({
+        declares: declaredNames(chunk).has('NotFound'),
+        marker: chunk.includes('MARK_NF'),
+      }).toEqual({ declares: false, marker: false })
     },
   )
 })
@@ -767,5 +892,19 @@ export const Route = createFileRoute('/')({
 export const Route = createFileRoute('/')({ component: () => <div /> })
 `).modules
     expect(reference).toMatch(/@observable\s+export class Store\b/)
+  })
+
+  // Auto-accessor fields (TypeScript 4.9+, ES decorators; MobX 6 and Lit use
+  // them). Compiled only: the module evaluator does not run `accessor`.
+  it('compiles a class with an auto-accessor field that the split component uses', async () => {
+    const { modules } =
+      compileRouteModules(`${head}class Store { accessor count = 1 }
+const store = new Store()
+export const Route = createFileRoute('/')({
+  loader: () => store,
+  component: () => <p>{store.count}</p>,
+})
+`)
+    await expectValidModules(modules)
   })
 })
