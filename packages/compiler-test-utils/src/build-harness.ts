@@ -152,6 +152,13 @@ export interface BundleTarget {
    * defaults (e.g. `solid`, for packages that ship JSX source).
    */
   conditions?: Array<string>
+  /**
+   * webpack and Rspack: build in watch mode with a memory cache, then write
+   * these files (by path relative to the app root) and describe the output
+   * of the cached rebuild they cause, as a dev or `--watch` build would emit
+   * after an edit.
+   */
+  rebuildAfter?: Record<string, string>
 }
 
 export interface RunResult {
@@ -323,6 +330,7 @@ interface BundlerConfig {
   jsxImportSource: string
   sourceRules: Array<Record<string, unknown>> | undefined
   conditions: Array<string>
+  rebuildAfter: Record<string, string> | undefined
 }
 
 /** An emitted chunk, as a bundler reports it. */
@@ -360,6 +368,10 @@ async function bundle(
     jsxImportSource: target.jsxImportSource ?? 'react',
     sourceRules: target.sourceRules,
     conditions: target.conditions ?? [],
+    rebuildAfter: target.rebuildAfter,
+  }
+  if (config.rebuildAfter && bundler !== 'webpack' && bundler !== 'rspack') {
+    throw new Error(`rebuildAfter: not supported for ${bundler}`)
   }
   const warnings: Array<string> = []
   const consoleMessages: Array<string> = []
@@ -598,6 +610,22 @@ async function buildWithWebpackApi(
     plugins: config.plugin ? [config.plugin()] : [],
   }
 
+  if (config.rebuildAfter) {
+    const stats = await watchAndRebuild(
+      bundler,
+      { ...options, cache: bundler === 'rspack' ? true : { type: 'memory' } },
+      config.root,
+      config.rebuildAfter,
+      warnings,
+    )
+    const json = stats.toJson(statsOptions)
+    warnings.push(...statsMessages(json.warnings))
+    if (json.errors?.length) {
+      throw new BuildError(bundler, statsMessages(json.errors), warnings)
+    }
+    return chunksOfStats(json, { entry: 'entry', extension: '.mjs' })
+  }
+
   const stats = await new Promise<WebpackStats>((resolve, reject) => {
     const run = (compiler: WebpackCompiler) =>
       compiler.run((error, result) => {
@@ -626,6 +654,63 @@ async function buildWithWebpackApi(
     throw new BuildError(bundler, statsMessages(json.errors), warnings)
   }
   return chunksOfStats(json, { entry: 'entry', extension: '.mjs' })
+}
+
+/**
+ * Builds in the compiler's watch mode (`compiler.watch`, with `options`'
+ * cache), waits for the builds to settle, writes `files` (paths relative to
+ * `root`), and returns the stats of the last build once the rebuilds they
+ * cause settle. Fails after 30 s without a settled rebuild.
+ */
+async function watchAndRebuild(
+  bundler: 'webpack' | 'rspack',
+  options: Record<string, unknown>,
+  root: string,
+  files: Record<string, string>,
+  warnings: Array<string>,
+): Promise<WebpackStats> {
+  const compiler = (bundler === 'rspack'
+    ? (await import('@rsbuild/core')).rspack(options as never)
+    : (await import('webpack')).default(
+        options as never,
+      )) as unknown as WebpackCompiler & {
+    watch: (
+      options: { aggregateTimeout: number },
+      callback: (error: Error | null, stats?: WebpackStats) => void,
+    ) => { close: (callback: () => void) => void }
+  }
+  let builds = 0
+  let last: { error: Error | null; stats?: WebpackStats } | undefined
+  const watching = compiler.watch({ aggregateTimeout: 50 }, (error, stats) => {
+    builds++
+    last = { error, stats }
+  })
+  const deadline = Date.now() + 30_000
+  /** Waits for a build after the `after`th, then for 500 ms without one. */
+  const settle = async (after: number) => {
+    let seen = -1
+    while (builds <= after || seen !== builds) {
+      if (Date.now() > deadline) {
+        throw new BuildError(bundler, ['timed out waiting for a build'], [])
+      }
+      seen = builds > after ? builds : -1
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+  }
+  try {
+    await settle(0)
+    const before = builds
+    for (const [file, code] of Object.entries(files)) {
+      await writeFile(path.join(root, file), code)
+    }
+    await settle(before)
+  } finally {
+    await new Promise<void>((resolve) => watching.close(() => resolve()))
+  }
+  if (last!.error) {
+    throw new BuildError(bundler, [errorMessage(last!.error)], warnings)
+  }
+  return last!.stats!
 }
 
 /** The `toJson` options of the stats `chunksOfStats` reads. */
@@ -867,6 +952,60 @@ export async function describeBuild(
       }),
     dispose: input.dispose,
   }
+}
+
+/**
+ * The segments of a source map that carry a name (`names`), with the
+ * original position each maps to: `source` as the map names it, `line`
+ * 1-based, `column` 0-based (source map columns).
+ */
+export function namedSegments(
+  map: SourceMap,
+): Array<{ name: string; source: string; line: number; column: number }> {
+  const base64 =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  const segments: Array<{
+    name: string
+    source: string
+    line: number
+    column: number
+  }> = []
+  // Running values of the source index, line, column and name index.
+  const state = [0, 0, 0, 0]
+  for (const line of map.mappings.split(';')) {
+    for (const segment of line.split(',')) {
+      if (!segment) {
+        continue
+      }
+      const fields: Array<number> = []
+      let value = 0
+      let shift = 0
+      for (const char of segment) {
+        const digit = base64.indexOf(char)
+        value += (digit & 31) << shift
+        if (digit & 32) {
+          shift += 5
+        } else {
+          fields.push(value & 1 ? -(value >>> 1) : value >>> 1)
+          value = 0
+          shift = 0
+        }
+      }
+      // fields[0] is the generated column.
+      for (let index = 1; index < fields.length; index++) {
+        state[index - 1]! += fields[index]!
+      }
+      if (fields.length === 5) {
+        segments.push({
+          name: map.names[state[3]!]!,
+          source: map.sources[state[0]!]!,
+          line: state[1]! + 1,
+          column: state[2]!,
+        })
+      }
+    }
+  }
+  return segments
 }
 
 /** A position in an original source file, according to a source map. */

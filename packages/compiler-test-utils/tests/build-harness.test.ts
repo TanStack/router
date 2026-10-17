@@ -11,6 +11,7 @@ import {
   bundleApp as bundleAppIn,
   bundlers,
   createApp,
+  namedSegments,
   originalFrameOf,
 } from '../src/build-harness'
 import type { BundleOptions, Placement } from '../src/build-harness'
@@ -168,6 +169,35 @@ test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async (
     })
   }
   expect(seen).toEqual({ undefined: 'production', null: undefined })
+})
+
+test.each(['webpack', 'rspack'] as const)(
+  '%s: rebuildAfter describes the output of the rebuild after the edit',
+  async (bundler) => {
+    const app = await bundleApp({
+      bundler,
+      files: { 'entry.ts': `export const value = 'v1'\n` },
+      rebuildAfter: { 'entry.ts': `export const value = 'v2'\n` },
+    })
+    expect((await app.run('return entry.value')).result).toBe('v2')
+  },
+  timeout,
+)
+
+// Two named segments: `a` at line 1 column 0 of `x.ts`, `b` at line 2
+// column 4 of `y.ts`; one segment without a name.
+test('namedSegments decodes the named segments of a source map', () => {
+  expect(
+    namedSegments({
+      version: 3,
+      sources: ['x.ts', 'y.ts'],
+      names: ['a', 'b'],
+      mappings: 'AAAAA,EAAA;ACCIC',
+    }),
+  ).toEqual([
+    { name: 'a', source: 'x.ts', line: 1, column: 0 },
+    { name: 'b', source: 'y.ts', line: 2, column: 4 },
+  ])
 })
 
 describe('side-effect hints', () => {

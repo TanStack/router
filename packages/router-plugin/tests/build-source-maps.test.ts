@@ -7,7 +7,10 @@
  * "source maps".)
  */
 import { describe, expect, test } from 'vitest'
-import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
+import {
+  namedSegments,
+  originalFrameOf,
+} from '@tanstack/compiler-test-utils/build-harness'
 import { build, routeApp, routeHead } from './build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
@@ -154,6 +157,43 @@ export const Route = createFileRoute('/')({
         file: 'routes/index.tsx',
         line: lineOf(source, `throw new Error('${marker}`),
       })
+    },
+    timeout,
+  )
+
+  // Devtools and error trackers show a minified variable by its original
+  // name through the map's `names`. Source: the #8504 probe (Y-names).
+  test(
+    'a minified split component parameter keeps its name in the map',
+    async () => {
+      const source = `${routeHead()}function Page(props: { title?: string }) {
+  return <p>{props.title ?? 'MARK_NAMED_PAGE'}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`
+      const app = await build({
+        bundler: 'vite',
+        env: 'client',
+        minify: true,
+        sourcemap: true,
+        files: routeApp(source, { env: 'client' }),
+      })
+      const chunk = app.chunks.find((candidate) =>
+        candidate.code.includes('MARK_NAMED_PAGE'),
+      )!
+      // The minifier renamed the parameter.
+      expect(chunk.code).not.toMatch(/\bprops\b/)
+      const line = lineOf(source, 'function Page(props')
+      const column = source.split('\n')[line - 1]!.indexOf('props')
+      expect(
+        namedSegments(chunk.map!)
+          .filter(
+            (segment) =>
+              segment.name === 'props' &&
+              segment.source.split('?')[0]!.endsWith('routes/index.tsx'),
+          )
+          .map((segment) => [segment.line, segment.column]),
+      ).toContainEqual([line, column])
     },
     timeout,
   )

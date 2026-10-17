@@ -103,25 +103,27 @@ export const Route = createFileRoute('/page')({
 
   /**
    * Loads the route modules in order (the URLs the route module imports, as
-   * the first load finds them), edits the route from `twoCards` to
-   * `oneCard`, requests them again in the order `reorder` gives, and compares
-   * them with what a dev server started after the edit compiles.
+   * the first load finds them), edits the route from `before` to `after`
+   * (default `twoCards` to `oneCard`), requests them again in the order
+   * `reorder` gives, and compares them with what a dev server started after
+   * the edit compiles.
    */
   async function editAndCompare(
     reorder: (urls: Array<string>) => Array<string>,
+    { before = twoCards, after = oneCard } = {},
   ) {
     const server = await routerDevServer({
-      files: { 'routes/page.tsx': twoCards },
+      files: { 'routes/page.tsx': before },
     })
     // The page loads: the route module first, then the modules it imports
     const urls = await routeModuleUrls(server)
     expect(urls.length).toBeGreaterThan(1)
     await inspect(server, urls, urls)
-    await server.edit({ 'routes/page.tsx': oneCard })
+    await server.edit({ 'routes/page.tsx': after })
     const edited = await inspect(server, reorder(urls), urls)
 
     const fresh = await routerDevServer({
-      files: { 'routes/page.tsx': oneCard },
+      files: { 'routes/page.tsx': after },
     })
     const expected = await inspect(fresh, urls, urls)
     for (const module of Object.values(expected)) {
@@ -151,13 +153,50 @@ export const Route = createFileRoute('/page')({
   // exported ("Export 'CardB' is not defined") and the page stays broken until
   // the next edit or a restart; an added one is copied into each chunk instead
   // of shared (two module states).
-  // Source: gap DV8 (gaps/dev-hmr.md); #8504 fixes it and tests it in
-  // code-splitter-plugin-pipeline.test.ts ("a dev server compiling an edited
-  // route out of order").
-  test.fails(
-    'compiles the shared module and chunks requested before the route module from the edited source',
+  // Source: gap DV8 (gaps/dev-hmr.md); #8504 code-splitter-plugin-pipeline
+  // .test.ts ("a dev server compiling an edited route out of order").
+  test.fails.each([
+    {
+      name: 'removing a component two split options render',
+      before: twoCards,
+      after: oneCard,
+    },
+    {
+      name: 'adding a component two split options render',
+      before: oneCard,
+      after: twoCards,
+    },
+  ])(
+    'compiles the shared module and chunks requested before the route module from the edited source after $name',
+    async ({ before, after }) => {
+      await editAndCompare((urls) => [...urls.slice(1), route], {
+        before,
+        after,
+      })
+    },
+    timeout,
+  )
+
+  // The same race for an exported component a split component renders,
+  // whose private helper the edit removes: main keeps the exported component
+  // and its helpers in the route module, so nothing is stored for them.
+  // An implementation that moves them to a module the chunk shares must not
+  // reach the race. Source: the #8504 probe (hybrid shared modules; #8504
+  // code-splitter-plugin-pipeline.test.ts, first row).
+  test(
+    'compiles the modules requested before the route module from the edited source after removing a helper of an exported component a split component renders',
     async () => {
-      await editAndCompare((urls) => [...urls.slice(1), route])
+      await editAndCompare((urls) => [...urls.slice(1), route], {
+        before: `${head}const prefix = 'a'
+const suffix = 'b'
+export function Card() { return <b>{prefix}{suffix}</b> }
+export const Route = createFileRoute('/page')({ component: () => <Card /> })
+`,
+        after: `${head}const prefix = 'a'
+export function Card() { return <b>{prefix}</b> }
+export const Route = createFileRoute('/page')({ component: () => <Card /> })
+`,
+      })
     },
     timeout,
   )
