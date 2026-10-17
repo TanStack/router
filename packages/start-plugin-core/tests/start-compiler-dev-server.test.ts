@@ -75,6 +75,55 @@ export const later = createServerFn().handler(() => 'MARK_LATER')
   )
 })
 
+describe('Vite dev: a server fn provider environment other than SSR', () => {
+  // The RSC setup of a framework: the `rsc` environment runs the handlers,
+  // and SSR forwards calls by id to it through the `getServerFnById` module
+  // the framework configures.
+  // Source: mutation round 3 sc-hosts 5.
+  test(
+    'SSR calls go through its configured getServerFnById, and the provider runs the handler of the client id',
+    async () => {
+      const server = await startDevServer({
+        environments: [
+          { name: 'client', type: 'client' },
+          {
+            name: 'ssr',
+            type: 'server',
+            getServerFnById: `export async function getServerFnById(id) {
+  return () => 'MARK_FORWARDED:' + id
+}
+`,
+          },
+          { name: 'rsc', type: 'server' },
+        ],
+        providerEnvName: 'rsc',
+        files: {
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler(() => 'MARK_HANDLER')
+`,
+        },
+      })
+      // The client gets the id from the stand-in package
+      const id = (
+        await evaluateServed(server, '/src/fns.ts', { skip: /^\/@vite\b/ })
+      ).greet.functionId
+      /** Calls the server fn of `id` in `environment` through its resolver. */
+      const callById = async (environment: string) => {
+        const { getServerFnById } = await server.import(
+          '#tanstack-start-server-fn-resolver',
+          environment,
+        )
+        return (await getServerFnById(id, { origin: 'client' }))({})
+      }
+      expect({
+        ssr: await callById('ssr'),
+        rsc: await callById('rsc'),
+      }).toEqual({ ssr: `MARK_FORWARDED:${id}`, rsc: 'MARK_HANDLER' })
+    },
+    timeout,
+  )
+})
+
 describe('Vite dev: editing a server fn handler', () => {
   // Source: replaces server-fn-resolver-module.test.ts "imports on every call
   // by default" and "keeps the imported module when memoizeModules is set",
