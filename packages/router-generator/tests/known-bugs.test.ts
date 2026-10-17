@@ -140,13 +140,14 @@ export const Route = ${call}`)
 describe('type-only Route exports', () => {
   // Control for the pin below (same harness): a file without a Route export
   // is left out of the route tree, with a warning naming it.
-  test('a route file without a Route export is left out with a warning', async () => {
-    const { node, warnings } = await generateMovedRoute(
-      `export const helper = 1`,
-    )
-    expect(node).toBeUndefined()
-    expect(warnings.join('\n')).toContain('moved.tsx')
-  })
+  test.each(['export const helper = 1', 'const helper = 1\nexport { helper }'])(
+    'a route file without a Route export is left out with a warning: %s',
+    async (code) => {
+      const { node, warnings } = await generateMovedRoute(code)
+      expect(node).toBeUndefined()
+      expect(warnings.join('\n')).toContain('moved.tsx')
+    },
+  )
 
   // Bug: the generator takes a type-only export named `Route` for the route
   // export: `export type { MyRoute as Route }` gets its route id rewritten,

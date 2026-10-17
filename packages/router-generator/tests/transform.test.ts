@@ -748,3 +748,263 @@ export const Route = createFileRoute('/old')({})`
     })
   })
 })
+
+const routerPackage = "'@tanstack/react-router'"
+
+/** Transforms `source` for the route `/new` (lazy or not). */
+function transformTo(source: string, lazy = false) {
+  return transform({
+    source,
+    ctx: { target: 'react', routeId: '/new', lazy },
+    node: makeNode(),
+  })
+}
+
+/** The output of a transform that must have modified the file. */
+function modifiedOutput(result: ReturnType<typeof transform>) {
+  if (result.result !== 'modified') {
+    throw new Error(`expected modified result, got ${result.result}`)
+  }
+  return result.output
+}
+
+describe('route constructor imports when the route id is already right', () => {
+  it.each([
+    {
+      name: 'no router import',
+      lazy: false,
+      source: `export const Route = createFileRoute('/new')({})`,
+    },
+    {
+      name: 'a stale import of the other constructor',
+      lazy: false,
+      source: `import { createFileRoute } from ${routerPackage}
+import { createLazyFileRoute } from ${routerPackage}
+export const Route = createFileRoute('/new')({})`,
+    },
+    {
+      name: 'a stale import of the other constructor next to another import',
+      lazy: false,
+      source: `import { Link, createFileRoute, createLazyFileRoute } from ${routerPackage}
+export const link = Link
+export const Route = createFileRoute('/new')({})`,
+    },
+    {
+      name: 'only the other constructor imported',
+      lazy: false,
+      source: `import { createLazyFileRoute } from ${routerPackage}
+export const Route = createFileRoute('/new')({})`,
+    },
+    {
+      name: 'the constructor of a lazy route called as createFileRoute',
+      lazy: true,
+      source: `import { createLazyFileRoute } from ${routerPackage}
+export const Route = createFileRoute('/new')({})`,
+    },
+  ])(
+    'the file gets the right constructor import, with $name',
+    async ({ lazy, source }) => {
+      const output = modifiedOutput(transformTo(source, lazy))
+
+      const evaluated = await evaluateRouteFile(output, ['Link'])
+      expect(evaluated.Route.id).toBe('/new')
+      const [required, other] = lazy
+        ? ['createLazyFileRoute', 'createFileRoute']
+        : ['createFileRoute', 'createLazyFileRoute']
+      const imported = valueImports(output, '@tanstack/react-router')
+      expect(imported.filter((name) => name === required)).toHaveLength(1)
+      expect(imported).not.toContain(other)
+      expect(output).not.toContain(`${other}(`)
+    },
+  )
+})
+
+describe('modules that are not routes', () => {
+  it('a module exporting only a helper through an export list is not a route', () => {
+    expect(transformTo(`const helper = 1\nexport { helper }`).result).toBe(
+      'no-route-export',
+    )
+  })
+
+  it.each([
+    {
+      name: 'without an initializer',
+      source: 'export let Route\nexport const x = 1',
+    },
+    {
+      name: 'from another binding',
+      source: `import { postsRoute } from './posts'\nexport const Route = postsRoute`,
+    },
+  ])('a Route export $name is left as it is', ({ source }) => {
+    expect(transformTo(source).result).toBe('not-modified')
+  })
+
+  it('an interpolated template literal route id is an error', () => {
+    expect(
+      transformTo(
+        'const x = 1\nexport const Route = createFileRoute(`/${x}`)({})',
+      ).result,
+    ).toBe('error')
+  })
+})
+
+describe('import declarations the transform rewrites', () => {
+  it.each([
+    {
+      name: 'an inline type specifier in a rewritten declaration',
+      source: `import { type LinkProps, createLazyFileRoute } from ${routerPackage}
+import { createFileRoute } from ${routerPackage}
+export type Props = LinkProps
+export const Route = createFileRoute('/old')({})`,
+    },
+    {
+      name: 'a type-only declaration next to a missing constructor import',
+      source: `import type { LinkProps } from ${routerPackage}
+export type Props = LinkProps
+export const Route = createFileRoute('/old')({})`,
+    },
+  ])('type imports stay type-only: $name', async ({ source }) => {
+    const output = modifiedOutput(transformTo(source))
+
+    expect(valueImports(output, '@tanstack/react-router')).toEqual([
+      'createFileRoute',
+    ])
+    const { module } = parseSync('route.tsx', output)
+    expect(
+      module.staticImports.flatMap((statement) =>
+        statement.entries
+          .filter((entry) => entry.isType)
+          .map((entry) => entry.localName.value),
+      ),
+    ).toEqual(['LinkProps'])
+    expect((await evaluateRouteFile(output)).Route.id).toBe('/new')
+  })
+
+  it.each([
+    {
+      name: 'LF line endings',
+      newline: '\n',
+      lines: ['// a', "export const Route = createFileRoute('/old')({})", ''],
+    },
+    {
+      name: 'CRLF line endings',
+      newline: '\r\n',
+      lines: ['// a', "export const Route = createFileRoute('/old')({})", ''],
+    },
+    {
+      name: 'a single line',
+      newline: '\n',
+      lines: ["export const Route = createFileRoute('/old')({})"],
+    },
+  ])(
+    'a missing constructor import is added on its own line, with $name',
+    async ({ newline, lines }) => {
+      const output = modifiedOutput(transformTo(lines.join(newline)))
+
+      const outputLines = output.split(newline)
+      expect(outputLines.filter((line) => !line.startsWith('import '))).toEqual(
+        lines.map((line) => line.replace('/old', '/new')),
+      )
+      // No other line ending is mixed in.
+      expect(
+        newline === '\n' ? output.includes('\r') : /(?<!\r)\n/.test(output),
+      ).toBe(false)
+      expect((await evaluateRouteFile(output)).Route.id).toBe('/new')
+    },
+  )
+
+  it('removing a stale import declaration removes its trailing whitespace and keeps the blank line after it', () => {
+    expect(
+      transformTo(
+        `import { createFileRoute } from ${routerPackage}
+import { createLazyFileRoute } from ${routerPackage} \t
+
+export const Route = createFileRoute('/old')({})`,
+      ),
+    ).toEqual({
+      result: 'modified',
+      output: `import { createFileRoute } from ${routerPackage}
+
+export const Route = createFileRoute('/new')({})`,
+    })
+  })
+
+  it('removing a stale import declaration on the line of another one keeps valid code', async () => {
+    const output = modifiedOutput(
+      transformTo(
+        `import { createLazyFileRoute } from ${routerPackage}; import { createFileRoute } from ${routerPackage}
+export const Route = createFileRoute('/old')({})`,
+      ),
+    )
+
+    expect((await evaluateRouteFile(output)).Route.id).toBe('/new')
+    expect(valueImports(output, '@tanstack/react-router')).toEqual([
+      'createFileRoute',
+    ])
+  })
+
+  it('a rewritten declaration keeps its semicolon, and the other declarations stay as they are', () => {
+    const source = `import { Link, createLazyFileRoute } from ${routerPackage};
+import { createFileRoute } from ${routerPackage};
+export const Route = createFileRoute('/old')({})
+export const link = Link`
+    expect(transformTo(source)).toEqual({
+      result: 'modified',
+      output: source
+        .replace(', createLazyFileRoute', '')
+        .replace('/old', '/new'),
+    })
+  })
+
+  it('an added constructor import ends with a semicolon in a file using them', async () => {
+    const source = `import * as Router from ${routerPackage};
+export const r = Router;
+export const Route = createFileRoute('/old')({});`
+    const output = modifiedOutput(transformTo(source))
+
+    const [added, ...rest] = output.split('\n')
+    expect(added).toMatch(/^import .*createFileRoute.*;$/)
+    expect(rest.join('\n')).toBe(source.replace('/old', '/new'))
+    expect((await evaluateRouteFile(output)).Route.id).toBe('/new')
+  })
+
+  it('renaming the constructor keeps the multi-line formatting of its import declaration', () => {
+    const source = `import Router, {
+  Link as L,
+  createFileRoute,
+} from ${routerPackage}
+export const uses = [Router, L]
+export const Route = createFileRoute('/new')({})`
+    expect(transformTo(source, true)).toEqual({
+      result: 'modified',
+      output: source.replaceAll('createFileRoute', 'createLazyFileRoute'),
+    })
+  })
+
+  it('an import declaration the transform does not need to change stays byte for byte', () => {
+    const source = `import {Link} from ${routerPackage}
+import { createFileRoute, createLazyFileRoute } from ${routerPackage}
+export const link = Link
+export const Route = createFileRoute('/old')({})`
+    expect(transformTo(source)).toEqual({
+      result: 'modified',
+      output: source
+        .replace(', createLazyFileRoute', '')
+        .replace('/old', '/new'),
+    })
+  })
+
+  it('a stale import is removed next to an aliased import of the constructor', async () => {
+    const output = modifiedOutput(
+      transformTo(`import { Link, createLazyFileRoute } from ${routerPackage}
+import { createFileRoute as cfr } from ${routerPackage}
+export const uses = [Link, cfr]
+export const Route = createFileRoute('/old')({})`),
+    )
+
+    expect((await evaluateRouteFile(output, ['Link'])).Route.id).toBe('/new')
+    expect(valueImports(output, '@tanstack/react-router')).not.toContain(
+      'createLazyFileRoute',
+    )
+  })
+})
