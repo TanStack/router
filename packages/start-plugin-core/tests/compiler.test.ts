@@ -182,6 +182,49 @@ describe('compiler handles external import transforms', () => {
     expect(component).toEqual(['card', injected])
   })
 
+  test('compiles IIFEs and curried calls in a module calling a configured transform', async () => {
+    const result = await compileWithTransform(`import { renderThing } from '@example/runtime'
+const Card = () => 'card'
+export const value = (() => 1)()
+export const curried = ((a: number) => (b: number) => a + b)(1)(2)
+export const rendered = renderThing(<Card />)`)
+
+    expect(result).not.toBeNull()
+    const module = await evaluateModule(result!, runtimeStubs)
+    expect([module.value, module.curried, module.rendered]).toEqual([
+      1,
+      3,
+      ['card', injected],
+    ])
+  })
+
+  // The other shapes (a nested call; a module without a built-in factory)
+  // are pinned in known-bugs-start-compiler.test.ts.
+  test('runs configured transforms on a top-level call imported through a project re-export, next to a built-in factory', async () => {
+    const result = await compileWithTransform(
+      `import { renderThing } from './rt'
+import { createServerOnlyFn } from '@tanstack/react-start'
+export const only = createServerOnlyFn(() => 1)
+export const rendered = renderThing('card')`,
+      '/test/src/routes/card.tsx',
+      {
+        files: {
+          '/test/src/rt.ts': `export { renderThing } from '@example/runtime'`,
+        },
+        host: {
+          resolveId: async (id) =>
+            id.startsWith('./') ? `/test/src/${id.slice(2)}.ts` : id,
+        },
+      },
+    )
+
+    expect(result).not.toBeNull()
+    const { rendered } = await evaluateModule(result!, {
+      './rt': runtimeStubs['@example/runtime'],
+    })
+    expect(rendered).toEqual(['card', injected])
+  })
+
   test('does not run external transforms for shadowed import names', async () => {
     const code = `
         import { renderThing } from '@example/runtime'
@@ -339,6 +382,46 @@ ${body}`
     expect(result ?? code).not.toContain('loadThing')
   })
 
+  // The same next to a built-in Start factory, which the module still
+  // compiles.
+  test.each([
+    {
+      name: 'a top-level call next to a server fn',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { renderThing } from 'virtual:rsc-runtime'
+const Card = () => 'card'
+export const component = renderThing(<Card />)
+export const fn = createServerFn().handler(async () => 'server-body')`,
+    },
+    {
+      name: 'a nested call next to a server-only fn',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { renderThing } from 'virtual:rsc-runtime'
+const Card = () => 'card'
+export function component() { return renderThing(<Card />) }
+export const so = createServerOnlyFn(() => 'server-body')`,
+    },
+  ])(
+    'leaves unrelated virtual runtime imports alone: $name',
+    async ({ code }) => {
+      const result = await compileWithTransform(
+        code,
+        '/test/src/runtime.tsx',
+        {
+          host: {
+            resolveId: async (id) => `\0${id}`,
+            loadModule: async (id) => {
+              throw new Error(`cannot load ${id}`)
+            },
+          },
+        },
+      )
+
+      expect(result).not.toBeNull()
+      expect(result).not.toContain('loadThing')
+    },
+  )
+
   // Source: #8504 compiler.test.ts "transforms configured aliases without
   // tracing unrelated runtime calls"
   test('transforms configured aliases next to an unrelated call of the same name', async () => {
@@ -415,6 +498,8 @@ describe('server function provider module directives', () => {
     'export const Route = { component: Page }',
     'export function Route() { return Page() }',
     'export default function Route() { return Page() }',
+    'export { Page }',
+    'export { Page as component }',
   ])(
     'removes browser-only dependencies of stripped exports: %s',
     async (route) => {
@@ -430,6 +515,23 @@ ${route}`,
       expect(await callProvider(server, 'getMessage')).toBe('server message')
     },
   )
+
+  // `export * from` is pinned in known-bugs-start-compiler.test.ts.
+  test('does not load a browser-only module the stripped exports re-export', async () => {
+    const server = await compileServer(
+      `import { createServerFn } from '@tanstack/react-start'
+export const getMessage = createServerFn().handler(() => 'server message')
+export { Widget } from './browser'`,
+      { id: '/test/src/routes/message.tsx' },
+    )
+
+    expect(
+      await callProvider(server, 'getMessage', {
+        './browser': `throw new Error('browser-only module evaluated on the server')
+export const Widget = 1`,
+      }),
+    ).toBe('server message')
+  })
 
   const code = `
     import { createServerFn } from '@tanstack/react-start'
@@ -813,6 +915,60 @@ export const serverFn = createServerFn().handler(async () => {
     compiler.invalidateModule('/test/src/factory.ts')
 
     expect(await callServerFn()).toBe(clientOnlyError)
+  })
+
+  // The same with an external transform configured (e.g. the RSC CSS one).
+  test('a provider with external transforms compiles aliased env-only calls of a server fn module', async () => {
+    const files = {
+      '/test/src/factory.ts': `export { createServerOnlyFn as makeServerOnly } from '@tanstack/start-fn-stubs'`,
+    }
+    const id = '/test/src/aliased.ts'
+    const source = `import { createServerFn } from '@tanstack/react-start'
+import { makeServerOnly } from './factory'
+const impl = makeServerOnly(() => 'server-only-value')
+export const serverFn = createServerFn().handler(async () => impl())`
+    const { compile } = createStartCompiler({
+      env: 'server',
+      files,
+      compilerTransforms: [renderThingTransform],
+    })
+
+    expect(
+      await settleAsync(async () =>
+        callProvider(
+          {
+            id,
+            ssr: (await compile(source, id)) ?? source,
+            provider: (await compile(source, `${id}?tss-serverfn-split`))!,
+          },
+          'serverFn',
+          { './factory': { makeServerOnly: uncompiled } },
+        ),
+      ),
+    ).toBe('server-only-value')
+  })
+
+  // A binding whose initializer reads itself (code saved mid-edit): compiling
+  // settles, with a result or an error, instead of looping.
+  test.each([
+    `import { createServerFn } from '@tanstack/react-start'
+export const fn: any = fn.handler(async () => 'x')
+export const real = createServerFn().handler(async () => 'y')`,
+    `import { createIsomorphicFn } from '@tanstack/react-start'
+var a: any = b
+var b: any = a
+export const fn = a.server(() => 'x')
+export const real = createIsomorphicFn().client(() => 'c')`,
+  ])('compiling a self-referencing binding settles: %#', async (code) => {
+    const { compile } = createStartCompiler({ env: 'client' })
+    const settled = await Promise.race([
+      compile(code).then(
+        () => 'settled',
+        () => 'settled',
+      ),
+      new Promise((resolve) => setTimeout(resolve, 2_000, 'still compiling')),
+    ])
+    expect(settled).toBe('settled')
   })
 })
 
