@@ -219,6 +219,60 @@ export const other = 1
     timeout,
   )
 
+  /**
+   * The violations logged when the client loads the app, and those logged
+   * when it loads it again after the dev server reloaded every module
+   * without any module changing: Vite does so when `tsconfig.json` changes
+   * (as when it re-optimizes dependencies), and the client reloads the page.
+   */
+  async function logsAroundAReload(log: 'once' | 'always') {
+    const server = await startProtectedDevServer(
+      { ...deniedFileApp, 'tsconfig.json': `{}\n` },
+      { log },
+    )
+    await server.load('/src/entry.ts')
+    const first = reportedViolations(server.logs)
+    const reload = await server.edit({
+      'tsconfig.json': `{ "compilerOptions": {} }\n`,
+    })
+    expect(
+      reload.filter(
+        (message) =>
+          message.environment === 'client' && message.type === 'full-reload',
+      ),
+    ).not.toEqual([])
+    await server.load('/src/entry.ts')
+    return {
+      first,
+      afterReload: reportedViolations(server.logs).slice(first.length),
+    }
+  }
+
+  // Source: mutation run R3c (`log` regressions spc:4462-4465, 4469, 4856:
+  // the edit-based test above is a pin).
+  test(
+    "'once' does not log a violation again when the dev server reloads every module",
+    async () => {
+      const { first, afterReload } = await logsAroundAReload('once')
+      expect(first).not.toEqual([])
+      expect(afterReload).toEqual([])
+    },
+    timeout,
+  )
+
+  // Source: mutation run R3c, as above.
+  test(
+    "'always' logs a violation again when the dev server reloads every module",
+    async () => {
+      const { first, afterReload } = await logsAroundAReload('always')
+      expect(first).not.toEqual([])
+      expect(distinct(afterReload.map((v) => v.importer))).toEqual([
+        deniedFileUse,
+      ])
+    },
+    timeout,
+  )
+
   // Source: mutation run R3 ip-vite V15.
   test(
     "'always' does not log a violation again when the client loads other modules",
