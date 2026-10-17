@@ -87,6 +87,7 @@ function resolveIsActive(
   next: ParsedLocation,
   activeOptions: ActiveOptions | undefined,
   basepath: string,
+  hydrating?: boolean,
 ): boolean {
   const currentPath = removeTrailingSlash(location.pathname, basepath)
   const nextPath = removeTrailingSlash(next.pathname, basepath)
@@ -116,7 +117,10 @@ function resolveIsActive(
     }
   }
 
-  return !activeOptions?.includeHash || location.hash === next.hash
+  return (
+    !activeOptions?.includeHash ||
+    (hydrating ? '' : location.hash) === next.hash
+  )
 }
 
 /**
@@ -272,55 +276,73 @@ export function useLinkProps<
 
     const dest = { ...options } as any
     let source: ParsedLocation | undefined
-    let state: LinkState
+    let state: LinkState | undefined
     let hydrationState: LinkState | undefined
+
+    const deriveLinkState = (
+      location: ParsedLocation,
+      prev: LinkState | undefined,
+      hydrating?: boolean,
+    ): LinkState => {
+      dest._fromLocation = location
+      // Hydration resolves the hash against the server's empty one. Keep the
+      // source location identity so links share the route-match cache. An
+      // explicit href carries its own hash.
+      const next = router.buildLocation(
+        hydrating && !dest.href
+          ? {
+              ...dest,
+              hash: dest.hash === true ? '' : functionalUpdate(dest.hash, ''),
+            }
+          : dest,
+      )
+
+      // History formatters can depend on the current browser URL (hash history).
+      const href = getHrefOption(next, router, disabled)
+      // Internal and disabled links can be active; external and blocked
+      // links have no active state.
+      const isActive =
+        disabled || (href && !getUrlScheme(href))
+          ? resolveIsActive(
+              location,
+              next,
+              stableActiveOptions,
+              router.basepath,
+              hydrating,
+            )
+          : undefined
+      // Keep the state while it is equal so React can bail out.
+      return prev &&
+        prev[0 /* href */] === href &&
+        prev[1 /* isActive */] === isActive
+        ? prev
+        : [href, isActive]
+    }
 
     const getLinkState = (): LinkState => {
       // Read the location once and record it only after deriving: a
       // derivation that throws is retried instead of caching its state.
       const location = scope[0 /* getSource */]()
       if (location !== source) {
-        dest._fromLocation = location
-        const next = router.buildLocation(dest)
-
-        // History formatters can depend on the current browser URL (hash history).
-        const href = getHrefOption(next, router, disabled)
-        // Internal and disabled links can be active; external and blocked
-        // links have no active state.
-        const isActive =
-          disabled || (href && !getUrlScheme(href))
-            ? resolveIsActive(
-                location,
-                next,
-                stableActiveOptions,
-                router.basepath,
-              )
-            : undefined
-        // Keep the state while it is equal so React can bail out.
-        if (
-          !state ||
-          state[0 /* href */] !== href ||
-          state[1 /* isActive */] !== isActive
-        ) {
-          state = [href, isActive]
-        }
+        state = deriveLinkState(location, state)
         source = location
       }
-      return state
+      return state!
     }
 
     return [
       dest,
       getLinkState,
-      // Hydration renders the server's markup, which has no hash, so an active
-      // hash-sensitive link hydrates inactive and React rerenders it after.
-      stableActiveOptions?.includeHash &&
-        ((): LinkState => {
-          const state = getLinkState()
-          return state[1 /* isActive */]
-            ? (hydrationState ??= [state[0 /* href */], false])
-            : state
-        }),
+      // Hydration renders the server's markup, which has no hash. React
+      // rerenders a link that uses the hash after hydration only if its live
+      // state differs.
+      (stableActiveOptions?.includeHash || options.hash) &&
+        ((): LinkState =>
+          (hydrationState ??= deriveLinkState(
+            scope[0 /* getSource */](),
+            getLinkState(),
+            true,
+          ))),
     ] as const
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -619,11 +641,10 @@ function getServerLinkProps(
   }
 
   const blockedLink = !disabled && !hrefOption
-  // Hash is not available on the server: hash-sensitive links are inactive.
+  // The server has no hash: hash-sensitive links compare an empty one.
   const isActive =
     !!next &&
     !blockedLink &&
-    !activeOptions?.includeHash &&
     resolveIsActive(
       router.stores.location.get(),
       next,
