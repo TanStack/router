@@ -167,6 +167,49 @@ describe('public server loading state', () => {
     },
   )
 
+  test('an overlapping lifecycle rejection keeps loading pending until the remaining load settles', async () => {
+    const gate = createControlledPromise<string>()
+    const started = createControlledPromise<void>()
+    const reason = new Error('enter hook failed')
+    let calls = 0
+    let fail = true
+    const rootRoute = new BaseRootRoute({})
+    const route = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/work',
+      loader: () => {
+        if (++calls === 1) {
+          started.resolve()
+          return gate
+        }
+        return 'overlapping data'
+      },
+      onEnter: () => {
+        if (fail) {
+          fail = false
+          throw reason
+        }
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([route]),
+      history: createMemoryHistory({ initialEntries: ['/work'] }),
+      isServer: true,
+    })
+    const loading = router.load()
+    try {
+      await started
+      await expect(router.load()).rejects.toBe(reason)
+      expect(router.state).toMatchObject({ status: 'pending', isLoading: true })
+      expect(router.state.matches.at(-1)?.loaderData).toBe('overlapping data')
+    } finally {
+      gate.resolve('completed')
+      await loading
+    }
+    expect(router.state).toMatchObject({ status: 'idle', isLoading: false })
+    expect(router.state.matches.at(-1)?.loaderData).toBe('completed')
+  })
+
   test('a load started by a route lifecycle callback owns pending state after the outer load finishes', async () => {
     const gate = createControlledPromise<string>()
     const started = createControlledPromise<void>()

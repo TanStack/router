@@ -5,7 +5,7 @@ import {
   createInlineCssStyleAsset,
   getStylesheetHref,
 } from '../manifest'
-import { decodePath } from '../utils'
+import { createControlledPromise, decodePath } from '../utils'
 import { createSieveCache } from '../sieve-cache'
 import { rootRouteId } from '../root'
 import { _getRenderedMatches } from '../load-client'
@@ -29,6 +29,28 @@ import type {
 } from '../manifest'
 
 type DehydrationPhase = 'idle' | 'started' | 'disabled'
+
+async function waitForServerLoads(
+  router: AnyRouter,
+  serverSsr: ServerSsr,
+  signal?: AbortSignal,
+) {
+  while (router.serverSsr === serverSsr) {
+    if (router._serverLoadFailure) {
+      throw router._serverLoadFailure.cause
+    }
+    if (!router._serverLoads) {
+      return
+    }
+    const pending = (router._serverLoadPromise ??=
+      createControlledPromise<void>())
+    if (signal) {
+      await waitForReason(pending, signal)
+    } else {
+      await pending
+    }
+  }
+}
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   const dehydratedMatch: DehydratedMatch = {
@@ -426,6 +448,27 @@ export function attachRouterServerSsrUtils({
       }
       opts?.signal?.throwIfAborted()
       dehydrationPhase = 'started'
+      if (router._serverLoads || router._serverLoadFailure) {
+        await waitForServerLoads(router, serverSsr, opts?.signal)
+      }
+      opts?.signal?.throwIfAborted()
+      if (cleanupStarted || router.serverSsr !== serverSsr) {
+        return
+      }
+      const dehydrate = router.options.dehydrate
+      const dehydratedData = dehydrate
+        ? opts?.signal
+          ? await waitForReason(dehydrate.call(router.options), opts.signal)
+          : await dehydrate.call(router.options)
+        : undefined
+      // A custom hook can start a load. Capture matches only after it settles.
+      if (router._serverLoads || router._serverLoadFailure) {
+        await waitForServerLoads(router, serverSsr, opts?.signal)
+      }
+      opts?.signal?.throwIfAborted()
+      if (cleanupStarted || router.serverSsr !== serverSsr) {
+        return
+      }
       let matchesToDehydrate = _getRenderedMatches(router.stores.matches.get())
       const isShell = router.isShell()
       if (isShell) {
@@ -457,16 +500,6 @@ export function attachRouterServerSsrUtils({
       const dehydratedRouter: DehydratedRouter = {
         manifest: manifestToDehydrate,
         matches,
-      }
-      const dehydrate = router.options.dehydrate
-      const dehydratedData = dehydrate
-        ? opts?.signal
-          ? await waitForReason(dehydrate.call(router.options), opts.signal)
-          : await dehydrate.call(router.options)
-        : undefined
-      opts?.signal?.throwIfAborted()
-      if (cleanupStarted) {
-        return
       }
       if (dehydratedData !== undefined) {
         dehydratedRouter.dehydratedData = dehydratedData
@@ -630,12 +663,26 @@ export function attachRouterServerSsrUtils({
         settled,
       )
       renderFinishedListeners.length = 0
-      router.ssr = undefined
-      router.serverSsr = undefined
+      if (router.serverSsr === serverSsr) {
+        router.ssr = undefined
+        router.serverSsr = undefined
+        router._serverLoadFailure = undefined
+        const pending = router._serverLoadPromise
+        router._serverLoadPromise = undefined
+        if (pending?.status === 'pending') {
+          pending.resolve()
+        }
+      }
     },
   }
 
+  const pending = router._serverLoadPromise
+  router._serverLoadPromise = undefined
+  router._serverLoadFailure = undefined
   router.serverSsr = serverSsr
+  if (pending?.status === 'pending') {
+    pending.resolve()
+  }
   for (const listener of router.serverSsrLifecycle?.onServerSsrAttach ?? []) {
     try {
       listener(serverSsr)

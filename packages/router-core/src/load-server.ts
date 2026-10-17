@@ -904,7 +904,8 @@ export async function loadServerRoute(
   router: AnyRouter,
   opts?: ServerLoadOptions,
 ): Promise<void> {
-  router._serverLoads++
+  const serverSsr = router.serverSsr
+  router._serverLoads = (router._serverLoads ?? 0) + 1
   try {
     router.stores.status.set('pending')
     if (!opts?._skipLocationUpdate) {
@@ -968,9 +969,20 @@ export async function loadServerRoute(
     }
     router._commitPromise?.resolve()
     router._commitPromise = undefined
+  } catch (cause) {
+    if (serverSsr && router.serverSsr === serverSsr) {
+      router._serverLoadFailure ??= { cause }
+      router._serverLoadPromise?.reject(router._serverLoadFailure.cause)
+    }
+    throw cause
   } finally {
     if (--router._serverLoads === 0) {
       router.stores.status.set('idle')
+      const pending = router._serverLoadPromise
+      router._serverLoadPromise = undefined
+      if (pending?.status === 'pending') {
+        pending.resolve()
+      }
     }
   }
 }
