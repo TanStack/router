@@ -34,6 +34,83 @@ export const Page = () => <div />`),
     ).toEqual(['`jsx` is referenced but never declared or imported'])
   })
 
+  // A `@jsx`/`@jsxFrag` pragma without `@jsxRuntime`/`@jsxImportSource` only
+  // works as written under a classic default runtime (SWC and Babel reject it
+  // under the automatic runtime, Oxc and esbuild ignore it), so the module is
+  // checked as classic: its factory and fragment names must exist.
+  test.each([
+    {
+      name: '`@jsx` alone, factory declared',
+      code: `/** @jsx h */
+const h = (type, props, ...children) => ({ type, props, children })
+export const Page = () => <div />`,
+      errors: [],
+    },
+    {
+      name: '`@jsx` and `@jsxFrag`, both imported',
+      code: `/** @jsx h */
+/** @jsxFrag Fragment */
+import { h, Fragment } from 'preact'
+export const Page = () => <><div /></>`,
+      errors: [],
+    },
+    {
+      name: '`@jsx` alone, factory missing',
+      code: `/** @jsx h */
+export const Page = () => <div />`,
+      errors: ['`h` is referenced but never declared or imported'],
+    },
+    {
+      name: '`@jsx` and `@jsxFrag`, fragment missing',
+      code: `/** @jsx h @jsxFrag Fragment */
+import { h } from 'preact'
+export const Page = () => <><div /></>`,
+      errors: ['`Fragment` is referenced but never declared or imported'],
+    },
+    {
+      name: '`@jsxFrag` alone (classic default factory), fragment missing',
+      code: `// @jsxFrag Fragment
+import React from 'react'
+export const Page = () => <><div /></>`,
+      errors: ['`Fragment` is referenced but never declared or imported'],
+    },
+    {
+      // Oxc only reads the pragmas that lead the module: below an import, the
+      // pragma still marks a classic project, whose default factory Oxc uses.
+      name: '`@jsx` below an import, default factory missing',
+      code: `import { h } from 'preact'
+/** @jsx h */
+export const Page = () => <div>{h('i', null)}</div>`,
+      errors: ['`React` is referenced but never declared or imported'],
+    },
+  ])('checks a classic pragma module: $name', async ({ code, errors }) => {
+    expect(await getModuleErrors(code)).toEqual(errors)
+  })
+
+  // The automatic runtime imports its factories: nothing to declare. A
+  // factory pragma does not apply to it (`@jsxRuntime automatic`), and
+  // `@jsxImportSource` selects it.
+  test.each([
+    {
+      name: 'no pragma',
+      code: `export const Page = () => <><div /></>`,
+    },
+    {
+      name: '`@jsxRuntime automatic` next to `@jsx`',
+      code: `/** @jsxRuntime automatic */
+/** @jsx h @jsxFrag Fragment */
+export const Page = () => <><div /></>`,
+    },
+    {
+      name: '`@jsxImportSource` next to `@jsx`',
+      code: `/** @jsxImportSource preact */
+/** @jsx h */
+export const Page = () => <><div /></>`,
+    },
+  ])('accepts an automatic runtime module: $name', async ({ code }) => {
+    expect(await getModuleErrors(code)).toEqual([])
+  })
+
   test('accepts declared, hoisted, imported, probed and global names', async () => {
     expect(
       await getModuleErrors(`import { imported } from './lib'

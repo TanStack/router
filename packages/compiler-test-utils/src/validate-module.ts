@@ -12,7 +12,8 @@ import type { ESTree } from 'vite'
  *
  * It also rejects references to names that are neither declared nor imported
  * in the module, once JSX is compiled the way a bundler compiles it (so a
- * classic `@jsx` pragma reads its factory): such a reference throws a
+ * classic `@jsx` or `@jsxFrag` pragma reads its factory or fragment, and
+ * `@jsxImportSource` its runtime module): such a reference throws a
  * ReferenceError when it runs. Known globals of browsers and Node.js, names
  * the module probes with `typeof`, and `globals` (e.g. the globals the route
  * file itself reads) are allowed.
@@ -51,7 +52,8 @@ export async function getModuleErrors(
  * Names a module references without declaring or importing them, other than
  * known globals and names it probes with `typeof`, once TypeScript is erased
  * and JSX compiled with the project default (React's automatic runtime) or
- * the module's own JSX pragmas.
+ * the module's own JSX pragmas (a `@jsx` or `@jsxFrag` pragma alone selects
+ * the classic runtime, see `jsxRuntime`).
  *
  * `deadCode: false` leaves out names referenced only inside code that never
  * runs (`getModuleErrors` does: such a reference throws nothing). Dead code
@@ -69,7 +71,7 @@ export async function freeIdentifiers(
   options: { deadCode?: boolean } = {},
 ): Promise<Set<string>> {
   const { code: javascript } = await transformWithOxc(code, filename, {
-    jsx: { runtime: 'automatic' },
+    jsx: { runtime: jsxRuntime(code, filename) },
     typescript: { onlyRemoveTypeImports: true },
   })
   const { program } = parseSync('module.js', javascript, {
@@ -84,6 +86,46 @@ export async function freeIdentifiers(
         (options.deadCode !== false || !isOnlyInDeadCode(name)),
     ),
   )
+}
+
+/**
+ * The JSX runtime a module is compiled with. Oxc (the transform of Vite) and
+ * the other bundlers' transforms read the module's `@jsxRuntime`,
+ * `@jsxImportSource`, `@jsx` and `@jsxFrag` pragmas themselves; this only
+ * picks the default they start from.
+ *
+ * The default is React's automatic runtime, except for a module that sets
+ * `@jsx` or `@jsxFrag` without `@jsxRuntime` or `@jsxImportSource`: that
+ * module is compiled with the classic runtime, so its factory and fragment
+ * names are read. Under the automatic runtime such a pragma means nothing
+ * (Oxc and TypeScript ignore it, esbuild ignores it with a warning) or
+ * fails the build (SWC, so Rspack, and Babel reject it), so the module only
+ * works as written in a project whose default runtime is classic.
+ *
+ * Pragmas anywhere in the module count here, while Oxc only reads the ones
+ * that lead the module: a compiler that inserts code above a pragma still
+ * outputs a module of the same (classic) project, whose JSX Oxc then
+ * compiles with the default factory (`React.createElement`).
+ */
+function jsxRuntime(code: string, filename: string): 'classic' | 'automatic' {
+  const { comments } = parseSync(filename, code, { sourceType: 'module' })
+  const pragmas = new Set<string>()
+  for (const comment of comments) {
+    for (const match of comment.value.matchAll(
+      /@jsx(Runtime|ImportSource|Frag)?\s+(\S+)/g,
+    )) {
+      const pragma = match[1] ?? ''
+      if (pragma === 'Runtime') {
+        // Oxc honours the module's own `@jsxRuntime` over the default.
+        return match[2] === 'classic' ? 'classic' : 'automatic'
+      }
+      pragmas.add(pragma)
+    }
+  }
+  return !pragmas.has('ImportSource') &&
+    (pragmas.has('') || pragmas.has('Frag'))
+    ? 'classic'
+    : 'automatic'
 }
 
 /**
