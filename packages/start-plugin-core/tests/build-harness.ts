@@ -24,6 +24,7 @@
  * Import protection is on, with Start's defaults unless the test configures
  * it; it checks the modules of the source directory (`src`) only.
  */
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -250,6 +251,12 @@ export interface StartBuildOptions {
   builds?: number
   /** Rsbuild configuration merged over the harness's (Rsbuild builds). */
   rsbuildConfig?: RsbuildConfig
+  /**
+   * Rsbuild builds: builds in watch mode (`rsbuild build --watch`), applies
+   * these app file edits (`null` deletes a file) once the first build is
+   * done, and describes the rebuild they cause (its errors reject).
+   */
+  watchEdits?: Record<string, string | null>
 }
 
 export interface StartBuild {
@@ -337,6 +344,7 @@ export async function buildStart(
     start: options.start ?? {},
     compilerTransforms: options.compilerTransforms,
     rsbuildConfig: options.rsbuildConfig,
+    watchEdits: options.watchEdits,
   }
   const warnings = { client: [], ssr: [] } as Record<Env, Array<string>>
   const consoleMessages: Array<string> = []
@@ -382,6 +390,7 @@ interface BuildTarget {
   start: TanStackStartInputConfig
   compilerTransforms: Array<StartCompilerImportTransform> | undefined
   rsbuildConfig: RsbuildConfig | undefined
+  watchEdits?: Record<string, string | null>
 }
 
 type Outputs = Record<Env, { outDir: string; chunks: Array<EmittedChunk> }>
@@ -490,10 +499,15 @@ async function buildWithRsbuild(
   const { createRsbuild, mergeRsbuildConfig } = await import('@rsbuild/core')
   const outputs: Partial<Outputs> = {}
   const errors: Array<string> = []
+  /** Resolves when the current (watch mode) build is done. */
+  let built = deferred()
   /** Records what each environment emitted. */
   const outputPlugin: RsbuildPlugin = {
     name: 'start-build-harness:outputs',
     setup(api) {
+      api.onAfterBuild(() => {
+        built.resolve()
+      })
       api.onAfterEnvironmentCompile(({ stats, environment }) => {
         const env = environment.name as Env
         if (!stats) {
@@ -549,7 +563,23 @@ async function buildWithRsbuild(
         target.rsbuildConfig ?? {},
       ),
     })
-    await rsbuild.build()
+    if (target.watchEdits) {
+      await watchRebuild(target.root, target.watchEdits, {
+        build: () => rsbuild.build({ watch: true }),
+        nextBuild: () => {
+          built = deferred()
+          return built.promise
+        },
+        firstBuild: () => built.promise,
+        reset: () => {
+          errors.length = 0
+          warnings.client.length = 0
+          warnings.ssr.length = 0
+        },
+      })
+    } else {
+      await rsbuild.build()
+    }
   } catch (error) {
     throw new BuildError(
       'rspack',
@@ -563,6 +593,63 @@ async function buildWithRsbuild(
     throw new BuildError('rspack', errors, warnings.client)
   }
   return checkOutputs(outputs)
+}
+
+/**
+ * Starts a watch mode build (`build`), waits for its first build, applies
+ * `edits` to the app at `root`, waits for the rebuild they cause (at most
+ * 20 s) and stops watching.
+ */
+async function watchRebuild(
+  root: string,
+  edits: Record<string, string | null>,
+  watcher: {
+    build: () => Promise<{ close: () => Promise<void> } | undefined>
+    firstBuild: () => Promise<void>
+    nextBuild: () => Promise<void>
+    reset: () => void
+  },
+): Promise<void> {
+  const firstBuild = watcher.firstBuild()
+  const result = await watcher.build()
+  try {
+    await withTimeout(firstBuild, 'the first watch mode build')
+    watcher.reset()
+    const rebuild = watcher.nextBuild()
+    for (const [file, code] of Object.entries(edits)) {
+      const filePath = path.join(root, file)
+      if (code === null) {
+        await fs.rm(filePath, { force: true })
+      } else {
+        await fs.mkdir(path.dirname(filePath), { recursive: true })
+        await fs.writeFile(filePath, code)
+      }
+    }
+    await withTimeout(rebuild, 'the watch mode rebuild of the edits')
+  } finally {
+    await result?.close()
+  }
+}
+
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve = () => {}
+  const promise = new Promise<void>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
+function withTimeout(promise: Promise<void>, what: string): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return Promise.race([
+    promise,
+    new Promise<void>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`${what} did not finish within 20 s`)),
+        20_000,
+      )
+    }),
+  ]).finally(() => clearTimeout(timer))
 }
 
 function checkOutputs(outputs: Partial<Outputs>): Outputs {

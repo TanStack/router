@@ -130,26 +130,36 @@ export const Route = createRootRoute()
 /**
  * Runs the JavaScript the dev server's client environment emitted, like a
  * browser loading the page (in a fresh VM context). Returns what it logged
- * to the console, one message per call (`Error`s by their message).
+ * to the console, one message per call (`Error`s by their message), each
+ * prefixed with its console method (`warn: ...`) when `options.levels`.
  */
 export async function runRsbuildClient(
   server: Pick<RsbuildDevServer, 'outputs'>,
+  options: { levels?: boolean } = {},
 ): Promise<Array<string>> {
   const messages: Array<string> = []
-  const record = (...args: Array<unknown>) => {
-    messages.push(
-      args
-        .map((arg) =>
-          // errors of the VM context are not `instanceof Error` here
-          typeof arg === 'object' && arg !== null && 'message' in arg
-            ? String(arg.message)
-            : String(arg),
-        )
-        .join(' '),
-    )
-  }
+  const recorder =
+    (level: string) =>
+    (...args: Array<unknown>) => {
+      messages.push(
+        (options.levels ? `${level}: ` : '') +
+          args
+            .map((arg) =>
+              // errors of the VM context are not `instanceof Error` here
+              typeof arg === 'object' && arg !== null && 'message' in arg
+                ? String(arg.message)
+                : String(arg),
+            )
+            .join(' '),
+      )
+    }
   const context = vm.createContext({
-    console: { log: record, info: record, warn: record, error: record },
+    console: {
+      log: recorder('log'),
+      info: recorder('info'),
+      warn: recorder('warn'),
+      error: recorder('error'),
+    },
   })
   context.self = context
   context.globalThis = context
