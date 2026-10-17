@@ -17,6 +17,7 @@ import {
   importedNames,
   loadRoute,
   parseModule,
+  routeSpecifier,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 import type {
@@ -478,18 +479,66 @@ ${options}  component: () => <p>${render}</p>,
     },
   )
 
-  // Bug: split chunks keep the top-level statements that nothing references
-  // unless they are expression statements: dead-code elimination only removes
-  // what the split made unreferenced, and
+  /**
+   * Loads a route with a component and an errorComponent next to the
+   * top-level `effect`, which calls `track` or `subscribe` (`./effects`),
+   * loads both chunks and asserts that the effect ran once, with the route
+   * module.
+   */
+  async function expectEffectRunsOnce(effect: string) {
+    let calls = 0
+    const route = await loadRoute(
+      `${head}import { subscribe, track } from './effects'
+${effect}
+export const Route = createFileRoute('/')({
+  component: () => <p>index</p>,
+  errorComponent: () => <p>error</p>,
+})`,
+      {
+        stubs: {
+          './effects': {
+            track: () => calls++,
+            subscribe: (listener: () => void) => {
+              calls++
+              return listener
+            },
+          },
+        },
+      },
+    )
+    const callsBeforeChunks = calls
+    const loaded: Array<string> = []
+    for (const option of ['component', 'errorComponent']) {
+      if (typeof (await route.load(option)) === 'function') {
+        loaded.push(option)
+      }
+    }
+    // Both chunks loaded, and the effect ran once, with the route module.
+    expect([loaded.join(), callsBeforeChunks, calls]).toEqual([
+      'component,errorComponent',
+      1,
+      1,
+    ])
+  }
+
+  // Bug: split chunks keep the top-level statements that nothing references,
+  // except expression statements that read only imports: dead-code
+  // elimination only removes what the split made unreferenced, and
   // `stripUnreferencedTopLevelExpressionStatements` only strips expression
-  // statements, so an `if` block, a declaration whose binding is never read
-  // or an `export * from` is copied into every split chunk.
+  // statements that name no module-level binding. So an `if` block, a
+  // declaration whose binding is never read, an `export * from`, or a call
+  // that reads a module-level binding (`register(...parts)`) is copied into
+  // every split chunk.
   // A reference cycle that nothing else reads keeps its own references, so a
   // fix that drops only declarations nothing references still copies it.
+  // Source: router-utils/src/compiler-helpers.ts:884-901 (called from
+  // compilers.ts:1278); the call rows: fuzzing (oracle mode, N2), e.g.
+  // `const parts = [BarController, BarElement]; Chart.register(...parts)`.
   // Impact: side effects run again for every chunk that loads, even a chunk
-  // holding only the errorComponent (duplicated subscriptions, logging); every
-  // chunk depends on and re-exports all of the `export *` module through the
-  // opaque namespace of its dynamic import, which defeats tree-shaking of it.
+  // holding only the errorComponent (duplicated subscriptions, logging,
+  // plugin registrations); every chunk depends on and re-exports all of the
+  // `export *` module through the opaque namespace of its dynamic import,
+  // which defeats tree-shaking of it.
   test.fails.each([
     {
       name: 'an if statement',
@@ -546,42 +595,32 @@ export function Card(props: { stop: typeof unsubscribe }) {
       effect: `let label = track()
 label = 'reassigned'`,
     },
+    {
+      name: 'a call spreading a module-level array',
+      effect: `const names = ['a', 'b']
+track(...names)`,
+    },
+    {
+      name: 'a call reading a module-level function',
+      effect: `function widget() {}
+track(widget)`,
+    },
   ])(
     'an unreferenced top-level side effect ($name) runs once, with the route module',
     async ({ effect }) => {
-      let calls = 0
-      const route = await loadRoute(
-        `${head}import { subscribe, track } from './effects'
-${effect}
-export const Route = createFileRoute('/')({
-  component: () => <p>index</p>,
-  errorComponent: () => <p>error</p>,
-})`,
-        {
-          stubs: {
-            './effects': {
-              track: () => calls++,
-              subscribe: (listener: () => void) => {
-                calls++
-                return listener
-              },
-            },
-          },
-        },
-      )
-      const callsBeforeChunks = calls
-      const loaded: Array<string> = []
-      for (const option of ['component', 'errorComponent']) {
-        if (typeof (await route.load(option)) === 'function') {
-          loaded.push(option)
-        }
-      }
-      // Both chunks loaded, and the effect ran once, with the route module.
-      expect([loaded.join(), callsBeforeChunks, calls]).toEqual([
-        'component,errorComponent',
-        1,
-        1,
-      ])
+      await expectEffectRunsOnce(effect)
+    },
+  )
+
+  // Control for the pin above (same harness): a top-level call that reads
+  // only imports and literals is stripped from the chunks.
+  test.each([
+    { name: 'a call reading an import', effect: 'track(subscribe)' },
+    { name: 'a call with literal arguments', effect: `track('a', 'b')` },
+  ])(
+    'an unreferenced top-level side effect ($name) runs once, with the route module',
+    async ({ effect }) => {
+      await expectEffectRunsOnce(effect)
     },
   )
 
@@ -1207,14 +1246,21 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  // Bug: a component option written as a call with JSX inside it (React's
-  // `memo()`, Vue's `defineComponent()`) cannot be split: the virtual
-  // compiler parses the option without JSX ("Support for the experimental
-  // syntax 'jsx' isn't currently enabled").
+  // Bug: a component option written as a call cannot be split when its
+  // printed code does not parse on its own with Babel's default options: the
+  // virtual compiler prints the call and parses it again as a script
+  // statement, without JSX ("Support for the experimental syntax 'jsx' isn't
+  // currently enabled"), without TypeScript ("Unexpected token"), and with a
+  // leading `function` read as a declaration (an immediately invoked
+  // function). A type argument (`memo<Props>(Page)`) even parses, as
+  // comparisons, and the option silently becomes `false`.
+  // Source: compilers.ts:1081-1082 (`babel.parse(outputSplitNodeCode)`).
   // Sources: differential fuzzing; dev servers of the e2e apps, where the
   // `?tsr-split=component` module failed with HTTP 500; #8504
-  // (code-splitter-jsx.test.ts), where they pass.
-  // Impact: the route cannot be built once code splitting is on.
+  // (code-splitter-jsx.test.ts), where the JSX rows pass; fuzzing (oracle
+  // mode, V3) for the TypeScript and function rows.
+  // Impact: the route cannot be built once code splitting is on, or renders
+  // a value that is not its component.
   test.fails.each<{
     name: string
     component: string
@@ -1245,6 +1291,35 @@ import { defineComponent } from 'vue'`,
       component: `defineComponent({\n  setup: () => () => <p>page</p>,\n})`,
       render: (component) => component.setup()(),
     },
+    {
+      name: 'an immediately invoked function',
+      imports: `${head}import { Page } from './page'`,
+      component: `(function (component) {\n  return component\n})(Page)`,
+      render: (component) => component(),
+    },
+    {
+      name: 'a call of a typed arrow function',
+      component: `memo((): string => '<p>page</p>')`,
+      render: (component) => component(),
+    },
+    {
+      name: 'a call with a type assertion',
+      imports: `${head}import { memo } from 'react'\nimport { Page } from './page'`,
+      component: `memo(Page as any)`,
+      render: (component) => component(),
+    },
+    {
+      name: 'a call with a non-null assertion',
+      imports: `${head}import { memo } from 'react'\nimport { Page } from './page'`,
+      component: `memo(Page!)`,
+      render: (component) => component(),
+    },
+    {
+      name: 'a call with a type argument',
+      imports: `${head}import { memo } from 'react'\nimport { Page } from './page'`,
+      component: `memo<typeof Page>(Page)`,
+      render: (component) => component(),
+    },
   ])(
     'a component written as $name is split and renders',
     async ({
@@ -1262,6 +1337,7 @@ export const Route = createFileRoute('/')({ component: ${component} })
           stubs: {
             react: { memo: (value: unknown) => value },
             vue: { defineComponent: (value: unknown) => value },
+            './page': { Page: () => '<p>page</p>' },
           },
         },
       )
@@ -3028,6 +3104,48 @@ export const Route = createFileRoute('/')({ component: Page })
     },
   )
 
+  /**
+   * Compiles a route whose split component returns `expression`, checks that
+   * every emitted module is valid and returns what the component renders.
+   */
+  async function renderReturned(expression: string) {
+    const code = `${head}function Page() {
+  return ${expression}
+}
+export const Route = createFileRoute('/')({ component: Page })
+`
+    await expectValidModules(compileRouteModules(code).modules)
+    return (await (await loadRoute(code)).load('component'))()
+  }
+
+  // Control for the pin below (same harness): parenthesized JSX alone.
+  test('parenthesized JSX keeps working in a split component', async () => {
+    expect(await renderReturned('(<p>page</p>)')).toBe('<p>page</p>')
+  })
+
+  // Bug: parenthesized JSX under a non-null assertion or a member access is
+  // printed without its parentheses (`<p>page</p>!`), which does not parse.
+  // The root cause is upstream: @babel/generator 7.29.8 drops the
+  // parentheses (no workaround here; router-utils/src/ast.ts:72
+  // `generateFromAst` prints with it).
+  // Source: fuzzing (oracle mode, N3).
+  // Impact: the split component's chunk fails to compile ("Expected a
+  // semicolon"), so the build fails.
+  test.fails.each([
+    { name: 'a non-null assertion', expression: '(<p>page</p>)!' },
+    {
+      name: 'a non-null assertion of a fragment',
+      expression: '(<><i /></>)!',
+      rendered: '<i></i>',
+    },
+    { name: 'a member call', expression: '(<p>page</p>).valueOf()' },
+  ])(
+    'parenthesized JSX under $name keeps working in a split component',
+    async ({ expression, rendered = '<p>page</p>' }) => {
+      expect(await renderReturned(expression)).toBe(rendered)
+    },
+  )
+
   /** A route whose `beforeLoad` and split loader both call `helper`. */
   const sharedHelperRoute = (helper: string) => `${head}${helper}
 export { helper as helperAlias }
@@ -3332,6 +3450,169 @@ register(Page)
         (await route.load('component'))(),
       ]).toEqual([['<div>page</div>'], '<div>page</div>'])
     },
+  )
+
+  // Control for the imported-component pins below (same harness): the split
+  // component is declared in the route file.
+  test('a split component declared in the route file renders, and head() reads it', async () => {
+    const route = await loadRoute(`${head}function PostsPage() {
+  return <p>posts</p>
+}
+PostsPage.title = 'Posts'
+export const Route = createFileRoute('/posts')({
+  component: PostsPage,
+  head: () => ({ meta: [{ title: PostsPage.title }] }),
+})
+`)
+    expect([route.options.head(), (await route.load('component'))()]).toEqual([
+      { meta: [{ title: 'Posts' }] },
+      '<p>posts</p>',
+    ])
+  })
+
+  // Bug: when a split option names an imported binding, the code splitter
+  // deletes its import specifier from the route module
+  // (`removeIdentifierLiteral` removes the binding without checking for other
+  // reads), then the emptied import, even when other code there still reads
+  // it: an unsplit option, an exported function or anything else. Sibling of
+  // the pins above, which cover bindings declared in the route file.
+  // Source: compilers.ts:571-593 (`removeIdentifierLiteral`), :1555-1593
+  // (the binding is removed), :768-777 (the emptied import is dropped);
+  // fuzzing (oracle mode, N1).
+  // Impact: the route throws "PostsPage is not defined" where the other code
+  // runs (head() on every navigation, an importer's render).
+  test.fails(
+    'an imported split component that head() reads renders, and head() reads it',
+    async () => {
+      const route = await loadRoute(
+        `${head}import { PostsPage } from './posts-page'
+export const Route = createFileRoute('/posts')({
+  component: PostsPage,
+  head: () => ({ meta: [{ title: PostsPage.title }] }),
+})
+`,
+        {
+          stubs: {
+            './posts-page': {
+              PostsPage: Object.assign(() => '<p>posts</p>', {
+                title: 'Posts',
+              }),
+            },
+          },
+        },
+      )
+      expect([route.options.head(), (await route.load('component'))()]).toEqual(
+        [{ meta: [{ title: 'Posts' }] }, '<p>posts</p>'],
+      )
+    },
+  )
+
+  // Bug: same root cause as above, for an exported component that renders
+  // the imported split one, used by another module of the app (ruling P1:
+  // through a real importer, not the export list). Adapted from the
+  // repository's
+  // examples/solid/start-supabase-basic/src/routes/_authed/posts.$postId.tsx.
+  // Impact: rendering `PostErrorComponent` throws "ErrorComponent is not
+  // defined".
+  test.fails(
+    'an imported split errorComponent that an exported component renders works for an importer',
+    async () => {
+      const route = await loadRoute(
+        `import { ErrorComponent, createFileRoute } from '@tanstack/solid-router'
+import type { ErrorComponentProps } from '@tanstack/solid-router'
+export const Route = createFileRoute('/posts/$postId')({
+  loader: ({ params: { postId } }) => postId,
+  errorComponent: ErrorComponent,
+  component: PostComponent,
+})
+export function PostErrorComponent({ error }: ErrorComponentProps) {
+  return <ErrorComponent error={error} />
+}
+function PostComponent() {
+  return <h4>post</h4>
+}
+`,
+        {
+          targetFramework: 'solid',
+          stubs: {
+            '@tanstack/solid-router': {
+              ErrorComponent: ({ error }: { error: Error }) =>
+                `<p>${error.message}</p>`,
+            },
+          },
+        },
+      )
+      const importer = await route.importFromRoute(
+        `import { PostErrorComponent } from '${routeSpecifier}'
+export const render = (error) => PostErrorComponent({ error })`,
+      )
+      const error = new Error('boom')
+      expect([
+        importer.render(error),
+        (await route.load('errorComponent'))({ error }),
+        (await route.load('component'))(),
+      ]).toEqual(['<p>boom</p>', '<p>boom</p>', '<h4>post</h4>'])
+    },
+  )
+
+  // Bug: same root cause as above, for a pendingComponent that custom
+  // groupings split and an unsplit errorComponent renders.
+  // Impact: rendering the errorComponent throws "Spinner is not defined".
+  test.fails(
+    'an imported pendingComponent split by custom groupings renders, and an unsplit option renders it',
+    async () => {
+      const route = await loadRoute(
+        `${head}import { Spinner } from './spinner'
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['component'], ['pendingComponent']],
+  pendingComponent: Spinner,
+  errorComponent: () => <div><Spinner /></div>,
+  component: () => <p>page</p>,
+})
+`,
+        { stubs: { './spinner': { Spinner: () => '<i>spin</i>' } } },
+      )
+      expect([
+        (await route.load('errorComponent'))(),
+        (await route.load('pendingComponent'))(),
+      ]).toEqual(['<div><i>spin</i></div>', '<i>spin</i>'])
+    },
+  )
+
+  // Bug: same root cause as above, in a real build.
+  // Impact: the server render of the route throws "PostsPage is not defined"
+  // when it runs head().
+  test.fails.each(['vite', 'rspack'] as const)(
+    'an imported split component that head() reads renders, and head() reads it (%s build)',
+    async (bundler) => {
+      const app = await build({
+        bundler,
+        env: 'ssr',
+        minify: false,
+        files: routeApp(
+          `${head}import { PostsPage } from '../posts-page'
+export const Route = createFileRoute('/')({
+  component: PostsPage,
+  head: () => ({ meta: [{ title: PostsPage.title }] }),
+})
+`,
+          {
+            files: {
+              'posts-page.tsx': `export function PostsPage() {
+  return <p>posts</p>
+}
+PostsPage.title = 'Posts'
+`,
+            },
+          },
+        ),
+      })
+      const { result } = await app.run(
+        `return [entry.Route.options.head().meta[0].title, await entry.render(entry.Route.options.component)]`,
+      )
+      expect(result).toEqual(['Posts', '<p>posts</p>'])
+    },
+    60_000,
   )
   /**
    * Builds a route whose split component `Page` an unused module-level
