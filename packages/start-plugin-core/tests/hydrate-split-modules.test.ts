@@ -13,6 +13,7 @@ import {
   getChunkComponent,
   getChunkIds,
   hydrateParentStubs,
+  importSources,
   loadChunk,
   loadClientModule,
   renderBoundaries,
@@ -255,6 +256,24 @@ export function Page() {
       setup: '',
       attributes: '{...{ ...props.rest }}',
       props: { rest: { prefetch: 'idle' } },
+    },
+    {
+      name: 'a spread of the props param',
+      setup: '',
+      attributes: '{...props}',
+      props: { prefetch: 'idle' },
+    },
+    {
+      name: 'a spread of a member of the props',
+      setup: '',
+      attributes: '{...props.options}',
+      props: { options: { prefetch: 'idle' } },
+    },
+    {
+      name: 'a spread of a reassigned object',
+      setup: 'let opts = { when: idle() }\n  opts = { prefetch: idle() }\n  ',
+      attributes: '{...opts}',
+      props: {},
     },
   ])(
     'client: a boundary with $name preloads its own chunk',
@@ -551,6 +570,49 @@ describe('the split chunk', () => {
     },
   )
 
+  // A wrapper component forwarding its children through a boundary keeps
+  // them after hydration.
+  test.each([
+    {
+      name: 'a captured prop',
+      code: `export function Page({ label }) {
+  return <Hydrate>{label}</Hydrate>
+}`,
+      props: { label: 'l' },
+    },
+    {
+      name: 'the children of a wrapper',
+      code: `export function Page(props) {
+  return <Hydrate>{props.children}</Hydrate>
+}`,
+      props: { children: 'l' },
+    },
+  ])(
+    'client: a single expression child ($name) renders through the chunk',
+    async ({ code, props }) => {
+      const { module, lazyChunks } = await loadClientModule(`${head}${code}`)
+      expect(module.Page(props)).toBe('[l]')
+      expectRenderedThroughChunks(lazyChunks)
+    },
+  )
+
+  // Server code never reaches the client, the chunk included.
+  test('client: the chunk does not import what only a server fn handler uses', async () => {
+    const { parent, chunks } = await compileHydrate(
+      'client',
+      `import { Hydrate, createServerFn } from '@tanstack/react-start'
+import { db } from './db'
+export const getUser = createServerFn().handler(async () => db.read())
+export function Page() {
+  return <Hydrate><p>child</p></Hydrate>
+}`,
+    )
+    expect(chunks).toHaveLength(1)
+    for (const output of [parent, chunks[0]!]) {
+      expect(importSources(output)).not.toContain('./db')
+    }
+  })
+
   // Source: #8504 hydrate-split-modules.test.ts (click handler and IIFE)
   test('client: children may contain return statements', async () => {
     // Render the click handler's result next to the element.
@@ -733,19 +795,23 @@ export function Page() {
 
   // The bundler may load a chunk with the source module's code before the
   // plugin compiled that module (e.g. in a fresh build worker); the chunk,
-  // and the nested boundary it splits again, use the Solid packages only (a
-  // Solid module graph has no React packages).
-  test('client: Solid chunks loaded from the source code alone render with the Solid packages', async () => {
-    const { module, lazyChunks } = await loadClientModule(
-      `import { Hydrate } from '@tanstack/solid-start'
+  // and the nested boundary it splits again, use the packages of the
+  // module's framework only (a Solid module graph has no React packages, and
+  // the other way around).
+  test.each(['react', 'solid'] as const)(
+    'client: %s chunks loaded from the source code alone render with their own packages',
+    async (framework) => {
+      const { module, lazyChunks } = await loadClientModule(
+        `import { Hydrate } from '@tanstack/${framework}-start'
 export function Page() {
-  return <Hydrate><section><Hydrate><p>solid</p></Hydrate></section></Hydrate>
+  return <Hydrate><section><Hydrate><p>${framework}</p></Hydrate></section></Hydrate>
 }`,
-      { framework: 'solid', chunksFromSource: true },
-    )
-    expect(module.Page()).toBe('[<section>[<p>solid</p>]</section>]')
-    expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true, true])
-  })
+        { framework, chunksFromSource: true },
+      )
+      expect(module.Page()).toBe(`[<section>[<p>${framework}</p>]</section>]`)
+      expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true, true])
+    },
+  )
 
   // Source: Qwik optimizer example_capture_imports,
   // jsx_member_tag_object_is_captured, example_jsx
