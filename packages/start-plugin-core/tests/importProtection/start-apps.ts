@@ -33,6 +33,11 @@ export interface ProtectedDevServerOptions {
   plugins?: Array<PluginOption>
   /** Vite configuration of the app (e.g. `server.warmup`). */
   config?: StartDevServerOptions['config']
+  /**
+   * Vite's full-bundle dev (`experimental.bundledDev`): the client is
+   * bundled from this entry (see `startDevServer`).
+   */
+  bundledDev?: StartDevServerOptions['bundledDev']
 }
 
 /**
@@ -51,9 +56,11 @@ export function startProtectedDevServer(
     providerEnvironment = 'ssr',
     plugins = [],
     config = {},
+    bundledDev,
   } = options
   return startDevServer({
     files,
+    bundledDev,
     config:
       providerEnvironment === 'ssr'
         ? config
