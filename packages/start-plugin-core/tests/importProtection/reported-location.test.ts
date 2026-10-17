@@ -122,6 +122,12 @@ const cases: Record<string, LocationCase> = {
     code: jsxElement,
     expected: [at(jsxElement, 2, '<Secret'), at(jsxElement, 2, 'Secret')],
   },
+  // A lone CR is a line terminator, like LF. Source: the #8504 probe (R-11).
+  loneCr: {
+    name: 'a use after a server fn handler, in a file with lone CR line endings',
+    code: afterHandler.replaceAll('\n', '\r'),
+    expected: [at(afterHandler, 4, 'secret()')],
+  },
 }
 
 const channels: Array<Channel> = [
@@ -137,7 +143,7 @@ const rows = (names: Array<string>, on: Array<Channel>) =>
 
 describe('the reported location of a violation is the leaking use', () => {
   test.each([
-    ...rows(['afterHandler'], channels),
+    ...rows(['afterHandler', 'loneCr'], channels),
     ...rows(['typePosition', 'jsxElement'], ['vite dev', 'vite build']),
   ])(
     '$channel: $name',

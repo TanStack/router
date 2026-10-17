@@ -22,6 +22,25 @@ describe('findPostCompileUsagePos', () => {
     })
   })
 
+  // A lone CR is a line terminator in JavaScript, like LF and CRLF, so the
+  // same source reports the same position with each. Source: the #8504
+  // probe (R-11, lone CR).
+  test.each(['\n', '\r\n', '\r'])(
+    'reports the same line and column with %j line endings',
+    (newline) => {
+      const code = [
+        "import { secret } from 'denied'",
+        '// a comment',
+        'export const value = secret()',
+        '',
+      ].join(newline)
+      expect(pos(code, 'denied')).toEqual({
+        line: 3,
+        column0: 'export const value = '.length,
+      })
+    },
+  )
+
   test('returns undefined when import is type-only', () => {
     expect(
       pos(`import type { Foo } from 'denied';\nconst x = 1`, 'denied'),

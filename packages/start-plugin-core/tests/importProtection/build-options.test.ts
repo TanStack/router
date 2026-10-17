@@ -136,8 +136,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
       timeout,
     )
 
-    // What the excluded or ignored importer then gets for the denied file is
-    // not documented, so these rows only check that nothing is reported.
+    // These rows check that nothing is reported; what the excluded or
+    // ignored importer then gets for the denied file (the real module) is
+    // pinned in exemptions.test.ts.
     test.each([
       {
         option: 'exclude',

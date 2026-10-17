@@ -2150,13 +2150,20 @@ export const Route = createFileRoute('/')({
   // and keeping it in the chunk without sharing it creates it again there.
   // Impact: the split component throws "jsx is not defined", or the route
   // module and the chunk each create their own factory.
-  test.fails(
-    'a factory the route module creates and the loader reads is created once for the split component',
-    async () => {
+  // Source of the `@jsx` only row: the #8504 probe (R-13; a project whose
+  // tsconfig selects the classic runtime).
+  test.fails.each([
+    {
+      name: '@jsxRuntime classic and @jsx',
+      header: '/** @jsxRuntime classic */\n/** @jsx jsx */',
+    },
+    { name: '@jsx only', header: '/** @jsx jsx */' },
+  ])(
+    'a factory the route module creates and the loader reads is created once for the split component ($name)',
+    async ({ header }) => {
       let creations = 0
       const route = await loadRoute(
-        `/** @jsxRuntime classic */
-/** @jsx jsx */
+        `${header}
 ${head}import { createJsx } from './jsx'
 const jsx = createJsx()
 export const Route = createFileRoute('/')({
