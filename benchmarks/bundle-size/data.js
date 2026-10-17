@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792184948132,
+  "lastUpdate": 1792221279289,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "me@florianpellet.com",
-            "name": "Flo",
-            "username": "Sheraff"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "d644dbb5c226852e7d05d7da93135a054e249e47",
-          "message": "bench(memory): settle-until-quiescent GC barrier between iterations (#7739)\n\n* bench(memory): settle-until-quiescent GC barrier between iterations\n\nThe fixed-turn settle before the pinned collection was hardware-fragile:\nteardown needing one more event-loop turn on a given runner leaked a whole\npayload of garbage past the collection point and flipped the measured peak\nbimodally (serialization-payload solid/react resurfacing the pre-#7730\n6.2MB attractor on some CI runners). Replace it with an adaptive barrier\nthat hops and collects until the post-GC heap size stops moving, with a\nminimum-turn floor matching the fixed count it replaces (React's stream\nteardown spans several turns and races a shorter floor).\n\nAlso pin collections in request-churn and the aborted-requests drain:\ntheir peak floated on GC scheduling even with bit-identical work (18%\nspread on CI for solid churn). Reachable accumulation stays visible to\nthe metric - a forced collection cannot reclaim leaked or cached objects,\nit only removes floating garbage, whose collection timing was the\ndominant cross-run noise source. Verified with a synthetic reachable\nleak: +4.7% peak over a 0.6% A/A noise floor, where the old 18% noise\nwould have swallowed it.\n\nLocal A/A spreads (3x codspeed run per suite): solid <=1%, react <=2.2%\nexcept request-churn (rare +130KB mode, framework teardown variance),\nvue <=2.3% except aborted-requests (~8%, intra-iteration work variance,\ndown from 21% on CI).\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* bench(memory): fixed-count settle barrier, drop adaptive quiescence exit\n\nThe adaptive exit (collect until post-GC heap size stops moving) made the\ncollection points land at data-dependent turns on CI: heap readings never\nfully stabilize there, so the exit point - and every subsequent GC point -\nshifted between identical runs. The first CI A/A pair showed it flipping\nserialization-payload (vue) to a 6MB mode (67%), inflating peak-large-page\n(vue) 3.4x, and adding 7-8% swings to the react/vue abort scenarios, while\nfixing the solid suite.\n\nEvery step is now a fixed count: 16 settle turns (enough for React/Vue\nmulti-turn teardown that the original 2-turn barrier raced), one pinned\ncollection, one turn, one more collection for finalizer fallout. Fixed\ncounts make the GC points identical across runs by construction, which is\nthe property the barrier exists to provide.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* bench(memory): size iteration counts to the 2-10s measured-run window\n\nOn CI (eBPF instrument + --no-opt) one pinned iteration costs ~0.1-0.6s,\nso the previous counts put request-churn at ~36s measured and the error\n-paths/server-fn benches at 0.1-0.5s - outside the useful 2-10s range in\nboth directions. Retune: request-churn/aborted-requests/error-paths/\nserver-fn-churn to 40 iterations, serialization-payload to 12;\npeak-large-page and streaming-peak already sit in range at 20.\n\nThe floor is raised by pinning error-paths and server-fn-churn rather\nthan inflating their iteration counts: thousands of unpinned iterations\nwould cross V8's own GC scheduling and reintroduce the timing noise the\nbarrier removes, while the pin's fixed per-iteration cost lifts them into\nrange at 40 iterations and makes their collection points deterministic.\n\nNote: fewer churn iterations proportionally shrink the accumulation\nwindow, so peak-based leak sensitivity drops accordingly; leaks remain\nvisible in total-allocated (forced compactions re-copy the growing live\nset every iteration).\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* bench(memory): disable V8 bytecode flushing in memory bench workers\n\nThe retuned (shorter) runs exposed a recurring V8 internal event - a\n+7-13MB allocation burst with the signature of bytecode flush + lazy\nrecompile - that lands inside or outside the measured window at random,\nflipping peaks by whole MBs between identical CI runs (request-churn vue\n785KB vs 3.2MB). The pinned collections age code fast enough for V8 to\nflush unused bytecode mid-run; --no-flush-bytecode keeps compiled code\nalive for the process lifetime so the measured window sees no recompile\nbursts. Vite's mergeConfig concatenates the scenario's test.execArgv with\nthe flags the CodSpeed plugin injects, so both apply to the fork workers.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* bench(memory): pre-size V8 heap geometry in memory bench workers\n\n--no-flush-bytecode alone did not stop the run-to-run flips: the\nrecurring event is heap-space growth, which allocates several MB at a\nrun-dependent moment inside the shortened measured windows (error-paths\nunmatched vue 674KB vs 2MB, serialization-payload solid resurfacing its\n6.4MB attractor on one run in three). Pre-sizing old space and pinning\nthe semi-space size removes mid-measurement growth while leaving the\nper-iteration page map/unmap signal intact - local runs confirm peaks\nstill track payload sizes exactly (serialization 3.5MB, streaming\n30.3MB, levels unchanged).\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* bench(memory): size tiny benches just above the 2s measured-run floor\n\nerror-paths and server-fn-churn sat at 5-8s measured on CI; fewer\niterations bring them to ~2.3-3.4s, keeping the 2s floor while shrinking\nthe window a stray allocator event can land in.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* bench(memory): verify the pinned collection against the heap floor\n\nThe residual CI flips all share one signature: exactly one iteration's\npayload added to the measured peak (serialization-payload vue 3.5 vs\n6.9MB, peak-large-page vue 780 vs 1349KB, error-paths redirect vue 300 vs\n885KB). On some runners the response teardown holds the payload past the\nfixed settle window - released only by a later internal timer - so it\nsurvives the pinned collection and bleeds into the next iteration.\n\nAfter the fixed 16-turn settle and collection, compare the post-GC heap\nagainst the smallest post-collection size seen this run (the inter-\niteration floor): while it has not returned to the floor, keep hopping\nand collecting, bounded at 64 turns. The barrier stays fixed-count in the\ncommon case and extends only in exactly the failure case. Workloads that\ngenuinely accumulate reachable memory raise the floor as they go, so\naccumulation still measures.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* bench(memory): restrict floor verification to peak-shape scenarios\n\nThe floor-verified barrier fixed its target - the serialization family\nwent to <=0.45% across three CI runs, attractor gone - but destabilized\nchurn/abort scenarios (request-churn solid 420KB vs 3.4MB): their inter-\niteration floor legitimately drifts, so the verification capped out\nchronically and the ~48 extra collections per iteration eventually hit a\ncompaction that double-copies the live set. Split by scenario shape:\nserialization-payload, peak-large-page and streaming-peak keep the\nverified barrier (flat floor, proven fix); churn and abort scenarios go\nback to the plain fixed-count barrier that held them at <=1.7% in the\ntwo previous CI rounds.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Fable 5 <noreply@anthropic.com>",
-          "timestamp": "2026-07-03T21:43:51+02:00",
-          "tree_id": "78c9db560e817986ef5a19e9034c3a5758db68ac",
-          "url": "https://github.com/TanStack/router/commit/d644dbb5c226852e7d05d7da93135a054e249e47"
-        },
-        "date": 1783108016123,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89469,
-            "unit": "bytes",
-            "extra": "raw=280455; brotli=77817; initial_gzip=89330"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93290,
-            "unit": "bytes",
-            "extra": "raw=292635; brotli=81047; initial_gzip=93148"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36416,
-            "unit": "bytes",
-            "extra": "raw=108624; brotli=32821; initial_gzip=36288"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41587,
-            "unit": "bytes",
-            "extra": "raw=124207; brotli=37419; initial_gzip=41459"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54340,
-            "unit": "bytes",
-            "extra": "raw=153723; brotli=48844; initial_gzip=54208"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 60450,
-            "unit": "bytes",
-            "extra": "raw=172932; brotli=54198; initial_gzip=60317"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104474,
-            "unit": "bytes",
-            "extra": "raw=330046; brotli=90438; initial_gzip=104332"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105227,
-            "unit": "bytes",
-            "extra": "raw=331454; brotli=91040; initial_gzip=104356"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107979,
-            "unit": "bytes",
-            "extra": "raw=340214; brotli=93421; initial_gzip=107840"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 102135,
-            "unit": "bytes",
-            "extra": "raw=324339; brotli=87871; initial_gzip=101961"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 102548,
-            "unit": "bytes",
-            "extra": "raw=325299; brotli=88284; initial_gzip=102379"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105432,
-            "unit": "bytes",
-            "extra": "raw=334635; brotli=90730; initial_gzip=105258"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50903,
-            "unit": "bytes",
-            "extra": "raw=155907; brotli=44934; initial_gzip=50772"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 54244,
-            "unit": "bytes",
-            "extra": "raw=164139; brotli=47977; initial_gzip=50830"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56846,
-            "unit": "bytes",
-            "extra": "raw=173363; brotli=50145; initial_gzip=56713"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 72838,
-            "unit": "bytes",
-            "extra": "raw=212349; brotli=64541; initial_gzip=72707"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 76934,
-            "unit": "bytes",
-            "extra": "raw=225288; brotli=67967; initial_gzip=76800"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -25897,6 +25771,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/caaf32da35e250c1344a350fdd80cfc631c24b3c"
         },
         "date": 1792184946073,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 86048,
+            "unit": "bytes",
+            "extra": "raw=267729; brotli=75041; initial_gzip=85907"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89678,
+            "unit": "bytes",
+            "extra": "raw=279899; brotli=78231; initial_gzip=89538"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34131,
+            "unit": "bytes",
+            "extra": "raw=97503; brotli=30895; initial_gzip=34004"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39172,
+            "unit": "bytes",
+            "extra": "raw=112668; brotli=35317; initial_gzip=39044"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50603,
+            "unit": "bytes",
+            "extra": "raw=139733; brotli=45875; initial_gzip=50476"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56325,
+            "unit": "bytes",
+            "extra": "raw=158343; brotli=50891; initial_gzip=56198"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99109,
+            "unit": "bytes",
+            "extra": "raw=309641; brotli=86129; initial_gzip=98970"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106710,
+            "unit": "bytes",
+            "extra": "raw=336860; brotli=92658; initial_gzip=106568"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99831,
+            "unit": "bytes",
+            "extra": "raw=311026; brotli=86735; initial_gzip=98970"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102249,
+            "unit": "bytes",
+            "extra": "raw=319111; brotli=88633; initial_gzip=102108"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102754,
+            "unit": "bytes",
+            "extra": "raw=320769; brotli=88706; initial_gzip=102579"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103170,
+            "unit": "bytes",
+            "extra": "raw=321745; brotli=89060; initial_gzip=103001"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 106013,
+            "unit": "bytes",
+            "extra": "raw=330671; brotli=91525; initial_gzip=105838"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47268,
+            "unit": "bytes",
+            "extra": "raw=138294; brotli=42120; initial_gzip=47141"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50387,
+            "unit": "bytes",
+            "extra": "raw=145802; brotli=44953; initial_gzip=47202"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52405,
+            "unit": "bytes",
+            "extra": "raw=153612; brotli=46552; initial_gzip=52278"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 66954,
+            "unit": "bytes",
+            "extra": "raw=190147; brotli=59850; initial_gzip=66825"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70768,
+            "unit": "bytes",
+            "extra": "raw=202293; brotli=63102; initial_gzip=70643"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "689a7c5419de68bce0aaaef72b9a36f115ea1398",
+          "message": "fix(react-router): publish agent skills (#8671)\n\nThe skills added in #6866 were never published for @tanstack/react-router\nbecause its `files` list, unlike the other packages with skills, omitted\n`skills`.\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-10-17T09:11:16+02:00",
+          "tree_id": "b9f4078999e0eb2cc8767bf9006b19cf81e29b47",
+          "url": "https://github.com/TanStack/router/commit/689a7c5419de68bce0aaaef72b9a36f115ea1398"
+        },
+        "date": 1792221276949,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
