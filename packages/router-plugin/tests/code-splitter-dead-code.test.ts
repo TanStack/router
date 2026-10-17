@@ -193,8 +193,10 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
   // eliminates newly unreferenced identifiers", "unexported circular references"
   // and "SCC with external caller used -> all preserved". Whether unused user
   // code is kept or dropped is free, and unused code may name a binding its
-  // module no longer declares (user ruling 2026-10-17: it never runs); every
-  // module stays valid and the split component still reaches its helper.
+  // module no longer declares (user ruling 2026-10-17, widened: the bundlers
+  // delete it; the validator checks what Rolldown's tree-shaking keeps);
+  // every module stays valid and the split component still reaches its
+  // helper.
   const unusedFunctions = `${head}function helper() { return 'helper' }
 function unused() { return 'MARK_UNUSED_END' + helper() }
 function ping(): number { return pong() + 'MARK_PING_END'.length }

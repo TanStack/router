@@ -138,11 +138,10 @@ export const Page = () => <div>{imported}</div>`),
     ).toEqual([])
   })
 
-  // User ruling 2026-10-17: a reference to an undefined name inside code
-  // that never runs throws nothing, so it is no error of the module (whether
-  // it reaches a production bundle is a build-level question). Dead code is
-  // approximated as module-level functions that are not exported and that
-  // nothing else reads.
+  // User ruling 2026-10-17 (dead-code references, widened): a reference to
+  // an undefined name in code the bundlers delete from a production build is
+  // no error of the module. The validator deletes what Rolldown's
+  // tree-shaking deletes.
   test.each([
     {
       name: 'an uncalled function declaration',
@@ -151,6 +150,26 @@ export const Page = () => <div>{imported}</div>`),
     {
       name: 'an unused arrow function',
       code: `const makeOptions = () => ({ component: Page })`,
+    },
+    {
+      name: 'an unused variable with a pure initializer',
+      code: `const helpers = { read: () => missing, label: \`\${'a'}\` }`,
+    },
+    {
+      name: 'a dead `if (false)` branch at module level',
+      code: `if (false) { missing() }`,
+    },
+    {
+      name: 'a dead `if (false)` branch of an exported function',
+      code: `export function read() {
+  if (false) { return missing }
+  return 'read'
+}`,
+    },
+    {
+      name: 'an unused class',
+      code: `class Store { static value = inner; read() { return missing } }
+function inner() { return <Missing /> }`,
     },
     {
       name: 'mutually recursive unused functions',
@@ -169,9 +188,15 @@ export const Route = { component: () => <div /> }`),
     ).toEqual([])
   })
 
-  // The other side of the line: code that runs, or may run.
+  // The other side of the line: code that survives tree-shaking, whether it
+  // runs or not.
   test.each([
     { name: 'module-level code', code: `const value = missing` },
+    {
+      name: 'a module-level call',
+      code: `import { track } from './track'
+track(() => missing)`,
+    },
     {
       name: 'an exported function',
       code: `export function read() { return missing }`,
@@ -203,11 +228,6 @@ const outer = () => inner
 export const Route = { loader: outer }`,
     },
     {
-      name: 'a function a class reads',
-      code: `function inner() { return missing }
-class Store { static value = inner }`,
-    },
-    {
       name: 'a function probed with typeof',
       code: `function inner() { return missing }
 console.log(typeof inner)`,
@@ -218,14 +238,10 @@ console.log(typeof inner)`,
 inner = inner`,
     },
     {
-      // Declared twice: which declaration runs is not decided statically.
-      name: 'a function whose name is declared twice',
-      code: `var inner = () => missing
-if (globalThis) { var inner = () => 'other' }`,
-    },
-    {
-      name: 'a function body nested in an object',
-      code: `const helpers = { read: () => missing }`,
+      // Writing a property of the function is a side effect: both stay.
+      name: 'a function module-level code writes a property of',
+      code: `function Page() { return missing }
+Page.displayName = 'Page'`,
     },
   ])('rejects a free name in $name', async ({ code }) => {
     expect(await getModuleErrors(code)).toEqual([

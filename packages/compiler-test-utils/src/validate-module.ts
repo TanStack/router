@@ -1,6 +1,18 @@
+/**
+ * Dangling names in dead code (user ruling "Dead-code references, widened",
+ * 2026-10-17): code that the supported bundlers delete from a production
+ * build may read names that are never declared or imported; a dangling name
+ * that survives into production output is a bug. So `getModuleErrors`
+ * reports only the free names of what real tree-shaking keeps: the module
+ * bundled alone by Rolldown (Vite's production bundler) with its exports as
+ * roots and every import external (and side-effectful). The build harness
+ * checks the production client chunks themselves (`build-harness.ts`).
+ */
+import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
 import { stripVTControlCharacters } from 'node:util'
 import { parseSync, transformWithOxc } from 'vite'
-import type { ESTree } from 'vite'
+import type { ESTree, Rolldown } from 'vite'
 
 /**
  * Validates generated code the way a browser or bundler sees it, without using
@@ -16,7 +28,8 @@ import type { ESTree } from 'vite'
  * `@jsxImportSource` its runtime module): such a reference throws a
  * ReferenceError when it runs. Known globals of browsers and Node.js, names
  * the module probes with `typeof`, and `globals` (e.g. the globals the route
- * file itself reads) are allowed.
+ * file itself reads) are allowed, and so are references in code that
+ * tree-shaking deletes (see the top of this file).
  *
  * @returns the error messages; an empty array means the module is valid.
  */
@@ -43,9 +56,22 @@ export async function getModuleErrors(
     return errors.map((error) => error.message)
   }
   const allowed = new Set(options.globals)
-  return [...(await freeIdentifiers(code, filename, { deadCode: false }))]
-    .filter((name) => !allowed.has(name))
-    .map((name) => `\`${name}\` is referenced but never declared or imported`)
+  const compiled = await compileModule(code, filename)
+  let names = [...freeNamesOf(compiled)].filter((name) => !allowed.has(name))
+  // Tree-shaking only deletes code, so it runs only when there is a name to
+  // clear.
+  if (names.length > 0) {
+    let kept: Set<string>
+    try {
+      kept = freeNamesOf(await treeShake(compiled))
+    } catch (error) {
+      return [stripVTControlCharacters((error as Error).message)]
+    }
+    names = names.filter((name) => kept.has(name))
+  }
+  return names.map(
+    (name) => `\`${name}\` is referenced but never declared or imported`,
+  )
 }
 
 /**
@@ -53,39 +79,88 @@ export async function getModuleErrors(
  * known globals and names it probes with `typeof`, once TypeScript is erased
  * and JSX compiled with the project default (React's automatic runtime) or
  * the module's own JSX pragmas (a `@jsx` or `@jsxFrag` pragma alone selects
- * the classic runtime, see `jsxRuntime`).
- *
- * `deadCode: false` leaves out names referenced only inside code that never
- * runs (`getModuleErrors` does: such a reference throws nothing). Dead code
- * is approximated statically as the module-level functions that are not
- * exported and that no other code of the module reads, directly or through
- * other such functions: a `function` declaration, or a `const`/`let`/`var`
- * initialised with a function or arrow expression, whose name the module
- * declares once. Reads by anything else (module-level code, exports, classes,
- * `typeof`, assignments) keep a function live; anything undecidable stays
- * live.
+ * the classic runtime, see `jsxRuntime`). Dead code counts too.
  */
 export async function freeIdentifiers(
   code: string,
   filename = 'module.tsx',
-  options: { deadCode?: boolean } = {},
 ): Promise<Set<string>> {
+  return freeNamesOf(await compileModule(code, filename))
+}
+
+/**
+ * Names a JavaScript module (e.g. a bundler's output chunk) reads without
+ * declaring or importing them, other than the names it probes with `typeof`.
+ * Globals count: the caller decides which names exist at run time.
+ */
+export function unboundNames(javascript: string): Set<string> {
+  const { program } = parseSync('module.js', javascript, {
+    sourceType: 'module',
+  })
+  const { references, probed } = analyzeScopes(program)
+  return new Set([...references].filter((name) => !probed.has(name)))
+}
+
+/** The module with TypeScript erased and JSX compiled (see `jsxRuntime`). */
+async function compileModule(code: string, filename: string) {
   const { code: javascript } = await transformWithOxc(code, filename, {
     jsx: { runtime: jsxRuntime(code, filename) },
     typescript: { onlyRemoveTypeImports: true },
   })
-  const { program } = parseSync('module.js', javascript, {
-    sourceType: 'module',
-  })
-  const { references, probed, isOnlyInDeadCode } = analyzeScopes(program)
+  return javascript
+}
+
+function freeNamesOf(javascript: string): Set<string> {
   return new Set(
-    [...references].filter(
-      (name) =>
-        !probed.has(name) &&
-        !isKnownGlobal(name) &&
-        (options.deadCode !== false || !isOnlyInDeadCode(name)),
-    ),
+    [...unboundNames(javascript)].filter((name) => !isKnownGlobal(name)),
   )
+}
+
+const require = createRequire(import.meta.url)
+let rolldownModule: Promise<typeof Rolldown> | undefined
+
+/** The Rolldown that Vite builds with (a dependency of Vite, not ours). */
+function loadRolldown(): Promise<typeof Rolldown> {
+  rolldownModule ??= import(
+    pathToFileURL(createRequire(require.resolve('vite')).resolve('rolldown'))
+      .href
+  ) as Promise<typeof Rolldown>
+  return rolldownModule
+}
+
+const entryId = '\0validate-module-entry'
+
+/**
+ * What Rolldown keeps of a JavaScript module bundled alone, tree-shaking on,
+ * its exports kept: every import stays external, and external modules count
+ * as side-effectful. `platform: 'neutral'` defines nothing (no
+ * `process.env.NODE_ENV`), since the module may run on the client or the
+ * server.
+ */
+async function treeShake(javascript: string): Promise<string> {
+  const { rolldown } = await loadRolldown()
+  const bundle = await rolldown({
+    input: entryId,
+    platform: 'neutral',
+    treeshake: true,
+    logLevel: 'silent',
+    external: (id) => id !== entryId,
+    plugins: [
+      {
+        name: 'validate-module-entry',
+        resolveId: (id) => (id === entryId ? id : null),
+        load: (id) => (id === entryId ? javascript : null),
+      },
+    ],
+  })
+  try {
+    const { output } = await bundle.generate({ format: 'esm' })
+    return output
+      .map((item) => (item.type === 'chunk' ? item.code : ''))
+      .join('\n')
+  } finally {
+    await bundle.close()
+  }
 }
 
 /**
@@ -350,42 +425,18 @@ function analyzeScopes(program: ESTree.Program) {
   const probed = new Set<string>()
   const moduleScope = createScope(undefined, true)
   const body = program.body as unknown as Array<Node>
-  /** Module-level functions that may be dead (see `freeIdentifiers`). */
-  const candidates = deadCodeCandidates(body)
-  /** The candidate whose body is being visited (`undefined`: other code). */
-  let owner: string | undefined
-  /** Candidates each candidate (or other code, `undefined`) reads. */
-  const reads = new Map<string | undefined, Set<string>>()
-  /** Where each free name is referenced. */
-  const freeOwners = new Map<string, Set<string | undefined>>()
 
-  /** Resolves `name` from `scope`; true when it is declared. */
-  const resolve = (name: string, scope: Scope) => {
+  const reference = (name: string, scope: Scope) => {
     for (
       let current: Scope | undefined = scope;
       current;
       current = current.parent
     ) {
       if (current.names.has(name)) {
-        if (current === moduleScope && candidates.has(name)) {
-          const read = reads.get(owner) ?? new Set<string>()
-          read.add(name)
-          reads.set(owner, read)
-        }
-        return true
+        return
       }
     }
-    return false
-  }
-
-  const reference = (name: string, scope: Scope) => {
-    if (resolve(name, scope)) {
-      return
-    }
     references.add(name)
-    const owners = freeOwners.get(name) ?? new Set<string | undefined>()
-    owners.add(owner)
-    freeOwners.set(name, owners)
   }
 
   /** Visits a binding pattern: only defaults and computed keys are read. */
@@ -625,8 +676,6 @@ function analyzeScopes(program: ESTree.Program) {
           node.argument.type === 'Identifier'
         ) {
           probed.add(node.argument.name as string)
-          // A probed function counts as read: it stays live.
-          resolve(node.argument.name as string, scope)
           return
         }
         visit(node.argument, scope)
@@ -660,95 +709,6 @@ function analyzeScopes(program: ESTree.Program) {
   }
 
   declareVars(body, moduleScope)
-  declareLexical(body, moduleScope)
-  for (const statement of body) {
-    if (
-      statement.type === 'FunctionDeclaration' &&
-      isNode(statement.id) &&
-      candidates.has(statement.id.name as string)
-    ) {
-      owner = statement.id.name as string
-      visit(statement, moduleScope)
-      owner = undefined
-    } else if (statement.type === 'VariableDeclaration') {
-      for (const declarator of statement.declarations as Array<Node>) {
-        visitBinding(declarator.id, moduleScope)
-        const id = declarator.id as Node
-        owner =
-          id.type === 'Identifier' && candidates.has(id.name as string)
-            ? (id.name as string)
-            : undefined
-        visit(declarator.init, moduleScope)
-        owner = undefined
-      }
-    } else {
-      visit(statement, moduleScope)
-    }
-  }
-
-  // Live candidates: read by other code, or by a live candidate.
-  const live = new Set<string>()
-  const pending = [...(reads.get(undefined) ?? [])]
-  while (pending.length > 0) {
-    const name = pending.pop()!
-    if (!live.has(name)) {
-      live.add(name)
-      pending.push(...(reads.get(name) ?? []))
-    }
-  }
-  const isOnlyInDeadCode = (name: string) =>
-    [...(freeOwners.get(name) ?? [undefined])].every(
-      (where) => where !== undefined && !live.has(where),
-    )
-  return { references, probed, isOnlyInDeadCode }
-}
-
-/** Unwraps parentheses around an expression. */
-function unparenthesized(node: unknown): unknown {
-  while (isNode(node) && node.type === 'ParenthesizedExpression') {
-    node = node.expression
-  }
-  return node
-}
-
-/**
- * Names of the module-level functions that are dead unless something reads
- * them: unexported `function` declarations, and unexported
- * `const`/`let`/`var` declarators initialised with a function or arrow
- * expression, whose name the module declares exactly once.
- */
-function deadCodeCandidates(body: Array<Node>) {
-  const counts = new Map<string, number>()
-  const count = (name: string) => counts.set(name, (counts.get(name) ?? 0) + 1)
-  for (const statement of body) {
-    const scope = createScope(undefined, true)
-    declareVars([statement], scope)
-    declareLexical([statement], scope)
-    scope.names.forEach(count)
-  }
-  const candidates = new Set<string>()
-  for (const statement of body) {
-    if (statement.type === 'FunctionDeclaration' && isNode(statement.id)) {
-      candidates.add(statement.id.name as string)
-    } else if (statement.type === 'VariableDeclaration') {
-      for (const declarator of statement.declarations as Array<Node>) {
-        const id = declarator.id as Node
-        const init = unparenthesized(declarator.init)
-        if (
-          id.type === 'Identifier' &&
-          isNode(init) &&
-          (init.type === 'FunctionExpression' ||
-            init.type === 'ArrowFunctionExpression')
-        ) {
-          candidates.add(id.name as string)
-        }
-      }
-    }
-  }
-  for (const name of candidates) {
-    if (counts.get(name) !== 1) {
-      candidates.delete(name)
-    }
-  }
-  return candidates
+  visitBody(body, moduleScope)
+  return { references, probed }
 }
