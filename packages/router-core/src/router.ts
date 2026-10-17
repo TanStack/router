@@ -1911,13 +1911,9 @@ export class RouterCore<
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
-        inheritSearch?: boolean
       } = {},
       inheritedLocation?: ParsedLocation,
     ): ParsedLocation => {
-      if (dest.inheritSearch === true && dest.search !== undefined) {
-        throw new Error('A route mask cannot combine inheritSearch with search')
-      }
       if (dest.href) {
         const parsed = parseHref(dest.href, {} as ParsedHistoryState)
         dest = {
@@ -2087,7 +2083,7 @@ export class RouterCore<
 
       let nextSearch: Record<string, unknown>
       let searchStr: string
-      if (dest.inheritSearch === true && inheritedLocation) {
+      if (inheritedLocation) {
         nextSearch = inheritedLocation.search
         searchStr = inheritedLocation.searchStr
       } else {
@@ -2203,15 +2199,13 @@ export class RouterCore<
 
     const next = build(opts)
 
-    if (opts.mask) {
-      next.maskedLocation = build(
-        {
-          from: opts.from,
-          ...opts.mask,
-        },
-        next,
-      )
-    } else if (this.options.routeMasks) {
+    let mask:
+      | (BuildNextOptions & {
+          unmaskOnReload?: boolean
+          inheritSearch?: boolean
+        })
+      | undefined = opts.mask && { from: opts.from, ...opts.mask }
+    if (!mask && this.options.routeMasks) {
       const match = findFlatMatch<RouteMask<TRouteTree>>(
         next.pathname,
         this.processedTree,
@@ -2224,15 +2218,15 @@ export class RouterCore<
         // Otherwise, use the matched params or the provided params value
         const nextParams = resolveNextParams(maskParams, params)
 
-        next.maskedLocation = build(
-          {
-            from: opts.from,
-            ...maskProps,
-            params: nextParams,
-          },
-          next,
-        )
+        mask = { from: opts.from, ...maskProps, params: nextParams }
       }
+    }
+    if (mask) {
+      const inheritSearch = mask.inheritSearch === true
+      if (inheritSearch && mask.search !== undefined) {
+        throw new Error('A route mask cannot combine inheritSearch with search')
+      }
+      next.maskedLocation = build(mask, inheritSearch ? next : undefined)
     }
 
     // A mask that reads the current location marks the whole result through
