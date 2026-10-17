@@ -328,6 +328,29 @@ export function Page() {
     },
   )
 
+  // Bug: whitespace-only text around a single child is dropped when the
+  // children move into the chunk, although JSX keeps whitespace on the line
+  // of the child as text (the server renders it).
+  // Impact: the client renders other text than the server (a hydration
+  // mismatch).
+  // Source: hydrate-when-transform.ts getMeaningfulChildren (round3
+  // mutation analysis, hydrate P1)
+  test.fails(
+    'client: spaces around a single child on one line render like on the server',
+    async () => {
+      const jsx = await evaluateModule(`export const text = <> <p>x</p> </>`)
+      const code = `${head}export function Page() {
+  return <Hydrate> <p>x</p> </Hydrate>
+}`
+      const render = (m: Record<string, any>) => m.Page()
+      const server = await renderBoundaries('server', code, render)
+      expect(server.html).toBe(`[${jsx.text}]`)
+      expect((await renderBoundaries('client', code, render)).html).toBe(
+        server.html,
+      )
+    },
+  )
+
   /**
    * Renders `Page` of `code` compiled for `env` (on the client once its
    * chunks have loaded) and records each `<Hydrate>` it renders: its id and
@@ -509,24 +532,34 @@ describe('values captured by the children', () => {
     },
   )
 
-  // Bug: the object of a member-expression tag (`<ui.Home />`) is not taken
-  // for a read of a local.
+  // Bug: the object of a member-expression tag (`<ui.Home />`,
+  // `<Model.Item />`) is not taken for a read of a local.
   // Impact: the boundary throws "ui is not defined" when it hydrates.
   // Source: Qwik optimizer jsx_member_tag_object_is_captured,
   // destructured_prop_used_as_member_tag (#8504 hydrate-captures.test.ts, red
-  // on main)
-  test.fails(
-    'client: the split children render member-expression tags of local objects',
-    async () => {
-      const { module, lazyChunks } =
-        await loadClientModule(`${head}function Home() { return <i>home</i> }
-export function Page({ Model }) {
+  // on main); hydrate-when-transform.ts captureVisitors.JSXIdentifier
+  test.fails.each([
+    {
+      name: 'a lowercase local object',
+      code: `function Home() { return <i>home</i> }
+export function Page() {
   const ui = { Home }
-  return <Hydrate><ui.Home /><Model.Item /></Hydrate>
-}`)
-      expect(module.Page({ Model: { Item: () => '<b>item</b>' } })).toBe(
-        '[<i>home</i><b>item</b>]',
-      )
+  return <Hydrate><ui.Home /></Hydrate>
+}`,
+      html: '[<i>home</i>]',
+    },
+    {
+      name: 'a capitalized destructured prop',
+      code: `export function Page({ Model }) {
+  return <Hydrate><Model.Item /></Hydrate>
+}`,
+      html: '[<b>item</b>]',
+    },
+  ])(
+    'client: the split children render member-expression tags of $name',
+    async ({ code, html }) => {
+      const { module, lazyChunks } = await loadClientModule(`${head}${code}`)
+      expect(module.Page({ Model: { Item: () => '<b>item</b>' } })).toBe(html)
       expectRenderedThroughChunks(lazyChunks)
     },
   )

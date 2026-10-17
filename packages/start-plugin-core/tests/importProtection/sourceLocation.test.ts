@@ -417,6 +417,126 @@ describe('findOriginalUsageLocation', () => {
       ),
     ).toBeUndefined()
   })
+
+  // Each case has a use inside a boundary the compiler strips from `env`
+  // (skipped), then a look-alike use that is not one (reported).
+  const imports = `import { createServerFn, createServerOnlyFn, createClientOnlyFn, createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+import { getSecret } from './secret.server'
+`
+  test.each([
+    {
+      name: 'createServerOnlyFn, then an ordinary callback',
+      env: 'client',
+      body: `export const a = createServerOnlyFn(() => getSecret())
+export const b = run(() => getSecret())`,
+      line: 4,
+    },
+    {
+      name: 'createClientOnlyFn, then an ordinary callback',
+      env: 'server',
+      body: `export const a = createClientOnlyFn(() => getSecret())
+export const b = run(() => getSecret())`,
+      line: 4,
+    },
+    {
+      name: 'createIsomorphicFn().client, then .server',
+      env: 'server',
+      body: `export const a = createIsomorphicFn().client(() => getSecret())
+export const b = createIsomorphicFn().server(() => getSecret())`,
+      line: 4,
+    },
+    {
+      name: 'createIsomorphicFn().server, then .client',
+      env: 'client',
+      body: `export const a = createIsomorphicFn().server(() => getSecret())
+export const b = createIsomorphicFn().client(() => getSecret())`,
+      line: 4,
+    },
+    {
+      name: 'createIsomorphicFn().server, then a nested member call',
+      env: 'client',
+      body: `export const a = createIsomorphicFn().server(() => getSecret())
+export const b = api.helpers.run(() => getSecret())`,
+      line: 4,
+    },
+    {
+      name: 'createMiddleware().server, then another .server method',
+      env: 'client',
+      body: `export const a = createMiddleware().server(() => getSecret())
+export const b = api.server(() => getSecret())`,
+      line: 4,
+    },
+    {
+      name: 'a middleware variable, then a .handler method',
+      env: 'client',
+      body: `const authMiddleware = createMiddleware()
+export const a = authMiddleware.server(() => getSecret())
+export const b = queue.handler(() => getSecret())`,
+      line: 5,
+    },
+    {
+      name: 'a server fn builder variable, then an ordinary callback',
+      env: 'client',
+      body: `const myServerFn = createServerFn()
+export const a = myServerFn.handler(() => getSecret())
+export const b = run(() => getSecret())`,
+      line: 5,
+    },
+    {
+      name: 'a catch clause in a handler, then an ordinary callback',
+      env: 'client',
+      body: `export const a = createServerFn().handler(() => { try { return 1 } catch { return getSecret() } })
+export const b = run(() => getSecret())`,
+      line: 4,
+    },
+    {
+      name: 'a callback of a returned function',
+      env: 'client',
+      body: `export const a = getRunner()(() => getSecret())`,
+      line: 3,
+    },
+    {
+      name: 'a method of a constructed object',
+      env: 'client',
+      body: `export const a = new Api().run(() => getSecret())`,
+      line: 3,
+    },
+  ] as const)('$env: $name', ({ env, body, line }) => {
+    const provider = makeProvider('export {}\n', imports + body)
+    expect(
+      findOriginalUsageLocation(
+        provider,
+        '/test/src/a.ts',
+        './secret.server',
+        env,
+      )?.line,
+    ).toBe(line)
+  })
+})
+
+describe('findPostCompileUsageLocation', () => {
+  test('locates the use of each of two denied sources of a module', async () => {
+    const result: TransformResult = {
+      code: [
+        `import { a } from 'denied-a'`,
+        `import { b } from 'denied-b'`,
+        `export const one = a`,
+        `export const two = b`,
+      ].join('\n'),
+      map: undefined,
+      originalCode: undefined,
+    }
+    const provider: TransformResultProvider = {
+      getTransformResult: () => result,
+    }
+    const id = '/test/src/a.ts'
+    expect(
+      (await findPostCompileUsageLocation(provider, id, 'denied-a'))?.line,
+    ).toBe(3)
+    expect(
+      (await findPostCompileUsageLocation(provider, id, 'denied-b'))?.line,
+    ).toBe(4)
+  })
 })
 
 describe('ImportLocCache', () => {

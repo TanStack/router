@@ -2,7 +2,8 @@ import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { compileMatchers } from '../../src/import-protection/matchers'
 import { getRsbuildResolvedImportProtectionCheck } from '../../src/rsbuild/import-protection'
-import { startRsbuildDevServer } from '../rsbuild-dev-server'
+import { reportedViolations } from '../importProtection/start-apps'
+import { runRsbuildClient, startRsbuildDevServer } from '../rsbuild-dev-server'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 
 describe('getRsbuildResolvedImportProtectionCheck', () => {
@@ -107,3 +108,104 @@ console.log(page())
     30_000,
   )
 })
+
+describe('Rsbuild dev: reports across rebuilds', () => {
+  /** An entry using the denied file `src/secret.server.ts` and `src/other.ts`. */
+  const app = {
+    'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+    'src/other.ts': `export const other = 1\n`,
+    'src/entry.ts': `import { secret } from './secret.server'
+import { other } from './other'
+console.log(secret(), other)
+`,
+  }
+
+  // Source: mutation run R3 ip-rsbuild R3; a control of the harness running
+  // an Rsbuild dev rebuild with import protection on (the warnings of each
+  // compile).
+  test.each([
+    { log: 'once' as const, afterRebuild: [] },
+    { log: 'always' as const, afterRebuild: ['client src/entry.ts:3:13'] },
+  ])(
+    "log '$log': a rebuild for an unrelated edit reports $afterRebuild",
+    async ({ log, afterRebuild }) => {
+      const server = await startRsbuildDevServer({
+        importProtection: { log },
+        files: app,
+      })
+      const reported = () =>
+        reportedViolations(server.warnings).map(
+          ({ environment, importer }) => `${environment} ${importer}`,
+        )
+      expect(reported()).toEqual(['client src/entry.ts:3:13'])
+      await server.edit({ 'src/other.ts': `export const other = 2\n` })
+      expect(server.rebuilt).toContain('src/other.ts')
+      expect(reported()).toEqual(afterRebuild)
+    },
+    30_000,
+  )
+
+  // Source: mutation run R3 ip-rsbuild R4 (the resolve cache of a previous
+  // compile).
+  test('a denied specifier that an edit makes resolve elsewhere is reported with its new target', async () => {
+    const resolved: Array<string | undefined> = []
+    const server = await startRsbuildDevServer({
+      importProtection: {
+        client: { specifiers: [/^\.\/lib$/] },
+        onViolation: (info) => {
+          // relative to the app root (src/...)
+          resolved.push(
+            (info as ViolationInfo).resolved?.replace(/^.*\/(?=src\/)/, ''),
+          )
+        },
+      },
+      files: {
+        'src/lib.ts': `export const lib = 1\n`,
+        'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib)\n`,
+      },
+    })
+    expect(resolved).toEqual(['src/lib.ts'])
+    await server.edit({
+      'src/lib.ts': null,
+      'src/lib/index.ts': `export const lib = 2\n`,
+      'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib, 2)\n`,
+    })
+    expect(resolved).toEqual(['src/lib.ts', 'src/lib/index.ts'])
+  }, 30_000)
+})
+
+// Source: mutation run R3 ip-rsbuild R7 and ip-misc P10.
+test('Rsbuild dev: the client mock of each denied import reports its own use in the browser console', async () => {
+  const server = await startRsbuildDevServer({
+    importProtection: { client: { specifiers: ['db-lib'] } },
+    files: {
+      'node_modules/db-lib/package.json': JSON.stringify({
+        name: 'db-lib',
+        type: 'module',
+        exports: { '.': './index.js' },
+      }),
+      'node_modules/db-lib/index.js': `export const query = () => 'MARK_LIB'\n`,
+      'src/a.server.ts': `export const a = () => 'MARK_A'\n`,
+      'src/b.server.ts': `export const b = () => 'MARK_B'\n`,
+      'src/entry.ts': `import { a } from './a.server'
+import { b } from './b.server'
+import { query } from 'db-lib'
+console.log(a(), b(), query())
+`,
+    },
+  })
+  expect(server.errors).toEqual([])
+  const messages = await runRsbuildClient(server)
+  expect(messages.filter((message) => message.includes('MARK_'))).toEqual([])
+  expect(
+    [
+      ...new Set(
+        messages
+          .filter((message) =>
+            message.includes('Mocked import used in dev client'),
+          )
+          .map((message) => /Denied import: "([^"]+)"/.exec(message)?.[1]),
+      ),
+    ].sort(),
+  ).toEqual(['db-lib', 'src/a.server.ts', 'src/b.server.ts'])
+}, 30_000)

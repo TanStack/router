@@ -43,6 +43,87 @@ export const fn = base.handler(async () => db.x())
   )
 })
 
+describe('Vite dev: server fns by id', () => {
+  // A dev server compiles modules on demand: the resolver must find server
+  // fns of modules compiled after it first loaded.
+  // Source: mutation round 3 sc-hosts 3.
+  test(
+    'SSR: a server fn of a module compiled after the resolver first loaded runs by id',
+    async () => {
+      const server = await startDevServer({
+        files: {
+          'src/first.ts': `import { createServerFn } from '@tanstack/react-start'
+export const first = createServerFn().handler(() => 'MARK_FIRST')
+`,
+          'src/later.ts': `import { createServerFn } from '@tanstack/react-start'
+export const later = createServerFn().handler(() => 'MARK_LATER')
+`,
+        },
+      })
+      /** Calls the server fn `name` of `url` the way an HTTP call does: by id. */
+      const callById = async (url: string, name: string) => {
+        const fn = (await server.import(url))[name]
+        const { getServerFnById } = await server.import(
+          '#tanstack-start-server-fn-resolver',
+        )
+        return (await getServerFnById(fn.functionId, { origin: 'client' }))({})
+      }
+      expect(await callById('/src/first.ts', 'first')).toBe('MARK_FIRST')
+      expect(await callById('/src/later.ts', 'later')).toBe('MARK_LATER')
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: a server fn provider environment other than SSR', () => {
+  // The RSC setup of a framework: the `rsc` environment runs the handlers,
+  // and SSR forwards calls by id to it through the `getServerFnById` module
+  // the framework configures.
+  // Source: mutation round 3 sc-hosts 5.
+  test(
+    'SSR calls go through its configured getServerFnById, and the provider runs the handler of the client id',
+    async () => {
+      const server = await startDevServer({
+        environments: [
+          { name: 'client', type: 'client' },
+          {
+            name: 'ssr',
+            type: 'server',
+            getServerFnById: `export async function getServerFnById(id) {
+  return () => 'MARK_FORWARDED:' + id
+}
+`,
+          },
+          { name: 'rsc', type: 'server' },
+        ],
+        providerEnvName: 'rsc',
+        files: {
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler(() => 'MARK_HANDLER')
+`,
+        },
+      })
+      // The client gets the id from the stand-in package
+      const id = (
+        await evaluateServed(server, '/src/fns.ts', { skip: /^\/@vite\b/ })
+      ).greet.functionId
+      /** Calls the server fn of `id` in `environment` through its resolver. */
+      const callById = async (environment: string) => {
+        const { getServerFnById } = await server.import(
+          '#tanstack-start-server-fn-resolver',
+          environment,
+        )
+        return (await getServerFnById(id, { origin: 'client' }))({})
+      }
+      expect({
+        ssr: await callById('ssr'),
+        rsc: await callById('rsc'),
+      }).toEqual({ ssr: `MARK_FORWARDED:${id}`, rsc: 'MARK_HANDLER' })
+    },
+    timeout,
+  )
+})
+
 describe('Vite dev: editing a server fn handler', () => {
   // Source: replaces server-fn-resolver-module.test.ts "imports on every call
   // by default" and "keeps the imported module when memoizeModules is set",

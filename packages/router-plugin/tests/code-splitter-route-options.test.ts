@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   compileRouteModules,
   declaredNames,
   expectValidModules,
+  generatedRouteId,
   head,
   hotUpdate,
   importSources,
@@ -94,6 +95,28 @@ export const Route = createFileRoute('/posts')(options)
     expect(option in route.options).toBe(true)
     expect(route.options[option]).toBe(value)
     expect(route.isLazy(option)).toBe(false)
+  })
+
+  // A documented grouping: every option in one chunk.
+  it('keep literal and method options grouped with a split option as written', async () => {
+    const route =
+      await loadRoute(`${head}export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader', 'component', 'errorComponent', 'pendingComponent', 'notFoundComponent']],
+  loader() { return 'data' },
+  component: () => <p>page</p>,
+  errorComponent: false,
+  pendingComponent: null,
+  notFoundComponent: undefined,
+})
+`)
+    await expectValidModules(route.modules)
+    expect((await route.load('component'))()).toBe('<p>page</p>')
+    expect([
+      await (await route.load('loader'))(),
+      route.options.errorComponent,
+      route.options.pendingComponent,
+      route.options.notFoundComponent,
+    ]).toEqual(['data', false, null, undefined])
   })
 
   // A `var` declared in a block at module level is a module-level binding,
@@ -242,6 +265,53 @@ export const Route = createFileRoute('/')({
     if (loaded) {
       expect(await route.options.loader()).toBe(loaded)
     }
+  })
+
+  it('load the module a split loader is imported from with the loader only', async () => {
+    const log: Array<string> = []
+    const route = await loadRoute(
+      `${head}import { loadData } from './loader'
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: loadData,
+  component: () => <p>page</p>,
+})
+`,
+      {
+        stubs: {
+          './loader': {
+            get loadData() {
+              log.push('./loader')
+              return () => 'data'
+            },
+          },
+        },
+      },
+    )
+    expect(route.isLazy('loader')).toBe(true)
+    const before = [...log]
+    expect([before, await route.options.loader(), log]).toEqual([
+      [],
+      'data',
+      ['./loader'],
+    ])
+  })
+
+  it('split a loader declared as a local function without a warning', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    onTestFinished(() => warn.mockRestore())
+    const route = await loadRoute(`${head}function load() {
+  return 'data'
+}
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: load,
+  component: () => <p>page</p>,
+})
+`)
+    expect(route.isLazy('loader')).toBe(true)
+    expect(await route.options.loader()).toBe('data')
+    expect(warn.mock.calls).toEqual([])
   })
 })
 
@@ -527,7 +597,7 @@ export const Route = ${call}
 `
     const update = await hotUpdate(source(1), {
       codeSplitting: true,
-      routeId: '/__root',
+      routeId: await generatedRouteId('__root.tsx'),
       updated: source(2),
     })
     expect([update.previous.staticData, update.live.staticData]).toEqual([

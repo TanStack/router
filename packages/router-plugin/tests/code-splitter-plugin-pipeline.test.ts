@@ -3,8 +3,10 @@ import {
   compileRouteModules,
   createCodeSplitterTransforms,
   createRouteHmrTransform,
+  createRouteLoader,
   evaluateModule,
   expectValidModules,
+  head,
   hotUpdate,
   importRequests,
   importSources,
@@ -26,6 +28,9 @@ export const Route = createFileRoute('/${name}')({
   errorComponent: () => <p>error in ${name}</p>,
 })
 `
+
+const referencePluginName =
+  'tanstack-router:code-splitter:compile-reference-file'
 
 /** Ids of the modules of `file` a compiled module imports, by kind. */
 function routeModuleRequests(code: string, file: string) {
@@ -186,6 +191,64 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     await expect(
       createCodeSplitterTransforms({}, {}, [reactPlugin, routerPlugin]),
     ).rejects.toThrow('Plugin order error')
+  })
+
+  // Each JSX plugin the router plugin must come before, named by its package.
+  it.each([
+    ['vite:react-swc:resolve-runtime', '@vitejs/plugin-react-swc'],
+    ['vite:react-swc', '@vitejs/plugin-react-swc'],
+    ['vite:react-oxc:config', '@vitejs/plugin-react-oxc'],
+    ['vite:react-oxc:refresh-runtime', '@vitejs/plugin-react-oxc'],
+    ['vite:react-refresh', '@vitejs/plugin-react'],
+  ])('refuses %s placed before the router plugin', async (name, pkg) => {
+    await expect(
+      createCodeSplitterTransforms({}, {}, [
+        { name },
+        { name: referencePluginName },
+      ]),
+    ).rejects.toThrow(pkg)
+  })
+
+  it('refuses vite-plugin-solid placed before the router plugin of a Solid app', async () => {
+    const { default: solid } = await import('vite-plugin-solid')
+    const solidPlugins = [solid()].flat() as Array<{ name: string }>
+    await expect(
+      createCodeSplitterTransforms({ target: 'solid' }, {}, [
+        ...solidPlugins,
+        { name: referencePluginName },
+      ]),
+    ).rejects.toThrow(/Plugin order error[\s\S]*vite-plugin-solid/)
+    await expect(
+      createCodeSplitterTransforms({ target: 'solid' }, {}, [
+        { name: referencePluginName },
+        ...solidPlugins,
+      ]),
+    ).resolves.toBeDefined()
+  })
+
+  // A dev server compiles each edit of a route file with the same plugin
+  // instance.
+  it('compiles an edited route like a fresh one after a version whose loader and component shared a binding', async () => {
+    const load = createRouteLoader({
+      stubs: { './label': { label: { text: 'imported' } } },
+    })
+    const before = await load(`${head}const label = { text: 'before' }
+export const Route = createFileRoute('/')({
+  loader: () => label,
+  component: () => <p>{label.text}</p>,
+})
+`)
+    expect((await before.load('component'))()).toBe('<p>before</p>')
+    const after = await load(`${head}import { label } from './label'
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>{label.text}</p>,
+})
+`)
+    await expectValidModules(after.modules)
+    expect([after.options.loader(), (await after.load('component'))()]).toEqual(
+      ['data', '<p>imported</p>'],
+    )
   })
 
   // Each framework's route module imports the lazy route helpers from its

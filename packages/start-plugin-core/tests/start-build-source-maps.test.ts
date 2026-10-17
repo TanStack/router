@@ -58,7 +58,61 @@ describe.each(startBundlers)('%s build', (bundler) => {
     },
     timeout,
   )
+
+  // Import protection rewrites the denied import of the module (mock mode),
+  // and compiling drops the type-only lines before the throw.
+  test(
+    'client, mock mode: a throw in a module whose denied import is mocked maps to its line in the source file (minified)',
+    async () => {
+      const { client } = await buildStart({
+        bundler,
+        minify: true,
+        sourcemap: true,
+        files: {
+          'node_modules/db-lib/package.json': JSON.stringify({
+            name: 'db-lib',
+            type: 'module',
+            exports: { '.': './index.js' },
+          }),
+          'node_modules/db-lib/index.js': `export const secret = 1\n`,
+          'src/fail.ts': mockedImporter,
+          'src/entry.ts': `export { fail } from './fail'\n`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: {
+            behavior: 'mock',
+            client: { specifiers: ['db-lib'] },
+          },
+        },
+      })
+      const { result: stack } = await client.run(
+        `try { entry.fail() } catch (error) { return error.stack }`,
+      )
+      expect(stack).toMatch(/MARK_THROW/)
+      const { file, line } = originalFrameOf(client, stack as string) ?? {}
+      expect({ file, line }).toEqual({
+        file: 'src/fail.ts',
+        line: lineOf(mockedImporter, 'throw new Error'),
+      })
+    },
+    timeout,
+  )
 })
+
+const mockedImporter = `import { secret } from 'db-lib'
+interface Options {
+  a: string
+  b: number
+}
+type Unused = Options
+export function fail(options?: Options): string {
+  if (!options) {
+    throw new Error('MARK_THROW' + String(secret))
+  }
+  return options.a
+}
+`
 
 const route = `import { createFileRoute } from '@tanstack/react-router'
 import { prefix } from '../prefix'

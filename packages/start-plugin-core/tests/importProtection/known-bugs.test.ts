@@ -6,7 +6,16 @@ import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
 import { buildStart, startBundlers } from '../build-harness'
+import { runRsbuildClient, startRsbuildDevServer } from '../rsbuild-dev-server'
 import { evaluateWithMock, isMock, selfMock } from './mock-helpers'
+import {
+  factoryTopLevelCall,
+  rejection,
+  reportedViolations,
+  serverFnFactoryApp,
+  startProtectedDevServer,
+} from './start-apps'
+import type { RsbuildConfig } from '@rsbuild/core'
 
 const mockModule = `data:text/javascript,${encodeURIComponent(
   `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
@@ -268,6 +277,296 @@ describe.each(startBundlers)('%s build', (bundler) => {
           warning.includes('[import-protection]'),
         ),
       }).toEqual({ mock: 'nowhere', warnings: [] })
+    },
+    60_000,
+  )
+})
+
+describe('Vite dev, behavior "error"', () => {
+  /**
+   * `serverFnFactoryApp` with a top-level call of the denied `getRequest()`
+   * in `module` (the server fn factory module or another one), without the
+   * leak (behavior "error" stops at the first violation).
+   */
+  const topLevelCallApp = (module: 'src/factory.ts' | 'src/other.ts') => {
+    const app: Record<string, string> = {
+      ...serverFnFactoryApp(
+        module === 'src/factory.ts' ? factoryTopLevelCall : '',
+      ),
+      'src/entry.ts': `export { fn } from './usage'\nexport * from './other'\n`,
+      'src/other.ts':
+        module === 'src/other.ts'
+          ? `import { getRequest } from '@tanstack/react-start/server'\n${factoryTopLevelCall}`
+          : `export const other = 1\n`,
+    }
+    delete app['src/leak.ts']
+    return app
+  }
+
+  /** The violations loading the app reports, or `'loaded'`. */
+  async function loadOutcome(files: Record<string, string>) {
+    const server = await startProtectedDevServer(files, { behavior: 'error' })
+    return server.load('/src/entry.ts').then(
+      () => 'loaded',
+      (error: Error) =>
+        reportedViolations(error.message).map(
+          ({ environment, importer }) =>
+            `${environment} ${importer.replace(/:.*/, '')}`,
+        ),
+    )
+  }
+
+  // Control for the pin below (same harness): a top-level call of a denied
+  // specifier in a module the Start compiler did not look up fails to load.
+  test('a module calling a denied import at the top level fails to load', async () => {
+    expect(await loadOutcome(topLevelCallApp('src/other.ts'))).toEqual([
+      'client src/other.ts',
+    ])
+  }, 30_000)
+
+  // Bug: the Start compiler resolves the imports of a server fn factory
+  // module with a lookup query (`SERVER_FN_LOOKUP`), and import protection
+  // records the module as a lookup module by its path without the query
+  // (`serverFnLookupModules`, vite/import-protection-plugin/plugin.ts
+  // `resolveId`). The client's own transform of the module then counts as a
+  // lookup too, whose violations behavior "error" silences in dev (no later
+  // verification).
+  // Impact: in dev with behavior "error", the client of a server fn factory
+  // module that calls a denied import (here `getRequest()` of
+  // `@tanstack/react-start/server`) at the top level gets the real module,
+  // without any error; in mock mode the same module is mocked and logged
+  // (dev.test.ts "a server fn factory module that also calls a denied import
+  // at the top level is logged").
+  // Source: mutation run R3, ip-vite B3 (REPORT §6 #4).
+  test.fails(
+    'a server fn factory module calling a denied import at the top level fails to load',
+    async () => {
+      expect(await loadOutcome(topLevelCallApp('src/factory.ts'))).toEqual([
+        'client src/factory.ts',
+      ])
+    },
+    30_000,
+  )
+})
+
+describe('Rsbuild dev', () => {
+  /** A module type another loader compiles to JS (a stand-in for `.mdx`). */
+  const pageModules: RsbuildConfig = {
+    tools: {
+      rspack: {
+        module: { rules: [{ test: /\.page$/, type: 'javascript/auto' }] },
+      },
+    },
+  }
+
+  // Bug: Rsbuild import protection checks importers by file extension
+  // (`isImportProtectionSourceFile`, rsbuild/import-protection.ts, only
+  // JS/TS extensions), and its loader rule only rewrites those files, so an
+  // importer of another module type that compiles to JS (e.g. `.mdx`) is
+  // never checked: a denied file is mocked (the file rule) but not reported,
+  // and a denied specifier is neither reported nor mocked.
+  // Impact: behavior "error" does not fail for denied imports of such
+  // modules, and the real code of a denied specifier runs on the client.
+  // Source: mutation run R3, ip-rsbuild R2 (REPORT §6 #2); the JS/TS
+  // extensions are covered by rsbuild/import-protection.test.ts "is reported
+  // and mocked when it is a .$extension file".
+  test.fails.each<{ name: string; files: Record<string, string> }>([
+    {
+      name: 'a denied file',
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/home.page': `import { secret } from './secret.server'\nexport const page = () => secret()\n`,
+      },
+    },
+    {
+      name: 'a denied specifier',
+      files: {
+        'node_modules/db-lib/package.json': JSON.stringify({
+          name: 'db-lib',
+          type: 'module',
+          exports: { '.': './index.js' },
+        }),
+        'node_modules/db-lib/index.js': `export const secret = () => 'MARK_LIB'\n`,
+        'src/home.page': `import { secret } from 'db-lib'\nexport const page = () => secret()\n`,
+      },
+    },
+  ])(
+    'a module of another type importing $name is reported, and its real code does not run',
+    async ({ files }) => {
+      const server = await startRsbuildDevServer({
+        importProtection: {
+          behavior: 'error',
+          client: { specifiers: ['db-lib'] },
+        },
+        config: pageModules,
+        files: {
+          ...files,
+          'src/entry.ts': `import { page } from './home.page'\nconsole.log(page())\n`,
+        },
+      })
+      const messages = await runRsbuildClient(server)
+      expect({
+        reported: reportedViolations(server.errors).map(
+          ({ environment, importer }) =>
+            `${environment} ${importer.replace(/:.*/, '')}`,
+        ),
+        ranRealCode: messages.some((message) => message.includes('MARK_')),
+      }).toEqual({ reported: ['client src/home.page'], ranRealCode: false })
+    },
+    30_000,
+  )
+
+  // Bug: in Rsbuild dev, an error thrown by `onViolation` is never reported:
+  // the compile does not finish (no done, no error), while a build fails with
+  // the error (rsbuild/import-protection.ts `reportViolation`, awaited in the
+  // `processAssets` hook).
+  // Impact: a throwing `onViolation` hangs the Rsbuild dev server on its
+  // first compile, with no message.
+  // Source: mutation run R3, ip-rsbuild (REPORT §6 #23). The wait is bounded
+  // (`compileTimeout`) so the pin fails fast; the harness closes the dev
+  // server when its first compile does not finish.
+  test.fails(
+    'an onViolation that throws ends the compile with its error',
+    async () => {
+      const outcome = await startRsbuildDevServer({
+        importProtection: {
+          onViolation: () => {
+            throw new Error('MARK_THROWN')
+          },
+        },
+        compileTimeout: 3_000,
+        files: {
+          'src/secret.server.ts': `export const secret = () => 'secret'\n`,
+          'src/entry.ts': `import { secret } from './secret.server'\nconsole.log(secret())\n`,
+        },
+      }).then(
+        (server) => server.errors.join('\n'),
+        (error: Error) => error.message,
+      )
+      expect(outcome).toContain('MARK_THROWN')
+    },
+    15_000,
+  )
+})
+
+describe.each(startBundlers)('%s build', (bundler) => {
+  // Bug (Rsbuild): a dynamic `import('db-lib')` of a denied specifier is
+  // neither reported nor mocked: the Rsbuild loader only rewrites static
+  // imports and re-exports (`rewriteDeniedImports`,
+  // import-protection/rewrite.ts), and the build reports specifier
+  // violations only through the mock modules of rewritten imports
+  // (`processAssets` in rsbuild/import-protection.ts). Vite fails the build.
+  // Impact: the real module ships to the client in a lazy chunk and runs
+  // there, without any error or warning.
+  // Source: round 3 mutation testing (ip-misc P1).
+  const dynamicImportTest = bundler === 'rsbuild' ? test.fails : test
+  dynamicImportTest(
+    'a client dynamic import of a denied specifier fails the build, reporting one client violation',
+    async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'node_modules/db-lib/package.json': JSON.stringify({
+              name: 'db-lib',
+              type: 'module',
+              exports: { '.': './index.js' },
+            }),
+            'node_modules/db-lib/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+            'src/entry.ts': `export const read = () => import('db-lib').then((m) => m.secret())\n`,
+          },
+          entry: 'src/entry.ts',
+          start: { importProtection: { client: { specifiers: ['db-lib'] } } },
+        }),
+      )
+      expect(
+        reportedViolations(error.message).map(({ environment }) => environment),
+      ).toEqual(['client'])
+    },
+    60_000,
+  )
+
+  /**
+   * What the client gets in a mock-mode build of an entry that imports
+   * `secret` from the denied `file` (control: the mock-mode rows of
+   * build.test.ts, same harness).
+   */
+  async function mockModeOutcome(
+    file: string,
+    code: string,
+    importStatement: string,
+  ) {
+    const { client } = await buildStart({
+      bundler,
+      files: {
+        [`src/${file}`]: code,
+        'src/entry.ts': `${importStatement}
+export const read = () => String(secret)
+`,
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection: { behavior: 'mock' } },
+    })
+    return {
+      warned: reportedViolations(client.warnings).length > 0,
+      hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
+      read: (await client.run(`return entry.read()`)).result,
+    }
+  }
+
+  // Bug: in mock mode, a denied file that is not JavaScript or TypeScript
+  // keeps its content: Vite replaces a denied file with its mock in a
+  // transform hook whose filter only lets JS/TS modules through
+  // (`/\.[cm]?[tj]sx?($|\?)/`, transform-cache plugin of
+  // vite/import-protection-plugin/plugin.ts), and the Rsbuild loader rule
+  // only applies to JS/TS modules (`test: /\.[cm]?[tj]sx?$/`,
+  // rsbuild/import-protection.ts). Both warn.
+  // Impact: a mock-mode build ships the real content of a denied
+  // `*.server.json` (e.g. server configuration or credentials) to the client.
+  // Source: round 3 mutation testing (ip-vite B1).
+  test.fails(
+    'in mock mode, a denied .server.json file is mocked, with a warning',
+    async () => {
+      expect(
+        await mockModeOutcome(
+          'secret.server.json',
+          `{ "secret": "MARK_SECRET" }\n`,
+          `import data from './secret.server.json'
+const secret = data.secret`,
+        ),
+      ).toEqual({
+        warned: true,
+        hasRealCode: false,
+        read: '[import-protection mock]',
+      })
+    },
+    60_000,
+  )
+
+  // Bug: in mock mode, a denied CommonJS file (`.server.cjs`) fails the
+  // build: the mock that replaces the file is an ES module, which Vite's
+  // parser rejects in a `.cjs` file (`export default mock`), and whose named
+  // exports are the ES exports of the denied file, which a CommonJS file has
+  // none of, so Rspack cannot link the named import (`export 'secret' ...
+  // was not found`). With import protection off, both build the named
+  // import of the real module.
+  // Impact: a mock-mode build of a project with a `*.server.cjs` the client
+  // imports fails instead of mocking it.
+  // Source: round 3 mutation testing (ip-vite B1).
+  test.fails(
+    'in mock mode, a denied .server.cjs file is mocked, with a warning',
+    async () => {
+      expect(
+        await mockModeOutcome(
+          'secret.server.cjs',
+          `exports.secret = () => 'MARK_SECRET'\n`,
+          `import { secret } from './secret.server.cjs'`,
+        ),
+      ).toEqual({
+        warned: true,
+        hasRealCode: false,
+        read: '[import-protection mock]',
+      })
     },
     60_000,
   )

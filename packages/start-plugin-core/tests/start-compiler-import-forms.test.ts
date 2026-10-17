@@ -214,6 +214,7 @@ ${construct.code(form.callee(construct.name), form.wrap)}`
     /** `ClientOnly` renders its fallback on the server, its children on the client. */
     const routerStub = (env: 'client' | 'server') => ({
       [router]: {
+        Link: () => 'link',
         ClientOnly: (props: { children?: string; fallback?: string }) =>
           (env === 'server' ? props.fallback : props.children) ?? '',
       },
@@ -246,8 +247,12 @@ export const Page = () => (
       expect(client.Page()).toBe('<div><chart></div>')
     }
 
-    test('through a renamed import', async () => {
-      await checkBoundary(`import { ClientOnly as CO } from '${router}'`, 'CO')
+    test.each([
+      `import { ClientOnly as CO } from '${router}'`,
+      `import { Link, ClientOnly as CO } from '${router}'`,
+      `import{ClientOnly as CO}from '${router}'`,
+    ])('through a renamed import: %s', async (imports) => {
+      await checkBoundary(imports, 'CO')
     })
 
     // Bug: `<ClientOnly>` is detected by the `<ClientOnly` / imported

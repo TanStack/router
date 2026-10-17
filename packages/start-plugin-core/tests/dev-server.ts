@@ -5,13 +5,21 @@
  * (`@tanstack/compiler-test-utils/dev-server`). `@tanstack/react-start` is the
  * stand-in package of the build harness (`startRuntimeFiles`). The temporary
  * apps live in this directory.
+ *
+ * With `start`, the dev server mounts Start's whole Vite plugin instead
+ * (`tanStackStartVite`, with the options `@tanstack/react-start` passes), so
+ * its dev server hooks, router generator, route tree client plugin and start
+ * manifest run too.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { onTestFinished } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
-import { startRuntimeFiles } from './build-harness'
+import { tanStackStartVite } from '../src/vite/plugin'
+import { routerRuntimeFiles, startRuntimeFiles } from './build-harness'
+import type { StartCompilerPluginOptions } from '../src/vite/start-compiler-plugin/plugin'
+import type { TanStackStartInputConfig } from '../src/schema'
 import type { PluginOption } from 'vite'
 import type {
   DevServer,
@@ -32,33 +40,109 @@ export interface StartDevServerOptions extends Omit<
   plugins?:
     | Array<PluginOption>
     | ((app: { root: string }) => Array<PluginOption>)
+  /**
+   * The environments the Start compiler compiles (default `client`, and
+   * `ssr` as a server environment), as a framework passes them (a server
+   * environment other than the provider names its `getServerFnById`
+   * module). Environments other than `client` and `ssr` are created as
+   * server environments.
+   */
+  environments?: StartCompilerPluginOptions['environments']
+  /** The server fn provider environment (default `ssr`). */
+  providerEnvName?: string
+  /**
+   * Mounts Start's whole Vite plugin with these Start plugin options
+   * (`tanstackStart(options)`) instead of the compiler plugin alone (then
+   * `environments` and `providerEnvName` do not apply: client and SSR, SSR
+   * as the provider). `@tanstack/react-router` is the build harness's
+   * stand-in (`routerRuntimeFiles`); the app's client and server entries are
+   * empty, and `src/router.ts` and `src/routes/__root.tsx` are stubs unless
+   * the app has them.
+   */
+  start?: TanStackStartInputConfig
+}
+
+/** The files the harness adds to an app with Start's plugin, unless it has them. */
+const startPluginFiles = {
+  ...routerRuntimeFiles,
+  'harness/client-entry.ts': `export {}\n`,
+  'harness/server-entry.ts': `export {}\n`,
+  'harness/start.ts': `export const startInstance = undefined\n`,
+  'src/router.ts': `export const getRouter = () => undefined\n`,
+  'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+}
+
+/** Start's Vite plugin with the core options `@tanstack/react-start` passes. */
+function startPlugin(root: string, start: TanStackStartInputConfig) {
+  return tanStackStartVite(
+    {
+      framework: 'react',
+      defaultEntryPaths: {
+        client: path.join(root, 'harness/client-entry.ts'),
+        server: path.join(root, 'harness/server-entry.ts'),
+        start: path.join(root, 'harness/start.ts'),
+      },
+      providerEnvironmentName: 'ssr',
+      ssrIsProvider: true,
+      ssrResolverStrategy: { type: 'default' },
+    },
+    start,
+  )
 }
 
 /** Starts a Vite dev server with the Start compiler on an app of `files`. */
 export function startDevServer(
   options: StartDevServerOptions,
 ): Promise<DevServer> {
-  const { files, plugins = [], ...devServerOptions } = options
+  const {
+    files,
+    plugins = [],
+    environments = [
+      { name: 'client', type: 'client' },
+      { name: 'ssr', type: 'server' },
+    ],
+    providerEnvName = 'ssr',
+    start,
+    ...devServerOptions
+  } = options
+  /** Server environments Vite does not create by default. */
+  const extraEnvironments = environments
+    .map((environment) => environment.name)
+    .filter((name) => name !== 'client' && name !== 'ssr')
   return createDevServer({
     dir: harnessDir,
     prefix: '.start-dev-server-',
     registerCleanup: onTestFinished,
     ...devServerOptions,
-    files: { ...startRuntimeFiles, ...files },
+    files: { ...startRuntimeFiles, ...(start && startPluginFiles), ...files },
     plugins: ({ root }) => [
-      startCompilerPlugin({
-        framework: 'react',
-        environments: [
-          { name: 'client', type: 'client' },
-          { name: 'ssr', type: 'server' },
-        ],
-        providerEnvName: 'ssr',
-      }),
+      start
+        ? startPlugin(root, start)
+        : startCompilerPlugin({
+            framework: 'react',
+            environments,
+            providerEnvName,
+          }),
       ...(typeof plugins === 'function' ? plugins({ root }) : plugins),
       {
         name: 'start-dev-server-harness',
         // The stand-in package imports the resolver virtual module
-        config: () => ({ ssr: { noExternal: ['@tanstack/react-start'] } }),
+        config: () => ({
+          ssr: { noExternal: ['@tanstack/react-start'] },
+          ...(extraEnvironments.length > 0 && {
+            environments: Object.fromEntries(
+              extraEnvironments.map((name) => [
+                name,
+                {
+                  consumer: 'server' as const,
+                  resolve: { noExternal: ['@tanstack/react-start'] },
+                },
+              ]),
+            ),
+          }),
+        }),
       },
     ],
   })

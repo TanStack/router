@@ -4,8 +4,14 @@
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { fileURLToPath } from 'node:url'
+import {
+  createDevServer,
+  evaluateServed,
+} from '@tanstack/compiler-test-utils/dev-server'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { build, routeApp, routeHead } from './build-harness'
+import { loadRouteOption, rootRouteOf, routerPackageStub } from './dev-server'
 import { compileRouteModules, head } from './regression-helpers'
 import type {
   BuildResult,
@@ -14,6 +20,8 @@ import type {
 import type { RouterPluginOptions } from './build-harness'
 
 const timeout = 120_000
+
+const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 const bundlers = ['vite', 'rspack', 'webpack'] as const
 
@@ -113,6 +121,94 @@ describe('plugin.vite.environmentName', () => {
     },
     timeout,
   )
+})
+
+// TanStack Start splits each environment with its own code splitter, scoped
+// with `environmentName` and sharing one router plugin context
+// (start-plugin-core's start router plugin): both environments compile the
+// route with the same plugin instances, and each instance compiles the route
+// file, its chunks and its shared module in its own environment only.
+test(
+  'two code splitters scoped to the client and SSR environments of one dev server each split a route whose loader and component share a binding',
+  async () => {
+    const { createRouterPluginContext } = await import('../src/context')
+    const { tanStackRouterCodeSplitter, tanstackRouterGenerator } =
+      await import('../src/vite')
+    const server = await createDevServer({
+      dir: harnessDir,
+      prefix: '.router-dev-server-',
+      registerCleanup: onTestFinished,
+      files: {
+        'routes/__root.tsx': rootRouteOf('react'),
+        'routes/index.tsx': `${routeHead()}const label = { text: 'MARK_SHARED' }
+function Page() {
+  return 'MARK_COMPONENT ' + label.text
+}
+export const Route = createFileRoute('/')({
+  loader: () => label,
+  component: Page,
+})
+`,
+      },
+      plugins: (app) => {
+        const context = createRouterPluginContext()
+        const config: RouterPluginOptions = {
+          target: 'react',
+          autoCodeSplitting: true,
+          routesDirectory: path.join(app.root, 'routes'),
+          generatedRouteTree: path.join(app.root, 'routeTree.gen.ts'),
+          codeSplittingOptions: { addHmr: false },
+        }
+        return [
+          tanstackRouterGenerator(config, context),
+          ...(['client', 'ssr'] as const).map((environmentName) =>
+            tanStackRouterCodeSplitter(
+              { ...config, plugin: { vite: { environmentName } } },
+              context,
+            ),
+          ),
+          routerPackageStub('react'),
+        ]
+      },
+    })
+    /** Loads the route's split component and its loader's value. */
+    const read = async (routeModule: Record<string, any>) => {
+      const { options } = routeModule.Route
+      const component = (await loadRouteOption(
+        options.component,
+      )) as () => string
+      return [component(), options.loader()]
+    }
+    const expected = ['MARK_COMPONENT MARK_SHARED', { text: 'MARK_SHARED' }]
+    expect(await read(await server.import('/routes/index.tsx'))).toEqual(
+      expected,
+    )
+    // The browser gets the router package stub from Vite's virtual module
+    // URL; evaluated here from the same SSR-loaded module.
+    const routerPackage = await server.import('@tanstack/react-router')
+    expect(
+      await read(
+        await evaluateServed(server, '/routes/index.tsx', {
+          skip: /^\/@id\//,
+          stubs: {
+            '/@id/__x00__@tanstack/react-router-stub': routerPackage,
+          },
+        }),
+      ),
+    ).toEqual(expected)
+  },
+  timeout,
+)
+
+describe('codeSplittingOptions.splitBehavior', () => {
+  test('that is not a function is refused when the plugin is created, naming the option', async () => {
+    const { tanstackRouter } = await import('../src/vite')
+    expect(() =>
+      tanstackRouter({
+        codeSplittingOptions: { splitBehavior: [['loader']] as any },
+      }),
+    ).toThrow(/splitBehavior/)
+  })
 })
 
 describe('repeated options in split groupings', () => {

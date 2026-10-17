@@ -149,6 +149,8 @@ describe('server fn ids', () => {
         },
       })
       expect(new Set(filenames)).toEqual(new Set(['src/fns.ts']))
+      // The id it returns (unique here) is the one clients call.
+      expect(result.rpc).toBe('custom:src/fns.ts')
       expect(result.handlerIds).toEqual([result.rpc])
       expect(result.called).toEqual(['from the server'])
     },
@@ -162,6 +164,51 @@ describe('server fn ids', () => {
     expect(result.handlerIds).toEqual([result.rpc])
     expect(result.called).toEqual(['from the server'])
   })
+
+  // The provider gives each server fn of a module the id the client gave it,
+  // also when a custom generateFunctionId gives them all the same id.
+  test.each([
+    { name: 'default ids', generateFunctionId: undefined },
+    { name: 'one custom id for all', generateFunctionId: () => 'same-id' },
+  ])(
+    'each server fn of a module with several reaches its own handler ($name)',
+    async ({ generateFunctionId }) => {
+      const registry: Record<string, ServerFn> = {}
+      const id = '/app/src/fns.ts'
+      const code = `import { createServerFn } from '@tanstack/react-start'
+export const a = createServerFn().handler(async () => 'from a')
+export const b = createServerFn().handler(async () => 'from b')
+export const c = createServerFn().handler(async () => 'from c')`
+      const client = await evaluateModule(
+        (await compilerFor(
+          'client',
+          '/app',
+          registry,
+          generateFunctionId,
+        )(code, id))!,
+      )
+      const rpcs: Record<string, string> = {
+        a: client.a.rpc.client,
+        b: client.b.rpc.client,
+        c: client.c.rpc.client,
+      }
+      expect(new Set(Object.values(rpcs)).size).toBe(3)
+      const provider = (await compilerFor(
+        'server',
+        '/app',
+        registry,
+        generateFunctionId,
+      )(code, `${id}?tss-serverfn-split`))!
+      const handlers = handlersById(
+        await createServerGraph({ ssr: undefined, provider, id }).provider(),
+      )
+      const called: Record<string, unknown> = {}
+      for (const [name, rpc] of Object.entries(rpcs)) {
+        called[name] = await handlers[rpc]?.({})
+      }
+      expect(called).toEqual({ a: 'from a', b: 'from b', c: 'from c' })
+    },
+  )
 
   // Two server fns get the same custom id: the compilers tell them apart,
   // and the server environment, compiling the modules in the other order,

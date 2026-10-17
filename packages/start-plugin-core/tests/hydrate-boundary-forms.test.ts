@@ -7,7 +7,10 @@
  * `@tanstack/*-start` package is a boundary.
  */
 import { afterEach, describe, expect, test } from 'vitest'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+import {
+  MissingHydrateSourceError,
+  createHydrateCompilerPlugin,
+} from '../src/hydrate-when-transform'
 import {
   compileErrorMessage,
   compileHydrate,
@@ -16,6 +19,7 @@ import {
   expectRenderedThroughChunks,
   getChunkIds,
   hydrateStubs,
+  importSources,
   loadClientModule,
   renderBoundaries,
   renderChunk,
@@ -119,6 +123,19 @@ export function Page() {
   return <Hydrate {...{ when: 'visible', ['fallback']: <p>fallback-marker</p> }}><p>child</p></Hydrate>
 }`,
     },
+    {
+      name: 'an inline spread with quoted keys',
+      code: `export function Page() {
+  return <Hydrate {...{ 'when': 'visible', 'fallback': <p>fallback-marker</p> }}><p>child</p></Hydrate>
+}`,
+    },
+    {
+      name: 'a spread used once with split={false}',
+      code: `const props = { when: 'visible', fallback: <p>fallback-marker</p> }
+export function Page() {
+  return <Hydrate split={false} {...props}><p>child</p></Hydrate>
+}`,
+    },
   ] as Array<{
     name: string
     code: string
@@ -180,6 +197,88 @@ export function Page() {
       expect(otherProps(boundaries)).toEqual(expectedProps(received))
     },
   )
+
+  // A client-only module the fallback renders (e.g. a spinner reading browser
+  // APIs) is not loaded by the server module, however the fallback reaches
+  // it; module bindings the children read stay.
+  test.each([
+    {
+      name: 'an imported component',
+      code: `import { Spinner } from './client-spinner'
+export function Page() { return <Hydrate fallback={<Spinner />}><p>child</p></Hydrate> }`,
+    },
+    {
+      name: 'a const component rendering an import',
+      code: `import { Spinner } from './client-spinner'
+const Fallback = () => <Spinner />
+export function Page() { return <Hydrate fallback={<Fallback />}><p>child</p></Hydrate> }`,
+    },
+    {
+      name: 'a function component rendering an import',
+      code: `import { Spinner } from './client-spinner'
+function Fallback() { return <Spinner /> }
+export function Page() { return <Hydrate fallback={<Fallback />}><p>child</p></Hydrate> }`,
+    },
+    {
+      name: 'a class rendering an import',
+      code: `import { Spinner } from './client-spinner'
+class Fallback { render() { return <Spinner /> } }
+export function Page() { return <Hydrate fallback={new Fallback().render()}><p>child</p></Hydrate> }`,
+    },
+    {
+      name: 'a binding in an inline spread',
+      code: `import { Spinner } from './client-spinner'
+const spinner = <Spinner />
+export function Page() { return <Hydrate {...{ fallback: spinner }}><p>child</p></Hydrate> }`,
+    },
+    {
+      name: 'an element in an inline spread',
+      code: `import { Spinner } from './client-spinner'
+export function Page() { return <Hydrate {...{ fallback: <Spinner /> }}><p>child</p></Hydrate> }`,
+    },
+    {
+      name: 'a destructured namespace import',
+      code: `import * as lib from './client-spinner'
+const { Spinner } = lib
+export function Page() { return <Hydrate fallback={<Spinner />}><p>child</p></Hydrate> }`,
+    },
+    {
+      name: 'a declarator next to one the children read',
+      code: `import { Spinner } from './client-spinner'
+const label = 'child', spinner = <Spinner />
+export function Page() { return <Hydrate fallback={spinner}><p>{label}</p></Hydrate> }`,
+    },
+    {
+      name: 'a spread used once with split={false}',
+      code: `import { Spinner } from './client-spinner'
+const opts = { fallback: <Spinner /> }
+export function Page() { return <Hydrate split={false} {...opts}><p>child</p></Hydrate> }`,
+    },
+  ])(
+    'server: a fallback through $name does not load its client-only module',
+    async ({ code }) => {
+      const { parent } = await compileHydrate('server', `${head}${code}`)
+      expect(await getModuleErrors(parent)).toEqual([])
+      expect(importSources(parent)).not.toContain('./client-spinner')
+      const boundaries: Array<Record<string, unknown>> = []
+      const module = await evaluateModule(parent, recordingStubs(boundaries))
+      expect(module.Page()).toBe('[<p>child</p>]')
+      expect(boundaries.map((props) => props.fallback)).toEqual([undefined])
+    },
+  )
+
+  test('server: a module-level destructuring read by the fallback and the children keeps the children binding', async () => {
+    const { parent } = await compileHydrate(
+      'server',
+      `${head}const { a, b } = { a: 'A', b: 'B' }
+export function Page() {
+  return <Hydrate fallback={<p>{a}{b}</p>}><p>{b}</p></Hydrate>
+}`,
+    )
+    expect(await getModuleErrors(parent)).toEqual([])
+    const module = await evaluateModule(parent, hydrateStubs())
+    expect(module.Page()).toBe('[<p>B</p>]')
+  })
 
   // Whatever expression `when` is, both environments pass its value to the
   // boundary (the server strips the fallback next to it).
@@ -507,6 +606,23 @@ export function Page() {
       )
     },
   )
+
+  // The props of the boundary itself are not its children: they render in
+  // the parent on both sides, so a hook call there does not stop the split.
+  test('a hook call in the props of the boundary runs in the parent render, and the children still split', async () => {
+    const code = `${head}import { useThing } from './hooks'
+export function Page() {
+  return <Hydrate when={useThing()}><p>child</p></Hydrate>
+}`
+    const { server, client } = await renderHooks(code)
+    expect(server.calls).toEqual(['useThing@0'])
+    expect(client).toEqual(server)
+    const { module, lazyChunks } = await loadClientModule(code, {
+      stubs: { './hooks': { useThing: () => 'idle' } },
+    })
+    expect(module.Page()).toBe('[<p>child</p>]')
+    expectRenderedThroughChunks(lazyChunks)
+  })
 
   // Bug: hook calls are only detected when the callee is a bare identifier,
   // so `React.useId()` and `useId?.()` in the children move into the chunk
@@ -870,4 +986,42 @@ test('client: a chunk loaded with the edited source before the parent is compile
     })!.code
   expect(await renderChunk(load())).toBe('<p>Old</p>')
   expect(await renderChunk(load(source('New')))).toBe('<p>New</p>')
+})
+
+// Vite loads a chunk without the source code: when the plugin has no source
+// for it (`MissingHydrateSourceError`), the host loads the source module
+// again, then the chunk. Once the edited file is invalidated, a chunk loaded
+// before the parent is compiled again renders the new children.
+test('client: a chunk loaded after its source module was invalidated renders the edited children', async () => {
+  const plugin = createHydrateCompilerPlugin()
+  const { compiler, compile } = createStartCompiler({
+    env: 'client',
+    compilerPlugins: [plugin],
+  })
+  const source = (text: string) => `${head}export function Page() {
+  return <Hydrate><p>${text}</p></Hydrate>
+}`
+  const [id] = getChunkIds((await compile(source('Old')))!)
+  const load = () =>
+    plugin.loadVirtualModule!({
+      id: id!,
+      root: '/test',
+      env: 'client',
+      envName: 'client',
+    })!.code
+  expect(await renderChunk(load())).toBe('<p>Old</p>')
+  compiler.invalidateModule('/test/src/module.tsx')
+  /** Loads the chunk like the Vite host does. */
+  const loadLikeVite = async () => {
+    try {
+      return load()
+    } catch (error) {
+      if (!(error instanceof MissingHydrateSourceError)) {
+        throw error
+      }
+    }
+    await compile(source('New'))
+    return load()
+  }
+  expect(await renderChunk(await loadLikeVite())).toBe('<p>New</p>')
 })

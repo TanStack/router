@@ -74,6 +74,35 @@ export const Route = createFileRoute('/')({
     ]).toEqual([1, '<p>1</p>', '<p>error</p>', 1, 1])
   })
 
+  // Bug: a binding that an option with a computed key and a split option
+  // both read is created twice: the computed-key option is not seen as a
+  // reader of the route module.
+  // Source: round-3 mutation testing (compilers-A).
+  // Impact: module state is created twice (two stores, registrations run
+  // twice).
+  test.fails(
+    'a binding read by a computed-key option and a split option is created once',
+    async () => {
+      const state = stateStub()
+      const route = await loadRoute(
+        `${head}import { init } from './state'
+const store = init({ count: 1 })
+const key = 'staticData'
+export const Route = createFileRoute('/')({
+  [key]: { read: () => store },
+  loader: () => 'data',
+  component: () => <p>{store.count}</p>,
+})
+`,
+        { stubs: { './state': state } },
+      )
+      expect([(await route.load('component'))(), state.calls]).toEqual([
+        '<p>1</p>',
+        1,
+      ])
+    },
+  )
+
   // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
   // The `var` is missed because module bindings are collected from top-level
   // declarations only (`collectLocalBindingsFromStatement`); same root cause
@@ -1077,6 +1106,107 @@ function Page() {
     expect((await loaded.load('component'))()).toBe('<p>page</p>')
   })
 
+  // Controls for the pins above and in "route factories written in other
+  // shapes": these routes keep working (split or not), so the pins fail only
+  // because the component is not split.
+  test.each([
+    `createFileRoute('/')({ ssr: false, component: Page } as any)`,
+    `(createFileRoute('/') as any)({ ssr: false, component: Page })`,
+    `createFileRoute('/')(makeOptions())`,
+  ])('a route written as %s renders its component', async (route) => {
+    const loaded = await loadRoute(`${head}function Page() {
+  return <p>page</p>
+}
+const makeOptions = () => ({ component: Page })
+export const Route = ${route}
+`)
+    await expectValidModules(loaded.modules)
+    expect((await loaded.load('component'))()).toBe('<p>page</p>')
+  })
+
+  // Bug: the virtual compiler accepts only a fixed list of expression types
+  // for the value of a split option; any other expression the route module
+  // splits makes the build throw "Unexpected splitNode type ☝️:
+  // MemberExpression" (LogicalExpression, TaggedTemplateExpression,
+  // ClassExpression). These are our limitations, so the goal is a split
+  // option (decision D11).
+  // Source: round-3 mutation testing (compilers-B, bug B).
+  // Impact: a route whose component is a namespace member (`Pages.Home`), a
+  // fallback (`A ?? B`), a styled-components tagged template or a class
+  // cannot be built once code splitting is on.
+  test.fails.each<{
+    name: string
+    option?: string
+    value: string
+    render: (value: any) => unknown
+    expected: unknown
+  }>([
+    {
+      name: 'a member of a namespace import',
+      value: 'Pages.Home',
+      render: (component) => component(),
+      expected: '<p>home</p>',
+    },
+    {
+      name: 'a member of a local object (loader)',
+      option: 'loader',
+      value: 'api.load',
+      render: (loader) => loader(),
+      expected: 'data',
+    },
+    {
+      name: 'a logical fallback',
+      value: 'Pages.Missing || Fallback',
+      render: (component) => component(),
+      expected: '<p>fallback</p>',
+    },
+    {
+      name: 'a nullish fallback',
+      value: 'Pages.Missing ?? Fallback',
+      render: (component) => component(),
+      expected: '<p>fallback</p>',
+    },
+    {
+      name: 'a tagged template',
+      value: 'styled`home`',
+      render: (component) => component(),
+      expected: '<p>styled home</p>',
+    },
+    {
+      name: 'a class expression',
+      value: `class { render() { return '<p>class</p>' } }`,
+      render: (component) => new component().render(),
+      expected: '<p>class</p>',
+    },
+  ])(
+    'an option written as $name is split and works',
+    async ({ option = 'component', value, render, expected }) => {
+      const route = await loadRoute(
+        `${head}import * as Pages from './pages'
+import { styled } from './styled'
+const Fallback = () => '<p>fallback</p>'
+const api = { load: () => 'data' }
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: ${option === 'loader' ? value : `() => 'data'`},
+  component: ${option === 'component' ? value : `() => <p>page</p>`},
+})
+`,
+        {
+          stubs: {
+            './pages': { Home: () => '<p>home</p>' },
+            './styled': {
+              styled: (strings: TemplateStringsArray) => () =>
+                `<p>styled ${strings[0]}</p>`,
+            },
+          },
+        },
+      )
+      expect(route.isLazy(option)).toBe(true)
+      expect(render(await route.load(option))).toBe(expected)
+    },
+  )
+
   // Bug: a component option written as a call with JSX inside it (React's
   // `memo()`, Vue's `defineComponent()`) cannot be split: the virtual
   // compiler parses the option without JSX ("Support for the experimental
@@ -1156,6 +1286,25 @@ export const Route = fileRoute('/')({ component: Page })
 function Page() {
   return <p>page</p>
 }
+`)
+      expect(route.isLazy('component')).toBe(true)
+      expect((await route.load('component'))()).toBe('<p>page</p>')
+    },
+  )
+
+  // Bug: the code splitter only compiles files whose code matches
+  // `createFileRoute(`, so a route whose factory call has a type argument
+  // (`createFileRoute<'/'>('/')`) is left as is, and nothing says so. Our
+  // limitation, so the goal is a split component (decision D11).
+  // Source: round-3 mutation testing (splitter-hosts X1).
+  // Impact: the route's components load with the entry chunk, silently.
+  test.fails(
+    'a component is split when createFileRoute has a type argument',
+    async () => {
+      const route = await loadRoute(`${head}function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute<'/'>('/')({ component: Page })
 `)
       expect(route.isLazy('component')).toBe(true)
       expect((await route.load('component'))()).toBe('<p>page</p>')
@@ -2060,6 +2209,102 @@ export const Route = createFileRoute('/')({ component: Bar, errorComponent: NoFo
     },
   )
 
+  // Bug: the code splitter deletes the exported declaration of an option's
+  // component from every chunk, so a split component that renders the
+  // exported component of another option, which reads `Route`, renders an
+  // undeclared binding ("NotFound is not defined").
+  // Source: round-3 mutation testing (compilers-B, bug A).
+  // Impact: the route crashes when its component renders.
+  test.fails.each([
+    {
+      name: 'export function',
+      declaration: `export function NotFound() {
+  return <i>{Route.options.staticData.label}</i>
+}`,
+    },
+    {
+      name: 'export const',
+      declaration: `export const NotFound = () => <i>{Route.options.staticData.label}</i>`,
+    },
+  ])(
+    'a split component renders the exported component of another option that reads Route ($name)',
+    async ({ declaration }) => {
+      const route = await loadRoute(`${head}${declaration}
+export const Route = createFileRoute('/')({
+  component: () => <p><NotFound /></p>,
+  staticData: { label: 'nf' },
+  notFoundComponent: NotFound,
+})
+`)
+      expect((await route.load('component'))()).toBe('<p><i>nf</i></p>')
+    },
+  )
+
+  // Bug: a default-exported function declaration that the loader and a split
+  // component both call cannot be compiled: Babel throws "Duplicate
+  // declaration" for it.
+  // Source: round-3 mutation testing (router-utils).
+  // Impact: the route cannot be built once code splitting is on.
+  test.fails(
+    'a default-exported function the loader and the split component call works on one state',
+    async () => {
+      let inits = 0
+      const route = await loadRoute(
+        `${head}import { init } from './state'
+const store = init({ n: 0 })
+export default function bump() {
+  return ++store.n
+}
+export const Route = createFileRoute('/')({
+  loader: () => bump(),
+  component: () => <p>{bump()}</p>,
+})
+`,
+        {
+          stubs: {
+            './state': {
+              init: (value: unknown) => {
+                inits++
+                return value
+              },
+            },
+          },
+        },
+      )
+      expect([
+        route.options.loader(),
+        (await route.load('component'))(),
+        route.exports.default(),
+        inits,
+      ]).toEqual([1, '<p>2</p>', 3, 1])
+    },
+  )
+
+  // Bug: a split loader that the route file also exports through an export
+  // list (`export { load }`) loses its declaration in the route module:
+  // "Export 'load' is not defined".
+  // Source: round-3 mutation testing (compilers-A).
+  // Impact: the route cannot be built once code splitting is on.
+  test.fails(
+    'a split loader exported through an export list keeps working',
+    async () => {
+      const route = await loadRoute(`${head}function load() {
+  return 'data'
+}
+export { load }
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: load,
+  component: () => <p>page</p>,
+})
+`)
+      expect([await route.options.loader(), route.exports.load()]).toEqual([
+        'data',
+        'data',
+      ])
+    },
+  )
+
   /**
    * An entry that imports `Route` and, like another module of the app,
    * `imports` from the route file, then runs `setup` before any split chunk
@@ -2641,6 +2886,21 @@ export { routeTree }
 })
 
 describe('TypeScript-only syntax', () => {
+  // Bug: the code splitter rejects an ES decorator after `export` (`export
+  // @dec class`, valid since TypeScript 5.0): "Decorators must be placed
+  // before the export keyword".
+  // Source: round-3 mutation testing (router-utils P6).
+  // Impact: a route file with such a class cannot be built once code
+  // splitting is on.
+  test.fails('a decorator after `export` compiles', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { observable } from 'mobx'
+export @observable class Store {}
+export const Route = createFileRoute('/')({ component: () => <div /> })
+`)
+    await expectValidModules(modules)
+  })
+
   // Bug: the code splitter cannot parse a constructor parameter decorator
   // (TypeScript `experimentalDecorators`, as dependency injection libraries
   // use them) and fails the build. Source: the #8504 confidence campaign
@@ -2836,6 +3096,33 @@ describe('app paths', () => {
       expect(
         await buildAndRun(route, script, { prefix: '.regression-build-#' }),
       ).toBe('<p>index</p>')
+    },
+    30_000,
+  )
+
+  // Bug: the code splitter compiles every module whose id contains
+  // `tsr-split` (path text, not its query) as a split chunk, and throws "The
+  // split value for the virtual route ... was not found" for a module of the
+  // app named like `tsr-split-label.ts`.
+  // Source: round-3 mutation testing (splitter-hosts P3).
+  // Impact: an app with such a file name cannot be built.
+  test.fails(
+    'an app with a module whose path contains tsr-split builds',
+    async () => {
+      expect(
+        await buildAndRun(
+          `${head}import { label } from '../tsr-split-label'
+export const Route = createFileRoute('/')({
+  component: () => <p>{label}</p>,
+})`,
+          script,
+          {
+            files: {
+              'tsr-split-label.ts': `export const label = 'label'\n`,
+            },
+          },
+        ),
+      ).toBe('<p>label</p>')
     },
     30_000,
   )

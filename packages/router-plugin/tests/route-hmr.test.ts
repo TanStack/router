@@ -4,19 +4,28 @@
  * them without a remount, and nothing of it ships when HMR is off.
  *
  * Hot updates run with `hotUpdate` (a real `RouterCore` and route classes);
- * compiled modules are evaluated with `loadRoute` / `evaluateModule`.
+ * compiled modules are evaluated with `loadRoute` / `evaluateModule`; what
+ * the route HMR plugin serves is read from a Vite dev server.
  */
-import { describe, expect, it, test, vi } from 'vitest'
+import { SourceMap } from 'node:module'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { describe, expect, it, onTestFinished, test, vi } from 'vitest'
+import { rootRouteOf, routerDevServer, routerPackageStub } from './dev-server'
 import {
   compileRouteModules,
   evaluateModule,
   expectValidModules,
+  generatedRouteId,
   head,
   hotUpdate,
   importSources,
   loadRoute,
 } from './regression-helpers'
 import type { TargetFramework } from './regression-helpers'
+
+const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 /** A route file whose loader returns `data`, with its other options. */
 const fileRoute = (
@@ -90,6 +99,12 @@ const splitRoutes = [
   },
 ]
 
+/** What each component option of `splitRoutes` renders. */
+const rendered: Record<string, string> = {
+  component: '<div>posts</div>',
+  errorComponent: '<div>Error loading posts</div>',
+}
+
 /** The value a loader of the live route returns, split or not. */
 async function loaderData(update: Awaited<ReturnType<typeof hotUpdate>>) {
   return (await update.load('loader')).call(undefined)
@@ -114,9 +129,10 @@ describe('a hot update of a split route', () => {
         for (const option of components) {
           expect(update.isLazy(option), option).toBe(true)
           expect(update.live[option], option).toBe(update.previous[option])
+          // Each kept component still renders its own component
+          expect((await update.load(option))(), option).toBe(rendered[option])
         }
         expect(await loaderData(update)).toBe('new')
-        expect((await update.load('component'))()).toBe('<div>posts</div>')
       },
     )
   })
@@ -230,7 +246,7 @@ function RootComponent() {
         style,
         codeSplitting: true,
         refresh: true,
-        routeId: '/__root',
+        routeId: await generatedRouteId('__root.tsx'),
         updated: root('new'),
       })
       expect(update.invalidated).toBe(false)
@@ -286,6 +302,71 @@ describe('a hot update of an unsplit route', () => {
       expect(update.invalidated).toBe(false)
       expect(update.live.component).toBe(update.created.at(-1)!.component)
       expect((update.live.component as () => string)()).toBe('<p>new</p>')
+    },
+  )
+
+  it.each(['vite', 'webpack'] as const)(
+    '%s: drops a component option the update removes',
+    async (style) => {
+      const update = await hotUpdate(
+        route('old', ['component', 'errorComponent']),
+        { style, refresh: true, updated: route('new', ['component']) },
+      )
+      expect(update.live.errorComponent).toBeUndefined()
+      expect(update.live.component).toBe(update.previous.component)
+    },
+  )
+
+  it.each(['vite', 'webpack'] as const)(
+    '%s: renders a component option the update adds',
+    async (style) => {
+      const update = await hotUpdate(route('old', ['component']), {
+        style,
+        refresh: true,
+        updated: route('new', ['component', 'errorComponent'], 'added'),
+      })
+      expect((update.live.errorComponent as () => string)()).toBe(
+        '<p>added</p>',
+      )
+    },
+  )
+
+  // Solid and Vue have no React Refresh to patch a kept component in place,
+  // so the update renders the new one.
+  test.each(['solid', 'vue'] as const)(
+    '%s: renders the new component',
+    async (framework) => {
+      const source = (text: string) =>
+        fileRoute(text, `component: () => <p>${text}</p>,`, '', framework)
+      const update = await hotUpdate(source('old'), {
+        targetFramework: framework,
+        updated: source('new'),
+      })
+      expect(update.invalidated).toBe(false)
+      expect((update.live.component as () => string)()).toBe('<p>new</p>')
+      expect(await loaderData(update)).toBe('new')
+      expect(Object.keys(update.window)).toEqual(['__TSR_ROUTER__'])
+    },
+  )
+
+  it.each(['vite', 'webpack'] as const)(
+    '%s: applies route options a factory call builds',
+    async (style) => {
+      const source = (
+        data: string,
+      ) => `import { createFileRoute } from '@tanstack/react-router'
+import { makeOptions } from './options'
+export const Route = createFileRoute('/')(makeOptions('${data}'))`
+      const update = await hotUpdate(source('old'), {
+        style,
+        updated: source('new'),
+        stubs: {
+          './options': {
+            makeOptions: (data: string) => ({ loader: () => data }),
+          },
+        },
+      })
+      expect(await loaderData(update)).toBe('new')
     },
   )
 })
@@ -479,4 +560,174 @@ function RootComponent() {
       },
     )
   })
+})
+
+// The route HMR plugin that `tanstackRouter` adds in development when
+// automatic code splitting is off, in a Vite dev server.
+describe('route HMR in a Vite dev server without automatic code splitting', () => {
+  const timeout = 30_000
+  // Vite's SSR transform serves `import.meta` as `__vite_ssr_import_meta__`
+  const hasRouteHmr = (code: string) =>
+    /(?:import\.meta|__vite_ssr_import_meta__)\.hot\b/.test(code)
+  const loaderRoute = (target: TargetFramework = 'react') =>
+    `import { createFileRoute } from '@tanstack/${target}-router'
+export const Route = createFileRoute('/')({ loader: () => 'x' })`
+
+  test(
+    'reaches route files without JSX (.ts)',
+    async () => {
+      const server = await routerDevServer({
+        pluginOptions: { autoCodeSplitting: false },
+        plugins: [routerPackageStub('react')],
+        files: { 'routes/index.ts': loaderRoute() },
+      })
+      expect(
+        hasRouteHmr(await server.transform('/routes/index.ts', 'client')),
+      ).toBe(true)
+    },
+    timeout,
+  )
+
+  test(
+    'is limited to the environment plugin.vite.environmentName names',
+    async () => {
+      const server = await routerDevServer({
+        pluginOptions: {
+          autoCodeSplitting: false,
+          plugin: { vite: { environmentName: 'client' } },
+        },
+        plugins: [routerPackageStub('react')],
+        files: { 'routes/index.tsx': loaderRoute() },
+      })
+      expect(
+        hasRouteHmr(await server.transform('/routes/index.tsx', 'client')),
+      ).toBe(true)
+      expect(
+        hasRouteHmr(await server.transform('/routes/index.tsx', 'ssr')),
+      ).toBe(false)
+    },
+    timeout,
+  )
+
+  test(
+    'works with plugin.hmr.style alone',
+    async () => {
+      const server = await routerDevServer({
+        pluginOptions: {
+          autoCodeSplitting: false,
+          plugin: { hmr: { style: 'vite' } },
+        },
+        plugins: [routerPackageStub('react')],
+        files: { 'routes/index.tsx': loaderRoute() },
+      })
+      expect(
+        hasRouteHmr(await server.transform('/routes/index.tsx', 'client')),
+      ).toBe(true)
+    },
+    timeout,
+  )
+
+  // Solid and Vue route modules only get the route HMR code; React ones are
+  // also compiled for React Refresh.
+  test(
+    'compiles for the target of a tsr.config.json in the Vite root',
+    async () => {
+      const server = await routerDevServer({
+        pluginOptions: null,
+        plugins: [routerPackageStub('solid')],
+        files: {
+          'tsr.config.json': JSON.stringify({
+            target: 'solid',
+            routesDirectory: './routes',
+            generatedRouteTree: './routeTree.gen.ts',
+          }),
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/solid-router'
+export const Route = createFileRoute('/')({ loader: () => 'x', component: () => <p>x</p> })`,
+        },
+      })
+      const routeModule = await server.import('/routes/index.tsx')
+      expect(Object.keys(routeModule)).toEqual(['Route'])
+      expect(await routeModule.Route.options.loader()).toBe('x')
+    },
+    timeout,
+  )
+
+  test(
+    'takes plugin options given as a function',
+    async () => {
+      const { tanstackRouter } = await import('../src/vite')
+      const { getConfig } = await import('../src/core/config')
+      const server = await createDevServer({
+        dir: harnessDir,
+        prefix: '.router-dev-server-',
+        registerCleanup: onTestFinished,
+        files: {
+          'routes/__root.tsx': rootRouteOf('solid'),
+          'routes/index.tsx': loaderRoute('solid'),
+        },
+        plugins: (app) => [
+          tanstackRouter(() =>
+            getConfig(
+              {
+                target: 'solid',
+                autoCodeSplitting: false,
+                routesDirectory: path.join(app.root, 'routes'),
+                generatedRouteTree: path.join(app.root, 'routeTree.gen.ts'),
+              },
+              app.root,
+            ),
+          ),
+          routerPackageStub('solid'),
+        ],
+      })
+      expect(
+        hasRouteHmr(await server.transform('/routes/index.tsx', 'client')),
+      ).toBe(true)
+      const routeModule = await server.import('/routes/index.tsx')
+      expect(await routeModule.Route.options.loader()).toBe('x')
+    },
+    timeout,
+  )
+
+  // Stack traces and breakpoints of route files in development.
+  test.each(['react', 'solid', 'vue'] as const)(
+    'maps the served %s route module to the lines of the route file',
+    async (target) => {
+      const route = `import { createFileRoute } from '@tanstack/${target}-router'
+
+
+// comment
+
+export const Route = createFileRoute('/')({
+  loader: () => {
+    const value = [1, 2, 3].map((n) => n * 2).filter((n) => n > 2)
+
+
+    throw new Error('MARK_THROW ' + value.length)
+  },
+})
+`
+      const server = await routerDevServer({
+        pluginOptions: { target, autoCodeSplitting: false },
+        plugins: [routerPackageStub(target)],
+        files: { 'routes/index.tsx': route },
+      })
+      const result =
+        await server.vite.environments.client.transformRequest(
+          '/routes/index.tsx',
+        )
+      const code = result!.code
+      const before = code.slice(0, code.indexOf('throw new Error'))
+      const line = before.split('\n').length - 1
+      const column = before.length - before.lastIndexOf('\n') - 1
+      const entry = new SourceMap(result!.map as any).findEntry(
+        line,
+        column,
+      ) as { originalLine: number }
+      expect(entry.originalLine + 1).toBe(
+        route.slice(0, route.indexOf('throw new Error')).split('\n').length,
+      )
+    },
+    timeout,
+  )
 })

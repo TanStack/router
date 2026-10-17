@@ -8,8 +8,25 @@
  * Route options go through Start's own router plugin wiring (its list of
  * options deleted from client route modules).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart, routerRuntimeFiles, startBundlers } from './build-harness'
+import { readdir } from 'node:fs/promises'
+import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { createApp } from '@tanstack/compiler-test-utils/build-harness'
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+} from 'vitest'
+import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
+import {
+  buildStart,
+  routerRuntimeFiles,
+  startBundlers,
+  startRuntimeFiles,
+} from './build-harness'
 import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
@@ -139,6 +156,7 @@ export const ${name} = (..._args: Array<unknown>) => '${marker}'
     const files = {
       ...routerRuntimeFiles,
       ...dependency('handlerDep', 'MARK_HANDLER_DEP'),
+      ...dependency('baseHandlerDep', 'MARK_BASE_HANDLER_DEP'),
       ...dependency('middlewareServer', 'MARK_MIDDLEWARE_SERVER'),
       ...dependency('middlewareValidator', 'MARK_MIDDLEWARE_VALIDATOR'),
       ...dependency('isomorphicServer', 'MARK_ISOMORPHIC_SERVER'),
@@ -156,18 +174,24 @@ export const fnMiddleware = createMiddleware({ type: 'function' })
   .validator((data: unknown) => middlewareValidator(data))
   .server(({ next }) => next({ context: { marker: middlewareServer() } }))
 `,
+      'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
       'src/fns.ts': `import {
   createIsomorphicFn,
   createServerFn,
   createServerOnlyFn,
 } from '@tanstack/react-start'
+import { base } from './base'
 import { fnMiddleware } from './middleware'
 import { handlerDep } from './deps/handlerDep'
+import { baseHandlerDep } from './deps/baseHandlerDep'
 import { isomorphicServer } from './deps/isomorphicServer'
 import { serverOnlyDep } from './deps/serverOnlyDep'
 export const fn = createServerFn()
   .middleware([fnMiddleware])
   .handler(async () => handlerDep())
+export const fromBase = base.handler(async () => baseHandlerDep())
 export const isomorphic = createIsomorphicFn()
   .server(() => isomorphicServer())
   .client(() => 'MARK_ISOMORPHIC_CLIENT')
@@ -207,10 +231,14 @@ export const Route = createFileRoute('/api')({
       'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-      'src/entry.ts': `export { fn, isomorphic, serverOnly } from './fns'
+      'src/entry.ts': `export { fn, fromBase, isomorphic, serverOnly } from './fns'
 export { fnMiddleware } from './middleware'
 export { startInstance } from './start'
 export { getRouter } from './router'
+`,
+      // The server-fn HTTP handler calls server fns through the resolver.
+      'src/ssr-entry.ts': `export * from './entry'
+export { getServerFnById } from '#tanstack-start-server-fn-resolver'
 `,
     }
 
@@ -229,7 +257,7 @@ const next = (options) => options
       build = await buildStart({
         bundler,
         files,
-        entry: 'src/entry.ts',
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
         registerCleanup: (cleanup) => {
           dispose = cleanup
         },
@@ -254,6 +282,13 @@ const next = (options) => options
         marker: 'MARK_HANDLER_DEP',
         run: `return await entry.fn()`,
         expected: 'MARK_HANDLER_DEP',
+      },
+      {
+        construct:
+          'a server fn handler of a builder imported from another module',
+        marker: 'MARK_BASE_HANDLER_DEP',
+        run: `return await entry.fromBase()`,
+        expected: 'MARK_BASE_HANDLER_DEP',
       },
       {
         construct: 'a function middleware .server()',
@@ -324,5 +359,151 @@ const next = (options) => options
         )
       },
     )
+
+    // An HTTP call of a client RPC runs the server fn of its id.
+    // Source: mutation round 3 sc-hosts 1 (no Rsbuild build made the
+    // compiler load another module, here the builder's).
+    test('each server fn of the client runs by its id in the SSR build', async () => {
+      const ids = (
+        await build.client.run(
+          `return [entry.fn.functionId, entry.fromBase.functionId]`,
+        )
+      ).result
+      const { result } = await build.ssr.run(`const results = []
+for (const id of ${JSON.stringify(ids)}) {
+  results.push(await (await entry.getServerFnById(id, { origin: 'client' }))({}))
+}
+return results`)
+      expect(result).toEqual(['MARK_HANDLER_DEP', 'MARK_BASE_HANDLER_DEP'])
+    })
   })
+})
+
+describe('Vite: an environment built twice by one builder', () => {
+  // `@vitejs/plugin-rsc` runs a scan build of an environment before its real
+  // build, with the same plugins: the second build compiles server fns
+  // again, including ones whose builder the compiler loads from another
+  // module.
+  // Source: mutation round 3 sc-hosts 4.
+  test(
+    'the second build compiles the server fns of its modules',
+    async () => {
+      const app = await createApp({
+        dir: path.dirname(fileURLToPath(import.meta.url)),
+        prefix: '.start-build-twice-',
+        registerCleanup: onTestFinished,
+        files: {
+          ...startRuntimeFiles,
+          'src/direct.ts': `import { createServerFn } from '@tanstack/react-start'
+export const direct = createServerFn().handler(async () => 'MARK_DIRECT')
+`,
+          'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+          'src/fns.ts': `import { base } from './base'
+export const greet = base.handler(async () => 'MARK_HANDLER')
+`,
+        },
+      })
+      const { createBuilder } = await import('vite')
+      /** Entry module of each build of the SSR environment. */
+      const inputs = ['src/direct.ts', 'src/fns.ts']
+      let builds = 0
+      const builder = await createBuilder({
+        root: app.root,
+        configFile: false,
+        logLevel: 'silent',
+        environments: {
+          client: { build: { outDir: 'dist/client' } },
+          // `ssr` names an entry; `build-twice-input` sets each build's
+          ssr: { build: { outDir: 'dist/ssr', ssr: inputs[0] } },
+        },
+        ssr: { noExternal: true },
+        builder: {
+          async buildApp(appBuilder) {
+            for (const _input of inputs) {
+              await appBuilder.build(appBuilder.environments.ssr!)
+              builds++
+            }
+          },
+        },
+        plugins: [
+          {
+            name: 'build-twice-input',
+            applyToEnvironment: (environment) => environment.name === 'ssr',
+            options: (options) => ({
+              ...options,
+              input: path.join(app.root, inputs[builds]!),
+            }),
+          },
+          startCompilerPlugin({
+            framework: 'react',
+            environments: [
+              { name: 'client', type: 'client' },
+              { name: 'ssr', type: 'server' },
+            ],
+            providerEnvName: 'ssr',
+          }),
+        ],
+      })
+      await builder.buildApp()
+      expect(builds).toBe(2)
+      const outDir = path.join(app.root, 'dist/ssr')
+      const output = (await readdir(outDir)).find((file) =>
+        /^fns\.m?js$/.test(file),
+      )
+      const { greet } = await import(
+        pathToFileURL(path.join(outDir, output!)).href
+      )
+      expect(typeof greet.functionId).toBe('string')
+      expect(await greet()).toBe('MARK_HANDLER')
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild: a build restored from the persistent cache', () => {
+  // With `performance.buildCache`, Rspack restores unchanged modules from
+  // its cache without running Start's compiler on them again; Start must
+  // still know their server fns.
+  // Source: mutation round 3 sc-hosts 9 (e2e apps custom-server-rsbuild and
+  // server-functions build with buildCache).
+  test(
+    'each server fn of the client runs by its id in the SSR build',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler: 'rsbuild',
+        builds: 2,
+        rsbuildConfig: { performance: { buildCache: true } },
+        files: {
+          'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn()
+`,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { base } from './base'
+export const greet = createServerFn().handler(async () => 'MARK_GREET')
+export const fromBase = base.handler(async () => 'MARK_FROM_BASE')
+`,
+          'src/client-entry.ts': `export { greet, fromBase } from './fns'\n`,
+          'src/ssr-entry.ts': `export { greet, fromBase } from './fns'
+export { getServerFnById } from '#tanstack-start-server-fn-resolver'
+`,
+        },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect(client.where(/MARK_GREET|MARK_FROM_BASE/)).toBe('nowhere')
+      const ids = (
+        await client.run(
+          `return [entry.greet.functionId, entry.fromBase.functionId]`,
+        )
+      ).result
+      const { result } = await ssr.run(`const results = []
+for (const id of ${JSON.stringify(ids)}) {
+  results.push(await (await entry.getServerFnById(id, { origin: 'client' }))({}))
+}
+return results`)
+      expect(result).toEqual(['MARK_GREET', 'MARK_FROM_BASE'])
+    },
+    timeout,
+  )
 })

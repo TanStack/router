@@ -95,6 +95,68 @@ describe('vite', () => {
     (options) => expectThrowMapsToRouteFile('vite', options),
     timeout,
   )
+
+  // Code the splitter leaves in the route module, and code it moves into the
+  // module the route module and a chunk share, map back the same way.
+  test.each([
+    {
+      name: 'the route module (an unsplit loader)',
+      route: `${routeHead()}function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => {
+    throw new Error('MARK_LOADER_THROW')
+  },
+  component: Page,
+})
+`,
+      marker: 'MARK_LOADER_THROW',
+    },
+    {
+      name: 'a function the loader and the split component share',
+      route: `${routeHead()}import { label } from '../lib/label'
+function fail(): never {
+  throw new Error('MARK_SHARED_THROW ' + label)
+}
+function Page() {
+  return <p>{typeof fail}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => fail(),
+  component: Page,
+})
+`,
+      marker: 'MARK_SHARED_THROW',
+    },
+  ])(
+    'a throw in $name maps to its line in the route file',
+    async ({ route: source, marker }) => {
+      const app = await build({
+        bundler: 'vite',
+        env: 'client',
+        minify: false,
+        sourcemap: true,
+        files: routeApp(source, {
+          env: 'client',
+          files: {
+            'lib/label.ts': `export const label = 'MARK_LABEL'\n`,
+            'entry.ts': `export * from './routes/index'\n`,
+          },
+        }),
+      })
+      const { result: stack } = await app.run(
+        `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
+      )
+      expect(stack).toMatch(marker)
+      const { file, line } = originalFrameOf(app, stack as string) ?? {}
+      expect({ file, line }).toEqual({
+        file: 'routes/index.tsx',
+        line: lineOf(source, `throw new Error('${marker}`),
+      })
+    },
+    timeout,
+  )
 })
 
 // Bug: unplugin's webpack and Rspack transform loaders drop the source map

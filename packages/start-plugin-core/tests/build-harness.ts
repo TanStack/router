@@ -49,7 +49,7 @@ import type {
 } from '@tanstack/compiler-test-utils/build-harness'
 import type { TanStackStartInputConfig } from '../src/schema'
 import type { StartCompilerImportTransform } from '../src/types'
-import type { RsbuildPlugin } from '@rsbuild/core'
+import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { Plugin } from 'vite'
 
 const startPackage = 'node_modules/@tanstack/react-start'
@@ -232,6 +232,15 @@ export interface StartBuildOptions {
    * it in `afterAll`.
    */
   registerCleanup?: (cleanup: () => Promise<void>) => void
+  /**
+   * Builds the app this many times in a row, in the same directory and with
+   * a new plugin instance each time (default 1). The results describe the
+   * last build, e.g. one Rsbuild restores from its persistent cache
+   * (`rsbuildConfig: { performance: { buildCache: true } }`).
+   */
+  builds?: number
+  /** Rsbuild configuration merged over the harness's (Rsbuild builds). */
+  rsbuildConfig?: RsbuildConfig
 }
 
 export interface StartBuild {
@@ -318,13 +327,23 @@ export async function buildStart(
     sourcemap: options.sourcemap ?? false,
     start: options.start ?? {},
     compilerTransforms: options.compilerTransforms,
+    rsbuildConfig: options.rsbuildConfig,
   }
   const warnings = { client: [], ssr: [] } as Record<Env, Array<string>>
   const consoleMessages: Array<string> = []
-  const started = performance.now()
-  const outputs = await withBuildEnvironment(mode, consoleMessages, () =>
+  let started = performance.now()
+  let outputs = await withBuildEnvironment(mode, consoleMessages, () =>
     builders[bundler](target, warnings),
   )
+  for (let build = 1; build < (options.builds ?? 1); build++) {
+    warnings.client.length = 0
+    warnings.ssr.length = 0
+    consoleMessages.length = 0
+    started = performance.now()
+    outputs = await withBuildEnvironment(mode, consoleMessages, () =>
+      builders[bundler](target, warnings),
+    )
+  }
   const duration = performance.now() - started
   const describe = (env: Env) =>
     describeBuild({
@@ -353,6 +372,7 @@ interface BuildTarget {
   sourcemap: boolean
   start: TanStackStartInputConfig
   compilerTransforms: Array<StartCompilerImportTransform> | undefined
+  rsbuildConfig: RsbuildConfig | undefined
 }
 
 type Outputs = Record<Env, { outDir: string; chunks: Array<EmittedChunk> }>
@@ -458,7 +478,7 @@ async function buildWithRsbuild(
   target: BuildTarget,
   warnings: Record<Env, Array<string>>,
 ): Promise<Outputs> {
-  const { createRsbuild } = await import('@rsbuild/core')
+  const { createRsbuild, mergeRsbuildConfig } = await import('@rsbuild/core')
   const outputs: Partial<Outputs> = {}
   const errors: Array<string> = []
   /** Records what each environment emitted. */
@@ -487,35 +507,38 @@ async function buildWithRsbuild(
     const rsbuild = await createRsbuild({
       cwd: target.root,
       loadEnv: false,
-      rsbuildConfig: {
-        root: target.root,
-        mode: target.mode,
-        logLevel: 'silent',
-        output: {
-          minify: target.minify,
-          sourceMap: target.sourcemap ? { js: 'source-map' } : false,
-          cleanDistPath: true,
-        },
-        // React's JSX runtime, as `pluginReact()` of a React Start app
-        // configures it.
-        tools: {
-          swc: {
-            jsc: {
-              transform: {
-                react: {
-                  runtime: 'automatic',
-                  development: target.mode === 'development',
+      rsbuildConfig: mergeRsbuildConfig(
+        {
+          root: target.root,
+          mode: target.mode,
+          logLevel: 'silent',
+          output: {
+            minify: target.minify,
+            sourceMap: target.sourcemap ? { js: 'source-map' } : false,
+            cleanDistPath: true,
+          },
+          // React's JSX runtime, as `pluginReact()` of a React Start app
+          // configures it.
+          tools: {
+            swc: {
+              jsc: {
+                transform: {
+                  react: {
+                    runtime: 'automatic',
+                    development: target.mode === 'development',
+                  },
                 },
               },
             },
           },
+          plugins: [
+            tanStackStartRsbuild(reactStartCoreOptions(target), target.start),
+            useTestLoaders(target.root),
+            outputPlugin,
+          ],
         },
-        plugins: [
-          tanStackStartRsbuild(reactStartCoreOptions(target), target.start),
-          useTestLoaders(target.root),
-          outputPlugin,
-        ],
-      },
+        target.rsbuildConfig ?? {},
+      ),
     })
     await rsbuild.build()
   } catch (error) {

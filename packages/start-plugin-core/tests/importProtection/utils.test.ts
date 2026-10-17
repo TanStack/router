@@ -338,6 +338,39 @@ describe('getImportSources', () => {
     const code = `import data from './data.json' with { type: 'json' }`
     expect(getImportSources(code)).toEqual(['./data.json'])
   })
+
+  // Every module the dev server or the Rsbuild loader checks goes through
+  // import discovery, so a module with array holes must not break it.
+  test('finds imports in a module with array holes', () => {
+    const code = [
+      `import { a } from 'x'`,
+      `const [, b] = a`,
+      `export const c = [1, , b]`,
+    ].join('\n')
+    expect(getImportSources(code)).toEqual(['x'])
+  })
+
+  test('a string argument of an ordinary call is not an import source', () => {
+    const code = [
+      `import { t } from 'i18n'`,
+      `export const label = t('@tanstack/react-start/server')`,
+    ].join('\n')
+    expect(getImportSources(code)).toEqual(['i18n'])
+  })
+
+  test('a dynamic import with a computed specifier is not an import source', () => {
+    const code = [
+      `import { a } from 'static'`,
+      `export const load = (name: string) => import(name)`,
+    ].join('\n')
+    expect(getImportSources(code)).toEqual(['static'])
+  })
+
+  test('an empty re-export still imports its source', () => {
+    expect(getImportSources(`export {} from './setup.server'`)).toEqual([
+      './setup.server',
+    ])
+  })
 })
 
 describe('escapeRegExp', () => {

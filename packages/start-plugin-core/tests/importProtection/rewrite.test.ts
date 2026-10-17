@@ -111,6 +111,37 @@ export const value: Foo = 1 as Foo`,
     expect(graph.evaluated).not.toContain('/test/secret.server.ts')
   })
 
+  // Loosened: the namespace itself is pinned below.
+  test('a module with `export * as ns from` a denied module evaluates without it', async () => {
+    const { module, loaded } = await evaluateAfterRewrite(
+      `export * as ns from './secret.server'
+export const x = 1`,
+      ['./secret.server'],
+      secretServer,
+    )
+    expect(module.x).toBe(1)
+    expect(loaded).toEqual([])
+  })
+
+  // Bug: the rewrite removes `export * as ns from '<denied>'` without
+  // exporting a mock as `ns`.
+  // Source: src/import-protection/rewrite.ts:140-195 (only `ExportSpecifier`s
+  // of a denied re-export are rewritten; the namespace specifier is dropped).
+  // Impact: in a mock-mode build, an importer of `ns` from that module gets
+  // a missing export error or `undefined` instead of the mock.
+  test.fails(
+    'a module with `export * as ns from` a denied module exports a mock as `ns`',
+    async () => {
+      const { module, loaded } = await evaluateAfterRewrite(
+        `export * as ns from './secret.server'`,
+        ['./secret.server'],
+        secretServer,
+      )
+      expect(loaded).toEqual([])
+      expect(module.ns).toBeDefined()
+    },
+  )
+
   test('a module without denied imports evaluates unchanged', async () => {
     expect(
       await evaluateAfterRewrite(

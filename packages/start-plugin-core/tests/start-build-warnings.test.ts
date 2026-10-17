@@ -3,7 +3,8 @@
  * warning channel (Vite: the plugin context's `warn`, Rolldown's warnings;
  * Rsbuild: the compilation's warnings), naming the module, once per module
  * and environment. The compiler warns through its external import transforms
- * (`compilerTransforms`, e.g. React's RSC CSS transform).
+ * (`compilerTransforms`, e.g. React's RSC CSS transform). Its errors fail
+ * the build.
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from './build-harness'
@@ -77,6 +78,38 @@ describe.each(startBundlers)('%s build', (bundler) => {
         reported: named([...ssr.warnings, ...ssr.consoleMessages]),
       }).toEqual({ client: [], reported: ['warned'] })
       expect((await ssr.run(`return entry.warned()`)).result).toBe('value')
+    },
+    timeout,
+  )
+
+  // Source: mutation round 3 sc-hosts 8 (on Rsbuild, the build hung forever
+  // when the compiler's module resolution failed).
+  test(
+    'a server fn whose builder comes from a missing module fails the build, naming the module',
+    async () => {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      // A hanging build fails the test well before its timeout.
+      const hang = new Promise<string>((resolve) => {
+        timer = setTimeout(() => resolve('the build hangs'), 20_000)
+      })
+      const outcome = await Promise.race([
+        buildStart({
+          bundler,
+          files: {
+            'src/fns.ts': `import { base } from './missing-base'
+export const greet = base.handler(async () => 'MARK_HANDLER')
+`,
+            'src/entry.ts': `export { greet } from './fns'\n`,
+          },
+          entry: 'src/entry.ts',
+        }).then(
+          () => 'the build succeeds',
+          (error: unknown) =>
+            error instanceof Error ? error.message : String(error),
+        ),
+        hang,
+      ]).finally(() => clearTimeout(timer))
+      expect(outcome).toContain('missing-base')
     },
     timeout,
   )

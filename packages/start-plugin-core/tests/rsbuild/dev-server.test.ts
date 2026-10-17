@@ -2,6 +2,7 @@
  * The Start compiler on a running Rsbuild dev server: editing a factory
  * module rebuilds every client module compiled against it.
  */
+import vm from 'node:vm'
 import { describe, expect, test } from 'vitest'
 import { startRsbuildDevServer } from '../rsbuild-dev-server'
 
@@ -66,6 +67,40 @@ console.log(fn1, fn2)
       expect(
         (await editFactory(importFrom, false)).match(/\bdb\.x\(\)/g),
       ).toHaveLength(2)
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild dev: server fn ids', () => {
+  // Server fns are called by id: two server fns sharing an id would run
+  // each other's handler.
+  // Source: mutation round 3 sc-hosts 2.
+  test(
+    'same-named server fns of two modules get different ids',
+    async () => {
+      const fn = `import { createServerFn } from '@tanstack/react-start'
+export const getData = createServerFn().handler(async () => 'x')
+`
+      const server = await startRsbuildDevServer({
+        files: {
+          'src/a.ts': fn,
+          'src/b.ts': fn,
+          'src/entry.ts': `import { getData as a } from './a'
+import { getData as b } from './b'
+;(globalThis as Record<string, unknown>).ids = [a.functionId, b.functionId]
+`,
+        },
+      })
+      // The client bundle (one chunk) runs in a bare context
+      const context = vm.createContext({})
+      context.self = context
+      for (const code of Object.values(await server.outputs())) {
+        vm.runInContext(code, context)
+      }
+      const ids = context.ids as Array<unknown>
+      expect(ids).toEqual([expect.any(String), expect.any(String)])
+      expect(ids[0]).not.toBe(ids[1])
     },
     timeout,
   )

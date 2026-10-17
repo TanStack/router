@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import { buildStart, startBundlers } from './build-harness'
 import {
+  callProvider,
   callReportedServerFns,
   clientOnlyError,
   compileAll,
@@ -674,6 +675,25 @@ const so = createServerOnlyFn
 export function getRead() { return so(() => db.secret()) }
 export const read = () => getRead()()`,
     },
+    {
+      name: 'a local alias in a function-local const',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const so = createServerOnlyFn
+export function getRead() { const fn = so(() => db.secret()); return fn }
+export const read = () => getRead()()`,
+    },
+    {
+      name: 'a local alias in a top-level block',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const so = createServerOnlyFn
+export let read: () => unknown
+{
+  const fn = so(() => db.secret())
+  read = () => fn()
+}`,
+    },
   ])(
     'client: a createServerOnlyFn called through $name is compiled',
     async ({ code }) => {
@@ -941,6 +961,41 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()
       expect(await ssr.fn()).toBe('x')
     },
   )
+
+  // Bug: the provider drops the module's exports so that only what the
+  // handlers need is left (compiler.test.ts "removes browser-only
+  // dependencies of stripped exports"), but it keeps `export * from` and an
+  // `export default` of an identifier, with the code that export reads.
+  // Impact: a server fn call evaluates the browser-only code of its route
+  // module on the server, and fails there (`window is not defined`) before
+  // the handler runs: a common component-file shape (`export default Page`).
+  // Source: handleCreateServerFn.ts safeRemoveExports (no case for
+  // ExportAllDeclaration; a default-exported identifier is kept as is);
+  // mutation-testing round 3 (sc-handlers A3, A4).
+  test.fails.each([
+    {
+      name: 'export * from a browser-only module',
+      code: `export * from './browser'`,
+    },
+    {
+      name: 'export default of a component reading browser-only state',
+      code: `const browserState = { window }
+function Page() { return browserState }
+export default Page`,
+    },
+  ])('a provider call does not evaluate $name', async ({ code }) => {
+    const server = await compileServer(
+      `${head}export const getMessage = createServerFn().handler(() => 'server message')
+${code}`,
+      { id: '/test/src/routes/message.tsx' },
+    )
+    expect(
+      await callProvider(server, 'getMessage', {
+        './browser': `throw new Error('browser-only module evaluated on the server')
+export const Widget = 1`,
+      }),
+    ).toBe('server message')
+  })
 
   // Bug: the provider module (`?tss-serverfn-split`) keeps the `'use client'`
   // directive of its source module.
@@ -1294,6 +1349,59 @@ export const rendered = runtime[renderThing](<Card />)`
         runtimeStubs,
       )
       expect(rendered).toEqual(['other', 'card'])
+    },
+  )
+
+  // Bug: a configured transform's export imported through a project module
+  // that re-exports it (`src/rt.ts`: `export { renderThing } from
+  // '@example/runtime'`) is only resolved for a top-level call in a module
+  // that also uses a built-in Start factory (compiler.test.ts "runs
+  // configured transforms on a top-level call imported through a project
+  // re-export, next to a built-in factory"). A nested call, or a module
+  // without a built-in factory, is left untransformed.
+  // Impact: with the RSC CSS transform (react-start-rsc), a server component
+  // rendered through the app's own re-export gets no CSS (its styles never
+  // load). Declaring external transforms import-bound instead (and dropping
+  // their lookup configurations) is the alternative to a fix.
+  // Source: compiler.ts: external direct-call candidates are only the calls
+  // of the library's own imports (`getExternalDirectCallCandidates`); other
+  // calls are only resolved as top-level declarator initializers
+  // (`isTopLevelDirectCallCandidate`), and only when the module has a
+  // built-in direct-call kind (`checkDirectCalls`). Mutation-testing round 3
+  // (sc-handlers E2/V2).
+  test.fails.each([
+    {
+      name: 'a nested call next to a built-in factory',
+      code: `import { renderThing } from './rt'
+import { createServerOnlyFn } from '@tanstack/react-start'
+export const only = createServerOnlyFn(() => 1)
+export function rendered() { return renderThing('card') }`,
+    },
+    {
+      name: 'a top-level call in a module without a built-in factory',
+      code: `import { renderThing } from './rt'
+const rendering = renderThing('card')
+export function rendered() { return rendering }`,
+    },
+  ])(
+    'a transform reaches a call imported through a project re-export: $name',
+    async ({ code }) => {
+      const { compile } = createStartCompiler({
+        env: 'server',
+        compilerTransforms: [renderThingTransform],
+        files: {
+          '/test/src/rt.ts': `export { renderThing } from '@example/runtime'`,
+        },
+        host: {
+          resolveId: async (id) =>
+            id.startsWith('./') ? `/test/src/${id.slice(2)}.ts` : id,
+        },
+      })
+      const { rendered } = await evaluateModule(
+        (await compile(code, '/test/src/routes/card.tsx')) ?? code,
+        { './rt': runtimeStubs['@example/runtime'] },
+      )
+      expect(rendered()).toEqual(['card', { injected: 'loaded' }])
     },
   )
 })
