@@ -9,9 +9,11 @@
 import path from 'node:path'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import { startDevServer } from '../dev-server'
 import {
   distinct,
   factoryTopLevelCall,
+  locationIn,
   reactRuntimeFiles,
   rejection,
   reportedViolations,
@@ -20,6 +22,7 @@ import {
 } from './start-apps'
 import type { ImportProtectionOptions } from '../../src/schema'
 import type { ViolationInfo } from '../../src/import-protection/trace'
+import type { Plugin } from 'vite'
 
 const timeout = 30_000
 
@@ -311,6 +314,29 @@ export { b } from './b'
     "'once' logs one warning for one import",
     async () => {
       const server = await startProtectedDevServer(deniedFileApp)
+      await server.load('/src/entry.ts')
+      expect(reportedViolations(server.logs)).toHaveLength(1)
+    },
+    timeout,
+  )
+
+  // Bug: with `log: 'always'`, one client import of a denied file is logged
+  // three times when the client loads its module once: twice for the import
+  // as written, because import protection finds the same violation both
+  // when the import resolves (`resolveId`) and when it checks the module's
+  // compiled imports (transform-cache import loop), and 'always' does not
+  // dedupe them (vite/import-protection-plugin/plugin.ts `hasSeen`), plus
+  // once for the resolved path (the 'once' pin above).
+  // Impact: with 'always', the dev server output repeats each violation of
+  // a denied file three times per load of its module.
+  // Source: found by mutation run R3c (the 'always' rows of the reload
+  // tests above).
+  test.fails(
+    "'always' logs one warning for one import each time its module is loaded",
+    async () => {
+      const server = await startProtectedDevServer(deniedFileApp, {
+        log: 'always',
+      })
       await server.load('/src/entry.ts')
       expect(reportedViolations(server.logs)).toHaveLength(1)
     },
@@ -612,6 +638,223 @@ describe('reachability from the router entry', () => {
       expect(loggedViolations(server.logs)).toContain(
         'client src/factory.ts:9:24',
       )
+    },
+    timeout,
+  )
+
+  // Source: mutation run R3 ip-vite V7 (spc:5415). The factory module's
+  // violations wait for its compiled imports (the Start compiler looked it
+  // up), and its denied file import comes before its denied specifier.
+  test(
+    'a server fn factory module calling a denied file and a denied specifier at the top level is logged at both uses',
+    async () => {
+      const factory = `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { getSecret } from './secret.server'
+import { getRequest } from '@tanstack/react-start/server'
+const mw = createMiddleware({ type: 'function' }).server(({ next }) => {
+  return next({ context: { secret: getSecret(), req: getRequest() } })
+})
+export const createSecretFn = createServerFn().middleware([mw])
+export const secret = getSecret()
+export const request = getRequest()
+`
+      const server = await startProtectedDevServer({
+        ...serverFnFactoryApp(),
+        'src/factory.ts': factory,
+        'src/entry.ts': `export { fn } from './usage'\n`,
+      })
+      const client = await server.load('/src/entry.ts')
+      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs).sort()).toEqual([
+        `client ${locationIn('src/factory.ts', factory, 8, 'getSecret')}`,
+        `client ${locationIn('src/factory.ts', factory, 9, 'getRequest')}`,
+      ])
+    },
+    timeout,
+  )
+
+  /**
+   * `src/p.ts` uses the denied file `src/secret.server.ts` and the denied
+   * specifier `@tanstack/react-start/server`; its only importer `src/q.ts`,
+   * which the router entry re-exports, also imports `src/slow.ts`.
+   */
+  const overlapApp = {
+    'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+    'src/p.ts': `import { secret } from './secret.server'
+import { getRequest } from '@tanstack/react-start/server'
+export const read = () => secret()
+export const request = () => getRequest()
+`,
+    'src/slow.ts': `export const slow = 1\n`,
+    'src/q.ts': `import { read, request } from './p'
+import { slow } from './slow'
+export const q = () => [read(), request(), slow]
+`,
+    'src/entry.ts': `export * from './q'\n`,
+  }
+
+  /**
+   * Serves `src/p.ts` while its only importer `src/q.ts` is still being
+   * transformed, as overlapping requests do (Vite's `server.warmup`,
+   * parallel requests, a slow resolver): a resolver plugin holds the
+   * resolution of `src/q.ts`'s import of `./slow` until `src/p.ts` and its
+   * imports are served. Then the client loads the app. Returns the modules
+   * served for `src/p.ts`.
+   */
+  async function serveWhileItsImporterTransforms() {
+    let release!: () => void
+    const released = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let holding!: () => void
+    const held = new Promise<void>((resolve) => {
+      holding = resolve
+    })
+    const slowResolver: Plugin = {
+      name: 'slow-resolver',
+      enforce: 'pre',
+      async resolveId(source, importer) {
+        if (source === './slow' && importer?.endsWith('/src/q.ts')) {
+          holding()
+          await released
+        }
+        return null
+      },
+    }
+    const server = await startProtectedDevServer(
+      overlapApp,
+      {},
+      { plugins: [slowResolver] },
+    )
+    await server.transform('/src/entry.ts')
+    const importer = server.transform('/src/q.ts')
+    await held
+    const served = await server.load('/src/p.ts')
+    release()
+    await importer
+    await server.load('/src/entry.ts')
+    return { server, served }
+  }
+
+  // Source: mutation run R3c (the dev 'unknown'-reachability fallback,
+  // spc:4704-4727: some edges to the module lack transform data).
+  test(
+    'a module served while its only importer is still being transformed has its denied imports mocked and logged at their uses',
+    async () => {
+      const { server, served } = await serveWhileItsImporterTransforms()
+      expect(modulesContaining(served, 'MARK_SECRET')).toEqual([])
+      const p = overlapApp['src/p.ts']
+      expect(loggedViolations(server.logs).sort()).toEqual([
+        `client ${locationIn('src/p.ts', p, 3, 'secret()')}`,
+        `client ${locationIn('src/p.ts', p, 4, 'getRequest()')}`,
+      ])
+    },
+    timeout,
+  )
+
+  // Bug: a module the dev server transforms before any importer of it is
+  // known (Vite's `server.warmup`, which transforms the listed files as the
+  // server starts, or any request that comes first) has its violations
+  // discarded as unreachable from Start's entries
+  // (vite/import-protection-plugin/plugin.ts `processPendingViolations`,
+  // `'unreachable'`; only bundled dev keeps them pending), and Vite caches
+  // its transform, so they are never checked again, even once the app loads
+  // the module from its entry.
+  // Impact: in dev (mock mode), denied imports of warmed-up modules are
+  // mocked without any warning (the build still reports them).
+  // Source: found by mutation run R3c (looking for edges without transform
+  // data); the control is "a client import of a denied file is mocked, and
+  // the dev server logs a warning naming the importer at the use".
+  test.fails(
+    'a denied import of a module warmed up before its importers is logged once the client loads the app',
+    async () => {
+      const server = await startProtectedDevServer(
+        deniedFileApp,
+        {},
+        { config: { server: { warmup: { clientFiles: ['./src/a.ts'] } } } },
+      )
+      // (waits for the warmup's transform of the module)
+      await server.transform('/src/a.ts')
+      const client = await server.load('/src/entry.ts')
+      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toEqual([`client ${deniedFileUse}`])
+    },
+    timeout,
+  )
+})
+
+describe("an app's client entry, with Start's whole plugin", () => {
+  /**
+   * An app whose `src/leak.ts` uses the denied file `src/secret.server.ts`,
+   * imported by the app's client entry `src/client.tsx` or by its router
+   * entry `src/router.ts`.
+   */
+  const leakApp = (importer: 'src/client.tsx' | 'src/router.ts') => ({
+    'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+    'src/leak.ts': `import { secret } from './secret.server'
+export const leak = () => secret()
+`,
+    'src/client.tsx':
+      importer === 'src/client.tsx'
+        ? `import { leak } from './leak'\nexport const read = () => leak()\n`
+        : `export {}\n`,
+    'src/router.ts':
+      importer === 'src/router.ts'
+        ? `import { leak } from './leak'\nexport const getRouter = () => leak\n`
+        : `export const getRouter = () => undefined\n`,
+  })
+
+  /** The use of `secret` in `src/leak.ts`. */
+  const leakUse = locationIn(
+    'src/leak.ts',
+    leakApp('src/client.tsx')['src/leak.ts'],
+    2,
+    'secret()',
+  )
+
+  /**
+   * Starts a dev server with Start's whole plugin (without HMR, so that its
+   * dev client entry imports the app's client entry statically).
+   */
+  const startApp = (files: Record<string, string>) =>
+    startDevServer({ start: {}, files, config: { server: { hmr: false } } })
+
+  // Control for the pin below (same harness).
+  test(
+    'a denied import of a module the router entry imports is mocked and logged',
+    async () => {
+      const server = await startApp(leakApp('src/router.ts'))
+      const client = await server.load('/src/router.ts')
+      expect(Object.keys(client)).toContain('/src/leak.ts')
+      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toEqual([`client ${leakUse}`])
+    },
+    timeout,
+  )
+
+  // Bug: dev import protection only logs violations it can reach from the
+  // entries it registers, Start's router entry and start entry
+  // (vite/import-protection-plugin/plugin.ts `registerEntries`). The app's
+  // client entry is not one, and the browser loads it from Start's dev
+  // client entry, a virtual module whose imports import protection does not
+  // record, so the modules only the client entry imports are unreachable
+  // and their violations are discarded.
+  // Impact: in dev (mock mode), a denied import reached from the app's
+  // client entry (`src/client.tsx`) is mocked without any warning (the build
+  // reports it).
+  // Source: found by mutation run R3c (looking for edges without transform
+  // data).
+  test.fails(
+    'a denied import of a module the client entry imports is mocked and logged',
+    async () => {
+      const server = await startApp(leakApp('src/client.tsx'))
+      // (Start's dev client entry, which the page loads)
+      const client = await server.load(
+        'virtual:tanstack-start-dev-client-entry',
+      )
+      expect(Object.keys(client)).toContain('/src/leak.ts')
+      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toEqual([`client ${leakUse}`])
     },
     timeout,
   )
