@@ -159,6 +159,18 @@ export function exportedNames(code: string) {
     .sort()
 }
 
+/** The local binding a module exports as `name`, if it exports one. */
+export function exportedBinding(code: string, name: string) {
+  for (const statement of moduleRecord(code).staticExports) {
+    for (const entry of statement.entries) {
+      if (!entry.isType && entry.exportName.name === name) {
+        return entry.localName.name ?? undefined
+      }
+    }
+  }
+  return undefined
+}
+
 /** Absolute, normalized path of a route file in the package's `src/routes`. */
 export function routeFile(name: string) {
   return normalizePath(path.join(process.cwd(), `src/routes/${name}.tsx`))
@@ -277,8 +289,9 @@ let evaluations = 0
 
 /**
  * Evaluates an emitted module like a bundler would: JSX becomes plain calls
- * that render to text, and named imports are linked to `stubs`, keyed by
- * specifier. Every call evaluates a fresh module instance.
+ * that render to text, and imports (named, namespace or side-effect only) are
+ * linked to `stubs`, keyed by specifier. Every call evaluates a fresh module
+ * instance.
  */
 export async function evaluateModule(
   code: string,
@@ -292,14 +305,17 @@ export async function evaluateModule(
   // Imports are hoisted: link them before any other statement runs.
   const imports: Array<string> = []
   const body = javascript.replace(
-    /^import\s+\{([^}]*)\}\s+from\s+(["'])(.+?)\2;?$/gm,
-    (_, named: string, __, source: string) => {
+    /^import\s+(?:(\{[^}]*\}|\*\s*as\s+[\w$]+)\s+from\s+)?(["'])(.+?)\2;?$/gm,
+    (_, clause: string | undefined, __, source: string) => {
       if (!(source in stubs)) {
         throw new Error(`no stub for import ${source}`)
       }
-      imports.push(
-        `const { ${named.replace(/\bas\b/g, ':')} } = globalThis.${key}[${JSON.stringify(source)}];`,
-      )
+      const exports = `globalThis.${key}[${JSON.stringify(source)}]`
+      if (clause?.startsWith('{')) {
+        imports.push(`const ${clause.replace(/\bas\b/g, ':')} = ${exports};`)
+      } else if (clause) {
+        imports.push(`const ${clause.replace(/^\*\s*as\s+/, '')} = ${exports};`)
+      }
       return ''
     },
   )
@@ -393,6 +409,44 @@ export async function expectRegisteredRouteOption(
   return binding
 }
 
+/** Whether a callee is `memo` or `forwardRef`, imported or namespaced. */
+function isMemoOrForwardRef(callee: ESTree.Expression | ESTree.Super) {
+  const name =
+    callee.type === 'Identifier'
+      ? callee.name
+      : callee.type === 'MemberExpression' &&
+          callee.property.type === 'Identifier'
+        ? callee.property.name
+        : undefined
+  return name === 'memo' || name === 'forwardRef'
+}
+
+/**
+ * Asserts that React Refresh can hot-update the component of `option`: the
+ * option is a binding React Refresh registers, or a `memo(...)` /
+ * `forwardRef(...)` call (nested or not) of one, since React Refresh resolves
+ * those wrappers through the function they wrap.
+ */
+export async function expectRefreshableRouteOption(
+  code: string,
+  option: string,
+) {
+  expect(await getModuleErrors(code)).toEqual([])
+  let node: ESTree.Expression | ESTree.Argument | undefined = getRouteOption(
+    parseModule(code),
+    option,
+  ).value as ESTree.Expression
+  while (node?.type === 'CallExpression' && isMemoOrForwardRef(node.callee)) {
+    node = node.arguments[0]
+  }
+  const binding = node?.type === 'Identifier' ? node.name : undefined
+  const { registered } = await reactRefresh(code)
+  expect(
+    binding !== undefined && registered.includes(binding),
+    `\`${option}\` is neither a binding React Refresh registers nor a memo/forwardRef call of one (registered: ${registered.join(', ')})`,
+  ).toBe(true)
+}
+
 const runNode = promisify(execFile)
 
 /**
@@ -400,9 +454,10 @@ const runNode = promisify(execFile)
  * groupings unless `groupings` is given): `routes/index.tsx` holds `route`,
  * and `entry.ts` re-exports the route module next to `render(component)`,
  * which preloads a component and renders it to a string. `files` adds files
- * or replaces `entry.ts`. Then imports the built entry in a separate Node
- * process and returns the JSON value returned by `script`, which has the
- * entry's exports in scope as `entry`.
+ * or replaces `entry.ts`. The app directory name starts with `prefix`. Then
+ * imports the built entry in a separate Node process and returns the JSON
+ * value returned by `script`, which has the entry's exports in scope as
+ * `entry`.
  */
 export async function buildAndRun(
   route: string,
@@ -410,11 +465,14 @@ export async function buildAndRun(
   options: {
     files?: Record<string, string>
     groupings?: CodeSplitGroupings
+    prefix?: string
   } = {},
 ) {
   const { tanstackRouter } = await import('../src/vite')
   // Keep the temporary app inside the package so real runtime imports resolve.
-  const root = await mkdtemp(path.join(__dirname, '.regression-build-'))
+  const root = await mkdtemp(
+    path.join(__dirname, options.prefix ?? '.regression-build-'),
+  )
   try {
     await mkdir(path.join(root, 'routes'))
     const files: Record<string, string> = {
