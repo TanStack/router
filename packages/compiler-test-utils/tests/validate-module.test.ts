@@ -60,6 +60,101 @@ export const Page = () => <div>{imported}</div>`),
       ),
     ).toEqual([])
   })
+
+  // User ruling 2026-10-17: a reference to an undefined name inside code
+  // that never runs throws nothing, so it is no error of the module (whether
+  // it reaches a production bundle is a build-level question). Dead code is
+  // approximated as module-level functions that are not exported and that
+  // nothing else reads.
+  test.each([
+    {
+      name: 'an uncalled function declaration',
+      code: `function unused() { return missing() }`,
+    },
+    {
+      name: 'an unused arrow function',
+      code: `const makeOptions = () => ({ component: Page })`,
+    },
+    {
+      name: 'mutually recursive unused functions',
+      code: `function ping() { return pong() + missing }
+const pong = function () { return ping() }`,
+    },
+    {
+      name: 'an unused function only another unused function calls',
+      code: `function outer() { return inner() }
+function inner() { return <Missing /> }`,
+    },
+  ])('accepts a free name in $name', async ({ code }) => {
+    expect(
+      await getModuleErrors(`${code}
+export const Route = { component: () => <div /> }`),
+    ).toEqual([])
+  })
+
+  // The other side of the line: code that runs, or may run.
+  test.each([
+    { name: 'module-level code', code: `const value = missing` },
+    {
+      name: 'an exported function',
+      code: `export function read() { return missing }`,
+    },
+    {
+      name: 'a function exported by an export list',
+      code: `function read() { return missing }
+export { read as default }`,
+    },
+    {
+      name: 'a function module-level code calls',
+      code: `function read() { return missing }
+read()`,
+    },
+    {
+      name: 'a function a route option reads',
+      code: `function Page() { return <p>{missing}</p> }
+export const Route = { component: Page }`,
+    },
+    {
+      name: 'a function a live function calls',
+      code: `function inner() { return missing }
+export function outer() { return inner() }`,
+    },
+    {
+      name: 'a function another function passes on',
+      code: `function inner() { return missing }
+const outer = () => inner
+export const Route = { loader: outer }`,
+    },
+    {
+      name: 'a function a class reads',
+      code: `function inner() { return missing }
+class Store { static value = inner }`,
+    },
+    {
+      name: 'a function probed with typeof',
+      code: `function inner() { return missing }
+console.log(typeof inner)`,
+    },
+    {
+      name: 'a function reassigned at module level',
+      code: `let inner = () => missing
+inner = inner`,
+    },
+    {
+      // Declared twice: which declaration runs is not decided statically.
+      name: 'a function whose name is declared twice',
+      code: `var inner = () => missing
+if (globalThis) { var inner = () => 'other' }`,
+    },
+    {
+      name: 'a function body nested in an object',
+      code: `const helpers = { read: () => missing }`,
+    },
+  ])('rejects a free name in $name', async ({ code }) => {
+    expect(await getModuleErrors(code)).toEqual([
+      '`missing` is referenced but never declared or imported',
+    ])
+  })
 })
 
 describe('declaredNames', () => {

@@ -1196,6 +1196,46 @@ export const Route = ${route}
     expect((await loaded.load('component'))()).toBe('<p>page</p>')
   })
 
+  // The unused `makeOptions` of the two rows above may name a `Page` its
+  // module no longer declares (user ruling 2026-10-17: it never runs), as
+  // long as that dead code does not reach a production client bundle.
+  test.each(
+    clientBundlers.flatMap((bundler) =>
+      [
+        `createFileRoute('/')({ ssr: false, component: Page } as any)`,
+        `(createFileRoute('/') as any)({ ssr: false, component: Page })`,
+      ].map((route) => ({ bundler, route })),
+    ),
+  )(
+    'a route written as $route drops its unused options factory from a production client build ($bundler)',
+    async ({ bundler, route }) => {
+      const app = await build({
+        bundler,
+        env: 'client',
+        files: routeApp(
+          `${head}function Page() {
+  return <p>page</p>
+}
+const makeOptions = () => ({ component: Page, title: 'MARK_MAKE_OPTIONS_END' })
+export const Route = ${route}
+`,
+          { env: 'client' },
+        ),
+      })
+      const run = await app.run(
+        `await entry.mount(entry.Route.options.component)`,
+      )
+      expect({
+        makeOptions: app.where('MARK_MAKE_OPTIONS_END'),
+        html: run.html,
+      }).toEqual({
+        makeOptions: 'nowhere',
+        html: '<div id="root"><p>page</p></div>',
+      })
+    },
+    60_000,
+  )
+
   // Bug: the virtual compiler accepts only a fixed list of expression types
   // for the value of a split option; any other expression the route module
   // splits makes the build throw "Unexpected splitNode type ☝️:
@@ -2226,7 +2266,9 @@ export const Route = createFileRoute('/')({ ${options}component: ${binding} })
   // Bug: the entry's `useTitle` and the one the split component calls are
   // two functions: a binding that reads `Route` is never shared
   // (`removeBindingsDependingOnRoute`), so the chunk declares a copy of the
-  // exported function. Source: gap S19.
+  // exported function. Importers of the route module and the route must
+  // share one instance (user ruling 2026-10-17, P1): a copy in the chunk is
+  // this bug even when the function holds no state. Source: gap S19.
   // Impact: code that relies on the identity of an exported hook or helper
   // (memoisation, registries, `===` checks) sees two of them.
   test.fails(

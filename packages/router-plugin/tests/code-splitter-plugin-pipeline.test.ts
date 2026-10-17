@@ -567,10 +567,35 @@ export const Route = createFileRoute('/hmr')({
 })
 
 // A route the route file creates inside a function of the same file (a
-// helper, an IIFE) is split like a module-scope route, and hot-updates.
+// helper, an IIFE) is unsupported but user-fixable (user ruling 2026-10-17,
+// decision D11): it is either split like a module-scope route (and
+// hot-updates in place), or left unsplit with a warning naming the file, in
+// production as in development. Either way it renders correctly; silent
+// wrong output, or unsplit without a warning, fails.
 // Sources: #8504 (code-splitter-plugin-pipeline.test.ts); the #8504
 // confidence campaign (route-factory cases 1-3 and 5, dev-hmr D1/D2).
 describe('a route created inside a function', () => {
+  /**
+   * Runs `run` with `console.warn` captured; returns its result and whether
+   * a warning named `fileOf(result)`.
+   */
+  async function reporting<T>(
+    run: () => Promise<T>,
+    fileOf: (result: T) => string,
+  ) {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const result = await run()
+      const file = fileOf(result)
+      const reported = warn.mock.calls.some((args) =>
+        args.map(String).join(' ').includes(file),
+      )
+      return { result, reported }
+    } finally {
+      warn.mockRestore()
+    }
+  }
+
   /** Route files whose `/made` route a function of the file creates. */
   const factoryRoutes = {
     'a helper function, with an inline component': (data: string) =>
@@ -622,16 +647,19 @@ export const Route = (() =>
 `,
   }
 
+  // A production compile.
   it.each(Object.entries(factoryRoutes))(
-    'built in %s is split and keeps working',
+    'built in %s is split, or reported, and keeps working',
     async (_, route) => {
-      const loaded = await loadRoute(route('data'), { routeId: '/made' })
+      const { result: loaded, reported } = await reporting(
+        () => loadRoute(route('data'), { routeId: '/made' }),
+        (loaded) => loaded.ids.reference!,
+      )
       await expectValidModules(loaded.modules)
-      expect(loaded.isLazy('component')).toBe(true)
-      expect([
-        loaded.options.loader(),
-        (await loaded.load('component'))(),
-      ]).toEqual(['data', '<p>made</p>'])
+      expect({
+        rendered: [loaded.options.loader(), (await loaded.load('component'))()],
+        splitOrReported: loaded.isLazy('component') || reported,
+      }).toEqual({ rendered: ['data', '<p>made</p>'], splitOrReported: true })
     },
   )
 
@@ -645,19 +673,47 @@ export const Route = (() =>
     'with $style HMR (codeSplitting: $codeSplitting)',
     ({ style, codeSplitting }) => {
       it.each(Object.entries(factoryRoutes))(
-        'a route built in %s is hot-updated in place, keeping its component',
+        'a route built in %s is hot-updated in place keeping its component, or reported',
         async (_, route) => {
-          const update = await hotUpdate(route('old'), {
-            style,
-            codeSplitting,
-            refresh: true,
-            routeId: '/made',
-            updated: route('new'),
-          })
-          expect(update.invalidated).toBe(false)
-          expect(update.live.component).toBe(update.previous.component)
-          expect(await (await update.load('loader'))()).toBe('new')
-          expect((await update.load('component'))()).toBe('<p>made</p>')
+          const { result: update, reported } = await reporting(
+            () =>
+              hotUpdate(route('old'), {
+                style,
+                codeSplitting,
+                refresh: true,
+                routeId: '/made',
+                updated: route('new'),
+              }),
+            (update) => update.file,
+          )
+          const updated = {
+            loader: await (await update.load('loader'))(),
+            component: (await update.load('component'))(),
+          }
+          const updatedInPlace =
+            !update.invalidated &&
+            updated.loader === 'new' &&
+            updated.component === '<p>made</p>'
+          // (a) supported: split (with code splitting on) and hot-updated
+          // in place, keeping the component's identity.
+          const supported =
+            updatedInPlace &&
+            update.live.component === update.previous.component &&
+            (!codeSplitting || update.isLazy('component'))
+          // (b) reported, and still correct: updated in place, or the
+          // update invalidated (the page reloads with the new code).
+          const unsupportedAndReported =
+            reported && (update.invalidated || updatedInPlace)
+          expect(
+            supported || unsupportedAndReported,
+            JSON.stringify({
+              invalidated: update.invalidated,
+              split: update.isLazy('component'),
+              identityKept: update.live.component === update.previous.component,
+              reported,
+              updated,
+            }),
+          ).toBe(true)
         },
       )
     },
@@ -669,7 +725,8 @@ export const Route = (() =>
   // component declared in the factory leaves a chunk that exports an
   // undeclared binding, and a parameter that shadows a module-level
   // component makes the chunk render the module-level one. Leaving such
-  // options unsplit (with or without a warning) is a valid fix.
+  // options unsplit with a warning naming the file is a valid fix (the
+  // pattern is unsupported but user-fixable); unsplit and silent is not.
   // Source: the #8504 confidence campaign (route-factory cases 4, 5 with a
   // split loader, 6, 6b and 6c; F-21).
   // Impact: the route throws when it renders or loads, or silently renders
@@ -725,20 +782,29 @@ export const Route = makeRoute('given')`,
 }
 export const Route = makeRoute('given')`,
       expected: ['given', '<p>made</p>'],
+      split: ['loader', 'component'],
     },
   ])(
-    'a route built from $name renders what the factory was given, split or not',
-    async ({ route, expected }) => {
-      const loaded = await loadRoute(
-        `import { createFileRoute } from '@tanstack/react-router'
+    'a route built from $name renders what the factory was given, split or reported',
+    async ({ route, expected, split = ['component'] }) => {
+      const { result: loaded, reported } = await reporting(
+        () =>
+          loadRoute(
+            `import { createFileRoute } from '@tanstack/react-router'
 ${route}
 `,
-        { routeId: '/made' },
+            { routeId: '/made' },
+          ),
+        (loaded) => loaded.ids.reference!,
       )
-      expect([
-        await (await loaded.load('loader'))(),
-        (await loaded.load('component'))(),
-      ]).toEqual(expected)
+      expect({
+        rendered: [
+          await (await loaded.load('loader'))(),
+          (await loaded.load('component'))(),
+        ],
+        splitOrReported:
+          split.every((option) => loaded.isLazy(option)) || reported,
+      }).toEqual({ rendered: expected, splitOrReported: true })
     },
   )
 

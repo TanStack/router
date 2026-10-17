@@ -1445,6 +1445,8 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
 
     const live = liveOptions()
     return {
+      /** Id of the route file, as the plugin saw it. */
+      file: first.id,
       previous,
       live,
       created,

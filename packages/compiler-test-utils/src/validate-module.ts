@@ -42,7 +42,7 @@ export async function getModuleErrors(
     return errors.map((error) => error.message)
   }
   const allowed = new Set(options.globals)
-  return [...(await freeIdentifiers(code, filename))]
+  return [...(await freeIdentifiers(code, filename, { deadCode: false }))]
     .filter((name) => !allowed.has(name))
     .map((name) => `\`${name}\` is referenced but never declared or imported`)
 }
@@ -52,10 +52,21 @@ export async function getModuleErrors(
  * known globals and names it probes with `typeof`, once TypeScript is erased
  * and JSX compiled with the project default (React's automatic runtime) or
  * the module's own JSX pragmas.
+ *
+ * `deadCode: false` leaves out names referenced only inside code that never
+ * runs (`getModuleErrors` does: such a reference throws nothing). Dead code
+ * is approximated statically as the module-level functions that are not
+ * exported and that no other code of the module reads, directly or through
+ * other such functions: a `function` declaration, or a `const`/`let`/`var`
+ * initialised with a function or arrow expression, whose name the module
+ * declares once. Reads by anything else (module-level code, exports, classes,
+ * `typeof`, assignments) keep a function live; anything undecidable stays
+ * live.
  */
 export async function freeIdentifiers(
   code: string,
   filename = 'module.tsx',
+  options: { deadCode?: boolean } = {},
 ): Promise<Set<string>> {
   const { code: javascript } = await transformWithOxc(code, filename, {
     jsx: { runtime: 'automatic' },
@@ -64,9 +75,14 @@ export async function freeIdentifiers(
   const { program } = parseSync('module.js', javascript, {
     sourceType: 'module',
   })
-  const { references, probed } = analyzeScopes(program)
+  const { references, probed, isOnlyInDeadCode } = analyzeScopes(program)
   return new Set(
-    [...references].filter((name) => !probed.has(name) && !isKnownGlobal(name)),
+    [...references].filter(
+      (name) =>
+        !probed.has(name) &&
+        !isKnownGlobal(name) &&
+        (options.deadCode !== false || !isOnlyInDeadCode(name)),
+    ),
   )
 }
 
@@ -290,18 +306,44 @@ function declareLexical(statements: Array<Node>, scope: Scope) {
 function analyzeScopes(program: ESTree.Program) {
   const references = new Set<string>()
   const probed = new Set<string>()
+  const moduleScope = createScope(undefined, true)
+  const body = program.body as unknown as Array<Node>
+  /** Module-level functions that may be dead (see `freeIdentifiers`). */
+  const candidates = deadCodeCandidates(body)
+  /** The candidate whose body is being visited (`undefined`: other code). */
+  let owner: string | undefined
+  /** Candidates each candidate (or other code, `undefined`) reads. */
+  const reads = new Map<string | undefined, Set<string>>()
+  /** Where each free name is referenced. */
+  const freeOwners = new Map<string, Set<string | undefined>>()
 
-  const reference = (name: string, scope: Scope) => {
+  /** Resolves `name` from `scope`; true when it is declared. */
+  const resolve = (name: string, scope: Scope) => {
     for (
       let current: Scope | undefined = scope;
       current;
       current = current.parent
     ) {
       if (current.names.has(name)) {
-        return
+        if (current === moduleScope && candidates.has(name)) {
+          const read = reads.get(owner) ?? new Set<string>()
+          read.add(name)
+          reads.set(owner, read)
+        }
+        return true
       }
     }
+    return false
+  }
+
+  const reference = (name: string, scope: Scope) => {
+    if (resolve(name, scope)) {
+      return
+    }
     references.add(name)
+    const owners = freeOwners.get(name) ?? new Set<string | undefined>()
+    owners.add(owner)
+    freeOwners.set(name, owners)
   }
 
   /** Visits a binding pattern: only defaults and computed keys are read. */
@@ -541,6 +583,8 @@ function analyzeScopes(program: ESTree.Program) {
           node.argument.type === 'Identifier'
         ) {
           probed.add(node.argument.name as string)
+          // A probed function counts as read: it stays live.
+          resolve(node.argument.name as string, scope)
           return
         }
         visit(node.argument, scope)
@@ -573,9 +617,96 @@ function analyzeScopes(program: ESTree.Program) {
     }
   }
 
-  const moduleScope = createScope(undefined, true)
-  const body = program.body as unknown as Array<Node>
   declareVars(body, moduleScope)
-  visitBody(body, moduleScope)
-  return { references, probed }
+  declareLexical(body, moduleScope)
+  for (const statement of body) {
+    if (
+      statement.type === 'FunctionDeclaration' &&
+      isNode(statement.id) &&
+      candidates.has(statement.id.name as string)
+    ) {
+      owner = statement.id.name as string
+      visit(statement, moduleScope)
+      owner = undefined
+    } else if (statement.type === 'VariableDeclaration') {
+      for (const declarator of statement.declarations as Array<Node>) {
+        visitBinding(declarator.id, moduleScope)
+        const id = declarator.id as Node
+        owner =
+          id.type === 'Identifier' && candidates.has(id.name as string)
+            ? (id.name as string)
+            : undefined
+        visit(declarator.init, moduleScope)
+        owner = undefined
+      }
+    } else {
+      visit(statement, moduleScope)
+    }
+  }
+
+  // Live candidates: read by other code, or by a live candidate.
+  const live = new Set<string>()
+  const pending = [...(reads.get(undefined) ?? [])]
+  while (pending.length > 0) {
+    const name = pending.pop()!
+    if (!live.has(name)) {
+      live.add(name)
+      pending.push(...(reads.get(name) ?? []))
+    }
+  }
+  const isOnlyInDeadCode = (name: string) =>
+    [...(freeOwners.get(name) ?? [undefined])].every(
+      (where) => where !== undefined && !live.has(where),
+    )
+  return { references, probed, isOnlyInDeadCode }
+}
+
+/** Unwraps parentheses around an expression. */
+function unparenthesized(node: unknown): unknown {
+  while (isNode(node) && node.type === 'ParenthesizedExpression') {
+    node = node.expression
+  }
+  return node
+}
+
+/**
+ * Names of the module-level functions that are dead unless something reads
+ * them: unexported `function` declarations, and unexported
+ * `const`/`let`/`var` declarators initialised with a function or arrow
+ * expression, whose name the module declares exactly once.
+ */
+function deadCodeCandidates(body: Array<Node>) {
+  const counts = new Map<string, number>()
+  const count = (name: string) => counts.set(name, (counts.get(name) ?? 0) + 1)
+  for (const statement of body) {
+    const scope = createScope(undefined, true)
+    declareVars([statement], scope)
+    declareLexical([statement], scope)
+    scope.names.forEach(count)
+  }
+  const candidates = new Set<string>()
+  for (const statement of body) {
+    if (statement.type === 'FunctionDeclaration' && isNode(statement.id)) {
+      candidates.add(statement.id.name as string)
+    } else if (statement.type === 'VariableDeclaration') {
+      for (const declarator of statement.declarations as Array<Node>) {
+        const id = declarator.id as Node
+        const init = unparenthesized(declarator.init)
+        if (
+          id.type === 'Identifier' &&
+          isNode(init) &&
+          (init.type === 'FunctionExpression' ||
+            init.type === 'ArrowFunctionExpression')
+        ) {
+          candidates.add(id.name as string)
+        }
+      }
+    }
+  }
+  for (const name of candidates) {
+    if (counts.get(name) !== 1) {
+      candidates.delete(name)
+    }
+  }
+  return candidates
 }
