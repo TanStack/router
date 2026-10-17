@@ -959,6 +959,12 @@ export function createServerEntry<TRegister = unknown>(entry: {
       try {
         return await entry.fetch(request, requestOpts)
       } catch (error) {
+        // A client that goes away mid-request unwinds as
+        // `request.signal.reason`, with no socket left to answer. Settle that
+        // one value here instead of reporting it as an unhandled error.
+        if (request.signal.aborted && error === request.signal.reason) {
+          return new Response(null, { status: 500 })
+        }
         return handleStartError(error)
       }
     }),
