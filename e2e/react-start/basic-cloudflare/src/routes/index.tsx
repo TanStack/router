@@ -1,18 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { env } from 'cloudflare:workers'
+import { readHomeData } from '../cache-fixture'
 
 export const Route = createFileRoute('/')({
   loader: () => getData(),
+  headers: ({ loaderData }) => ({
+    'Cache-Control': loaderData?.cacheControl ?? 'private, no-store',
+  }),
   component: Home,
 })
 
-const getData = createServerFn().handler(() => {
-  return {
-    message: `Running in ${navigator.userAgent}`,
-    myVar: env.MY_VAR,
-  }
-})
+const getData = createServerFn().handler(() => readHomeData())
 
 function Home() {
   const data = Route.useLoaderData()
