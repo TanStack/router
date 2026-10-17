@@ -5,6 +5,7 @@
  * evaluated route tree.
  */
 import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
 import {
   index,
@@ -14,7 +15,7 @@ import {
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
 import { parseSync } from 'vite'
-import { createApp, fileRoute, generate, rootRoute } from './app'
+import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from './app'
 import { routesOf, urlsOf } from './route-tree'
 import type { Config } from '../src'
 
@@ -146,6 +147,47 @@ describe('underscores', () => {
   })
 })
 
+describe('virtual route paths', () => {
+  test('virtual route paths and physical mount prefixes without a leading slash get the same URLs', async () => {
+    const root = await appWithRoutes(['x.tsx', 'dir/index.tsx'])
+    const { generatedRouteTree } = await generate(root, {
+      virtualRouteConfig: virtualRootRoute('__root.tsx', [
+        virtualRoute('docs/intro', 'x.tsx'),
+        physical('api/v1', 'dir'),
+      ]),
+    })
+
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/docs/intro': 'routes/x.tsx',
+      '/api/v1/': 'routes/dir/index.tsx',
+    })
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      '/docs/intro': '/docs/intro',
+      '/api/v1/': '/api/v1/',
+    })
+  })
+
+  // A virtual route config built with `path.join` on Windows has backslash
+  // separators in its file paths.
+  test('virtual route files given with Windows path separators are imported', async () => {
+    const root = await appWithRoutes(['docs/intro.tsx', 'docs/index.tsx'])
+    const { generatedRouteTree } = await generate(root, {
+      virtualRouteConfig: virtualRootRoute('__root.tsx', [
+        virtualRoute('/intro', 'docs\\intro.tsx'),
+        index('docs\\index.tsx'),
+      ]),
+    })
+
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/intro': 'routes/docs/intro.tsx',
+      '/': 'routes/docs/index.tsx',
+    })
+  })
+})
+
 describe('layouts and groups', () => {
   test('a route group layout adds no path segment', async () => {
     const root = await appWithRoutes([
@@ -203,6 +245,39 @@ describe('layouts and groups', () => {
   })
 })
 
+describe('conflicting routes', () => {
+  test('routes with the same URL fail the generator with an error naming both files', async () => {
+    const root = await appWithRoutes(['index.tsx', '_auth/index.tsx'])
+
+    const error = await generate(root).then(
+      () => undefined,
+      (e: unknown) => e as Error,
+    )
+    expect(error?.message).toContain('Conflicting configuration paths')
+    expect(error?.message).toContain(path.join(root, 'src/routes/index.tsx'))
+    expect(error?.message).toContain(
+      path.join(root, 'src/routes/_auth/index.tsx'),
+    )
+  })
+
+  test('a route file that resolves to an empty path fails the generator with an error naming it', async () => {
+    const root = await appWithRoutes(['merged/route.tsx'])
+
+    const error = await generate(root, {
+      virtualRouteConfig: virtualRootRoute('__root.tsx', [
+        physical('', 'merged'),
+      ]),
+    }).then(
+      () => undefined,
+      (e: unknown) => e as Error,
+    )
+    expect(error?.message).toContain('Invalid route path ""')
+    expect(error?.message).toContain(
+      path.join(root, 'src/routes/merged/route.tsx'),
+    )
+  })
+})
+
 describe('route names', () => {
   test('routes whose names differ only by a leading @ get their own routes', async () => {
     const root = await appWithRoutes(['@B.tsx', 'B.tsx'])
@@ -212,6 +287,16 @@ describe('route names', () => {
       __root__: 'routes/__root.tsx',
       '/@B': 'routes/@B.tsx',
       '/B': 'routes/B.tsx',
+    })
+  })
+
+  test('a route file name with a space gets a route with the space in its URL', async () => {
+    const root = await appWithRoutes(['about us.tsx'])
+    const { generatedRouteTree } = await generate(root)
+
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      '/about us': '/about us',
     })
   })
 
@@ -289,6 +374,34 @@ describe('token options', () => {
       '/c/': 'routes/c/home.tsx',
     })
   })
+
+  test.each([
+    {
+      name: 'a JSON regex with the i flag',
+      indexToken: { regex: 'home', flags: 'i' },
+    },
+    { name: 'a RegExp with the i flag', indexToken: /home/i },
+  ] satisfies Array<Partial<Config> & { name: string }>)(
+    'an indexToken that is $name matches index files whatever their case',
+    async ({ name: _name, ...config }) => {
+      const root = await appWithRoutes(['a/Home.tsx', 'b/HOME.tsx'])
+      const { generatedRouteTree } = await generate(root, config)
+
+      expect(await routesOf(generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/a/': 'routes/a/Home.tsx',
+        '/b/': 'routes/b/HOME.tsx',
+      })
+    },
+  )
+
+  test('a token regex that does not compile fails the generator with an error naming it', async () => {
+    const root = await appWithRoutes(['index.tsx'])
+
+    await expect(
+      generate(root, { indexToken: { regex: 'home(unclosed' } }),
+    ).rejects.toThrow('home(unclosed')
+  })
 })
 
 describe('param names', () => {
@@ -300,6 +413,9 @@ describe('param names', () => {
       'files/prefix{$}.tsx',
       'opt/{-$}.tsx',
       'users/user-{$user-name}.tsx',
+      // No params: a route without `$`, and a `$` inside a static segment
+      'about.tsx',
+      'prices/usd-$.tsx',
     ])
     try {
       await generate(root, { disableLogging: false })
@@ -319,42 +435,8 @@ describe('FileRoutesByTo', () => {
    * The route each `to` of the route tree's `FileRoutesByTo` interface
    * navigates to, by route id (from `FileRoutesById`).
    */
-  async function routeIdsByTo(treeFile: string) {
-    const { program } = parseSync(
-      'routeTree.gen.ts',
-      await readFile(treeFile, 'utf8'),
-    )
-    const members = (name: string) => {
-      const body = program.body
-        .map((statement) =>
-          statement.type === 'ExportNamedDeclaration'
-            ? statement.declaration
-            : statement,
-        )
-        .find(
-          (statement: any) =>
-            statement?.type === 'TSInterfaceDeclaration' &&
-            statement.id.name === name,
-        ) as any
-      return Object.fromEntries(
-        body.body.body.map((member: any) => [
-          member.key.value ?? member.key.name,
-          member.typeAnnotation.typeAnnotation.exprName.name,
-        ]),
-      )
-    }
-    const idsByVariable = Object.fromEntries(
-      Object.entries(members('FileRoutesById')).map(([id, variable]) => [
-        variable,
-        id,
-      ]),
-    )
-    return Object.fromEntries(
-      Object.entries(members('FileRoutesByTo')).map(([to, variable]) => [
-        to,
-        idsByVariable[variable as string],
-      ]),
-    )
+  function routeIdsByTo(treeFile: string) {
+    return routeIdsByKey(treeFile, 'FileRoutesByTo')
   }
 
   test('`to` of an index route is the index route, not a route under pathless layouts with the same path', async () => {
@@ -380,3 +462,62 @@ describe('FileRoutesByTo', () => {
     expect((await routeIdsByTo(generatedRouteTree))['/foo']).toBe('/foo')
   })
 })
+
+describe('FileRoutesByFullPath', () => {
+  test('the full path `/` is the index route, not a pathless layout with only a lazy file', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/index.tsx': fileRoute('/'),
+      'src/routes/_auth.lazy.tsx': lazyFileRoute('/_auth'),
+      'src/routes/_auth/login.tsx': fileRoute('/_auth/login'),
+    })
+    const { generatedRouteTree } = await generate(root)
+
+    expect(
+      (await routeIdsByKey(generatedRouteTree, 'FileRoutesByFullPath'))['/'],
+    ).toBe('/')
+  })
+})
+
+/**
+ * The route each key of the route tree's `FileRoutesByTo` or
+ * `FileRoutesByFullPath` interface stands for, by route id (from
+ * `FileRoutesById`).
+ */
+async function routeIdsByKey(treeFile: string, interfaceName: string) {
+  const { program } = parseSync(
+    'routeTree.gen.ts',
+    await readFile(treeFile, 'utf8'),
+  )
+  const members = (name: string) => {
+    const body = program.body
+      .map((statement) =>
+        statement.type === 'ExportNamedDeclaration'
+          ? statement.declaration
+          : statement,
+      )
+      .find(
+        (statement: any) =>
+          statement?.type === 'TSInterfaceDeclaration' &&
+          statement.id.name === name,
+      ) as any
+    return Object.fromEntries(
+      body.body.body.map((member: any) => [
+        member.key.value ?? member.key.name,
+        member.typeAnnotation.typeAnnotation.exprName.name,
+      ]),
+    )
+  }
+  const idsByVariable = Object.fromEntries(
+    Object.entries(members('FileRoutesById')).map(([id, variable]) => [
+      variable,
+      id,
+    ]),
+  )
+  return Object.fromEntries(
+    Object.entries(members(interfaceName)).map(([key, variable]) => [
+      key,
+      idsByVariable[variable as string],
+    ]),
+  )
+}
