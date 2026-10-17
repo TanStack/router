@@ -3,7 +3,11 @@ import { describe, expect, test } from 'vitest'
 import { compileMatchers } from '../../src/import-protection/matchers'
 import { getRsbuildResolvedImportProtectionCheck } from '../../src/rsbuild/import-protection'
 import { buildStart } from '../build-harness'
-import { reportedViolations, rejection } from '../importProtection/start-apps'
+import {
+  distinct,
+  rejection,
+  reportedViolations,
+} from '../importProtection/start-apps'
 import { runRsbuildClient, startRsbuildDevServer } from '../rsbuild-dev-server'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 import type { ImportProtectionOptions } from '../../src/schema'
@@ -359,9 +363,14 @@ export const read = () => secret() + other
       watchEdits: { 'src/other.ts': `export const other = 2\n` },
     }),
   )
-  expect(reportedViolations(error.message)).toEqual([
-    { environment: 'client', importer: 'src/entry.ts:3:27' },
-  ])
+  // Rspack may compile the client more than once for the edit.
+  expect(
+    distinct(
+      reportedViolations(error.message).map(
+        ({ environment, importer }) => `${environment} ${importer}`,
+      ),
+    ),
+  ).toEqual(['client src/entry.ts:3:27'])
 }, 60_000)
 
 // Source: mutation run R3 ip-rsbuild R7 and ip-misc P10.
