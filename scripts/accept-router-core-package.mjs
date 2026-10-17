@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import {
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -60,6 +62,51 @@ export function validateConsumerConfiguration(
   }
 }
 
+function consumerTypeScriptConfiguration(extension) {
+  assert(['mts', 'cts'].includes(extension))
+  return {
+    compilerOptions: {
+      target: 'ES2022',
+      module: 'NodeNext',
+      moduleResolution: 'NodeNext',
+      lib: ['ES2022', 'DOM', 'DOM.Iterable'],
+      types: ['node'],
+      strict: true,
+      skipLibCheck: false,
+      exactOptionalPropertyTypes: true,
+      noUncheckedIndexedAccess: true,
+      noImplicitOverride: true,
+      noEmit: true,
+    },
+    files: [`consumer.${extension}`],
+  }
+}
+
+export function withDependencyRenewal(operation, renew) {
+  let failed = false
+  let failure
+  try {
+    return operation()
+  } catch (error) {
+    failed = true
+    failure = error
+    throw error
+  } finally {
+    try {
+      renew()
+    } catch (error) {
+      if (failed) {
+        throw new AggregateError(
+          [failure, error],
+          'Install and ownership renewal failed',
+          { cause: failure },
+        )
+      }
+      throw error
+    }
+  }
+}
+
 export function withConsumerDirectory(
   callback,
   env = process.env,
@@ -83,9 +130,19 @@ export function withConsumerDirectory(
   }
   const owner = `router-core-consumer-${process.pid}`
   const resources = []
-  const register = (directory, kind) => {
-    const resource = { directory, registered: false }
-    resources.push(resource)
+  const identity = (directory) => {
+    const stat = lstatSync(directory)
+    assert(
+      stat.isDirectory(),
+      `Owned directory must remain a directory: ${directory}`,
+    )
+    if (process.getuid) {
+      assert.equal(stat.uid, process.getuid())
+    }
+    return [stat.dev, stat.ino, stat.uid]
+  }
+  const lease = (resource) => {
+    const { directory, kind } = resource
     if (local && kind) {
       guardian(
         env.DISK_GUARDIAN_ARTIFACTS ?? 'disk-guardian-artifacts',
@@ -105,12 +162,60 @@ export function withConsumerDirectory(
       )
       resource.registered = true
     }
+  }
+  const register = (directory, kind) => {
+    const resource = {
+      directory,
+      kind,
+      identity: identity(directory),
+      registered: false,
+    }
+    resources.push(resource)
+    lease(resource)
     return directory
   }
+  const reconcileDependencies = () => {
+    // pnpm may replace an empty node_modules during its own install. Only that
+    // explicit mutation window may renew an identity inside our unchanged container.
+    const errors = []
+    for (const resource of resources.filter(
+      (entry) => entry.kind === 'dependencies',
+    )) {
+      try {
+        const current = identity(resource.directory)
+        if (
+          current.every((value, index) => value === resource.identity[index])
+        ) {
+          continue
+        }
+        const parent = resources.find(
+          (entry) => entry.directory === path.dirname(resource.directory),
+        )
+        assert(
+          parent,
+          'Dependency renewal requires its operation-owned container',
+        )
+        assert.deepEqual(identity(parent.directory), parent.identity)
+        lease(resource)
+        resource.identity = current
+      } catch (error) {
+        errors.push(error)
+      }
+    }
+    if (errors.length) {
+      throw new AggregateError(errors, 'Dependency ownership renewal failed')
+    }
+  }
+
   const cleanup = () => {
     const errors = []
     for (const resource of [...resources].reverse()) {
       try {
+        assert.deepEqual(
+          identity(resource.directory),
+          resource.identity,
+          `Retain unexpected replacement: ${resource.directory}`,
+        )
         assert(
           !resources.some(
             (child) =>
@@ -180,6 +285,7 @@ export function withConsumerDirectory(
     return callback(
       directory,
       external ? path.join(external, 'node_modules', '.pnpm') : undefined,
+      reconcileDependencies,
     )
   } catch (error) {
     failure = error
@@ -208,7 +314,10 @@ export function acceptCorePackage(archive) {
   assert.equal(packed.name, '@tanstack/router-core')
   const root = fileURLToPath(new URL('../', import.meta.url))
   const compiler = path.join(root, 'node_modules/typescript/lib/tsc.js')
-  return withConsumerDirectory((directory, virtualStoreDir) => {
+  const nodeTypesVersion = JSON.parse(
+    readFileSync(path.join(root, 'node_modules/@types/node/package.json')),
+  ).version
+  return withConsumerDirectory((directory, virtualStoreDir, renew) => {
     const virtualStore =
       virtualStoreDir ?? path.join(directory, 'node_modules', '.pnpm')
     const policy = [
@@ -263,6 +372,7 @@ export function acceptCorePackage(archive) {
           readFileSync(path.join(root, 'package.json')),
         ).packageManager,
         dependencies: { '@tanstack/router-core': `file:${archive}` },
+        devDependencies: { '@types/node': nodeTypesVersion },
       }),
     )
     writeFileSync(path.join(directory, 'pnpm-workspace.yaml'), policy)
@@ -275,7 +385,10 @@ export function acceptCorePackage(archive) {
       )
     }
     // The nearest consumer workspace owns the policy. --ignore-workspace would discard it.
-    run('pnpm', ['install', '--no-frozen-lockfile'])
+    withDependencyRenewal(
+      () => run('pnpm', ['install', '--no-frozen-lockfile']),
+      renew,
+    )
     assert.equal(
       readFileSync(path.join(directory, 'pnpm-workspace.yaml'), 'utf8'),
       policy,
@@ -287,7 +400,7 @@ export function acceptCorePackage(archive) {
       'Install must retain the effective consumer policy',
     )
     const parseYaml = createRequire(
-      path.join(root, 'node_modules/nx/package.json'),
+      realpathSync(path.join(root, 'node_modules/nx/package.json')),
     )('yaml').parse
     const modules = parseYaml(
       readFileSync(path.join(directory, 'node_modules/.modules.yaml'), 'utf8'),
@@ -358,7 +471,10 @@ export function acceptCorePackage(archive) {
             `${format === 'module' ? "import { isServer } from '@tanstack/router-core/isServer'" : "const { isServer } = require('@tanstack/router-core/isServer')"}; if (!${resolve}.endsWith('/isServer/${target}.${extension}') || isServer !== ${String(expected)}) throw new Error('Incorrect isServer export');`,
           ],
           {
-            env: { ...consumerEnvironment(process.env), NODE_ENV: environment },
+            env: {
+              ...consumerEnvironment(process.env),
+              NODE_ENV: environment,
+            },
           },
         )
       }
@@ -370,28 +486,15 @@ export function acceptCorePackage(archive) {
           `import * as api${index} from ${JSON.stringify(specifier)}; void api${index};`,
       )
       .join('\n')}\n`
-    writeFileSync(path.join(directory, 'consumer.mts'), source)
-    writeFileSync(path.join(directory, 'consumer.cts'), source)
-    writeFileSync(
-      path.join(directory, 'tsconfig.json'),
-      JSON.stringify({
-        compilerOptions: {
-          target: 'ES2022',
-          module: 'NodeNext',
-          moduleResolution: 'NodeNext',
-          lib: ['ES2022', 'DOM', 'DOM.Iterable'],
-          types: [],
-          strict: true,
-          skipLibCheck: false,
-          exactOptionalPropertyTypes: true,
-          noUncheckedIndexedAccess: true,
-          noImplicitOverride: true,
-          noEmit: true,
-        },
-        files: ['consumer.mts', 'consumer.cts'],
-      }),
-    )
-    run(process.execPath, [compiler, '--project', 'tsconfig.json'])
+    for (const extension of ['mts', 'cts']) {
+      writeFileSync(path.join(directory, `consumer.${extension}`), source)
+      const configuration = `tsconfig.${extension}.json`
+      writeFileSync(
+        path.join(directory, configuration),
+        JSON.stringify(consumerTypeScriptConfiguration(extension)),
+      )
+      run(process.execPath, [compiler, '--project', configuration])
+    }
     console.log(
       `Accepted installed ESM/CJS declarations and exports: ${packed.name}@${packed.version}`,
     )

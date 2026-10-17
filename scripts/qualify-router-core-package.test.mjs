@@ -5,6 +5,11 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  renameSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+  readFileSync,
   rmSync,
 } from 'node:fs'
 import path from 'node:path'
@@ -12,6 +17,7 @@ import {
   consumerEnvironment,
   validateConsumerConfiguration,
   withConsumerDirectory,
+  withDependencyRenewal,
 } from './accept-router-core-package.mjs'
 import {
   releaseContract,
@@ -144,7 +150,13 @@ test('rejects package archive traversal', () => {
   )
 })
 
-for (const failure of ['none', 'first-registration', 'installed-consumer']) {
+for (const failure of [
+  'none',
+  'first-registration',
+  'installed-consumer',
+  'recreated-modules',
+  'recreated-modules-failure',
+]) {
   test(`consumer owns and cleans its local and external paths: ${failure}`, () => {
     const temporaryRoot = process.env.OWNED_TEMP_DIR ?? process.env.RUNNER_TEMP
     assert(temporaryRoot, 'Run filesystem tests through owned-temp-dir')
@@ -157,6 +169,7 @@ for (const failure of ['none', 'first-registration', 'installed-consumer']) {
       mkdirSync(store)
       mkdirSync(virtualRoot)
       const calls = []
+      const identities = new Map()
       const original = new Error(failure)
       const env = {
         OWNED_TEMP_DIR: base,
@@ -173,20 +186,42 @@ for (const failure of ['none', 'first-registration', 'installed-consumer']) {
         if (failure === 'first-registration' && calls.length === 1) {
           throw original
         }
+        const stat = statSync(args[1])
+        const identity = [stat.dev, stat.ino, stat.uid]
+        if (args[0] === 'register') {
+          identities.set(args[1], identity)
+        } else {
+          assert.deepEqual(
+            identity,
+            identities.get(args[1]),
+            'Renew recreated directories before release',
+          )
+        }
       }
       const execute = () =>
         withConsumerDirectory(
-          (directory, virtualStore) => {
+          (directory, virtualStore, reconcileDependencies) => {
             assert(existsSync(path.join(directory, 'node_modules')))
             assert(virtualStore.startsWith(`${virtualRoot}${path.sep}`))
-            if (failure === 'installed-consumer') {
+            if (failure.startsWith('recreated-modules')) {
+              const modules = path.join(directory, 'node_modules')
+              const previous = `${modules}.before-install`
+              renameSync(modules, previous)
+              mkdirSync(modules)
+              rmSync(previous, { recursive: true })
+              reconcileDependencies()
+            }
+            if (
+              failure === 'installed-consumer' ||
+              failure === 'recreated-modules-failure'
+            ) {
               throw original
             }
           },
           env,
           guardian,
         )
-      if (failure === 'none') {
+      if (failure === 'none' || failure === 'recreated-modules') {
         execute()
       } else {
         assert.throws(execute, (error) => error === original)
@@ -200,7 +235,9 @@ for (const failure of ['none', 'first-registration', 'installed-consumer']) {
       const released = calls.filter(([operation]) => operation === 'release')
       assert.equal(
         released.length,
-        failure === 'first-registration' ? 0 : registered.length,
+        failure === 'first-registration'
+          ? 0
+          : new Set(registered.map(([, directory]) => directory)).size,
       )
       for (const [, directory] of registered) {
         assert(!existsSync(directory))
@@ -210,3 +247,142 @@ for (const failure of ['none', 'first-registration', 'installed-consumer']) {
     }
   })
 }
+
+function lifecycleTest(callback) {
+  const temporaryRoot = process.env.OWNED_TEMP_DIR ?? process.env.RUNNER_TEMP
+  assert(temporaryRoot, 'Run filesystem tests through owned-temp-dir')
+  const base = mkdtempSync(path.join(temporaryRoot, 'core-consumer-negative-'))
+  const store = path.join(base, 'shared-store')
+  const virtualRoot = path.join(base, 'external-virtual-stores')
+  mkdirSync(store)
+  mkdirSync(virtualRoot)
+  const calls = []
+  try {
+    callback({
+      base,
+      calls,
+      execute: (consumer) =>
+        withConsumerDirectory(
+          consumer,
+          {
+            OWNED_TEMP_DIR: base,
+            ROUTER_CORE_STORE_DIR: store,
+            ROUTER_CORE_VIRTUAL_STORE_ROOT: virtualRoot,
+          },
+          (_command, args) => {
+            calls.push(args)
+          },
+        ),
+    })
+  } finally {
+    // This base and every replacement below were created by this test alone.
+    rmSync(base, { recursive: true, force: true })
+  }
+}
+
+for (const scenario of [
+  'unrenewed-modules',
+  'replaced-parent',
+  'symlink-modules',
+]) {
+  test(`unsafe lifecycle replacement is retained: ${scenario}`, (t) => {
+    t.mock.method(console, 'error', () => {})
+    lifecycleTest(({ base, calls, execute }) => {
+      let directory
+      const target = path.join(base, 'unrelated-target')
+      mkdirSync(target)
+      writeFileSync(path.join(target, 'keep'), 'preserved')
+      assert.throws(
+        () =>
+          execute((created, _virtualStore, renew) => {
+            directory = created
+            if (scenario === 'replaced-parent') {
+              renameSync(directory, `${directory}.original`)
+              mkdirSync(directory)
+              mkdirSync(path.join(directory, 'node_modules'))
+              renew()
+            } else {
+              const modules = path.join(directory, 'node_modules')
+              renameSync(modules, `${modules}.original`)
+              if (scenario === 'symlink-modules') {
+                symlinkSync(target, modules, 'dir')
+                renew()
+              } else {
+                mkdirSync(modules)
+              }
+            }
+          }),
+        AggregateError,
+      )
+      const modules = path.join(directory, 'node_modules')
+      assert(existsSync(directory), 'Unsafe parent must not be deleted')
+      assert(existsSync(modules), 'Unsafe replacement must not be deleted')
+      assert.equal(
+        calls.filter(
+          ([operation, file]) => operation === 'register' && file === modules,
+        ).length,
+        1,
+        'Unsafe replacement must not acquire the old lease',
+      )
+      assert(
+        !calls.some(
+          ([operation, file]) => operation === 'release' && file === modules,
+        ),
+        'Unsafe replacement must not release the old identity',
+      )
+      assert.equal(readFileSync(path.join(target, 'keep'), 'utf8'), 'preserved')
+    })
+  })
+}
+
+test('install and renewal failures preserve both errors and still renew remaining resources', (t) => {
+  t.mock.method(console, 'error', () => {})
+  lifecycleTest(({ calls, execute }) => {
+    const original = new Error('pnpm install failed')
+    let directory
+    let externalModules
+    assert.throws(
+      () =>
+        execute((created, virtualStore, renew) => {
+          directory = created
+          externalModules = path.dirname(virtualStore)
+          withDependencyRenewal(() => {
+            rmSync(path.join(directory, 'node_modules'), { recursive: true })
+            renameSync(externalModules, `${externalModules}.original`)
+            mkdirSync(externalModules)
+            rmSync(`${externalModules}.original`, { recursive: true })
+            throw original
+          }, renew)
+        }),
+      (error) => {
+        assert(error instanceof AggregateError)
+        assert.equal(error.cause, original)
+        assert.equal(error.errors[0], original)
+        assert(error.errors[1] instanceof AggregateError)
+        assert(
+          error.errors[1].errors.some((failure) => failure.code === 'ENOENT'),
+        )
+        return true
+      },
+    )
+    assert.equal(
+      calls.filter(
+        ([operation, file]) =>
+          operation === 'register' && file === externalModules,
+      ).length,
+      2,
+      'Renewal must continue after the missing local directory',
+    )
+    assert(
+      calls.some(
+        ([operation, file]) =>
+          operation === 'release' && file === externalModules,
+      ),
+    )
+    assert(!existsSync(externalModules))
+    assert(
+      existsSync(directory),
+      'Missing dependency directory must retain its parent for inspection',
+    )
+  })
+})
