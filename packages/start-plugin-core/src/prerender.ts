@@ -89,6 +89,7 @@ export async function prerender({
   async function prerenderPages({ outputDir }: { outputDir: string }) {
     const seen = new Set<string>()
     const prerendered = new Set<string>()
+    const errors: Array<unknown> = []
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
@@ -106,6 +107,10 @@ export async function prerender({
     }
 
     await queue.start()
+
+    if (errors.length) {
+      throw errors[0]
+    }
 
     return Array.from(prerendered)
 
@@ -232,7 +237,7 @@ export async function prerender({
             await new Promise((resolve) => setTimeout(resolve, retryDelay))
             queue.add(() => prerenderPage(retries + 1))
           } else if (prerenderOptions.failOnError ?? true) {
-            throw error
+            errors.push(error)
           }
         }
       }

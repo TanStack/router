@@ -88,4 +88,14 @@ describe('prerender retries', () => {
     expect(request).toHaveBeenCalledTimes(3)
     await expect(readAbout()).rejects.toMatchObject({ code: 'ENOENT' })
   })
+
+  it.each([0, 2])(
+    'rejects once a failing page exhausts retryCount %i',
+    async (retryCount) => {
+      const { result, request } = await prerenderAbout({ retryCount }, Infinity)
+
+      await expect(result).rejects.toThrow('Failed to fetch /about')
+      expect(request).toHaveBeenCalledTimes(1 + retryCount)
+    },
+  )
 })
