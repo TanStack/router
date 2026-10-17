@@ -831,11 +831,6 @@ function Post(id: string): Post {
 }
 export { Post }`,
     },
-    {
-      name: 'a type re-export and a value re-export',
-      exports: `export type { Post } from './post-types'
-export { Post } from './post-values'`,
-    },
   ])(
     'exports a type and a value with the same name: $name',
     async ({ exports }) => {

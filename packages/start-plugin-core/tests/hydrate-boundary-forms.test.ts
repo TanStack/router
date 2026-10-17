@@ -629,9 +629,10 @@ export function Page() {
   // component.
   // Impact: the hook runs in another component on the client than on the
   // server (`useId` mismatches, hydration errors).
-  // Source: Qwik optimizer example_use_optimization (known-bugs-hydrate.test.ts;
-  // #8504 hydrate-split-modules.test.ts "an optional hook call in the
-  // children is rejected", red on main)
+  // Source: Qwik optimizer example_use_optimization (known-bugs-hydrate.test.ts);
+  // the optional-call row: #8504 hydrate-split-modules.test.ts "an optional
+  // hook call in the children is rejected" (red on main). #8504 has no test
+  // for the namespace row and still moves `React.useId()` into the chunk.
   test.fails.each([
     {
       name: 'a hook called through a namespace',

@@ -33,6 +33,21 @@ import type { TargetFramework } from './regression-helpers'
  */
 const clientBundlers: Array<Bundler> = ['vite', 'rspack', 'webpack']
 
+/**
+ * Whether a `console.warn` spy saw a warning that names the route file
+ * `file` and the split component (`Page` or `component`): the user is told
+ * the component is not code-split.
+ */
+function reportsNotSplit(
+  warn: { mock: { calls: Array<Array<unknown>> } },
+  file: string,
+) {
+  return warn.mock.calls.some(([message]) => {
+    const text = String(message)
+    return text.includes(file) && /\b(?:Page|component)\b/.test(text)
+  })
+}
+
 /** Stubs `./state`, counting the calls of `init` and `register`. */
 function stateStub() {
   const state = {
@@ -154,10 +169,12 @@ const read = () => Value.one`,
       read: 'Value.one',
     },
     {
-      // Source: #8504 (a namespace merged across two declarations).
+      // Source: #8504 (a namespace merged across two declarations). The
+      // second block reads `Value.one`: TypeScript transforms (Oxc, Babel)
+      // do not resolve a bare `one` across merged blocks.
       name: 'a namespace declared in two blocks',
       declaration: `namespace Value { export const one = init(1) }
-namespace Value { export const two = one }`,
+namespace Value { export const two = Value.one }`,
       read: 'Value.two',
     },
   ])(
@@ -293,6 +310,18 @@ Object.assign(State, { extra: 7 })`,
       expected: ['data', '<p>7</p>'],
     })),
     {
+      // The write has a side effect: it must run once, not once per module
+      // that holds a copy of the enum and its write.
+      name: 'an enum only the split component reads (Object.assign of a created value)',
+      setup: `import { init } from './state'
+enum State { Zero = 0 }
+Object.assign(State, { extra: init(7) })`,
+      loader: `'data'`,
+      component: '() => <p>{(State as any).extra}</p>',
+      expected: ['data', '<p>7</p>'],
+      inits: 1,
+    },
+    {
       name: 'a dotted namespace only the split component reads (property assignment)',
       setup: `namespace Labels.Page {
   export const title = 'title'
@@ -411,9 +440,9 @@ const key = 'staticData'`,
       render: '{store.count}',
       html: '<p>1</p>',
     },
-    // Rows from #8504, where they pass. A type that reads a value is no read
-    // at runtime (TypeScript erases it), but the reference module keeps the
-    // declaration for it.
+    // Rows from #8504, where they pass (except the private call result row
+    // below). A type that reads a value is no read at runtime (TypeScript
+    // erases it), but the reference module keeps the declaration for it.
     {
       name: 'a type alias that reads it',
       // Source: corpus-diff, route files that derive a type with
@@ -425,8 +454,10 @@ type Value = typeof value`,
     },
     {
       // A second initialization in the chunk is another instance than the
-      // one other modules import. Source: #8504
-      // (code-splitter-imports-exports.test.ts).
+      // one other modules import. Importing `cache` from the route module is
+      // not enough: a chunk that declares the private `initial` again runs
+      // `init` twice. Source: #8504 (code-splitter-imports-exports.test.ts,
+      // which checks `cache` only).
       name: 'an export built from a private call result the chunk reads too',
       declaration: `const initial = init([['a', 1]])
 export const cache = new Map(initial)`,
@@ -936,7 +967,9 @@ export async function load() {
   // module is our limitation, not a pattern the user can change (decision
   // D11). Only the handler can move; the router reads the other keys
   // (`staleReloadMode`) from the route options. Today the compiler throws
-  // first (same root cause as above).
+  // first (same root cause as above). A compiler that builds these routes
+  // but keeps a method handler, or a handler next to a spread, in the route
+  // module on purpose still has this bug.
   // Impact: the loader's code loads with the entry chunk, or the route
   // cannot be built.
   test.fails.each([
@@ -1574,14 +1607,16 @@ import { h } from 'preact'`,
 import { h, Fragment } from 'preact'`,
       module: 'component',
       unused: 'Fragment',
+      // The split loader renders a fragment, so the file uses `Fragment`.
+      loader: '<>{1}</>',
     },
   ])(
     'a module without JSX does not import the classic factory ($name)',
-    async ({ header, module, unused }) => {
+    async ({ header, module, unused, loader = "'data'" }) => {
       const route = await loadRoute(
         `${header}
 ${head}export const Route = createFileRoute('/')({
-  loader: () => 'data',
+  loader: () => ${loader},
   component: () => <p>page</p>,
 })
 `,
@@ -2544,6 +2579,16 @@ describe('page code in client builds', () => {
 
   const component = `export const Route = createFileRoute('$PATH')({ component: Page })`
 
+  const displayName = routeCase(
+    'a component the route file writes a property of',
+    'display-name',
+    `function Page() {
+  return <div>{'$MARK'}{Page.displayName}</div>
+}
+Page.displayName = 'PageDisplay'
+${component}`,
+  )
+
   // Page code that loads with its chunk: code the route file does not
   // export, and exported functions and classes (today the chunk declares its
   // own copy, whose identity and state are pinned in "module state shared
@@ -2680,15 +2725,8 @@ export const Route = createFileRoute('$PATH')({
   component: () => <p>{label('page')}<Card /></p>,
 })`,
     ),
-    routeCase(
-      'a component the route file writes a property of',
-      'display-name',
-      `function Page() {
-  return <div>{'$MARK'}{Page.displayName}</div>
-}
-Page.displayName = 'PageDisplay'
-${component}`,
-    ),
+    // Its placement only; that it renders the property is the goal below.
+    displayName,
   ]
 
   // Bug: page code the route file exports as a variable, and an exported
@@ -2876,8 +2914,20 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
     ...Object.fromEntries(
       cases.map((row) => [`routes/${row.file}.tsx`, row.route]),
     ),
-    'entry.ts': `import { routeTree } from './routeTree.gen'
+    'entry.ts': `import { createElement } from 'react'
+import { flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
+import { routeTree } from './routeTree.gen'
 export { routeTree }
+/** Mounts the component of the route at \`path\` into #root. */
+export async function mount(path: string) {
+  const route = (routeTree.children as Array<any>).find(
+    (child) => child.options.path === path,
+  )
+  await route.options.component.preload?.()
+  const root = createRoot(document.getElementById('root')!)
+  flushSync(() => root.render(createElement(route.options.component)))
+}
 `,
   }
 
@@ -2904,6 +2954,29 @@ export { routeTree }
         '$name loads with its chunk',
         async ({ marker: mark }) => {
           expect((await app()).where(mark)).toBe('lazy')
+        },
+        timeout,
+      )
+
+      // Bug: the code splitter moves a component into its chunk but leaves
+      // a top-level write to it (`Page.displayName = ...`) in the route
+      // module, where `Page` is no longer declared (same bug as "top-level
+      // writes to the split component (property assignment) stay with the
+      // binding they write"). Keeping a copy of the component and its write
+      // in the route module as well is no fix: the page code then loads
+      // with the entry chunk. The control above checks the placement only.
+      // Source: the #8504 probe (memos/splitter.md B6).
+      // Impact: the app's entry throws when it loads ("Page is not
+      // defined").
+      test.fails(
+        `${displayName.name} loads with its chunk and renders the property`,
+        async () => {
+          const built = await app()
+          const { html } = await built.run(`await entry.mount('/display-name')`)
+          expect({ placement: built.where(displayName.marker), html }).toEqual({
+            placement: 'lazy',
+            html: `<div id="root"><div>${displayName.marker}PageDisplay</div></div>`,
+          })
         },
         timeout,
       )
@@ -3265,25 +3338,37 @@ export const Route = createFileRoute('/')({
 
 describe('code that reads a split binding', () => {
   /**
-   * Loads a route whose component is `Page`, declared next to `exports`, and
-   * returns what the route renders and what `read` gets from the route
-   * module's exports.
+   * Loads a route whose component is `Page`, declared next to `exports`, in
+   * a production compile, and returns what the route renders, what `read`
+   * gets from the route module's exports, and whether `Page` is split or
+   * the user is told it is not (a warning naming the route file and `Page`
+   * or `component`).
    */
   async function renderPage(
     exports: string,
     read: (moduleExports: Record<string, any>) => unknown,
   ) {
-    const route = await loadRoute(
-      `${head}import { wrap } from './wrap'
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const route = await loadRoute(
+        `${head}import { wrap } from './wrap'
 function Page() {
   return <p>page</p>
 }
 ${exports}
 export const Route = createFileRoute('/')({ component: Page })
 `,
-      { stubs: { './wrap': { wrap: (component: unknown) => component } } },
-    )
-    return [(await route.load('component'))(), read(route.exports)]
+        { stubs: { './wrap': { wrap: (component: unknown) => component } } },
+      )
+      return {
+        rendered: [(await route.load('component'))(), read(route.exports)],
+        splitOrReported:
+          route.isLazy('component') ||
+          reportsNotSplit(warn, route.ids.reference!),
+      }
+    } finally {
+      warn.mockRestore()
+    }
   }
 
   // Control for the pin below (same harness, an export that does not read
@@ -3294,7 +3379,7 @@ export const Route = createFileRoute('/')({ component: Page })
         `export const label = wrap('label')`,
         (moduleExports) => moduleExports.label,
       ),
-    ).toEqual(['<p>page</p>', 'label'])
+    ).toEqual({ rendered: ['<p>page</p>', 'label'], splitOrReported: true })
   })
 
   // Bug: when a route option names a binding that the code splitter moves
@@ -3303,6 +3388,9 @@ export const Route = createFileRoute('/')({ component: Page })
   // still reads it. Only `export function`/`export const` declarations are
   // checked, so export lists, aliases and exports that use the binding lose
   // it. Source: #8505 (`export { component as View }`), gap O7.
+  // A fix may also leave `Page` unsplit, but must then tell the user, in
+  // production builds too (decision D11): unsplit and silent is still this
+  // bug.
   // Impact: the route module throws when it loads ("Page is not defined",
   // "Export 'Page' is not defined"), so the route never renders.
   test.fails.each([
@@ -3340,33 +3428,37 @@ export const Route = createFileRoute('/')({ component: Page })
   ])(
     'a split component that $name reads renders from both',
     async ({ exports, read }) => {
-      expect(await renderPage(exports, read)).toEqual([
-        '<p>page</p>',
-        '<p>page</p>',
-      ])
+      expect(await renderPage(exports, read)).toEqual({
+        rendered: ['<p>page</p>', '<p>page</p>'],
+        splitOrReported: true,
+      })
     },
   )
 
   // Bug: same root cause as above, for a function that module-level code
   // keeps reachable: it renders the split component, whose declaration the
-  // route module lost. Source: #8504 (code-splitter-dead-code.test.ts), where
-  // it passes.
+  // route module lost. The registry is created, filled and subscribed to
+  // once, also after the chunk loads (a chunk that runs that code again
+  // makes a second registry). Source: #8504 (code-splitter-dead-code.test.ts).
   // Impact: the route module throws when it loads ("Page is not defined").
   test.fails.each([
     {
       name: 'module-level code registers',
       setup: `registry.set('preview', Preview)`,
+      subscribes: 0,
     },
     {
       name: 'an unused subscription calls back',
       setup: `const unsubscribe = subscribe((name) => registry.set(name, Preview))`,
+      subscribes: 1,
     },
   ])(
     'a split component renders through a function $name',
-    async ({ setup }) => {
+    async ({ setup, subscribes }) => {
+      const runs = { registries: 0, sets: 0, subscribes: 0 }
       const route = await loadRoute(
-        `${head}import { subscribe } from './subscribe'
-const registry = new Map()
+        `${head}import { createRegistry, subscribe } from './subscribe'
+const registry = createRegistry()
 function Page() {
   return <p>page</p>
 }
@@ -3382,16 +3474,32 @@ export const Route = createFileRoute('/')({
         {
           stubs: {
             './subscribe': {
-              subscribe: (callback: (name: string) => void) =>
-                callback('preview'),
+              createRegistry: () => {
+                runs.registries++
+                const map = new Map<string, unknown>()
+                return {
+                  get: (name: string) => map.get(name),
+                  set: (name: string, value: unknown) => {
+                    runs.sets++
+                    map.set(name, value)
+                  },
+                }
+              },
+              subscribe: (callback: (name: string) => void) => {
+                runs.subscribes++
+                callback('preview')
+              },
             },
           },
         },
       )
-      expect([
-        route.options.loader(),
-        (await route.load('component'))(),
-      ]).toEqual(['<p>page</p>', '<p>page</p>'])
+      const loaded = route.options.loader()
+      const rendered = (await route.load('component'))()
+      expect([loaded, rendered, runs]).toEqual([
+        '<p>page</p>',
+        '<p>page</p>',
+        { registries: 1, sets: 1, subscribes },
+      ])
     },
   )
 
@@ -3421,7 +3529,9 @@ function Page() {
   )
 
   // Bug: same root cause as above, for a top-level call that reads the split
-  // component. Source: #8504 (differential fuzzing), where it passes.
+  // component. The call runs once, also after the chunk loads (a chunk that
+  // calls `register` again registers a second component). Source: #8504
+  // (differential fuzzing).
   // Impact: the route module throws when it loads ("Page is not defined").
   test.fails(
     'a split component that a top-level call reads renders from both',
@@ -3445,10 +3555,11 @@ register(Page)
           },
         },
       )
-      expect([
-        registered.map((component) => component()),
-        (await route.load('component'))(),
-      ]).toEqual([['<div>page</div>'], '<div>page</div>'])
+      const rendered = (await route.load('component'))()
+      expect([registered.map((component) => component()), rendered]).toEqual([
+        ['<div>page</div>'],
+        '<div>page</div>',
+      ])
     },
   )
 
@@ -3677,6 +3788,8 @@ export const Route = createFileRoute('/')({ component: Page })
 
   // Bug: a route option that names a class cannot be split: the virtual
   // compiler throws "Unexpected splitNode type ☝️: ClassDeclaration".
+  // A fix may leave an exported class unsplit, but must then tell the user,
+  // in production builds too (decision D11).
   // Source: #8505 (`export class component {}`).
   // Impact: a route whose component is a class component cannot be built
   // once code splitting is on.
@@ -3686,11 +3799,21 @@ export const Route = createFileRoute('/')({ component: Page })
   ])(
     'a class component declared in the route file renders (%s)',
     async (declaration) => {
-      const route = await loadRoute(`${head}${declaration}
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const route = await loadRoute(`${head}${declaration}
 export const Route = createFileRoute('/')({ component: Page })
 `)
-      const Component = await route.load('component')
-      expect(new Component().render()).toBe('page')
+        const Component = await route.load('component')
+        expect({
+          rendered: new Component().render(),
+          splitOrReported:
+            route.isLazy('component') ||
+            reportsNotSplit(warn, route.ids.reference!),
+        }).toEqual({ rendered: 'page', splitOrReported: true })
+      } finally {
+        warn.mockRestore()
+      }
     },
   )
 

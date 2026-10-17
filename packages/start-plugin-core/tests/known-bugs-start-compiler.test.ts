@@ -451,8 +451,11 @@ export const fn = iso.server(() => db.x()).client(() => 'client')`,
     },
     {
       // Source: #8504 compiler.test.ts "resolves distinct re-export aliases
-      // without conflating their source bindings" (red on main with the
-      // detection the bundler plugins run)
+      // without conflating their source bindings". The module's text names
+      // no factory, so the text detection the bundler plugins run before
+      // compiling skips it and the module is left untransformed. #8504's
+      // test calls the compiler without that detection; with it, #8504 has
+      // the same bug.
       name: 'a renamed createServerOnlyFn re-export',
       files: {
         '/test/src/env.ts': `export { createServerOnlyFn as serverOnly } from '@tanstack/react-start'`,
@@ -1869,7 +1872,10 @@ export const fn = createLoggedServerFn(async () => db.secret())
         (error: unknown) => ({ error: String(error) }),
       )
       if ('error' in outcome) {
-        expect(outcome.error).toMatch(/createServerFn/)
+        expect(outcome.error).toMatch(misplacedServerFnRejection)
+        expect(outcome.error).not.toMatch(
+          /Expected createServerFn declaration in a statement list/,
+        )
       } else {
         expect(outcome).toEqual({
           client: 'nowhere',

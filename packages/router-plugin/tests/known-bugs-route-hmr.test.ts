@@ -376,11 +376,15 @@ export const Route = createFileRoute('/')({
   )
 
   // Bug: same root cause as the pin above, for a lowercase component that
-  // the split `component` and the unsplit `pendingComponent` share.
+  // the split `component` and the unsplit `pendingComponent` share. Both
+  // options must be registered: a lowercase `pendingComponent` that React
+  // Refresh never registers, or a renamed copy in the chunk (another
+  // function than the pendingComponent), is still this bug.
   // Impact: in development, the route's component chunk fails to load
-  // (SyntaxError: Export 'SplitComponent' is not defined).
+  // (SyntaxError: Export 'SplitComponent' is not defined), or the pending
+  // component loses its state on hot updates.
   // Source: #8504 react-refresh-route-components ("that is also the unsplit
-  // pendingComponent"), where it passes.
+  // pendingComponent"), which checks the chunk's registration only.
   test.fails(
     'a lowercase function component that is also the unsplit pendingComponent is registered in both',
     async () => {
