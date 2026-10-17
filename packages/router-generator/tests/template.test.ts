@@ -1,9 +1,11 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { parseSync } from 'vite'
+import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it, vi } from 'vitest'
 import { Generator, getConfig } from '../src'
+import { createApp, generate, read } from './app'
+import { routesOf } from './route-tree'
 import type { Config } from '../src'
 
 /** The string the route call of a route file creates its route with. */
@@ -105,3 +107,120 @@ describe('route templates', () => {
     ])
   })
 })
+
+/** A rendered element: its type and children (strings or elements). */
+interface Rendered {
+  type: unknown
+  children: Array<Rendered | string>
+}
+
+/**
+ * Evaluates a scaffolded route file for `target` and renders its route
+ * component once. The file may import only the target's router package
+ * (stubbed: route constructors, `Outlet`) and the target's framework
+ * (stubbed: Vue's `h`; Solid's JSX compiles like React's, to a stub JSX
+ * runtime); like a bundler of an app without other packages, any other import
+ * fails. Returns the route and the text and elements it renders.
+ */
+async function evaluateScaffold(code: string, target: Config['target']) {
+  const element = `const element = (type, children) => ({ type, children: [children ?? []].flat(Infinity).filter((c) => c != null && c !== false) })`
+  const stubs: Record<string, string> = {
+    [`@tanstack/${target}-router`]: `export const createFileRoute = (id) => (options) => ({ id, options })
+export const createLazyFileRoute = createFileRoute
+export const createRootRoute = (options) => ({ id: '__root__', options })
+export const Outlet = 'Outlet'`,
+    ...(target === 'vue'
+      ? {
+          vue: `${element}\nexport const h = (type, props, children) => element(type, children)`,
+        }
+      : {
+          [target === 'solid' ? 'solid-js' : 'react']: `export {}`,
+          'react/jsx-runtime': `${element}
+export const jsx = (type, props) => element(type, props.children)
+export const jsxs = jsx
+export const Fragment = 'Fragment'`,
+        }),
+  }
+  const { code: javascript } = await transformWithOxc(code, 'route.tsx')
+  const { module, errors } = parseSync('route.js', javascript)
+  expect(errors).toEqual([])
+  let linked = javascript
+  for (const statement of [...module.staticImports].sort(
+    (a, b) => b.moduleRequest.start - a.moduleRequest.start,
+  )) {
+    const specifier = statement.moduleRequest.value
+    const stub = stubs[specifier]
+    if (stub === undefined) {
+      throw new Error(`The scaffolded file imports "${specifier}"`)
+    }
+    linked =
+      linked.slice(0, statement.moduleRequest.start) +
+      JSON.stringify(`data:text/javascript,${encodeURIComponent(stub)}`) +
+      linked.slice(statement.moduleRequest.end)
+  }
+  const { Route } = await import(
+    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(linked)}`
+  )
+  const rendered: Rendered = Route.options.component()
+  const text: Array<string> = []
+  const types: Array<unknown> = []
+  const visit = (node: Rendered | string) => {
+    if (typeof node === 'string') {
+      text.push(node)
+    } else {
+      types.push(node.type)
+      node.children.forEach(visit)
+    }
+  }
+  visit(rendered)
+  return { id: Route.id, text: text.join(''), types }
+}
+
+// A new, empty route, lazy route or root route file is scaffolded into a
+// working route for each target.
+describe.each(['react', 'solid', 'vue'] as const)(
+  'scaffolded %s routes',
+  (target) => {
+    it('empty root, route and lazy route files become routes whose components render', async () => {
+      const root = await createApp({
+        'src/routes/__root.tsx': '',
+        'src/routes/posts.tsx': '',
+        'src/routes/about.lazy.tsx': '',
+        'src/routes/{-$locale}/contact.tsx': '',
+        'src/routes/{-$locale}/help.lazy.tsx': '',
+      })
+      const { generatedRouteTree } = await generate(root, { target })
+
+      const scaffolded = async (file: string) =>
+        evaluateScaffold(await read(root, `src/routes/${file}`), target)
+      const rootFile = await scaffolded('__root.tsx')
+      expect(rootFile.id).toBe('__root__')
+      expect(rootFile.text).toContain('Hello')
+      expect(rootFile.types).toContain('Outlet')
+      expect(await scaffolded('posts.tsx')).toMatchObject({
+        id: '/posts',
+        text: 'Hello "/posts"!',
+      })
+      expect(await scaffolded('about.lazy.tsx')).toMatchObject({
+        id: '/about',
+        text: 'Hello "/about"!',
+      })
+      // The greeting names the route path, its param included.
+      expect(await scaffolded('{-$locale}/contact.tsx')).toMatchObject({
+        id: '/{-$locale}/contact',
+        text: expect.stringMatching(/\$locale\/contact/),
+      })
+      expect(await scaffolded('{-$locale}/help.lazy.tsx')).toMatchObject({
+        id: '/{-$locale}/help',
+        text: expect.stringMatching(/\$locale\/help/),
+      })
+      expect(await routesOf(generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/posts': 'routes/posts.tsx',
+        '/about': null,
+        '/{-$locale}/contact': 'routes/{-$locale}/contact.tsx',
+        '/{-$locale}/help': null,
+      })
+    })
+  },
+)

@@ -631,6 +631,194 @@ export const Route = createLazyFileRoute('/posts')({})
   )
 })
 
+describe('ignored route files', () => {
+  test('with the default routeFileIgnorePrefix, "-" route files and directories are left out of the route tree and untouched', async () => {
+    const notARoute = `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/old')({})
+`
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/')({})
+`,
+      'src/routes/-disabled.tsx': notARoute,
+      'src/routes/-components/card.tsx': notARoute,
+      'src/routes/-empty.tsx': '',
+    })
+    const { generatedRouteTree } = await generate(root)
+
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/': 'routes/index.tsx',
+    })
+    expect(await read(root, 'src/routes/-disabled.tsx')).toBe(notARoute)
+    expect(await read(root, 'src/routes/-components/card.tsx')).toBe(notARoute)
+    expect(await read(root, 'src/routes/-empty.tsx')).toBe('')
+  })
+})
+
+describe.each(['react', 'solid', 'vue'] as const)('the %s target', (target) => {
+  const routerPackage = `@tanstack/${target}-router`
+
+  test(`the route tree imports its runtime from ${routerPackage}`, async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(target),
+      // A lazy route without a route file: the route tree creates its route.
+      'src/routes/about.lazy.tsx': `import { createLazyFileRoute } from '${routerPackage}'
+
+export const Route = createLazyFileRoute('/about')({})
+`,
+    })
+    const { generatedRouteTree } = await generate(root, { target })
+
+    const code = await readFile(generatedRouteTree, 'utf8')
+    const packages = parseSync('routeTree.gen.ts', code)
+      .module.staticImports.map((statement) => statement.moduleRequest.value)
+      .filter((specifier) => !specifier.startsWith('.'))
+    expect(new Set(packages)).toEqual(new Set([routerPackage]))
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/about': null,
+    })
+  })
+})
+
+describe('custom scaffolding', () => {
+  test('customScaffolding in tsr.config.json scaffolds new route and lazy route files', async () => {
+    const root = await createApp({
+      'tsr.config.json': JSON.stringify({
+        customScaffolding: {
+          routeTemplate:
+            '%%tsrImports%%\n\n%%tsrExportStart%%{ staticData: { template: "route" } }%%tsrExportEnd%%\n',
+          lazyRouteTemplate:
+            '%%tsrImports%%\n\n%%tsrExportStart%%{ staticData: { template: "lazy" } }%%tsrExportEnd%%\n',
+        },
+      }),
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/posts.tsx': '',
+      'src/routes/about.lazy.tsx': '',
+    })
+    await generate(root)
+
+    const posts = await evaluateRouteFile(
+      await read(root, 'src/routes/posts.tsx'),
+    )
+    expect([posts.Route.id, posts.Route.options.staticData]).toEqual([
+      '/posts',
+      { template: 'route' },
+    ])
+    const about = await evaluateRouteFile(
+      await read(root, 'src/routes/about.lazy.tsx'),
+    )
+    expect([about.Route.id, about.Route.options.staticData]).toEqual([
+      '/about',
+      { template: 'lazy' },
+    ])
+  })
+})
+
+describe('token options', () => {
+  test.each([
+    {
+      name: 'a RegExp indexToken and the default routeToken',
+      indexToken: /^page$/,
+    },
+    {
+      name: 'the default indexToken and a RegExp routeToken',
+      routeToken: /^layout$/,
+    },
+    {
+      name: 'a JSON regex indexToken and the default routeToken',
+      indexToken: { regex: '^page$' },
+    },
+    {
+      name: 'the default indexToken and a JSON regex routeToken',
+      routeToken: { regex: '^layout$' },
+    },
+    {
+      name: 'a RegExp indexToken and a JSON regex routeToken',
+      indexToken: /^page$/,
+      routeToken: { regex: '^layout$' },
+    },
+    {
+      name: 'two different RegExps',
+      indexToken: /^page$/,
+      routeToken: /^layout$/,
+    },
+    {
+      name: 'RegExps differing only in flags',
+      indexToken: /^page$/,
+      routeToken: /^page$/i,
+    },
+    {
+      name: 'JSON regexes differing only in flags',
+      indexToken: { regex: '^page$' },
+      routeToken: { regex: '^page$', flags: 'i' },
+    },
+  ] satisfies Array<Partial<Config> & { name: string }>)(
+    'different tokens are accepted: $name',
+    ({ name: _name, ...config }) => {
+      expect(() => getConfig(config)).not.toThrow()
+    },
+  )
+
+  test('a RegExp indexToken with the default routeToken generates index and layout routes', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/posts/route.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({})
+`,
+      'src/routes/posts/page.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts/')({})
+`,
+    })
+    const { generatedRouteTree } = await generate(root, {
+      indexToken: /^page$/,
+    })
+
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/posts': 'routes/posts/route.tsx',
+      '/posts/': 'routes/posts/page.tsx',
+    })
+  })
+})
+
+describe('route tree path', () => {
+  test('with disableTypes, only the extension of the route tree file becomes .js', () => {
+    const config = getConfig(
+      {
+        disableTypes: true,
+        generatedRouteTree: './src/gen.tsr/routeTree.gen.ts',
+      },
+      '/app',
+    )
+    expect(config.generatedRouteTree).toBe(
+      path.resolve('/app/src/gen.tsr/routeTree.gen.js'),
+    )
+  })
+
+  test('the directories of a nested route tree path are created', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+    })
+    const { generatedRouteTree } = await generate(root, {
+      generatedRouteTree: './src/generated/deep/routeTree.gen.ts',
+    })
+
+    expect(generatedRouteTree).toBe(
+      path.join(root, 'src/generated/deep/routeTree.gen.ts'),
+    )
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: '../../routes/__root.tsx',
+    })
+  })
+})
+
 describe('logging', () => {
   test.each([
     { disableLogging: false, logs: true },
@@ -742,6 +930,19 @@ describe('invalid configuration', () => {
       name: 'routeFileIgnorePrefix "_"',
       config: { routeFileIgnorePrefix: '_' },
       error: 'The "routeFileIgnorePrefix" cannot be an underscore ("_").',
+    },
+    {
+      name: 'routeFileIgnorePrefix "_ "',
+      config: { routeFileIgnorePrefix: '_ ' },
+      error: 'The "routeFileIgnorePrefix" cannot be an underscore ("_").',
+    },
+    {
+      name: 'the same JSON regex indexToken and routeToken, both without flags',
+      config: {
+        indexToken: { regex: '^page$' },
+        routeToken: { regex: '^page$' },
+      },
+      error: 'The "indexToken" and "routeToken" options must be different.',
     },
   ])(
     'tsr.config.json with $name is rejected with a clear error',
