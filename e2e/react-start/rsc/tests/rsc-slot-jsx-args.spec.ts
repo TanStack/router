@@ -16,5 +16,8 @@ test.describe('RSC Slot Arg Tests - JSX element argument', () => {
     await expect(page.getByTestId('promo-cta-jsx')).toBeVisible()
     await expect(page.getByTestId('promo-cta-jsx')).toHaveText('Limited offer')
     await expect(page.getByTestId('rsc-jsx-args-meta')).toContainText('CMP-123')
+    await expect(page.getByTestId('rsc-jsx-args-references')).toHaveText(
+      'Shared references and cycle preserved',
+    )
   })
 })
