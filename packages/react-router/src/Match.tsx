@@ -10,7 +10,7 @@ import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import { ClientOnly } from './ClientOnly'
+import { useLayoutEffect } from './utils'
 import {
   nonRouteComponentContext,
   wrapInNonRouteComponentContext,
@@ -73,7 +73,20 @@ export const Match = React.memo(function MatchImpl({
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useSelector(matchStore)!
+  const subscribe = React.useCallback(
+    (onChange: () => void) => matchStore.subscribe(onChange).unsubscribe,
+    [matchStore],
+  )
+  // A boundary can hydrate after the client load commits. Hydration renders
+  // read the match the server rendered, then catch up.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const match = React.useSyncExternalStore(
+    subscribe,
+    () => matchStore.get(),
+    () =>
+      router._hydrated?.find((hydrated) => hydrated.routeId === routeId) ??
+      matchStore.get(),
+  )!
   return matchView(router, match)
 })
 
@@ -103,9 +116,6 @@ function matchView(router: ReturnType<typeof useRouter>, match: AnyRouteMatch) {
       ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
 
   let content = <MatchInner match={match} />
-  if (resolvedNoSsr) {
-    content = <ClientOnly fallback={pendingElement}>{content}</ClientOnly>
-  }
   if (routeNotFoundComponent) {
     content = (
       <CatchNotFound
@@ -214,13 +224,28 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     return Comp ? <Comp key={key} /> : <Outlet />
   }, [key, route.options.component, router.options.defaultComponent])
 
-  if (match.status === 'pending') {
+  // Whether the output on screen is this match's pending UI, rendered in
+  // place. Hydration adopts it from the server for the presented pending match.
+  const pendingInPlace = React.useRef<boolean>(undefined)
+  pendingInPlace.current ??=
+    match.status === 'pending' && !!router._hydrated?.includes(match)
+  useLayoutEffect(() => {
+    pendingInPlace.current = match.status === 'pending'
+  })
+
+  if (
+    match.status === 'pending' ||
+    ((isServer ?? router.isServer) &&
+      (match.ssr === false || match.ssr === 'data-only'))
+  ) {
     if (router.ssr && !canWrapInSuspense(router, route, match.ssr)) {
       // Replacing an SSR document root with pending UI would remove <html>.
       // Hydrated matches retain their prior data, so keep rendering it.
       return out
     }
-    if (router._tx) {
+    // Suspending keeps committed output alive behind the Suspense fallback.
+    // Pending UI already in place would be hidden and mounted again instead.
+    if (router._tx && !pendingInPlace.current) {
       throw router._tx[5]
     }
     return renderPending(router, route)
