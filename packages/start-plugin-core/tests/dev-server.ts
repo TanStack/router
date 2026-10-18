@@ -20,6 +20,7 @@ import { tanStackStartVite } from '../src/vite/plugin'
 import { routerRuntimeFiles, startRuntimeFiles } from './build-harness'
 import type { StartCompilerPluginOptions } from '../src/vite/start-compiler-plugin/plugin'
 import type { TanStackStartInputConfig } from '../src/schema'
+import type { StartCompilerImportTransform } from '../src/types'
 import type { PluginOption } from 'vite'
 import type {
   DevServer,
@@ -60,6 +61,12 @@ export interface StartDevServerOptions extends Omit<
    * the app has them.
    */
   start?: TanStackStartInputConfig
+  /**
+   * With `start`: external import transforms of the Start compiler, which a
+   * framework package passes to Start's plugin (e.g. React's RSC CSS
+   * transform).
+   */
+  compilerTransforms?: Array<StartCompilerImportTransform>
 }
 
 /** The files the harness adds to an app with Start's plugin, unless it has them. */
@@ -75,7 +82,11 @@ export const Route = createRootRoute()
 }
 
 /** Start's Vite plugin with the core options `@tanstack/react-start` passes. */
-function startPlugin(root: string, start: TanStackStartInputConfig) {
+function startPlugin(
+  root: string,
+  start: TanStackStartInputConfig,
+  compilerTransforms: Array<StartCompilerImportTransform> | undefined,
+) {
   return tanStackStartVite(
     {
       framework: 'react',
@@ -87,6 +98,7 @@ function startPlugin(root: string, start: TanStackStartInputConfig) {
       providerEnvironmentName: 'ssr',
       ssrIsProvider: true,
       ssrResolverStrategy: { type: 'default' },
+      compilerTransforms,
     },
     start,
   )
@@ -105,6 +117,7 @@ export function startDevServer(
     ],
     providerEnvName = 'ssr',
     start,
+    compilerTransforms,
     ...devServerOptions
   } = options
   /** Server environments Vite does not create by default. */
@@ -119,7 +132,7 @@ export function startDevServer(
     files: { ...startRuntimeFiles, ...(start && startPluginFiles), ...files },
     plugins: ({ root }) => [
       start
-        ? startPlugin(root, start)
+        ? startPlugin(root, start, compilerTransforms)
         : startCompilerPlugin({
             framework: 'react',
             environments,

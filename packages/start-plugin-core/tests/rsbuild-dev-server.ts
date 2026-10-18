@@ -20,6 +20,7 @@ import { startRuntimeFiles } from './build-harness'
 import { testLoaderFiles, useTestLoaders } from './rsbuild-test-loaders'
 import type { ImportProtectionOptions } from '../src/schema'
 import type { GenerateFunctionIdFnOptional } from '../src/start-compiler/types'
+import type { StartCompilerImportTransform } from '../src/types'
 import type {
   RsbuildDevServer,
   RsbuildDevServerOptions,
@@ -93,9 +94,15 @@ export function startRsbuildDevServer(
  * the app has them.
  */
 export function startRsbuildStartDevServer(
-  options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'>,
+  options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
+    /**
+     * External import transforms of the Start compiler, which a framework
+     * package passes to Start's plugin (e.g. React's RSC CSS transform).
+     */
+    compilerTransforms?: Array<StartCompilerImportTransform>
+  },
 ): Promise<RsbuildDevServer> {
-  const { files, ...devServerOptions } = options
+  const { files, compilerTransforms, ...devServerOptions } = options
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-start-dev-server-',
@@ -126,6 +133,7 @@ export const Route = createRootRoute()
         },
         providerEnvironmentName: 'ssr',
         ssrIsProvider: true,
+        compilerTransforms,
       }),
       useTestLoaders(root),
     ],

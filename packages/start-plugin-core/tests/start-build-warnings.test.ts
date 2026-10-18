@@ -1,14 +1,17 @@
 /**
  * Warnings of the Start compiler reach the user through the bundler's
- * warning channel (Vite: the plugin context's `warn`, Rolldown's warnings;
- * Rsbuild: the compilation's warnings), naming the module, once per module
- * and environment. The compiler warns through its external import transforms
- * (`compilerTransforms`, e.g. React's RSC CSS transform). Its errors fail
- * the build.
+ * warning channel (Vite: the plugin context's `warn`, Rolldown's warnings,
+ * the dev server's logger; Rsbuild: the compilation's warnings), naming the
+ * module, once per module and environment, in builds and on dev servers
+ * with Start's whole plugin. The compiler warns through its external import
+ * transforms (`compilerTransforms`, e.g. React's RSC CSS transform, whose
+ * planned warning is dev-only, user ruling D8). Its errors fail the build.
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from './build-harness'
 import { warnMeTransform as warningTransform } from './compiler-transforms-seam'
+import { startDevServer } from './dev-server'
+import { startRsbuildStartDevServer } from './rsbuild-dev-server'
 
 const timeout = 60_000
 
@@ -30,6 +33,12 @@ export { quiet } from './quiet'
 `,
 }
 
+/** The modules each warning names (`src/<name>.ts`). */
+const named = (messages: Array<string>) =>
+  messages
+    .filter((message) => message.includes('MARK_WARNING'))
+    .map((message) => /src\/(\w+)\.ts/.exec(message)?.[1])
+
 describe.each(startBundlers)('%s build', (bundler) => {
   // Bug (Rsbuild): the Rsbuild compiler host warns through the transform
   // context's `emitWarning` (rsbuild/start-compiler-host.ts
@@ -49,11 +58,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
         entry: 'src/entry.ts',
         compilerTransforms: [warningTransform],
       })
-      /** The modules each warning names. */
-      const named = (messages: Array<string>) =>
-        messages
-          .filter((message) => message.includes('MARK_WARNING'))
-          .map((message) => /src\/(\w+)\.ts/.exec(message)?.[1])
       // The console is shared by both environments.
       expect({
         client: named(client.warnings),
@@ -92,6 +96,47 @@ export const greet = base.handler(async () => 'MARK_HANDLER')
         hang,
       ]).finally(() => clearTimeout(timer))
       expect(outcome).toContain('missing-base')
+    },
+    timeout,
+  )
+})
+
+describe("dev servers with Start's plugin", () => {
+  // Source: audit E2 (the planned D8 warning is dev-only: the warning
+  // channel of the dev servers was never tested).
+  test(
+    'Vite dev: a compiler warning reaches the user once, naming the module, when the server loads it',
+    async () => {
+      const server = await startDevServer({
+        start: {},
+        compilerTransforms: [warningTransform],
+        files,
+      })
+      // The browser and the server load the app
+      await server.load('/src/entry.ts')
+      const { warned } = await server.import('/src/entry.ts')
+      await server.idle()
+      expect(named(server.logs)).toEqual(['warned'])
+      expect(warned()).toBe('value')
+    },
+    timeout,
+  )
+
+  // Bug: same as the Rsbuild build pin above: the Rsbuild compiler host
+  // warns through the transform context's `emitWarning`, which Rsbuild's
+  // `api.transform` context does not have.
+  // Source: rsbuild/start-compiler-host.ts `warnTransformContext`.
+  // Impact: on the Rsbuild dev server, every Start compiler warning is
+  // dropped silently, including the dev-only warnings planned for React's
+  // RSC CSS transform (user ruling D8).
+  test.fails(
+    'Rsbuild dev: a compiler warning reaches the user once, naming the module',
+    async () => {
+      const server = await startRsbuildStartDevServer({
+        compilerTransforms: [warningTransform],
+        files,
+      })
+      expect(named(server.warnings)).toEqual(['warned'])
     },
     timeout,
   )
