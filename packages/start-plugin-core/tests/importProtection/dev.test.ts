@@ -1896,6 +1896,54 @@ export const getRouter = () => ({ routeTree })
   )
 })
 
+// The route module the router plugin compiles (with route HMR in dev): the
+// code frame of a violation shows the route file as the user wrote it.
+// Source: r5-gaps N12 (rp:532-534: the route module's source map without
+// the source text, so import protection showed the compiled module).
+test(
+  "the code frame of a denied import used in a route module shows the route file's source, with Start's whole plugin",
+  async () => {
+    const route = `import { createFileRoute } from '@tanstack/react-router'
+import { secret } from '../secret.server'
+
+// a comment that compiling drops
+export const Route = createFileRoute('/')({
+  loader: () => secret(),
+  component: () => 'page',
+})
+`
+    const server = await startDevServer({
+      start: {},
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/routes/index.tsx': route,
+        'src/router.ts': `import { routeTree } from './routeTree.gen'
+export const getRouter = () => ({ routeTree })
+`,
+      },
+      config: { server: { hmr: false } },
+    })
+    await server.load('/src/router.ts')
+    await server.idle()
+    const reports = violationReports(server.logs)
+    expect(reports).not.toEqual([])
+    const use = locationIn('src/routes/index.tsx', route, 6, 'secret()')
+    for (const report of reports) {
+      expect(report.importer).toBe(use)
+      expect(report.code).toEqual({
+        line: 6,
+        pointsAt: expect.stringMatching(/^secret\(\)/),
+        shows: expect.arrayContaining([
+          '// a comment that compiling drops',
+          '  loader: () => secret(),',
+        ]),
+        location: use,
+      })
+    }
+  },
+  timeout,
+)
+
 describe('diagnostics', () => {
   // Source: mutation run R3 ip-vite V14 (the served code of a JSX module
   // has an extra import line, of the JSX runtime).

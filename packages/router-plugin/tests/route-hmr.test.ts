@@ -573,6 +573,82 @@ describe('route HMR in a Vite dev server without automatic code splitting', () =
     `import { createFileRoute } from '@tanstack/${target}-router'
 export const Route = createFileRoute('/')({ loader: () => 'x' })`
 
+  // The route HMR plugin's debug output is opt-in (`TSR_VITE_DEBUG`).
+  // Source: r5-gaps N9 (rp:1420, 1442, 1455, 1936: debug output on by
+  // default).
+  test.each(['react', 'solid'] as const)(
+    'with default options, serving a %s route prints nothing to the console',
+    async (target) => {
+      expect(process.env.TSR_VITE_DEBUG).toBeUndefined()
+      const printed: Array<string> = []
+      for (const method of ['log', 'info', 'debug'] as const) {
+        vi.spyOn(console, method).mockImplementation((...args) => {
+          printed.push(args.map(String).join(' '))
+        })
+      }
+      const server = await routerDevServer({
+        pluginOptions: { target, autoCodeSplitting: false },
+        plugins: [routerPackageStub(target)],
+        files: {
+          'routes/__root.tsx': rootRouteOf(target),
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/${target}-router'
+export const Route = createFileRoute('/')({ loader: () => 'x', component: () => <p>x</p> })`,
+        },
+      })
+      expect(
+        hasRouteHmr(await server.transform('/routes/index.tsx', 'client')),
+      ).toBe(true)
+      vi.restoreAllMocks()
+      expect(printed).toEqual([])
+    },
+    timeout,
+  )
+
+  // `TSR_VITE_DEBUG` scopes debug output by package: `start-plugin-core`
+  // (start-plugin-core/src/debug.ts) is Start's, not the router plugin's.
+  // Source: r5-gaps borderline rp:1938 (any set value turning router-plugin
+  // debug output on).
+  test(
+    "with TSR_VITE_DEBUG=start-plugin-core, serving a route prints nothing of the router plugin's debug output",
+    async () => {
+      const printed: Array<string> = []
+      for (const method of ['log', 'info', 'debug'] as const) {
+        vi.spyOn(console, method).mockImplementation((...args) => {
+          printed.push(args.map(String).join(' '))
+        })
+      }
+      vi.stubEnv('TSR_VITE_DEBUG', 'start-plugin-core')
+      // (the plugin reads the variable when its modules load)
+      vi.resetModules()
+      const { tanstackRouter } = await import('../src/vite')
+      vi.unstubAllEnvs()
+      const server = await createDevServer({
+        dir: harnessDir,
+        prefix: '.router-dev-server-',
+        registerCleanup: onTestFinished,
+        files: {
+          'routes/__root.tsx': rootRouteOf('react'),
+          'routes/index.tsx': loaderRoute('react'),
+        },
+        plugins: (app) => [
+          tanstackRouter({
+            target: 'react',
+            autoCodeSplitting: false,
+            routesDirectory: path.join(app.root, 'routes'),
+            generatedRouteTree: path.join(app.root, 'routeTree.gen.ts'),
+          }),
+          routerPackageStub('react'),
+        ],
+      })
+      expect(
+        hasRouteHmr(await server.transform('/routes/index.tsx', 'client')),
+      ).toBe(true)
+      vi.restoreAllMocks()
+      expect(printed).toEqual([])
+    },
+    timeout,
+  )
+
   test(
     'reaches route files without JSX (.ts)',
     async () => {

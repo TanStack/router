@@ -375,6 +375,31 @@ describe('separate generator and code splitter entries', () => {
   )
 })
 
+// The package root exports the generator's unplugin factory, for bundler
+// adapters of its own.
+// Source: r5-gaps N12 (rp:1935: the factory returned no plugin).
+test(
+  'the unplugin factory of the generator from the package root generates the route tree (vite)',
+  async () => {
+    const { createUnplugin } = await import('unplugin')
+    const { unpluginRouterGeneratorFactory } = await import('../src')
+    const { app, html } = await buildRoute(
+      'vite',
+      {},
+      {
+        routes: (config) => [
+          createUnplugin(unpluginRouterGeneratorFactory).vite(config),
+        ],
+      },
+    )
+    expect(html).toContain('MARK_COMPONENT')
+    expect(await read(app, 'routeTree.gen.ts')).toContain(
+      "from './routes/index'",
+    )
+  },
+  timeout,
+)
+
 test(
   'the deprecated TanStackRouterVite generates the route tree and splits like tanstackRouter',
   async () => {

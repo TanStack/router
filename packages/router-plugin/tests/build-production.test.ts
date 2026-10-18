@@ -10,7 +10,7 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { build, frameworks, routeApp, routeHead } from './build-harness'
 import { routerDevServer } from './dev-server'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
@@ -210,3 +210,61 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
     timeout,
   )
 })
+
+/** Records what is printed to the console (log, info, debug). */
+function recordConsole() {
+  const printed: Array<string> = []
+  for (const method of ['log', 'info', 'debug'] as const) {
+    vi.spyOn(console, method).mockImplementation((...args) => {
+      printed.push(args.map(String).join(' '))
+    })
+  }
+  return printed
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+// The router plugin's debug output (the compiled code of every route) is
+// opt-in (`TSR_VITE_DEBUG`).
+// Source: r5-gaps N9 (rp:1543, 1592, 1597, 1605, 1619, 1738, 1743, 1936:
+// debug output on by default).
+test(
+  'with default options, a build prints nothing to the console (split, unsplit and shared-binding routes)',
+  async () => {
+    expect(process.env.TSR_VITE_DEBUG).toBeUndefined()
+    const printed = recordConsole()
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      files: routeApp(route('react'), {
+        env: 'client',
+        files: {
+          // Nothing to split
+          'routes/plain.tsx': `${routeHead('react')}export const Route = createFileRoute('/plain')({
+  staticData: { label: 'MARK_PLAIN' },
+})
+`,
+          // A binding the loader and the split component share
+          'routes/shared.tsx': `${routeHead('react')}const shared = { label: 'MARK_SHARED' }
+function Shared() {
+  return <p>{shared.label}</p>
+}
+export const Route = createFileRoute('/shared')({
+  loader: () => shared.label,
+  component: Shared,
+})
+`,
+          'entry.ts': `export * from './routes/index'
+export { Route as PlainRoute } from './routes/plain'
+export { Route as SharedRoute } from './routes/shared'
+`,
+        },
+      }),
+    })
+    expect(app.where('MARK_SHARED')).not.toBe('nowhere')
+    expect(printed).toEqual([])
+  },
+  timeout,
+)
