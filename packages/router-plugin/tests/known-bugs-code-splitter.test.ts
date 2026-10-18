@@ -5,7 +5,7 @@
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { parseSync } from 'vite'
 import { afterAll, describe, expect, onTestFinished, test, vi } from 'vitest'
-import { build, routeApp } from './build-harness'
+import { build, buildWithRsbuild, routeApp } from './build-harness'
 import {
   buildAndRun,
   compileRouteModules,
@@ -3108,16 +3108,30 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
     'entry.ts': mountEntry,
   }
 
-  describe.each(clientBundlers)('%s', (bundler) => {
+  /**
+   * A production client build of `files` with `bundler`, or with Rsbuild
+   * and its production defaults (`rsbuild`).
+   */
+  const clientBuild = (
+    bundler: Bundler | 'rsbuild',
+    options: {
+      sideEffects: false | undefined
+      files: Record<string, string>
+      registerCleanup?: () => void
+    },
+  ) =>
+    bundler === 'rsbuild'
+      ? buildWithRsbuild(options)
+      : build({ bundler, env: 'client', ...options })
+
+  describe.each([...clientBundlers, 'rsbuild'] as const)('%s', (bundler) => {
     describe.each([
       { hint: 'without a sideEffects field', sideEffects: undefined },
       { hint: 'with "sideEffects": false', sideEffects: false },
     ])('$hint', ({ sideEffects }) => {
       let built: Promise<BuildResult> | undefined
       const app = () =>
-        (built ??= build({
-          bundler,
-          env: 'client',
+        (built ??= clientBuild(bundler, {
           sideEffects,
           files,
           registerCleanup: () => {},
@@ -3172,9 +3186,7 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
       test.fails(
         `${displayName.name} loads with its chunk and renders the property`,
         async () => {
-          const built = await build({
-            bundler,
-            env: 'client',
+          const built = await clientBuild(bundler, {
             sideEffects,
             files: {
               'routes/__root.tsx': rootRoute,

@@ -16,15 +16,28 @@
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { bundleApp } from '@tanstack/compiler-test-utils/build-harness'
+import {
+  BuildError,
+  bundleApp,
+  chunksOfStats,
+  createApp,
+  describeBuild,
+  statsMessages,
+  statsOptions,
+  withBuildEnvironment,
+} from '@tanstack/compiler-test-utils/build-harness'
 import { onTestFinished } from 'vitest'
 import type {
   AppInfo,
+  AppOptions,
   BuildEnv,
   BuildResult,
   BundleOptions,
   Bundler,
+  EmittedChunk,
+  StatsJson,
 } from '@tanstack/compiler-test-utils/build-harness'
+import type { RsbuildPlugin } from '@rsbuild/core'
 import type { Config } from '../src/core/config'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -285,4 +298,142 @@ const frameworkBuilds: Record<
       plugins: () => [],
     }
   },
+}
+
+/** Global the Rsbuild app's entry assigns the exports of `entry.ts` to. */
+const rsbuildEntryGlobal = '__routerBuildHarnessEntry'
+
+/**
+ * Builds a React app for the client in production with Rsbuild, the way an
+ * Rsbuild app adds the router plugin (`tools.rspack.plugins`), with
+ * Rsbuild's defaults (TypeScript and JSX detection, chunk splitting,
+ * minifier). Only differences: React's automatic JSX runtime is configured
+ * as `pluginReact()` configures it (the plugin is not installed here), no
+ * HTML page is emitted, and the output is ES modules (`output.module`) so
+ * that `run()` can load it in Node; what is split, and where, does not
+ * depend on that. `files` holds the routes and `entry.ts` (see `routeApp`).
+ */
+export async function buildWithRsbuild(
+  options: Pick<AppOptions, 'files' | 'packageJson' | 'sideEffects'> & {
+    pluginOptions?: RouterPluginOptions
+    registerCleanup?: AppOptions['registerCleanup']
+    /**
+     * `NODE_ENV` of the build process (default `production`, as the
+     * Rsbuild CLI sets it; `null` unsets it).
+     */
+    nodeEnv?: string | null
+  },
+): Promise<BuildResult> {
+  const { pluginOptions = {}, nodeEnv = 'production' } = options
+  const app = await createApp({
+    dir: harnessDir,
+    prefix: '.build-harness-rsbuild-',
+    registerCleanup: options.registerCleanup ?? onTestFinished,
+    packageJson: options.packageJson,
+    sideEffects: options.sideEffects,
+    files: {
+      ...options.files,
+      'harness-entry.ts': `import * as entry from './entry'
+;(globalThis as any).${rsbuildEntryGlobal} = entry
+`,
+    },
+  })
+  try {
+    const { createRsbuild } = await import('@rsbuild/core')
+    const { tanstackRouter } = await import('../src/rspack')
+    const warnings: Array<string> = []
+    const errors: Array<string> = []
+    const consoleMessages: Array<string> = []
+    let output: { outDir: string; chunks: Array<EmittedChunk> } | undefined
+    const outputPlugin: RsbuildPlugin = {
+      name: 'router-build-harness:outputs',
+      setup(api) {
+        api.onAfterEnvironmentCompile(({ stats, environment }) => {
+          if (!stats) {
+            errors.push('no compilation stats')
+            return
+          }
+          const json = stats.toJson(statsOptions) as StatsJson
+          warnings.push(...statsMessages(json.warnings))
+          errors.push(...statsMessages(json.errors))
+          output = {
+            outDir: environment.distPath,
+            chunks: chunksOfStats(json, { entry: 'index', extension: '.js' }),
+          }
+        })
+      },
+    }
+    const started = performance.now()
+    await withBuildEnvironment(nodeEnv, consoleMessages, async () => {
+      try {
+        const rsbuild = await createRsbuild({
+          cwd: app.root,
+          loadEnv: false,
+          rsbuildConfig: {
+            root: app.root,
+            mode: 'production',
+            logLevel: 'silent',
+            source: { entry: { index: './harness-entry.ts' } },
+            output: { module: true },
+            tools: {
+              htmlPlugin: false,
+              swc: {
+                jsc: { transform: { react: { runtime: 'automatic' } } },
+              },
+              rspack: {
+                plugins: [
+                  tanstackRouter({
+                    target: 'react',
+                    autoCodeSplitting: true,
+                    ...pluginOptions,
+                    routesDirectory: path.resolve(
+                      app.root,
+                      pluginOptions.routesDirectory ?? 'routes',
+                    ),
+                    generatedRouteTree: path.resolve(
+                      app.root,
+                      pluginOptions.generatedRouteTree ?? 'routeTree.gen.ts',
+                    ),
+                  }),
+                ],
+              },
+            },
+            plugins: [outputPlugin],
+          },
+        })
+        await rsbuild.build()
+      } catch (error) {
+        throw new BuildError(
+          'rspack',
+          errors.length
+            ? errors
+            : [error instanceof Error ? error.message : String(error)],
+          warnings,
+        )
+      }
+    })
+    if (errors.length || !output) {
+      throw new BuildError(
+        'rspack',
+        errors.length ? errors : ['no output'],
+        warnings,
+      )
+    }
+    return await describeBuild({
+      bundler: 'rspack',
+      env: 'client',
+      mode: 'production',
+      root: app.root,
+      outDir: output.outDir,
+      chunks: output.chunks,
+      warnings,
+      consoleMessages,
+      duration: performance.now() - started,
+      dispose: app.dispose,
+      entryGlobal: rsbuildEntryGlobal,
+    })
+  } catch (error) {
+    await app.dispose()
+    throw error
+  }
 }

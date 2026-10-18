@@ -9,7 +9,7 @@ import {
   BuildError,
   bundlers,
 } from '@tanstack/compiler-test-utils/build-harness'
-import { build, routeApp } from './build-harness'
+import { build, buildWithRsbuild, routeApp } from './build-harness'
 import { head } from './regression-helpers'
 import type {
   BuildResult,
@@ -106,6 +106,24 @@ describe.each(bundlers.filter((bundler) => bundler !== 'esbuild'))(
       )
     })
   },
+)
+
+// Rsbuild with its production defaults and the router plugin of Rspack,
+// as an Rsbuild app adds it.
+test(
+  'router plugin with Rsbuild loads a split component lazily and renders it (client)',
+  async () => {
+    const app = await buildWithRsbuild({
+      files: routeApp(splitRoute, {
+        env: 'client',
+        files: { 'heavy.ts': heavy },
+      }),
+    })
+    expect(await describeSplitRoute(app, 'client')).toEqual(
+      splitRouteExpected.client,
+    )
+  },
+  timeout,
 )
 
 // Bug: the esbuild adapter never runs the route generator in a build (its
