@@ -11,12 +11,20 @@ import { describe, expect, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
 import { buildStart, routerRuntimeFiles, startBundlers } from './build-harness'
 import type { StartBundler } from './build-harness'
+import type { InlineConfig } from 'vite'
 
 const timeout = 60_000
 
 /** 1-based line of the first occurrence of `needle` in `code`. */
 function lineOf(code: string, needle: string) {
   return code.slice(0, code.indexOf(needle)).split('\n').length
+}
+
+/** Vite's default build target for the client (the harness builds for `esnext`). */
+const viteDefaultClientTarget: InlineConfig = {
+  environments: {
+    client: { build: { target: 'baseline-widely-available' } },
+  },
 }
 
 const builds = [
@@ -129,11 +137,12 @@ function Page(): never {
  */
 async function expectRouteThrowMapsToRouteFile(
   bundler: StartBundler,
-  { minify }: { minify: boolean },
+  { minify, viteConfig }: { minify: boolean; viteConfig?: InlineConfig },
 ) {
   const { client } = await buildStart({
     bundler,
     minify,
+    viteConfig,
     sourcemap: true,
     files: {
       ...routerRuntimeFiles,
@@ -167,6 +176,19 @@ try {
 test.each(builds)(
   'vite build: client: a throw in a split route component maps to its line in the route file ($name)',
   (options) => expectRouteThrowMapsToRouteFile('vite', options),
+  timeout,
+)
+
+// The harness builds for `esnext`; Vite's default client target lowers
+// newer syntax, which moves code around once more.
+// Source: audit E2 missing coverage #5.
+test(
+  "vite build with Vite's default client target: client: a throw in a split route component maps to its line in the route file (minified)",
+  () =>
+    expectRouteThrowMapsToRouteFile('vite', {
+      minify: true,
+      viteConfig: viteDefaultClientTarget,
+    }),
   timeout,
 )
 
