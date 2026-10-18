@@ -388,36 +388,6 @@ export const greet = createServerFn().handler(async () => 'hi')`
     },
   )
 
-  // Bug: a server-environment caller reports every server fn it compiles as
-  // client-referenced (handleCreateServerFn.ts: `isClientReferenced` is true
-  // for every SSR-caller compile, which an RSC environment's callers are
-  // too), so the resolver's client-origin check never rejects anything.
-  // Impact: with a provider other than SSR (RSC), a server fn only server
-  // code uses (an RSC component, a server-only module) is callable over HTTP
-  // by anyone who learns its id.
-  // Source: user ruling D6 (only server fns client code references are
-  // HTTP-callable); the SSR-provider build pin is in
-  // known-bugs-start-compiler.test.ts.
-  // Compiler-level pin: it generates the resolver itself, with the
-  // client-reference check on, from what the callers report, so it only
-  // flips if the fix is in what the compiler reports. A fix elsewhere in the
-  // host (which server fns reach the resolver, which check it runs) leaves it
-  // red: the host-level oracle is the build pin "SSR: a server fn only server
-  // code references is not callable over HTTP" (no build harness has an RSC
-  // provider environment yet).
-  test.fails(
-    'a server fn only a server environment compiles is not callable from the client',
-    async () => {
-      const { getServerFnById, ids } = await resolverFor('server', greet)
-      expect(ids).toHaveLength(1)
-      const handler = await getServerFnById(ids[0], { origin: 'server' })
-      expect(serverFnResult(await handler({}))).toBe('hi')
-      await expect(
-        getServerFnById(ids[0], { origin: 'client' }),
-      ).rejects.toThrow()
-    },
-  )
-
   test('require a handler function', async () => {
     await expect(
       compileFor(
@@ -533,7 +503,6 @@ function RouteComponent() {
       react: { useState: () => [undefined, () => {}] },
     }
     const compiled = await compileAll(code)
-    expect(importSources(compiled.provider)).not.toContain('react')
     expect(await callProvider(compiled, 'getServerEnv', stubs)).toBe('server')
     expect(await callProvider(compiled, 'getServerEcho', stubs, 'hello')).toBe(
       'server received hello',

@@ -1,8 +1,19 @@
-import { defineConfig, mergeConfig } from 'vitest/config'
+import path from 'node:path'
+import os from 'node:os'
+import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import react from '@vitejs/plugin-react'
 import { copyFilesPlugin } from '@tanstack/router-utils'
 import packageJson from './package.json'
+
+// Under Vitest: Node's compile cache for the test workers. No outcome
+// change; less time compiling the bundlers and the built apps again.
+if (process.env.VITEST) {
+  process.env.NODE_COMPILE_CACHE ??= path.join(
+    os.tmpdir(),
+    'node-compile-cache',
+  )
+}
 
 const config = defineConfig({
   resolve: {
@@ -19,12 +30,41 @@ const config = defineConfig({
     }),
   ],
   test: {
-    include: ['**/*.{test-d,test,spec}.?(c|m)[jt]s?(x)'],
     name: packageJson.name,
     watch: false,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup.ts'],
+    projects: [
+      {
+        // Fast tier (`test:unit`): the runtime's unit tests (jsdom) and the
+        // in-process compiler tests.
+        extends: true,
+        test: {
+          name: 'unit',
+          include: ['**/*.{test-d,test,spec}.?(c|m)[jt]s?(x)'],
+          exclude: [...configDefaults.exclude, 'tests/integration/**'],
+          environment: 'jsdom',
+          setupFiles: ['./tests/setup.ts'],
+        },
+      },
+      {
+        // Slow tier (`test:integration`): real Start apps with RSC on Vite
+        // and Rsbuild dev servers and builds, and real browser pages. Its
+        // Nx target builds `@tanstack/react-start` first.
+        extends: true,
+        test: {
+          name: 'integration',
+          include: ['tests/integration/**/*.test.ts?(x)'],
+          environment: 'node',
+          // The dev servers and their module runners run in the test
+          // process, and `vite dev` runs with `development`: Vitest's `test`
+          // would be baked into the served client code (e.g. the RSC HMR
+          // client is set up under `development` only).
+          env: { NODE_ENV: 'development' },
+          testTimeout: 60_000,
+          hookTimeout: 60_000,
+        },
+      },
+    ],
   },
 })
 
