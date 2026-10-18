@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
 import {
   distinct,
@@ -11,9 +11,21 @@ import {
   startRsbuildDevServer,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
+import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
 import type { ImportProtectionOptions } from '../../../src/schema'
 
+/**
+ * Each test's timeout, and the time an Rsbuild dev server may take to
+ * compile: only a guard against a compile that never comes, never shorter
+ * than the test's own timeout (a slow compile on a loaded machine fails the
+ * test by its timeout, not by a shorter deadline of the harness).
+ */
+const timeout = 60_000
+const compileTimeout = timeout
+
+// One dev server for every importer: a client module of each JavaScript and
+// TypeScript type imports the same `.server` file.
 describe('Rsbuild dev: a client module importing a .server file', () => {
   const esm = `import { secret } from './secret.server.js'
 export const page = () => secret
@@ -21,8 +33,7 @@ export const page = () => secret
   const commonJs = `const { secret } = require('./secret.server.js')
 exports.page = () => secret
 `
-
-  test.each([
+  const importers = [
     { extension: 'ts', page: esm },
     { extension: 'js', page: esm },
     { extension: 'jsx', page: esm },
@@ -30,32 +41,60 @@ exports.page = () => secret
     { extension: 'cjs', page: commonJs },
     { extension: 'mts', page: esm },
     { extension: 'cts', page: commonJs },
-  ])(
-    'is reported and mocked when it is a .$extension file',
-    async ({ extension, page }) => {
-      const violations: Array<ViolationInfo> = []
-      const server = await startRsbuildDevServer({
-        importProtection: {
-          onViolation: (info) => {
-            violations.push(info as ViolationInfo)
-          },
-        },
-        files: {
-          'src/secret.server.js': `export const secret = 'MARK_SERVER_SECRET'\n`,
-          [`src/page.${extension}`]: page,
-          'src/entry.ts': `import { page } from './page.${extension}'
-console.log(page())
-`,
-        },
-      })
+  ]
 
-      expect(server.errors).toEqual([])
+  let violations: Array<ViolationInfo>
+  let server: RsbuildDevServer
+  let dispose: (() => Promise<void>) | undefined
+  afterAll(() => dispose?.())
+  beforeAll(async () => {
+    violations = []
+    server = await startRsbuildDevServer({
+      registerCleanup: (cleanup) => {
+        dispose = cleanup
+      },
+      compileTimeout,
+      importProtection: {
+        onViolation: (info) => {
+          violations.push(info as ViolationInfo)
+        },
+      },
+      files: {
+        'src/secret.server.js': `export const secret = 'MARK_SERVER_SECRET'\n`,
+        ...Object.fromEntries(
+          importers.map(({ extension, page }) => [
+            `src/page.${extension}`,
+            page,
+          ]),
+        ),
+        'src/entry.ts': importers
+          .map(
+            ({ extension }) =>
+              `import { page as ${extension} } from './page.${extension}'\nconsole.log(${extension}())\n`,
+          )
+          .join(''),
+      },
+    })
+  }, timeout)
+
+  test('the compile succeeds, without the real module', async () => {
+    expect(server.errors).toEqual([])
+    expect(Object.values(await server.outputs()).join('\n')).not.toContain(
+      'MARK_SERVER_SECRET',
+    )
+  })
+
+  test.each(importers)(
+    'is reported when it is a .$extension file',
+    ({ extension }) => {
       expect(
-        violations.map((info) => ({
-          type: info.type,
-          importer: path.relative(server.root, info.importer),
-          specifier: info.specifier,
-        })),
+        violations
+          .filter((info) => info.importer.endsWith(`/src/page.${extension}`))
+          .map((info) => ({
+            type: info.type,
+            importer: path.relative(server.root, info.importer),
+            specifier: info.specifier,
+          })),
       ).toEqual([
         {
           type: 'file',
@@ -63,11 +102,7 @@ console.log(page())
           specifier: './secret.server.js',
         },
       ])
-      expect(Object.values(await server.outputs()).join('\n')).not.toContain(
-        'MARK_SERVER_SECRET',
-      )
     },
-    30_000,
   )
 })
 
@@ -77,6 +112,7 @@ console.log(page())
 // the client environment only).
 test('Rsbuild dev with Start: a server import of a .client file is mocked on the server and reported', async () => {
   const server = await startRsbuildStartDevServer({
+    compileTimeout,
     files: {
       'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
       'src/entry.ts': `import { widget } from './widget.client'
@@ -97,7 +133,7 @@ console.log(read())
     Object.values(await server.outputs(environment)).join('\n')
   expect(await code('ssr')).not.toContain('MARK_CLIENT')
   expect(await code('client')).toContain('MARK_CLIENT')
-}, 30_000)
+}, timeout)
 
 // Source: round 4 mutation testing (rsbuild host, `behavior` in dev).
 describe('Rsbuild dev: behavior', () => {
@@ -112,6 +148,7 @@ describe('Rsbuild dev: behavior', () => {
     '$behavior: a violation is reported in the compile $reportedAs',
     async ({ behavior, reportedAs }) => {
       const server = await startRsbuildDevServer({
+      compileTimeout,
         importProtection: { behavior },
         files: {
           'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
@@ -128,7 +165,7 @@ console.log(secret())
       ).toEqual(['client src/entry.ts:2:13'])
       expect(reportedViolations(server[other])).toEqual([])
     },
-    30_000,
+    timeout,
   )
 })
 
@@ -153,6 +190,7 @@ console.log(secret(), other)
     "log '$log': a rebuild for an unrelated edit reports $afterRebuild",
     async ({ log, afterRebuild }) => {
       const server = await startRsbuildDevServer({
+      compileTimeout,
         importProtection: { log },
         files: app,
       })
@@ -165,7 +203,7 @@ console.log(secret(), other)
       expect(server.rebuilt).toContain('src/other.ts')
       expect(reported()).toEqual(afterRebuild)
     },
-    30_000,
+    timeout,
   )
 
   // Source: round 4 mutation testing (rsbuild host, entries without a
@@ -177,6 +215,7 @@ console.log(secret(), other)
     'a compile in which $module is missing reports only that',
     async ({ file }) => {
       const server = await startRsbuildDevServer({
+      compileTimeout,
         importProtection: {},
         files: app,
       })
@@ -187,7 +226,7 @@ console.log(secret(), other)
         ),
       ])
     },
-    30_000,
+    timeout,
   )
 
   // Source: mutation run R3 ip-rsbuild R4 (the resolve cache of a previous
@@ -195,6 +234,7 @@ console.log(secret(), other)
   test('a denied specifier that an edit makes resolve elsewhere is reported with its new target', async () => {
     const resolved: Array<string | undefined> = []
     const server = await startRsbuildDevServer({
+      compileTimeout,
       importProtection: {
         client: { specifiers: [/^\.\/lib$/] },
         onViolation: (info) => {
@@ -216,7 +256,7 @@ console.log(secret(), other)
       'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib, 2)\n`,
     })
     expect(resolved).toEqual(['src/lib.ts', 'src/lib/index.ts'])
-  }, 30_000)
+  }, timeout)
 })
 
 // Rsbuild's `source.transformImport` rewrites a library's named imports
@@ -346,6 +386,7 @@ export const read = () => secret() + other
 // Source: mutation run R3 ip-rsbuild R7 and ip-misc P10.
 test('Rsbuild dev: the client mock of each denied import reports its own use in the browser console', async () => {
   const server = await startRsbuildDevServer({
+      compileTimeout,
     importProtection: { client: { specifiers: ['db-lib'] } },
     files: {
       'node_modules/db-lib/package.json': JSON.stringify({
@@ -377,7 +418,7 @@ console.log(a(), b(), query())
       ),
     ].sort(),
   ).toEqual(['db-lib', 'src/a.server.ts', 'src/b.server.ts'])
-}, 30_000)
+}, timeout)
 
 // Source: round 4 mutation testing (rsbuild host, `mockAccess`).
 describe('Rsbuild dev: mockAccess', () => {
@@ -393,6 +434,7 @@ describe('Rsbuild dev: mockAccess', () => {
     '$mockAccess: the use of a mocked import is reported with console $reports',
     async ({ mockAccess, reports }) => {
       const server = await startRsbuildDevServer({
+      compileTimeout,
         importProtection: {
           mockAccess,
           client: { specifiers: ['db-lib'] },
@@ -437,6 +479,6 @@ console.log(a(), query())
         ]),
       )
     },
-    30_000,
+    timeout,
   )
 })

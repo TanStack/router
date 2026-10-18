@@ -53,15 +53,24 @@ export interface ViolationReport extends ReportedViolation {
   text: string
 }
 
-/** A line a report labels (`Importer: ...`, `Trace:`), by its label. */
-const field = /^\s*([A-Z][A-Za-z ]*):(?:\s+(.*?))?\s*$/
+/**
+ * A line a report labels (`Importer: ...`, `Trace:`): its label and value.
+ * A bundler's error-class prefix (`RolldownError:`) is not one.
+ */
+function fieldOf(line: string): { label: string; value: string } | undefined {
+  const match = /^\s*([A-Z][A-Za-z ]*):(?:\s+(.*?))?\s*$/.exec(line)
+  if (!match || /^\w*(Error|Warning)$/.test(match[1]!)) {
+    return undefined
+  }
+  return { label: match[1]!, value: match[2] ?? '' }
+}
 
 /** A label line's value, or `undefined`. */
 function fieldValue(lines: Array<string>, label: string): string | undefined {
   for (const line of lines) {
-    const match = field.exec(line)
-    if (match && match[1] === label) {
-      return match[2] ?? ''
+    const field = fieldOf(line)
+    if (field?.label === label) {
+      return field.value
     }
   }
   return undefined
@@ -74,7 +83,7 @@ function fieldValue(lines: Array<string>, label: string): string | undefined {
 function isHeader(line: string): boolean {
   return (
     line.trim() !== '' &&
-    !field.test(line) &&
+    !fieldOf(line) &&
     !/^\s*[-*]\s/.test(line) &&
     !/^\s*\d+[.)]\s/.test(line) &&
     !/^\s*>?\s*\d*\s*\|/.test(line) &&
@@ -85,8 +94,8 @@ function isHeader(line: string): boolean {
 /**
  * Splits `output` into candidate report blocks: each log entry of an array
  * on its own; within a text, a block starts at a header line (the first
- * line of a paragraph that is not a section of a report), or at a line
- * announcing import protection once the current block has its `Importer:`.
+ * line of a paragraph that is not a section of a report, or any line
+ * announcing import protection).
  */
 function blocks(output: string | Array<string>): Array<Array<string>> {
   if (Array.isArray(output)) {
@@ -102,11 +111,7 @@ function blocks(output: string | Array<string>): Array<Array<string>> {
   let current: Array<string> | undefined
   let previousBlank = true
   for (const line of lines) {
-    const announces =
-      mentionsImportProtection(line) &&
-      current !== undefined &&
-      fieldValue(current, 'Importer') !== undefined
-    if ((previousBlank && isHeader(line)) || announces) {
+    if (isHeader(line) && (previousBlank || mentionsImportProtection(line))) {
       current = []
       result.push(current)
     }
@@ -122,7 +127,7 @@ function mentionsImportProtection(line: string): boolean {
 
 /** The lines of a block before its first labelled line: its header. */
 function headerOf(block: Array<string>): Array<string> {
-  const end = block.findIndex((line) => field.test(line))
+  const end = block.findIndex((line) => fieldOf(line))
   return block.slice(0, end === -1 ? block.length : end)
 }
 
@@ -202,7 +207,7 @@ function parseReport(block: Array<string>): Array<ViolationReport> {
 /** The steps listed under `Trace:`, in order (their numbering is not checked). */
 function parseTrace(lines: Array<string>): Array<ReportedTraceStep> {
   const trace: Array<ReportedTraceStep> = []
-  const start = lines.findIndex((line) => field.exec(line)?.[1] === 'Trace')
+  const start = lines.findIndex((line) => fieldOf(line)?.label === 'Trace')
   for (let index = start + 1; start !== -1 && index < lines.length; index++) {
     const step =
       /^\s*(?:\d+[.)]|[-*])?\s*(\S+?)(?:\s+\((entry)\))?(?:\s+\(import\s+["'](.*)["']\))?\s*$/.exec(
@@ -221,7 +226,7 @@ function parseTrace(lines: Array<string>): Array<ReportedTraceStep> {
  * caret), every shown line's code, and the location printed under it.
  */
 function parseCodeFrame(lines: Array<string>): ReportedCodeFrame | undefined {
-  const start = lines.findIndex((line) => field.exec(line)?.[1] === 'Code')
+  const start = lines.findIndex((line) => fieldOf(line)?.label === 'Code')
   if (start === -1) {
     return undefined
   }

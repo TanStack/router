@@ -128,6 +128,14 @@ describe('the report adapter', () => {
       text: `[plugin tanstack-start-core:import-protection] ${report}`,
     },
     {
+      name: "a Vite build error's plugin tag and error class before it",
+      text: `[plugin tanstack-start-core:import-protection]\nRolldownError: ${report}`,
+    },
+    {
+      name: "a dev server log's level before it",
+      text: `warn: ${report}`,
+    },
+    {
       name: 'Rsbuild boxing',
       text: report
         .split('\n')

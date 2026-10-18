@@ -14,12 +14,11 @@ import { startRsbuildDevServer } from '../../rsbuild-dev-server'
 import {
   distinct,
   locationIn,
-  reactRuntimeFiles,
   rejection,
   reportedViolations,
   startProtectedDevServer,
+  violationReports,
 } from '../../importProtection/start-apps'
-import { violationReports } from '../../importProtection/violation-report'
 import type { StartBuildOptions, StartBundler } from '../../build-harness'
 import type {
   ReportedTraceStep,
@@ -33,14 +32,14 @@ type Channel = 'vite dev' | 'rsbuild dev' | 'vite build' | 'rsbuild build'
 /**
  * The importer locations reported for an app whose `src/a.tsx` is `code`
  * (imported by the entry `src/entry.ts`) and imports from the denied
- * `src/secret.server.ts` (none when nothing is reported).
+ * `src/secret.server.ts` (none when nothing is reported). JSX compiles
+ * with the real React (a dependency of this package).
  */
 async function reportedLocations(
   channel: Channel,
   code: string,
 ): Promise<Array<string>> {
   const files = {
-    ...reactRuntimeFiles,
     'src/secret.server.ts': `export const eq = () => 1
 export const secret = () => 'secret'
 export default function Secret() {
@@ -288,6 +287,89 @@ export const fn = myServerFn.handler(async () => secret())
     '$channel: $name',
     async ({ channel, code }) => {
       expect(await reportedLocations(channel, code)).toEqual([])
+    },
+    timeout,
+  )
+})
+
+// The server side: a `.client` file (denied to the server by the default
+// rules) used only inside code the Start compiler removes from the server
+// (`createClientOnlyFn`) is not reported; a use the server keeps is reported
+// on the server, at that use.
+// Source: V1 ip S16 (the compiler-removal rows of analysis.usage.test.ts had
+// no server-side twin on a real adapter).
+describe('the reported location of a server violation is the leaking use', () => {
+  type ServerChannel = 'vite dev' | 'vite build' | 'rsbuild build'
+  const serverChannels: Array<ServerChannel> = [
+    'vite dev',
+    'vite build',
+    'rsbuild build',
+  ]
+
+  const insideOnly = `import { createClientOnlyFn } from '@tanstack/react-start'
+import { widget } from './widget.client'
+export const fn = createClientOnlyFn(() => widget())
+`
+  const insideAndOutside = `${insideOnly}export const leak = () => widget()
+`
+
+  /**
+   * `<environment> <importer>` of each violation reported for an app whose
+   * `src/a.ts` is `code` (the server entry re-exports it) and imports the
+   * client-only `src/widget.client.ts`.
+   */
+  async function serverReports(
+    channel: ServerChannel,
+    code: string,
+  ): Promise<Array<string>> {
+    const files = {
+      'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+      'src/a.ts': code,
+      'src/entry.ts': `export * from './a'\n`,
+      'src/client.ts': `export const read = () => 'client'\n`,
+    }
+    let output: string | Array<string>
+    if (channel === 'vite dev') {
+      const server = await startProtectedDevServer(files)
+      await server.load('/src/entry.ts', { environment: 'ssr' })
+      output = server.logs
+    } else {
+      const bundler = channel === 'vite build' ? 'vite' : 'rsbuild'
+      output = await buildStart({
+        bundler,
+        files,
+        entry: { client: 'src/client.ts', ssr: 'src/entry.ts' },
+      }).then(
+        ({ client, ssr }) => [...client.warnings, ...ssr.warnings],
+        (error: Error) => {
+          if (reportedViolations(error.message).length === 0) {
+            throw error
+          }
+          return error.message
+        },
+      )
+    }
+    return distinct(
+      reportedViolations(output).map(
+        ({ environment, importer }) => `${environment} ${importer}`,
+      ),
+    )
+  }
+
+  test.each(serverChannels)(
+    '%s: a use outside createClientOnlyFn is reported on the server at the use; the use inside is not',
+    async (channel) => {
+      expect(await serverReports(channel, insideAndOutside)).toEqual([
+        `server ${locationIn('src/a.ts', insideAndOutside, 4, 'widget()')}`,
+      ])
+    },
+    timeout,
+  )
+
+  test.each(serverChannels)(
+    '%s: a use only inside createClientOnlyFn is not reported',
+    async (channel) => {
+      expect(await serverReports(channel, insideOnly)).toEqual([])
     },
     timeout,
   )
