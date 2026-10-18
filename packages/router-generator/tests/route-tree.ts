@@ -265,6 +265,11 @@ export interface LoadedRouteTree {
    * creates itself.
    */
   fileOf: (routeId: string) => string | null
+  /**
+   * The app's own modules (not packages) the app has evaluated so far,
+   * relative to the tree and `/` separated, sorted.
+   */
+  loadedFiles: () => Array<string>
   /** Imports a module of the app (absolute path) like the tree's imports. */
   import: (file: string) => Promise<Record<string, any>>
   /**
@@ -312,6 +317,11 @@ export function withRouteTree<T>(
       }
       return null
     }
+    const loadedFiles = () =>
+      [...runner.evaluatedModules.fileToModulesMap.keys()]
+        .filter((file) => !/[\\/]node_modules[\\/]/.test(file))
+        .map((file) => path.relative(treeDir, file).replaceAll(path.sep, '/'))
+        .sort()
     /** Renders `Component` with `props` with the framework's renderer. */
     const renderElement = async (Component: any, props: object = {}) => {
       if (framework === 'vue') {
@@ -346,6 +356,7 @@ export function withRouteTree<T>(
       routerPackage,
       framework,
       fileOf,
+      loadedFiles,
       import: (file) => runner.import(file),
       render: async (component: any) => {
         await component?.preload?.()
@@ -408,4 +419,45 @@ export function matchesOf(
   return withRouteTree(treeFile, ({ router }) =>
     router.matchRoutes(pathname).map((match) => match.routeId),
   )
+}
+
+/** A route of the router, as an app observes it. */
+export interface ObservedRoute {
+  /** The URL path it matches, with its parents'. */
+  fullPath: string
+  /** Its parent route's id; null for the root route. */
+  parent: string | null
+  /** The file whose `Route` it is (relative to the tree); null if none. */
+  file: string | null
+  /**
+   * The app files that load only once the router loads the route
+   * (`loadRouteChunk`): its lazy route file and lazy components.
+   */
+  lazy: Array<string>
+}
+
+/**
+ * The routes of the router built from the generated route tree at
+ * `treeFile`, by route id: full path, parent, route file, and the app files
+ * that load lazily with the route (routes are loaded in route id order; a
+ * route's lazy files are those no route loaded before).
+ */
+export function observeRouteTree(
+  treeFile: string,
+): Promise<Record<string, ObservedRoute>> {
+  return withRouteTree(treeFile, async ({ router, fileOf, loadedFiles }) => {
+    const observed: Record<string, ObservedRoute> = {}
+    for (const id of Object.keys(router.routesById).sort()) {
+      const route = router.routesById[id]!
+      const before = new Set(loadedFiles())
+      await router.loadRouteChunk(route)
+      observed[id] = {
+        fullPath: route.fullPath,
+        parent: route.parentRoute?.id ?? null,
+        file: fileOf(id),
+        lazy: loadedFiles().filter((file) => !before.has(file)),
+      }
+    }
+    return observed
+  })
 }
