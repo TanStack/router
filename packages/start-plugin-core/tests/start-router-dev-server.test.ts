@@ -67,6 +67,17 @@ export const getRouter = () => ({ routeTree })
 `,
         },
       })
+      /**
+       * Saves `src/routes/api.tsx` like a person does: in a later clock tick
+       * of the file system than the previous save. (The router generator
+       * tells edits apart by modification time only, which the kernel
+       * updates once per tick: a second save within the tick of the first
+       * is not seen. See FOLLOWUPS, 2026-10-18 w2-builddev.)
+       */
+      const saveApi = async (options: string) => {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        await server.edit({ 'src/routes/api.tsx': api(options) })
+      }
       /** Route modules the client route tree imports. */
       const clientRoutes = async () =>
         Object.keys(await server.load('/src/routeTree.gen.ts'))
@@ -80,30 +91,27 @@ export const getRouter = () => ({ routeTree })
 
       // An edit of a server-only route that keeps it server-only changes
       // nothing in the client
-      const handlerEdit = await server.edit({
-        'src/routes/api.tsx': api(handlers('y')),
-      })
+      const beforeHandlerEdit = server.hmr.length
+      await saveApi(handlers('y'))
       expect(
-        handlerEdit.filter((message) => message.environment === 'client'),
+        server.hmr
+          .slice(beforeHandlerEdit)
+          .filter((message) => message.environment === 'client'),
       ).toEqual([])
 
       // Server-only -> page
       const beforePage = server.hmr.length
-      await server.edit({
-        'src/routes/api.tsx': api(`${handlers('y')}, ${component}`),
-      })
+      await saveApi(`${handlers('y')}, ${component}`)
       expect(await routeTreeChange(server, beforePage)).not.toEqual([])
       expect(await clientRoutes()).toContain('/src/routes/api.tsx')
 
       // Page with handlers -> page without handlers
-      await server.edit({ 'src/routes/api.tsx': api(component) })
+      await saveApi(component)
       expect(await clientRoutes()).toContain('/src/routes/api.tsx')
 
       // Page -> server-only
       const beforeApi = server.hmr.length
-      await server.edit({
-        'src/routes/api.tsx': api(handlers('z')),
-      })
+      await saveApi(handlers('z'))
       expect(await routeTreeChange(server, beforeApi)).not.toEqual([])
       expect(await clientRoutes()).toEqual([
         '/src/routes/__root.tsx',
