@@ -207,11 +207,9 @@ export const Route = createFileRoute('/')({ 'component': Page, 'errorComponent':
       { hmr: true },
     )
     await expectValidModules(route.modules)
-    expect([route.isLazy('component'), route.isLazy('errorComponent')]).toEqual(
-      [true, true],
-    )
-    expect((await route.load('component'))()).toBe('<p>page</p>')
-    expect((await route.load('errorComponent'))()).toBe('<p>error</p>')
+    expect(await route.groups()).toEqual([['component'], ['errorComponent']])
+    expect(await route.render('component')).toBe('<p>page</p>')
+    expect(await route.render('errorComponent')).toBe('<p>error</p>')
   })
 
   // Source: add-hmr snapshot fixture explicit-undefined-component.
@@ -223,7 +221,7 @@ export const Route = createFileRoute('/')({ 'component': Page, 'errorComponent':
       { hmr: true, refresh: true },
     )
     await expectValidModules(route.modules)
-    expect(route.isLazy('component')).toBe(false)
+    expect(await route.isLazy('component')).toBe(false)
     expect('component' in route.options).toBe(true)
     expect(route.options.component).toBeUndefined()
   })
@@ -316,8 +314,11 @@ function RootComponent() {
   ] as const)('in $mode', ({ options }) => {
     it.each(routes)(
       'have no HMR code ($name)',
-      async ({ route, targetFramework }) => {
-        const loaded = await loadRoute(route, { targetFramework, ...options })
+      ({ route, targetFramework }) => {
+        const loaded = compileRouteModules(route, {
+          targetFramework,
+          ...options,
+        })
         for (const [name, code] of Object.entries(loaded.modules)) {
           expect(code, name).not.toMatch(/import\.meta\.(?:webpackHot|hot)\b/)
         }
