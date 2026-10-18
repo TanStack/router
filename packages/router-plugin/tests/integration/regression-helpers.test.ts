@@ -105,6 +105,28 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(app.loads()).toBe(loads + 1)
     }, 60_000)
 
+    // The compiler warns about a route whose split component the module
+    // also exports (kept in the route module), naming the file: the page
+    // reports it from the real channels (the dev server's process console,
+    // the served module's warning in the page).
+    it("reports the warnings of the dev server naming the app's route file", async () => {
+      const app = await openRouteHmrPage({
+        bundler,
+        files: {
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export function Page() {
+  return <p>exported page</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+        },
+        ready: 'exported page',
+      })
+      expect(
+        app.warnings().some((warning) => warning.includes('routes/index.tsx')),
+      ).toBe(true)
+    }, 60_000)
+
     it('fails an edit the page applied without showing it, without waiting for its timeout', async () => {
       const app = await openRouteHmrPage({
         bundler,

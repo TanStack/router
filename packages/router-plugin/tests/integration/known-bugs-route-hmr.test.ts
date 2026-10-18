@@ -315,30 +315,30 @@ function Page() {
   )
 
   // Bug: a route a helper function of the route file creates
-  // (`export const Route = makeRoute()`, decision D11) edited without
-  // automatic code splitting (the route HMR plugin alone) shows its new
-  // loader data but keeps rendering the old inline component: the route HMR
-  // code keeps the previous component for React Refresh to patch, but the
-  // component inside the helper is neither hoisted nor registered. With
+  // (`export const Route = makeRoute()`) edited without automatic code
+  // splitting (the route HMR plugin alone) shows its new loader data but
+  // keeps rendering the old inline component, and nothing warns: the route
+  // HMR code keeps the previous component for React Refresh to patch, but
+  // the component inside the helper is neither hoisted nor registered. With
   // automatic code splitting, and for an IIFE, the edit shows
   // (route-hmr-browser-plugin.test.ts).
-  // Impact: edits of such a route's component do not show until a reload.
+  // Impact: edits of such a route's component do not show until a reload,
+  // silently.
   // Source: NEW (W2-g, found by the real page; the former in-process model
   // compared a component whose text did not change between versions).
+  // Ruling (R-09 / D11, 2026-10-17): same-file route factories are
+  // unsupported but user-fixable. Any fix passes: the edit takes effect (in
+  // place or after a reload, without errors), or the compiler warns, naming
+  // the route file, through a real channel (the dev server's logger or
+  // console, or the served module). Silent wrong output fails.
   test.fails.for(['vite', 'rsbuild'] as const)(
-    '%s: an edit of a route a helper function creates shows its new component in place (autoCodeSplitting: false)',
+    '%s: an edit of a route a helper function creates shows its new component, or the file is reported (autoCodeSplitting: false)',
     async (
       bundler: 'vite' | 'rsbuild',
       { expect, onTestFinished }: TestContext,
     ) => {
-      expect(
-        await editRoute(
-          {
-            bundler,
-            pluginOptions: { autoCodeSplitting: false },
-            file: 'routes/index.tsx',
-            route: (version) =>
-              `import { createFileRoute } from '@tanstack/react-router'
+      const route = (version: string) =>
+        `import { createFileRoute } from '@tanstack/react-router'
 function makeRoute() {
   return createFileRoute('/')({
     loader: () => 'data ${version}',
@@ -346,12 +346,29 @@ function makeRoute() {
   })
 }
 export const Route = makeRoute()
-`,
-            shows: (version) => `helper ${version} data ${version}`,
-          },
-          onTestFinished,
-        ),
-      ).toEqual(inPlace)
+`
+      const app = await openRouteHmrPage({
+        bundler,
+        onTestFinished,
+        pluginOptions: { autoCodeSplitting: false },
+        files: { 'routes/index.tsx': route('v1') },
+        ready: 'helper v1 data v1',
+      })
+      const reported = () =>
+        app.warnings().some((warning) => warning.includes('routes/index.tsx'))
+      let result
+      try {
+        result = await app.edit(
+          { 'routes/index.tsx': route('v2') },
+          'helper v2 data v2',
+        )
+      } catch (error) {
+        if (reported()) {
+          return
+        }
+        throw error
+      }
+      expect(result.errors).toEqual([])
     },
   )
 

@@ -222,11 +222,22 @@ export interface RouteHmrPage {
    * `window.__TSR_ROUTER__`) and returns its JSON value.
    */
   evaluate: <T>(script: string) => Promise<T>
+  /**
+   * Warnings reported so far, through the real channels: the dev server's
+   * logger, what the dev server's process logged with `console.warn` about
+   * a file of this app, and what the page logged as a warning (e.g. a
+   * warning the compiler put into the served module).
+   */
+  warnings: () => Array<string>
 }
 
 /** The part of a dev server the page needs. */
 interface AppServer {
   url: string
+  /** The app's root on disk. */
+  root: string
+  /** Warnings the dev server's logger reported so far. */
+  warnings: () => Array<string>
   /**
    * Writes files for the server's watcher and waits until the server
    * handled them (Vite: ran the HMR hooks for each file; Rsbuild: finished
@@ -262,6 +273,32 @@ const quietTime = 100
 
 const defaultEditTimeout = 15_000
 
+/**
+ * What the test process logs with `console.warn` while dev servers run in
+ * it (the compiler warns there, e.g. about a route it leaves unsplit), given
+ * to every open page's listener. One wrapper for the process, installed on
+ * first use and never removed: pages open and close concurrently.
+ */
+const consoleWarnListeners = new Set<(message: string) => void>()
+let consoleWarnWrapped = false
+function listenToConsoleWarn(listener: (message: string) => void) {
+  if (!consoleWarnWrapped) {
+    consoleWarnWrapped = true
+    const warn = console.warn.bind(console)
+    console.warn = (...args: Array<unknown>) => {
+      warn(...args)
+      const message = args.map(String).join(' ')
+      for (const listen of consoleWarnListeners) {
+        listen(message)
+      }
+    }
+  }
+  consoleWarnListeners.add(listener)
+  return () => {
+    consoleWarnListeners.delete(listener)
+  }
+}
+
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -281,6 +318,15 @@ export const Route = createRootRoute({})
 `,
     ...options.files,
   }
+  const processWarnings: Array<string> = []
+  // Listening before the server starts: its first compile may warn
+  const stopListening = listenToConsoleWarn((message) => {
+    processWarnings.push(message)
+  })
+  ;(options.onTestFinished ?? onTestFinished)(() => {
+    stopListening()
+    return Promise.resolve()
+  })
   const server =
     bundler === 'vite'
       ? await viteServer(target, files, options)
@@ -413,6 +459,13 @@ export const Route = createRootRoute({})
       }
     },
     evaluate: (script) => page.page.evaluate(script),
+    warnings: () => [
+      ...server.warnings(),
+      ...processWarnings.filter((message) => message.includes(server.root)),
+      ...page.console
+        .filter((message) => message.startsWith('warning: '))
+        .map((message) => message.slice('warning: '.length)),
+    ],
   }
 }
 
@@ -509,6 +562,11 @@ async function viteServer(
     idle: () => server.idle(),
     updates: clientMessages('update'),
     fullReloads: clientMessages('full-reload'),
+    root: server.root,
+    warnings: () =>
+      server.logs
+        .filter((log) => log.startsWith('warn: '))
+        .map((log) => log.slice('warn: '.length)),
   }
 }
 
@@ -547,12 +605,15 @@ async function rsbuildServer(
     ],
   })
   let updates = 0
+  /** Warnings of every compile so far (`server.warnings` holds the last). */
+  const allWarnings = [...server.warnings]
   return {
     url: server.url!,
     write: async (edited) => {
       // Until the compile that includes the edit ended; its hot-update
       // chunks are what the page applies
       await server.edit(edited)
+      allWarnings.push(...server.warnings)
       if (Object.keys(await server.hotUpdates()).length > 0) {
         updates++
       }
@@ -561,5 +622,7 @@ async function rsbuildServer(
     updates: () => updates,
     // Rsbuild's client reloads the page itself: the page's loads tell
     fullReloads: () => 0,
+    root: server.root,
+    warnings: () => [...allWarnings],
   }
 }
