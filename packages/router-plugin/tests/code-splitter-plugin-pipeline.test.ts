@@ -73,6 +73,63 @@ export const Route = createFileRoute('/unshared')({ component: () => <p /> })
     )
   })
 
+  // A dev server that serves the route file's output from a cache compiles a
+  // split chunk or the shared module before the route file.
+  const orderCases: Array<{
+    name: string
+    options: Partial<Config>
+    chunk: string
+  }> = [
+    { name: 'the default groupings', options: {}, chunk: 'component' },
+    {
+      name: 'splitBehavior groupings',
+      options: {
+        codeSplittingOptions: {
+          splitBehavior: () => [['loader'], ['component', 'errorComponent']],
+        },
+      },
+      chunk: 'component---errorComponent',
+    },
+  ]
+
+  it.each(orderCases)(
+    'compiles the split and shared modules with $name the same way before the route file',
+    async ({ options, chunk }) => {
+      const file = routeFile('cached')
+      const code = routeSource('cached')
+      const ids = {
+        reference: file,
+        chunk: `${file}?tsr-split=${chunk}`,
+        shared: `${file}?tsr-shared=1`,
+      }
+      const compile = async (order: Array<keyof typeof ids>) => {
+        const splitter = await createCodeSplitterTransforms(options, {
+          [file]: '/cached',
+        })
+        const transforms = {
+          reference: splitter.reference,
+          chunk: splitter.virtual,
+          shared: splitter.shared,
+        }
+        const modules: Partial<Record<keyof typeof ids, string | null>> = {}
+        for (const name of order) {
+          modules[name] = transforms[name](code, ids[name])
+        }
+        return modules
+      }
+
+      const routeFirst = await compile(['reference', 'chunk', 'shared'])
+      expect(importSources(routeFirst.chunk!)).toContain(ids.shared)
+      expect(routeFirst.shared).toContain('"cached"')
+      expect(await compile(['chunk', 'shared', 'reference'])).toEqual(
+        routeFirst,
+      )
+      expect(await compile(['shared', 'chunk', 'reference'])).toEqual(
+        routeFirst,
+      )
+    },
+  )
+
   it('splits by the plugin-level splitBehavior for the route id', async () => {
     const file = routeFile('behavior')
     const code = routeSource('behavior')
