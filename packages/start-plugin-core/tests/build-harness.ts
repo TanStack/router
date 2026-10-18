@@ -51,7 +51,7 @@ import type {
 import type { TanStackStartInputConfig } from '../src/schema'
 import type { StartCompilerImportTransform } from '../src/types'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
-import type { Plugin } from 'vite'
+import type { InlineConfig, Plugin } from 'vite'
 
 const startPackage = 'node_modules/@tanstack/react-start'
 
@@ -252,6 +252,11 @@ export interface StartBuildOptions {
   /** Rsbuild configuration merged over the harness's (Rsbuild builds). */
   rsbuildConfig?: RsbuildConfig
   /**
+   * Vite configuration merged over the harness's (Vite builds), e.g. an
+   * app's `experimental.bundledDev`, which stays set for `vite build`.
+   */
+  viteConfig?: InlineConfig
+  /**
    * Rsbuild builds: builds in watch mode (`rsbuild build --watch`), applies
    * these app file edits (`null` deletes a file) once the first build is
    * done, and describes the rebuild they cause (its errors reject).
@@ -344,6 +349,7 @@ export async function buildStart(
     start: options.start ?? {},
     compilerTransforms: options.compilerTransforms,
     rsbuildConfig: options.rsbuildConfig,
+    viteConfig: options.viteConfig,
     watchEdits: options.watchEdits,
   }
   const warnings = { client: [], ssr: [] } as Record<Env, Array<string>>
@@ -391,6 +397,7 @@ interface BuildTarget {
   start: TanStackStartInputConfig
   compilerTransforms: Array<StartCompilerImportTransform> | undefined
   rsbuildConfig: RsbuildConfig | undefined
+  viteConfig?: InlineConfig
   watchEdits?: Record<string, string | null>
 }
 
@@ -411,7 +418,7 @@ async function buildWithVite(
   target: BuildTarget,
   warnings: Record<Env, Array<string>>,
 ): Promise<Outputs> {
-  const { createBuilder } = await import('vite')
+  const { createBuilder, mergeConfig } = await import('vite')
   const outputs: Partial<Outputs> = {}
   const errors: Array<string> = []
   /** Records what each environment emitted. */
@@ -445,7 +452,9 @@ async function buildWithVite(
     warnings.ssr.push(stripAnsi(message))
   }
   try {
-    const builder = await createBuilder({
+    const builder = await createBuilder(
+      mergeConfig<InlineConfig, InlineConfig>(
+        {
       root: target.root,
       configFile: false,
       envDir: false,
@@ -479,7 +488,10 @@ async function buildWithVite(
         ),
         outputPlugin,
       ],
-    })
+        },
+        target.viteConfig ?? {},
+      ),
+    )
     await builder.buildApp()
   } catch (error) {
     throw new BuildError(

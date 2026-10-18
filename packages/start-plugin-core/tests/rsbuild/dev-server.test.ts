@@ -141,4 +141,41 @@ import { getData as b } from './b'
     },
     timeout,
   )
+
+  // `serverFns.generateFunctionId` customizes the ids of the production
+  // build (guide/server-functions.md, "Function ID generation for production
+  // build"); the dev server keeps its own.
+  // Source: r5-gaps N13 (spc:6812: the Rsbuild dev server compiling in build
+  // mode).
+  test(
+    'the server fn ids do not come from generateFunctionId, which applies to production builds',
+    async () => {
+      const generated: Array<string> = []
+      const server = await startRsbuildDevServer({
+        generateFunctionId: ({ functionName }) => {
+          generated.push(functionName)
+          return `custom-${functionName}`
+        },
+        files: {
+          'src/a.ts': `import { createServerFn } from '@tanstack/react-start'
+export const getData = createServerFn().handler(async () => 'x')
+`,
+          'src/entry.ts': `import { getData } from './a'
+;(globalThis as Record<string, unknown>).ids = [getData.functionId]
+`,
+        },
+      })
+      const context = vm.createContext({})
+      context.self = context
+      for (const code of Object.values(await server.outputs())) {
+        vm.runInContext(code, context)
+      }
+      expect(context.ids).toEqual([expect.any(String)])
+      expect(context.ids).not.toContainEqual(
+        expect.stringMatching(/^custom-/),
+      )
+      expect(generated).toEqual([])
+    },
+    timeout,
+  )
 })

@@ -20,7 +20,7 @@ import {
   startProtectedDevServer,
 } from './start-apps'
 import { violationReports } from './violation-report'
-import type { StartBundler } from '../build-harness'
+import type { StartBuildOptions, StartBundler } from '../build-harness'
 import type { ReportedTraceStep, ViolationReport } from './violation-report'
 
 const timeout = 60_000
@@ -205,10 +205,13 @@ describe('the reported location of a violation is the leaking use', () => {
 async function buildReport(
   bundler: StartBundler,
   files: Record<string, string>,
-  { sourcemap = false } = {},
+  {
+    sourcemap = false,
+    viteConfig,
+  }: Pick<StartBuildOptions, 'sourcemap' | 'viteConfig'> = {},
 ): Promise<ViolationReport> {
   const error = await rejection(
-    buildStart({ bundler, files, entry: 'src/entry.ts', sourcemap }),
+    buildStart({ bundler, files, entry: 'src/entry.ts', sourcemap, viteConfig }),
   )
   const [report, ...others] = violationReports(error.message)
   expect(others).toEqual([])
@@ -351,6 +354,75 @@ export const page = () => leak()
     )
   },
 )
+
+// An app that sets Vite's full-bundle dev (`experimental.bundledDev`) keeps
+// it set for `vite build` (as the e2e apps do with E2E_VITE_BUNDLED_DEV):
+// the build's trace does not change.
+// Source: r5-gaps N8 (spc:4988, 4989: route modules taken as entries in the
+// build, as full-bundle dev does).
+test(
+  'vite build with experimental.bundledDev: the trace of a violation under a module of src/routes leads from the entry through it',
+  async () => {
+    const { trace } = await buildReport(
+      'vite',
+      {
+        ...leakingB,
+        'src/routes/page.ts': `export { leak } from '../b'\n`,
+        'src/entry.ts': `export * from './routes/page'\n`,
+      },
+      { viteConfig: { experimental: { bundledDev: true } } },
+    )
+    expect(modulesOf(trace).slice(-3)).toEqual([
+      'src/entry.ts',
+      'src/routes/page.ts',
+      'src/b.ts',
+    ])
+  },
+  timeout,
+)
+
+// Bug (Rsbuild): the trace stops at an entry only when it finds no importer
+// of the module: in a production build the entry module is a concatenated
+// module (scope hoisting), which has no `resourceResolveData`, so the
+// Rsbuild adapter registers it by its identifier, the loader request, read
+// as the path of the first loader (rsbuild/import-protection.ts
+// `addEntryModulesToGraph` → `getModuleResource`), and no module of the
+// graph is a registered entry. When a module imports the entry back, the
+// trace search finds no root, and the trace is the importer alone, tagged
+// as the entry. (A scratch registration of the concatenated module's
+// `rootModule` passes this pin.)
+// Impact: an Rsbuild build reports such a violation with a one-step trace
+// (low: diagnostics only, and an import of the app's entry is rare). Vite is
+// right.
+// Source: found writing the r5-gaps N10 test (spc:7260, 7261 remove that
+// registration, which changes nothing while it registers the wrong path).
+describe.each(startBundlers)('%s build', (bundler) => {
+  const entryBackTest = bundler === 'rsbuild' ? test.fails : test
+  entryBackTest(
+  'the trace starts at the entry when a module imports the entry back',
+  async () => {
+    const { importer, trace } = await buildReport(bundler, {
+      ...leakingB,
+      'src/back.ts': `import * as app from '../harness/client-entry'\nexport const back = app\n`,
+      'src/a.ts': `import { leak } from './b'
+import { back } from './back'
+export const page = () => [leak(), back]
+`,
+      'src/entry.ts': `export * from './a'\n`,
+    })
+    expect(trace.map(({ entry }) => entry)).toEqual(
+      trace.map((_, index) => index === 0),
+    )
+    expect(modulesOf(trace).slice(-3)).toEqual([
+      'src/entry.ts',
+      'src/a.ts',
+      'src/b.ts',
+    ])
+    expect(trace.at(-1)!.at).toBe(importer)
+  },
+  timeout,
+)
+})
 
 // The trace locates each import on its line in the user's file, whatever
 // compiling the module moves.

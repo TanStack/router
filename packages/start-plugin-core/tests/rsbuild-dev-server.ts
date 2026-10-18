@@ -19,6 +19,7 @@ import { tanStackStartRsbuild } from '../src/rsbuild/plugin'
 import { startRuntimeFiles } from './build-harness'
 import { testLoaderFiles, useTestLoaders } from './rsbuild-test-loaders'
 import type { ImportProtectionOptions } from '../src/schema'
+import type { GenerateFunctionIdFnOptional } from '../src/start-compiler/types'
 import type {
   RsbuildDevServer,
   RsbuildDevServerOptions,
@@ -34,9 +35,12 @@ const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 export function startRsbuildDevServer(
   options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
     importProtection?: ImportProtectionOptions
+    /** Start's `serverFns.generateFunctionId` option. */
+    generateFunctionId?: GenerateFunctionIdFnOptional
   },
 ): Promise<RsbuildDevServer> {
-  const { files, importProtection, ...devServerOptions } = options
+  const { files, importProtection, generateFunctionId, ...devServerOptions } =
+    options
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-dev-server-',
@@ -57,6 +61,7 @@ export function startRsbuildDevServer(
             root,
             environments: [{ name: 'client', type: 'client' }],
             providerEnvName: 'ssr',
+            generateFunctionId,
           })
           if (importProtection) {
             registerImportProtection(api, {
