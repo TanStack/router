@@ -205,9 +205,7 @@ export const Route = createFileRoute('/')({ component: Page })
 // unplugin/dist/{webpack,rspack}/loaders/transform.mjs), and the router
 // plugin's transform is the first loader of a route file. The bundler then
 // maps the chunk to the code splitter's output instead of the route file.
-// On webpack the harness's own TypeScript loader (build-harness-oxc-loader
-// of compiler-test-utils) neither emits nor composes maps, so that row also
-// needs the harness to compose maps once unplugin keeps them.
+// (On webpack the harness's own TypeScript loader composes the map it gets.)
 // Source: oracle-gaps M1; upstream (unplugin), not the router plugin.
 // Impact: stack traces, devtools and error trackers point at lines of the
 // generated split module (here line 3 instead of line 5 of the route file).

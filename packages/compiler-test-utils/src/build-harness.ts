@@ -121,7 +121,8 @@ export interface BundleTarget {
    */
   env?: BuildEnv
   /**
-   * Defaults to `mode === 'production'`, like a real app build. webpack and
+   * Defaults to `mode === 'production'`, like a real app build, except for
+   * Vite SSR builds, which Vite does not minify by default. webpack and
    * Rspack only drop unused code inside a kept module when minifying (the
    * dangling-name check of an unminified production client build checks
    * its chunks as the bundler's minifier emits them).
@@ -387,7 +388,10 @@ async function bundle(
     entry: path.join(root, entry),
     mode,
     env,
-    minify: target.minify ?? mode === 'production',
+    // `vite build --ssr` does not minify
+    minify:
+      target.minify ??
+      (mode === 'production' && !(bundler === 'vite' && env === 'ssr')),
     sourcemap: target.sourcemap ?? false,
     plugin: plugin && (() => plugin({ root, env, mode })),
     jsxImportSource: target.jsxImportSource ?? 'react',
@@ -559,22 +563,13 @@ async function buildWithWebpackApi(
           : { include: config.root, ...rule },
       )
     : bundler === 'rspack'
-      ? [
-          {
-            test: /\.[cm]?tsx?$/,
-            include: config.root,
-            loader: 'builtin:swc-loader',
-            options: swcOptions(development, true, config.jsxImportSource),
-            type: 'javascript/auto',
-          },
-          {
-            test: /\.[cm]?jsx$/,
-            include: config.root,
-            loader: 'builtin:swc-loader',
-            options: swcOptions(development, false, config.jsxImportSource),
-            type: 'javascript/auto',
-          },
-        ]
+      ? (['ts', 'tsx', 'jsx'] as const).map((lang) => ({
+          test: { ts: /\.[cm]?ts$/, tsx: /\.tsx$/, jsx: /\.[cm]?jsx$/ }[lang],
+          include: config.root,
+          loader: 'builtin:swc-loader',
+          options: swcOptions(development, lang, config.jsxImportSource),
+          type: 'javascript/auto',
+        }))
       : [
           {
             test: /\.[cm]?(tsx?|jsx)$/,
@@ -1252,16 +1247,21 @@ process.exit(0)
   }
 }
 
+/**
+ * Options of Rspack's SWC loader for a language: `.ts` files are parsed
+ * without JSX (`<T>(x) => x` is a generic arrow there), as Rsbuild does.
+ */
 function swcOptions(
   development: boolean,
-  typescript: boolean,
+  lang: 'ts' | 'tsx' | 'jsx',
   importSource: string,
 ) {
   return {
     jsc: {
-      parser: typescript
-        ? { syntax: 'typescript', tsx: true }
-        : { syntax: 'ecmascript', jsx: true },
+      parser:
+        lang === 'jsx'
+          ? { syntax: 'ecmascript', jsx: true }
+          : { syntax: 'typescript', tsx: lang === 'tsx' },
       target: 'esnext',
       transform: { react: { runtime: 'automatic', development, importSource } },
     },

@@ -109,9 +109,16 @@ return [entry.value, await entry.load()]`)
   return fail()
 }
 `,
-        'failing.ts': `export function fail(): string {
-  // MARK_FAIL throws on line 3
-  throw new Error('MARK_FAIL')
+        // The TypeScript-only lines before the throw shift it: a map that
+        // skips the TypeScript transform points at the wrong line.
+        'failing.ts': `interface Failure {
+  message: string
+  code: number
+}
+type Reason = Failure['message']
+export function fail(reason: Reason = 'MARK_FAIL'): string {
+  // MARK_FAIL throws on line 8
+  throw new Error(reason)
 }
 `,
       },
@@ -123,8 +130,24 @@ return [entry.value, await entry.load()]`)
     const frame = originalFrameOf(app, result as string)
     expect(frame && { file: frame.file, line: frame.line }).toEqual({
       file: 'failing.ts',
-      line: 3,
+      line: 8,
     })
+  })
+
+  // `<T>(value: T) => value` and `<number>input` only parse as TypeScript
+  // without JSX, which is how every bundler reads a `.ts` file.
+  test('compiles the TypeScript-only syntax of a .ts module', async () => {
+    const app = await bundleApp({
+      bundler,
+      files: {
+        'entry.ts': `const identity = <T>(value: T): T => value
+export function read(input: unknown) {
+  return identity(<number>input + 1)
+}
+`,
+      },
+    })
+    expect((await app.run('return entry.read(1)')).result).toBe(2)
   })
 
   test('builds an app with a symlinked module', async () => {
@@ -153,6 +176,25 @@ return [entry.value, await entry.load()]`)
       ]),
     })
   })
+})
+
+// Like `vite build`, which minifies client builds but not SSR builds.
+test('a Vite production build minifies the client, not SSR', async () => {
+  const files = {
+    'entry.ts': `export function read() {
+  const keepThisLocalName = { value: 'MARK_LOCAL' }
+  keepThisLocalName.value += '!'
+  return keepThisLocalName.value
+}
+`,
+  }
+  const ssr = await bundleApp({ bundler: 'vite', env: 'ssr', files })
+  const client = await bundleApp({ bundler: 'vite', env: 'client', files })
+  expect([
+    ssr.where('keepThisLocalName'),
+    client.where('keepThisLocalName'),
+  ]).toEqual(['eager', 'nowhere'])
+  expect((await ssr.run('return entry.read()')).result).toBe('MARK_LOCAL!')
 })
 
 test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async () => {
