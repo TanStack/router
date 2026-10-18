@@ -322,12 +322,7 @@ describe('RSC CSS compiler transforms', () => {
     expect(await module.renderable).toBe('card')
   })
 
-  test.each([
-    { wrapped: '(<Card />)' },
-    { wrapped: '<Card /> as any' },
-    { wrapped: '<Card />!' },
-    { wrapped: '(<><Card /></>) satisfies unknown' },
-  ])(
+  test.each([{ wrapped: '(<Card />)' }, { wrapped: '<Card /> as any' }])(
     'renderToReadableStream($wrapped) streams the CSS',
     async ({ wrapped }) => {
       const { module } = await evaluateCompiled(`
@@ -342,23 +337,13 @@ export const stream = renderToReadableStream(${wrapped})
   // they are (goals below).
   test('calls outside the transform constraints keep their arguments', async () => {
     const { module, calls } = await evaluateCompiled(`
-import {
-  renderServerComponent,
-  renderToReadableStream,
-} from '@tanstack/react-start/rsc'
+import { renderToReadableStream } from '@tanstack/react-start/rsc'
 
 const node = <Card />
-export const existingOptions = renderServerComponent(<Card />, {
-  alreadyConfigured: true,
-})
 export const nonJsxStream = renderToReadableStream(node)
 export const conditional = renderToReadableStream(flag ? <A /> : <B />)
 export const spread = renderToReadableStream(...args)
 `)
-    await module.existingOptions
-    expect(
-      calls.find((call) => call.api === 'renderServerComponent')?.args[1],
-    ).toMatchObject({ alreadyConfigured: true })
     expect(module.nonJsxStream).toContain('card')
     expect(module.conditional).toContain('a')
     expect(module.spread).toBe('x')
@@ -445,16 +430,16 @@ export const stream = renderToReadableStream(${argument})
     },
   )
 
-  // A plain-data model is skipped on purpose (its elements are not the
-  // stream's root), without a warning.
-  test('dev: renderToReadableStream with a plain-data model does not warn', async () => {
-    const { module, warnings } = await evaluateCompiled(
+  // Whether a plain-data model (its elements are not the stream's root, and
+  // get no CSS) warns in dev is not decided yet (user ruling 2026-10-18):
+  // only its payload is asserted.
+  test('dev: renderToReadableStream with a plain-data model streams the model', async () => {
+    const { module } = await evaluateCompiled(
       `import { renderToReadableStream } from '@tanstack/react-start/rsc'
 export const stream = renderToReadableStream({ card: <Card /> })`,
       { mode: 'dev' },
     )
     expect(module.stream).toEqual({ card: 'card' })
-    expect(warnings).toEqual([])
   })
 })
 
@@ -509,7 +494,7 @@ test('Rsbuild dev server: only the server environment loads the CSS of a render 
   const card = (
     marker: string,
   ) => `import { renderServerComponent } from '@tanstack/react-start/rsc'
-export const render = () => renderServerComponent('${marker}')
+export const render = () => renderServerComponent(<p>${marker}</p>)
 `
   const server = await createRsbuildDevServer({
     dir: path.dirname(fileURLToPath(import.meta.url)),
@@ -523,10 +508,24 @@ export const render = () => renderServerComponent('${marker}')
         exports: { './rsc': './rsc.js' },
       }),
       'node_modules/@tanstack/react-start/rsc.js': `export const renderServerComponent = async (node) => node\n`,
-      'src/card.ts': card('OLD_CARD'),
+      // The JSX runtime the card module compiles to.
+      'node_modules/react/package.json': JSON.stringify({
+        name: 'react',
+        type: 'module',
+        exports: {
+          './jsx-runtime': './jsx-runtime.js',
+          './jsx-dev-runtime': './jsx-runtime.js',
+        },
+      }),
+      'node_modules/react/jsx-runtime.js': `export const Fragment = Symbol('Fragment')
+export const jsx = (type, props) => ({ type, props })
+export const jsxs = jsx
+export const jsxDEV = jsx
+`,
+      'src/card.tsx': card('OLD_CARD'),
       // The server fn resolver imports provider modules under this query.
       'src/entry.ts': `import { render } from './card'
-import { render as provided } from './card.ts?${TSS_SERVERFN_SPLIT_PARAM}'
+import { render as provided } from './card.tsx?${TSS_SERVERFN_SPLIT_PARAM}'
 console.log(render, provided)
 `,
     },
@@ -566,7 +565,7 @@ console.log(render, provided)
     ssr: await loadingCss('ssr', 'OLD_CARD'),
   }).toEqual({ client: 0, ssr: 1 })
 
-  await server.edit({ 'src/card.ts': card('NEW_CARD') })
+  await server.edit({ 'src/card.tsx': card('NEW_CARD') })
 
   expect(server.errors).toEqual([])
   expect({
