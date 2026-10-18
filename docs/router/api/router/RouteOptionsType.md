@@ -137,7 +137,7 @@ type DehydrateFn = (opts: HandlerOpts & { data: TData }) => TWire // server; TWi
 type HydrateFn = (opts: HandlerOpts & { data: TWire | TData }) => TData // client; data is TWire when dehydrate is a function
 type RevalidateFn = (
   opts: HandlerOpts & { prev: TData | undefined },
-) => Promise<TData> | TData
+) => Promise<TData | Redirect> | TData | Redirect
 ```
 
 - `handler` is the lifecycle function. It is required in the object form and receives the same options as the function form.
@@ -153,8 +153,8 @@ type RevalidateFn = (
   Other wrong orders compile. When one of these errors appears, fix the key order. Do not add `dehydrate: true` or switch to it to make the error go away: that sends the handler's full result to the client.
 
 - Never annotate the parameters of `dehydrate`, `hydrate` or `revalidate`. They are inferred. Next to `dehydrate: true`, write `hydrate` inline: a `hydrate` passed by reference or typed through `satisfies` or `as` decides the type of `data` itself, and neither TypeScript nor the lint rule checks it against `handler`.
-- `dehydrate` and `hydrate` may be async; the awaited value is used. They only transform a value; throw `redirect()` or `notFound()` from `handler`. A throw from `dehydrate`, a `redirect()` or `notFound()` included, is an ordinary error of that match. A throw from `hydrate`, or a `redirect()` or `notFound()` returned from the `hydrate` of `beforeLoad` or `loader`, is a failure during hydration (next item): the client load runs `handler` instead, and `hydrate` itself never shows the `errorComponent` or calls `onError`.
-- A lifecycle that fails while the client runs it during hydration (an error, a thrown `redirect()` or `notFound()` or one returned from `beforeLoad` or `loader`, or a throwing `hydrate`) is not handled by hydration. The route is shown as pending and the client load that follows hydration runs it again; that run's outcome (data, error, redirect or not-found) is handled as on a client navigation. A lifecycle that the client re-ran during hydration and that failed there therefore runs twice on the client, and so do its side effects; some lifecycles that succeeded during hydration run again as well. A route the server already rendered as an error or not-found, and the root route when it shows the not-found page, keep that result: during hydration only their `context` and the `hydrate` of sent results run there. A `beforeLoad` or `loader` result that was not sent is missing there in the browser. A failure there makes nothing run again, and the result that failed is missing too. See [When a lifecycle fails during hydration](/start/latest/docs/framework/react/guide/ssr-data-transport#when-a-lifecycle-fails-during-hydration).
+- `dehydrate` and `hydrate` may be async; the awaited value is used. Use them to transform successful data. Make routing decisions in `handler`: return or throw `redirect()`, or throw `notFound()`. A throw from `dehydrate`, including a redirect or not-found value, is an ordinary error of that match. A throw from `hydrate`, or a returned `redirect()`, uses the hydration recovery described below. `hydrate` itself does not navigate, show the `errorComponent`, or call `onError`.
+- A lifecycle that fails while the client runs it during hydration (an error, a returned or thrown `redirect()`, a thrown `notFound()`, or a throwing `hydrate`) is not handled by hydration. The route is shown as pending and the client load that follows hydration runs it again; that run's outcome (data, error, redirect or not-found) is handled as on a client navigation. A lifecycle that the client re-ran during hydration and that failed there therefore runs twice on the client, and so do its side effects; some lifecycles that succeeded during hydration run again as well. A route the server already rendered as an error or not-found, and the root route when it shows the not-found page, keep that result: during hydration only their `context` and the `hydrate` of sent results run there. A `beforeLoad` or `loader` result that was not sent is missing there in the browser. A failure there makes nothing run again, and the result that failed is missing too. See [When a lifecycle fails during hydration](/start/latest/docs/framework/react/guide/ssr-data-transport#when-a-lifecycle-fails-during-hydration).
 - `hydrate` may return a different type than `handler`. The lifecycle's data type is then the union of both; a `hydrate` result that is assignable to the handler's data reduces to it, so a property that only `hydrate` adds to a matching shape is not visible. Narrow on a literal written with `as const` on both sides that says which function produced the value (`hydrated: false` in `handler`, `hydrated: true` in `hydrate`), not on server versus client: `handler` also runs in the browser on client navigations. See [Narrow with a discriminant](/start/latest/docs/framework/react/guide/ssr-data-transport#narrow-with-a-discriminant).
 - On a route with `ssr: true`, a lifecycle with `dehydrate: false` must produce the same value on the client as on the server, and a `hydrate` result must render the same as the server's value; otherwise the first client render differs from the server HTML. Use `ssr: 'data-only'` when they cannot be the same.
 - Removing `dehydrate` from the client bundle and `hydrate`/`revalidate` from the server bundle is done by the TanStack Start build; see [SSR Data Transport](/start/latest/docs/framework/react/guide/ssr-data-transport). In a router-only setup both halves stay in both bundles unless each production build gets its own `deleteNodes` list; see [Removing route options from a build](../../guide/automatic-code-splitting.md#removing-route-options-from-a-build-deletenodes).
@@ -179,7 +179,7 @@ type contextFn = (opts: {
   buildLocation: BuildLocationFn<AnyRoute>
   cause: 'preload' | 'enter' | 'stay'
   serverContext?: TServerContext // TanStack Start only, undefined on the client
-}) => Promise<TRouteContext> | TRouteContext | void
+}) => Promise<TRouteContext | Redirect | void> | TRouteContext | Redirect | void
 
 type context =
   | contextFn
@@ -195,11 +195,12 @@ type context =
 - [`ParsedLocation`](./ParsedLocationType.md)
 - Runs before this route's `beforeLoad`. The lifecycles run serially, one route after the other, parent first: `context` then `beforeLoad` of the first match, then `context` then `beforeLoad` of the second match, and so on. Loaders run after that.
 - `opts.context` is the parent's effective context: the router context plus every ancestor's `context` result and `beforeLoad` result. The returned object is merged into the context that this route's `beforeLoad`, `loader`, components and child routes see.
+- Return or throw `redirect()` to redirect before `beforeLoad` or loaders run. Redirects are not merged into context or passed to `dehydrate`. Throw `notFound()` to show a not-found page.
 - May return a promise. The route is pending while it resolves and the awaited value is merged.
 - Receives `deps`, the result of `loaderDeps`, and not `search`. The result is cached per match, and a match is keyed by its params and `loaderDeps`, so a `context` must not depend on search params outside `loaderDeps`.
 - Computed once per match and reused on later loads. `router.invalidate()` does not re-run it unless `revalidate` is set. A navigation that starts while a preload's async `context` for the same match is still running runs it again.
-- `revalidate: true` runs `handler` again on `router.invalidate()`. `revalidate: fn` runs that function instead; it receives `prev`, the current context data (the last successful `handler`, `hydrate` or `revalidate` result, or `undefined` if none has succeeded yet), and must return the handler's shape. There is no time-based revalidation of context.
-- If it throws, this route's `beforeLoad`, its loader and its descendants do not run, and the error becomes the match's error state.
+- `revalidate: true` runs `handler` again on `router.invalidate()`. `revalidate: fn` runs that function instead; it receives `prev`, the current context data (the last successful `handler`, `hydrate` or `revalidate` result, or `undefined` if none has succeeded yet), and returns the handler's shape or a `redirect()`. There is no time-based revalidation of context.
+- If it throws an ordinary error, this route's `beforeLoad`, its loader and its descendants do not run, and the error becomes the match's error state.
 - During SSR the result is not sent to the client by default; the client computes it again during hydration. `dehydrate: true` sends it. See [Lifecycle object form](#lifecycle-object-form).
 
 ### `beforeLoad` method

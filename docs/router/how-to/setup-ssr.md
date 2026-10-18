@@ -43,6 +43,7 @@ export function createRouter() {
 
 declare module '@tanstack/react-router' {
   interface Register {
+    ssr: true
     router: ReturnType<typeof createRouter>
   }
 }

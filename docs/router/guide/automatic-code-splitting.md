@@ -227,7 +227,9 @@ We highly discourage splitting the `loader` unless you have a specific use case 
 
 > **Experimental:** the route `context` option and the `dehydrate` and `hydrate` keys of `beforeLoad` and `loader` are experimental and subject to change.
 
-A loader written in the object form, `loader: { handler, dehydrate, hydrate, staleReloadMode }`, is split by its `handler` only: the chunk exports the handler, while `dehydrate`, `hydrate` and `staleReloadMode` stay in the reference file, where the router reads them without loading the chunk. The same applies to an object declared as a `const` in the same file and passed by name (`const postsLoader = { handler, dehydrate: true }` and `loader: postsLoader`) when `loader` is the only place that reads it: the object stays in the reference file with its `handler` replaced. A type that names the object, such as `Awaited<ReturnType<typeof postsLoader.handler>>`, does not count as a reader. A `handler` written as a getter (`get handler() { ... }`) or as a method that uses `super` is not split. Neither is an object held in a variable that is exported, reassigned, or read anywhere else in the file (another option such as `head` calling `postsLoader.handler(ctx)`, top-level code, or the handler itself): replacing the handler in the object would hand every reader the lazy wrapper instead of your function. When a split option such as `component` or `errorComponent` reads that variable, the object moves to the shared module, so the route and the chunk read one object. An object-form loader imported from another module or returned by a function cannot be told apart from a function: do not put `loader` in a split group for such a route, or the chunk exports the object and calling the loader fails.
+An inline object-form loader, `loader: { handler, dehydrate, hydrate, staleReloadMode }`, splits only its `handler`. Its other options remain available without loading the handler's chunk. A handler written as a getter or as a method that uses `super` stays eager.
+
+Loaders passed by name from another module, returned by a helper, or read from an object stay eager, even when `loader` is in a split group. The same applies to lifecycle objects stored in a local variable. To split an imported handler, put it in an inline object: `loader: { handler: importedHandler }`. Functions declared directly in the route file can also be split.
 
 ### Removing route options from a build (`deleteNodes`)
 
@@ -297,9 +299,9 @@ The server build keeps `ssr` and `dehydrate` and drops `hydrate` together with t
 The plugin visits:
 
 - The options object literal passed to `createFileRoute`, `createRootRoute` or `createRootRouteWithContext`, written inline or held in a variable of the same file and passed by name, also behind `satisfies` or `as`.
-- Object-form values written inline, or held in a variable of the same file that is never reassigned and passed by name (`loader: postsLoader`), also behind a TypeScript wrapper such as `satisfies`, `as`, `!` or parentheses. Such a variable is stripped in every module that keeps it: the route file, the shared module when a split option reads it, and a chunk that keeps a copy for top-level code reading it. If it is exported, the modules that import it get it without the removed keys too. An object-form value held in a variable that is reassigned is left as written.
+- Object-form values written inline, also behind a TypeScript wrapper such as `satisfies`, `as`, `!` or parentheses.
 
-It does not visit spread members (`...sharedOptions`), computed keys, or option objects that are imported from another module or returned by a function. Those are left as they are, without a build error.
+It does not visit spread members (`...sharedOptions`), computed keys, or lifecycle objects stored in variables, imported from another module, or returned by a function. Those values keep their properties. To remove a nested lifecycle option from a build, write the lifecycle object inline.
 
 A function or variable that only the removed code used is removed with it, and so are its imports. A class declaration is not: it stays, and keeps its imports.
 

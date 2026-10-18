@@ -547,6 +547,8 @@ That order determines what each function sees:
 
 `context` may be async. The route is pending while it resolves and the awaited value is merged.
 
+A `context` handler can return or throw `redirect()` to redirect before `beforeLoad` or loaders run. Redirects are not merged into context or passed to `dehydrate`. Use `throw notFound()` to show a not-found page. Because a successful context result is cached, use `beforeLoad` for checks that must run on every load.
+
 ### Cached per match
 
 `context` runs once per match and the result is reused on every later load of that match. `beforeLoad` runs on every load. A different match (other `params` or other `loaderDeps`) computes its own context. A preload shares its context once it has resolved: when a navigation to the match starts while the preload's async `context` is still running, the navigation runs `context` again.
@@ -558,7 +560,7 @@ By default `router.invalidate()` reloads the loaders and re-runs `beforeLoad`, b
 A route opts in with `revalidate` in the object form:
 
 - `revalidate: true` runs `handler` again on `router.invalidate()`.
-- `revalidate: fn` runs that function instead. It receives the same options as `handler` plus `prev`, the current context data (the last successful `handler`, `hydrate` or `revalidate` result, or `undefined` if none has succeeded for this match yet), and must return the handler's shape. Use it to refresh part of the context and keep the rest stable.
+- `revalidate: fn` runs that function instead. It receives the same options as `handler` plus `prev`, the current context data (the last successful `handler`, `hydrate` or `revalidate` result, or `undefined` if none has succeeded for this match yet), and returns the handler's shape or a `redirect()`. Use it to refresh part of the context and keep the rest stable.
 
 There is no time-based revalidation of context. Freshness of data belongs to the data layer (a query's own `staleTime`); the router owns structural caching and explicit invalidation.
 

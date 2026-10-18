@@ -72,10 +72,10 @@ This disables server-side:
 export const Route = createFileRoute('/posts/$postId')({
   ssr: false,
   beforeLoad: () => {
-    console.log('Executes on the client during hydration')
+    console.log('Executes on the client')
   },
   loader: () => {
-    console.log('Executes on the client during hydration')
+    console.log('Executes on the client')
   },
   component: () => <div>This component is rendered on the client</div>,
 })
@@ -181,7 +181,7 @@ root { ssr: undefined }
 
 `ssr` decides what runs on the server. `dehydrate` on a lifecycle decides whether its result is sent to the client; see [SSR Data Transport](./ssr-data-transport.md). The two combine like this:
 
-- `ssr: false`: nothing runs on the server, `context` included, so there is nothing to send and `dehydrate`/`hydrate` have no effect. The client runs these lifecycles after hydration, as on a client navigation.
+- `ssr: false`: nothing runs on the server, `context` included, so there is nothing to send and `dehydrate`/`hydrate` have no effect. The client may prepare `context` during hydration, so asynchronous context can delay hydration. `beforeLoad` and `loader` run when the client loads the route.
 - `ssr: 'data-only'`: the lifecycles run on the server and their results are sent as configured; only rendering moves to the client. Pair it with `dehydrate: false` when the client's value differs from the server's.
 - `ssr: true` with `dehydrate: false`: the server renders with its value and the client recomputes the value during hydration. The two must be equal, otherwise the first client render differs from the server HTML.
 - `ssr: true` with a `hydrate` transform: the first client render uses what `hydrate` returns, so it must render the same as the server's value. When `hydrate` adds client-only data or returns another shape, use `ssr: 'data-only'`.

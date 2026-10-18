@@ -106,7 +106,7 @@ export const Route = createFileRoute('/_authed')({
 
 `createEditorSession()` produces a different value on every run, so the client's recomputed `editorSession` cannot match the server's. `ssr: 'data-only'` (see [Selective SSR](/start/latest/docs/framework/react/guide/selective-ssr)) still runs the lifecycles on the server but renders that route's component on the client only, so the server's value never ends up in the HTML. Without it, `dehydrate: false` is only safe for values that come out the same on both sides.
 
-If a recomputed lifecycle or a `hydrate` fails during hydration, hydration does not handle it. A failure is a thrown error, a thrown `redirect()` or `notFound()`, or a `redirect()` or `notFound()` returned from `beforeLoad` or `loader`. The route is shown as pending and the client load that follows hydration runs it again (after a throwing `hydrate`, it runs `handler`); that run's outcome (data, error, redirect or not-found) is handled as on a client navigation. A recomputed lifecycle that fails therefore runs twice on the client, and so do its side effects. A route the server rendered as an error or not-found, and the root route when it shows the not-found page, follow different rules; see [When a lifecycle fails during hydration](/start/latest/docs/framework/react/guide/ssr-data-transport#when-a-lifecycle-fails-during-hydration).
+If a recomputed lifecycle or a `hydrate` fails during hydration, hydration does not handle it. A failure is a thrown error, a returned or thrown `redirect()`, or a thrown `notFound()`. The route is shown as pending and the client load that follows hydration runs it again (after a throwing `hydrate`, it runs `handler`); that run's outcome (data, error, redirect or not-found) is handled as on a client navigation. A recomputed lifecycle that fails therefore runs twice on the client, and so do its side effects. A route the server rendered as an error or not-found, and the root route when it shows the not-found page, follow different rules; see [When a lifecycle fails during hydration](/start/latest/docs/framework/react/guide/ssr-data-transport#when-a-lifecycle-fails-during-hydration).
 
 The full description, including custom `dehydrate`/`hydrate` pairs, async transforms and the rules the type checker enforces, is on the TanStack Start page [SSR Data Transport](/start/latest/docs/framework/react/guide/ssr-data-transport). That page applies to a router-only SSR setup as well, with these differences:
 
@@ -135,6 +135,7 @@ export function createRouter() {
 
 declare module '@tanstack/react-router' {
   interface Register {
+    ssr: true
     router: ReturnType<typeof createRouter>
   }
 }
@@ -152,6 +153,7 @@ export function createRouter() {
 
 declare module '@tanstack/solid-router' {
   interface Register {
+    ssr: true
     router: ReturnType<typeof createRouter>
   }
 }

@@ -214,15 +214,15 @@ loader: {
 
 ## Errors thrown by `dehydrate` or `hydrate`
 
-`dehydrate` and `hydrate` only transform a value. They are not lifecycles, so `redirect()` and `notFound()` are not control flow there; throw them from `handler`.
+Use `dehydrate` and `hydrate` to transform successful data. Make routing decisions in `handler`: return or throw `redirect()`, or throw `notFound()`. A failed transform follows the error and recovery rules below; it does not redirect directly.
 
 - A throw inside `dehydrate` is handled like a throw inside the handler: the match becomes an error match with its `errorComponent` and `onError`. A `redirect()` or `notFound()` thrown from `dehydrate` is such an ordinary error.
 - A throw inside `hydrate`, whatever is thrown, is a failure during hydration like any other (next section): the client load that follows hydration runs the lifecycle's `handler` in the browser. `hydrate` itself never shows an `errorComponent` or calls `onError`. If the handler succeeds, the page continues with its result; if it fails, the client load handles the error, redirect or not-found as on a client navigation.
-- A `redirect()` or `notFound()` returned from the `hydrate` of `beforeLoad` or `loader` is such a failure too, as when their `handler` returns one.
+- A `redirect()` returned from `hydrate` is such a failure too, as when the lifecycle’s `handler` returns one.
 
 ## When a lifecycle fails during hydration
 
-During hydration the client runs some lifecycles itself: every lifecycle the server ran without sending its result, and every `hydrate`. On a route the server rendered as an error or a not-found, it runs only `context` and `hydrate` (see the end of this section). A run fails when the handler throws an error, when it throws a `redirect()` or `notFound()` (or, in `beforeLoad` and `loader`, returns one), or when `hydrate` throws.
+During hydration the client runs some lifecycles itself: every lifecycle the server ran without sending its result, and every `hydrate`. On a route the server rendered as an error or a not-found, it runs only `context` and `hydrate` (see the end of this section). A run fails when the handler throws an error, returns or throws `redirect()`, or throws `notFound()`, or when `hydrate` throws.
 
 Hydration does not handle the failure itself and does not call `onError` for it. It shows that route as pending and hands it, together with the routes below it, to the normal client load that follows hydration. That load runs the route again like a client navigation. If the run succeeds, the route renders with its result; otherwise the load renders the `errorComponent` and calls `onError`, follows the redirect, or renders the `notFoundComponent`. On a route with `ssr: true` the route's server HTML is replaced by its pending state in the meantime, which can show up as a [hydration mismatch](./hydration-errors.md).
 
@@ -271,9 +271,9 @@ export const Route = createFileRoute('/posts/$postId')({
 
 Client bundle: `context: { handler, hydrate, revalidate: true }`. Server bundle: `context: { handler, dehydrate }`.
 
-The client never reads `dehydrate` at runtime. It restores a result when the payload contains one and runs the lifecycle otherwise, so removing the key changes nothing in behavior. The removal is a size optimization. An import used only inside a removed key is removed with it, so a server-only module imported only for `dehydrate` does not end up in the client bundle. This holds in every module the build emits for the route, split chunks included. A function or variable used only inside the removed key is removed too, with its imports; a class declaration is not and keeps its imports. This is not what protects server-only code: [import protection](./import-protection.md) remains the guard.
+Removing these properties reduces bundle size without changing lifecycle behavior. Imports, functions, and variables used only by a removed property are removed too, including from split route chunks. Class declarations remain and keep their imports. Use [import protection](./import-protection.md) to protect server-only code; removing lifecycle properties is not a security boundary.
 
-Scope: the compiler processes the options object passed to `createFileRoute`, `createRootRoute` and `createRootRouteWithContext`, written inline or held in a variable of the same file, also behind `satisfies` or `as`. An object-form lifecycle (`loader: postsLoader`) is processed when it is written inline or held in a variable of the same file that is never reassigned. A held object is changed where it is declared, so if it is exported, the modules that import it get it without the removed keys too. Options passed through a spread, imported from another module or produced by a factory are not processed, and the build does not report that. Code-based `createRoute` calls are not visited. See [Removing route options from a build](/router/latest/docs/framework/react/guide/automatic-code-splitting#removing-route-options-from-a-build-deletenodes) for the full list.
+Scope: the compiler processes the options object passed to `createFileRoute`, `createRootRoute` and `createRootRouteWithContext`, written inline or held in a variable of the same file, also behind `satisfies` or `as`. Lifecycle properties are removed only from inline objects, such as `loader: { handler, dehydrate, hydrate }`, including supported TypeScript wrappers. Lifecycle objects stored in variables (`loader: postsLoader`), imported from another module, or returned by a helper keep their properties. Spread members and computed keys are not processed, and code-based `createRoute` calls are not visited. See [Removing route options from a build](/router/latest/docs/framework/react/guide/automatic-code-splitting#removing-route-options-from-a-build-deletenodes) for the full list.
 
 ## Rules
 
