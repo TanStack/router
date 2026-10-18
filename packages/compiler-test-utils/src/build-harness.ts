@@ -89,7 +89,8 @@ export interface AppOptions {
   sideEffects?: boolean | Array<string>
   /**
    * Symbolic links by path relative to the app root, each pointing to a path
-   * relative to the app root (e.g. a route file linked from elsewhere).
+   * relative to the app root (e.g. a route file linked from elsewhere) or to
+   * an absolute path (e.g. a workspace package linked into `node_modules`).
    */
   symlinks?: Record<string, string>
   /** Directory name prefix of the temporary app. */
@@ -296,7 +297,7 @@ export async function createApp(options: AppOptions): Promise<App> {
     }
     for (const [link, target] of Object.entries(options.symlinks ?? {})) {
       await mkdir(path.dirname(path.join(root, link)), { recursive: true })
-      await symlink(path.join(root, target), path.join(root, link))
+      await symlink(path.resolve(root, target), path.join(root, link))
     }
   } catch (error) {
     await dispose()
@@ -865,6 +866,11 @@ export interface DescribeBuildInput {
   mode: BuildMode
   /** Whether the build minified its output (default: `mode === 'production'`). */
   minify?: boolean
+  /**
+   * Whether the chunks are ES modules (the bundler's `output.module`), even
+   * a chunk that neither imports nor exports. Default: the chunks that do.
+   */
+  esModules?: boolean
   /** App root on disk. */
   root: string
   /** Absolute output directory the chunk file names are relative to. */
@@ -913,7 +919,12 @@ export async function describeBuild(
     input.mode === 'production' &&
     bundler !== 'esbuild'
   ) {
-    await checkDanglingNames(bundler, chunks, input.minify ?? true)
+    await checkDanglingNames(
+      bundler,
+      chunks,
+      input.minify ?? true,
+      input.esModules,
+    )
   }
   const entries = chunks.filter((chunk) => chunk.isEntry)
   if (entries.length !== 1) {
@@ -1005,6 +1016,7 @@ async function checkDanglingNames(
   bundler: Exclude<Bundler, 'esbuild'>,
   chunks: Array<Chunk>,
   minified: boolean,
+  esModules: boolean | undefined,
 ) {
   const [{ unboundNames }, { clientGlobals }] = await Promise.all([
     import('./validate-module'),
@@ -1015,7 +1027,7 @@ async function checkDanglingNames(
     const code =
       minified || bundler === 'vite'
         ? chunk.code
-        : await minifyAsInProduction(bundler, chunk.code)
+        : await minifyAsInProduction(bundler, chunk.code, esModules)
     const names = [...unboundNames(code)].filter(
       (name) => !clientGlobals.has(name),
     )
@@ -1037,12 +1049,13 @@ async function checkDanglingNames(
 async function minifyAsInProduction(
   bundler: 'rspack' | 'webpack',
   code: string,
+  esModules: boolean | undefined,
 ): Promise<string> {
   const { parseSync } = await import('vite')
   const { program } = parseSync('chunk.js', code, { sourceType: 'module' })
-  const module = program.body.some((statement) =>
-    /^(Import|Export)/.test(statement.type),
-  )
+  const module =
+    esModules ??
+    program.body.some((statement) => /^(Import|Export)/.test(statement.type))
   if (bundler === 'rspack') {
     const { rspack } = await import('@rsbuild/core')
     const result = await rspack.experiments.swc.minify(code, {
