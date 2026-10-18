@@ -8,6 +8,8 @@ import { getLookupConfigurationsForEnv } from '../../src/start-compiler/config'
 import { mergeServerFnsById } from '../../src/start-compiler/host'
 import { generateServerFnResolverModule } from '../../src/start-compiler/server-fn-resolver-module'
 import {
+  callerRpcId,
+  callFromClient,
   callProvider,
   callReportedServerFns,
   compileAll,
@@ -18,6 +20,8 @@ import {
   evaluateModule,
   evaluateProvider,
   importSources,
+  serverFnResult,
+  startClientCore,
 } from '../regression-helpers'
 import type { ServerFn } from '../../src/start-compiler/types'
 
@@ -90,7 +94,7 @@ export const ref = getUsers`)
     expect(importSources(compiled.client)).toEqual(['./server'])
     const client = await evaluateModule(compiled.client, stubs)
     expect(client.ref).toBe(stubs['./server'].getUsers)
-    expect(client.getUsersFn).toEqual({ rpc: { client: expect.any(String) } })
+    expect(callerRpcId(client.getUsersFn)).toEqual(expect.any(String))
     expect(await callProvider(compiled, 'getUsersFn', stubs)).toBe('users')
   })
 
@@ -127,22 +131,12 @@ export const issueServerFn = createIssueServerFn().handler(async () => 'issue-ha
     expect(Object.keys(serverFns)).toHaveLength(1)
     // The client calls the server fn through an RPC by the reported id, and
     // that id runs the handler on the server.
-    const builder = {
-      handler: (rpc: unknown, impl?: (opts: unknown) => unknown) =>
-        impl
-          ? Object.assign((opts: unknown) => impl(opts ?? {}), {
-              __executeServer: impl,
-            })
-          : { rpc },
-    }
     const stubs = {
       'virtual:server-fn-factory?variant=public': {
-        createIssueServerFn: () => builder,
+        createIssueServerFn: startClientCore.createServerFn,
       },
     }
-    expect((await evaluateModule(result!, stubs)).issueServerFn).toEqual({
-      rpc: { client: Object.keys(serverFns)[0] },
-    })
+    expect(callerRpcId((await evaluateModule(result!, stubs)).issueServerFn)).toBe(Object.keys(serverFns)[0])
     const server = await compileServer(code, {
       id: '/test/src/test.ts',
       files: {
@@ -202,7 +196,7 @@ export const greetUser = createServerFn().handler(async () => 'second')`,
       const { greetUser } = await evaluateModule(
         (await client.compile({ code, id }))!.code,
       )
-      clientIds[id] = greetUser.rpc.client
+      clientIds[id] = callerRpcId(greetUser)
     }
     const ids = Object.keys(serverFnsById)
     expect(ids).toHaveLength(2)
@@ -227,12 +221,14 @@ export const greetUser = createServerFn().handler(async () => 'second')`,
       expect(await (await graph.ssr()).greetUser()).toBe(
         id.includes('formdata-redirect') ? 'second' : 'first',
       )
-      const handlers = Object.values(await graph.provider()).filter(
-        (value) => typeof value === 'function',
+      // The provider's handler of that id runs this module's server fn.
+      const handler = Object.values(await graph.provider()).find(
+        (value) => value?.serverFnMeta?.id === clientIds[id],
       )
-      expect(handlers.map((handler) => handler.meta.id)).toEqual([
-        clientIds[id],
-      ])
+      expect(handler, id).toBeTypeOf('function')
+      expect(serverFnResult(await handler({}))).toBe(
+        id.includes('formdata-redirect') ? 'second' : 'first',
+      )
     }
     expect(Object.keys(serverFnsById).sort()).toEqual([...ids].sort())
   })
@@ -295,10 +291,10 @@ export const greetUser = createServerFn().handler(async () => 'second')`,
     expect(ids).toHaveLength(1)
     const { getMessage } = await evaluateModule(result!.code, {
       './createServerFn': {
-        createServerFn: () => ({ handler: (rpc: unknown) => ({ rpc }) }),
+        createServerFn: startClientCore.createServerFn,
       },
     })
-    expect(getMessage).toEqual({ rpc: { client: ids[0] } })
+    expect(callerRpcId(getMessage)).toBe(ids[0])
   })
 })
 
@@ -372,7 +368,7 @@ export const greet = createServerFn().handler(async () => 'hi')`
     const { getServerFnById, ids } = await resolverFor('client', greet)
     expect(ids).toHaveLength(1)
     const handler = await getServerFnById(ids[0], { origin: 'client' })
-    expect(await handler({})).toBe('hi')
+    expect(serverFnResult(await handler({}))).toBe('hi')
   })
 
   // The client and a server caller both report it, in either order: the
@@ -386,7 +382,7 @@ export const greet = createServerFn().handler(async () => 'hi')`
       const { getServerFnById, ids } = await resolverFor(envs, greet)
       expect(ids).toHaveLength(1)
       const handler = await getServerFnById(ids[0], { origin: 'client' })
-      expect(await handler({})).toBe('hi')
+      expect(serverFnResult(await handler({}))).toBe('hi')
     },
   )
 
@@ -413,7 +409,7 @@ export const greet = createServerFn().handler(async () => 'hi')`
       const { getServerFnById, ids } = await resolverFor('server', greet)
       expect(ids).toHaveLength(1)
       const handler = await getServerFnById(ids[0], { origin: 'server' })
-      expect(await handler({})).toBe('hi')
+      expect(serverFnResult(await handler({}))).toBe('hi')
       await expect(
         getServerFnById(ids[0], { origin: 'client' }),
       ).rejects.toThrow()
@@ -449,11 +445,11 @@ const adminMiddleware = createMiddleware({ type: 'function' }).server(
 )
 export const createAuthServerFn = createServerFn().middleware([authMiddleware])
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware])
-export const myAuthedFn = createAuthServerFn().handler(() => {
-  return 'myAuthedFn'
+export const myAuthedFn = createAuthServerFn().handler(({ context }) => {
+  return ['myAuthedFn', context]
 })
-export const deleteUserFn = createAdminServerFn().handler(() => {
-  return 'deleteUserFn'
+export const deleteUserFn = createAdminServerFn().handler(({ context }) => {
+  return ['deleteUserFn', context]
 })
 function createFakeFn() {
   return {
@@ -468,18 +464,25 @@ export const x = createFakeFn().handler(() => {
     expect(compiled.client).not.toMatch(/['"](myAuthedFn|deleteUserFn)['"]/)
     expect(Object.keys(compiled.serverFns)).toHaveLength(2)
     const client = await evaluateModule(compiled.client)
-    expect(client.myAuthedFn).toEqual({ rpc: { client: expect.any(String) } })
-    expect(client.myAuthedFn.options.middleware).toHaveLength(1)
-    expect(client.deleteUserFn).toEqual({
-      rpc: { client: expect.any(String) },
-    })
-    expect(client.deleteUserFn.options.middleware).toHaveLength(2)
     expect(client.x).toBe('fakeFn')
+    // Each server fn runs the middleware of its factory chain.
+    const auth = { auth: 'auth' }
+    const admin = { auth: 'auth', admin: 'admin' }
+    expect([
+      await callFromClient(compiled, (module) => module.myAuthedFn),
+      await callFromClient(compiled, (module) => module.deleteUserFn),
+    ]).toEqual([
+      ['myAuthedFn', auth],
+      ['deleteUserFn', admin],
+    ])
     const provider = await evaluateProvider(compiled)
     expect([
       await callProvider(provider, 'myAuthedFn'),
       await callProvider(provider, 'deleteUserFn'),
-    ]).toEqual(['myAuthedFn', 'deleteUserFn'])
+    ]).toEqual([
+      ['myAuthedFn', auth],
+      ['deleteUserFn', admin],
+    ])
   })
 
   // Source: snapshot fixture isomorphic-fns.tsx (N6; #8504
@@ -595,14 +598,7 @@ export const fn = base${call}async () => db.x())`
           await callProvider(compiled, 'fn', {
             './db.server': { db: { x: () => 'x' } },
             // The provider keeps the import of the builder.
-            './builder': {
-              base: {
-                handler: (_rpc: unknown, impl: (opts: unknown) => unknown) =>
-                  Object.assign((opts: unknown) => impl(opts ?? {}), {
-                    __executeServer: impl,
-                  }),
-              },
-            },
+            './builder': { base: startClientCore.createServerFn() },
           }),
         ).toBe('x')
       })

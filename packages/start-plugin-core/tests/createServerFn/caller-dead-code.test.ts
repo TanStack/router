@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import {
+  callFromClient,
   callProvider,
   callServerFnThroughCallers,
   compileAll,
@@ -394,9 +395,9 @@ export default ${code.startsWith('import verify') ? verify : `'default'`}`,
     },
   )
 
-  // The client keeps the middleware's `.client()` and drops its `.server()`
-  // and the server fn's validator (the client runtime's `.server()` throws
-  // uncompiled); the server runs both before the handler.
+  // The client keeps the middleware's `.client()` (its send context reaches
+  // the server) and drops the imports only its `.server()` and the server
+  // fn's validator read; the server runs both before the handler.
   // Source: Next.js server-actions fixtures server-graph/47, /58
   test('when the handler only reads it through a validator or a middleware', async () => {
     const compiled =
@@ -404,18 +405,13 @@ export default ${code.startsWith('import verify') ? verify : `'default'`}`,
 import { db } from './db.server'
 import { schema } from './schema.server'
 const auth = createMiddleware({ type: 'function' })
-  .client(async ({ next }) => next())
+  .client(async ({ next }) => next({ sendContext: { from: 'client' } }))
   .server(async ({ next }) => next({ context: { user: await db.user() } }))
-export const fn = createServerFn()
+export const fn = createServerFn({ method: 'POST' })
   .middleware([auth])
   .validator((data: unknown) => schema.parse(data))
-  .handler(async ({ data }) => data)`)
+  .handler(async ({ data, context }) => [data, context.user, context.from])`)
     expect(importSources(compiled.client)).toEqual([])
-    const { fn } = await evaluateModule(compiled.client)
-    expect(fn.options.validator).toBeUndefined()
-    expect(fn.options.middleware).toHaveLength(1)
-    expect(fn.options.middleware[0].options.client).toBeTypeOf('function')
-    expect(fn.options.middleware[0].options.server).toBeUndefined()
     const calls: Array<string> = []
     const stubs = {
       './db.server': {
@@ -427,7 +423,9 @@ export const fn = createServerFn()
         },
       },
     }
-    expect(await callProvider(compiled, 'fn', stubs, 'data')).toBe('data!')
+    expect(
+      await callFromClient(compiled, (module) => module.fn, 'data', stubs),
+    ).toEqual(['data!', 'user', 'client'])
     expect(calls).toEqual(['db.user', 'schema.parse'])
   })
 

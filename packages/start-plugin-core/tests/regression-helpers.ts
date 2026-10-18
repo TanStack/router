@@ -3,7 +3,7 @@
  * into its client, SSR caller and server-function provider outputs, split
  * `<Hydrate>` children into chunks, and evaluate compiled modules (linked as
  * real ES modules, `@tanstack/compiler-test-utils/module-linker`) against a
- * minimal Start runtime.
+ * Start's runtime (`./start-runtime`).
  */
 import { stripVTControlCharacters } from 'node:util'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
@@ -16,6 +16,11 @@ import {
   getLookupKindsForEnv,
 } from '../src/start-compiler/compiler'
 import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
+import {
+  createClientRpc,
+  createServerRpc,
+  startClientCore,
+} from './start-runtime'
 import {
   freeIdentifiers,
   getModuleErrors,
@@ -373,6 +378,9 @@ export async function compileServer(
   }
 }
 
+// Start's real runtime, for tests that link a project module to it.
+export { startClientCore } from './start-runtime'
+
 // The `compilerTransforms` test transform lives in the seam module.
 export { renderThingTransform } from './compiler-transforms-seam'
 
@@ -392,99 +400,85 @@ export function importSources(code: string) {
  */
 export type RuntimeEnv = 'client' | 'server'
 
-/**
- * Minimal Start package of a framework: client callers keep the RPC they
- * were given, providers run the original handler. Builders record what they
- * are given in `options` (non-enumerable on a server fn):
- * `createServerFn(options)`, `.middleware([...])` (appended) and
- * `.validator(v)`; a builder is also callable, returning a builder with the
- * same options (a factory such as
- * `createAuthServerFn = createServerFn().middleware([auth])` is called as
- * `createAuthServerFn()`). `createMiddleware(options)` (also
- * `createStart(...).createMiddleware`) records `.client(fn)`,
- * `.validator(v)` and `.middleware([...])`; in the client runtime its
- * `.server()`, like the other factories, throws when it is called
- * uncompiled, so a client test only passes if the compiler removed it. In
- * the server runtime, `.server(fn)` is recorded too, a server fn given a
- * function alone (an SSR RPC, or a handler left in place) calls it, and
- * running a handler first runs the `.server()` of its middleware and its
- * validator (a function, or an object with `parse`).
- */
-/** Server runtime: runs a handler after its middleware and validator. */
-const serverRunHandler = `(options, impl, opts = {}) => {
-  for (const middleware of options.middleware ?? []) {
-    middleware?.options?.server?.({ data: opts.data, context: {}, next: (result) => result })
+/** An RPC factory that environment's callers must not use. */
+function foreignRpc(factory: string, env: RuntimeEnv) {
+  return (functionId: string) => {
+    throw new Error(`${factory}(${functionId}) in the ${env} runtime`)
   }
-  const { validator } = options
-  const data =
-    typeof validator === 'function'
-      ? validator(opts.data)
-      : typeof validator?.parse === 'function'
-        ? validator.parse(opts.data)
-        : opts.data
-  return impl({ ...opts, data })
-}`
+}
 
 /**
- * Server runtime: a server fn given only an SSR RPC (which carries its
- * `serverFnMeta`, like Start's) calls it; given only its handler, it runs it.
+ * An SSR RPC evaluated outside an SSR bundle: it carries the id but cannot
+ * be called (`createServerGraph` links one that resolves the handler).
  */
-const serverCaller = `typeof rpc !== 'function'
-        ? record({ rpc }, options)
-        : record(
-            (opts) => (rpc.serverFnMeta ? rpc(opts ?? {}) : runHandler(options, rpc, opts ?? {})),
-            options,
-          )`
+function unlinkedSsrRpc(functionId: string) {
+  return Object.assign(
+    () => {
+      throw new Error(
+        `createSsrRpc(${functionId}) outside an SSR bundle (createServerGraph)`,
+      )
+    },
+    { serverFnMeta: { id: functionId } },
+  )
+}
 
+/**
+ * A client RPC: the one Start creates (its id, url and marker), except that
+ * calling it throws instead of fetching a server the harness does not run.
+ */
+function unlinkedClientRpc(functionId: string) {
+  return Object.assign(() => {
+    throw new Error(`client RPC ${functionId} called: no server to fetch`)
+  }, createClientRpc(functionId))
+}
+
+/**
+ * The Start packages of a framework, in `env`: Start's real runtime
+ * (`./start-runtime`) for `@tanstack/<framework>-start` and its
+ * `/server-rpc` entry. The RPCs of callers are the only stand-ins: a client
+ * RPC is Start's own without its fetch (`unlinkedClientRpc`); an SSR RPC
+ * resolves the provider's handler by id, which only an SSR bundle can do
+ * (`createServerGraph`), and elsewhere cannot be called. A client RPC in
+ * the server runtime throws: SSR callers must use their own RPC.
+ */
 function startRuntime(
   framework: Framework,
   env: RuntimeEnv = 'client',
-): Record<string, string> {
+): Record<string, ModuleStub> {
   const start = `@tanstack/${framework}-start`
   return {
-    [start]: `
-const uncompiled = () => { throw new Error('uncompiled Start factory') }
-const record = (target, options) =>
-  Object.defineProperty(target, 'options', { value: options, enumerable: false })
-const runHandler = ${env === 'server' ? serverRunHandler : '(options, impl, opts) => impl(opts)'}
-const serverFnBuilder = (options) => {
-  const builder = record(() => serverFnBuilder(options), options)
-  builder.middleware = (middleware) =>
-    serverFnBuilder({ ...options, middleware: [...(options.middleware ?? []), ...middleware] })
-  builder.validator = (validator) => serverFnBuilder({ ...options, validator })
-  builder.handler = (rpc, impl) =>
-    impl
-      ? record(
-          Object.assign((opts) => runHandler(options, impl, opts ?? {}), {
-            __executeServer: (opts) => runHandler(options, impl, opts),
-          }),
-          options,
-        )
-      : ${env === 'server' ? serverCaller : 'record({ rpc }, options)'}
-  return builder
-}
-const middlewareBuilder = (options) => ({
-  options,
-  middleware: (middleware) =>
-    middlewareBuilder({ ...options, middleware: [...(options.middleware ?? []), ...middleware] }),
-  validator: (validator) => middlewareBuilder({ ...options, validator }),
-  client: (client) => middlewareBuilder({ ...options, client }),
-  server: ${env === 'server' ? '(server) => middlewareBuilder({ ...options, server })' : 'uncompiled'},
-})
-export const createServerFn = (options) => serverFnBuilder({ ...options })
-export const createServerOnlyFn = uncompiled
-export const createClientOnlyFn = uncompiled
-export const createIsomorphicFn = uncompiled
-export const createMiddleware = (options) => middlewareBuilder({ ...options })
-export const createStart = (options) => ({
-  options,
-  createMiddleware: (middlewareOptions) =>
-    middlewareBuilder({ ...middlewareOptions }),
-})`,
-    [`${start}/server-rpc`]: `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`,
-    [`${start}/client-rpc`]: `export const createClientRpc = (id) => ({ client: id })`,
-    [`${start}/ssr-rpc`]: `export const createSsrRpc = (id) => ({ ssr: id })`,
+    [start]: startClientCore,
+    [`${start}/server-rpc`]: { createServerRpc },
+    [`${start}/client-rpc`]: {
+      createClientRpc:
+        env === 'client'
+          ? unlinkedClientRpc
+          : foreignRpc('createClientRpc', env),
+    },
+    [`${start}/ssr-rpc`]: {
+      createSsrRpc: unlinkedSsrRpc,
+    },
   }
+}
+
+/**
+ * The id of the RPC a caller's server fn calls: Start's caller metadata
+ * (`serverFnMeta`, only the id). `undefined` when the server fn is no RPC
+ * caller (e.g. its handler was left in place).
+ */
+export function callerRpcId(fn: unknown): string | undefined {
+  if (typeof fn !== 'function') {
+    return undefined
+  }
+  const meta = (fn as { serverFnMeta?: Record<string, unknown> }).serverFnMeta
+  if (
+    meta === undefined ||
+    typeof meta.id !== 'string' ||
+    Object.keys(meta).length !== 1
+  ) {
+    return undefined
+  }
+  return meta.id
 }
 
 /**
@@ -514,7 +508,7 @@ const __jsx = (type, props, ...children) => {
 
 /**
  * A graph of linked modules (`createModuleGraph`) whose imports resolve to
- * `stubs` (by specifier) over the minimal Start runtime of `framework`
+ * `stubs` (by specifier) over the Start runtime of `framework`
  * (default `react`), and whose JSX renders through `runtime` (default:
  * `jsxToText`).
  */
@@ -532,7 +526,7 @@ function createTestModuleGraph(
 /**
  * Evaluates a compiled module like a bundler would: TypeScript is erased, JSX
  * becomes calls of `runtime` (which defines `__jsx` and `__Fragment`), and
- * every import is linked, as a real ES module, to the minimal Start runtime
+ * every import is linked, as a real ES module, to the Start runtime
  * of `framework` (default `react`) for `env` (default `client`), to `stubs`
  * (by specifier; `.json` string stubs are JSON modules) or to the project
  * modules `files` (by absolute id, linked as they are). Every call evaluates
@@ -569,7 +563,7 @@ function isServerOutputs(value: object): value is ServerOutputs {
  * the bundler does: a provider that imports the SSR caller (e.g. its shared
  * state or helpers) gets the instance the SSR caller module is. A module is
  * evaluated only when it is imported. Imports of other modules link to
- * `stubs` (by specifier) over the minimal Start runtime.
+ * `stubs` (by specifier) over the Start runtime.
  */
 export function createServerGraph(
   server: ServerOutputs,
@@ -633,8 +627,27 @@ export function evaluateProvider(
 }
 
 /** A server fn handler a provider module exports. */
-type ProviderHandler = ((opts: { data?: unknown }) => unknown) & {
-  meta?: { id?: string; name?: string }
+type ProviderHandler = ((opts: {
+  data?: unknown
+  context?: unknown
+  method?: string
+}) => unknown) & {
+  serverFnMeta?: { id?: string; name?: string }
+}
+
+/**
+ * The result of a server fn call, from the response its provider handler
+ * gives the server-fn router: `{ result }` (and the `context` server
+ * middleware sends back), or `{ error }` for a failed call, which throws.
+ */
+export function serverFnResult(response: unknown) {
+  expect(response, 'server fn response').toBeTypeOf('object')
+  expect(response, 'server fn response').not.toBeNull()
+  if ('error' in (response as object)) {
+    throw (response as { error: unknown }).error
+  }
+  expect(response, 'server fn response').toHaveProperty('result')
+  return (response as { result: unknown }).result
 }
 
 /**
@@ -642,8 +655,9 @@ type ProviderHandler = ((opts: { data?: unknown }) => unknown) & {
  * provider is evaluated in its SSR bundle, linked to the SSR caller
  * (`createServerGraph`), or given already evaluated (`evaluateProvider`, to
  * call it several times on one instance). The handler is found through the
- * metadata the provider gives it at runtime (`meta.name`, the name of the
- * server fn), not through its export name.
+ * metadata the provider gives it at runtime (`serverFnMeta.name`, the name
+ * of the server fn), not through its export name. Returns the result of the
+ * call (`serverFnResult`).
  */
 export async function callProvider(
   server: ServerOutputs | Record<string, any>,
@@ -658,11 +672,11 @@ export async function callProvider(
     Object.values(module).filter(
       (value): value is ProviderHandler =>
         typeof value === 'function' &&
-        (value as ProviderHandler).meta?.name === name,
+        (value as ProviderHandler).serverFnMeta?.name === name,
     ),
   )
   expect(handlers.size, `provider handlers named ${name}`).toBe(1)
-  return [...handlers][0]!({ data })
+  return serverFnResult(await [...handlers][0]!({ data }))
 }
 
 /**
@@ -683,7 +697,7 @@ export async function callReportedServerFns(
     const module = await graph.import(fn.extractedFilename)
     const handler = module[fn.functionName]
     expect(handler, fn.functionName).toBeTypeOf('function')
-    results.push(await handler({ data: undefined }))
+    results.push(serverFnResult(await handler({ data: undefined })))
   }
   return results
 }
@@ -805,7 +819,8 @@ export async function expectNoClientHandler(code: string) {
  * provider module and export, in the SSR bundle) carries that id in its
  * metadata; in an SSR bundle of its own, calling the server fn from the SSR
  * caller returns what the handler returns, whether the SSR caller calls it
- * by id or keeps it in place. Project modules (`compiled.files`) are linked
+ * by id or runs it in place (`.handler(extractedFn, serverFn)`, like the
+ * provider). Project modules (`compiled.files`) are linked
  * as they are. Returns what the handler returns.
  */
 export async function callServerFnThroughCallers(
@@ -820,22 +835,73 @@ export async function callServerFnThroughCallers(
       stubs,
       framework: compiled.framework,
     }).import(id),
-  ) as { rpc: { client: string } }
-  expect(client, 'client').toEqual({ rpc: { client: expect.any(String) } })
-  const functionId = client.rpc.client
+  )
+  const functionId = callerRpcId(client)!
+  expect(functionId, 'client RPC id').toEqual(expect.any(String))
   const reported = compiled.serverFns[functionId]
   expect(reported, 'reported server fn').toBeDefined()
   const handler = (
     await createServerGraph(compiled, stubs).import(reported!.extractedFilename)
   )[reported!.functionName] as ProviderHandler
-  expect(handler?.meta?.id, 'provider handler id').toBe(functionId)
-  const result = await handler({ data: undefined })
+  expect(handler?.serverFnMeta?.id, 'provider handler id').toBe(functionId)
+  const result = serverFnResult(await handler({ data: undefined }))
   const ssr = read(await createServerGraph(compiled, stubs).ssr())
   expect(ssr, 'ssr').toBeTypeOf('function')
   expect(await (ssr as ProviderHandler)({ data: undefined }), 'ssr').toEqual(
     result,
   )
   return result
+}
+
+/**
+ * Calls a server fn from the client, through Start's real client runtime:
+ * the server fn `read` finds in the evaluated client caller runs its
+ * client middleware, then its RPC reaches the handler the callers reported
+ * for that id, in the SSR bundle (`createServerGraph`), with the data,
+ * context and method the client sends, like Start's server-fn handler does
+ * (without the HTTP round trip and its serialization). Returns what the
+ * call returns.
+ */
+export async function callFromClient(
+  compiled: Awaited<ReturnType<typeof compileAll>>,
+  read: (module: Record<string, any>) => unknown,
+  data?: unknown,
+  stubs: Record<string, ModuleStub> = {},
+) {
+  const id = compiled.id ?? moduleId
+  const server = createServerGraph(compiled, stubs)
+  const clientRpc = (functionId: string) =>
+    Object.assign(
+      async (payload: { data?: unknown; context?: unknown; method?: string }) => {
+        const reported = compiled.serverFns[functionId]
+        if (!reported) {
+          throw new Error(`no server fn reported for ${functionId}`)
+        }
+        const handler = (await server.import(reported.extractedFilename))[
+          reported.functionName
+        ] as ProviderHandler
+        return handler({
+          data: payload.data,
+          context: payload.context,
+          method: payload.method,
+        })
+      },
+      createClientRpc(functionId),
+    )
+  const client = read(
+    await createTestModuleGraph({
+      modules: { ...compiled.files, [id]: compiled.client },
+      stubs: {
+        [`@tanstack/${compiled.framework ?? 'react'}-start/client-rpc`]: {
+          createClientRpc: clientRpc,
+        },
+        ...stubs,
+      },
+      framework: compiled.framework,
+    }).import(id),
+  )
+  expect(callerRpcId(client), 'client RPC id').toEqual(expect.any(String))
+  return (client as (opts: { data?: unknown }) => Promise<unknown>)({ data })
 }
 
 /** The directives of a module's directive prologue, in order. */

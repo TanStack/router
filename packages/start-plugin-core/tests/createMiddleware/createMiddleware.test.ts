@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
 import {
+  callFromClient,
+  compileAll,
   compileCode,
+  createServerGraph,
   createStartCompiler,
   evaluateModule,
   importSources,
@@ -28,8 +31,8 @@ const uncompiled = () => {
 }
 
 /**
- * Start's own middleware factory module, as the client runtime runs it:
- * `.server()` throws, like the runtime stub's when it is called uncompiled.
+ * Start's own middleware factory module, stubbed so that calling
+ * `.server()` fails: a module evaluates only without it.
  */
 const middlewareFactoryStub = {
   createMiddleware: () => ({ server: uncompiled }),
@@ -52,7 +55,9 @@ const myMiddleware = createMiddleware({ type: 'function' })
 
   test('keeps a middleware without a server function on the client', async () => {
     const code = `import { createMiddleware } from '@tanstack/react-start'
-export const logger = createMiddleware().client(async ({ next }) => next())`
+export const logger = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => next(),
+)`
     const { logger } = await evaluateModule(
       (await compileCode('client', code)) ?? code,
     )
@@ -165,8 +170,7 @@ export const middleware = middlewareModule.createMiddleware().server(() => {
 // The client keeps what a middleware runs in the browser (`.client()`, the
 // chain itself) and drops its server part: `.server()`, `.validator()` (the
 // validator only runs on the server) and the code and imports only they
-// read. The runtime stub's `.server()` throws, so the client modules only
-// evaluate without it.
+// read.
 // Replaces the former snapshot fixtures of this directory (N3).
 describe('the client keeps the browser part of a middleware', () => {
   const stubs = {
@@ -187,14 +191,15 @@ describe('the client keeps the browser part of a middleware', () => {
       await evaluateClient(`import { createMiddleware } from '@tanstack/react-start'
 import { foo } from '@some/lib'
 export const fnMw = createMiddleware({ type: 'function' })
+  .client(() => 'client')
   .server(({ next }) => {
     foo()
     return next()
-  })
-  .client(() => 'client')`)
+  })`)
     expect(importSources(client)).toEqual([])
     expect(module.fnMw.options.type).toBe('function')
     expect(module.fnMw.options.client()).toBe('client')
+    expect(module.fnMw.options.server).toBeUndefined()
   })
 
   // Source: snapshot fixtures createMiddlewareDestructured.tsx,
@@ -203,38 +208,40 @@ export const fnMw = createMiddleware({ type: 'function' })
     const { client, module } =
       await evaluateClient(`import { createMiddleware } from '@tanstack/react-start'
 import { z } from 'zod'
-export const withFunction = createMiddleware({ id: 'function' }).server(
-  async function () {
+export const withFunction = createMiddleware({ type: 'function' })
+  .client(() => 'function')
+  .server(async function () {
     return z.number()
-  },
-)
-export const withArrow = createMiddleware({ id: 'arrow' }).server(async () =>
-  z.number(),
-)
-export const withVariable = createMiddleware({ id: 'variable' }).server(
-  abstractedFunction,
-)
+  })
+export const withArrow = createMiddleware({ type: 'function' })
+  .client(() => 'arrow')
+  .server(async () => z.number())
+export const withVariable = createMiddleware({ type: 'function' })
+  .client(() => 'variable')
+  .server(abstractedFunction)
 async function abstractedFunction() {
   return z.number()
 }
 function zodValidator(schema: unknown, fn: (input: unknown) => unknown) {
   return async (input: unknown) => fn([schema, input])
 }
-export const withWrapper = createMiddleware({ id: 'wrapper' }).server(
-  zodValidator(z.number(), (input) => ({ 'you gave': input })),
-)`)
+export const withWrapper = createMiddleware({ type: 'function' })
+  .client(() => 'wrapper')
+  .server(zodValidator(z.number(), (input) => ({ 'you gave': input })))`)
     expect(importSources(client)).toEqual([])
     expect(declaredNames(client)).not.toContain('abstractedFunction')
     expect(declaredNames(client)).not.toContain('zodValidator')
+    const names = ['withFunction', 'withArrow', 'withVariable', 'withWrapper']
     expect(
-      ['withFunction', 'withArrow', 'withVariable', 'withWrapper'].map(
-        (name) => module[name].options,
-      ),
+      names.map((name) => [
+        module[name].options.client(),
+        module[name].options.server,
+      ]),
     ).toEqual([
-      { id: 'function' },
-      { id: 'arrow' },
-      { id: 'variable' },
-      { id: 'wrapper' },
+      ['function', undefined],
+      ['arrow', undefined],
+      ['variable', undefined],
+      ['wrapper', undefined],
     ])
   })
 
@@ -244,11 +251,14 @@ export const withWrapper = createMiddleware({ id: 'wrapper' }).server(
     const { client, module } =
       await evaluateClient(`import { createMiddleware } from '@tanstack/react-start'
 import { z } from 'zod'
-export const withValidator = createMiddleware({ id: 'test' })
+export const withValidator = createMiddleware({ type: 'function' })
   .validator(z.number())
-  .server(({ data }) => data + 1)`)
+  .client(() => 'client')
+  .server(({ data, next }) => next({ context: { value: data + 1 } }))`)
     expect(importSources(client)).toEqual([])
-    expect(module.withValidator.options).toEqual({ id: 'test' })
+    expect(module.withValidator.options.validator).toBeUndefined()
+    expect(module.withValidator.options.server).toBeUndefined()
+    expect(module.withValidator.options.client()).toBe('client')
   })
 
   // Source: snapshot fixture middleware-factory.ts
@@ -271,9 +281,9 @@ export const createAuthMiddleware = (requiredRole) => {
     return next()
   })
 }
-export const topLevelMiddleware = createMiddleware({ id: 'topLevel' }).server(
-  async ({ next }) => next(),
-)`)
+export const topLevelMiddleware = createMiddleware({ type: 'function' })
+  .client(() => 'topLevel')
+  .server(async ({ next }) => next())`)
     expect(importSources(client)).toEqual([])
     expect(module.createPublicRateLimitMiddleware('ip').options).toEqual({
       type: 'function',
@@ -281,7 +291,8 @@ export const topLevelMiddleware = createMiddleware({ id: 'topLevel' }).server(
     expect(module.createAuthMiddleware('admin').options).toEqual({
       type: 'function',
     })
-    expect(module.topLevelMiddleware.options).toEqual({ id: 'topLevel' })
+    expect(module.topLevelMiddleware.options.client()).toBe('topLevel')
+    expect(module.topLevelMiddleware.options.server).toBeUndefined()
   })
 
   // Source: snapshot fixture createStart.tsx (gap MW5)
@@ -289,14 +300,14 @@ export const topLevelMiddleware = createMiddleware({ id: 'topLevel' }).server(
     const { client, module } =
       await evaluateClient(`import { createStart } from '@tanstack/react-start'
 import { audit } from './audit.server'
-export const startInstance = createStart(() => {})
+export const startInstance = createStart(() => ({}))
 export const serverFnMw = startInstance
   .createMiddleware({ type: 'function' })
+  .client(({ next }) => next())
   .server(({ next }) => {
     audit('function')
     return next({ context: { admin: 'admin' } })
   })
-  .client(({ next }) => next())
 export const requestMw = startInstance
   .createMiddleware({ type: 'request' })
   .server(({ next }) => {
@@ -305,6 +316,44 @@ export const requestMw = startInstance
   })`)
     expect(importSources(client)).toEqual([])
     expect(module.serverFnMw.options.client).toBeTypeOf('function')
+    expect(module.serverFnMw.options.server).toBeUndefined()
     expect(module.requestMw.options).toEqual({ type: 'request' })
   })
+})
+
+// A valid full chain (`.middleware().validator().client().server()`) of a
+// middleware a server fn uses, run through Start's runtime: the client runs
+// `.client()` (its send context reaches the server) and ships no server
+// code; on the server, the SSR caller and an HTTP call by id run the
+// validator, `.server()` and the handler, with the context `.server()` adds.
+test('a full middleware chain runs its client part on the client and its server part on the server', async () => {
+  const compiled =
+    await compileAll(`import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+import { check } from './check.server'
+const base = createMiddleware({ type: 'function' }).client(({ next }) =>
+  next({ sendContext: { base: 'base' } }),
+)
+export const auth = createMiddleware({ type: 'function' })
+  .middleware([base])
+  .validator((data: string) => check(data))
+  .client(({ next }) => next({ sendContext: { from: 'client' } }))
+  .server(async ({ next, context }) =>
+    next({ context: { user: db.user(context.from) } }),
+  )
+export const fn = createServerFn({ method: 'POST' })
+  .middleware([auth])
+  .handler(async ({ data, context }) => [data, context.user, context.base])`)
+  const stubs = {
+    './db.server': { db: { user: (from: string) => `user(${from})` } },
+    './check.server': { check: (data: string) => `checked(${data})` },
+  }
+  expect(importSources(compiled.client)).toEqual([])
+  expect(compiled.client).not.toMatch(/db\.user|check\(/)
+  const expected = ['checked(input)', 'user(client)', 'base']
+  expect(
+    await callFromClient(compiled, (module) => module.fn, 'input', stubs),
+  ).toEqual(expected)
+  const ssr = await createServerGraph(compiled, stubs).ssr()
+  expect(await ssr.fn({ data: 'input' })).toEqual(expected)
 })

@@ -10,6 +10,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
+  callerRpcId,
   callProvider,
   clientOnlyError,
   compileFor,
@@ -80,24 +81,24 @@ const constructs: Array<Construct> = [
   {
     name: 'createServerFn',
     code: (callee, wrap) =>
-      `export const fn = ${wrap(`${callee}({ method: 'GET' }).handler(async () => db.x())`)}`,
+      `export const fn = ${wrap(`${callee}({ method: 'POST' }).handler(async () => db.x())`)}`,
     check: async ({ client, ssr, provider, framework, serverFns }) => {
       expect(importSources(client)).not.toContain('./db.server')
       const clientFn = (await evaluateModule(client, stubs, { framework })).fn
-      expect(clientFn).toEqual({ rpc: { client: expect.any(String) } })
-      expect(serverFns).toHaveProperty(clientFn.rpc.client)
+      expect(callerRpcId(clientFn)).toEqual(expect.any(String))
+      expect(serverFns).toHaveProperty(callerRpcId(clientFn)!)
       const graph = createServerGraph(
         { ssr, provider, framework, serverFns },
         stubs,
       )
       const ssrFn = (await graph.ssr()).fn
       expect(await ssrFn()).toBe('x')
-      // The callers keep the builder options (the runtime reads `method`).
+      // The callers keep the builder options (Start exposes `method`).
       for (const [output, fn] of [
         ['client', clientFn],
         ['ssr', ssrFn],
       ] as const) {
-        expect(fn.options, output).toEqual({ method: 'GET' })
+        expect(fn.method, output).toBe('POST')
       }
       expect(
         await callProvider({ ssr, provider, framework }, 'fn', stubs),
@@ -113,8 +114,7 @@ const constructs: Array<Construct> = [
 })`)}`,
     check: async ({ client, ssr, framework }) => {
       expect(importSources(client)).not.toContain('./db.server')
-      // The client runtime's `.server()` throws: the client evaluates only
-      // without it; the server keeps it.
+      // The client drops `.server()`; the server keeps it.
       expect(
         (await evaluateModule(client, stubs, { framework })).mw.options,
       ).toEqual({ type: 'function' })

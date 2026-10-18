@@ -12,6 +12,7 @@ import { buildStart, startBundlers } from './build-harness'
 import {
   callProvider,
   callReportedServerFns,
+  callerRpcId,
   clientOnlyError,
   compileAll,
   compileCode,
@@ -31,6 +32,7 @@ import {
   serverOnlyError,
   serverOnlyModule,
   settle,
+  startClientCore,
 } from './regression-helpers'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
@@ -225,18 +227,8 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
 /** The server-only module, as the provider reads it. */
 const dbStub = { db: { x: () => 'from the server', log: () => 'logged' } }
 
-/**
- * A server fn builder of a project module, as the client (`rpc` only) and
- * the provider (`rpc` and the implementation) call it.
- */
-const serverFnBuilderStub = {
-  handler: (rpc: unknown, impl?: (opts: unknown) => unknown) =>
-    impl
-      ? Object.assign((opts: unknown) => impl(opts ?? {}), {
-          __executeServer: impl,
-        })
-      : { rpc },
-}
+/** A server fn builder of a project module (Start's real builder). */
+const serverFnBuilderStub = startClientCore.createServerFn()
 
 /**
  * Asserts the client output of `code` (with project modules `files`, linked
@@ -252,7 +244,7 @@ async function expectServerFnThroughRpc(
   expect(importSources(client)).not.toContain(serverOnly)
   const linked = { ...stubs, [serverOnly]: dbStub }
   const { fn } = await evaluateModule(client, linked)
-  expect(fn).toEqual({ rpc: { client: expect.any(String) } })
+  expect(callerRpcId(fn)).toEqual(expect.any(String))
   const { results } = await callServerFns(code, { files, stubs: linked })
   expect(results).toEqual(['from the server'])
 }
@@ -292,7 +284,7 @@ export const via = base.handler(async () => db.x())`,
       const client = (await compile(code, id)) ?? code
       expect(importSources(client), id).not.toContain(serverOnly)
       const { via } = await evaluateModule(client, stubs)
-      expect(via, id).toEqual({ rpc: { client: expect.any(String) } })
+      expect(callerRpcId(via), id).toEqual(expect.any(String))
       const { results } = await callServerFns(code, { files, stubs })
       expect(results, id).toEqual(['from the server'])
     }
@@ -530,21 +522,9 @@ export const fn = Start.createServerFn().handler(async () => db.x())`
     },
   )
 
-  /**
-   * Stub of the `./fns` module of the rows below, as the client (`rpc`
-   * only) and the provider (`rpc` and the implementation) call it.
-   */
+  /** The `./fns` module of the rows below (Start's real builder). */
   const returnedBuilderStub = {
-    './fns': {
-      authed: () => ({
-        handler: (rpc: unknown, impl?: (opts: unknown) => unknown) =>
-          impl
-            ? Object.assign((opts: unknown) => impl(opts ?? {}), {
-                __executeServer: impl,
-              })
-            : { rpc },
-      }),
-    },
+    './fns': { authed: () => startClientCore.createServerFn() },
   }
 
   // Bug: the builder of a `.handler()` chain is resolved through identifiers
@@ -591,7 +571,7 @@ export const fn = authed().handler(async () => db.x())`,
         [serverOnly]: { db: { x: () => 'from the server' } },
       }
       const { fn } = await evaluateModule(client ?? code, stubs)
-      expect(fn).toEqual({ rpc: { client: expect.any(String) } })
+      expect(callerRpcId(fn)).toEqual(expect.any(String))
       const { results } = await callServerFns(code, { files, stubs })
       expect(results).toEqual(['from the server'])
     },
@@ -692,7 +672,7 @@ export const getEnv = withBuilder(
       code: `${head}import { db } from './db.server'
 export const fn = createServerFn()['handler'](async () => db.x())`,
       check: (module: Record<string, any>) =>
-        expect(module.fn).toEqual({ rpc: { client: expect.any(String) } }),
+        expect(callerRpcId(module.fn)).toEqual(expect.any(String)),
     },
     {
       name: 'a middleware server implementation',
@@ -1036,7 +1016,7 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()
           (await compileCode('client', code)) ?? code,
           stubs,
         )
-        expect(module.fn).toEqual({ rpc: { client: expect.any(String) } })
+        expect(callerRpcId(module.fn)).toEqual(expect.any(String))
         return
       }
       const ssr = await createServerGraph(
@@ -2269,7 +2249,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   handler: (rpc, impl) =>
     impl ? Object.assign((opts) => impl(opts ?? {}), { __executeServer: (opts) => impl(opts ?? {}) }) : rpc,
 })`,
-    '@tanstack/react-start/server-rpc': `export const createServerRpc = (meta, fn) => Object.assign(fn, { meta })`,
+    '@tanstack/react-start/server-rpc': `export const createServerRpc = (serverFnMeta, fn) => Object.assign(fn, { serverFnMeta })`,
     '@tanstack/react-start/ssr-rpc': `export const createSsrRpc = (id) => ({ functionId: id })`,
     '@tanstack/react-start/client-rpc': `export const createClientRpc = (id) => ({ functionId: id })`,
   }

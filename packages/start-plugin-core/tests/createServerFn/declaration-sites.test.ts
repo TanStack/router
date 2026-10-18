@@ -3,9 +3,11 @@ import {
   callProvider,
   callServerFnThroughCallers,
   compileAll,
+  compileErrorMessage,
   compileFor,
-  evaluateModule,
   expectNoClientHandler,
+  importSources,
+  misplacedServerFnRejection,
   outputs,
 } from '../regression-helpers'
 import { placementModule, placements } from './placements'
@@ -60,7 +62,9 @@ test.each([
       try {
         result = await compileFor(output, source)
       } catch (error) {
-        expect((error as Error).message, output).not.toMatch(
+        const message = compileErrorMessage(error)
+        expect(message, output).toMatch(misplacedServerFnRejection)
+        expect(message, output).not.toMatch(
           /Expected createServerFn declaration in a statement list/,
         )
         continue
@@ -188,23 +192,77 @@ test.fails.each<PlacementHead>([
     }
     compiled.serverFns = serverFns
     expect(compiled.client, 'client').not.toContain('db.inner()')
+    // The outer handler returns `typeof inner`.
     expect(
-      typeof (await callServerFnThroughCallers(
+      await callServerFnThroughCallers(
         compiled,
         (module) => module.outer,
         { './db.server': { db: { inner: () => 'inner', top: () => 'top' } } },
-      )),
-    ).toBe('string')
+      ),
+    ).toMatch(/^(function|object)$/)
+  },
+)
+
+// Goal (N13, user ruling D13): two functions of a module each declare a
+// server fn under the same local name; each runs its own handler.
+// Today they are left untransformed, rejected or extracted into an invalid
+// provider (pins in known-bugs-start-compiler.test.ts, placement "a function
+// body").
+test.fails.each<PlacementHead>([
+  'createServerFn alone',
+  'another Start factory',
+])(
+  'with %s imported, supports server fns of the same name in two functions',
+  async (importHead) => {
+    const source = placementModule(
+      importHead,
+      `export function makeInner() {
+  const fn = createServerFn().handler(async () => db.inner())
+  return fn
+}
+export function makeTop() {
+  const fn = createServerFn().handler(async () => db.top())
+  return fn
+}`,
+    )
+    const compiled = {} as Awaited<ReturnType<typeof compileAll>>
+    let serverFns: Record<string, ServerFn> = {}
+    for (const output of outputs) {
+      const result = await compileFor(output, source)
+      compiled[output] = result.code ?? source
+      if (output === 'client') {
+        serverFns = result.serverFns
+      }
+    }
+    compiled.serverFns = serverFns
+    const stubs = {
+      './db.server': { db: { inner: () => 'inner', top: () => 'top' } },
+    }
+    expect([
+      await callServerFnThroughCallers(
+        compiled,
+        (module) => module.makeInner(),
+        stubs,
+      ),
+      await callServerFnThroughCallers(
+        compiled,
+        (module) => module.makeTop(),
+        stubs,
+      ),
+    ]).toEqual(['inner', 'top'])
   },
 )
 
 // Sources: TanStack/router#5496 and #5892, where `.handler<T>(...)` was not
 // recognized as a server fn and its body reached the client.
 test.each([
-  { name: 'a type argument', handler: `.handler<number>(() => 1)` },
+  {
+    name: 'a type argument',
+    handler: `.handler<string>(() => 'SERVER_SECRET')`,
+  },
   {
     name: 'a Promise type argument',
-    handler: `.handler<Promise<{ secret: number }>>(async () => ({ secret: 1 }))`,
+    handler: `.handler<Promise<{ secret: string }>>(async () => ({ secret: 'SERVER_SECRET' }))`,
   },
 ])('extracts a server fn whose handler has $name', async ({ handler }) => {
   const compiled = await compileAll(
@@ -212,9 +270,11 @@ test.each([
 export const fn = createServerFn({ method: 'GET' })${handler}`,
   )
   expect(Object.keys(compiled.serverFns)).toHaveLength(1)
-  expect(compiled.client).not.toMatch(/=>\s*(1|\(\{ secret: 1 \}\))/)
+  expect(compiled.client).not.toContain('SERVER_SECRET')
   expect(await callProvider(compiled, 'fn')).toEqual(
-    handler.includes('secret') ? { secret: 1 } : 1,
+    handler.includes('secret:')
+      ? { secret: 'SERVER_SECRET' }
+      : 'SERVER_SECRET',
   )
 })
 
@@ -223,18 +283,31 @@ export const fn = createServerFn({ method: 'GET' })${handler}`,
 // untransformed.
 // Impact: the handler and its imports ship to the client, which calls it
 // in the browser instead of through an RPC.
+// Fix-agnostic: compiling it like a plain chain (an RPC on the client, the
+// handler in the provider) or rejecting it with a clear error both pass.
 // Source: #8504 declaration-sites.test.ts (red on main)
 test.fails(
-  'a server fn created through an optional call chain compiles like a plain chain',
+  'a server fn created through an optional call chain compiles like a plain chain or is rejected',
   async () => {
-    const compiled = await compileAll(
-      `${head}export const fn = createServerFn()?.handler(async () => 'from the server')`,
+    const code = `${head}import { db } from './db.server'
+export const fn = createServerFn()?.handler(async () => db.inner())`
+    const client = await compileFor('client', code).catch(
+      (error: unknown) => ({ error }),
     )
-    expect(compiled.client).not.toContain('from the server')
-    expect((await evaluateModule(compiled.client)).fn).toEqual({
-      rpc: { client: Object.keys(compiled.serverFns)[0] },
-    })
-    expect(await callProvider(compiled, 'fn')).toBe('from the server')
+    if ('error' in client) {
+      expect(compileErrorMessage(client.error)).toMatch(
+        /createServerFn[^]*(optional|\?\.)/i,
+      )
+      return
+    }
+    const compiled = await compileAll(code)
+    expect(importSources(compiled.client)).not.toContain('./db.server')
+    expect(compiled.client).not.toContain('db.inner()')
+    expect(
+      await callServerFnThroughCallers(compiled, (module) => module.fn, {
+        './db.server': { db: { inner: () => 'inner' } },
+      }),
+    ).toBe('inner')
   },
 )
 

@@ -1,6 +1,7 @@
 import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
+  callerRpcId,
   callProvider,
   callServerFnThroughCallers,
   clientOnlyError,
@@ -14,6 +15,7 @@ import {
   outputs,
   serverOnlyError,
   settle,
+  startClientCore,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { ModuleStub, Output } from './regression-helpers'
@@ -116,9 +118,10 @@ export default createMiddleware().server(async ({ next }) => {
     )
     expect(await getModuleErrors(client!)).toEqual([])
     expect(importSources(client!)).toEqual([])
-    // The client runtime's `.server()` throws: the module evaluates only
-    // without it, and the middleware records no server implementation.
-    expect((await evaluateModule(client!)).default.options).toEqual({})
+    // The middleware records no server implementation.
+    expect((await evaluateModule(client!)).default.options).toEqual({
+      type: 'request',
+    })
   })
 
   describe('a middleware chain with a wrapped link', () => {
@@ -1042,9 +1045,9 @@ export const fn = base.handler(async () => db.x())`
     const before = (await compile(importer, '/test/src/a.tsx')) ?? importer
     const { fn: rpc } = await evaluateModule(
       before,
-      stubs({ handler: (handler: unknown) => ({ rpc: handler }) }),
+      stubs(startClientCore.createServerFn()),
     )
-    expect(rpc).toEqual({ rpc: { client: expect.any(String) } })
+    expect(callerRpcId(rpc)).toEqual(expect.any(String))
     files['/test/src/b.ts'] =
       `export const base = { handler: (fn: unknown) => fn }`
     // Bundlers may report the changed module with a query suffix.

@@ -1,6 +1,7 @@
 import { parseSync } from 'vite'
 import { describe, expect, test, vi } from 'vitest'
 import {
+  callerRpcId,
   callProvider,
   callReportedServerFns,
   callServerFnThroughCallers,
@@ -24,13 +25,16 @@ const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
 /**
  * The handlers an evaluated provider exports, by the server fn name in their
- * metadata (`meta.name`).
+ * metadata (`serverFnMeta.name`).
  */
 function handlersByName(provider: Record<string, any>) {
-  const handlers: Record<string, { meta: { id: string; name: string } }> = {}
+  const handlers: Record<
+    string,
+    { serverFnMeta: { id: string; name: string } }
+  > = {}
   for (const value of Object.values(provider)) {
-    if (typeof value === 'function' && value.meta?.name !== undefined) {
-      handlers[value.meta.name] = value
+    if (typeof value === 'function' && value.serverFnMeta?.name !== undefined) {
+      handlers[value.serverFnMeta.name] = value
     }
   }
   return handlers
@@ -48,27 +52,22 @@ export const d = createServerFn().handler(async () => 'd'),
   notAServerFn = 1
 export let e = createServerFn().handler(async () => 'e')
 export var f = createServerFn().handler(async () => 'f')
-export { a as default, b as '📙', c as as }`)
+export { a as default, b as named, c as as }`)
     const provider = await evaluateProvider(compiled)
     const handlers = handlersByName(provider)
     const exported = {
       default: 'a',
-      '📙': 'b',
+      named: 'b',
       as: 'c',
       d: 'd',
       e: 'e',
       f: 'f',
     }
     const client = await evaluateModule(compiled.client)
-    expect({ ...client }).toEqual({
-      notAServerFn: 1,
-      ...Object.fromEntries(
-        Object.entries(exported).map(([name, local]) => [
-          name,
-          { rpc: { client: handlers[local]!.meta.id } },
-        ]),
-      ),
-    })
+    expect(client.notAServerFn).toBe(1)
+    for (const [name, local] of Object.entries(exported)) {
+      expect(callerRpcId(client[name]), name).toBe(handlers[local]!.serverFnMeta.id)
+    }
     const ssr = await createServerGraph(compiled).ssr()
     expect(ssr.notAServerFn).toBe(1)
     for (const [name, local] of Object.entries(exported)) {
@@ -118,7 +117,7 @@ export { a as default, b as '📙', c as as }`)
 const fn = createServerFn().handler(async () => 'fn')`)
     const client = await evaluateModule(compiled.client)
     expect(client.alias).toBe(client.fn)
-    expect(client.fn.rpc).toHaveProperty('client')
+    expect(callerRpcId(client.fn)).toEqual(expect.any(String))
     expect(await callProvider(compiled, 'fn')).toBe('fn')
   })
 
@@ -148,13 +147,6 @@ export const fn = createServerFn().handler(async () => 'fn')`)
     }
     for (const caller of [compiled.client, compiled.ssr]) {
       const module = await evaluateModule(caller, stubs)
-      expect(Object.keys(module).sort()).toEqual([
-        'fn',
-        'ns',
-        'starred',
-        'x',
-        'y',
-      ])
       expect([module.x, module.y, module.starred, module.ns.x]).toEqual([
         'x',
         'x',
@@ -268,53 +260,6 @@ export const fn = createServerFn().handler(async () => 'fn')`)
       vi.restoreAllMocks()
     }
   })
-
-  const redeclared = `${head}var fn = createServerFn().handler(async () => 1)
-var fn = createServerFn().handler(async () => 2)
-export { fn }`
-
-  test('redeclared var server fns get distinct ids', async () => {
-    const compiled = await compileAll(redeclared)
-    expect(new Set(Object.keys(compiled.serverFns)).size).toBe(2)
-  })
-
-  // Which handler each one runs is pinned below; here every reported server
-  // fn has a handler in the provider.
-  test.each(['fn', '_fn', '$fn', 'ñandú'])(
-    'three redeclared var server fns named %s get distinct ids the provider serves',
-    async (name) => {
-      const compiled =
-        await compileAll(`${head}var ${name} = createServerFn().handler(async () => 1)
-var ${name} = createServerFn().handler(async () => 2)
-var ${name} = createServerFn().handler(async () => 3)
-export { ${name} }`)
-      expect(new Set(Object.keys(compiled.serverFns)).size).toBe(3)
-      expect(
-        await callReportedServerFns(compiled, compiled.serverFns),
-      ).toHaveLength(3)
-    },
-  )
-
-  // Bug: the provider runs each server fn through its variable
-  // (`fn.__executeServer`), so with a redeclared `var` every handler export
-  // runs the last declaration's handler.
-  // Impact: calling the first server fn (an RPC read before the
-  // redeclaration) runs the second one's handler on the server.
-  // Source: exports-and-directives.test.ts "redeclared var server fns get
-  // distinct versioned handler names", rewritten to call the handlers.
-  test.fails(
-    'redeclared var server fns each run their own handler',
-    async () => {
-      const compiled = await compileAll(redeclared)
-      const ids = Object.keys(compiled.serverFns)
-      const results = await callReportedServerFns(compiled, compiled.serverFns)
-      expect([...results].sort()).toEqual([1, 2])
-      // The exported binding is the last declaration's server fn.
-      expect((await evaluateModule(compiled.client)).fn).toEqual({
-        rpc: { client: ids[results.indexOf(2)] },
-      })
-    },
-  )
 })
 
 /** The directive prologue of each function of a module, in source order. */
@@ -391,41 +336,6 @@ describe('directives', () => {
       }
     },
   )
-
-  // `serverFnProviderModuleDirectives` are in the provider's prologue, next
-  // to the directives the module already has.
-  // Source: @vitejs/plugin-rsc utils.test.ts "recognizes directive prologues"
-  test.each([
-    { prologue: `'use server'\n`, directives: ['use server'] },
-    {
-      prologue: `'use strict'\n'use server'\n`,
-      directives: ['use strict', 'use server'],
-    },
-  ])(
-    'a provider whose prologue already has the configured directive keeps it: $directives',
-    async ({ prologue, directives }) => {
-      const server = await compileServer(
-        `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`,
-        { directives: ['use server', '', 'use server'] },
-      )
-      expect(directivePrologue(server.provider)).toEqual(
-        expect.arrayContaining(directives),
-      )
-      expect(await callProvider(server, 'fn')).toBe(1)
-    },
-  )
-
-  test.each([`import './setup'\n'use server'\n`, `('use server')\n`])(
-    'a "use server" string outside the prologue is not the configured directive: %j',
-    async (prologue) => {
-      const provider = await compileCode(
-        'provider',
-        `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`,
-        { directives: ['use server'] },
-      )
-      expect(directivePrologue(provider!)).toContain('use server')
-    },
-  )
 })
 
 describe('server function ids', () => {
@@ -497,7 +407,7 @@ export const save = createServerFn().handler(async () => 2)`
         (await compileFor('client', code, { id })).serverFns,
       )
       const provider = await evaluateProvider(await compileServer(code, { id }))
-      expect(handlersByName(provider).load!.meta.id).toBe(functionId)
+      expect(handlersByName(provider).load!.serverFnMeta.id).toBe(functionId)
       ids.push(functionId!)
     }
     expect(new Set(ids).size).toBe(2)

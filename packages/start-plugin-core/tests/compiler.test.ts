@@ -7,6 +7,7 @@ import {
 import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
 import { createStartCompiler as createHostCompiler } from '../src/start-compiler/host'
 import {
+  callerRpcId,
   callProvider,
   clientOnlyError,
   compileCode,
@@ -39,10 +40,9 @@ describe('compiler handles multiple files with different kinds', () => {
 export const fn = createServerFn().handler(() => 'hello')`,
       '/test/src/file1.ts',
     )
-    expect(file1.fn).toEqual({ rpc: { client: expect.any(String) } })
+    expect(callerRpcId(file1.fn)).toEqual(expect.any(String))
 
-    // File 2: Middleware only. The runtime stub's `.server()` throws, so the
-    // module only evaluates without it.
+    // File 2: Middleware only. The client middleware keeps no `.server()`.
     const file2 = await evaluate(
       `import { createMiddleware } from '@tanstack/react-start'
 export const mw = createMiddleware().server(({ next }) => {
@@ -51,7 +51,7 @@ export const mw = createMiddleware().server(({ next }) => {
 })`,
       '/test/src/file2.ts',
     )
-    expect(file2.mw).toBeDefined()
+    expect(file2.mw.options.server).toBeUndefined()
 
     // File 3: IsomorphicFn only
     const file3 = await evaluate(
@@ -78,7 +78,7 @@ export const serverFn = createServerFn().handler(() => 'hello')
 export const isoFn = createIsomorphicFn().client(() => 'client-iso')`,
       '/test/src/file5.ts',
     )
-    expect(file5.serverFn).toEqual({ rpc: { client: expect.any(String) } })
+    expect(callerRpcId(file5.serverFn)).toEqual(expect.any(String))
     expect(file5.isoFn()).toBe('client-iso')
   })
 
@@ -638,9 +638,7 @@ export const personServerFn = createServerFn({ method: 'GET' })
     try {
       const client = await evaluateModule(code!)
       expect(client.width).toBe(42)
-      expect(client.personServerFn).toEqual({
-        rpc: { client: Object.keys(serverFns)[0] },
-      })
+      expect(callerRpcId(client.personServerFn)).toBe(Object.keys(serverFns)[0])
     } finally {
       vi.unstubAllGlobals()
     }
@@ -1057,9 +1055,7 @@ test('compiles a server function through a parenthesized namespace receiver', as
   expect(code).not.toBeNull()
   expect(code).not.toContain('private-server-body')
   expect(Object.keys(serverFns)).toHaveLength(1)
-  expect((await evaluateModule(code!)).fn).toEqual({
-    rpc: { client: Object.keys(serverFns)[0] },
-  })
+  expect(callerRpcId((await evaluateModule(code!)).fn)).toBe(Object.keys(serverFns)[0])
 })
 
 // Source: #8504 compiler.test.ts "preserves a shadowed parenthesized
@@ -1077,8 +1073,8 @@ export function make(Start) {
   expect(make(local)()).toBe('local-runtime-body')
 })
 
-// The client runtime's middleware `.server()` throws uncompiled: the module
-// only evaluates without it.
+// The client output keeps no server implementation; each export still
+// evaluates to what the client runtime gives.
 test.each([
   {
     expression: `(Start).createServerOnlyFn(() => 'private-server-body')`,
