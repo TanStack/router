@@ -247,7 +247,8 @@ describe('the trace of a client import of a denied file', () => {
   test(
     'is the shortest import chain',
     async () => {
-      const server = await startProtectedDevServer({
+      const server = await startProtectedDevServer(
+        {
         'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
         'src/s.ts': `import { secret } from './secret.server'
 export const s = () => secret()
@@ -258,7 +259,14 @@ import { s } from './s'
 export const page = () => c() + s()
 `,
         'src/entry.ts': `export * from './a'\n`,
-      })
+        },
+        {},
+        // Without Vite's pre-transforms, the client transforms `src/c.ts`
+        // before `src/s.ts` (`load()` goes breadth first), so both chains
+        // are in the dev server's module graph when the violation is
+        // reported, whatever the timing.
+        { config: { server: { preTransformRequests: false } } },
+      )
       await server.load('/src/entry.ts')
       const reports = violationReports(server.logs)
       expect(reports).not.toEqual([])
