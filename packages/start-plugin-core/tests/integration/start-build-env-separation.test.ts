@@ -26,7 +26,6 @@ import {
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
-  routerRuntimeFiles,
   runInRequestContext,
   startBundlers,
   startRuntimeLinks,
@@ -169,7 +168,6 @@ export const ${name} = (..._args: Array<unknown>) => '${marker}'
      * (`src/router.ts`) like Start's entries.
      */
     const files = {
-      ...routerRuntimeFiles,
       ...dependency('handlerDep', 'MARK_HANDLER_DEP'),
       ...dependency('baseHandlerDep', 'MARK_BASE_HANDLER_DEP'),
       ...dependency('middlewareServer', 'MARK_MIDDLEWARE_SERVER'),

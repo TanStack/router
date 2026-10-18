@@ -10,7 +10,6 @@ import {
   buildStart,
   callByIdExports,
   callByIdPrelude,
-  routerRuntimeFiles,
   startBundlers,
 } from '../build-harness'
 import type { StartBuild } from '../build-harness'
@@ -19,7 +18,6 @@ const timeout = 60_000
 
 /** An app with server fns in two modules, a route and a lazy module. */
 const appFiles: Record<string, string> = {
-  ...routerRuntimeFiles,
   'src/a.ts': `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler(async () => 'MARK_A')
 `,

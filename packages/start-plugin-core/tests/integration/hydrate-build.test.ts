@@ -12,12 +12,7 @@ import {
   createDevServer,
   evaluateServed,
 } from '@tanstack/compiler-test-utils/dev-server'
-import {
-  buildStart,
-  reactStartPackage,
-  routerRuntimeFiles,
-  startBundlers,
-} from '../build-harness'
+import { buildStart, reactStartPackage, startBundlers } from '../build-harness'
 import { startCompilerPlugin } from '../../src/vite/start-compiler-plugin/plugin'
 import { startDevServer } from '../dev-server'
 import { startRsbuildDevServer } from '../rsbuild-dev-server'
@@ -64,9 +59,29 @@ export const visible = () => 'visible'
     sideEffects: false,
     exports: { '.': './index.js' },
   }),
-  'node_modules/@tanstack/react-router/index.js': `${routerRuntimeFiles[
-    'node_modules/@tanstack/react-router/index.js'
-  ]!.replace(/export const lazyRouteComponent[^]*$/, '')}
+  // The route creation of this stand-in router (routes are their options,
+  // the generated route tree links children) goes with its JSX runtime
+  // above: the real router renders with React. The build harness itself
+  // links the real `@tanstack/react-router`.
+  'node_modules/@tanstack/react-router/index.js': `function createRouteObject(options) {
+  const route = {
+    options,
+    children: undefined,
+    update(extra) {
+      Object.assign(route.options, extra)
+      return route
+    },
+    _addFileChildren(children) {
+      route.children = children
+      return route
+    },
+    _addFileTypes: () => route,
+  }
+  return route
+}
+export const createRootRoute = (options = {}) => createRouteObject(options)
+export const createFileRoute = () => (options = {}) => createRouteObject(options)
+export const lazyFn = (load, name) => async (...args) => (await load())[name](...args)
 export function lazyRouteComponent(load, name = 'default') {
   let loaded
   const Lazy = (props) => {

@@ -10,7 +10,7 @@
  * the same app has some of them.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, routerRuntimeFiles, startBundlers } from '../build-harness'
+import { buildStart, startBundlers } from '../build-harness'
 import { startDevServer } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 
@@ -42,7 +42,6 @@ function devOnlyNamesIn(modules: Array<string>) {
 
 /** An app with a page route whose loader and component carry markers. */
 const files = {
-  ...routerRuntimeFiles,
   'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
@@ -58,7 +57,9 @@ export const Route = createFileRoute('/')({
   'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-  'src/entry.ts': `export { getRouter } from './router'\n`,
+  'src/entry.ts': `export { getRouter } from './router'
+export { renderPath } from '../harness/render'
+`,
 }
 
 describe("dev servers with Start's plugin add route HMR code (controls)", () => {
@@ -101,10 +102,14 @@ describe.each(startBundlers)('%s production build', (bundler) => {
       const { result } = await client.run(`const route = Object.values(
   entry.getRouter().routeTree.children,
 ).find((candidate) => candidate.options.id === '/')
-const { loader, component } = route.options
-await component.preload?.()
-return { loader: await loader(), page: component() }`)
-      expect(result).toEqual({ loader: 'MARK_LOADER', page: 'MARK_PAGE' })
+return {
+  loader: await route.options.loader(),
+  page: await entry.renderPath(entry.getRouter().routeTree, '/'),
+}`)
+      expect(result).toEqual({
+        loader: 'MARK_LOADER',
+        page: expect.stringContaining('MARK_PAGE'),
+      })
     },
     timeout,
   )

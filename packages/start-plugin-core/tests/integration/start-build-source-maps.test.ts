@@ -9,7 +9,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
-import { buildStart, routerRuntimeFiles, startBundlers } from '../build-harness'
+import { buildStart, startBundlers } from '../build-harness'
 import type { StartBundler } from '../build-harness'
 import type { InlineConfig } from 'vite'
 
@@ -145,22 +145,24 @@ async function expectRouteThrowMapsToRouteFile(
     viteConfig,
     sourcemap: true,
     files: {
-      ...routerRuntimeFiles,
       'src/routes/index.tsx': route,
       'src/prefix.ts': `export const prefix = 'MARK'\n`,
       'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-      'entry.ts': `export { getRouter } from './src/router'\n`,
+      'entry.ts': `export { getRouter } from './src/router'
+export { createElement, renderToString } from './harness/render'
+`,
     },
   })
   expect(client.where('_PAGE_THROW')).toBe('lazy')
+  // React renders the loaded split component; its throw is the render's.
   const { result: stack } = await client.run(`const route = Object.values(
   entry.getRouter().routeTree.children,
 ).find((candidate) => candidate.options.id === '/')
 await route.options.component.preload()
 try {
-  route.options.component({})
+  entry.renderToString(entry.createElement(route.options.component))
 } catch (error) {
   return error.stack
 }`)

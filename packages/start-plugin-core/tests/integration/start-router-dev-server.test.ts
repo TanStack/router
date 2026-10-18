@@ -174,7 +174,6 @@ export const Route = createFileRoute('/')({ loader: () => '${loader}', component
 `
       const server = await startDevServer({
         start: { vite: { installDevServerMiddleware: false } },
-        realRouter: true,
         browser: true,
         // Pre-bundled up front, as Vite does for an app that installed them
         // (the router is a linked workspace package here)

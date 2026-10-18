@@ -4,11 +4,7 @@
  * Import protection checks the modules of the source directory (`src`).
  */
 import { describe, expect, test } from 'vitest'
-import {
-  buildStart,
-  routerRuntimeFiles,
-  startBundlers,
-} from '../../build-harness'
+import { buildStart, startBundlers } from '../../build-harness'
 import {
   expectMarkerViolation,
   rejection,
@@ -506,7 +502,6 @@ export const read = () => [String(secret), ok(), fine(), String(s())].join(',')
       const { client } = await buildStart({
         bundler,
         files: {
-          ...routerRuntimeFiles,
           ...deniedModules['a denied file'].files,
           'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { secret } from '../secret.server'
@@ -666,7 +661,6 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
         buildStart({
           bundler,
           files: {
-            ...routerRuntimeFiles,
             ...marked,
             'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { secret } from '../marked'
