@@ -23,6 +23,7 @@ import react from '@vitejs/plugin-react'
 import rsc from '@vitejs/plugin-rsc'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { mergeConfig } from 'vite'
 import {
   workspacePackage,
@@ -34,6 +35,10 @@ import type {
   DevServer,
   DevServerOptions,
 } from '@tanstack/compiler-test-utils/dev-server'
+import type {
+  RsbuildDevServer,
+  RsbuildDevServerOptions,
+} from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
@@ -49,6 +54,22 @@ async function tanstackStartVitePlugin(): Promise<
 > {
   const entry = pathToFileURL(
     path.join(reactStartPackage, 'dist/esm/plugin/vite.js'),
+  ).href
+  const { tanstackStart } = (await import(/* @vite-ignore */ entry)) as {
+    tanstackStart: (options?: Record<string, unknown>) => unknown
+  }
+  return tanstackStart
+}
+
+/**
+ * `tanstackStart` of the built `@tanstack/react-start/plugin/rsbuild`, what
+ * an app's `rsbuild.config.ts` imports.
+ */
+async function tanstackStartRsbuildPlugin(): Promise<
+  (options?: Record<string, unknown>) => unknown
+> {
+  const entry = pathToFileURL(
+    path.join(reactStartPackage, 'dist/esm/plugin/rsbuild.js'),
   ).href
   const { tanstackStart } = (await import(/* @vite-ignore */ entry)) as {
     tanstackStart: (options?: Record<string, unknown>) => unknown
@@ -152,12 +173,96 @@ export async function startRscDevServer(
   })
 }
 
+export interface RscRsbuildDevServerOptions extends Omit<
+  RsbuildDevServerOptions,
+  'dir' | 'plugins' | 'entry'
+> {
+  /** Start's plugin options (`tanstackStart(options)`), `rsc` enabled. */
+  start?: Record<string, unknown>
+  /**
+   * Runs the server with the app root as the working directory, as
+   * `rsbuild dev` in the app does (default `true`). With `false`, the test
+   * process's directory stays (`rsbuild dev --root <app>` from elsewhere).
+   */
+  inAppDirectory?: boolean
+}
+
+/**
+ * Starts an Rsbuild dev server on a React Start app with RSC enabled, of
+ * `files` over `rscAppFiles`, with the built `@tanstack/react-start/plugin/
+ * rsbuild` (Start's client and SSR environments, its default entries, the
+ * RSC layer and `react-server-dom-rspack`). React's JSX runtime is
+ * configured as `@rsbuild/plugin-react` does (this package has no such
+ * dependency). With `browser`, Start's own dev middleware serves the pages
+ * (SSR) and Rsbuild's HMR client runs in the page.
+ */
+export async function startRscRsbuildDevServer(
+  options: RscRsbuildDevServerOptions,
+): Promise<RsbuildDevServer> {
+  const {
+    files,
+    start,
+    config,
+    inAppDirectory = true,
+    ...devServerOptions
+  } = options
+  const tanstackStart = await tanstackStartRsbuildPlugin()
+  const cwd = process.cwd()
+  try {
+    return await createRsbuildDevServer({
+      dir: harnessDir,
+      prefix: '.rsc-rsbuild-dev-server-',
+      registerCleanup: onTestFinished,
+      ...devServerOptions,
+      // Start's plugin defines the entries of its environments (the harness
+      // default is overridden by its client entry of the same name).
+      entry: 'src/router.tsx',
+      files: { ...rscAppFiles, ...files },
+      symlinks: {
+        ...workspacePackageLinks([
+          '@tanstack/react-start',
+          '@tanstack/react-start-rsc',
+        ]),
+        ...devServerOptions.symlinks,
+      },
+      config: {
+        ...config,
+        tools: {
+          // Start serves the pages, not an HTML template
+          htmlPlugin: false,
+          swc: {
+            jsc: {
+              transform: {
+                react: { runtime: 'automatic', development: true },
+              },
+            },
+          },
+          ...config?.tools,
+        },
+      },
+      plugins: [
+        {
+          name: 'rsc-app:working-directory',
+          setup(api) {
+            if (inAppDirectory) {
+              process.chdir(api.context.rootPath)
+            }
+          },
+        },
+        tanstackStart({ ...start, rsc: { enabled: true } }) as never,
+      ],
+    })
+  } finally {
+    process.chdir(cwd)
+  }
+}
+
 /**
  * Opens `pathname` of a dev server with `browser` in a real page, closed
  * when the current test finishes unless `registerCleanup` says otherwise.
  */
 export function openRscPage(
-  server: Pick<DevServer, 'url'>,
+  server: Pick<DevServer | RsbuildDevServer, 'url'>,
   pathname: string,
   options: { registerCleanup?: (cleanup: () => Promise<void>) => void } = {},
 ): Promise<BrowserPage> {

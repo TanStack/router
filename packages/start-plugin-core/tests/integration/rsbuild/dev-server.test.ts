@@ -3,7 +3,8 @@
  * module rebuilds every client module compiled against it.
  */
 import vm from 'node:vm'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
   runInClient,
   startRsbuildDevServer,
@@ -110,45 +111,132 @@ return requests`,
 })
 
 describe('Rsbuild dev with HMR: editing a server fn module', () => {
-  // The client gets an edit as a hot update (Rsbuild's default, `dev.hmr`):
-  // the hot-update chunk of a server fn module carries the client's edit,
-  // and the edited handler stays on the server.
-  // Source: audit E2 missing coverage #4 (the Rsbuild hot-update path never
-  // ran in tests).
-  test(
-    "the client's hot update has the edited client code and not the edited handler, which the server runs",
-    async () => {
-      const fns = (
-        version: string,
-      ) => `import { createServerFn } from '@tanstack/react-start'
-export const greet = createServerFn().handler(async () => 'MARK_HANDLER_${version}')
-export const label = () => 'MARK_LABEL_${version}'
+  /**
+   * `src/routes/index.tsx` declares a server fn whose handler returns
+   * `MARK_HANDLER_*`, a loader calling it, and a page showing the loader's
+   * result, its label, the result of its last call from the browser and a
+   * counter (its state).
+   */
+  const route = (
+    version: string,
+  ) => `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+const greet = createServerFn().handler(async () => 'MARK_HANDLER_${version}')
+export const Route = createFileRoute('/')({
+  loader: () => greet(),
+  component: Page,
+})
+function Page() {
+  const label = Route.useLoaderData()
+  const [called, setCalled] = useState('')
+  const [count, setCount] = useState(0)
+  return (
+    <main>
+      <p data-testid="label">MARK_LABEL_${version} {label}</p>
+      <p data-testid="called">called {called}</p>
+      <button data-testid="call" onClick={() => greet().then(setCalled)}>call</button>
+      <button data-testid="count" onClick={() => setCount(count + 1)}>count {count}</button>
+    </main>
+  )
+}
 `
+
+  // A real page runs Start's Rsbuild dev server with its HMR client
+  // (Rsbuild's default, `dev.hmr`): after an edit of a route module with a
+  // server fn, the page applies the hot update (its loader runs the new
+  // handler) and the next call from the page runs the new handler, without
+  // a full reload; the client's hot update carries the edited client code
+  // and never the handler. (What the edited component shows is route HMR's
+  // business, router-plugin's page tests with React Refresh; this app has
+  // no `@rsbuild/plugin-react`.)
+  // Source: audit E2 missing coverage #4 (the Rsbuild hot-update path never
+  // ran in tests); FIX-PLAN S12 (A13).
+  test(
+    'the page applies the hot update of an edited server fn module and the next call runs the edited handler, without a full reload',
+    async () => {
       const server = await startRsbuildStartDevServer({
         hmr: true,
+        browser: true,
+        config: {
+          tools: {
+            // Start serves the pages, not an HTML template
+            htmlPlugin: false,
+            // React's JSX runtime, as `pluginReact()` of a React Start app
+            // configures it
+            swc: {
+              jsc: {
+                transform: {
+                  react: { runtime: 'automatic', development: true },
+                },
+              },
+            },
+          },
+        },
         files: {
-          'src/fns.ts': fns('V1'),
-          'src/entry.ts': `export { greet, label } from './fns'\n`,
+          'harness/client-entry.ts': `import { createElement } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { StartClient } from '@tanstack/react-start/client'
+hydrateRoot(document, createElement(StartClient))
+`,
+          'harness/server-entry.ts': `export { default } from '@tanstack/react-start/server-entry'\n`,
+          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+          'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
+export const Route = createRootRoute({ component: Root })
+function Root() {
+  const hydrated = useHydrated()
+  return (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <div id="app"><Outlet /></div>
+        <span data-testid="hydrated">{hydrated ? 'hydrated' : 'hydrating'}</span>
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+`,
+          'src/routes/index.tsx': route('V1'),
         },
       })
-      await server.edit({ 'src/fns.ts': fns('V2') })
       expect(server.errors).toEqual([])
-      // The client's compile of the edit may end after `edit()` returned
-      // (bounded wait)
-      let update = ''
-      for (const deadline = Date.now() + 10_000; Date.now() < deadline; ) {
-        update = Object.values(await server.hotUpdates('client')).join('\n')
-        if (update.includes('MARK_LABEL_V2')) {
-          break
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100))
-      }
+      const page = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await page.waitForText('MARK_LABEL_V1 MARK_HANDLER_V1', {
+        selector: '[data-testid=label]',
+      })
+      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+      await page.page.locator('[data-testid=count]').click()
+      await page.waitForText('count 1', { selector: '[data-testid=count]' })
+      await page.page.locator('[data-testid=call]').click()
+      await page.waitForText('called MARK_HANDLER_V1', {
+        selector: '[data-testid=called]',
+      })
+
+      await server.edit({ 'src/routes/index.tsx': route('V2') })
+      expect(server.errors).toEqual([])
+      await page.waitForText('MARK_HANDLER_V2', {
+        selector: '[data-testid=label]',
+      })
+      await page.page.locator('[data-testid=call]').click()
+      await page.waitForText('called MARK_HANDLER_V2', {
+        selector: '[data-testid=called]',
+      })
+      expect(page.loads()).toBe(1)
+      // The client's hot update has the client code and not the handler
+      const update = Object.values(await server.hotUpdates('client')).join('\n')
       expect({
         label: update.includes('MARK_LABEL_V2'),
         handler: update.includes('MARK_HANDLER_V2'),
       }).toEqual({ label: true, handler: false })
-      const ssr = Object.values(await server.outputs('ssr')).join('\n')
-      expect(ssr).toContain('MARK_HANDLER_V2')
+      expect(page.errors).toEqual([])
     },
     timeout,
   )

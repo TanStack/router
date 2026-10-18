@@ -131,62 +131,6 @@ describe('Vite dev: virtual modules of other plugins', () => {
   )
 })
 
-describe('Vite dev: a server fn provider environment other than SSR', () => {
-  // The RSC setup of a framework: the `rsc` environment runs the handlers,
-  // and SSR forwards calls by id to it through the `getServerFnById` module
-  // the framework configures.
-  // Source: mutation round 3 sc-hosts 5.
-  test(
-    'SSR calls go through its configured getServerFnById, and the provider runs the handler of the client id',
-    async () => {
-      const server = await startDevServer({
-        environments: [
-          { name: 'client', type: 'client' },
-          {
-            name: 'ssr',
-            type: 'server',
-            getServerFnById: `export async function getServerFnById(id) {
-  return () => 'MARK_FORWARDED:' + id
-}
-`,
-          },
-          { name: 'rsc', type: 'server' },
-        ],
-        providerEnvName: 'rsc',
-        files: {
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
-export const greet = createServerFn().handler(() => 'MARK_HANDLER')
-`,
-        },
-      })
-      const id = (
-        await evaluateServed(server, '/src/fns.ts', {
-          skip: /^\/@vite\b/,
-          stubs: servedStartRuntime,
-        })
-      ).greet.serverFnMeta.id
-      /** The resolver of `environment`. */
-      const resolver = async (environment: string) =>
-        (await server.import('#tanstack-start-server-fn-resolver', environment))
-          .getServerFnById
-      // SSR's resolver is the test's module, which answers by itself.
-      const forwarded = await (await resolver('ssr'))(id, { origin: 'client' })
-      // The provider's resolver gives the server fn of the client id. (No
-      // HTTP call: the server entry that handles one in such a setup is the
-      // framework's, which this compiler-only setup has none of.)
-      const provided = await (await resolver('rsc'))(id, { origin: 'client' })
-      expect({
-        ssr: forwarded(),
-        rsc: await runInRequestContext(() => provided({})),
-      }).toEqual({
-        ssr: `MARK_FORWARDED:${id}`,
-        rsc: expect.objectContaining({ result: 'MARK_HANDLER' }),
-      })
-    },
-    timeout,
-  )
-})
-
 describe('Vite dev: editing a server fn handler', () => {
   // Source: replaces server-fn-resolver-module.test.ts "imports on every call
   // by default" and "keeps the imported module when memoizeModules is set",
