@@ -7,6 +7,11 @@ import { describe, expect, test } from 'vitest'
 import { declaredNames, getModuleErrors } from '../src/validate-module'
 
 describe('getModuleErrors', () => {
+  /** A factory pragma that does not lead the module. */
+  const nonLeadingPragma = `import { h } from 'preact'
+/** @jsx h */
+export const Page = () => <div>{h('i', null)}</div>`
+
   test('rejects syntax errors and duplicate bindings', async () => {
     expect(await getModuleErrors('export const = 1')).not.toEqual([])
     expect(
@@ -34,10 +39,9 @@ export const Page = () => <div />`),
     ).toEqual(['`jsx` is referenced but never declared or imported'])
   })
 
-  // A `@jsx`/`@jsxFrag` pragma without `@jsxRuntime`/`@jsxImportSource` only
-  // works as written under a classic default runtime (SWC and Babel reject it
-  // under the automatic runtime, Oxc and esbuild ignore it), so the module is
-  // checked as classic: its factory and fragment names must exist.
+  // In a project whose JSX runtime is classic, Oxc compiles JSX with the
+  // factory and fragment of the `@jsx`/`@jsxFrag` pragmas that lead the
+  // module, and with `React.createElement` otherwise: those names must exist.
   test.each([
     {
       name: '`@jsx` alone, factory declared',
@@ -76,15 +80,53 @@ export const Page = () => <><div /></>`,
     },
     {
       // Oxc only reads the pragmas that lead the module: below an import, the
-      // pragma still marks a classic project, whose default factory Oxc uses.
+      // project's default factory applies.
       name: '`@jsx` below an import, default factory missing',
-      code: `import { h } from 'preact'
-/** @jsx h */
-export const Page = () => <div>{h('i', null)}</div>`,
+      code: nonLeadingPragma,
       errors: ['`React` is referenced but never declared or imported'],
     },
-  ])('checks a classic pragma module: $name', async ({ code, errors }) => {
-    expect(await getModuleErrors(code)).toEqual(errors)
+  ])(
+    'checks a module of a classic project: $name',
+    async ({ code, errors }) => {
+      expect(
+        await getModuleErrors(code, 'module.tsx', {
+          jsx: { runtime: 'classic' },
+        }),
+      ).toEqual(errors)
+    },
+  )
+
+  // The same modules in a project whose JSX runtime is automatic (the
+  // default): Oxc ignores a factory pragma there, and the automatic runtime
+  // imports its own factories.
+  test.each([
+    {
+      name: '`@jsx` alone',
+      code: `/** @jsx h */\nexport const Page = () => <div />`,
+    },
+    { name: '`@jsx` below an import', code: nonLeadingPragma },
+  ])(
+    'accepts the factory pragma of a module of an automatic project: $name',
+    async ({ code }) => {
+      expect(await getModuleErrors(code)).toEqual([])
+      expect(
+        await getModuleErrors(code, 'module.tsx', {
+          jsx: { runtime: 'automatic' },
+        }),
+      ).toEqual([])
+    },
+  )
+
+  test('a classic project with its own factory reads that factory', async () => {
+    const code = `export const Page = () => <><div /></>`
+    expect(
+      await getModuleErrors(code, 'module.tsx', {
+        jsx: { runtime: 'classic', pragma: 'h', pragmaFrag: 'Fragment' },
+      }),
+    ).toEqual([
+      '`h` is referenced but never declared or imported',
+      '`Fragment` is referenced but never declared or imported',
+    ])
   })
 
   // The automatic runtime imports its factories: nothing to declare. A
@@ -303,18 +345,75 @@ export function subscribe() {
     ).toEqual([])
   })
 
-  // Browsers define window properties with generic names. A module that
-  // reads one without declaring it most likely lost a local binding.
-  test('rejects a read of a generic window property name', async () => {
+  // Browsers define window properties with generic names: reading one is
+  // valid code.
+  test('accepts reads of browser globals with generic names', async () => {
     expect(
       await getModuleErrors(
         `export const read = () => [name, status, event, parent, top]`,
       ),
-    ).toEqual(
-      ['name', 'status', 'event', 'parent', 'top'].map(
-        (name) => `\`${name}\` is referenced but never declared or imported`,
-      ),
+    ).toEqual([])
+  })
+
+  // A compiled module that reads a name its source binds, without a binding
+  // of its own, lost the local: it reads a global (or nothing) instead.
+  describe('with the source module', () => {
+    test.each([
+      {
+        name: 'a dropped declaration named like a browser global',
+        source: `const status = 'ready'
+export const read = () => status`,
+        code: `export const read = () => status`,
+        lost: 'status',
+      },
+      {
+        name: 'a dropped parameter',
+        source: `export const read = (name: string) => name`,
+        code: `export const read = () => name`,
+        lost: 'name',
+      },
+      {
+        name: 'a dropped import',
+        source: `import { event } from './events'
+export const read = () => event`,
+        code: `export const read = () => event`,
+        lost: 'event',
+      },
+    ])(
+      'rejects a lost local binding: $name',
+      async ({ source, code, lost }) => {
+        expect(await getModuleErrors(code, 'module.ts', { source })).toEqual([
+          `\`${lost}\` is bound in the source module, but read here without a binding`,
+        ])
+      },
     )
+
+    test('accepts the globals the source reads itself, known or not', async () => {
+      const source = `export const read = (top: number) => top
+export const global = () => [status, APP_VERSION]`
+      expect(
+        await getModuleErrors(
+          `export const read = (top) => top
+export const global = () => [status, APP_VERSION]`,
+          'module.ts',
+          { source },
+        ),
+      ).toEqual([])
+    })
+
+    test('accepts a lost local in code tree-shaking deletes', async () => {
+      expect(
+        await getModuleErrors(
+          `function unused() { return status }
+export const read = () => 'ready'`,
+          'module.ts',
+          {
+            source: `const status = 'ready'
+export const read = () => status`,
+          },
+        ),
+      ).toEqual([])
+    })
   })
 
   // User ruling 2026-10-17 (dead-code references, widened): a reference to

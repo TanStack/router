@@ -3,10 +3,11 @@
  * chunk code ends up in, what tree-shaking drops, what side-effect hints
  * change. Writes a small app to disk, builds it with one of the bundlers the
  * router plugin supports, describes the emitted chunks (entry, eager, lazy)
- * and runs the output in a separate Node process (with a jsdom document for
- * client builds). Describing a production client build of Vite, Rspack or
- * webpack rejects chunks that read a name that is neither declared,
- * imported nor a global (`DanglingNameError`).
+ * and runs the output where it runs in an app: SSR output in a separate
+ * Node process, client output in a page of a real browser (headless
+ * Chromium). Describing a production client build of Vite, Rspack or
+ * webpack rejects emitted chunks that read a name that is neither declared,
+ * imported nor a browser global (`DanglingNameError`).
  *
  * Plugin-agnostic: the caller supplies the plugin of each build, and the
  * directory its apps live in (where their imports resolve).
@@ -19,11 +20,14 @@ import {
   symlink,
   writeFile,
 } from 'node:fs/promises'
-import { SourceMap as NodeSourceMap, createRequire } from 'node:module'
+import { createServer } from 'node:http'
+import { SourceMap as NodeSourceMap } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { format } from 'node:util'
 import { runNodeProgram } from './run-node'
+import type { AddressInfo } from 'node:net'
+import type { BrowserPage } from './browser'
 
 export type Bundler = 'vite' | 'rspack' | 'webpack' | 'esbuild'
 
@@ -124,9 +128,9 @@ export interface BundleTarget {
   /**
    * Defaults to `mode === 'production'`, like a real app build, except for
    * Vite SSR builds, which Vite does not minify by default. webpack and
-   * Rspack only drop unused code inside a kept module when minifying (the
-   * dangling-name check of an unminified production client build checks
-   * its chunks as the bundler's minifier emits them).
+   * Rspack only drop unused code inside a kept module when minifying, so
+   * the dangling-name check of their production client builds reads only
+   * minified chunks (see `checkDanglingNames`).
    */
   minify?: boolean
   /** Output directory relative to the app root (default `dist`). */
@@ -201,10 +205,11 @@ export interface BuildResult {
   }
   where: (marker: string | RegExp) => Placement
   /**
-   * Imports the entry in a separate Node process and returns the JSON
-   * value `script` returns. `script` is an async function body with the
-   * entry's exports in scope as `entry` (and a jsdom `document`/`window` as
-   * globals for client builds).
+   * Loads the entry and returns the JSON value `script` returns. `script` is
+   * an async function body with the entry's exports in scope as `entry`.
+   * SSR builds run in a separate Node process; client builds in a page of
+   * headless Chromium that serves the output directory over HTTP (the page
+   * is `/`, with a `<div id="root">`).
    */
   run: (script?: string) => Promise<RunResult>
   /** Removes the app directory. */
@@ -259,7 +264,6 @@ export type BundlerPlugins = Partial<Record<Bundler, (app: AppInfo) => unknown>>
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 const oxcLoader = path.join(harnessDir, 'build-harness-oxc-loader.mjs')
-const require = createRequire(import.meta.url)
 
 const defaultPackageJson = { name: 'app', private: true, type: 'module' }
 
@@ -867,8 +871,11 @@ export interface DescribeBuildInput {
   /** Whether the build minified its output (default: `mode === 'production'`). */
   minify?: boolean
   /**
-   * Whether the chunks are ES modules (the bundler's `output.module`), even
-   * a chunk that neither imports nor exports. Default: the chunks that do.
+   * Whether the chunks are ES modules (the bundler's `output.module`).
+   * Default `true`, as Vite and esbuild always emit and the harness
+   * configures webpack and Rspack. A client run loads an ES module entry
+   * with `import()`, and a classic script entry with the chunks of its group
+   * with `<script>` tags.
    */
   esModules?: boolean
   /** App root on disk. */
@@ -917,14 +924,11 @@ export async function describeBuild(
   if (
     input.env === 'client' &&
     input.mode === 'production' &&
-    bundler !== 'esbuild'
+    (bundler === 'vite' ||
+      ((bundler === 'webpack' || bundler === 'rspack') &&
+        (input.minify ?? true)))
   ) {
-    await checkDanglingNames(
-      bundler,
-      chunks,
-      input.minify ?? true,
-      input.esModules,
-    )
+    await checkDanglingNames(bundler, chunks)
   }
   const entries = chunks.filter((chunk) => chunk.isEntry)
   if (entries.length !== 1) {
@@ -984,13 +988,23 @@ export async function describeBuild(
       return found.lazy.length ? 'lazy' : 'nowhere'
     },
     run: (script = '') =>
-      runEntry({
-        entryFile: path.join(input.outDir, entry.fileName),
-        env: input.env,
-        mode: input.mode,
-        script,
-        entryGlobal: input.entryGlobal,
-      }),
+      input.env === 'client'
+        ? runInBrowser({
+            outDir: input.outDir,
+            entry,
+            // A classic script entry needs the chunks of its group loaded
+            // with it, as the bundler's HTML page would load them.
+            scripts: [...entry.imports, entry.fileName],
+            esModules: input.esModules ?? true,
+            script,
+            entryGlobal: input.entryGlobal,
+          })
+        : runInNode({
+            entryFile: path.join(input.outDir, entry.fileName),
+            mode: input.mode,
+            script,
+            entryGlobal: input.entryGlobal,
+          }),
     dispose: input.dispose,
   }
 }
@@ -1006,17 +1020,17 @@ export async function describeBuild(
  * esbuild is not checked: it is no supported production bundler of the
  * ruling.
  *
- * webpack and Rspack drop unused code inside a module only when minifying,
- * as their production builds do. The chunks of a build that did not minify
- * (`minified: false`, e.g. to test unminified source maps) are checked as the
- * bundler's production minifier would emit them. Rolldown's tree-shaking
- * does not depend on minifying.
+ * The chunks are checked as the build emitted them, when they are what the
+ * bundler ships in production: Rolldown tree-shakes whether it minifies or
+ * not, but webpack and Rspack leave unused code inside a module to their
+ * minifier, with dangling names of their own (Rspack's unminified output of
+ * `@tanstack/react-router` alone reads `useRouter`, `jsx`... without a
+ * binding). So an unminified webpack or Rspack build (`minify: false`) is
+ * not checked.
  */
 async function checkDanglingNames(
   bundler: Exclude<Bundler, 'esbuild'>,
   chunks: Array<Chunk>,
-  minified: boolean,
-  esModules: boolean | undefined,
 ) {
   const [{ unboundNames }, { clientGlobals }] = await Promise.all([
     import('./validate-module'),
@@ -1024,11 +1038,7 @@ async function checkDanglingNames(
   ])
   const dangling: Record<string, Array<string>> = {}
   for (const chunk of chunks) {
-    const code =
-      minified || bundler === 'vite'
-        ? chunk.code
-        : await minifyAsInProduction(bundler, chunk.code, esModules)
-    const names = [...unboundNames(code)].filter(
+    const names = [...unboundNames(chunk.code)].filter(
       (name) => !clientGlobals.has(name),
     )
     if (names.length > 0) {
@@ -1038,56 +1048,6 @@ async function checkDanglingNames(
   if (Object.keys(dangling).length > 0) {
     throw new DanglingNameError(bundler, dangling)
   }
-}
-
-/**
- * A chunk minified the way the bundler's production build minifies it:
- * Rspack's `SwcJsMinimizerRspackPlugin` (which Rsbuild configures too) and
- * webpack's terser both default to `compress: { passes: 2 }` and mangling,
- * and minify ES module output as a module (its top level is not global).
- */
-async function minifyAsInProduction(
-  bundler: 'rspack' | 'webpack',
-  code: string,
-  esModules: boolean | undefined,
-): Promise<string> {
-  const { parseSync } = await import('vite')
-  const { program } = parseSync('chunk.js', code, { sourceType: 'module' })
-  const module =
-    esModules ??
-    program.body.some((statement) => /^(Import|Export)/.test(statement.type))
-  if (bundler === 'rspack') {
-    const { rspack } = await import('@rsbuild/core')
-    const result = await rspack.experiments.swc.minify(code, {
-      compress: { passes: 2 },
-      mangle: true,
-      module,
-    })
-    return result.code
-  }
-  // The terser of webpack's own minimizer
-  const terser = resolveFrom(['webpack', 'minimizer-webpack-plugin', 'terser'])
-  const { minify } = (await import(pathToFileURL(terser).href)) as {
-    minify: (
-      code: string,
-      options: Record<string, unknown>,
-    ) => Promise<{ code?: string }>
-  }
-  const result = await minify(code, {
-    compress: { passes: 2 },
-    mangle: true,
-    module,
-  })
-  return result.code ?? ''
-}
-
-/** Resolves the last package of `chain`, each from the one before it. */
-function resolveFrom(chain: Array<string>): string {
-  let resolved = require.resolve(chain[0]!)
-  for (const name of chain.slice(1)) {
-    resolved = createRequire(resolved).resolve(name)
-  }
-  return resolved
 }
 
 /**
@@ -1171,11 +1131,17 @@ export function originalFrameOf(
   stack: string,
 ): OriginalPosition | undefined {
   for (const [, location, line, column] of stack.matchAll(
-    /((?:file:\/\/)?\/[^\s()]+?):(\d+):(\d+)/g,
+    /((?:file:\/\/|https?:\/\/[^/\s()]+)?\/[^\s()]+?):(\d+):(\d+)/g,
   )) {
+    // A client run serves the output directory at the page's origin.
     const file = location!.startsWith('file:')
       ? fileURLToPath(location!)
-      : location!
+      : /^https?:/.test(location!)
+        ? path.join(
+            build.outDir,
+            decodeURIComponent(new URL(location!).pathname),
+          )
+        : location!
     const chunk = build.chunks.find(
       (candidate) => path.join(build.outDir, candidate.fileName) === file,
     )
@@ -1210,39 +1176,22 @@ export function originalFrameOf(
   return undefined
 }
 
-const jsdomUrl = pathToFileURL(require.resolve('jsdom')).href
-
-/** Installs a jsdom window as the global scope before the entry loads. */
-const domSetup = `const { JSDOM } = await import(${JSON.stringify(jsdomUrl)})
-const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div></body></html>', { url: 'http://localhost/', pretendToBeVisual: true })
-for (const key of Object.getOwnPropertyNames(dom.window)) {
-  if (!(key in globalThis)) {
-    Object.defineProperty(globalThis, key, { configurable: true, get: () => dom.window[key] })
-  }
-}
-for (const key of ['window', 'self', 'document', 'navigator', 'location']) {
-  Object.defineProperty(globalThis, key, { configurable: true, value: dom.window[key] })
-}
-`
-
-async function runEntry(input: {
+/** Runs a server (SSR) entry in a child Node process. */
+async function runInNode(input: {
   entryFile: string
-  env: BuildEnv
   mode: BuildMode
   script: string
   entryGlobal?: string
 }): Promise<RunResult> {
-  const client = input.env === 'client'
   const program = `import { format } from 'node:util'
 const logs = []
 for (const level of ['log', 'info', 'warn', 'error', 'debug']) {
   console[level] = (...args) => { logs.push(format(...args)) }
 }
-${client ? domSetup : ''}
 const entryModule = await import(${JSON.stringify(pathToFileURL(input.entryFile).href)})
 const entry = ${input.entryGlobal ? `globalThis[${JSON.stringify(input.entryGlobal)}]` : 'entryModule'}
 const result = await (async () => { ${input.script} })()
-process.stdout.write(JSON.stringify({ result, logs${client ? ', html: document.body.innerHTML' : ''} }))
+process.stdout.write(JSON.stringify({ result, logs }))
 process.exit(0)
 `
   try {
@@ -1257,6 +1206,138 @@ process.exit(0)
     throw new Error(
       `Running ${input.entryFile} failed:\n${failure.stderr || errorMessage(error)}`,
     )
+  }
+}
+
+/** The page a client run starts from (`/`), before the entry loads. */
+const harnessPage =
+  '<!doctype html><html><head></head><body><div id="root"></div></body></html>'
+
+const contentTypes: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
+  '.cjs': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.map': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.wasm': 'application/wasm',
+}
+
+/**
+ * Serves a build's output directory over HTTP on a free local port, at the
+ * root of the origin (the bundlers' default public path), and the harness
+ * page at `/`.
+ */
+async function serveOutput(directory: string) {
+  const outDir = path.resolve(directory)
+  const server = createServer((request, response) => {
+    const pathname = decodeURIComponent(
+      new URL(request.url ?? '/', 'http://localhost').pathname,
+    )
+    if (pathname === '/') {
+      response.writeHead(200, { 'content-type': 'text/html' })
+      response.end(harnessPage)
+      return
+    }
+    const file = path.join(outDir, pathname)
+    if (!file.startsWith(outDir + path.sep)) {
+      response.writeHead(403).end()
+      return
+    }
+    readFile(file).then(
+      (body) => {
+        response.writeHead(200, {
+          'content-type':
+            contentTypes[path.extname(file)] ?? 'application/octet-stream',
+        })
+        response.end(body)
+      },
+      () => {
+        response.writeHead(404).end()
+      },
+    )
+  })
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  const { port } = server.address() as AddressInfo
+  return {
+    url: `http://127.0.0.1:${port}/`,
+    close: () =>
+      new Promise<void>((resolve) => {
+        server.closeAllConnections()
+        server.close(() => resolve())
+      }),
+  }
+}
+
+/**
+ * Runs a client entry in a page of a real browser (headless Chromium,
+ * `browser.ts`): the output directory is served over HTTP, the page loads
+ * the entry (an ES module with `import()`, a classic script and the chunks
+ * of its group with `<script>` tags), then runs the script. Errors the page
+ * does not catch fail the run.
+ */
+async function runInBrowser(input: {
+  outDir: string
+  entry: Chunk
+  scripts: Array<string>
+  esModules: boolean
+  script: string
+  entryGlobal?: string
+}): Promise<RunResult> {
+  const { openPage } = await import('./browser')
+  const server = await serveOutput(input.outDir)
+  const urlOf = (fileName: string) =>
+    new URL(fileName.split(path.sep).join('/'), server.url).href
+  let page: BrowserPage | undefined
+  try {
+    page = await openPage(server.url)
+    const logs: Array<string> = []
+    const uncaught: Array<string> = []
+    page.page.on('console', (message) => {
+      logs.push(message.text())
+    })
+    page.page.on('pageerror', (error) => {
+      uncaught.push(error.stack ?? error.message)
+    })
+    const load = input.esModules
+      ? `const entryModule = await import(${JSON.stringify(urlOf(input.entry.fileName))})`
+      : `for (const src of ${JSON.stringify(input.scripts.map(urlOf))}) {
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = src
+    script.onload = resolve
+    script.onerror = () => reject(new Error('could not load ' + src))
+    document.head.append(script)
+  })
+}
+const entryModule = undefined`
+    let outcome: string
+    try {
+      outcome = await page.page.evaluate(`(async () => {
+${load}
+const entry = ${input.entryGlobal ? `globalThis[${JSON.stringify(input.entryGlobal)}]` : 'entryModule'}
+const result = await (async () => { ${input.script} })()
+return JSON.stringify({ result, html: document.body.innerHTML })
+})()`)
+    } catch (error) {
+      throw new Error(
+        `Running ${input.entry.fileName} in Chromium failed:\n${[errorMessage(error), ...uncaught].join('\n')}`,
+      )
+    }
+    if (uncaught.length > 0) {
+      throw new Error(
+        `Running ${input.entry.fileName} in Chromium threw errors the page did not catch:\n${uncaught.join('\n')}`,
+      )
+    }
+    return { ...(JSON.parse(outcome) as Omit<RunResult, 'logs'>), logs }
+  } finally {
+    await page?.close()
+    await server.close()
   }
 }
 

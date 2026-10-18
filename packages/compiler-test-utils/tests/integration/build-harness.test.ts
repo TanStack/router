@@ -1,7 +1,8 @@
 /**
  * Control tests of the real-build harness (build-harness.ts): for each
  * bundler, the harness reports eager and lazy placement correctly, `run()`
- * executes SSR and client output, and side-effect hints reach the bundler.
+ * executes SSR output in Node and client output in a real browser, and
+ * side-effect hints reach the bundler.
  */
 import { existsSync } from 'node:fs'
 import path from 'node:path'
@@ -11,6 +12,7 @@ import {
   bundleApp as bundleAppIn,
   bundlers,
   createApp,
+  describeBuild,
   namedSegments,
   originalFrameOf,
 } from '../../src/build-harness'
@@ -354,27 +356,27 @@ describe.each(['vite', 'rspack', 'webpack'] as const)(
       timeout,
     )
 
-    // Browsers define window properties with generic names: a chunk that
-    // reads one without declaring it most likely lost a local binding.
+    // Browsers define window properties with generic names: reading one is
+    // valid code, and the page reads the window's.
     test(
-      'a chunk that reads a dropped local named like a window property fails the build description',
+      'a chunk that reads browser globals with generic names passes and reads them in the browser',
       async () => {
-        await expect(
-          bundleApp({
-            bundler,
-            env: 'client',
-            files: {
-              'entry.ts': `export function read() {
-  return [name, status]
+        const app = await bundleApp({
+          bundler,
+          env: 'client',
+          files: {
+            'entry.ts': `export function read() {
+  return [name, status, typeof parent]
 }
-declare const name: string, status: string
+declare const name: string, status: string, parent: object
 `,
-            },
-          }),
-        ).rejects.toMatchObject({
-          name: 'DanglingNameError',
-          names: { 'entry.mjs': ['name', 'status'] },
+          },
         })
+        expect((await app.run('return entry.read()')).result).toEqual([
+          '',
+          '',
+          'object',
+        ])
       },
       timeout,
     )
@@ -407,6 +409,7 @@ declare const global: unknown, setImmediate: unknown
       timeout,
     )
 
+    // The client runs in a browser, which defines no Node.js global.
     test(
       'a read of a Node-only global a typeof check guards passes, and the build replaces process.env.NODE_ENV',
       async () => {
@@ -428,8 +431,8 @@ declare const setImmediate: unknown
         })
         expect(app.locate(/\bprocess\.env\b/)).toEqual({ eager: [], lazy: [] })
         expect((await app.run('return entry.read()')).result).toEqual([
-          'production',
-          'has setImmediate',
+          false,
+          'none',
           'production',
         ])
       },
@@ -506,63 +509,113 @@ declare const maybeDefined: unknown
   },
 )
 
-// A build that does not minify (e.g. to test unminified source maps) keeps
-// the unused code webpack and Rspack only drop when minifying. Its chunks
-// are checked as the bundler's production minifier emits them.
+// webpack and Rspack drop unused code inside a module only when minifying,
+// and their unminified output has dangling names of its own in that code.
+// The check reads the emitted chunks, so only the minified build, which is
+// what they ship in production, is checked.
 describe.each(['rspack', 'webpack'] as const)(
-  'dangling names in an unminified production client build (%s)',
+  'dangling names in webpack and Rspack production client builds (%s)',
   (bundler) => {
     test(
-      'a dangling name in code the minifier keeps fails the build description',
+      'the minified build deletes dead code with a dangling name and passes; the unminified build keeps it and is not checked',
       async () => {
-        await expect(
-          bundleApp({
-            bundler,
-            env: 'client',
-            minify: false,
-            files: {
-              'entry.ts': `export function read() {
-  return [notDeclaredAnywhere, document.title]
-}
-`,
-            },
-          }),
-        ).rejects.toMatchObject({
-          name: 'DanglingNameError',
-          names: { 'entry.mjs': ['notDeclaredAnywhere'] },
-        })
-      },
-      timeout,
-    )
-
-    test(
-      'a dangling name in code the minifier deletes passes',
-      async () => {
-        const app = await bundleApp({
-          bundler,
-          env: 'client',
-          minify: false,
-          files: {
-            'entry.ts': `function unused() {
+        const files = {
+          'entry.ts': `function unused() {
   return [notDeclaredAnywhere, 'MARK_UNUSED']
 }
 export function read() {
   return 'MARK_USED'
 }
 `,
-          },
-        })
-        // The unminified output still has the unused function
+        }
+        const minified = await bundleApp({ bundler, env: 'client', files })
         expect({
-          used: app.where('MARK_USED'),
-          unused: app.where('MARK_UNUSED'),
-        }).toEqual({ used: 'eager', unused: 'eager' })
-        expect((await app.run('return entry.read()')).result).toBe('MARK_USED')
+          used: minified.where('MARK_USED'),
+          unused: minified.where('MARK_UNUSED'),
+        }).toEqual({ used: 'eager', unused: 'nowhere' })
+        expect((await minified.run('return entry.read()')).result).toBe(
+          'MARK_USED',
+        )
+
+        const unminified = await bundleApp({
+          bundler,
+          env: 'client',
+          minify: false,
+          files,
+        })
+        expect(unminified.where('MARK_UNUSED')).toBe('eager')
+        expect((await unminified.run('return entry.read()')).result).toBe(
+          'MARK_USED',
+        )
       },
       timeout,
     )
   },
 )
+
+describe('client runs in the browser', () => {
+  /** Describes classic script chunks written to an app's `dist`. */
+  async function classicBuild(files: Record<string, string>) {
+    const app = await createApp({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files: Object.fromEntries(
+        Object.entries(files).map(([file, code]) => [`dist/${file}`, code]),
+      ),
+    })
+    return describeBuild({
+      bundler: 'rspack',
+      env: 'client',
+      mode: 'development',
+      esModules: false,
+      root: app.root,
+      outDir: path.join(app.root, 'dist'),
+      chunks: [
+        {
+          fileName: 'static/index.js',
+          isEntry: true,
+          imports: ['static/vendor.js'],
+          dynamicImports: [],
+        },
+        {
+          fileName: 'static/vendor.js',
+          isEntry: false,
+          imports: ['static/index.js'],
+          dynamicImports: [],
+        },
+      ],
+      warnings: [],
+      consoleMessages: [],
+      duration: 0,
+      dispose: app.dispose,
+      entryGlobal: '__entry',
+    })
+  }
+
+  test('a classic script entry loads with the chunks of its group, and the page is /', async () => {
+    const build = await classicBuild({
+      'static/vendor.js': `var vendorValue = 'MARK_VENDOR'\n`,
+      'static/index.js': `globalThis.__entry = { read: () => [vendorValue, this === window, location.pathname] }\n`,
+    })
+    expect((await build.run('return entry.read()')).result).toEqual([
+      'MARK_VENDOR',
+      true,
+      '/',
+    ])
+  })
+
+  test('an error the page does not catch fails the run', async () => {
+    const build = await classicBuild({
+      'static/vendor.js': '',
+      'static/index.js': `globalThis.__entry = {}
+setTimeout(() => { throw new Error('MARK_UNCAUGHT') })
+`,
+    })
+    await expect(
+      build.run('await new Promise((resolve) => setTimeout(resolve, 50))'),
+    ).rejects.toThrow(/MARK_UNCAUGHT/)
+  })
+})
 
 describe('registerCleanup', () => {
   test('receives the dispose() that removes the app directory', async () => {
