@@ -33,11 +33,22 @@ export const fn = base.handler(async () => db.x())
 `,
         },
       })
-      expect(await server.transform('/src/a.tsx')).not.toContain('db.x()')
+      /** The client's `fn` (dependencies loaded from the dev server too). */
+      const clientFn = async () =>
+        (await evaluateServed(server, '/src/a.tsx', { skip: /^\/@vite\b/ }))
+          .fn as () => Promise<unknown>
+      expect(
+        containing(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
+      ).toEqual([])
+      // A server fn: the client calls the server
+      await expect(clientFn().then((fn) => fn())).rejects.toThrow(
+        /^client RPC /,
+      )
 
       await server.edit({ 'src/b.ts': plain })
 
-      expect(await server.transform('/src/a.tsx')).toContain('db.x()')
+      // A plain function now: the client runs it
+      expect(await (await clientFn())()).toBe('MARK_DB_SECRET')
     },
     timeout,
   )
@@ -196,12 +207,14 @@ export const greet = createServerFn().handler(() => 'after')
     timeout,
   )
 
-  // The provider module accepts its own updates: an edit of a module only
-  // handlers read stops there instead of reloading the server.
+  // An edit of a module only handlers read must not reload the server (or
+  // the page): the handler runs the new code. Which server state survives
+  // is Vite's business.
   // Source: the HMR half of exports-and-directives.test.ts "dev providers
-  // export the handler and accept HMR updates" (N16).
+  // export the handler and accept HMR updates" (N16); user ruling 2026-10-18
+  // (no full reload where feasible, no server-state requirement).
   test(
-    'SSR: an edit of a module only the handler reads is a hot update, and the handler runs the new code',
+    'SSR: an edit of a module only the handler reads does not fully reload, and the handler runs the new code',
     async () => {
       const server = await startDevServer({
         files: {
@@ -233,9 +246,6 @@ export const greet = createServerFn().handler(() => db.x())
       expect(
         messages.filter((message) => message.includes('full-reload')),
       ).toEqual([])
-      expect(
-        messages.some((message) => message.startsWith('ssr: update')),
-      ).toBe(true)
       expect(await call()).toBe('after')
     },
     timeout,
