@@ -377,6 +377,31 @@ function normalizeLaneError(
   )
 }
 
+function getSerialContext(
+  router: AnyRouter,
+  lane: Lane<any>,
+  match: WorkMatch,
+  options: ExecuteLaneOptions,
+) {
+  const [location, matches] = lane
+  const preload = !!options[3 /* preload */]
+  return {
+    params: match.params,
+    location,
+    navigate: (opts: any) =>
+      router.navigate({
+        ...opts,
+        _fromLocation: location,
+      }),
+    buildLocation: router.buildLocation,
+    cause: preload ? ('preload' as const) : match.cause,
+    abortController: options[0 /* controller */],
+    preload,
+    matches,
+    routeId: match.routeId,
+  }
+}
+
 async function contextualize(
   router: AnyRouter,
   lane: MatchedLane,
@@ -385,9 +410,8 @@ async function contextualize(
   planSuccessfulLane: () => void,
   retainedEnd: number,
 ): Promise<IndexedOutcome | undefined> {
-  const [location, matches] = lane
+  const matches = lane[1 /* matches */]
   const signal = options[0 /* controller */].signal
-  const preload = !!options[3 /* preload */]
   for (let index = options[6 /* resolvedPrefix */] ?? 0; index < end; index++) {
     const match = matches[index]!
     const route = getRoute(router, match)
@@ -398,21 +422,7 @@ async function contextualize(
     // failed beforeLoad keeps the context it received.
     const parentContext = (match.context =
       matches[index - 1]?.context ?? router.options.context ?? {})
-    const common = {
-      params: match.params,
-      location,
-      navigate: (opts: any) =>
-        router.navigate({
-          ...opts,
-          _fromLocation: location,
-        }),
-      buildLocation: router.buildLocation,
-      cause: preload ? ('preload' as const) : match.cause,
-      abortController: options[0 /* controller */],
-      preload,
-      matches,
-      routeId: route.id,
-    }
+    const common = getSerialContext(router, lane, match, options)
     const previousStatus = match.status
     try {
       // Reuse the route's cached contribution while rebuilding its inheritance.
@@ -2482,6 +2492,8 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       : (option.handler || option)(ctx)
   // A failing match becomes the pending boundary: the client load that follows
   // re-runs it with full redirect, notFound and error handling.
+  const lane = [location, candidates] as unknown as ContextualizedLane
+  const laneOptions = [controller] as unknown as ExecuteLaneOptions
   let failed = contextEnd
   // Development only: the failures a terminal match ignores, reported once no
   // failure above it hands it to the client load.
@@ -2501,21 +2513,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     // context failure of the pending match past the committed prefix is
     // ignored too: the client load runs that match again.
     const terminal = match.status !== 'success' || (match._notFound && !index)
-    const common = {
-      params: match.params,
-      location,
-      navigate: (opts: any) =>
-        router.navigate({
-          ...opts,
-          _fromLocation: location,
-        }),
-      buildLocation: router.buildLocation,
-      cause: match.cause,
-      abortController: controller,
-      preload: false,
-      matches: candidates,
-      routeId: route.id,
-    }
+    const common = getSerialContext(router, lane, match, laneOptions)
     try {
       let routeContext
       try {
@@ -2585,8 +2583,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
 
   // Loaders start together after the serial phase, as in a client lane. A
   // superseded hydration aborted `controller`, so none of them runs then.
-  const lane = [location, candidates] as unknown as ContextualizedLane
-  const laneOptions = [controller] as unknown as ExecuteLaneOptions
   // `onError` belongs to the client load that re-runs a failure, or to a load
   // that adopted a loader's flight after hydration was superseded.
   laneOptions[8] = isCurrent
