@@ -69,7 +69,7 @@ export const fn = createIsomorphicFn()
 export const fn = createServerOnlyFn(() => 'server only value')`,
       '/test/src/file4.ts',
     )
-    expect(settle(file4.fn)).toBe(serverOnlyError)
+    expect(settle(file4.fn)).toEqual(serverOnlyError)
 
     // File 5: Mix of ServerFn and IsomorphicFn
     const file5 = await evaluate(
@@ -666,7 +666,7 @@ export const myFn = createServerOnlyFn(() => 'server-only-value')`)
     const { myFn } = await evaluateModule(result!, {
       '@tanstack/start-client-core': { createServerOnlyFn: uncompiled },
     })
-    expect(settle(myFn)).toBe(serverOnlyError)
+    expect(settle(myFn)).toEqual(serverOnlyError)
   })
 
   test('aliased factory is still detected as a candidate', async () => {
@@ -683,7 +683,7 @@ export const myFn = createSO(() => 'aliased-server-only')`,
     expect(result).not.toBeNull()
     expect(result).not.toContain('aliased-server-only')
     const { myFn } = await evaluateModule(result!)
-    expect(settle(myFn)).toBe(serverOnlyError)
+    expect(settle(myFn)).toEqual(serverOnlyError)
   })
 })
 
@@ -780,7 +780,7 @@ describe('re-export chain resolution', () => {
         fn === 'createIsomorphicFn'
           ? module.getThemeData
           : module.initClientFeature
-      expect(settle(exported)).toBe(value)
+      expect(settle(exported)).toEqual(value)
     },
   )
 
@@ -895,7 +895,7 @@ export const myFn = createServerOnlyFn(() => 'server-only-value')`
       `export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/start-fn-stubs'`
     compiler.invalidateModule('/test/src/factory-inner.ts')
 
-    expect(await run()).toBe(clientOnlyError)
+    expect(await run()).toEqual(clientOnlyError)
   })
 
   // The source module only mentions createServerFn: the factory module
@@ -938,7 +938,7 @@ export const serverFn = createServerFn().handler(async () => {
       `export { createClientOnlyFn as createServerFnHmrFactory } from '@tanstack/start-fn-stubs'`
     compiler.invalidateModule('/test/src/factory.ts')
 
-    expect(await callServerFn()).toBe(clientOnlyError)
+    expect(await callServerFn()).toEqual(clientOnlyError)
   })
 
   // The same with an external transform configured (e.g. the RSC CSS one).
@@ -1105,7 +1105,7 @@ test.each([
     expect(result).not.toBeNull()
     expect(result).not.toContain('private-server-body')
     const { fn } = await evaluateModule(result!)
-    expect(typeof fn === 'function' ? settle(fn) : undefined).toBe(value)
+    expect(typeof fn === 'function' ? settle(fn) : undefined).toEqual(value)
   },
 )
 

@@ -145,7 +145,7 @@ const constructs: Array<Construct> = [
       expect(importSources(client)).not.toContain('./db.server')
       expect(
         settle((await evaluateModule(client, stubs, { framework })).fn),
-      ).toBe(serverOnlyError)
+      ).toEqual(serverOnlyError)
       expect((await evaluateModule(ssr, stubs, { framework })).fn()).toBe('x')
     },
   },
@@ -158,9 +158,9 @@ const constructs: Array<Construct> = [
       expect((await evaluateModule(client, stubs, { framework })).fn()).toBe(
         'chart',
       )
-      expect(settle((await evaluateModule(ssr, stubs, { framework })).fn)).toBe(
-        clientOnlyError,
-      )
+      expect(
+        settle((await evaluateModule(ssr, stubs, { framework })).fn),
+      ).toEqual(clientOnlyError)
     },
   },
 ]
