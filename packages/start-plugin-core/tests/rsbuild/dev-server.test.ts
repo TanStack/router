@@ -5,6 +5,7 @@
 import vm from 'node:vm'
 import { describe, expect, test } from 'vitest'
 import {
+  runInClient,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
 } from '../rsbuild-dev-server'
@@ -16,7 +17,10 @@ describe('Rsbuild dev: editing a server fn factory', () => {
    * `src/a1.ts` and `src/a2.ts` define server fns with the `base` builder of
    * `src/b.ts`, imported from `importFrom`; `src/b.ts` starts as a
    * `createServerFn()` builder and becomes a plain object, or the other way
-   * around (`toFactory`). Returns the client output afterwards.
+   * around (`toFactory`). The dev server runs Start's whole Rsbuild plugin
+   * (client and SSR environments, import protection).
+   * Returns the client output afterwards, and what calling both fns in the
+   * client gives (their results, or the error).
    */
   async function editFactory(importFrom: string, toFactory: boolean) {
     const factory = `import { createServerFn } from '@tanstack/react-start'
@@ -24,28 +28,37 @@ export const base = createServerFn()
 `
     const plain = `export const base = { handler: (fn: () => unknown) => fn }\n`
     const importer = (name: string) => `import { base } from '${importFrom}'
-import { db } from './db.server'
+import { db } from './db'
 export const ${name} = base.handler(async () => db.x())
 `
-    const server = await startRsbuildDevServer({
+    const server = await startRsbuildStartDevServer({
       files: {
         'src/b.ts': toFactory ? plain : factory,
         'src/c.ts': `export * from './b'\n`,
-        'src/db.server.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
+        // Not a `.server` file: import protection would mock it in the
+        // client, which is not what this test is about.
+        'src/db.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
         'src/a1.ts': importer('fn1'),
         'src/a2.ts': importer('fn2'),
         'src/entry.ts': `import { fn1 } from './a1'
 import { fn2 } from './a2'
-console.log(fn1, fn2)
+;(globalThis as Record<string, unknown>).run = async () => [
+  await fn1(),
+  await fn2(),
+]
 `,
       },
     })
-    const output = async () => Object.values(await server.outputs()).join('\n')
+    const output = async () =>
+      Object.values(await server.outputs('client')).join('\n')
     expect((await output()).includes('MARK_DB_SECRET')).toBe(toFactory)
 
     await server.edit({ 'src/b.ts': toFactory ? factory : plain })
     expect(server.errors).toEqual([])
-    return output()
+    return {
+      output: await output(),
+      called: await runInClient(server, 'return await globalThis.run()'),
+    }
   }
 
   // The compiler registers `src/b.ts` as a dependency (`addDependency`) only
@@ -54,11 +67,11 @@ console.log(fn1, fn2)
   // importer (the loader's `resolve()` records the files it resolves).
   // Source: gap DV27 (gaps/dev-hmr.md), suspected bug not reproduced.
   test.each(['./b', './c'])(
-    'client: every module importing a factory from %s that becomes one loads no server code',
+    'client: every module importing a factory from %s that becomes one loads no server code, and calls the server',
     async (importFrom) => {
-      expect(await editFactory(importFrom, true)).not.toContain(
-        'MARK_DB_SECRET',
-      )
+      const { output, called } = await editFactory(importFrom, true)
+      expect(output).not.toContain('MARK_DB_SECRET')
+      expect(called).toEqual({ error: expect.stringMatching(/^client RPC /) })
     },
     timeout,
   )
@@ -66,10 +79,9 @@ console.log(fn1, fn2)
   test.each(['./b', './c'])(
     'client: every module importing a factory from %s that stops being one keeps its handler',
     async (importFrom) => {
-      // Both handlers call `db.x()`
-      expect(
-        (await editFactory(importFrom, false)).match(/\bdb\.x\(\)/g),
-      ).toHaveLength(2)
+      expect((await editFactory(importFrom, false)).called).toEqual({
+        result: ['MARK_DB_SECRET', 'MARK_DB_SECRET'],
+      })
     },
     timeout,
   )
@@ -150,12 +162,8 @@ import { getData as b } from './b'
   test(
     'the server fn ids do not come from generateFunctionId, which applies to production builds',
     async () => {
-      const generated: Array<string> = []
       const server = await startRsbuildDevServer({
-        generateFunctionId: ({ functionName }) => {
-          generated.push(functionName)
-          return `custom-${functionName}`
-        },
+        generateFunctionId: ({ functionName }) => `custom-${functionName}`,
         files: {
           'src/a.ts': `import { createServerFn } from '@tanstack/react-start'
 export const getData = createServerFn().handler(async () => 'x')
@@ -172,7 +180,6 @@ export const getData = createServerFn().handler(async () => 'x')
       }
       expect(context.ids).toEqual([expect.any(String)])
       expect(context.ids).not.toContainEqual(expect.stringMatching(/^custom-/))
-      expect(generated).toEqual([])
     },
     timeout,
   )

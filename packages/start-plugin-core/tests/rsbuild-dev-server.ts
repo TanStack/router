@@ -133,6 +133,41 @@ export const Route = createRootRoute()
 }
 
 /**
+ * Runs the JavaScript the dev server's `client` environment emitted, like a
+ * browser loading the page (in a fresh VM context), then `script` (the body
+ * of an async function) in the same context. Returns what the script
+ * returns (`result`), or the message of what it throws (`error`). (A
+ * script must not await an import-protection mock: the mock is a thenable
+ * that resolves to itself, which blocks the process.)
+ */
+export async function runInClient(
+  server: Pick<RsbuildDevServer, 'outputs'>,
+  script: string,
+): Promise<{ result: unknown } | { error: string }> {
+  const context = vm.createContext({ console: { ...console } })
+  context.self = context
+  context.globalThis = context
+  for (const code of Object.values(await server.outputs('client'))) {
+    vm.runInContext(code, context)
+  }
+  try {
+    const run = vm.runInContext(
+      `(async () => {\n${script}\n})`,
+      context,
+    ) as () => Promise<unknown>
+    return { result: await run() }
+  } catch (error) {
+    // errors of the VM context are not `instanceof Error` here
+    return {
+      error:
+        typeof error === 'object' && error !== null && 'message' in error
+          ? String(error.message)
+          : String(error),
+    }
+  }
+}
+
+/**
  * Runs the JavaScript the dev server's client environment emitted, like a
  * browser loading the page (in a fresh VM context). Returns what it logged
  * to the console, one message per call (`Error`s by their message), each
