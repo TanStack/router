@@ -37,7 +37,11 @@ const routes = (files: Array<string>) =>
   )
 
 describe('the real router on a generated route tree', () => {
-  test.each<{ name: string; files: Record<string, string>; config?: Partial<Config> }>([
+  test.each<{
+    name: string
+    files: Record<string, string>
+    config?: Partial<Config>
+  }>([
     {
       name: 'flat, directory, layout, pathless, group, lazy and param routes',
       files: {
@@ -99,37 +103,45 @@ describe('the real router on a generated route tree', () => {
         ]),
       },
     },
-  ])('$name', async ({ files, config }) => {
-    const root = await createApp(files)
-    const { generatedRouteTree } = await generate(root, config)
-    await symlink(nodeModules, path.join(root, 'node_modules'), 'junction')
+  ])(
+    '$name',
+    async ({ files, config }) => {
+      const root = await createApp(files)
+      const { generatedRouteTree } = await generate(root, config)
+      await symlink(nodeModules, path.join(root, 'node_modules'), 'junction')
 
-    const { routeTree } = await import(/* @vite-ignore */ generatedRouteTree)
-    const router = createRouter({ routeTree })
-    const realRoutes = Object.values(router.routesById)
+      const { routeTree } = await import(/* @vite-ignore */ generatedRouteTree)
+      const router = createRouter({ routeTree })
+      const realRoutes = Object.values(router.routesById)
 
-    expect(
-      Object.fromEntries(realRoutes.map((route) => [route.id, route.fullPath])),
-    ).toEqual(await urlsOf(generatedRouteTree))
-    expect(
-      Object.fromEntries(
-        realRoutes.map((route) => [
-          route.id,
-          (route.options as { path?: string }).path,
-        ]),
-      ),
-    ).toEqual(await routePathsOf(generatedRouteTree))
+      expect(
+        Object.fromEntries(
+          realRoutes.map((route) => [route.id, route.fullPath]),
+        ),
+      ).toEqual(await urlsOf(generatedRouteTree))
+      expect(
+        Object.fromEntries(
+          realRoutes.map((route) => [
+            route.id,
+            (route.options as { path?: string }).path,
+          ]),
+        ),
+      ).toEqual(await routePathsOf(generatedRouteTree))
 
-    const ids = realRoutes.map((route) => JSON.stringify(route.id)).join(' | ')
-    expect(
-      await typeErrorsOf(
-        root,
-        'src/checks.ts',
-        `import type { FileRoutesById } from './routeTree.gen'
+      const ids = realRoutes
+        .map((route) => JSON.stringify(route.id))
+        .join(' | ')
+      expect(
+        await typeErrorsOf(
+          root,
+          'src/checks.ts',
+          `import type { FileRoutesById } from './routeTree.gen'
 ${typeAssertions}
 export type Check = Expect<Equal<keyof FileRoutesById, ${ids}>>
 `,
-      ),
-    ).toEqual([])
-  }, 60_000)
+        ),
+      ).toEqual([])
+    },
+    60_000,
+  )
 })

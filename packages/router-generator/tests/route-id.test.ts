@@ -21,9 +21,11 @@ export const Route = createLazyFileRoute('/lazy')({})`),
   })
 
   test('evaluateRouteFile tells which constructor created the Route', async () => {
-    const lazy = await evaluateRouteFile(`import { createLazyFileRoute } from '@tanstack/react-router'
+    const lazy =
+      await evaluateRouteFile(`import { createLazyFileRoute } from '@tanstack/react-router'
 export const Route = createLazyFileRoute('/lazy')({})`)
-    const route = await evaluateRouteFile(`import { createFileRoute } from '@tanstack/react-router'
+    const route =
+      await evaluateRouteFile(`import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/route')({})`)
     expect([lazy.Route.createdWith, route.Route.createdWith]).toEqual([
       'createLazyFileRoute',

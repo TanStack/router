@@ -402,15 +402,18 @@ describe('route names', () => {
   // src/generator.ts:703-706 (`id: '${node.path}'`, `path: '...'`).
   // Impact: an app with, e.g., `what's-new.tsx` gets no route tree until
   // the file is renamed.
-  test.fails('a route file name with an apostrophe gets a route with it in its URL', async () => {
-    const root = await appWithRoutes(["what's-new.tsx"])
-    const { generatedRouteTree } = await generate(root)
+  test.fails(
+    'a route file name with an apostrophe gets a route with it in its URL',
+    async () => {
+      const root = await appWithRoutes(["what's-new.tsx"])
+      const { generatedRouteTree } = await generate(root)
 
-    expect(await urlsOf(generatedRouteTree)).toEqual({
-      __root__: '/',
-      "/what's-new": "/what's-new",
-    })
-  })
+      expect(await urlsOf(generatedRouteTree)).toEqual({
+        __root__: '/',
+        "/what's-new": "/what's-new",
+      })
+    },
+  )
 
   // Control: "routes whose names differ only by a leading @ get their own
   // routes" above (same harness, two names the route tree tells apart).

@@ -36,7 +36,10 @@ export async function typeErrorsOf(root: string, file: string, code: string) {
     types: [],
   })
   return ts.getPreEmitDiagnostics(program).map((diagnostic) => {
-    const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+    const message = ts.flattenDiagnosticMessageText(
+      diagnostic.messageText,
+      '\n',
+    )
     return diagnostic.file
       ? `${path.relative(root, diagnostic.file.fileName)}: ${message}`
       : message

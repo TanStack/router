@@ -415,7 +415,6 @@ describe('generator works', async () => {
       expect(path.isAbsolute(physicalDir)).toBe(true)
     })
   })
-
 })
 
 // Windows checkouts with `autocrlf` give route files CRLF line endings: the

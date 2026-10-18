@@ -96,7 +96,8 @@ function withoutImports(code: string) {
   return marked
     .split(/(?<=\n)/)
     .filter(
-      (line) => !(line.includes(removed) && line.replaceAll(removed, '').trim() === ''),
+      (line) =>
+        !(line.includes(removed) && line.replaceAll(removed, '').trim() === ''),
     )
     .map((line) => line.replaceAll(removed, ''))
     .join('')
@@ -186,15 +187,18 @@ export const Route = createFileRoute('/old')({})
 export const other = OtherRoute
 `,
     },
-  ])('a route file with $name gets the id of its Route fixed', async ({ body }) => {
-    const source = `import { createFileRoute } from ${router}\n\n${body}`
-    const { written } = await upkeep('new.tsx', source)
+  ])(
+    'a route file with $name gets the id of its Route fixed',
+    async ({ body }) => {
+      const source = `import { createFileRoute } from ${router}\n\n${body}`
+      const { written } = await upkeep('new.tsx', source)
 
-    await expectRouteFile(written, {
-      id: '/new',
-      expected: source.replace('/old', '/new'),
-    })
-  })
+      await expectRouteFile(written, {
+        id: '/new',
+        expected: source.replace('/old', '/new'),
+      })
+    },
+  )
 
   // Source: TanStack/router#7341. In a `.ts` file, `<T>value` is a type
   // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
@@ -244,15 +248,18 @@ const Route = createRootRoute()
 export { Route }
 `,
     },
-  ])('a root route file created with $name is left as it is', async ({ source }) => {
-    const root = await createApp({ 'src/routes/__root.tsx': source })
-    const { generatedRouteTree } = await generate(root)
+  ])(
+    'a root route file created with $name is left as it is',
+    async ({ source }) => {
+      const root = await createApp({ 'src/routes/__root.tsx': source })
+      const { generatedRouteTree } = await generate(root)
 
-    expect(await read(root, 'src/routes/__root.tsx')).toBe(source)
-    expect(await routesOf(generatedRouteTree)).toEqual({
-      __root__: 'routes/__root.tsx',
-    })
-  })
+      expect(await read(root, 'src/routes/__root.tsx')).toBe(source)
+      expect(await routesOf(generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+      })
+    },
+  )
 })
 
 describe('route constructors', () => {
@@ -279,25 +286,28 @@ export type Props = LinkProps
 export const Route = createLazyFileRoute('/old')({})
 `,
     },
-  ])('a route file created with createLazyFileRoute gets createFileRoute, with $name', async ({ source }) => {
-    const { written } = await upkeep('new.tsx', source)
+  ])(
+    'a route file created with createLazyFileRoute gets createFileRoute, with $name',
+    async ({ source }) => {
+      const { written } = await upkeep('new.tsx', source)
 
-    await expectRouteFile(written, {
-      id: '/new',
-      expected: source
-        .replace('/old', '/new')
-        .replace('createLazyFileRoute(', 'createFileRoute('),
-    })
-    // An import declaration keeps its semicolon (or lack of one).
-    const routerImports = written
-      .split(/\r?\n/)
-      .filter((line) => line.startsWith('import ') && line.includes(router))
-    for (const line of routerImports) {
-      expect(line.endsWith(';')).toBe(source.includes(`${router};`))
-    }
-    // A type import stays a type import.
-    expect(routerValueImports(written)).not.toContain('LinkProps')
-  })
+      await expectRouteFile(written, {
+        id: '/new',
+        expected: source
+          .replace('/old', '/new')
+          .replace('createLazyFileRoute(', 'createFileRoute('),
+      })
+      // An import declaration keeps its semicolon (or lack of one).
+      const routerImports = written
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('import ') && line.includes(router))
+      for (const line of routerImports) {
+        expect(line.endsWith(';')).toBe(source.includes(`${router};`))
+      }
+      // A type import stays a type import.
+      expect(routerValueImports(written)).not.toContain('LinkProps')
+    },
+  )
 
   test('a lazy route file with a multi-line import of createFileRoute gets createLazyFileRoute', async () => {
     const source = `import {
@@ -355,19 +365,25 @@ export const Route = createFileRoute('/new')({})
 export const Route = createFileRoute('/new')({})
 `,
     },
-  ])('a route file whose id is right gets the right constructor, with $name', async ({ lazy, source }) => {
-    const createdWith = lazy ? 'createLazyFileRoute' : 'createFileRoute'
-    const { written } = await upkeep(lazy ? 'new.lazy.tsx' : 'new.tsx', source)
+  ])(
+    'a route file whose id is right gets the right constructor, with $name',
+    async ({ lazy, source }) => {
+      const createdWith = lazy ? 'createLazyFileRoute' : 'createFileRoute'
+      const { written } = await upkeep(
+        lazy ? 'new.lazy.tsx' : 'new.tsx',
+        source,
+      )
 
-    await expectRouteFile(written, {
-      id: '/new',
-      createdWith,
-      expected: lazy
-        ? source.replace('createFileRoute(', 'createLazyFileRoute(')
-        : source,
-      routerExports: ['Link'],
-    })
-  })
+      await expectRouteFile(written, {
+        id: '/new',
+        createdWith,
+        expected: lazy
+          ? source.replace('createFileRoute(', 'createLazyFileRoute(')
+          : source,
+        routerExports: ['Link'],
+      })
+    },
+  )
 })
 
 describe('missing route constructor imports', () => {
@@ -397,31 +413,34 @@ describe('missing route constructor imports', () => {
         '',
       ],
     },
-  ])('a route file without the constructor import gets it on its own line, with $name', async ({ newline, lines }) => {
-    const source = lines.join(newline)
-    const { written } = await upkeep('new.tsx', source)
+  ])(
+    'a route file without the constructor import gets it on its own line, with $name',
+    async ({ newline, lines }) => {
+      const source = lines.join(newline)
+      const { written } = await upkeep('new.tsx', source)
 
-    const other = newline === '\n' ? '\r\n' : '\n'
-    const outputLines = written.split(newline)
-    expect(outputLines.filter((line) => !line.startsWith('import '))).toEqual(
-      lines
-        .filter((line) => !line.startsWith('import '))
-        .map((line) => line.replace('/old', '/new')),
-    )
-    // No other line ending is mixed in.
-    expect(
-      other === '\n' ? /(?<!\r)\n/.test(written) : written.includes('\r'),
-    ).toBe(false)
-    // The other imports stay.
-    for (const line of lines.filter((line) => line.startsWith('import '))) {
-      expect(outputLines).toContain(line)
-    }
-    expect(routerValueImports(written)).toEqual(['createFileRoute'])
-    const { Route } = await evaluateRouteFile(
-      written.replace(/^import .* from 'react'$/m, ''),
-    )
-    expect([Route.id, Route.createdWith]).toEqual(['/new', 'createFileRoute'])
-  })
+      const other = newline === '\n' ? '\r\n' : '\n'
+      const outputLines = written.split(newline)
+      expect(outputLines.filter((line) => !line.startsWith('import '))).toEqual(
+        lines
+          .filter((line) => !line.startsWith('import '))
+          .map((line) => line.replace('/old', '/new')),
+      )
+      // No other line ending is mixed in.
+      expect(
+        other === '\n' ? /(?<!\r)\n/.test(written) : written.includes('\r'),
+      ).toBe(false)
+      // The other imports stay.
+      for (const line of lines.filter((line) => line.startsWith('import '))) {
+        expect(outputLines).toContain(line)
+      }
+      expect(routerValueImports(written)).toEqual(['createFileRoute'])
+      const { Route } = await evaluateRouteFile(
+        written.replace(/^import .* from 'react'$/m, ''),
+      )
+      expect([Route.id, Route.createdWith]).toEqual(['/new', 'createFileRoute'])
+    },
+  )
 
   test.each([
     {
@@ -437,18 +456,21 @@ describe('missing route constructor imports', () => {
 import { Link } from ${router}`,
       uses: 'Router.Link, Link',
     },
-  ])('a route file calling createFileRoute next to $name gets it bound once', async ({ imports, uses }) => {
-    const body = `export const uses = [${uses}]
+  ])(
+    'a route file calling createFileRoute next to $name gets it bound once',
+    async ({ imports, uses }) => {
+      const body = `export const uses = [${uses}]
 export const Route = createFileRoute('/old')({})
 `
-    const { written } = await upkeep('new.tsx', `${imports}\n${body}`)
+      const { written } = await upkeep('new.tsx', `${imports}\n${body}`)
 
-    await expectRouteFile(written, {
-      id: '/new',
-      expected: body.replace('/old', '/new'),
-      routerExports: ['Link'],
-    })
-  })
+      await expectRouteFile(written, {
+        id: '/new',
+        expected: body.replace('/old', '/new'),
+        routerExports: ['Link'],
+      })
+    },
+  )
 
   test('the added import ends with a semicolon in a file using them', async () => {
     const source = `import * as Router from ${router};
@@ -464,7 +486,8 @@ export const Route = createFileRoute('/old')({});
     const added = written
       .split('\n')
       .filter(
-        (line) => line.startsWith('import ') && line.includes('createFileRoute'),
+        (line) =>
+          line.startsWith('import ') && line.includes('createFileRoute'),
       )
     expect(added).toHaveLength(1)
     expect(added[0]).toMatch(/;$/)
@@ -626,14 +649,17 @@ export const Route = createFileRoute({ component: () => null })
 export const Route = createLazyFileRoute({ component: () => null })
 `,
     },
-  ])('a route file with $name is reported by name', async ({ source, file = 'new.tsx' }) => {
-    const { written, warnings, error } = await upkeep(file, source)
+  ])(
+    'a route file with $name is reported by name',
+    async ({ source, file = 'new.tsx' }) => {
+      const { written, warnings, error } = await upkeep(file, source)
 
-    if (error) {
-      expect(error.message).toContain(file)
-    } else {
-      expect(warnings.join('\n')).toContain(file)
-      expect(written).toBe(source)
-    }
-  })
+      if (error) {
+        expect(error.message).toContain(file)
+      } else {
+        expect(warnings.join('\n')).toContain(file)
+        expect(written).toBe(source)
+      }
+    },
+  )
 })

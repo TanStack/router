@@ -148,7 +148,11 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   // read like the plain ones above (same build; moved from router-generator
   // known-bugs.test.ts, which read the generator's internal option keys).
   describe.each([
-    { name: 'string option keys', page: '/string-keys', api: '/string-keys-api' },
+    {
+      name: 'string option keys',
+      page: '/string-keys',
+      api: '/string-keys-api',
+    },
     { name: 'an aliased Route export', page: '/aliased', api: '/aliased-api' },
   ])('$name', ({ page, api }) => {
     test('a route with server handlers and a component is in the client route tree', () => {
