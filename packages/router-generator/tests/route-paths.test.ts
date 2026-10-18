@@ -353,22 +353,64 @@ describe('conflicting routes', () => {
     )
   })
 
-  test('a route file that resolves to an empty path fails the generator with an error naming it', async () => {
-    const root = await appWithRoutes(['merged/route.tsx'])
+  // The docs' example of a physical directory merged at the current level
+  // (virtual-file-routes.md, "Merging Physical Routes at Current Level"): an
+  // empty path prefix is no conflict by itself.
+  test.each([
+    { name: 'a directory only', mount: physical('features') },
+    { name: 'an empty path prefix', mount: physical('', 'features') },
+  ])(
+    'a physical directory mounted with $name merges its routes at the current level',
+    async ({ mount }) => {
+      const root = await appWithRoutes([
+        'about.tsx',
+        'features/index.tsx',
+        'features/contact.tsx',
+      ])
+      const { generatedRouteTree } = await generate(root, {
+        virtualRouteConfig: virtualRootRoute('__root.tsx', [
+          virtualRoute('/about', 'about.tsx'),
+          mount,
+        ]),
+      })
+
+      const urls = await urlsOf(generatedRouteTree)
+      const routes = await routesOf(generatedRouteTree)
+      expect(
+        Object.fromEntries(
+          Object.entries(routes).map(([id, file]) => [file, urls[id]]),
+        ),
+      ).toEqual({
+        'routes/__root.tsx': '/',
+        'routes/about.tsx': '/about',
+        'routes/features/index.tsx': '/',
+        'routes/features/contact.tsx': '/contact',
+      })
+    },
+  )
+
+  test('a route of a directory merged at the current level with the path of a virtual route fails the generator with an error naming both files', async () => {
+    const root = await appWithRoutes(['about.tsx', 'features/about.tsx'])
 
     const error = await generate(root, {
       virtualRouteConfig: virtualRootRoute('__root.tsx', [
-        physical('', 'merged'),
+        virtualRoute('/about', 'about.tsx'),
+        physical('', 'features'),
       ]),
     }).then(
       () => undefined,
       (e: unknown) => e as Error,
     )
     expect(error).toBeInstanceOf(Error)
+    expect(error?.message).toContain(path.join(root, 'src/routes/about.tsx'))
     expect(error?.message).toContain(
-      path.join(root, 'src/routes/merged/route.tsx'),
+      path.join(root, 'src/routes/features/about.tsx'),
     )
   })
+
+  // (A layout route file at the root of a directory merged at the current
+  // level, `physical('', 'merged')` with `merged/route.tsx`: outside the
+  // compiler test corpus, tests/outside-compiler-corpus/virtual-routes.test.ts.)
 })
 
 describe('route names', () => {
