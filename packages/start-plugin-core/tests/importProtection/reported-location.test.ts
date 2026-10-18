@@ -30,7 +30,7 @@ type Channel = 'vite dev' | 'rsbuild dev' | 'vite build' | 'rsbuild build'
 /**
  * The importer locations reported for an app whose `src/a.tsx` is `code`
  * (imported by the entry `src/entry.ts`) and imports from the denied
- * `src/secret.server.ts`.
+ * `src/secret.server.ts` (none when nothing is reported).
  */
 async function reportedLocations(
   channel: Channel,
@@ -59,12 +59,24 @@ export default function Secret() {
       // Rsbuild's default source maps in development
       config: { output: { sourceMap: { js: 'cheap-module-source-map' } } },
     })
+    // (a compile that fails for another reason fails the test)
+    expect(
+      server.errors.filter((error) => !error.includes('[import-protection]')),
+    ).toEqual([])
     output = server.errors
   } else {
     const bundler = channel === 'vite build' ? 'vite' : 'rsbuild'
-    output = (
-      await rejection(buildStart({ bundler, files, entry: 'src/entry.ts' }))
-    ).message
+    // (a build without any violation succeeds)
+    output = await buildStart({ bundler, files, entry: 'src/entry.ts' }).then(
+      ({ client, ssr }) => [...client.warnings, ...ssr.warnings],
+      (error: Error) => {
+        // (a build that fails for another reason fails the test)
+        if (reportedViolations(error.message).length === 0) {
+          throw error
+        }
+        return error.message
+      },
+    )
   }
   return distinct(reportedViolations(output).map((report) => report.importer))
 }
@@ -101,6 +113,18 @@ const jsxElement = `import Secret from './secret.server'
 export const Page = () => <Secret />
 `
 
+// A value named like a server fn builder (`*ServerFn`) is not one: the
+// client keeps its `handler` callback and the use inside it.
+const lookAlike = `import { secret } from './secret.server'
+const myServerFn = { handler: (fn: () => unknown) => fn() }
+export const fn = myServerFn.handler(() => secret())
+`
+
+const isomorphicClient = `import { createIsomorphicFn } from '@tanstack/react-start'
+import { secret } from './secret.server'
+export const fn = createIsomorphicFn().client(() => secret())
+`
+
 const cases: Record<string, LocationCase> = {
   afterHandler: {
     name: 'a use after a server fn handler (the handler is not reported)',
@@ -122,6 +146,16 @@ const cases: Record<string, LocationCase> = {
     code: jsxElement,
     expected: [at(jsxElement, 2, '<Secret'), at(jsxElement, 2, 'Secret')],
   },
+  lookAlike: {
+    name: 'a use inside the handler method of an object named like a server fn',
+    code: lookAlike,
+    expected: [at(lookAlike, 3, 'secret()')],
+  },
+  isomorphicClient: {
+    name: 'a use inside createIsomorphicFn().client',
+    code: isomorphicClient,
+    expected: [at(isomorphicClient, 3, 'secret()')],
+  },
   // A lone CR is a line terminator, like LF. Source: the #8504 probe (R-11).
   loneCr: {
     name: 'a use after a server fn handler, in a file with lone CR line endings',
@@ -142,8 +176,12 @@ const rows = (names: Array<string>, on: Array<Channel>) =>
   names.flatMap((name) => on.map((channel) => ({ ...cases[name]!, channel })))
 
 describe('the reported location of a violation is the leaking use', () => {
+  // Source (lookAlike, isomorphicClient): moved from
+  // analysis.usage.test.ts, which rebuilt the Vite plugin's location
+  // lookup from internals (audit F-H3).
   test.each([
-    ...rows(['afterHandler', 'loneCr'], channels),
+    ...rows(['afterHandler', 'loneCr', 'isomorphicClient'], channels),
+    ...rows(['lookAlike'], ['vite dev', 'vite build']),
     ...rows(['typePosition', 'jsxElement'], ['vite dev', 'vite build']),
   ])(
     '$channel: $name',
@@ -174,6 +212,27 @@ describe('the reported location of a violation is the leaking use', () => {
     timeout,
   )
 
+  // NEW bug (Rsbuild): the original-source usage lookup, which the Rsbuild
+  // adapter tries first, takes any `<name>ServerFn.handler(...)` callback for
+  // a server fn handler by its name (`/ServerFn$/`, `isCompilerSafeBoundaryCall`
+  // in import-protection/analysis.ts) and skips the use inside it; the
+  // compiled-code lookup it then falls back to reports compiled-code
+  // coordinates (the same fallback as the pins below).
+  // Impact: on Rsbuild, a violation inside the callback of an object that
+  // is only named like a server fn points at a line/column that does not
+  // exist in the user's file (here 3:1 in dev, 5:42 in a build).
+  // Source: audit F-H3 (moved from analysis.usage.test.ts, which followed
+  // the Vite order).
+  test.fails.each(rows(['lookAlike'], ['rsbuild dev', 'rsbuild build']))(
+    '$channel: $name',
+    async ({ channel, code, expected }) => {
+      const reported = await reportedLocations(channel, code)
+      expect(reported).toHaveLength(1)
+      expect(expected).toContain(reported[0])
+    },
+    timeout,
+  )
+
   // Bug: the original-source usage lookup, which the Rsbuild adapter tries
   // first, counts uses in type positions (`typeof secret`), which TypeScript
   // erases, and does not count a JSX element (`<Secret />`) as a use; the
@@ -193,6 +252,39 @@ describe('the reported location of a violation is the leaking use', () => {
       const reported = await reportedLocations(channel, code)
       expect(reported).toHaveLength(1)
       expect(expected).toContain(reported[0])
+    },
+    timeout,
+  )
+})
+
+// A use inside code the Start compiler removes from the client (a safe
+// boundary) is not reported: the client no longer imports the denied file.
+// Source: moved from analysis.usage.test.ts (audit F-H3), which decided "no
+// violation" from the compiled code's imports.
+describe('a use inside code the Start compiler removes from the client is not reported', () => {
+  const safeUses = {
+    'the server of a middleware variable': `import { createMiddleware } from '@tanstack/react-start'
+import { secret } from './secret.server'
+const authMiddleware = createMiddleware()
+export const middleware = authMiddleware.server(({ next }) =>
+  next({ context: { secret: secret() } }),
+)
+`,
+    'the handler of a server fn builder variable': `import { createServerFn } from '@tanstack/react-start'
+import { secret } from './secret.server'
+const myServerFn = createServerFn({ method: 'GET' })
+export const fn = myServerFn.handler(async () => secret())
+`,
+  }
+
+  test.each(
+    Object.entries(safeUses).flatMap(([name, code]) =>
+      channels.map((channel) => ({ name, code, channel })),
+    ),
+  )(
+    '$channel: $name',
+    async ({ channel, code }) => {
+      expect(await reportedLocations(channel, code)).toEqual([])
     },
     timeout,
   )
@@ -271,8 +363,10 @@ describe.each(startBundlers)(
     const reportOfChain = () =>
       (chainReport ??= buildReport(bundler, chain, {}))
 
+    // The middle steps are located on the line of their import (which
+    // column of the import statement is not specified).
     test(
-      'the trace lists each import from the entry, located at its specifier',
+      'the trace lists each import from the entry, located on its line',
       async () => {
         const { importer, trace } = await reportOfChain()
         expect(importer).toBe('src/b.ts:4:27')
@@ -282,8 +376,11 @@ describe.each(startBundlers)(
         expect(
           trace.slice(-3).map(({ at, imports }) => ({ at, imports })),
         ).toEqual([
-          { at: 'src/entry.ts:2:16', imports: './a' },
-          { at: 'src/a.ts:3:23', imports: './b' },
+          {
+            at: expect.stringMatching(/^src\/entry\.ts:2:\d+$/),
+            imports: './a',
+          },
+          { at: expect.stringMatching(/^src\/a\.ts:3:\d+$/), imports: './b' },
           { at: 'src/b.ts:4:27', imports: './secret.server' },
         ])
       },
@@ -409,7 +506,11 @@ describe.each(startBundlers)('%s build', (bundler) => {
     async () => {
       const { importer, trace } = await buildReport(bundler, {
         ...leakingB,
-        'src/back.ts': `import * as app from '../harness/client-entry'\nexport const back = app\n`,
+        // The app's client entry (Start's default `src/client.tsx`)
+        'src/client.tsx': `import { page } from './a'
+export const start = () => page()
+`,
+        'src/back.ts': `import * as app from './client'\nexport const back = app\n`,
         'src/a.ts': `import { leak } from './b'
 import { back } from './back'
 export const page = () => [leak(), back]
@@ -420,7 +521,7 @@ export const page = () => [leak(), back]
         trace.map((_, index) => index === 0),
       )
       expect(modulesOf(trace).slice(-3)).toEqual([
-        'src/entry.ts',
+        'src/client.tsx',
         'src/a.ts',
         'src/b.ts',
       ])

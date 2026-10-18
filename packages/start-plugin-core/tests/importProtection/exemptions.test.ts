@@ -17,6 +17,9 @@ import type { ImportProtectionOptions } from '../../src/schema'
 
 const timeout = 60_000
 
+/** What a use of a mock returns, converted to a string. */
+const mockText = '[import-protection mock]'
+
 afterEach(() => {
   vi.restoreAllMocks()
   for (const loaded of [
@@ -145,7 +148,7 @@ const expectExemptGetsRealModule = (outcome: Outcome) =>
 // default, and `behavior: { build: 'mock' }`), or a broken dev page.
 const expectOtherGetsMock = (outcome: Outcome) =>
   expect({ other: outcome.other, reported: outcome.reported }).toEqual({
-    other: expect.not.stringMatching(/^MARK_SECRET$/),
+    other: mockText,
     reported: expect.arrayContaining(['client src/app/b.ts']),
   })
 
@@ -297,11 +300,8 @@ const realModule = (name: string): Use => ({
   loaded: `MARK_${name.toUpperCase()}_LOADED`,
 })
 
-/** A mock: not the real value, and the denied file never ran. */
-const mockedModule = {
-  read: expect.not.stringMatching(/^MARK_/),
-  loaded: null,
-}
+/** A mock: it converts to the mock's text, and the denied file never ran. */
+const mockedModule = { read: mockText, loaded: null }
 
 /** Custom patterns that match `src/vendor`; `node_modules` stays excluded. */
 const vendorExcluded = ['**/vendor/**', '**/node_modules/**']

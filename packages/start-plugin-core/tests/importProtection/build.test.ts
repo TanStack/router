@@ -5,7 +5,12 @@
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, routerRuntimeFiles, startBundlers } from '../build-harness'
-import { rejection, reportedViolations } from './start-apps'
+import {
+  expectMarkerViolation,
+  rejection,
+  reportedViolations,
+  violationTexts,
+} from './start-apps'
 import type { TanStackStartInputConfig } from '../../src/schema'
 
 const timeout = 60_000
@@ -106,9 +111,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
   // Source: gap IP5 (gaps/start-env.md).
   test(
-    'a file with both a server-only and a client-only marker fails the build',
+    'a file with both a server-only and a client-only marker fails the build, naming the file and both markers',
     async () => {
-      await expect(
+      const error = await rejection(
         buildStart({
           bundler,
           files: {
@@ -121,7 +126,10 @@ export const value = 1
           entry: 'src/entry.ts',
           start: importProtection(),
         }),
-      ).rejects.toThrow(/has both server-only and client-only markers/)
+      )
+      expect(error.message).toContain('src/both.ts')
+      expect(error.message).toContain('server-only')
+      expect(error.message).toContain('client-only')
     },
     timeout,
   )
@@ -181,19 +189,19 @@ export const read = () => getRequest()
           entry: 'src/entry.ts',
         }),
       )
-      expect(reportedViolations(error.message)).toEqual([
-        {
-          environment: 'client',
-          importer: expect.stringMatching(/^src\/marked\.ts/),
-        },
-      ])
-      expect(error.message).toContain('src/entry.ts')
+      const [report, ...others] = violationTexts(error.message)
+      expect(others).toEqual([])
+      expect(report).toMatch(/^client environment/)
+      expectMarkerViolation(report!, {
+        marker: 'src/marked.ts:1',
+        use: 'src/entry.ts:2:27',
+      })
     },
     timeout,
   )
 
   test(
-    'a server import of a client-only-marked module fails the build, naming the module',
+    'a server import of a client-only-marked module fails the build, naming the module and its importer',
     async () => {
       const error = await rejection(
         buildStart({
@@ -208,12 +216,13 @@ export const read = () => secret()
           entry: { client: 'src/client.ts', ssr: 'src/server.ts' },
         }),
       )
-      expect(reportedViolations(error.message)).toEqual([
-        {
-          environment: 'server',
-          importer: expect.stringMatching(/^src\/marked\.ts/),
-        },
-      ])
+      const [report, ...others] = violationTexts(error.message)
+      expect(others).toEqual([])
+      expect(report).toMatch(/^server environment/)
+      expectMarkerViolation(report!, {
+        marker: 'src/marked.ts:1',
+        use: 'src/server.ts:2:27',
+      })
     },
     timeout,
   )
@@ -541,28 +550,43 @@ describe.each(startBundlers)(
     const allowed = { hasRealCode: true, ranReal: true, warnings: [] }
     const allowAll = { importProtection: { onViolation: () => false } }
 
-    test.fails.each(bundler === 'vite' ? ['a denied file'] : deniedModuleNames)(
+    // Vite builds the module of a marker violation into the bundle either
+    // way (see the mock-mode pin above).
+    const pinned: Array<DeniedModule> =
+      bundler === 'vite' ? ['a denied file'] : deniedModuleNames
+    const passing = deniedModuleNames.filter(
+      (denied) => !pinned.includes(denied),
+    )
+
+    test.fails.each(pinned)(
       'allows the import of %s: the build succeeds and the client gets the real module',
       async (denied) => {
-        expect(
-          await clientRead(bundler, appUsing(denied as DeniedModule), allowAll),
-        ).toEqual(allowed)
+        expect(await clientRead(bundler, appUsing(denied), allowAll)).toEqual(
+          allowed,
+        )
       },
       timeout,
     )
 
-    // Control for the pins above (same harness): the build succeeds, and so
-    // does a Vite build of a marker violation, whose module is not replaced.
-    test.each(
-      bundler === 'vite'
-        ? ['a denied file', 'a server-only-marked module']
-        : deniedModuleNames,
-    )(
+    if (passing.length > 0) {
+      test.each(passing)(
+        'allows the import of %s: the build succeeds and the client gets the real module',
+        async (denied) => {
+          expect(await clientRead(bundler, appUsing(denied), allowAll)).toEqual(
+            allowed,
+          )
+        },
+        timeout,
+      )
+    }
+
+    // Control for the pins above (same harness): the build succeeds.
+    test.each(pinned)(
       'allows the import of %s: the build succeeds',
       async (denied) => {
         const { warnings } = await clientRead(
           bundler,
-          appUsing(denied as DeniedModule),
+          appUsing(denied),
           allowAll,
         )
         expect(warnings).toEqual([])
