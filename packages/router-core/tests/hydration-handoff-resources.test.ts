@@ -12,22 +12,18 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('retiring a mismatched hydration continuation keeps its borrowed cached loader signal alive', async () => {
-  let generation = 0
+test('retiring a mismatched hydration continuation keeps recovered descendant loader work alive', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
   let clientRouter: AnyRouter
-  let cachedLoaderSignal: AbortSignal | undefined
+  let childLoaderSignal: AbortSignal | undefined
   const cacheCleared = vi.fn()
-  const loader = vi.fn(
-    ({ abortController }: { abortController: AbortController }) => {
-      cachedLoaderSignal = abortController.signal
-      return 'cached page data'
-    },
-  )
-  const build = (isServer: boolean) => {
+  const parentLoader = vi.fn(() => 'client parent data')
+  const childLoader = vi.fn(() => 'client child data')
+  const createTree = (isServer: boolean, generation: number) => {
     const root = new BaseRootRoute({
       loaderDeps: () => ({ generation }),
-      context: ({ abortController, preload }) => {
-        if (!isServer && !preload) {
+      context: ({ abortController }) => {
+        if (!isServer) {
           abortController.signal.addEventListener(
             'abort',
             () => {
@@ -40,17 +36,38 @@ test('retiring a mismatched hydration continuation keeps its borrowed cached loa
         return {}
       },
     })
-    const page = new BaseRoute({
+    const parent = new BaseRoute({
       getParentRoute: () => root,
-      path: '/page',
-      ssr: false,
-      staleTime: Infinity,
-      preloadStaleTime: Infinity,
-      loader,
+      path: '/parent',
+      loader: {
+        handler: isServer ? () => 'server parent data' : parentLoader,
+        dehydrate: true,
+        hydrate: async () => {
+          // Let the independent child transform finish before this failure.
+          await new Promise((resolve) => setTimeout(resolve))
+          throw new Error('parent transform failed')
+        },
+      },
     })
+    const child = new BaseRoute({
+      getParentRoute: () => parent,
+      path: '/child',
+      staleTime: Infinity,
+      loader: {
+        handler: isServer ? () => 'server child data' : childLoader,
+        dehydrate: true,
+        hydrate: ({ data, abortController }) => {
+          childLoaderSignal = abortController.signal
+          return `${data}: hydrated`
+        },
+      },
+    })
+    return root.addChildren([parent.addChildren([child])])
+  }
+  const build = (isServer: boolean) => {
     return createTestRouter({
-      routeTree: root.addChildren([page]),
-      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      routeTree: createTree(isServer, 0),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
       isServer,
       scrollRestoration: false,
     })
@@ -62,22 +79,27 @@ test('retiring a mismatched hydration continuation keeps its borrowed cached loa
   const router = (clientRouter = build(false))
   try {
     await hydrate(router)
-    await router.preloadRoute({ to: '/page' })
-    expect(loader).toHaveBeenCalledTimes(1)
-    const borrowedSignal = cachedLoaderSignal!
-    expect(borrowedSignal.aborted).toBe(false)
+    const recoveredSignal = childLoaderSignal!
+    expect(recoveredSignal.aborted).toBe(false)
+    expect(router.state.matches[1]?.status).toBe('pending')
+    expect(router.state.matches.at(-1)?.loaderData).toBe(
+      'server child data: hydrated',
+    )
+    expect(parentLoader).not.toHaveBeenCalled()
+    expect(childLoader).not.toHaveBeenCalled()
 
-    // A public dependency change rejects the reconstructed root. Retiring its
-    // context controller clears the cache while this load already borrows it.
-    generation++
+    // A public route update changes the root key before planning. Its context
+    // abort listener clears the child cache while the client load borrows it.
+    router.update({ ...router.options, routeTree: createTree(false, 1) })
     await router.load()
 
     expect(cacheCleared).toHaveBeenCalledTimes(1)
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(borrowedSignal.aborted).toBe(false)
+    expect(parentLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).not.toHaveBeenCalled()
+    expect(recoveredSignal.aborted).toBe(false)
     expect(router.state.matches.at(-1)).toMatchObject({
       status: 'success',
-      loaderData: 'cached page data',
+      loaderData: 'server child data: hydrated',
     })
   } finally {
     router.clearCache()
