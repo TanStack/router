@@ -13,12 +13,17 @@
 import { SourceMap } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import solid from 'vite-plugin-solid'
 import { describe, expect, it, onTestFinished, test, vi } from 'vitest'
 import {
   createDevServer,
   evaluateServed,
 } from '@tanstack/compiler-test-utils/dev-server'
-import { rootRouteOf, routerDevServer, routerPackageStub } from './dev-server'
+import {
+  rootRouteOf,
+  routerDevServer,
+  servedRouterPackageUrl,
+} from './dev-server'
 import {
   compileRouteModules,
   evaluateModule,
@@ -354,7 +359,6 @@ export const Route = createFileRoute('/')({ loader: () => 'x' })`
       }
       const server = await routerDevServer({
         pluginOptions: { autoCodeSplitting: false },
-        plugins: [routerPackageStub('react')],
         files: {
           'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ loader: () => 'x', component: () => <p>x</p> })`,
@@ -374,7 +378,6 @@ export const Route = createFileRoute('/')({ loader: () => 'x', component: () => 
     async () => {
       const server = await routerDevServer({
         pluginOptions: { autoCodeSplitting: false },
-        plugins: [routerPackageStub('react')],
         files: { 'routes/index.ts': loaderRoute() },
       })
       expect(
@@ -392,7 +395,6 @@ export const Route = createFileRoute('/')({ loader: () => 'x', component: () => 
           autoCodeSplitting: false,
           plugin: { vite: { environmentName: 'client' } },
         },
-        plugins: [routerPackageStub('react')],
         files: { 'routes/index.tsx': loaderRoute() },
       })
       expect(
@@ -413,7 +415,6 @@ export const Route = createFileRoute('/')({ loader: () => 'x', component: () => 
           autoCodeSplitting: false,
           plugin: { hmr: { style: 'vite' } },
         },
-        plugins: [routerPackageStub('react')],
         files: { 'routes/index.tsx': loaderRoute() },
       })
       expect(
@@ -434,7 +435,9 @@ export const Route = createFileRoute('/')({ loader: () => 'x', component: () => 
     async ({ target, reactRefreshHooks }) => {
       const server = await routerDevServer({
         pluginOptions: null,
-        plugins: [routerPackageStub(target)],
+        // A Solid app's SSR environment needs vite-plugin-solid (the
+        // router's Solid build)
+        plugins: target === 'solid' ? [solid({ ssr: true })] : [],
         files: {
           'tsr.config.json': JSON.stringify({
             target,
@@ -448,13 +451,14 @@ export const Route = createFileRoute('/')({ loader: () => 'x', component: () => 
       const window = {}
       vi.stubGlobal('window', window)
       try {
-        // As the page loads it (router package and JSX runtime stubbed)
+        // As the page loads it (the router package as the SSR environment
+        // loaded it, the JSX runtime stubbed)
         const { Route } = await evaluateServed(server, '/routes/index.tsx', {
-          skip: /^\/@id\/|\/node_modules\/|^\/@vite\b/,
+          skip: /^\/@fs\/|\/node_modules\/|^\/@vite\b/,
           stubs: {
-            [`/@id/__x00__@tanstack/${target}-router-stub`]: {
-              createFileRoute: () => (options: unknown) => ({ options }),
-            },
+            [await servedRouterPackageUrl(server, target)]: await server.import(
+              `@tanstack/${target}-router`,
+            ),
           },
           fallbackStub: (_, names) =>
             Object.fromEntries([...names].map((name) => [name, () => null])),
@@ -493,7 +497,7 @@ export const Route = createFileRoute('/')({ loader: () => 'x', component: () => 
               app.root,
             ),
           ),
-          routerPackageStub('solid'),
+          solid({ ssr: true }),
         ],
       })
       expect(
@@ -525,7 +529,6 @@ export const Route = createFileRoute('/')({
 `
       const server = await routerDevServer({
         pluginOptions: { target, autoCodeSplitting: false },
-        plugins: [routerPackageStub(target)],
         files: { 'routes/index.tsx': route },
       })
       const result =

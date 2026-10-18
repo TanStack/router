@@ -11,7 +11,11 @@ import {
 } from '@tanstack/compiler-test-utils/dev-server'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { routeHead } from './build-harness'
-import { loadRouteOption, rootRouteOf, routerPackageStub } from './dev-server'
+import {
+  renderRouteComponent,
+  rootRouteOf,
+  servedRouterPackageUrl,
+} from './dev-server'
 import { compileRouteModules, head } from './regression-helpers'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { RouterPluginOptions } from './build-harness'
@@ -67,31 +71,27 @@ export const Route = createFileRoute('/')({
               context,
             ),
           ),
-          routerPackageStub('react'),
         ]
       },
     })
-    /** Loads the route's split component and its loader's value. */
+    /** Renders the route's split component, and the loader's value. */
     const read = async (routeModule: Record<string, any>) => {
       const { options } = routeModule.Route
-      const component = (await loadRouteOption(
-        options.component,
-      )) as () => string
-      return [component(), options.loader()]
+      return [await renderRouteComponent(options.component), options.loader()]
     }
     const expected = ['MARK_COMPONENT MARK_SHARED', { text: 'MARK_SHARED' }]
     expect(await read(await server.import('/routes/index.tsx'))).toEqual(
       expected,
     )
-    // The browser gets the router package stub from Vite's virtual module
-    // URL; evaluated here from the same SSR-loaded module.
+    // The browser gets the router package from the dev server; evaluated
+    // here from the same SSR-loaded module.
     const routerPackage = await server.import('@tanstack/react-router')
     expect(
       await read(
         await evaluateServed(server, '/routes/index.tsx', {
-          skip: /^\/@id\//,
+          skip: /^\/@fs\//,
           stubs: {
-            '/@id/__x00__@tanstack/react-router-stub': routerPackage,
+            [await servedRouterPackageUrl(server)]: routerPackage,
           },
         }),
       ),
