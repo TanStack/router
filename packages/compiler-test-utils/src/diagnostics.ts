@@ -22,7 +22,9 @@
  * - `findDiagnostics(diagnostics, expectation)` and
  *   `expectDiagnostic(diagnostics, expectation)`: the diagnostics meeting a
  *   `DiagnosticExpectation`; the latter fails, listing why each diagnostic
- *   does not match, unless one (or exactly `times`) does.
+ *   does not match, unless one (or exactly `times`) does. Both take
+ *   diagnostics or any value `diagnosticsOf` reads. `mismatches(diagnostic,
+ *   expectation)` gives the reasons for one diagnostic.
  * - `mentionsFile(text, file, options?)`: whether a text names a file.
  * - `diagnosticPosition(source, needle)`: the 1-based line and column of
  *   the first occurrence of `needle` in `source`.
