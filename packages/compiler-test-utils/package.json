@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     "./browser": "./src/browser.ts",
+    "./budget-reporter": "./src/budget-reporter.ts",
     "./build-harness": "./src/build-harness.ts",
     "./dev-server": "./src/dev-server.ts",
     "./module-linker": "./src/module-linker.ts",

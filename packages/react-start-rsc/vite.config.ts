@@ -22,6 +22,7 @@ const config = defineConfig({
     include: ['**/*.{test-d,test,spec}.?(c|m)[jt]s?(x)'],
     name: packageJson.name,
     watch: false,
+    reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
   },
