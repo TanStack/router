@@ -1407,6 +1407,98 @@ export const factory = createServerFn().middleware([middleware]);`
   ).resolves.toBeNull()
 })
 
+describe('top-level member calls', () => {
+  function createCompilerWithModules(
+    env: 'client' | 'server',
+    virtualModules: Record<string, string>,
+  ) {
+    const resolved: Array<string> = []
+    const loaded: Array<string> = []
+    const compiler: StartCompiler = new StartCompiler({
+      ...getDefaultTestOptions(env),
+      env,
+      mode: 'build',
+      lookupKinds: getLookupKindsForEnv(env),
+      lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
+      getKnownServerFns: () => ({}),
+      resolveId: async (id) => {
+        resolved.push(id)
+        return id in virtualModules ? id : null
+      },
+      loadModule: async (id) => {
+        loaded.push(id)
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+    })
+    return { compiler, resolved, loaded }
+  }
+
+  test('does not load the module behind a named-import receiver such as `z.object()`', async () => {
+    const { compiler, resolved, loaded } = createCompilerWithModules('client', {
+      zod: `export const z = { object: (shape) => shape, string: () => ({}) }`,
+      './api': `export const api = { users: () => [] }`,
+    })
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+      import { z } from 'zod'
+      import { api } from './api'
+
+      const Input = z.object({ id: z.string() })
+      const users = api.users()
+
+      export const getUser = createServerFn()
+        .validator(Input)
+        .handler(async ({ data }) => ({ id: data.id, users }))
+    `
+
+    const result = await compiler.compile({
+      id: '/test/get-user.ts',
+      code,
+      detectedKinds: detectKindsInCode(code, 'client'),
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('createClientRpc')
+    expect(resolved).toEqual([])
+    expect(loaded).toEqual([])
+  })
+
+  test.each(['client', 'server'] as const)(
+    'still compiles a renamed env-only factory called through a namespace import on %s',
+    async (env) => {
+      const { compiler } = createCompilerWithModules(env, {
+        './factory': `export { createServerOnlyFn as serverOnly } from '@tanstack/start-fn-stubs'`,
+      })
+      const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        import * as factory from './factory'
+
+        export const impl = factory.serverOnly(() => 'server-only-value')
+
+        export const fn = createServerFn().handler(async () => impl())
+      `
+
+      const result = await compiler.compile({
+        id: '/test/namespace-factory.ts',
+        code,
+        detectedKinds: detectKindsInCode(code, env),
+      })
+
+      expect(result).not.toBeNull()
+      if (env === 'server') {
+        expect(result!.code).toContain('server-only-value')
+        expect(result!.code).not.toContain('factory.serverOnly')
+      } else {
+        expect(result!.code).not.toContain('server-only-value')
+        expect(result!.code).toContain('throw new Error')
+      }
+    },
+  )
+})
+
 test.each([
   `(createServerOnlyFn)(() => 'server-value')`,
   `(createIsomorphicFn)().server(() => 'server-value').client(() => 'client-value')`,
