@@ -153,7 +153,9 @@ ${callByIdExports}`,
   )
 
   // Concurrent: the rows share one build and run it in Node processes and
-  // browser pages; only the last test builds (the one build in the block).
+  // browser pages. The last test builds: runs give their working directory
+  // and environment explicitly, so the build's process-global state does not
+  // reach them.
   describe.concurrent('server code of each construct', () => {
     /**
      * `src/deps/<name>.ts`: an export returning `marker`, in a module whose
@@ -527,7 +529,7 @@ const next = (options) => options
     // compiler load another module, here the builder's).
     test(
       'each server fn of the client runs by its id in the SSR build',
-      async () => {
+      async ({ onTestFinished }) => {
         const fnFiles = [
           'src/deps/handlerDep.ts',
           'src/deps/baseHandlerDep.ts',
@@ -554,6 +556,8 @@ const next = (options) => options
 ${callByIdExports}`,
           },
           entry: { client: 'src/fns.ts', ssr: 'src/ssr-entry.ts' },
+          // This test's own hook: the tests of the block run concurrently.
+          registerCleanup: onTestFinished,
         })
         const ids = (
           await client.run(
