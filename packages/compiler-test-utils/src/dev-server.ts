@@ -137,6 +137,14 @@ export interface DevServer {
     url: string,
     options?: { environment?: string; skip?: RegExp },
   ) => Promise<Record<string, string>>
+  /**
+   * Waits until no environment has a module transform in flight, including
+   * the ones Vite starts in the background: with its default
+   * `server.preTransformRequests`, the client environment transforms the
+   * static imports of each module it serves before anything requests them.
+   * What those transforms log is in `logs` afterwards.
+   */
+  idle: () => Promise<void>
   /** Requests a URL over HTTP (`listen: true` only). */
   fetch: (url: string) => Promise<{ status: number; body: string }>
   /** Imports a module in a runnable environment (default `ssr`). */
@@ -269,8 +277,10 @@ export async function createDevServer(
           server: {
             middlewareMode: !listen,
             ws: false,
-            // `load()` requests the imports a test needs
-            preTransformRequests: false,
+            // Vite's default `preTransformRequests` stays on, as in an app:
+            // the client environment transforms the static imports of each
+            // module it serves in the background, before the browser
+            // requests them.
             // `settle()` reports file events instead of a watcher
             watch: null,
             hotUpdateEnvironments: async (
@@ -493,6 +503,48 @@ export async function createDevServer(
     return found
   }
 
+  /**
+   * The transforms each environment has in flight. Vite has no public API
+   * for them: `waitForRequestsIdle()` only covers the first requests.
+   */
+  const pendingTransforms = () =>
+    Object.values(vite.environments).flatMap((environment) => [
+      ...((
+        environment as unknown as {
+          _pendingRequests?: Map<string, { request: Promise<unknown> }>
+        }
+      )._pendingRequests?.values() ?? []),
+    ])
+
+  async function idle() {
+    const deadline = Date.now() + eventTimeout
+    // Quiet for two turns of the event loop: a transform that ends may
+    // start the pre-transforms of its imports right after.
+    for (let quiet = 0; quiet < 2; ) {
+      await new Promise((resolve) => setImmediate(resolve))
+      const pending = pendingTransforms()
+      if (!pending.length) {
+        quiet++
+        continue
+      }
+      quiet = 0
+      const left = deadline - Date.now()
+      if (left <= 0) {
+        throw new Error(
+          `the dev server still had ${pending.length} transforms in flight after ${eventTimeout} ms`,
+        )
+      }
+      let timer: ReturnType<typeof setTimeout> | undefined
+      await Promise.race([
+        Promise.allSettled(pending.map(({ request }) => request)),
+        new Promise((resolve) => {
+          timer = setTimeout(resolve, left)
+        }),
+      ])
+      clearTimeout(timer)
+    }
+  }
+
   async function transform(url: string, environmentName = 'client') {
     const result = await environment(environmentName).transformRequest(url)
     if (!result) {
@@ -534,6 +586,7 @@ export async function createDevServer(
       }
       return loaded
     },
+    idle,
     fetch: async (url) => {
       const base = vite.resolvedUrls?.local[0]
       if (!base) {

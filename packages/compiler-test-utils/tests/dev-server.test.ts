@@ -223,6 +223,47 @@ describe('dev server harness', () => {
     timeout,
   )
 
+  // Vite's default `server.preTransformRequests`, as in an app: serving a
+  // client module starts the transforms of its static imports in the
+  // background.
+  test(
+    'idle() waits for the background transforms of the imports of a served module',
+    async () => {
+      let release!: () => void
+      const released = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const transformed: Array<string> = []
+      const server = await createDevServer({
+        files,
+        plugins: [
+          {
+            name: 'slow-leaf',
+            async transform(_code, id) {
+              if (id.endsWith('/leaf.ts')) {
+                await released
+                transformed.push('leaf.ts')
+              }
+              return null
+            },
+          },
+        ],
+      })
+      await server.transform('/dep.ts')
+      const idle = server.idle()
+      let settled = false
+      void idle.then(() => {
+        settled = true
+      })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(settled).toBe(false)
+      release()
+      await idle
+      expect(transformed).toEqual(['leaf.ts'])
+    },
+    timeout,
+  )
+
   test(
     'registerCleanup receives close(), which stops the server and removes the app',
     async () => {
