@@ -1,61 +1,55 @@
 import { describe, expect, test } from 'vitest'
-import {
-  compileCode,
-  evaluateModule,
-  importSources,
-} from '../regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { renderServer, renderSource } from '../regression-helpers'
+import type { ModuleStub, Render } from '../regression-helpers'
 
 // On the server, `<ClientOnly>` (of a TanStack router package) renders its
-// fallback: its children are gone from the SSR output, so the server never
-// evaluates them (the evaluated JSX runtime calls components and props
-// eagerly; on the server, the libraries the children use throw when
-// called). Whether the SSR output keeps their imports is left open (neutral
-// names, user ruling 2026-10-17). The client keeps them. Other components
+// fallback: the server output drops its children, so the server never
+// evaluates them (on the server, the libraries the children use throw when
+// called, here even while the children's elements are created). Rendered
+// with the real React and the real `ClientOnly` of `@tanstack/react-router`
+// (which renders its fallback whenever it renders on a server), the server
+// output renders what the uncompiled source renders there. Whether the SSR
+// output keeps the children's imports is left open (neutral names, user
+// ruling 2026-10-17). The client keeps the children: it renders them once
+// the page hydrated (integration/clientOnlyJSX.test.ts). Other components
 // named ClientOnly are left alone.
 // N4 (replaces the former snapshot fixtures of this directory).
 describe('<ClientOnly> children', () => {
-  const libraries = {
-    'heavy-chart-library': { Chart: () => '<chart>' },
+  /** The libraries the fixtures import (plain text components). */
+  const libraries: Record<string, Record<string, unknown>> = {
+    'heavy-chart-library': { Chart: () => 'chart' },
     './utils': { formatData: () => 'data' },
-    'video-player-lib': { VideoPlayer: () => '<video>' },
-    'audio-viz-lib': { AudioVisualizer: () => '<audio>' },
-    'animation-library': { HeavyAnimation: () => '<animation>' },
-    './WindowSize': { WindowSize: () => '<size>' },
-    'outer-lib': { OuterWidget: () => '<outer>' },
-    'inner-lib': { InnerWidget: () => '<inner>' },
+    'video-player-lib': { VideoPlayer: () => 'video' },
+    'audio-viz-lib': { AudioVisualizer: () => 'audio' },
+    'animation-library': { HeavyAnimation: () => 'animation' },
+    './WindowSize': { WindowSize: () => 'size' },
+    'outer-lib': { OuterWidget: () => 'outer' },
+    'inner-lib': { InnerWidget: () => 'inner' },
     'some-other-package': {
-      ClientOnly: (props: { children?: string }) => props.children ?? '',
+      ClientOnly: (props: { children?: unknown }) => props.children ?? null,
     },
   }
   /**
    * The libraries the children of `childModules` use, as the server must
    * never run them: each export throws when called.
    */
-  const serverLibraries = (childModules: Array<string>) =>
+  const serverLibraries = (
+    childModules: Array<string>,
+  ): Record<string, ModuleStub> =>
     Object.fromEntries(
       childModules.map((specifier) => [
         specifier,
         Object.fromEntries(
-          Object.keys(libraries[specifier as keyof typeof libraries]).map(
-            (name) => [
-              name,
-              () => {
-                throw new Error(`client-only code ran during SSR: ${name}`)
-              },
-            ],
-          ),
+          Object.keys(libraries[specifier]!).map((name) => [
+            name,
+            () => {
+              throw new Error(`client-only code ran during SSR: ${name}`)
+            },
+          ]),
         ),
       ]),
     )
-  /** `ClientOnly` renders its fallback on the server, its children on the client. */
-  const router = (env: 'client' | 'server') => ({
-    '@tanstack/react-router': {
-      ClientOnly: (props: { children?: string; fallback?: string }) =>
-        (env === 'server' ? props.fallback : props.children) ?? '',
-      Link: (props: { children?: string }) => `<a>${props.children}</a>`,
-    },
-  })
+  const render: Render = (m, h) => h(m.MyComponent)
 
   test.each([
     {
@@ -75,7 +69,6 @@ export function MyComponent() {
 }`,
       childModules: ['./utils', 'heavy-chart-library'],
       ssr: '<div><div>Loading...</div></div>',
-      client: '<div><chart></div>',
     },
     {
       // Source: snapshot fixture clientOnlyMultiple.tsx
@@ -98,7 +91,6 @@ export function MyComponent() {
 }`,
       childModules: ['audio-viz-lib', 'video-player-lib'],
       ssr: '<div><span>Loading video...</span><p>Some server content</p><span>Loading audio...</span></div>',
-      client: '<div><video><p>Some server content</p><audio></div>',
     },
     {
       // Source: snapshot fixture clientOnlyNested.tsx
@@ -123,7 +115,6 @@ export function MyComponent() {
 }`,
       childModules: ['inner-lib', 'outer-lib'],
       ssr: '<div><div>Outer loading</div></div>',
-      client: '<div><div>Outer content<outer><inner></div></div>',
     },
     {
       // Source: snapshot fixture clientOnlyNoFallback.tsx
@@ -141,7 +132,6 @@ export function MyComponent() {
 }`,
       childModules: ['animation-library'],
       ssr: '<div></div>',
-      client: '<div><animation></div>',
     },
     {
       // Source: snapshot fixture clientOnlyRenamed.tsx
@@ -159,29 +149,17 @@ export function MyComponent() {
 }`,
       childModules: ['./WindowSize'],
       ssr: '<div><div>Loading...</div></div>',
-      client: '<div><size></div>',
     },
   ])(
-    'a boundary with $name renders its fallback on the server and its children on the client',
-    async ({ code, childModules, ssr, client }) => {
-      const server = (await compileCode('ssr', code)) ?? code
-      expect(await getModuleErrors(server)).toEqual([])
-      const { MyComponent: ServerComponent } = await evaluateModule(server, {
-        ...libraries,
-        ...serverLibraries(childModules),
-        ...router('server'),
+    'a boundary with $name renders its fallback on the server without running its children',
+    async ({ code, childModules, ssr }) => {
+      const source = await renderSource(code, { render, stubs: libraries })
+      const server = await renderServer(code, {
+        render,
+        stubs: { ...libraries, ...serverLibraries(childModules) },
       })
-      expect(ServerComponent()).toBe(ssr)
-
-      const browser = (await compileCode('client', code)) ?? code
-      expect(importSources(browser)).toEqual(
-        expect.arrayContaining(childModules),
-      )
-      const { MyComponent: ClientComponent } = await evaluateModule(browser, {
-        ...libraries,
-        ...router('client'),
-      })
-      expect(ClientComponent()).toBe(client)
+      expect(server.html).toBe(source.html)
+      expect(server.html).toBe(ssr)
     },
   )
 
@@ -202,24 +180,24 @@ export function MyComponent() {
       html: '<div><div>This should remain as-is</div></div>',
     },
     {
-      // Source: snapshot fixture clientOnlyWrongImportName.tsx
+      // Source: snapshot fixture clientOnlyWrongImportName.tsx, with
+      // `CatchBoundary` instead of `Link`: the real `Link` needs a router
+      // around it, `CatchBoundary` renders its children anywhere.
       name: 'another router component imported as ClientOnly',
-      code: `import { Link as ClientOnly } from '@tanstack/react-router'
+      code: `import { CatchBoundary as ClientOnly } from '@tanstack/react-router'
 export function MyComponent() {
   return (
     <div>
-      <ClientOnly to="/about">Go to About</ClientOnly>
+      <ClientOnly getResetKey={() => 'about'}>Go to About</ClientOnly>
     </div>
   )
 }`,
-      html: '<div><a>Go to About</a></div>',
+      html: '<div>Go to About</div>',
     },
   ])('the server renders the children of $name', async ({ code, html }) => {
-    const server = (await compileCode('ssr', code)) ?? code
-    const { MyComponent } = await evaluateModule(server, {
-      ...libraries,
-      ...router('server'),
-    })
-    expect(MyComponent()).toBe(html)
+    const source = await renderSource(code, { render, stubs: libraries })
+    const server = await renderServer(code, { render, stubs: libraries })
+    expect(server.html).toBe(source.html)
+    expect(server.html).toBe(html)
   })
 })

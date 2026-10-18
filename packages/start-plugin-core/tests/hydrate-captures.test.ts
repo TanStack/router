@@ -1,17 +1,19 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import {
-  expectRenderedThroughChunks,
-  loadClientModule,
+  expectRendersLikeSource,
+  renderClient,
+  startPackage,
 } from './regression-helpers'
 import { generatedNames } from './hydrate-helpers'
-import type { ModuleStub } from './regression-helpers'
+import type { ClientOptions } from './regression-helpers'
 
 // `<Hydrate>` moves its children into a lazily loaded chunk on the client.
 // Whatever the children read from the enclosing scopes and the module must
-// still be the value the original reads: rendering the parent once its chunks
-// have loaded gives the original output, inside the boundary. How the values
-// reach the chunk is left open. React keeps the `key` and `ref` props for
-// itself, so no captured local here is named like them (pinned in
+// still be the value the original reads: the client output, once its chunks
+// have loaded, renders what the uncompiled source and the server output
+// render (real React and Start's real `Hydrate`, `render.ts`). How the
+// values reach the chunk is left open. React keeps the `key` and `ref` props
+// for itself, so no captured local here is named like them (pinned in
 // known-bugs-hydrate.test.ts).
 
 const head = `import { Hydrate } from '@tanstack/react-start'
@@ -19,21 +21,21 @@ import { load } from '@tanstack/react-start/hydration'
 `
 
 /**
- * Compiles `code` for the client, loads it with its chunks (every module
- * valid, `loadClientModule`) and renders `Page(props)`, which must render its
- * children through their chunks.
+ * Renders `<Page {...props} />` of `code` (after `head`) from the uncompiled
+ * source, the server output and the client output (every module valid, the
+ * children rendered through code loaded on demand): all three render the
+ * same markup, which is returned.
  */
 async function renderPage(
   code: string,
   props?: Record<string, unknown>,
-  stubs?: Record<string, ModuleStub>,
+  options: ClientOptions = {},
 ) {
-  const { module, lazyChunks } = await loadClientModule(`${head}${code}`, {
-    stubs,
+  const { client } = await expectRendersLikeSource(`${head}${code}`, {
+    ...options,
+    props,
   })
-  const html = module.Page(props)
-  expectRenderedThroughChunks(lazyChunks)
-  return html
+  return client.html
 }
 
 test.each<{
@@ -113,6 +115,15 @@ test.each<{
 })(1, 2)}`,
     expected: '<p>2</p>',
   },
+  {
+    // A let the component reassigns before it renders the boundary: the
+    // children read its latest value, not its initializer.
+    // Source: V4 red variant astra/14 (captures collected from constant
+    // bindings only)
+    name: 'through a let reassigned before the boundary',
+    children: `{latest}`,
+    expected: '<p>second</p>',
+  },
 ])(
   'client: the children read the locals of the component $name',
   async ({ children, expected }) => {
@@ -120,9 +131,13 @@ test.each<{
       await renderPage(`export function Page() {
   const value = 'outer'
   const field = 'value'
+  let latest = 'first'
+  if (field) {
+    latest = 'second'
+  }
   return <Hydrate when={load()}><p>${children}</p></Hydrate>
 }`),
-    ).toBe(`[${expected}]`)
+    ).toContain(expected)
   },
 )
 
@@ -139,7 +154,7 @@ export function Page() {
   return seen
 })()}</p></Hydrate>
 }`),
-  ).toBe('[<p>module</p>]')
+  ).toContain('<p>module</p>')
 })
 
 // Source: Qwik optimizer should_not_auto_export_var_shadowed_in_catch
@@ -152,7 +167,7 @@ test('client: the children read a catch parameter', async () => {
     return <Hydrate when={load()}><p>{error.message}</p></Hydrate>
   }
 }`),
-  ).toBe('[<p>caught</p>]')
+  ).toContain('<p>caught</p>')
 })
 
 // Source: Qwik optimizer should_transform_handler_in_for_of_loop
@@ -172,7 +187,7 @@ export function Page({ entries }) {
 }`,
       { entries: [['a', 1]] },
     ),
-  ).toBe('<ul>[<li>a-1</li>]</ul>')
+  ).toContain('<li>a-1</li>')
 })
 
 describe('a binding named like an intrinsic tag', () => {
@@ -209,7 +224,11 @@ export function Page() {
         calls++
         return value
       }
-      expect(await renderPage(code)).toBe('[<div>x</div>]')
+      const { client } = await expectRendersLikeSource(`${head}${code}`)
+      expect(client.html).toContain('<div>x</div>')
+      // The client output alone.
+      calls = 0
+      await renderClient(`${head}${code}`)
       expect(calls).toBe(1)
     },
   )
@@ -218,9 +237,8 @@ export function Page() {
 // Source: Qwik optimizer local_shadowing_destructured_prop,
 // should_not_auto_export_var_shadowed_in_catch
 test('client: names the children declare themselves shadow the locals of the component', async () => {
-  expect(
-    await renderPage(
-      `export function Page({ value }) {
+  const html = await renderPage(
+    `export function Page({ value }) {
   const x = 'outer'
   console.log(x)
   return <Hydrate when={load()}>
@@ -228,11 +246,9 @@ test('client: names the children declare themselves shadow the locals of the com
     <p>{(() => { try { throw new Error('e') } catch (err) { const x = 'catch:' + err.message; return x } })()}</p>
   </Hydrate>
 }`,
-      { value: 'v' },
-    ),
-  ).toBe(
-    '[<input {"onChange":"<function>","value":"v"}></input><p>catch:e</p>]',
+    { value: 'v' },
   )
+  expect(html).toContain('<input value="v"/><p>catch:e</p>')
 })
 
 // Source: Qwik optimizer example_functional_component_capture_props,
@@ -247,7 +263,7 @@ export function Page({ a: [b = 1], ...c }) {
 }`,
       { a: [], x: 'X' },
     ),
-  ).toBe('[<p>1</p><b>X!</b>]')
+  ).toContain('<p>1</p><b>X!</b>')
 })
 
 // Split children move to another module, so only runtime values may reach
@@ -267,7 +283,7 @@ export function Page({ v }: { v: unknown }) {
 }`,
       { v: 'x' },
     ),
-  ).toBe('[<ul>1</ul><p>xx</p>]')
+  ).toContain('<ul>1</ul><p>xx</p>')
 })
 
 describe('names the compiler generates', () => {
@@ -308,23 +324,23 @@ export function Page() {
     for (const name of globals) {
       ;(globalThis as Record<string, unknown>)[name] = `global:${name}`
     }
-    const { module, lazyChunks } = await loadClientModule(
+    const { client } = await expectRendersLikeSource(
       `export const before = [${globals.join(', ')}]
 ${page(`['child']`)}`,
     )
-    expect(module.before).toEqual(globals.map((name) => `global:${name}`))
-    expect(module.Page()).toBe(
-      '[<p>child</p>][<section>[<b>nested</b>]</section>]',
+    expect(client.module.before).toEqual(
+      globals.map((name) => `global:${name}`),
     )
-    expectRenderedThroughChunks(lazyChunks)
+    expect(client.html).toContain('<p>child</p>')
+    expect(client.html).toContain('<b>nested</b>')
   })
 
   // Module-level bindings with these names that the children read (or
   // shadow) are pinned in known-bugs-hydrate.test.ts.
   // Source: Qwik optimizer example_qwik_conflict, import_collision_with_renaming
   test.each([
-    { scope: 'module', reads: `['child']`, html: 'child' },
-    { scope: 'local', reads: 'names', html: 'values' },
+    { scope: 'module', reads: `['child']` },
+    { scope: 'local', reads: 'names' },
   ])(
     'client: $scope bindings named like the generated bindings keep their values',
     async ({ scope, reads }) => {
@@ -335,21 +351,27 @@ ${page(`['child']`)}`,
         .map((name) => `const ${name} = '${scope}:${name}'`)
         .join('\n  ')
       const read = reads === 'names' ? `[${names.join(', ')}]` : reads
-      const { module, lazyChunks } = await loadClientModule(
+      const { client } = await expectRendersLikeSource(
         `import { lazyRouteComponent } from '@tanstack/react-router'
 ${scope === 'module' ? declare : ''}
 export const fromModule = ${scope === 'module' ? `[${names.join(', ')}].join('|')` : 'null'}
 export const Lazy = lazyRouteComponent(() => import('./other'))
 ${page(read, scope === 'local' ? `${declare}\n  ` : '')}`,
-        { stubs: { './other': { default: () => '<i>other</i>' } } },
+        {
+          files: { './other': `export default () => <i>other</i>` },
+          // The user's own lazy component still loads its module.
+          render: (m, h) => [
+            h(m.Page, { key: 'page' }),
+            h(m.Lazy, { key: 'lazy' }),
+          ],
+        },
       )
-      expect(module.fromModule).toBe(scope === 'module' ? values : null)
-      expect(module.Page()).toBe(
-        `[<p>${scope === 'local' ? values : 'child'}</p>][<section>[<b>nested</b>]</section>]`,
+      expect(client.module.fromModule).toBe(scope === 'module' ? values : null)
+      expect(client.html).toContain(
+        `<p>${scope === 'local' ? values : 'child'}</p>`,
       )
-      // The user's own lazy component still loads its module.
-      expect(module.Lazy()).toBe('<i>other</i>')
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain('<b>nested</b>')
+      expect(client.html).toContain('<i>other</i>')
     },
   )
 })
@@ -369,45 +391,47 @@ export function Page() {
 }`,
       {},
       {
-        './labels': { label: 'imported' },
-        './row': { Row: ({ text }: { text: string }) => `<r>${text}</r>` },
+        files: {
+          './labels': `export const label = 'imported'`,
+          './row': `export const Row = ({ text }) => <r>{text}</r>`,
+        },
       },
     ),
-  ).toBe('[<r>local</r><b>module:imported</b><i>local-value</i>]')
+  ).toContain('<r>local</r><b>module:imported</b><i>local-value</i>')
 })
 
 // Source: Qwik optimizer nested_segment_param_does_not_collide_with_captured_props
 test('client: a nested boundary reads the locals of the component around its enclosing boundary', async () => {
-  const { module, lazyChunks } =
-    await loadClientModule(`${head}export function Page({ isOpen, fee }) {
+  const { client } = await expectRendersLikeSource(
+    `${head}export function Page({ isOpen, fee }) {
   const label = 'fee'
   return <Hydrate when={load()}><section><Hydrate when={load()}><p>{label + ':' + (isOpen ? fee : 0)}</p></Hydrate></section></Hydrate>
-}`)
-  expect(module.Page({ isOpen: true, fee: 5 })).toBe(
-    '[<section>[<p>fee:5</p>]</section>]',
+}`,
+    { props: { isOpen: true, fee: 5 } },
   )
-  // The nested boundary rendered through its own chunk.
-  expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true, true])
+  expect(client.html).toContain('<p>fee:5</p>')
 })
 
+// The local is not named `key`: React keeps a `key` prop for itself (pinned
+// in known-bugs-hydrate.test.ts).
 // Source: hydrate-when-transform.test.ts "captures identifiers used by
 // shorthand objects and computed members"
 test('client: the children read locals through a shorthand property and a computed member', async () => {
   expect(
     await renderPage(`import { visible } from '@tanstack/react-start/hydration'
 export function Page() {
-  const key = 'name'
+  const field = 'name'
   const items = { name: 'Ada' }
   return (
     <Hydrate when={visible()}>
-      <Widget data={{ key, value: items[key] }} />
+      <Widget data={{ field, value: items[field] }} />
     </Hydrate>
   )
 }
-function Widget(props: { data: { key: string; value: string } }) {
-  return <p>{props.data.value}</p>
+function Widget(props: { data: { field: string; value: string } }) {
+  return <p>{props.data.field + ':' + props.data.value}</p>
 }`),
-  ).toBe('[<p>Ada</p>]')
+  ).toContain('<p>name:Ada</p>')
 })
 
 // Like `style={{ color: color }}`.
@@ -415,11 +439,11 @@ test('client: the children read locals through a property value and a computed m
   expect(
     await renderPage(`export function Page() {
   const label = 'Ada'
-  const key = 'name'
+  const field = 'name'
   const items = { name: 'Lovelace' }
-  return <Hydrate when={load()}><p>{({ text: label }).text}{items[key]}</p></Hydrate>
+  return <Hydrate when={load()}><p>{({ text: label }).text + items[field]}</p></Hydrate>
 }`),
-  ).toBe('[<p>AdaLovelace</p>]')
+  ).toContain('<p>AdaLovelace</p>')
 })
 
 // Optional members, method keys and other property names are pinned in
@@ -428,14 +452,14 @@ test('client: member names and object keys are no reads of a local declared late
   expect(
     await renderPage(
       `export function Page({ obj }) {
-  const el = <Hydrate when={load()}><p>{obj.later}{({ later: '!' }).later}</p></Hydrate>
+  const el = <Hydrate when={load()}><p>{obj.later + ({ later: '!' }).later}</p></Hydrate>
   const later = 1
   console.log(later)
   return el
 }`,
       { obj: { later: 'L' } },
     ),
-  ).toBe('[<p>L!</p>]')
+  ).toContain('<p>L!</p>')
 })
 
 describe('globals', () => {
@@ -445,15 +469,16 @@ describe('globals', () => {
   })
 
   test('client: a boundary spreading a global splits children rendering a global component', async () => {
+    const { load } = await startPackage('@tanstack/react-start/hydration')
     Object.assign(globalThis, {
-      GlobalWidget: () => '<g></g>',
-      hydrateDefaults: { when: 'idle' },
+      GlobalWidget: () => 'global-widget',
+      hydrateDefaults: { when: load() },
     })
     expect(
       await renderPage(`export function Page() {
   return <Hydrate {...hydrateDefaults}><GlobalWidget /></Hydrate>
 }`),
-    ).toBe('[<g></g>]')
+    ).toContain('global-widget')
   })
 })
 
@@ -464,10 +489,10 @@ test('client: the children render a local component and read a local value', asy
     await renderPage(
       `export function Page({ name }) {
   const count = 1
-  const Local = (props) => <b>{name}{props.count === count ? '' : '!'}</b>
+  const Local = (props) => <b>{name + (props.count === count ? '' : '!')}</b>
   return <Hydrate when={load()}><Local count={count}/><span>{name}</span></Hydrate>
 }`,
       { name: 'n' },
     ),
-  ).toBe('[<b>n</b><span>n</span>]')
+  ).toContain('<b>n</b><span>n</span>')
 })
