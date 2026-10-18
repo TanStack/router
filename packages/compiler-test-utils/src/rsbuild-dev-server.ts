@@ -33,12 +33,31 @@ export interface RsbuildDevServerOptions extends AppOptions {
   /** Rsbuild configuration merged over the harness defaults. */
   config?: RsbuildConfig
   /**
+   * Hot module replacement (`dev.hmr`). With it, each compile after an edit
+   * also emits hot-update chunks (`hotUpdates()`), which `outputs()` leaves
+   * out. Rsbuild's default is on; see `defaultHmr` for the harness default.
+   */
+  hmr?: boolean
+  /**
    * How long to wait for a compile, in milliseconds: only a guard against a
    * compile that never comes (default 20 000). The wait ends as soon as the
    * compile ends or fails.
    */
   compileTimeout?: number
 }
+
+/**
+ * The harness default of `hmr`: off, unlike Rsbuild (on). With it on, the
+ * emitted chunks carry Rsbuild's HMR client, which tests that evaluate the
+ * output outside a browser cannot run (no WebSocket server to reach), and
+ * tests that look for the chunk of a module find the runtime's changes
+ * elsewhere (2026-10-18: 15 tests of router-plugin and start-plugin-core
+ * fail with it on). Tests of hot updates set `hmr: true`.
+ */
+const defaultHmr = false
+
+/** Hot-update chunks and manifests (`*.hot-update.js`, `.json`). */
+const hotUpdate = /\.hot-update\.[^/]*$/
 
 export interface RsbuildDevServer {
   /** App root on disk. */
@@ -52,9 +71,15 @@ export interface RsbuildDevServer {
   edit: (files: Record<string, string | null>) => Promise<void>
   /**
    * JavaScript files an environment (default: the only one) emitted by the
-   * last compile, by path relative to its output directory.
+   * last compile, by path relative to its output directory, without the
+   * hot-update chunks.
    */
   outputs: (environment?: string) => Promise<Record<string, string>>
+  /**
+   * The hot-update chunks an environment (default: the only one) emitted by
+   * the last compile (`hmr` only), by path relative to its output directory.
+   */
+  hotUpdates: (environment?: string) => Promise<Record<string, string>>
   /** Modules (paths relative to the app root) the last compile built. */
   rebuilt: Array<string>
   /** Errors of the last compile. */
@@ -88,6 +113,8 @@ export async function createRsbuildDevServer(
   const compiles = trackCompiles()
   /** Output directory of each environment. */
   const distPaths: Record<string, string> = {}
+  /** Hot-update chunks of the last compile, by environment. */
+  const hotUpdateFiles: Record<string, Array<string>> = {}
   const harnessPlugin: RsbuildPlugin = {
     name: 'rsbuild-dev-server-harness',
     setup(api) {
@@ -102,6 +129,14 @@ export async function createRsbuildDevServer(
         rebuilt.length = 0
         errors.length = 0
         warnings.length = 0
+        const names = Object.keys(environments)
+        all.forEach((environmentStats, index) => {
+          const { compilation } = environmentStats
+          hotUpdateFiles[compilation.name ?? names[index]!] = compilation
+            .getAssets()
+            .map((asset) => asset.name)
+            .filter((name) => hotUpdate.test(name) && name.endsWith('.js'))
+        })
         for (const environmentStats of all) {
           const { compilation } = environmentStats
           for (const module of compilation.builtModules) {
@@ -135,7 +170,12 @@ export async function createRsbuildDevServer(
           mode: 'development',
           logLevel: 'silent',
           source: { entry: { index: `./${entry}` } },
-          dev: { writeToDisk: true, hmr: false, liveReload: false },
+          // No browser connects: live reload would do nothing
+          dev: {
+            writeToDisk: true,
+            hmr: options.hmr ?? defaultHmr,
+            liveReload: false,
+          },
           server: { printUrls: false },
           // Rsbuild's default source maps in development, as in an app
           output: { minify: false },
@@ -175,19 +215,35 @@ export async function createRsbuildDevServer(
   }
   options.registerCleanup?.(close)
 
+  const distPathOf = (environment: string | undefined) => {
+    const name = environment ?? Object.keys(distPaths)[0]!
+    const distPath = distPaths[name]
+    if (!distPath) {
+      throw new Error(
+        `no "${name}" environment (has ${Object.keys(distPaths).join(', ')})`,
+      )
+    }
+    return distPath
+  }
+
   return {
     root,
     rsbuild,
     edit: (files) => compiles.edit(root, files, compileTimeout),
     outputs: async (environment) => {
+      const files = await readJavaScript(distPathOf(environment))
+      return Object.fromEntries(
+        Object.entries(files).filter(([file]) => !hotUpdate.test(file)),
+      )
+    },
+    hotUpdates: async (environment) => {
+      const distPath = distPathOf(environment)
       const name = environment ?? Object.keys(distPaths)[0]!
-      const distPath = distPaths[name]
-      if (!distPath) {
-        throw new Error(
-          `no "${name}" environment (has ${Object.keys(distPaths).join(', ')})`,
-        )
+      const files: Record<string, string> = {}
+      for (const file of hotUpdateFiles[name] ?? []) {
+        files[file] = await readFile(path.join(distPath, file), 'utf8')
       }
-      return readJavaScript(distPath)
+      return files
     },
     rebuilt,
     errors,

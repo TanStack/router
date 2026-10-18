@@ -52,6 +52,34 @@ test('a compile that starts before the writes of the edit finish ends the wait',
   expect(Object.values(await server.outputs()).join('\n')).toContain('MARK_V2')
 }, 30_000)
 
+// Rsbuild's default: each compile after an edit emits hot-update chunks with
+// the edited modules, which a connected browser applies.
+test.each([true, false])(
+  'hmr: %s, an edit emits hot-update chunks with the edit only with hmr, and outputs() leaves them out',
+  async (hmr) => {
+    const server = await createRsbuildDevServer({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      hmr,
+      files: {
+        'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
+        'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
+      },
+    })
+
+    await server.edit({ 'src/leaf.ts': `export const leaf = 'MARK_V2'\n` })
+
+    const updates = Object.values(await server.hotUpdates()).join('\n')
+    expect(updates.includes('MARK_V2')).toBe(hmr)
+    const outputs = await server.outputs()
+    expect(
+      Object.keys(outputs).filter((file) => file.includes('hot-update')),
+    ).toEqual([])
+    expect(Object.values(outputs).join('\n')).toContain('MARK_V2')
+  },
+  30_000,
+)
+
 test('a compile a plugin makes fail rejects the wait with its error, without waiting for the timeout', async () => {
   let compile = 0
   const server = await createRsbuildDevServer({
