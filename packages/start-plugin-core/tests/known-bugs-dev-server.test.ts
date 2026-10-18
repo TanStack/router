@@ -8,8 +8,13 @@ import path from 'node:path'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { describe, expect, test } from 'vitest'
 import { importProtectionPlugin } from '../src/vite/import-protection-plugin/plugin'
-import { callServerFnById, runInRequestContext } from './build-harness'
-import { servedStartRuntime, startDevServer } from './dev-server'
+import { runInRequestContext } from './build-harness'
+import {
+  callServerFnById,
+  servedStartRuntime,
+  startDevServer,
+  startServerEntryFiles,
+} from './dev-server'
 import { isMock } from './importProtection/mock-helpers'
 import type { ImportProtectionPluginOptions } from '../src/vite/import-protection-plugin/types'
 
@@ -122,13 +127,15 @@ describe('editing a server fn factory (SSR)', () => {
    * Like `editFactory` above, in the SSR environment: `src/a.tsx` runs in SSR
    * while `fn` is a plain function, then `src/b.ts` becomes a
    * `createServerFn()` builder. Returns what `fn` is in SSR afterwards: its
-   * server fn id, what calling it returns, and what the server fn resolver
-   * (the server-fn router's lookup, which HTTP calls go through) runs for
-   * that id.
+   * server fn id, what calling it returns, and what a page's call of that
+   * id returns (`callServerFnById`: Start's server entry handles it).
    */
   async function editFactorySsr(importFrom: string) {
     const server = await startDevServer({
+      start: {},
+      realRouter: true,
       files: {
+        ...startServerEntryFiles,
         'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,
         'src/c.ts': `export * from './b'\n`,
         'src/d.ts': `import { base } from './b'\nexport { base }\n`,
@@ -147,9 +154,6 @@ export const base = createServerFn()
 `,
     })
     const { fn } = await server.import('/src/a.tsx')
-    const { getServerFnById } = await server.import(
-      '#tanstack-start-server-fn-resolver',
-    )
     const settle = async (run: () => unknown) => {
       try {
         return await run()
@@ -160,9 +164,7 @@ export const base = createServerFn()
     return {
       id: typeof fn.serverFnMeta?.id,
       called: await settle(() => runInRequestContext(() => fn())),
-      byId: await settle(() =>
-        callServerFnById(getServerFnById, fn.serverFnMeta?.id),
-      ),
+      byId: await settle(() => callServerFnById(server, fn.serverFnMeta?.id)),
     }
   }
 

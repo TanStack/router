@@ -23,6 +23,7 @@ import {
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import {
   buildStart,
+  callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
   routerRuntimeFiles,
@@ -132,8 +133,7 @@ export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
           ),
           'src/client-entry.ts': `export { libFn } from 'server-fn-lib'\n`,
           'src/ssr-entry.ts': `export { libFn } from 'server-fn-lib'
-export { getServerFnById } from '#tanstack-start-server-fn-resolver'
-`,
+${callByIdExports}`,
         },
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
@@ -513,23 +513,51 @@ const next = (options) => options
       },
     )
 
-    // An HTTP call of a client RPC runs the server fn of its id.
+    // An HTTP call of a client RPC runs the server fn of its id. Its own
+    // build of the server fns: Start's server entry, which handles the
+    // call, renders with the real `@tanstack/react-router`, not the shared
+    // build's stand-in.
     // Source: mutation round 3 sc-hosts 1 (no Rsbuild build made the
     // compiler load another module, here the builder's).
-    test('each server fn of the client runs by its id in the SSR build', async () => {
-      const ids = (
-        await build.client.run(
-          `return [entry.fn.serverFnMeta.id, entry.fromBase.serverFnMeta.id]`,
-        )
-      ).result
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const results = []
+    test(
+      'each server fn of the client runs by its id in the SSR build',
+      async () => {
+        const fnFiles = [
+          'src/deps/handlerDep.ts',
+          'src/deps/baseHandlerDep.ts',
+          'src/deps/middlewareServer.ts',
+          'src/deps/middlewareValidator.ts',
+          'src/deps/isomorphicServer.ts',
+          'src/deps/serverOnlyDep.ts',
+          'src/deps/startMiddleware.ts',
+          'src/middleware.ts',
+          'src/base.ts',
+          'src/fns.ts',
+          'src/start.ts',
+        ]
+        const { client, ssr } = await buildStart({
+          bundler,
+          files: {
+            ...Object.fromEntries(fnFiles.map((file) => [file, files[file]!])),
+            'src/ssr-entry.ts': `export * from './fns'
+${callByIdExports}`,
+          },
+          entry: { client: 'src/fns.ts', ssr: 'src/ssr-entry.ts' },
+        })
+        const ids = (
+          await client.run(
+            `return [entry.fn.serverFnMeta.id, entry.fromBase.serverFnMeta.id]`,
+          )
+        ).result
+        const { result } = await ssr.run(`${callByIdPrelude}const results = []
 for (const id of ${JSON.stringify(ids)}) {
   results.push(await callById(id))
 }
 return results`)
-      expect(result).toEqual(['MARK_HANDLER_DEP', 'MARK_BASE_HANDLER_DEP'])
-    })
+        expect(result).toEqual(['MARK_HANDLER_DEP', 'MARK_BASE_HANDLER_DEP'])
+      },
+      timeout,
+    )
   })
 })
 
@@ -677,8 +705,7 @@ export const fromBase = base.handler(async () => 'MARK_FROM_BASE')
 `,
           'src/client-entry.ts': `export { greet, fromBase } from './fns'\n`,
           'src/ssr-entry.ts': `export { greet, fromBase } from './fns'
-export { getServerFnById } from '#tanstack-start-server-fn-resolver'
-`,
+${callByIdExports}`,
         },
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })

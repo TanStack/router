@@ -17,6 +17,7 @@ import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { onTestFinished } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import { tanStackStartVite } from '../src/vite/plugin'
+import { ENTRY_POINTS } from '../src/constants'
 import {
   reactStartPackage,
   routerRuntimeFiles,
@@ -95,8 +96,51 @@ export interface StartDevServerOptions extends Omit<
   realRouter?: boolean
 }
 
+/**
+ * The server entry of an app with `start` whose server handles HTTP
+ * requests: Start's default one (`@tanstack/react-start/server-entry`),
+ * which renders with the real `@tanstack/react-router` (`realRouter`).
+ */
+export const startServerEntryFiles = {
+  'harness/server-entry.ts': `export { default } from '@tanstack/react-start/server-entry'\n`,
+}
+
+/**
+ * Calls the server fn `id` of a dev server with `start` and
+ * `startServerEntryFiles` the way a page of the same origin does: Start's
+ * client RPC sends its GET request to the app's server entry (its `fetch`,
+ * which Start's dev server middleware calls in the SSR environment; the
+ * browser adds `Sec-Fetch-Site`, which Start's CSRF middleware checks).
+ * Gives the decoded result or throws the decoded error, like the client's
+ * server fn.
+ */
+export async function callServerFnById(
+  server: Pick<DevServer, 'import'>,
+  id: string,
+  data?: unknown,
+): Promise<unknown> {
+  const { createClientRpc } = await server.import(
+    '@tanstack/react-start/client-rpc',
+  )
+  const serverEntry = (await server.import(ENTRY_POINTS.server)).default
+  const fetch = (url: string, init: RequestInit) => {
+    const headers = new Headers(init.headers)
+    headers.set('sec-fetch-site', 'same-origin')
+    return serverEntry.fetch(
+      new Request(new URL(url, 'http://localhost'), { ...init, headers }),
+    )
+  }
+  const reply = (await createClientRpc(id)({ data, method: 'GET', fetch })) as
+    | { result: unknown }
+    | { error: unknown }
+  if ('error' in reply) {
+    throw reply.error
+  }
+  return reply.result
+}
+
 /** The files the harness adds to an app with Start's plugin, unless it has them. */
-const startPluginFiles = {
+export const startPluginFiles = {
   'harness/client-entry.ts': `export {}\n`,
   'harness/server-entry.ts': `export {}\n`,
   'harness/start.ts': `export const startInstance = undefined\n`,
@@ -107,7 +151,7 @@ export const Route = createRootRoute()
 }
 
 /** Start's Vite plugin with the core options `@tanstack/react-start` passes. */
-function startPlugin(
+export function startPlugin(
   root: string,
   start: TanStackStartInputConfig,
   compilerTransforms: Array<StartCompilerImportTransform> | undefined,

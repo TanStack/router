@@ -11,6 +11,7 @@ import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
 import {
   buildStart,
+  callByIdExports,
   callByIdPrelude,
   routerRuntimeFiles,
   startBundlers,
@@ -25,8 +26,7 @@ export const greet = createServerFn().handler(async () => 'MARK_HANDLER')
 `,
   'src/client-entry.ts': `export { greet } from './fns'\n`,
   'src/ssr-entry.ts': `export { greet } from './fns'
-export { getServerFnById } from '#tanstack-start-server-fn-resolver'
-`,
+${callByIdExports}`,
 }
 
 /**

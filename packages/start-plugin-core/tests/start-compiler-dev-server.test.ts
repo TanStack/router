@@ -3,17 +3,19 @@
  * environments, SSR as the server fn provider): edits of server fn factories
  * and handlers reach every environment without a restart.
  */
+import react from '@vitejs/plugin-react'
 import { describe, expect, test } from 'vitest'
 import {
   describeHmr,
   evaluateServed,
 } from '@tanstack/compiler-test-utils/dev-server'
+import { requestsOf, runInRequestContext } from './build-harness'
 import {
   callServerFnById,
-  requestsOf,
-  runInRequestContext,
-} from './build-harness'
-import { servedStartRuntime, startDevServer } from './dev-server'
+  servedStartRuntime,
+  startDevServer,
+  startServerEntryFiles,
+} from './dev-server'
 
 const timeout = 30_000
 
@@ -74,7 +76,10 @@ describe('Vite dev: server fns by id', () => {
     'SSR: a server fn of a module compiled after the resolver first loaded runs by id',
     async () => {
       const server = await startDevServer({
+        start: {},
+        realRouter: true,
         files: {
+          ...startServerEntryFiles,
           'src/first.ts': `import { createServerFn } from '@tanstack/react-start'
 export const first = createServerFn().handler(() => 'MARK_FIRST')
 `,
@@ -83,13 +88,10 @@ export const later = createServerFn().handler(() => 'MARK_LATER')
 `,
         },
       })
-      /** Calls the server fn `name` of `url` the way an HTTP call does: by id. */
+      /** Calls the server fn `name` of `url` the way a page does: by id. */
       const callById = async (url: string, name: string) => {
         const fn = (await server.import(url))[name]
-        const { getServerFnById } = await server.import(
-          '#tanstack-start-server-fn-resolver',
-        )
-        return callServerFnById(getServerFnById, fn.serverFnMeta.id)
+        return callServerFnById(server, fn.serverFnMeta.id)
       }
       expect(await callById('/src/first.ts', 'first')).toBe('MARK_FIRST')
       expect(await callById('/src/later.ts', 'later')).toBe('MARK_LATER')
@@ -170,10 +172,17 @@ export const greet = createServerFn().handler(() => 'MARK_HANDLER')
           .getServerFnById
       // SSR's resolver is the test's module, which answers by itself.
       const forwarded = await (await resolver('ssr'))(id, { origin: 'client' })
+      // The provider's resolver gives the server fn of the client id. (No
+      // HTTP call: the server entry that handles one in such a setup is the
+      // framework's, which this compiler-only setup has none of.)
+      const provided = await (await resolver('rsc'))(id, { origin: 'client' })
       expect({
         ssr: forwarded(),
-        rsc: await callServerFnById(await resolver('rsc'), id),
-      }).toEqual({ ssr: `MARK_FORWARDED:${id}`, rsc: 'MARK_HANDLER' })
+        rsc: await runInRequestContext(() => provided({})),
+      }).toEqual({
+        ssr: `MARK_FORWARDED:${id}`,
+        rsc: expect.objectContaining({ result: 'MARK_HANDLER' }),
+      })
     },
     timeout,
   )
@@ -188,20 +197,20 @@ describe('Vite dev: editing a server fn handler', () => {
     'SSR: the server fn resolver runs the edited handler under the same id, without a restart',
     async () => {
       const server = await startDevServer({
+        start: {},
+        realRouter: true,
         files: {
+          ...startServerEntryFiles,
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler(() => 'before')
 `,
         },
       })
-      /** Calls `greet` the way the server-fn router does: by id. */
+      /** Calls `greet` the way a page does: by id. */
       const call = async () => {
         const { greet } = await server.import('/src/fns.ts')
-        const { getServerFnById } = await server.import(
-          '#tanstack-start-server-fn-resolver',
-        )
         const id = greet.serverFnMeta.id
-        return { id, result: await callServerFnById(getServerFnById, id) }
+        return { id, result: await callServerFnById(server, id) }
       }
       const before = await call()
       expect(before.result).toBe('before')
@@ -227,7 +236,10 @@ export const greet = createServerFn().handler(() => 'after')
     'SSR: an edit of a module only the handler reads does not fully reload, and the handler runs the new code',
     async () => {
       const server = await startDevServer({
+        start: {},
+        realRouter: true,
         files: {
+          ...startServerEntryFiles,
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const greet = createServerFn().handler(() => db.x())
@@ -237,10 +249,7 @@ export const greet = createServerFn().handler(() => db.x())
       })
       const call = async () => {
         const { greet } = await server.import('/src/fns.ts')
-        const { getServerFnById } = await server.import(
-          '#tanstack-start-server-fn-resolver',
-        )
-        return callServerFnById(getServerFnById, greet.serverFnMeta.id)
+        return callServerFnById(server, greet.serverFnMeta.id)
       }
       expect(await call()).toBe('before')
 
@@ -362,22 +371,31 @@ export const fn = createServerFn().handler(async () => 'MARK_HANDLER_${version}'
 export const label = () => 'MARK_CLIENT_LABEL'
 `
   const entry = `export { fn, label } from './fns'\n`
+  /** Start's client entry, which the client bundle starts from, loads `src/entry.ts`. */
+  const bundledClientEntry = {
+    'harness/client-entry.ts': `export * from '../src/entry'\n`,
+  }
 
-  /** Calls `fn` in SSR the way an HTTP call does: through the resolver, by its id. */
+  /** Calls `fn` the way a page does: by its id. */
   async function callById(server: Awaited<ReturnType<typeof startDevServer>>) {
     const { fn } = await server.import('/src/fns.ts')
-    const { getServerFnById } = await server.import(
-      '#tanstack-start-server-fn-resolver',
-    )
-    return callServerFnById(getServerFnById, fn.serverFnMeta.id)
+    return callServerFnById(server, fn.serverFnMeta.id)
   }
 
   test(
     'the client bundle has the client code and not the handler, and SSR runs the handler by id',
     async () => {
       const server = await startDevServer({
+        start: {},
+        realRouter: true,
+        plugins: [react()],
         bundledDev: { entry: 'src/entry.ts' },
-        files: { 'src/fns.ts': fns('V1'), 'src/entry.ts': entry },
+        files: {
+          ...startServerEntryFiles,
+          ...bundledClientEntry,
+          'src/fns.ts': fns('V1'),
+          'src/entry.ts': entry,
+        },
       })
       const bundle = await server.clientBundle()
       expect({
@@ -420,8 +438,16 @@ export const label = () => 'MARK_CLIENT_LABEL'
     'SSR runs an edited handler, called directly and by id',
     async () => {
       const server = await startDevServer({
+        start: {},
+        realRouter: true,
+        plugins: [react()],
         bundledDev: { entry: 'src/entry.ts' },
-        files: { 'src/fns.ts': fns('V1'), 'src/entry.ts': entry },
+        files: {
+          ...startServerEntryFiles,
+          ...bundledClientEntry,
+          'src/fns.ts': fns('V1'),
+          'src/entry.ts': entry,
+        },
       })
       expect(await callById(server)).toBe('MARK_HANDLER_V1')
 

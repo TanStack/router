@@ -9,6 +9,7 @@ import { describe, expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import {
   buildStart,
+  callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
   routerRuntimeFiles,
@@ -74,7 +75,7 @@ describe.each(startBundlers)('%s', (bundler) => {
   )
 
   test(
-    "a server fn is Start's RPC on the client: calling it fetches its URL, which carries its id; the SSR build runs the handler, directly and by that id",
+    "a server fn is Start's RPC on the client: calling it fetches its URL, which carries its id; the SSR build runs the handler, directly and for a request of that id",
     async () => {
       const { client, ssr } = await buildStart({
         bundler,
@@ -84,8 +85,7 @@ export const greet = createServerFn().handler(async () => 'hello')
 `,
           'src/client-entry.ts': `export { greet } from './fns'\n`,
           'src/ssr-entry.ts': `export { greet } from './fns'
-export { getServerFnById } from '#tanstack-start-server-fn-resolver'
-`,
+${callByIdExports}`,
         },
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })

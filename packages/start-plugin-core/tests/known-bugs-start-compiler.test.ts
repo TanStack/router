@@ -10,12 +10,18 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import {
   buildStart,
+  callByIdExports,
   callByIdPrelude,
-  callServerFnById,
   linkStartRuntime,
   startBundlers,
 } from './build-harness'
-import { servedStartRuntime } from './dev-server'
+import {
+  callServerFnById,
+  servedStartRuntime,
+  startPlugin,
+  startPluginFiles,
+  startServerEntryFiles,
+} from './dev-server'
 import {
   callProvider,
   callReportedServerFns,
@@ -1693,13 +1699,13 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
     'client-entry.ts': `export { clientFn } from './client-fns'
 `,
     'ssr-entry.ts': `export { serverOnlyFn, getServerFnById } from './server-only-fns'
-`,
+${callByIdExports}`,
   }
 
   /**
-   * Builds `clientAccessFiles` and, in the SSR build, resolves each server fn
-   * the way the server-fn HTTP handler resolves a request
-   * (`origin: 'client'`), and calls the server-only one from SSR code.
+   * Builds `clientAccessFiles` and, in the SSR build, sends a request for
+   * each server fn id to Start's server entry, as a page does
+   * (`callByIdPrelude`), and calls the server-only one from SSR code.
    */
   async function callClientAccess() {
     const { client, ssr } = await buildStart({
@@ -2131,9 +2137,9 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   )
 
   /**
-   * Starts a Vite dev server (middleware mode) with the Start compiler on
-   * `root` (which links Start's real runtime), with SSR as the server fn
-   * provider.
+   * Starts a Vite dev server (middleware mode) with Start's Vite plugin on
+   * `root` (which links Start's real runtime and has `startAppFiles`), with
+   * SSR as the server fn provider.
    */
   function startServerFnDevServer(root: string) {
     return createServer({
@@ -2143,35 +2149,34 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
       cacheDir: path.join(root, '.vite'),
       appType: 'custom',
       server: { middlewareMode: true, hmr: false, ws: false, watch: null },
-      plugins: [
-        startCompilerPlugin({
-          framework: 'react',
-          environments: [
-            { name: 'client', type: 'client' },
-            { name: 'ssr', type: 'server' },
-          ],
-          providerEnvName: 'ssr',
-        }),
-      ],
+      plugins: [startPlugin(root, {}, undefined)],
     })
   }
 
   /**
+   * The files of Start's plugin (`startPluginFiles`), with Start's default
+   * server entry (`startServerEntryFiles`), which handles server fn calls.
+   */
+  const startAppFiles = { ...startPluginFiles, ...startServerEntryFiles }
+
+  /**
    * In a temporary project with `src/fns.ts` = a `greet` server fn, reads the
-   * id of `greet` through a first dev server, then calls the id through the
-   * server fn resolver (`getServerFnById`, like the server fn router) of a
-   * dev server started with `fresh` (a new server, which has compiled
-   * nothing) or of the same server. Returns the result or the error message.
+   * id of `greet` through a first dev server, then calls the id the way a
+   * page does (`callServerFnById`: Start's server entry handles it) on a dev
+   * server started with `fresh` (a new server, which has compiled nothing)
+   * or on the same server. Returns the result or the error message.
    */
   async function callServerFnId(fresh: boolean) {
     const root = await mkdtemp(path.join(__dirname, '.dev-server-fn-'))
     const servers: Array<Awaited<ReturnType<typeof createServer>>> = []
     try {
-      await mkdir(path.join(root, 'src'))
-      await writeFile(
-        path.join(root, 'src', 'fns.ts'),
-        `${head}export const greet = createServerFn().handler(() => 'hello')\n`,
-      )
+      for (const [file, code] of Object.entries({
+        ...startAppFiles,
+        'src/fns.ts': `${head}export const greet = createServerFn().handler(() => 'hello')\n`,
+      })) {
+        await mkdir(path.dirname(path.join(root, file)), { recursive: true })
+        await writeFile(path.join(root, file), code)
+      }
       await linkStartRuntime(root)
       /** Imports a module in the SSR environment of a dev server. */
       const importSsr = (
@@ -2189,18 +2194,23 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
       const { greet } = await importSsr(first, '/src/fns.ts')
       let server = first
       if (fresh) {
-        await first.close()
+        await servers.pop()!.close()
         server = await startServerFnDevServer(root)
         servers.push(server)
       }
-      const { getServerFnById } = await importSsr(
-        server,
-        '#tanstack-start-server-fn-resolver',
-      )
+      const ssr = server
+      // Start's server logs the error of a failed call (a Vite plugin error
+      // here), which Vitest's console forwarding does not survive.
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
       try {
-        return await callServerFnById(getServerFnById, greet.serverFnMeta.id)
+        return await callServerFnById(
+          { import: (id) => importSsr(ssr, id) },
+          greet.serverFnMeta.id,
+        )
       } catch (error) {
         return `throws: ${(error as Error).message}`
+      } finally {
+        logged.mockRestore()
       }
     } finally {
       for (const server of servers) {

@@ -8,6 +8,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   buildStart,
+  callByIdExports,
   callByIdPrelude,
   routerRuntimeFiles,
   startBundlers,
@@ -110,8 +111,7 @@ export { greet as greetB } from './b'
 `,
           'src/ssr-entry.ts': `export { greet as greetB } from './b'
 export { greet as greetA } from './a'
-export { getServerFnById } from '#tanstack-start-server-fn-resolver'
-`,
+${callByIdExports}`,
         },
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
         start: { serverFns: { generateFunctionId: () => 'same-id' } },

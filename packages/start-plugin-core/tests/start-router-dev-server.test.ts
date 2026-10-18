@@ -154,9 +154,8 @@ describe('Vite dev: route HMR in a real page', () => {
   // HMR client, React Refresh and the route HMR code apply them. The edited
   // page route shows its new loader data and component without a full
   // reload, and its split component keeps its state (no remount).
-  // The page is the app's `index.html`, rendered on the client: Start's SSR
-  // document needs the real `@tanstack/react-start`, which depends on this
-  // package. Start's SSR with HMR in a real app: e2e/react-start/hmr.
+  // The page is the app's `index.html`, rendered on the client. Start's SSR
+  // with HMR in a real app: e2e/react-start/hmr.
   // Source: mutation round 3 start-router I/J (spc:6046).
   test(
     'an edited page route shows its new loader and component without a full reload, and its split component keeps its state',

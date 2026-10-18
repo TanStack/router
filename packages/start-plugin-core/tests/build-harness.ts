@@ -15,9 +15,9 @@
  * builds bundle and run Start's runtime. What the test process cannot do is
  * stood in for, each checked against the real runtime in
  * build-harness.test.ts: SSR scripts run in a request context
- * (`inRequestContext`), a client script observes the requests a server fn
- * call sends (`requestsOfPrelude`), and an SSR script calls a server fn by
- * id like the server-fn HTTP handler (`callByIdPrelude`).
+ * (`inRequestContext`), and a client script observes the requests a server
+ * fn call sends (`requestsOfPrelude`). An SSR script calls a server fn by id
+ * through Start's own server entry and client RPC (`callByIdPrelude`).
  * `@tanstack/react-router` is a stand-in for apps with routes
  * (`routerRuntimeFiles`). The app's entries are the harness's: the client
  * and server entries Start builds import `#tanstack-start-entry`
@@ -161,20 +161,37 @@ export function runInRequestContext<T>(fn: () => T): T {
 }
 
 /**
- * Prelude of an SSR script whose entry exports `getServerFnById` of
- * `#tanstack-start-server-fn-resolver`: `callById(id, data)` calls the
- * server fn of `id` the way Start's server-fn HTTP handler does
- * (`handleServerAction` of `@tanstack/start-server-core`: resolve the id,
- * call it with the data the client sent, unwrap `{ result }` and throw
- * `{ error }`), without the HTTP round trip and its serialization.
+ * Exports of an SSR entry whose script calls server fns by id
+ * (`callByIdPrelude`): Start's default server entry (the HTTP handler of a
+ * Start app) and Start's client RPC. The server entry renders with the real
+ * `@tanstack/react-router`: an app with the stand-in (`routerRuntimeFiles`)
+ * cannot load it.
+ */
+export const callByIdExports = `export { default as startServerEntry } from '@tanstack/react-start/server-entry'
+export { createClientRpc } from '@tanstack/react-start/client-rpc'
+`
+
+/**
+ * Prelude of an SSR script whose entry has `callByIdExports`:
+ * `callById(id, data)` sends the GET request of a client call of the server
+ * fn `id` (Start's client RPC) to Start's server entry, as a page of the
+ * same origin does (the browser adds `Sec-Fetch-Site`, which Start's CSRF
+ * middleware checks), and gives the decoded result or throws the decoded
+ * error, like the client's server fn.
  */
 export const callByIdPrelude = `const callById = async (id, data) => {
-  const fn = await entry.getServerFnById(id, { origin: 'client' })
-  const response = await fn({ data, method: fn.method ?? 'GET' })
-  if ('error' in response) {
-    throw response.error
+  const fetch = (url, init) => {
+    const headers = new Headers(init.headers)
+    headers.set('sec-fetch-site', 'same-origin')
+    return entry.startServerEntry.fetch(
+      new Request(new URL(url, 'http://localhost'), { ...init, headers }),
+    )
   }
-  return response.result
+  const reply = await entry.createClientRpc(id)({ data, method: 'GET', fetch })
+  if ('error' in reply) {
+    throw reply.error
+  }
+  return reply.result
 }
 `
 
@@ -200,32 +217,6 @@ export async function requestsOf(
 /** Prelude of a client script: `requestsOf(fn, options)` (see above). */
 export const requestsOfPrelude = `const requestsOf = ${requestsOf.toString()}
 `
-
-/**
- * Calls the server fn of `id` in a test's own process the way Start's
- * server-fn HTTP handler does (see `callByIdPrelude`), in the test request
- * context (`runInRequestContext`): `getServerFnById` is the resolver of the
- * server environment (`#tanstack-start-server-fn-resolver`).
- */
-export async function callServerFnById(
-  getServerFnById: (
-    id: string,
-    options: { origin: 'client' },
-  ) => Promise<(options: Record<string, unknown>) => Promise<unknown>>,
-  id: string,
-  data?: unknown,
-): Promise<unknown> {
-  const fn = (await getServerFnById(id, { origin: 'client' })) as ((
-    options: Record<string, unknown>,
-  ) => Promise<unknown>) & { method?: string }
-  const response = (await runInRequestContext(() =>
-    fn({ data, method: fn.method ?? 'GET' }),
-  )) as { result?: unknown; error?: unknown }
-  if ('error' in response) {
-    throw response.error
-  }
-  return response.result
-}
 
 const routerPackage = 'node_modules/@tanstack/react-router'
 
