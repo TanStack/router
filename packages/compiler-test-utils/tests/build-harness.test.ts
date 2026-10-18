@@ -14,7 +14,11 @@ import {
   namedSegments,
   originalFrameOf,
 } from '../src/build-harness'
-import type { BundleOptions, Placement } from '../src/build-harness'
+import type {
+  BundleOptions,
+  DanglingNameError,
+  Placement,
+} from '../src/build-harness'
 
 const timeout = 60_000
 
@@ -328,6 +332,89 @@ declare const name: string, status: string
         ).rejects.toMatchObject({
           name: 'DanglingNameError',
           names: { 'entry.mjs': ['name', 'status'] },
+        })
+      },
+      timeout,
+    )
+
+    // A browser defines none of Node's own globals: a read of one that
+    // survives into a client chunk throws there, even though the build runs
+    // in Node.
+    test(
+      'a chunk that reads Node-only globals fails the build description',
+      async () => {
+        const error = await bundleApp({
+          bundler,
+          env: 'client',
+          files: {
+            'entry.ts': `export function read() {
+  return [Buffer.from('a').length, global, setImmediate, document.title]
+}
+declare const Buffer: { from: (value: string) => { length: number } }
+declare const global: unknown, setImmediate: unknown
+`,
+          },
+        }).catch((caught: unknown) => caught)
+        expect(error).toMatchObject({ name: 'DanglingNameError' })
+        // webpack and Rspack replace `global` with their own runtime's
+        // global object.
+        expect((error as DanglingNameError).names['entry.mjs']).toEqual(
+          expect.arrayContaining(['Buffer', 'setImmediate']),
+        )
+      },
+      timeout,
+    )
+
+    test(
+      'a read of a Node-only global a typeof check guards passes, and the build replaces process.env.NODE_ENV',
+      async () => {
+        const app = await bundleApp({
+          bundler,
+          env: 'client',
+          files: {
+            'entry.ts': `export function read() {
+  return [
+    typeof process !== 'undefined' && process.env.NODE_ENV,
+    typeof setImmediate === 'function' ? 'has setImmediate' : 'none',
+    process.env.NODE_ENV,
+  ]
+}
+declare const process: { env: Record<string, string> }
+declare const setImmediate: unknown
+`,
+          },
+        })
+        expect(app.locate(/\bprocess\.env\b/)).toEqual({ eager: [], lazy: [] })
+        expect((await app.run('return entry.read()')).result).toEqual([
+          'production',
+          'has setImmediate',
+          'production',
+        ])
+      },
+      timeout,
+    )
+
+    test(
+      'a typeof check of a Node-only global in one function does not allow an unguarded read in another',
+      async () => {
+        await expect(
+          bundleApp({
+            bundler,
+            env: 'client',
+            files: {
+              'entry.ts': `export function guarded() {
+  return typeof Buffer !== 'undefined' && Buffer.byteLength('a')
+}
+export function unguarded() {
+  return Buffer.byteLength('b')
+}
+declare const Buffer: { byteLength: (value: string) => number }
+`,
+            },
+          }),
+        ).rejects.toMatchObject({
+          name: 'DanglingNameError',
+          names: { 'entry.mjs': ['Buffer'] },
         })
       },
       timeout,

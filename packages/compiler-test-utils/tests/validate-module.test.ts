@@ -126,6 +126,171 @@ export const Page = () => <div>{imported}</div>`),
     ).toEqual([])
   })
 
+  // A `typeof` check protects only the reads it guards: the code it selects
+  // when the name exists. Every other read of the name still throws a
+  // ReferenceError when the name does not exist.
+  test.each([
+    {
+      name: 'the right side of `&&`',
+      code: `export const read = () => typeof missing !== 'undefined' && missing.value`,
+    },
+    {
+      name: 'the consequent of `?:`',
+      code: `export const read = () => typeof missing === 'function' ? missing() : null`,
+    },
+    {
+      name: 'the body of `if`',
+      code: `export function read() {
+  if (typeof missing !== 'undefined') {
+    const inner = () => missing.value
+    return inner()
+  }
+  return null
+}`,
+    },
+    {
+      name: 'the `else` branch of a check that the name does not exist',
+      code: `export function read() {
+  if (typeof missing === 'undefined') {
+    return null
+  } else {
+    return missing
+  }
+}`,
+    },
+    {
+      name: 'the right side of `||` after a check that the name does not exist',
+      code: `export const read = () => typeof missing === 'undefined' || missing.value`,
+    },
+    {
+      name: 'a check with the operands swapped',
+      code: `export const read = () => 'undefined' != typeof missing && missing`,
+    },
+    {
+      name: 'the minified check',
+      code: `export const read = () => typeof missing < 'u' && missing`,
+    },
+    {
+      name: 'the minified check last in a comma sequence',
+      code: `export function read() {
+  if ((console.log('read'), 'u' > typeof missing)) {
+    return missing
+  }
+}`,
+    },
+    {
+      name: 'a check combined with another one',
+      code: `export const read = () =>
+  typeof window !== 'undefined' && typeof missing !== 'undefined' ? missing : null`,
+    },
+    {
+      name: 'the statements after an early return',
+      code: `export function read() {
+  if (typeof missing === 'undefined' || typeof missing.value !== 'string') return
+  try {
+    return missing.value
+  } catch {}
+}`,
+    },
+    {
+      // The shape of React DOM's use of the Navigation API.
+      name: 'a function only the guarded branch passes on',
+      code: `export function subscribe() {
+  function onTimeout() {
+    return missing.value
+  }
+  function onEvent() {
+    setTimeout(onTimeout, 20)
+  }
+  if (typeof missing === 'object') {
+    missing.addEventListener('event', onEvent)
+    setTimeout(onTimeout, 100)
+  }
+}`,
+    },
+  ])(
+    'accepts a read of a free name a typeof check guards: $name',
+    async ({ code }) => {
+      expect(await getModuleErrors(code)).toEqual([])
+    },
+  )
+
+  test.each([
+    {
+      name: 'in another function than the check',
+      code: `export const isDefined = () => typeof missing !== 'undefined'
+export const read = () => missing.value`,
+    },
+    {
+      name: 'next to a guarded read in another function',
+      code: `export const guarded = () => typeof missing !== 'undefined' && missing
+export const read = () => missing.value`,
+    },
+    {
+      name: 'before the check',
+      code: `export function read() {
+  const value = missing
+  return typeof missing !== 'undefined' ? value : null
+}`,
+    },
+    {
+      name: 'on the side the check selects when the name does not exist',
+      code: `export const read = () => typeof missing !== 'undefined' || missing`,
+    },
+    {
+      name: 'in the alternate of `?:`',
+      code: `export const read = () => typeof missing === 'function' ? null : missing`,
+    },
+    {
+      name: 'in a function code outside the guarded branch also calls',
+      code: `export function subscribe() {
+  function onTimeout() {
+    return missing.value
+  }
+  if (typeof missing === 'object') {
+    setTimeout(onTimeout, 100)
+  }
+  return onTimeout
+}`,
+    },
+    {
+      name: 'in an exported function the guarded branch calls',
+      code: `export function onTimeout() {
+  return missing.value
+}
+export function subscribe() {
+  if (typeof missing === 'object') {
+    setTimeout(onTimeout, 100)
+  }
+}`,
+    },
+    {
+      name: 'after an early return that does not always return',
+      code: `export function read(flag) {
+  if (typeof missing === 'undefined') {
+    if (flag) return null
+  }
+  return missing
+}`,
+    },
+    {
+      name: 'after an `if` that guards nothing',
+      code: `export function read() {
+  if (typeof missing !== 'undefined') {
+    console.log('defined')
+  }
+  return missing
+}`,
+    },
+  ])(
+    'rejects a read of a free name a typeof check does not guard: $name',
+    async ({ code }) => {
+      expect(await getModuleErrors(code)).toEqual([
+        '`missing` is referenced but never declared or imported',
+      ])
+    },
+  )
+
   test('accepts names given as globals', async () => {
     expect(
       await getModuleErrors(

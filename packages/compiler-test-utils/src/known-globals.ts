@@ -105,6 +105,12 @@ const frameworkNames = [
   // the hydration state the script of Solid's `generateHydrationScript()`
   // creates, which `solid-js/web` reads while hydrating.
   '_$HY',
+  // Vue's compile-time feature flags: a Vue build plugin defines them, and
+  // without one Vue's runtime assigns them to `globalThis` before reading
+  // them (`initFeatureFlags()`).
+  '__VUE_OPTIONS_API__',
+  '__VUE_PROD_DEVTOOLS__',
+  '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__',
 ]
 
 /**
@@ -119,3 +125,20 @@ export const knownGlobals: ReadonlySet<string> = new Set([
   ...Object.keys(globals.browser).filter((name) => browserFamilies.test(name)),
   ...frameworkNames,
 ])
+
+/**
+ * The globals browser code can count on: `knownGlobals` without the ones
+ * only Node.js defines (`process`, `Buffer`, `global`, `setImmediate`,
+ * `clearImmediate`). Production client builds of Vite, Rspack and webpack
+ * replace `process.env.NODE_ENV` (and webpack and Rspack `global`), so a read
+ * of a Node-only global that survives in a client chunk throws in a browser,
+ * unless a `typeof` check guards it (see `unboundNames`).
+ */
+export const clientGlobals: ReadonlySet<string> = new Set(
+  [...knownGlobals].filter(
+    (name) =>
+      name in globals.browser ||
+      name in globals.builtin ||
+      !(name in globals.nodeBuiltin),
+  ),
+)

@@ -211,8 +211,8 @@ export interface BuildResult {
 
 /**
  * A production client build emitted code that reads names no chunk declares
- * or imports and that are no global of a browser or of Node.js: that code
- * throws a ReferenceError when it runs. `names` lists them by chunk.
+ * or imports and that are no global of a browser: that code throws a
+ * ReferenceError when it runs in a browser. `names` lists them by chunk.
  */
 export class DanglingNameError extends Error {
   constructor(
@@ -991,10 +991,12 @@ export async function describeBuild(
 
 /**
  * Throws a `DanglingNameError` when production client chunks read a name
- * that is neither declared, imported nor a known global (`known-globals.ts`)
- * (user ruling "Dead-code references, widened", 2026-10-17: a dangling name
- * that survives into a production client bundle is a bug; one in code the
- * bundler deletes is fine). Names the chunks probe with `typeof` are allowed.
+ * that is neither declared, imported nor a global of the browser
+ * (`clientGlobals` of `known-globals.ts`: no Node-only global such as
+ * `process` or `Buffer`) (user ruling "Dead-code references, widened",
+ * 2026-10-17: a dangling name that survives into a production client bundle
+ * is a bug; one in code the bundler deletes is fine). A read that a `typeof`
+ * check of the name guards is allowed (see `unboundNames`).
  * esbuild is not checked: it is no supported production bundler of the
  * ruling.
  *
@@ -1009,7 +1011,7 @@ async function checkDanglingNames(
   chunks: Array<Chunk>,
   minified: boolean,
 ) {
-  const [{ unboundNames }, { knownGlobals }] = await Promise.all([
+  const [{ unboundNames }, { clientGlobals }] = await Promise.all([
     import('./validate-module'),
     import('./known-globals'),
   ])
@@ -1020,7 +1022,7 @@ async function checkDanglingNames(
         ? chunk.code
         : await minifyAsInProduction(bundler, chunk.code)
     const names = [...unboundNames(code)].filter(
-      (name) => !knownGlobals.has(name),
+      (name) => !clientGlobals.has(name),
     )
     if (names.length > 0) {
       dangling[chunk.fileName] = names

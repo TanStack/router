@@ -27,10 +27,10 @@ import type { ESTree, Rolldown } from 'vite'
  * in the module, once JSX is compiled the way a bundler compiles it (so a
  * classic `@jsx` or `@jsxFrag` pragma reads its factory or fragment, and
  * `@jsxImportSource` its runtime module): such a reference throws a
- * ReferenceError when it runs. Known globals (`known-globals.ts`), names
- * the module probes with `typeof`, and `globals` (e.g. the globals the route
- * file itself reads) are allowed, and so are references in code that
- * tree-shaking deletes (see the top of this file).
+ * ReferenceError when it runs. Known globals (`known-globals.ts`), reads a
+ * `typeof` check guards (see `unboundNames`), and `globals` (e.g. the
+ * globals the route file itself reads) are allowed, and so are references in
+ * code that tree-shaking deletes (see the top of this file).
  *
  * @returns the error messages; an empty array means the module is valid.
  */
@@ -77,7 +77,7 @@ export async function getModuleErrors(
 
 /**
  * Names a module references without declaring or importing them, other than
- * known globals and names it probes with `typeof`, once TypeScript is erased
+ * known globals and reads a `typeof` check guards, once TypeScript is erased
  * and JSX compiled with the project default (React's automatic runtime) or
  * the module's own JSX pragmas (a `@jsx` or `@jsxFrag` pragma alone selects
  * the classic runtime, see `jsxRuntime`). Dead code counts too.
@@ -91,15 +91,19 @@ export async function freeIdentifiers(
 
 /**
  * Names a JavaScript module (e.g. a bundler's output chunk) reads without
- * declaring or importing them, other than the names it probes with `typeof`.
- * Globals count: the caller decides which names exist at run time.
+ * declaring or importing them. Globals count: the caller decides which names
+ * exist at run time. Reads that cannot throw a ReferenceError do not count:
+ * `typeof x` itself, and a read that a `typeof` check of the name guards (the
+ * right side of `typeof x !== 'undefined' && x`, the branch of a `?:` or an
+ * `if` the check selects when `x` exists, and the right side of `||` after a
+ * check that `x` does not exist). Another read of the same name, e.g. in
+ * another function, still counts.
  */
 export function unboundNames(javascript: string): Set<string> {
   const { program } = parseSync('module.js', javascript, {
     sourceType: 'module',
   })
-  const { references, probed } = analyzeScopes(program)
-  return new Set([...references].filter((name) => !probed.has(name)))
+  return analyzeScopes(program)
 }
 
 /** The module with TypeScript erased and JSX compiled (see `jsxRuntime`). */
@@ -266,6 +270,8 @@ type Scope = {
   names: Set<string>
   /** The scope `var` declarations of this scope belong to. */
   varScope: Scope
+  /** Free names a `typeof` check proved to exist in this scope. */
+  guarded?: Set<string>
 }
 
 function createScope(parent: Scope | undefined, isVarScope: boolean): Scope {
@@ -314,6 +320,140 @@ function patternNames(pattern: unknown, names: Array<string> = []) {
       break
   }
   return names
+}
+
+const noGuard = () => ({
+  whenTrue: new Set<string>(),
+  whenFalse: new Set<string>(),
+})
+
+/** `node` without the parentheses around it. */
+function unparenthesized(node: unknown): unknown {
+  let current = node
+  while (isNode(current) && current.type === 'ParenthesizedExpression') {
+    current = current.expression
+  }
+  return current
+}
+
+/**
+ * The free names a condition proves to exist when it is true (`whenTrue`)
+ * and when it is false (`whenFalse`), through `typeof` checks:
+ * `typeof x !== 'undefined'`, `typeof x === 'function'`, their negations and
+ * the minified forms `typeof x < 'u'` and `typeof x > 'u'`, combined with
+ * `!`, `&&` and `||`, or last in a comma sequence.
+ */
+function typeofGuard(condition: unknown): {
+  whenTrue: Set<string>
+  whenFalse: Set<string>
+} {
+  const node = unparenthesized(condition)
+  if (!isNode(node)) {
+    return noGuard()
+  }
+  if (node.type === 'UnaryExpression' && node.operator === '!') {
+    const inner = typeofGuard(node.argument)
+    return { whenTrue: inner.whenFalse, whenFalse: inner.whenTrue }
+  }
+  // Minifiers fold statements into the condition: `if ((a(), check))`
+  if (node.type === 'SequenceExpression') {
+    return typeofGuard((node.expressions as Array<Node>).at(-1))
+  }
+  if (node.type === 'LogicalExpression') {
+    const left = typeofGuard(node.left)
+    const right = typeofGuard(node.right)
+    const union = (a: Set<string>, b: Set<string>) => new Set([...a, ...b])
+    const both = (a: Set<string>, b: Set<string>) =>
+      new Set([...a].filter((name) => b.has(name)))
+    if (node.operator === '&&') {
+      return {
+        whenTrue: union(left.whenTrue, right.whenTrue),
+        whenFalse: both(left.whenFalse, right.whenFalse),
+      }
+    }
+    if (node.operator === '||') {
+      return {
+        whenTrue: both(left.whenTrue, right.whenTrue),
+        whenFalse: union(left.whenFalse, right.whenFalse),
+      }
+    }
+    return noGuard()
+  }
+  if (node.type !== 'BinaryExpression') {
+    return noGuard()
+  }
+  const typeofName = (side: unknown) => {
+    const operand = unparenthesized(side)
+    return isNode(operand) &&
+      operand.type === 'UnaryExpression' &&
+      operand.operator === 'typeof' &&
+      isNode(operand.argument) &&
+      operand.argument.type === 'Identifier'
+      ? (operand.argument.name as string)
+      : undefined
+  }
+  // A string literal, or a template literal without substitutions (Vite's
+  // minifier prints `typeof x<\`u\``).
+  const text = (side: unknown) => {
+    const literal = unparenthesized(side)
+    if (!isNode(literal)) {
+      return undefined
+    }
+    if (literal.type === 'Literal') {
+      return typeof literal.value === 'string' ? literal.value : undefined
+    }
+    const quasis = literal.quasis as Array<Node> | undefined
+    return literal.type === 'TemplateLiteral' && quasis?.length === 1
+      ? ((quasis[0]!.value as { cooked?: string }).cooked ?? undefined)
+      : undefined
+  }
+  let name = typeofName(node.left)
+  let value = text(node.right)
+  let operator = node.operator as string
+  if (name === undefined) {
+    // `'undefined' !== typeof x`; `'u' > typeof x` is `typeof x < 'u'`
+    name = typeofName(node.right)
+    value = text(node.left)
+    operator = operator === '<' ? '>' : operator === '>' ? '<' : operator
+  }
+  if (name === undefined || value === undefined) {
+    return noGuard()
+  }
+  const exists = new Set([name])
+  const isTrueWhenDefined =
+    operator === '===' || operator === '=='
+      ? value !== 'undefined'
+      : operator === '!==' || operator === '!='
+        ? value === 'undefined'
+        : // Every result of `typeof` but 'undefined' sorts before 'u'
+          operator === '<' && value === 'u'
+          ? true
+          : operator === '>' && value === 'u'
+            ? false
+            : undefined
+  if (isTrueWhenDefined === undefined) {
+    return noGuard()
+  }
+  return isTrueWhenDefined
+    ? { whenTrue: exists, whenFalse: new Set() }
+    : { whenTrue: new Set(), whenFalse: exists }
+}
+
+/** Whether a statement always leaves the statement list it is in. */
+function exits(statement: unknown): boolean {
+  if (!isNode(statement)) {
+    return false
+  }
+  switch (statement.type) {
+    case 'ReturnStatement':
+    case 'ThrowStatement':
+    case 'BreakStatement':
+    case 'ContinueStatement':
+      return true
+    case 'BlockStatement':
+      return exits((statement.body as Array<Node>).at(-1))
+  }
+  return false
 }
 
 const functionTypes = new Set([
@@ -380,15 +520,64 @@ function declareLexical(statements: Array<Node>, scope: Scope) {
   }
 }
 
+/** A function of the program, and the function its code runs in. */
+interface FunctionInfo {
+  enclosing: FunctionInfo | undefined
+  /** The binding the function is declared as or assigned to, if any. */
+  binding?: Binding
+}
+
+/** Where the program reads a binding: in `scope`, in the code of `fn`. */
+interface Binding {
+  reads: Array<{ scope: Scope; fn: FunctionInfo | undefined }>
+}
+
 /**
  * Walks a program and returns the names it references without a declaration
- * in scope, and the names it probes with `typeof`.
+ * in scope, other than `typeof` operands and reads a `typeof` check guards
+ * (see `unboundNames`). A read also counts as guarded in a function that
+ * only guarded code can call: a function whose binding is only read where
+ * the check guards (e.g. passed to `setTimeout()` in the guarded branch),
+ * or that is created in such a function.
  */
 function analyzeScopes(program: ESTree.Program) {
-  const references = new Set<string>()
-  const probed = new Set<string>()
   const moduleScope = createScope(undefined, true)
   const body = program.body as unknown as Array<Node>
+  /** Reads of free names the checks around them do not guard. */
+  const unguarded: Array<{ name: string; fn: FunctionInfo | undefined }> = []
+  /** Names the program checks with `typeof`. */
+  const checked = new Set<string>()
+  const bindings = new Map<Scope, Map<string, Binding>>()
+  let currentFunction: FunctionInfo | undefined
+  /** Bindings function expressions are assigned to (`const f = () => {}`). */
+  const functionBindings = new Map<Node, Binding>()
+
+  const declaringScope = (name: string, scope: Scope) => {
+    for (
+      let current: Scope | undefined = scope;
+      current;
+      current = current.parent
+    ) {
+      if (current.names.has(name)) {
+        return current
+      }
+    }
+    return undefined
+  }
+
+  const bindingOf = (scope: Scope, name: string) => {
+    let byName = bindings.get(scope)
+    if (!byName) {
+      byName = new Map()
+      bindings.set(scope, byName)
+    }
+    let binding = byName.get(name)
+    if (!binding) {
+      binding = { reads: [] }
+      byName.set(name, binding)
+    }
+    return binding
+  }
 
   const reference = (name: string, scope: Scope) => {
     for (
@@ -397,10 +586,105 @@ function analyzeScopes(program: ESTree.Program) {
       current = current.parent
     ) {
       if (current.names.has(name)) {
+        bindingOf(current, name).reads.push({ scope, fn: currentFunction })
+        return
+      }
+      if (current.guarded?.has(name)) {
         return
       }
     }
-    references.add(name)
+    unguarded.push({ name, fn: currentFunction })
+  }
+
+  /** Whether a check of `name` guards code in `scope`. */
+  const guardedIn = (scope: Scope, name: string) => {
+    for (
+      let current: Scope | undefined = scope;
+      current;
+      current = current.parent
+    ) {
+      if (current.guarded?.has(name)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Whether the code of `fn` only runs where `name` exists: `fn` is created
+   * in such a function, or only code where it exists reads its binding.
+   * Functions that read each other count as guarded unless code outside
+   * reaches them (the greatest solution), so a result found while assuming
+   * another function guarded is only kept when it is `false`.
+   */
+  const assumed = new Set<FunctionInfo>()
+  const guardedFunctions = new Map<string, Map<FunctionInfo, boolean>>()
+  const isGuardedFunction = (
+    fn: FunctionInfo | undefined,
+    name: string,
+  ): boolean => {
+    if (!fn) {
+      return false
+    }
+    let known = guardedFunctions.get(name)
+    if (!known) {
+      known = new Map()
+      guardedFunctions.set(name, known)
+    }
+    const found = known.get(fn)
+    if (found !== undefined) {
+      return found
+    }
+    if (assumed.has(fn)) {
+      return true
+    }
+    const outermost = assumed.size === 0
+    assumed.add(fn)
+    const result =
+      isGuardedFunction(fn.enclosing, name) ||
+      (fn.binding !== undefined &&
+        fn.binding.reads.every(
+          (read) =>
+            guardedIn(read.scope, name) || isGuardedFunction(read.fn, name),
+        ))
+    assumed.delete(fn)
+    if (!result || outermost) {
+      known.set(fn, result)
+    }
+    return result
+  }
+
+  /** Code outside the module may read what it exports. */
+  const exportBindings = (declaration: Node | null | undefined) => {
+    if (!declaration) {
+      return
+    }
+    const names =
+      declaration.type === 'VariableDeclaration'
+        ? (declaration.declarations as Array<Node>).flatMap((declarator) =>
+            patternNames(declarator.id),
+          )
+        : isNode(declaration.id)
+          ? [declaration.id.name as string]
+          : []
+    for (const name of names) {
+      if (moduleScope.names.has(name)) {
+        bindingOf(moduleScope, name).reads.push({
+          scope: moduleScope,
+          fn: undefined,
+        })
+      }
+    }
+  }
+
+  /** `scope`, where a `typeof` check proved the `guarded` names exist. */
+  const guardedScope = (scope: Scope, guarded: Set<string>) => {
+    if (guarded.size === 0) {
+      return scope
+    }
+    const inner = createScope(scope, false)
+    inner.guarded = guarded
+    return inner
   }
 
   /** Visits a binding pattern: only defaults and computed keys are read. */
@@ -476,12 +760,56 @@ function analyzeScopes(program: ESTree.Program) {
     }
   }
 
+  /**
+   * Visits a statement list. After `if (typeof x === 'undefined') return`,
+   * the statements that follow run only where `x` exists. Function
+   * declarations among them are hoisted, so they are not guarded by
+   * position (only by who reads them).
+   */
   const visitBody = (statements: Array<Node>, scope: Scope) => {
     declareLexical(statements, scope)
-    statements.forEach((statement) => visit(statement, scope))
+    let current = scope
+    for (const statement of statements) {
+      const declaration =
+        statement.type === 'ExportNamedDeclaration' ||
+        statement.type === 'ExportDefaultDeclaration'
+          ? (statement.declaration as Node | null)
+          : statement
+      visit(
+        statement,
+        declaration?.type === 'FunctionDeclaration' ? scope : current,
+      )
+      if (
+        statement.type === 'IfStatement' &&
+        !statement.alternate &&
+        exits(statement.consequent)
+      ) {
+        current = guardedScope(current, typeofGuard(statement.test).whenFalse)
+      }
+    }
   }
 
   const visitFunction = (node: Node, outer: Scope) => {
+    const declared =
+      node.type === 'FunctionDeclaration' && isNode(node.id)
+        ? declaringScope(node.id.name as string, outer)
+        : undefined
+    const info: FunctionInfo = {
+      enclosing: currentFunction,
+      binding: declared
+        ? bindingOf(declared, (node.id as Node).name as string)
+        : functionBindings.get(node),
+    }
+    const enclosing = currentFunction
+    currentFunction = info
+    try {
+      visitFunctionBody(node, outer)
+    } finally {
+      currentFunction = enclosing
+    }
+  }
+
+  const visitFunctionBody = (node: Node, outer: Scope) => {
     const scope = createScope(outer, true)
     if (node.type === 'FunctionExpression' && isNode(node.id)) {
       scope.names.add(node.id.name as string)
@@ -614,6 +942,18 @@ function analyzeScopes(program: ESTree.Program) {
       case 'VariableDeclaration':
         for (const declarator of node.declarations as Array<Node>) {
           visitBinding(declarator.id, scope)
+          const init = unparenthesized(declarator.init)
+          const id = declarator.id as Node
+          if (
+            isNode(init) &&
+            functionTypes.has(init.type) &&
+            id.type === 'Identifier'
+          ) {
+            const declared = declaringScope(id.name as string, scope)
+            if (declared) {
+              functionBindings.set(init, bindingOf(declared, id.name as string))
+            }
+          }
           visit(declarator.init, scope)
         }
         return
@@ -634,16 +974,38 @@ function analyzeScopes(program: ESTree.Program) {
         visit(node.value, scope)
         return
       case 'UnaryExpression':
+        // `typeof x` never throws, even when nothing declares `x`
         if (
           node.operator === 'typeof' &&
           isNode(node.argument) &&
           node.argument.type === 'Identifier'
         ) {
-          probed.add(node.argument.name as string)
+          checked.add(node.argument.name as string)
           return
         }
         visit(node.argument, scope)
         return
+      case 'LogicalExpression': {
+        visit(node.left, scope)
+        const guard = typeofGuard(node.left)
+        visit(
+          node.right,
+          node.operator === '&&'
+            ? guardedScope(scope, guard.whenTrue)
+            : node.operator === '||'
+              ? guardedScope(scope, guard.whenFalse)
+              : scope,
+        )
+        return
+      }
+      case 'ConditionalExpression':
+      case 'IfStatement': {
+        visit(node.test, scope)
+        const guard = typeofGuard(node.test)
+        visit(node.consequent, guardedScope(scope, guard.whenTrue))
+        visit(node.alternate, guardedScope(scope, guard.whenFalse))
+        return
+      }
       case 'LabeledStatement':
         visit(node.body, scope)
         return
@@ -654,9 +1016,14 @@ function analyzeScopes(program: ESTree.Program) {
       case 'ExportAllDeclaration':
       case 'PrivateIdentifier':
         return
+      case 'ExportDefaultDeclaration':
+        visit(node.declaration, scope)
+        exportBindings(node.declaration as Node)
+        return
       case 'ExportNamedDeclaration':
         if (node.declaration) {
           visit(node.declaration, scope)
+          exportBindings(node.declaration as Node)
         } else if (!node.source) {
           for (const specifier of node.specifiers as Array<Node>) {
             visit(specifier.local, scope)
@@ -674,5 +1041,14 @@ function analyzeScopes(program: ESTree.Program) {
 
   declareVars(body, moduleScope)
   visitBody(body, moduleScope)
-  return { references, probed }
+  const references = new Set<string>()
+  for (const read of unguarded) {
+    if (
+      !references.has(read.name) &&
+      !(checked.has(read.name) && isGuardedFunction(read.fn, read.name))
+    ) {
+      references.add(read.name)
+    }
+  }
+  return references
 }
