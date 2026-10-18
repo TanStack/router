@@ -1,59 +1,19 @@
 /**
- * Known import-protection bugs. Each test asserts correct behaviour for a bug
- * on main and is marked .fails; remove .fails when the bug is fixed.
+ * Known import-protection bugs of the rewrite of a denied import, in
+ * process. Each test asserts correct behaviour for a bug on main and is
+ * marked .fails; remove .fails when the bug is fixed. The bugs of the mock
+ * modules are pinned on real apps (integration/importProtection/
+ * known-bugs.test.ts, "app-level twins of the mock pins").
  */
 
 import { transformWithOxc } from 'vite'
 import { expect, test } from 'vitest'
 import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
-import { evaluateWithMock, isMock, selfMock } from './mock-helpers'
 
+/** A sentinel mock injected to observe the rewrite's wiring alone. */
 const mockModule = `data:text/javascript,${encodeURIComponent(
   `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
 )}`
-
-async function evaluateRewritten(code: string, denied: Array<string>) {
-  const rewritten = rewriteDeniedImports(
-    code,
-    '/test/module.ts',
-    new Set(denied),
-    () => mockModule,
-  )
-  expect(rewritten).toBeDefined()
-  const { code: javascript } = await transformWithOxc(
-    rewritten!.code,
-    'module.ts',
-  )
-  return (await import(
-    /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(javascript)}`
-  )) as Record<string, unknown>
-}
-
-// Control for the namespace re-export pin below (same harness).
-test('a denied named import evaluates to the mock', async () => {
-  const exports = await evaluateRewritten(
-    `import { secret } from 'denied'
-export const seen = secret`,
-    ['denied'],
-  )
-  expect({ ...exports }).toEqual({ seen: 'mock:secret' })
-})
-
-// Bug: rewriting a denied `export * as ns from 'denied'` drops the `ns`
-// export.
-// Impact: importers of `ns` get `undefined` (or a missing export error)
-// instead of the mock, unlike every other denied import form.
-test.fails('a denied namespace re-export keeps its exported name', async () => {
-  const exports = await evaluateRewritten(
-    `export * as ns from 'denied'
-export const keep = 1`,
-    ['denied'],
-  )
-  expect(exports.keep).toBe(1)
-  expect((exports.ns as Record<string, unknown> | undefined)?.secret).toBe(
-    'mock:secret',
-  )
-})
 
 /**
  * Rewrites the denied import of a module with JSX that `prologue` (comments,
@@ -114,34 +74,5 @@ test.fails.each(leadingComments)(
   '$name that leads a denied import stays in effect',
   async ({ comment, runtime }) => {
     expect(await rewriteWithPrologue(comment, comment)).toEqual([true, runtime])
-  },
-)
-
-// Bug: mock modules declare each mocked name as `export const <name>`, and
-// reserved words such as `delete` pass the identifier check.
-// Impact: the mock of a denied module that exports a reserved word
-// (`export { remove as delete }`) or is used through one (`api.delete()`) is a
-// SyntaxError, which fails the build instead of mocking the module.
-test.fails(
-  'the mock of a denied file exporting `delete` exports it',
-  async () => {
-    const mock = await selfMock(
-      `const remove = () => {}
-export { remove as delete }`,
-      '/test/api.server.ts',
-    )
-    expect('delete' in mock && mock.delete !== undefined).toBe(true)
-  },
-)
-
-test.fails(
-  'a denied import used as `api.delete()` evaluates to a mock',
-  async () => {
-    const module = await evaluateWithMock(
-      `import * as api from 'denied'
-export const result = api.delete()`,
-      'denied',
-    )
-    expect(isMock(module.result)).toBe(true)
   },
 )

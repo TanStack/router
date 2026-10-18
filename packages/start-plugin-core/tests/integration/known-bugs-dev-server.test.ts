@@ -15,7 +15,7 @@ import {
   startDevServer,
   startServerEntryFiles,
 } from '../dev-server'
-import { isMock } from '../importProtection/mock-helpers'
+import { isSafeMock } from '../importProtection/mock-helpers'
 import type { ImportProtectionPluginOptions } from '../../src/vite/import-protection-plugin/types'
 
 const timeout = 30_000
@@ -418,7 +418,7 @@ export const values = [getRequest, getHeader, server.setCookie]
     async ({ client }) => {
       const { module } = await evaluateClient({ 'src/c.ts': client })
       const { values } = module as { values: Array<unknown> }
-      expect(values.map(isMock)).toEqual(values.map(() => true))
+      expect(values.map((value: unknown) => isSafeMock(value))).toEqual(values.map(() => true))
     },
     timeout,
   )
@@ -448,7 +448,7 @@ export const values = [getRequest, getHeader, server.setCookie]
         'src/c.ts': `import { getRequest } from './b'\nexport const v = getRequest\n`,
       })
       expect(
-        isMock((module as Record<string, unknown>).v) ||
+        isSafeMock((module as Record<string, unknown>).v) ||
           messages(logs).some((line) => line.includes('export *')),
       ).toBe(true)
     },

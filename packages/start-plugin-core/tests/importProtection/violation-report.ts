@@ -1,9 +1,27 @@
 /**
- * Reads the parts of an import-protection violation report that tell the
- * user where the leak comes from: the import trace (from the entry to the
- * importer) and the code frame. Read from the text a build prints (Vite
- * errors, and Rsbuild errors, whose lines it boxes with `│`).
+ * Reads the import-protection violation reports in the text a user sees
+ * (dev server logs, build errors and warnings, Rsbuild errors boxed with
+ * `│`) by their documented sections (SPEC J6.5, J6.12), not by their prose:
+ * the environment type the header names, `Importer:` (`file:line:column`),
+ * `Import:`, the `Trace:` steps and the `Code:` frame with its `>`/`^`
+ * convention. Header wording, numbering, quotes and spacing are the
+ * compiler's (J6.12); a header that announces import protection without
+ * the documented sections is an unparsed candidate, which throws.
+ *
+ * `onViolation` gives the same violations structured (`ViolationInfo`);
+ * tests that need the user-visible text (what is logged, how often, the
+ * displayed trace and frame) read it through this adapter.
  */
+
+export interface ReportedViolation {
+  /** `client` or `server`. */
+  environment: string
+  /**
+   * Where the violation is reported (`Importer:`): the importer relative to
+   * the app root, with `:line:column` when the report has a location.
+   */
+  importer: string
+}
 
 export interface ReportedTraceStep {
   /** The module, as `file:line:column` when the step has a location. */
@@ -25,57 +43,185 @@ export interface ReportedCodeFrame {
   location: string
 }
 
-export interface ViolationReport {
-  /** `Importer:`, as `file:line:column`. */
-  importer: string
-  /** The numbered trace steps, in order. */
+export interface ViolationReport extends ReportedViolation {
+  /** The raw specifier (`Import:`). */
+  specifier: string
+  /** The trace steps, in order. */
   trace: Array<ReportedTraceStep>
   code?: ReportedCodeFrame
+  /** The whole report. */
+  text: string
+}
+
+/** A line a report labels (`Importer: ...`, `Trace:`), by its label. */
+const field = /^\s*([A-Z][A-Za-z ]*):(?:\s+(.*?))?\s*$/
+
+/** A label line's value, or `undefined`. */
+function fieldValue(lines: Array<string>, label: string): string | undefined {
+  for (const line of lines) {
+    const match = field.exec(line)
+    if (match && match[1] === label) {
+      return match[2] ?? ''
+    }
+  }
+  return undefined
+}
+
+/**
+ * Lines that cannot start a report: labelled lines, list items, numbered
+ * trace steps, code-frame lines and bare locations.
+ */
+function isHeader(line: string): boolean {
+  return (
+    line.trim() !== '' &&
+    !field.test(line) &&
+    !/^\s*[-*]\s/.test(line) &&
+    !/^\s*\d+[.)]\s/.test(line) &&
+    !/^\s*>?\s*\d*\s*\|/.test(line) &&
+    !/^\s*\S+:\d+(:\d+)?\s*$/.test(line)
+  )
+}
+
+/**
+ * Splits `output` into candidate report blocks: each log entry of an array
+ * on its own; within a text, a block starts at a header line (the first
+ * line of a paragraph that is not a section of a report), or at a line
+ * announcing import protection once the current block has its `Importer:`.
+ */
+function blocks(output: string | Array<string>): Array<Array<string>> {
+  if (Array.isArray(output)) {
+    return output.flatMap(blocks)
+  }
+  const text = output
+    // Rsbuild boxes the lines of an error with `│`
+    .replace(/^.*│ ?/gm, '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/\u001b\[[0-9;]*m/g, '')
+  const lines = text.split('\n')
+  const result: Array<Array<string>> = []
+  let current: Array<string> | undefined
+  let previousBlank = true
+  for (const line of lines) {
+    const announces =
+      mentionsImportProtection(line) &&
+      current !== undefined &&
+      fieldValue(current, 'Importer') !== undefined
+    if ((previousBlank && isHeader(line)) || announces) {
+      current = []
+      result.push(current)
+    }
+    current?.push(line)
+    previousBlank = line.trim() === ''
+  }
+  return result
+}
+
+function mentionsImportProtection(line: string): boolean {
+  return /import[- ]protection/i.test(line)
+}
+
+/** The lines of a block before its first labelled line: its header. */
+function headerOf(block: Array<string>): Array<string> {
+  const end = block.findIndex((line) => field.test(line))
+  return block.slice(0, end === -1 ? block.length : end)
+}
+
+/**
+ * Whether a block announces an import-protection violation: its header
+ * names import protection and a body follows (a bundler's one-line plugin
+ * tag before a report is not one), or it has an `Importer:` section.
+ */
+function isCandidate(block: Array<string>): boolean {
+  const header = headerOf(block)
+  const body = block.slice(header.length).some((line) => line.trim() !== '')
+  return (
+    (body && header.some(mentionsImportProtection)) ||
+    fieldValue(block, 'Importer') !== undefined
+  )
 }
 
 /** The violation reports in `output`, in order. */
 export function violationReports(
   output: string | Array<string>,
 ): Array<ViolationReport> {
-  const text = (Array.isArray(output) ? output.join('\n') : output).replace(
-    /^.*│ ?/gm,
-    '',
-  )
-  return text
-    .split('[import-protection] Import denied in ')
-    .slice(1)
-    .map(parseReport)
+  return blocks(output).filter(isCandidate).flatMap(parseReport)
 }
 
-function parseReport(report: string): ViolationReport {
-  const lines = report.split('\n')
-  const trace: Array<ReportedTraceStep> = []
-  const traceStart = lines.findIndex((line) => line.trim() === 'Trace:')
-  for (
-    let index = traceStart + 1;
-    traceStart !== -1 && index < lines.length;
-    index++
-  ) {
-    const step = /^\s+(\d+)\. (\S+)( \(entry\))?(?: \(import "(.*)"\))?$/.exec(
-      lines[index]!,
+/** `environment` and `importer` of each report in `output`, in order. */
+export function reportedViolations(
+  output: string | Array<string>,
+): Array<ReportedViolation> {
+  return violationReports(output).map(({ environment, importer }) => ({
+    environment,
+    importer,
+  }))
+}
+
+/** The text of each report in `output`, in order. */
+export function violationTexts(output: string | Array<string>): Array<string> {
+  return violationReports(output).map(({ text }) => text)
+}
+
+/**
+ * Parses one candidate block. A runtime access report of a dev mock
+ * (`Access:`) is not a violation report; a block that announces import
+ * protection but lacks the documented sections throws.
+ */
+function parseReport(block: Array<string>): Array<ViolationReport> {
+  const text = block.join('\n')
+  const importer = fieldValue(block, 'Importer')
+  const specifier = fieldValue(block, 'Import')
+  if (fieldValue(block, 'Access') !== undefined) {
+    return []
+  }
+  if (importer === undefined || specifier === undefined) {
+    throw new Error(
+      `an import-protection diagnostic without the documented Importer and Import sections:\n${text}`,
     )
-    if (!step) {
+  }
+  const environments = [
+    ...new Set(headerOf(block).join(' ').match(/\b(client|server)\b/g) ?? []),
+  ]
+  if (environments.length !== 1) {
+    throw new Error(
+      `an import-protection report whose header names ${environments.length === 0 ? 'no' : 'more than one'} environment type:\n${text}`,
+    )
+  }
+  return [
+    {
+      environment: environments[0]!,
+      importer,
+      specifier: specifier.replace(/^["'](.*)["']$/, '$1'),
+      trace: parseTrace(block),
+      code: parseCodeFrame(block),
+      text,
+    },
+  ]
+}
+
+/** The steps listed under `Trace:`, in order (their numbering is not checked). */
+function parseTrace(lines: Array<string>): Array<ReportedTraceStep> {
+  const trace: Array<ReportedTraceStep> = []
+  const start = lines.findIndex((line) => field.exec(line)?.[1] === 'Trace')
+  for (let index = start + 1; start !== -1 && index < lines.length; index++) {
+    const step =
+      /^\s*(?:\d+[.)]|[-*])?\s*(\S+?)(?:\s+\((entry)\))?(?:\s+\(import\s+["'](.*)["']\))?\s*$/.exec(
+        lines[index]!,
+      )
+    if (!step || lines[index]!.trim() === '') {
       break
     }
-    if (Number(step[1]) !== trace.length + 1) {
-      throw new Error(`trace step ${step[1]} is out of order`)
-    }
-    trace.push({ at: step[2]!, entry: !!step[3], imports: step[4] })
+    trace.push({ at: step[1]!, entry: !!step[2], imports: step[3] })
   }
-  return {
-    importer: /Importer: (\S+)/.exec(report)?.[1] ?? '',
-    trace,
-    code: parseCodeFrame(lines),
-  }
+  return trace
 }
 
+/**
+ * The frame under `Code:`: the line marked `>` (its code from the `^`
+ * caret), every shown line's code, and the location printed under it.
+ */
 function parseCodeFrame(lines: Array<string>): ReportedCodeFrame | undefined {
-  const start = lines.findIndex((line) => line.trim() === 'Code:')
+  const start = lines.findIndex((line) => field.exec(line)?.[1] === 'Code')
   if (start === -1) {
     return undefined
   }
@@ -83,16 +229,16 @@ function parseCodeFrame(lines: Array<string>): ReportedCodeFrame | undefined {
   for (let index = start + 1; lines[index]?.trim(); index++) {
     frame.push(lines[index]!)
   }
-  const highlighted = frame.findIndex((line) => /^\s*>\s*\d+ \|/.test(line))
+  const highlighted = frame.findIndex((line) => /^\s*>\s*\d+\s*\|/.test(line))
   const caret = frame[highlighted + 1]?.indexOf('^') ?? -1
   if (highlighted === -1 || caret === -1) {
     throw new Error(`no highlighted line with a caret in:\n${frame.join('\n')}`)
   }
   return {
-    line: Number(/(\d+) \|/.exec(frame[highlighted]!)![1]),
+    line: Number(/(\d+)\s*\|/.exec(frame[highlighted]!)![1]),
     pointsAt: frame[highlighted]!.slice(caret),
     shows: frame.flatMap(
-      (line) => /^\s*>?\s*\d+ \| ?(.*)$/.exec(line)?.[1] ?? [],
+      (line) => /^\s*>?\s*\d+\s*\| ?(.*)$/.exec(line)?.[1] ?? [],
     ),
     location:
       lines
