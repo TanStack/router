@@ -178,6 +178,79 @@ describe('route edits', () => {
   )
 })
 
+// A rename or move reaches the generator as a delete and a create event, in
+// either order, in one batch (a file watcher reports both before the first
+// run completes).
+describe.each([
+  {
+    name: 'a top-level route file',
+    from: 'src/routes/about.tsx',
+    to: 'src/routes/contact.tsx',
+    routes: {
+      '/contact': 'routes/contact.tsx',
+      '/posts': 'routes/posts.tsx',
+      '/posts/$id': 'routes/posts.$id.tsx',
+    },
+    id: '/contact',
+  },
+  {
+    name: 'a child route file to another param name',
+    from: 'src/routes/posts.$id.tsx',
+    to: 'src/routes/posts.$postId.tsx',
+    routes: {
+      '/about': 'routes/about.tsx',
+      '/posts': 'routes/posts.tsx',
+      '/posts/$postId': 'routes/posts.$postId.tsx',
+    },
+    id: '/posts/$postId',
+  },
+  {
+    name: 'a route file into a directory under its layout',
+    from: 'src/routes/about.tsx',
+    to: 'src/routes/posts/about.tsx',
+    routes: {
+      '/posts': 'routes/posts.tsx',
+      '/posts/$id': 'routes/posts.$id.tsx',
+      '/posts/about': 'routes/posts/about.tsx',
+    },
+    id: '/posts/about',
+  },
+])('renaming $name', ({ from, to, routes, id }) => {
+  test.each(['delete', 'create'] as const)(
+    'with the %s event first gives the route tree of a fresh run and fixes the route id',
+    async (first) => {
+      const root = await createApp({
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/about.tsx': fileRoute('/about'),
+        'src/routes/posts.tsx': fileRoute('/posts'),
+        'src/routes/posts.$id.tsx': fileRoute('/posts/$id'),
+      })
+      const { config, generator } = await startGenerator(root)
+
+      const content = await read(root, from)
+      const created = await save(root, to, content)
+      const deleted = await remove(root, from)
+      const events = [
+        { type: 'delete' as const, path: deleted },
+        { type: 'create' as const, path: created },
+      ]
+      if (first === 'create') {
+        events.reverse()
+      }
+      await Promise.all(events.map((event) => generator.run(event)))
+
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        ...routes,
+      })
+      expect(await routeIdOf(await read(root, to))).toBe(id)
+      expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(
+        await freshTree(root, config),
+      )
+    },
+  )
+})
+
 describe('route tree file events', () => {
   test.each([
     { name: 'hand-edited', content: '// edited\n' },
