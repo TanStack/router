@@ -269,7 +269,7 @@ describe('Rsbuild dev', () => {
   const timeout = 60_000
   const compileTimeout = timeout
 
-  /** A module type another loader compiles to JS (a stand-in for `.mdx`). */
+  /** A module type of the app's own: an Rspack rule compiles `.page` files as JavaScript (like `.mdx` through its loader). */
   const pageModules: RsbuildConfig = {
     tools: {
       rspack: {
