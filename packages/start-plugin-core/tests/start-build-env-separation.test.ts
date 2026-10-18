@@ -538,7 +538,12 @@ const next = (options) => options
         const { client, ssr } = await buildStart({
           bundler,
           files: {
-            ...Object.fromEntries(fnFiles.map((file) => [file, files[file]!])),
+            ...Object.fromEntries(
+              fnFiles.map((file) => [
+                file,
+                (files as Record<string, string>)[file]!,
+              ]),
+            ),
             'src/ssr-entry.ts': `export * from './fns'
 ${callByIdExports}`,
           },
