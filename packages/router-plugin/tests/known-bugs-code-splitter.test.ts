@@ -3115,7 +3115,7 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
   const clientBuild = (
     bundler: Bundler | 'rsbuild',
     options: {
-      sideEffects: false | undefined
+      sideEffects: boolean | undefined
       files: Record<string, string>
       registerCleanup?: () => void
     },
