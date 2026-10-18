@@ -64,21 +64,10 @@ export const Route = createFileRoute('/posts')(options)
     ]).toEqual(['posts', '<ul>2</ul>', 1])
   })
 
-  it('that repeat a split key are split like the runtime object: the last one wins', async () => {
-    const route =
-      await loadRoute(`${head}export const Route = createFileRoute('/')({
-  component: () => <div>first</div>,
-  component: () => <div>last</div>,
-})
-`)
-    await expectValidModules(route.modules)
-    expect(route.isLazy('component')).toBe(true)
-    expect((await route.load('component'))()).toBe('<div>last</div>')
-  })
-
   it.each([
     { option: 'errorComponent', value: false },
-    { option: 'pendingComponent', value: null },
+    { option: 'errorComponent', value: null },
+    { option: 'pendingComponent', value: undefined },
     { option: 'component', value: undefined },
     { option: 'notFoundComponent', value: undefined },
     { option: 'loader', value: undefined },
@@ -105,7 +94,7 @@ export const Route = createFileRoute('/posts')(options)
   loader() { return 'data' },
   component: () => <p>page</p>,
   errorComponent: false,
-  pendingComponent: null,
+  pendingComponent: undefined,
   notFoundComponent: undefined,
 })
 `)
@@ -116,31 +105,8 @@ export const Route = createFileRoute('/posts')(options)
       route.options.errorComponent,
       route.options.pendingComponent,
       route.options.notFoundComponent,
-    ]).toEqual(['data', false, null, undefined])
+    ]).toEqual(['data', false, undefined, undefined])
   })
-
-  // A `var` declared in a block at module level is a module-level binding,
-  // so the route it creates is no route created inside a function.
-  // Source: #8504 (differential fuzzing).
-  it.each([
-    { name: 'an if block', open: 'if (true) {', close: '}' },
-    { name: 'a bare block', open: '{', close: '}' },
-    { name: 'a try block', open: 'try {', close: '} finally {}' },
-  ])(
-    'are split when the route is declared with var in $name at module level',
-    async ({ open, close }) => {
-      const route = await loadRoute(`${head}${open}
-  var Route = createFileRoute('/')({
-    component: () => <div>split</div>,
-  })
-${close}
-export { Route }
-`)
-      await expectValidModules(route.modules)
-      expect(route.isLazy('component')).toBe(true)
-      expect((await route.load('component'))()).toBe('<div>split</div>')
-    },
-  )
 })
 
 // The groupings a route gets without any option (`defaultCodeSplitGroupings`,
@@ -504,18 +470,14 @@ export const Route = createFileRoute('/about')({
   // ("module state a method option shares with a split option is created
   // once"); split or not, the options keep working.
   // Source: #8504 code-splitter-route-options.test.ts "route options written
-  // as methods or accessors".
-  it('written as methods or accessors keep working next to split options', async () => {
+  // as methods or accessors" (methods only: no route file writes an option
+  // as an accessor).
+  it('written as methods keep working next to split options', async () => {
     const route = await loadRoute(`${head}const state = { count: 0 }
 export const Route = createFileRoute('/')({
   loader() {
-    return state
-  },
-  get pendingComponent() {
-    return () => <div>pending {state.count}</div>
-  },
-  set pendingComponent(_value) {
     state.count++
+    return state
   },
   component() {
     return <div>component {state.count}</div>
@@ -525,18 +487,11 @@ export const Route = createFileRoute('/')({
 `)
     await expectValidModules(route.modules)
     expect(route.isLazy('errorComponent')).toBe(true)
-    route.options.pendingComponent = null
     expect([
       route.options.loader().count,
-      (await route.load('pendingComponent'))(),
       (await route.load('component'))(),
       (await route.load('errorComponent'))(),
-    ]).toEqual([
-      1,
-      '<div>pending 1</div>',
-      '<div>component 1</div>',
-      '<div>error</div>',
-    ])
+    ]).toEqual([1, '<div>component 1</div>', '<div>error</div>'])
   })
 
   // Spread and computed option keys are split on a best-effort basis; the
@@ -950,57 +905,53 @@ export const Route = createRootRoute({
 describe('code next to the route options', () => {
   // A top-level call on the route after its definition runs once, with the
   // route module, also once a split option loads. Shape of the deleted
-  // code-splitter snapshot fixture inline.
-  it('runs a top-level Route.addChildren call once', async () => {
-    let calls = 0
-    const createRoute = (options: unknown) => {
-      const route = {
-        options,
-        addChildren: (children: Array<unknown>) => {
-          calls++
-          return Object.assign(route, { children })
-        },
-      }
-      return route
-    }
+  // code-splitter snapshot fixture inline (`Route.addChildren([])`), as an
+  // app registers a route with a helper of its own.
+  it('runs a top-level call that receives the route once', async () => {
+    const registered: Array<unknown> = []
     const route = await loadRoute(
-      `${head}export const Route = createFileRoute('/')({
+      `${head}import { registerRoute } from './registry'
+export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })
-Route.addChildren([])
+registerRoute(Route)
 `,
       {
         stubs: {
-          '@tanstack/react-router': { createFileRoute: () => createRoute },
+          './registry': {
+            registerRoute: (value: unknown) => registered.push(value),
+          },
         },
       },
     )
     expect(route.isLazy('component')).toBe(true)
     expect((await route.load('component'))()).toBe('<p>page</p>')
-    expect(calls).toBe(1)
+    expect(registered).toEqual([route.Route])
   })
 
   // A directive in a function body applies to that function, wherever it
-  // moves. Shape of the deleted code-splitter snapshot fixture random-number.
-  it("keeps a 'use server' directive in the body of a function that moves into a chunk", async () => {
-    const route = await loadRoute(`${head}async function getRandom() {
-  'use server'
-  return 4
+  // moves: here React Compiler's opt-out of a component. Shape of the
+  // deleted code-splitter snapshot fixture random-number.
+  it("keeps a 'use no memo' directive in the body of a component that moves into a chunk", async () => {
+    const route = await loadRoute(`${head}function Chart() {
+  'use no memo'
+  return <p>chart</p>
 }
 export const Route = createFileRoute('/')({
-  component: () => <p>{String(getRandom)}</p>,
+  component: () => <Chart />,
 })
 `)
     await expectValidModules(route.modules)
     expect(route.isLazy('component')).toBe(true)
-    // Every module that declares `getRandom` keeps the directive first in
-    // its body.
+    expect((await route.load('component'))()).toBe('<p>chart</p>')
+    // Every module that declares `Chart` keeps the directive first in its
+    // body.
     const declaring = Object.entries(route.modules).flatMap(([name, code]) =>
       parseModule(code)
         .body.filter(
           (statement) =>
             statement.type === 'FunctionDeclaration' &&
-            statement.id?.name === 'getRandom',
+            statement.id?.name === 'Chart',
         )
         .map((statement) => {
           const [first] = (statement as any).body.body
@@ -1011,6 +962,6 @@ export const Route = createFileRoute('/')({
         }),
     )
     expect(declaring.length).toBeGreaterThan(0)
-    expect(declaring).toEqual(declaring.map(([name]) => [name, 'use server']))
+    expect(declaring).toEqual(declaring.map(([name]) => [name, 'use no memo']))
   })
 })

@@ -2,8 +2,10 @@
  * Real-build harness of the router plugin: builds an app with the router
  * plugin of a bundler through the shared build harness
  * (`@tanstack/compiler-test-utils/build-harness`). The temporary apps live in
- * this directory, so their imports resolve to this package's dependencies,
- * and an app without a package.json inherits this package's
+ * this directory, so their imports resolve to this package's dependencies.
+ * Each app has its own package.json, without a `sideEffects` field unless
+ * the test sets one (`sideEffects`), so its modules count as side-effectful;
+ * only `packageJson: null` makes it inherit this package's
  * (`"sideEffects": false`).
  *
  * Each framework builds with its own JSX compiler, the way its apps do:

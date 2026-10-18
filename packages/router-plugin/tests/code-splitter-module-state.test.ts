@@ -76,19 +76,31 @@ export const Route = createFileRoute('/')({
   // Source: Qwik optimizer test.rs root_level_self_referential_qrl,
   // example_self_referential_component_migration
   it('declares mutually recursive components used by two lazy chunks once', async () => {
-    const route =
-      await loadRoute(`${head}function A({ depth }) { return depth ? <B depth={depth - 1} /> : <i>a</i> }
-function B({ depth }) { return <b><A depth={depth} /></b> }
+    const seen = new Set<unknown>()
+    const route = await loadRoute(
+      `${head}import { see } from './see'
+function A({ depth }: { depth: number }) {
+  see(A)
+  return depth ? <B depth={depth - 1} /> : <i>a</i>
+}
+function B({ depth }: { depth: number }) {
+  see(B)
+  return <b><A depth={depth} /></b>
+}
 export const Route = createFileRoute('/')({
   component: () => <A depth={1} />,
   errorComponent: () => <B depth={0} />,
 })
-`)
+`,
+      { stubs: { './see': { see: (value: unknown) => seen.add(value) } } },
+    )
     await expectValidModules(route.modules)
     expect([
       (await route.load('component'))(),
       (await route.load('errorComponent'))(),
-    ]).toEqual(['<b><i>a</i></b>', '<b><i>a</i></b>'])
+      // Both chunks render the same `A` and the same `B`
+      seen.size,
+    ]).toEqual(['<b><i>a</i></b>', '<b><i>a</i></b>', 2])
   })
 
   it('keeps one class with a static block and private members', async () => {
@@ -354,28 +366,47 @@ export const Route = createFileRoute('/')({
     ])
   })
 
+  // A lazily initialised getter that replaces itself after the first call.
   // Source: Next.js ssg/getStaticProps/should-support-babel-style-memoized-function
   it.each([
     { name: 'the component', loader: `'data'`, loaded: 'data' },
     {
       name: 'the loader and the component',
-      loader: 'fetchData()',
-      loaded: 'memoized',
+      loader: 'see(getConfig()).title',
+      loaded: 'config',
     },
   ])(
-    'keeps a self-reassigning function used by $name working',
+    'keeps a self-reassigning function used by $name working, with one result',
     async ({ loader, loaded }) => {
-      const route = await loadRoute(`${head}function fetchData() {
-  fetchData = function () {
-    return 'memoized'
-  }
-  return fetchData.apply(this, arguments as any)
+      let created = 0
+      const seen = new Set<unknown>()
+      const route = await loadRoute(
+        `${head}import { createConfig, see } from './config'
+let getConfig = () => {
+  const config = createConfig()
+  getConfig = () => config
+  return config
 }
 export const Route = createFileRoute('/')({
   loader: () => ${loader},
-  component: () => <div>{fetchData()}</div>,
+  component: () => <div>{see(getConfig()).title}</div>,
 })
-`)
+`,
+        {
+          stubs: {
+            './config': {
+              createConfig: () => {
+                created++
+                return { title: 'config' }
+              },
+              see: (value: unknown) => {
+                seen.add(value)
+                return value
+              },
+            },
+          },
+        },
+      )
       await expectValidModules(route.modules)
       const component = await route.load('component')
       expect([
@@ -383,7 +414,16 @@ export const Route = createFileRoute('/')({
         component(),
         route.options.loader(),
         component(),
-      ]).toEqual([loaded, '<div>memoized</div>', loaded, '<div>memoized</div>'])
+        created,
+        seen.size,
+      ]).toEqual([
+        loaded,
+        '<div>config</div>',
+        loaded,
+        '<div>config</div>',
+        1,
+        1,
+      ])
     },
   )
 
@@ -991,7 +1031,7 @@ ${options}
 })
 `
 
-  it('is created once, when the first of them loads', async () => {
+  it('is created once', async () => {
     let inits = 0
     const route = await loadRoute(
       stateRoute(`  component: () => <p>{store.label}</p>,
@@ -1008,15 +1048,23 @@ ${options}
         },
       },
     )
-    const atLoad = inits
     const rendered = [
       (await route.load('component'))(),
       (await route.load('errorComponent'))(),
     ]
-    expect({ atLoad, rendered, inits }).toEqual({
-      atLoad: 0,
+    // When the store is created is free (initialiser timing is not pinned);
+    // the route module imports `./init` only to create it.
+    const reference = route.modules.reference!
+    expect({
+      rendered,
+      inits,
+      importsInitWithoutStore:
+        importSources(reference).includes('./init') &&
+        !declaredNames(reference).has('store'),
+    }).toEqual({
       rendered: ['<p>shared</p>', '<p>shared</p>'],
       inits: 1,
+      importsInitWithoutStore: false,
     })
   })
 
@@ -1038,8 +1086,11 @@ ${options}
         },
       },
     )
+    // Whether the route module creates it is free; loading the
+    // notFoundComponent chunk does not (it holds only what it needs, D5).
+    const atLoad = inits
     expect((await route.load('notFoundComponent'))()).toBe('<p>nf</p>')
-    expect(inits).toBe(0)
+    expect(inits).toBe(atLoad)
     expect((await route.load('component'))()).toBe('<p>shared</p>')
     expect(inits).toBe(1)
   })

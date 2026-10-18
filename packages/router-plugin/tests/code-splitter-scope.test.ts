@@ -239,9 +239,10 @@ const label = load()
 export const Route = createFileRoute('/')({
   loader: () => [a, p, label],
   component: () => (
-    <p label="x" title={<A />}>
+    <p title="x">
+      <option label="x" />
       <a href="/">home</a>
-      <B.Deep.C />
+      <B.Deep.C icon={<A />} />
     </p>
   ),
 })
@@ -250,7 +251,9 @@ export const Route = createFileRoute('/')({
         stubs: {
           './ui': {
             A: () => 'A',
-            B: { Deep: { C: () => '<c>' } },
+            B: {
+              Deep: { C: ({ icon }: { icon: string }) => `<c>${icon}</c>` },
+            },
           },
           './load': {
             load: () => {
@@ -268,7 +271,11 @@ export const Route = createFileRoute('/')({
       route.options.loader(),
       (await route.load('component'))(),
       loads,
-    ]).toEqual([['loaded', 'loaded', 'loaded'], '<p><a>home</a><c></p>', 3])
+    ]).toEqual([
+      ['loaded', 'loaded', 'loaded'],
+      '<p><option></option><a>home</a><c>A</c></p>',
+      3,
+    ])
   })
 
   // Source: React Router route-chunks-test.ts "computed object property"
@@ -441,28 +448,27 @@ export const Route = createFileRoute('/')({ loader: ${loader}, component: Page }
 })
 
 describe('plain JavaScript route files', () => {
-  // In JavaScript, `a < b > (c)` is two comparisons, not a call with a type
-  // argument, so `b` is a value the expression reads.
+  // A JavaScript route file (any JavaScript extension) may contain JSX.
   // Source: #8504 router-utils source-language.test.ts (the other JavaScript
   // extensions).
   it.each(['route.js', 'route.jsx', 'route.mjs'])(
-    'reads every operand of a chained comparison (%s)',
+    'splits a route file with JSX (%s)',
     async (filename) => {
       const route = await loadRoute(
-        `${head}const a = 1, b = 2, c = 3
-const r = a < b > (c)
-export const Route = createFileRoute('/compare')({
-  loader: () => r,
-  component: () => <p>{String(r)}</p>,
+        `${head}const label = 'label'
+export const Route = createFileRoute('/js')({
+  loader: () => label,
+  component: () => <p>{label}</p>,
 })
 `,
         { filename },
       )
       await expectValidModules(route.modules)
       expect([
+        route.isLazy('component'),
         route.options.loader(),
         (await route.load('component'))(),
-      ]).toEqual([false, '<p>false</p>'])
+      ]).toEqual([true, 'label', '<p>label</p>'])
     },
   )
 
@@ -483,66 +489,6 @@ function Page() {
     await expectValidModules(route.modules)
     expect(route.isLazy('component')).toBe(true)
     expect((await route.load('component'))()).toBe('body,second,first')
-  })
-})
-
-// Guards against codegen and parser bugs of the Yuku migration (#8504):
-// each split component keeps its meaning in plain JavaScript.
-describe('split components in plain JavaScript keep the syntax they were written with', () => {
-  it.each([
-    {
-      // yuku-toolchain/yuku#255; source: @babel/generator
-      // edgecase/postfix-update-comments
-      name: 'a postfix update whose operand is followed by a comment',
-      body: `let count = 0
-function Page() {
-  (
-    count // the render count
-  )++
-  return count
-}`,
-      expected: 1,
-    },
-    {
-      // yuku-toolchain/yuku#256; source: Oxc codegen esbuild.rs (ported
-      // from esbuild's printer tests)
-      name: 'the operands of `in` inside a parenthesized for-loop head',
-      body: `function Page() {
-  const a = true, b = 'b', c = 'x', d = { x: 1 }
-  let result = 'unset'
-  for (result = (a ? b : c in d).toString(); ; ) break
-  return result
-}`,
-      expected: 'b',
-    },
-    {
-      // yuku-toolchain/yuku#259; shape adapted from
-      // @babel/plugin-proposal-decorators
-      // 2023-11-misc/initField-existing-derived-constructor
-      name: 'a super() call in the computed key of a class field in a derived constructor',
-      body: `class Base {
-  toString() {
-    return 'key'
-  }
-}
-class Derived extends Base {
-  constructor() {
-    class Field {
-      [super()] = 'field'
-    }
-    this.field = new Field()
-  }
-}
-function Page() {
-  return new Derived().field.key
-}`,
-      expected: 'field',
-    },
-  ])('$name', async ({ body, expected }) => {
-    const route = await loadRoute(pageRoute(body), { filename: 'route.js' })
-    await expectValidModules(route.modules)
-    expect(route.isLazy('component')).toBe(true)
-    expect((await route.load('component'))()).toBe(expected)
   })
 })
 

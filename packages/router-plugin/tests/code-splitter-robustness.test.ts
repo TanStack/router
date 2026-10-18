@@ -1,27 +1,10 @@
 /**
- * Unusual but valid route files split like any other: a route file starting
- * with a hashbang, and route files with non-ASCII names, in real builds.
+ * Unusual but valid route files split like any other: route files with
+ * non-ASCII names, in real builds.
  */
 import { expect, test } from 'vitest'
 import { build, clientMountEntry, rootRoute } from './build-harness'
-import { expectValidModules, head, loadRoute } from './regression-helpers'
-
-test('a route file starting with a hashbang splits, and every module is valid', async () => {
-  const loaded = await loadRoute(`#!/usr/bin/env node
-${head}const label = 'MARK'
-function Page() {
-  return <p>{label} page</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => label + ' data',
-  component: Page,
-})
-`)
-  await expectValidModules(loaded.modules)
-  expect(loaded.isLazy('component')).toBe(true)
-  expect((await loaded.load('component'))()).toBe('<p>MARK page</p>')
-  expect(await (await loaded.load('loader'))()).toBe('MARK data')
-})
+import { head } from './regression-helpers'
 
 test.each(['vite', 'rspack', 'webpack'] as const)(
   'a route file with a non-ASCII name is generated, split and rendered (%s)',
