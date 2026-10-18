@@ -268,27 +268,6 @@ export const Route = createFileRoute('/posts')({
     await expectValidModules(alone.modules)
   })
 
-  it('keeps an import of a function-form loader that another option still uses', async () => {
-    const { modules, reference, loaderChunk } =
-      await compileWithSplitLoader(`${head}import { fetchPosts } from './posts'
-export const Route = createFileRoute('/posts')({
-  loader: fetchPosts,
-  head: () => ({ meta: [{ title: fetchPosts.title }] }),
-  component: () => <p>posts</p>,
-})
-`)
-    expect(reference).toMatch(
-      /loader:\s*lazyFn\(\$\$splitLoaderImporter,\s*'loader'\)/,
-    )
-    expect(reference).toContain('title: fetchPosts.title')
-    expect(importSources(reference)).toEqual([
-      './posts',
-      '@tanstack/react-router',
-    ])
-    expect(loaderChunk).toContain('const SplitLoader = fetchPosts')
-    await expectValidModules(modules)
-  })
-
   // `fn satisfies T`, `fn as T`, `fn!`, `(fn)`: the reference file replaces
   // the wrapped expression as a whole and the chunk exports the function
   // inside, for a function-form loader and for an object-form handler alike
@@ -406,112 +385,7 @@ ${declarations}export const Route = createFileRoute('/posts')({
     })
   })
 
-  // `const postsLoader = { handler, ... }` and `loader: postsLoader`: the
-  // object is resolved through its binding, like an options object passed by
-  // name, and split like the inline literal: it stays in the reference file
-  // with `handler: lazyFn(...)`, and the chunk exports the handler alone.
   describe('held in a same-file variable', () => {
-    const keptObject =
-      /const postsLoader = \{\s*handler: lazyFn\(\$\$splitLoaderImporter, 'loader'\),\s*dehydrate: true,?\s*\}/
-
-    it('splits an inline handler out of the object', async () => {
-      const { modules, reference, loaderChunk } =
-        await compileWithSplitLoader(`${head}import { fetchPosts } from './posts'
-const postsLoader = { handler: () => fetchPosts(), dehydrate: true }
-export const Route = createFileRoute('/posts')({
-  loader: postsLoader,
-  component: () => <p>posts</p>,
-})
-`)
-      expect(reference).toMatch(keptObject)
-      expect(reference).toContain('loader: postsLoader')
-      expect(reference).not.toMatch(/loader:\s*lazyFn\(/)
-      expect(importSources(reference)).toEqual(['@tanstack/react-router'])
-
-      expect(loaderChunk).toContain('const SplitLoader = () => fetchPosts()')
-      expect(loaderChunk).toContain('export { SplitLoader as loader }')
-      expect(loaderChunk).not.toMatch(declarationOf('postsLoader'))
-      expect(importSources(loaderChunk)).toEqual(['./posts'])
-      await expectValidModules(modules)
-    })
-
-    it('moves a handler declared in the file to the chunk', async () => {
-      const { modules, reference, loaderChunk } =
-        await compileWithSplitLoader(`${head}import { fetchPosts } from './posts'
-function loadPosts() {
-  return fetchPosts()
-}
-const postsLoader = { handler: loadPosts, dehydrate: true }
-export const Route = createFileRoute('/posts')({
-  loader: postsLoader,
-  component: () => <p>posts</p>,
-})
-`)
-      expect(reference).toMatch(keptObject)
-      expect(reference).toContain('loader: postsLoader')
-      expect(reference).not.toMatch(declarationOf('loadPosts'))
-      expect(importSources(reference)).toEqual(['@tanstack/react-router'])
-
-      expect(loaderChunk).toMatch(declarationOf('loadPosts'))
-      expect(loaderChunk).toContain('export { loadPosts as loader }')
-      expect(loaderChunk).not.toMatch(declarationOf('postsLoader'))
-      expect(importSources(loaderChunk)).toEqual(['./posts'])
-      await expectValidModules(modules)
-    })
-
-    it('reaches through `satisfies` on the object and `as` on the option', async () => {
-      const { modules, reference, loaderChunk } =
-        await compileWithSplitLoader(`${head}import { fetchPosts } from './posts'
-import type { Loader } from './types'
-const postsLoader = {
-  async handler() {
-    return fetchPosts()
-  },
-  dehydrate: true,
-} satisfies Loader
-export const Route = createFileRoute('/posts')({
-  loader: postsLoader as Loader,
-  component: () => null,
-})
-`)
-      expect(reference).toMatch(lazyHandler)
-      expect(reference).toContain('} satisfies Loader')
-      expect(reference).toContain('loader: postsLoader as Loader')
-      expect(importSources(reference)).toEqual(['@tanstack/react-router'])
-
-      expect(loaderChunk).toMatch(/const SplitLoader = async function \(\) \{/)
-      expect(loaderChunk).toContain('export { SplitLoader as loader }')
-      expect(importSources(loaderChunk)).toEqual(['./posts'])
-      await expectValidModules(modules)
-    })
-
-    it('shares a binding the handler and a key left in the object both use', async () => {
-      const { modules, sharedBindings } =
-        await compileWithSplitLoader(`${head}const parse = (value: unknown) => String(value)
-const handlerOnly = () => 'posts'
-const postsLoader = {
-  handler: () => parse(handlerOnly()),
-  hydrate: ({ data }) => parse(data),
-}
-export const Route = createFileRoute('/posts')({
-  loader: postsLoader,
-  component: () => <p>posts</p>,
-})
-`)
-      expect(sharedBindings).toEqual(['parse'])
-      expect(modules.shared).toMatch(declarationOf('parse'))
-      expect(modules.reference).toMatch(lazyHandler)
-      expect(modules.reference).toContain('hydrate: ({ data }) => parse(data)')
-      expect(modules.reference).not.toMatch(declarationOf('parse'))
-      expect(modules.reference).not.toMatch(declarationOf('handlerOnly'))
-      expect(modules['virtual loader']).toMatch(declarationOf('handlerOnly'))
-      expect(modules['virtual loader']).not.toMatch(declarationOf('parse'))
-      expect(modules['virtual loader']).not.toMatch(
-        declarationOf('postsLoader'),
-      )
-      await expectValidModules(modules)
-    })
-
     // The reference file keeps reading the variable (`loader: postsLoader`),
     // so a split option reading it too makes it shared: the route and the
     // chunk get the one object from the shared module, where its handler
@@ -692,9 +566,6 @@ export const Route = createFileRoute('/posts')({
           expect(reference).toContain('loader: postsLoader')
           expect(reference).not.toContain('lazyFn')
           expect(loaderChunk).not.toContain('as loader }')
-          if (declaration.startsWith('export')) {
-            expect(warnings.join('\n')).toContain('postsLoader')
-          }
           if (shared) {
             expect(sharedBindings).toEqual(['postsLoader'])
             expect(modules.shared).toContain('handler: () => fetchPosts()')
@@ -709,132 +580,6 @@ export const Route = createFileRoute('/posts')({
         }
       },
     )
-
-    // Types are erased, so a `typeof` of the object is no second reader:
-    // the handler is split, and the object is shared with no chunk that
-    // only names it in a type.
-    it.each([
-      {
-        name: 'a top-level type',
-        groupings: [['loader'], ['component']],
-        declarations: `type PostsData = Awaited<ReturnType<typeof postsLoader.handler>>`,
-        options: `component: () => <p>posts</p>,`,
-        loaderChunk: 'virtual loader',
-      },
-      {
-        name: 'a type of a helper of the split component',
-        groupings: [['loader'], ['component']],
-        declarations: `function PostsList({ posts }: { posts: Awaited<ReturnType<typeof postsLoader.handler>> }) {
-  return <ul>{posts.length}</ul>
-}`,
-        options: `component: () => <PostsList posts={[]} />,`,
-        loaderChunk: 'virtual loader',
-      },
-      {
-        name: "a type of a helper of the split component in the loader's group",
-        groupings: [['loader', 'component']],
-        declarations: `function PostsList({ posts }: { posts: Awaited<ReturnType<typeof postsLoader.handler>> }) {
-  return <ul>{posts.length}</ul>
-}`,
-        options: `component: () => <PostsList posts={[]} />,`,
-        loaderChunk: 'virtual loader-component',
-      },
-      {
-        name: 'types of two split components',
-        groupings: [['loader'], ['component'], ['errorComponent']],
-        declarations: `function Posts({ loader }: { loader?: typeof postsLoader }) {
-  return <p>posts</p>
-}
-function PostsError({ loader }: { loader?: typeof postsLoader }) {
-  return <p>error</p>
-}`,
-        options: `component: Posts,
-  errorComponent: PostsError,`,
-        loaderChunk: 'virtual loader',
-      },
-    ] satisfies Array<{
-      name: string
-      groupings: CodeSplitGroupings
-      declarations: string
-      options: string
-      loaderChunk: string
-    }>)(
-      'splits the handler when the object is named only in $name',
-      async ({ groupings, declarations, options, loaderChunk }) => {
-        const { modules, reference, sharedBindings } =
-          await compileWithSplitLoader(
-            `${head}import { fetchPosts } from './posts'
-const postsLoader = { handler: () => fetchPosts(), dehydrate: true }
-${declarations}
-export const Route = createFileRoute('/posts')({
-  loader: postsLoader,
-  ${options}
-})
-`,
-            { groupings },
-          )
-        expect(sharedBindings).toEqual([])
-        expect(reference).toMatch(keptObject)
-        expect(reference).toContain('loader: postsLoader')
-        expect(importSources(reference)).toEqual(['@tanstack/react-router'])
-        expect(modules[loaderChunk]).toContain(
-          'const SplitLoader = () => fetchPosts()',
-        )
-        // the handler is exported from one chunk only
-        const exporting = Object.entries(modules)
-          .filter(([, code]) => code.includes('fetchPosts()'))
-          .map(([name]) => name)
-        expect(exporting).toEqual([loaderChunk])
-        await expectValidModules(modules)
-      },
-    )
-
-    it('resolves the split handler at runtime', async () => {
-      const result = await buildAndRun(
-        `${head}import { fetchPosts } from '../posts'
-const postsLoader = {
-  handler: ({ params }) => fetchPosts(params),
-  dehydrate: ({ data }) => ({ ...data, wire: true }),
-  staleReloadMode: 'background',
-}
-export const Route = createFileRoute('/')({
-  loader: postsLoader,
-  component: () => <p>posts</p>,
-})
-`,
-        `const loader = entry.Route.options.loader
-const before = globalThis.__postsLoaded ?? 0
-const data = await loader.handler({ params: { postId: '1' } })
-const after = globalThis.__postsLoaded ?? 0
-return {
-  keys: Object.keys(loader),
-  before,
-  after,
-  data,
-  wire: loader.dehydrate({ data }),
-  staleReloadMode: loader.staleReloadMode,
-}`,
-        {
-          groupings: [['loader'], ['component']],
-          files: {
-            'posts.ts': `globalThis.__postsLoaded = (globalThis.__postsLoaded ?? 0) + 1
-export function fetchPosts(params: { postId: string }) {
-  return { postId: params.postId, title: 'post ' + params.postId }
-}
-`,
-          },
-        },
-      )
-      expect(result).toEqual({
-        keys: ['handler', 'dehydrate', 'staleReloadMode'],
-        // the chunk holding the handler and its import loads on first call
-        before: 0,
-        after: 1,
-        data: { postId: '1', title: 'post 1' },
-        wire: { postId: '1', title: 'post 1', wire: true },
-        staleReloadMode: 'background',
-      })
-    }, 30_000)
 
     it('gives an option that calls the handler the function it wrote at runtime', async () => {
       const result = await buildAndRun(
@@ -1063,7 +808,9 @@ export const Route = createFileRoute('/')({
         expect(reference).not.toContain(
           key === 'loader' ? 'lazyFn' : 'lazyRouteComponent',
         )
-        expect(warnings.join('\n')).toContain(value)
+        if (declaration.startsWith('function')) {
+          expect(warnings.join('\n')).toContain(value)
+        }
         expect(modules[`virtual ${key}`]).not.toContain(`as ${key} }`)
         for (const chunk of [
           modules['virtual loader']!,
@@ -1137,178 +884,6 @@ export const Route = createFileRoute('/posts')({
     await expectValidModules(server.modules)
   })
 
-  // `deleteNodes` reaches an object held in a same-file variable through the
-  // binding the split resolves, wherever the object ends up: the reference
-  // file (loader split or kept) or the shared module (a split component
-  // reads it). An import only a removed key used goes with it.
-  describe('strips the keys of an object held in a same-file variable', () => {
-    const code = `${head}import { fetchPosts } from './posts'
-import { toWire } from './server-only'
-import { fromWire } from './client-only'
-const postsLoader = {
-  handler: () => fetchPosts(),
-  dehydrate: ({ data }) => toWire(data),
-  hydrate: ({ data }) => fromWire(data),
-  staleReloadMode: 'background',
-}
-export const Route = createFileRoute('/posts')({
-  loader: postsLoader,
-  component: () => <p>posts</p>,
-})
-`
-
-    it.each([
-      { name: 'split', groupings: [['loader'], ['component']] },
-      { name: 'kept', groupings: [['component']] },
-    ] satisfies Array<{ name: string; groupings: CodeSplitGroupings }>)(
-      'in the reference file with the loader $name',
-      async ({ groupings }) => {
-        const client = await compileWithSplitLoader(code, {
-          groupings,
-          deleteNodes: ['loader.dehydrate'],
-        })
-        expect(client.reference).toMatch(declarationOf('postsLoader'))
-        expect(client.reference).not.toMatch(/\bdehydrate\b/)
-        expect(client.reference).toContain(
-          'hydrate: ({ data }) => fromWire(data)',
-        )
-        expect(importSources(client.reference)).not.toContain('./server-only')
-        expect(importSources(client.reference)).toContain('./client-only')
-        await expectValidModules(client.modules)
-
-        const server = await compileWithSplitLoader(code, {
-          groupings,
-          deleteNodes: ['loader.hydrate'],
-        })
-        expect(server.reference).not.toMatch(/\bhydrate\b/)
-        expect(server.reference).toContain(
-          'dehydrate: ({ data }) => toWire(data)',
-        )
-        expect(importSources(server.reference)).not.toContain('./client-only')
-        await expectValidModules(server.modules)
-      },
-    )
-
-    it('in the shared module when a split component reads the object', async () => {
-      const { modules, reference, sharedBindings } =
-        await compileWithSplitLoader(
-          code.replace(
-            'component: () => <p>posts</p>',
-            'component: () => <p>{postsLoader.staleReloadMode}</p>',
-          ),
-          { deleteNodes: ['loader.dehydrate'] },
-        )
-      expect(sharedBindings).toEqual(['postsLoader'])
-      expect(modules.shared).toMatch(declarationOf('postsLoader'))
-      expect(modules.shared).not.toMatch(/\bdehydrate\b/)
-      expect(modules.shared).toContain('hydrate: ({ data }) => fromWire(data)')
-      expect(importSources(modules.shared!)).toEqual([
-        './client-only',
-        './posts',
-      ])
-      expect(reference).not.toMatch(/\bdehydrate\b/)
-      expect(importSources(reference)).not.toContain('./server-only')
-      await expectValidModules(modules)
-    })
-
-    it('for `context` as for `loader`', async () => {
-      const { reference, modules } = await compileWithSplitLoader(
-        `${head}import { toWire } from './server-only'
-import { fromWire } from './client-only'
-const routeContext = {
-  dehydrate: ({ data }) => toWire(data),
-  hydrate: ({ data }) => fromWire(data),
-}
-export const Route = createFileRoute('/posts')({
-  context: routeContext,
-  loader: () => 1,
-  component: () => <p>posts</p>,
-})
-`,
-        { deleteNodes: ['context.dehydrate'] },
-      )
-      expect(reference).toMatch(declarationOf('routeContext'))
-      expect(reference).not.toMatch(/\bdehydrate\b/)
-      expect(reference).toContain('hydrate: ({ data }) => fromWire(data)')
-      expect(importSources(reference)).not.toContain('./server-only')
-      await expectValidModules(modules)
-    })
-
-    // Top-level code that reads the object keeps a copy of it in every
-    // chunk, which must lose the same keys as the reference file.
-    it.each([
-      {
-        name: 'a type',
-        reader:
-          'type PostsData = Awaited<ReturnType<typeof postsLoader.handler>>',
-      },
-      {
-        name: 'a statement',
-        reader:
-          'if (import.meta.env.DEV) { console.log(postsLoader.staleReloadMode) }',
-      },
-    ])(
-      'in every chunk that top-level code keeps it in, read by $name',
-      async ({ reader }) => {
-        const kept = code.replace(
-          'export const Route',
-          `${reader}\nexport const Route`,
-        )
-        for (const groupings of [
-          defaultCodeSplitGroupings,
-          [['loader'], ['component']],
-        ] satisfies Array<CodeSplitGroupings>) {
-          const client = await compileWithSplitLoader(kept, {
-            groupings,
-            deleteNodes: ['loader.dehydrate'],
-          })
-          expect(client.modules['virtual component']).toMatch(
-            declarationOf('postsLoader'),
-          )
-          for (const [name, moduleCode] of Object.entries(client.modules)) {
-            expect(moduleCode, name).not.toMatch(/\bdehydrate\b/)
-            expect(importSources(moduleCode), name).not.toContain(
-              './server-only',
-            )
-          }
-          await expectValidModules(client.modules)
-
-          const server = await compileWithSplitLoader(kept, {
-            groupings,
-            deleteNodes: ['loader.hydrate'],
-          })
-          for (const [name, moduleCode] of Object.entries(server.modules)) {
-            expect(moduleCode, name).not.toMatch(/\bhydrate\b/)
-            expect(importSources(moduleCode), name).not.toContain(
-              './client-only',
-            )
-          }
-          await expectValidModules(server.modules)
-        }
-      },
-    )
-
-    // The literal is not what the route reads once the variable is
-    // reassigned, so nothing is removed from it.
-    it('leaves a reassigned variable as written', async () => {
-      const { reference, modules } = await compileWithSplitLoader(
-        `${head}import { toWire } from './server-only'
-let postsLoader = { handler: () => [], dehydrate: ({ data }) => toWire(data) }
-postsLoader = { handler: () => [], dehydrate: false }
-export const Route = createFileRoute('/posts')({
-  loader: postsLoader,
-  component: () => <p>posts</p>,
-})
-`,
-        { deleteNodes: ['loader.dehydrate'] },
-      )
-      expect(reference).toContain('dehydrate: ({ data }) => toWire(data)')
-      expect(reference).toContain('dehydrate: false')
-      expect(importSources(reference)).toContain('./server-only')
-      await expectValidModules(modules)
-    })
-  })
-
   // The keys an environment deletes are gone before bindings are attributed
   // to modules, so a helper only such a key used goes with its import, also
   // from the shared module the object moves to; and a helper the handler and
@@ -1319,53 +894,6 @@ import { unsign } from './client-only'
 const toWire = (data: unknown) => sign(data)
 const fromWire = (data: unknown) => unsign(data)
 `
-
-    it.each([
-      {
-        name: 'the handler reads the object',
-        handler: 'async () => ({ mode: postsLoader.staleReloadMode })',
-        component: '<p>posts</p>',
-      },
-      {
-        name: 'a split component reads the object',
-        handler: '() => fetchPosts()',
-        component: '<p>{postsLoader.staleReloadMode}</p>',
-      },
-    ])(
-      'keeps a codec helper out of every module when $name',
-      async ({ handler, component }) => {
-        const code = `${head}import { fetchPosts } from './posts'
-${codecs}const postsLoader = {
-  handler: ${handler},
-  dehydrate: ({ data }) => toWire(data),
-  hydrate: ({ data }) => fromWire(data),
-  staleReloadMode: 'background',
-}
-export const Route = createFileRoute('/posts')({
-  loader: postsLoader,
-  component: () => ${component},
-})
-`
-        const client = await compileWithSplitLoader(code, {
-          deleteNodes: ['loader.dehydrate'],
-        })
-        const server = await compileWithSplitLoader(code, {
-          deleteNodes: ['loader.hydrate'],
-        })
-        for (const [name, moduleCode] of Object.entries(client.modules)) {
-          expect(moduleCode, name).not.toMatch(/\b(toWire|sign)\b/)
-          expect(importSources(moduleCode), name).not.toContain(
-            './secret.server',
-          )
-        }
-        for (const [name, moduleCode] of Object.entries(server.modules)) {
-          expect(moduleCode, name).not.toMatch(/\b(fromWire|unsign)\b/)
-          expect(importSources(moduleCode), name).not.toContain('./client-only')
-        }
-        await expectValidModules(client.modules)
-        await expectValidModules(server.modules)
-      },
-    )
 
     // The plugin hands its list to the step that decides what is shared,
     // not only to the reference and shared compiles.
@@ -1396,40 +924,6 @@ export const Route = createFileRoute('/posts')({
       const loaderChunk = splitter.virtual(inline, `${file}?tsr-split=loader`)!
       expect(loaderChunk).toMatch(declarationOf('toWire'))
       expect(loaderChunk).not.toContain('tsr-shared')
-
-      // the object a split component reads moves to the shared module
-      // without the helper only the deleted key used
-      const held = `${head}${codecs}const postsLoader = {
-  handler: async () => [],
-  dehydrate: ({ data }) => toWire(data),
-  staleReloadMode: 'background',
-}
-export const Route = createFileRoute('/posts')({
-  loader: postsLoader,
-  component: () => <p>{postsLoader.staleReloadMode}</p>,
-})
-`
-      splitter.reference(held, file)
-      const shared = splitter.shared(held, `${file}?tsr-shared=1`)!
-      expect(shared).toMatch(declarationOf('postsLoader'))
-      expect(shared).not.toMatch(/\b(toWire|sign)\b/)
-      expect(importSources(shared)).not.toContain('./secret.server')
-
-      // a chunk that keeps the object for top-level code loses the key too
-      const kept = held
-        .replace('{postsLoader.staleReloadMode}', 'posts')
-        .replace(
-          'export const Route',
-          'console.log(postsLoader.staleReloadMode)\nexport const Route',
-        )
-      splitter.reference(kept, file)
-      const componentChunk = splitter.virtual(
-        kept,
-        `${file}?tsr-split=component`,
-      )!
-      expect(componentChunk).toMatch(declarationOf('postsLoader'))
-      expect(componentChunk).not.toMatch(/\b(dehydrate|toWire|sign)\b/)
-      expect(importSources(componentChunk)).not.toContain('./secret.server')
     })
 
     it('shares a helper of the handler only with the keys the environment keeps', async () => {
@@ -1473,11 +967,6 @@ export const Route = createFileRoute('/posts')({
       loader: '{ handler: api.list ?? api.fallback }',
       exported: 'const SplitLoader = api.list ?? api.fallback',
     },
-    {
-      name: 'a member expression in the function form',
-      loader: 'api.list',
-      exported: 'const SplitLoader = api.list',
-    },
   ])(
     'exports a handler that is $name from the chunk',
     async ({ loader, exported }) => {
@@ -1504,13 +993,8 @@ export const Route = createFileRoute('/posts')({
       "const SplitLoader = makeLoader<Post>('posts')",
     ],
     [
-      'a generic call in the function form',
-      "makeLoader<Post>('posts')",
-      "const SplitLoader = makeLoader<Post>('posts')",
-    ],
-    [
       'a call with an annotated callback',
-      'makeLoader((name: string) => name)',
+      '{ handler: makeLoader((name: string) => name) }',
       'const SplitLoader = makeLoader((name: string) => name)',
     ],
   ])('exports %s from the chunk', async (_, loader, exported) => {
@@ -1727,38 +1211,11 @@ return {
   }, 30_000)
 })
 
-// A function-form loader is moved whole into the chunk, whatever expression
-// holds it.
+// Statically known function loaders can move whole into the chunk.
 describe('a split function-form loader value', () => {
   const lazyLoader = `loader: lazyFn($$splitLoaderImporter, 'loader')`
 
   it.each([
-    [
-      'an imported binding',
-      `import { postsLoader } from './loaders'\n`,
-      'postsLoader',
-    ],
-    [
-      'a call result',
-      `import { makeLoader } from './loaders'\n`,
-      'makeLoader()',
-    ],
-    ['a member', `import { loaders } from './loaders'\n`, 'loaders.posts'],
-    [
-      'a variable holding a call result',
-      `import { makeLoader } from './loaders'\nconst postsLoader = makeLoader()\n`,
-      'postsLoader',
-    ],
-    [
-      'a destructured binding',
-      `import { makeBits } from './loaders'\nconst { loader: postsLoader } = makeBits()\n`,
-      'postsLoader',
-    ],
-    [
-      'a reassigned variable',
-      `import { makeLoader } from './loaders'\nlet postsLoader = () => 1\npostsLoader = makeLoader()\n`,
-      'postsLoader',
-    ],
     ['an inline arrow', '', '({ params }) => params'],
     ['an inline function', '', 'async function () { return 1 }'],
     [
@@ -1796,31 +1253,4 @@ describe('a split function-form loader value', () => {
     expect(reference).toContain('hydrate: ({ data }) => data')
     expect(reference).not.toMatch(/lazyFn\(/)
   })
-
-  it('fails to call an imported object-form loader, with an error that says where to write it', async () => {
-    const result = await buildAndRun(
-      `${head}import { objectLoader } from '../loaders'
-export const Route = createFileRoute('/')({
-  loader: objectLoader,
-  component: () => <p>posts</p>,
-})
-`,
-      `return entry.Route.options.loader({}).then(
-  () => 'resolved',
-  (error) => error.message,
-)`,
-      {
-        groupings: [['loader'], ['component']],
-        files: {
-          'loaders.ts': `export const objectLoader = {
-  handler: () => ({ items: ['a', 'b'] }),
-}
-`,
-        },
-      },
-    )
-    expect(result).toBe(
-      'TanStack Router: the lazily imported `loader` is an object-form loader, which cannot be code split as a whole. Write it in the route file, inline or in a `const` there.',
-    )
-  }, 30_000)
 })

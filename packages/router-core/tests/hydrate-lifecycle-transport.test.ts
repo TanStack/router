@@ -348,16 +348,10 @@ describe('hydration: lifecycle transport by presence', () => {
       expect(router.state.resolvedLocation?.pathname).toBe('/parent/child')
     })
 
-    test.each([
-      ['handler', 'redirect'],
-      ['handler', 'notFound'],
-      ['hydrate', 'redirect'],
-      ['hydrate', 'notFound'],
-    ] as const)(
-      'a redirect or notFound returned by the context %s (%s) is data, not control flow',
-      async (source, kind) => {
-        const control = () =>
-          kind === 'redirect' ? redirect({ to: '/target' }) : notFound()
+    test.each(['handler', 'hydrate'] as const)(
+      'a notFound returned by the context %s is data, not control flow',
+      async (source) => {
+        const control = () => notFound()
         const handler = vi.fn(control)
         const rootRoute = new BaseRootRoute({})
         const pageRoute = new BaseRoute({

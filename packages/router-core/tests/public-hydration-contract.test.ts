@@ -55,6 +55,119 @@ describe('public hydration contracts', () => {
     vi.unstubAllGlobals()
   })
 
+  test.each([
+    ['context', false],
+    ['context', true],
+    ['beforeLoad', false],
+    ['beforeLoad', true],
+    ['context.hydrate', false],
+    ['context.hydrate', true],
+    ['beforeLoad.hydrate', false],
+    ['beforeLoad.hydrate', true],
+  ] as const)(
+    'stops later serial hydration callbacks when %s self-aborts (async: %s)',
+    async (abortAt, asynchronous) => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      const calls: Array<string> = []
+      let aborted = false
+      const build = (isServer: boolean) => {
+        const run = (lifecycle: string, abortController: AbortController) => {
+          const data = { [lifecycle.replace('.hydrate', '')]: true }
+          if (!isServer) {
+            calls.push(lifecycle)
+            if (lifecycle === abortAt && !aborted) {
+              aborted = true
+              const abort = () => {
+                abortController.abort()
+                return data
+              }
+              return asynchronous ? Promise.resolve().then(abort) : abort()
+            }
+          }
+          return data
+        }
+        const rootRoute = new BaseRootRoute({
+          context:
+            abortAt === 'context.hydrate'
+              ? {
+                  handler: ({
+                    abortController,
+                  }: {
+                    abortController: AbortController
+                  }) => run('context', abortController),
+                  dehydrate: true,
+                  hydrate: ({
+                    abortController,
+                  }: {
+                    abortController: AbortController
+                  }) => run('context.hydrate', abortController),
+                }
+              : ({ abortController }: { abortController: AbortController }) =>
+                  run('context', abortController),
+          beforeLoad:
+            abortAt === 'beforeLoad.hydrate'
+              ? {
+                  handler: ({ abortController }) =>
+                    run('beforeLoad', abortController),
+                  dehydrate: true,
+                  hydrate: ({ abortController }) =>
+                    run('beforeLoad.hydrate', abortController),
+                }
+              : {
+                  handler: ({ abortController }) =>
+                    run('beforeLoad', abortController),
+                  dehydrate: false,
+                },
+        })
+        const pageRoute = new BaseRoute({
+          getParentRoute: () => rootRoute,
+          path: '/page',
+          context: ({ abortController }) =>
+            run('child.context', abortController),
+          beforeLoad: {
+            handler: ({ abortController }) =>
+              run('child.beforeLoad', abortController),
+            dehydrate: false,
+          },
+          loader: {
+            handler: () => {
+              if (!isServer) {
+                calls.push('child.loader')
+              }
+              return 'client data'
+            },
+            dehydrate: false,
+          },
+        })
+        return createTestRouter({
+          routeTree: rootRoute.addChildren([pageRoute]),
+          history: createMemoryHistory({ initialEntries: ['/page'] }),
+          isServer,
+        })
+      }
+
+      mockWindow.$_TSR = await dehydrateToBootstrap(build(true), testManifest)
+      const router = build(false)
+      await hydrate(router)
+
+      expect(calls).toEqual(
+        abortAt.startsWith('context') ? [abortAt] : ['context', abortAt],
+      )
+      await router.load()
+
+      expect(router.state.matches.at(-1)).toMatchObject({
+        status: 'success',
+        loaderData: 'client data',
+        context: {
+          context: true,
+          beforeLoad: true,
+          'child.context': true,
+          'child.beforeLoad': true,
+        },
+      })
+    },
+  )
+
   test('starts head and scripts together and swallows a head failure', async () => {
     const error = new Error('head failed')
     const headGate = createControlledPromise<void>()

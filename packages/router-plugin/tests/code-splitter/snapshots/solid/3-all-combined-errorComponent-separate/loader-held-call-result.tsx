@@ -1,12 +1,11 @@
 const $$splitComponentImporter = () =>
   import('loader-held-call-result.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent')
 import { lazyRouteComponent } from '@tanstack/solid-router'
-const $$splitLoaderImporter = () =>
-  import('loader-held-call-result.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent')
-import { lazyFn } from '@tanstack/solid-router'
 import { createFileRoute } from '@tanstack/solid-router'
+import { makeLoader } from '../loaders'
 // a call result may be an object-form loader: split with the mark
+const postsLoader = makeLoader('/posts')
 export const Route = createFileRoute('/posts')({
-  loader: lazyFn($$splitLoaderImporter, 'loader'),
+  loader: postsLoader,
   component: lazyRouteComponent($$splitComponentImporter, 'component'),
 })

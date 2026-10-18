@@ -552,37 +552,74 @@ describe('transport decisions', () => {
     expect(dehydrateMatch(loaderMatch)).not.toHaveProperty('l')
   })
 
-  test('a redirect thrown from an async context handler is control flow', async () => {
-    const onError = vi.fn()
-    const rootRoute = new BaseRootRoute({})
-    const loginRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/login',
-    })
-    const pageRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/page',
-      context: {
-        handler: async () => {
-          await Promise.resolve()
-          throw redirect({ to: '/login' })
-        },
-        dehydrate: true,
-      },
-      onError,
-    })
-    const router = createServerRouter(
-      rootRoute.addChildren([loginRoute, pageRoute]),
-      '/page',
-    )
+  test.each(
+    (['function', 'transported', 'codec'] as const).flatMap((form) =>
+      (['sync', 'async'] as const).flatMap((timing) =>
+        (['return', 'throw'] as const).map((completion) => ({
+          form,
+          timing,
+          completion,
+        })),
+      ),
+    ),
+  )(
+    '$form context can $completion a redirect from a $timing handler',
+    async ({ form, timing, completion }) => {
+      const onError = vi.fn()
+      const beforeLoad = vi.fn()
+      const loader = vi.fn()
+      const childContext = vi.fn()
+      const dehydrate = vi.fn()
+      const result = () => {
+        const destination = redirect({ to: '/login' })
+        if (completion === 'throw') {
+          throw destination
+        }
+        return destination
+      }
+      const handler = timing === 'async' ? async () => result() : result
+      const rootRoute = new BaseRootRoute({})
+      const loginRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/login',
+      })
+      const pageRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/page',
+        context:
+          form === 'function'
+            ? handler
+            : form === 'transported'
+              ? { handler, dehydrate: true }
+              : { handler, dehydrate, hydrate: ({ data }) => data },
+        beforeLoad,
+        loader,
+        onError,
+      })
+      const childRoute = new BaseRoute({
+        getParentRoute: () => pageRoute,
+        path: '/child',
+        context: childContext,
+      })
+      const router = createServerRouter(
+        rootRoute.addChildren([
+          loginRoute,
+          pageRoute.addChildren([childRoute]),
+        ]),
+        '/page/child',
+      )
 
-    const response = await loadServerResponse(router, '/page')
+      const response = await loadServerResponse(router, '/page/child')
 
-    expect(response.status).toBe(307)
-    expect(response.headers.get('location')).toBe('/login')
-    expect(router._serverResult?.type).toBe('redirect')
-    expect(onError).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(307)
+      expect(response.headers.get('location')).toBe('/login')
+      expect(onError).not.toHaveBeenCalled()
+      expect(beforeLoad).not.toHaveBeenCalled()
+      expect(loader).not.toHaveBeenCalled()
+      expect(childContext).not.toHaveBeenCalled()
+      expect(dehydrate).not.toHaveBeenCalled()
+    },
+  )
 
   test('a reused server router does not leak wire keys from a previous load', async () => {
     // `matchRoutes` spreads the previous match objects on a reused router, so
@@ -1907,31 +1944,38 @@ describe('dev warning: async context that is not transported', () => {
     expect(asyncContextWarnings(warn)[0]).toContain(`"${dataOnlyRoute.id}"`)
   })
 
-  test('does not warn when the async handler rejects', async () => {
-    const warn = spyWarn()
-    const rootRoute = new BaseRootRoute({})
-    const loginRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/login',
-    })
-    const pageRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/page',
-      context: async () => {
-        await Promise.resolve()
-        throw redirect({ to: '/login' })
-      },
-    })
-    const router = createServerRouter(
-      rootRoute.addChildren([loginRoute, pageRoute]),
-      '/page',
-    )
+  test.each(['returns', 'throws'] as const)(
+    'does not warn when the async handler %s a redirect',
+    async (completion) => {
+      const warn = spyWarn()
+      const rootRoute = new BaseRootRoute({})
+      const loginRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/login',
+      })
+      const pageRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/page',
+        context: async () => {
+          await Promise.resolve()
+          const destination = redirect({ to: '/login' })
+          if (completion === 'throws') {
+            throw destination
+          }
+          return destination
+        },
+      })
+      const router = createServerRouter(
+        rootRoute.addChildren([loginRoute, pageRoute]),
+        '/page',
+      )
 
-    const response = await loadServerResponse(router, '/page')
+      const response = await loadServerResponse(router, '/page')
 
-    expect(response.status).toBe(307)
-    expect(asyncContextWarnings(warn)).toHaveLength(0)
-  })
+      expect(response.status).toBe(307)
+      expect(asyncContextWarnings(warn)).toHaveLength(0)
+    },
+  )
 
   test('does not warn in production', async () => {
     vi.stubEnv('NODE_ENV', 'production')

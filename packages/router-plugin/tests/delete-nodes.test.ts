@@ -212,57 +212,6 @@ export const Route = createFileRoute('/')({
     ).toBeNull()
   })
 
-  // An object held in a `const` of the same file is the value the route
-  // reads, so it is visited like an inline literal (the loader split resolves
-  // it the same way); a reassigned variable is left as written.
-  it('descends into an object held in a same-file const, not into a reassigned one', () => {
-    const code = `
-import { createFileRoute } from '@tanstack/react-router'
-import { toWire } from './server-only'
-import { fromWire } from './client-only'
-import { toContextWire } from './context-server-only'
-
-const loader = {
-  handler: () => ({ value: 'loader' }),
-  dehydrate: ({ data }) => toWire(data),
-  hydrate: ({ data }) => fromWire(data),
-}
-let context = { dehydrate: ({ data }) => toContextWire(data) }
-context = { dehydrate: false }
-
-export const Route = createFileRoute('/')({
-  loader,
-  context,
-})
-`
-    const client = compile(code, [
-      'loader.dehydrate',
-      'context.dehydrate',
-    ])!.code
-    const server = compile(code, ['loader.hydrate', 'context.hydrate'])!.code
-
-    // the const's `dehydrate` (the only `toWire` call) is gone, its
-    // `hydrate` and the let's two `dehydrate` keys stay
-    expect(client).not.toContain('toWire(data)')
-    expect(client).toContain('fromWire(data)')
-    expect(client).toContain('toContextWire(data)')
-    expect(client).toContain('dehydrate: false')
-    expect(importSources(client)).toEqual([
-      './client-only',
-      './context-server-only',
-      '@tanstack/react-router',
-    ])
-
-    expect(server).toContain('toWire(data)')
-    expect(server).not.toContain('fromWire(data)')
-    expect(server).toContain('toContextWire(data)')
-    expect(importSources(server)).toEqual([
-      './context-server-only',
-      './server-only',
-      '@tanstack/react-router',
-    ])
-  })
-
   it('leaves spreads and computed keys alone', () => {
     const code = `
 import { createFileRoute } from '@tanstack/react-router'

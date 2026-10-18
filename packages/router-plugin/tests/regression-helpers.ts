@@ -23,7 +23,7 @@ import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
 import { getModuleErrors } from './validate-module'
-import type { Config } from '../src/core/config'
+import type { Config, DeletableNodes } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
 import type { ESTree } from 'vite'
@@ -412,6 +412,7 @@ export async function buildAndRun(
   options: {
     files?: Record<string, string>
     groupings?: CodeSplitGroupings
+    deleteNodes?: Array<DeletableNodes>
   } = {},
 ) {
   const { tanstackRouter } = await import('../src/vite')
@@ -448,6 +449,7 @@ export async function render(component: any) {
           autoCodeSplitting: true,
           codeSplittingOptions: {
             addHmr: false,
+            deleteNodes: options.deleteNodes,
             ...(options.groupings && { defaultBehavior: options.groupings }),
           },
         }),

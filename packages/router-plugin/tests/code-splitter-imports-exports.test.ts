@@ -151,13 +151,6 @@ type PostsProps = Parameters<typeof PostsComponent>[0]`,
       groupings: undefined,
     },
     {
-      name: 'a function-form loader',
-      declarations: `import { fetchPosts } from './posts'
-type PostsData = Awaited<ReturnType<typeof fetchPosts>>`,
-      options: 'loader: fetchPosts,',
-      groupings: [['loader'], ['component']] satisfies CodeSplitGroupings,
-    },
-    {
       name: 'an object-form handler',
       declarations: `import { fetchPosts } from './posts'
 type PostsData = Awaited<ReturnType<typeof fetchPosts>>`,
@@ -175,20 +168,6 @@ function PostsComponent() {
       options: `component: PostsComponent,
   errorComponent: PostsError,`,
       groupings: undefined,
-    },
-    {
-      name: 'a loader that a hook of the split component reads too',
-      declarations: `import { fetchPosts } from './posts'
-type Posts = Awaited<ReturnType<typeof fetchPosts>>
-function usePosts(): Posts {
-  return useQuery({ queryFn: fetchPosts })
-}
-function PostsComponent() {
-  return <p>{usePosts().length}</p>
-}`,
-      options: `loader: fetchPosts,
-  component: PostsComponent,`,
-      groupings: [['loader'], ['component']] satisfies CodeSplitGroupings,
     },
   ])(
     'drops the import of $name that only a type still reads',

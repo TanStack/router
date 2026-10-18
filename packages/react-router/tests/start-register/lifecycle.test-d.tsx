@@ -59,6 +59,20 @@ declare module '@tanstack/router-core' {
     router: typeof router
   }
   interface FileRoutesByPath {
+    '/context-redirect': {
+      id: '/context-redirect'
+      path: '/context-redirect'
+      fullPath: '/context-redirect'
+      preLoaderRoute: typeof contextRedirectRoute
+      parentRoute: typeof rootRoute
+    }
+    '/context-revalidate-redirect': {
+      id: '/context-revalidate-redirect'
+      path: '/context-revalidate-redirect'
+      fullPath: '/context-revalidate-redirect'
+      preLoaderRoute: typeof contextRevalidateRedirectRoute
+      parentRoute: typeof rootRoute
+    }
     '/fn/$id': {
       id: '/fn/$id'
       path: '/fn/$id'
@@ -142,6 +156,43 @@ declare module '@tanstack/router-core' {
 // ---------------------------------------------------------------------------
 // function form
 // ---------------------------------------------------------------------------
+
+const contextRedirectRoute = createFileRoute('/context-redirect')({
+  context: {
+    handler: () => {
+      if (flag) {
+        return redirect({ to: '/' })
+      }
+      return { session: 'user' }
+    },
+    dehydrate: true,
+    hydrate: ({ data }) => {
+      expectTypeOf(data).toEqualTypeOf<{ session: string }>()
+      return data
+    },
+  },
+  beforeLoad: ({ context }) => {
+    expectTypeOf(context.session).toEqualTypeOf<string>()
+  },
+  loader: ({ context }) => context.session,
+})
+
+const contextRevalidateRedirectRoute = createFileRoute(
+  '/context-revalidate-redirect',
+)({
+  context: {
+    handler: () => ({ session: 'user' }),
+    dehydrate: true,
+    revalidate: async ({ prev }) => {
+      expectTypeOf(prev).toEqualTypeOf<{ session: string } | undefined>()
+      if (flag) {
+        return redirect({ to: '/' })
+      }
+      return { session: 'next' }
+    },
+  },
+  loader: ({ context }) => context.session,
+})
 
 const fnRoute = createFileRoute('/fn/$id')({
   validateSearch: () => ({ page: 0 }),
@@ -813,6 +864,182 @@ test('a returned redirect or notFound is control flow, not data to validate', ()
   expectTypeOf(route.types.loaderData).toEqualTypeOf<
     NotFoundError | { l: number }
   >()
+})
+
+test('a registered file-route context redirect preserves successful data inference', () => {
+  expectTypeOf(contextRedirectRoute).not.toBeAny()
+  expectTypeOf(contextRedirectRoute.types.routeContext).toEqualTypeOf<{
+    session: string
+  }>()
+  expectTypeOf(contextRedirectRoute.types.loaderData).toEqualTypeOf<string>()
+})
+
+test('returned context redirects leave only successful data in context and codecs', () => {
+  const functionForm = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'context-return-function',
+    context: () => {
+      if (flag) {
+        return redirect({ to: '/' })
+      }
+      return { session: 'user' }
+    },
+    beforeLoad: ({ context }) => {
+      expectTypeOf(context.session).toEqualTypeOf<string>()
+    },
+    loader: ({ context }) => context.session,
+  })
+  const transported = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'context-return-transported',
+    context: {
+      handler: async () => {
+        if (flag) {
+          return redirect({ to: '/' })
+        }
+        return { session: 'user' }
+      },
+      dehydrate: true,
+      hydrate: ({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ session: string }>()
+        return data
+      },
+      revalidate: ({ prev }) => {
+        expectTypeOf(prev).toEqualTypeOf<{ session: string } | undefined>()
+        return { session: 'next' }
+      },
+    },
+    beforeLoad: ({ context }) => {
+      expectTypeOf(context.session).toEqualTypeOf<string>()
+    },
+  })
+  const codec = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'context-return-codec',
+    context: {
+      handler: () => {
+        if (flag) {
+          return redirect({ to: '/' })
+        }
+        return { session: 'user', format: () => 'user' }
+      },
+      dehydrate: ({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{
+          session: string
+          format: () => string
+        }>()
+        return { session: data.session }
+      },
+      hydrate: ({ data }) => ({ ...data, format: () => data.session }),
+    },
+    loader: ({ context }) => context.format(),
+  })
+  const alwaysRedirect = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'context-return-always',
+    context: {
+      handler: () => redirect({ to: '/' }),
+      dehydrate: true,
+    },
+  })
+  const alwaysThrow = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'context-throw-always',
+    context: {
+      handler: () => {
+        throw redirect({ to: '/' })
+      },
+      dehydrate: true,
+    },
+  })
+
+  expectTypeOf(functionForm.types.routeContext).toEqualTypeOf<{
+    session: string
+  }>()
+  expectTypeOf(transported.types.routeContext).toEqualTypeOf<{
+    session: string
+  }>()
+  expectTypeOf(codec.types.loaderData).toEqualTypeOf<string>()
+  expectTypeOf(alwaysRedirect).toMatchTypeOf<AnyRoute>()
+  expectTypeOf(alwaysThrow).toMatchTypeOf<AnyRoute>()
+})
+
+test('a registered file-route context revalidation can return a redirect while prev remains successful data', () => {
+  expectTypeOf(contextRevalidateRedirectRoute).not.toBeAny()
+  expectTypeOf(
+    contextRevalidateRedirectRoute.types.routeContext,
+  ).toEqualTypeOf<{
+    session: string
+  }>()
+  expectTypeOf(
+    contextRevalidateRedirectRoute.types.loaderData,
+  ).toEqualTypeOf<string>()
+})
+
+test('throwing notFound from context preserves successful data inference', () => {
+  const functionForm = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'context-throw-not-found-function',
+    context: () => {
+      if (flag) {
+        throw notFound()
+      }
+      return { session: 'user' }
+    },
+    loader: ({ context }) => context.session,
+  })
+  const transported = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'context-throw-not-found-transported',
+    context: {
+      handler: async () => {
+        if (flag) {
+          throw notFound()
+        }
+        return { session: 'user' }
+      },
+      dehydrate: true,
+      hydrate: ({ data }) => {
+        expectTypeOf(data).toEqualTypeOf<{ session: string }>()
+        return data
+      },
+    },
+    loader: ({ context }) => context.session,
+  })
+  expectTypeOf(functionForm.types.routeContext).toEqualTypeOf<{
+    session: string
+  }>()
+  expectTypeOf(functionForm.types.loaderData).toEqualTypeOf<string>()
+  expectTypeOf(transported.types.routeContext).toEqualTypeOf<{
+    session: string
+  }>()
+  expectTypeOf(transported.types.loaderData).toEqualTypeOf<string>()
+})
+
+test('context redirect unions still validate transported data', () => {
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'context-return-invalid',
+    // @ts-expect-error data beside a returned redirect must be serializable
+    context: {
+      handler: () => {
+        if (flag) {
+          return redirect({ to: '/' })
+        }
+        return { format: () => 'user' }
+      },
+      dehydrate: true,
+    },
+  })
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'context-return-not-found-data',
+    // @ts-expect-error returned not-found objects are ordinary context data
+    context: {
+      handler: () => notFound({ data: () => 'user' }),
+      dehydrate: true,
+    },
+  })
 })
 
 test('typo keys are rejected', () => {
@@ -1972,6 +2199,8 @@ test('a parameter-less hydrate next to an inline dehydrate is accepted', () => {
 // ---------------------------------------------------------------------------
 
 const routeTree = rootRoute.addChildren([
+  contextRedirectRoute,
+  contextRevalidateRedirectRoute,
   fnRoute,
   handlerRoute,
   codecRoute,

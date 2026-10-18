@@ -271,7 +271,7 @@ describe('client lane: lifecycle object form', () => {
     expect(findMatch(router.state.matches, pageRoute.id)).toMatchObject({
       status: 'error',
       error: new Error(
-        'TanStack Router: the lazily imported `loader` is an object-form loader, which cannot be code split as a whole. Write it in the route file, inline or in a `const` there.',
+        'TanStack Router: the lazily imported `loader` is an object-form loader, which cannot be code split as a whole. Write the loader object inline in the route options to split only its handler.',
       ),
     })
   })
