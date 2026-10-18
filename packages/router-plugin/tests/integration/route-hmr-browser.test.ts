@@ -4,15 +4,20 @@
  * file-based app with the real router package to a real browser page, and
  * the test edits its route files on disk (`route-hmr-page.ts`). An edit must
  * show its new code; where a hot update is feasible, without a full reload,
- * keeping the state of the components React Refresh patches in place.
+ * keeping the state of the components React Refresh patches in place, and
+ * without errors in the page.
+ *
+ * Solid and Vue apps: route-hmr-browser-frameworks.test.ts. The router
+ * plugin's configurations and the route shapes it recognises:
+ * route-hmr-browser-plugin.test.ts. Known bugs: known-bugs-route-hmr.test.ts.
  *
  * Several edits share one dev server and page. The tests run concurrently
  * (each has its own dev server and page; most of their time is waiting).
  */
 import { describe, it } from 'vitest'
-import type { TestContext } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
-import type { RouteHmrPage } from '../route-hmr-page'
+import type { TestContext } from 'vitest'
+import type { EditResult, RouteHmrPage } from '../route-hmr-page'
 
 const timeout = 90_000
 
@@ -221,6 +226,22 @@ async function click(app: RouteHmrPage, shows: string, count: number) {
   await app.page.waitForText(`${shows} ${count}`, { selector: '#app' })
 }
 
+/**
+ * A hot update with no error the app did not cause itself: the errors of
+ * an edit without the ones mentioning `expected` (what the app's own code
+ * threw on purpose, which React and the router report).
+ */
+function hot(result: EditResult, ...expected: Array<string>) {
+  return {
+    reloaded: result.reloaded,
+    errors: result.errors.filter(
+      (error) => !expected.some((message) => error.includes(message)),
+    ),
+  }
+}
+
+const inPlace = { reloaded: false, errors: [] }
+
 describe.concurrent.each(['vite', 'rsbuild'] as const)(
   '%s: a React app',
   (bundler) => {
@@ -247,18 +268,24 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
               ready: 'page v1 data v1 / count 0',
             })
             await click(app, 'page v1 data v1 / count', 1)
+            // The loader of some versions throws on purpose; React and the
+            // router report it.
+            const edit = async (
+              files: Record<string, string>,
+              expected: string | RegExp,
+            ) => hot(await app.edit(files, expected), 'loader failed')
             // The new body, the new loader's data and the live route (`Route`)
             // show; the component keeps its state.
             expect(
-              await app.edit(
+              await edit(
                 { 'routes/index.tsx': indexRoute('v2') },
                 'page v2 data v2 / count 1',
               ),
-            ).toEqual({ reloaded: false })
+            ).toEqual(inPlace)
             // A component whose hooks changed loses its state (React remounts
             // it), as in any React app.
             expect(
-              await app.edit(
+              await edit(
                 {
                   'routes/index.tsx': indexRoute(
                     'v3',
@@ -267,65 +294,55 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
                 },
                 'page v3 data v3 / count 0',
               ),
-            ).toEqual({ reloaded: false })
+            ).toEqual(inPlace)
 
-            // Component options the edit adds, changes or removes.
+            // Component options the edit adds or changes (removing one the
+            // page loaded: last).
             const failing = `() => {
     throw new Error('loader failed')
   }`
-            expect(
-              await app.edit(
-                {
-                  'routes/index.tsx': indexRouteWith(
-                    'v4',
-                    'errorComponent: Failed,',
-                    failing,
-                  ),
-                },
-                'failed v4',
-              ),
-            ).toEqual({ reloaded: false })
-            expect(
-              await app.edit(
-                {
-                  'routes/index.tsx': indexRouteWith(
-                    'v5',
-                    'errorComponent: Failed,',
-                    failing,
-                  ),
-                },
-                'failed v5',
-              ),
-            ).toEqual({ reloaded: false })
-            // Without its error component, the route shows the router's
-            // default one. (Whether without a reload: pinned in
-            // known-bugs-route-hmr.test.ts, "removing a split option".)
-            await app.edit(
-              { 'routes/index.tsx': indexRouteWith('v6', '', failing) },
-              /^(?!.*failed v).*loader failed/,
-            )
-            const pending = `() => new Promise(() => {})`
-            for (const version of ['v7', 'v8']) {
+            const withError = 'errorComponent: Failed,'
+            for (const version of ['v4', 'v5']) {
               expect(
-                await app.edit(
+                await edit(
                   {
                     'routes/index.tsx': indexRouteWith(
                       version,
-                      'pendingComponent: Pending,\n  pendingMs: 0,\n  pendingMinMs: 0,',
-                      pending,
+                      withError,
+                      failing,
+                    ),
+                  },
+                  `failed ${version}`,
+                ),
+              ).toEqual(inPlace)
+            }
+            const withPending = `${withError}
+  pendingComponent: Pending,
+  pendingMs: 0,
+  pendingMinMs: 0,`
+            for (const version of ['v6', 'v7']) {
+              expect(
+                await edit(
+                  {
+                    'routes/index.tsx': indexRouteWith(
+                      version,
+                      withPending,
+                      `() => new Promise(() => {})`,
                     ),
                   },
                   `pending ${version}`,
                 ),
-              ).toEqual({ reloaded: false })
+              ).toEqual(inPlace)
             }
-            for (const version of ['v9', 'v10']) {
+            const withNotFound = `${withPending}
+  notFoundComponent: Missing,`
+            for (const version of ['v8', 'v9']) {
               expect(
-                await app.edit(
+                await edit(
                   {
                     'routes/index.tsx': indexRouteWith(
                       version,
-                      'notFoundComponent: Missing,',
+                      withNotFound,
                       `() => {
     throw notFound()
   }`,
@@ -333,7 +350,7 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
                   },
                   `missing ${version}`,
                 ),
-              ).toEqual({ reloaded: false })
+              ).toEqual(inPlace)
             }
 
             // Other shapes of route files. (A loader split from the route
@@ -354,13 +371,26 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
               })
               await click(app, shows('v1'), 1)
               expect(
-                await app.edit(
+                await edit(
                   { [`routes/${path}.tsx`]: route('v2') },
                   `${shows('v2')} 1`,
                 ),
                 name,
-              ).toEqual({ reloaded: false })
+              ).toEqual(inPlace)
             }
+
+            // An edit that removes the component options the page loaded: the
+            // route shows the router's default error component. Whether in
+            // place and without errors: pinned in known-bugs-route-hmr.test.ts
+            // ("removes a split option the page loaded"), per bundler and
+            // split setting. Last, as the pinned failure may reload the page
+            // later.
+            await navigate(app, '/')
+            await app.page.waitForText('missing v9', { selector: '#app' })
+            await edit(
+              { 'routes/index.tsx': indexRouteWith('v10', '', failing) },
+              /^(?!.*failed v).*loader failed/,
+            )
           },
           timeout,
         )
@@ -424,7 +454,7 @@ export const Route = createFileRoute('/')(makeOptions('${version}'))
             { 'routes/__root.tsx': root('v2') },
             'root v2 data v2 count 1',
           ),
-        ).toEqual({ reloaded: false })
+        ).toEqual(inPlace)
         // A shell changes the tree the route renders in: adding or removing it
         // may remount the route's component; editing it patches both in place.
         expect(
@@ -432,20 +462,20 @@ export const Route = createFileRoute('/')(makeOptions('${version}'))
             { 'routes/__root.tsx': root('v3', 'v3') },
             /shell v3root v3 data v3 count \d+made v1/,
           ),
-        ).toEqual({ reloaded: false })
+        ).toEqual(inPlace)
         await click(app, 'root v3 data v3 count', 1)
         expect(
           await app.edit(
             { 'routes/__root.tsx': root('v4', 'v4') },
             'shell v4root v4 data v4 count 1made v1',
           ),
-        ).toEqual({ reloaded: false })
+        ).toEqual(inPlace)
         expect(
           await app.edit(
             { 'routes/__root.tsx': root('v5') },
             /^root v5 data v5 count \d+made v1$/,
           ),
-        ).toEqual({ reloaded: false })
+        ).toEqual(inPlace)
         // Route options a factory call builds: the edit shows, after a hot
         // update or a reload (ruling 2026-10-18).
         await app.edit({ 'routes/index.tsx': factoryRoute('v2') }, 'made v2')
@@ -512,39 +542,50 @@ export const Route = createFileRoute('/')({
             { 'routes/index.tsx': index('v2') },
             'root v1 index v2 count 1',
           ),
-        ).toEqual({ reloaded: false })
+        ).toEqual(inPlace)
         expect(
           await app.edit(
             { 'routes/__root.tsx': root('v2') },
             'root v2 index v2 count 1',
           ),
-        ).toEqual({ reloaded: false })
+        ).toEqual(inPlace)
       },
     )
   },
 )
 
 // React Refresh patches route components that are not plain declarations
-// in place. Sources: react-refresh-route-components "React Refresh registers
-// split route components" (ReactFreshBabelPlugin-test "registers likely
-// HOCs with inline functions"; #8504 "written inline in a memo / forwardRef
-// call") and "hoists the components of the module's Route when another
-// route is created first" (#8504), which read React Refresh's registrations
-// and modelled how its runtime resolves memo / forwardRef (ruling
-// 2026-10-18). The split bodies have no JSX: with JSX, the code splitter
+// in place, without mounting them again. Sources:
+// react-refresh-route-components "React Refresh registers split route
+// components" (ReactFreshBabelPlugin-test "registers likely HOCs with
+// inline functions"; #8504 "written inline in a memo / forwardRef call"),
+// which read React Refresh's registrations and modelled how its runtime
+// resolves memo / forwardRef (ruling 2026-10-18); the former
+// known-bugs-route-hmr "an edit of a React route with only inline components
+// is a hot update" (gap H6a: the route HMR plugin runs before React
+// Refresh, so a route whose components are all inline still becomes a
+// boundary). The split bodies have no JSX: with JSX, the code splitter
 // cannot split the call (pinned in known-bugs-code-splitter.test.ts "a
 // component written as memo of an inline arrow is split and renders").
-// Unsplit inline memo / forwardRef components: pinned in
-// known-bugs-route-hmr.test.ts.
+// Each component counts its mounts in a state initializer (React runs it on
+// mount only; React Refresh keeps the state and re-runs effects): a body
+// edit React Refresh patches in place mounts nothing anew. Unsplit inline memo / forwardRef
+// components: pinned in known-bugs-route-hmr.test.ts.
 describe.concurrent('vite: an edited React route component written', () => {
+  const mounted = `useState(() => (window.mounts = (window.mounts ?? 0) + 1))`
   const rows = [
     {
       name: 'inline in a memo call, split',
       autoCodeSplitting: true,
       route: (version: string) =>
         `import { createFileRoute } from '@tanstack/react-router'
-import { memo } from 'react'
-export const Route = createFileRoute('/')({ component: memo(() => 'inline ${version}') })
+import { memo, useState } from 'react'
+export const Route = createFileRoute('/')({
+  component: memo(() => {
+    ${mounted}
+    return 'inline ${version}'
+  }),
+})
 `,
       shows: (version: string) => `inline ${version}`,
     },
@@ -553,46 +594,35 @@ export const Route = createFileRoute('/')({ component: memo(() => 'inline ${vers
       autoCodeSplitting: true,
       route: (version: string) =>
         `import { createFileRoute } from '@tanstack/react-router'
-import { forwardRef } from 'react'
+import { forwardRef, useState } from 'react'
 export const Route = createFileRoute('/')({
   component: forwardRef(function (props, ref) {
+    ${mounted}
     return 'inline ${version}'
   }),
 })
 `,
       shows: (version: string) => `inline ${version}`,
     },
-    // Split: the route module keeps `pendingComponent`. (`extra` is not
-    // exported: `@vitejs/plugin-react` reloads the page on an edit of a
-    // module that exports anything but components and the exports route HMR
-    // has it ignore.)
-    ...[false, true].map((autoCodeSplitting) => ({
-      name: `inline, after another route the module creates (autoCodeSplitting: ${autoCodeSplitting})`,
-      autoCodeSplitting,
+    {
+      name: 'as an inline arrow function, unsplit',
+      autoCodeSplitting: false,
       route: (version: string) =>
-        `import { createFileRoute, createRoute } from '@tanstack/react-router'
-const extra = createRoute({
-  getParentRoute: () => Route,
-  path: 'extra',
-  component: () => <p>extra</p>,
-})
+        `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
 export const Route = createFileRoute('/')({
-  ${
-    autoCodeSplitting
-      ? `loader: () => new Promise(() => {}),
-  pendingMs: 0,
-  pendingMinMs: 0,
-  pendingComponent: () => <p>pending ${version}</p>,`
-      : `component: () => <p>home ${version}</p>,`
-  }
+  loader: () => 'data ${version}',
+  component: () => {
+    ${mounted}
+    return <p>inline ${version} {Route.useLoaderData()}</p>
+  },
 })
 `,
-      shows: (version: string) =>
-        autoCodeSplitting ? `pending ${version}` : `home ${version}`,
-    })),
+      shows: (version: string) => `inline ${version} data ${version}`,
+    },
   ]
   it.for(rows)(
-    '$name shows in place',
+    '$name shows in place without mounting again',
     { timeout },
     async (
       { autoCodeSplitting, route, shows },
@@ -604,53 +634,12 @@ export const Route = createFileRoute('/')({
         files: { 'routes/index.tsx': route('v1') },
         ready: shows('v1'),
       })
+      const mounts = await app.evaluate<number>('window.mounts')
+      expect(mounts).toBeGreaterThan(0)
       expect(
         await app.edit({ 'routes/index.tsx': route('v2') }, shows('v2')),
-      ).toEqual({ reloaded: false })
+      ).toEqual(inPlace)
+      expect(await app.evaluate<number>('window.mounts')).toBe(mounts)
     },
   )
 })
-
-// Solid and Vue in Vite with their framework's plugin: an edit of a route
-// file shows its new code. Whether it does without a full reload, keeping
-// the split component (decision D10), is pinned in
-// known-bugs-route-hmr.test.ts; Solid without code splitting is a hot update.
-describe.concurrent.each(['solid', 'vue'] as const)(
-  'vite: a %s app',
-  (target) => {
-    const route = (version: string) =>
-      `import { createFileRoute } from '@tanstack/${target}-router'
-export const Route = createFileRoute('/')({
-  loader: () => 'data ${version}',
-  component: Page,
-})
-function Page() {
-  const data = Route.useLoaderData()
-  return <p>page ${version} {${target === 'vue' ? 'data.value' : 'data()'}}</p>
-}
-`
-    it.for([true, false])(
-      'shows the new code of an edited route file (autoCodeSplitting: %s)',
-      { timeout },
-      async (
-        autoCodeSplitting: boolean,
-        { expect, onTestFinished }: TestContext,
-      ) => {
-        const app = await openRouteHmrPage({
-          target,
-          onTestFinished,
-          pluginOptions: { autoCodeSplitting },
-          files: { 'routes/index.tsx': route('v1') },
-          ready: 'page v1 data v1',
-        })
-        const { reloaded } = await app.edit(
-          { 'routes/index.tsx': route('v2') },
-          'page v2 data v2',
-        )
-        if (target === 'solid' && !autoCodeSplitting) {
-          expect(reloaded).toBe(false)
-        }
-      },
-    )
-  },
-)

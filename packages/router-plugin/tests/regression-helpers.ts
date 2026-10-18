@@ -3,8 +3,10 @@
  * a route file through the code-splitter plugin the way a bundler does,
  * follow the imports of its output to every module it emits, evaluate those
  * modules like a runtime, and inspect an emitted module. The plugin host
- * (`plugin-host.ts`), `loadRoute` (`lazy-tracking.ts`) and `hotUpdate`
- * (`hmr-model.ts`) live in their own modules and are re-exported here.
+ * (`plugin-host.ts`) and `loadRoute` (`lazy-tracking.ts`) live in their own
+ * modules and are re-exported here. Route HMR has no in-process model: what
+ * the page shows after an edit is tested with `openRouteHmrPage`
+ * (`route-hmr-page.ts`).
  */
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { frameworkTransform } from '@tanstack/compiler-test-utils/render'
@@ -12,16 +14,16 @@ import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
 import { build, routeApp } from './build-harness'
-import type { CodeSplitGroupings } from '../src/core/constants'
-import type { ESTree } from 'vite'
 import {
   packagesDirectory,
   refreshScope,
   transformWithReactRefresh,
 } from './lazy-tracking'
-import type { Stubs } from './lazy-tracking'
 import { routeModuleId } from './plugin-host'
 import type { TargetFramework } from './plugin-host'
+import type { CodeSplitGroupings } from '../src/core/constants'
+import type { ESTree } from 'vite'
+import type { Stubs } from './lazy-tracking'
 
 export {
   webpackCompiler,
@@ -51,8 +53,6 @@ export {
   createRouteLoader,
   renderComponent,
 } from './lazy-tracking'
-export { hotUpdate } from './hmr-model'
-export type { HotUpdateOptions } from './hmr-model'
 
 export { declaredNames } from '@tanstack/compiler-test-utils/validate-module'
 

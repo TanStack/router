@@ -1,8 +1,8 @@
 /**
  * Controls for the regression harness itself: module discovery, lazy
  * evaluation and output validation (module linking and module validation:
- * `@tanstack/compiler-test-utils`), and the route HMR page
- * (`route-hmr-page.ts`).
+ * `@tanstack/compiler-test-utils`). The route HMR page (`route-hmr-page.ts`):
+ * integration/regression-helpers.test.ts.
  */
 import { describe, expect, it } from 'vitest'
 import { routerDevServer } from './dev-server'
@@ -12,9 +12,7 @@ import {
   evaluateModule,
   expectRegisteredRouteOption,
   expectValidModules,
-  generatedRouteId,
   head,
-  hotUpdate,
   importRequests,
   importSources,
   loadRoute,
@@ -385,69 +383,6 @@ export const Route = createFileRoute('/')({
       },
     })
     expect(Object.keys(unsplit.modules)).toEqual(['reference'])
-  })
-})
-
-describe('hotUpdate', () => {
-  const route = (loader: string) => `${head}function Page() {
-  return <p>page</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => '${loader}',
-  component: Page,
-})`
-
-  it.each(['vite', 'webpack'] as const)(
-    '%s: the live route gets the options of the updated module',
-    async (style) => {
-      const update = await hotUpdate(route('old'), {
-        style,
-        updated: route('new'),
-      })
-      expect((update.previous.loader as () => string)()).toBe('old')
-      expect((update.live.loader as () => string)()).toBe('new')
-      expect(update.created).toHaveLength(2)
-      expect(update.invalidated).toBe(false)
-    },
-  )
-
-  it.each(['vite', 'webpack'] as const)(
-    '%s with code splitting: the split component stays lazy and the new loader applies',
-    async (style) => {
-      const update = await hotUpdate(route('old'), {
-        style,
-        codeSplitting: true,
-        updated: route('new'),
-      })
-      expect((update.live.loader as () => string)()).toBe('new')
-      expect(update.isLazy('component')).toBe(true)
-      expect((await update.load('component'))()).toBe('<p>page</p>')
-    },
-  )
-
-  it('a root route is updated as the root of the route tree', async () => {
-    const root = (
-      loader: string,
-    ) => `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({ loader: () => '${loader}' })`
-    const update = await hotUpdate(root('old'), {
-      routeId: await generatedRouteId('__root.tsx'),
-      updated: root('new'),
-    })
-    expect((update.live.loader as () => string)()).toBe('new')
-  })
-
-  it('a Solid route is updated with the Solid router package', async () => {
-    const solid = (
-      loader: string,
-    ) => `import { createFileRoute } from '@tanstack/solid-router'
-export const Route = createFileRoute('/')({ loader: () => '${loader}' })`
-    const update = await hotUpdate(solid('old'), {
-      style: 'webpack',
-      targetFramework: 'solid',
-      updated: solid('new'),
-    })
-    expect((update.live.loader as () => string)()).toBe('new')
   })
 })
 

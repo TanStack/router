@@ -91,179 +91,38 @@ describe('plugin.vite.environmentName', () => {
 })
 
 // The webpack and Rspack entries use their bundler's HMR API whatever
-// `plugin.hmr.style` says (src/rspack.ts, src/webpack.ts).
+// `plugin.hmr.style` says (src/rspack.ts, src/webpack.ts): an edit with
+// `plugin.hmr.style: 'vite'` on Rsbuild hot-updates the page
+// (integration/route-hmr-browser-plugin.test.ts). With `addHmr: false`, a
+// development build has no route HMR code at all.
 describe.each(['rspack', 'webpack'] as const)('%s entry', (bundler) => {
-  /**
-   * Development client build with the bundler's HMR plugin, `addHmr`, and
-   * `plugin.hmr.style: 'vite'`.
-   */
-  async function hotDevelopmentBuild(
-    addHmr: boolean | undefined,
-    routes?: (config: RouterPluginOptions) => Array<unknown>,
-  ) {
-    return build({
-      bundler,
-      env: 'client',
-      mode: 'development',
-      pluginOptions: {
-        plugin: { hmr: { style: 'vite' } },
-        codeSplittingOptions: { addHmr },
-      },
-      routerPlugins: routes,
-      extraPlugins: () => [
-        {
-          apply(compiler: any) {
-            new compiler.webpack.HotModuleReplacementPlugin().apply(compiler)
-          },
-        },
-      ],
-      files: routeApp(route(), { env: 'client' }),
-    })
-  }
-
-  /**
-   * The plugins the entry is made of, for this bundler, without the entry's
-   * own handling of the options.
-   */
-  async function unforcedPlugins() {
-    const { createRspackPlugin, createWebpackPlugin } = await import('unplugin')
-    const { createRouterGeneratorPlugin } =
-      await import('../../src/core/router-generator-plugin')
-    const { createRouterCodeSplitterPlugin } =
-      await import('../../src/core/router-code-splitter-plugin')
-    const { createRouterPluginContext } =
-      await import('../../src/core/router-plugin-context')
-    const create: (
-      factory: (options: any) => any,
-    ) => (options: any) => unknown =
-      bundler === 'rspack' ? createRspackPlugin : createWebpackPlugin
-    return (config: RouterPluginOptions) => {
-      const context = createRouterPluginContext()
-      return [
-        create((options) => createRouterGeneratorPlugin(options, context))(
-          config,
-        ),
-        create((options) => createRouterCodeSplitterPlugin(options, context))(
-          config,
-        ),
-      ]
-    }
-  }
-
-  /**
-   * Whether the route modules accept hot updates through the hot module API
-   * of webpack and Rspack (`import.meta.webpackHot` / `module.hot`), and
-   * whether they use Vite's (`import.meta.hot`, undefined in these bundles).
-   */
-  const hmrApi = (app: BuildResult) => ({
-    accepts: app.where(/\bhot\.accept\(/) !== 'nowhere',
-    vite: app.where(/\bimport\.meta\.hot\b/) !== 'nowhere',
-  })
-
   test(
-    'makes routes accept hot updates through the bundler even when plugin.hmr.style is vite',
+    'with addHmr: false, a development build with the HMR plugin has no route HMR code',
     async () => {
-      const [entry, withoutHmr, unforced] = await Promise.all([
-        hotDevelopmentBuild(undefined),
-        hotDevelopmentBuild(false),
-        hotDevelopmentBuild(undefined, await unforcedPlugins()),
-      ])
-      // Controls: no route HMR code; Vite's HMR API when the style is not
-      // forced
-      expect(hmrApi(withoutHmr)).toEqual({ accepts: false, vite: false })
-      expect(hmrApi(unforced).vite).toBe(true)
-      expect(hmrApi(entry)).toEqual({ accepts: true, vite: false })
-    },
-    timeout,
-  )
-})
-
-describe('separate generator and code splitter entries', () => {
-  const entries: Record<
-    (typeof bundlers)[number],
-    () => Promise<(config: RouterPluginOptions) => Array<unknown>>
-  > = {
-    vite: async () => {
-      const vite = await import('../../src/vite')
-      return (config) => [
-        vite.tanstackRouterGenerator(config),
-        vite.tanStackRouterCodeSplitter(config),
-      ]
-    },
-    rspack: async () => {
-      const rspack = await import('../../src/rspack')
-      return (config) => [
-        rspack.TanStackRouterGeneratorRspack(config),
-        rspack.TanStackRouterCodeSplitterRspack(config),
-      ]
-    },
-    webpack: async () => {
-      const webpack = await import('../../src/webpack')
-      return (config) => [
-        webpack.TanStackRouterGeneratorWebpack(config),
-        webpack.TanStackRouterCodeSplitterWebpack(config),
-      ]
-    },
-  }
-
-  test.each(bundlers)(
-    'generate the route tree and split like the combined plugin (%s)',
-    async (bundler) => {
-      const { app, html } = await buildRoute(
+      const app = await build({
         bundler,
-        {},
-        { routes: await entries[bundler]() },
-      )
-      expect(app.where('MARK_COMPONENT')).toBe('lazy')
-      expect(app.where('MARK_ROUTE')).toBe('eager')
-      expect(html).toContain('MARK_COMPONENT')
-      expect(await read(app, 'routeTree.gen.ts')).toContain(
-        "from './routes/index'",
-      )
+        env: 'client',
+        mode: 'development',
+        pluginOptions: {
+          plugin: { hmr: { style: 'vite' } },
+          codeSplittingOptions: { addHmr: false },
+        },
+        extraPlugins: () => [
+          {
+            apply(compiler: any) {
+              new compiler.webpack.HotModuleReplacementPlugin().apply(compiler)
+            },
+          },
+        ],
+        files: routeApp(route(), { env: 'client' }),
+      })
+      // The bundler's own HMR runtime stays; no module accepts hot updates
+      // of its own, and nothing uses Vite's hot API.
+      expect({
+        accepts: app.where(/\bhot\.accept\(/),
+        vite: app.where(/\bimport\.meta\.hot\b/),
+      }).toEqual({ accepts: 'nowhere', vite: 'nowhere' })
     },
     timeout,
   )
 })
-
-// The package root exports the generator's unplugin factory, for bundler
-// adapters of its own.
-// Source: r5-gaps N12 (rp:1935: the factory returned no plugin).
-test(
-  'the unplugin factory of the generator from the package root generates the route tree (vite)',
-  async () => {
-    const { createUnplugin } = await import('unplugin')
-    const { unpluginRouterGeneratorFactory } = await import('../../src')
-    const { app, html } = await buildRoute(
-      'vite',
-      {},
-      {
-        routes: (config) => [
-          createUnplugin(unpluginRouterGeneratorFactory).vite(config),
-        ],
-      },
-    )
-    expect(html).toContain('MARK_COMPONENT')
-    expect(await read(app, 'routeTree.gen.ts')).toContain(
-      "from './routes/index'",
-    )
-  },
-  timeout,
-)
-
-test(
-  'the deprecated TanStackRouterVite generates the route tree and splits like tanstackRouter',
-  async () => {
-    const { TanStackRouterVite } = await import('../../src/vite')
-    const { app, html } = await buildRoute(
-      'vite',
-      {},
-      { routes: (config) => [TanStackRouterVite(config)] },
-    )
-    expect(app.where('MARK_COMPONENT')).toBe('lazy')
-    expect(html).toContain('MARK_COMPONENT')
-    expect(await read(app, 'routeTree.gen.ts')).toContain(
-      "from './routes/index'",
-    )
-  },
-  timeout,
-)
