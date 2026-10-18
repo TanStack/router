@@ -926,6 +926,84 @@ describe('reachability from the router entry', () => {
     timeout,
   )
 
+  /**
+   * `serverFnFactoryApp` without the leak, whose server fn factory module
+   * uses a helper `src/helper.ts` (which uses the denied file and the denied
+   * specifier) only inside `createMiddleware().server()`: the client never
+   * imports the helper.
+   */
+  const handlerOnlyHelperApp = () => {
+    const app: Record<string, string> = {
+      ...serverFnFactoryApp(),
+      'src/helper.ts': `import { getSecret } from './secret.server'
+import { getRequest } from '@tanstack/react-start/server'
+export const readSecret = () => [getSecret(), getRequest()]
+`,
+      'src/factory.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { readSecret } from './helper'
+const mw = createMiddleware({ type: 'function' }).server(({ next }) => {
+  return next({ context: { secret: readSecret() } })
+})
+export const createSecretFn = createServerFn().middleware([mw])
+`,
+      'src/entry.ts': `export { fn } from './usage'\n`,
+    }
+    delete app['src/leak.ts']
+    return app
+  }
+
+  // Control for the pin below: without Vite's pre-transform requests, the
+  // helper is never transformed for the client, and nothing is logged.
+  // Source: harness realism (r5-gaps M1): the harness used to turn
+  // pre-transform requests off for every test.
+  test(
+    'with preTransformRequests off, a helper a server fn factory module uses only inside .server() is not logged',
+    async () => {
+      const server = await startProtectedDevServer(
+        handlerOnlyHelperApp(),
+        {},
+        { config: { server: { preTransformRequests: false } } },
+      )
+      const client = await server.load('/src/entry.ts')
+      // (what the transforms Vite runs in the background log)
+      await server.idle()
+      expect(Object.keys(client)).not.toContain('/src/helper.ts')
+      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toEqual([])
+    },
+    timeout,
+  )
+
+  // Bug: with Vite's default pre-transform requests, the Start compiler's
+  // lookup of the server fn factory module (`?server-fn-module-lookup`, in
+  // the client environment) goes through Vite's import analysis, which
+  // pre-transforms `src/helper.ts` for the client. Import protection stores
+  // the lookup's transform under the factory's file
+  // (`cacheTransformResult`), so the factory → helper edge stays pending
+  // until the factory's own client transform lands, and the 'unknown'
+  // reachability fallback of `processPendingViolations`
+  // (vite/import-protection-plugin/plugin.ts) logs the helper's denied file
+  // import conservatively.
+  // Impact: in dev (Vite's defaults), a module a server fn factory uses only
+  // inside `.server()` is logged as a client violation, with a trace through
+  // an import the client never has; the client is correct (it never loads
+  // the helper). A false warning in the most common server fn layout.
+  // Source: mutation run R4 final re-audit (M1), hidden while the harness
+  // turned pre-transform requests off.
+  test.fails(
+    'a helper a server fn factory module uses only inside .server() is not logged',
+    async () => {
+      const server = await startProtectedDevServer(handlerOnlyHelperApp())
+      const client = await server.load('/src/entry.ts')
+      // (what the transforms Vite runs in the background log)
+      await server.idle()
+      expect(Object.keys(client)).not.toContain('/src/helper.ts')
+      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toEqual([])
+    },
+    timeout,
+  )
+
   // The start entry (`src/start.ts`) is an entry like the router entry: the
   // client loads it, and so what it imports.
   // Source: mutation run R4 (spc:4524).
