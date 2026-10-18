@@ -18,11 +18,32 @@ import {
   head,
   hotUpdate,
   loadRoute,
+  renderComponent,
   routeSpecifier,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
+
 import { editRouteFile } from './vite-hot-update'
 import type { PluginOption } from 'vite'
+
+/**
+ * Whether a component React Refresh registered renders what the route's
+ * `option` renders (the component a split option loads is not reachable
+ * through the router's public API).
+ */
+async function rendersRegistered(
+  route: Awaited<ReturnType<typeof loadRoute>>,
+  option: string,
+) {
+  const rendered = await route.render(option)
+  for (const type of route.registered.keys()) {
+    const html = await renderComponent(type).catch(() => undefined)
+    if (html === rendered) {
+      return true
+    }
+  }
+  return false
+}
 
 describe('React Refresh registration', () => {
   // Inline components that are not plain functions (`memo(...)`, ...):
@@ -30,9 +51,8 @@ describe('React Refresh registration', () => {
 
   /**
    * Loads, with React HMR and React Refresh, a route whose `component` option
-   * is `name`, declared by `declaration`, and returns the component the route
-   * renders once its lazy option loaded, and the components React Refresh
-   * registers.
+   * is `name`, declared by `declaration`, and returns whether a component
+   * React Refresh registers renders what the route's component renders.
    */
   async function splitComponentRegistration(declaration: string, name: string) {
     const route = await loadRoute(
@@ -41,9 +61,7 @@ export const Route = createFileRoute('/')({ component: ${name} })`,
       { hmr: true, refresh: true },
     )
     await expectValidModules(route.modules)
-    const binding = await route.load('component')
-    expect(binding).toBeDefined()
-    return { binding, registered: [...route.registered.keys()] }
+    return rendersRegistered(route, 'component')
   }
 
   // Source: add-hmr snapshot fixture createFileRoute-lowercase-components:
@@ -69,27 +87,22 @@ function component() {
       { hmr: true, refresh: true },
     )
     await expectValidModules(route.modules)
-    expect(
-      ['component', 'errorComponent', 'pendingComponent'].map(route.isLazy),
-    ).toEqual([true, true, false])
+    expect(await route.groups()).toEqual([['component'], ['errorComponent']])
     for (const [option, text] of [
       ['component', 'Hello'],
       ['errorComponent', 'Error'],
       ['pendingComponent', 'Pending'],
     ]) {
-      const component = await route.load(option!)
-      expect(component()).toBe(`<div>${text}</div>`)
-      expect(route.registered.has(component), option).toBe(true)
+      expect(await route.render(option!)).toBe(`<div>${text}</div>`)
+      expect(await rendersRegistered(route, option!), option).toBe(true)
     }
   })
 
   // Control for the lowercase pin below (same harness).
   test('registers a PascalCase split component', async () => {
-    const { binding, registered } = await splitComponentRegistration(
-      `const Page = () => <p>hi</p>`,
-      'Page',
-    )
-    expect(registered).toContain(binding)
+    expect(
+      await splitComponentRegistration(`const Page = () => <p>hi</p>`, 'Page'),
+    ).toBe(true)
   })
 
   // Control for the lowercase pin below: lowercase function declarations
@@ -108,8 +121,8 @@ function ${option}() {
         { hmr: true, refresh: true },
       )
       await expectValidModules(route.modules)
-      expect(route.isLazy(option)).toBe(true)
-      expect(route.registered.has(await route.load(option))).toBe(true)
+      expect(await route.isLazy(option)).toBe(true)
+      expect(await rendersRegistered(route, option)).toBe(true)
     },
   )
 
@@ -128,11 +141,7 @@ function ${option}() {
   ])(
     'registers a lowercase split component declared as %s',
     async (_, declaration) => {
-      const { binding, registered } = await splitComponentRegistration(
-        declaration,
-        'page',
-      )
-      expect(registered).toContain(binding)
+      expect(await splitComponentRegistration(declaration, 'page')).toBe(true)
     },
   )
 })
@@ -217,7 +226,7 @@ export const Route = createFileRoute('/')({
         { hmr: true },
       )
       await expectValidModules(route.modules)
-      expect((await route.load('component'))()).toBe('<p>hot</p>')
+      expect(await route.render('component')).toBe('<p>hot</p>')
       if (exported) {
         // A module importing it gets the user's value.
         const { hot } = await route.importFromRoute(
@@ -259,9 +268,11 @@ export const Route = createFileRoute('/')({
         },
       },
     )
-    const component = await route.load('component')
-    const notFound = await route.load('notFoundComponent')
-    return [component(), notFound(), inits]
+    return [
+      await route.render('component'),
+      await route.render('notFoundComponent'),
+      inits,
+    ]
   }
 
   // Control for the lowercase shared component pin below (same harness).
@@ -312,11 +323,13 @@ export const Route = createFileRoute('/')({ component: page, pendingComponent: p
         { hmr: true, refresh: true },
       )
       await expectValidModules(route.modules)
-      const component = await route.load('component')
-      const pending = await route.load('pendingComponent')
-      expect([component(), pending()]).toEqual(['<p>hi</p>', '<p>hi</p>'])
-      expect(route.registered.has(component)).toBe(true)
-      expect(route.registered.has(pending)).toBe(true)
+      expect([
+        await route.render('component'),
+        await route.render('pendingComponent'),
+      ]).toEqual(['<p>hi</p>', '<p>hi</p>'])
+      expect(await rendersRegistered(route, 'component')).toBe(true)
+      // Not split: the option is the component React renders
+      expect(route.registered.has(route.options.pendingComponent)).toBe(true)
     },
   )
 
@@ -341,10 +354,10 @@ export const Route = createFileRoute('/')({ component: page })`,
         { hmr: true, refresh: true },
       )
       await expectValidModules(route.modules)
-      const component = await route.load('component')
-      expect(route.exports.page).toBe(component)
-      expect(component()).toBe('<p>hi</p>')
-      expect(route.registered.has(component)).toBe(true)
+      expect(await route.render('component')).toBe('<p>hi</p>')
+      expect(await renderComponent(route.exports.page)).toBe('<p>hi</p>')
+      expect(route.registered.has(route.exports.page)).toBe(true)
+      expect(await rendersRegistered(route, 'component')).toBe(true)
     },
   )
 
@@ -385,9 +398,9 @@ export const Route = createFileRoute('/')({
       { hmr: true },
     )
     await expectValidModules(route.modules)
-    expect(route.isLazy('loader')).toBe(true)
+    expect(await route.isLazy('loader')).toBe(true)
     expect(await route.options.loader()).toBe('data')
-    expect((await route.load('component'))()).toBe('<p>data</p>')
+    expect(await route.render('component')).toBe('<p>data</p>')
   })
 
   /** A lowercase error fallback, and an import of `ErrorBoundary`. */
@@ -406,7 +419,9 @@ export const Route = createFileRoute('/')({
     expect(Route.options.staticData.errorFallback).toBe(
       Route.options.errorComponent,
     )
-    expect(Route.options.errorComponent()).toBe('<p>error</p>')
+    expect(await renderComponent(Route.options.errorComponent)).toBe(
+      '<p>error</p>',
+    )
   })
 
   // Control for the hoisted inline component pin below (same harness).
@@ -419,7 +434,9 @@ export const Route = createFileRoute('/')({
     </ErrorBoundary>
   ),
 })`)
-    expect(Route.options.pendingComponent()).toBe('<p>error</p>')
+    expect(await renderComponent(Route.options.pendingComponent)).toBe(
+      '<p>error</p>',
+    )
   })
 
   // Bug: React HMR hoists inline component options into declarations it
@@ -442,8 +459,12 @@ export const Route = createFileRoute('/')({
   ),
   errorComponent: errorFallback,
 })`)
-      expect(Route.options.pendingComponent()).toBe('<p>error</p>')
-      expect(Route.options.errorComponent()).toBe('<p>error</p>')
+      expect(await renderComponent(Route.options.pendingComponent)).toBe(
+        '<p>error</p>',
+      )
+      expect(await renderComponent(Route.options.errorComponent)).toBe(
+        '<p>error</p>',
+      )
     },
   )
 })

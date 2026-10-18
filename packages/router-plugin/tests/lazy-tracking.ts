@@ -1,18 +1,64 @@
 /**
- * Loads a compiled route with stubs of the router package that track which
- * options load lazily (`loadRoute`), and the stubs it links the route
- * modules with. Re-exported by `regression-helpers.ts`.
+ * Loads a compiled route file the way an app does, with the real router
+ * package and the real framework: the route module (and what it imports
+ * statically) evaluates first, each split option's module only when the
+ * router loads it. Laziness is observed through the router's public lazy
+ * contract (a route component's `preload()`, a loader call) and the modules
+ * actually requested, never by recognising the helper that builds a lazy
+ * value (SPEC J2.6, §5.8): `lazyRouteComponent`, `lazyFn`, an equivalent
+ * wrapper or an intermediate module all pass. Re-exported by
+ * `regression-helpers.ts`.
+ *
+ * API (`loadRoute(code, options)` / `createRouteLoader(options)(code)`):
+ * - `modules`, `ids`, `graph`: the compiled modules (`compileRouteModules`).
+ * - `exports`, `Route`, `options`: the route module's exports, the real
+ *   route it creates, the route's options.
+ * - `evaluated`: compiled modules evaluated so far (load observer);
+ *   `eager`: the route module and every module its load requested (compiled
+ *   modules, stubs, packages); `requested`: everything requested so far.
+ * - `isLazy(option)`: loading the option requests a compiled module that has
+ *   not loaded with the route module.
+ * - `load(option)`: the option as the router uses it, once its module loaded
+ *   (components: after `preload()`; a loader loads its module when called).
+ * - `render(option, props)`: the option's component rendered by the real
+ *   framework's server renderer, after `load`.
+ * - `renderRoute({ at })`: the app (a root route rendering this route)
+ *   rendered by the real router on the server: `createRouter`, memory
+ *   history at `at` (default the route id), `router.load()`, then
+ *   `RouterProvider` rendered. Loaders, error and not-found states, and route
+ *   hooks such as `Route.useLoaderData()` run as in an app.
+ * - `loadedBy(option)`: the code of each compiled module loading the option
+ *   evaluates (one or more: facades and support modules are allowed).
+ * - `groups()`: which lazy options load together. Activating a lazy option
+ *   makes every option of its group available (its loading requests nothing
+ *   new); options of another group stay unrequested.
+ * - `importFromRoute(source)`: another module of the app importing the route
+ *   module (`'#route'`), for identity checks through a real importer.
+ * - `registered`: what React Refresh registered (`refresh`).
+ *
+ * The observers that load something (`isLazy`, `loadedBy`, `groups`) run in
+ * forks of the graph (`@tanstack/compiler-test-utils/lazy-probe`: fresh
+ * module instances, same stubs), so the route a test inspects loads nothing
+ * it did not ask for. The route module's top-level code runs again in each
+ * fork with the same stubs: assert what stubs record before using these.
+ * `isLazy('loader')` calls the loader once in a fork, without arguments: a
+ * loader that is not lazy runs there.
+
  */
+import path from 'node:path'
+import { createLazyProbe } from '@tanstack/compiler-test-utils/lazy-probe'
 import {
   createModuleGraph,
-  jsxPragma,
   moduleLang,
 } from '@tanstack/compiler-test-utils/module-linker'
-import * as React from 'react'
+import {
+  frameworkTransform,
+  renderToHtml,
+} from '@tanstack/compiler-test-utils/render'
 import { transformWithOxc } from 'vite'
-import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 import { createRouteGraphCompiler, labelRouteModules } from './plugin-host'
-import type { CompileOptions, RouteGraph } from './plugin-host'
+import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
+import type { CompileOptions, RouteGraph, TargetFramework } from './plugin-host'
 
 /**
  * Modules provided by the test, by import specifier: their exports, or the
@@ -26,80 +72,39 @@ export function stubExports(stub: ModuleStub | undefined) {
 }
 
 /**
- * Compiles a route file, evaluates its route module like `loadRoute` (every
- * import the route file makes is stubbed by identity functions, unless
- * `stubs` gives it) and returns the code of the module its `component`
- * option loads lazily.
+ * The router plugin's own directory: the real packages compiled modules
+ * import (`react`, `react-dom`, the router packages, Solid, Vue) resolve
+ * from its dependencies.
  */
-export async function componentChunk(
+export const packagesDirectory = path.join(import.meta.dirname, '..')
+
+/** A graph that only links packages: the instances every route graph gets. */
+const packageGraph = createModuleGraph({ packages: packagesDirectory })
+
+/**
+ * Server-renders a component of a compiled module with the real `framework`
+ * (default React), the instance compiled modules get.
+ */
+export function renderComponent(
+  component: unknown,
+  props: Record<string, unknown> = {},
+  framework: TargetFramework = 'react',
+) {
+  return renderToHtml(packageGraph, framework, component, props)
+}
+
+/**
+ * Compiles a route file, evaluates its route module like `loadRoute` (every
+ * import the route file makes that no package provides is stubbed by
+ * identity functions, unless `stubs` gives it) and returns the code of each
+ * module loading its `component` option evaluates (`loadedBy`).
+ */
+export async function componentModules(
   code: string,
   options: LoadRouteOptions = {},
 ) {
   const route = await loadRoute(code, { stubUnknownImports: true, ...options })
-  return route.chunkOf('component')
-}
-
-/**
- * Exports of a router package, as much of them as route modules use: routes
- * keep their options, and lazy route options (`lazyRouteComponent`,
- * `lazyFn`) load their module when called or preloaded, like the real ones.
- * `lazy` collects the loader of every lazy value created.
- */
-export function createRouterStub(lazy: Map<unknown, () => Promise<unknown>>) {
-  const route = (options: unknown) => ({ options })
-  return {
-    createFileRoute: () => route,
-    createLazyFileRoute: () => route,
-    createRootRoute: route,
-    createRootRouteWithContext: () => route,
-    createRoute: route,
-    Outlet: () => null,
-    lazyRouteComponent: (
-      importer: () => Promise<Record<string, any>>,
-      exportName = 'default',
-    ) => {
-      let component: ((props: unknown) => unknown) | undefined
-      const load = async () => {
-        component = (await importer())[exportName]
-        return component
-      }
-      const Lazy = Object.assign(
-        (props: unknown) => {
-          if (!component) {
-            throw new Error('a lazy route component rendered before it loaded')
-          }
-          return component(props)
-        },
-        { preload: load },
-      )
-      lazy.set(Lazy, load)
-      return Lazy
-    },
-    lazyFn: (importer: () => Promise<Record<string, any>>, key = 'default') => {
-      const fn = async (...args: Array<unknown>) =>
-        (await importer())[key](...args)
-      lazy.set(fn, async () => (await importer())[key])
-      return fn
-    },
-  }
-}
-
-const routerPackages = [
-  '@tanstack/react-router',
-  '@tanstack/solid-router',
-  '@tanstack/vue-router',
-]
-
-/** Stubs of the router packages, merged with the test's own stubs. */
-export function withRouterStubs(
-  stubs: Stubs,
-  lazy: Map<unknown, () => Promise<unknown>>,
-): Stubs {
-  const linked: Stubs = { ...stubs }
-  for (const name of routerPackages) {
-    linked[name] = { ...createRouterStub(lazy), ...stubExports(stubs[name]) }
-  }
-  return linked
+  return route.loadedBy('component')
 }
 
 /**
@@ -114,7 +119,7 @@ export async function transformWithReactRefresh(
 ) {
   const result = await transformWithOxc(code, 'module', {
     lang: moduleLang(id),
-    jsx: { runtime: 'classic', ...jsxPragma, refresh: {} },
+    jsx: { runtime: 'automatic', refresh: {} },
     typescript: { onlyRemoveTypeImports: verbatimModuleSyntax },
   })
   return result.code
@@ -134,8 +139,11 @@ export function refreshScope(registered: Map<unknown, string>) {
   }
 }
 
-type LoadRouteOptions = CompileOptions & {
-  /** The route file's other imports, by specifier. */
+export type LoadRouteOptions = CompileOptions & {
+  /**
+   * The route file's other imports, by specifier. The router package and
+   * the framework are the real packages; do not stub them.
+   */
   stubs?: Stubs
   /**
    * Compile every module with the React Refresh transform and record what it
@@ -143,9 +151,9 @@ type LoadRouteOptions = CompileOptions & {
    */
   refresh?: boolean
   /**
-   * Link every import that neither `stubs` nor the emitted modules provide
-   * to a module whose exports are identity functions, for tests that only
-   * inspect the emitted modules.
+   * Link every import that neither `stubs`, the emitted modules nor an
+   * installed package provide to a module whose exports are identity
+   * functions, for tests that only inspect the emitted modules.
    */
   stubUnknownImports?: boolean
   /**
@@ -165,13 +173,35 @@ const identityStub = (_: string, names: Set<string>) =>
     [...names].map((name) => [name, (value: unknown) => value]),
   )
 
+/** Route options the code splitter may split. */
+const splittableOptions = [
+  'component',
+  'errorComponent',
+  'pendingComponent',
+  'notFoundComponent',
+  'loader',
+]
+
+/**
+ * Starts loading a route option the way the router does: a component's
+ * `preload()` (what intent preloading and `loadRouteChunk` call), a loader's
+ * call (function or `{ handler }`), without arguments.
+ */
+function triggerOption(value: any, option: string) {
+  if (option === 'loader') {
+    const loader = typeof value === 'function' ? value : value?.handler
+    return typeof loader === 'function' ? loader() : undefined
+  }
+  return value?.preload?.()
+}
+
 /**
  * Compiles a route file like `compileRouteModules`, then evaluates it the
  * way an app does: the route module (and what it imports statically) first,
- * and each lazy module only when a route option loads it. Imports of the
- * emitted modules link to each other; other imports link to `stubs` (the
- * router package is stubbed). Route options are read from the evaluated
- * `Route`; `load(option)` resolves a lazy option to what its module provides.
+ * and each lazy module only when the router loads a route option. Imports
+ * of the emitted modules link to each other; `stubs` provide other imports;
+ * everything else is a real installed package (the router package and the
+ * framework among them). See the file header for what the result offers.
  */
 export async function loadRoute(code: string, options: LoadRouteOptions = {}) {
   return createRouteLoader(options)(code)
@@ -187,86 +217,145 @@ export function createRouteLoader(options: LoadRouteOptions = {}) {
   return (code: string) => linkRoute(code, compile(code), options)
 }
 
+/**
+ * Loads modules given as a compiled route graph, like `loadRoute` loads the
+ * code splitter's output: for controls of the harness on fixed graphs, of
+ * any shape a correct compiler may emit.
+ */
+export function loadRouteGraph(
+  graph: RouteGraph,
+  options: LoadRouteOptions = {},
+) {
+  return linkRoute(graph.modules.get(graph.id)!, graph, options)
+}
+
 async function linkRoute(
   code: string,
   graph: RouteGraph,
   options: LoadRouteOptions,
 ) {
-  const lazy = new Map<unknown, () => Promise<unknown>>()
+  const framework = options.targetFramework ?? 'react'
+  const routerPackage = `@tanstack/${framework}-router`
   const registered = new Map<unknown, string>()
   const moduleGraph = createModuleGraph({
     modules: Object.fromEntries(graph.modules),
-    stubs: withRouterStubs(
-      options.refresh
-        ? { react: React, ...options.stubs }
-        : (options.stubs ?? {}),
-      lazy,
-    ),
+    stubs: options.stubs,
+    packages: packagesDirectory,
     resolve: (specifier, importer) =>
       specifier === routeSpecifier
         ? graph.id
         : graph.resolve(specifier, importer),
     ...(options.stubUnknownImports && { fallbackStub: identityStub }),
     verbatimModuleSyntax: options.verbatimModuleSyntax,
-    ...(options.refresh && {
-      scope: () => refreshScope(registered),
-      transform: (code: string, id: string) =>
-        transformWithReactRefresh(code, id, options.verbatimModuleSyntax),
-    }),
+    ...(options.refresh
+      ? {
+          scope: () => refreshScope(registered),
+          transform: (code: string, id: string) =>
+            transformWithReactRefresh(code, id, options.verbatimModuleSyntax),
+        }
+      : { transform: frameworkTransform(framework, packagesDirectory) }),
   })
   const exports = await moduleGraph.import(graph.id)
-  const Route = exports.Route as { options: Record<string, any> } | undefined
+  const Route = exports.Route as
+    | { options: Record<string, any>; isRoot?: boolean }
+    | undefined
   if (!Route) {
     throw new Error('the route module does not export `Route`')
   }
-  // The module each lazy option loads: what its loader imports, found
-  // without evaluating it.
-  const lazyModules = new Map<string, Array<string>>()
-  const lazyOptions = new Map<string, Array<string>>()
-  for (const option of Object.keys(Route.options)) {
-    const loader = lazy.get(Route.options[option])
-    if (!loader) {
-      continue
+  const eager = [graph.id, ...moduleGraph.requested]
+
+  // Laziness by the modules starting to load an option requests, in forks
+  // of the graph (only compiled modules count, not stubs or packages).
+  const probe = createLazyProbe(
+    moduleGraph,
+    graph.id,
+    Object.fromEntries(
+      splittableOptions.map((option) => [
+        option,
+        (forked: Record<string, any>) =>
+          triggerOption(forked.Route?.options[option], option),
+      ]),
+    ),
+    { owned: (id) => graph.modules.has(id) },
+  )
+
+  const load = async (option: string): Promise<any> => {
+    const value = Route.options[option]
+    if (option !== 'loader') {
+      await value?.preload?.()
     }
-    const ids = moduleGraph
-      .probeDynamicImports(loader)
-      .filter((id) => graph.modules.has(id))
-    lazyModules.set(option, ids)
-    for (const id of ids) {
-      lazyOptions.set(id, [...(lazyOptions.get(id) ?? []), option])
-    }
+    return value
   }
-  const compiled = labelRouteModules(code, graph, lazyOptions)
+
+  let routeTree: Promise<unknown> | undefined
+  /** The real route tree: a root route rendering this route. */
+  const createRouteTree = async () => {
+    if (Route.isRoot) {
+      return Route
+    }
+    const router = await moduleGraph.importPackage(routerPackage)
+    const routeId = options.routeId ?? '/'
+    const root = router.createRootRoute()
+    ;(Route as any).update({
+      id: routeId,
+      path: routeId,
+      getParentRoute: () => root,
+    })
+    return root.addChildren([Route])
+  }
+
   let importers = 0
   return {
-    ...compiled,
+    ...labelRouteModules(code, graph),
     /** Exports of the route module. */
     exports,
     Route,
     options: Route.options,
-    /** Ids of the modules evaluated so far, in evaluation order. */
+    /** Ids of the compiled modules evaluated so far, in evaluation order. */
     evaluated: moduleGraph.evaluated,
-    /** Whether a route option loads lazily from another module. */
-    isLazy: (option: string) => lazy.has(Route.options[option]),
-    /** The value of a route option, once its lazy module (if any) loaded. */
-    load: (option: string): Promise<any> => {
-      const value = Route.options[option]
-      const loader = lazy.get(value)
-      return loader ? loader() : Promise.resolve(value)
+    /** The route module and every module its load requested (see the header). */
+    eager,
+    /** Every module requested so far (see `ModuleGraph.requested`). */
+    requested: moduleGraph.requested,
+    isLazy: probe.isLazy,
+    load,
+    /** Renders the option's component with `props` (see the header). */
+    render: async (option: string, props: Record<string, unknown> = {}) =>
+      renderToHtml(moduleGraph, framework, await load(option), props),
+    /** Renders the app through the real router (see the header). */
+    renderRoute: async ({ at }: { at?: string } = {}) => {
+      routeTree ??= createRouteTree()
+      const { createRouter, createMemoryHistory, RouterProvider } =
+        await moduleGraph.importPackage(routerPackage)
+      const router = createRouter({
+        routeTree: await routeTree,
+        history: createMemoryHistory({
+          initialEntries: [at ?? options.routeId ?? '/'],
+        }),
+      })
+      await router.load()
+      return renderToHtml(moduleGraph, framework, RouterProvider, { router })
     },
     /**
-     * Code of the module a lazy route option loads (found by what its
-     * loader imports); fails for an option that is not lazy.
+     * Code of each compiled module that loading the option evaluates, in
+     * evaluation order; fails for an option that is not lazy.
      */
-    chunkOf: (option: string): string => {
-      const ids = lazyModules.get(option)
-      if (!ids || ids.length !== 1) {
-        throw new Error(
-          `\`${option}\` does not load one module of the route lazily (it loads ${JSON.stringify(ids ?? [])})`,
-        )
+    loadedBy: async (option: string): Promise<Array<string>> => {
+      const loaded = await probe.loadedBy(option)
+      if (loaded.length === 0) {
+        throw new Error(`\`${option}\` loads no module of the route lazily`)
       }
-      return graph.modules.get(ids[0]!)!
+      return loaded.map((id) => graph.modules.get(id)!)
     },
+    /**
+     * The lazy options grouped by what loads together, each group sorted,
+     * groups sorted (see the header). A group that pulls another group's
+     * option without the reverse shows as two overlapping groups.
+     */
+    groups: () =>
+      probe.groups(
+        splittableOptions.filter((option) => option in Route.options),
+      ),
     /**
      * Evaluates `source` as another module of the app, next to the route
      * module, and returns its exports: it imports the route file as

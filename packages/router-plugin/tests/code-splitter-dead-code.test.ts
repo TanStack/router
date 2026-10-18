@@ -27,8 +27,18 @@ const hmrModes = [{ hmr: false }, { hmr: true }]
  * a shared binding.
  */
 async function renderSplitComponent(code: string) {
-  const route = await loadRoute(code)
-  return (await route.load('component'))()
+  return (await loadRoute(code)).render('component')
+}
+
+/**
+ * The code of each compiled module that loads with the route module (the
+ * route module and what it imports statically, facades included).
+ */
+function eagerModules(route: Awaited<ReturnType<typeof loadRoute>>) {
+  return route.eager.flatMap((id) => {
+    const code = route.graph.modules.get(id)
+    return code === undefined ? [] : [code]
+  })
 }
 
 describe('the reference module only drops code that splitting left unused', () => {
@@ -104,7 +114,7 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
         await new Promise((resolve) => setTimeout(resolve))
         expect(calls).toEqual(expected)
         await expectValidModules(route.modules)
-        expect((await route.load('component'))()).toBe('<div></div>')
+        expect(await route.render('component')).toBe('<div></div>')
       },
     )
   })
@@ -163,7 +173,7 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
           },
         )
         expect(calls).toEqual(registered)
-        expect((await route.load('component'))()).toBe('<div></div>')
+        expect(await route.render('component')).toBe('<div></div>')
       },
     )
   })
@@ -209,9 +219,10 @@ export const Route = createFileRoute('/')({
       const reference = route.modules.reference!
       expect(declaredNames(reference)).not.toContain('ping')
       expect(declaredNames(reference)).not.toContain('pong')
-      expect(importSources(reference)).not.toContain('./dep')
+      // Nothing that loads with the route requests what only the helpers read.
+      expect(route.eager).not.toContain('./dep')
       await expectValidModules(route.modules)
-      expect((await route.load('component'))()).toBe('<p>dep</p>')
+      expect(await route.render('component')).toBe('<p>dep</p>')
     },
   )
 
@@ -227,11 +238,13 @@ export const Route = createFileRoute('/')({
 `,
       { stubs: { bar: { used: 'used', preUnused: 'unused' } } },
     )
-    // The route module no longer imports `used` (whether it keeps loading
-    // `bar` is free).
-    expect(importedNames(route.modules.reference!, 'bar')).not.toContain('used')
+    // What loads with the route no longer imports `used` (whether it keeps
+    // loading `bar` is free).
+    expect(
+      eagerModules(route).flatMap((code) => importedNames(code, 'bar')),
+    ).not.toContain('used')
     await expectValidModules(route.modules)
-    expect((await route.load('component'))()).toBe('<p>used</p>')
+    expect(await route.render('component')).toBe('<p>used</p>')
   })
 
   // That `track` runs once too is pinned in known-bugs-code-splitter.test.ts
@@ -269,7 +282,7 @@ export const Route = createFileRoute('/')({
     expect(tracked).toBe(1)
     expect([
       route.options.beforeLoad(),
-      (await route.load('component'))(),
+      await route.render('component'),
       created,
     ]).toEqual([1, '<p>1</p>', 1])
   })
@@ -299,8 +312,8 @@ export const Route = createFileRoute('/')({
     )
     expect(calls).toEqual(['top-level'])
     expect([
-      (await route.load('component'))(),
-      (await route.load('errorComponent'))(),
+      await route.render('component'),
+      await route.render('errorComponent'),
     ]).toEqual(['<div>component</div>', '<div>error</div>'])
     expect(calls).toEqual(['top-level', 'component', 'error'])
     await expectValidModules(route.modules)
@@ -331,7 +344,7 @@ export const Route = createFileRoute('/')({
       },
     )
     expect(calls).toEqual(['namespace'])
-    expect((await route.load('component'))()).toBe('<div>component</div>')
+    expect(await route.render('component')).toBe('<div>component</div>')
     expect(calls).toEqual(['namespace', 'component'])
   })
 
@@ -347,12 +360,7 @@ export const Route = createFileRoute('/')({
       name: 'a route module compiled for HMR',
       load: async (code: string, stubs: Record<string, any>) => {
         const output = transformWithRouteHmrPlugin(code)
-        await evaluateModule(output, {
-          ...stubs,
-          '@tanstack/react-router': {
-            createFileRoute: () => (options: unknown) => ({ options }),
-          },
-        })
+        await evaluateModule(output, stubs)
         return output
       },
     },
@@ -399,9 +407,11 @@ it.each([
 ])(
   'keeps a context created with $name as type argument working in the split component',
   async ({ type }) => {
+    // A user module stands for the context factory (React is never
+    // stubbed): it counts the contexts created.
     let created = 0
     const route = await loadRoute(
-      `${head}import { createContext } from 'react'
+      `${head}import { createContext } from './context'
 type Item = { id: string }
 const item: Item = { id: 'item' }
 const Context = createContext<${type}>(null!)
@@ -412,7 +422,7 @@ export const Route = createFileRoute('/')({
 `,
       {
         stubs: {
-          react: {
+          './context': {
             createContext: (value: unknown) => {
               created++
               return { value }
@@ -424,7 +434,7 @@ export const Route = createFileRoute('/')({
     await expectValidModules(route.modules)
     expect([
       route.options.loader(),
-      (await route.load('component'))(),
+      await route.render('component'),
       created,
     ]).toEqual(['item', '<p>null</p>', 1])
   },
@@ -467,7 +477,7 @@ export const Route = createFileRoute('/')({
 `
       const route = await loadRoute(code)
       await expectValidModules(route.modules)
-      expect((await route.load('component'))()).toBe(rendered)
+      expect(await route.render('component')).toBe(rendered)
     },
   )
 
@@ -491,8 +501,8 @@ function Unused() {
 `,
       { stubs: { './heavy': { heavy: () => 'heavy' } } },
     )
-    expect(importSources(route.modules.reference!)).not.toContain('./heavy')
-    expect((await route.load('component'))()).toBe('<p>heavy</p>')
+    expect(route.eager).not.toContain('./heavy')
+    expect(await route.render('component')).toBe('<p>heavy</p>')
   })
 
   // Bundlers drop unused calls of a function annotated #__NO_SIDE_EFFECTS__,
@@ -546,7 +556,7 @@ export const Route = createFileRoute('/')({
       )
       expect([
         route.options.loader(),
-        (await route.load('component'))(),
+        await route.render('component'),
         calls,
       ]).toEqual(['loader', '<p>component</p>', ['loader', 'component']])
     },
@@ -563,7 +573,7 @@ export const Route = createFileRoute('/')({
   component: () => <p>{f.length}{g.length}</p>,
 })
 `)
-    expect((await route.load('component'))()).toBe('<p>22</p>')
+    expect(await route.render('component')).toBe('<p>22</p>')
   })
 
   // Source: React Router remove-exports-test.ts "iife with dependencies"
@@ -593,16 +603,17 @@ export const Route = createFileRoute('/')({
       },
     )
     const { modules } = route
-    expect(importSources(modules.reference!)).not.toContain('removed-lib')
-    for (const name of Object.keys(modules)) {
-      if (name.startsWith('lazy ')) {
-        expect(importSources(modules[name]!), name).not.toContain('kept-lib')
-      }
-    }
+    // Nothing that loads with the route requests what only the component
+    // reads, nothing the component loads requests what only the loader reads.
+    expect(route.eager).not.toContain('removed-lib')
+    expect(
+      (await route.loadedBy('component')).flatMap(importSources),
+    ).not.toContain('kept-lib')
     await expectValidModules(modules)
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      ['shared:kept', '<div>shared:removed</div>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      'shared:kept',
+      '<div>shared:removed</div>',
+    ])
   })
 
   // Source: React Router route-chunks-test.ts "isolated exported variable
@@ -636,41 +647,60 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      // The route module holds nothing of the component, the chunk nothing
-      // of the loader.
+      // What loads with the route holds nothing of the component, what the
+      // component loads nothing of the loader.
+      const eager = eagerModules(route)
       expect(
-        importedNames(route.modules.reference!, './messages'),
+        eager.flatMap((code) => importedNames(code, './messages')),
       ).not.toContain('chunkMessage')
-      expect(declaredNames(route.modules.reference!)).not.toContain('Page')
-      const chunk = route.chunkOf('component')
-      expect(importedNames(chunk, './messages')).not.toContain('mainMessage')
-      expect(declaredNames(chunk)).not.toContain('main')
+      expect(eager.flatMap((code) => [...declaredNames(code)])).not.toContain(
+        'Page',
+      )
+      const component = await route.loadedBy('component')
+      expect(
+        component.flatMap((code) => importedNames(code, './messages')),
+      ).not.toContain('mainMessage')
+      expect(
+        component.flatMap((code) => [...declaredNames(code)]),
+      ).not.toContain('main')
       await expectValidModules(route.modules)
-      expect([
-        route.options.loader(),
-        (await route.load('component'))(),
-      ]).toEqual(['main', '<div>chunk</div>'])
+      expect([route.options.loader(), await route.render('component')]).toEqual(
+        ['main', '<div>chunk</div>'],
+      )
     },
   )
 
   // Source: React Router route-chunks-test.ts "exported variable declarations
   // sharing an export statement"
+  // The component records the instance of `Page` it runs as: the one the
+  // loader returns.
   it('keeps one component that a sibling declarator reads', async () => {
+    const seen: Array<unknown> = []
     const route = await loadRoute(
-      `${head}import { sharedMessage } from './messages'
-const Page = () => <div>{sharedMessage}</div>,
+      `${head}import { sharedMessage, see } from './messages'
+const Page = () => <div>{see(Page)}{sharedMessage}</div>,
   Preview = Page
 export const Route = createFileRoute('/')({
   loader: () => Preview,
   component: Page,
 })
 `,
-      { stubs: { './messages': { sharedMessage: 'shared' } } },
+      {
+        stubs: {
+          './messages': {
+            sharedMessage: 'shared',
+            see: (value: unknown) => {
+              seen.push(value)
+              return ''
+            },
+          },
+        },
+      },
     )
     await expectValidModules(route.modules)
-    const Component = await route.load('component')
-    expect(route.options.loader()).toBe(Component)
-    expect(Component()).toBe('<div>shared</div>')
+    expect(await route.render('component')).toBe('<div>shared</div>')
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toBe(route.options.loader())
   })
 })
 
@@ -699,10 +729,9 @@ export const Route = createFileRoute('/')({
       // That the statement runs once is pinned in
       // known-bugs-code-splitter.test.ts ("a binding declared by a var in …").
       await expectValidModules(route.modules)
-      expect([
-        route.options.loader(),
-        (await route.load('component'))(),
-      ]).toEqual([value, `<div>${value}</div>`])
+      expect([route.options.loader(), await route.render('component')]).toEqual(
+        [value, `<div>${value}</div>`],
+      )
     },
   )
 
@@ -718,7 +747,7 @@ export const Route = createFileRoute('/')({
     const { flag } = await route.importFromRoute(
       `export { flag } from '${routeSpecifier}'`,
     )
-    expect([flag, (await route.load('component'))()]).toEqual([
+    expect([flag, await route.render('component')]).toEqual([
       'server',
       '<div>server</div>',
     ])
@@ -760,7 +789,7 @@ export const Route = createFileRoute('/')({
     await expectValidModules(route.modules)
     expect([
       route.options.loader(),
-      (await route.load('component'))(),
+      await route.render('component'),
       calls,
     ]).toEqual(['block', '<p>flag3</p>', { compute: 1, connect: 1 }])
   })
@@ -801,7 +830,7 @@ export const Route = createFileRoute('/')({
     // The chain runs once, whichever module holds it.
     expect([
       route.options.loader(),
-      (await route.load('component'))(),
+      await route.render('component'),
       calls,
     ]).toEqual([schema, '<div>schema</div>', { builder: 1, add: 200 }])
   })

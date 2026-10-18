@@ -8,12 +8,27 @@
  * Module sources live in memory (a module graph) and are served through
  * in-thread module hooks (`module.registerHooks`) under URLs that are unique
  * per graph, so every graph evaluates fresh module instances. TypeScript is
- * erased and JSX compiles to calls of `__jsx`/`__Fragment` (`jsxPragma`),
- * by default a text renderer: intrinsic elements become tags, components are
- * called.
+ * erased and JSX compiles with React's automatic runtime (`react/jsx-runtime`,
+ * as `@vitejs/plugin-react` compiles it); there is no JSX stand-in. A graph
+ * renders with the real framework when it links real packages (`packages`).
+ *
+ * API (see each member):
+ * - `createModuleGraph(options)`: `modules`, `stubs`, `resolve`, `load`,
+ *   `packages` (real packages, e.g. `react`, `react-dom/server`, a router),
+ *   `fallbackStub`, `transform`, `scope`, `importMeta`.
+ * - `graph.import(id)`, `graph.add(id, code)`, `graph.has(id)`.
+ * - Load observers: `graph.evaluated` (graph modules, in evaluation order),
+ *   `graph.requested` (every module the graph's modules requested: graph
+ *   modules, stubs, packages) and `graph.probeDynamicImports(run)` (the
+ *   dynamic imports `run` starts, without loading them).
+ * - `graph.importPackage(specifier)`: the instance of a real package the
+ *   graph's modules get (to render what they export with the same React).
+ * - `graph.fork()`: the same modules and options, fresh module instances (to
+ *   observe loading without touching the graph a test inspects).
  */
 import { createRequire, registerHooks } from 'node:module'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { parseSync, transformWithOxc } from 'vite'
 
 /**
@@ -28,7 +43,7 @@ export interface ModuleGraphOptions {
   modules?: Record<string, string>
   /**
    * Modules by the specifier modules import them with. A stub wins over a
-   * module of the graph with the same specifier.
+   * module of the graph and over a package with the same specifier.
    */
   stubs?: Record<string, ModuleStub>
   /**
@@ -46,12 +61,21 @@ export interface ModuleGraphOptions {
     id: string,
   ) => string | null | undefined | Promise<string | null | undefined>
   /**
-   * Stubs a specifier that is neither a stub nor a module of the graph,
-   * given the names its importer imports from it. Without it, such an import
-   * fails to link, or a dynamic one fails when it runs. One stub serves
-   * every importer of the specifier, like one module of a bundle: it is
-   * called again only for names earlier importers did not import, and the
-   * values it gave keep their identity.
+   * Directory real packages resolve from. A bare specifier that is neither a
+   * stub nor a module of the graph resolves with Node's own resolver (package
+   * `exports`, conditions `node` and `import`) as if a file of this directory
+   * imported it, and loads the real package: one instance per test process,
+   * shared by every graph, like a dependency every chunk of an app shares.
+   * A specifier that does not resolve there goes to `fallbackStub`.
+   */
+  packages?: string
+  /**
+   * Stubs a specifier that is neither a stub, a module of the graph nor a
+   * package (`packages`), given the names its importer imports from it.
+   * Without it, such an import fails to link, or a dynamic one fails when it
+   * runs. One stub serves every importer of the specifier, like one module
+   * of a bundle: it is called again only for names earlier importers did not
+   * import, and the values it gave keep their identity.
    */
   fallbackStub?: (specifier: string, names: Set<string>) => ModuleStub
   /**
@@ -66,11 +90,18 @@ export interface ModuleGraphOptions {
    * TypeScript like a project without it: imports nothing reads go too.
    */
   verbatimModuleSyntax?: boolean
+  /**
+   * Package the default transform's automatic JSX runtime imports
+   * (`<source>/jsx-runtime`); default `react`.
+   */
+  jsxImportSource?: string
   /** Compiles a module to JavaScript; by default TS and JSX are erased. */
   transform?: (code: string, id: string) => string | Promise<string>
   /**
-   * Code run at the top of each module that defines its JSX factories
-   * (`__jsx` and `__Fragment`), instead of the default text renderer.
+   * Deprecated JSX stand-in for suites not yet rendering with a real
+   * framework: code run at the top of each module that defines `__jsx` and
+   * `__Fragment` (`jsxPragma`), the classic factories the default transform
+   * then compiles JSX to. Prefer real packages (`packages`).
    */
   runtime?: string
   /** Bindings declared at the top of each module (e.g. `$RefreshReg$`). */
@@ -87,18 +118,44 @@ export interface ModuleGraph {
   import: (id: string) => Promise<Record<string, any>>
   /** Adds a module to the graph. */
   add: (id: string, code: string) => void
+  /**
+   * Whether the graph has a module with this id (given, added or loaded so
+   * far; not a stub or a package).
+   */
+  has: (id: string) => boolean
   /** Ids of the graph's modules, in the order they started evaluating. */
   evaluated: Array<string>
   /**
+   * Every module the graph's modules requested so far, once each, in the
+   * order Node resolved them: ids of modules of the graph, specifiers of
+   * stubs and of packages. A static import is requested when its importer
+   * links (before any of them evaluates), a dynamic one when it runs. What
+   * `importPackage` and `probeDynamicImports` start is not requested.
+   */
+  requested: Array<string>
+  /**
    * Runs `run` and returns the ids of the graph's modules (or the
-   * specifiers of stubs) whose dynamic `import()` it starts synchronously,
-   * without loading or evaluating them: those imports reject, and a promise
-   * `run` returns is settled silently. Later imports load as usual.
+   * specifiers of stubs and packages) whose dynamic `import()` it starts
+   * synchronously, without loading or evaluating them: those imports
+   * reject, and a promise `run` returns is settled silently. Later imports
+   * load as usual.
    */
   probeDynamicImports: (run: () => unknown) => Array<string>
+  /**
+   * The namespace of a real package (`packages`) as the graph's modules get
+   * it: the same instance (e.g. the React the modules' JSX creates elements
+   * of).
+   */
+  importPackage: (specifier: string) => Promise<Record<string, any>>
+  /**
+   * A new graph with the same options and the same modules (those added or
+   * loaded since included), whose modules evaluate fresh instances. Stubs
+   * and packages are the same values. Compiled code is reused.
+   */
+  fork: () => ModuleGraph
 }
 
-/** The JSX factory names compiled modules call. */
+/** The classic JSX factory names of the deprecated `runtime` stand-in. */
 export const jsxPragma = { pragma: '__jsx', pragmaFrag: '__Fragment' }
 
 /** Language of a module id for Oxc, from its file extension. */
@@ -118,8 +175,17 @@ interface ServedModule {
   source: string
   /** URL each specifier the module imports resolves to. */
   imports: Map<string, string>
+  /**
+   * Specifiers the module imports from real packages, with the names it
+   * imports from each.
+   */
+  packages?: Map<string, Set<string>>
   /** Why the module could not be prepared; loading it throws this error. */
   failure?: unknown
+  /** A module of the harness (not the app's): its requests are not recorded. */
+  internal?: boolean
+  /** The specifier a stub serves. */
+  specifier?: string
 }
 
 interface Graph {
@@ -130,83 +196,79 @@ interface Graph {
   /** Exports of each served object stub, by URL. */
   stubs: Map<string, Record<string, unknown>>
   evaluated: Array<string>
+  requested: Array<string>
   /** Targets of the dynamic imports started while probing, else undefined. */
   probed?: Array<string>
+  /** URL a file of `options.packages` has, to resolve packages from. */
+  packagesParent?: string
+  /** URL of the fallback stub of a specifier, if `fallbackStub` gives one. */
+  fallbackUrl: (specifier: string, names: Set<string>) => string | undefined
 }
 
 interface Registry {
   graphs: Map<number, Graph>
   nextGraph: number
-  jsx: Record<string, unknown>
 }
 
 const scheme = 'compiler-test-module:'
 const registryKey = Symbol.for('tanstack.compiler-test-utils.module-linker')
 const registryExpression = `globalThis[Symbol.for(${JSON.stringify(registryKey.description)})]`
-const runtimeUrl = `${scheme}//runtime/jsx`
 
-/** Renders JSX to text: intrinsic elements become tags, components are called. */
-function createJsxRuntime() {
-  const Fragment = Symbol('Fragment')
-  const h = (type: unknown, props: unknown, ...children: Array<unknown>) => {
-    const text = children
-      .flat(Infinity)
-      .filter((child) => child != null && child !== false && child !== true)
-      .join('')
-    if (type === Fragment) {
-      return text
-    }
-    if (typeof type === 'function') {
-      return type({ ...(props as object), children: text })
-    }
-    if (typeof type !== 'string') {
-      throw new Error('cannot render ' + String(type))
-    }
-    return '<' + type + '>' + text + '</' + type + '>'
+/** Records a module a graph's module requested (see `requested`). */
+function recordRequest(graph: Graph, requested: string) {
+  if (!graph.requested.includes(requested)) {
+    graph.requested.push(requested)
   }
-  return { h, Fragment }
 }
 
 function getRegistry(): Registry {
   const global = globalThis as unknown as Record<symbol, Registry | undefined>
   if (!global[registryKey]) {
-    global[registryKey] = {
-      graphs: new Map(),
-      nextGraph: 0,
-      jsx: createJsxRuntime(),
-    }
+    global[registryKey] = { graphs: new Map(), nextGraph: 0 }
     registerHooks({
       resolve(specifier, context, nextResolve) {
-        if (specifier === runtimeUrl || lookup(specifier)) {
+        if (lookup(specifier)) {
           return { url: specifier, shortCircuit: true }
         }
         const parent = context.parentURL ? lookup(context.parentURL) : undefined
-        if (parent) {
-          const url = parent.module.imports.get(specifier)
-          if (url === undefined) {
-            throw new Error(
-              `No stub for import ${specifier} (imported by ${parent.id})`,
-            )
-          }
-          // Node resolves a dynamic import synchronously when it starts:
-          // while a graph probes, record its target instead of loading it.
-          if (parent.graph.probed) {
-            parent.graph.probed.push(lookup(url)?.id ?? specifier)
-            throw new ProbedImport()
-          }
+        if (!parent) {
+          return nextResolve(specifier, context)
+        }
+        const { graph } = parent
+        const url = parent.module.imports.get(specifier)
+        const names = parent.module.packages?.get(specifier)
+        if (url === undefined && names === undefined) {
+          throw new Error(
+            `No stub for import ${specifier} (imported by ${parent.id})`,
+          )
+        }
+        const target = url === undefined ? specifier : targetName(url)
+        // Node resolves a dynamic import synchronously when it starts:
+        // while a graph probes, record its target instead of loading it.
+        if (graph.probed) {
+          graph.probed.push(target)
+          throw new ProbedImport()
+        }
+        if (!parent.module.internal) {
+          recordRequest(graph, target)
+        }
+        if (url !== undefined) {
           return { url, shortCircuit: true }
         }
-        return nextResolve(specifier, context)
+        try {
+          return nextResolve(specifier, {
+            ...context,
+            parentURL: graph.packagesParent,
+          })
+        } catch (error) {
+          const fallback = graph.fallbackUrl(specifier, names!)
+          if (fallback === undefined) {
+            throw error
+          }
+          return { url: fallback, shortCircuit: true }
+        }
       },
       load(url, context, nextLoad) {
-        if (url === runtimeUrl) {
-          return {
-            format: 'module',
-            source: `const { h, Fragment } = ${registryExpression}.jsx
-export { h as ${jsxPragma.pragma}, Fragment as ${jsxPragma.pragmaFrag} }`,
-            shortCircuit: true,
-          }
-        }
         const found = lookup(url)
         if (!found) {
           return nextLoad(url, context)
@@ -225,7 +287,7 @@ export { h as ${jsxPragma.pragma}, Fragment as ${jsxPragma.pragmaFrag} }`,
   return global[registryKey]
 }
 
-type UrlKind = 'module' | 'stub' | 'failed'
+type UrlKind = 'module' | 'stub' | 'failed' | 'package'
 
 function graphUrl(graph: Graph, kind: UrlKind, id: string) {
   return `${scheme}//g${graph.id}/${kind}/${encodeURIComponent(id)}`
@@ -236,7 +298,25 @@ function lookup(url: string) {
   const match = /^compiler-test-module:\/\/g(\d+)\/(\w+)\/(.*)$/.exec(url)
   const graph = match ? getRegistry().graphs.get(Number(match[1])) : undefined
   const module = graph?.served.get(url)
-  return module && { module, graph: graph!, id: decodeURIComponent(match![3]!) }
+  return (
+    module && {
+      module,
+      graph: graph!,
+      id: decodeURIComponent(match![3]!),
+    }
+  )
+}
+
+/**
+ * What `requested` and probes name the target of a URL by: a module's id, a
+ * stub's specifier.
+ */
+function targetName(url: string) {
+  const found = lookup(url)
+  if (!found) {
+    return url
+  }
+  return found.module.specifier ?? found.id
 }
 
 /** Rejects a dynamic import started while its graph probes imports. */
@@ -304,17 +384,27 @@ function moduleRequests(javascript: string) {
 
 /**
  * Erases TypeScript the way Vite does (see `verbatimModuleSyntax`) and
- * compiles JSX to calls of `jsxPragma`.
+ * compiles JSX with React's automatic runtime from `jsxImportSource`, as
+ * `@vitejs/plugin-react` does, or to calls of `jsxPragma` for the deprecated
+ * `runtime` stand-in.
  */
 async function defaultTransform(
   code: string,
   id: string,
-  verbatimModuleSyntax: boolean,
+  options: ModuleGraphOptions,
 ) {
   const result = await transformWithOxc(code, 'module', {
     lang: moduleLang(id),
-    jsx: { runtime: 'classic', ...jsxPragma },
-    typescript: { onlyRemoveTypeImports: verbatimModuleSyntax },
+    jsx:
+      options.runtime === undefined
+        ? {
+            runtime: 'automatic',
+            importSource: options.jsxImportSource ?? 'react',
+          }
+        : { runtime: 'classic', ...jsxPragma },
+    typescript: {
+      onlyRemoveTypeImports: options.verbatimModuleSyntax ?? true,
+    },
   })
   return result.code
 }
@@ -339,6 +429,11 @@ function candidateIds(specifier: string, importer: string) {
   return extensions.map((extension) => `${absolute}${extension}${query}`)
 }
 
+/** Whether a specifier names a package (not a path, not a URL). */
+function isBareSpecifier(specifier: string) {
+  return !/^(?:[./]|[a-zA-Z][\w+.-]*:)/.test(specifier)
+}
+
 // Node's own `import()`, which runs the module hooks (Vitest's module runner
 // handles the `import()` calls of test files itself).
 const nativeImport = createRequire(import.meta.url)('./native-import.cjs') as (
@@ -346,26 +441,55 @@ const nativeImport = createRequire(import.meta.url)('./native-import.cjs') as (
 ) => Promise<Record<string, any>>
 
 /**
- * Creates a graph of in-memory modules linked to each other and to stubs. A
- * module imported twice from one graph is evaluated once, like in a bundle.
+ * Creates a graph of in-memory modules linked to each other, to stubs and to
+ * real packages (`packages`). A module imported twice from one graph is
+ * evaluated once, like in a bundle.
  */
 export function createModuleGraph(
   options: ModuleGraphOptions = {},
 ): ModuleGraph {
+  return createGraph(options, new Map())
+}
+
+/**
+ * `createModuleGraph`, with the compiled code of each module source shared
+ * with the graph's forks (by id, then by source).
+ */
+function createGraph(
+  options: ModuleGraphOptions,
+  compiled: Map<string, { code: string; javascript: Promise<string> }>,
+): ModuleGraph {
   const registry = getRegistry()
+  const sources = new Map(Object.entries(options.modules ?? {}))
   const graph: Graph = {
     id: registry.nextGraph++,
     options,
     served: new Map(),
     stubs: new Map(),
     evaluated: [],
+    requested: [],
+    packagesParent:
+      options.packages === undefined
+        ? undefined
+        : pathToFileURL(path.join(options.packages, 'importer.js')).href,
+    fallbackUrl: (specifier, names) => {
+      const fallback = fallbackFor(specifier, names)
+      return fallback === undefined ? undefined : stubUrl(specifier, fallback)
+    },
   }
   registry.graphs.set(graph.id, graph)
-  const sources = new Map(Object.entries(options.modules ?? {}))
   const transform =
     options.transform ??
-    ((code: string, id: string) =>
-      defaultTransform(code, id, options.verbatimModuleSyntax ?? true))
+    ((code: string, id: string) => defaultTransform(code, id, options))
+  const compile = (code: string, id: string) => {
+    const known = compiled.get(id)
+    if (known && known.code === code) {
+      return known.javascript
+    }
+    const javascript = Promise.resolve(transform(code, id))
+    compiled.set(id, { code, javascript })
+    return javascript
+  }
   const graphExpression = `${registryExpression}.graphs.get(${graph.id})`
   const preparing = new Map<
     string,
@@ -411,6 +535,7 @@ export function createModuleGraph(
           format: specifier.endsWith('.json') ? 'json' : 'module',
           source: stub,
           imports: new Map(),
+          specifier,
         })
       }
       return url
@@ -444,6 +569,7 @@ export function createModuleGraph(
         format: 'module',
         source: lines.join('\n'),
         imports: new Map(),
+        specifier,
       })
     }
     return url
@@ -494,11 +620,6 @@ export function createModuleGraph(
   const prologue = (id: string) => {
     const scope = Object.keys(options.scope?.(id) ?? {})
     return [
-      ...(options.runtime === undefined
-        ? [
-            `import { ${jsxPragma.pragma}, ${jsxPragma.pragmaFrag} } from ${JSON.stringify(runtimeUrl)};`,
-          ]
-        : []),
       ...(scope.length
         ? [
             `const { ${scope.join(', ')} } = ${graphExpression}.options.scope(${JSON.stringify(id)});`,
@@ -525,7 +646,7 @@ export function createModuleGraph(
         if (code === undefined) {
           throw new Error(`No module ${id} in the graph`)
         }
-        const javascript = await transform(code, id)
+        const javascript = await compile(code, id)
         // A hashbang must stay first: the prologue goes after its line
         const [, hashbang = '', body = javascript] =
           /^(#![^\n]*\n)([\s\S]*)$/.exec(javascript) ?? []
@@ -535,12 +656,16 @@ export function createModuleGraph(
           // stay those of the module (without `runtime`).
           source: `${hashbang}${prologue(id)}${options.runtime ?? ''}${body}`,
           imports: new Map(),
+          packages: new Map(),
         }
         graph.served.set(graphUrl(graph, 'module', id), module)
         const requests = moduleRequests(javascript)
         const dependencies: Array<{ id: string; dynamic: boolean }> = []
         const resolve = async (specifier: string, dynamic: boolean) => {
-          if (module.imports.has(specifier)) {
+          if (
+            module.imports.has(specifier) ||
+            module.packages!.has(specifier)
+          ) {
             return
           }
           const names = requests.names.get(specifier) ?? new Set<string>()
@@ -569,6 +694,12 @@ export function createModuleGraph(
           if (target !== undefined) {
             module.imports.set(specifier, graphUrl(graph, 'module', target))
             dependencies.push({ id: target, dynamic })
+            return
+          }
+          // Resolved by Node when the module links (see the resolve hook),
+          // falling back to `fallbackStub` then.
+          if (graph.packagesParent && isBareSpecifier(specifier)) {
+            module.packages!.set(specifier, names)
             return
           }
           const fallback = fallbackFor(specifier, names)
@@ -640,6 +771,7 @@ export function createModuleGraph(
       await prepare(id)
       return nativeImport(graphUrl(graph, 'module', id))
     },
+    has: (id) => sources.has(id),
     add(id, code) {
       if (sources.has(id) && sources.get(id) !== code) {
         throw new Error(`Module ${id} is already in the graph`)
@@ -647,6 +779,7 @@ export function createModuleGraph(
       sources.set(id, code)
     },
     evaluated: graph.evaluated,
+    requested: graph.requested,
     probeDynamicImports(run) {
       const probed: Array<string> = []
       graph.probed = probed
@@ -660,6 +793,28 @@ export function createModuleGraph(
         ;(result as Promise<unknown>).then(undefined, () => {})
       }
       return probed
+    },
+    async importPackage(specifier) {
+      if (!graph.packagesParent) {
+        throw new Error('importPackage needs the `packages` option')
+      }
+      const url = graphUrl(graph, 'package', specifier)
+      if (!graph.served.has(url)) {
+        graph.served.set(url, {
+          format: 'module',
+          source: `import * as namespace from ${JSON.stringify(specifier)}\nexport { namespace }`,
+          imports: new Map(),
+          packages: new Map([[specifier, new Set()]]),
+          internal: true,
+        })
+      }
+      return (await nativeImport(url)).namespace
+    },
+    fork() {
+      return createGraph(
+        { ...options, modules: Object.fromEntries(sources) },
+        compiled,
+      )
     },
   }
 }

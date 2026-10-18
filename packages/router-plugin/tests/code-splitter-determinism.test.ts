@@ -69,14 +69,18 @@ async function compileUnder(moduleId: string) {
   ].sort((a, b) => b.length - a.length)
   const anonymous = (code: string) =>
     spellings.reduce((text, id) => text.replaceAll(id, '<route>'), code)
+  const lazy: Array<string> = []
+  for (const option of ['loader', 'component', 'errorComponent']) {
+    if (await loaded.isLazy(option)) {
+      lazy.push(option)
+    }
+  }
   return {
-    lazy: ['loader', 'component', 'errorComponent'].filter((option) =>
-      loaded.isLazy(option),
-    ),
+    lazy,
     rendered: [
       await (await loaded.load('loader'))(),
-      (await loaded.load('component'))(),
-      (await loaded.load('errorComponent'))(),
+      await loaded.render('component'),
+      await loaded.render('errorComponent'),
     ],
     modules: Object.fromEntries(
       Object.entries(loaded.modules).map(([label, code]) => [

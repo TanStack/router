@@ -4,7 +4,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   compileRouteModules,
-  componentChunk,
+  componentModules,
   declaredNames,
   evaluateModule,
   expectValidModules,
@@ -59,18 +59,22 @@ export const Route = createFileRoute('/')({
       'default',
     ])
     for (const option of ['component', 'errorComponent', 'notFoundComponent']) {
-      const chunk = route.chunkOf(option)
-      expect(importedNames(chunk, './messages'), option).not.toContain(
-        'otherMessage',
-      )
-      expect(importedNames(chunk, './other'), option).not.toContain('default')
+      const loaded = await route.loadedBy(option)
+      expect(
+        loaded.flatMap((code) => importedNames(code, './messages')),
+        option,
+      ).not.toContain('otherMessage')
+      expect(
+        loaded.flatMap((code) => importedNames(code, './other')),
+        option,
+      ).not.toContain('default')
     }
     await expectValidModules(route.modules)
     expect([
       route.options.loader(),
-      (await route.load('component'))(),
-      (await route.load('errorComponent'))(),
-      (await route.load('notFoundComponent'))(),
+      await route.render('component'),
+      await route.render('errorComponent'),
+      await route.render('notFoundComponent'),
     ]).toEqual([
       ['other', 'otherDefault'],
       '<div>defaultx</div>',
@@ -87,13 +91,14 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `,
-      { stubs: { './page': { Page: () => '<p>page</p>', title: 'title' } } },
+      { stubs: { './page': { Page: () => 'page', title: 'title' } } },
     )
     await expectValidModules(route.modules)
-    expect(route.isLazy('component')).toBe(true)
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      ['title', '<p>page</p>'],
-    )
+    expect(await route.isLazy('component')).toBe(true)
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      'title',
+      'page',
+    ])
   })
 
   it('moves a specifier with a string name into the chunk', async () => {
@@ -106,9 +111,10 @@ export const Route = createFileRoute('/')({
 `,
       { stubs: { './icons': { 'kebab-name': () => 'kebab' } } },
     )
-    expect(importSources(route.modules.reference!)).not.toContain('./icons')
+    // Nothing the route module loads requests what only the component reads.
+    expect(route.eager).not.toContain('./icons')
     await expectValidModules(route.modules)
-    expect((await route.load('component'))()).toBe('kebab')
+    expect(await route.render('component')).toBe('kebab')
   })
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "import" >
@@ -127,10 +133,12 @@ export const Route = createFileRoute('/')({
 `,
         { hmr, stubs: { pkg: { default: 'a', b: 'b' }, './styles.css': {} } },
       )
-      expect(importSources(route.modules.reference!)).toContain('./styles.css')
-      expect(importSources(route.modules.reference!)).not.toContain('pkg')
+      // The side-effect import still loads with the route; what only the
+      // component reads does not.
+      expect(route.eager).toContain('./styles.css')
+      expect(route.eager).not.toContain('pkg')
       await expectValidModules(route.modules)
-      expect((await route.load('component'))()).toBe('<p>ab</p>')
+      expect(await route.render('component')).toBe('<p>ab</p>')
     },
   )
 
@@ -190,44 +198,48 @@ export const Route = createFileRoute('/')({
       )
       expect(code).not.toMatch(/\bassert\s*\{/)
     }
-    expect((await route.load('component'))()).toBe('<p>from json</p>')
+    expect(await route.render('component')).toBe('<p>from json</p>')
   })
 
   // With React's classic JSX runtime (`jsx: "react"` in tsconfig), JSX
   // compiles to `React.createElement`, so a React import that the TypeScript
   // code only uses in types must stay.
   it.each([
-    { name: 'split chunk', compile: componentChunk },
+    { name: 'split component modules', compile: componentModules },
     {
       name: 'route module compiled for HMR',
-      compile: async (code: string) => transformWithRouteHmrPlugin(code),
+      compile: (code: string) => [transformWithRouteHmrPlugin(code)],
     },
   ])(
     'keeps the React import of the $name for classic JSX',
     async ({ compile }) => {
-      const output = await compile(`import * as React from 'react'
+      const outputs = await compile(`import * as React from 'react'
 ${head}function Page({ title = 'classic' }: { title?: React.ReactNode }) {
   return <p>{title}</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
 `)
-      const { code } = await transformWithOxc(output, 'module.tsx', {
-        jsx: { runtime: 'classic' },
-      })
-      // `React.createElement` reads an imported `React`.
-      expect(await getModuleErrors(code)).toEqual([])
+      for (const output of outputs) {
+        const { code } = await transformWithOxc(output, 'module.tsx', {
+          jsx: { runtime: 'classic' },
+        })
+        // `React.createElement` reads an imported `React`.
+        expect(await getModuleErrors(code)).toEqual([])
+      }
     },
   )
 
-  it('keeps the React import of a split chunk with inline JSX when only a top-level type reads React', async () => {
-    const chunk = await componentChunk(`import * as React from 'react'
+  it('keeps the React import of the split component modules with inline JSX when only a top-level type reads React', async () => {
+    const outputs = await componentModules(`import * as React from 'react'
 ${head}type Title = React.ReactNode
 export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
 `)
-    const { code } = await transformWithOxc(chunk, 'module.tsx', {
-      jsx: { runtime: 'classic' },
-    })
-    expect(await getModuleErrors(code)).toEqual([])
+    for (const output of outputs) {
+      const { code } = await transformWithOxc(output, 'module.tsx', {
+        jsx: { runtime: 'classic' },
+      })
+      expect(await getModuleErrors(code)).toEqual([])
+    }
   })
 })
 
@@ -238,7 +250,7 @@ describe('exports of the route file', () => {
   ])(
     'are not redeclared when they re-export an import $name',
     async ({ exports, exported }) => {
-      const Foo = () => '<b>foo</b>'
+      const Foo = () => 'foo'
       const route = await loadRoute(
         `${head}import { Foo } from './foo'
 ${exports}
@@ -254,9 +266,9 @@ function Page() {
       const importer = await route.importFromRoute(
         `export { ${exported} } from '${routeSpecifier}'`,
       )
-      expect([importer[exported], (await route.load('component'))()]).toEqual([
+      expect([importer[exported], await route.render('component')]).toEqual([
         Foo,
-        '<b>foo</b>',
+        'foo',
       ])
     },
   )
@@ -279,7 +291,7 @@ export const Route = createFileRoute('/')({
     const importer = await route.importFromRoute(
       `export { a } from '${routeSpecifier}'`,
     )
-    expect([importer.a, (await route.load('component'))()]).toEqual([
+    expect([importer.a, await route.render('component')]).toEqual([
       'A',
       '<div>AB</div>',
     ])
@@ -311,7 +323,7 @@ export default ${declaration}
       expect(type === 'class' ? new exported().x : exported()).toBe(
         type === 'class' ? 1 : null,
       )
-      expect((await route.load('component'))()).toBe('<div>0</div>')
+      expect(await route.render('component')).toBe('<div>0</div>')
     },
   )
 
@@ -334,40 +346,44 @@ export { Route, title }
       `export { Route, title } from '${routeSpecifier}'`,
     )
     expect([other.title, other.Route]).toEqual(['title', route.Route])
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      ['value', '<p>value</p>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      'value',
+      '<p>value</p>',
+    ])
     await expectValidModules(route.modules)
   })
 
+  // `track` records each evaluation of the code-based route's options, i.e.
+  // each `createRoute` call.
   it("load the file route's split option without creating the code-based route of the module again", async () => {
     let created = 0
     const route = await loadRoute(
       `import { createFileRoute, createRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './__root'
-export const legacy = createRoute({
+import { track } from './track'
+export const legacy = createRoute(track({
   getParentRoute: () => rootRoute,
   path: '/legacy',
   component: () => <p>legacy</p>,
-})
+}))
 export const Route = createFileRoute('/')({
   component: () => <p>file</p>,
 })
 `,
       {
         stubs: {
-          '@tanstack/react-router': {
-            createRoute: (options: unknown) => {
+          './track': {
+            track: (options: unknown) => {
               created++
-              return { options }
+              return options
             },
           },
-          './__root': { Route: { options: {} } },
+          './__root': { Route: {} },
         },
       },
     )
     expect(created).toBe(1)
-    expect((await route.load('component'))()).toBe('<p>file</p>')
+    expect(await route.render('component')).toBe('<p>file</p>')
     expect(created).toBe(1)
   })
 
@@ -386,7 +402,7 @@ export const Route = createFileRoute('/')({
       `import { a, b } from '${routeSpecifier}'
 export const read = () => [a.n, b.n]`,
     )
-    expect((await route.load('component'))()).toBe('<div>11</div>')
+    expect(await route.render('component')).toBe('<div>11</div>')
     // The component updated the object other modules import.
     expect(other.read()).toEqual([1, 10])
     await expectValidModules(route.modules)
@@ -408,7 +424,7 @@ export const Route = createFileRoute('/')({
 })
 `)
     await expectValidModules(route.modules)
-    expect([route.exports.reset(), (await route.load('component'))()]).toEqual([
+    expect([route.exports.reset(), await route.render('component')]).toEqual([
       0,
       '<h1>Home</h1>',
     ])
@@ -432,22 +448,27 @@ export const Route = createFileRoute('/')({
 export const read = () => [value, lib.value]`,
     )
     expect(other.read()).toEqual(['lib value', 'lib value'])
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      [0, '<div>0</div>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      0,
+      '<div>0</div>',
+    ])
     await expectValidModules(route.modules)
   })
 
-  // An exported split option keeps working and keeps its identity, the other
-  // options are still split, and when the exported option is not split the
-  // compiler tells the developer once, naming the file and the binding.
+  // An exported split option keeps working and keeps its identity (the
+  // component the route renders records itself with `see`: it is the one
+  // other modules import), the other options are still split, and when the
+  // exported option is not split the compiler tells the developer once,
+  // naming the file and the binding.
   // Splitting it anyway is the goal, decided by the build (pinned in
   // known-bugs-code-splitter.test.ts, "page code exported from the route
   // file loads with its chunk").
   it.each([
     {
       name: 'an exported component, with the errorComponent split',
-      code: `${head}export function Page() {
+      code: `${head}import { see } from './see'
+export function Page() {
+  see(Page)
   return <p>page</p>
 }
 export const Route = createFileRoute('/')({
@@ -462,7 +483,8 @@ export const Route = createFileRoute('/')({
     },
     {
       name: 'a default-exported component, with the notFoundComponent split',
-      code: `${head}export const Route = createFileRoute('/home')({
+      code: `${head}import { see } from './see'
+export const Route = createFileRoute('/home')({
   component: Home,
   notFoundComponent: NotFoundComponent,
 })
@@ -470,6 +492,7 @@ function NotFoundComponent() {
   return <div>Not Found</div>
 }
 export default function Home() {
+  see(Home)
   return <h1>home</h1>
 }
 `,
@@ -499,7 +522,11 @@ export const Route = createFileRoute('/_layout')({
     },
     {
       name: 'a component default-exported by name, with the errorComponent split',
-      code: `${head}const Page = () => <p>page</p>
+      code: `${head}import { see } from './see'
+const Page = () => {
+  see(Page)
+  return <p>page</p>
+}
 export default Page
 export const Route = createFileRoute('/')({
   component: Page,
@@ -521,15 +548,22 @@ export const Route = createFileRoute('/')({
       const warnings = warn.mock.calls.map(([message]) => String(message))
       warn.mockClear()
 
-      const route = await loadRoute(code)
+      const seen: Array<unknown> = []
+      const route = await loadRoute(code, {
+        stubs: { './see': { see: (value: unknown) => seen.push(value) } },
+      })
       await expectValidModules(route.modules)
-      expect(route.isLazy(split)).toBe(true)
-      const loaded = await route.load(option)
-      expect(loaded()).toEqual(value)
-      if (option !== 'loader') {
-        expect(loaded).toBe(route.exports[binding])
+      if (option === 'loader') {
+        expect(await (await route.load(option))()).toEqual(value)
+      } else {
+        expect(await route.render(option)).toBe(value)
+        const importer = await route.importFromRoute(
+          `export { ${binding} as exported } from '${routeSpecifier}'`,
+        )
+        expect(seen).toEqual([importer.exported])
       }
-      if (!route.isLazy(option)) {
+      expect(await route.isLazy(split)).toBe(true)
+      if (!(await route.isLazy(option))) {
         const name =
           'declared' in row
             ? row.declared
@@ -565,8 +599,8 @@ function Page() {
 export const Route = createFileRoute('/')({ component: Page })
 `)
       await expectValidModules(route.modules)
-      expect(route.isLazy('component')).toBe(true)
-      expect((await route.load('component'))()).toBe('<p>page</p>')
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.render('component')).toBe('<p>page</p>')
     },
   )
 
@@ -588,7 +622,7 @@ export const Route = createFileRoute('/')({
   notFoundComponent: NotFound,
 })
 `)
-      expect((await route.load('component'))()).toBe('<p>h</p>')
+      expect(await route.render('component')).toBe('<p>h</p>')
       expect(route.exports.helper()).toBe('h')
     },
   )
@@ -621,12 +655,12 @@ export const Route = createFileRoute('/')({
   notFoundComponent: NotFound,
 })
 `)
-      expect((await route.load('component'))()).toBe('<p>page</p>')
-      expect((await route.load('notFoundComponent'))()).toBe('<i>MARK_NF</i>')
-      const chunk = route.chunkOf('component')
+      expect(await route.render('component')).toBe('<p>page</p>')
+      expect(await route.render('notFoundComponent')).toBe('<i>MARK_NF</i>')
+      const loaded = await route.loadedBy('component')
       expect({
-        declares: declaredNames(chunk).has('NotFound'),
-        marker: chunk.includes('MARK_NF'),
+        declares: loaded.some((code) => declaredNames(code).has('NotFound')),
+        marker: loaded.some((code) => code.includes('MARK_NF')),
       }).toEqual({ declares: false, marker: false })
     },
   )
@@ -660,9 +694,10 @@ export const Route = createFileRoute('/')({
       ),
     ).toBe(true)
     await expectValidModules(route.modules)
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      ['defaults', '<div>defaults</div>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      'defaults',
+      '<div>defaults</div>',
+    ])
   })
 
   // Ambient declarations (`declare ...`) have no runtime binding: the
@@ -711,10 +746,9 @@ export const Route = createFileRoute('/ambient')({
 })
 `)
       await expectValidModules(route.modules)
-      expect([
-        route.options.loader(),
-        (await route.load('component'))(),
-      ]).toEqual([expected, `<button>${expected}</button>`])
+      expect([route.options.loader(), await route.render('component')]).toEqual(
+        [expected, `<button>${expected}</button>`],
+      )
     },
   )
 
@@ -723,8 +757,8 @@ export const Route = createFileRoute('/ambient')({
   // types reference it. (When only the loader's types do, the chunks import
   // it: pinned in known-bugs-code-splitter.test.ts.) Source: #8504.
   it('leaves an import only the split component references from types out of the route module', async () => {
-    const { modules } =
-      compileRouteModules(`${head}import { useState } from 'react'
+    const route = await loadRoute(
+      `${head}import { useState } from 'react'
 import { Framework } from './projects'
 export const Route = createFileRoute('/')({
   loader: () => 'data',
@@ -733,9 +767,12 @@ export const Route = createFileRoute('/')({
     return <p>{framework}</p>
   },
 })
-`)
-    expect(importSources(modules.reference!)).not.toContain('./projects')
-    await expectValidModules(modules)
+`,
+      { stubs: { './projects': { Framework: 'Framework' } } },
+    )
+    expect(route.eager).not.toContain('./projects')
+    await expectValidModules(route.modules)
+    expect(await route.render('component')).toBe('<p>react</p>')
   })
 
   // Source: @babel/plugin-transform-typescript class/private-method-override;
@@ -757,7 +794,7 @@ export const Route = createFileRoute('/')({
 })
 `)
     await expectValidModules(route.modules)
-    expect((await route.load('component'))()).toBe('<p>3|7</p>')
+    expect(await route.render('component')).toBe('<p>3|7</p>')
   })
 
   // An ambient var merged with an interface has no runtime declaration:
@@ -783,9 +820,10 @@ export const Route = createFileRoute('/')({
       { verbatimModuleSyntax },
     )
     await expectValidModules(route.modules)
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      ['1.0', '<p>1.0</p>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      '1.0',
+      '<p>1.0</p>',
+    ])
   }
 
   it('reads an ambient var merged with an interface from the environment in a shared declaration', async () => {
@@ -821,7 +859,7 @@ export const Route = createFileRoute('/')({
       { stubs: { './lib': { Helper: { x: 'helper' } } } },
     )
     await expectValidModules(route.modules)
-    expect((await route.load('component'))()).toBe('<div>helper</div>')
+    expect(await route.render('component')).toBe('<div>helper</div>')
   })
 
   // Source: Qwik optimizer test.rs example_ts_enums, example_exports
@@ -835,7 +873,7 @@ export const Route = createFileRoute('/')({
 })
 `)
     await expectValidModules(route.modules)
-    expect((await route.load('component'))()).toBe('<p>LOUD|label:x</p>')
+    expect(await route.render('component')).toBe('<p>LOUD|label:x</p>')
   })
 
   it.each([
@@ -871,7 +909,7 @@ export const Route = createFileRoute('/')({
 })
 `)
       await expectValidModules(route.modules)
-      expect((await route.load('component'))()).toBe(`<p>${expected}</p>`)
+      expect(await route.render('component')).toBe(`<p>${expected}</p>`)
     },
   )
 
@@ -902,12 +940,7 @@ export const Route = createFileRoute('/posts')({
         `export { Post } from '${routeSpecifier}'`,
       )
       expect(other.Post('1')).toEqual({ id: '1' })
-      const hmr = await evaluateModule(transformWithRouteHmrPlugin(code), {
-        ...stubs,
-        '@tanstack/react-router': {
-          createFileRoute: () => (options: unknown) => ({ options }),
-        },
-      })
+      const hmr = await evaluateModule(transformWithRouteHmrPlugin(code), stubs)
       expect(hmr.Post!('2')).toEqual({ id: '2' })
     },
   )
@@ -927,10 +960,8 @@ export const Route = createFileRoute('/')({
       { stubs: { './server-thing': { secret: 'server' } } },
     )
     await expectValidModules(route.modules)
-    expect(importSources(route.modules.reference!)).not.toContain(
-      './server-thing',
-    )
-    expect((await route.load('component'))()).toBe('<p>server</p>')
+    expect(route.eager).not.toContain('./server-thing')
+    expect(await route.render('component')).toBe('<p>server</p>')
   })
 
   it('keeps decorators before `export` for legacy decorator transforms', () => {

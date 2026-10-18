@@ -22,8 +22,71 @@ import {
   webpackCompiler,
 } from './plugin-host'
 import type { RouteGraph, TargetFramework } from './plugin-host'
-import { createRouterStub, stubExports } from './lazy-tracking'
+import { stubExports } from './lazy-tracking'
 import type { Stubs } from './lazy-tracking'
+
+// Stand-ins of this in-process HMR model only (W2-b moved them here from
+// `lazy-tracking.ts`, which now loads routes with the real router and
+// React). FIX-PLAN A1 deletes this file with them.
+
+/**
+ * Exports of a router package, as much of them as route modules use: routes
+ * keep their options, and lazy route options (`lazyRouteComponent`,
+ * `lazyFn`) load their module when called or preloaded. `lazy` collects the
+ * loader of every lazy value created.
+ */
+function createRouterStub(lazy: Map<unknown, () => Promise<unknown>>) {
+  const route = (options: unknown) => ({ options })
+  return {
+    createFileRoute: () => route,
+    createLazyFileRoute: () => route,
+    createRootRoute: route,
+    createRootRouteWithContext: () => route,
+    createRoute: route,
+    Outlet: () => null,
+    lazyRouteComponent: (
+      importer: () => Promise<Record<string, any>>,
+      exportName = 'default',
+    ) => {
+      let component: ((props: unknown) => unknown) | undefined
+      const load = async () => {
+        component = (await importer())[exportName]
+        return component
+      }
+      const Lazy = Object.assign(
+        (props: unknown) => {
+          if (!component) {
+            throw new Error('a lazy route component rendered before it loaded')
+          }
+          return component(props)
+        },
+        { preload: load },
+      )
+      lazy.set(Lazy, load)
+      return Lazy
+    },
+    lazyFn: (importer: () => Promise<Record<string, any>>, key = 'default') => {
+      const fn = async (...args: Array<any>) => (await importer())[key](...args)
+      lazy.set(fn, async () => (await importer())[key])
+      return fn
+    },
+  }
+}
+
+/**
+ * JSX as text (the linker's deprecated `runtime` option): intrinsic elements
+ * become tags, components are called. One line, so that line numbers stay
+ * those of the module.
+ */
+const textJsxRuntime = [
+  `const __Fragment = Symbol('Fragment');`,
+  `const __jsx = (type, props, ...children) => {`,
+  `const text = children.flat(Infinity).filter((child) => child != null && child !== false && child !== true).join('');`,
+  `if (type === __Fragment) return text;`,
+  `if (typeof type === 'function') return type({ ...props, children: text });`,
+  `if (typeof type !== 'string') throw new Error('cannot render ' + String(type));`,
+  `return '<' + type + '>' + text + '</' + type + '>'; };`,
+].join(' ')
 
 const getStoreConfig: GetStoreConfig = () => ({
   createMutableStore: createNonReactiveMutableStore,
@@ -203,6 +266,7 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
       modules: Object.fromEntries(compiled.modules),
       resolve: compiled.resolve,
       stubs: { ...options.stubs, [routerPackage]: routerStub },
+      runtime: textJsxRuntime,
       importMeta: (id) => ({
         [style === 'webpack' ? 'webpackHot' : 'hot']: hotContext(id),
       }),

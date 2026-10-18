@@ -3,7 +3,6 @@ import {
   declaredNames,
   expectValidModules,
   head,
-  importSources,
   loadRoute,
 } from './regression-helpers'
 import type { CodeSplitGroupings } from '../src/core/constants'
@@ -35,9 +34,9 @@ export const Route = createFileRoute('/')({
     await expectValidModules(route.modules)
     expect([
       route.options.loader(),
-      (await route.load('component'))(),
+      await route.render('component'),
       calls,
-    ]).toEqual(['A', '<div>{"x":1}</div>', 1])
+    ]).toEqual(['A', '<div>{&quot;x&quot;:1}</div>', 1])
   })
 
   // Source: Qwik optimizer test.rs root_level_self_referential_qrl,
@@ -63,8 +62,8 @@ export const Route = createFileRoute('/')({
     )
     await expectValidModules(route.modules)
     expect([
-      (await route.load('component'))(),
-      (await route.load('errorComponent'))(),
+      await route.render('component'),
+      await route.render('errorComponent'),
       // Both chunks render the same `A` and the same `B`
       seen.size,
     ]).toEqual(['<b><i>a</i></b>', '<b><i>a</i></b>', 2])
@@ -86,9 +85,10 @@ export const Route = createFileRoute('/')({
 `)
     await expectValidModules(route.modules)
     // `#n in counter` only holds for the class that created `counter`.
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      [1, '<div>true</div>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      1,
+      '<div>true</div>',
+    ])
   })
 
   // Source: Turbopack tree-shaker analyzer/nanoid, analyzer/let-bug-1
@@ -102,9 +102,10 @@ export const Route = createFileRoute('/')({
 })
 `)
     await expectValidModules(route.modules)
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      [[0], '<p>1</p>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      [0],
+      '<p>1</p>',
+    ])
   })
 
   // TypeScript erases type positions, so a declaration the split component
@@ -132,7 +133,7 @@ export const Route = createFileRoute('/')({
       },
     )
     await expectValidModules(route.modules)
-    expect([(await route.load('component'))(), calls]).toEqual([
+    expect([await route.render('component'), calls]).toEqual([
       '<p>object</p>',
       1,
     ])
@@ -180,15 +181,20 @@ export const Route = createFileRoute('/')({
   )
   await expectValidModules(route.modules)
   const loaded = await (await route.load('loader'))()
-  expect([loaded, (await route.load('component'))(), calls]).toEqual([
+  expect([loaded, await route.render('component'), calls]).toEqual([
     { extra: { flag: true } },
     '<p>/apix</p>',
     { init: 1, init2: 1 },
   ])
-  expect(route.exports.rest).toBe(loaded)
-  expect(route.exports.base).toBe(seen.base)
-  expect(route.exports.x).toBe(seen.x)
-  expect(route.exports.y).toEqual({ id: 'y' })
+  // What the rest of the app imports from the route file is what the
+  // options read.
+  const imported = await route.importFromRoute(
+    `export { rest, base, x, y } from '#route'\n`,
+  )
+  expect(imported.rest).toBe(loaded)
+  expect(imported.base).toBe(seen.base)
+  expect(imported.x).toBe(seen.x)
+  expect(imported.y).toEqual({ id: 'y' })
 })
 
 // Initializers whose side effects hide in their syntax, read by the loader
@@ -217,6 +223,8 @@ const value = new Map()`,
 }
 const value = Store`,
     },
+    // Creating the element does not call the component (no effect); the
+    // loader and the component still read one element.
     {
       name: 'JSX of a component that calls an import',
       declaration: `function Tracked() {
@@ -224,12 +232,13 @@ const value = Store`,
   return 'tracked'
 }
 const value = { element: <Tracked /> }`,
+      effects: 0,
     },
     {
       name: 'a pure-annotated call (control)',
       declaration: 'const value = /* @__PURE__ */ register()',
     },
-  ])('$name runs once', async ({ declaration }) => {
+  ])('$name runs once', async ({ declaration, effects: expected = 1 }) => {
     let effects = 0
     const seen: Array<unknown> = []
     const effect = () => {
@@ -267,8 +276,8 @@ export const Route = createFileRoute('/')({
     )
     await expectValidModules(route.modules)
     route.options.loader()
-    expect((await route.load('component'))()).toBe('<p>1</p>')
-    expect(effects).toBe(1)
+    expect(await route.render('component')).toBe('<p>1</p>')
+    expect(effects).toBe(expected)
     expect(seen).toHaveLength(2)
     expect(seen[0]).toBe(seen[1])
   })
@@ -292,14 +301,14 @@ export const Route = createFileRoute('/')({
 `,
       { stubs: { './next': { next: 'next' } } },
     )
-    expect(importSources(route.modules.reference!)).not.toContain('./next')
+    // Nothing the route module loads requests what only the component reads.
+    expect(route.eager).not.toContain('./next')
     await expectValidModules(route.modules)
-    const component = await route.load('component')
-    expect([route.options.loader(), component(), component()]).toEqual([
-      'data',
-      '<p>initial-next</p>',
-      '<p>next-next</p>',
-    ])
+    expect([
+      route.options.loader(),
+      await route.render('component'),
+      await route.render('component'),
+    ]).toEqual(['data', '<p>initial-next</p>', '<p>next-next</p>'])
   })
 
   // A lazily initialised getter that replaces itself after the first call.
@@ -344,12 +353,11 @@ export const Route = createFileRoute('/')({
         },
       )
       await expectValidModules(route.modules)
-      const component = await route.load('component')
       expect([
         route.options.loader(),
-        component(),
+        await route.render('component'),
         route.options.loader(),
-        component(),
+        await route.render('component'),
         created,
         seen.size,
       ]).toEqual([
@@ -376,9 +384,10 @@ export const Route = createFileRoute('/')({
 })
 `)
     await expectValidModules(route.modules)
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      ['data', '<p>7</p>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      'data',
+      '<p>7</p>',
+    ])
   })
 })
 
@@ -559,7 +568,7 @@ ${options.join('\n')}
           }
         }
         if (readers.component) {
-          results.push((await route.load('component'))())
+          results.push(await route.render('component'))
         }
         expect(results).toEqual(
           (['loader', 'beforeLoad', 'component'] as const)
@@ -587,12 +596,16 @@ ${options.join('\n')}
           }
         }
 
-        // A function only the component reads is not declared in the route
-        // module; a binding only the loader reads is not declared in the
-        // component's chunk.
-        const componentChunk = route.isLazy('component')
-          ? route.chunkOf('component')
-          : undefined
+        // A function only the component reads is not declared by what loads
+        // with the route module; a binding only the loader reads is not
+        // declared by what loading the component loads. (These observers
+        // load the route again in a fork: the counts above are final.)
+        const eagerCode = route.eager
+          .filter((id) => route.graph.modules.has(id))
+          .map((id) => route.graph.modules.get(id)!)
+        const componentCode = (await route.isLazy('component'))
+          ? await route.loadedBy('component')
+          : []
         const readBy = (name: string) =>
           (Object.keys(readers) as Array<Reader>).filter((reader) =>
             readers[reader]!.includes(name),
@@ -603,12 +616,16 @@ ${options.join('\n')}
             readersOfName.join() === 'component' &&
             declarations.includes(`function ${name}(`)
           ) {
-            expect(declaredNames(route.modules.reference!), name).not.toContain(
+            expect(
+              eagerCode.flatMap((code) => [...declaredNames(code)]),
               name,
-            )
+            ).not.toContain(name)
           }
-          if (readersOfName.join() === 'loader' && componentChunk) {
-            expect(declaredNames(componentChunk), name).not.toContain(name)
+          if (readersOfName.join() === 'loader') {
+            expect(
+              componentCode.flatMap((code) => [...declaredNames(code)]),
+              name,
+            ).not.toContain(name)
           }
         }
       }
@@ -645,13 +662,17 @@ export const Route = createFileRoute('/')({
 `,
       { stubs: { './thing': { useThing: (options: unknown) => options } } },
     )
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      [1, '<p>1x</p>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      1,
+      '<p>1x</p>',
+    ])
   })
 
   it('keeps exported classes next to it importable, with one identity', async () => {
-    const route = await loadRoute(`${head}export class AppError extends Error {}
+    const seen: Array<unknown> = []
+    const route = await loadRoute(
+      `${head}import { see } from './see'
+export class AppError extends Error {}
 export class Cache {
   value = 'cached'
 }
@@ -660,17 +681,23 @@ class Local {
 }
 export const Route = createFileRoute('/')({
   loader: () => ({ AppError, cached: new Cache().value, local: new Local().value }),
-  component: () => AppError,
+  component: () => {
+    see(AppError)
+    return <p>component</p>
+  },
 })
-`)
+`,
+      { stubs: { './see': { see: (value: unknown) => seen.push(value) } } },
+    )
     await expectValidModules(route.modules)
     const imported = await route.importFromRoute(
       `export { AppError, Cache } from '#route'\n`,
     )
     const loaded = route.options.loader()
+    expect(await route.render('component')).toBe('<p>component</p>')
     expect({
       sameInLoader: loaded.AppError === imported.AppError,
-      sameInComponent: (await route.load('component'))() === imported.AppError,
+      sameInComponent: seen.length === 1 && seen[0] === imported.AppError,
       cached: loaded.cached,
       local: loaded.local,
       cache: new imported.Cache().value,
@@ -729,7 +756,7 @@ export const Route = createFileRoute('/')({
     )
     await expectValidModules(route.modules)
     const loaded = route.options.loader()
-    expect((await route.load('component'))()).toBe(`<p>${loaded}</p>`)
+    expect(await route.render('component')).toBe(`<p>${loaded}</p>`)
     expect(seen).toHaveLength(2)
     if (loader === component) {
       expect(seen[0]).toBe(seen[1])
@@ -756,12 +783,13 @@ const value = new Store()`,
       loader: 'first',
       component: 'rest',
     },
+    // Each call creates a new element: both read the tag it renders.
     {
       name: 'an object read as a JSX member tag',
       declarations: `const Parts = init({ Title: () => 'title' })
 const Header = () => <Parts.Title />`,
-      loader: 'Header()',
-      component: 'Header()',
+      loader: 'Header().type',
+      component: 'Header().type',
     },
     {
       name: 'a helper with a block-scoped local of the same name in one branch',
@@ -912,7 +940,7 @@ export const Route = createFileRoute('/')({ component: Panel })
           stubs: {
             './panel': {
               createPanel: () => ({
-                Panel: () => '<p>panel</p>',
+                Panel: () => 'panel',
                 usePanel: () => 'state',
               }),
             },
@@ -922,8 +950,8 @@ export const Route = createFileRoute('/')({ component: Panel })
       await expectValidModules(route.modules)
       expect([
         route.exports.usePanelState(),
-        (await route.load('component'))(),
-      ]).toEqual(['state', '<p>panel</p>'])
+        await route.render('component'),
+      ]).toEqual(['state', 'panel'])
     },
   )
 
@@ -949,7 +977,7 @@ export const Route = createFileRoute('/')({
     )
     await expectValidModules(route.modules)
     expect([
-      (await route.load('component'))(),
+      await route.render('component'),
       calls,
       route.exports.title,
     ]).toEqual(['<p>t</p>', 1, 't'])
@@ -984,19 +1012,17 @@ ${options}
         },
       },
     )
-    const rendered = [
-      (await route.load('component'))(),
-      (await route.load('errorComponent'))(),
-    ]
     // When the store is created is free (initialiser timing is not pinned);
-    // the route module imports `./init` only to create it.
-    const reference = route.modules.reference!
+    // what loads with the route module loads `./init` only to create it.
+    const atLoad = inits
+    const rendered = [
+      await route.render('component'),
+      await route.render('errorComponent'),
+    ]
     expect({
       rendered,
       inits,
-      importsInitWithoutStore:
-        importSources(reference).includes('./init') &&
-        !declaredNames(reference).has('store'),
+      importsInitWithoutStore: route.eager.includes('./init') && atLoad === 0,
     }).toEqual({
       rendered: ['<p>shared</p>', '<p>shared</p>'],
       inits: 1,
@@ -1025,14 +1051,13 @@ ${options}
     // Whether the route module creates it is free; loading the
     // notFoundComponent chunk does not (it holds only what it needs, D5).
     const atLoad = inits
-    expect((await route.load('notFoundComponent'))()).toBe('<p>nf</p>')
+    expect(await route.render('notFoundComponent')).toBe('<p>nf</p>')
     expect(inits).toBe(atLoad)
-    expect((await route.load('component'))()).toBe('<p>shared</p>')
+    expect(await route.render('component')).toBe('<p>shared</p>')
     expect(inits).toBe(1)
   })
 
   it('does not load what only the split component imports with the state the loader shares', async () => {
-    const loaded: Array<string> = []
     const route = await loadRoute(
       `${head}import { createStore } from './store'
 import { Chart } from './chart'
@@ -1046,16 +1071,15 @@ export const Route = createFileRoute('/')({
         filename: 'route.jsx',
         stubs: {
           './store': { createStore: () => ({ get: () => 'v' }) },
-          './chart': {
-            get Chart() {
-              loaded.push('./chart')
-              return ({ data }: { data: string }) => `<p>${data}</p>`
-            },
-          },
+          './chart': { Chart: ({ data }: { data: string }) => data },
         },
       },
     )
-    expect([route.options.loader(), loaded]).toEqual(['v', []])
-    expect((await route.load('component'))()).toBe('<p>v</p>')
+    // Nothing the route module loads requests `./chart`.
+    expect([route.options.loader(), route.eager.includes('./chart')]).toEqual([
+      'v',
+      false,
+    ])
+    expect(await route.render('component')).toBe('v')
   })
 })

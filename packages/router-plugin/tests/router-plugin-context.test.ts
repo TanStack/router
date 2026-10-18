@@ -43,7 +43,11 @@ import { createFileRoute } from '@tanstack/react-router'
 const ${name} = { value: ${JSON.stringify(value)} }
 export const Route = createFileRoute('/changing')({
   loader: () => ${name},
-  component: () => ${name},
+  component: () => (
+    <p>
+      {${name}.value} {String(Route.useLoaderData() === ${name})}
+    </p>
+  ),
 })`
     // One plugin instance per split setting, each compiling every version of
     // the file, as a dev server does.
@@ -57,29 +61,41 @@ export const Route = createFileRoute('/changing')({
     const separate = load([['component'], ['loader']])
     const combined = load([['component', 'loader']])
 
-    /** The loader's data and the object the component reads. */
-    const read = async (route: Awaited<ReturnType<typeof separate>>) => {
-      expect([route.isLazy('loader'), route.isLazy('component')]).toEqual([
-        true,
-        true,
-      ])
-      const data = await (await route.load('loader'))()
-      expect((await route.load('component'))()).toBe(data)
-      return data
+    /**
+     * The route rendered by the router: the value the component reads and
+     * whether the loader's data is that same object. Then checks which
+     * options load together: activating an option of a group makes the
+     * whole group available, another group stays unrequested.
+     */
+    const read = async (
+      route: Awaited<ReturnType<typeof separate>>,
+      groups: Array<Array<string>>,
+    ) => {
+      const html = await route.renderRoute()
+      expect(await route.groups()).toEqual(groups)
+      return html
     }
+    const separateGroups = [['component'], ['loader']]
 
     expect(
-      await read(await separate(source('firstState', 'first version'))),
-    ).toEqual({ value: 'first version' })
+      await read(
+        await separate(source('firstState', 'first version')),
+        separateGroups,
+      ),
+    ).toBe('<p>first version true</p>')
 
     const second = await separate(source('secondState', 'second version'))
     for (const output of Object.values(second.modules)) {
       expect(output).not.toContain('firstState')
     }
-    expect(await read(second)).toEqual({ value: 'second version' })
+    expect(await read(second, separateGroups)).toBe(
+      '<p>second version true</p>',
+    )
     expect(
-      await read(await combined(source('secondState', 'second version'))),
-    ).toEqual({ value: 'second version' })
+      await read(await combined(source('secondState', 'second version')), [
+        ['component', 'loader'],
+      ]),
+    ).toBe('<p>second version true</p>')
     expect(
       (await separate(source('secondState', 'second version'))).modules,
     ).toEqual(second.modules)

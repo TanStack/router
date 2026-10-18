@@ -23,9 +23,11 @@ import {
   head,
   loadRoute,
   reactRefresh,
+  renderComponent,
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
+
 import type { ExportedRouteOptionsCase } from './dev-server'
 
 /** Compiles every module the code splitter emits, with React HMR. */
@@ -93,10 +95,8 @@ ${options
     const bindings = new Set<string>()
     for (const option of options) {
       bindings.add(await expectRegisteredRouteOption(reference!, option))
-      const component = (await getRouteOption(reference!, option)) as (
-        props: object,
-      ) => string
-      expect(component({})).toBe(`<div>${option}</div>`)
+      const component = await getRouteOption(reference!, option)
+      expect(await renderComponent(component)).toBe(`<div>${option}</div>`)
     }
     expect(bindings.size).toBe(options.length)
   })
@@ -202,7 +202,9 @@ export const Route = createFileRoute('/')({ component: page })`,
         createFileRoute: () => (options: unknown) => ({ options }),
       },
     })
-    expect((Route as any).options.component()).toBe('<p>inner-marker</p>')
+    expect(await renderComponent((Route as any).options.component)).toBe(
+      '<p>inner-marker</p>',
+    )
   })
 
   // Source: ReactFreshIntegration-test "preserves state ..." (families are
@@ -252,9 +254,12 @@ export const Route = createFileRoute('/')({
     expect((await reactRefresh(hmr)).signatures.get(hoisted)).toBe(expected)
 
     const route = await loadRoute(source, { hmr: true })
-    const chunkSignatures = (await reactRefresh(route.chunkOf('component')))
-      .signatures
-    expect([...chunkSignatures.values()]).toContain(expected)
+    const chunkSignatures = await Promise.all(
+      (await route.loadedBy('component')).map(async (code) => [
+        ...(await reactRefresh(code)).signatures.values(),
+      ]),
+    )
+    expect(chunkSignatures.flat()).toContain(expected)
   })
 })
 
@@ -278,7 +283,7 @@ export const Route = createRootRoute({ component: () => <div /> })
     // stay in the function to read it.
     const { exports } = await evaluateRouteModule(reference!)
     const child = (exports.makeChild as (label: string) => any)('x')
-    expect(child.options.component()).toBe('<div>x</div>')
+    expect(await renderComponent(child.options.component)).toBe('<div>x</div>')
     // React Refresh can only register components bound to top-level names.
     await expectRegisteredRouteOption(reference!, 'component')
   })
@@ -302,8 +307,8 @@ describe('route HMR leaves options React Refresh does not handle as they are', (
 })`,
     )
     expect(await getModuleErrors(code)).toEqual([])
-    const component = (await getRouteOption(code, 'component')) as () => string
-    expect(component()).toBe('<p>hi</p>')
+    const component = await getRouteOption(code, 'component')
+    expect(await renderComponent(component)).toBe('<p>hi</p>')
   })
 })
 

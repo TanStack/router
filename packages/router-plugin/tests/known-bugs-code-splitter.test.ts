@@ -8,8 +8,6 @@ import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   compileRouteModules,
   declaredNames,
-  eagerImportSources,
-  eagerModuleIds,
   evaluateModule,
   expectValidModules,
   head,
@@ -18,6 +16,7 @@ import {
   importedNames,
   loadRoute,
   parseModule,
+  renderComponent,
   routeSpecifier,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
@@ -35,6 +34,17 @@ function reportsNotSplit(
   return warn.mock.calls.some(([message]) => {
     const text = String(message)
     return text.includes(file) && /\b(?:Page|component)\b/.test(text)
+  })
+}
+
+/**
+ * The code of each compiled module that loads with the route module (the
+ * route module and what it imports statically, facades included).
+ */
+function eagerModules(route: Awaited<ReturnType<typeof loadRoute>>) {
+  return route.eager.flatMap((id) => {
+    const code = route.graph.modules.get(id)
+    return code === undefined ? [] : [code]
   })
 }
 
@@ -73,8 +83,8 @@ export const Route = createFileRoute('/')({
     const callsBeforeChunks = state.calls
     expect([
       route.options.loader(),
-      (await route.load('component'))(),
-      (await route.load('errorComponent'))(),
+      await route.render('component'),
+      await route.render('errorComponent'),
       callsBeforeChunks,
       state.calls,
     ]).toEqual([1, '<p>1</p>', '<p>error</p>', 1, 1])
@@ -102,7 +112,7 @@ export const Route = createFileRoute('/')({
 `,
         { stubs: { './state': state } },
       )
-      expect([(await route.load('component'))(), state.calls]).toEqual([
+      expect([await route.render('component'), state.calls]).toEqual([
         '<p>1</p>',
         1,
       ])
@@ -172,7 +182,7 @@ export const Route = createFileRoute('/')({
       )
       expect([
         route.options.loader(),
-        (await route.load('component'))(),
+        await route.render('component'),
         state.calls,
       ]).toEqual([1, '<p>1</p>', 1])
     },
@@ -289,7 +299,7 @@ export const Route = createFileRoute('/')({
       )
       expect([
         route.options.loader(),
-        (await route.load('component'))(),
+        await route.render('component'),
         state.calls,
       ]).toEqual([...expected, inits])
     },
@@ -400,10 +410,7 @@ ${options}  component: () => <p>${render}</p>,
 })`,
         { stubs: { './state': state } },
       )
-      expect([(await route.load('component'))(), state.calls]).toEqual([
-        html,
-        1,
-      ])
+      expect([await route.render('component'), state.calls]).toEqual([html, 1])
     },
   )
 
@@ -435,15 +442,13 @@ export const Route = createFileRoute('/')({
       },
     )
     const callsBeforeChunks = calls
-    const loaded: Array<string> = []
-    for (const option of ['component', 'errorComponent']) {
-      if (typeof (await route.load(option)) === 'function') {
-        loaded.push(option)
-      }
-    }
+    const rendered = [
+      await route.render('component'),
+      await route.render('errorComponent'),
+    ]
     // Both chunks loaded, and the effect ran once, with the route module.
-    expect([loaded.join(), callsBeforeChunks, calls]).toEqual([
-      'component,errorComponent',
+    expect([rendered, callsBeforeChunks, calls]).toEqual([
+      ['<p>index</p>', '<p>error</p>'],
       1,
       1,
     ])
@@ -578,16 +583,14 @@ export const v = x`,
           .map(({ specifier }) => specifier)
       expect({
         reExported: importer.v,
-        rendered: (await route.load('component'))(),
-        chunksRequestingLib: Object.keys(route.modules).filter(
-          (name) =>
-            name.startsWith('lazy ') &&
-            requested(route.modules[name]!).includes('./lib'),
-        ),
+        rendered: await route.render('component'),
+        componentRequestsLib: (await route.loadedBy('component'))
+          .flatMap(requested)
+          .includes('./lib'),
       }).toEqual({
         reExported: 1,
         rendered: '<p>index</p>',
-        chunksRequestingLib: [],
+        componentRequestsLib: false,
       })
     },
   )
@@ -611,7 +614,7 @@ export const Route = createFileRoute('/')({
 })`)
         expect([
           loaded.options.loader(),
-          (await loaded.load('component'))(),
+          await loaded.render('component'),
         ]).toEqual(['1.0', '<p>1.0</p>'])
       } finally {
         vi.unstubAllGlobals()
@@ -658,7 +661,7 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      expect([calls, (await route.load('component'))()]).toEqual([
+      expect([calls, await route.render('component')]).toEqual([
         registered,
         '<p>component</p>',
       ])
@@ -688,9 +691,6 @@ export const Route = createFileRoute('/')({
               return value
             },
           },
-          '@tanstack/react-router': {
-            createFileRoute: () => (options: unknown) => ({ options }),
-          },
         },
       )
       expect(calls).toEqual(['analytics'])
@@ -709,8 +709,8 @@ describe('page code left in the route module', () => {
       stubs: { './heavy': { heavy: () => 'heavy' } },
     })
     return {
-      heavyLoadsEagerly: eagerImportSources(route).includes('./heavy'),
-      rendered: (await route.load('component'))(),
+      heavyLoadsEagerly: route.eager.includes('./heavy'),
+      rendered: await route.render('component'),
     }
   }
 
@@ -834,12 +834,11 @@ export const Route = createFileRoute('/')({
   component: () => <p>index</p>,
 })
 `)
-      // The route module and what it imports statically load with the entry.
-      const eager = eagerModuleIds(route).map(
-        (id) => route.graph.modules.get(id)!,
-      )
+      // What loads with the route module loads with the entry.
       expect({
-        eagerHandler: eager.some((code) => code.includes('MARK_handler')),
+        eagerHandler: eagerModules(route).some((code) =>
+          code.includes('MARK_handler'),
+        ),
         loaded: await route.options.loader.handler(),
       }).toEqual({ eagerHandler: false, loaded: 'MARK_handler' })
     },
@@ -940,10 +939,10 @@ export const Route = createFileRoute('/')({
       expect({
         loaded: await loaderHandler(route.options.loader)(),
         staleReloadMode: route.options.loader.staleReloadMode,
-        rendered: (await route.load('component'))(),
+        rendered: await route.render('component'),
         created,
         ...('apiLoadsEagerly' in expected && {
-          apiLoadsEagerly: eagerImportSources(route).includes('./api'),
+          apiLoadsEagerly: route.eager.includes('./api'),
         }),
       }).toEqual(expected)
     },
@@ -987,8 +986,8 @@ function Page() {
   return <p>page</p>
 }
 `)
-    expect(loaded.isLazy('component')).toBe(true)
-    expect((await loaded.load('component'))()).toBe('<p>page</p>')
+    expect(await loaded.isLazy('component')).toBe(true)
+    expect(await loaded.render('component')).toBe('<p>page</p>')
   })
 
   // Controls for the pins above and in "route factories written in other
@@ -1006,7 +1005,7 @@ const makeOptions = () => ({ component: Page })
 export const Route = ${route}
 `)
     await expectValidModules(loaded.modules)
-    expect((await loaded.load('component'))()).toBe('<p>page</p>')
+    expect(await loaded.render('component')).toBe('<p>page</p>')
   })
 
   // Bug: the virtual compiler accepts only a fixed list of expression types
@@ -1025,41 +1024,35 @@ export const Route = ${route}
     value: string
     declarations?: string
     filename?: string
-    render: (value: any) => unknown
     expected: unknown
   }>([
     {
       name: 'a member of a namespace import',
       value: 'Pages.Home',
-      render: (component) => component(),
-      expected: '<p>home</p>',
+      expected: 'home',
     },
     {
       name: 'a member of a local object (loader)',
       option: 'loader',
       value: 'api.load',
-      render: (loader) => loader(),
       expected: 'data',
     },
     {
       name: 'a logical fallback',
       declarations: `const overrides: { Home?: () => string } = {}\n`,
       value: 'overrides.Home || Fallback',
-      render: (component) => component(),
-      expected: '<p>fallback</p>',
+      expected: 'fallback',
     },
     {
       name: 'a nullish fallback',
       declarations: `const overrides: { Home?: () => string } = {}\n`,
       value: 'overrides.Home ?? Fallback',
-      render: (component) => component(),
-      expected: '<p>fallback</p>',
+      expected: 'fallback',
     },
     {
       name: 'a tagged template',
       value: 'styled`home`',
-      render: (component) => component(),
-      expected: '<p>styled home</p>',
+      expected: 'styled home',
     },
     {
       // JavaScript: the route types of React accept function components
@@ -1072,7 +1065,6 @@ export const Route = ${route}
       return <p>class</p>
     }
   }`,
-      render: (component) => new component().render(),
       expected: '<p>class</p>',
     },
   ])(
@@ -1082,13 +1074,12 @@ export const Route = ${route}
       value,
       declarations = '',
       filename,
-      render,
       expected,
     }) => {
       const route = await loadRoute(
         `${head}import * as Pages from './pages'
 import { styled } from './styled'
-${declarations}const Fallback = () => '<p>fallback</p>'
+${declarations}const Fallback = () => 'fallback'
 const api = { load: () => 'data' }
 export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader'], ['component']],
@@ -1099,17 +1090,22 @@ export const Route = createFileRoute('/')({
         {
           filename,
           stubs: {
-            react: { Component: class {} },
-            './pages': { Home: () => '<p>home</p>' },
+            './pages': { Home: () => 'home' },
             './styled': {
               styled: (strings: TemplateStringsArray) => () =>
-                `<p>styled ${strings[0]}</p>`,
+                `styled ${strings[0]}`,
             },
           },
         },
       )
-      expect(route.isLazy(option)).toBe(true)
-      expect(render(await route.load(option))).toBe(expected)
+      expect(await route.isLazy(option)).toBe(true)
+      expect(
+        option === 'loader'
+          ? await (
+              await route.load('loader')
+            )()
+          : await route.render(option),
+      ).toBe(expected)
     },
   )
 
@@ -1130,25 +1126,23 @@ export const Route = createFileRoute('/')({
   test.fails.each<{
     name: string
     component: string
-    render: (component: any) => unknown
+    rendered?: string
     imports?: string
     targetFramework?: TargetFramework
   }>([
     {
       name: 'memo of an inline arrow',
       component: `memo(() => <p>page</p>)`,
-      render: (component) => component(),
     },
     {
       name: 'memo of an inline named function',
       component: `memo(function Page() {\n  return <p>page</p>\n})`,
-      render: (component) => component(),
     },
     {
       name: 'a call with a JSX argument',
       imports: `${head}import { withFallback } from './hoc'\nimport { Page } from './page'`,
       component: `withFallback(Page, <p>loading</p>)`,
-      render: (component) => component(),
+      rendered: 'page',
     },
     {
       name: 'a Vue defineComponent with a render function',
@@ -1156,31 +1150,30 @@ export const Route = createFileRoute('/')({
       imports: `import { createFileRoute } from '@tanstack/vue-router'
 import { defineComponent } from 'vue'`,
       component: `defineComponent({\n  setup: () => () => <p>page</p>,\n})`,
-      render: (component) => component.setup()(),
     },
     {
       name: 'a call of a typed arrow function',
-      component: `memo((): string => '<p>page</p>')`,
-      render: (component) => component(),
+      component: `memo((): string => 'page')`,
+      rendered: 'page',
     },
     {
       name: 'a call with a type assertion',
       imports: `${head}import { memo } from 'react'\nimport { Page } from './page'`,
       component: `memo(Page as any)`,
-      render: (component) => component(),
+      rendered: 'page',
     },
     {
       name: 'a call with a type argument',
       imports: `${head}import { memo } from 'react'\nimport { Page } from './page'`,
       component: `memo<typeof Page>(Page)`,
-      render: (component) => component(),
+      rendered: 'page',
     },
   ])(
     'a component written as $name is split and renders',
     async ({
       imports = `${head}import { memo } from 'react'`,
       component,
-      render,
+      rendered = '<p>page</p>',
       targetFramework,
     }) => {
       const route = await loadRoute(
@@ -1190,15 +1183,13 @@ export const Route = createFileRoute('/')({ component: ${component} })
         {
           targetFramework,
           stubs: {
-            react: { memo: (value: unknown) => value },
-            vue: { defineComponent: (value: unknown) => value },
             './hoc': { withFallback: (component: unknown) => component },
-            './page': { Page: () => '<p>page</p>' },
+            './page': { Page: () => 'page' },
           },
         },
       )
-      expect(route.isLazy('component')).toBe(true)
-      expect(render(await route.load('component'))).toBe('<p>page</p>')
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.render('component')).toBe(rendered)
     },
   )
 })
@@ -1219,8 +1210,8 @@ function Page() {
   return <p>page</p>
 }
 `)
-      expect(route.isLazy('component')).toBe(true)
-      expect((await route.load('component'))()).toBe('<p>page</p>')
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.render('component')).toBe('<p>page</p>')
     },
   )
 
@@ -1238,8 +1229,8 @@ function Page() {
 }
 export const Route = createFileRoute<'/'>('/')({ component: Page })
 `)
-      expect(route.isLazy('component')).toBe(true)
-      expect((await route.load('component'))()).toBe('<p>page</p>')
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.render('component')).toBe('<p>page</p>')
     },
   )
 
@@ -1259,9 +1250,9 @@ export const Route = createFileRoute<'/'>('/')({ component: Page })
 const makeOptions = () => ({ component: Page })
 export const Route = createFileRoute('/')(makeOptions())
 `)
-        expect((await route.load('component'))()).toBe('<p>page</p>')
+        expect(await route.render('component')).toBe('<p>page</p>')
         expect({
-          split: route.isLazy('component'),
+          split: await route.isLazy('component'),
           warned: reportsNotSplit(warn, route.ids.reference!),
         }).not.toEqual({ split: false, warned: false })
       } finally {
@@ -1312,11 +1303,11 @@ export const Route = createFileRoute('/')({
         /** Renders a route option, loading it first when it is lazy. */
         const render = async (component: any) => {
           await component.preload?.()
-          return component()
+          return renderComponent(component)
         }
         expect([
           await render(route.exports.Legacy.options.component),
-          await render(route.options.component),
+          await route.render('component'),
         ]).toEqual(['<p>legacy</p>', '<p>index</p>'])
       } finally {
         warn.mockRestore()
@@ -1347,13 +1338,14 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
         { stubs: { './heavy': { heavy: () => 'heavy' } } },
       )
-      expect((await route.load('component'))()).toBe('<div>page</div>')
-      const chunk = route.chunkOf('component')
+      expect(await route.render('component')).toBe('<div>page</div>')
+      // What loading the component evaluates
+      const loaded = await route.loadedBy('component')
       expect({
         declares: ['helper', 'Api', 'Def'].filter((name) =>
-          declaredNames(chunk).has(name),
+          loaded.some((code) => declaredNames(code).has(name)),
         ),
-        importsHeavy: importSources(chunk).includes('./heavy'),
+        importsHeavy: loaded.flatMap(importSources).includes('./heavy'),
       }).toEqual({ declares: [], importsHeavy: false })
     },
   )
@@ -1429,7 +1421,8 @@ import { jsx } from '@emotion/react'`,
     },
     {
       name: '@jsxFrag, in a chunk without fragments',
-      header: `/** @jsx h */
+      header: `/** @jsxRuntime classic */
+/** @jsx h */
 /** @jsxFrag Fragment */
 import { h, Fragment } from 'preact'`,
       library: 'preact',
@@ -1458,13 +1451,13 @@ ${head}export const Route = createFileRoute('/')({
       // does what loads with it); the component chunk needs the element
       // factory, not the fragment one.
       expect({
-        rendered: (await route.load('component'))(),
+        rendered: await route.render('component'),
         ...(loader === undefined
-          ? {
-              libraryLoadsEagerly: eagerImportSources(route).includes(library),
-            }
+          ? { libraryLoadsEagerly: route.eager.includes(library) }
           : {
-              chunkImports: importedNames(route.chunkOf('component'), library),
+              chunkImports: (await route.loadedBy('component')).flatMap(
+                (code) => importedNames(code, library),
+              ),
             }),
       }).toEqual({
         rendered: 'rendered',
@@ -1482,7 +1475,7 @@ ${head}export const Route = createFileRoute('/')({
       await loadRoute(`${head}const { Page } = { Page: () => <div>page</div> }
 export const Route = createFileRoute('/')({ component: Page })
 `)
-    expect((await route.load('component'))()).toBe('<div>page</div>')
+    expect(await route.render('component')).toBe('<div>page</div>')
   })
 
   // Bug: a split option that names a binding declared by an array
@@ -1504,12 +1497,12 @@ export const Route = createFileRoute('/')({
         {
           stubs: {
             './factory': {
-              createPair: () => [() => '<div>page</div>', () => 'error'],
+              createPair: () => [() => 'page', () => 'error'],
             },
           },
         },
       )
-      expect((await route.load('component'))()).toBe('<div>page</div>')
+      expect(await route.render('component')).toBe('page')
     },
   )
 })
@@ -1540,9 +1533,9 @@ export const Route = createFileRoute('/')({
       { hmr: true },
     )
     return [
-      await (await route.load('loader'))(),
-      (await route.load('component'))(),
-      (await route.load('errorComponent'))(),
+      await route.options.loader(),
+      await route.render('component'),
+      await route.render('errorComponent'),
     ]
   }
   const expected = ['value', '<p>value</p>', '<p>value</p>']
@@ -1582,8 +1575,8 @@ export const Route = createFileRoute('/')({
       name: 'lazyRouteComponent',
       option: `pendingComponent: lazyRouteComponent(() => import('./spinner'))`,
       read: async (route: Awaited<ReturnType<typeof loadRoute>>) =>
-        (await route.load('pendingComponent'))(),
-      expected: '<p>spinner</p>',
+        await route.render('pendingComponent'),
+      expected: 'spinner',
     },
     {
       name: 'lazyFn',
@@ -1605,17 +1598,17 @@ export const Route = createFileRoute('/')({
 `,
         {
           stubs: {
-            './spinner': { default: () => '<p>spinner</p>' },
+            './spinner': { default: () => 'spinner' },
             './load-data': { loadData: () => 'data' },
           },
         },
       )
       await expectValidModules(route.modules)
       expect([
-        route.isLazy('component'),
+        await route.isLazy('component'),
         await read(route),
-        (await route.load('component'))(),
-        (await route.load('errorComponent'))(),
+        await route.render('component'),
+        await route.render('errorComponent'),
       ]).toEqual([true, expected, '<p>page</p>', '<p>error</p>'])
     },
   )
@@ -1646,10 +1639,10 @@ describe('code-split groupings', () => {
 ${order === 'before' ? `${codeRoute}\n${fileRoute}` : `${fileRoute}\n${codeRoute}`}
 `,
       )
-      expect([route.isLazy('loader'), route.isLazy('component')]).toEqual([
-        false,
-        true,
-      ])
+      expect([
+        await route.isLazy('loader'),
+        await route.isLazy('component'),
+      ]).toEqual([false, true])
     },
   )
 
@@ -1672,17 +1665,10 @@ export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })
 `)
-      const evaluated = [route.evaluated.length]
-      expect(await (await route.load('loader'))()).toBe('data')
-      evaluated.push(route.evaluated.length)
-      expect((await route.load('component'))()).toBe('<p>page</p>')
-      evaluated.push(route.evaluated.length)
-      // The loader and the component each load their own module.
-      expect(evaluated).toEqual([
-        evaluated[0],
-        evaluated[0]! + 1,
-        evaluated[0]! + 2,
-      ])
+      expect(await route.options.loader()).toBe('data')
+      expect(await route.render('component')).toBe('<p>page</p>')
+      // The loader and the component each load on their own.
+      expect(await route.groups()).toEqual([['component'], ['loader']])
     },
   )
 })
@@ -1705,10 +1691,9 @@ export const Route = createFileRoute('/')({
   component: () => <div>{state.count}</div>,
 })
 `)
-      expect([
-        route.options.loader(),
-        (await route.load('component'))(),
-      ]).toEqual([1, '<div>1</div>'])
+      expect([route.options.loader(), await route.render('component')]).toEqual(
+        [1, '<div>1</div>'],
+      )
     },
   )
 })
@@ -1752,7 +1737,7 @@ export const Route = createFileRoute('/')({
       )
       expect([
         route.options.loader(),
-        (await route.load('component'))(),
+        await route.render('component'),
         created,
       ]).toEqual([1, '<div>1title</div>', 1])
     },
@@ -1760,28 +1745,24 @@ export const Route = createFileRoute('/')({
 })
 
 describe('route options read from the environment', () => {
-  /**
-   * The component the route renders: the route option itself, or what the
-   * lazy option loads when it was split.
-   */
-  async function routeComponent(
+  /** What the route's component renders, loaded first when it is lazy. */
+  async function renderRouteComponent(
     code: string,
     stubs: Record<string, Record<string, unknown>> = {},
   ) {
-    return (await loadRoute(code, { stubs })).load('component')
+    return (await loadRoute(code, { stubs })).render('component')
   }
 
   // Control for the pins below (same harness).
   test('a split component imported by the route file renders', async () => {
-    const Page = () => null
     expect(
-      await routeComponent(
+      await renderRouteComponent(
         `import { Page } from './page'
 ${head}export const Route = createFileRoute('/')({ component: Page })
 `,
-        { './page': { Page } },
+        { './page': { Page: () => 'page' } },
       ),
-    ).toBe(Page)
+    ).toBe('page')
   })
 
   // Bug: a split option that is a global (no declaration in the module) or
@@ -1793,18 +1774,17 @@ ${head}export const Route = createFileRoute('/')({ component: Page })
     { name: 'an undeclared global', declaration: '' },
     {
       name: 'an ambient declare const',
-      declaration: 'declare const TsrGlobalPage: () => null\n',
+      declaration: 'declare const TsrGlobalPage: () => string\n',
     },
   ])('a component read from $name renders', async ({ declaration }) => {
-    const TsrGlobalPage = () => null
-    vi.stubGlobal('TsrGlobalPage', TsrGlobalPage)
+    vi.stubGlobal('TsrGlobalPage', () => 'global page')
     try {
       expect(
-        await routeComponent(`${head}${declaration}export const Route = createFileRoute('/')({
+        await renderRouteComponent(`${head}${declaration}export const Route = createFileRoute('/')({
   component: TsrGlobalPage,
 })
 `),
-      ).toBe(TsrGlobalPage)
+      ).toBe('global page')
     } finally {
       vi.unstubAllGlobals()
     }
@@ -1812,10 +1792,13 @@ ${head}export const Route = createFileRoute('/')({ component: Page })
 })
 
 describe('classic JSX pragmas', () => {
-  /** Emotion's `jsx`, rendering intrinsic elements as `<emotion:tag>`. */
+  /**
+   * Emotion's `jsx`, rendering intrinsic elements as the text
+   * `emotion:tag(children)`.
+   */
   const emotion = {
     jsx: (type: string, _props: unknown, ...children: Array<string>) =>
-      `<emotion:${type}>${children.join('')}</emotion:${type}>`,
+      `emotion:${type}(${children.join('')})`,
   }
   const pragma = `/** @jsxRuntime classic */
 /** @jsx jsx */
@@ -1830,7 +1813,7 @@ import { jsx } from '@emotion/react'
         `${header}export const Page = () => <div>page</div>`,
         { '@emotion/react': emotion },
       )
-      expect(Page!()).toBe('<emotion:div>page</emotion:div>')
+      expect(await renderComponent(Page)).toBe('emotion:div(page)')
     },
   )
 
@@ -1851,9 +1834,7 @@ import { jsx } from '@emotion/react'
 })`,
         { stubs: { '@emotion/react': emotion } },
       )
-      expect((await route.load('component'))()).toBe(
-        '<emotion:div>page</emotion:div>',
-      )
+      expect(await route.render('component')).toBe('emotion:div(page)')
     },
   )
 
@@ -1866,7 +1847,8 @@ import { jsx } from '@emotion/react'
   test.fails.each([
     {
       name: 'the fragments of a chunk, with @jsxFrag',
-      code: `/** @jsx jsx */
+      code: `/** @jsxRuntime classic */
+/** @jsx jsx */
 /** @jsxFrag Frag */
 ${head}import { jsx, Frag } from '@emotion/react'
 export const Route = createFileRoute('/')({
@@ -1891,7 +1873,7 @@ export const Route = createFileRoute('/')({
   errorComponent: () => jsx('b', null, 'error'),
 })`,
       stub: emotion,
-      rendered: '<emotion:div>page</emotion:div>',
+      rendered: 'emotion:div(page)',
     },
   ])(
     'a split component renders through $name',
@@ -1899,7 +1881,7 @@ export const Route = createFileRoute('/')({
       const route = await loadRoute(code, {
         stubs: { '@emotion/react': stub },
       })
-      expect((await route.load('component'))()).toBe(rendered)
+      expect(await route.render('component')).toBe(rendered)
     },
   )
 
@@ -1941,15 +1923,15 @@ export const Route = createFileRoute('/')({
           },
         },
       )
+      // Every module is valid in a project whose default JSX runtime is
+      // classic (what `@jsx` alone requires); the in-process transform
+      // compiles a module with `@jsx` alone with the automatic runtime.
+      await expectValidModules(route.modules)
       expect([
         route.options.loader(),
-        (await route.load('component'))(),
+        await route.render('component'),
         creations,
-      ]).toEqual([
-        '<emotion:span></emotion:span>',
-        '<emotion:div>page</emotion:div>',
-        1,
-      ])
+      ]).toEqual(['emotion:span()', 'emotion:div(page)', 1])
     },
   )
 })
@@ -2013,9 +1995,9 @@ export const { component: Page, loader } = createBits()`,
 export const Route = createFileRoute('/')({ ${options}component: ${binding} })
 `)
         const file = route.ids.reference!
-        expect((await route.load('component'))()).toBe('<p>page</p>')
+        expect(await route.render('component')).toBe('<p>page</p>')
         expect({
-          split: route.isLazy('component'),
+          split: await route.isLazy('component'),
           warned: warn.mock.calls.some(([message]) => {
             const text = String(message)
             return (
@@ -2051,7 +2033,7 @@ function Page() {
 export const Route = createFileRoute('/')({ title: 'title', component: Page })
 `)
       try {
-        expect((await route.load('component'))()).toBe('<p>title</p>')
+        expect(await route.render('component')).toBe('<p>title</p>')
         expect((globalThis as any).__calledUseTitle).toBe(
           route.exports.useTitle,
         )
@@ -2072,11 +2054,6 @@ export const Route = createFileRoute('/')({ title: 'title', component: Page })
   test.fails(
     'a split component reads the route the route module exports through export { Route }',
     async () => {
-      let created = 0
-      const createRoute = (options: unknown) => {
-        created++
-        return { options, id: '/' }
-      }
       const route = await loadRoute(
         `${head}const Route = createFileRoute('/')({
   component: Page,
@@ -2086,16 +2063,10 @@ function Page() {
 }
 export { Route }
 `,
-        {
-          stubs: {
-            '@tanstack/react-router': { createFileRoute: () => createRoute },
-          },
-        },
       )
-      expect([(await route.load('component'))(), created]).toEqual([
-        '<p>/</p>',
-        1,
-      ])
+      // The router mounted the exported route (which sets its id): a second
+      // route object has none.
+      expect(await route.renderRoute()).toBe('<p>/</p>')
     },
   )
 
@@ -2123,7 +2094,7 @@ export const Route = createFileRoute('/')({ component: Bar, errorComponent: NoFo
 `,
         { stubs: { './see': { see: (value: unknown) => seen.push(value) } } },
       )
-      expect((await route.load('errorComponent'))({ noForget: 'x' })).toBe(
+      expect(await route.render('errorComponent', { noForget: 'x' })).toBe(
         '<div>x</div>',
       )
       expect(seen).toEqual([route.exports.default])
@@ -2157,7 +2128,7 @@ export const Route = createFileRoute('/')({
   notFoundComponent: NotFound,
 })
 `)
-      expect((await route.load('component'))()).toBe('<p><i>nf</i></p>')
+      expect(await route.render('component')).toBe('<p><i>nf</i></p>')
     },
   )
 
@@ -2194,7 +2165,7 @@ export const Route = createFileRoute('/')({
       )
       expect([
         route.options.loader(),
-        (await route.load('component'))(),
+        await route.render('component'),
         route.exports.default(),
         inits,
       ]).toEqual([1, '<p>2</p>', 3, 1])
@@ -2230,30 +2201,34 @@ export const Route = createFileRoute('/')({
    * Loads a route whose errorComponent option is the exported
    * `PostErrorComponent`, written as `value`, next to another module of the
    * app that imports `PostErrorComponent` from the route file (ruling P1:
-   * through a real importer). `withAuth` (`./with-auth`) and `memo`
-   * (`react`) are identity stubs, so the option's value is the component
-   * itself. Returns whether the route renders the importer's instance, and
-   * whether the option is split or the user is told it is not (a warning
-   * naming the route file and the option or the component).
+   * through a real importer). `withAuth` (`./with-auth`) is an identity
+   * stub. The component records the instance it runs as (`./see`). Returns
+   * what the route's errorComponent renders, whether it ran as the
+   * importer's instance, and whether the option is split or the user is told
+   * it is not (a warning naming the route file and the option or the
+   * component).
    */
   async function exportedErrorComponent(value: string) {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const seen: Array<unknown> = []
     try {
       const route = await loadRoute(
         `${head}import { withAuth } from './with-auth'
+import { see } from './see'
 import { memo } from 'react'
 export const Route = createFileRoute('/posts/$postId')({
   errorComponent: ${value},
   component: () => <p>post</p>,
 })
 export function PostErrorComponent() {
+  see(PostErrorComponent)
   return <p>error</p>
 }
 `,
         {
           stubs: {
             './with-auth': { withAuth: (component: unknown) => component },
-            react: { memo: (component: unknown) => component },
+            './see': { see: (value: unknown) => seen.push(value) },
           },
         },
       )
@@ -2261,13 +2236,13 @@ export function PostErrorComponent() {
         `import { PostErrorComponent } from '${routeSpecifier}'
 export const imported = PostErrorComponent`,
       )
-      const errorComponent = await route.load('errorComponent')
+      const rendered = await route.render('errorComponent')
       const file = route.ids.reference!
       return {
-        rendered: errorComponent(),
-        sameInstance: errorComponent === importer.imported,
+        rendered,
+        sameInstance: seen.length === 1 && seen[0] === importer.imported,
         splitOrReported:
-          route.isLazy('errorComponent') ||
+          (await route.isLazy('errorComponent')) ||
           warn.mock.calls.some(([message]) => {
             const text = String(message)
             return (
@@ -2441,7 +2416,7 @@ export const Route = createFileRoute('/')({
   component: () => <p>{Labels.quiet}</p>,
 })
 `)
-      expect((await route.load('component'))()).toBe('<p>quiet</p>')
+      expect(await route.render('component')).toBe('<p>quiet</p>')
     },
   )
 
@@ -2461,7 +2436,7 @@ function Page() {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `)
-      expect((await route.load('component'))()).toBe(1)
+      expect(await route.render('component')).toBe('1')
     },
   )
 
@@ -2489,7 +2464,7 @@ function Page() {
 export const Route = createFileRoute('/')({ component: Page })
 `
       await expectValidModules(compileRouteModules(code).modules)
-      expect((await (await loadRoute(code)).load('component'))()).toBe(
+      expect(await (await loadRoute(code)).render('component')).toBe(
         '<p>-1</p>',
       )
     },
@@ -2506,7 +2481,7 @@ export const Route = createFileRoute('/')({ component: Page })
 export const Route = createFileRoute('/')({ component: Page })
 `
     await expectValidModules(compileRouteModules(code).modules)
-    return (await (await loadRoute(code)).load('component'))()
+    return (await loadRoute(code)).render('component')
   }
 
   test('parenthesized JSX keeps working in a split component', async () => {
@@ -2579,10 +2554,10 @@ export function helper(value: string | number) { return value }`
 describe('code that reads a split binding', () => {
   /**
    * Loads a route whose component is `Page`, declared next to `exports`, in
-   * a production compile, and returns what the route renders, what `read`
-   * gets from the route module's exports, and whether `Page` is split or
-   * the user is told it is not (a warning naming the route file and `Page`
-   * or `component`).
+   * a production compile, and returns what the route renders, what the
+   * component `read` gets from the route module's exports renders, and
+   * whether `Page` is split or the user is told it is not (a warning naming
+   * the route file and `Page` or `component`).
    */
   async function renderPage(
     exports: string,
@@ -2601,9 +2576,12 @@ export const Route = createFileRoute('/')({ component: Page })
         { stubs: { './wrap': { wrap: (component: unknown) => component } } },
       )
       return {
-        rendered: [(await route.load('component'))(), read(route.exports)],
+        rendered: [
+          await route.render('component'),
+          await renderComponent(read(route.exports)),
+        ],
         splitOrReported:
-          route.isLazy('component') ||
+          (await route.isLazy('component')) ||
           reportsNotSplit(warn, route.ids.reference!),
       }
     } finally {
@@ -2616,8 +2594,8 @@ export const Route = createFileRoute('/')({ component: Page })
   test('a split component renders next to another export', async () => {
     expect(
       await renderPage(
-        `export const label = wrap('label')`,
-        (moduleExports) => moduleExports.label,
+        `export const Label = wrap(() => 'label')`,
+        (moduleExports) => moduleExports.Label,
       ),
     ).toEqual({ rendered: ['<p>page</p>', 'label'], splitOrReported: true })
   })
@@ -2637,33 +2615,33 @@ export const Route = createFileRoute('/')({ component: Page })
     {
       name: 'an exported object',
       exports: 'export const meta = { fn: Page }',
-      read: (moduleExports: Record<string, any>) => moduleExports.meta.fn(),
+      read: (moduleExports: Record<string, any>) => moduleExports.meta.fn,
     },
     {
       name: 'an exported function',
       exports: 'export function Preview() { return <Page /> }',
-      read: (moduleExports: Record<string, any>) => moduleExports.Preview(),
+      read: (moduleExports: Record<string, any>) => moduleExports.Preview,
     },
     {
       name: 'a default export',
       exports: 'export default wrap(Page)',
-      read: (moduleExports: Record<string, any>) => moduleExports.default(),
+      read: (moduleExports: Record<string, any>) => moduleExports.default,
     },
     {
       name: 'an export list',
       exports: 'export { Page }',
-      read: (moduleExports: Record<string, any>) => moduleExports.Page(),
+      read: (moduleExports: Record<string, any>) => moduleExports.Page,
     },
     {
       name: 'an export alias',
       exports: 'export { Page as View }',
-      read: (moduleExports: Record<string, any>) => moduleExports.View(),
+      read: (moduleExports: Record<string, any>) => moduleExports.View,
     },
     {
       // Source: #8504 (lost case L4).
       name: 'a default export by specifier',
       exports: 'export { Page as default }',
-      read: (moduleExports: Record<string, any>) => moduleExports.default(),
+      read: (moduleExports: Record<string, any>) => moduleExports.default,
     },
   ])(
     'a split component that $name reads renders from both',
@@ -2733,8 +2711,10 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      const loaded = route.options.loader()
-      const rendered = (await route.load('component'))()
+      // The loader returns the element `Preview` renders
+      const element = route.options.loader()
+      const loaded = await renderComponent(() => element)
+      const rendered = await route.render('component')
       expect([loaded, rendered, runs]).toEqual([
         '<p>page</p>',
         '<p>page</p>',
@@ -2762,8 +2742,8 @@ function Page() {
 }
 `)
       expect([
-        (await route.load('pendingComponent'))(),
-        (await route.load('component'))(),
+        await route.render('pendingComponent'),
+        await route.render('component'),
       ]).toEqual(['<p>object</p>', '<p>object</p>'])
     },
   )
@@ -2790,7 +2770,7 @@ function Page() {
 `)
       expect([
         route.options.beforeLoad(),
-        (await route.load('component'))(),
+        await route.render('component'),
       ]).toEqual(['function', '<p>object</p>'])
     },
   )
@@ -2803,7 +2783,7 @@ function Page() {
   test.fails(
     'a split component that a top-level call reads renders from both',
     async () => {
-      const registered: Array<() => string> = []
+      const registered: Array<unknown> = []
       const route = await loadRoute(
         `${head}import { register } from './registry'
 function Page() {
@@ -2815,18 +2795,20 @@ register(Page)
         {
           stubs: {
             './registry': {
-              register: (component: () => string) => {
+              register: (component: unknown) => {
                 registered.push(component)
               },
             },
           },
         },
       )
-      const rendered = (await route.load('component'))()
-      expect([registered.map((component) => component()), rendered]).toEqual([
-        ['<div>page</div>'],
-        '<div>page</div>',
-      ])
+      const rendered = await route.render('component')
+      expect([
+        await Promise.all(
+          registered.map((component) => renderComponent(component)),
+        ),
+        rendered,
+      ]).toEqual([['<div>page</div>'], '<div>page</div>'])
     },
   )
 
@@ -2842,7 +2824,7 @@ export const Route = createFileRoute('/posts')({
   head: () => ({ meta: [{ title: PostsPage.title }] }),
 })
 `)
-    expect([route.options.head(), (await route.load('component'))()]).toEqual([
+    expect([route.options.head(), await route.render('component')]).toEqual([
       { meta: [{ title: 'Posts' }] },
       '<p>posts</p>',
     ])
@@ -2872,16 +2854,17 @@ export const Route = createFileRoute('/posts')({
         {
           stubs: {
             './posts-page': {
-              PostsPage: Object.assign(() => '<p>posts</p>', {
+              PostsPage: Object.assign(() => 'posts', {
                 title: 'Posts',
               }),
             },
           },
         },
       )
-      expect([route.options.head(), (await route.load('component'))()]).toEqual(
-        [{ meta: [{ title: 'Posts' }] }, '<p>posts</p>'],
-      )
+      expect([route.options.head(), await route.render('component')]).toEqual([
+        { meta: [{ title: 'Posts' }] },
+        'posts',
+      ])
     },
   )
 
@@ -2889,15 +2872,17 @@ export const Route = createFileRoute('/posts')({
   // the imported split one, used by another module of the app (ruling P1:
   // through a real importer, not the export list). Adapted from the
   // repository's
-  // examples/solid/start-supabase-basic/src/routes/_authed/posts.$postId.tsx.
+  // examples/solid/start-supabase-basic/src/routes/_authed/posts.$postId.tsx
+  // (written for React here: Solid cannot run in process; the code splitter
+  // handles the import the same way for every framework).
   // Impact: rendering `PostErrorComponent` throws "ErrorComponent is not
   // defined".
   test.fails(
     'an imported split errorComponent that an exported component renders works for an importer',
     async () => {
       const route = await loadRoute(
-        `import { ErrorComponent, createFileRoute } from '@tanstack/solid-router'
-import type { ErrorComponentProps } from '@tanstack/solid-router'
+        `import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 export const Route = createFileRoute('/posts/$postId')({
   loader: ({ params: { postId } }) => postId,
   errorComponent: ErrorComponent,
@@ -2910,26 +2895,17 @@ function PostComponent() {
   return <h4>post</h4>
 }
 `,
-        {
-          targetFramework: 'solid',
-          stubs: {
-            '@tanstack/solid-router': {
-              ErrorComponent: ({ error }: { error: Error }) =>
-                `<p>${error.message}</p>`,
-            },
-          },
-        },
       )
       const importer = await route.importFromRoute(
-        `import { PostErrorComponent } from '${routeSpecifier}'
-export const render = (error) => PostErrorComponent({ error })`,
+        `export { PostErrorComponent } from '${routeSpecifier}'`,
       )
       const error = new Error('boom')
+      const routeError = await route.render('errorComponent', { error })
+      expect(routeError).toContain('boom')
       expect([
-        importer.render(error),
-        (await route.load('errorComponent'))({ error }),
-        (await route.load('component'))(),
-      ]).toEqual(['<p>boom</p>', '<p>boom</p>', '<h4>post</h4>'])
+        await renderComponent(importer.PostErrorComponent, { error }),
+        await route.render('component'),
+      ]).toEqual([routeError, '<h4>post</h4>'])
     },
   )
 
@@ -2948,12 +2924,12 @@ export const Route = createFileRoute('/')({
   component: () => <p>page</p>,
 })
 `,
-        { stubs: { './spinner': { Spinner: () => '<i>spin</i>' } } },
+        { stubs: { './spinner': { Spinner: () => 'spin' } } },
       )
       expect([
-        (await route.load('errorComponent'))(),
-        (await route.load('pendingComponent'))(),
-      ]).toEqual(['<div><i>spin</i></div>', '<i>spin</i>'])
+        await route.render('errorComponent'),
+        await route.render('pendingComponent'),
+      ]).toEqual(['<div>spin</div>', 'spin'])
     },
   )
 })
@@ -2972,7 +2948,7 @@ describe('class components', () => {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `)
-    expect((await route.load('component'))()).toBe('page')
+    expect(await route.render('component')).toBe('page')
   })
 
   // Bug: a route option that names a class cannot be split: the virtual
@@ -2999,15 +2975,14 @@ export const Route = createFileRoute('/')({ component: Page })
 ${declaration}
 export const Route = createFileRoute('/')({ component: Page })
 `,
-          { filename: 'route.jsx', stubs: { react: { Component: class {} } } },
+          { filename: 'route.jsx' },
         )
-        const Page = await route.load('component')
         expect({
-          rendered: new Page().render(),
+          rendered: await route.render('component'),
           split: exported
-            ? route.isLazy('component') ||
+            ? (await route.isLazy('component')) ||
               reportsNotSplit(warn, route.ids.reference!)
-            : route.isLazy('component'),
+            : await route.isLazy('component'),
         }).toEqual({ rendered: '<p>page</p>', split: true })
       } finally {
         warn.mockRestore()
@@ -3039,16 +3014,14 @@ export const Route = createFileRoute('/')({
         {
           filename: 'route.jsx',
           stubs: {
-            react: { Component: class {} },
-            './format': { format: (value: string) => `<${value}>` },
+            './format': { format: (value: string) => `[${value}]` },
           },
         },
       )
-      const Page = await route.load('component')
       expect([
-        eagerImportSources(route).includes('./format'),
-        new Page().render(),
-      ]).toEqual([false, '<p><home></p>'])
+        route.eager.includes('./format'),
+        await route.render('component'),
+      ]).toEqual([false, '<p>[home]</p>'])
     },
   )
 })
@@ -3056,7 +3029,7 @@ export const Route = createFileRoute('/')({
 describe('side-effect imports', () => {
   /** Stubs of `./setup` and `./Page` that record when each module runs. */
   function recordingStubs(log: Array<string>) {
-    const Page = () => '<p>page</p>'
+    const Page = () => 'page'
     return {
       './setup': {
         get ready() {
@@ -3085,7 +3058,7 @@ export const Route = createFileRoute('/')({ component: Page })
       { stubs: recordingStubs(log) },
     )
     expect(log).toEqual(['./setup'])
-    expect((await route.load('component'))()).toBe('<p>page</p>')
+    expect(await route.render('component')).toBe('page')
   })
 
   // Bug: when the split component is imported (`import { Page } from
@@ -3106,7 +3079,7 @@ export const Route = createFileRoute('/')({ component: Page })
         { stubs: recordingStubs(log) },
       )
       expect(log).toEqual(['./Page'])
-      expect((await route.load('component'))()).toBe('<p>page</p>')
+      expect(await route.render('component')).toBe('page')
     },
   )
 })
@@ -3123,13 +3096,9 @@ describe('server-only route options on the client', () => {
    * emitted module imports `./secret-db`, which server-only options the
    * route still has, and what it renders.
    */
-  async function compileForClient(
-    code: string,
-    targetFramework: TargetFramework = 'react',
-  ) {
+  async function compileForClient(code: string) {
     const route = await loadRoute(code, {
       deleteNodes,
-      targetFramework,
       stubs: {
         './secret-db': db,
         './opts': { makeOpts: (options: unknown) => options },
@@ -3140,7 +3109,7 @@ describe('server-only route options on the client', () => {
         importSources(module).includes('./secret-db'),
       ).length,
       serverOptions: deleteNodes.filter((key) => key in route.options),
-      rendered: (await route.load('component'))(),
+      rendered: await route.render('component'),
     }
   }
 
@@ -3162,15 +3131,6 @@ ${serverOptions}
 })`,
     },
     {
-      name: 'a Solid file route',
-      code: `import { createFileRoute } from '@tanstack/solid-router'
-import { db } from './secret-db'
-export const Route = createFileRoute('/')({
-${serverOptions}
-})`,
-      targetFramework: 'solid' as const,
-    },
-    {
       name: 'a root route',
       code: `import { createRootRoute } from '@tanstack/react-router'
 import { db } from './secret-db'
@@ -3188,10 +3148,30 @@ ${serverOptions}
     },
   ])(
     'server-only options of $name written as properties are removed with their imports',
-    async ({ code, targetFramework }) => {
-      expect(await compileForClient(code, targetFramework)).toEqual(stripped)
+    async ({ code }) => {
+      expect(await compileForClient(code)).toEqual(stripped)
     },
   )
+
+  // The Solid router cannot run in process (it ships client-only APIs to
+  // Node): what the client compile of a Solid route still imports is
+  // checked here, the built Solid app runs in
+  // integration/build-frameworks.test.ts.
+  test('server-only options of a Solid file route written as properties are removed with their imports', () => {
+    const { modules } = compileRouteModules(
+      `import { createFileRoute } from '@tanstack/solid-router'
+import { db } from './secret-db'
+export const Route = createFileRoute('/')({
+${serverOptions}
+})`,
+      { deleteNodes, targetFramework: 'solid' },
+    )
+    expect(
+      Object.values(modules).filter((module) =>
+        importSources(module).includes('./secret-db'),
+      ),
+    ).toEqual([])
+  })
 
   // Without `deleteNodes` (a Router app without Start), the options are the
   // route's own and stay.

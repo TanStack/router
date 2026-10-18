@@ -2,8 +2,9 @@
  * Controls of the module linker: modules link like ES modules in a bundle
  * (every import and export form, live bindings, cycles), a dynamic import
  * evaluates its module only when it runs, and every graph evaluates fresh
- * module instances.
+ * module instances; real packages, JSX, the load observers and forks.
  */
+import path from 'node:path'
 import { describe, expect, it, test } from 'vitest'
 import { createModuleGraph } from '../src/module-linker'
 import type { ModuleStub } from '../src/module-linker'
@@ -156,7 +157,7 @@ export const read = () => count
 export { increment }
 export const lazy = () => import('/c.tsx')`,
     '/b.tsx': `export let count = 0\nexport function increment() { count++ }`,
-    '/c.tsx': `export const loaded = <p>c</p>`,
+    '/c.tsx': `export const loaded = { module: 'c' }`,
   }
   const resolve = (specifier: string) =>
     specifier in modules ? specifier : undefined
@@ -173,7 +174,7 @@ export const lazy = () => import('/c.tsx')`,
     const session = createModuleGraph({ modules, resolve })
     const a = await session.import('/a.tsx')
     expect([...session.evaluated]).toEqual(['/b.tsx', '/a.tsx'])
-    expect((await a.lazy()).loaded).toBe('<p>c</p>')
+    expect((await a.lazy()).loaded).toEqual({ module: 'c' })
     expect([...session.evaluated]).toEqual(['/b.tsx', '/a.tsx', '/c.tsx'])
   })
 
@@ -335,6 +336,9 @@ describe('probeDynamicImports', () => {
       probe('stub'),
       probe('none'),
     ]).toEqual([['/first.tsx'], ['/second.tsx'], ['lib'], []])
+    // Probing again names the module again.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect([probe('first'), probe('stub')]).toEqual([['/first.tsx'], ['lib']])
     expect([...graph.evaluated]).toEqual(['/route.tsx'])
     // The imports work as usual afterwards.
     expect([await loaders.first(), (await loaders.second()).value]).toEqual([
@@ -346,5 +350,159 @@ describe('probeDynamicImports', () => {
       '/first.tsx',
       '/second.tsx',
     ])
+    // A dynamic import of a module that already loaded is still named.
+    expect(probe('first')).toEqual(['/first.tsx'])
+    expect(await loaders.first()).toBe('first')
+  })
+})
+
+// The package's own directory: its dependencies are the real packages a
+// graph can link (`globals` is a CommonJS package, `vite` an ES one).
+const packageDirectory = path.join(import.meta.dirname, '..')
+
+describe('packages', () => {
+  it('links a bare specifier to the real package, one instance for every graph and for importPackage', async () => {
+    const modules = {
+      '/a.ts': `import globals from 'globals'
+import { version } from 'vite'
+export { globals, version }`,
+    }
+    const first = createModuleGraph({ modules, packages: packageDirectory })
+    const second = createModuleGraph({ modules, packages: packageDirectory })
+    const [a, b] = [await first.import('/a.ts'), await second.import('/a.ts')]
+    const real = await first.importPackage('globals')
+    expect(Object.keys(a.globals)).toContain('browser')
+    expect(a.globals).toBe(real.default)
+    expect(b.globals).toBe(real.default)
+    expect(a.version).toBe((await second.importPackage('vite')).version)
+  })
+
+  it('stubs win over packages, and a specifier no package provides goes to fallbackStub', async () => {
+    const graph = createModuleGraph({
+      modules: {
+        '/a.ts': `export { default as globals } from 'globals'
+export { missing } from 'not-installed-package'`,
+      },
+      packages: packageDirectory,
+      stubs: { globals: { default: 'stubbed' } },
+      fallbackStub: (_, names) =>
+        Object.fromEntries(
+          [...names].map((name) => [name, `fallback ${name}`]),
+        ),
+    })
+    expect({ ...(await graph.import('/a.ts')) }).toEqual({
+      globals: 'stubbed',
+      missing: 'fallback missing',
+    })
+  })
+
+  it('without a fallback, an import of a package that does not resolve fails to link', async () => {
+    const graph = createModuleGraph({
+      modules: { '/a.ts': `import 'not-installed-package'` },
+      packages: packageDirectory,
+    })
+    await expect(graph.import('/a.ts')).rejects.toThrow(/not-installed-package/)
+  })
+})
+
+describe('JSX', () => {
+  // A control of how the default transform compiles JSX, with a stub that
+  // records the calls (no renderer): React's automatic runtime, as
+  // `@vitejs/plugin-react` compiles it.
+  it('compiles to calls of the automatic runtime of jsxImportSource (default react)', async () => {
+    const runtime = {
+      jsx: (type: unknown, props: unknown) => ({ type, props }),
+      jsxs: (type: unknown, props: unknown) => ({ type, props, static: true }),
+      Fragment: 'Fragment',
+    }
+    const code = `export const element = <p id="x">{'a'}</p>
+export const fragment = <><i /><b /></>`
+    const react = await createModuleGraph({
+      modules: { '/a.tsx': code },
+      stubs: { 'react/jsx-runtime': runtime },
+    }).import('/a.tsx')
+    expect(react.element).toEqual({
+      type: 'p',
+      props: { id: 'x', children: 'a' },
+    })
+    expect(react.fragment).toEqual({
+      type: 'Fragment',
+      props: {
+        children: [
+          { type: 'i', props: {} },
+          { type: 'b', props: {} },
+        ],
+      },
+      static: true,
+    })
+    const other = await createModuleGraph({
+      modules: { '/a.tsx': code },
+      jsxImportSource: 'other',
+      stubs: { 'other/jsx-runtime': runtime },
+    }).import('/a.tsx')
+    expect(other.element).toEqual(react.element)
+  })
+})
+
+describe('requested', () => {
+  const modules: Record<string, string> = {
+    '/route.tsx': `import { helper } from '/shared.tsx'
+import { value } from 'lib'
+export const read = () => [helper, value]
+export const lazy = () => import('/chunk.tsx')`,
+    '/shared.tsx': `import 'side-effect'
+export const helper = 'helper'`,
+    '/chunk.tsx': `import { helper } from '/shared.tsx'
+import { other } from 'lib'
+export const chunk = [helper, other]`,
+  }
+  const resolve = (specifier: string) =>
+    specifier in modules ? specifier : undefined
+  const stubs = { lib: { value: 'value', other: 'other' }, 'side-effect': {} }
+
+  it('records each module the graph requests once: static imports when they link, dynamic ones when they run', async () => {
+    const graph = createModuleGraph({ modules, resolve, stubs })
+    const route = await graph.import('/route.tsx')
+    const eager = ['/shared.tsx', 'lib', 'side-effect']
+    expect([...graph.requested].sort()).toEqual(eager)
+    // A probed import is not requested.
+    expect(graph.probeDynamicImports(() => route.lazy())).toEqual([
+      '/chunk.tsx',
+    ])
+    expect([...graph.requested].sort()).toEqual(eager)
+    expect((await route.lazy()).chunk).toEqual(['helper', 'other'])
+    expect([...graph.requested].sort()).toEqual(['/chunk.tsx', ...eager])
+  })
+
+  it('names packages by their specifier, and not what importPackage loads', async () => {
+    const graph = createModuleGraph({
+      modules: { '/a.ts': `export { default } from 'globals'` },
+      packages: packageDirectory,
+    })
+    await graph.importPackage('vite')
+    await graph.import('/a.ts')
+    expect(graph.requested).toEqual(['globals'])
+  })
+})
+
+describe('fork', () => {
+  it('evaluates the same modules, added ones included, as fresh instances with the same stubs', async () => {
+    const counter = { count: 0 }
+    const graph = createModuleGraph({
+      modules: {
+        '/a.ts': `import { counter } from 'counter'
+export let own = 0
+export const bump = () => [++own, ++counter.count]`,
+      },
+      stubs: { counter: { counter } },
+    })
+    graph.add('/b.ts', `export { bump } from '/a.ts'`)
+    const first = await graph.import('/b.ts')
+    first.bump()
+    const fork = graph.fork()
+    const forked = await fork.import('/b.ts')
+    expect(forked.bump()).toEqual([1, 2])
+    expect([...fork.evaluated]).toEqual(['/a.ts', '/b.ts'])
+    expect([...graph.evaluated]).toEqual(['/a.ts', '/b.ts'])
   })
 })

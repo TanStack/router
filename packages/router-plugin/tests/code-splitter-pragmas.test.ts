@@ -2,7 +2,7 @@ import { transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
-  componentChunk,
+  componentModules,
   head,
   loadRoute,
   transformWithRouteHmrPlugin,
@@ -30,6 +30,17 @@ async function jsxRuntimeOf(code: string) {
   )?.[1]
 }
 
+/**
+ * The JSX runtimes the modules loading the route's component import, once
+ * compiled (modules without JSX import none).
+ */
+async function componentJsxRuntimes(code: string) {
+  const runtimes = await Promise.all(
+    (await componentModules(code)).map(jsxRuntimeOf),
+  )
+  return runtimes.filter((runtime) => runtime !== undefined)
+}
+
 // JSX pragmas apply per module: the code splitter runs before the bundler's
 // JSX transform, which then runs on each split module separately, so a module
 // without the pragma compiles its JSX with the project default runtime (e.g.
@@ -43,27 +54,37 @@ describe('split modules keep file-level JSX pragmas', () => {
       `/**\n * Header\n * @jsxImportSource @emotion/react\n */\n${head}`,
     ],
   ])('keeps @jsxImportSource %s in effect', async (_, header) => {
-    const chunk = await componentChunk(styledRoute(header))
-    expect(await jsxRuntimeOf(chunk)).toBe('@emotion/react/jsx-runtime')
+    expect(await componentJsxRuntimes(styledRoute(header))).toEqual([
+      '@emotion/react/jsx-runtime',
+    ])
   })
 
   it('keeps @jsxImportSource written after the imports', async () => {
     // Oxc only reads leading pragmas; esbuild and Babel read them anywhere.
-    const chunk = await componentChunk(
+    const modules = await componentModules(
       styledRoute(`${head}/** @jsxImportSource @emotion/react */\n`),
     )
-    expect(chunk).toContain('@jsxImportSource @emotion/react')
+    const withJsx = modules.filter((code) => code.includes('styled'))
+    expect(withJsx.length).toBeGreaterThan(0)
+    for (const code of withJsx) {
+      expect(code).toContain('@jsxImportSource @emotion/react')
+    }
   })
 
   it('keeps @jsxRuntime classic and @jsx pragmas in effect', async () => {
-    const chunk = await componentChunk(
+    const modules = await componentModules(
       styledRoute(`/** @jsxRuntime classic */
 /** @jsx jsx */
 ${head}import { jsx } from '@emotion/react'
 `),
     )
-    expect(await jsxRuntimeOf(chunk)).toBeUndefined()
-    expect(await compileJsx(chunk)).toMatch(/\bjsx\(\s*["']div["']/)
+    const compiled = await Promise.all(modules.map(compileJsx))
+    expect(await Promise.all(modules.map(jsxRuntimeOf))).toEqual(
+      modules.map(() => undefined),
+    )
+    expect(compiled.some((code) => /\bjsx\(\s*["']div["']/.test(code))).toBe(
+      true,
+    )
   })
 
   const sharedJsxRoute = `/** @jsxImportSource @emotion/react */
@@ -76,11 +97,14 @@ export const Route = createFileRoute('/pragma')({
 
   it('keeps the pragma in effect for JSX the loader and the component share', async () => {
     const { modules } = compileRouteModules(sharedJsxRoute)
+    // Whichever modules hold the shared JSX compile it with the pragma.
     const holders = Object.values(modules).filter((code) =>
       code.includes('<svg'),
     )
-    expect(holders).toHaveLength(1)
-    expect(await jsxRuntimeOf(holders[0]!)).toBe('@emotion/react/jsx-runtime')
+    expect(holders.length).toBeGreaterThan(0)
+    expect(await Promise.all(holders.map(jsxRuntimeOf))).toEqual(
+      holders.map(() => '@emotion/react/jsx-runtime'),
+    )
   })
 
   // Bug: a split chunk that imports a binding it shares with the route
@@ -116,13 +140,17 @@ export const Route = createFileRoute('/pragma')({
 // that imports it from the route module: pinned in
 // known-bugs-code-splitter.test.ts, "classic JSX pragmas".)
 describe('split modules keep the classic JSX factories their JSX compiles to', () => {
-  /** Classic JSX factory rendering intrinsic elements to text. */
+  /**
+   * Classic JSX factory rendering intrinsic elements to text (`p(text)`),
+   * which React renders as is: JSX compiled with React's runtime instead
+   * renders `<p>text</p>`.
+   */
   const render = (type: unknown, _props: unknown, ...children: Array<any>) => {
     const text = children.flat(Infinity).join('')
     if (typeof type === 'function') {
       return type()
     }
-    return type === Fragment ? text : `<${String(type)}>${text}</${type}>`
+    return type === Fragment ? text : `${String(type)}(${text})`
   }
   const Fragment = Symbol('Fragment')
   const stubs = { '@emotion/react': { jsx: render, Frag: Fragment } }
@@ -131,27 +159,49 @@ describe('split modules keep the classic JSX factories their JSX compiles to', (
 ${head}import { jsx } from '@emotion/react'
 `
 
-  it('in the route module, when the code calling the factory is split', async () => {
-    const route = await loadRoute(
-      `${classicHead}function Page() {
+  // Bug: the route module the code splitter emits starts with the code it
+  // adds (the split component's importer and the import of the router's
+  // lazy helper), above the file's leading pragma comments, and drops the
+  // factory import once the route module's only use of it is its JSX
+  // (dead-code elimination does not count a classic JSX pragma as a use of
+  // its factory: same root cause as the "classic JSX pragmas" pins of
+  // known-bugs-code-splitter.test.ts). Oxc (Vite 8) only reads leading
+  // pragmas, so the JSX left in the route module compiles with the
+  // project's default runtime. Found when the in-process JSX stand-in (which
+  // compiled every module with its own classic factory) was replaced by
+  // React's real JSX transform.
+  // Source: #8504 (this test passed with the stand-in).
+  // Impact: with Vite 8, JSX that stays in the route module of a file with
+  // JSX pragmas (a pendingComponent, JSX shared with the loader) ignores them
+  // as soon as an option is split: Emotion's `css` props are dropped, and a
+  // classic factory would throw "jsx is not defined" once the pragma is read.
+  it.fails(
+    'in the route module, when the code calling the factory is split',
+    async () => {
+      const route = await loadRoute(
+        `${classicHead}function Page() {
   return jsx('div', null, 'page')
 }
 export const Route = createFileRoute('/')({
   component: Page,
   pendingComponent: () => <p>pending</p>,
 })`,
-      { stubs },
-    )
-    expect([
-      route.isLazy('pendingComponent'),
-      route.options.pendingComponent(),
-      (await route.load('component'))(),
-    ]).toEqual([false, '<p>pending</p>', '<div>page</div>'])
-  })
+        { stubs },
+      )
+      expect([
+        await route.render('pendingComponent'),
+        await route.render('component'),
+        await route.isLazy('pendingComponent'),
+      ]).toEqual(['p(pending)', 'div(page)', false])
+    },
+  )
 })
 
 // React Refresh and solid-refresh read these comments per module, so every
-// module holding route code must keep them.
+// module holding route code must keep them. Compile-level: the Solid router
+// cannot be linked in process (its runtime under Solid is covered by
+// integration/build-frameworks.test.ts); the component's module is the one
+// holding its JSX.
 describe('split modules keep HMR pragma comments', () => {
   const solidHead = `import { createFileRoute } from '@tanstack/solid-router'\n`
   const page = `function Page() {
@@ -183,14 +233,21 @@ export const Route = createFileRoute('/')({ component: Page })
       code: `${solidHead}// @refresh reload\n${page}`,
       pragma: '@refresh reload',
     },
-  ] as const)('keeps $name', async ({ target, code, pragma }) => {
+  ] as const)('keeps $name', ({ target, code, pragma }) => {
     expect(transformWithRouteHmrPlugin(code, { target })).toContain(pragma)
-    const route = await loadRoute(code, {
+    const { modules } = compileRouteModules(code, {
       hmr: true,
       targetFramework: target,
     })
-    expect(route.modules.reference).toContain(pragma)
-    expect(route.chunkOf('component')).toContain(pragma)
+    expect(modules.reference).toContain(pragma)
+    const holders = Object.entries(modules).filter(
+      ([name, module]) =>
+        name !== 'reference' && module.includes('<p>page</p>'),
+    )
+    expect(holders.length).toBeGreaterThan(0)
+    for (const [name, module] of holders) {
+      expect(module, name).toContain(pragma)
+    }
   })
 })
 

@@ -1,11 +1,11 @@
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   expectValidModules,
   head,
   importSources,
   loadRoute,
 } from './regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 const pageRoute = (body: string) => `${head}${body}
 export const Route = createFileRoute('/')({ component: Page })
@@ -143,8 +143,8 @@ const Page = () => <p>{getComponentName({ Page })}</p>`,
   ])('$name', async ({ body, expected }) => {
     const route = await loadRoute(pageRoute(body))
     await expectValidModules(route.modules)
-    expect(route.isLazy('component')).toBe(true)
-    expect((await route.load('component'))({})).toBe(expected)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.render('component')).toBe(expected)
   })
 })
 
@@ -160,6 +160,7 @@ describe('names a route option declares itself do not reference module bindings'
     return <div>{label}{obj.a(1)}</div>
   },`,
       unread: 'component',
+      rendered: '<div>local1</div>',
     },
     {
       // Source: Next.js ssg/getServerSideProps/query-usage
@@ -169,12 +170,14 @@ describe('names a route option declares itself do not reference module bindings'
     return label
   },
   component: () => <div>{label}{format()}</div>,`,
+      rendered: '<div>moduleformat</div>',
     },
     {
       // Source: Next.js ssg/getServerSideProps/query-usage
       name: 'destructured parameters',
       options: `loader: ({ label }: any) => [label, format()],
   component: ({ format }: any) => <div>{format}{label}</div>,`,
+      rendered: '<div>module</div>',
     },
     {
       // Source: Qwik optimizer test.rs should_not_auto_export_var_shadowed_in_{catch,do_while,switch,labeled_block}
@@ -189,8 +192,9 @@ describe('names a route option declares itself do not reference module bindings'
     return <p>{i}</p>
   },`,
       unread: 'component',
+      rendered: '<p>3</p>',
     },
-  ])('$name', async ({ options, unread }) => {
+  ])('$name', async ({ options, unread, rendered }) => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     onTestFinished(() => {
       vi.restoreAllMocks()
@@ -216,15 +220,18 @@ export const Route = createFileRoute('/')({
       },
     )
     await expectValidModules(route.modules)
-    // The option's own names do not make the split component's module load
-    // the module-level `label`, which only the loader reads. (When only the
-    // split component reads it, when its initializer runs is free.)
-    if (unread) {
-      expect(importSources(route.chunkOf(unread))).not.toContain('./load')
-    }
     route.options.loader({})
-    expect(typeof (await route.load('component'))({})).toBe('string')
+    expect(await route.render('component')).toBe(rendered)
     expect(loads).toBe(1)
+    // The option's own names do not make the split component's modules load
+    // the module-level `label`, which only the loader reads. (When only the
+    // split component reads it, when its initializer runs is free.) (After
+    // the count: `loadedBy` evaluates the route module again in a fork.)
+    if (unread) {
+      expect(
+        (await route.loadedBy(unread)).flatMap(importSources),
+      ).not.toContain('./load')
+    }
   })
 
   // Source: Next.js ssg/getStaticProps/should-not-remove-import-used-in-render
@@ -252,7 +259,7 @@ export const Route = createFileRoute('/')({
           './ui': {
             A: () => 'A',
             B: {
-              Deep: { C: ({ icon }: { icon: string }) => `<c>${icon}</c>` },
+              Deep: { C: ({ icon }: { icon: unknown }) => icon },
             },
           },
           './load': {
@@ -264,18 +271,23 @@ export const Route = createFileRoute('/')({
         },
       },
     )
-    expect(importSources(route.modules.reference!)).not.toContain('./ui')
-    expect(importSources(route.chunkOf('component'))).not.toContain('./load')
+    // Nothing the route module loads requests what only the component reads.
+    expect(route.eager).not.toContain('./ui')
     await expectValidModules(route.modules)
     expect([
       route.options.loader(),
-      (await route.load('component'))(),
+      await route.render('component'),
       loads,
     ]).toEqual([
       ['loaded', 'loaded', 'loaded'],
-      '<p><option></option><a>home</a><c>A</c></p>',
+      '<p title="x"><option label="x"></option><a href="/">home</a>A</p>',
       3,
     ])
+    // (After the count: `loadedBy` evaluates the route module again in a
+    // fork.)
+    expect(
+      (await route.loadedBy('component')).flatMap(importSources),
+    ).not.toContain('./load')
   })
 
   // Source: React Router route-chunks-test.ts "computed object property"
@@ -295,10 +307,13 @@ export const Route = createFileRoute('/')({
       { stubs: { './load': { load: () => 'loaded' } } },
     )
     await expectValidModules(route.modules)
-    expect(importSources(route.chunkOf('component'))).not.toContain('./load')
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      [['loaded', 'kind'], '<div>12</div>'],
-    )
+    expect(
+      (await route.loadedBy('component')).flatMap(importSources),
+    ).not.toContain('./load')
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      ['loaded', 'kind'],
+      '<div>12</div>',
+    ])
   })
 
   it('neither do declarations in helpers that move into the chunk, named like a shared binding', async () => {
@@ -331,9 +346,10 @@ export const Route = createFileRoute('/')({
       },
     )
     await expectValidModules(route.modules)
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      ['shared', '<p>var,function,class,enum,shared</p>'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      'shared',
+      '<p>var,function,class,enum,shared</p>',
+    ])
   })
 })
 
@@ -394,9 +410,10 @@ export const Route = createFileRoute('/')({
 `,
       { stubs: { './x': { x: 'x' } } },
     )
-    expect(importSources(route.modules.reference!)).not.toContain('./x')
+    // Nothing the route module loads requests what only the component reads.
+    expect(route.eager).not.toContain('./x')
     await expectValidModules(route.modules)
-    expect((await route.load('component'))()).toBe(`<p>${rendered}</p>`)
+    expect(await route.render('component')).toBe(`<p>${rendered}</p>`)
   })
 
   it.each([
@@ -440,10 +457,9 @@ export const Route = createFileRoute('/')({ loader: ${loader}, component: Page }
       { stubs: { './store': { store: { value: 'stored' } } } },
     )
     await expectValidModules(route.modules)
-    expect([
-      route.options.loader({}),
-      (await route.load('component'))(),
-    ]).toEqual(['stored', 'page'])
+    expect([route.options.loader({}), await route.render('component')]).toEqual(
+      ['stored', 'page'],
+    )
   })
 })
 
@@ -465,9 +481,9 @@ export const Route = createFileRoute('/js')({
       )
       await expectValidModules(route.modules)
       expect([
-        route.isLazy('component'),
+        await route.isLazy('component'),
         route.options.loader(),
-        (await route.load('component'))(),
+        await route.render('component'),
       ]).toEqual([true, 'label', '<p>label</p>'])
     },
   )
@@ -487,8 +503,8 @@ function Page() {
       { filename: 'route.js' },
     )
     await expectValidModules(route.modules)
-    expect(route.isLazy('component')).toBe(true)
-    expect((await route.load('component'))()).toBe('body,second,first')
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.render('component')).toBe('body,second,first')
   })
 })
 
@@ -508,8 +524,9 @@ export const Route = createFileRoute('/')({
     for (const [name, code] of Object.entries(route.modules)) {
       expect(await getModuleErrors(code, 'module.ts'), name).toEqual([])
     }
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      [1, 'page'],
-    )
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      1,
+      'page',
+    ])
   })
 })

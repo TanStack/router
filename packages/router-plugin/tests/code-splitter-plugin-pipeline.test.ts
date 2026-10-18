@@ -12,6 +12,7 @@ import {
   importSources,
   loadRoute,
   parseModule,
+  renderComponent,
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
@@ -131,23 +132,19 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
       pluginOptions: { codeSplittingOptions: { splitBehavior } },
     })
     await expectValidModules(route.modules)
-    const lazy = routeModuleRequests(
-      route.modules.reference!,
-      route.graph.id,
-    ).lazy
-    // One lazy module provides the three options.
-    expect(new Set(lazy.map((request) => request.specifier)).size).toBe(1)
-    const evaluatedBefore = route.evaluated.length
-    const values = []
-    for (const option of ['loader', 'component', 'errorComponent']) {
-      expect(route.isLazy(option), option).toBe(true)
-      values.push(await route.load(option))
-    }
-    expect(route.evaluated.length).toBe(evaluatedBefore + 1)
-    expect([values[0](), values[1](), values[2]()]).toEqual([
+    expect([
+      await route.options.loader(),
+      await route.render('component'),
+      await route.render('errorComponent'),
+    ]).toEqual([
       { name: 'behavior' },
       '<p>behavior</p>',
       '<p>error in behavior</p>',
+    ])
+    // The three options load lazily, together: loading one makes the
+    // others available.
+    expect(await route.groups()).toEqual([
+      ['component', 'errorComponent', 'loader'],
     ])
   })
 
@@ -180,10 +177,11 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
   ])('loads the split modules of %s', async (filename) => {
     const route = await loadRoute(routeSource('route'), { filename })
     await expectValidModules(route.modules)
-    expect(route.isLazy('component')).toBe(true)
-    expect([route.options.loader(), (await route.load('component'))()]).toEqual(
-      [{ name: 'route' }, '<p>route</p>'],
-    )
+    expect(await route.isLazy('component')).toBe(true)
+    expect([route.options.loader(), await route.render('component')]).toEqual([
+      { name: 'route' },
+      '<p>route</p>',
+    ])
   })
 
   // The plugins of a real `@vitejs/plugin-react` instance, as Vite resolves
@@ -253,7 +251,7 @@ export const Route = createFileRoute('/')({
   component: () => <p>{label.text}</p>,
 })
 `)
-    expect((await before.load('component'))()).toBe('<p>before</p>')
+    expect(await before.render('component')).toBe('<p>before</p>')
     const after = await load(`${head}import { label } from './label'
 export const Route = createFileRoute('/')({
   loader: () => 'data',
@@ -261,23 +259,25 @@ export const Route = createFileRoute('/')({
 })
 `)
     await expectValidModules(after.modules)
-    expect([after.options.loader(), (await after.load('component'))()]).toEqual(
-      ['data', '<p>imported</p>'],
-    )
+    expect([after.options.loader(), await after.render('component')]).toEqual([
+      'data',
+      '<p>imported</p>',
+    ])
   })
 
   // Each framework's route module imports the lazy route helpers from its
   // own router package, and no module imports another framework's router.
+  // Vue routes load with the real vue-router; the Solid router cannot be
+  // linked in process (its server entry is JSX source for bundlers), so the
+  // Solid route is checked at compile level here and runs in real Solid
+  // builds in integration/build-frameworks.test.ts.
   describe.each(['solid', 'vue'] as const)('a %s route', (framework) => {
     const routerPackage = `@tanstack/${framework}-router`
     const otherRouters = ['react', 'solid', 'vue']
       .filter((other) => other !== framework)
       .map((other) => `@tanstack/${other}-router`)
     // Route hooks return an accessor in Solid and a ref in Vue
-    const loaderData =
-      framework === 'solid'
-        ? { read: 'posts()', value: () => ['a'] }
-        : { read: 'posts.value', value: { value: ['a'] } }
+    const read = framework === 'solid' ? 'posts()' : 'posts.value'
 
     it.each([
       { groupings: undefined, loaderSplit: false },
@@ -285,8 +285,7 @@ export const Route = createFileRoute('/')({
     ])(
       'loads its split options with groupings $groupings',
       async ({ groupings, loaderSplit }) => {
-        const route = await loadRoute(
-          `import { createFileRoute, Outlet } from '${routerPackage}'
+        const code = `import { createFileRoute, Outlet } from '${routerPackage}'
 import { fetchPosts } from './posts'
 export const Route = createFileRoute('/posts')({
 ${groupings ? `  codeSplitGroupings: ${groupings},\n` : ''}  loader: fetchPosts,
@@ -294,32 +293,32 @@ ${groupings ? `  codeSplitGroupings: ${groupings},\n` : ''}  loader: fetchPosts,
 })
 const PostsComponent = () => {
   const posts = Route.useLoaderData()
-  return <ul>{${loaderData.read}.length}<Outlet /></ul>
+  return <ul>{${read}.length}<Outlet /></ul>
 }
-`,
-          {
-            targetFramework: framework,
-            stubs: {
-              './posts': { fetchPosts: () => ['post'] },
-              [routerPackage]: {
-                createFileRoute: () => (options: unknown) => ({
-                  options,
-                  useLoaderData: () => loaderData.value,
-                }),
-              },
-            },
-          },
-        )
-        await expectValidModules(route.modules)
-        for (const [name, code] of Object.entries(route.modules)) {
+`
+        const { modules } = compileRouteModules(code, {
+          targetFramework: framework,
+          routeId: '/posts',
+        })
+        await expectValidModules(modules)
+        for (const [name, module] of Object.entries(modules)) {
           for (const other of otherRouters) {
-            expect(importSources(code), name).not.toContain(other)
+            expect(importSources(module), name).not.toContain(other)
           }
         }
-        expect(route.isLazy('component')).toBe(true)
-        expect((await route.load('component'))()).toBe('<ul>1</ul>')
-        expect(route.isLazy('loader')).toBe(loaderSplit)
-        expect(await route.options.loader()).toEqual(['post'])
+        if (framework === 'solid') {
+          return
+        }
+        const route = await loadRoute(code, {
+          targetFramework: framework,
+          routeId: '/posts',
+          stubs: { './posts': { fetchPosts: () => ['post'] } },
+        })
+        expect([
+          (await route.renderRoute()).replace(/<!--.*?-->/g, ''),
+          await route.isLazy('component'),
+          await route.isLazy('loader'),
+        ]).toEqual(['<ul>1</ul>', true, loaderSplit])
       },
     )
   })
@@ -496,6 +495,10 @@ export const Route = createFileRoute('/hmr')({
     })
   }
 
+  /** Server-rendered HTML without Vue's and Solid's hydration markers. */
+  const html = (rendered: string) =>
+    rendered.replace(/<!--.*?-->| data-hk="[^"]*"/g, '')
+
   /** Stubs of the router package of `target`. */
   const routerStubs = (target: 'solid' | 'vue') => ({
     [`@tanstack/${target}-router`]: {
@@ -510,6 +513,7 @@ export const Route = createFileRoute('/hmr')({
       expect(await getModuleErrors(output)).toEqual([])
       let accepted = 0
       const { Route } = await evaluateModule(output, routerStubs(target), {
+        framework: target,
         importMeta: {
           hot: {
             data: {},
@@ -521,7 +525,11 @@ export const Route = createFileRoute('/hmr')({
         },
       })
       expect(accepted).toBe(1)
-      expect((Route as any).options.component()).toBe('<p>hmr</p>')
+      expect(
+        html(
+          await renderComponent((Route as any).options.component, {}, target),
+        ),
+      ).toBe('<p>hmr</p>')
     },
   )
 
@@ -541,11 +549,16 @@ export const Route = createFileRoute('/hmr')({
     )
     expect(await getModuleErrors(output)).toEqual([])
     const { Route } = await evaluateModule(output, routerStubs('solid'), {
+      framework: 'solid',
       importMeta: {
         hot: { data: {}, accept: () => {}, dispose: () => {} },
       },
     })
-    expect((Route as any).options.component()).toBe('<p>hmr</p>')
+    expect(
+      html(
+        await renderComponent((Route as any).options.component, {}, 'solid'),
+      ),
+    ).toBe('<p>hmr</p>')
   })
 
   it('hot-updates a non-React route with webpack HMR', async () => {
@@ -659,8 +672,8 @@ export const Route = (() =>
       )
       await expectValidModules(loaded.modules)
       expect({
-        rendered: [loaded.options.loader(), (await loaded.load('component'))()],
-        splitOrReported: loaded.isLazy('component') || reported,
+        rendered: [loaded.options.loader(), await loaded.render('component')],
+        splitOrReported: (await loaded.isLazy('component')) || reported,
       }).toEqual({ rendered: ['data', '<p>made</p>'], splitOrReported: true })
     },
   )
@@ -798,14 +811,22 @@ ${route}
           ),
         (loaded) => loaded.ids.reference!,
       )
-      expect({
-        rendered: [
-          await (await loaded.load('loader'))(),
-          (await loaded.load('component'))(),
-        ],
-        splitOrReported:
-          split.every((option) => loaded.isLazy(option)) || reported,
-      }).toEqual({ rendered: expected, splitOrReported: true })
+      const rendered = [
+        await (await loaded.load('loader'))(),
+        await loaded.render('component'),
+      ]
+      let splitOrReported = reported
+      if (!reported) {
+        const lazy = []
+        for (const option of split) {
+          lazy.push(await loaded.isLazy(option))
+        }
+        splitOrReported = lazy.every(Boolean)
+      }
+      expect({ rendered, splitOrReported }).toEqual({
+        rendered: expected,
+        splitOrReported: true,
+      })
     },
   )
 
