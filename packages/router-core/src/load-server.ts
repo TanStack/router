@@ -333,6 +333,7 @@ async function contextualize(
           signal?.throwIfAborted()
           if (
             process.env.NODE_ENV !== 'production' &&
+            !isRedirect(routeContext) &&
             contextOption.dehydrate === undefined &&
             !(warnedAsyncContexts ??= new WeakSet()).has(route)
           ) {
@@ -341,6 +342,9 @@ async function contextualize(
               `TanStack Router: the async \`context\` of route "${route.id}" runs again on the client during hydration; write \`context: { handler, dehydrate: true }\` to send its result, or \`dehydrate: false\` to silence this warning.`,
             )
           }
+        }
+        if (isRedirect(routeContext)) {
+          throw routeContext
         }
         routeContext ??= undefined
         const dehydrate = contextOption.dehydrate

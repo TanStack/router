@@ -231,12 +231,14 @@ export type ValidateSerializableLifecycleResult<
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
+  TExtraControlFlow = NotFoundError,
 > =
   ValidateSerializableLifecycleResultGate<
     TRegister,
     TParentRoute,
     TSSR,
-    TFn
+    TFn,
+    TExtraControlFlow
   > extends infer TInput
     ? TInput
     : never
@@ -246,16 +248,24 @@ type ValidateSerializableLifecycleResultGate<
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
+  TExtraControlFlow,
 > =
   false extends RegisteredSsr<TRegister>
     ? any
-    : ValidateSerializableLifecycleResultSSR<TRegister, TParentRoute, TSSR, TFn>
+    : ValidateSerializableLifecycleResultSSR<
+        TRegister,
+        TParentRoute,
+        TSSR,
+        TFn,
+        TExtraControlFlow
+      >
 
 export type ValidateSerializableLifecycleResultSSR<
   TRegister,
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
+  TExtraControlFlow = NotFoundError,
 > =
   ResolveAllSSR<TParentRoute, TSSR> extends false
     ? any
@@ -263,21 +273,35 @@ export type ValidateSerializableLifecycleResultSSR<
       ? any
       : LooseReturnType<TFn> extends infer TReturn
         ? [TReturn] extends [Promise<infer TAwaited>]
-          ? Promise<ValidateSerializableLifecycleData<TRegister, TAwaited>>
-          : ValidateSerializableLifecycleData<TRegister, TReturn>
+          ? Promise<
+              ValidateSerializableLifecycleData<
+                TRegister,
+                TAwaited,
+                TExtraControlFlow
+              >
+            >
+          : ValidateSerializableLifecycleData<
+              TRegister,
+              TReturn,
+              TExtraControlFlow
+            >
         : never
 
-// A returned redirect or notFound is control flow, not data, so only the rest is
-// validated. Next to control flow, a valid result is the target as written: a
+// Redirects are control flow. Existing beforeLoad/loader returns also exempt
+// NotFoundError; context passes never because it treats returned not-found objects
+// as data. Next to control flow, a valid result is the target as written: a
 // union of the validated data and the all-optional NotFoundError would accept any
 // object in the function form's intersection check. For the same reason the
 // result is not distributed over its members.
-type ValidateSerializableLifecycleData<TRegister, T> = [
-  LifecycleControlFlow<T>,
+type ValidateSerializableLifecycleData<TRegister, T, TExtraControlFlow> = [
+  LifecycleControlFlow<T, TExtraControlFlow>,
 ] extends [never]
   ? ValidateSerializableInput<TRegister, T>
-  : ValidateSerializableInput<TRegister, LifecycleData<T>> extends infer TValid
-    ? [LifecycleData<T>] extends [TValid]
+  : ValidateSerializableInput<
+        TRegister,
+        LifecycleData<T, TExtraControlFlow>
+      > extends infer TValid
+    ? [LifecycleData<T, TExtraControlFlow>] extends [TValid]
       ? T
       : TValid
     : never
@@ -285,15 +309,18 @@ type ValidateSerializableLifecycleData<TRegister, T> = [
 // A redirect is a Response with `options`, as `isRedirect` checks; its router
 // type does not matter. An object that is only assignable to NotFoundError
 // (`{ data: () => 1 }`) is data.
-type LifecycleControlFlow<T> = T extends Response & { options: object }
+type LifecycleControlFlow<T, TExtraControlFlow> = T extends Response & {
+  options: object
+}
   ? T
-  : T extends NotFoundError
-    ? NotFoundError extends T
+  : T extends TExtraControlFlow
+    ? TExtraControlFlow extends T
       ? T
       : never
     : never
 
-type LifecycleData<T> = T extends LifecycleControlFlow<T> ? never : T
+type LifecycleData<T, TExtraControlFlow> =
+  T extends LifecycleControlFlow<T, TExtraControlFlow> ? never : T
 
 /**
  * Same gate as ValidateSerializableLifecycleResult, but for the WIRE value returned

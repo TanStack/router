@@ -6,7 +6,7 @@ import { rootRouteId } from './root'
 import type { LazyRoute } from './fileRoute'
 import type { RouteInterpolation } from './path'
 import type { NotFoundError } from './not-found'
-import type { RedirectFnRoute } from './redirect'
+import type { AnyRedirect, RedirectFnRoute } from './redirect'
 import type { NavigateOptions, ParsePathParams } from './link'
 import type { ParsedLocation } from './location'
 import type {
@@ -283,15 +283,21 @@ export type TrimPathRight<T extends string> = T extends '/'
 
 export type ContextReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
-  : LooseReturnType<TContextFn> extends never
+  : Exclude<
+        LooseReturnType<TContextFn>,
+        Response & { options: object }
+      > extends never
     ? AnyContext
-    : LooseReturnType<TContextFn>
+    : Exclude<LooseReturnType<TContextFn>, Response & { options: object }>
 
 export type ContextAsyncReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
-  : LooseAsyncReturnType<TContextFn> extends never
+  : Exclude<
+        LooseAsyncReturnType<TContextFn>,
+        Response & { options: object }
+      > extends never
     ? AnyContext
-    : LooseAsyncReturnType<TContextFn>
+    : Exclude<LooseAsyncReturnType<TContextFn>, Response & { options: object }>
 
 export type ResolveRouteContext<TRouteContextFn, TBeforeLoadFn> = Assign<
   ContextAsyncReturnType<TRouteContextFn>,
@@ -851,14 +857,14 @@ export type AnyRouteWithContext<TContext> = AnyRoute & {
 // Lifecycle options: context / beforeLoad / loader
 // ---------------------------------------------------------------------------
 
-/** The awaited result of a lifecycle handler. */
+/** The awaited successful result of a lifecycle handler. */
 // `any` while the handler slot is still at its default (not yet inferred), so
 // sibling members (`dehydrate`, `hydrate`, `revalidate`) written as named
 // functions do not fail the first (context-insensitive) applicability pass.
 export type LifecycleHandlerData<TFn> = TFn extends (
   ...args: Array<any>
 ) => infer TResult
-  ? Awaited<TResult>
+  ? Exclude<Awaited<TResult>, Response & { options: object }>
   : any
 
 /**
@@ -1018,7 +1024,7 @@ export type LifecycleDehydrateFn<
 
 export type RouteContextRevalidateFn<TCtx, TFn, THydrate = never> = (
   ctx: RouteContextRevalidateContext<TCtx, TFn, THydrate>,
-) => Awaitable<LifecycleHandlerData<TFn>>
+) => Awaitable<LifecycleHandlerData<TFn> | AnyRedirect>
 
 /**
  * Folds a hydrate that returns a DIFFERENT type into the lifecycle slot that reaches
@@ -1092,7 +1098,7 @@ export type RouteContextOption<
        * (there is no time-based revalidation of context). `true` re-runs `handler`; a function runs
        * instead and receives `prev`, the current context data (the last successful `handler`,
        * `hydrate` or `revalidate` result, `undefined` if none has succeeded for this match yet), and
-       * must return the handler's data type; may be async. Parameters are inferred: do not annotate them.
+       * returns the handler's data type or a redirect; may be async. Parameters are inferred: do not annotate them.
        */
       revalidate?:
         | boolean
@@ -1129,8 +1135,8 @@ export type RouteContextOption<
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
        * here), not server versus client: `handler` also runs in the browser on client navigations. A
        * result assignable to the handler data reduces to it (no union, extra properties invisible).
-       * Parameters are inferred: do not annotate them. If `hydrate` throws (`redirect` and `notFound`
-       * included), the client recovers with a normal client load, which runs `handler` again;
+       * Parameters are inferred: do not annotate them. If `hydrate` throws (anything) or returns a
+       * `redirect`, the client recovers with a normal client load, which runs `handler` again;
        * `hydrate` itself calls no `onError`.
        *
        * @experimental
@@ -1146,7 +1152,7 @@ export type RouteContextOption<
        * (there is no time-based revalidation of context). `true` re-runs `handler`; a function runs
        * instead and receives `prev`, the current context data (the last successful `handler`,
        * `hydrate` or `revalidate` result, `undefined` if none has succeeded for this match yet), and
-       * must return the handler's data type; may be async. Parameters are inferred: do not annotate them.
+       * returns the handler's data type or a redirect; may be async. Parameters are inferred: do not annotate them.
        */
       revalidate?:
         | boolean
@@ -1166,7 +1172,8 @@ export type RouteContextOption<
           TRegister,
           TParentRoute,
           TSSR,
-          TRouteContextFn
+          TRouteContextFn,
+          never
         >
       >
       /**
@@ -1184,8 +1191,8 @@ export type RouteContextOption<
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
        * here), not server versus client: `handler` also runs in the browser on client navigations. A
        * result assignable to the handler data reduces to it (no union, extra properties invisible).
-       * Parameters are inferred: do not annotate them. If `hydrate` throws (`redirect` and `notFound`
-       * included), the client recovers with a normal client load, which runs `handler` again;
+       * Parameters are inferred: do not annotate them. If `hydrate` throws (anything) or returns a
+       * `redirect`, the client recovers with a normal client load, which runs `handler` again;
        * `hydrate` itself calls no `onError`.
        *
        * @experimental
@@ -1201,7 +1208,7 @@ export type RouteContextOption<
        * (there is no time-based revalidation of context). `true` re-runs `handler`; a function runs
        * instead and receives `prev`, the current context data (the last successful `handler`,
        * `hydrate` or `revalidate` result, `undefined` if none has succeeded for this match yet), and
-       * must return the handler's data type; may be async. Parameters are inferred: do not annotate them.
+       * returns the handler's data type or a redirect; may be async. Parameters are inferred: do not annotate them.
        */
       revalidate?:
         | boolean
@@ -1300,8 +1307,8 @@ export type RouteBeforeLoadOption<
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
        * here), not server versus client: `handler` also runs in the browser on client navigations. A
        * result assignable to the handler data reduces to it (no union, extra properties invisible).
-       * Parameters are inferred: do not annotate them. If `hydrate` throws, or returns a `redirect` or
-       * `notFound`, the client recovers with a normal client load, which runs `handler` again;
+       * Parameters are inferred: do not annotate them. If `hydrate` throws (anything) or returns a
+       * `redirect`, the client recovers with a normal client load, which runs `handler` again;
        * `hydrate` itself calls no `onError`.
        *
        * @experimental
@@ -1345,8 +1352,8 @@ export type RouteBeforeLoadOption<
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
        * here), not server versus client: `handler` also runs in the browser on client navigations. A
        * result assignable to the handler data reduces to it (no union, extra properties invisible).
-       * Parameters are inferred: do not annotate them. If `hydrate` throws, or returns a `redirect` or
-       * `notFound`, the client recovers with a normal client load, which runs `handler` again;
+       * Parameters are inferred: do not annotate them. If `hydrate` throws (anything) or returns a
+       * `redirect`, the client recovers with a normal client load, which runs `handler` again;
        * `hydrate` itself calls no `onError`.
        *
        * @experimental
@@ -1488,8 +1495,8 @@ export type RouteLoaderOption<
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
        * here), not server versus client: `handler` also runs in the browser on client navigations. A
        * result assignable to the handler data reduces to it (no union, extra properties invisible).
-       * Parameters are inferred: do not annotate them. If `hydrate` throws, or returns a `redirect` or
-       * `notFound`, the client recovers with a normal client load, which runs `handler` again;
+       * Parameters are inferred: do not annotate them. If `hydrate` throws (anything) or returns a
+       * `redirect`, the client recovers with a normal client load, which runs `handler` again;
        * `hydrate` itself calls no `onError`.
        *
        * @experimental
@@ -1539,8 +1546,8 @@ export type RouteLoaderOption<
        * says which function produced the value (for example `hydrated: false` in `handler`, `true`
        * here), not server versus client: `handler` also runs in the browser on client navigations. A
        * result assignable to the handler data reduces to it (no union, extra properties invisible).
-       * Parameters are inferred: do not annotate them. If `hydrate` throws, or returns a `redirect` or
-       * `notFound`, the client recovers with a normal client load, which runs `handler` again;
+       * Parameters are inferred: do not annotate them. If `hydrate` throws (anything) or returns a
+       * `redirect`, the client recovers with a normal client load, which runs `handler` again;
        * `hydrate` itself calls no `onError`.
        *
        * @experimental
