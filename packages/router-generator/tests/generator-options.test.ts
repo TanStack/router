@@ -833,7 +833,7 @@ function valueImports(code: string, source: string) {
  */
 function withoutImports(code: string) {
   return code
-    .replace(/^﻿/, '')
+    .replace(/^\uFEFF/, '')
     .split(/(?<=\n)/)
     .filter((line) => !line.startsWith('import '))
     .join('')
