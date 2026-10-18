@@ -11,20 +11,27 @@
  * (`@tanstack/compiler-test-utils/build-harness`). The temporary apps live
  * in this directory.
  *
- * The runtime packages are stand-ins written into the app
- * (`startRuntimeFiles`, and `routerRuntimeFiles` for apps with routes):
- * server functions run their handler, SSR callers go through the generated
- * server fn resolver, client RPCs throw when called, server builds keep
- * middleware as written, and a middleware's `.server()` throws on the client
- * (the `browser` export condition). The app's entries are the harness's: the client and
- * server entries Start builds import `#tanstack-start-entry` (`src/start.ts`
- * when the app has one), `#tanstack-router-entry` (`src/router.ts`, a stub
- * unless the app has one) and the test's entry module, whose exports `run()`
- * gives the script as `entry`.
+ * `@tanstack/react-start` is the real package (`startRuntimeLinks`): both
+ * builds bundle and run Start's runtime. What the test process cannot do is
+ * stood in for, each checked against the real runtime in
+ * build-harness.test.ts: SSR scripts run in a request context
+ * (`inRequestContext`), a client script observes the requests a server fn
+ * call sends (`requestsOfPrelude`), and an SSR script calls a server fn by
+ * id like the server-fn HTTP handler (`callByIdPrelude`).
+ * `@tanstack/react-router` is a stand-in for apps with routes
+ * (`routerRuntimeFiles`). The app's entries are the harness's: the client
+ * and server entries Start builds import `#tanstack-start-entry`
+ * (`src/start.ts` when the app has one), `#tanstack-router-entry`
+ * (`src/router.ts`, a stub unless the app has one) and the test's entry
+ * module, whose exports `run()` gives the script as `entry`. Vite builds run
+ * in the app's directory, as `vite build` does.
  *
  * Import protection is on, with Start's defaults unless the test configures
  * it; it checks the modules of the source directory (`src`) only.
  */
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { existsSync } from 'node:fs'
+import { mkdir, symlink } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -51,122 +58,173 @@ import type {
 } from '@tanstack/compiler-test-utils/build-harness'
 import type { TanStackStartInputConfig } from '../src/schema'
 import type { StartCompilerImportTransform } from '../src/types'
+// The type of the real context (`@tanstack/start-storage-context` is no
+// dependency of this package).
+import type { StartStorageContext } from '../../start-storage-context/src/async-local-storage'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { InlineConfig, Plugin } from 'vite'
 
-const startPackage = 'node_modules/@tanstack/react-start'
+/**
+ * The workspace's `@tanstack/react-start` package. Its build (`dist`) is
+ * what apps link: the `test:unit` target depends on its `build` target.
+ */
+export const reactStartPackage = fileURLToPath(
+  new URL('../../react-start', import.meta.url),
+)
 
 /**
- * Export targets under the `import` condition, the shape of the real
- * package's exports.
+ * Links (`AppOptions.symlinks`) that give an app Start's real runtime:
+ * `node_modules/@tanstack/react-start` is the workspace package, so the app
+ * bundles and runs the built package with its own export conditions. Its
+ * dependencies (`@tanstack/start-client-core`, `@tanstack/start-server-core`,
+ * ...) resolve from its real path, as in an installed app. An app whose
+ * `files` bring their own `@tanstack/react-start` (hydrate-build.test.ts:
+ * `<Hydrate>` rendered by a stand-in React) keeps it.
  */
-function importExports(targets: Record<string, string>) {
-  return Object.fromEntries(
-    Object.entries(targets).map(([subpath, file]) => [
-      subpath,
-      { import: { default: file } },
-    ]),
-  )
+export function startRuntimeLinks(
+  files: Record<string, string> = {},
+): Record<string, string> {
+  if ('node_modules/@tanstack/react-start/package.json' in files) {
+    return {}
+  }
+  if (!existsSync(path.join(reactStartPackage, 'dist/esm/index.js'))) {
+    throw new Error(
+      `@tanstack/react-start is not built (no ${reactStartPackage}/dist): run the tests through Nx, whose test:unit target builds it first`,
+    )
+  }
+  return { 'node_modules/@tanstack/react-start': reactStartPackage }
 }
 
-/** The stand-in `@tanstack/react-start` package. */
-export const startRuntimeFiles: Record<string, string> = {
-  [`${startPackage}/package.json`]: JSON.stringify({
-    name: '@tanstack/react-start',
-    type: 'module',
-    sideEffects: false,
-    exports: {
-      // The client gets a `createMiddleware` whose `.server()` throws:
-      // the client build must not call it (Start removes it).
-      '.': { browser: './index.client.js', import: { default: './index.js' } },
-      ...importExports({
-        './client-rpc': './client-rpc.js',
-        './server-rpc': './server-rpc.js',
-        './ssr-rpc': './ssr-rpc.js',
-        './server': './server.js',
-        './server-only': './marker.js',
-        './client-only': './marker.js',
-      }),
-    },
-  }),
-  [`${startPackage}/index.js`]: `const uncompiled = (name) => () => {
-  throw new Error('uncompiled Start factory: ' + name)
+/** Creates the `startRuntimeLinks()` of an app made without `createApp`. */
+export async function linkStartRuntime(root: string) {
+  for (const [link, target] of Object.entries(startRuntimeLinks())) {
+    await mkdir(path.dirname(path.join(root, link)), { recursive: true })
+    await symlink(target, path.join(root, link))
+  }
 }
-export function createServerFn() {
-  let validator
-  const builder = {
-    middleware: () => builder,
-    validator(value) {
-      validator = value
-      return builder
-    },
-    handler(rpc, impl) {
-      if (!impl) {
-        return rpc
-      }
-      // Like the real runtime, the server runs the validator (a function)
-      // on the input before the handler.
-      const run = (opts = {}) =>
-        impl(validator ? { ...opts, data: validator(opts.data) } : opts)
-      // Like the real runtime, the server fn carries what the extracted fn
-      // carries (its id).
-      const serverFn = Object.assign((opts) => run(opts ?? {}), rpc)
-      serverFn.__executeServer = (opts) => run(opts ?? {})
-      return serverFn
+
+/**
+ * The request context (`StartStorageContext` of
+ * `@tanstack/start-storage-context`) the harness runs server code in: a
+ * request to `/` that ran no request middleware, with default start
+ * options, like Start's request handler opens for an app without
+ * `createStart`. It is the one piece of Start the harness stands in for: a
+ * test calls server code outside any request. Self-contained: SSR scripts
+ * run its source (`inRequestContext`). Checked against the real runtime in
+ * build-harness.test.ts.
+ */
+function testRequestContext(): StartStorageContext {
+  return {
+    request: new Request('http://localhost/'),
+    startOptions: {},
+    contextAfterGlobalMiddlewares: {},
+    executedRequestMiddlewares: new Set(),
+    handlerType: 'router',
+    getRouter: () => {
+      throw new Error('no router in the test request context')
     },
   }
-  return builder
 }
-export const createServerOnlyFn = uncompiled('createServerOnlyFn')
-export const createClientOnlyFn = uncompiled('createClientOnlyFn')
-export const createIsomorphicFn = uncompiled('createIsomorphicFn')
-// Server builds keep middleware as written: \`options\` holds what each
-// method of the chain received.
-export function createMiddleware(options) {
-  const state = { ...options }
-  const builder = { options: state }
-  for (const method of ['middleware', 'validator', 'client', 'server']) {
-    builder[method] = (value) => {
-      state[method] = value
-      return builder
-    }
+
+/** Key of the storage of `@tanstack/start-storage-context`. */
+const startStorageKey = `Symbol.for('tanstack-start:start-storage-context')`
+
+/**
+ * Wraps a script of the SSR build's `run()` in the test request context
+ * (`testRequestContext`), opened like Start's request handler does
+ * (`runWithStartContext`: `run()` of the storage that the app's bundled
+ * `@tanstack/start-storage-context` shares on `globalThis`).
+ */
+export const inRequestContext = (script: string) =>
+  `const storage = globalThis[${startStorageKey}]
+const script = async () => {
+${script}
+}
+if (!storage) {
+  return await script()
+}
+return await storage.run((${testRequestContext.toString()})(), script)`
+
+/**
+ * Runs `fn` in the test request context (`testRequestContext`), for server
+ * code a test imports from a build output in its own process.
+ */
+export function runInRequestContext<T>(fn: () => T): T {
+  const global = globalThis as unknown as Record<
+    symbol,
+    AsyncLocalStorage<unknown> | undefined
+  >
+  const storage = (global[
+    Symbol.for('tanstack-start:start-storage-context')
+  ] ??= new AsyncLocalStorage())
+  return storage.run(testRequestContext(), fn)
+}
+
+/**
+ * Prelude of an SSR script whose entry exports `getServerFnById` of
+ * `#tanstack-start-server-fn-resolver`: `callById(id, data)` calls the
+ * server fn of `id` the way Start's server-fn HTTP handler does
+ * (`handleServerAction` of `@tanstack/start-server-core`: resolve the id,
+ * call it with the data the client sent, unwrap `{ result }` and throw
+ * `{ error }`), without the HTTP round trip and its serialization.
+ */
+export const callByIdPrelude = `const callById = async (id, data) => {
+  const fn = await entry.getServerFnById(id, { origin: 'client' })
+  const response = await fn({ data, method: fn.method ?? 'GET' })
+  if ('error' in response) {
+    throw response.error
   }
-  return builder
+  return response.result
 }
-export const createStart = (getOptions) => ({ getOptions })
-`,
-  [`${startPackage}/index.client.js`]: `import { createMiddleware as createServerMiddleware } from './index.js'
-export * from './index.js'
-export function createMiddleware(options) {
-  const builder = createServerMiddleware(options)
-  builder.server = () => {
-    throw new Error('createMiddleware().server() called on the client')
+`
+
+/**
+ * Calls the client's server fn `fn` (with `options`, e.g. its `data`) and
+ * gives the requests it sends. A test's client has no server: the call's
+ * `fetch` option (Start's public API) records each request and fails it.
+ * Self-contained: client scripts run its source (`requestsOfPrelude`).
+ */
+export async function requestsOf(
+  fn: (options: Record<string, unknown>) => Promise<unknown>,
+  options: Record<string, unknown> = {},
+): Promise<Array<{ url: string; method: string | undefined }>> {
+  const requests: Array<{ url: string; method: string | undefined }> = []
+  const fetch = (url: string | URL, init?: RequestInit) => {
+    requests.push({ url: String(url), method: init?.method })
+    return Promise.reject(new Error('no server in the client run'))
   }
-  return builder
+  await fn({ ...options, fetch }).catch(() => {})
+  return requests
 }
-`,
-  [`${startPackage}/client-rpc.js`]: `export const createClientRpc = (id) =>
-  Object.assign(
-    () => {
-      throw new Error('client RPC ' + id)
-    },
-    { functionId: id },
-  )
-`,
-  [`${startPackage}/server-rpc.js`]: `export const createServerRpc = (meta, fn) =>
-  Object.assign(fn, { meta, functionId: meta.id })
-`,
-  [`${startPackage}/server.js`]: `export const getRequest = () => ({ url: '/' })
-`,
-  [`${startPackage}/marker.js`]: `export {}
-`,
-  [`${startPackage}/ssr-rpc.js`]: `import { getServerFnById } from '#tanstack-start-server-fn-resolver'
-export const createSsrRpc = (id) =>
-  Object.assign(
-    async (opts) => (await getServerFnById(id, { origin: 'server' }))(opts ?? {}),
-    { functionId: id },
-  )
-`,
+
+/** Prelude of a client script: `requestsOf(fn, options)` (see above). */
+export const requestsOfPrelude = `const requestsOf = ${requestsOf.toString()}
+`
+
+/**
+ * Calls the server fn of `id` in a test's own process the way Start's
+ * server-fn HTTP handler does (see `callByIdPrelude`), in the test request
+ * context (`runInRequestContext`): `getServerFnById` is the resolver of the
+ * server environment (`#tanstack-start-server-fn-resolver`).
+ */
+export async function callServerFnById(
+  getServerFnById: (
+    id: string,
+    options: { origin: 'client' },
+  ) => Promise<(options: Record<string, unknown>) => Promise<unknown>>,
+  id: string,
+  data?: unknown,
+): Promise<unknown> {
+  const fn = (await getServerFnById(id, { origin: 'client' })) as ((
+    options: Record<string, unknown>,
+  ) => Promise<unknown>) & { method?: string }
+  const response = (await runInRequestContext(() =>
+    fn({ data, method: fn.method ?? 'GET' }),
+  )) as { result?: unknown; error?: unknown }
+  if ('error' in response) {
+    throw response.error
+  }
+  return response.result
 }
 
 const routerPackage = 'node_modules/@tanstack/react-router'
@@ -276,6 +334,11 @@ export interface StartBuildOptions {
    * done, and describes the rebuild they cause (its errors reject).
    */
   watchEdits?: Record<string, string | null>
+  /**
+   * Vite builds: the working directory of the build (default: the app's, as
+   * `vite build` run in the app directory).
+   */
+  cwd?: string
 }
 
 export interface StartBuild {
@@ -348,11 +411,11 @@ export async function buildStart(
     packageJson: options.packageJson,
     sideEffects: options.sideEffects,
     files: {
-      ...startRuntimeFiles,
       ...harnessFiles(entries),
       ...(bundler === 'rsbuild' && testLoaderFiles),
       ...files,
     },
+    symlinks: startRuntimeLinks(files),
   })
   const mode = options.mode ?? 'production'
   const target: BuildTarget = {
@@ -365,6 +428,7 @@ export async function buildStart(
     rsbuildConfig: options.rsbuildConfig,
     viteConfig: options.viteConfig,
     watchEdits: options.watchEdits,
+    cwd: options.cwd,
   }
   const warnings = { client: [], ssr: [] } as Record<Env, Array<string>>
   const consoleMessages: Array<string> = []
@@ -388,6 +452,7 @@ export async function buildStart(
       env,
       mode,
       minify: target.minify,
+      esModules: outputs[env].esModules,
       root: app.root,
       outDir: outputs[env].outDir,
       chunks: outputs[env].chunks,
@@ -398,7 +463,11 @@ export async function buildStart(
       dispose: app.dispose,
       entryGlobal,
     })
-  return { client: await describe('client'), ssr: await describe('ssr') }
+  const ssr = await describe('ssr')
+  return {
+    client: await describe('client'),
+    ssr: { ...ssr, run: (script = '') => ssr.run(inRequestContext(script)) },
+  }
 }
 
 type Env = 'client' | 'ssr'
@@ -413,9 +482,18 @@ interface BuildTarget {
   rsbuildConfig: RsbuildConfig | undefined
   viteConfig?: InlineConfig
   watchEdits?: Record<string, string | null>
+  cwd?: string
 }
 
-type Outputs = Record<Env, { outDir: string; chunks: Array<EmittedChunk> }>
+type Outputs = Record<
+  Env,
+  {
+    outDir: string
+    chunks: Array<EmittedChunk>
+    /** Whether the chunks are ES modules (Rsbuild's `output.module`). */
+    esModules?: boolean
+  }
+>
 
 const builders: Record<
   StartBundler,
@@ -465,6 +543,11 @@ async function buildWithVite(
     warnings.client.push(stripAnsi(message))
     warnings.ssr.push(stripAnsi(message))
   }
+  // `vite build` runs in the app's directory: Start's plugin reads the
+  // dependencies of the working directory's package.json (Start libraries
+  // it bundles in SSR, `crawlFrameworkPkgs`).
+  const cwd = process.cwd()
+  process.chdir(target.cwd ?? target.root)
   try {
     const builder = await createBuilder(
       mergeConfig<InlineConfig, InlineConfig>(
@@ -515,6 +598,8 @@ async function buildWithVite(
       ),
       warnings.client,
     )
+  } finally {
+    process.chdir(cwd)
   }
   return checkOutputs(outputs)
 }
@@ -552,6 +637,7 @@ async function buildWithRsbuild(
         outputs[env] = {
           outDir: environment.distPath,
           chunks: chunksOfStats(json, { entry: 'index', extension: '.js' }),
+          esModules: environment.config.output.module,
         }
       })
     },

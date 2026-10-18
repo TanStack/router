@@ -8,7 +8,9 @@ import {
   runInClient,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
+  webGlobals,
 } from '../rsbuild-dev-server'
+import { requestsOfPrelude } from '../build-harness'
 
 const timeout = 30_000
 
@@ -42,10 +44,7 @@ export const ${name} = base.handler(async () => db.x())
         'src/a2.ts': importer('fn2'),
         'src/entry.ts': `import { fn1 } from './a1'
 import { fn2 } from './a2'
-;(globalThis as Record<string, unknown>).run = async () => [
-  await fn1(),
-  await fn2(),
-]
+;(globalThis as Record<string, unknown>).fns = [fn1, fn2]
 `,
       },
     })
@@ -57,7 +56,21 @@ import { fn2 } from './a2'
     expect(server.errors).toEqual([])
     return {
       output: await output(),
-      called: await runInClient(server, 'return await globalThis.run()'),
+      /** What calling both fns in the client returns. */
+      called: await runInClient(
+        server,
+        `return await Promise.all(globalThis.fns.map((fn) => fn()))`,
+      ),
+      /** The URL of each fn, and the requests calling it sends. */
+      requests: await runInClient(
+        server,
+        `${requestsOfPrelude}
+const requests = []
+for (const fn of globalThis.fns) {
+  requests.push({ url: fn.url, sent: await requestsOf(fn) })
+}
+return requests`,
+      ),
     }
   }
 
@@ -69,9 +82,18 @@ import { fn2 } from './a2'
   test.each(['./b', './c'])(
     'client: every module importing a factory from %s that becomes one loads no server code, and calls the server',
     async (importFrom) => {
-      const { output, called } = await editFactory(importFrom, true)
+      const { output, requests } = await editFactory(importFrom, true)
       expect(output).not.toContain('MARK_DB_SECRET')
-      expect(called).toEqual({ error: expect.stringMatching(/^client RPC /) })
+      const url = expect.stringMatching(/^\/_serverFn\/./)
+      const call = { url, sent: [{ url, method: 'GET' }] }
+      expect(requests).toEqual({ result: [call, call] })
+      const { result } = requests as {
+        result: Array<{ url: string; sent: Array<{ url: string }> }>
+      }
+      expect(result.map(({ url, sent }) => sent[0]!.url === url)).toEqual([
+        true,
+        true,
+      ])
     },
     timeout,
   )
@@ -182,12 +204,12 @@ export const getData = createServerFn().handler(async () => 'x')
           'src/b.ts': fn,
           'src/entry.ts': `import { getData as a } from './a'
 import { getData as b } from './b'
-;(globalThis as Record<string, unknown>).ids = [a.functionId, b.functionId]
+;(globalThis as Record<string, unknown>).ids = [a.serverFnMeta.id, b.serverFnMeta.id]
 `,
         },
       })
       // The client bundle (one chunk) runs in a bare context
-      const context = vm.createContext({})
+      const context = vm.createContext(webGlobals())
       context.self = context
       for (const code of Object.values(await server.outputs())) {
         vm.runInContext(code, context)
@@ -214,11 +236,11 @@ import { getData as b } from './b'
 export const getData = createServerFn().handler(async () => 'x')
 `,
           'src/entry.ts': `import { getData } from './a'
-;(globalThis as Record<string, unknown>).ids = [getData.functionId]
+;(globalThis as Record<string, unknown>).ids = [getData.serverFnMeta.id]
 `,
         },
       })
-      const context = vm.createContext({})
+      const context = vm.createContext(webGlobals())
       context.self = context
       for (const code of Object.values(await server.outputs())) {
         vm.runInContext(code, context)

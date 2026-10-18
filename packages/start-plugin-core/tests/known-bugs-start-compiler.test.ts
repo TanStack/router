@@ -8,7 +8,14 @@ import { performance } from 'node:perf_hooks'
 import { createServer, isRunnableDevEnvironment, transformWithOxc } from 'vite'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
-import { buildStart, startBundlers } from './build-harness'
+import {
+  buildStart,
+  callByIdPrelude,
+  callServerFnById,
+  linkStartRuntime,
+  startBundlers,
+} from './build-harness'
+import { servedStartRuntime } from './dev-server'
 import {
   callProvider,
   callReportedServerFns,
@@ -339,11 +346,11 @@ export * from './d'`,
   }
 
   /**
-   * A middleware builder of the client runtime: `.server()` throws, as the
-   * client runtime's does when called uncompiled.
+   * A middleware builder of Start's real runtime whose `.server()` fails
+   * the test: the client must not call it (the compiler drops it).
    */
   const middlewareStub = (options: unknown) => ({
-    options,
+    ...startClientCore.createMiddleware(options),
     server: () => {
       throw new Error('uncompiled .server()')
     },
@@ -1701,9 +1708,11 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
       entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
     })
     expect(client.where("'server-only fn'")).toBe('nowhere')
-    const clientFnId = (await client.run(`return entry.clientFn.functionId`))
-      .result
-    const { result } = await ssr.run(`const settle = async (run) => {
+    const clientFnId = (
+      await client.run(`return entry.clientFn.serverFnMeta.id`)
+    ).result
+    const { result } =
+      await ssr.run(`${callByIdPrelude}const settle = async (run) => {
   try {
     return await run()
   } catch {
@@ -1711,10 +1720,10 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
   }
 }
 const overHttp = (id) =>
-  settle(async () => (await entry.getServerFnById(id, { origin: 'client' }))({}))
+  settle(async () => callById(id))
 return {
   clientFn: await overHttp(${JSON.stringify(clientFnId)}),
-  serverOnlyFnOverHttp: await overHttp(entry.serverOnlyFn.functionId),
+  serverOnlyFnOverHttp: await overHttp(entry.serverOnlyFn.serverFnMeta.id),
   serverOnlyFnFromSsr: await settle(() => entry.serverOnlyFn()),
 }`)
     return result
@@ -1801,6 +1810,13 @@ export const outer = createServerFn().handler(async () => 'outer:' + (await inne
     async () => {
       const outcome = await buildStart({
         bundler,
+        // The app depends on the library, as an installed one.
+        packageJson: {
+          name: 'app',
+          private: true,
+          type: 'module',
+          dependencies: { 'wrapper-lib': '*' },
+        },
         files: {
           'node_modules/wrapper-lib/package.json': JSON.stringify({
             name: 'wrapper-lib',
@@ -1839,6 +1855,54 @@ export const fn = createLoggedServerFn(async () => db.secret())
           ssr: 'MARK_WRAPPED_HANDLER',
         })
       }
+    },
+    timeout,
+  )
+
+  // Bug (Vite): Start's Vite plugin looks for the Start libraries it bundles
+  // in SSR (`crawlFrameworkPkgs`: dependencies with a peer dependency on
+  // Start) in the package.json of the working directory (`root:
+  // process.cwd()`), not of Vite's root, which the plugin uses for its own
+  // root a few lines above.
+  // Source: src/vite/plugin.ts:143 (Vite's root: :96); found when the build
+  // harness ran Start's real runtime (it ran Vite builds outside the app).
+  // Impact: `vite build <app>` run from another directory (a monorepo root,
+  // a script) leaves a Start library external in the SSR build: Node loads
+  // it uncompiled, and an SSR call of its server fn returns undefined
+  // instead of the handler's result.
+  // Control: start-build-env-separation.test.ts "a library's server fn"
+  // (the same library, built in the app's directory).
+  ;(bundler === 'vite' ? test.fails : test)(
+    "a build run from another directory: a library's server fn runs in the SSR build",
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        // The directory of this test file, whose package.json is not the
+        // app's.
+        cwd: __dirname,
+        packageJson: {
+          name: 'app',
+          private: true,
+          type: 'module',
+          dependencies: { 'server-fn-lib': '*' },
+        },
+        files: {
+          'node_modules/server-fn-lib/package.json': JSON.stringify({
+            name: 'server-fn-lib',
+            type: 'module',
+            exports: './index.js',
+            peerDependencies: { '@tanstack/react-start': '*' },
+          }),
+          'node_modules/server-fn-lib/index.js': `import { createServerFn } from '@tanstack/react-start'
+export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
+`,
+          'src/entry.ts': `export { libFn } from 'server-fn-lib'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expect((await ssr.run(`return await entry.libFn()`)).result).toBe(
+        'MARK_LIB_HANDLER',
+      )
     },
     timeout,
   )
@@ -1927,29 +1991,14 @@ describe('Vite dev server', () => {
     return 'settled'
   }
 
-  /** Start packages of `transformClientModule`, by the names imported. */
-  const clientStubs = (specifier: string, names: Set<string>): ModuleStub => {
-    if (names.has('createClientRpc')) {
-      return { createClientRpc: (id: string) => ({ functionId: id }) }
-    }
-    if (names.has('createServerFn')) {
-      return {
-        createServerFn: () => ({ handler: (rpc: unknown) => rpc }),
-      }
-    }
-    if (names.has('z')) {
-      return { z: { object: () => ({}) } }
-    }
-    throw new Error(`no stub for ${specifier}`)
-  }
-
   /**
    * Starts a Vite dev server (middleware mode, empty dependency cache) on a
-   * temporary project with the Start compiler, `src/fn.ts` = `code` and
-   * `files`, and requests the client transform of `src/fn.ts`. Returns
-   * `'hang'` when the transform stops making progress before it finishes
-   * (`settledOrHung`); otherwise its code and the module evaluated with
-   * stubbed Start packages and `zod`. Start packages are stubbed.
+   * temporary project with the Start compiler, Start's real runtime
+   * (`linkStartRuntime`), `src/fn.ts` = `code` and `files`, and requests the
+   * client transform of `src/fn.ts`. Returns `'hang'` when the transform
+   * stops making progress before it finishes (`settledOrHung`); otherwise
+   * its code and the module evaluated with Start's real client runtime
+   * (`clientRuntime`) and `zod`.
    */
   async function transformClientModule(
     code: string,
@@ -1971,6 +2020,7 @@ describe('Vite dev server', () => {
       })) {
         await writeFile(path.join(root, 'src', file), content)
       }
+      await linkStartRuntime(root)
       server = await createServer({
         root,
         configFile: false,
@@ -1985,16 +2035,6 @@ describe('Vite dev server', () => {
             resolveId: active,
             load: active,
             transform: active,
-          },
-          {
-            name: 'stub-start-packages',
-            resolveId: (id) =>
-              id.startsWith('@tanstack/react-start') ? `\0${id}` : null,
-            load: (id) =>
-              id.startsWith('\0@tanstack/react-start')
-                ? `export const createServerFn = () => ({ handler: (fn) => fn })
-export const createClientRpc = (id) => id`
-                : null,
           },
           startCompilerPlugin({
             framework: 'react',
@@ -2014,6 +2054,7 @@ export const createClientRpc = (id) => id`
       }
       const served = (await transformed)!.code
       const client = server.environments.client
+      const zod = (await import('zod')) as ModuleStub
       const module = await createModuleGraph({
         modules: { '/src/fn.ts': served },
         // Project modules as the dev server serves them.
@@ -2022,7 +2063,14 @@ export const createClientRpc = (id) => id`
             ? (await client.transformRequest(id))?.code
             : null,
         transform: (source) => source,
-        fallbackStub: clientStubs,
+        stubs: servedStartRuntime,
+        // `zod`, served pre-bundled (`/node_modules/.vite/deps/zod.js`)
+        fallbackStub: (specifier) => {
+          if (specifier.includes('/zod')) {
+            return zod
+          }
+          throw new Error(`no stub for ${specifier}`)
+        },
       }).import('/src/fn.ts')
       return { code: served, module }
     } finally {
@@ -2044,7 +2092,7 @@ export const createClientRpc = (id) => id`
     expect(result).not.toBe('hang')
     const { code, module } = result as Exclude<typeof result, 'hang'>
     expect(code).not.toContain('MARK_HANDLER')
-    expect(module.fn).toEqual({ functionId: expect.any(String) })
+    expect(callerRpcId(module.fn)).toEqual(expect.any(String))
   }
 
   // Control for the pin below (same harness).
@@ -2082,20 +2130,10 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
     30_000,
   )
 
-  /** Start packages of the server fn dev servers: RPCs expose their id. */
-  const serverFnStubs: Record<string, string> = {
-    '@tanstack/react-start': `export const createServerFn = () => ({
-  handler: (rpc, impl) =>
-    impl ? Object.assign((opts) => impl(opts ?? {}), { __executeServer: (opts) => impl(opts ?? {}) }) : rpc,
-})`,
-    '@tanstack/react-start/server-rpc': `export const createServerRpc = (serverFnMeta, fn) => Object.assign(fn, { serverFnMeta })`,
-    '@tanstack/react-start/ssr-rpc': `export const createSsrRpc = (id) => ({ functionId: id })`,
-    '@tanstack/react-start/client-rpc': `export const createClientRpc = (id) => ({ functionId: id })`,
-  }
-
   /**
    * Starts a Vite dev server (middleware mode) with the Start compiler on
-   * `root`, with SSR as the server fn provider.
+   * `root` (which links Start's real runtime), with SSR as the server fn
+   * provider.
    */
   function startServerFnDevServer(root: string) {
     return createServer({
@@ -2106,14 +2144,6 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
       appType: 'custom',
       server: { middlewareMode: true, hmr: false, ws: false, watch: null },
       plugins: [
-        {
-          name: 'stub-start-packages',
-          resolveId: (id) => (id in serverFnStubs ? `\0stub:${id}` : null),
-          load: (id) =>
-            id.startsWith('\0stub:')
-              ? serverFnStubs[id.slice('\0stub:'.length)]
-              : null,
-        },
         startCompilerPlugin({
           framework: 'react',
           environments: [
@@ -2142,6 +2172,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
         path.join(root, 'src', 'fns.ts'),
         `${head}export const greet = createServerFn().handler(() => 'hello')\n`,
       )
+      await linkStartRuntime(root)
       /** Imports a module in the SSR environment of a dev server. */
       const importSsr = (
         server: Awaited<ReturnType<typeof createServer>>,
@@ -2167,9 +2198,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
         '#tanstack-start-server-fn-resolver',
       )
       try {
-        return await (
-          await getServerFnById(greet.functionId)
-        )({})
+        return await callServerFnById(getServerFnById, greet.serverFnMeta.id)
       } catch (error) {
         return `throws: ${(error as Error).message}`
       }

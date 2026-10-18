@@ -8,7 +8,12 @@ import {
   describeHmr,
   evaluateServed,
 } from '@tanstack/compiler-test-utils/dev-server'
-import { startDevServer } from './dev-server'
+import {
+  callServerFnById,
+  requestsOf,
+  runInRequestContext,
+} from './build-harness'
+import { servedStartRuntime, startDevServer } from './dev-server'
 
 const timeout = 30_000
 
@@ -35,15 +40,22 @@ export const fn = base.handler(async () => db.x())
       })
       /** The client's `fn` (dependencies loaded from the dev server too). */
       const clientFn = async () =>
-        (await evaluateServed(server, '/src/a.tsx', { skip: /^\/@vite\b/ }))
-          .fn as () => Promise<unknown>
+        (
+          await evaluateServed(server, '/src/a.tsx', {
+            skip: /^\/@vite\b/,
+            stubs: servedStartRuntime,
+          })
+        ).fn as () => Promise<unknown>
       expect(
         containing(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
       ).toEqual([])
-      // A server fn: the client calls the server
-      await expect(clientFn().then((fn) => fn())).rejects.toThrow(
-        /^client RPC /,
-      )
+      // A server fn: the client calls the server, at the server fn's URL
+      const rpc = (await clientFn()) as unknown as {
+        url: string
+        serverFnMeta: { id: string }
+      } & (() => Promise<unknown>)
+      expect(rpc.url.endsWith(rpc.serverFnMeta.id)).toBe(true)
+      expect(await requestsOf(rpc)).toEqual([{ url: rpc.url, method: 'GET' }])
 
       await server.edit({ 'src/b.ts': plain })
 
@@ -77,7 +89,7 @@ export const later = createServerFn().handler(() => 'MARK_LATER')
         const { getServerFnById } = await server.import(
           '#tanstack-start-server-fn-resolver',
         )
-        return (await getServerFnById(fn.functionId, { origin: 'client' }))({})
+        return callServerFnById(getServerFnById, fn.serverFnMeta.id)
       }
       expect(await callById('/src/first.ts', 'first')).toBe('MARK_FIRST')
       expect(await callById('/src/later.ts', 'later')).toBe('MARK_LATER')
@@ -146,21 +158,21 @@ export const greet = createServerFn().handler(() => 'MARK_HANDLER')
 `,
         },
       })
-      // The client gets the id from the stand-in package
       const id = (
-        await evaluateServed(server, '/src/fns.ts', { skip: /^\/@vite\b/ })
-      ).greet.functionId
-      /** Calls the server fn of `id` in `environment` through its resolver. */
-      const callById = async (environment: string) => {
-        const { getServerFnById } = await server.import(
-          '#tanstack-start-server-fn-resolver',
-          environment,
-        )
-        return (await getServerFnById(id, { origin: 'client' }))({})
-      }
+        await evaluateServed(server, '/src/fns.ts', {
+          skip: /^\/@vite\b/,
+          stubs: servedStartRuntime,
+        })
+      ).greet.serverFnMeta.id
+      /** The resolver of `environment`. */
+      const resolver = async (environment: string) =>
+        (await server.import('#tanstack-start-server-fn-resolver', environment))
+          .getServerFnById
+      // SSR's resolver is the test's module, which answers by itself.
+      const forwarded = await (await resolver('ssr'))(id, { origin: 'client' })
       expect({
-        ssr: await callById('ssr'),
-        rsc: await callById('rsc'),
+        ssr: forwarded(),
+        rsc: await callServerFnById(await resolver('rsc'), id),
       }).toEqual({ ssr: `MARK_FORWARDED:${id}`, rsc: 'MARK_HANDLER' })
     },
     timeout,
@@ -188,10 +200,8 @@ export const greet = createServerFn().handler(() => 'before')
         const { getServerFnById } = await server.import(
           '#tanstack-start-server-fn-resolver',
         )
-        const handler = await getServerFnById(greet.functionId, {
-          origin: 'client',
-        })
-        return { id: greet.functionId, result: await handler({}) }
+        const id = greet.serverFnMeta.id
+        return { id, result: await callServerFnById(getServerFnById, id) }
       }
       const before = await call()
       expect(before.result).toBe('before')
@@ -230,10 +240,7 @@ export const greet = createServerFn().handler(() => db.x())
         const { getServerFnById } = await server.import(
           '#tanstack-start-server-fn-resolver',
         )
-        const handler = await getServerFnById(greet.functionId, {
-          origin: 'client',
-        })
-        return handler({})
+        return callServerFnById(getServerFnById, greet.serverFnMeta.id)
       }
       expect(await call()).toBe('before')
 
@@ -362,7 +369,7 @@ export const label = () => 'MARK_CLIENT_LABEL'
     const { getServerFnById } = await server.import(
       '#tanstack-start-server-fn-resolver',
     )
-    return (await getServerFnById(fn.functionId, { origin: 'client' }))({})
+    return callServerFnById(getServerFnById, fn.serverFnMeta.id)
   }
 
   test(
@@ -421,7 +428,10 @@ export const label = () => 'MARK_CLIENT_LABEL'
       await server.edit({ 'src/fns.ts': fns('V2') })
 
       const { fn } = await server.import('/src/fns.ts')
-      expect({ called: await fn(), byId: await callById(server) }).toEqual({
+      expect({
+        called: await runInRequestContext(() => fn()),
+        byId: await callById(server),
+      }).toEqual({
         called: 'MARK_HANDLER_V2',
         byId: 'MARK_HANDLER_V2',
       })

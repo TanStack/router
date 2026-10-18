@@ -3,8 +3,8 @@
  * compiler's Vite plugin (client and SSR environments, SSR as the server fn
  * provider) on a temporary app, through the shared dev-server harness
  * (`@tanstack/compiler-test-utils/dev-server`). `@tanstack/react-start` is the
- * stand-in package of the build harness (`startRuntimeFiles`). The temporary
- * apps live in this directory.
+ * real package (`startRuntimeLinks`). The temporary apps live in this
+ * directory.
  *
  * With `start`, the dev server mounts Start's whole Vite plugin instead
  * (`tanStackStartVite`, with the options `@tanstack/react-start` passes), so
@@ -17,7 +17,13 @@ import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { onTestFinished } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import { tanStackStartVite } from '../src/vite/plugin'
-import { routerRuntimeFiles, startRuntimeFiles } from './build-harness'
+import {
+  reactStartPackage,
+  routerRuntimeFiles,
+  startRuntimeLinks,
+} from './build-harness'
+import { createClientRpc, startClientCore } from './start-runtime'
+import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 import type { StartCompilerPluginOptions } from '../src/vite/start-compiler-plugin/plugin'
 import type { TanStackStartInputConfig } from '../src/schema'
 import type { StartCompilerImportTransform } from '../src/types'
@@ -28,6 +34,20 @@ import type {
 } from '@tanstack/compiler-test-utils/dev-server'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Start's real client runtime for evaluating served client modules
+ * (`evaluateServed(server, url, { stubs: servedStartRuntime })`): the
+ * entries of `@tanstack/react-start` a dev server serves to the client
+ * (`/@fs/<package>/dist/esm/...`), loaded by Node (start-runtime.ts)
+ * instead of from the dev server. The root entry imports React, which is
+ * CommonJS: a browser gets it from Vite's dependency optimizer, which the
+ * harness turns off.
+ */
+export const servedStartRuntime: Record<string, ModuleStub> = {
+  [`/@fs${reactStartPackage}/dist/esm/index.js`]: startClientCore,
+  [`/@fs${reactStartPackage}/dist/esm/client-rpc.js`]: { createClientRpc },
+}
 
 export interface StartDevServerOptions extends Omit<
   DevServerOptions,
@@ -136,11 +156,11 @@ export function startDevServer(
     registerCleanup: onTestFinished,
     ...devServerOptions,
     files: {
-      ...startRuntimeFiles,
       ...(start && !realRouter && routerRuntimeFiles),
       ...(start && startPluginFiles),
       ...files,
     },
+    symlinks: { ...startRuntimeLinks(files), ...devServerOptions.symlinks },
     plugins: ({ root }) => [
       start
         ? startPlugin(root, start, compilerTransforms)
@@ -152,7 +172,8 @@ export function startDevServer(
       ...(typeof plugins === 'function' ? plugins({ root }) : plugins),
       {
         name: 'start-dev-server-harness',
-        // The stand-in package imports the resolver virtual module
+        // Start's SSR RPC (`createSsrRpc`) imports the resolver virtual
+        // module
         config: () => ({
           ssr: { noExternal: ['@tanstack/react-start'] },
           ...(extraEnvironments.length > 0 && {

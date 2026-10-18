@@ -6,7 +6,7 @@
  */
 import { afterAll, describe, expect, onTestFinished, test } from 'vitest'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
 import {
   createDevServer,
@@ -14,9 +14,9 @@ import {
 } from '@tanstack/compiler-test-utils/dev-server'
 import {
   buildStart,
+  reactStartPackage,
   routerRuntimeFiles,
   startBundlers,
-  startRuntimeFiles,
 } from './build-harness'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import { startDevServer } from './dev-server'
@@ -27,11 +27,6 @@ import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
 
-const startIndex = 'node_modules/@tanstack/react-start/index.js'
-const startManifest = JSON.parse(
-  startRuntimeFiles['node_modules/@tanstack/react-start/package.json']!,
-)
-
 /**
  * Stand-ins of the packages a `<Hydrate>` module imports: React's JSX
  * runtimes render intrinsic elements as tags, `Hydrate` records its boundary
@@ -39,18 +34,22 @@ const startManifest = JSON.parse(
  * and `lazyRouteComponent(load, name)` renders the export `name`
  * (`exportName`) of the module it loaded (after `preload()`); every lazy
  * component is listed in `globalThis.__lazyComponents`
- * (`renderThroughChunks`).
+ * (`renderThroughChunks`). `@tanstack/react-start` is a stand-in here too
+ * (`Hydrate` and `/hydration`, what these modules import): the real
+ * `Hydrate` renders with React and the real router, not with these JSX
+ * runtimes.
  */
 const hydrateRuntimeFiles: Record<string, string> = {
   'node_modules/@tanstack/react-start/package.json': JSON.stringify({
-    ...startManifest,
+    name: '@tanstack/react-start',
+    type: 'module',
+    sideEffects: false,
     exports: {
-      ...startManifest.exports,
+      '.': { import: { default: './index.js' } },
       './hydration': { import: { default: './hydration.js' } },
     },
   }),
-  [startIndex]: `${startRuntimeFiles[startIndex]}
-export const Hydrate = (props) => {
+  'node_modules/@tanstack/react-start/index.js': `export const Hydrate = (props) => {
   ;(globalThis.__boundaryIds ??= []).push(props.h)
   return '[' + (props.children ?? '') + ']'
 }
@@ -163,6 +162,30 @@ async function expectHydratesLikeServer(
   expect(client.lazy.rendered).toBe(client.lazy.created)
   return server
 }
+
+// Contract of the stand-in `@tanstack/react-start` (`hydrateRuntimeFiles`):
+// each entry exports only names the real package's entry exports.
+test.each([
+  { entry: 'index.js', file: 'dist/esm/index.js' },
+  { entry: 'hydration.js', file: 'dist/esm/hydration.js' },
+])(
+  'the stand-in $entry exports names of the real package',
+  async ({ entry, file }) => {
+    const standIn = [
+      ...hydrateRuntimeFiles[
+        `node_modules/@tanstack/react-start/${entry}`
+      ]!.matchAll(/^export const (\w+)/gm),
+    ].map((match) => match[1])
+    const real = Object.keys(
+      await import(
+        /* @vite-ignore */ pathToFileURL(path.join(reactStartPackage, file))
+          .href
+      ),
+    )
+    expect(standIn.length).toBeGreaterThan(0)
+    expect(real).toEqual(expect.arrayContaining(standIn))
+  },
+)
 
 describe.each(startBundlers)(
   '%s build: the code of the children',

@@ -23,13 +23,29 @@ import {
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import {
   buildStart,
+  callByIdPrelude,
+  requestsOfPrelude,
   routerRuntimeFiles,
+  runInRequestContext,
   startBundlers,
-  startRuntimeFiles,
+  startRuntimeLinks,
 } from './build-harness'
 import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
+
+/**
+ * The client's `entry.greet()` sends one request to the server, to the
+ * server fn's URL.
+ */
+async function expectCallsTheServer(client: StartBuild['client']) {
+  const called = (
+    await client.run(`${requestsOfPrelude}
+return { url: entry.greet.url, requests: await requestsOf(entry.greet) }`)
+  ).result as { url: string; requests: Array<unknown> }
+  expect(called.url).toMatch(/^\/_serverFn\/./)
+  expect(called.requests).toEqual([{ url: called.url, method: 'GET' }])
+}
 
 describe.each(startBundlers)('%s build', (bundler) => {
   // Whether the SSR build loads the handler eagerly or on demand is left
@@ -52,15 +68,7 @@ export const greet = createServerFn().handler(() => 'MARK_HANDLER')
       expect((await ssr.run(`return await entry.greet()`)).result).toBe(
         'MARK_HANDLER',
       )
-      expect(
-        (
-          await client.run(`try {
-  entry.greet()
-} catch (error) {
-  return error.message.startsWith('client RPC ')
-}`)
-        ).result,
-      ).toBe(true)
+      await expectCallsTheServer(client)
     },
     timeout,
   )
@@ -108,6 +116,13 @@ export const where = createIsomorphicFn()
     async () => {
       const { client, ssr } = await buildStart({
         bundler,
+        // The app depends on the library, as an installed one.
+        packageJson: {
+          name: 'app',
+          private: true,
+          type: 'module',
+          dependencies: { 'server-fn-lib': '*' },
+        },
         files: {
           ...library(
             'server-fn-lib',
@@ -123,11 +138,11 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
       expect(client.where('MARK_LIB_HANDLER')).toBe('nowhere')
-      const id = (await client.run(`return entry.libFn.functionId`)).result
+      const id = (await client.run(`return entry.libFn.serverFnMeta.id`)).result
       expect(id).toEqual(expect.any(String))
-      const { result } = await ssr.run(`return {
+      const { result } = await ssr.run(`${callByIdPrelude}return {
   called: await entry.libFn(),
-  byId: await (await entry.getServerFnById(${JSON.stringify(id)}, { origin: 'client' }))({}),
+  byId: await callById(${JSON.stringify(id)}),
 }`)
       expect(result).toEqual({
         called: 'MARK_LIB_HANDLER',
@@ -504,12 +519,13 @@ const next = (options) => options
     test('each server fn of the client runs by its id in the SSR build', async () => {
       const ids = (
         await build.client.run(
-          `return [entry.fn.functionId, entry.fromBase.functionId]`,
+          `return [entry.fn.serverFnMeta.id, entry.fromBase.serverFnMeta.id]`,
         )
       ).result
-      const { result } = await build.ssr.run(`const results = []
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const results = []
 for (const id of ${JSON.stringify(ids)}) {
-  results.push(await (await entry.getServerFnById(id, { origin: 'client' }))({}))
+  results.push(await callById(id))
 }
 return results`)
       expect(result).toEqual(['MARK_HANDLER_DEP', 'MARK_BASE_HANDLER_DEP'])
@@ -548,15 +564,7 @@ export const label = () => 'MARK_CLIENT_LABEL'
       expect((await ssr.run(`return await entry.greet()`)).result).toBe(
         'MARK_HANDLER',
       )
-      expect(
-        (
-          await client.run(`try {
-  entry.greet()
-} catch (error) {
-  return error.message.startsWith('client RPC ')
-}`)
-        ).result,
-      ).toBe(true)
+      await expectCallsTheServer(client)
     },
     timeout,
   )
@@ -575,8 +583,8 @@ describe('Vite: an environment built twice by one builder', () => {
         dir: path.dirname(fileURLToPath(import.meta.url)),
         prefix: '.start-build-twice-',
         registerCleanup: onTestFinished,
+        symlinks: startRuntimeLinks(),
         files: {
-          ...startRuntimeFiles,
           'src/direct.ts': `import { createServerFn } from '@tanstack/react-start'
 export const direct = createServerFn().handler(async () => 'MARK_DIRECT')
 `,
@@ -638,8 +646,8 @@ export const greet = base.handler(async () => 'MARK_HANDLER')
       const { greet } = await import(
         pathToFileURL(path.join(outDir, output!)).href
       )
-      expect(typeof greet.functionId).toBe('string')
-      expect(await greet()).toBe('MARK_HANDLER')
+      expect(typeof greet.serverFnMeta.id).toBe('string')
+      expect(await runInRequestContext(() => greet())).toBe('MARK_HANDLER')
     },
     timeout,
   )
@@ -677,12 +685,12 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
       expect(client.where(/MARK_GREET|MARK_FROM_BASE/)).toBe('nowhere')
       const ids = (
         await client.run(
-          `return [entry.greet.functionId, entry.fromBase.functionId]`,
+          `return [entry.greet.serverFnMeta.id, entry.fromBase.serverFnMeta.id]`,
         )
       ).result
-      const { result } = await ssr.run(`const results = []
+      const { result } = await ssr.run(`${callByIdPrelude}const results = []
 for (const id of ${JSON.stringify(ids)}) {
-  results.push(await (await entry.getServerFnById(id, { origin: 'client' }))({}))
+  results.push(await callById(id))
 }
 return results`)
       expect(result).toEqual(['MARK_GREET', 'MARK_FROM_BASE'])

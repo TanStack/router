@@ -817,7 +817,11 @@ export const read = () => getRequest()
         behavior: 'error',
         onViolation: () => false,
       })
-      const client = await server.load('/src/entry.ts')
+      // The app's modules: `@tanstack/react-start/server` itself imports
+      // Start's entries, which only Start's whole plugin provides.
+      const client = await server.load('/src/entry.ts', {
+        skip: /^\/@(vite|fs)\//,
+      })
       expect(Object.keys(client)).toContain('/src/a.ts')
       expect(reportedViolations(server.logs)).toEqual([])
     },

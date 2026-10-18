@@ -6,7 +6,12 @@
  * plugins (build-harness.ts); each build is in a new temporary directory.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, routerRuntimeFiles, startBundlers } from './build-harness'
+import {
+  buildStart,
+  callByIdPrelude,
+  routerRuntimeFiles,
+  startBundlers,
+} from './build-harness'
 import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
@@ -52,7 +57,7 @@ async function describeOutput(build: StartBuild) {
   return {
     ids: (
       await build.client.run(
-        `return [entry.greetA.functionId, entry.greetB.functionId]`,
+        `return [entry.greetA.serverFnMeta.id, entry.greetB.serverFnMeta.id]`,
       )
     ).result,
     client: chunks(build.client),
@@ -118,16 +123,15 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
       const { client, ssr } = outcome as StartBuild
       const ids = (
         await client.run(
-          `return { a: entry.greetA.functionId, b: entry.greetB.functionId }`,
+          `return { a: entry.greetA.serverFnMeta.id, b: entry.greetB.serverFnMeta.id }`,
         )
       ).result as { a: string; b: string }
       expect(ids.a).not.toBe(ids.b)
-      const { result } = await ssr.run(`const call = async (id) =>
-  (await entry.getServerFnById(id, { origin: 'client' }))({})
+      const { result } = await ssr.run(`${callByIdPrelude}
 return {
-  a: await call(${JSON.stringify(ids.a)}),
-  b: await call(${JSON.stringify(ids.b)}),
-  ssrIds: { a: entry.greetA.functionId, b: entry.greetB.functionId },
+  a: await callById(${JSON.stringify(ids.a)}),
+  b: await callById(${JSON.stringify(ids.b)}),
+  ssrIds: { a: entry.greetA.serverFnMeta.id, b: entry.greetB.serverFnMeta.id },
 }`)
       expect(result).toEqual({ a: 'MARK_A', b: 'MARK_B', ssrIds: ids })
     },

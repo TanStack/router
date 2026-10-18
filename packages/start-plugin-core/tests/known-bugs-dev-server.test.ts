@@ -8,7 +8,8 @@ import path from 'node:path'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { describe, expect, test } from 'vitest'
 import { importProtectionPlugin } from '../src/vite/import-protection-plugin/plugin'
-import { startDevServer } from './dev-server'
+import { callServerFnById, runInRequestContext } from './build-harness'
+import { servedStartRuntime, startDevServer } from './dev-server'
 import { isMock } from './importProtection/mock-helpers'
 import type { ImportProtectionPluginOptions } from '../src/vite/import-protection-plugin/types'
 
@@ -139,7 +140,7 @@ export const fn = base.handler(async () => db.x())
       },
     })
     const before = (await server.import('/src/a.tsx')).fn
-    expect(before.functionId).toBeUndefined()
+    expect(before.serverFnMeta).toBeUndefined()
     await server.edit({
       'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
@@ -157,10 +158,10 @@ export const base = createServerFn()
       }
     }
     return {
-      id: typeof fn.functionId,
-      called: await settle(() => fn()),
-      byId: await settle(async () =>
-        (await getServerFnById(fn.functionId, { origin: 'client' }))({}),
+      id: typeof fn.serverFnMeta?.id,
+      called: await settle(() => runInRequestContext(() => fn())),
+      byId: await settle(() =>
+        callServerFnById(getServerFnById, fn.serverFnMeta?.id),
       ),
     }
   }
@@ -257,10 +258,11 @@ export const fn = createServerFn().handler(async () => request)
     const modules = await server.load('/src/a.ts', { skip: /^\/@vite\b/ })
     const { fn } = await evaluateServed(server, '/src/a.ts', {
       skip: /^\/@vite\b/,
+      stubs: servedStartRuntime,
     })
     return {
       secret: modulesContaining(modules, 'MARK_REQUEST_SECRET'),
-      functionId: typeof fn.functionId,
+      functionId: typeof fn.serverFnMeta?.id,
     }
   }
 

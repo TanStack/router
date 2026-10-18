@@ -9,22 +9,11 @@
  * Start's Vite and Rsbuild plugins (build-harness.ts).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers, startRuntimeFiles } from '../build-harness'
+import { buildStart, requestsOfPrelude, startBundlers } from '../build-harness'
 
 const timeout = 60_000
 
-/**
- * The stand-in client RPC, with the URL the real one
- * (`@tanstack/start-client-core` `createClientRpc`) calls.
- */
 const greetFiles = {
-  ...startRuntimeFiles,
-  'node_modules/@tanstack/react-start/client-rpc.js': `export const createClientRpc = (id) =>
-  Object.assign(() => {}, {
-    functionId: id,
-    url: process.env.TSS_SERVER_FN_BASE + id,
-  })
-`,
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler(async () => 'MARK_HANDLER')
 `,
@@ -54,11 +43,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
         start,
       })
       const rpc = (
-        await client.run(
-          `return { id: entry.greet.functionId, url: entry.greet.url }`,
-        )
-      ).result as { id: string; url: string }
+        await client.run(`${requestsOfPrelude}
+return {
+  id: entry.greet.serverFnMeta.id,
+  url: entry.greet.url,
+  requests: await requestsOf(entry.greet),
+}`)
+      ).result as { id: string; url: string; requests: Array<unknown> }
       expect(rpc.url).toBe(`${base}${rpc.id}`)
+      expect(rpc.requests).toEqual([{ url: rpc.url, method: 'GET' }])
       expect((await ssr.run(`return entry.serverFnBase()`)).result).toBe(base)
     },
     timeout,

@@ -100,6 +100,13 @@ const browserNames = [
  */
 const browserFamilies = /^(HTML|SVG|MathML)\w*Element$|^\w+Event$/
 
+/**
+ * Language globals the `globals` package (16.x) does not list yet:
+ * `Temporal`, which browsers and Node.js 26 define (Start's serializer,
+ * seroval, revives Temporal values with it).
+ */
+const languageNames = ['Temporal']
+
 /** Globals a framework's own code defines for itself, which its runtime reads. */
 const frameworkNames = [
   // the hydration state the script of Solid's `generateHydrationScript()`
@@ -120,6 +127,7 @@ const frameworkNames = [
  */
 export const knownGlobals: ReadonlySet<string> = new Set([
   ...Object.keys(globals.builtin),
+  ...languageNames,
   ...Object.keys(globals.nodeBuiltin),
   ...browserNames,
   ...Object.keys(globals.browser).filter((name) => browserFamilies.test(name)),
