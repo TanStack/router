@@ -14,7 +14,7 @@ import {
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
 import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from './app'
-import { routePathsOf, routesOf, urlsOf } from './route-tree'
+import { matchesOf, routesOf, urlsOf } from './route-tree'
 import { typeAssertions, typeErrorsOf } from './type-check'
 import type { Config } from '../src'
 
@@ -240,8 +240,9 @@ describe('layouts and groups', () => {
       '/(group)/_layout': '/',
       '/(group)/_layout/inner': '/inner',
     })
-    expect((await routePathsOf(generatedRouteTree))['/(group)/_layout']).toBe(
-      undefined,
+    // (the layout is no page: the router does not match it at `/`)
+    expect(await matchesOf(generatedRouteTree, '/')).not.toContain(
+      '/(group)/_layout',
     )
   })
 

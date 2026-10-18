@@ -13,8 +13,8 @@
 import { parseSync } from 'vite'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createApp, generate, read, rootRoute } from './app'
-import { evaluateRouteFile } from './route-id'
-import { routesOf } from './route-tree'
+import { routeCallOf } from './route-id'
+import { evaluateModule, routesOf } from './route-tree'
 import type { Config } from '../src'
 
 afterEach(() => {
@@ -104,10 +104,9 @@ function withoutImports(code: string) {
 }
 
 /**
- * Asserts the upkeep of a route file: it evaluates (with the router exports
- * it uses) to a Route with `id` created with `createdWith`, which it binds
- * once from the router package, and its code outside the imports is
- * `expected`'s.
+ * Asserts the upkeep of a route file: it evaluates with the real router, its
+ * Route is created with `createdWith` and `id`, which it binds once from the
+ * router package, and its code outside the imports is `expected`'s.
  */
 async function expectRouteFile(
   written: string,
@@ -115,16 +114,14 @@ async function expectRouteFile(
     id,
     createdWith = 'createFileRoute',
     expected,
-    routerExports = [],
   }: {
     id: string
     createdWith?: 'createFileRoute' | 'createLazyFileRoute'
     expected: string
-    routerExports?: Array<string>
   },
 ) {
-  const { Route } = await evaluateRouteFile(written, routerExports)
-  expect([Route.id, Route.createdWith]).toEqual([id, createdWith])
+  await evaluateModule(written)
+  expect(routeCallOf(written)).toEqual({ constructor: createdWith, id })
   expect(
     routerValueImports(written).filter((name) => name === createdWith),
   ).toHaveLength(1)
@@ -325,7 +322,6 @@ export const Route = createFileRoute('/new')({
       id: '/new',
       createdWith: 'createLazyFileRoute',
       expected: source.replace('createFileRoute(', 'createLazyFileRoute('),
-      routerExports: ['Link'],
     })
   })
 
@@ -380,7 +376,6 @@ export const Route = createFileRoute('/new')({})
         expected: lazy
           ? source.replace('createFileRoute(', 'createLazyFileRoute(')
           : source,
-        routerExports: ['Link'],
       })
     },
   )
@@ -435,10 +430,11 @@ describe('missing route constructor imports', () => {
         expect(outputLines).toContain(line)
       }
       expect(routerValueImports(written)).toEqual(['createFileRoute'])
-      const { Route } = await evaluateRouteFile(
-        written.replace(/^import .* from 'react'$/m, ''),
-      )
-      expect([Route.id, Route.createdWith]).toEqual(['/new', 'createFileRoute'])
+      await evaluateModule(written)
+      expect(routeCallOf(written)).toEqual({
+        constructor: 'createFileRoute',
+        id: '/new',
+      })
     },
   )
 
@@ -467,7 +463,6 @@ export const Route = createFileRoute('/old')({})
       await expectRouteFile(written, {
         id: '/new',
         expected: body.replace('/old', '/new'),
-        routerExports: ['Link'],
       })
     },
   )
@@ -587,7 +582,6 @@ export const Route = createFileRoute('/old')({})`,
     await expectRouteFile(written, {
       id: '/new',
       expected: source.replace('/old', '/new'),
-      routerExports: ['Link'],
     })
     // The file keeps its BOM and its line endings.
     expect(written.startsWith('\uFEFF')).toBe(source.startsWith('\uFEFF'))

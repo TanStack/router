@@ -2,19 +2,16 @@
  * Route piece files: Vue single-file components named after a route and a
  * component option (`posts.component.vue`, `__root.errorComponent.vue`, …)
  * become that option of the route, loaded lazily from the file's default
- * export. The generator never writes to them.
+ * export. The generator never writes to them. Checked with the real router
+ * and real Vue: each option, once the router loaded the route, renders the
+ * single-file component (compiled by the Vue plugin of a real Vite server).
  */
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import {
-  createApp,
-  fileRoute,
-  generate,
-  lazyFileRoute,
-  read,
-  rootRoute,
-} from './app'
+import { createSSRApp } from 'vue'
+import { renderToString } from 'vue/server-renderer'
+import { createApp, fileRoute, generate, read, rootRoute } from './app'
 import { routeIdOf } from './route-id'
-import { loadLazyRoute, routeOptionsOf, routesOf, urlsOf } from './route-tree'
+import { evaluateModule, routesOf, urlsOf, withRouteTree } from './route-tree'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -30,12 +27,39 @@ const label = '${text}'
 </template>
 `
 
-/** The option a piece file gives its route: its default export, lazily. */
-const lazyComponent = (file: string) => ({
-  kind: 'lazyRouteComponent',
-  file: `routes/${file}`,
-  name: 'default',
-})
+/** The texts of the `<p>` elements of server-rendered `html`, joined. */
+const textOf = (html: string) =>
+  [...html.matchAll(/<p>([^<]*)<\/p>/g)].map((match) => match[1]).join(' ')
+
+/** The component options a route may have. */
+const componentOptions = [
+  'component',
+  'pendingComponent',
+  'errorComponent',
+  'notFoundComponent',
+] as const
+
+/**
+ * The text each component option of each route renders, by route id, once
+ * the router loaded the route (its lazy route file and components).
+ */
+function piecesOf(treeFile: string) {
+  return withRouteTree(treeFile, async ({ router, render }) => {
+    const pieces: Record<string, Record<string, string>> = {}
+    for (const route of Object.values(router.routesById)) {
+      await router.loadRouteChunk(route)
+      pieces[route.id] = {}
+      for (const option of componentOptions) {
+        if (route.options[option]) {
+          pieces[route.id]![option] = textOf(
+            await render(route.options[option]),
+          )
+        }
+      }
+    }
+    return pieces
+  })
+}
 
 describe('Vue piece files', () => {
   test('pieces of routes and of the root route are lazy components of their default export, and are left untouched', async () => {
@@ -70,27 +94,22 @@ describe('Vue piece files', () => {
       '/posts/$postId': 'routes/posts.$postId.ts',
       '/settings': 'routes/settings.ts',
     })
-    expect(await routeOptionsOf(generatedRouteTree)).toEqual({
+    expect(await piecesOf(generatedRouteTree)).toEqual({
       __root__: {
-        component: lazyComponent('__root.component.vue'),
-        notFoundComponent: lazyComponent('__root.notFoundComponent.vue'),
-        errorComponent: lazyComponent('__root.errorComponent.vue'),
-        pendingComponent: lazyComponent('__root.pendingComponent.vue'),
+        component: 'root',
+        notFoundComponent: 'root not found',
+        errorComponent: 'root error',
+        pendingComponent: 'root pending',
       },
-      '/': { component: lazyComponent('index.component.vue') },
-      '/about': { component: lazyComponent('about.component.vue') },
+      '/': { component: 'index' },
+      '/about': { component: 'about' },
       '/posts': {
-        pendingComponent: lazyComponent('posts.pendingComponent.vue'),
-        errorComponent: lazyComponent('posts.errorComponent.vue'),
-        notFoundComponent: lazyComponent('posts.notFoundComponent.vue'),
+        pendingComponent: 'posts pending',
+        errorComponent: 'posts error',
+        notFoundComponent: 'posts not found',
       },
-      '/posts/$postId': {
-        component: lazyComponent('posts.$postId.component.vue'),
-        errorComponent: lazyComponent('posts.$postId.errorComponent.vue'),
-      },
-      '/settings': {
-        pendingComponent: lazyComponent('settings.pendingComponent.vue'),
-      },
+      '/posts/$postId': { component: 'post', errorComponent: 'post error' },
+      '/settings': { pendingComponent: 'settings pending' },
     })
     for (const [file, content] of Object.entries(files)) {
       expect(await read(root, file)).toBe(content)
@@ -110,9 +129,9 @@ describe('Vue piece files', () => {
     })
 
     expect(generatedRouteTree.endsWith('.js')).toBe(true)
-    expect(await routeOptionsOf(generatedRouteTree)).toEqual({
-      __root__: { component: lazyComponent('__root.component.vue') },
-      '/': { component: lazyComponent('index.component.vue') },
+    expect(await piecesOf(generatedRouteTree)).toEqual({
+      __root__: { component: 'root' },
+      '/': { component: 'index' },
     })
   })
 
@@ -136,8 +155,8 @@ describe('Vue piece files', () => {
       '/posts/$postId': 'routes/posts.$postId.ts',
       '/posts/$postId/edit': 'routes/posts.$postId.edit.ts',
     })
-    expect((await routeOptionsOf(generatedRouteTree))['/posts']).toEqual({
-      component: lazyComponent('posts.component.vue'),
+    expect((await piecesOf(generatedRouteTree))['/posts']).toEqual({
+      component: 'posts',
     })
   })
 
@@ -149,24 +168,23 @@ describe('Vue piece files', () => {
     const root = await createApp({
       'src/routes/__root.ts': rootRoute('vue'),
       'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
-      'src/routes/about.lazy.ts': lazyFileRoute('/about', '{}', 'vue'),
+      'src/routes/about.lazy.ts': `import { h } from 'vue'
+import { createLazyFileRoute } from '@tanstack/vue-router'
+
+export const Route = createLazyFileRoute('/about')({
+  component: () => h('p', 'about lazy'),
+})
+`,
       'src/routes/posts.ts': fileRoute('/posts', '{}', 'vue'),
       'src/routes/posts.component.vue': sfc('posts'),
     })
     const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-    expect(await routeOptionsOf(generatedRouteTree)).toEqual({
+    expect(await piecesOf(generatedRouteTree)).toEqual({
       __root__: {},
-      '/about': { lazy: { file: 'routes/about.lazy.ts' } },
-      '/posts': { component: lazyComponent('posts.component.vue') },
+      '/about': { component: 'about lazy' },
+      '/posts': { component: 'posts' },
     })
-    // (the lazy route the router loads is the file's `Route`)
-    const lazyRoute = { options: { component: 'about' } }
-    expect(
-      await loadLazyRoute(generatedRouteTree, '/about', (file) =>
-        file === 'routes/about.lazy.ts' ? { Route: lazyRoute } : {},
-      ),
-    ).toBe(lazyRoute)
   })
 
   // Bug: the route file of a directory route is `route.ts` (the default
@@ -196,8 +214,8 @@ describe('Vue piece files', () => {
         '/posts': '/posts',
         '/posts/': '/posts/',
       })
-      expect((await routeOptionsOf(generatedRouteTree))['/posts']).toEqual({
-        component: lazyComponent('posts/route.component.vue'),
+      expect((await piecesOf(generatedRouteTree))['/posts']).toEqual({
+        component: 'posts',
       })
     },
   )
@@ -209,43 +227,27 @@ describe('Vue piece files', () => {
   // reads the lazy route's `options` (router-core load-client.ts), which the
   // component does not have, so loading the route fails.
   // Impact: a Vue app with a `.lazy.vue` route file fails when the route
-  // loads (low: the documented Vue piece is `.component.vue`).
+  // loads (low: the documented Vue piece is `.component.vue`). A
+  // `.lazy.vue` file is the lazily loaded component of its route (ruling
+  // 2026-10-18, SPEC J1.17).
   // Source: mutation run R4 final re-audit (G3).
   test.fails(
-    'a .lazy.vue route file is the lazily loaded component of the route, or the generator warns that it is unsupported',
+    'a .lazy.vue route file is the lazily loaded component of the route',
     async () => {
       const root = await createApp({
         'src/routes/__root.ts': rootRoute('vue'),
         'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
         'src/routes/about.lazy.vue': sfc('about'),
       })
-      const warnings: Array<string> = []
-      vi.spyOn(console, 'warn').mockImplementation((...args) => {
-        warnings.push(args.join(' '))
-      })
-      vi.spyOn(console, 'log').mockImplementation(() => {})
-      const { generatedRouteTree } = await generate(root, {
-        target: 'vue',
-        disableLogging: false,
-      })
-      const options = (await routeOptionsOf(generatedRouteTree))['/about']!
-      if (!JSON.stringify(options).includes('about.lazy.vue')) {
-        // (not wired: the user is told)
-        expect(warnings.join('\n')).toContain('about.lazy.vue')
-        return
-      }
-      const component = { name: 'AboutSfc' }
-      if (options.component) {
-        expect(options.component).toEqual(lazyComponent('about.lazy.vue'))
-      } else {
-        const lazyRoute = (await loadLazyRoute(
-          generatedRouteTree,
-          '/about',
-          (file) =>
-            file === 'routes/about.lazy.vue' ? { default: component } : {},
-        )) as { options?: Record<string, unknown> } | undefined
-        expect(lazyRoute?.options?.component).toBe(component)
-      }
+      const { generatedRouteTree } = await generate(root, { target: 'vue' })
+
+      expect(
+        textOf(
+          await withRouteTree(generatedRouteTree, ({ renderAt }) =>
+            renderAt('/about'),
+          ),
+        ),
+      ).toBe('about')
     },
   )
 
@@ -266,8 +268,8 @@ describe('Vue piece files', () => {
       })
       const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-      expect(await routeOptionsOf(generatedRouteTree)).toEqual({
-        __root__: { component: lazyComponent('__root.component.vue') },
+      expect(await piecesOf(generatedRouteTree)).toEqual({
+        __root__: { component: 'root' },
         '/': {},
       })
     },
@@ -296,7 +298,7 @@ describe('empty files', () => {
         __root__: 'routes/__root.ts',
         '/posts': 'routes/posts.ts',
       })
-      expect(await routeOptionsOf(generatedRouteTree)).toEqual({
+      expect(await piecesOf(generatedRouteTree)).toEqual({
         __root__: {},
         '/posts': {},
       })
@@ -322,8 +324,12 @@ describe('empty files', () => {
       await generate(root, { target: 'vue' })
 
       const content = await read(root, 'src/routes/about.lazy.vue')
-      // (empty, or a single-file component: it starts with a block tag)
-      expect(content === '' || content.trimStart().startsWith('<')).toBe(true)
+      // Empty, or a single-file component the Vue plugin compiles to a
+      // component that renders.
+      if (content !== '') {
+        const { exports } = await evaluateModule(content, 'about.lazy.vue')
+        await renderToString(createSSRApp(exports.default))
+      }
     },
   )
 

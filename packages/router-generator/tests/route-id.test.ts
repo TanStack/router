@@ -1,68 +1,82 @@
-/** Controls of the shared `routeIdOf` helper (route-id.ts). */
+/** Controls of the shared `routeCallOf` helper (route-id.ts). */
 import { describe, expect, test } from 'vitest'
-import { evaluateRouteFile, routeIdOf } from './route-id'
+import { routeCallOf } from './route-id'
 
-describe('routeIdOf', () => {
+describe('routeCallOf', () => {
   test.each(['react', 'solid', 'vue'])(
-    'returns the id a %s route file creates its Route with',
-    async (framework) => {
+    'reads the constructor and id of a %s route file',
+    (framework) => {
       expect(
-        await routeIdOf(`import { createFileRoute } from '@tanstack/${framework}-router'
+        routeCallOf(`import { createFileRoute } from '@tanstack/${framework}-router'
 export const Route = createFileRoute('/posts/$id')({ component: () => null })`),
-      ).toBe('/posts/$id')
+      ).toEqual({ constructor: 'createFileRoute', id: '/posts/$id' })
     },
   )
 
-  test('reads the id of a lazy file route', async () => {
-    expect(
-      await routeIdOf(`import { createLazyFileRoute } from '@tanstack/react-router'
-export const Route = createLazyFileRoute('/lazy')({})`),
-    ).toBe('/lazy')
-  })
-
-  test('evaluateRouteFile tells which constructor created the Route', async () => {
-    const lazy =
-      await evaluateRouteFile(`import { createLazyFileRoute } from '@tanstack/react-router'
-export const Route = createLazyFileRoute('/lazy')({})`)
-    const route =
-      await evaluateRouteFile(`import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/route')({})`)
-    expect([lazy.Route.createdWith, route.Route.createdWith]).toEqual([
-      'createLazyFileRoute',
-      'createFileRoute',
-    ])
-  })
-
-  test('reads the id of a route file with JSX', async () => {
-    expect(
-      await routeIdOf(`import { createFileRoute } from '@tanstack/react-router'
+  test.each([
+    {
+      name: 'a lazy file route',
+      code: `import { createLazyFileRoute } from '@tanstack/react-router'
+export const Route = createLazyFileRoute('/lazy')({})`,
+      expected: { constructor: 'createLazyFileRoute', id: '/lazy' },
+    },
+    {
+      name: 'a root route',
+      code: `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({})`,
+      expected: { constructor: 'createRootRoute', id: undefined },
+    },
+    {
+      name: 'an aliased constructor, a template literal and wrappers',
+      code: `import { createFileRoute as cfr } from '@tanstack/react-router'
+export const Route = (cfr(\`/a\` as any)({}) as any)`,
+      expected: { constructor: 'createFileRoute', id: '/a' },
+    },
+    {
+      name: 'a namespace import',
+      code: `import * as Router from '@tanstack/react-router'
+export const Route = Router.createFileRoute("/a")({})`,
+      expected: { constructor: 'createFileRoute', id: '/a' },
+    },
+    {
+      name: 'a declaration exported in an export list',
+      code: `import { createFileRoute } from '@tanstack/react-router'
+const route = createFileRoute('/a')({})
+const other = createFileRoute('/other')({})
+export { route as Route, other }`,
+      expected: { constructor: 'createFileRoute', id: '/a' },
+    },
+    {
+      name: 'a constructor not imported from a router package',
+      code: `import { createFileRoute } from './local'
+export const Route = createFileRoute('/a')({})`,
+      expected: { constructor: undefined, id: '/a' },
+    },
+    {
+      name: 'a constructor imported for its type only',
+      code: `import { type createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/a')({})`,
+      expected: { constructor: undefined, id: '/a' },
+    },
+    {
+      name: 'JSX',
+      code: `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/jsx')({ component: Page })
 function Page() {
   return <><h1>Title</h1><p>Body</p></>
-}`),
-    ).toBe('/jsx')
+}`,
+      expected: { constructor: 'createFileRoute', id: '/jsx' },
+    },
+  ])('reads $name', ({ code, expected }) => {
+    expect(routeCallOf(code)).toEqual(expected)
   })
 
-  test('fails on a module that does not evaluate', async () => {
-    await expect(
-      routeIdOf(`import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/a')({})
-export const Route = 1`),
-    ).rejects.toThrow()
-    await expect(
-      routeIdOf(`import { createFileRoute, Missing } from '@tanstack/react-router'
-export const Route = createFileRoute('/a')({ component: Missing })`),
-    ).rejects.toThrow()
-  })
-
-  test('evaluateRouteFile provides the other router exports it is given', async () => {
-    const exports = await evaluateRouteFile(
-      `import Router, { createFileRoute, Link } from '@tanstack/react-router'
-export const used = [Router, Link]
-export const Route = createFileRoute('/a')({})`,
-      ['default', 'Link'],
-    )
-    expect(exports.used).toEqual(['default', 'Link'])
-    expect(exports.Route.id).toBe('/a')
+  test('fails on a file that does not parse or exports no Route call', () => {
+    expect(() =>
+      routeCallOf(`import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/a')({}`),
+    ).toThrow()
+    expect(() => routeCallOf(`export const Route = 1`)).toThrow()
+    expect(() => routeCallOf(`export const helper = 1`)).toThrow()
   })
 })
