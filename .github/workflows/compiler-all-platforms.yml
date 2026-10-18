@@ -1,4 +1,4 @@
-name: Compiler Platforms
+name: Compiler All Platforms
 
 # The main PR workflow only runs on Linux x64 (glibc). The compilers load a
 # native Yuku binary per platform and handle platform-specific paths, so run
@@ -21,10 +21,11 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
+            ActionScript
 
 env:
   NX_DAEMON: 'false'
@@ -41,10 +42,13 @@ jobs:
     # actions/setup-node only ships glibc builds, so musl uses Alpine's Node image
     container: ${{ matrix.container }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - name: Windows x64
+                  Linux x86
+                  OID Arm x86
+                  macOS arm64
             os: windows-latest
           - name: macOS arm64
             os: macos-latest
