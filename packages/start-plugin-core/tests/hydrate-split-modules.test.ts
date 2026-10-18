@@ -498,7 +498,9 @@ export function Page() {
           '@tanstack/react-start': {
             Hydrate: hydrateParentStubs['@tanstack/react-start']!.Hydrate,
             createServerFn: () => ({
-              handler: (rpc: unknown) => () => rpc,
+              handler: (rpc: { serverFnMeta: { id: string } }) => () => ({
+                client: rpc.serverFnMeta.id,
+              }),
             }),
           },
         },

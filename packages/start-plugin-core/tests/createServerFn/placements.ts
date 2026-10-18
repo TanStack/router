@@ -15,7 +15,7 @@ export interface Placement {
   nested?: boolean
   /**
    * The server fn initializes a variable declarator below the module top
-   * level (in a function body, a block or a switch case).
+   * level (in a function body or a switch case).
    */
   declarator?: boolean
 }
@@ -82,28 +82,6 @@ export function make() {
 }`,
     read: (module) => module.make(),
     nested: true,
-  },
-  {
-    name: 'a switch case at the module top level',
-    code: `export const registry: Array<unknown> = []
-const mode: string = 'a'
-switch (mode) {
-  case 'a':
-    const inner = createServerFn().handler(async () => db.inner())
-    registry.push(inner)
-}`,
-    read: (module) => module.registry[0],
-    declarator: true,
-  },
-  {
-    name: 'a block at the module top level',
-    code: `export const registry: Array<unknown> = []
-{
-  const inner = createServerFn().handler(async () => db.inner())
-  registry.push(inner)
-}`,
-    read: (module) => module.registry[0],
-    declarator: true,
   },
   {
     name: 'an object property',

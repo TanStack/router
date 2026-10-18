@@ -4,20 +4,14 @@ import {
   evaluateModule,
   importSources,
 } from '../regression-helpers'
-import {
-  declaredNames,
-  getModuleErrors,
-} from '@tanstack/compiler-test-utils/validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 // Each output runs only its environment's implementation; an isomorphic fn
 // without one for that environment is a no-op returning undefined, and the
-// other environment's implementation (and the function it references) is
-// absent. `noImpl` stays a runtime call (stubbed here).
+// client has no server implementation. `noImpl` stays a runtime call.
 // Replaces the former snapshot fixtures of this directory (N2).
 describe('each output runs the implementation of its environment', () => {
-  /** Runtime stub of an isomorphic fn without implementations. */
   const stubs = {
-    '@tanstack/react-start': { createIsomorphicFn: () => () => undefined },
     './x.server': { server: (value: string) => value },
     './x.client': { client: (value: string) => value },
   }
@@ -27,12 +21,16 @@ describe('each output runs the implementation of its environment', () => {
 import { client } from './x.client'
 `
 
-  /** Each output imports only the module its implementations read. */
+  /**
+   * The client does not import the server module, and the SSR output does
+   * not import the `.client` module (import protection denies it on the
+   * server, user ruling 2026-10-18).
+   */
   function expectEnvImports(
     outputs: Record<'client' | 'ssr', { code: string }>,
   ) {
-    expect(importSources(outputs.client.code)).toEqual(['./x.client'])
-    expect(importSources(outputs.ssr.code)).toEqual(['./x.server'])
+    expect(importSources(outputs.client.code)).not.toContain('./x.server')
+    expect(importSources(outputs.ssr.code)).not.toContain('./x.client')
   }
 
   /** Compiles `code` for the client and SSR, checks and evaluates both. */
@@ -46,11 +44,17 @@ import { client } from './x.client'
       expect(await getModuleErrors(compiled), output).toEqual([])
       results[output] = {
         code: compiled,
-        module: await evaluateModule(compiled, stubs),
+        module: await evaluateModule(compiled, stubs, {
+          env: output === 'client' ? 'client' : 'server',
+        }),
       }
     }
     return results
   }
+
+  /** Calls the named exports of a module. */
+  const call = (module: Record<string, any>, names: Array<string>) =>
+    Object.fromEntries(names.map((name) => [name, module[name]()]))
 
   // Source: snapshot fixtures createIsomorphicFnDestructured.tsx (and its
   // Rename / StarImport variants)
@@ -67,7 +71,7 @@ export const clientThenServerFn = createIsomorphicFn()
   .client(() => 'client')
   .server(() => 'server')
 function abstractedServerFn() {
-  return 'server'
+  return 'SERVER_IMPL'
 }
 export const serverOnlyFnAbstracted = createIsomorphicFn().server(abstractedServerFn)
 function abstractedClientFn() {
@@ -80,11 +84,18 @@ export const serverThenClientFnAbstracted = createIsomorphicFn()
 export const clientThenServerFnAbstracted = createIsomorphicFn()
   .client(abstractedClientFn)
   .server(abstractedServerFn)`)
-    const call = (module: Record<string, any>) =>
-      Object.fromEntries(
-        Object.entries(module).map(([name, fn]) => [name, fn()]),
-      )
-    expect(call(client.module)).toEqual({
+    const names = [
+      'noImpl',
+      'serverOnlyFn',
+      'clientOnlyFn',
+      'serverThenClientFn',
+      'clientThenServerFn',
+      'serverOnlyFnAbstracted',
+      'clientOnlyFnAbstracted',
+      'serverThenClientFnAbstracted',
+      'clientThenServerFnAbstracted',
+    ]
+    expect(call(client.module, names)).toEqual({
       noImpl: undefined,
       serverOnlyFn: undefined,
       clientOnlyFn: 'client',
@@ -95,19 +106,18 @@ export const clientThenServerFnAbstracted = createIsomorphicFn()
       serverThenClientFnAbstracted: 'client',
       clientThenServerFnAbstracted: 'client',
     })
-    expect(call(ssr.module)).toEqual({
+    expect(call(ssr.module, names)).toEqual({
       noImpl: undefined,
       serverOnlyFn: 'server',
       clientOnlyFn: undefined,
       serverThenClientFn: 'server',
       clientThenServerFn: 'server',
-      serverOnlyFnAbstracted: 'server',
+      serverOnlyFnAbstracted: 'SERVER_IMPL',
       clientOnlyFnAbstracted: undefined,
-      serverThenClientFnAbstracted: 'server',
-      clientThenServerFnAbstracted: 'server',
+      serverThenClientFnAbstracted: 'SERVER_IMPL',
+      clientThenServerFnAbstracted: 'SERVER_IMPL',
     })
-    expect(declaredNames(client.code)).not.toContain('abstractedServerFn')
-    expect(declaredNames(ssr.code)).not.toContain('abstractedClientFn')
+    expect(client.code).not.toContain('SERVER_IMPL')
   })
 
   // Source: snapshot fixture createIsomorphicFnFactory.tsx
@@ -131,21 +141,21 @@ export function createNoImplFn() {
 export const topLevelIsomorphicFn = createIsomorphicFn()
   .client(() => client('client'))
   .server(() => server('server'))`)
-    const call = (module: Record<string, any>) => [
+    const callFactories = (module: Record<string, any>) => [
       module.createPlatformFn('web')(),
       module.createServerImplFn('a')(),
       module.createClientImplFn('b')(),
       module.createNoImplFn()(),
       module.topLevelIsomorphicFn(),
     ]
-    expect(call(client.module)).toEqual([
+    expect(callFactories(client.module)).toEqual([
       'client-web',
       undefined,
       'client-b',
       undefined,
       'client',
     ])
-    expect(call(ssr.module)).toEqual([
+    expect(callFactories(ssr.module)).toEqual([
       'server-web',
       'server-a',
       undefined,
@@ -194,11 +204,15 @@ export function getClientOnlyValue() {
   return fn()
 }
 export const moduleLevel = getEnvironment()`)
-    const call = ({ moduleLevel, ...module }: Record<string, any>) =>
-      Object.fromEntries(
-        Object.entries(module).map(([name, fn]) => [name, fn()]),
-      )
-    expect(call(client.module)).toEqual({
+    const names = [
+      'getPlatformValue',
+      'getEnvironment',
+      'getDirectValue',
+      'getMultipleValues',
+      'getServerOnlyValue',
+      'getClientOnlyValue',
+    ]
+    expect(call(client.module, names)).toEqual({
       getPlatformValue: 'client-value',
       getEnvironment: 'running on client',
       getDirectValue: 'direct-client',
@@ -206,7 +220,7 @@ export const moduleLevel = getEnvironment()`)
       getServerOnlyValue: undefined,
       getClientOnlyValue: 'client-only-value',
     })
-    expect(call(ssr.module)).toEqual({
+    expect(call(ssr.module, names)).toEqual({
       getPlatformValue: 'server-value',
       getEnvironment: 'running on server',
       getDirectValue: 'direct-server',

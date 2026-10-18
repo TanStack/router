@@ -6,6 +6,7 @@
 import { stripVTControlCharacters } from 'node:util'
 import { describe, expect, test } from 'vitest'
 import {
+  callerRpcId,
   callProvider,
   callReportedServerFns,
   callServerFnThroughCallers,
@@ -25,8 +26,9 @@ import {
 } from './regression-helpers'
 
 describe('server functions', () => {
+  // A provider handler answers the server-fn router `{ result }`.
   const provider = `import { createServerRpc } from '@tanstack/react-start/server-rpc'
-const anyName = createServerRpc({ id: 'id-1', name: 'fn' }, (opts) => 'called:' + opts.data)
+const anyName = createServerRpc({ id: 'id-1', name: 'fn' }, (opts) => ({ result: 'called:' + opts.data }))
 export { anyName as exportedAs }`
   const server = { ssr: 'export {}', provider }
   const report = (extractedFilename: string, functionName = 'exportedAs') => ({
@@ -68,7 +70,7 @@ export { anyName as exportedAs }`
 export const bump = () => ++count`,
       provider: `import { createServerRpc } from '@tanstack/react-start/server-rpc'
 import { bump } from './module'
-export const handler = createServerRpc({ id: 'id-1', name: 'fn' }, () => bump())`,
+export const handler = createServerRpc({ id: 'id-1', name: 'fn' }, () => ({ result: bump() }))`,
     }
 
     test('a provider that imports the SSR caller shares its module instance', async () => {
@@ -129,22 +131,59 @@ export const fn = createServerFn().handler(createSsrRpc('id-1'))`
       await expect(ssr.fn()).rejects.toThrow('id-1')
     })
 
+    // In place: `.handler(extractedFn, serverFn)`, like the provider.
     test('in place runs it after its middleware and validator', async () => {
       const ssr = await createServerGraph({
         ssr: `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { createServerRpc } from '@tanstack/react-start/server-rpc'
 export const seen = []
-const auth = createMiddleware().server(({ next }) => {
-  seen.push('middleware')
-  return next()
-})
-export const fn = createServerFn()
+const auth = createMiddleware({ type: 'function' })
+  .validator((data) => (seen.push('middleware validator'), data + '?'))
+  .client(async ({ next }) => {
+    seen.push('client')
+    return next({ sendContext: { from: 'client' } })
+  })
+  .server(async ({ next, context }) => {
+    seen.push('server:' + context.from)
+    return next({ context: { user: 'user' } })
+  })
+const fn_handler = createServerRpc({ id: 'in-place', name: 'fn' }, (opts) =>
+  fn.__executeServer(opts),
+)
+export const fn = createServerFn({ method: 'POST' })
   .middleware([auth])
   .validator({ parse: (data) => (seen.push('validator'), data + '!') })
-  .handler(({ data }) => (seen.push('handler'), data))`,
+  .handler(fn_handler, async function ({ data, context, method, serverFnMeta }) {
+    seen.push('handler')
+    return [data, context.user, method, serverFnMeta.name, this.method]
+  })`,
         provider,
       }).ssr()
-      expect(await ssr.fn({ data: 'data' })).toBe('data!')
-      expect(ssr.seen).toEqual(['middleware', 'validator', 'handler'])
+      expect(await ssr.fn({ data: 'data' })).toEqual([
+        'data?!',
+        'user',
+        'POST',
+        'fn',
+        'POST',
+      ])
+      expect(ssr.seen).toEqual([
+        'client',
+        'middleware validator',
+        'server:client',
+        'validator',
+        'handler',
+      ])
+    })
+
+    // Start's runtime takes the one argument of an uncompiled `.handler()`
+    // for the RPC: the call does not answer what the handler returns.
+    test('left uncompiled (given its handler alone) does not return its result', async () => {
+      const ssr = await createServerGraph({
+        ssr: `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'handler')`,
+        provider,
+      }).ssr()
+      expect(await ssr.fn()).not.toBe('handler')
     })
   })
 })
@@ -198,12 +237,24 @@ export const fn = createServerFn().handler(async () => 'called')`,
     ).rejects.toThrow('client')
   })
 
-  test('accepts an SSR caller that keeps the handler in place', async () => {
-    const code = `import { createServerFn } from '@tanstack/react-start'
-export const fn = createServerFn().handler(async () => 'called')`
-    const { compiled, read } = await callableServerFn(code)
+  /** An SSR caller that runs the handler in place, like the provider. */
+  const inPlace = (
+    result: string,
+  ) => `import { createServerFn } from '@tanstack/react-start'
+import { createServerRpc } from '@tanstack/react-start/server-rpc'
+const fn_handler = createServerRpc({ id: 'in-place', name: 'fn' }, (opts) => fn.__executeServer(opts))
+export const fn = createServerFn().handler(fn_handler, async () => '${result}')`
+
+  test('accepts an SSR caller that runs the handler in place', async () => {
+    const { compiled, read } = await callableServerFn(
+      `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'called')`,
+    )
     expect(
-      await callServerFnThroughCallers({ ...compiled, ssr: code }, read),
+      await callServerFnThroughCallers(
+        { ...compiled, ssr: inPlace('called') },
+        read,
+      ),
     ).toBe('called')
   })
 
@@ -213,14 +264,16 @@ export const fn = createServerFn().handler(async () => 'called')`
 export const fn = createServerFn().handler(async () => 'called')`,
     )
     await expect(
-      callServerFnThroughCallers(
-        {
-          ...compiled,
-          ssr: `import { createServerFn } from '@tanstack/react-start'
-export const fn = createServerFn().handler(async () => 'other')`,
-        },
-        read,
-      ),
+      callServerFnThroughCallers({ ...compiled, ssr: inPlace('other') }, read),
+    ).rejects.toThrow('ssr')
+  })
+
+  test('fails when the SSR caller is left uncompiled', async () => {
+    const code = `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'called')`
+    const { compiled, read } = await callableServerFn(code)
+    await expect(
+      callServerFnThroughCallers({ ...compiled, ssr: code }, read),
     ).rejects.toThrow('ssr')
   })
 })
@@ -241,67 +294,102 @@ export const fn = createServerFn().handler(async () => 'secret')`,
   })
 })
 
-describe('Start runtime stub', () => {
-  test('server fn builders record their options, middleware and validator, and are callable', async () => {
-    const module =
-      await evaluateModule(`import { createMiddleware, createServerFn } from '@tanstack/react-start'
-export const auth = createMiddleware({ type: 'function' })
-export const createAuthServerFn = createServerFn({ method: 'POST' }).middleware([auth])
-export const validate = (input) => input
-export const fn = createAuthServerFn()
-  .validator(validate)
-  .handler(() => 'rpc', ({ data }) => 'handled:' + data)
-export const caller = createAuthServerFn().handler('rpc-id')`)
-    expect(module.fn.options).toEqual({
-      method: 'POST',
-      middleware: [module.auth],
-      validator: module.validate,
-    })
-    expect(await module.fn({ data: 'x' })).toBe('handled:x')
-    expect(await module.fn.__executeServer({ data: 'y' })).toBe('handled:y')
-    // The recorded options are not part of the RPC a caller keeps.
-    expect(module.caller).toEqual({ rpc: 'rpc-id' })
-    expect(module.caller.options.middleware).toEqual([module.auth])
+// Evaluated modules run Start's real runtime (`./start-runtime`); only the
+// RPC factories the harness cannot run in-process are replaced.
+describe('Start runtime', () => {
+  test('the server runtime rejects client RPCs', async () => {
+    await expect(
+      evaluateModule(
+        `import { createClientRpc } from '@tanstack/react-start/client-rpc'
+export const rpc = createClientRpc('id-1')`,
+        {},
+        { env: 'server' },
+      ),
+    ).rejects.toThrow('createClientRpc(id-1) in the server runtime')
   })
 
-  test('middleware records .client(), .validator() and .middleware(); .server() throws uncompiled', async () => {
+  test('callerRpcId reads the id of a caller, and nothing else', async () => {
     const module =
-      await evaluateModule(`import { createMiddleware } from '@tanstack/react-start'
-export const base = createMiddleware()
-export const client = () => 'client'
-export const validate = (input) => input
-export const logger = createMiddleware({ type: 'function' })
-  .middleware([base])
-  .validator(validate)
-  .client(client)`)
-    expect(module.logger.options).toEqual({
-      type: 'function',
-      middleware: [module.base],
-      validator: module.validate,
-      client: module.client,
-    })
-    expect(() => module.logger.server(() => 'server')).toThrow(
-      'uncompiled Start factory',
-    )
+      await evaluateModule(`import { createServerFn } from '@tanstack/react-start'
+import { createClientRpc } from '@tanstack/react-start/client-rpc'
+import { createServerRpc } from '@tanstack/react-start/server-rpc'
+export const caller = createServerFn().handler(createClientRpc('id-1'))
+export const inPlace = createServerFn().handler(async () => 'handler')
+const provider_handler = createServerRpc({ id: 'id-2', name: 'provider' }, (opts) => provider.__executeServer(opts))
+export const provider = createServerFn().handler(provider_handler, async () => 'handler')`)
+    expect(callerRpcId(module.caller)).toBe('id-1')
+    expect(callerRpcId(module.inPlace)).toBeUndefined()
+    expect(callerRpcId(module.provider)).toBeUndefined()
   })
 
-  test('the server runtime records middleware .server() and createStart middleware', async () => {
+  // Start's createServerFn.ts: `__executeServer` runs the validator and .server() of
+  // each middleware, whose next() passes the context on, then the server
+  // fn's validator and `options.serverFn(ctx)`; it answers { result } (with
+  // the context server middleware sends back) or { error }.
+  test('a handler runs after its middleware and validators, with its ctx and this', async () => {
     const module = await evaluateModule(
-      `import { createMiddleware, createStart } from '@tanstack/react-start'
-export const server = () => 'server'
-export const logger = createMiddleware({ type: 'function' }).server(server)
-export const request = createStart(() => {}).createMiddleware({ type: 'request' }).server(server)`,
+      `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { createServerRpc } from '@tanstack/react-start/server-rpc'
+export const seen = []
+const outer = createMiddleware({ type: 'function' })
+  .validator((data) => (seen.push('outer validator'), { ...data, outer: true }))
+  .server(async ({ next, data }) => {
+    seen.push('outer:' + data.outer)
+    const result = await next({ context: { user: 'u' }, sendContext: { sent: 1 } })
+    seen.push('outer done')
+    return result
+  })
+const inner = createMiddleware({ type: 'function' })
+  .middleware([outer])
+  .server(({ next, context }) => {
+    seen.push('inner:' + context.user + ':' + context.fromClient)
+    return next({ context: { role: 'admin' } })
+  })
+const fn_handler = createServerRpc({ id: 'id-1', name: 'fn', filename: 'f.ts' }, (opts) => fn.__executeServer(opts))
+export const fn = createServerFn({ method: 'POST' })
+  .middleware([inner])
+  .validator({ parse: (data) => ({ ...data, parsed: true }) })
+  .handler(fn_handler, async function (ctx) {
+    seen.push('handler')
+    return { ctx: Object.keys(ctx).sort(), data: ctx.data, context: ctx.context, method: ctx.method, meta: ctx.serverFnMeta, isOptions: this.serverFn !== undefined && this.method === 'POST' }
+  })
+const failing_handler = createServerRpc({ id: 'id-2', name: 'failing' }, (opts) => failing.__executeServer(opts))
+export const failing = createServerFn().handler(failing_handler, () => {
+  throw new Error('handler failed')
+})
+export { fn_handler, failing_handler }`,
       {},
       { env: 'server' },
     )
-    expect(module.logger.options).toEqual({
-      type: 'function',
-      server: module.server,
+    const response = await module.fn_handler({
+      data: { n: 1 },
+      context: { fromClient: 'c' },
     })
-    expect(module.request.options).toEqual({
-      type: 'request',
-      server: module.server,
+    expect(response).toEqual({
+      result: {
+        ctx: expect.arrayContaining([
+          'context',
+          'data',
+          'method',
+          'serverFnMeta',
+        ]),
+        data: { n: 1, outer: true, parsed: true },
+        context: { fromClient: 'c', user: 'u', role: 'admin' },
+        method: 'POST',
+        meta: { id: 'id-1', name: 'fn', filename: 'f.ts' },
+        isOptions: true,
+      },
+      context: { sent: 1 },
     })
+    expect(module.seen).toEqual([
+      'outer validator',
+      'outer:true',
+      'inner:u:c',
+      'handler',
+      'outer done',
+    ])
+    const failed = await module.failing_handler({})
+    expect(failed.error).toEqual(new Error('handler failed'))
   })
 })
 
@@ -317,7 +405,7 @@ export const fn = createServerFn().handler(async () => 'solid')`
       {},
       { framework: 'solid' },
     )
-    expect(client.fn.rpc).toHaveProperty('client')
+    expect(callerRpcId(client.fn)).toEqual(expect.any(String))
     expect(await callProvider(compiled, 'fn')).toBe('solid')
     // The React runtime has no Solid package.
     await expect(evaluateModule(compiled.client)).rejects.toThrow(

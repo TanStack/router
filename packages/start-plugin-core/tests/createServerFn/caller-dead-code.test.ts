@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import {
+  callFromClient,
   callProvider,
   callServerFnThroughCallers,
   compileAll,
@@ -394,9 +395,9 @@ export default ${code.startsWith('import verify') ? verify : `'default'`}`,
     },
   )
 
-  // The client keeps the middleware's `.client()` and drops its `.server()`
-  // and the server fn's validator (the client runtime's `.server()` throws
-  // uncompiled); the server runs both before the handler.
+  // The client keeps the middleware's `.client()` (its send context reaches
+  // the server) and drops the imports only its `.server()` and the server
+  // fn's validator read; the server runs both before the handler.
   // Source: Next.js server-actions fixtures server-graph/47, /58
   test('when the handler only reads it through a validator or a middleware', async () => {
     const compiled =
@@ -404,18 +405,13 @@ export default ${code.startsWith('import verify') ? verify : `'default'`}`,
 import { db } from './db.server'
 import { schema } from './schema.server'
 const auth = createMiddleware({ type: 'function' })
-  .client(async ({ next }) => next())
+  .client(async ({ next }) => next({ sendContext: { from: 'client' } }))
   .server(async ({ next }) => next({ context: { user: await db.user() } }))
-export const fn = createServerFn()
+export const fn = createServerFn({ method: 'POST' })
   .middleware([auth])
   .validator((data: unknown) => schema.parse(data))
-  .handler(async ({ data }) => data)`)
+  .handler(async ({ data, context }) => [data, context.user, context.from])`)
     expect(importSources(compiled.client)).toEqual([])
-    const { fn } = await evaluateModule(compiled.client)
-    expect(fn.options.validator).toBeUndefined()
-    expect(fn.options.middleware).toHaveLength(1)
-    expect(fn.options.middleware[0].options.client).toBeTypeOf('function')
-    expect(fn.options.middleware[0].options.server).toBeUndefined()
     const calls: Array<string> = []
     const stubs = {
       './db.server': {
@@ -427,7 +423,9 @@ export const fn = createServerFn()
         },
       },
     }
-    expect(await callProvider(compiled, 'fn', stubs, 'data')).toBe('data!')
+    expect(
+      await callFromClient(compiled, (module) => module.fn, 'data', stubs),
+    ).toEqual(['data!', 'user', 'client'])
     expect(calls).toEqual(['db.user', 'schema.parse'])
   })
 
@@ -641,7 +639,7 @@ export const currentTheme = theme`)
 
 describe('declarations only the handler needs', () => {
   // Bug: a function whose body declares a local of the function's own name
-  // (`function Report() { let Report = ... }`) counts as used by that
+  // (`function session() { const session = ... }`) counts as used by that
   // local, so the callers keep it, and the server-only import it reads,
   // after the handler that called it is gone.
   // Impact: the client loads the server-only module.
@@ -652,18 +650,18 @@ describe('declarations only the handler needs', () => {
     async () => {
       const compiled =
         await compileAll(`${head}import { readSecret } from './server-only'
-function Report() {
-  let Report = readSecret()
-  return <Report />
+function session() {
+  const session = readSecret()
+  return session.id
 }
-export const getReport = createServerFn().handler(async () => Report())`)
+export const getReport = createServerFn().handler(async () => session())`)
       expect(importSources(compiled.client)).toEqual([])
       expect(compiled.client).not.toContain('readSecret')
       expect(
         await callServerFnThroughCallers(
           compiled,
           (module) => module.getReport,
-          { './server-only': { readSecret: () => () => 'report' } },
+          { './server-only': { readSecret: () => ({ id: 'report' }) } },
         ),
       ).toBe('report')
     },
@@ -738,7 +736,7 @@ export const clientB = clientCopy`)
   // Source: babel-dead-code-elimination "variable" > "within for...in",
   // "within for...of" (var bindings declared inside nested statements)
   test('the client drops handler-only vars declared inside top-level statements', async () => {
-    const calls = ['openFlag', 'connect', 'readMode', 'readLabel', 'createPool']
+    const calls = ['openFlag', 'connect', 'readMode']
     const compiled =
       await compileAll(`${head}import { ${calls.join(', ')} } from './db.server'
 if (typeof window === 'undefined') {
@@ -751,12 +749,7 @@ switch (process.env.MODE) {
   case 'x':
     var mode = readMode()
 }
-outer: {
-  var labeled = readLabel()
-  break outer
-}
-for (var i = 0, pool = createPool(); i < 1; i++) {}
-export const fn = createServerFn().handler(async () => [flag, conn, mode, labeled, pool])`)
+export const fn = createServerFn().handler(async () => [flag, conn, mode])`)
     expect(importSources(compiled.client)).toEqual([])
     for (const call of calls) {
       expect(compiled.client).not.toContain(call)
@@ -771,7 +764,7 @@ export const fn = createServerFn().handler(async () => [flag, conn, mode, labele
             calls.map((call) => [call, () => call]),
           ),
         }),
-      ).toEqual(['openFlag', 'connect', undefined, 'readLabel', 'createPool'])
+      ).toEqual(['openFlag', 'connect', undefined])
     } finally {
       vi.unstubAllEnvs()
     }

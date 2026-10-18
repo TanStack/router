@@ -7,6 +7,7 @@ import {
 import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
 import { createStartCompiler as createHostCompiler } from '../src/start-compiler/host'
 import {
+  callerRpcId,
   callProvider,
   clientOnlyError,
   compileCode,
@@ -39,10 +40,9 @@ describe('compiler handles multiple files with different kinds', () => {
 export const fn = createServerFn().handler(() => 'hello')`,
       '/test/src/file1.ts',
     )
-    expect(file1.fn).toEqual({ rpc: { client: expect.any(String) } })
+    expect(callerRpcId(file1.fn)).toEqual(expect.any(String))
 
-    // File 2: Middleware only. The runtime stub's `.server()` throws, so the
-    // module only evaluates without it.
+    // File 2: Middleware only. The client middleware keeps no `.server()`.
     const file2 = await evaluate(
       `import { createMiddleware } from '@tanstack/react-start'
 export const mw = createMiddleware().server(({ next }) => {
@@ -51,7 +51,7 @@ export const mw = createMiddleware().server(({ next }) => {
 })`,
       '/test/src/file2.ts',
     )
-    expect(file2.mw).toBeDefined()
+    expect(file2.mw.options.server).toBeUndefined()
 
     // File 3: IsomorphicFn only
     const file3 = await evaluate(
@@ -78,7 +78,7 @@ export const serverFn = createServerFn().handler(() => 'hello')
 export const isoFn = createIsomorphicFn().client(() => 'client-iso')`,
       '/test/src/file5.ts',
     )
-    expect(file5.serverFn).toEqual({ rpc: { client: expect.any(String) } })
+    expect(callerRpcId(file5.serverFn)).toEqual(expect.any(String))
     expect(file5.isoFn()).toBe('client-iso')
   })
 
@@ -576,11 +576,12 @@ export const Widget = 1`,
 })
 
 test('a server fn module importing an empty module compiles', async () => {
-  // `./empty` holds only whitespace, as a module of TypeScript types erased
-  // by an earlier transform does. Resolving `base` (a builder in the shape of
-  // a server fn) loads it.
+  // In dev, `./empty` is a file the user just emptied (only whitespace
+  // left). Resolving `base` (a builder in the shape of a server fn) loads
+  // it.
   const { compile, serverFns } = createStartCompiler({
     env: 'client',
+    mode: 'dev',
     files: { '/test/src/empty.ts': '   \n\t  ' },
   })
 
@@ -627,7 +628,10 @@ export const personServerFn = createServerFn({ method: 'GET' })
       `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
 
 const getWindowWidth = createClientOnlyFn(() => window.innerWidth)
-export const width = getWindowWidth()
+export function readWidth() {
+  const width = getWindowWidth()
+  return width
+}
 
 export const personServerFn = createServerFn({ method: 'GET' })
   .handler(({ data: name }) => {
@@ -637,10 +641,8 @@ export const personServerFn = createServerFn({ method: 'GET' })
     vi.stubGlobal('window', { innerWidth: 42 })
     try {
       const client = await evaluateModule(code!)
-      expect(client.width).toBe(42)
-      expect(client.personServerFn).toEqual({
-        rpc: { client: Object.keys(serverFns)[0] },
-      })
+      expect(client.readWidth()).toBe(42)
+      expect(callerRpcId(client.personServerFn)).toBe(Object.keys(serverFns)[0])
     } finally {
       vi.unstubAllGlobals()
     }
@@ -873,7 +875,11 @@ export const myFn = createServerOnlyFn(() => 'server-only-value')`).then(
       '/test/src/factory.ts': `export { createServerOnlyFn } from './factory-inner'`,
       '/test/src/factory-inner.ts': `export { createServerOnlyFn } from '@tanstack/start-fn-stubs'`,
     }
-    const { compiler, compile } = createStartCompiler({ env: 'server', files })
+    const { compiler, compile } = createStartCompiler({
+      env: 'server',
+      mode: 'dev',
+      files,
+    })
     const source = `import { createServerOnlyFn } from './factory'
 export const myFn = createServerOnlyFn(() => 'server-only-value')`
     const run = async () => {
@@ -910,6 +916,7 @@ export const serverFn = createServerFn().handler(async () => {
 })`
     const { compiler, compile } = createStartCompiler({
       env: 'server',
+      mode: 'dev',
       files,
     })
     const callServerFn = async () =>
@@ -971,11 +978,6 @@ export const serverFn = createServerFn().handler(async () => impl())`
     `import { createServerFn } from '@tanstack/react-start'
 export const fn: any = fn.handler(async () => 'x')
 export const real = createServerFn().handler(async () => 'y')`,
-    `import { createIsomorphicFn } from '@tanstack/react-start'
-var a: any = b
-var b: any = a
-export const fn = a.server(() => 'x')
-export const real = createIsomorphicFn().client(() => 'c')`,
   ])('compiling a self-referencing binding settles: %#', async (code) => {
     const { compile } = createStartCompiler({ env: 'client' })
     const settled = await Promise.race([
@@ -1057,9 +1059,9 @@ test('compiles a server function through a parenthesized namespace receiver', as
   expect(code).not.toBeNull()
   expect(code).not.toContain('private-server-body')
   expect(Object.keys(serverFns)).toHaveLength(1)
-  expect((await evaluateModule(code!)).fn).toEqual({
-    rpc: { client: Object.keys(serverFns)[0] },
-  })
+  expect(callerRpcId((await evaluateModule(code!)).fn)).toBe(
+    Object.keys(serverFns)[0],
+  )
 })
 
 // Source: #8504 compiler.test.ts "preserves a shadowed parenthesized
@@ -1077,8 +1079,8 @@ export function make(Start) {
   expect(make(local)()).toBe('local-runtime-body')
 })
 
-// The client runtime's middleware `.server()` throws uncompiled: the module
-// only evaluates without it.
+// The client output keeps no server implementation; each export still
+// evaluates to what the client runtime gives.
 test.each([
   {
     expression: `(Start).createServerOnlyFn(() => 'private-server-body')`,

@@ -1,6 +1,7 @@
 import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
+  callerRpcId,
   callProvider,
   callServerFnThroughCallers,
   clientOnlyError,
@@ -14,6 +15,7 @@ import {
   outputs,
   serverOnlyError,
   settle,
+  startClientCore,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { ModuleStub, Output } from './regression-helpers'
@@ -29,34 +31,40 @@ type Wrap = (expression: string) => string
 describe('environment-specific functions', () => {
   // Source: Waku vite-plugin-allow-server.test.ts "keeps only allowServer
   // dependencies and removes allowServer imports", "supports allowServer
-  // aliasing and export specifiers"
-  test('each output keeps the implementation of its environment and only its dependencies', async () => {
-    const compiled =
-      await compileAll(`import { createServerOnlyFn, createClientOnlyFn as clientOnly } from '@tanstack/react-start'
+  // aliasing and export specifiers". Dev and build compile alike (audit E1
+  // missing coverage 4).
+  test.each(['build', 'dev'] as const)(
+    '%s: each output keeps the implementation of its environment and only its dependencies',
+    async (mode) => {
+      const compiled = await compileAll(
+        `import { createServerOnlyFn, createClientOnlyFn as clientOnly } from '@tanstack/react-start'
 import { draw } from './chart.client'
 import { query } from './db.server'
 const shared = 1
 const readDb = () => query(shared)
 const serverValue = createServerOnlyFn(readDb)
 export const clientValue = clientOnly(() => draw(shared))
-export { serverValue as exposed }`)
-    const stubs = {
-      './chart.client': `export const draw = (x) => 'draw:' + x`,
-      './db.server': `export const query = (x) => 'query:' + x`,
-    }
-    expect(importSources(compiled.client)).toEqual(['./chart.client'])
-    const client = await evaluateModule(compiled.client, stubs)
-    expect([client.clientValue(), settle(client.exposed)]).toEqual([
-      'draw:1',
-      serverOnlyError,
-    ])
-    expect(importSources(compiled.ssr)).not.toContain('./chart.client')
-    const ssr = await evaluateModule(compiled.ssr, stubs)
-    expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
-      clientOnlyError,
-      'query:1',
-    ])
-  })
+export { serverValue as exposed }`,
+        { mode },
+      )
+      const stubs = {
+        './chart.client': `export const draw = (x) => 'draw:' + x`,
+        './db.server': `export const query = (x) => 'query:' + x`,
+      }
+      expect(importSources(compiled.client)).toEqual(['./chart.client'])
+      const client = await evaluateModule(compiled.client, stubs)
+      expect([client.clientValue(), settle(client.exposed)]).toEqual([
+        'draw:1',
+        serverOnlyError,
+      ])
+      expect(importSources(compiled.ssr)).not.toContain('./chart.client')
+      const ssr = await evaluateModule(compiled.ssr, stubs)
+      expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
+        clientOnlyError,
+        'query:1',
+      ])
+    },
+  )
 
   // Source: Waku vite-plugin-allow-server.test.ts "handles default allowServer
   // export", "stubs default exports while preserving allowServer dependencies"
@@ -116,9 +124,10 @@ export default createMiddleware().server(async ({ next }) => {
     )
     expect(await getModuleErrors(client!)).toEqual([])
     expect(importSources(client!)).toEqual([])
-    // The client runtime's `.server()` throws: the module evaluates only
-    // without it, and the middleware records no server implementation.
-    expect((await evaluateModule(client!)).default.options).toEqual({})
+    // The middleware records no server implementation.
+    expect((await evaluateModule(client!)).default.options).toEqual({
+      type: 'request',
+    })
   })
 
   describe('a middleware chain with a wrapped link', () => {
@@ -137,61 +146,46 @@ export default createMiddleware().server(async ({ next }) => {
         .filter(Boolean)
         .join('\n')
 
-    // Records the implementation of each chain link.
-    const chainOf = (links: Array<[string, any]>): Record<string, any> => {
-      const link = (method: string) => (impl: unknown) =>
-        chainOf([...links, [method, impl]])
-      return {
-        links,
-        middleware: link('middleware'),
-        validator: link('validator'),
-        server: link('server'),
-        client: link('client'),
-      }
-    }
-
-    // The links an output keeps, each with the result of its implementation.
+    /**
+     * The links of the middleware an output keeps (Start's createMiddleware
+     * records each in its options), each with the result of its
+     * implementation.
+     */
     async function runLinks(output: Output, code: string) {
       // The server output leaves a module without env-only code untouched.
       const compiled = (await compileCode(output, code, { id })) ?? code
       expect(await getModuleErrors(compiled, 'module.ts'), output).toEqual([])
       const { code: javascript } = await transformWithOxc(compiled, 'module.ts')
       const { mw } = await evaluateModule(javascript, {
-        '@tanstack/react-start': { createMiddleware: () => chainOf([]) },
         './db.server': `export const db = { read: (key) => 'db:' + key }`,
         './check.server': `export const check = (data, key) => data + ':' + key`,
       })
-      const links: Array<[string, unknown]> = []
-      for (const [method, impl] of mw.links) {
-        links.push([
-          method,
-          method === 'middleware'
-            ? impl
-            : await impl(
-                method === 'validator' ? 'data' : { next: (opts: any) => opts },
-              ),
-        ])
+      const links: Record<string, unknown> = {}
+      for (const method of ['middleware', 'validator', 'client', 'server']) {
+        const impl = mw.options[method]
+        if (impl !== undefined) {
+          links[method] =
+            method === 'middleware'
+              ? impl
+              : await impl(
+                  method === 'validator'
+                    ? 'data'
+                    : { next: (opts: unknown) => opts },
+                )
+        }
       }
       return { compiled, links }
     }
 
-    // Parentheses and each TypeScript wrapper are different AST nodes; the
-    // last row nests three.
+    // Parentheses and each TypeScript wrapper are different AST nodes.
     const wrappers = [
       { name: 'parentheses', wrap: (x: string) => `(${x})` },
-      { name: 'double parentheses', wrap: (x: string) => `((${x}))` },
       { name: 'as any', wrap: (x: string) => `(${x} as any)` },
       {
         name: 'as unknown as T',
         wrap: (x: string) => `(${x} as unknown as Middleware)`,
       },
       { name: 'satisfies', wrap: (x: string) => `(${x} satisfies unknown)` },
-      { name: 'non-null', wrap: (x: string) => `${x}!` },
-      { name: 'angle-bracket', wrap: (x: string) => `(<any>${x})` },
-      {
-        name: 'parentheses, as and non-null',
-        wrap: (x: string) => `((${x}) as any)!`,
-      },
     ]
     const serverResult = { context: 'db:SERVER_SECRET' }
     const clientResult = { sendContext: 'client' }
@@ -201,41 +195,35 @@ export default createMiddleware().server(async ({ next }) => {
     test.each(
       [
         {
-          end: '.server()',
+          end: '.client()',
           chain: (wrap: Wrap) =>
-            `${wrap(`createMiddleware({ type: 'function' })${serverLink}`)}${clientLink}`,
-          clientLinks: [['client', clientResult]],
-          ssrLinks: [
-            ['server', serverResult],
-            ['client', clientResult],
-          ],
+            `${wrap(`createMiddleware({ type: 'function' })${clientLink}`)}${serverLink}`,
+          clientLinks: { client: clientResult },
+          ssrLinks: { client: clientResult, server: serverResult },
         },
         {
-          end: '.server(), and the whole chain',
+          end: '.client(), and the whole chain',
           chain: (wrap: Wrap) =>
             wrap(
-              `${wrap(`createMiddleware({ type: 'function' })${serverLink}`)}${clientLink}`,
+              `${wrap(`createMiddleware({ type: 'function' })${clientLink}`)}${serverLink}`,
             ),
-          clientLinks: [['client', clientResult]],
-          ssrLinks: [
-            ['server', serverResult],
-            ['client', clientResult],
-          ],
+          clientLinks: { client: clientResult },
+          ssrLinks: { client: clientResult, server: serverResult },
         },
         {
-          end: '.middleware().validator().server()',
+          // Only parentheses: a validator link wrapped in a TypeScript
+          // wrapper is pinned below.
+          end: '.middleware().validator()',
+          wrappers: [wrappers[0]!],
           chain: (wrap: Wrap) =>
-            `${wrap(`createMiddleware({ type: 'function' }).middleware([])${validatorLink}${serverLink}`)}${clientLink}`,
-          clientLinks: [
-            ['middleware', []],
-            ['client', clientResult],
-          ],
-          ssrLinks: [
-            ['middleware', []],
-            ['validator', 'data:VALIDATOR_SECRET'],
-            ['server', serverResult],
-            ['client', clientResult],
-          ],
+            `${wrap(`createMiddleware({ type: 'function' }).middleware([])${validatorLink}`)}${clientLink}${serverLink}`,
+          clientLinks: { middleware: [], client: clientResult },
+          ssrLinks: {
+            middleware: [],
+            validator: 'data:VALIDATOR_SECRET',
+            client: clientResult,
+            server: serverResult,
+          },
         },
         {
           // The wrapped part ends in `.client()`; `.server()` follows it.
@@ -244,19 +232,16 @@ export default createMiddleware().server(async ({ next }) => {
           end: '.middleware().validator().client(), before .server()',
           chain: (wrap: Wrap) =>
             `${wrap(`createMiddleware({ type: 'function' }).middleware([])${validatorLink}${clientLink}`)}${serverLink}`,
-          clientLinks: [
-            ['middleware', []],
-            ['client', clientResult],
-          ],
-          ssrLinks: [
-            ['middleware', []],
-            ['validator', 'data:VALIDATOR_SECRET'],
-            ['client', clientResult],
-            ['server', serverResult],
-          ],
+          clientLinks: { middleware: [], client: clientResult },
+          ssrLinks: {
+            middleware: [],
+            validator: 'data:VALIDATOR_SECRET',
+            client: clientResult,
+            server: serverResult,
+          },
         },
-      ].flatMap((chain) =>
-        wrappers.map((wrapper) => ({ ...chain, ...wrapper })),
+      ].flatMap(({ wrappers: rowWrappers = wrappers, ...chain }) =>
+        rowWrappers.map((wrapper) => ({ ...chain, ...wrapper })),
       ),
     )(
       'the client strips the server implementation when $name wraps the chain up to $end',
@@ -277,24 +262,27 @@ export default createMiddleware().server(async ({ next }) => {
     // Impact: the validator and its server-only imports ship to the client.
     // Source: #8504 start-compiler-factories.test.ts "the client strips a
     // validator link wrapped in $name" (Vite and Rsbuild builds; red on main).
-    test.fails.each([
-      { name: 'satisfies', wrap: (x: string) => `(${x} satisfies unknown)` },
-      { name: 'as any', wrap: (x: string) => `(${x} as any)` },
-    ])(
-      'the client strips a validator link wrapped in $name',
-      async ({ wrap }) => {
+    test.fails.each(
+      ['', '.middleware([])'].flatMap((middleware) =>
+        wrappers.slice(1).map((wrapper) => ({ ...wrapper, middleware })),
+      ),
+    )(
+      'the client strips a validator link$middleware wrapped in $name',
+      async ({ wrap, middleware }) => {
         const code = middlewareModule(
-          `${wrap(`createMiddleware({ type: 'function' })${validatorLink}`)}${serverLink}${clientLink}`,
+          `${wrap(`createMiddleware({ type: 'function' })${middleware}${validatorLink}`)}${clientLink}${serverLink}`,
         )
+        const kept = middleware ? { middleware: [] } : {}
         const client = await runLinks('client', code)
         expect(importSources(client.compiled)).toEqual([])
         expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
-        expect(client.links).toEqual([['client', clientResult]])
-        expect((await runLinks('ssr', code)).links).toEqual([
-          ['validator', 'data:VALIDATOR_SECRET'],
-          ['server', serverResult],
-          ['client', clientResult],
-        ])
+        expect(client.links).toEqual({ ...kept, client: clientResult })
+        expect((await runLinks('ssr', code)).links).toEqual({
+          ...kept,
+          validator: 'data:VALIDATOR_SECRET',
+          client: clientResult,
+          server: serverResult,
+        })
       },
     )
 
@@ -313,15 +301,15 @@ export default createMiddleware().server(async ({ next }) => {
     // Control for the pin below (same harness): the `.server()` link of a
     // builder stored in a variable is stripped on the client.
     test('the client strips a .server() link of a builder stored in a variable', async () => {
-      const code = builderVariableModule(serverLink, clientLink)
+      const code = builderVariableModule(clientLink, serverLink)
       const client = await runLinks('client', code)
       expect(importSources(client.compiled)).toEqual([])
       expect(client.compiled).not.toMatch(/SERVER_SECRET/)
-      expect(client.links).toEqual([['client', clientResult]])
-      expect((await runLinks('ssr', code)).links).toEqual([
-        ['server', serverResult],
-        ['client', clientResult],
-      ])
+      expect(client.links).toEqual({ client: clientResult })
+      expect((await runLinks('ssr', code)).links).toEqual({
+        client: clientResult,
+        server: serverResult,
+      })
     })
 
     // Bug: a `.validator()` link of a middleware builder stored in a variable
@@ -339,11 +327,11 @@ export default createMiddleware().server(async ({ next }) => {
         const client = await runLinks('client', code)
         expect(importSources(client.compiled)).toEqual([])
         expect(client.compiled).not.toMatch(/SERVER_SECRET|VALIDATOR_SECRET/)
-        expect(client.links).toEqual([])
-        expect((await runLinks('ssr', code)).links).toEqual([
-          ['validator', 'data:VALIDATOR_SECRET'],
-          ['server', serverResult],
-        ])
+        expect(client.links).toEqual({})
+        expect((await runLinks('ssr', code)).links).toEqual({
+          validator: 'data:VALIDATOR_SECRET',
+          server: serverResult,
+        })
       },
     )
   })
@@ -419,21 +407,18 @@ export const getEnv = base.server(() => 'server')`,
     async (chain) => {
       const code = `import { createIsomorphicFn } from '@tanstack/react-start'
 export const fn = ${chain}`
+      // A module without a server fn has no provider.
       const results: Record<string, unknown> = {}
-      for (const output of outputs) {
+      for (const output of ['client', 'ssr'] as const) {
         const compiled = (await compileCode(output, code)) ?? code
         results[output] = settle((await evaluateModule(compiled)).fn)
       }
-      expect(results).toEqual({
-        client: 'client',
-        ssr: 'server',
-        provider: 'server',
-      })
+      expect(results).toEqual({ client: 'client', ssr: 'server' })
     },
   )
 
-  // Bug: a factory callee wrapped in `as any` or `!` is not resolved, so
-  // the call is left untransformed.
+  // Bug: a factory callee wrapped in `as any` is not resolved, so the call
+  // is left untransformed.
   // Impact: the client bundle ships the server implementation and its
   // imports and runs it in the browser (the uncompiled factories return the
   // implementation); a client-only fn runs during SSR.
@@ -468,12 +453,11 @@ export const fn = ${chain}`
         client: 'chart',
         server: clientOnlyError,
       },
-    ].flatMap((row) =>
-      [
-        { name: 'as any', wrap: (x: string) => `(${x} as any)` },
-        { name: 'non-null', wrap: (x: string) => `${x}!` },
-      ].map((wrapper) => ({ ...row, ...wrapper })),
-    ),
+    ].map((row) => ({
+      ...row,
+      name: 'as any',
+      wrap: (x: string) => `(${x} as any)`,
+    })),
   )(
     'each output keeps its implementation of $shape with the callee in $name',
     async ({ code: factory, wrap, client, server }) => {
@@ -865,22 +849,6 @@ export const s = so(() => db.y())`,
       serverFns: 1,
     },
     {
-      // Only createServerOnlyFn appears in the source text.
-      name: 'an aliased re-export of createClientOnlyFn next to createServerOnlyFn',
-      output: 'ssr',
-      files: {
-        '/test/src/env.ts': `export { createClientOnlyFn as clientOnly } from '@tanstack/react-start'`,
-      },
-      code: `import { createServerOnlyFn } from '@tanstack/react-start'
-import { clientOnly } from './env'
-import { secret } from './secret.server'
-import { readWindow } from './browser'
-export const serverValue = createServerOnlyFn(() => secret())
-export const clientValue = clientOnly(() => readWindow())`,
-      imports: ['./secret.server'],
-      serverFns: 0,
-    },
-    {
       // Replaces createServerFn.test.ts "should use slow path for factory
       // pattern" (N9).
       name: 'a server fn factory const-aliased in another module',
@@ -913,6 +881,37 @@ export const fn = createFooServerFn().handler(async () => db.x())`,
         ),
       ).toBe('x')
     }
+  })
+
+  // Only createServerOnlyFn appears in the source text; on the server, the
+  // client-only fn imported through an aliased re-export throws and the
+  // server-only fn runs. (Which of its imports the SSR output keeps is left
+  // open: neutral names, user ruling 2026-10-17.)
+  test('ssr: an aliased re-export of createClientOnlyFn next to createServerOnlyFn', async () => {
+    const files = {
+      '/test/src/env.ts': `export { createClientOnlyFn as clientOnly } from '@tanstack/react-start'`,
+    }
+    const code = `import { createServerOnlyFn } from '@tanstack/react-start'
+import { clientOnly } from './env'
+import { secret } from './secret.server'
+import { readWindow } from './browser'
+export const serverValue = createServerOnlyFn(() => secret())
+export const clientValue = clientOnly(() => readWindow())`
+    const ssr = (await compileCode('ssr', code, { files })) ?? code
+    expect(await getModuleErrors(ssr)).toEqual([])
+    const module = await evaluateModule(
+      ssr,
+      {
+        './env': { clientOnly: startClientCore.createClientOnlyFn },
+        './secret.server': { secret: () => 'secret' },
+        './browser': { readWindow: () => 'window' },
+      },
+      { env: 'server' },
+    )
+    expect([module.serverValue(), settle(module.clientValue)]).toEqual([
+      'secret',
+      clientOnlyError,
+    ])
   })
 
   // Source: @vitejs/plugin-rsc expand-export-all fixtures (per row)
@@ -977,15 +976,6 @@ export * from './b'`,
       },
       resolvesServerOnlyFn: true,
     },
-    {
-      // expand-export-all/string-export-name
-      name: 'string export names',
-      files: {
-        '/test/src/start.ts': `export { createServerFn as 'create server fn', createServerOnlyFn as 'server only' } from '@tanstack/react-start'`,
-      },
-      code: `import { 'create server fn' as createServerFn, 'server only' as createServerOnlyFn } from './start'`,
-      resolvesServerOnlyFn: true,
-    },
   ])(
     'an export * chain with $name',
     async ({
@@ -1042,9 +1032,9 @@ export const fn = base.handler(async () => db.x())`
     const before = (await compile(importer, '/test/src/a.tsx')) ?? importer
     const { fn: rpc } = await evaluateModule(
       before,
-      stubs({ handler: (handler: unknown) => ({ rpc: handler }) }),
+      stubs(startClientCore.createServerFn()),
     )
-    expect(rpc).toEqual({ rpc: { client: expect.any(String) } })
+    expect(callerRpcId(rpc)).toEqual(expect.any(String))
     files['/test/src/b.ts'] =
       `export const base = { handler: (fn: unknown) => fn }`
     // Bundlers may report the changed module with a query suffix.

@@ -79,12 +79,14 @@ test.each<{
     expected: 'deleteItemx',
   },
   {
+    // Start calls the handler with one argument, its context (`this` is
+    // runtime-defined: Start calls it as a method of its options).
     // Source: Next.js server-actions fixtures server-graph/59
-    name: 'a function using this, arguments and new.target',
-    code: `export const fn = createServerFn().handler(async function (this: unknown) {
-  return [typeof this, arguments.length, new.target === undefined, db.x()]
+    name: 'a function using arguments and new.target',
+    code: `export const fn = createServerFn().handler(async function () {
+  return [arguments.length, new.target === undefined, db.x()]
 })`,
-    expected: ['undefined', 1, true, 'x'],
+    expected: [1, true, 'x'],
   },
   {
     // Source: Next.js server-actions fixtures server-graph/14 (streaming)
@@ -105,11 +107,12 @@ test.each<{
   {
     // Source: Next.js server-actions fixtures server-graph/31
     name: 'an object literal method',
-    code: `export const fn = createServerFn().handler({
+    code: `const handlers = {
   async f() {
     return db.x()
   },
-}.f)`,
+}
+export const fn = createServerFn().handler(handlers.f)`,
     expected: 'x',
   },
   {
@@ -147,8 +150,8 @@ export const fn = createServerFn().handler(getUsers)`,
     expected: 'users',
   },
   {
-    name: 'a parenthesized non-null initializer',
-    code: `export const fn = (createServerFn().handler(async () => db.x()))!`,
+    name: 'an initializer cast with as unknown as',
+    code: `export const fn = createServerFn().handler(async () => db.x()) as unknown as () => Promise<string>`,
     expected: 'x',
   },
   {

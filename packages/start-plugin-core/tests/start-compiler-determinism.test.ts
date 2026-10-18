@@ -14,9 +14,11 @@ import {
   mergeServerFnsById,
 } from '../src/start-compiler/host'
 import {
+  callerRpcId,
   callReportedServerFns,
   createServerGraph,
   evaluateModule,
+  serverFnResult,
 } from './regression-helpers'
 import type { ServerFn } from '../src/start-compiler/types'
 
@@ -64,12 +66,16 @@ const serverFnModule = (name: string, value: string) =>
   `import { createServerFn } from '@tanstack/react-start'
 export const ${name} = createServerFn().handler(async () => '${value}')`
 
-/** Handlers of an evaluated provider, by the id in their metadata. */
+/**
+ * Handlers of an evaluated provider, by the id in their metadata, each
+ * returning the result of its call (`serverFnResult`).
+ */
 function handlersById(provider: Record<string, any>) {
   const handlers: Record<string, (opts: unknown) => unknown> = {}
   for (const value of Object.values(provider)) {
-    if (typeof value === 'function' && value.meta?.id !== undefined) {
-      handlers[value.meta.id] = value
+    if (typeof value === 'function' && value.serverFnMeta?.id !== undefined) {
+      handlers[value.serverFnMeta.id] = async (opts: unknown) =>
+        serverFnResult(await value(opts))
     }
   }
   return handlers
@@ -104,7 +110,7 @@ async function compileUnder(
   )(code, `${id}?tss-serverfn-split`)
   const server = { ssr: undefined, provider: provider!, id }
   return {
-    rpc: (await evaluateModule(client!)).fn.rpc.client as string,
+    rpc: callerRpcId((await evaluateModule(client!)).fn) as string,
     handlerIds: Object.keys(
       handlersById(await createServerGraph(server).provider()),
     ),
@@ -188,9 +194,9 @@ export const c = createServerFn().handler(async () => 'from c')`
         )(code, id))!,
       )
       const rpcs: Record<string, string> = {
-        a: client.a.rpc.client,
-        b: client.b.rpc.client,
-        c: client.c.rpc.client,
+        a: callerRpcId(client.a)!,
+        b: callerRpcId(client.b)!,
+        c: callerRpcId(client.c)!,
       }
       expect(new Set(Object.values(rpcs)).size).toBe(3)
       const provider = (await compilerFor(
@@ -224,7 +230,7 @@ export const c = createServerFn().handler(async () => 'from c')`
     const rpcs: Record<string, string> = {}
     for (const [id, code] of Object.entries(modules)) {
       const module = await evaluateModule((await client(code, id))!)
-      rpcs[id] = (module.a ?? module.b).rpc.client
+      rpcs[id] = callerRpcId(module.a ?? module.b)!
     }
     expect(new Set(Object.values(rpcs)).size).toBe(2)
 

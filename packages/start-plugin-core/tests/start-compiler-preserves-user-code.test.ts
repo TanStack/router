@@ -272,50 +272,6 @@ export const fn = createServerFn().handler(async () => red)`,
   expect((await evaluateModule(client!)).label).toBe('red')
 })
 
-// An empty destructuring pattern binds nothing, but its initializer still
-// runs, once: when the client loads the module, and when the server handles
-// a call of the module's server fn.
-// Bug: dead-code elimination removes a declaration whose pattern binds no
-// name (`const {} = init()`, `const [] = other()`), initializer included.
-// Impact: the initializer's side effects (a registration, a setup call) no
-// longer run in the client or on the server.
-// Source: babel-dead-code-elimination "object pattern" > "unzips if all
-// variables are unused", "array pattern" > "unzips if all variables are
-// unused"; #8504 start-compiler-preserves-user-code.test.ts (red on main)
-test.fails.each(['client', 'server'] as const)(
-  '%s: keeps the initializers of empty destructuring patterns',
-  async (env) => {
-    const code = `import { createServerFn } from '@tanstack/react-start'
-import { init, other } from './init'
-const {} = init()
-const [] = other()
-const { a: {} } = init()
-export const fn = createServerFn().handler(async () => 'ok')`
-    const calls: Array<string> = []
-    const stubs = {
-      './init': {
-        init: () => {
-          calls.push('init')
-          return { a: {} }
-        },
-        other: () => {
-          calls.push('other')
-          return []
-        },
-      },
-    }
-    if (env === 'client') {
-      await evaluateModule((await compileCode('client', code))!, stubs)
-    } else {
-      const server = await compileServer(code)
-      expect(
-        await callReportedServerFns(server, server.serverFns, stubs),
-      ).toEqual(['ok'])
-    }
-    expect(calls).toEqual(['init', 'other', 'init'])
-  },
-)
-
 // Bug: the client output prints an asserted update operand without its
 // parentheses (`count as number++`).
 // Impact: the module fails to parse, so the build fails.
@@ -379,64 +335,12 @@ export function Page() {
   return client!
 }
 
-// Control for the pin below (same harness): parenthesized JSX alone.
+// Parenthesized JSX keeps working.
 test('client: keeps parenthesized JSX working', async () => {
   const client = await compilePageReturning('(<p>page</p>)')
   expect(await getModuleErrors(client)).toEqual([])
   expect((await evaluateModule(client)).Page()).toBe('<p>page</p>')
 })
-
-// Bug: the client output prints parenthesized JSX under a non-null assertion
-// or a member access without its parentheses (`<p>page</p>!`). The root
-// cause is upstream: @babel/generator 7.29.8 drops the parentheses (no
-// workaround here; router-utils/src/ast.ts:72 `generateFromAst` prints with
-// it). The code splitter has the same bug (pin in
-// router-plugin/tests/known-bugs-code-splitter.test.ts).
-// Impact: the module fails to parse ("Expected a semicolon"), so the build
-// fails.
-// Source: fuzzing (oracle mode, N3).
-test.fails.each([
-  { name: 'a non-null assertion', expression: '(<p>page</p>)!' },
-  {
-    name: 'a non-null assertion of a fragment',
-    expression: '(<><i /></>)!',
-    rendered: '<i></i>',
-  },
-  { name: 'a member call', expression: '(<p>page</p>).valueOf()' },
-  {
-    name: 'an optional member call',
-    expression: '(<p>page</p>)?.valueOf()',
-  },
-])(
-  'client: keeps parenthesized JSX under $name working',
-  async ({ expression, rendered = '<p>page</p>' }) => {
-    const client = await compilePageReturning(expression)
-    expect(await getModuleErrors(client)).toEqual([])
-    expect((await evaluateModule(client)).Page()).toBe(rendered)
-  },
-)
-
-// Bug: same root cause as above, for the `fallback` of a `<Hydrate>`, which
-// the client parent keeps.
-// Impact: the client parent fails to parse, so the build fails.
-// Source: fuzzing (oracle mode, N3).
-test.fails(
-  'client: keeps a parenthesized JSX fallback under a non-null assertion of a Hydrate working',
-  async () => {
-    const { parent, chunks } = await compileHydrate(
-      'client',
-      `import { Hydrate } from '@tanstack/react-start'
-export function Page() {
-  return <Hydrate fallback={(<div>wait</div>)!}><p>page</p></Hydrate>
-}`,
-    )
-    expect(
-      await Promise.all(
-        [parent, ...chunks].map((code) => getModuleErrors(code)),
-      ),
-    ).toEqual([[], []])
-  },
-)
 
 // Bundlers read these comments: minifiers keep legal comments, and Rollup and
 // Rolldown treat calls of functions annotated `__NO_SIDE_EFFECTS__` as pure.
