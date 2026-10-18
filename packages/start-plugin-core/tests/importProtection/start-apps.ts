@@ -188,19 +188,24 @@ export function violationTexts(output: string | Array<string>): Array<string> {
  * Checks the report of a marker violation (a module marked server-only
  * imported by the client, or client-only imported by the server): it names
  * both the marked module and its importer, and reports the violation either
- * at the marker import in the marked module (`marked`) or at the importer's
- * use of the import (`importer`), both `file:line:column`. Either location
- * is fine (coordinator ruling on audit F ASK-1).
+ * at the marker import (`marker`, `file:line` of the marked module's import
+ * of the marker; any column of it, or the file without a location) or at
+ * the importer's use of the import (`use`, `file:line:column`). Either
+ * location is fine (coordinator ruling on audit F ASK-1).
  */
 export function expectMarkerViolation(
   report: string,
-  locations: { marked: string; importer: string },
+  locations: { marker: string; use: string },
 ) {
-  expect([locations.marked, locations.importer]).toContain(
-    /Importer: (\S+)/.exec(report)?.[1],
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const markedFile = locations.marker.replace(/:\d+$/, '')
+  expect(/Importer: (\S+)/.exec(report)?.[1]).toMatch(
+    new RegExp(
+      `^(?:${escape(locations.marker)}:\\d+|${escape(markedFile)}|${escape(locations.use)})$`,
+    ),
   )
-  for (const location of [locations.marked, locations.importer]) {
-    expect(report).toContain(location.replace(/:\d+:\d+$/, ''))
+  for (const file of [markedFile, locations.use.replace(/:\d+:\d+$/, '')]) {
+    expect(report).toContain(file)
   }
 }
 
