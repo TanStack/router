@@ -24,11 +24,11 @@ export const Route = createFileRoute('/widget')({
     { stubs: { './see': { see: (value: unknown) => rendered.push(value) } } },
   )
   await expectValidModules(route.modules)
-  expect([route.isLazy('loader'), route.isLazy('component')]).toEqual([
-    true,
-    true,
-  ])
-  const html = (await route.load('component'))()
+  expect([
+    await route.isLazy('loader'),
+    await route.isLazy('component'),
+  ]).toEqual([true, true])
+  const html = await route.render('component')
   const loaded = await route.options.loader()
   return [html, rendered.length === 1 && rendered[0] === loaded]
 }
@@ -73,6 +73,6 @@ it('splits a component whose JSX text after a fragment starts with an em dash', 
 })
 `)
   await expectValidModules(route.modules)
-  expect(route.isLazy('component')).toBe(true)
-  expect((await route.load('component'))()).toBe('<p>first — second</p>')
+  expect(await route.isLazy('component')).toBe(true)
+  expect(await route.render('component')).toBe('<p>first — second</p>')
 })
