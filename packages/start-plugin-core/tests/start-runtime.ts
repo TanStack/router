@@ -17,12 +17,11 @@ import { resolveModulePath } from 'exsolve'
 
 // The key `@tanstack/start-storage-context` shares its storage under.
 const storageKey = Symbol.for('tanstack-start:start-storage-context')
-const fallbackKey = Symbol.for('tanstack-start-test:fallback-context')
 
-type Storage = AsyncLocalStorage<unknown> & { [fallbackKey]?: true }
+type Storage = AsyncLocalStorage<unknown> & { tanstackStartTestFallback?: true }
 const global = globalThis as unknown as Record<symbol, Storage | undefined>
-const storage = (global[storageKey] ??= new AsyncLocalStorage())
-if (!storage[fallbackKey]) {
+const storage: Storage = (global[storageKey] ??= new AsyncLocalStorage())
+if (!storage.tanstackStartTestFallback) {
   const getStore = storage.getStore.bind(storage)
   storage.getStore = () =>
     getStore() ?? {
@@ -35,7 +34,7 @@ if (!storage[fallbackKey]) {
         throw new Error('no router in the test request context')
       },
     }
-  storage[fallbackKey] = true
+  storage.tanstackStartTestFallback = true
 }
 
 // `@tanstack/start-client-core` is a dependency of
@@ -51,14 +50,27 @@ const startClientCoreEntry = realpathSync(
 
 /** The exports of `@tanstack/start-client-core`. */
 export const startClientCore: Record<string, any> = {
-  ...((await import(
-    /* @vite-ignore */ startClientCoreEntry
-  )) as Record<string, unknown>),
+  ...((await import(/* @vite-ignore */ startClientCoreEntry)) as Record<
+    string,
+    unknown
+  >),
 }
 
+/**
+ * `createSsrRpc` of `@tanstack/start-server-core`: its RPCs carry the right
+ * metadata, but calling one asks the server-fn resolver of the app's build,
+ * which a test has none of (the harness links its own, `createServerGraph`).
+ */
+export const createSsrRpc: (functionId: string) => object = (
+  await import('@tanstack/start-server-core/createSsrRpc')
+).createSsrRpc
+
 /** `createServerRpc` of `@tanstack/start-server-core`. */
-export const { createServerRpc } =
-  await import('@tanstack/start-server-core/createServerRpc')
+export const createServerRpc: (
+  serverFnMeta: { id: string; name: string; filename: string },
+  splitImportFn: (...args: Array<any>) => any,
+) => object = (await import('@tanstack/start-server-core/createServerRpc'))
+  .createServerRpc
 
 /** `createClientRpc` of `@tanstack/start-client-core/client-rpc`. */
 export const { createClientRpc } = (await import(
@@ -66,4 +78,4 @@ export const { createClientRpc } = (await import(
     /index\.js$/,
     'client-rpc/index.js',
   )
-)) as { createClientRpc: (functionId: string) => unknown }
+)) as { createClientRpc: (functionId: string) => object }

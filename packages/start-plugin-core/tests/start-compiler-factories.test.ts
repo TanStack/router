@@ -31,34 +31,40 @@ type Wrap = (expression: string) => string
 describe('environment-specific functions', () => {
   // Source: Waku vite-plugin-allow-server.test.ts "keeps only allowServer
   // dependencies and removes allowServer imports", "supports allowServer
-  // aliasing and export specifiers"
-  test('each output keeps the implementation of its environment and only its dependencies', async () => {
-    const compiled =
-      await compileAll(`import { createServerOnlyFn, createClientOnlyFn as clientOnly } from '@tanstack/react-start'
+  // aliasing and export specifiers". Dev and build compile alike (audit E1
+  // missing coverage 4).
+  test.each(['build', 'dev'] as const)(
+    '%s: each output keeps the implementation of its environment and only its dependencies',
+    async (mode) => {
+      const compiled = await compileAll(
+        `import { createServerOnlyFn, createClientOnlyFn as clientOnly } from '@tanstack/react-start'
 import { draw } from './chart.client'
 import { query } from './db.server'
 const shared = 1
 const readDb = () => query(shared)
 const serverValue = createServerOnlyFn(readDb)
 export const clientValue = clientOnly(() => draw(shared))
-export { serverValue as exposed }`)
-    const stubs = {
-      './chart.client': `export const draw = (x) => 'draw:' + x`,
-      './db.server': `export const query = (x) => 'query:' + x`,
-    }
-    expect(importSources(compiled.client)).toEqual(['./chart.client'])
-    const client = await evaluateModule(compiled.client, stubs)
-    expect([client.clientValue(), settle(client.exposed)]).toEqual([
-      'draw:1',
-      serverOnlyError,
-    ])
-    expect(importSources(compiled.ssr)).not.toContain('./chart.client')
-    const ssr = await evaluateModule(compiled.ssr, stubs)
-    expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
-      clientOnlyError,
-      'query:1',
-    ])
-  })
+export { serverValue as exposed }`,
+        { mode },
+      )
+      const stubs = {
+        './chart.client': `export const draw = (x) => 'draw:' + x`,
+        './db.server': `export const query = (x) => 'query:' + x`,
+      }
+      expect(importSources(compiled.client)).toEqual(['./chart.client'])
+      const client = await evaluateModule(compiled.client, stubs)
+      expect([client.clientValue(), settle(client.exposed)]).toEqual([
+        'draw:1',
+        serverOnlyError,
+      ])
+      expect(importSources(compiled.ssr)).not.toContain('./chart.client')
+      const ssr = await evaluateModule(compiled.ssr, stubs)
+      expect([settle(ssr.clientValue), ssr.exposed()]).toEqual([
+        clientOnlyError,
+        'query:1',
+      ])
+    },
+  )
 
   // Source: Waku vite-plugin-allow-server.test.ts "handles default allowServer
   // export", "stubs default exports while preserving allowServer dependencies"

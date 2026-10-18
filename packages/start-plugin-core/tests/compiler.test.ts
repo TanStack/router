@@ -1059,7 +1059,9 @@ test('compiles a server function through a parenthesized namespace receiver', as
   expect(code).not.toBeNull()
   expect(code).not.toContain('private-server-body')
   expect(Object.keys(serverFns)).toHaveLength(1)
-  expect(callerRpcId((await evaluateModule(code!)).fn)).toBe(Object.keys(serverFns)[0])
+  expect(callerRpcId((await evaluateModule(code!)).fn)).toBe(
+    Object.keys(serverFns)[0],
+  )
 })
 
 // Source: #8504 compiler.test.ts "preserves a shadowed parenthesized

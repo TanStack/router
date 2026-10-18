@@ -238,7 +238,9 @@ export const fn = createServerFn().handler(async () => 'called')`,
   })
 
   /** An SSR caller that runs the handler in place, like the provider. */
-  const inPlace = (result: string) => `import { createServerFn } from '@tanstack/react-start'
+  const inPlace = (
+    result: string,
+  ) => `import { createServerFn } from '@tanstack/react-start'
 import { createServerRpc } from '@tanstack/react-start/server-rpc'
 const fn_handler = createServerRpc({ id: 'in-place', name: 'fn' }, (opts) => fn.__executeServer(opts))
 export const fn = createServerFn().handler(fn_handler, async () => '${result}')`
@@ -262,10 +264,7 @@ export const fn = createServerFn().handler(async () => 'called')`,
 export const fn = createServerFn().handler(async () => 'called')`,
     )
     await expect(
-      callServerFnThroughCallers(
-        { ...compiled, ssr: inPlace('other') },
-        read,
-      ),
+      callServerFnThroughCallers({ ...compiled, ssr: inPlace('other') }, read),
     ).rejects.toThrow('ssr')
   })
 
@@ -322,7 +321,6 @@ export const provider = createServerFn().handler(provider_handler, async () => '
     expect(callerRpcId(module.inPlace)).toBeUndefined()
     expect(callerRpcId(module.provider)).toBeUndefined()
   })
-
 
   // Start's createServerFn.ts: `__executeServer` runs the validator and .server() of
   // each middleware, whose next() passes the context on, then the server

@@ -855,11 +855,7 @@ describe('server function handlers', () => {
   // Bug: generated imports and handler names are not made unique against
   // user bindings, so a user binding named like one of them collides with it.
   // Impact: the module fails to build.
-  test.fails.each([
-    'createClientRpc',
-    'createSsrRpc',
-    'createServerRpc',
-  ])(
+  test.fails.each(['createClientRpc', 'createSsrRpc', 'createServerRpc'])(
     'a user binding named %s does not collide with generated code',
     async (binding) => {
       const { results } =
@@ -1470,20 +1466,17 @@ describe('Vue single-file components', () => {
   // the exported server fn.)
   // Impact: TypeScript-only syntax such as a `<string>value` assertion fails
   // the build.
-  test.fails(
-    'a <script lang="ts"> block is parsed as TypeScript',
-    async () => {
-      const { code, serverFns } = await compileFor(
-        'client',
-        `${head}import { db } from './db.server'
+  test.fails('a <script lang="ts"> block is parsed as TypeScript', async () => {
+    const { code, serverFns } = await compileFor(
+      'client',
+      `${head}import { db } from './db.server'
 const input = <string>(globalThis as any).input
 export const fn = createServerFn().handler(async () => db.x(input))`,
-        { id: '/test/src/Page.vue?vue&type=script&lang.ts' },
-      )
-      expect(Object.keys(serverFns)).toHaveLength(1)
-      expect(importSources(code!)).not.toContain(serverOnly)
-    },
-  )
+      { id: '/test/src/Page.vue?vue&type=script&lang.ts' },
+    )
+    expect(Object.keys(serverFns)).toHaveLength(1)
+    expect(importSources(code!)).not.toContain(serverOnly)
+  })
 })
 
 describe('CommonJS dependencies', () => {

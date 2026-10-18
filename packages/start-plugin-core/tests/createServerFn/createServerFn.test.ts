@@ -136,7 +136,9 @@ export const issueServerFn = createIssueServerFn().handler(async () => 'issue-ha
         createIssueServerFn: startClientCore.createServerFn,
       },
     }
-    expect(callerRpcId((await evaluateModule(result!, stubs)).issueServerFn)).toBe(Object.keys(serverFns)[0])
+    expect(
+      callerRpcId((await evaluateModule(result!, stubs)).issueServerFn),
+    ).toBe(Object.keys(serverFns)[0])
     const server = await compileServer(code, {
       id: '/test/src/test.ts',
       files: {

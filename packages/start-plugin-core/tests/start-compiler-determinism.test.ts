@@ -194,9 +194,9 @@ export const c = createServerFn().handler(async () => 'from c')`
         )(code, id))!,
       )
       const rpcs: Record<string, string> = {
-        a: callerRpcId(client.a),
-        b: callerRpcId(client.b),
-        c: callerRpcId(client.c),
+        a: callerRpcId(client.a)!,
+        b: callerRpcId(client.b)!,
+        c: callerRpcId(client.c)!,
       }
       expect(new Set(Object.values(rpcs)).size).toBe(3)
       const provider = (await compilerFor(

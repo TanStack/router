@@ -66,7 +66,9 @@ export { a as default, b as named, c as as }`)
     const client = await evaluateModule(compiled.client)
     expect(client.notAServerFn).toBe(1)
     for (const [name, local] of Object.entries(exported)) {
-      expect(callerRpcId(client[name]), name).toBe(handlers[local]!.serverFnMeta.id)
+      expect(callerRpcId(client[name]), name).toBe(
+        handlers[local]!.serverFnMeta.id,
+      )
     }
     const ssr = await createServerGraph(compiled).ssr()
     expect(ssr.notAServerFn).toBe(1)

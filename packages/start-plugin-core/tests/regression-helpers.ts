@@ -19,6 +19,7 @@ import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
 import {
   createClientRpc,
   createServerRpc,
+  createSsrRpc,
   startClientCore,
 } from './start-runtime'
 import {
@@ -412,14 +413,11 @@ function foreignRpc(factory: string, env: RuntimeEnv) {
  * be called (`createServerGraph` links one that resolves the handler).
  */
 function unlinkedSsrRpc(functionId: string) {
-  return Object.assign(
-    () => {
-      throw new Error(
-        `createSsrRpc(${functionId}) outside an SSR bundle (createServerGraph)`,
-      )
-    },
-    { serverFnMeta: { id: functionId } },
-  )
+  return Object.assign(() => {
+    throw new Error(
+      `createSsrRpc(${functionId}) outside an SSR bundle (createServerGraph)`,
+    )
+  }, createSsrRpc(functionId))
 }
 
 /**
@@ -591,11 +589,13 @@ export function createServerGraph(
     modules,
     stubs: {
       [`@tanstack/${server.framework ?? 'react'}-start/ssr-rpc`]: {
+        // Start's createSsrRpc, whose call resolves the handler like the
+        // server-fn resolver of the app's build does.
         createSsrRpc: (functionId: string) =>
           Object.assign(
             async (...args: Array<unknown>) =>
               (await resolve(functionId))(...args),
-            { serverFnMeta: { id: functionId } },
+            createSsrRpc(functionId),
           ),
       },
       ...stubs,
@@ -872,7 +872,11 @@ export async function callFromClient(
   const server = createServerGraph(compiled, stubs)
   const clientRpc = (functionId: string) =>
     Object.assign(
-      async (payload: { data?: unknown; context?: unknown; method?: string }) => {
+      async (payload: {
+        data?: unknown
+        context?: unknown
+        method?: string
+      }) => {
         const reported = compiled.serverFns[functionId]
         if (!reported) {
           throw new Error(`no server fn reported for ${functionId}`)

@@ -194,11 +194,9 @@ test.fails.each<PlacementHead>([
     expect(compiled.client, 'client').not.toContain('db.inner()')
     // The outer handler returns `typeof inner`.
     expect(
-      await callServerFnThroughCallers(
-        compiled,
-        (module) => module.outer,
-        { './db.server': { db: { inner: () => 'inner', top: () => 'top' } } },
-      ),
+      await callServerFnThroughCallers(compiled, (module) => module.outer, {
+        './db.server': { db: { inner: () => 'inner', top: () => 'top' } },
+      }),
     ).toMatch(/^(function|object)$/)
   },
 )
@@ -272,9 +270,7 @@ export const fn = createServerFn({ method: 'GET' })${handler}`,
   expect(Object.keys(compiled.serverFns)).toHaveLength(1)
   expect(compiled.client).not.toContain('SERVER_SECRET')
   expect(await callProvider(compiled, 'fn')).toEqual(
-    handler.includes('secret:')
-      ? { secret: 'SERVER_SECRET' }
-      : 'SERVER_SECRET',
+    handler.includes('secret:') ? { secret: 'SERVER_SECRET' } : 'SERVER_SECRET',
   )
 })
 
@@ -291,9 +287,9 @@ test.fails(
   async () => {
     const code = `${head}import { db } from './db.server'
 export const fn = createServerFn()?.handler(async () => db.inner())`
-    const client = await compileFor('client', code).catch(
-      (error: unknown) => ({ error }),
-    )
+    const client = await compileFor('client', code).catch((error: unknown) => ({
+      error,
+    }))
     if ('error' in client) {
       expect(compileErrorMessage(client.error)).toMatch(
         /createServerFn[^]*(optional|\?\.)/i,
