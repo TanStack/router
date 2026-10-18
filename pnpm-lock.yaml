@@ -13926,6 +13926,9 @@ importers:
 
   packages/compiler-test-utils:
     dependencies:
+      '@playwright/test':
+        specifier: ^1.63.0
+        version: 1.63.0
       '@rsbuild/core':
         specifier: 'catalog:'
         version: 2.2.5
@@ -14800,6 +14803,9 @@ importers:
       '@rsbuild/core':
         specifier: 'catalog:'
         version: 2.2.5
+      '@rsbuild/plugin-react':
+        specifier: ^2.0.0
+        version: 2.0.0(@rsbuild/core@2.2.5)(@rspack/core@2.2.7(@swc/helpers@0.5.23))
       '@tanstack/compiler-test-utils':
         specifier: workspace:*
         version: link:../compiler-test-utils
@@ -14854,9 +14860,6 @@ importers:
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
-      react-refresh:
-        specifier: ^0.18.0
-        version: 0.18.0
       rimraf:
         specifier: 'catalog:'
         version: 6.1.2

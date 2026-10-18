@@ -129,6 +129,7 @@
   },
   "devDependencies": {
     "@rsbuild/core": "catalog:",
+    "@rsbuild/plugin-react": "^2.0.0",
     "@types/babel__core": "^7.20.5",
     "@types/babel__template": "^7.4.4",
     "@types/node": ">=20",
@@ -140,7 +141,6 @@
     "jsdom": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-refresh": "^0.18.0",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@arethetypeswrong/cli": "catalog:",

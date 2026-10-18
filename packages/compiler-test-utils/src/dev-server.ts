@@ -82,6 +82,15 @@ export interface DevServerOptions extends AppOptions {
   bundledDev?: { entry: string }
   /** How `settle()` reports file events by default (see `FileEventOptions`). */
   fileEvents?: FileEventOptions
+  /**
+   * Serves the app to a real browser page (`./browser`) as `vite dev` does:
+   * listens on a free port (`url`) with Vite's HMR WebSocket, Vite's own
+   * file watcher reports the app's file changes (`write()` them; `settle()`
+   * and `edit()` are not available), dependencies are pre-bundled by Vite's
+   * dependency optimizer (discovery on, cache in the app directory), and
+   * `index.html` is served (`appType: 'spa'`). Default `false`.
+   */
+  browser?: boolean
 }
 
 /**
@@ -126,6 +135,8 @@ export interface DevServer {
   vite: ViteDevServer
   /** Absolute path of a file given relative to the app root. */
   file: (relative: string) => string
+  /** URL of the server (`listen` or `browser` only). */
+  url: string | undefined
   /** Content of an app file (relative to the app root). */
   read: (relative: string) => Promise<string>
   /**
@@ -205,7 +216,8 @@ const ignoredDirectories = new Set(['node_modules', '.git', 'dist'])
 export async function createDevServer(
   options: DevServerOptions,
 ): Promise<DevServer> {
-  const { plugins = [], config = {}, listen = false, bundledDev } = options
+  const { plugins = [], config = {}, bundledDev, browser = false } = options
+  const listen = options.listen ?? browser
   const eventTimeout = options.eventTimeout ?? 10_000
   const app = await createApp({
     ...options,
@@ -298,21 +310,24 @@ export async function createDevServer(
           configFile: false,
           envDir: false,
           publicDir: false,
-          appType: 'custom',
+          appType: browser ? 'spa' : 'custom',
           clearScreen: false,
           customLogger: logger,
           // Dependencies are served as they are, so that a first request
           // never waits for the dependency optimizer or triggers a reload.
-          optimizeDeps: { noDiscovery: true, include: [] },
+          // A browser page needs them pre-bundled (CommonJS dependencies).
+          ...(browser
+            ? { cacheDir: path.join(root, 'node_modules/.vite') }
+            : { optimizeDeps: { noDiscovery: true, include: [] } }),
           server: {
             middlewareMode: !listen,
-            ws: false,
             // Vite's default `preTransformRequests` stays on, as in an app:
             // the client environment transforms the static imports of each
             // module it serves in the background, before the browser
             // requests them.
-            // `settle()` reports file events instead of a watcher
-            watch: null,
+            // `settle()` reports file events instead of a watcher, unless a
+            // browser page runs the app.
+            ...(!browser && { ws: false as const, watch: null }),
             hotUpdateEnvironments: async (
               server: ViteDevServer,
               update: (environment: DevEnvironment) => Promise<void>,
@@ -498,6 +513,11 @@ export async function createDevServer(
   }
 
   async function settle(eventOptions: FileEventOptions = {}) {
+    if (browser) {
+      throw new Error(
+        "settle() and edit() replay file events: with `browser`, Vite's own watcher reports them",
+      )
+    }
     const order =
       eventOptions.order ?? options.fileEvents?.order ?? 'deletions-first'
     const batch = eventOptions.batch ?? options.fileEvents?.batch ?? false
@@ -625,6 +645,7 @@ export async function createDevServer(
     root,
     vite,
     file,
+    url: vite.resolvedUrls?.local[0],
     read: (relative) => readFile(file(relative), 'utf8'),
     write,
     rename: async (from, to) => {

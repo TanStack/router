@@ -12,10 +12,12 @@
  * the apps live in (where their imports resolve).
  */
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:net'
 import path from 'node:path'
 import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
 import { createApp } from './build-harness'
 import type { AppOptions } from './build-harness'
+import type { AddressInfo } from 'node:net'
 import type {
   RsbuildConfig,
   RsbuildInstance,
@@ -44,6 +46,14 @@ export interface RsbuildDevServerOptions extends AppOptions {
    * compile ends or fails.
    */
   compileTimeout?: number
+  /**
+   * Serves the app to a real browser page (`./browser`) as `rsbuild dev`
+   * does: listens on a free port (`url`), serves the entry's HTML page
+   * (Rsbuild's default template, which mounts nothing: the entry renders
+   * into `<div id="root">`), with Rsbuild's HMR client and live reload (`hmr`
+   * defaults to `true`). Default `false`.
+   */
+  browser?: boolean
 }
 
 /**
@@ -69,6 +79,8 @@ export interface RsbuildDevServer {
   /** App root on disk. */
   root: string
   rsbuild: RsbuildInstance
+  /** URL of the server (`browser` only). */
+  url: string | undefined
   /**
    * Writes app files (relative to the app root; `null` deletes a file) and
    * waits for the compile that includes them; rejects with the error of a
@@ -107,7 +119,12 @@ export interface RsbuildDevServer {
 export async function createRsbuildDevServer(
   options: RsbuildDevServerOptions,
 ): Promise<RsbuildDevServer> {
-  const { plugins = [], config = {}, entry = 'src/entry.ts' } = options
+  const {
+    plugins = [],
+    config = {},
+    entry = 'src/entry.ts',
+    browser = false,
+  } = options
   const compileTimeout = options.compileTimeout ?? 20_000
   const app = await createApp({
     ...options,
@@ -170,6 +187,7 @@ export async function createRsbuildDevServer(
 
   let rsbuild: RsbuildInstance
   let server: Awaited<ReturnType<RsbuildInstance['createDevServer']>>
+  let url: string | undefined
   /** The dev server once created, closed if its first compile fails. */
   let created: typeof server | undefined
   try {
@@ -181,16 +199,19 @@ export async function createRsbuildDevServer(
           mode: 'development',
           logLevel: 'silent',
           source: { entry: { index: `./${entry}` } },
-          // No browser connects: live reload would do nothing
+          // Without a browser page, live reload would do nothing
           dev: {
             writeToDisk: true,
-            hmr: options.hmr ?? defaultHmr,
-            liveReload: false,
+            hmr: options.hmr ?? (browser || defaultHmr),
+            liveReload: browser,
           },
-          server: { printUrls: false },
+          server: {
+            printUrls: false,
+            ...(browser && { port: await freePort() }),
+          },
           // Rsbuild's default source maps in development, as in an app
           output: { minify: false },
-          tools: { htmlPlugin: false },
+          tools: { htmlPlugin: browser },
           performance: { chunkSplit: { strategy: 'all-in-one' } },
           plugins: [
             ...(typeof plugins === 'function' ? plugins({ root }) : plugins),
@@ -203,6 +224,9 @@ export async function createRsbuildDevServer(
     server = await rsbuild.createDevServer()
     created = server
     await compiles.first(compileTimeout)
+    if (browser) {
+      url = (await server.listen()).urls[0]
+    }
   } catch (error) {
     try {
       // e.g. the first compile timed out: stop watching the app
@@ -240,6 +264,7 @@ export async function createRsbuildDevServer(
   return {
     root,
     rsbuild,
+    url,
     edit: (files) => {
       for (const name of Object.keys(hotUpdateFiles)) {
         hotUpdateFiles[name]!.clear()
@@ -562,6 +587,22 @@ export function trackCompiles(): CompileTracker {
       return compiled
     },
   }
+}
+
+/**
+ * A port nothing listens on now (Rsbuild takes the next free port after it if
+ * another server took it meanwhile).
+ */
+function freePort() {
+  return new Promise<number>((resolve, reject) => {
+    const probe = createServer()
+    probe.unref()
+    probe.on('error', reject)
+    probe.listen(0, () => {
+      const { port } = probe.address() as AddressInfo
+      probe.close(() => resolve(port))
+    })
+  })
 }
 
 async function readJavaScript(directory: string) {

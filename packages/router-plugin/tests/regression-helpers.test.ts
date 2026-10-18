@@ -1,9 +1,9 @@
 /**
  * Controls for the regression harness itself: module discovery, lazy
  * evaluation and output validation (module linking and module validation:
- * `@tanstack/compiler-test-utils`).
+ * `@tanstack/compiler-test-utils`), and the route HMR page
+ * (`route-hmr-page.ts`).
  */
-import react from '@vitejs/plugin-react'
 import { describe, expect, it } from 'vitest'
 import { routerDevServer } from './dev-server'
 import {
@@ -21,7 +21,7 @@ import {
   routeModuleSources,
   routeSpecifier,
 } from './regression-helpers'
-import { editRouteFile } from './vite-hot-update'
+import { openRouteHmrPage } from './route-hmr-page'
 
 describe('compileRouteModules', () => {
   const route = `${head}export const Route = createFileRoute('/')({
@@ -333,7 +333,7 @@ export const Route = createFileRoute('/')({
       })
       expect((update.live.loader as () => string)()).toBe('new')
       expect(update.isLazy('component')).toBe(true)
-      expect(await update.render('component')).toBe('<p>page</p>')
+      expect((await update.load('component'))()).toBe('<p>page</p>')
     },
   )
 
@@ -361,159 +361,79 @@ export const Route = createFileRoute('/')({ loader: () => '${loader}' })`
     })
     expect((update.live.loader as () => string)()).toBe('new')
   })
-
-  it('refresh: modules are compiled with React Refresh and webpack enqueues a refresh', async () => {
-    const update = await hotUpdate(route('old'), { style: 'webpack' })
-    expect([...update.refresh.registered.values()]).toContain('Page')
-    expect(update.refresh.refreshes).toBeGreaterThan(0)
-    const without = await hotUpdate(route('old'), {
-      style: 'webpack',
-      refresh: false,
-    })
-    expect(without.refresh).toEqual({ registered: new Map(), refreshes: 0 })
-  })
-
-  // Controls of the React Refresh model: the page shows the new code of an
-  // edited component in place, as React does with the real refresh runtime.
-  describe('with React Refresh', () => {
-    /** A route whose component (`name`) has `body`, split or not. */
-    const page = (
-      body: string,
-      name = 'Page',
-    ) => `${head}import { useState } from 'react'
-function ${name}() {
-  ${body}
-}
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: ${name},
-})`
-    const modes = [
-      { style: 'vite', codeSplitting: true },
-      { style: 'webpack', codeSplitting: true },
-      { style: 'vite', codeSplitting: false },
-      { style: 'webpack', codeSplitting: false },
-    ] as const
-
-    it.each(modes)(
-      '$style (codeSplitting: $codeSplitting): an edited component renders its new body, without a remount',
-      async (mode) => {
-        const update = await hotUpdate(page('return <p>v1</p>'), {
-          ...mode,
-          updated: page('return <p>v2</p>'),
-        })
-        expect(update.invalidated).toBe(false)
-        expect(update.live.component).toBe(update.previous.component)
-        expect(await update.render('component')).toBe('<p>v2</p>')
-        expect(update.remounted('component')).toBe(false)
-      },
-    )
-
-    // React keeps a component's state only while its hooks stay the same.
-    it.each(modes)(
-      '$style (codeSplitting: $codeSplitting): a component the edit adds a hook to remounts',
-      async (mode) => {
-        const update = await hotUpdate(page('return <p>v1</p>'), {
-          ...mode,
-          updated: page(`const [n] = useState(2)\n  return <p>{n}</p>`),
-        })
-        expect(update.invalidated).toBe(false)
-        expect(update.remounted('component')).toBe(true)
-      },
-    )
-
-    // Negative control: React Refresh matches the versions of a component
-    // by the name it registers it under. Renamed, the edited component is
-    // another component, and the page keeps rendering the previous one.
-    it.each([true, false])(
-      'vite (codeSplitting: %s): a renamed component is not a new version of the previous one',
-      async (codeSplitting) => {
-        const update = await hotUpdate(page('return <p>v1</p>'), {
-          codeSplitting,
-          updated: page('return <p>v2</p>', 'Renamed'),
-        })
-        expect(update.invalidated).toBe(false)
-        expect(await update.render('component')).toBe('<p>v1</p>')
-      },
-    )
-
-    // Without React Refresh, nothing patches a kept component.
-    it('webpack without React Refresh: a kept component renders its first body', async () => {
-      const update = await hotUpdate(page('return <p>v1</p>'), {
-        style: 'webpack',
-        refresh: false,
-        updated: page('return <p>v2</p>'),
-      })
-      expect(update.live.component).toBe(update.previous.component)
-      expect(await update.render('component')).toBe('<p>v1</p>')
-    })
-  })
-
-  // Control: the Vite model agrees with a Vite dev server running
-  // `@vitejs/plugin-react` on whether an edit is a hot update. Vite only takes
-  // a module that accepts its own updates in its served code as a boundary;
-  // an edit that reaches no boundary reloads the page.
-  describe.each([
-    {
-      name: 'a split route',
-      codeSplitting: true,
-      file: 'index.tsx',
-      route: (text: string) => `${head}function Page() {
-  return <p>${text}</p>
-}
-export const Route = createFileRoute('/')({ loader: () => '${text}', component: Page })`,
-    },
-    {
-      name: 'an unsplit route',
-      codeSplitting: false,
-      file: 'index.tsx',
-      route: (text: string) => `${head}function Page() {
-  return <p>${text}</p>
-}
-export const Route = createFileRoute('/')({ loader: () => '${text}', component: Page })`,
-    },
-    {
-      name: 'an unsplit route without components (.ts)',
-      codeSplitting: false,
-      file: 'index.ts',
-      route: (text: string) =>
-        `${head}export const Route = createFileRoute('/')({ loader: () => '${text}' })`,
-    },
-    {
-      name: 'an unsplit route whose options a factory call builds',
-      codeSplitting: false,
-      file: 'index.tsx',
-      route: (text: string) => `${head}import { makeOptions } from './-options'
-export const Route = createFileRoute('/')(makeOptions('${text}'))`,
-    },
-  ])('$name', ({ codeSplitting, file, route: source }) => {
-    it('vite: reloads the page exactly when a Vite dev server does', async () => {
-      const update = await hotUpdate(source('page'), {
-        codeSplitting,
-        filename: file,
-        updated: source('edited'),
-        stubs: {
-          './-options': {
-            makeOptions: (data: string) => ({ loader: () => data }),
-          },
-        },
-      })
-      const served = await editRouteFile({
-        target: 'react',
-        autoCodeSplitting: codeSplitting,
-        plugins: [react()],
-        file: `routes/${file}`,
-        route: source,
-        loaded: codeSplitting ? ['?tsr-split=component'] : [],
-        files: {
-          'routes/-options.ts': `export const makeOptions = (data: string) => ({ loader: () => data })`,
-        },
-      })
-      expect(served.messages.length).toBeGreaterThan(0)
-      expect(update.invalidated).toBe(!served.hotUpdate)
-    }, 30_000)
-  })
 })
+
+// Controls of the route HMR page (`openRouteHmrPage`): it tells kept state
+// from lost state, and a hot update from a full reload. A React app whose
+// route component renders a counter, and whose entry renders a header
+// imported from a module that no HMR boundary accepts.
+describe.each(['vite', 'rsbuild'] as const)(
+  'openRouteHmrPage (%s)',
+  (bundler) => {
+    const route = (
+      version: string,
+      child = 'Counter',
+    ) => `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+function ${child}() {
+  const [count, setCount] = useState(0)
+  return <button onClick={() => setCount(count + 1)}>${child} ${version} count {count}</button>
+}
+function Page() {
+  return <div><${child} /></div>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`
+    const main = `import { createRoot } from 'react-dom/client'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+import { header } from './header'
+const router = createRouter({ routeTree })
+createRoot(document.getElementById('app')!).render(
+  <>
+    <p>{header}</p>
+    <RouterProvider router={router} />
+  </>,
+)
+`
+
+    it('sees kept state, lost state and full reloads', async () => {
+      const app = await openRouteHmrPage({
+        bundler,
+        files: {
+          'main.tsx': main,
+          'header.ts': `export const header = 'header v1'`,
+          'routes/index.tsx': route('v1'),
+        },
+        ready: 'Counter v1 count 0',
+      })
+      await app.click('button')
+      await app.page.waitForText('Counter v1 count 1')
+      // An edit of the component's body: React Refresh keeps its state.
+      expect(
+        await app.edit(
+          { 'routes/index.tsx': route('v2') },
+          'Counter v2 count 1',
+        ),
+      ).toEqual({ reloaded: false })
+      // A component the edit renames is another component for React Refresh:
+      // React mounts it anew.
+      expect(
+        await app.edit(
+          { 'routes/index.tsx': route('v3', 'Renamed') },
+          'Renamed v3 count 0',
+        ),
+      ).toEqual({ reloaded: false })
+      // An edit of a module that no HMR boundary accepts reloads the page.
+      expect(
+        await app.edit(
+          { 'header.ts': `export const header = 'header v2'` },
+          'header v2',
+        ),
+      ).toEqual({ reloaded: true })
+    }, 60_000)
+  },
+)
 
 describe('routerDevServer', () => {
   it('serves a route of another target with the extra plugins after the router plugin', async () => {
