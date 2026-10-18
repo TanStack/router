@@ -258,34 +258,10 @@ export const Route = createFileRoute('/')({
   })
 })
 
-// Split route components written inline in a memo / forwardRef call:
-// route-hmr-browser.test.ts (a real page).
-
-describe('React Refresh hoisting of inline route components', () => {
-  it('hoists the root route component but not the components of routes a function creates', async () => {
-    const { reference } = compileWithCodeSplitting(`
-import { createRootRoute, createRoute } from '@tanstack/react-router'
-export function makeChild(label: string) {
-  return createRoute({
-    getParentRoute: () => Route,
-    path: label,
-    component: () => <div>{label}</div>,
-  })
-}
-export const Route = createRootRoute({ component: () => <div /> })
-`)
-    // `label` only exists inside `makeChild`: its routes' components must
-    // stay in the function to read it.
-    const { exports } = await evaluateRouteModule(reference!)
-    const child = (exports.makeChild as (label: string) => any)('x')
-    expect(child.options.component()).toBe('<div>x</div>')
-    // React Refresh can only register components bound to top-level names.
-    await expectRegisteredRouteOption(reference!, 'component')
-  })
-
-  // The components of the module's Route when another route is created
-  // first: route-hmr-browser.test.ts (a real page).
-})
+// Split route components written inline in a memo / forwardRef call, and
+// inline root route components: route-hmr-browser.test.ts (a real page). A
+// route file creates one route (ruling 2026-10-18): no test of components
+// of other routes a function of the file creates.
 
 // A route module stays a React Refresh boundary in Vite:
 // route-hmr-browser.test.ts (a real page).

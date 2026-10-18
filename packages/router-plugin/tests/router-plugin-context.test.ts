@@ -1,9 +1,5 @@
-import path from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
-import { createRouterPluginContext } from '../src/core/router-plugin-context'
-import { normalizePath } from '../src/core/utils'
 import { tanstackRouter } from '../src/vite'
 import {
   loadRouteOption,
@@ -11,35 +7,8 @@ import {
   routerDevServer,
   routerPackageStub,
 } from './dev-server'
-import {
-  createRouteLoader,
-  evaluateModule,
-  expectRegisteredRouteOption,
-} from './regression-helpers'
+import { createRouteLoader } from './regression-helpers'
 import type { CodeSplitGroupings } from '../src/core/constants'
-import type { TransformResult, UnpluginOptions } from 'unplugin'
-
-async function transformReferenceRoute(
-  plugin: UnpluginOptions,
-  code: string,
-  id: string,
-): Promise<TransformResult | null | undefined> {
-  const transform = plugin.transform
-  if (!transform || typeof transform === 'function') {
-    throw new Error('Expected object transform')
-  }
-  return transform.handler.call({} as never, code, id)
-}
-
-function getCode(result: TransformResult | null | undefined) {
-  if (!result) {
-    return null
-  }
-  if (typeof result === 'string') {
-    return result
-  }
-  return result.code
-}
 
 describe('router plugin context', () => {
   it('refreshes chunk ownership after source changes and isolates split settings', async () => {
@@ -131,49 +100,7 @@ export const Route = createFileRoute('${routePath}')({ component: Page })
     }
   }, 30_000)
 
-  it('normalizes HMR options before the first transform', async () => {
-    const routeFile = normalizePath(
-      path.join(process.cwd(), 'src/routes/owned.tsx'),
-    )
-
-    const routeCode = `
-import { createFileRoute } from '@tanstack/react-router'
-
-function Component() {
-  return <div>Hello</div>
-}
-
-export const Route = createFileRoute('/owned')({
-  component: Component,
-})
-`
-
-    const context = createRouterPluginContext()
-    context.routesByFile.set(routeFile, { routeId: '/owned' })
-
-    const hmrPlugin = createRouterHmrPlugin({}, context)
-    const hmrResult = await transformReferenceRoute(
-      Array.isArray(hmrPlugin) ? hmrPlugin[0]! : hmrPlugin,
-      routeCode,
-      routeFile,
-    )
-
-    const hmrCode = getCode(hmrResult)
-
-    expect(hmrCode).not.toBeNull()
-    // The route module accepts its hot updates, and React Refresh registers
-    // its component.
-    const accept = vi.fn()
-    await evaluateModule(
-      hmrCode!,
-      {
-        '@tanstack/react-router': {
-          createFileRoute: () => (options: unknown) => ({ options }),
-        },
-      },
-      { importMeta: { hot: { data: {}, accept, dispose() {} } } },
-    )
-    expect(accept).toHaveBeenCalled()
-    await expectRegisteredRouteOption(hmrCode!, 'component')
-  })
+  // The first edit of a route file through the public plugin setup
+  // (`tanstackRouter({...})`) hot-updates the page:
+  // integration/route-hmr-browser.test.ts (every test's first edit).
 })

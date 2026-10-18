@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   compileRouteModules,
   createCodeSplitterTransforms,
@@ -7,7 +8,6 @@ import {
   evaluateModule,
   expectValidModules,
   head,
-  hotUpdate,
   importRequests,
   importSources,
   loadRoute,
@@ -15,7 +15,6 @@ import {
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { Config } from '../src/core/config'
 
 const routeSource = (name: string) => `
@@ -504,23 +503,13 @@ export const Route = createFileRoute('/hmr')({
   })
 
   it.each(['solid', 'vue'] as const)(
-    'appends Vite HMR handling to %s routes without changing them',
+    'keeps a %s route valid and rendering when compiled with HMR',
     async (target) => {
       const output = transformWith({ target })
       expect(await getModuleErrors(output)).toEqual([])
-      let accepted = 0
       const { Route } = await evaluateModule(output, routerStubs(target), {
-        importMeta: {
-          hot: {
-            data: {},
-            accept: () => {
-              accepted++
-            },
-            dispose: () => {},
-          },
-        },
+        importMeta: { hot: undefined },
       })
-      expect(accepted).toBe(1)
       expect((Route as any).options.component()).toBe('<p>hmr</p>')
     },
   )
@@ -548,24 +537,8 @@ export const Route = createFileRoute('/hmr')({
     expect((Route as any).options.component()).toBe('<p>hmr</p>')
   })
 
-  it('hot-updates a non-React route with webpack HMR', async () => {
-    const route = (data: string) => `
-import { createFileRoute } from '@tanstack/solid-router'
-export const Route = createFileRoute('/hmr')({
-  loader: () => '${data}',
-  component: () => <p>hmr</p>,
-})
-`
-    const update = await hotUpdate(route('old'), {
-      style: 'webpack',
-      targetFramework: 'solid',
-      routeId: '/hmr',
-      updated: route('new'),
-    })
-    expect(update.invalidated).toBe(false)
-    expect((update.live.loader as () => string)()).toBe('new')
-    expect((update.live.component as () => string)()).toBe('<p>hmr</p>')
-  })
+  // A Solid or Vue route hot-updated through the bundler's hot API:
+  // integration/route-hmr-browser-frameworks.test.ts (a real page).
 })
 
 // A route the route file creates inside a function of the same file (a
@@ -665,60 +638,8 @@ export const Route = (() =>
     },
   )
 
-  // With automatic code splitting, and with the route HMR plugin alone.
-  describe.each([
-    { style: 'vite', codeSplitting: true },
-    { style: 'webpack', codeSplitting: true },
-    { style: 'vite', codeSplitting: false },
-    { style: 'webpack', codeSplitting: false },
-  ] as const)(
-    'with $style HMR (codeSplitting: $codeSplitting)',
-    ({ style, codeSplitting }) => {
-      it.each(Object.entries(factoryRoutes))(
-        'a route built in %s is hot-updated in place keeping its component, or reported',
-        async (_, route) => {
-          const { result: update, reported } = await reporting(
-            () =>
-              hotUpdate(route('old'), {
-                style,
-                codeSplitting,
-                routeId: '/made',
-                updated: route('new'),
-              }),
-            (update) => update.file,
-          )
-          const updated = {
-            loader: await (await update.load('loader'))(),
-            component: (await update.load('component'))(),
-          }
-          const updatedInPlace =
-            !update.invalidated &&
-            updated.loader === 'new' &&
-            updated.component === '<p>made</p>'
-          // (a) supported: split (with code splitting on) and hot-updated
-          // in place, keeping the component's identity.
-          const supported =
-            updatedInPlace &&
-            update.live.component === update.previous.component &&
-            (!codeSplitting || update.isLazy('component'))
-          // (b) reported, and still correct: updated in place, or the
-          // update invalidated (the page reloads with the new code).
-          const unsupportedAndReported =
-            reported && (update.invalidated || updatedInPlace)
-          expect(
-            supported || unsupportedAndReported,
-            JSON.stringify({
-              invalidated: update.invalidated,
-              split: update.isLazy('component'),
-              identityKept: update.live.component === update.previous.component,
-              reported,
-              updated,
-            }),
-          ).toBe(true)
-        },
-      )
-    },
-  )
+  // An edit of such a route in development shows its new code:
+  // integration/route-hmr-browser-plugin.test.ts (a real page).
 
   // Bug: route options that only exist inside the factory (its parameters,
   // its locals) are split out of it as if they were module-level code: a

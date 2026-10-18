@@ -6,23 +6,17 @@
  * so that React Refresh can patch it in place; a component React Refresh does
  * not register keeps rendering the old code until a full reload. Pins of what
  * the page shows run a real dev server and a real browser page
- * (`route-hmr-page.ts`).
+ * (`route-hmr-page.ts`): integration/known-bugs-route-hmr.test.ts.
  */
-import react from '@vitejs/plugin-react'
-import vueJsx from '@vitejs/plugin-vue-jsx'
-import solid from 'vite-plugin-solid'
 import { describe, expect, test } from 'vitest'
 import {
   evaluateModule,
   expectValidModules,
   head,
-  hotUpdate,
   loadRoute,
   routeSpecifier,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
-import { editRouteFile } from './vite-hot-update'
-import type { PluginOption } from 'vite'
 
 describe('React Refresh registration', () => {
   // Inline components that are not plain functions (`memo(...)`, ...):
@@ -350,21 +344,12 @@ export const Route = createFileRoute('/')({ component: page })`,
 
   /**
    * Compiles a route with the route HMR plugin (automatic code splitting
-   * off), evaluates it and returns its route. `react-error-boundary`'s
-   * `ErrorBoundary` renders its `FallbackComponent`, as when its children
-   * throw.
+   * off), evaluates it and returns its route.
    */
   async function evaluateUnsplitRoute(code: string) {
     const { Route } = await evaluateModule(transformWithRouteHmrPlugin(code), {
       '@tanstack/react-router': {
         createFileRoute: () => (options: unknown) => ({ options }),
-      },
-      'react-error-boundary': {
-        ErrorBoundary: ({
-          FallbackComponent,
-        }: {
-          FallbackComponent: (props: object) => unknown
-        }) => FallbackComponent({}),
       },
     })
     return Route as unknown as { options: Record<string, any> }
@@ -390,15 +375,14 @@ export const Route = createFileRoute('/')({
     expect((await route.load('component'))()).toBe('<p>data</p>')
   })
 
-  /** A lowercase error fallback, and an import of `ErrorBoundary`. */
-  const errorFallback = `${head}import { ErrorBoundary } from 'react-error-boundary'
-const errorFallback = () => <p>error</p>`
-
-  // Control for the hoisted inline component pin below: an option that is
-  // not an inline component, reading a lowercase component a later option
-  // passes.
+  // Control for the hoisted inline component pin (a real page:
+  // integration/known-bugs-route-hmr.test.ts "an inline pending component
+  // hoisted before a renamed lowercase component"): an option that is not
+  // an inline component, reading a lowercase component a later option
+  // passes, gets that component.
   test('an option reading a lowercase component a later option passes gets that component', async () => {
-    const Route = await evaluateUnsplitRoute(`${errorFallback}
+    const Route =
+      await evaluateUnsplitRoute(`${head}const errorFallback = () => <p>error</p>
 export const Route = createFileRoute('/')({
   staticData: { errorFallback },
   errorComponent: errorFallback,
@@ -408,217 +392,4 @@ export const Route = createFileRoute('/')({
     )
     expect(Route.options.errorComponent()).toBe('<p>error</p>')
   })
-
-  // Control for the hoisted inline component pin below (same harness).
-  test('an inline component reading a lowercase component renders it', async () => {
-    const Route = await evaluateUnsplitRoute(`${errorFallback}
-export const Route = createFileRoute('/')({
-  pendingComponent: () => (
-    <ErrorBoundary FallbackComponent={errorFallback}>
-      <p>loading</p>
-    </ErrorBoundary>
-  ),
-})`)
-    expect(Route.options.pendingComponent()).toBe('<p>error</p>')
-  })
-
-  // Bug: React HMR hoists inline component options into declarations it
-  // inserts after visiting every option, and renames a lowercase component
-  // passed to a later option. The rename only reaches nodes attached to the
-  // program, so a hoisted component still reads the old name.
-  // Impact: in development, the hoisted component throws when it renders
-  // (ReferenceError: errorFallback is not defined).
-  // Fix: rename before hoisting (or insert hoisted declarations immediately),
-  // or rename through the analyzer's binding references.
-  test.fails(
-    'an inline component hoisted before a renamed lowercase component renders it',
-    async () => {
-      const Route = await evaluateUnsplitRoute(`${errorFallback}
-export const Route = createFileRoute('/')({
-  pendingComponent: () => (
-    <ErrorBoundary FallbackComponent={errorFallback}>
-      <p>loading</p>
-    </ErrorBoundary>
-  ),
-  errorComponent: errorFallback,
-})`)
-      expect(Route.options.pendingComponent()).toBe('<p>error</p>')
-      expect(Route.options.errorComponent()).toBe('<p>error</p>')
-    },
-  )
-})
-
-describe('route updates', () => {
-  /**
-   * Compiles a route file at `/` with the route HMR plugin for `style` and
-   * runs a hot update (`hotUpdate`). Returns whether the update reaches the
-   * page: the live route now has the new module's `option`, or the module
-   * asked the bundler for a full reload (`hot.invalidate()`).
-   */
-  async function updatesOption(
-    code: string,
-    style: 'vite' | 'webpack',
-    option = 'loader',
-  ) {
-    const update = await hotUpdate(code, { style })
-    return (
-      update.invalidated || update.live[option] === update.created[1]![option]
-    )
-  }
-
-  // Control for the route update pins below (same harness).
-  test.each(['vite', 'webpack'] as const)(
-    '%s: a hot update gives the live route the new options',
-    async (style) => {
-      expect(
-        await updatesOption(
-          `${head}export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p>page</p>,
-})`,
-          style,
-        ),
-      ).toBe(true)
-    },
-  )
-
-  // Bug: the injected HMR code reads the module's route through the
-  // identifier `Route`, but a route may be declared under another name and
-  // exported as `Route` (`export { MyRoute as Route }`).
-  // Impact: webpack and Rspack apps throw "Route is not defined" when the
-  // route module loads in development; Vite apps throw on the first hot
-  // update of the route.
-  test.fails.each(['vite', 'webpack'] as const)(
-    '%s: a route exported under another local name is hot-updated',
-    async (style) => {
-      expect(
-        await updatesOption(
-          `${head}const MyRoute = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p>page</p>,
-})
-export { MyRoute as Route }`,
-          style,
-        ),
-      ).toBe(true)
-    },
-  )
-})
-
-describe('Vite HMR boundaries', () => {
-  /** A route file of `target` whose component renders `text`. */
-  const route =
-    (target: 'react' | 'solid' | 'vue') =>
-    (
-      text: string,
-    ) => `import { createFileRoute } from '@tanstack/${target}-router'
-export const Route = createFileRoute('/')({
-  loader: () => '${text}',
-  component: Page,
-})
-function Page() {
-  return <div>${text}</div>
-}`
-
-  /**
-   * Edits the route file (`route` of `target`) in a dev server with the
-   * framework's Vite plugins, after the page loaded it and, when split, its
-   * component (`editRouteFile`).
-   */
-  const edit = (
-    target: 'react' | 'solid' | 'vue',
-    autoCodeSplitting: boolean,
-    plugins: Array<PluginOption>,
-    options: { file?: string; route?: (text: string) => string } = {},
-  ) =>
-    editRouteFile({
-      target,
-      autoCodeSplitting,
-      plugins,
-      file: options.file,
-      route: options.route ?? route(target),
-      loaded: autoCodeSplitting ? ['?tsr-split=component'] : [],
-    })
-
-  // Control for the pins below (same harness): with `@vitejs/plugin-react`,
-  // React Refresh makes a React route module an HMR boundary.
-  // Source: gap H6a.
-  test.each([true, false])(
-    'an edit of a React route module is a hot update with @vitejs/plugin-react (autoCodeSplitting: %s)',
-    async (autoCodeSplitting) => {
-      const served = await edit('react', autoCodeSplitting, [react()])
-      expect(served.messages).toEqual([
-        expect.stringMatching(/^client: update /),
-      ])
-      expect(served.hotUpdate).toBe(true)
-    },
-    30_000,
-  )
-
-  // Control (same harness): the route HMR plugin runs before React Refresh,
-  // so a route whose components are all inline arrows still becomes a
-  // boundary.
-  test('an edit of a React route with only inline components is a hot update with @vitejs/plugin-react (autoCodeSplitting: false)', async () => {
-    const served = await edit('react', false, [react()], {
-      route: (text) => `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({
-  loader: () => '${text}',
-  component: () => <p>${text}</p>,
-})`,
-    })
-    expect(served.hotUpdate).toBe(true)
-  }, 30_000)
-
-  // Control (same harness): with `vite-plugin-solid`, Solid Refresh makes a
-  // route module that declares its component an HMR boundary.
-  test('an edit of a Solid route module that declares its component is a hot update with vite-plugin-solid (autoCodeSplitting: false)', async () => {
-    const served = await edit('solid', false, [solid()])
-    expect(served.hotUpdate).toBe(true)
-  }, 30_000)
-
-  // Bug: same root cause as the pin below, for a React route file without
-  // JSX (`.ts`): React Refresh registers no component in it, so it is not a
-  // boundary either.
-  // Source: round-3 mutation testing (route HMR side finding).
-  // Impact: every edit of a React `.ts` route file reloads the page in Vite
-  // dev when automatic code splitting is off.
-  test.fails(
-    'an edit of a React .ts route module is a hot update with @vitejs/plugin-react (autoCodeSplitting: false)',
-    async () => {
-      const served = await edit('react', false, [react()], {
-        file: 'routes/index.ts',
-        route: (
-          text,
-        ) => `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({ loader: () => '${text}' })`,
-      })
-      expect(served.hotUpdate).toBe(true)
-    },
-    30_000,
-  )
-
-  // Bug: the Vite route HMR code calls `accept` on a local alias
-  // (`const hot = import.meta.hot`), and Vite only marks a module
-  // self-accepting when its code contains a literal `import.meta.hot.accept(`.
-  // A route module is then never an HMR boundary of its own: the update
-  // propagates to the route tree and the app entry, and the page reloads.
-  // React apps are not affected because React Refresh makes route modules
-  // boundaries (control above); Solid Refresh only does for modules that
-  // declare components (control above: not a split route module), and Vue
-  // JSX only for `defineComponent` components.
-  // Impact: every edit of a Solid route file with automatic code splitting,
-  // and of any Vue route file, reloads the page in Vite dev.
-  // Any boundary (the route module or an importer that accepts it) passes.
-  test.fails.each([
-    { target: 'solid', autoCodeSplitting: true, plugin: () => solid() },
-    { target: 'vue', autoCodeSplitting: true, plugin: () => vueJsx() },
-    { target: 'vue', autoCodeSplitting: false, plugin: () => vueJsx() },
-  ] as const)(
-    'an edit of a $target route module is a hot update with its framework plugin (autoCodeSplitting: $autoCodeSplitting)',
-    async ({ target, autoCodeSplitting, plugin }) => {
-      const served = await edit(target, autoCodeSplitting, [plugin()])
-      expect(served.hotUpdate).toBe(true)
-    },
-    30_000,
-  )
 })

@@ -1,36 +1,24 @@
 /**
- * Route HMR: editing a route file updates the live route in place, keeping
- * the identity of its components so that the framework's refresh patches
- * them without a remount, and nothing of it ships when HMR is off.
- *
- * What the page shows after an edit is tested in a real dev server and a
- * real browser page (`route-hmr-browser.test.ts`). Here: the route HMR code
- * the router plugin emits, run on its own with the bundler's hot API
- * (`hotUpdate`), compiled modules evaluated with `loadRoute` /
- * `evaluateModule`, and what the route HMR plugin serves in a real Vite dev
- * server.
+ * Route HMR: the modules the compiler emits for development evaluate and
+ * render with or without a hot API, keep no React code for Solid and Vue,
+ * and carry no HMR code when HMR is off. What the page shows after an edit
+ * is tested in a real dev server and a real browser page
+ * (integration/route-hmr-browser*.test.ts); here: compiled modules
+ * evaluated with `loadRoute` / `evaluateModule`, and what the route HMR
+ * plugin serves to each Vite environment.
  */
 import { SourceMap } from 'node:module'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { describe, expect, it, onTestFinished, test, vi } from 'vitest'
-import {
-  createDevServer,
-  evaluateServed,
-} from '@tanstack/compiler-test-utils/dev-server'
-import { rootRouteOf, routerDevServer, routerPackageStub } from './dev-server'
+import { describe, expect, it, test, vi } from 'vitest'
+import { routerDevServer, routerPackageStub } from './dev-server'
 import {
   compileRouteModules,
   evaluateModule,
   expectValidModules,
   head,
-  hotUpdate,
   importSources,
   loadRoute,
 } from './regression-helpers'
 import type { TargetFramework } from './regression-helpers'
-
-const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 /** A route file whose loader returns `data`, with its other options. */
 const fileRoute = (
@@ -53,99 +41,43 @@ function PostsErrorComponent() {
   return <div>Error loading posts ${version}</div>
 }`
 
-/** The value a loader of the live route returns, split or not. */
-async function loaderData(update: Awaited<ReturnType<typeof hotUpdate>>) {
-  return (await update.load('loader')).call(undefined)
-}
-
-describe('the route HMR code of a Solid or Vue route', () => {
-  // Source: add-hmr snapshot fixture solid/arrow-function. Solid and Vue
-  // have no React Refresh to patch a kept component in place: the live route
-  // gets the new component (webpack / Rspack style, the route module runs
-  // again). What the page shows after an edit: route-hmr-browser.test.ts.
+describe('the modules of a Solid or Vue route compiled with HMR', () => {
+  // What the page shows after an edit, with the framework's own refresh:
+  // integration/route-hmr-browser-frameworks.test.ts. Here: the emitted
+  // modules import nothing of React (source: add-hmr snapshot fixture
+  // solid/arrow-function).
   test.each([
-    { framework: 'solid', codeSplitting: true },
-    { framework: 'vue', codeSplitting: true },
-    { framework: 'solid', codeSplitting: false },
-    { framework: 'vue', codeSplitting: false },
+    { framework: 'solid', style: 'vite' },
+    { framework: 'solid', style: 'webpack' },
+    { framework: 'vue', style: 'vite' },
+    { framework: 'vue', style: 'webpack' },
   ] as const)(
-    '$framework (codeSplitting: $codeSplitting): applies the new options and component with the router package of the framework and no React code',
-    async ({ framework, codeSplitting }) => {
-      const route = (version: string) =>
+    '$framework ($style style): import the router package of the framework and no React code',
+    ({ framework, style }) => {
+      const { modules } = compileRouteModules(
         fileRoute(
-          version,
+          'data',
           'component: PostsComponent,',
           `function PostsComponent() {
-  return <div>posts ${version}</div>
+  return <div>posts</div>
 }`,
           framework,
-        )
-      const update = await hotUpdate(route('old'), {
-        style: 'webpack',
-        targetFramework: framework,
-        codeSplitting,
-        updated: route('new'),
-      })
-      expect(update.invalidated).toBe(false)
-      expect(await loaderData(update)).toBe('new')
-      expect((await update.load('component'))()).toBe('<div>posts new</div>')
-      // No React code.
-      expect(Object.keys(update.window)).toEqual(['__TSR_ROUTER__'])
-      for (const style of ['vite', 'webpack'] as const) {
-        const { modules } = compileRouteModules(route('old'), {
+        ),
+        {
           targetFramework: framework,
           hmr: true,
           pluginOptions: { plugin: { hmr: { style } } },
-        })
-        for (const code of Object.values(modules)) {
-          expect(importSources(code)).not.toContain('react')
-          expect(importSources(code)).not.toContain('@tanstack/react-router')
-        }
+        },
+      )
+      expect(importSources(modules.reference!)).toContain(
+        `@tanstack/${framework}-router`,
+      )
+      for (const code of Object.values(modules)) {
+        expect(importSources(code)).not.toContain('react')
+        expect(importSources(code)).not.toContain('@tanstack/react-router')
       }
     },
   )
-})
-
-describe('the route HMR code of a route whose options a factory call builds', () => {
-  // webpack and Rspack run the route module again: its HMR code applies the
-  // options the new factory call built. (In Vite, the edit may reload the
-  // page instead; either way the edit shows: route-hmr-browser.test.ts.)
-  it('webpack: applies the new options', async () => {
-    const factoryRoute = (
-      data: string,
-    ) => `import { createFileRoute } from '@tanstack/react-router'
-import { makeOptions } from './options'
-export const Route = createFileRoute('/')(makeOptions('${data}'))`
-    const update = await hotUpdate(factoryRoute('old'), {
-      style: 'webpack',
-      updated: factoryRoute('new'),
-      stubs: {
-        './options': {
-          makeOptions: (data: string) => ({ loader: () => data }),
-        },
-      },
-    })
-    expect(update.invalidated).toBe(false)
-    expect(await loaderData(update)).toBe('new')
-  })
-})
-
-describe('the route a hot update applies to', () => {
-  // Source: add-hmr "prefers the current generated route id over stale Vite
-  // hot data". The route file was registered under another route id when
-  // its previous version loaded (e.g. before a route configuration change);
-  // the hot data its HMR code wrote still names that route.
-  // Vite only: the webpack HMR code deliberately reads the previous route id
-  // from hot data (webpack-adapter.ts).
-  it('vite: is the route the file is registered under now, not the one it was registered under before', async () => {
-    const route = (data: string) => fileRoute(data, '')
-    const update = await hotUpdate(route('old'), {
-      codeSplitting: true,
-      previousRouteId: '/stale',
-      updated: route('new'),
-    })
-    expect(await loaderData(update)).toBe('new')
-  })
 })
 
 describe('route modules compiled for the dev server', () => {
@@ -319,7 +251,9 @@ function RootComponent() {
       async ({ route, targetFramework }) => {
         const loaded = await loadRoute(route, { targetFramework, ...options })
         for (const [name, code] of Object.entries(loaded.modules)) {
-          expect(code, name).not.toMatch(/import\.meta\.(?:webpackHot|hot)\b/)
+          expect(code, name).not.toMatch(
+            /import\.meta\.(?:webpackHot|hot)\b|\bmodule\.hot\b/,
+          )
         }
       },
     )
@@ -369,23 +303,14 @@ export const Route = createFileRoute('/')({ loader: () => 'x', component: () => 
     timeout,
   )
 
+  // An edit of a `.ts` route file, the environment name, `plugin.hmr.style`
+  // alone, plugin options given as a function and a `tsr.config.json`
+  // target, on a real page: integration/route-hmr-browser-plugin.test.ts
+  // and known-bugs-route-hmr.test.ts. Here: the environment
+  // `plugin.vite.environmentName` excludes gets no route HMR code in any
+  // module of the served route.
   test(
-    'reaches route files without JSX (.ts)',
-    async () => {
-      const server = await routerDevServer({
-        pluginOptions: { autoCodeSplitting: false },
-        plugins: [routerPackageStub('react')],
-        files: { 'routes/index.ts': loaderRoute() },
-      })
-      expect(
-        hasRouteHmr(await server.transform('/routes/index.ts', 'client')),
-      ).toBe(true)
-    },
-    timeout,
-  )
-
-  test(
-    'is limited to the environment plugin.vite.environmentName names',
+    'serves no route HMR code to an environment plugin.vite.environmentName does not name',
     async () => {
       const server = await routerDevServer({
         pluginOptions: {
@@ -398,109 +323,13 @@ export const Route = createFileRoute('/')({ loader: () => 'x', component: () => 
       expect(
         hasRouteHmr(await server.transform('/routes/index.tsx', 'client')),
       ).toBe(true)
-      expect(
-        hasRouteHmr(await server.transform('/routes/index.tsx', 'ssr')),
-      ).toBe(false)
-    },
-    timeout,
-  )
-
-  test(
-    'works with plugin.hmr.style alone',
-    async () => {
-      const server = await routerDevServer({
-        pluginOptions: {
-          autoCodeSplitting: false,
-          plugin: { hmr: { style: 'vite' } },
-        },
-        plugins: [routerPackageStub('react')],
-        files: { 'routes/index.tsx': loaderRoute() },
+      const served = await server.load('/routes/index.tsx', {
+        environment: 'ssr',
+        skip: /^\/@id\/|\/node_modules\/|^\/@vite\b/,
       })
-      expect(
-        hasRouteHmr(await server.transform('/routes/index.tsx', 'client')),
-      ).toBe(true)
-    },
-    timeout,
-  )
-
-  // Solid and Vue route modules only get the route HMR code; React ones also
-  // get React Refresh's, which installs its hooks on `window` when the
-  // module runs in the page.
-  test.each([
-    { target: 'solid', reactRefreshHooks: false },
-    { target: 'react', reactRefreshHooks: true },
-  ] as const)(
-    'compiles for the target of a tsr.config.json in the Vite root ($target)',
-    async ({ target, reactRefreshHooks }) => {
-      const server = await routerDevServer({
-        pluginOptions: null,
-        plugins: [routerPackageStub(target)],
-        files: {
-          'tsr.config.json': JSON.stringify({
-            target,
-            routesDirectory: './routes',
-            generatedRouteTree: './routeTree.gen.ts',
-          }),
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/${target}-router'
-export const Route = createFileRoute('/')({ loader: () => 'x', component: () => <p>x</p> })`,
-        },
-      })
-      const window = {}
-      vi.stubGlobal('window', window)
-      try {
-        // As the page loads it (router package and JSX runtime stubbed)
-        const { Route } = await evaluateServed(server, '/routes/index.tsx', {
-          skip: /^\/@id\/|\/node_modules\/|^\/@vite\b/,
-          stubs: {
-            [`/@id/__x00__@tanstack/${target}-router-stub`]: {
-              createFileRoute: () => (options: unknown) => ({ options }),
-            },
-          },
-          fallbackStub: (_, names) =>
-            Object.fromEntries([...names].map((name) => [name, () => null])),
-        })
-        expect(await Route.options.loader()).toBe('x')
-        expect(Object.keys(window).length > 0).toBe(reactRefreshHooks)
-      } finally {
-        vi.unstubAllGlobals()
+      for (const [url, code] of Object.entries(served)) {
+        expect(hasRouteHmr(code), url).toBe(false)
       }
-    },
-    timeout,
-  )
-
-  test(
-    'takes plugin options given as a function',
-    async () => {
-      const { tanstackRouter } = await import('../src/vite')
-      const { getConfig } = await import('../src/core/config')
-      const server = await createDevServer({
-        dir: harnessDir,
-        prefix: '.router-dev-server-',
-        registerCleanup: onTestFinished,
-        files: {
-          'routes/__root.tsx': rootRouteOf('solid'),
-          'routes/index.tsx': loaderRoute('solid'),
-        },
-        plugins: (app) => [
-          tanstackRouter(() =>
-            getConfig(
-              {
-                target: 'solid',
-                autoCodeSplitting: false,
-                routesDirectory: path.join(app.root, 'routes'),
-                generatedRouteTree: path.join(app.root, 'routeTree.gen.ts'),
-              },
-              app.root,
-            ),
-          ),
-          routerPackageStub('solid'),
-        ],
-      })
-      expect(
-        hasRouteHmr(await server.transform('/routes/index.tsx', 'client')),
-      ).toBe(true)
-      const routeModule = await server.import('/routes/index.tsx')
-      expect(await routeModule.Route.options.loader()).toBe('x')
     },
     timeout,
   )

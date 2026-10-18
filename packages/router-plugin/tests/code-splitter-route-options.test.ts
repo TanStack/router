@@ -3,9 +3,7 @@ import {
   compileRouteModules,
   declaredNames,
   expectValidModules,
-  generatedRouteId,
   head,
-  hotUpdate,
   importSources,
   importedNames,
   loadRoute,
@@ -534,32 +532,9 @@ describe('route factories', () => {
     expect((await route.load('component'))()).toBe('<p>spaced</p>')
   })
 
-  // Source: utils.test.ts routeFactoryCallCodeFilter (type arguments and
-  // whitespace before the call).
-  it.each([
-    'createRootRoute({',
-    'createRootRoute ({',
-    'createRootRouteWithContext()({',
-    'createRootRouteWithContext<{ user: string }>()({',
-    'createRootRouteWithContext <{ user: string }>()({',
-  ])('hot-update a root route created with `%s`', async (call) => {
-    const source = (version: number) =>
-      `import { createRootRoute, createRootRouteWithContext } from '@tanstack/react-router'
-export const Route = ${call}
-  staticData: { version: ${version} },
-  component: () => <p>root</p>,
-})
-`
-    const update = await hotUpdate(source(1), {
-      codeSplitting: true,
-      routeId: await generatedRouteId('__root.tsx'),
-      updated: source(2),
-    })
-    expect([update.previous.staticData, update.live.staticData]).toEqual([
-      { version: 1 },
-      { version: 2 },
-    ])
-  })
+  // A root route created with `createRootRoute ({`, `createRootRouteWithContext
+  // <...>()({` and the like is hot-updated on a real page:
+  // integration/route-hmr-browser-plugin.test.ts.
 
   it('keep a root route created with a context type valid when compiled for HMR', async () => {
     const route = await loadRoute(
