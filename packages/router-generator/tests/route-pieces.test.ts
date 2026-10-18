@@ -311,18 +311,21 @@ describe('empty files', () => {
   // Impact: creating an empty `about.lazy.vue` in a Vue app turns it into a
   // file that fails to compile (low).
   // Source: mutation run R4 final re-audit (G3).
-  test.fails('an empty .lazy.vue route file is not filled with TypeScript route code', async () => {
-    const root = await createApp({
-      'src/routes/__root.ts': rootRoute('vue'),
-      'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
-      'src/routes/about.lazy.vue': '',
-    })
-    await generate(root, { target: 'vue' })
+  test.fails(
+    'an empty .lazy.vue route file is not filled with TypeScript route code',
+    async () => {
+      const root = await createApp({
+        'src/routes/__root.ts': rootRoute('vue'),
+        'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
+        'src/routes/about.lazy.vue': '',
+      })
+      await generate(root, { target: 'vue' })
 
-    const content = await read(root, 'src/routes/about.lazy.vue')
-    // (empty, or a single-file component: it starts with a block tag)
-    expect(content === '' || content.trimStart().startsWith('<')).toBe(true)
-  })
+      const content = await read(root, 'src/routes/about.lazy.vue')
+      // (empty, or a single-file component: it starts with a block tag)
+      expect(content === '' || content.trimStart().startsWith('<')).toBe(true)
+    },
+  )
 
   test('an empty pathless layout file is scaffolded and added to the route tree', async () => {
     const root = await createApp({

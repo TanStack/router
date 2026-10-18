@@ -171,9 +171,7 @@ export const getData = createServerFn().handler(async () => 'x')
         vm.runInContext(code, context)
       }
       expect(context.ids).toEqual([expect.any(String)])
-      expect(context.ids).not.toContainEqual(
-        expect.stringMatching(/^custom-/),
-      )
+      expect(context.ids).not.toContainEqual(expect.stringMatching(/^custom-/))
       expect(generated).toEqual([])
     },
     timeout,

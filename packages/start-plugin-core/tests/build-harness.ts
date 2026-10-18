@@ -455,39 +455,39 @@ async function buildWithVite(
     const builder = await createBuilder(
       mergeConfig<InlineConfig, InlineConfig>(
         {
-      root: target.root,
-      configFile: false,
-      envDir: false,
-      publicDir: false,
-      mode: target.mode,
-      logLevel: 'warn',
-      customLogger: {
-        info: () => {},
-        warn: warnBoth,
-        warnOnce: warnBoth,
-        error: (message) => {
-          if (!/Build failed in/.test(message)) {
-            errors.push(message)
-          }
-        },
-        clearScreen: () => {},
-        hasErrorLogged: () => false,
-        hasWarned: false,
-      },
-      environments: {
-        client: environmentBuild('client'),
-        ssr: environmentBuild('ssr'),
-      },
-      plugins: [
-        tanStackStartVite(
-          {
-            ...reactStartCoreOptions(target),
-            ssrResolverStrategy: { type: 'default' },
+          root: target.root,
+          configFile: false,
+          envDir: false,
+          publicDir: false,
+          mode: target.mode,
+          logLevel: 'warn',
+          customLogger: {
+            info: () => {},
+            warn: warnBoth,
+            warnOnce: warnBoth,
+            error: (message) => {
+              if (!/Build failed in/.test(message)) {
+                errors.push(message)
+              }
+            },
+            clearScreen: () => {},
+            hasErrorLogged: () => false,
+            hasWarned: false,
           },
-          target.start,
-        ),
-        outputPlugin,
-      ],
+          environments: {
+            client: environmentBuild('client'),
+            ssr: environmentBuild('ssr'),
+          },
+          plugins: [
+            tanStackStartVite(
+              {
+                ...reactStartCoreOptions(target),
+                ssrResolverStrategy: { type: 'default' },
+              },
+              target.start,
+            ),
+            outputPlugin,
+          ],
         },
         target.viteConfig ?? {},
       ),

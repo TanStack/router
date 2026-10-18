@@ -249,16 +249,16 @@ describe('the trace of a client import of a denied file', () => {
     async () => {
       const server = await startProtectedDevServer(
         {
-        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-        'src/s.ts': `import { secret } from './secret.server'
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/s.ts': `import { secret } from './secret.server'
 export const s = () => secret()
 `,
-        'src/c.ts': `import { s } from './s'\nexport const c = () => s()\n`,
-        'src/a.ts': `import { c } from './c'
+          'src/c.ts': `import { s } from './s'\nexport const c = () => s()\n`,
+          'src/a.ts': `import { c } from './c'
 import { s } from './s'
 export const page = () => c() + s()
 `,
-        'src/entry.ts': `export * from './a'\n`,
+          'src/entry.ts': `export * from './a'\n`,
         },
         {},
         // Without Vite's pre-transforms, the client transforms `src/c.ts`
@@ -1706,7 +1706,11 @@ export const read = () => secret()
       const logged = traces(server.logs)
       expect(logged).not.toEqual([])
       for (const trace of logged) {
-        expect(trace).toEqual(['src/entry.ts', 'src/routes/page.ts', 'src/a.ts'])
+        expect(trace).toEqual([
+          'src/entry.ts',
+          'src/routes/page.ts',
+          'src/a.ts',
+        ])
       }
     },
     timeout,
@@ -1735,7 +1739,11 @@ export const read = () => widget()
       const logged = traces(server.logs)
       expect(logged).not.toEqual([])
       for (const trace of logged) {
-        expect(trace).toEqual(['src/entry.ts', 'src/routes/page.ts', 'src/a.ts'])
+        expect(trace).toEqual([
+          'src/entry.ts',
+          'src/routes/page.ts',
+          'src/a.ts',
+        ])
       }
     },
     timeout,

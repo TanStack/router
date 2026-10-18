@@ -211,7 +211,13 @@ async function buildReport(
   }: Pick<StartBuildOptions, 'sourcemap' | 'viteConfig'> = {},
 ): Promise<ViolationReport> {
   const error = await rejection(
-    buildStart({ bundler, files, entry: 'src/entry.ts', sourcemap, viteConfig }),
+    buildStart({
+      bundler,
+      files,
+      entry: 'src/entry.ts',
+      sourcemap,
+      viteConfig,
+    }),
   )
   const [report, ...others] = violationReports(error.message)
   expect(others).toEqual([])
@@ -399,29 +405,29 @@ test(
 describe.each(startBundlers)('%s build', (bundler) => {
   const entryBackTest = bundler === 'rsbuild' ? test.fails : test
   entryBackTest(
-  'the trace starts at the entry when a module imports the entry back',
-  async () => {
-    const { importer, trace } = await buildReport(bundler, {
-      ...leakingB,
-      'src/back.ts': `import * as app from '../harness/client-entry'\nexport const back = app\n`,
-      'src/a.ts': `import { leak } from './b'
+    'the trace starts at the entry when a module imports the entry back',
+    async () => {
+      const { importer, trace } = await buildReport(bundler, {
+        ...leakingB,
+        'src/back.ts': `import * as app from '../harness/client-entry'\nexport const back = app\n`,
+        'src/a.ts': `import { leak } from './b'
 import { back } from './back'
 export const page = () => [leak(), back]
 `,
-      'src/entry.ts': `export * from './a'\n`,
-    })
-    expect(trace.map(({ entry }) => entry)).toEqual(
-      trace.map((_, index) => index === 0),
-    )
-    expect(modulesOf(trace).slice(-3)).toEqual([
-      'src/entry.ts',
-      'src/a.ts',
-      'src/b.ts',
-    ])
-    expect(trace.at(-1)!.at).toBe(importer)
-  },
-  timeout,
-)
+        'src/entry.ts': `export * from './a'\n`,
+      })
+      expect(trace.map(({ entry }) => entry)).toEqual(
+        trace.map((_, index) => index === 0),
+      )
+      expect(modulesOf(trace).slice(-3)).toEqual([
+        'src/entry.ts',
+        'src/a.ts',
+        'src/b.ts',
+      ])
+      expect(trace.at(-1)!.at).toBe(importer)
+    },
+    timeout,
+  )
 })
 
 // The trace locates each import on its line in the user's file, whatever
