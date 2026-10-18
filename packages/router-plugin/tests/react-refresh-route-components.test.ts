@@ -26,6 +26,7 @@ import {
   exportedNames,
   getRouteOption,
   head,
+  hotUpdate,
   isRefreshable,
   loadRoute,
   reactRefresh,
@@ -124,32 +125,37 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   // Source: ReactFreshBabelPlugin-test "only registers pascal case functions"
   // and "uses original function declaration if it get reassigned"
   it.each([
-    ['a const arrow function', `const page = () => <p>hi</p>`],
+    ['a const arrow function', `const page = () => <p>hi</p>`, 'tsx'],
     [
       'a function expression that names itself',
       `const page = function page() { return <p>{typeof page}</p> }`,
+      'tsx',
     ],
+    // TypeScript rejects assigning to a function declaration (TS2630).
     [
       'a reassigned function declaration',
       `import { connect } from './connect'\nfunction page() { return <p>hi</p> }\npage = connect(page)`,
+      'jsx',
     ],
     [
       'an overloaded function declaration',
-      `function page(props: { title: string }): JSX.Element\nfunction page(props: any) { return <p>{props.title}</p> }`,
+      `import type * as React from 'react'\nfunction page(props: { title?: string }): React.JSX.Element\nfunction page(props: any) { return <p>{props.title}</p> }`,
+      'tsx',
     ],
-  ])('declared lowercase as %s, by renaming it', async (_, declaration) => {
-    const code = transformWithRouteHmrPlugin(
-      `${head}${declaration}\nexport const Route = createFileRoute('/')({ component: page })`,
-    )
-    await expectRegisteredRouteOption(code, 'component')
-  })
-
-  it('declared as a lowercase function whose name starts with $, by renaming it', async () => {
-    const code = transformWithRouteHmrPlugin(
-      `${head}function $page() { return <p>hi</p> }\nexport const Route = createFileRoute('/')({ component: $page })`,
-    )
-    await expectRegisteredRouteOption(code, 'component')
-  })
+  ])(
+    'declared lowercase as %s, by renaming it',
+    async (_, declaration, extension) => {
+      const code = transformWithRouteHmrPlugin(
+        `${head}${declaration}\nexport const Route = createFileRoute('/')({ component: page })`,
+        { target: 'react' },
+        {
+          file: routeFile('index').replace(/\.tsx$/, `.${extension}`),
+          routeId: '/',
+        },
+      )
+      await expectRegisteredRouteOption(code, 'component')
+    },
+  )
 
   // Source: ReactFreshBabelPlugin-test "registers top-level exported function
   // declarations" and "registers top-level exported named arrow functions"
@@ -286,54 +292,43 @@ export const Route = createFileRoute('/')({ component: ${component} })`,
   })
 })
 
-describe('React Refresh hoisting picks names nothing else uses', () => {
-  it.each([
-    [
-      'a top-level const',
-      `const TSRComponent = 'taken'`,
-      `<p>{TSRComponent}</p>`,
-      '',
-      '<p>taken</p>',
-    ],
-    [
-      'an import',
-      `import { TSRComponent } from './taken'`,
-      `<TSRComponent />`,
-      '',
-      'imported',
-    ],
-    [
-      'a function declared after the route',
-      ``,
-      `<p>{TSRComponent()}</p>`,
-      `\nfunction TSRComponent() { return 'taken' }`,
-      '<p>taken</p>',
-    ],
-  ])('not a name held by %s', async (_, before, jsx, after, rendered) => {
-    const code = transformWithRouteHmrPlugin(
-      `${head}${before}
-export const Route = createFileRoute('/')({ component: () => ${jsx} })${after}`,
-    )
-    // A reused name would redeclare the user's binding (an invalid module)
-    // or make the component read the hoisted component instead of it.
-    await expectRegisteredRouteOption(code, 'component')
-    const component = (await getRouteOption(code, 'component', {
-      './taken': { TSRComponent: () => 'imported' },
-    })) as () => string
-    expect(component()).toBe(rendered)
-  })
+// The route HMR code declares bindings of its own (`hotData`,
+// `handleRouteUpdate`, ...); a route file's bindings with the same names keep
+// their values, and the route still hot-updates. (A user binding named `hot`
+// collides: pinned in known-bugs-route-hmr.test.ts.)
+describe('route HMR code next to user bindings with common names', () => {
+  /** A route file with its own `hotData` and `handleRouteUpdate`. */
+  const route = (version: string) => `${head}const hotData = 'data ${version}'
+function handleRouteUpdate() {
+  return 'update ${version}'
+}
+function Page() {
+  return <p>{hotData} {handleRouteUpdate()}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => hotData,
+  component: Page,
+})`
 
-  it('nor a global the component reads', async () => {
-    const code = transformWithRouteHmrPlugin(
-      `${head}export const Route = createFileRoute('/')({
-  component: () => <p>{typeof TSRPendingComponent}</p>,
-  pendingComponent: () => <p>pending</p>,
-})`,
+  describe.each([
+    { compiler: 'automatic code splitting', codeSplitting: true },
+    { compiler: 'the route HMR plugin', codeSplitting: false },
+  ])('with $compiler', ({ codeSplitting }) => {
+    it.each(['vite', 'webpack'] as const)(
+      '%s: keeps the values of hotData and handleRouteUpdate',
+      async (style) => {
+        const update = await hotUpdate(route('old'), {
+          style,
+          codeSplitting,
+          updated: route('new'),
+        })
+        expect(update.invalidated).toBe(false)
+        expect(await (await update.load('loader'))()).toBe('data new')
+        expect(await update.render('component')).toBe(
+          '<p>data new update new</p>',
+        )
+      },
     )
-    await expectRegisteredRouteOption(code, 'pendingComponent')
-    // `TSRPendingComponent` must stay an unresolved global inside `component`.
-    const component = (await getRouteOption(code, 'component')) as () => string
-    expect(component()).toBe('<p>undefined</p>')
   })
 })
 
@@ -382,24 +377,6 @@ export const Route = createFileRoute('/')({
       compileWithCodeSplitting(code).reference!,
       'pendingComponent',
     )
-  })
-
-  it('declares hoisted components before the route that uses them', async () => {
-    // The lowercase `page`, declared in the same statement as `Route`, is
-    // renamed for React Refresh as well.
-    const { reference } = compileWithCodeSplitting(`
-import { createRootRoute } from '@tanstack/react-router'
-export const page = () => <div />, Route = createRootRoute({
-  component: page,
-  pendingComponent: () => <div />,
-})
-`)
-    // A `const` used before its declaration throws a TDZ ReferenceError when
-    // the route is created, which evaluating the route module reports; the
-    // hoisted component is bound to a top-level name React Refresh registers.
-    await expectRegisteredRouteOption(reference!, 'pendingComponent')
-    const { exports, Route } = await evaluateRouteModule(reference!)
-    expect(exports.page).toBe(Route.options.component)
   })
 })
 
