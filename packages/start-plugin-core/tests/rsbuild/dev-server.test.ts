@@ -111,7 +111,16 @@ export const label = () => 'MARK_LABEL_${version}'
       })
       await server.edit({ 'src/fns.ts': fns('V2') })
       expect(server.errors).toEqual([])
-      const update = Object.values(await server.hotUpdates('client')).join('\n')
+      // The client's compile of the edit may end after `edit()` returned
+      // (bounded wait)
+      let update = ''
+      for (const deadline = Date.now() + 10_000; Date.now() < deadline; ) {
+        update = Object.values(await server.hotUpdates('client')).join('\n')
+        if (update.includes('MARK_LABEL_V2')) {
+          break
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
       expect({
         label: update.includes('MARK_LABEL_V2'),
         handler: update.includes('MARK_HANDLER_V2'),
