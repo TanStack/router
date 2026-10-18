@@ -501,6 +501,51 @@ function labelRouteModules(
   return { modules, ids, graph }
 }
 
+/**
+ * Ids of the modules that load with the route module: the route module and
+ * every emitted module it imports statically, directly or through another
+ * one, in discovery order. (A module that a lazy chunk imports statically is
+ * not one of them unless the route module reaches it too.)
+ */
+export function eagerModuleIds({ graph }: { graph: RouteGraph }) {
+  const eager: Array<string> = []
+  const queue = [graph.id]
+  while (queue.length > 0) {
+    const id = queue.shift()!
+    if (eager.includes(id)) {
+      continue
+    }
+    eager.push(id)
+    for (const { specifier, dynamic } of importRequests(
+      graph.modules.get(id)!,
+      id,
+    )) {
+      const target = dynamic ? undefined : graph.resolve(specifier, id)
+      if (target !== undefined && graph.modules.has(target)) {
+        queue.push(target)
+      }
+    }
+  }
+  return eager
+}
+
+/**
+ * Sources that the modules loading with the route module (`eagerModuleIds`)
+ * import or re-export statically, sorted: what loads with the entry,
+ * whichever emitted module requests it.
+ */
+export function eagerImportSources(route: { graph: RouteGraph }) {
+  return [
+    ...new Set(
+      eagerModuleIds(route).flatMap((id) =>
+        importRequests(route.graph.modules.get(id)!, id)
+          .filter(({ dynamic }) => !dynamic)
+          .map(({ specifier }) => specifier),
+      ),
+    ),
+  ].sort()
+}
+
 /** How many times `pattern` occurs across all emitted modules. */
 export function countAcrossModules(
   modules: Record<string, string>,
