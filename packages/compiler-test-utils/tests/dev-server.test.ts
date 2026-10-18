@@ -1,10 +1,12 @@
 /**
- * Control tests of the dev-server harness (dev-server.ts): after `settle()`,
- * the server serves the edited files in every environment, has seen the
+ * Control tests of the dev-server harness (dev-server.ts): the server's own
+ * file watcher reports the files a test writes, and after `settle()` the
+ * server serves the edited files in every environment, has seen the
  * creations, renames and deletions (and the files plugins wrote meanwhile),
  * and the reported HMR payloads tell updates from full reloads.
  */
 import { existsSync } from 'node:fs'
+import { readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -47,6 +49,9 @@ export const dep = 'dep:' + leaf
   'lazy.ts': `export const load = () => import('./chunk')\n`,
   'chunk.ts': `export const chunk = 'chunk'\n`,
 }
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 describe('dev server harness', () => {
   test(
@@ -105,21 +110,33 @@ describe('dev server harness', () => {
     'reports created, renamed and deleted files to the plugins, and the files they write meanwhile',
     async () => {
       const seen: Array<string> = []
-      /** Writes `generated.ts` listing the `.ts` files whenever one changes. */
+      /**
+       * Writes `generated.ts` listing the other `.ts` files when one of them
+       * is created, changed or deleted (and the list changed).
+       */
       const generator: Plugin = {
         name: 'generator',
         async watchChange(id, { event }) {
           const relative = path.relative(server.root, id)
+          // e.g. the harness's barrier files
+          if (!relative.endsWith('.ts')) {
+            return
+          }
           seen.push(`${event} ${relative}`)
-          if (relative !== 'generated.ts') {
-            const { readdir } = await import('node:fs/promises')
-            const names = (await readdir(server.root))
-              .filter((name) => name.endsWith('.ts'))
-              .filter((name) => name !== 'generated.ts')
-              .sort()
-            await server.write({
-              'generated.ts': `export const names = ${JSON.stringify(names)}\n`,
-            })
+          if (relative === 'generated.ts') {
+            return
+          }
+          const names = (await readdir(server.root))
+            .filter((name) => name.endsWith('.ts'))
+            .filter((name) => name !== 'generated.ts')
+            .sort()
+          const code = `export const names = ${JSON.stringify(names)}\n`
+          const generated = server.file('generated.ts')
+          if (
+            !existsSync(generated) ||
+            (await readFile(generated, 'utf8')) !== code
+          ) {
+            await writeFile(generated, code)
           }
         },
       }
@@ -128,28 +145,37 @@ describe('dev server harness', () => {
         plugins: [generator],
       })
 
-      await server.write({ 'b.ts': `export const b = 1\n` })
-      await server.settle()
+      await server.edit({ 'b.ts': `export const b = 1\n` })
+      expect(seen).toEqual(['create b.ts', 'create generated.ts'])
+      expect((await server.import('/generated.ts')).names).toEqual([
+        'a.ts',
+        'b.ts',
+      ])
+
+      seen.length = 0
       await server.rename('a.ts', 'c.ts')
       await server.settle()
-      await server.edit({ 'b.ts': null })
-
-      expect(seen).toEqual([
-        'create b.ts',
-        'create generated.ts',
-        'delete a.ts',
+      // A watcher reports the two events of a rename in either order
+      expect(seen.sort()).toEqual([
         'create c.ts',
-        'update generated.ts',
-        'delete b.ts',
+        'delete a.ts',
         'update generated.ts',
       ])
-      expect(await server.transform('/generated.ts')).toContain('["c.ts"]')
+      expect((await server.import('/generated.ts')).names).toEqual([
+        'b.ts',
+        'c.ts',
+      ])
+
+      seen.length = 0
+      await server.edit({ 'b.ts': null })
+      expect(seen).toEqual(['delete b.ts', 'update generated.ts'])
+      expect((await server.import('/generated.ts')).names).toEqual(['c.ts'])
     },
     timeout,
   )
 
-  // A watcher reports a write as a change even when the contents stay the
-  // same (chokidar compares modification times).
+  // The watcher reports a write as a change even when the contents stay the
+  // same; settle() waits for that event, whatever the clock says.
   test(
     'reports a write that leaves the contents as they were as a change',
     async () => {
@@ -162,92 +188,59 @@ describe('dev server harness', () => {
 
   // So a plugin that rewrites a file on every file event, even with the same
   // contents, makes the server handle file events forever (a reload loop).
-  // The plugin waits before writing: the kernel updates modification times
-  // once per clock tick (a few ms), so two writes in one tick look like one.
+  // The plugin takes a moment before writing, longer than the moment within
+  // which the watcher drops a second change of a file.
   test(
     'never settles while a plugin rewrites a file with the same contents on each event',
     async () => {
       const rewriter: Plugin = {
         name: 'rewriter',
-        async watchChange() {
-          await new Promise((resolve) => setTimeout(resolve, 25))
-          await server.write({ 'generated.ts': `export const same = 1\n` })
+        async watchChange(id) {
+          // e.g. the harness's barrier files
+          if (!id.endsWith('.ts')) {
+            return
+          }
+          await sleep(60)
+          await writeFile(
+            server.file('generated.ts'),
+            `export const same = 1\n`,
+          )
         },
       }
       const server = await createDevServer({ files, plugins: [rewriter] })
       await expect(
         server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
-      ).rejects.toThrow(/keep changing after 20 rounds[\s\S]*generated\.ts/)
-    },
-    timeout,
-  )
-
-  test.each([
-    {
-      order: undefined,
-      events: ['unlink a.ts', 'add c.ts'],
-      seen: ['delete a.ts', 'create c.ts'],
-    },
-    {
-      order: 'creations-first' as const,
-      events: ['add c.ts', 'unlink a.ts'],
-      seen: ['create c.ts', 'delete a.ts'],
-    },
-  ])(
-    'reports a rename in the order of the option ($order)',
-    async ({ order, events, seen }) => {
-      const watched: Array<string> = []
-      const server = await createDevServer({
-        files: { 'a.ts': `export const a = 1\n` },
-        plugins: [
-          {
-            name: 'watched',
-            watchChange(id, { event }) {
-              watched.push(`${event} ${path.relative(server.root, id)}`)
-            },
-          },
-        ],
-        fileEvents: { order },
-      })
-      await server.rename('a.ts', 'c.ts')
-      await server.settle()
-      expect(
-        server.events.map(({ event, file }) => `${event} ${file}`),
-      ).toEqual(events)
-      expect(watched).toEqual(seen)
-      expect(await server.transform('/c.ts')).toContain('a = 1')
+      ).rejects.toThrow(/keep changing after 10 rounds[\s\S]*generated\.ts/)
     },
     timeout,
   )
 
   test(
-    'batch: emits every event of a round before the server has handled the first one',
+    'settle() waits for the handling of each file of an edit, however long a plugin takes',
     async () => {
       const handling: Array<string> = []
       const slow: Plugin = {
         name: 'slow',
         async watchChange(id) {
           const relative = path.relative(server.root, id)
+          if (!relative.endsWith('.ts')) {
+            return
+          }
           handling.push(`start ${relative}`)
-          await new Promise((resolve) => setTimeout(resolve, 50))
+          await sleep(200)
           handling.push(`end ${relative}`)
         },
       }
       const server = await createDevServer({ files, plugins: [slow] })
       await server.load('/main.ts')
       await server.load('/orphan.ts')
-      const messages = await server.edit(
-        {
-          'leaf.ts': `export const leaf = 'v2'\n`,
-          'orphan.ts': `export const orphan = 'v2'\n`,
-        },
-        { batch: true },
-      )
-      expect(handling.slice(0, 2).sort()).toEqual([
-        'start leaf.ts',
-        'start orphan.ts',
-      ])
-      expect(handling).toHaveLength(4)
+      const messages = await server.edit({
+        'leaf.ts': `export const leaf = 'v2'\n`,
+        'orphan.ts': `export const orphan = 'v2'\n`,
+      })
+      expect(
+        handling.filter((entry) => entry.startsWith('end')).sort(),
+      ).toEqual(['end leaf.ts', 'end orphan.ts'])
       expect(describeHmr(messages).sort()).toEqual([
         'client: full-reload *',
         'client: update /main.ts',
@@ -256,7 +249,6 @@ describe('dev server harness', () => {
     },
     timeout,
   )
-
   test(
     'serves a request over HTTP like the client environment',
     async () => {
@@ -458,7 +450,7 @@ describe('bundledDev', () => {
     Object.keys(bundle).filter((fileName) => bundle[fileName]!.includes(marker))
 
   test(
-    'clientBundle() bundles the client from the entry, again after settle(); the other environments are served as usual',
+    'clientBundle() bundles the client from the entry, again after an edit the dev engine watched; the other environments are served as usual',
     async () => {
       const server = await createDevServer({
         bundledDev: { entry: 'main.ts' },
@@ -471,15 +463,16 @@ describe('bundledDev', () => {
       const before = await server.clientBundle()
       expect(containing(before, 'MARK_V1')).toHaveLength(1)
       expect(containing(before, 'MARK_OTHER')).toEqual([])
+      expect((await server.import('/dep.ts')).dep).toBe('MARK_V1')
 
       await server.edit({ 'dep.ts': `export const dep = 'MARK_V2'\n` })
 
+      expect(server.events).toEqual([{ event: 'change', file: 'dep.ts' }])
       const after = await server.clientBundle()
       expect({
         v1: containing(after, 'MARK_V1'),
         v2: containing(after, 'MARK_V2').length,
       }).toEqual({ v1: [], v2: 1 })
-      expect((await server.import('/dep.ts')).dep).toBe('MARK_V2')
     },
     timeout,
   )

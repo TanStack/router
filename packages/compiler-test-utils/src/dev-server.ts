@@ -1,25 +1,42 @@
 /**
  * Dev-server harness for tests of what a dev server serves after edits:
  * starts a real Vite dev server (JS API, unbundled dev) on a temporary app,
- * lets the test create, edit, rename and delete files, replays the file
- * events the way Vite's watcher reports them and waits until the server has
- * handled them (plugin `watchChange` and `hotUpdate` hooks, HMR), and then
- * requests modules per environment and reports the HMR payloads sent to each
- * environment.
+ * lets the test create, edit, rename and delete files, which Vite's own file
+ * watcher (chokidar) reports, waits until the server has handled what the
+ * watcher reported (plugin `watchChange` and `hotUpdate` hooks, HMR), and
+ * then requests modules per environment and reports the HMR payloads sent to
+ * each environment.
  *
- * File events are replayed deterministically instead of coming from a real
- * file watcher: `settle()` compares the app's files (contents and
- * modification times) with what it saw last, emits an `add`, `change` or
- * `unlink` event for each difference (including files plugins wrote while
- * handling earlier events, e.g. a generated route tree, even with the same
- * contents), waits for the server to handle each one, and repeats until the
- * files are stable. The order of the events and whether they are emitted one
- * at a time are options (`FileEventOptions`).
+ * Nothing replays file events: `write()` writes files, the watcher reports
+ * them, and `settle()` waits for the server, by events only:
+ * - each file the test wrote is reported by the watcher (a test writes like
+ *   a user, a moment after the last change the watcher reported: chokidar
+ *   drops a second change of a file within that moment);
+ * - each reported event is handled: Vite calls `hotUpdateEnvironments` at
+ *   the end of its handling of a file event, or logs the error that stopped
+ *   it (`AsyncLocalStorage` ties both to the event);
+ * - files plugins wrote meanwhile (e.g. a generated route tree): the harness
+ *   changes a barrier file, which the watcher reports after the writes made
+ *   before it, once the server handled everything, and checks that every
+ *   app file is as the watcher last saw it (when the server finished
+ *   handling its event, or when chokidar dropped a change of it); until a
+ *   round sees no new event.
+ * A plugin that keeps writing files on each event never settles (an error
+ * after 10 rounds).
+ *
+ * In Vite's full-bundle dev (`bundledDev`), Rolldown's dev engine watches
+ * the modules it bundled and Vite's watcher watches what plugins add to it:
+ * `settle()` waits for each watcher that watches a written file, for the
+ * plugins' `watchChange` hooks of each environment (Vite sends no hot update
+ * there), and for the dev engine's output.
  *
  * Plugin-agnostic: the caller supplies the plugins and the directory the apps
  * live in (where their imports resolve).
  */
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { readFileSync, statSync } from 'node:fs'
 import {
+  lstat,
   mkdir,
   readFile,
   readdir,
@@ -41,6 +58,7 @@ import type { AppOptions } from './build-harness'
 import type { ModuleGraphOptions, ModuleStub } from './module-linker'
 import type {
   DevEnvironment,
+  FSWatcher,
   HotPayload,
   InlineConfig,
   LogErrorOptions,
@@ -53,7 +71,6 @@ import type {
 /** The part of Rolldown's dev engine (`bundledDev`) the harness uses. */
 interface BundledDevEngine {
   ensureLatestBuildOutput: () => Promise<void>
-  triggerFullBuild: () => void
   getBundleState: () => Promise<{ lastBuildErrored: boolean }>
 }
 
@@ -67,8 +84,9 @@ export interface DevServerOptions extends AppOptions {
   /** Serves over HTTP on a free port, for `fetch()`. Default `false`. */
   listen?: boolean
   /**
-   * How long `settle()` waits for the server to handle one file event, in
-   * milliseconds. Default 10 000.
+   * How long `settle()` waits for one step (the watcher reporting a file,
+   * the server handling a file event), in milliseconds: only a guard against
+   * an event that never comes. Default 20 000.
    */
   eventTimeout?: number
   /**
@@ -76,41 +94,18 @@ export interface DevServerOptions extends AppOptions {
    * (`experimental.bundledDev`: Rolldown's dev engine bundles it) from
    * `entry` (relative to the app root), eagerly (no lazy chunks).
    * `clientBundle()` returns the output; the other environments are served
-   * as usual. `settle()` makes the dev engine rebuild the client bundle from
-   * the edited files.
+   * as usual. `settle()` covers files the dev engine or Vite's watcher
+   * watches (see the module comment).
    */
   bundledDev?: { entry: string }
-  /** How `settle()` reports file events by default (see `FileEventOptions`). */
-  fileEvents?: FileEventOptions
   /**
    * Serves the app to a real browser page (`./browser`) as `vite dev` does:
-   * listens on a free port (`url`) with Vite's HMR WebSocket, Vite's own
-   * file watcher reports the app's file changes (`write()` them; `settle()`
-   * and `edit()` are not available), dependencies are pre-bundled by Vite's
-   * dependency optimizer (discovery on, cache in the app directory), and
-   * `index.html` is served (`appType: 'spa'`). Default `false`.
+   * listens on a free port (`url`) with Vite's HMR WebSocket, dependencies
+   * are pre-bundled by Vite's dependency optimizer (discovery on, cache in
+   * the app directory), and `index.html` is served (`appType: 'spa'`).
+   * Default `false`.
    */
   browser?: boolean
-}
-
-/**
- * How `settle()` reports the file events of a round. A real watcher gives no
- * order guarantee: chokidar may report a rename as `add` then `unlink`, and
- * emits events while the server still handles earlier ones.
- */
-export interface FileEventOptions {
-  /**
-   * `deletions-first` (default): deletions, then creations, then edits (a
-   * rename is `unlink` then `add`). `creations-first`: creations, then
-   * deletions, then edits (a rename is `add` then `unlink`).
-   */
-  order?: 'deletions-first' | 'creations-first'
-  /**
-   * Emits all the events of a round at once, then waits until the server has
-   * handled each of them, instead of waiting for each event before emitting
-   * the next one (default `false`).
-   */
-  batch?: boolean
 }
 
 export interface HmrMessage {
@@ -140,27 +135,28 @@ export interface DevServer {
   /** Content of an app file (relative to the app root). */
   read: (relative: string) => Promise<string>
   /**
-   * Writes app files (relative to the app root); `null` deletes a file. The
-   * server only sees the changes on the next `settle()`.
+   * Writes app files (relative to the app root); `null` deletes a file.
+   * Vite's file watcher reports them; `settle()` waits until the server has
+   * handled them.
    */
   write: (files: Record<string, string | null>) => Promise<void>
-  /** Moves an app file. The server sees it on the next `settle()`. */
+  /** Moves an app file (the watcher reports it; see `write`). */
   rename: (from: string, to: string) => Promise<void>
   /**
-   * Reports every change to the app's files since the last call to the
-   * server as watcher events (by default deletions, then creations, then
-   * edits, one at a time; see `FileEventOptions`) and waits until it has
-   * handled each one, until no file changes anymore. A write that leaves a
-   * file's contents as they were is an edit too. Returns the HMR payloads
-   * sent meanwhile.
+   * Waits until the watcher has reported every file written since the last
+   * call (by the test or by plugins) and the server has handled each event
+   * (see the module comment). Rejects with the error that stopped the
+   * handling of an event. Returns the HMR payloads sent meanwhile. Not
+   * available with `server.hmr: false` (then nothing tells when Vite handled
+   * an event, and the server runs without a watcher).
    */
-  settle: (options?: FileEventOptions) => Promise<Array<HmrMessage>>
-  /** `write(files)`, then `settle(options)`. */
-  edit: (
-    files: Record<string, string | null>,
-    options?: FileEventOptions,
-  ) => Promise<Array<HmrMessage>>
-  /** File events `settle()` reported, in order (paths relative to the root). */
+  settle: () => Promise<Array<HmrMessage>>
+  /** `write(files)`, then `settle()`. */
+  edit: (files: Record<string, string | null>) => Promise<Array<HmrMessage>>
+  /**
+   * File events the watcher reported, in order (paths relative to the root;
+   * the harness's own barrier file left out).
+   */
   events: Array<{ event: FileEvent; file: string }>
   /**
    * Transformed code of a module in an environment (default `client`), as
@@ -204,35 +200,143 @@ export interface DevServer {
   close: () => Promise<void>
 }
 
-/** Directories `settle()` never reports changes in. */
-const ignoredDirectories = new Set(['node_modules', '.git', 'dist'])
+/**
+ * Directories the harness does not expect the watcher to report: the ones
+ * Vite's watcher ignores (`node_modules`, which holds the dependency
+ * optimizer's cache, `.git`, `test-results`), and the harness's own.
+ */
+const unwatchedDirectories = new Set([
+  'node_modules',
+  '.git',
+  'test-results',
+  '.dev-server-harness',
+])
+
+/**
+ * The harness's barrier files: a change of one, which the watcher reports
+ * like any file change, follows every write made before it. Several, as the
+ * watcher does not report a second change of a file within a moment of the
+ * first (see `changeThrottled`).
+ */
+const barrierFiles = [0, 1, 2, 3].map(
+  (index) => `.dev-server-harness/barrier-${index}`,
+)
+
+/** An app file as the harness reads it. */
+interface AppFile {
+  code: string
+  mtimeMs: number
+}
+
+/** A file event the watcher reported, and how the server handled it. */
+interface ReportedEvent {
+  /** Order of the report. */
+  seq: number
+  event: FileEvent
+  /** Absolute path. */
+  file: string
+  /** The watcher that reported it (a restart replaces the watcher). */
+  watcher: FSWatcher
+  barrier: boolean
+  handled: boolean
+  /** The `watchChange` hooks of each environment running for it. */
+  watchChanges: Array<Promise<unknown>>
+}
 
 /**
  * Writes an app to a temporary directory in `options.dir` and starts a Vite
- * dev server on it, without a file watcher (see `settle()`). `close()`, which
- * `registerCleanup` also receives, closes the server and removes the
- * directory.
+ * dev server on it with its file watcher, and resolves once the watcher
+ * watches the app. `close()`, which `registerCleanup` also receives, closes
+ * the server and removes the directory.
  */
 export async function createDevServer(
   options: DevServerOptions,
 ): Promise<DevServer> {
   const { plugins = [], config = {}, bundledDev, browser = false } = options
   const listen = options.listen ?? browser
-  const eventTimeout = options.eventTimeout ?? 10_000
+  const eventTimeout = options.eventTimeout ?? 20_000
+  // Vite handles file events with HMR only: without it, nothing tells when
+  // the server has handled one, so the server runs without a watcher. In
+  // full-bundle dev, Vite's watcher watches only what plugins add to it, and
+  // Rolldown's dev engine watches the modules it bundled.
+  const watching = !bundledDev && config.server?.hmr !== false
+  const devEngineWatching = !!bundledDev && config.server?.hmr !== false
   const app = await createApp({
     ...options,
     prefix: options.prefix ?? '.dev-server-',
+    files: {
+      ...options.files,
+      ...(watching &&
+        Object.fromEntries(barrierFiles.map((file) => [file, '0']))),
+    },
   })
   const root = app.root
+  const file = (relative: string) => path.join(root, relative)
   const logs: Array<string> = []
   const hmr: Array<HmrMessage> = []
   const events: Array<{ event: FileEvent; file: string }> = []
-  let pendingEvent:
-    | {
-        resolve: () => void
-        reject: (error: Error) => void
+
+  /** Every file event the watcher reported, in order. */
+  const reported: Array<ReportedEvent> = []
+  /** The file event whose handling runs in the current async context. */
+  const handling = new AsyncLocalStorage<ReportedEvent>()
+  /** Errors that stopped the handling of an event, for the next `settle()`. */
+  const failures: Array<Error> = []
+  /**
+   * Each app file (relative path) as the watcher last saw it: its contents,
+   * and the modification time of the stats chokidar took (it reports a
+   * later write of the file when its modification time changed), updated
+   * when the server finished handling the file's event (writes during the
+   * handling are served) and when chokidar drops a change. A file that
+   * differs from it is owed an event: the harness waits for that event,
+   * never takes a timestamp for one.
+   */
+  const known = new Map<string, AppFile>()
+  /**
+   * Files written by `write()` whose event the watcher has to report: the
+   * event must come after `seq`.
+   */
+  const expected: Array<{ file: string; seq: number; devEngineSeq: number }> =
+    []
+  const expect = (absolute: string) =>
+    expected.push({
+      file: absolute,
+      seq: reported.length,
+      devEngineSeq: devEngineReports.length,
+    })
+  let barrierCount = 0
+
+  /** Wakes up the waits whenever something they wait for may have happened. */
+  let wake = () => {}
+  let woken = new Promise<void>((resolve) => {
+    wake = resolve
+  })
+  const notify = () => {
+    wake()
+    woken = new Promise<void>((resolve) => {
+      wake = resolve
+    })
+  }
+
+  const handled = (event: ReportedEvent, error?: unknown) => {
+    if (!event.handled) {
+      event.handled = true
+      // The server has seen the file as it is now: writes of it while the
+      // server handled its event (before Vite invalidated its modules) are
+      // served, whether or not the watcher reports them again.
+      if (!event.barrier && event.event !== 'unlink') {
+        see(event.event, event.file, undefined)
       }
-    | undefined
+      if (error !== undefined) {
+        failures.push(
+          error instanceof Error
+            ? error
+            : new Error(`dev server error: ${String(error)}`),
+        )
+      }
+      notify()
+    }
+  }
 
   const record =
     (level: string) => (logged: string, logOptions?: LogErrorOptions) => {
@@ -244,8 +348,11 @@ export async function createDevServer(
           : String(message),
       )
       logs.push(`${level}: ${text}`)
-      if (level === 'error' && pendingEvent) {
-        pendingEvent.reject(
+      // An error that stopped the handling of a file event
+      const event = handling.getStore()
+      if (level === 'error' && event) {
+        handled(
+          event,
           message instanceof Error
             ? message
             : new Error(`dev server error: ${text}`, {
@@ -253,10 +360,12 @@ export async function createDevServer(
               }),
         )
       }
+      notify()
     }
   const warned = new Set<string>()
   const logger: Logger = {
-    info: () => {},
+    // e.g. "server restarted."
+    info: () => notify(),
     warn: record('warn'),
     warnOnce: (message) => {
       if (!warned.has(message)) {
@@ -272,16 +381,33 @@ export async function createDevServer(
 
   /** Code of each chunk of the latest client bundle (`bundledDev`). */
   let clientOutput: Record<string, string> = {}
+  /** The modules of the latest client bundle (`bundledDev`). */
+  const bundledModules = new Set<string>()
+  /** Files the dev engine's watcher reported (`bundledDev`), in order. */
+  const devEngineReports: Array<string> = []
   const clientBundlePlugin: Plugin = {
     name: 'dev-server-harness:client-bundle',
     applyToEnvironment: (environment) => environment.name === 'client',
     generateBundle(_outputOptions, bundle) {
       clientOutput = {}
+      bundledModules.clear()
       for (const output of Object.values(bundle)) {
         if (output.type === 'chunk') {
           clientOutput[output.fileName] = output.code
+          for (const id of output.moduleIds) {
+            bundledModules.add(id)
+          }
         }
       }
+    },
+    watchChange(id, { event }) {
+      devEngineReports.push(path.resolve(id))
+      events.push({
+        event:
+          event === 'create' ? 'add' : event === 'delete' ? 'unlink' : 'change',
+        file: relativeOf(path.resolve(id)),
+      })
+      notify()
     },
   }
   const bundledDevConfig: InlineConfig = bundledDev
@@ -299,6 +425,151 @@ export async function createDevServer(
         },
       }
     : {}
+
+  const relativeOf = (absolute: string) =>
+    path.relative(root, absolute).split(path.sep).join('/')
+
+  /**
+   * The files a watcher reported a change of a moment ago: chokidar drops
+   * another change of one of them until the moment passed (its private
+   * per-file throttle, `_throttled`).
+   */
+  const changeThrottled = (watcher: FSWatcher = vite.watcher) => {
+    const throttled = (watcher as unknown as { _throttled?: unknown })
+      ._throttled
+    if (!(throttled instanceof Map)) {
+      throw new Error(
+        "the harness waits on chokidar's per-file change throttle (`_throttled`), which this version of Vite's watcher does not have",
+      )
+    }
+    const changes = throttled.get('change') as Map<string, unknown> | undefined
+    return [...(changes?.keys() ?? [])] as Array<string>
+  }
+
+  /**
+   * Records an app file as the watcher saw it (reported, or dropped): its
+   * contents now, and the modification time of the stats the watcher took.
+   */
+  const see = (name: string, absolute: string, stats: unknown) => {
+    const relative = relativeOf(absolute)
+    if (name === 'unlink') {
+      known.delete(relative)
+      return
+    }
+    try {
+      known.set(relative, {
+        code: readFileSync(absolute, 'utf8'),
+        mtimeMs:
+          (stats as { mtimeMs?: number } | undefined)?.mtimeMs ??
+          statSync(absolute).mtimeMs,
+      })
+    } catch {
+      // Removed meanwhile: the watcher reports that next
+      known.delete(relative)
+    }
+  }
+
+  /**
+   * Follows a server (the first one, and the one each restart creates):
+   * the file events its watcher reports, and the HMR payloads it sends.
+   */
+  const followed = new WeakSet<object>()
+  const follow = (server: ViteDevServer) => {
+    const watcher = server.watcher
+    if ((watching || devEngineWatching) && !followed.has(watcher)) {
+      followed.add(watcher)
+      const emit = watcher.emit.bind(watcher) as (
+        name: string,
+        ...args: Array<unknown>
+      ) => boolean
+      ;(watcher as { emit: typeof emit }).emit = (name, ...args) => {
+        if (name !== 'add' && name !== 'change' && name !== 'unlink') {
+          return emit(name, ...args)
+        }
+        const absolute = path.resolve(root, String(args[0]))
+        const relative = path.relative(root, absolute).split(path.sep).join('/')
+        const event: ReportedEvent = {
+          seq: reported.length,
+          event: name,
+          file: absolute,
+          watcher,
+          barrier: barrierFiles.includes(relative),
+          handled: false,
+          watchChanges: [],
+        }
+        reported.push(event)
+        if (!event.barrier) {
+          events.push({ event: name, file: relative })
+        }
+        if (!event.barrier) {
+          see(name, absolute, args[1])
+        }
+        notify()
+        // Vite's listeners start handling the event in this context
+        const result = handling.run(event, () => emit(name, ...args))
+        if (devEngineWatching) {
+          // In full-bundle dev, Vite's handling of a file event ends with
+          // the plugins' `watchChange` hooks of each environment (and the
+          // invalidation of the file's modules right after): it sends no
+          // hot update.
+          void Promise.allSettled(event.watchChanges).then(() => {
+            setImmediate(() => handled(event))
+          })
+        }
+        return result
+      }
+      // chokidar drops a change of a file within a moment of the last one
+      // it reported (`_throttled`, see `changeThrottled`): the watcher saw
+      // that write too, and will not report it.
+      const internals = watcher as unknown as {
+        _emit: (name: string, file: string, ...rest: Array<unknown>) => unknown
+      }
+      const internalEmit = internals._emit.bind(watcher)
+      internals._emit = (name, changed, ...rest) => {
+        if (name === 'change') {
+          const absolute = path.resolve(root, changed)
+          if (
+            changeThrottled(watcher).includes(absolute) &&
+            !barrierFiles.includes(relativeOf(absolute))
+          ) {
+            see(name, absolute, rest[0])
+            notify()
+          }
+        }
+        return internalEmit(name, changed, ...rest)
+      }
+    }
+    for (const [name, environment] of Object.entries(server.environments)) {
+      const container = environment.pluginContainer
+      if (!followed.has(container.watchChange)) {
+        const watchChange = container.watchChange.bind(container)
+        const followedWatchChange: typeof watchChange = (...args) => {
+          const running = watchChange(...args)
+          handling.getStore()?.watchChanges.push(running)
+          return running
+        }
+        followed.add(followedWatchChange)
+        container.watchChange = followedWatchChange
+      }
+      const hot = environment.hot
+      if (followed.has(hot.send)) {
+        continue
+      }
+      const send = hot.send.bind(hot) as (...args: Array<unknown>) => void
+      const recordingSend = (...args: Array<unknown>) => {
+        hmr.push(hmrMessage(name, args))
+        send(...args)
+      }
+      followed.add(recordingSend)
+      hot.send = recordingSend as typeof hot.send
+    }
+  }
+  const followPlugin: Plugin = {
+    name: 'dev-server-harness:follow',
+    configureServer: (server) => {
+      follow(server)
+    },
+  }
 
   let vite: ViteDevServer
   try {
@@ -325,20 +596,30 @@ export async function createDevServer(
             // the client environment transforms the static imports of each
             // module it serves in the background, before the browser
             // requests them.
-            // `settle()` reports file events instead of a watcher, unless a
-            // browser page runs the app.
-            ...(!browser && { ws: false as const, watch: null }),
+            // Without a page, no HMR WebSocket (and no port to share).
+            ...(!browser && { ws: false as const }),
+            ...(!watching && !devEngineWatching && { watch: null }),
+            // Called at the end of Vite's handling of each file event
             hotUpdateEnvironments: async (
               server: ViteDevServer,
               update: (environment: DevEnvironment) => Promise<void>,
             ) => {
-              await Promise.all(Object.values(server.environments).map(update))
-              pendingEvent?.resolve()
+              try {
+                await Promise.all(
+                  Object.values(server.environments).map(update),
+                )
+              } finally {
+                const event = handling.getStore()
+                if (event) {
+                  handled(event)
+                }
+              }
             },
           },
           plugins: [
             ...(typeof plugins === 'function' ? plugins({ root }) : plugins),
             ...(bundledDev ? [clientBundlePlugin] : []),
+            followPlugin,
           ],
         } satisfies InlineConfig,
         config,
@@ -348,43 +629,6 @@ export async function createDevServer(
     await app.dispose()
     throw error
   }
-
-  /**
-   * Records the HMR payloads of the current environments (again after a
-   * server restart, which replaces them).
-   */
-  const recording = new WeakSet<object>()
-  let recordedEnvironments: ViteDevServer['environments'] | undefined
-  /** The plugins' `watchChange` hooks running for the current file event. */
-  const watchChanges: Array<Promise<unknown>> = []
-  const recordHmr = () => {
-    recordedEnvironments = vite.environments
-    for (const [name, environment] of Object.entries(vite.environments)) {
-      const container = environment.pluginContainer
-      if (!recording.has(container.watchChange)) {
-        const watchChange = container.watchChange.bind(container)
-        const recordingWatchChange: typeof watchChange = (...args) => {
-          const running = watchChange(...args)
-          watchChanges.push(running)
-          return running
-        }
-        recording.add(recordingWatchChange)
-        container.watchChange = recordingWatchChange
-      }
-      const hot = environment.hot
-      if (recording.has(hot.send)) {
-        continue
-      }
-      const send = hot.send.bind(hot) as (...args: Array<unknown>) => void
-      const recordingSend = (...args: Array<unknown>) => {
-        hmr.push(hmrMessage(name, args))
-        send(...args)
-      }
-      recording.add(recordingSend)
-      hot.send = recordingSend as typeof hot.send
-    }
-  }
-  recordHmr()
 
   let closed: Promise<void> | undefined
   const close = () => {
@@ -399,185 +643,268 @@ export async function createDevServer(
   }
   options.registerCleanup?.(close)
 
-  if (listen) {
-    await vite.listen(0)
-  }
-
-  const file = (relative: string) => path.join(root, relative)
-  let snapshot = await readFiles(root)
-
   /**
-   * Emits watcher events, all at once, and waits until the server has
-   * handled each of them.
+   * Waits until `check` holds, checking again whenever something happened
+   * (a reported or handled event, a log), and at least every 25 ms (e.g. for
+   * a restart). `describe` says what did not happen within `eventTimeout`.
    */
-  async function report(batch: Array<{ event: FileEvent; file: string }>) {
-    events.push(...batch)
-    recordHmr()
-    const described = batch
-      .map(({ event, file: relative }) => `"${event} ${relative}"`)
-      .join(', ')
-    if (bundledDev) {
-      // Vite's full-bundle mode sends no hot updates: the server has handled
-      // the event once the plugins' `watchChange` hooks have, and Vite has
-      // invalidated the file's modules right after.
-      watchChanges.length = 0
-      for (const { event, file: relative } of batch) {
-        vite.watcher.emit(event, file(relative))
+  async function until(
+    check: () => boolean | Promise<boolean>,
+    describe: () => string | Promise<string>,
+  ) {
+    const deadline = Date.now() + eventTimeout
+    while (!(await check())) {
+      if (closed) {
+        throw new Error('the dev server was closed')
+      }
+      if (Date.now() > deadline) {
+        throw new Error(`${await describe()} within ${eventTimeout} ms`)
       }
       let timer: ReturnType<typeof setTimeout> | undefined
-      try {
-        await Promise.race([
-          Promise.all(watchChanges),
-          new Promise((_, reject) => {
-            timer = setTimeout(
-              () =>
-                reject(
-                  new Error(
-                    `the dev server did not handle ${described} within ${eventTimeout} ms`,
-                  ),
-                ),
-              eventTimeout,
-            )
-          }),
-        ])
-      } finally {
-        clearTimeout(timer)
-      }
-      await new Promise((resolve) => setImmediate(resolve))
-      return
-    }
-    let unhandled = batch.length
-    const handled = new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(
-        () =>
-          finish(
-            new Error(
-              `the dev server did not handle ${described} within ${eventTimeout} ms`,
-            ),
-          ),
-        eventTimeout,
-      )
-      // A server restart (e.g. a plugin restarting the server on a config
-      // file edit) abandons the HMR handling of the event: done once the
-      // restarted server's environments exist.
-      const restart = setInterval(() => {
-        if (vite.environments !== recordedEnvironments) {
-          recordHmr()
-          finish()
-        }
-      }, 20)
-      const finish = (error?: Error) => {
-        clearTimeout(timer)
-        clearInterval(restart)
-        if (error) {
-          reject(error)
-        } else {
-          resolve()
-        }
-      }
-      // Vite updates the environments once per event
-      pendingEvent = {
-        resolve: () => {
-          unhandled--
-          if (unhandled === 0) {
-            finish()
-          }
-        },
-        reject: finish,
-      }
-    })
-    try {
-      for (const { event, file: relative } of batch) {
-        vite.watcher.emit(event, file(relative))
-      }
-      await handled
-      // The payloads are sent right after the last environment updates
-      await new Promise((resolve) => setImmediate(resolve))
-    } finally {
-      pendingEvent = undefined
+      await Promise.race([
+        woken,
+        new Promise((resolve) => {
+          timer = setTimeout(resolve, 25)
+        }),
+      ])
+      clearTimeout(timer)
     }
   }
 
   /**
-   * Rolldown's dev engine, which bundles the client (`bundledDev`). Vite has
-   * no public API to await the bundled output (vitejs/vite#22991).
+   * Events whose handling has not ended. Those of a watcher a restart
+   * replaced are abandoned with the server that handled them.
    */
-  const devEngine = () => {
-    const client = vite.environments.client as
-      | { bundledDev?: { devEngine: BundledDevEngine } }
-      | undefined
-    if (!client?.bundledDev) {
-      throw new Error('the client is only bundled with `bundledDev`')
+  const unhandled = () =>
+    reported.filter((event) => !event.handled && event.watcher === vite.watcher)
+
+  const waitForHandling = () =>
+    until(
+      () => unhandled().length === 0,
+      () =>
+        `the dev server did not handle ${unhandled()
+          .map((event) => `"${event.event} ${relativeOf(event.file)}"`)
+          .join(', ')}`,
+    )
+
+  const barrierPaths = barrierFiles.map((relative) => path.join(root, relative))
+
+  /**
+   * Waits until the watcher would report a change of any app file: a user's
+   * edits come a moment after the changes the last one caused (e.g. a route
+   * tree a plugin wrote), which the watcher would otherwise drop.
+   */
+  const userPace = () =>
+    until(
+      () =>
+        changeThrottled().every((throttled) =>
+          barrierPaths.includes(throttled),
+        ),
+      () =>
+        `the file watcher still drops changes of ${changeThrottled().join(', ')}`,
+    )
+
+  /** Waits until the current watcher watches the app (its initial scan). */
+  const watcherReady = () =>
+    until(
+      () =>
+        (vite.watcher as unknown as { _readyEmitted?: boolean })
+          ._readyEmitted === true,
+      () => 'the file watcher did not finish its initial scan',
+    )
+
+  /** The app files the watcher reports, with their contents. */
+  async function appFiles() {
+    const files = new Map<string, AppFile>()
+    const visit = async (directory: string) => {
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        const full = path.join(directory, entry.name)
+        if (entry.isDirectory()) {
+          if (!unwatchedDirectories.has(entry.name)) {
+            await visit(full)
+          }
+        } else if (entry.isFile()) {
+          try {
+            const { mtimeMs } = await stat(full)
+            files.set(relativeOf(full), {
+              code: await readFile(full, 'utf8'),
+              mtimeMs,
+            })
+          } catch {
+            // Removed while reading
+          }
+        }
+      }
     }
-    return client.bundledDev.devEngine
+    await visit(root)
+    return files
   }
 
-  async function settle(eventOptions: FileEventOptions = {}) {
-    if (browser) {
+  /** App files whose current state the watcher has not reported yet. */
+  async function unreportedFiles() {
+    const current = await appFiles()
+    return [
+      ...[...current.entries()]
+        .filter(([relative, { code, mtimeMs }]) => {
+          const reported = known.get(relative)
+          return reported?.code !== code || reported.mtimeMs !== mtimeMs
+        })
+        .map(([relative]) => relative),
+      ...[...known.keys()].filter((relative) => !current.has(relative)),
+    ]
+  }
+
+  /** Waits for the event of each file `write()` wrote, and its handling. */
+  const waitForExpected = async () => {
+    const missing = () =>
+      expected.filter(
+        ({ file: absolute, seq }) =>
+          !reported.some(
+            (event) => event.file === absolute && event.seq >= seq,
+          ),
+      )
+    await until(
+      () => missing().length === 0,
+      () =>
+        `the file watcher did not report the write of ${missing()
+          .map(({ file: absolute }) => relativeOf(absolute))
+          .join(', ')}`,
+    )
+    expected.length = 0
+  }
+
+  /**
+   * Changes a barrier file and waits until the server handled its event and
+   * everything reported before.
+   */
+  async function barrier() {
+    await watcherReady()
+    let barrierFile: string | undefined
+    await until(
+      () => {
+        const throttled = changeThrottled()
+        barrierFile = barrierPaths.find(
+          (barrierPath) => !throttled.includes(barrierPath),
+        )
+        return barrierFile !== undefined
+      },
+      () => 'no barrier file the watcher reports a change of',
+    )
+    const seq = reported.length
+    await writeFile(barrierFile!, String(++barrierCount))
+    await until(
+      () =>
+        reported.some(
+          (event) => event.file === barrierFile && event.seq >= seq,
+        ),
+      () => 'the file watcher did not report the barrier file',
+    )
+    await waitForHandling()
+  }
+
+  const throwFailure = () => {
+    const failure = failures.shift()
+    if (failure) {
+      failures.length = 0
+      throw failure
+    }
+  }
+
+  /**
+   * `bundledDev`: waits until the dev engine's watcher reported each file
+   * `write()` wrote that the last bundle includes (it watches only those),
+   * and until the dev engine bundled the current files.
+   */
+  async function settleBundle() {
+    const from = hmr.length
+    /** Whether Vite's watcher watches a file (plugins may make it watch). */
+    const watched = (absolute: string) =>
+      path.dirname(absolute) in vite.watcher.getWatched()
+    const missing = () =>
+      expected.filter(
+        ({ file: absolute, seq, devEngineSeq }) =>
+          (bundledModules.has(absolute) &&
+            !devEngineReports.slice(devEngineSeq).includes(absolute)) ||
+          (watched(absolute) &&
+            !reported.some(
+              (event) => event.file === absolute && event.seq >= seq,
+            )),
+      )
+    await until(
+      () => missing().length === 0,
+      () =>
+        `the watchers did not report ${missing()
+          .map(({ file: absolute }) => relativeOf(absolute))
+          .join(', ')}`,
+    )
+    expected.length = 0
+    await waitForHandling()
+    throwFailure()
+    await devEngine().ensureLatestBuildOutput()
+    return hmr.slice(from)
+  }
+
+  async function settle() {
+    if (devEngineWatching) {
+      return settleBundle()
+    }
+    if (!watching) {
       throw new Error(
-        "settle() and edit() replay file events: with `browser`, Vite's own watcher reports them",
+        'settle() and edit() need the file watcher and HMR, which a server with `server.hmr: false` runs without',
       )
     }
-    const order =
-      eventOptions.order ?? options.fileEvents?.order ?? 'deletions-first'
-    const batch = eventOptions.batch ?? options.fileEvents?.batch ?? false
     const from = hmr.length
     for (let round = 0; ; round++) {
-      const current = await readFiles(root)
-      const removed = [...snapshot.keys()].filter((key) => !current.has(key))
-      const added = [...current.keys()].filter((key) => !snapshot.has(key))
-      const changed = [...current.keys()].filter(
-        (key) => snapshot.has(key) && snapshot.get(key) !== current.get(key),
+      await waitForExpected()
+      await waitForHandling()
+      throwFailure()
+      const before = events.length
+      await barrier()
+      // Files written before the barrier whose events come after it
+      let pending: Array<string> = []
+      await until(
+        async () => {
+          pending = await unreportedFiles()
+          return pending.length === 0
+        },
+        () => `the file watcher did not report ${pending.join(', ')}`,
       )
-      snapshot = current
-      if (!removed.length && !added.length && !changed.length) {
+      await waitForHandling()
+      throwFailure()
+      if (events.length === before) {
         break
       }
-      // The dev engine watches no files: it bundles the edited files anew.
-      if (bundledDev) {
-        devEngine().triggerFullBuild()
-      }
-      if (round === 20) {
+      if (round === 10) {
         throw new Error(
-          `the app's files keep changing after 20 rounds of file events: ${[...removed, ...added, ...changed].join(', ')}`,
+          `the app's files keep changing after 10 rounds of file events: ${[
+            ...new Set(events.slice(before).map((event) => event.file)),
+          ].join(', ')}`,
         )
-      }
-      const deletions = removed.map((relative) => ({
-        event: 'unlink' as const,
-        file: relative,
-      }))
-      const creations = added.map((relative) => ({
-        event: 'add' as const,
-        file: relative,
-      }))
-      const roundEvents = [
-        ...(order === 'creations-first'
-          ? [...creations, ...deletions]
-          : [...deletions, ...creations]),
-        ...changed.map((relative) => ({
-          event: 'change' as const,
-          file: relative,
-        })),
-      ]
-      if (batch) {
-        await report(roundEvents)
-      } else {
-        for (const item of roundEvents) {
-          await report([item])
-        }
       }
     }
     return hmr.slice(from)
   }
 
   async function write(files: Record<string, string | null>) {
+    if (watching || devEngineWatching) {
+      await userPace()
+    }
     for (const [relative, code] of Object.entries(files)) {
+      const absolute = file(relative)
+      const exists = await lstat(absolute).then(
+        () => true,
+        () => false,
+      )
       if (code === null) {
-        await rm(file(relative), { force: true })
-      } else {
-        await mkdir(path.dirname(file(relative)), { recursive: true })
-        await writeFile(file(relative), code)
+        if (exists) {
+          expect(absolute)
+          await rm(absolute, { force: true })
+        }
+        continue
       }
+      expect(absolute)
+      await mkdir(path.dirname(absolute), { recursive: true })
+      await writeFile(absolute, code)
     }
   }
 
@@ -641,6 +968,35 @@ export async function createDevServer(
     return result.code
   }
 
+  /**
+   * Rolldown's dev engine, which bundles the client (`bundledDev`). Vite has
+   * no public API to await the bundled output (vitejs/vite#22991).
+   */
+  const devEngine = () => {
+    const client = vite.environments.client as
+      | { bundledDev?: { devEngine: BundledDevEngine } }
+      | undefined
+    if (!client?.bundledDev) {
+      throw new Error('the client is only bundled with `bundledDev`')
+    }
+    return client.bundledDev.devEngine
+  }
+
+  try {
+    if (listen) {
+      await vite.listen(0)
+    }
+    if (watching) {
+      await watcherReady()
+      for (const [relative, code] of await appFiles()) {
+        known.set(relative, code)
+      }
+    }
+  } catch (error) {
+    await close()
+    throw error
+  }
+
   return {
     root,
     vite,
@@ -649,13 +1005,19 @@ export async function createDevServer(
     read: (relative) => readFile(file(relative), 'utf8'),
     write,
     rename: async (from, to) => {
-      await mkdir(path.dirname(file(to)), { recursive: true })
-      await rename(file(from), file(to))
+      if (watching || devEngineWatching) {
+        await userPace()
+      }
+      const target = file(to)
+      expect(file(from))
+      expect(target)
+      await mkdir(path.dirname(target), { recursive: true })
+      await rename(file(from), target)
     },
     settle,
-    edit: async (files, eventOptions) => {
+    edit: async (files) => {
       await write(files)
-      return settle(eventOptions)
+      return settle()
     },
     events,
     transform,
@@ -817,39 +1179,6 @@ function hmrMessage(environment: string, args: Array<unknown>): HmrMessage {
     paths = payload.paths
   }
   return { environment, type: payload.type, paths, payload }
-}
-
-/**
- * Each app file by path relative to the root: its contents and its
- * modification time. A watcher reports a write that leaves the contents as
- * they were as a change too (chokidar compares the modification time). The
- * kernel updates modification times once per clock tick (a few ms): a
- * rewrite in the tick of the last snapshot goes unseen.
- */
-async function readFiles(root: string): Promise<Map<string, string>> {
-  const files = new Map<string, string>()
-  const visit = async (directory: string) => {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const full = path.join(directory, entry.name)
-      if (entry.isDirectory()) {
-        if (!ignoredDirectories.has(entry.name)) {
-          await visit(full)
-        }
-      } else if (entry.isFile() || entry.isSymbolicLink()) {
-        try {
-          const { mtimeNs } = await stat(full, { bigint: true })
-          files.set(
-            path.relative(root, full).split(path.sep).join('/'),
-            `${mtimeNs}\n${await readFile(full, 'utf8')}`,
-          )
-        } catch {
-          // Removed while reading, or a dangling link
-        }
-      }
-    }
-  }
-  await visit(root)
-  return files
 }
 
 function stripAnsi(text: string) {

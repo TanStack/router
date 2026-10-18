@@ -460,32 +460,65 @@ export const label = () => 'MARK_CLIENT_LABEL'
     timeout,
   )
 
-  // Source: issue #8062 (a hook of the Start compiler plugin threw on an
-  // edit in bundledDev; fix #8061 had no test), oracle-gaps H4 / DV29.
-  test(
-    'a module whose factory becomes a server fn builder: the client bundle drops the handler, without errors',
-    async () => {
-      const server = await startDevServer({
-        bundledDev: { entry: 'src/a.tsx' },
-        files: {
-          'src/b.ts': plain,
-          'src/db.server.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
-          'src/a.tsx': `import { base } from './b'
+  /**
+   * Serves `src/a.tsx`, which calls `.handler()` on `base` from `src/b.ts`
+   * (a plain object at first) with a handler reading a server-only module,
+   * and edits `src/b.ts` so that `base` becomes a server fn builder.
+   */
+  async function editFactoryIntoBuilder() {
+    const server = await startDevServer({
+      bundledDev: { entry: 'src/a.tsx' },
+      files: {
+        'src/b.ts': plain,
+        'src/db.server.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
+        'src/a.tsx': `import { base } from './b'
 import { db } from './db.server'
 export const fn = base.handler(async () => db.x())
 `,
-        },
-      })
-      expect(
-        containing(await server.clientBundle(), 'MARK_DB_SECRET'),
-      ).toHaveLength(1)
+      },
+    })
+    expect(
+      containing(await server.clientBundle(), 'MARK_DB_SECRET'),
+    ).toHaveLength(1)
+    await server.edit({ 'src/b.ts': factory })
+    return server
+  }
 
-      await server.edit({ 'src/b.ts': factory })
+  // Source: issue #8062 (a hook of the Start compiler plugin threw on an
+  // edit in bundledDev; fix #8061 had no test), oracle-gaps H4 / DV29.
+  test(
+    'a module whose factory becomes a server fn builder bundles again without errors',
+    async () => {
+      const server = await editFactoryIntoBuilder()
+      await server.clientBundle()
+      expect(server.logs.filter((log) => log.startsWith('error:'))).toEqual([])
+    },
+    timeout,
+  )
 
+  // Control: "Vite dev: editing a server fn factory" above (unbundled dev,
+  // where the compiler invalidates the importers of an edited module).
+
+  // Bug: in full-bundle dev, an edit of a module that turns what another
+  // module imports into a server fn builder does not recompile the
+  // importer: the dev engine re-bundles the edited module only, and the
+  // Start compiler's bundledDev `watchChange` forgets the edited module
+  // alone, so the importer keeps the output compiled against the old
+  // `base`, handler and server-only imports included.
+  // Source: packages/start-plugin-core/src/vite/start-compiler-plugin/plugin.ts:412-424
+  // (client: `invalidateModule(id)` of the edited module only; the
+  // unbundled path invalidates the importers, :318-358).
+  // Impact: with `experimental.bundledDev`, the page keeps loading the
+  // handler and its server-only modules (here a `.server` module) in the
+  // client until the dev server restarts. Found with the real watchers
+  // (the replaying harness forced a full rebuild, which hid it).
+  test.fails(
+    'a module whose factory becomes a server fn builder: the client bundle drops the handler',
+    async () => {
+      const server = await editFactoryIntoBuilder()
       expect(containing(await server.clientBundle(), 'MARK_DB_SECRET')).toEqual(
         [],
       )
-      expect(server.logs.filter((log) => log.startsWith('error:'))).toEqual([])
     },
     timeout,
   )

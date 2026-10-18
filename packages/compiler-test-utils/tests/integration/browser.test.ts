@@ -47,7 +47,6 @@ test(
         ...app('import.meta.hot'),
       },
     })
-    await expect(server.settle()).rejects.toThrow(/watcher/)
     const page = await openPage(server.url!, {
       registerCleanup: onTestFinished,
     })
