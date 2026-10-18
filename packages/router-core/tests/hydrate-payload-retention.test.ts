@@ -2,7 +2,7 @@ import { setFlagsFromString } from 'node:v8'
 import { runInNewContext } from 'node:vm'
 import { expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { hydrate } from '../src/ssr/client'
 import { createTestRouter, dehydrateToBootstrap } from './routerTestUtils'
 
@@ -262,3 +262,118 @@ test.each([false, true])(
     }
   },
 )
+
+test('releases unreported descendant hydration diagnostics after supersession while ancestor application work stays pending', async () => {
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const onError = vi.fn()
+  const rootStarted = createControlledPromise<void>()
+  const childFailed = createControlledPromise<void>()
+  // The application retains this operation, but it never captures codec input.
+  const applicationWork = new Set([
+    new Promise<{ generation: number }>(() => {}),
+  ])
+  let wire: WeakRef<object> | undefined
+  let error: WeakRef<Error> | undefined
+  const build = (isServer: boolean) => {
+    const root = new BaseRootRoute({
+      validateSearch: (search: Record<string, unknown>) => ({
+        generation: Number(search.generation ?? 0),
+      }),
+      loaderDeps: ({ search }) => ({ generation: search.generation }),
+      loader: {
+        handler: ({ deps }) => ({ generation: deps.generation }),
+        dehydrate: true,
+        hydrate: () => {
+          rootStarted.resolve()
+          return applicationWork.values().next().value!
+        },
+      },
+    })
+    const page = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/page',
+      onError,
+      loader: {
+        handler: () => 'page',
+        dehydrate: () => ({
+          retentionMarker: 'UnreportedDescendantDiagnostic',
+          values: Array.from({ length: 2048 }, (_, i) => i),
+        }),
+        hydrate: ({ data }) => {
+          wire = new WeakRef(data)
+          const failure = new Error('descendant transform failed', {
+            cause: data,
+          })
+          error = new WeakRef(failure)
+          childFailed.resolve()
+          throw failure
+        },
+      },
+    })
+    const other = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/other',
+      loader: () => 'replacement',
+    })
+    return createTestRouter({
+      routeTree: root.addChildren([page, other]),
+      history: createMemoryHistory({ initialEntries: ['/page?generation=0'] }),
+      isServer,
+    })
+  }
+  window.$_TSR = await dehydrateToBootstrap(build(true), { routes: {} })
+  const router = build(false)
+  let hydrationFinished = false
+  const hydration = hydrate(router).then(() => {
+    hydrationFinished = true
+  })
+  try {
+    await Promise.all([rootStarted, childFailed])
+    // Let the throwing loader's outcome reach the Router. The ancestor remains
+    // pending, so hydration cannot report the descendant diagnostic yet.
+    await new Promise((resolve) => setTimeout(resolve))
+    expect(hydrationFinished).toBe(false)
+    expect(warning).not.toHaveBeenCalled()
+    // A new public root dependency prevents the replacement from adopting the
+    // deliberately unresolved root loader generation.
+    await router.navigate({ to: '/other', search: { generation: 1 } })
+    await expect.poll(() => hydrationFinished, { timeout: 1000 }).toBe(true)
+    await hydration
+    // Flush the public lazy state snapshot before collection.
+    expect(
+      router.state.matches.map((match) => [
+        match.routeId,
+        match.status,
+        match.loaderData,
+      ]),
+    ).toEqual([
+      ['__root__', 'success', { generation: 1 }],
+      ['/other', 'success', 'replacement'],
+    ])
+    expect(router.state.location.pathname).toBe('/other')
+    expect(onError).not.toHaveBeenCalled()
+    expect(warning).not.toHaveBeenCalled()
+    expect(wire).toBeDefined()
+    expect(error).toBeDefined()
+    window.$_TSR!.h()
+    window.$_TSR!.e()
+    delete window.$_TSR
+    warning.mockClear()
+    onError.mockClear()
+    for (let i = 0; i < 8; i++) {
+      await new Promise((resolve) => setTimeout(resolve))
+      gc()
+    }
+    // Keep only the independent application promise alive through collection.
+    expect(applicationWork.size).toBe(1)
+    expect(wire!.deref()).toBeUndefined()
+    expect(error!.deref()).toBeUndefined()
+  } finally {
+    // Do not settle the abandoned operation: collection must work while it hangs.
+    applicationWork.clear()
+    warning.mockRestore()
+    router.clearCache()
+    router.history.destroy()
+    delete window.$_TSR
+  }
+})
