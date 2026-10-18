@@ -598,6 +598,11 @@ export async function createDevServer(
             // requests them.
             // Without a page, no HMR WebSocket (and no port to share).
             ...(!browser && { ws: false as const }),
+            // A page's console stays the page's (`./browser` records it):
+            // Vite's default forwards it to the server's log when it detects
+            // a coding agent running it, which would make `logs` depend on
+            // who runs the tests.
+            forwardConsole: false,
             ...(!watching && !devEngineWatching && { watch: null }),
             // Called at the end of Vite's handling of each file event
             hotUpdateEnvironments: async (

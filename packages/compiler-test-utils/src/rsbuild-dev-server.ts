@@ -6,12 +6,22 @@
  *
  * Unlike the Vite harness, file events come from Rspack's own file watcher:
  * `edit()` writes the files and waits for the compile that includes them
- * (`trackCompiles`).
+ * (`trackCompiles`). When plugins write files too (a generated route tree),
+ * `write()` and `settle()` wait until the compiles are done with every
+ * write, by events only (see `settle`).
  *
  * Plugin-agnostic: the caller supplies the Rsbuild plugins and the directory
  * the apps live in (where their imports resolve).
  */
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  writeFile,
+} from 'node:fs/promises'
 import { createServer } from 'node:net'
 import path from 'node:path'
 import { createRsbuild, mergeRsbuildConfig } from '@rsbuild/core'
@@ -88,6 +98,32 @@ export interface RsbuildDevServer {
    */
   edit: (files: Record<string, string | null>) => Promise<void>
   /**
+   * Writes app files (relative to the app root; `null` deletes a file)
+   * without waiting: Rspack's watcher (and plugins' own watchers) report
+   * them; `settle()` waits for the compiles.
+   */
+  write: (files: Record<string, string | null>) => Promise<void>
+  /** Moves an app file without waiting (see `write`). */
+  rename: (from: string, to: string) => Promise<void>
+  /**
+   * Waits until the compiles are done with every write so far, the test's
+   * (`write()`) and the plugins' (e.g. a generated route tree), by the
+   * compiles' own events: no compile runs or is pending (Rspack's watcher
+   * reports a change with its `invalid` hook), the outputs of the last one
+   * are recorded, every app file the last compile read is as it was when
+   * that compile started (else Rspack's watcher compiles again), and every
+   * file `write()` wrote since the last call is read by the last compile or
+   * accepted by `accept` (e.g. a file a plugin reported it cannot handle,
+   * which no compile reads). Rejects when more than 10 compiles start
+   * meanwhile (a plugin rewriting a file on each compile), and with the error
+   * of a compile Rspack gave up on. `timeout` (default `compileTimeout`) only
+   * guards against compiles that never come.
+   */
+  settle: (options?: {
+    accept?: (relative: string) => boolean
+    timeout?: number
+  }) => Promise<void>
+  /**
    * JavaScript files an environment (default: the only one) emitted by the
    * last compile, by path relative to its output directory, without the
    * hot-update chunks.
@@ -136,6 +172,41 @@ export async function createRsbuildDevServer(
   const errors: Array<string> = []
   const warnings: Array<string> = []
   const compiles = trackCompiles()
+
+  /**
+   * The environments' compilers compiling now. (Rspack restarts a compile a
+   * change invalidated without ending it: no `done`.)
+   */
+  const compiling = new Set<object>()
+  /** Compiles started, and ended. */
+  let started = 0
+  let ended = 0
+  /** `ended` when Rsbuild last reported the end of a compile. */
+  let recordedAt = 0
+  /** Rspack's watcher reported a change no compile started for yet. */
+  let invalidated = false
+  /** The error of the last compile Rspack gave up on, for `settle()`. */
+  let gaveUp: Error | undefined
+  /**
+   * The app files each compiler read in its last compile, with their state
+   * when that compile started.
+   */
+  const lastInputs = new Map<object, Map<string, AppFile | undefined>>()
+  /** The app files each compile saw when it started, by compiler. */
+  const startState = new Map<object, Map<string, AppFile>>()
+  /** Files `write()` wrote since the last `settle()` (absolute). */
+  const written = new Set<string>()
+  /** Wakes up `settle()` whenever a compile starts, ends or is pending. */
+  let wake = () => {}
+  let woken = new Promise<void>((resolve) => {
+    wake = resolve
+  })
+  const notify = () => {
+    wake()
+    woken = new Promise<void>((resolve) => {
+      wake = resolve
+    })
+  }
   /** Output directory of each environment. */
   const distPaths: Record<string, string> = {}
   /**
@@ -154,6 +225,48 @@ export async function createRsbuildDevServer(
         for (const environmentCompiler of 'compilers' in compiler
           ? compiler.compilers
           : [compiler]) {
+          const name = 'rsbuild-dev-server-harness:settle'
+          // Before the plugins' own `watchRun` taps: what they write then is
+          // read by the next compile, not this one
+          environmentCompiler.hooks.watchRun.tap({ name, stage: -1000 }, () => {
+            compiling.add(environmentCompiler)
+            started++
+            invalidated = false
+            startState.set(environmentCompiler, readAppFiles(root))
+            notify()
+          })
+          environmentCompiler.hooks.invalid.tap(name, () => {
+            invalidated = true
+            notify()
+          })
+          environmentCompiler.hooks.done.tap(
+            { name, stage: -100 },
+            ({ compilation }) => {
+              compiling.delete(environmentCompiler)
+              ended++
+              const state = startState.get(environmentCompiler) ?? new Map()
+              lastInputs.set(
+                environmentCompiler,
+                new Map(
+                  [...compilation.fileDependencies]
+                    .filter((file) => isAppFile(root, file))
+                    .map((file) => [file, state.get(file)]),
+                ),
+              )
+              notify()
+            },
+          )
+          environmentCompiler.hooks.failed.tap(name, (cause) => {
+            compiling.delete(environmentCompiler)
+            ended++
+            // Nothing to record
+            recordedAt = ended
+            gaveUp = new Error(
+              `Rsbuild failed to compile the app: ${cause.message}`,
+              { cause },
+            )
+            notify()
+          })
           const chunks: Record<string, string> = {}
           hotUpdateChunks.set(environmentCompiler, chunks)
           // Before Rsbuild's own `done` taps, which report the end of the
@@ -209,6 +322,8 @@ export async function createRsbuildDevServer(
         rebuilt.splice(0, rebuilt.length, ...built)
         errors.splice(0, errors.length, ...compileErrors)
         warnings.splice(0, warnings.length, ...compileWarnings)
+        recordedAt = ended
+        notify()
         compiles.done()
       })
     },
@@ -290,10 +405,105 @@ export async function createRsbuildDevServer(
     return distPath
   }
 
+  const file = (relative: string) => path.join(root, relative)
+
+  async function write(files: Record<string, string | null>) {
+    gaveUp = undefined
+    for (const [relative, code] of Object.entries(files)) {
+      const absolute = file(relative)
+      written.add(absolute)
+      if (code === null) {
+        await rm(absolute, { force: true })
+      } else {
+        await mkdir(path.dirname(absolute), { recursive: true })
+        await writeFile(absolute, code)
+      }
+    }
+  }
+
+  /** Why the compiles are not done with the writes yet, or `undefined`. */
+  function unsettled(accept: (relative: string) => boolean) {
+    if (gaveUp) {
+      return undefined
+    }
+    if (compiling.size > 0 || invalidated || recordedAt !== ended) {
+      return 'a compile runs or is pending'
+    }
+    const changed = [...lastInputs.values()].flatMap((inputs) =>
+      [...inputs]
+        .filter(([input, before]) => {
+          const now = readAppFile(input)
+          return now?.code !== before?.code || now?.mtimeMs !== before?.mtimeMs
+        })
+        .map(([input]) => input),
+    )
+    if (changed.length) {
+      return `no compile read ${changed.map((input) => path.relative(root, input)).join(', ')} as it is now`
+    }
+    const unread = [...written].filter(
+      (absolute) =>
+        readAppFile(absolute) !== undefined &&
+        ![...lastInputs.values()].some((inputs) => inputs.has(absolute)) &&
+        !accept(path.relative(root, absolute).split(path.sep).join('/')),
+    )
+    if (unread.length) {
+      return `no compile read ${unread.map((absolute) => path.relative(root, absolute)).join(', ')}`
+    }
+    return undefined
+  }
+
+  async function settle(
+    options: { accept?: (relative: string) => boolean; timeout?: number } = {},
+  ) {
+    const accept = options.accept ?? (() => false)
+    const timeout = options.timeout ?? compileTimeout
+    const deadline = Date.now() + timeout
+    const startedBefore = started
+    for (;;) {
+      const reason = unsettled(accept)
+      if (gaveUp) {
+        const error = gaveUp
+        gaveUp = undefined
+        throw error
+      }
+      if (reason === undefined) {
+        written.clear()
+        return
+      }
+      if (started - startedBefore > 10) {
+        throw new Error(
+          `the app keeps compiling: ${started - startedBefore} compiles since settle() began (${reason})`,
+        )
+      }
+      if (Date.now() > deadline) {
+        throw new Error(
+          `Rsbuild did not settle within ${timeout} ms: ${reason}`,
+        )
+      }
+      let timer: ReturnType<typeof setTimeout> | undefined
+      await Promise.race([
+        woken,
+        new Promise((resolve) => {
+          timer = setTimeout(resolve, 25)
+        }),
+      ])
+      clearTimeout(timer)
+    }
+  }
+
   return {
     root,
     rsbuild,
     url,
+    write,
+    rename: async (from, to) => {
+      gaveUp = undefined
+      written.add(file(from))
+      written.add(file(to))
+      await mkdir(path.dirname(file(to)), { recursive: true })
+      await rename(file(from), file(to))
+    },
+    settle,
     edit: (files) => {
       for (const chunks of hotUpdateChunks.values()) {
         for (const file of Object.keys(chunks)) {
@@ -628,6 +838,58 @@ function freePort() {
       probe.close(() => resolve(port))
     })
   })
+}
+
+/** An app file as a compile may read it. */
+interface AppFile {
+  code: string
+  mtimeMs: number
+}
+
+/** Directories of an app no compile reads from (output, dependencies). */
+const nonAppDirectories = new Set(['node_modules', 'dist', '.git'])
+
+/** Whether `file` is an app file under `root` (not output or a dependency). */
+function isAppFile(root: string, file: string) {
+  const relative = path.relative(root, file)
+  return (
+    !relative.startsWith('..') &&
+    !path.isAbsolute(relative) &&
+    !relative.split(path.sep).some((part) => nonAppDirectories.has(part))
+  )
+}
+
+function readAppFile(file: string): AppFile | undefined {
+  try {
+    return {
+      code: readFileSync(file, 'utf8'),
+      mtimeMs: statSync(file).mtimeMs,
+    }
+  } catch {
+    return undefined
+  }
+}
+
+/** Every app file under `root`, by absolute path. */
+function readAppFiles(root: string) {
+  const files = new Map<string, AppFile>()
+  const visit = (directory: string) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const full = path.join(directory, entry.name)
+      if (entry.isDirectory()) {
+        if (!nonAppDirectories.has(entry.name)) {
+          visit(full)
+        }
+      } else if (entry.isFile()) {
+        const state = readAppFile(full)
+        if (state) {
+          files.set(full, state)
+        }
+      }
+    }
+  }
+  visit(root)
+  return files
 }
 
 async function readJavaScript(directory: string) {
