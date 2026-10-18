@@ -455,6 +455,9 @@ export function attachRouterServerSsrUtils({
       if (cleanupStarted || router.serverSsr !== serverSsr) {
         return
       }
+      if (router._serverResult?.type === 'redirect') {
+        return
+      }
       const dehydrate = router.options.dehydrate
       const dehydratedData = dehydrate
         ? opts?.signal

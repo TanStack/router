@@ -108,6 +108,32 @@ test('returns a redirect from a lifecycle-started load instead of rendering HTML
   }
 })
 
+test('skips custom dehydration when a lifecycle-started load settles as a redirect', async () => {
+  const fixture = setup('redirect')
+  const dehydrate = vi.fn(() => {
+    throw new Error('Redirects must not invoke custom dehydration')
+  })
+  fixture.router.update({ dehydrate })
+  const render = vi.fn(() => new Response('unexpected HTML'))
+  const responsePromise = createRequestHandler({
+    request: new Request('http://localhost/'),
+    createRouter: () => fixture.router,
+  })(render)
+  try {
+    await fixture.started
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(dehydrate).not.toHaveBeenCalled()
+    fixture.gate.resolve()
+    const response = await responsePromise
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe('/target')
+    expect(dehydrate).not.toHaveBeenCalled()
+    expect(render).not.toHaveBeenCalled()
+  } finally {
+    await fixture.finish()
+  }
+})
+
 test('rejects the request when a lifecycle-started load fails during dehydration', async () => {
   const fixture = setup('lifecycle-error')
   const render = vi.fn(() => new Response('unexpected HTML'))
