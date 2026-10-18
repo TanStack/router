@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { build, routeApp } from './build-harness'
 import {
   compileRouteModules,
   declaredNames,
@@ -190,33 +189,6 @@ export const Route = createFileRoute('/')({ component: () => <p>{helper()}</p> }
     )
     expect(await renderSplitComponent(unusedFunctions)).toBe('<p>helper</p>')
   })
-
-  // The other half of the ruling: the unused functions (and any binding they
-  // name that their module no longer declares) do not reach a production
-  // client bundle.
-  it.each(['vite', 'rspack', 'webpack'] as const)(
-    'drops unused functions, one calling a helper of the split component, from a production client build (%s)',
-    async (bundler) => {
-      const app = await build({
-        bundler,
-        env: 'client',
-        files: routeApp(unusedFunctions, { env: 'client' }),
-      })
-      const run = await app.run(
-        `await entry.mount(entry.Route.options.component)`,
-      )
-      expect({
-        unused: app.where('MARK_UNUSED_END'),
-        ping: app.where('MARK_PING_END'),
-        html: run.html,
-      }).toEqual({
-        unused: 'nowhere',
-        ping: 'nowhere',
-        html: '<div id="root"><p>helper</p></div>',
-      })
-    },
-    60_000,
-  )
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "SCC dead
   // code elimination" > "arrow functions in mutual recursion -> removed"

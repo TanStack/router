@@ -15,7 +15,8 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "test:unit": "vitest",
+    "test:unit": "vitest --project unit",
+    "test:integration": "vitest --project integration",
     "test:types": "tsc",
     "test:eslint": "eslint ./src ./tests"
   },

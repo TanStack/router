@@ -1,0 +1,455 @@
+/**
+ * Known code-splitter bugs. Each test asserts correct behaviour for a bug on
+ * main and is marked .fails; remove .fails when the bug is fixed.
+ */
+import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
+import { describe, expect, test } from 'vitest'
+import { build, routeApp } from '../build-harness'
+import { head } from '../regression-helpers'
+import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
+
+/**
+ * Bundlers whose router plugin splits routes (the esbuild adapter does not;
+ * pinned in build-harness.test.ts).
+ */
+const clientBundlers: Array<Bundler> = ['vite', 'rspack', 'webpack']
+
+describe('route options written in other shapes', () => {
+  // The unused `makeOptions` of the two rows above may name a `Page` its
+  // module no longer declares (user ruling 2026-10-17, widened: the bundlers
+  // delete it), as long as that dead code does not reach a production client
+  // bundle (which the build harness also checks for any dangling name).
+  test.each(
+    clientBundlers.flatMap((bundler) =>
+      [
+        `createFileRoute('/')({ ssr: false, component: Page } as any)`,
+        `(createFileRoute('/') as any)({ ssr: false, component: Page })`,
+      ].map((route) => ({ bundler, route })),
+    ),
+  )(
+    'a route written as $route drops its unused options factory from a production client build ($bundler)',
+    async ({ bundler, route }) => {
+      const app = await build({
+        bundler,
+        env: 'client',
+        files: routeApp(
+          `${head}function Page() {
+  return <p>page</p>
+}
+const makeOptions = () => ({ component: Page, title: 'MARK_MAKE_OPTIONS_END' })
+export const Route = ${route}
+`,
+          { env: 'client' },
+        ),
+      })
+      const run = await app.run(
+        `await entry.mount(entry.Route.options.component)`,
+      )
+      expect({
+        makeOptions: app.where('MARK_MAKE_OPTIONS_END'),
+        html: run.html,
+      }).toEqual({
+        makeOptions: 'nowhere',
+        html: '<div id="root"><p>page</p></div>',
+      })
+    },
+    60_000,
+  )
+})
+
+describe('what split chunks hold', () => {
+  // Bug: once the pin above is fixed, the split option must also end up
+  // split, or the build must say why (decision D11). Splitting the result of
+  // a call would change when the call runs, so the user has to change the
+  // pattern: a warning naming the file and the option is acceptable. Today
+  // the build fails first (same root cause as the pin above).
+  // Impact: the component loads with the entry chunk.
+  test.fails(
+    'a component declared by an array destructuring of a call shared with the errorComponent is split or reported',
+    async () => {
+      const app = await build({
+        bundler: 'vite',
+        env: 'client',
+        files: routeApp(
+          `${head}const createPair = () => [() => <div>{'MARK_PAGE'}</div>, () => <p>error</p>]
+const [Page, ErrorView] = createPair()
+export const Route = createFileRoute('/')({
+  component: Page,
+  errorComponent: ErrorView,
+})
+`,
+          { env: 'client' },
+        ),
+      })
+      const reported = [...app.warnings, ...app.consoleMessages].some(
+        (message) =>
+          message.includes('routes/index.tsx') &&
+          /\b(?:component|Page)\b/.test(message),
+      )
+      expect({
+        lazy: app.where('MARK_PAGE') === 'lazy',
+        reported,
+      }).not.toEqual({ lazy: false, reported: false })
+    },
+    60_000,
+  )
+})
+
+describe('exported bindings', () => {
+  // Bug: same as above, in a real client build whose entry imports the
+  // exported component (`export * from './routes/index'`): the component is
+  // in both the entry chunk and the split chunk. One instance (split, or
+  // unsplit with a warning naming the route file, decision D11) is the goal.
+  // Impact: the component's code ships twice and runs as two components.
+  test.fails.each(clientBundlers)(
+    'an exported errorComponent written as `PostErrorComponent as any` is in the client once (%s build)',
+    async (bundler) => {
+      const app = await build({
+        bundler,
+        env: 'client',
+        files: routeApp(
+          `${head}export const Route = createFileRoute('/posts/$postId')({
+  errorComponent: PostErrorComponent as any,
+  component: () => <p>post</p>,
+})
+export function PostErrorComponent() {
+  return <p>{'MARK_POST_ERROR_END'}</p>
+}
+`,
+          { env: 'client' },
+        ),
+      })
+      const { result: lazy } = await app.run(
+        `return typeof entry.Route.options.errorComponent.preload === 'function'`,
+      )
+      const reported = [...app.warnings, ...app.consoleMessages].some(
+        (message) =>
+          message.includes('routes/index.tsx') &&
+          /\b(?:PostErrorComponent|errorComponent)\b/.test(message),
+      )
+      const placement = app.where('MARK_POST_ERROR_END')
+      expect(['lazy', 'eager']).toContain(placement)
+      expect({ splitOrReported: lazy === true || reported }).toEqual({
+        splitOrReported: true,
+      })
+    },
+    60_000,
+  )
+})
+
+describe('code that reads a split binding', () => {
+  /**
+   * Builds a route whose split component `Page` an unused module-level
+   * object also names, and mounts the component in the client bundle.
+   */
+  async function mountUnusedReader(bundler: Bundler) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      files: routeApp(
+        `${head}function Page() {
+  return <p>MARK_PAGE</p>
+}
+const opts = { component: Page }
+export const Route = createFileRoute('/')({ component: Page })
+`,
+        { env: 'client' },
+      ),
+    })
+    const run = await app.run(
+      `await entry.mount(entry.Route.options.component)`,
+    )
+    return run.html
+  }
+
+  // Control for the pin below: Rspack and webpack drop the unused object
+  // while minifying, together with its read of the deleted binding.
+  test.each(['rspack', 'webpack'] as const)(
+    'a split component that an unused object names renders (%s)',
+    async (bundler) => {
+      expect(await mountUnusedReader(bundler)).toContain('<p>MARK_PAGE</p>')
+    },
+    60_000,
+  )
+
+  // Bug: same root cause as above, for an unused module-level object that
+  // names the split component: the route module keeps the object but loses
+  // `Page`. Rolldown keeps the object, as reading an undeclared binding can
+  // throw. (The build harness now rejects that output before it runs: its
+  // entry chunk reads the undeclared `Page`.)
+  // Source: Wave B (a Vite Start client bundle crashed on it).
+  // Impact: the client bundle throws when the route module loads ("Page is
+  // not defined"), so the app never renders.
+  test.fails(
+    'a split component that an unused object names renders (vite)',
+    async () => {
+      expect(await mountUnusedReader('vite')).toContain('<p>MARK_PAGE</p>')
+    },
+    60_000,
+  )
+})
+
+describe('server-only route options on the client', () => {
+  /** Start's client configuration of the code splitter. */
+  const deleteNodes = ['ssr', 'server', 'headers']
+
+  /** A client build with Start's `deleteNodes`, reading a server secret. */
+  async function secretPlacement(bundler: Bundler, option: string) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      pluginOptions: { codeSplittingOptions: { deleteNodes } },
+      files: routeApp(
+        `${head}import { readSecret } from '../db.server'
+export const Route = createFileRoute('/')({
+  ${option},
+  component: () => <p>page</p>,
+})
+`,
+        {
+          env: 'client',
+          files: {
+            'db.server.ts': `export function readSecret() {
+  return (globalThis as any).MARK_SERVER_SECRET
+}
+`,
+          },
+        },
+      ),
+    })
+    return app.where('MARK_SERVER_SECRET')
+  }
+
+  // Control for the build-level canary below.
+  test.each(clientBundlers)(
+    'a client build has no server code of an `ssr` property (%s)',
+    async (bundler) => {
+      expect(await secretPlacement(bundler, 'ssr: () => !!readSecret()')).toBe(
+        'nowhere',
+      )
+    },
+    60_000,
+  )
+
+  // Bug: build-level canary of the method pin above (same root cause).
+  // Impact: the server code of an `ssr()` method reaches the client bundle.
+  test.fails.each(clientBundlers)(
+    'a client build has no server code of an `ssr()` method (%s)',
+    async (bundler) => {
+      expect(
+        await secretPlacement(bundler, 'ssr() { return !!readSecret() }'),
+      ).toBe('nowhere')
+    },
+    60_000,
+  )
+})
+
+describe('symlinked route files', () => {
+  /**
+   * A client build with `deleteNodes: ['server']` of a route file reached
+   * through `routes/index.tsx`, a symlink when `linked`; returns where the
+   * server handler's code is, or `refused` when the build fails naming the
+   * route file.
+   */
+  async function serverCodePlacement(bundler: Bundler, linked: boolean) {
+    const route = `${head}import { readSecret } from '../db.server'
+export const Route = createFileRoute('/')({
+  server: { handlers: { GET: () => readSecret() } },
+  component: () => <p>page</p>,
+})
+`
+    const files = routeApp(route, {
+      env: 'client',
+      files: {
+        'db.server.ts': `export function readSecret() {
+  return (globalThis as any).MARK_SERVER_SECRET
+}
+`,
+      },
+    })
+    if (linked) {
+      delete files['routes/index.tsx']
+      files['linked/index.tsx'] = route
+    }
+    try {
+      const app = await build({
+        bundler,
+        env: 'client',
+        pluginOptions: { codeSplittingOptions: { deleteNodes: ['server'] } },
+        files,
+        symlinks: linked ? { 'routes/index.tsx': 'linked/index.tsx' } : {},
+      })
+      return app.where('MARK_SERVER_SECRET')
+    } catch (error) {
+      // A refusal names the route file
+      if (
+        error instanceof BuildError &&
+        error.errors.join('\n').includes('index.tsx')
+      ) {
+        return 'refused'
+      }
+      throw error
+    }
+  }
+
+  // Control for the pin below (same app, a regular route file).
+  test.each(clientBundlers)(
+    'a client build has no server handler code (%s)',
+    async (bundler) => {
+      expect(await serverCodePlacement(bundler, false)).toBe('nowhere')
+    },
+    60_000,
+  )
+
+  // Bug: the code splitter looks route files up by the path the generator
+  // scanned (the symlink), but bundlers resolve modules to their real path,
+  // so a symlinked route file is never compiled: nothing is split or
+  // removed, silently. Failing the build is a valid fix too. Source: #8514.
+  // Impact: with symlinked sources (Bazel, Nix, linked checkouts), Start's
+  // client bundle ships `server.handlers` and their server-only imports.
+  test.fails.each(clientBundlers)(
+    'a client build of a symlinked route file has no server handler code (%s)',
+    async (bundler) => {
+      expect(['nowhere', 'refused']).toContain(
+        await serverCodePlacement(bundler, true),
+      )
+    },
+    60_000,
+  )
+})
+
+describe('source maps', () => {
+  /**
+   * Source files named by the source maps of a client build's chunks that
+   * hold the split component (`MARK_PAGE`) or a binding the route module
+   * shares with it (`MARK_SHARED`).
+   */
+  async function splitChunkSources(bundler: Bundler) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      minify: false,
+      sourcemap: true,
+      files: routeApp(
+        `${head}const shared = { label: 'MARK_SHARED' }
+function Page() {
+  return <p>MARK_PAGE {shared.label}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => shared,
+  component: Page,
+})
+`,
+        { env: 'client' },
+      ),
+    })
+    const chunks = app.chunks.filter(
+      (chunk) =>
+        chunk.code.includes('MARK_PAGE') || chunk.code.includes('MARK_SHARED'),
+    )
+    return [...new Set(chunks.flatMap((chunk) => chunk.map?.sources ?? []))]
+  }
+
+  /** Whether the sources name the route file, and none a virtual module. */
+  function namesRouteFile(sources: Array<string>) {
+    return {
+      routeFile: sources.some((source) => source.includes('routes/index.tsx')),
+      virtualModules: sources.filter((source) => /[?&]tsr-/.test(source)),
+    }
+  }
+
+  // Control for the pin below: Rspack and webpack name modules by their
+  // resource path.
+  test.each(['rspack', 'webpack'] as const)(
+    'split code maps to the route file (%s)',
+    async (bundler) => {
+      expect(namesRouteFile(await splitChunkSources(bundler))).toEqual({
+        routeFile: true,
+        virtualModules: [],
+      })
+    },
+    60_000,
+  )
+
+  // Bug: the split chunk and shared modules are compiled with their module
+  // id as the source file name, query included (`routes/index.tsx?tsr-split=
+  // component`), and Vite keeps the source names of the maps plugins return.
+  // Source: gap CC-S2 (plausible cause of #6667, #3828, #2991).
+  // Impact: devtools and error trackers show split code under a separate
+  // `index.tsx?tsr-split=…` file, so breakpoints set in the route file do
+  // not hit in split code.
+  test.fails(
+    'split code maps to the route file (vite)',
+    async () => {
+      expect(namesRouteFile(await splitChunkSources('vite'))).toEqual({
+        routeFile: true,
+        virtualModules: [],
+      })
+    },
+    60_000,
+  )
+})
+
+describe('production builds', () => {
+  /**
+   * A production client build of a route the code splitter warns about
+   * (today: an exported component it cannot split), with `NODE_ENV` as
+   * given (`null`: unset); returns whether the build warned, naming the
+   * route file, and where the app's absolute path (which the warning names)
+   * is in the bundle.
+   */
+  async function warningPlacement(bundler: Bundler, nodeEnv?: null) {
+    const app = await build({
+      bundler,
+      env: 'client',
+      nodeEnv,
+      files: routeApp(
+        `${head}export function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({
+  component: Page,
+  errorComponent: () => <p>error</p>,
+})
+`,
+        { env: 'client' },
+      ),
+    })
+    return {
+      warned: [...app.warnings, ...app.consoleMessages].some((message) =>
+        message.includes('routes/index.tsx'),
+      ),
+      appPath: app.where(app.root),
+    }
+  }
+
+  // Control for the pin below: with `NODE_ENV=production` exported. Its
+  // first assertion is a precondition of both tests, not a requirement:
+  // without a warning, the bundle has nothing to leak, so once the code
+  // splitter splits this route, use another route it warns about.
+  test.each(['rspack', 'webpack'] as const)(
+    'a production client bundle has no development warning (%s)',
+    async (bundler) => {
+      const { warned, appPath } = await warningPlacement(bundler)
+      expect(warned, 'precondition: the route makes the build warn').toBe(true)
+      expect(appPath).toBe('nowhere')
+    },
+    60_000,
+  )
+
+  // Bug: the code splitter's `console.warn` (today: "will not be
+  // code-split") is injected into the route module unless the build
+  // process's `NODE_ENV` is `production`, instead of following the
+  // bundler's mode as the rest of the code splitter does. webpack and Rspack
+  // set `NODE_ENV` only inside the bundle. Source: gap CC-P2.
+  // Impact: webpack/Rspack production bundles built from a shell without
+  // `NODE_ENV` log a development warning in every user's console, with the
+  // developer's absolute file path.
+  test.fails.each(['rspack', 'webpack'] as const)(
+    'a production client bundle has no development warning when NODE_ENV is unset (%s)',
+    async (bundler) => {
+      expect((await warningPlacement(bundler, null)).appPath).toBe('nowhere')
+    },
+    60_000,
+  )
+})
