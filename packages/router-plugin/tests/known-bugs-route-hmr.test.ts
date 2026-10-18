@@ -6,23 +6,24 @@
  * so that React Refresh can patch it in place; a component React Refresh does
  * not register keeps rendering the old code until a full reload.
  */
-import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
 import react from '@vitejs/plugin-react'
+import vueJsx from '@vitejs/plugin-vue-jsx'
+import solid from 'vite-plugin-solid'
 import { describe, expect, test } from 'vitest'
 import { build, routeApp } from './build-harness'
-import { routerDevServer, routerPackageStub } from './dev-server'
 import {
   compileRouteModules,
   evaluateModule,
   expectRefreshableRouteOption,
   expectValidModules,
-  exportedNames,
   head,
   hotUpdate,
   isRefreshable,
   loadRoute,
+  routeSpecifier,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
+import { editRouteFile } from './vite-hot-update'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 import type { PluginOption } from 'vite'
 
@@ -46,7 +47,7 @@ export const Route = createFileRoute('/')({ component: memo(Page) })`),
 
   // Bug: inline component options that are not plain functions (`memo(...)`,
   // `forwardRef(...)`, method shorthand, a function wrapped in a TypeScript
-  // `as` / `satisfies` / `!`) are neither hoisted nor registered, nor is the
+  // `as` / `satisfies`) are neither hoisted nor registered, nor is the
   // function they wrap.
   // Impact: on unsplit routes (root routes, or file routes without automatic
   // code splitting), edits to these components are dropped until a reload.
@@ -58,7 +59,6 @@ export const Route = createFileRoute('/')({ component: memo(Page) })`),
     ...[
       ['as any', `(() => <p>hi</p>) as any`],
       ['satisfies', `(() => <p>hi</p>) satisfies FC`],
-      ['a non-null assertion', `(() => <p>hi</p>)!`],
     ].map(([wrapper, component]) => ({
       name: `a function wrapped in ${wrapper}`,
       code: `${head}import type { FC } from 'react'
@@ -303,34 +303,53 @@ export const Route = createFileRoute('/')(options)`,
   // top-level `const hot = import.meta.hot` that collides with a user's
   // top-level `hot` binding (compile error `Duplicate declaration "hot"`).
   // Impact: the route cannot be served in development.
-  test.fails(
-    'a user binding named hot does not collide with the injected HMR code',
-    async () => {
-      const modules = compileWithCodeSplitting(`${head}export const hot = 'hot'
+  test.fails.each([
+    { name: 'a constant', declaration: `const hot = 'hot'`, exported: false },
+    {
+      name: 'an exported constant',
+      declaration: `export const hot = 'hot'`,
+      exported: true,
+    },
+  ])(
+    'a user binding named hot ($name) does not collide with the injected HMR code',
+    async ({ declaration, exported }) => {
+      const route = await loadRoute(
+        `${head}${declaration}
 export const Route = createFileRoute('/')({
   component: () => <p>{hot}</p>,
-})`)
-      await expectValidModules(modules)
-      expect(exportedNames(modules.reference!)).toContain('hot')
+})`,
+        { hmr: true },
+      )
+      await expectValidModules(route.modules)
+      expect((await route.load('component'))()).toBe('<p>hot</p>')
+      if (exported) {
+        // A module importing it gets the user's value.
+        const { hot } = await route.importFromRoute(
+          `export { hot } from '${routeSpecifier}'`,
+        )
+        expect(hot).toBe('hot')
+      }
     },
   )
 
   /**
    * Loads, with HMR, a route whose `page` component (declared by
-   * `declaration`) the loader also reads, so the code splitter shares it with
-   * the loader. Loads the split component and renders it twice. `page` counts
-   * its renders in a module-level `let` initialized by `init` from `./state`.
-   * Returns both renders and how many times `init` ran.
+   * `declaration`) is both the `component` and the `notFoundComponent`,
+   * which the default groupings split into two chunks, so the code splitter
+   * shares `page` between them. Renders the component, then the not-found
+   * component. `page` counts its renders in a module-level `let` initialized
+   * by `init` from `./state`. Returns both renders and how many times `init`
+   * ran.
    */
-  async function renderSharedComponentTwice(declaration: string) {
+  async function renderSharedComponent(declaration: string) {
     let inits = 0
     const route = await loadRoute(
       `${head}import { init } from './state'
 let renders = init(0)
 ${declaration}
 export const Route = createFileRoute('/')({
-  loader: () => page.name,
   component: page,
+  notFoundComponent: page,
 })`,
       {
         hmr: true,
@@ -345,13 +364,14 @@ export const Route = createFileRoute('/')({
       },
     )
     const component = await route.load('component')
-    return [component(), component(), inits]
+    const notFound = await route.load('notFoundComponent')
+    return [component(), notFound(), inits]
   }
 
   // Control for the lowercase shared component pin below (same harness).
-  test('a lowercase arrow component shared with the loader renders with the module state it shares', async () => {
+  test('a lowercase arrow component split into two chunks renders with the module state they share', async () => {
     expect(
-      await renderSharedComponentTwice(`const page = () => {
+      await renderSharedComponent(`const page = () => {
   renders++
   return <p>{renders}</p>
 }`),
@@ -364,10 +384,10 @@ export const Route = createFileRoute('/')({
   // Impact: in development, the route's component chunk fails to load
   // (SyntaxError: Export 'SplitComponent' is not defined).
   test.fails(
-    'a lowercase function component shared with the loader renders with the module state it shares',
+    'a lowercase function component split into two chunks renders with the module state they share',
     async () => {
       expect(
-        await renderSharedComponentTwice(`function page() {
+        await renderSharedComponent(`function page() {
   renders++
   return <p>{renders}</p>
 }`),
@@ -434,15 +454,24 @@ export const Route = createFileRoute('/')({ component: page })`,
 
   /**
    * Compiles a route with the route HMR plugin (automatic code splitting
-   * off), evaluates it and returns its route.
+   * off), evaluates it and returns its route. `react-error-boundary`'s
+   * `ErrorBoundary` renders its `FallbackComponent`, as when its children
+   * throw.
    */
   async function evaluateUnsplitRoute(code: string) {
     const { Route } = await evaluateModule(transformWithRouteHmrPlugin(code), {
       '@tanstack/react-router': {
         createFileRoute: () => (options: unknown) => ({ options }),
       },
+      'react-error-boundary': {
+        ErrorBoundary: ({
+          FallbackComponent,
+        }: {
+          FallbackComponent: (props: object) => unknown
+        }) => FallbackComponent({}),
+      },
     })
-    return Route as unknown as { options: Record<string, () => unknown> }
+    return Route as unknown as { options: Record<string, any> }
   }
 
   // Control for the lowercase shared component pins above: a lowercase
@@ -465,28 +494,36 @@ export const Route = createFileRoute('/')({
     expect((await route.load('component'))()).toBe('<p>data</p>')
   })
 
-  // Control for the hoisted inline component pin below: an inline option
-  // that is not a component, reading a lowercase component a later option
+  /** A lowercase error fallback, and an import of `ErrorBoundary`. */
+  const errorFallback = `${head}import { ErrorBoundary } from 'react-error-boundary'
+const errorFallback = () => <p>error</p>`
+
+  // Control for the hoisted inline component pin below: an option that is
+  // not an inline component, reading a lowercase component a later option
   // passes.
-  test('an inline loader reading a lowercase component a later option passes runs it', async () => {
-    const Route =
-      await evaluateUnsplitRoute(`${head}const page = () => <p>page</p>
+  test('an option reading a lowercase component a later option passes gets that component', async () => {
+    const Route = await evaluateUnsplitRoute(`${errorFallback}
 export const Route = createFileRoute('/')({
-  loader: () => page(),
-  component: page,
+  staticData: { errorFallback },
+  errorComponent: errorFallback,
 })`)
-    expect(Route.options.loader!()).toBe('<p>page</p>')
-    expect(Route.options.component!()).toBe('<p>page</p>')
+    expect(Route.options.staticData.errorFallback).toBe(
+      Route.options.errorComponent,
+    )
+    expect(Route.options.errorComponent()).toBe('<p>error</p>')
   })
 
   // Control for the hoisted inline component pin below (same harness).
   test('an inline component reading a lowercase component renders it', async () => {
-    const Route =
-      await evaluateUnsplitRoute(`${head}const missing = () => <p>missing</p>
+    const Route = await evaluateUnsplitRoute(`${errorFallback}
 export const Route = createFileRoute('/')({
-  pendingComponent: () => missing(),
+  pendingComponent: () => (
+    <ErrorBoundary FallbackComponent={errorFallback}>
+      <p>loading</p>
+    </ErrorBoundary>
+  ),
 })`)
-    expect(Route.options.pendingComponent!()).toBe('<p>missing</p>')
+    expect(Route.options.pendingComponent()).toBe('<p>error</p>')
   })
 
   // Bug: React HMR hoists inline component options into declarations it
@@ -494,20 +531,23 @@ export const Route = createFileRoute('/')({
   // passed to a later option. The rename only reaches nodes attached to the
   // program, so a hoisted component still reads the old name.
   // Impact: in development, the hoisted component throws when it renders
-  // (ReferenceError: missing is not defined).
+  // (ReferenceError: errorFallback is not defined).
   // Fix: rename before hoisting (or insert hoisted declarations immediately),
   // or rename through the analyzer's binding references.
   test.fails(
     'an inline component hoisted before a renamed lowercase component renders it',
     async () => {
-      const Route =
-        await evaluateUnsplitRoute(`${head}const missing = () => <p>missing</p>
+      const Route = await evaluateUnsplitRoute(`${errorFallback}
 export const Route = createFileRoute('/')({
-  pendingComponent: () => missing(),
-  notFoundComponent: missing,
+  pendingComponent: () => (
+    <ErrorBoundary FallbackComponent={errorFallback}>
+      <p>loading</p>
+    </ErrorBoundary>
+  ),
+  errorComponent: errorFallback,
 })`)
-      expect(Route.options.pendingComponent!()).toBe('<p>missing</p>')
-      expect(Route.options.notFoundComponent!()).toBe('<p>missing</p>')
+      expect(Route.options.pendingComponent()).toBe('<p>error</p>')
+      expect(Route.options.errorComponent()).toBe('<p>error</p>')
     },
   )
 })
@@ -568,30 +608,6 @@ export { MyRoute as Route }`,
     },
   )
 
-  // Bug: `handleRouteUpdate` keeps the previous component by assigning it to
-  // the new route options, which throws when the option is a getter.
-  // Impact: every hot update of a route with a getter component option fails
-  // ("Cannot set property component of #<Object> which has only a getter").
-  test.fails.each(['vite', 'webpack'] as const)(
-    '%s: a route with a getter component option is hot-updated',
-    async (style) => {
-      expect(
-        await updatesOption(
-          `${head}function Page() {
-  return <p>page</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  get component() {
-    return Page
-  },
-})`,
-          style,
-        ),
-      ).toBe(true)
-    },
-  )
-
   // Bug: `handleRouteUpdate` keeps the previous component options for React
   // Refresh to patch in place, also when no React Refresh runtime is installed
   // (webpack or Rspack without a refresh plugin, like the webpack quickstart
@@ -615,75 +631,63 @@ export const Route = createFileRoute('/')({
       const update = await hotUpdate(route('old'), {
         style: 'webpack',
         codeSplitting,
+        refresh: false,
         updated: route('new'),
       })
       expect(
         update.invalidated ||
-          (await update.load('component'))() === '<p>new</p>',
+          (await update.render('component')) === '<p>new</p>',
       ).toBe(true)
     },
   )
 })
 
 describe('Vite HMR boundaries', () => {
-  /**
-   * Starts a dev server (router package stubbed) on an app whose client
-   * entry imports the route tree, loads the entry and what it imports in the
-   * client environment, as a page does, edits `routes/index.tsx` and returns
-   * the HMR messages the client received.
-   */
-  async function editRoute(
-    target: 'react' | 'solid' | 'vue',
-    autoCodeSplitting: boolean,
-    plugins: Array<PluginOption> = [],
-    {
-      file = 'routes/index.tsx',
-      route = (
-        text,
-      ) => `import { createFileRoute } from '@tanstack/${target}-router'
+  /** A route file of `target` whose component renders `text`. */
+  const route =
+    (target: 'react' | 'solid' | 'vue') =>
+    (
+      text: string,
+    ) => `import { createFileRoute } from '@tanstack/${target}-router'
 export const Route = createFileRoute('/')({
-  loader: () => 'data',
+  loader: () => '${text}',
   component: Page,
 })
 function Page() {
-  return '${text}'
-}`,
-    }: { file?: string; route?: (text: string) => string } = {},
-  ) {
-    const server = await routerDevServer({
-      pluginOptions: { target, autoCodeSplitting },
-      plugins: [routerPackageStub(target), ...plugins],
-      files: {
-        [file]: route('page'),
-        'entry.ts': `export { routeTree } from './routeTree.gen'`,
-      },
+  return <div>${text}</div>
+}`
+
+  /**
+   * Edits the route file (`route` of `target`) in a dev server with the
+   * framework's Vite plugins, after the page loaded it and, when split, its
+   * component (`editRouteFile`).
+   */
+  const edit = (
+    target: 'react' | 'solid' | 'vue',
+    autoCodeSplitting: boolean,
+    plugins: Array<PluginOption>,
+    options: { file?: string; route?: (text: string) => string } = {},
+  ) =>
+    editRouteFile({
+      target,
+      autoCodeSplitting,
+      plugins,
+      file: options.file,
+      route: options.route ?? route(target),
+      loaded: autoCodeSplitting ? ['?tsr-split=component'] : [],
     })
-    // The router package stub is a virtual module (`/@id/...`).
-    await server.load('/entry.ts', { skip: /^\/@id\// })
-    const messages = await server.edit({ [file]: route('edited') })
-    return describeHmr(
-      messages.filter((message) => message.environment === 'client'),
-    )
-  }
 
-  /** Whether the HMR messages are a hot update without a full reload. */
-  const isHotUpdate = (messages: Array<string>) =>
-    messages.some((message) => message.startsWith('client: update')) &&
-    !messages.some((message) => message.startsWith('client: full-reload'))
-
-  // Control for the pin below (same harness): with `@vitejs/plugin-react`,
+  // Control for the pins below (same harness): with `@vitejs/plugin-react`,
   // React Refresh makes a React route module an HMR boundary.
   // Source: gap H6a.
   test.each([true, false])(
     'an edit of a React route module is a hot update with @vitejs/plugin-react (autoCodeSplitting: %s)',
     async (autoCodeSplitting) => {
-      const messages = await editRoute('react', autoCodeSplitting, [react()])
-      expect(
-        messages.some((message) => message.startsWith('client: update')),
-      ).toBe(true)
-      expect(
-        messages.filter((message) => message.startsWith('client: full-reload')),
-      ).toEqual([])
+      const served = await edit('react', autoCodeSplitting, [react()])
+      expect(served.messages).toEqual([
+        expect.stringMatching(/^client: update /),
+      ])
+      expect(served.hotUpdate).toBe(true)
     },
     30_000,
   )
@@ -692,14 +696,21 @@ function Page() {
   // so a route whose components are all inline arrows still becomes a
   // boundary.
   test('an edit of a React route with only inline components is a hot update with @vitejs/plugin-react (autoCodeSplitting: false)', async () => {
-    const messages = await editRoute('react', false, [react()], {
+    const served = await edit('react', false, [react()], {
       route: (text) => `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({
   loader: () => '${text}',
   component: () => <p>${text}</p>,
 })`,
     })
-    expect(isHotUpdate(messages)).toBe(true)
+    expect(served.hotUpdate).toBe(true)
+  }, 30_000)
+
+  // Control (same harness): with `vite-plugin-solid`, Solid Refresh makes a
+  // route module that declares its component an HMR boundary.
+  test('an edit of a Solid route module that declares its component is a hot update with vite-plugin-solid (autoCodeSplitting: false)', async () => {
+    const served = await edit('solid', false, [solid()])
+    expect(served.hotUpdate).toBe(true)
   }, 30_000)
 
   // Bug: same root cause as the pin below, for a React route file without
@@ -711,14 +722,14 @@ export const Route = createFileRoute('/')({
   test.fails(
     'an edit of a React .ts route module is a hot update with @vitejs/plugin-react (autoCodeSplitting: false)',
     async () => {
-      const messages = await editRoute('react', false, [react()], {
+      const served = await edit('react', false, [react()], {
         file: 'routes/index.ts',
         route: (
           text,
         ) => `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ loader: () => '${text}' })`,
       })
-      expect(isHotUpdate(messages)).toBe(true)
+      expect(served.hotUpdate).toBe(true)
     },
     30_000,
   )
@@ -730,25 +741,20 @@ export const Route = createFileRoute('/')({ loader: () => '${text}' })`,
   // propagates to the route tree and the app entry, and the page reloads.
   // React apps are not affected because React Refresh makes route modules
   // boundaries (control above); Solid Refresh only does for modules that
-  // declare components, and Vue JSX only for exported components.
+  // declare components (control above: not a split route module), and Vue
+  // JSX only for `defineComponent` components.
   // Impact: every edit of a Solid route file with automatic code splitting,
   // and of any Vue route file, reloads the page in Vite dev.
   // Any boundary (the route module or an importer that accepts it) passes.
   test.fails.each([
-    { target: 'solid', autoCodeSplitting: true },
-    { target: 'solid', autoCodeSplitting: false },
-    { target: 'vue', autoCodeSplitting: true },
-    { target: 'vue', autoCodeSplitting: false },
+    { target: 'solid', autoCodeSplitting: true, plugin: () => solid() },
+    { target: 'vue', autoCodeSplitting: true, plugin: () => vueJsx() },
+    { target: 'vue', autoCodeSplitting: false, plugin: () => vueJsx() },
   ] as const)(
-    'an edit of a $target route module is a hot update (autoCodeSplitting: $autoCodeSplitting)',
-    async ({ target, autoCodeSplitting }) => {
-      const messages = await editRoute(target, autoCodeSplitting)
-      expect(
-        messages.some((message) => message.startsWith('client: update')),
-      ).toBe(true)
-      expect(
-        messages.filter((message) => message.startsWith('client: full-reload')),
-      ).toEqual([])
+    'an edit of a $target route module is a hot update with its framework plugin (autoCodeSplitting: $autoCodeSplitting)',
+    async ({ target, autoCodeSplitting, plugin }) => {
+      const served = await edit(target, autoCodeSplitting, [plugin()])
+      expect(served.hotUpdate).toBe(true)
     },
     30_000,
   )

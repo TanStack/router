@@ -33,6 +33,16 @@ import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
 import { build, routeApp } from './build-harness'
+import {
+  componentFunction,
+  createRefreshRuntime,
+  createRefreshingJsx,
+  resolveForRender,
+  transformWithRefresh,
+  vitePluginReactBoundaryCheck,
+  webpackExecuteRuntime,
+} from './react-refresh-model'
+import type { RefreshUpdate, WebpackHot } from './react-refresh-model'
 import type { Config, DeletableNodes } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
@@ -1200,7 +1210,11 @@ export type HotUpdateOptions = {
    * modules linked like `loadRoute`) instead of the route HMR plugin alone.
    */
   codeSplitting?: boolean
-  /** Default `react`. */
+  /**
+   * Default `react`. Solid and Vue routes only run with `style: 'webpack'`:
+   * whether Vite hot-updates them depends on their framework's refresh
+   * plugin, which only a real dev server runs (`editRouteFile`).
+   */
   targetFramework?: TargetFramework
   /**
    * Route id the route file is registered under. Default `/`. A root route
@@ -1217,35 +1231,61 @@ export type HotUpdateOptions = {
    */
   previousRouteId?: string
   /**
-   * A React Refresh runtime is present: modules are compiled with the React
-   * Refresh transform (`registered`) and the bundler's refresh utilities
-   * (`__react_refresh_utils__`) record each update they are asked for
-   * (`refreshes`). With webpack, the plugins are also configured with a
-   * compiler that has the React Refresh plugin, or none
-   * (`webpackCompiler(refresh)`), as an app is.
+   * The app runs React Refresh (default: for React routes), as a React app
+   * does: `@vitejs/plugin-react` with Vite, a React Refresh plugin with
+   * webpack or Rspack (the plugins are configured with
+   * `webpackCompiler(refresh)`). Modules are compiled with the React Refresh
+   * transform and run with the refresh runtime the bundler plugin adds
+   * (`react-refresh-model.ts`). `false`: a React app without React Refresh.
    */
   refresh?: boolean
   /** The route file's other imports, by specifier. */
   stubs?: Stubs
+  /**
+   * File name of the route file. Default `index.tsx` for the route HMR
+   * plugin, `route.tsx` with automatic code splitting.
+   */
+  filename?: string
 }
+
+/** A version of the route file as the bundler compiled it. */
+type CompiledRouteFile = Pick<RouteGraph, 'id' | 'modules' | 'resolve'>
 
 /**
  * Compiles a route file for the dev server, then runs a hot update the way
- * the bundler does: loads the route module with the bundler's hot API on
- * `import.meta` (one hot context per module, its `data` kept across the
- * update), mounts its `Route` in a route tree as the generated route tree
- * does and creates a router with it (`window.__TSR_ROUTER__`), then loads
- * the modules again (`updated`) with the same hot data (Vite: each first
- * module's accept callback receives its new module; webpack: the modules
- * re-run with the data their dispose handlers wrote).
+ * the bundler and React Refresh do:
+ *
+ * - loads the route module with the bundler's hot API on `import.meta`
+ *   (one hot context per module), mounts its `Route` in a route tree as the
+ *   generated route tree does, creates a router with it
+ *   (`window.__TSR_ROUTER__`) and loads the route's `component` if it is
+ *   lazy, as the page showing the route does;
+ * - compiles the edited file (`updated`) and applies the update to the
+ *   modules of the file the page loaded. Vite: every module whose served
+ *   code accepts its own updates (a literal `import.meta.hot.accept(`, or
+ *   the accept `@vitejs/plugin-react` adds to a module that registers
+ *   components) is imported again, with its hot data, and its accept
+ *   callbacks get the new module; a module no such boundary covers makes
+ *   the page reload. webpack / Rspack: every module that accepted itself
+ *   when it ran runs again, with the data its dispose handlers wrote.
+ *   Modules of the file loaded for the first time after the update are the
+ *   edited ones, as a browser fetches them;
+ * - with React Refresh, each module registers its components under its id,
+ *   the bundler's refresh code checks the Fast Refresh boundaries
+ *   (`@vitejs/plugin-react`'s, or the webpack / Rspack plugins'), and the
+ *   runtime refreshes the registered families once the update applied.
  *
  * Returns the options of the live route before (`previous`) and after
  * (`live`) the update, a copy of the options each module load created a
- * route with (`created`), whether a module asked the bundler for a full
- * reload (`invalidated`), the `window` the modules ran with, what React
- * Refresh registered and how many
- * refreshes were enqueued (`refresh`), and `load(option)`, which resolves a
- * lazy option of the live route to what its module provides.
+ * route with (`created`), whether the update reloads the page instead of
+ * applying in place (`invalidated`: a module of the file that no boundary
+ * covers, or a module that invalidates itself, e.g. after a failed Fast
+ * Refresh check, without importers that are boundaries), the `window` the
+ * modules ran with, what React Refresh registered and how many refreshes
+ * were enqueued (`refresh`), `load(option)`, which resolves a lazy option of the live
+ * route to what its module provides, `render(option)`, which renders a
+ * component option of the live route as React does after the update, and
+ * `remounted(option)`, whether React remounts it (losing its state).
  */
 export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
   const {
@@ -1253,14 +1293,25 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
     codeSplitting = false,
     targetFramework = 'react',
     routeId = '/',
-    refresh = false,
+    refresh = targetFramework === 'react',
   } = options
+  if (style === 'vite' && targetFramework !== 'react') {
+    throw new Error(
+      'hotUpdate runs Vite updates of React routes only: test Solid and Vue routes in Vite with editRouteFile and their framework plugin',
+    )
+  }
+  if (refresh && targetFramework !== 'react') {
+    throw new Error('React Refresh only runs for React routes')
+  }
   const pluginOptions: Partial<Config> = {
     target: targetFramework,
     plugin: { hmr: { style } },
   }
   const compiler = style === 'webpack' ? webpackCompiler(refresh) : undefined
-  const compile = (source: string, compiledRouteId = routeId) => {
+  const compile = (
+    source: string,
+    compiledRouteId = routeId,
+  ): CompiledRouteFile => {
     if (codeSplitting) {
       return compileRouteGraph(source, {
         targetFramework,
@@ -1268,9 +1319,12 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
         routeId: compiledRouteId,
         pluginOptions,
         webpackCompiler: compiler,
+        filename: options.filename,
       })
     }
-    const file = routeFile('index')
+    const file = normalizePath(
+      path.join(process.cwd(), 'src/routes', options.filename ?? 'index.tsx'),
+    )
     const compiled = transformWithRouteHmrPlugin(
       source,
       pluginOptions,
@@ -1292,14 +1346,37 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
       ? first
       : compile(options.updated ?? code)
 
+  const runtime = refresh ? createRefreshRuntime() : undefined
+  const jsx = createRefreshingJsx(runtime)
+  /** Renders a component the way React does after the refresh. */
+  const renderComponent = (component: unknown, props: object) => {
+    const render = resolveForRender(runtime, component)
+    if (typeof render !== 'function') {
+      throw new Error(`cannot render ${String(component)}`)
+    }
+    return render(props, null)
+  }
+
   const created: Array<Record<string, unknown>> = []
+  /** Loader of each lazy value the modules created. */
   const lazy = new Map<unknown, () => Promise<unknown>>()
+  /** The component each lazy route component loaded, once it did. */
+  const lazyComponents = new Map<unknown, () => unknown>()
   const registered = new Map<unknown, string>()
   let invalidated = false
+  /** Modules that asked the bundler to update their importers instead. */
+  const invalidations = new Set<string>()
   let refreshes = 0
+  let refreshUpdate: RefreshUpdate | null = null
+  const enqueueRefresh = () => {
+    refreshes++
+  }
+
   type HotState = {
-    data: Record<string, unknown>
+    /** Vite: kept across the update. webpack: what the dispose handlers wrote. */
+    data: Record<string, unknown> | undefined
     accepted: Array<(module: unknown) => void>
+    selfAccepted: boolean
     disposers: Array<(data: Record<string, unknown>) => void>
   }
   const hotStates = new Map<string, HotState>()
@@ -1307,30 +1384,37 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
     let state = hotStates.get(id)
     if (!state) {
       state = {
-        data: {},
+        // webpack gives a module no data until it is hot-updated
+        data: style === 'webpack' ? undefined : {},
         accepted: [],
+        selfAccepted: false,
         disposers: [],
       }
       hotStates.set(id, state)
     }
     return state
   }
-  const hotContext = (id: string) => {
+  /** The hot API of each module evaluation, by version and module id. */
+  const hotContexts: Array<Map<string, WebpackHot>> = [new Map(), new Map()]
+  const hotContext = (version: number, id: string) => {
     const state = hotState(id)
-    return {
+    const context = {
       data: state.data,
-      accept: (callback?: (module: unknown) => void) => {
-        if (callback) {
-          state.accepted.push(callback)
+      accept: (callback?: unknown) => {
+        state.selfAccepted = true
+        if (typeof callback === 'function') {
+          state.accepted.push(callback as (module: unknown) => void)
         }
       },
       dispose: (callback: (data: Record<string, unknown>) => void) => {
         state.disposers.push(callback)
       },
       invalidate: () => {
-        invalidated = true
+        invalidations.add(id)
       },
     }
+    hotContexts[version]!.set(id, context)
+    return context
   }
 
   const recording =
@@ -1354,46 +1438,116 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
     rootRoutes.add(route)
     return route
   }
-  const lazyStubs = createRouterStub(lazy)
   const routerPackage = `@tanstack/${targetFramework}-router`
-  // The route classes of the framework packages add hooks to the router-core
-  // ones; route HMR only uses what router-core provides.
-  const routerStub: Record<string, unknown> = {
-    ...lazyStubs,
-    createFileRoute: () => recording(createRoute),
-    createLazyFileRoute: () => recording(createRoute),
-    createRootRoute: recording(createRootRoute),
-    createRootRouteWithContext: () => recording(createRootRoute),
+  /** Ids of the modules that registered components, by version. */
+  const registering = [new Set<string>(), new Set<string>()]
+  const graphs: Array<ReturnType<typeof createModuleGraph>> = []
+
+  /**
+   * Imports a lazy option's module. A module of the route file that the
+   * page never loaded before the update is loaded as the bundler serves it
+   * now: edited.
+   */
+  const importLazy = async (
+    version: number,
+    importer: () => Promise<Record<string, any>>,
+  ) => {
+    const latest = graphs.length - 1
+    if (version < latest) {
+      const graph = graphs[version]!
+      const ids = graph
+        .probeDynamicImports(importer)
+        .filter((id) => second.modules.has(id))
+      if (ids.length === 1 && !graph.evaluated.includes(ids[0]!)) {
+        return graphs[latest]!.import(ids[0]!)
+      }
+    }
+    return importer()
   }
-  const load = (graph: Pick<RouteGraph, 'id' | 'modules' | 'resolve'>) =>
-    createModuleGraph({
-      modules: Object.fromEntries(graph.modules),
-      resolve: graph.resolve,
+
+  const load = (compiled: CompiledRouteFile) => {
+    const version = graphs.length
+    // The route classes of the framework packages add hooks to the
+    // router-core ones; route HMR only uses what router-core provides.
+    const routerStub: Record<string, unknown> = {
+      ...createRouterStub(lazy),
+      createFileRoute: () => recording(createRoute),
+      createLazyFileRoute: () => recording(createRoute),
+      createRootRoute: recording(createRootRoute),
+      createRootRouteWithContext: () => recording(createRootRoute),
+      lazyRouteComponent: (
+        importer: () => Promise<Record<string, any>>,
+        exportName = 'default',
+      ) => {
+        let component: unknown
+        const loadComponent = async () => {
+          if (component === undefined) {
+            component = (await importLazy(version, importer))[exportName]
+          }
+          return component
+        }
+        const Lazy = Object.assign(
+          (props: object) => {
+            if (component === undefined) {
+              throw new Error(
+                'a lazy route component rendered before it loaded',
+              )
+            }
+            return renderComponent(component, props)
+          },
+          { preload: loadComponent },
+        )
+        lazy.set(Lazy, loadComponent)
+        lazyComponents.set(Lazy, () => component)
+        return Lazy
+      },
+      ...stubExports(options.stubs?.[routerPackage]),
+    }
+    const graph = createModuleGraph({
+      modules: Object.fromEntries(compiled.modules),
+      resolve: compiled.resolve,
       stubs: {
-        ...(refresh && { react: React }),
+        ...(targetFramework === 'react' && { react: React }),
         ...options.stubs,
-        [routerPackage]: {
-          ...routerStub,
-          ...stubExports(options.stubs?.[routerPackage]),
-        },
+        [routerPackage]: routerStub,
       },
       importMeta: (id) => ({
-        [style === 'webpack' ? 'webpackHot' : 'hot']: hotContext(id),
+        [style === 'webpack' ? 'webpackHot' : 'hot']: hotContext(version, id),
       }),
-      ...(refresh && {
-        scope: () => refreshScope(registered),
-        transform: transformWithReactRefresh,
+      ...(runtime && {
+        transform: (source: string, id: string) =>
+          transformWithRefresh(source, id, style),
+        // JSX renders through `createRefreshingJsx`, declared in `scope`
+        runtime: '',
+        scope: (id: string) => ({
+          // What `@vitejs/plugin-react` and the webpack / Rspack refresh
+          // plugins declare in each module: registrations under its id.
+          $RefreshReg$: (type: unknown, name: string) => {
+            registered.set(type, name)
+            registering[version]!.add(id)
+            runtime.register(type, `${id} ${name}`)
+          },
+          $RefreshSig$: runtime.createSignatureFunctionForTransform,
+          ...jsx,
+        }),
       }),
     })
+    graphs.push(graph)
+    return graph
+  }
+
+  /** Ids a module of a compiled route file imports, among its modules. */
+  const importsOf = (compiled: CompiledRouteFile, id: string) =>
+    importRequests(compiled.modules.get(id)!, id)
+      .map(({ specifier }) => compiled.resolve(specifier, id))
+      .filter((target) => target !== undefined && compiled.modules.has(target))
 
   const window: { __TSR_ROUTER__?: RouterCore<any, any, any, any, any> } = {}
   vi.stubGlobal('window', window)
-  if (refresh) {
+  if (runtime && style === 'webpack') {
+    // What the webpack and Rspack refresh plugins provide to modules.
     vi.stubGlobal('__react_refresh_utils__', {
-      enqueueUpdate: (callback: () => void) => {
-        refreshes++
-        callback()
-      },
+      enqueueUpdate: () => enqueueRefresh(),
     })
   }
   try {
@@ -1416,7 +1570,8 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
       {
         routeTree,
         history: createMemoryHistory({ initialEntries: ['/'] }),
-        isServer: true,
+        isServer: false,
+        origin: 'http://localhost',
       },
       getStoreConfig,
     )
@@ -1429,38 +1584,175 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
           options: Record<string, unknown>
         }
       ).options
+    // The page shows the route: its component is loaded.
+    const shown = liveOptions().component
+    if (lazy.has(shown)) {
+      await lazy.get(shown)!()
+    }
     const previous = { ...liveOptions() }
+    /** The component each lazy option of the page had loaded. */
+    const previousComponents = new Map(
+      Object.entries(previous)
+        .filter(([, value]) => lazyComponents.has(value))
+        .map(([option, value]) => [option, lazyComponents.get(value)!()]),
+    )
 
-    if (style === 'webpack') {
-      for (const state of hotStates.values()) {
-        const next: Record<string, unknown> = {}
-        state.disposers.forEach((dispose) => dispose(next))
-        state.data = next
+    // The modules of the route file the page loaded, in evaluation order.
+    const loaded = firstGraph.evaluated.filter((id) => first.modules.has(id))
+    const exportsBefore = new Map<string, Record<string, any>>()
+    for (const id of loaded) {
+      exportsBefore.set(id, await firstGraph.import(id))
+    }
+    const viteBoundaryCheck =
+      runtime && style === 'vite'
+        ? await vitePluginReactBoundaryCheck()
+        : undefined
+    /** What the bundler's React Refresh code does once a module ran. */
+    const afterModuleRuns = (
+      version: number,
+      id: string,
+      moduleExports: Record<string, any>,
+    ) => {
+      if (!runtime) {
+        return
+      }
+      if (style === 'webpack') {
+        webpackExecuteRuntime(
+          runtime,
+          moduleExports,
+          id,
+          hotContexts[version]!.get(id)!,
+          enqueueRefresh,
+        )
+      } else if (registering[version]!.has(id)) {
+        // `@vitejs/plugin-react`'s `registerExportsForReactRefresh`
+        for (const [key, value] of Object.entries(moduleExports)) {
+          if (runtime.isLikelyComponentType(value)) {
+            runtime.register(value, `${id} export ${key}`)
+          }
+        }
+      }
+    }
+    for (const id of loaded) {
+      afterModuleRuns(0, id, exportsBefore.get(id)!)
+    }
+
+    /** Whether the bundler applies an update of the module to the module itself. */
+    const isBoundary = (id: string) =>
+      style === 'webpack'
+        ? hotState(id).selfAccepted
+        : registering[0]!.has(id) ||
+          /\bimport\.meta\.hot\.accept\(/.test(first.modules.get(id)!)
+    /**
+     * Whether an update of the module reaches a boundary on every path to
+     * the page: itself, or importers that are (the route module's importer,
+     * the route tree, is not).
+     */
+    const reachesBoundary = (id: string, chain: Array<string>): boolean => {
+      if (isBoundary(id)) {
+        return true
+      }
+      const importers = loaded.filter(
+        (importer) =>
+          importer !== id && importsOf(first, importer).includes(id),
+      )
+      return (
+        importers.length > 0 &&
+        importers.every(
+          (importer) =>
+            chain.includes(importer) ||
+            reachesBoundary(importer, [...chain, id]),
+        )
+      )
+    }
+    if (!loaded.every((id) => reachesBoundary(id, []))) {
+      invalidated = true
+    } else {
+      const boundaries = loaded
+        .filter(isBoundary)
+        .sort((a, b) => Number(b === first.id) - Number(a === first.id))
+      const accepted = new Map(
+        boundaries.map((id) => [id, hotState(id).accepted]),
+      )
+      for (const id of boundaries) {
+        const state = hotState(id)
+        if (style === 'webpack') {
+          const next: Record<string, unknown> = {}
+          state.disposers.forEach((dispose) => dispose(next))
+          state.data = next
+        } else {
+          state.disposers.forEach((dispose) => dispose(state.data!))
+        }
         state.disposers = []
+        state.accepted = []
+        state.selfAccepted = false
       }
-    }
-    const accepted = new Map(
-      [...hotStates].map(([id, state]) => [id, state.accepted]),
-    )
-    for (const state of hotStates.values()) {
-      state.accepted = []
-    }
-    const secondGraph = load(second)
-    await secondGraph.import(second.id)
-    // The route module's update first, then the other modules that accept
-    // their own updates, each with its new module.
-    const updates = [...accepted].sort(
-      ([a], [b]) => Number(b === first.id) - Number(a === first.id),
-    )
-    for (const [id, callbacks] of updates) {
-      if (callbacks.length === 0 || !second.modules.has(id)) {
-        continue
+      const secondGraph = load(second)
+      const exportsAfter = new Map<string, Record<string, any>>()
+      for (const id of boundaries) {
+        if (second.modules.has(id)) {
+          exportsAfter.set(id, await secondGraph.import(id))
+        }
       }
-      const updatedModule = await secondGraph.import(id)
-      callbacks.forEach((accept) => accept(updatedModule))
+      for (const id of secondGraph.evaluated) {
+        if (second.modules.has(id)) {
+          afterModuleRuns(1, id, await secondGraph.import(id))
+        }
+      }
+      // Vite: the accept callbacks, each with its module's new version
+      if (style === 'vite') {
+        for (const id of boundaries) {
+          const next = exportsAfter.get(id)
+          if (!next) {
+            continue
+          }
+          accepted.get(id)!.forEach((accept) => accept(next))
+          if (viteBoundaryCheck && registering[0]!.has(id)) {
+            const message = viteBoundaryCheck(id, exportsBefore.get(id)!, next)
+            if (message) {
+              // `import.meta.hot.invalidate(message)`
+              invalidations.add(id)
+            } else {
+              enqueueRefresh()
+            }
+          }
+        }
+      }
+      // A module that invalidates itself has its importers updated instead
+      // (Vite re-imports them, webpack runs them again): the page reloads
+      // unless they are boundaries, which apply the update (and enqueue a
+      // refresh) as above.
+      for (const id of invalidations) {
+        const importers = loaded.filter(
+          (importer) =>
+            importer !== id && importsOf(first, importer).includes(id),
+        )
+        if (
+          importers.length === 0 ||
+          !importers.every((importer) => reachesBoundary(importer, [id]))
+        ) {
+          invalidated = true
+        }
+      }
+      if (runtime && refreshes > 0 && !invalidated) {
+        refreshUpdate = runtime.performReactRefresh()
+      }
     }
 
     const live = liveOptions()
+    const familyOf = (type: unknown) =>
+      runtime?.getFamilyByType(componentFunction(type))
+    /** Whether React renders `after` where it rendered `before` as a new component. */
+    const replaced = (before: unknown, after: unknown) =>
+      before !== after &&
+      (familyOf(before) === undefined || familyOf(before) !== familyOf(after))
+    const stale = (type: unknown) => {
+      const family = familyOf(type)
+      return (
+        family !== undefined &&
+        (refreshUpdate?.staleFamilies.has(family) ?? false)
+      )
+    }
     return {
       /** Id of the route file, as the plugin saw it. */
       file: first.id,
@@ -1477,6 +1769,36 @@ export async function hotUpdate(code: string, options: HotUpdateOptions = {}) {
       load: (option: string): Promise<any> => {
         const loader = lazy.get(live[option])
         return loader ? loader() : Promise.resolve(live[option])
+      },
+      /**
+       * What a component option of the live route renders (once its lazy
+       * module loaded) after the update: React renders the latest version
+       * of a component React Refresh refreshed.
+       */
+      render: async (option: string, props: object = {}): Promise<unknown> => {
+        const value = live[option]
+        await lazy.get(value)?.()
+        return renderComponent(value, props)
+      },
+      /**
+       * Whether React remounts a component option the page rendered before
+       * the update (its state is lost): the live route has another component
+       * React Refresh does not see as a version of the previous one, or the
+       * update changed its hooks.
+       */
+      remounted: (option: string) => {
+        const before = previous[option]
+        const after = live[option]
+        if (replaced(before, after) || stale(after)) {
+          return true
+        }
+        const componentBefore = previousComponents.get(option)
+        const componentAfter = lazyComponents.get(after)?.()
+        return (
+          componentBefore !== undefined &&
+          componentAfter !== undefined &&
+          (replaced(componentBefore, componentAfter) || stale(componentAfter))
+        )
       },
     }
   } finally {
