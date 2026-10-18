@@ -446,3 +446,62 @@ test('a synchronous component preload failure yields to its queued replacement n
     router.history.destroy()
   }
 })
+
+test('supersedes an unresolved component preload and consumes its late rejection', async () => {
+  const entered = createControlledPromise<void>()
+  const chunk = createControlledPromise<void>()
+  const context = vi.fn(() => ({ ready: true }))
+  const onError = vi.fn()
+  const build = (isServer: boolean) => {
+    const root = new BaseRootRoute({})
+    const page = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/page',
+      component: Object.assign(() => null, {
+        preload: () => {
+          if (isServer) {
+            return Promise.resolve()
+          }
+          entered.resolve()
+          return chunk
+        },
+      }),
+      context: isServer ? () => ({ ready: true }) : context,
+      onError,
+    })
+    const other = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/other',
+    })
+    return createTestRouter({
+      routeTree: root.addChildren([page, other]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer,
+    })
+  }
+  vi.stubGlobal('window', {
+    $_TSR: await dehydrateToBootstrap(build(true), manifest),
+  })
+  const router = build(false)
+  let finished = false
+  const hydration = hydrate(router).then(() => {
+    finished = true
+  })
+  try {
+    await entered
+    await router.navigate({ to: '/other' })
+    await expect.poll(() => finished, { timeout: 500 }).toBe(true)
+    chunk.reject(new Error('obsolete component chunk'))
+    await hydration
+    await new Promise((resolve) => setTimeout(resolve))
+    expect(router.state.location.pathname).toBe('/other')
+    expect(router.state.matches.at(-1)?.status).toBe('success')
+    expect(context).not.toHaveBeenCalled()
+    expect(onError).not.toHaveBeenCalled()
+  } finally {
+    chunk.resolve()
+    await hydration
+    router.clearCache()
+    router.history.destroy()
+  }
+})
