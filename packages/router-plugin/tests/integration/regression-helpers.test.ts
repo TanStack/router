@@ -36,15 +36,18 @@ export const Route = createFileRoute('/')({ component: () => <p>page</p> })`,
 })
 
 // Controls of the route HMR page (`openRouteHmrPage`): it tells kept state
-// from lost state, and a hot update from a full reload. A React app whose
-// route component renders a counter, and whose entry renders a header
-// imported from a module that no HMR boundary accepts.
+// from lost state, a hot update from a full reload (the browser's own
+// reload API, as a user pressing reload), an update the page applied
+// without showing the edit (it fails without waiting for its timeout), and
+// what the page logged. A React app whose route component renders a
+// counter.
 describe.each(['vite', 'rsbuild'] as const)(
   'openRouteHmrPage (%s)',
   (bundler) => {
     const route = (
       version: string,
       child = 'Counter',
+      effect = '',
     ) => `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 function ${child}() {
@@ -52,31 +55,16 @@ function ${child}() {
   return <button onClick={() => setCount(count + 1)}>${child} ${version} count {count}</button>
 }
 function Page() {
+  ${effect}
   return <div><${child} /></div>
 }
 export const Route = createFileRoute('/')({ component: Page })
 `
-    const main = `import { createRoot } from 'react-dom/client'
-import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-import { header } from './header'
-const router = createRouter({ routeTree })
-createRoot(document.getElementById('app')!).render(
-  <>
-    <p>{header}</p>
-    <RouterProvider router={router} />
-  </>,
-)
-`
 
-    it('sees kept state, lost state and full reloads', async () => {
+    it('sees kept state, lost state, full reloads and what the page logs', async () => {
       const app = await openRouteHmrPage({
         bundler,
-        files: {
-          'main.tsx': main,
-          'header.ts': `export const header = 'header v1'`,
-          'routes/index.tsx': route('v1'),
-        },
+        files: { 'routes/index.tsx': route('v1') },
         ready: 'Counter v1 count 0',
       })
       await app.click('button')
@@ -87,7 +75,7 @@ createRoot(document.getElementById('app')!).render(
           { 'routes/index.tsx': route('v2') },
           'Counter v2 count 1',
         ),
-      ).toEqual({ reloaded: false })
+      ).toEqual({ reloaded: false, errors: [] })
       // A component the edit renames is another component for React Refresh:
       // React mounts it anew.
       expect(
@@ -95,14 +83,41 @@ createRoot(document.getElementById('app')!).render(
           { 'routes/index.tsx': route('v3', 'Renamed') },
           'Renamed v3 count 0',
         ),
-      ).toEqual({ reloaded: false })
-      // An edit of a module that no HMR boundary accepts reloads the page.
+      ).toEqual({ reloaded: false, errors: [] })
+      // What the app logs with `console.error` during an edit is reported.
       expect(
         await app.edit(
-          { 'header.ts': `export const header = 'header v2'` },
-          'header v2',
+          {
+            'routes/index.tsx': route(
+              'v4',
+              'Renamed',
+              `console.error('MARK_LOGGED')`,
+            ),
+          },
+          'Renamed v4 count 0',
         ),
-      ).toEqual({ reloaded: true })
+      ).toEqual({ reloaded: false, errors: ['MARK_LOGGED'] })
+      // A full reload of the page (here: the browser's own reload) counts
+      // as a load; the app starts anew.
+      const loads = app.loads()
+      await app.page.page.reload()
+      await app.page.waitForText('Renamed v4 count 0')
+      expect(app.loads()).toBe(loads + 1)
+    }, 60_000)
+
+    it('fails an edit the page applied without showing it, without waiting for its timeout', async () => {
+      const app = await openRouteHmrPage({
+        bundler,
+        files: { 'routes/index.tsx': route('v1') },
+        ready: 'Counter v1 count 0',
+      })
+      const started = Date.now()
+      await expect(
+        app.edit({ 'routes/index.tsx': route('v2') }, 'Counter v3', {
+          timeout: 20_000,
+        }),
+      ).rejects.toThrow(/applied the update .* but the page does not show/s)
+      expect(Date.now() - started).toBeLessThan(10_000)
     }, 60_000)
   },
 )
