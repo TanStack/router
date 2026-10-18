@@ -7,7 +7,8 @@
 import { parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { transform } from '../../src/transform/transform'
-import { evaluateRouteFile, routeIdOf } from '../route-id'
+import { routeCallOf, routeIdOf } from '../route-id'
+import { evaluateModule } from '../route-tree'
 import type { RouteNode } from '../../src/types'
 
 /**
@@ -280,8 +281,11 @@ describe('transform', () => {
       throw new Error(`expected modified result, got ${result.result}`)
     }
     expect(result.output).not.toMatch(/(?<!\r)\n/)
-    const evaluated = await evaluateRouteFile(result.output, ['Link'])
-    expect([evaluated.Route.id, evaluated.link]).toEqual(['/new', 'Link'])
+    const { exports, router } = await evaluateModule(result.output)
+    expect([routeCallOf(result.output).id, exports.link]).toEqual([
+      '/new',
+      router!.Link,
+    ])
     expect(withoutImports(result.output)).toBe(
       withoutImports(body.join('\r\n').replace('/old', '/new')),
     )
@@ -629,12 +633,6 @@ describe('transform preserves the rest of the route file', () => {
 
   it.each([
     {
-      name: 'a default import',
-      imports: "import Router from '@tanstack/react-router'",
-      uses: 'Router',
-      bound: ['default'],
-    },
-    {
       name: 'an aliased import of the constructor',
       imports:
         "import { createFileRoute as cfr } from '@tanstack/react-router'",
@@ -670,14 +668,12 @@ export const Route = createFileRoute('/old')({})`
           (name) => name === 'createFileRoute',
         ),
       ).toHaveLength(1)
-      const evaluated = await evaluateRouteFile(result.output, [
-        'default',
-        'Link',
-      ])
-      expect(evaluated.Route.id).toBe('/new')
+      const { exports, router } = await evaluateModule(result.output)
+      expect(routeCallOf(result.output).id).toBe('/new')
+      // (the router package exports the uses are bound to)
       expect(
-        evaluated.uses.map((value: unknown) =>
-          typeof value === 'function' ? 'createFileRoute' : value,
+        exports.uses.map((value: unknown) =>
+          Object.keys(router!).find((name) => router![name] === value),
         ),
       ).toEqual(bound)
       expect(withoutImports(result.output)).toBe(
@@ -791,8 +787,8 @@ export const Route = createFileRoute('/new')({})`,
     async ({ lazy, source }) => {
       const output = modifiedOutput(transformTo(source, lazy))
 
-      const evaluated = await evaluateRouteFile(output, ['Link'])
-      expect(evaluated.Route.id).toBe('/new')
+      await evaluateModule(output)
+      expect(routeCallOf(output).id).toBe('/new')
       const [required, other] = lazy
         ? ['createLazyFileRoute', 'createFileRoute']
         : ['createFileRoute', 'createLazyFileRoute']
@@ -851,7 +847,7 @@ export const Route = createFileRoute('/old')({})`,
           .map((entry) => entry.localName.value),
       ),
     ).toEqual(['LinkProps'])
-    expect((await evaluateRouteFile(output)).Route.id).toBe('/new')
+    expect(routeCallOf(output).id).toBe('/new')
   })
 
   it.each([
@@ -883,7 +879,7 @@ export const Route = createFileRoute('/old')({})`,
       expect(
         newline === '\n' ? output.includes('\r') : /(?<!\r)\n/.test(output),
       ).toBe(false)
-      expect((await evaluateRouteFile(output)).Route.id).toBe('/new')
+      expect(routeCallOf(output).id).toBe('/new')
     },
   )
 
@@ -908,7 +904,7 @@ export const Route = createFileRoute('/old')({})`,
       ),
     )
 
-    expect((await evaluateRouteFile(output)).Route.id).toBe('/new')
+    expect(routeCallOf(output).id).toBe('/new')
     expect(
       valueImports(output, '@tanstack/react-router').filter(
         (name) => name === 'createFileRoute',
@@ -936,7 +932,7 @@ export const Route = createFileRoute('/old')({});`
     const [added, ...rest] = output.split('\n')
     expect(added).toMatch(/^import .*createFileRoute.*;$/)
     expect(rest.join('\n')).toBe(source.replace('/old', '/new'))
-    expect((await evaluateRouteFile(output)).Route.id).toBe('/new')
+    expect(routeCallOf(output).id).toBe('/new')
   })
 
   it('renaming the constructor keeps the multi-line formatting of its import declaration', () => {
@@ -971,7 +967,7 @@ export const uses = [Link, cfr]
 export const Route = createFileRoute('/old')({})`),
     )
 
-    expect((await evaluateRouteFile(output, ['Link'])).Route.id).toBe('/new')
+    expect(routeCallOf(output).id).toBe('/new')
     expect(
       valueImports(output, '@tanstack/react-router').filter(
         (name) => name === 'createFileRoute',

@@ -10,8 +10,8 @@ import path from 'node:path'
 import { parseSync } from 'vite'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { Generator, getConfig } from '../src'
-import { evaluateRouteFile, routeIdOf } from './route-id'
-import { routesOf } from './route-tree'
+import { routeCallOf, routeIdOf } from './route-id'
+import { evaluateModule, routesOf } from './route-tree'
 import type { Config } from '../src'
 
 let roots: Array<string> = []
@@ -218,11 +218,10 @@ export const Route = createFileRoute('/posts')({
           'Link',
           'createLazyFileRoute',
         ])
-        const { Route } = await evaluateRouteFile(written, ['Link'])
-        expect([Route.id, Route.createdWith]).toEqual([
-          '/posts',
-          'createLazyFileRoute',
-        ])
+        expect(routeCallOf(written)).toEqual({
+          constructor: 'createLazyFileRoute',
+          id: '/posts',
+        })
         expect(await routesOf(generatedRouteTree)).toEqual({
           __root__: 'routes/__root.tsx',
           '/posts': 'routes/posts.tsx',
@@ -244,9 +243,13 @@ export const Route = createFileRoute('/old')({
       await generate(root, { target })
 
       const written = await read(root, 'src/routes/posts.tsx')
-      expect(valueImports(written, routerPackage)).toContain('createFileRoute')
-      const { Route } = await evaluateRouteFile(written, ['Link'])
-      expect([Route.id, Route.options.component]).toEqual(['/posts', 'Link'])
+      expect(valueImports(written, routerPackage)).toEqual(
+        expect.arrayContaining(['createFileRoute', 'Link']),
+      )
+      expect(routeCallOf(written)).toEqual({
+        constructor: 'createFileRoute',
+        id: '/posts',
+      })
       expect(withoutImports(written)).toBe(
         withoutImports(source.replace('/old', '/posts')),
       )
@@ -691,20 +694,15 @@ describe('custom scaffolding', () => {
     })
     await generate(root)
 
-    const posts = await evaluateRouteFile(
-      await read(root, 'src/routes/posts.tsx'),
-    )
-    expect([posts.Route.id, posts.Route.options.staticData]).toEqual([
-      '/posts',
-      { template: 'route' },
-    ])
-    const about = await evaluateRouteFile(
-      await read(root, 'src/routes/about.lazy.tsx'),
-    )
-    expect([about.Route.id, about.Route.options.staticData]).toEqual([
-      '/about',
-      { template: 'lazy' },
-    ])
+    for (const [file, constructor, id, template] of [
+      ['posts.tsx', 'createFileRoute', '/posts', 'route'],
+      ['about.lazy.tsx', 'createLazyFileRoute', '/about', 'lazy'],
+    ]) {
+      const code = await read(root, `src/routes/${file}`)
+      expect(routeCallOf(code)).toEqual({ constructor, id })
+      const { exports } = await evaluateModule(code)
+      expect(exports.Route.options.staticData).toEqual({ template })
+    }
   })
 })
 

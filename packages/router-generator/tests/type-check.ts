@@ -9,6 +9,9 @@ import ts from 'typescript'
 /** The packages this package's tests may use (the router packages, React). */
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
 
+/** The program of the last check. */
+let previousProgram: ts.Program | undefined
+
 /**
  * Writes `code` to `file` (path relative to the app root) and type-checks it,
  * with the modules it imports (such as the route tree and the route files),
@@ -24,17 +27,23 @@ export async function typeErrorsOf(root: string, file: string, code: string) {
     },
   )
   await writeFile(path.join(root, file), code)
-  const program = ts.createProgram([path.join(root, file)], {
-    strict: true,
-    noEmit: true,
-    skipLibCheck: true,
-    jsx: ts.JsxEmit.ReactJSX,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    target: ts.ScriptTarget.ES2022,
-    lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
-    types: [],
+  const program = ts.createProgram({
+    rootNames: [path.join(root, file)],
+    options: {
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+      jsx: ts.JsxEmit.ReactJSX,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      target: ts.ScriptTarget.ES2022,
+      lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
+      types: [],
+    },
+    // (the package type definitions of the previous check are reused)
+    oldProgram: previousProgram,
   })
+  previousProgram = program
   return ts.getPreEmitDiagnostics(program).map((diagnostic) => {
     const message = ts.flattenDiagnosticMessageText(
       diagnostic.messageText,

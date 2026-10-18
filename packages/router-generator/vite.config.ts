@@ -8,6 +8,10 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     typecheck: { enabled: true },
+    // Test files share a worker's modules (the router packages, Vite): every
+    // test works in its own temporary app and restores its spies and env
+    // stubs, and the route tree helpers start a fresh Vite server per load.
+    isolate: false,
   },
 })
 
