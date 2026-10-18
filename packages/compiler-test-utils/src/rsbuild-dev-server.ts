@@ -138,48 +138,77 @@ export async function createRsbuildDevServer(
   const compiles = trackCompiles()
   /** Output directory of each environment. */
   const distPaths: Record<string, string> = {}
-  /** Hot-update chunks of the compiles since the last edit, by environment. */
-  const hotUpdateFiles: Record<string, Set<string>> = {}
+  /**
+   * Hot-update chunks (code by file) of the compiles since the last edit,
+   * by environment compiler. Read when each compile ends: a later compile
+   * may remove them from the output directory.
+   */
+  const hotUpdateChunks = new Map<object, Record<string, string>>()
+  /** The environment compiler of each environment name. */
+  const compilerOf: Record<string, object> = {}
   const harnessPlugin: RsbuildPlugin = {
     name: 'rsbuild-dev-server-harness',
     setup(api) {
       api.onAfterCreateCompiler(({ compiler }) => {
         compiles.track(compiler)
+        for (const environmentCompiler of 'compilers' in compiler
+          ? compiler.compilers
+          : [compiler]) {
+          const chunks: Record<string, string> = {}
+          hotUpdateChunks.set(environmentCompiler, chunks)
+          // Before Rsbuild's own `done` taps, which report the end of the
+          // compile (`onDevCompileDone`)
+          environmentCompiler.hooks.done.tap(
+            { name: 'rsbuild-dev-server-harness', stage: -100 },
+            ({ compilation }) => {
+              for (const asset of compilation.getAssets()) {
+                if (hotUpdateChunk.test(asset.name)) {
+                  chunks[asset.name] = asset.source.source().toString()
+                }
+              }
+            },
+          )
+        }
       })
       api.onDevCompileDone(({ stats, environments }) => {
         for (const [name, environment] of Object.entries(environments)) {
           distPaths[name] = environment.distPath
         }
         const all = 'stats' in stats ? stats.stats : [stats]
-        rebuilt.length = 0
-        errors.length = 0
-        warnings.length = 0
         const names = Object.keys(environments)
-        all.forEach((environmentStats, index) => {
-          const { compilation } = environmentStats
-          const name = compilation.name ?? names[index]!
-          const files = (hotUpdateFiles[name] ??= new Set())
-          for (const asset of compilation.getAssets()) {
-            if (hotUpdateChunk.test(asset.name)) {
-              files.add(asset.name)
+        const compilers = [...hotUpdateChunks.keys()]
+        const built: Array<string> = []
+        const compileErrors: Array<string> = []
+        const compileWarnings: Array<string> = []
+        try {
+          all.forEach((environmentStats, index) => {
+            const { compilation } = environmentStats
+            compilerOf[compilation.name ?? names[index]!] = compilers[index]!
+            for (const module of compilation.builtModules) {
+              const resource = (module as { resource?: string }).resource
+              if (resource) {
+                built.push(path.relative(root, resource))
+              }
             }
-          }
-        })
-        for (const environmentStats of all) {
-          const { compilation } = environmentStats
-          for (const module of compilation.builtModules) {
-            const resource = (module as { resource?: string }).resource
-            if (resource) {
-              rebuilt.push(path.relative(root, resource))
+            for (const error of compilation.errors) {
+              compileErrors.push(error.message)
             }
+            for (const warning of compilation.warnings) {
+              compileWarnings.push(warning.message)
+            }
+          })
+        } catch (error) {
+          // Rspack dropped the compilation: the next compile, which an edit
+          // made during this one started (e.g. a plugin wrote a file the
+          // watcher reports), is running, and its end reports instead.
+          if (/Unable to access compilation/.test(String(error))) {
+            return
           }
-          for (const error of compilation.errors) {
-            errors.push(error.message)
-          }
-          for (const warning of compilation.warnings) {
-            warnings.push(warning.message)
-          }
+          throw error
         }
+        rebuilt.splice(0, rebuilt.length, ...built)
+        errors.splice(0, errors.length, ...compileErrors)
+        warnings.splice(0, warnings.length, ...compileWarnings)
         compiles.done()
       })
     },
@@ -266,8 +295,10 @@ export async function createRsbuildDevServer(
     rsbuild,
     url,
     edit: (files) => {
-      for (const name of Object.keys(hotUpdateFiles)) {
-        hotUpdateFiles[name]!.clear()
+      for (const chunks of hotUpdateChunks.values()) {
+        for (const file of Object.keys(chunks)) {
+          delete chunks[file]
+        }
       }
       return compiles.edit(root, files, compileTimeout)
     },
@@ -277,18 +308,12 @@ export async function createRsbuildDevServer(
         Object.entries(files).filter(([file]) => !hotUpdate.test(file)),
       )
     },
-    hotUpdates: async (environment) => {
-      const distPath = distPathOf(environment)
-      const name = environment ?? Object.keys(distPaths)[0]!
-      const files: Record<string, string> = {}
-      for (const file of hotUpdateFiles[name] ?? []) {
-        try {
-          files[file] = await readFile(path.join(distPath, file), 'utf8')
-        } catch {
-          // Removed by a later compile
-        }
-      }
-      return files
+    hotUpdates: (environment) => {
+      distPathOf(environment)
+      const compiler = compilerOf[environment ?? Object.keys(distPaths)[0]!]
+      return Promise.resolve({
+        ...(compiler && hotUpdateChunks.get(compiler)),
+      })
     },
     rebuilt,
     errors,
