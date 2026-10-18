@@ -1369,12 +1369,13 @@ function statsMessage(item: { message: string; moduleName?: string }) {
 
 interface EsbuildMessage {
   text: string
-  location?: { file: string } | null
+  location?: { file: string; line: number; column: number } | null
 }
 
+/** An esbuild message as esbuild prints it: `file:line:column: text`. */
 function esbuildText(message: EsbuildMessage) {
   return message.location
-    ? `${message.location.file}: ${message.text}`
+    ? `${message.location.file}:${message.location.line}:${message.location.column}: ${message.text}`
     : message.text
 }
 

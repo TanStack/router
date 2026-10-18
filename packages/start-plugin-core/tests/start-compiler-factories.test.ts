@@ -18,6 +18,7 @@ import {
   startClientCore,
 } from './regression-helpers'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { envRestrictionError } from '@tanstack/compiler-test-utils/diagnostics'
 import type { ModuleStub, Output } from './regression-helpers'
 
 // Each output keeps the implementation of its own environment (and only the
@@ -103,10 +104,10 @@ export default createIsomorphicFn().server(() => db.x()).client(() => chart())`,
       }
       expect(
         settle((await evaluateModule(compiled.client, stubs)).default),
-      ).toBe(client)
-      expect(settle((await evaluateModule(compiled.ssr, stubs)).default)).toBe(
-        server,
-      )
+      ).toEqual(client)
+      expect(
+        settle((await evaluateModule(compiled.ssr, stubs)).default),
+      ).toEqual(server)
     },
   )
 
@@ -481,10 +482,10 @@ export const fn = ${chain}`
       expect(importSources(compiled.client)).not.toContain('./db.server')
       expect(compiled.client).not.toContain('SERVER_SECRET')
       expect(importSources(compiled.ssr)).not.toContain('./chart.client')
-      expect(settle((await evaluateModule(compiled.client, stubs)).fn)).toBe(
+      expect(settle((await evaluateModule(compiled.client, stubs)).fn)).toEqual(
         client,
       )
-      expect(settle((await evaluateModule(compiled.ssr, stubs)).fn)).toBe(
+      expect(settle((await evaluateModule(compiled.ssr, stubs)).fn)).toEqual(
         server,
       )
     },
@@ -507,7 +508,7 @@ export class Api extends Base {
   }
 }`)
     const client = await evaluateModule(compiled.client)
-    expect(settle(new client.Api().read(1))).toBe(serverOnlyError)
+    expect(settle(new client.Api().read(1))).toEqual(serverOnlyError)
     const ssr = await evaluateModule(compiled.ssr)
     expect(new ssr.Api().read(1)()).toEqual(['s', 'base', 1])
   })
@@ -536,7 +537,7 @@ export class Api extends Base {
       )
       expect(importSources(compiled.ssr)).not.toContain('./chart.client')
       const ssr = await evaluateModule(compiled.ssr, stubs)
-      expect(settle(() => ssr.makeDraw()())).toBe(clientOnlyError)
+      expect(settle(() => ssr.makeDraw()())).toEqual(clientOnlyError)
     },
   )
 
@@ -546,7 +547,7 @@ const wrap = <T,>(fn: T) => fn
 export const read = wrap(wrap(createServerOnlyFn(() => db.secret())))`)
     const stubs = { './db.server': { db: { secret: () => 'secret' } } }
     expect(importSources(compiled.client)).not.toContain('./db.server')
-    expect(settle((await evaluateModule(compiled.client, stubs)).read)).toBe(
+    expect(settle((await evaluateModule(compiled.client, stubs)).read)).toEqual(
       serverOnlyError,
     )
     expect((await evaluateModule(compiled.ssr, stubs)).read()).toBe('secret')
@@ -634,7 +635,8 @@ function settle(run: () => unknown) {
   try {
     return run()
   } catch (error) {
-    return (error as Error).message
+    const { name, message } = error as Error
+    return { thrown: { name, message } }
   }
 }`
 
@@ -661,7 +663,7 @@ function settle(run: () => unknown) {
           './db.server': `export const db = { now: () => 'now', read: () => 'read' }`,
           './chart.client': `export const chart = () => 'chart'`,
         }),
-      ).toEqual([clientOnlyError.slice('throws: '.length), 'now', 'read'])
+      ).toEqual([{ thrown: envRestrictionError('client') }, 'now', 'read'])
     },
   )
 
@@ -772,7 +774,7 @@ export const value = createServerOnlyFn(() => 'mine')`,
       }
       expect(
         settle((await evaluateModule(compiled ?? `${head}${code}`)).none),
-      ).toBe(elsewhere)
+      ).toEqual(elsewhere)
     },
   )
 })
@@ -1004,7 +1006,7 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`
       // Where the project's own `createServerOnlyFn` wins, it is a plain
       // function.
       const client = await evaluateModule(compiled.client, linked, { files })
-      expect(settle(client.serverOnly)).toBe(
+      expect(settle(client.serverOnly)).toEqual(
         resolvesServerOnlyFn ? serverOnlyError : 'server-only-marker',
       )
     },

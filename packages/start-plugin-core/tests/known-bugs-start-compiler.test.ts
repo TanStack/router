@@ -87,7 +87,7 @@ async function expectServerOnlyRead(code: string) {
   const { read } = await evaluateModule(client, {
     [serverOnly]: { db: { secret: () => 'secret' } },
   })
-  expect(settle(() => read())).toBe(serverOnlyError)
+  expect(settle(() => read())).toEqual(serverOnlyError)
 }
 
 describe('harness controls', () => {
@@ -446,7 +446,7 @@ import { db } from './db.server'
 export const read = serverOnly(() => db.x())`,
       // Uncompiled, the factory returns the implementation as is.
       stubs: { './env': { serverOnly: (impl: unknown) => impl } },
-      check: (module) => expect(settle(module.read)).toBe(serverOnlyError),
+      check: (module) => expect(settle(module.read)).toEqual(serverOnlyError),
     },
   ])(
     'client builds compile $name finished or called in another module',
@@ -1204,7 +1204,7 @@ function get(): string
 function get(id?: string) { return db.users(id) }
 export const read = createServerOnlyFn(() => get())`,
       check: (module: Record<string, any>) =>
-        expect(settle(() => module.read())).toBe(serverOnlyError),
+        expect(settle(() => module.read())).toEqual(serverOnlyError),
     },
   ])(
     'client: $name does not load its server-only import',

@@ -7,6 +7,7 @@
  * Source: user ruling 2026-10-18 (E1 ASK-1).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { envRestrictionError } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 import { reportedViolations } from '../importProtection/start-apps'
 import type { StartBuild } from '../build-harness'
@@ -33,7 +34,7 @@ const run = `const settle = (fn) => {
   try {
     return fn()
   } catch (error) {
-    return 'throws: ' + error.message
+    return { thrown: { name: error.name, message: error.message } }
   }
 }
 return [settle(entry.render), settle(entry.repaint)]`
@@ -78,7 +79,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       'MARK_PAINT',
     ])
     expect((await build.ssr.run(run)).result).toEqual([
-      expect.stringMatching(/^throws: .*client/),
+      { thrown: envRestrictionError('client') },
       'server',
     ])
   })

@@ -1,0 +1,336 @@
+/**
+ * Source-map assertions through a standard consumer (FIX-PLAN A12; SPEC G6,
+ * §5.14): maps are read with `@jridgewell/trace-mapping`, never a hand
+ * decoder, and tests locate code by parsed tokens or executed throws, never
+ * by printed syntax. Only "this generated position resolves to the user's
+ * file, line (and column)" is asserted: map layout, `names`,
+ * `sourcesContent`, granularity and mappings of generated support code are
+ * free.
+ *
+ * Positions follow the source-map convention: `line` 1-based, `column`
+ * 0-based. Lines are counted with every JavaScript line terminator (`\n`,
+ * `\r\n`, a lone `\r`, U+2028, U+2029), so CRLF sources work.
+ *
+ * API:
+ * - `inlineSourceMap(code)`: the map of a `//# sourceMappingURL=data:`
+ *   comment (what dev servers serve), or `undefined`.
+ * - `positionAt(code, offset)` and `offsetAt(code, position)`.
+ * - `findNodes(code, predicate, options?)` and `tokenOffsets(code, query,
+ *   options?)`: offsets of parsed syntax (identifiers, string values, a
+ *   `throw`), whatever the printing.
+ * - `originalPositionOf(map, generated)`: the original `{ source, line,
+ *   column }` of a generated position, or `undefined` when unmapped.
+ * - `originalPositions(map)`: every original position the map points at.
+ * - `traceStack(stack, mapOf)`: the frames of an executed throw's stack,
+ *   each resolved through the map `mapOf` gives for its file.
+ * - `expectMapsTo(map, generated, expected)`: asserts a generated position
+ *   resolves to `expected.file` (any spelling `mentionsFile` accepts),
+ *   `expected.line` and, when given, `expected.column`.
+ */
+import {
+  TraceMap,
+  eachMapping,
+  originalPositionFor,
+} from '@jridgewell/trace-mapping'
+import { parseSync } from 'vite'
+import { expect } from 'vitest'
+import { mentionsFile } from './diagnostics'
+import type { SourceMapInput } from '@jridgewell/trace-mapping'
+
+export type { SourceMapInput } from '@jridgewell/trace-mapping'
+
+/** A position in a module: `line` 1-based, `column` 0-based. */
+export interface Position {
+  line: number
+  column: number
+}
+
+/** An original position a map points at. */
+export interface OriginalPosition extends Position {
+  /** The source as the map names it (resolved against `sourceRoot`). */
+  source: string
+}
+
+/** A map, in any form trace-mapping reads, or a map it already read. */
+export type AnySourceMap = SourceMapInput | TraceMap | LooseSourceMap
+
+/**
+ * A version 3 map as tools type it (Vite, Babel, the build harness: a
+ * `number` version, possibly `null` sources).
+ */
+export interface LooseSourceMap {
+  version: number
+  mappings: string
+  sources: ReadonlyArray<string | null>
+  names?: ReadonlyArray<string>
+  sourceRoot?: string
+  sourcesContent?: ReadonlyArray<string | null>
+  file?: string | null
+}
+
+function traceMap(map: AnySourceMap) {
+  return map instanceof TraceMap ? map : new TraceMap(map as SourceMapInput)
+}
+
+/**
+ * The source map of a `//# sourceMappingURL=data:…` comment in `code`, or
+ * `undefined` when there is none (an external map is fetched by the test).
+ */
+export function inlineSourceMap(code: string): SourceMapInput | undefined {
+  const comments = [
+    ...code.matchAll(
+      /[#@] sourceMappingURL=data:application\/json(?:;charset=[\w-]+)?(;base64)?,([^\s*'"]+)/g,
+    ),
+  ]
+  const last = comments.at(-1)
+  if (!last) {
+    return undefined
+  }
+  const json = last[1]
+    ? Buffer.from(last[2]!, 'base64').toString('utf8')
+    : decodeURIComponent(last[2]!)
+  return JSON.parse(json) as SourceMapInput
+}
+
+const lineTerminators = /\r\n|[\n\r\u2028\u2029]/g
+
+/** The position of `offset` in `code`. */
+export function positionAt(code: string, offset: number): Position {
+  let line = 1
+  let lineStart = 0
+  for (const match of code.slice(0, offset).matchAll(lineTerminators)) {
+    line++
+    lineStart = match.index + match[0].length
+  }
+  return { line, column: offset - lineStart }
+}
+
+/** The offset of `position` in `code`. */
+export function offsetAt(code: string, position: Position): number {
+  let line = 1
+  let lineStart = 0
+  for (const match of code.matchAll(lineTerminators)) {
+    if (line === position.line) {
+      break
+    }
+    line++
+    lineStart = match.index + match[0].length
+  }
+  if (line !== position.line) {
+    throw new Error(`line ${position.line} is not in the code`)
+  }
+  return lineStart + position.column
+}
+
+/** A parsed syntax node (ESTree, with offsets). */
+export interface SyntaxNode {
+  type: string
+  start: number
+  end: number
+  [key: string]: unknown
+}
+
+function isNode(value: unknown): value is SyntaxNode {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as SyntaxNode).type === 'string' &&
+    typeof (value as SyntaxNode).start === 'number'
+  )
+}
+
+/**
+ * The nodes of `code` (parsed as `filename`, default `module.tsx`) that
+ * `predicate` accepts, in source order.
+ */
+export function findNodes(
+  code: string,
+  predicate: (node: SyntaxNode) => boolean,
+  options: { filename?: string } = {},
+): Array<SyntaxNode> {
+  const { program, errors } = parseSync(
+    options.filename ?? 'module.tsx',
+    code,
+    { sourceType: 'module' },
+  )
+  if (errors.length > 0) {
+    throw new Error(
+      `cannot parse the code: ${errors.map((error) => error.message).join('; ')}`,
+    )
+  }
+  const found: Array<SyntaxNode> = []
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+    if (typeof value !== 'object' || value === null) {
+      return
+    }
+    if (isNode(value) && predicate(value)) {
+      found.push(value)
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== 'parent') {
+        visit(child)
+      }
+    }
+  }
+  visit(program)
+  return found.sort((a, b) => a.start - b.start)
+}
+
+/** What `tokenOffsets` looks for. */
+export type TokenQuery =
+  /** An identifier (binding, reference, property or JSX name). */
+  | { identifier: string }
+  /** A string literal or a template part with this value, any quotes. */
+  | { string: string }
+  /** A `throw` statement. */
+  | { throw: true }
+
+/** Start offsets of the tokens of `code` matching `query`. */
+export function tokenOffsets(
+  code: string,
+  query: TokenQuery,
+  options: { filename?: string } = {},
+): Array<number> {
+  const matches = (node: SyntaxNode) => {
+    if ('identifier' in query) {
+      return (
+        /Identifier$/.test(node.type) &&
+        (node.name === query.identifier ||
+          (node.type === 'PrivateIdentifier' &&
+            `#${String(node.name)}` === query.identifier))
+      )
+    }
+    if ('string' in query) {
+      return (
+        (node.type === 'Literal' && node.value === query.string) ||
+        (node.type === 'JSXText' && node.value === query.string) ||
+        (node.type === 'TemplateElement' &&
+          (node.value as { cooked?: string } | undefined)?.cooked ===
+            query.string)
+      )
+    }
+    return node.type === 'ThrowStatement'
+  }
+  return findNodes(code, matches, options).map((node) => node.start)
+}
+
+/**
+ * The original position a generated position maps to, or `undefined` when
+ * the map has no mapping for it.
+ */
+export function originalPositionOf(
+  map: AnySourceMap,
+  generated: Position,
+): OriginalPosition | undefined {
+  const original = originalPositionFor(traceMap(map), generated)
+  if (original.source === null) {
+    return undefined
+  }
+  return {
+    source: original.source,
+    line: original.line,
+    column: original.column,
+  }
+}
+
+/** Every original position the mappings of `map` point at. */
+export function originalPositions(map: AnySourceMap): Array<OriginalPosition> {
+  const positions: Array<OriginalPosition> = []
+  eachMapping(traceMap(map), (mapping) => {
+    if (mapping.source !== null) {
+      positions.push({
+        source: mapping.source,
+        line: mapping.originalLine,
+        column: mapping.originalColumn,
+      })
+    }
+  })
+  return positions
+}
+
+/** A frame of a stack trace, resolved through its file's map. */
+export interface TracedFrame {
+  /** The file (path or URL) the frame names. */
+  location: string
+  /** The frame's generated position. */
+  generated: Position
+  /** Where the map of `location` resolves it, when it has one. */
+  original?: OriginalPosition
+}
+
+/**
+ * The frames of `stack` (V8, SpiderMonkey and JavaScriptCore formats),
+ * each resolved through the map `mapOf(location)` returns for its file
+ * (`undefined`: no map, the frame stays unresolved).
+ */
+export function traceStack(
+  stack: string,
+  mapOf: (location: string) => AnySourceMap | undefined,
+): Array<TracedFrame> {
+  const frames: Array<TracedFrame> = []
+  const maps = new Map<string, TraceMap | undefined>()
+  for (const line of stack.split('\n')) {
+    const frame =
+      /((?:[a-z][\w+.-]*:\/\/?)?[^\s()@]+?):(\d+):(\d+)\)?\s*$/.exec(line)
+    if (!frame) {
+      continue
+    }
+    const location = frame[1]!
+    if (!maps.has(location)) {
+      const map = mapOf(location)
+      maps.set(location, map === undefined ? undefined : traceMap(map))
+    }
+    // Stack columns are 1-based.
+    const generated = { line: Number(frame[2]), column: Number(frame[3]) - 1 }
+    const map = maps.get(location)
+    const original = map ? originalPositionOf(map, generated) : undefined
+    frames.push({ location, generated, ...(original && { original }) })
+  }
+  return frames
+}
+
+/** What `expectMapsTo` requires of an original position. */
+export interface ExpectedOriginal {
+  /** The user's file: absolute, relative to `root`, or trailing segments. */
+  file: string
+  root?: string
+  /** Other files the source must be distinguishable from. */
+  distinctFrom?: Array<string>
+  /** 1-based line. */
+  line: number
+  /** 0-based column; checked only when given. */
+  column?: number
+}
+
+/**
+ * Asserts that `generated` resolves through `map` to `expected`, and
+ * returns the original position.
+ */
+export function expectMapsTo(
+  map: AnySourceMap,
+  generated: Position,
+  expected: ExpectedOriginal,
+): OriginalPosition {
+  const original = originalPositionOf(map, generated)
+  const description = `generated ${generated.line}:${generated.column}`
+  expect(original, `${description} has a mapping`).toBeDefined()
+  expect(
+    mentionsFile(original!.source, expected.file, expected),
+    `${description} maps to ${original!.source}, expected ${expected.file}`,
+  ).toBe(true)
+  expect(
+    expected.column === undefined
+      ? { line: original!.line }
+      : { line: original!.line, column: original!.column },
+    description,
+  ).toEqual(
+    expected.column === undefined
+      ? { line: expected.line }
+      : { line: expected.line, column: expected.column },
+  )
+  return original!
+}

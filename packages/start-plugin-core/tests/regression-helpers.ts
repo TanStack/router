@@ -683,23 +683,32 @@ export function directivePrologue(code: string) {
   return directives
 }
 
-/** The value of `run`, or the message of the error it throws. */
+/**
+ * What `settle` gives for a call that throws: the thrown value itself, so
+ * oracles (`serverOnlyError`, `clientOnlyError`) read the real error, and a
+ * value the call returns is never mistaken for a throw.
+ */
+export class Thrown {
+  constructor(readonly error: unknown) {}
+}
+
+/** The value of `run`, or `Thrown` with the error it throws. */
 export function settle(run: () => unknown) {
   try {
     return run()
   } catch (error) {
-    return `throws: ${(error as Error).message}`
+    return new Thrown(error)
   }
 }
 
 /**
- * The value `run` resolves to, or the message of the error it throws or
+ * The value `run` resolves to, or `Thrown` with the error it throws or
  * rejects with.
  */
 export async function settleAsync(run: () => unknown) {
   try {
     return await run()
   } catch (error) {
-    return `throws: ${(error as Error).message}`
+    return new Thrown(error)
   }
 }

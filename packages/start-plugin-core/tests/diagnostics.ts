@@ -6,8 +6,11 @@
 import { stripVTControlCharacters } from 'node:util'
 import { expect } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { identifiesEnvRestriction } from '@tanstack/compiler-test-utils/diagnostics'
+import type { Environment } from '@tanstack/compiler-test-utils/diagnostics'
 import type { ServerFn } from '../src/start-compiler/types'
 import {
+  Thrown,
   callReportedServerFns,
   compileFor,
   outputs,
@@ -125,7 +128,20 @@ export async function expectNoClientHandler(code: string) {
   await expectOutputsFreeOfHandler(code, results)
 }
 
-export const serverOnlyError =
-  'throws: createServerOnlyFn() functions can only be called on the server!'
-export const clientOnlyError =
-  'throws: createClientOnlyFn() functions can only be called on the client!'
+/**
+ * What `settle` gives for a `createServerOnlyFn` called outside the server
+ * (J4.10): it threw an error restricting the call to the server, whatever
+ * its prose (`identifiesEnvRestriction`). An asymmetric matcher: compare
+ * with `toEqual`.
+ */
+export const serverOnlyError = thrownEnvRestriction('server')
+/** `serverOnlyError` for a `createClientOnlyFn` called outside the client. */
+export const clientOnlyError = thrownEnvRestriction('client')
+
+function thrownEnvRestriction(env: Environment) {
+  return expect.toSatisfy(
+    (value: unknown) =>
+      value instanceof Thrown && identifiesEnvRestriction(value.error, env),
+    `a call that throws an error restricting it to the ${env}`,
+  )
+}
