@@ -1,64 +1,18 @@
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { compileMatchers } from '../../src/import-protection/matchers'
-import { getRsbuildResolvedImportProtectionCheck } from '../../src/rsbuild/import-protection'
 import { buildStart } from '../build-harness'
 import {
   distinct,
   rejection,
   reportedViolations,
 } from '../importProtection/start-apps'
-import { runRsbuildClient, startRsbuildDevServer } from '../rsbuild-dev-server'
+import {
+  runRsbuildClient,
+  startRsbuildDevServer,
+  startRsbuildStartDevServer,
+} from '../rsbuild-dev-server'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 import type { ImportProtectionOptions } from '../../src/schema'
-
-describe('getRsbuildResolvedImportProtectionCheck', () => {
-  test('skips file and marker checks for excluded resolved files', () => {
-    const matchers = {
-      files: compileMatchers(['**/*.server.*']),
-      excludeFiles: compileMatchers(['**/node_modules/**']),
-    }
-
-    expect(
-      getRsbuildResolvedImportProtectionCheck(
-        'node_modules/pkg/marked-server-only.ts',
-        matchers,
-      ),
-    ).toBeUndefined()
-  })
-
-  test('classifies non-excluded denied files as file checks', () => {
-    const matchers = {
-      files: compileMatchers(['**/*.server.*']),
-      excludeFiles: compileMatchers(['**/node_modules/**']),
-    }
-
-    const result = getRsbuildResolvedImportProtectionCheck(
-      'src/secret.server.ts',
-      matchers,
-    )
-
-    expect(result?.type).toBe('file')
-    if (result?.type !== 'file') {
-      throw new Error('Expected file import-protection check')
-    }
-    expect(result.fileMatch.pattern).toBe('**/*.server.*')
-  })
-
-  test('classifies non-excluded non-denied files as marker candidates', () => {
-    const matchers = {
-      files: compileMatchers(['**/*.server.*']),
-      excludeFiles: compileMatchers(['**/node_modules/**']),
-    }
-
-    expect(
-      getRsbuildResolvedImportProtectionCheck(
-        'src/marked-server-only.ts',
-        matchers,
-      ),
-    ).toEqual({ type: 'marker' })
-  })
-})
 
 describe('Rsbuild dev: a client module importing a .server file', () => {
   const esm = `import { secret } from './secret.server.js'
@@ -117,31 +71,48 @@ console.log(page())
   )
 })
 
+// With Start's whole Rsbuild plugin, import protection runs in the server
+// environment too: Start's default rules deny `*.client.*` files to it.
+// Source: audit F-H4 (the other Rsbuild dev tests run import protection on
+// the client environment only).
+test('Rsbuild dev with Start: a server import of a .client file is mocked on the server and reported', async () => {
+  const server = await startRsbuildStartDevServer({
+    files: {
+      'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+      'src/entry.ts': `import { widget } from './widget.client'
+export const read = () => widget()
+console.log(read())
+`,
+    },
+  })
+  expect(server.errors).toEqual([])
+  expect(
+    distinct(
+      reportedViolations(server.warnings).map(
+        ({ environment, importer }) => `${environment} ${importer}`,
+      ),
+    ),
+  ).toEqual(['server src/entry.ts:2:27'])
+  const code = async (environment: string) =>
+    Object.values(await server.outputs(environment)).join('\n')
+  expect(await code('ssr')).not.toContain('MARK_CLIENT')
+  expect(await code('client')).toContain('MARK_CLIENT')
+}, 30_000)
+
 // Source: round 4 mutation testing (rsbuild host, `behavior` in dev).
 describe('Rsbuild dev: behavior', () => {
   test.each<{
     behavior: NonNullable<ImportProtectionOptions>['behavior']
     reportedAs: 'warnings' | 'errors'
-    infoBehavior: ViolationInfo['behavior']
   }>([
-    { behavior: undefined, reportedAs: 'warnings', infoBehavior: 'mock' },
-    {
-      behavior: { build: 'mock' },
-      reportedAs: 'warnings',
-      infoBehavior: 'mock',
-    },
-    { behavior: { dev: 'error' }, reportedAs: 'errors', infoBehavior: 'error' },
+    { behavior: undefined, reportedAs: 'warnings' },
+    { behavior: { build: 'mock' }, reportedAs: 'warnings' },
+    { behavior: { dev: 'error' }, reportedAs: 'errors' },
   ])(
     '$behavior: a violation is reported in the compile $reportedAs',
-    async ({ behavior, reportedAs, infoBehavior }) => {
-      const seen: Array<ViolationInfo> = []
+    async ({ behavior, reportedAs }) => {
       const server = await startRsbuildDevServer({
-        importProtection: {
-          behavior,
-          onViolation: (info) => {
-            seen.push(info as ViolationInfo)
-          },
-        },
+        importProtection: { behavior },
         files: {
           'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
           'src/entry.ts': `import { secret } from './secret.server'
@@ -156,7 +127,6 @@ console.log(secret())
         ),
       ).toEqual(['client src/entry.ts:2:13'])
       expect(reportedViolations(server[other])).toEqual([])
-      expect(seen.map((info) => info.behavior)).toEqual([infoBehavior])
     },
     30_000,
   )

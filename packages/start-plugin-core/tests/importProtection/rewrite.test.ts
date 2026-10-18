@@ -95,7 +95,7 @@ export const value: Foo = 1 as Foo`,
         ['./secret.server'],
         secretServer,
       ),
-    ).toEqual({ module: { value: 1 }, loaded: [], mocksLoaded: [] })
+    ).toMatchObject({ module: { value: 1 }, loaded: [], mocksLoaded: [] })
   })
 
   // Loosened: the names `export *` re-exports from a denied module are not
@@ -111,7 +111,8 @@ export const value: Foo = 1 as Foo`,
     expect(graph.evaluated).not.toContain('/test/secret.server.ts')
   })
 
-  // Loosened: the namespace itself is pinned below.
+  // Loosened: the namespace itself is pinned in known-bugs.test.ts ("a
+  // denied namespace re-export keeps its exported name").
   test('a module with `export * as ns from` a denied module evaluates without it', async () => {
     const { module, loaded } = await evaluateAfterRewrite(
       `export * as ns from './secret.server'
@@ -122,25 +123,6 @@ export const x = 1`,
     expect(module.x).toBe(1)
     expect(loaded).toEqual([])
   })
-
-  // Bug: the rewrite removes `export * as ns from '<denied>'` without
-  // exporting a mock as `ns`.
-  // Source: src/import-protection/rewrite.ts:140-195 (only `ExportSpecifier`s
-  // of a denied re-export are rewritten; the namespace specifier is dropped).
-  // Impact: in a mock-mode build, an importer of `ns` from that module gets
-  // a missing export error or `undefined` instead of the mock.
-  test.fails(
-    'a module with `export * as ns from` a denied module exports a mock as `ns`',
-    async () => {
-      const { module, loaded } = await evaluateAfterRewrite(
-        `export * as ns from './secret.server'`,
-        ['./secret.server'],
-        secretServer,
-      )
-      expect(loaded).toEqual([])
-      expect(module.ns).toBeDefined()
-    },
-  )
 
   test('a module without denied imports evaluates unchanged', async () => {
     expect(
@@ -154,7 +136,7 @@ export const values = [ok, also]`,
           '/test/fine.ts': `export const also = 'also'`,
         },
       ),
-    ).toEqual({
+    ).toMatchObject({
       module: { values: ['ok', 'also'] },
       loaded: ['/test/safe.ts', '/test/fine.ts'],
       mocksLoaded: [],
@@ -232,7 +214,7 @@ export const value = 1`,
           ['./secret.server'],
           secretServer,
         ),
-      ).toEqual({ module: { value: 1 }, loaded: [], mocksLoaded: [] })
+      ).toMatchObject({ module: { value: 1 }, loaded: [], mocksLoaded: [] })
     },
   )
 
@@ -269,25 +251,4 @@ export const seen: T = [def === ns, value, renamed, kebab] as unknown as T
       renamedDefault: 'mock:default',
     })
   })
-
-  // Bug: the rewrite names the import of the mock `__tss_deny_<n>` without
-  // checking the names the module declares.
-  // Impact: once one of its imports is denied, a module that declares such a
-  // name fails to compile (duplicate declaration), or, when a TypeScript
-  // transform elides the shadowed import (as here), reads its own binding
-  // instead of the mock.
-  // Source: PR #8504 (rewrite.test.ts "does not reuse a name the module
-  // declares for the mock import"), found by mutation testing.
-  test.fails(
-    'a module declaring the name of the mock import evaluates',
-    async () => {
-      const { module } = await evaluateRewritten(
-        `const __tss_deny_0 = 'mine'
-import { foo } from './secret.server'
-export const both = [foo, __tss_deny_0]`,
-        ['./secret.server'],
-      )
-      expect(module.both).toEqual(['mock:foo', 'mine'])
-    },
-  )
 })

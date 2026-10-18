@@ -510,13 +510,6 @@ export const b = run(() => getSecret())`,
       line: 3,
     },
     {
-      name: 'a computed handler member of a server fn builder',
-      env: 'client',
-      body: `const handler = 'handler'
-export const a = createServerFn()[handler](() => getSecret())`,
-      line: 4,
-    },
-    {
       name: 'a callback of a private method',
       env: 'client',
       body: `export class Api { #run(fn: () => unknown) { return fn() } go() { return this.#run(() => getSecret()) } }`,

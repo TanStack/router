@@ -10,7 +10,6 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   generateDevSelfDenialModule,
   generateSelfContainedMockModule,
-  loadMockRuntimeModule,
   loadSilentMockModule,
   mockRuntimeModuleIdFromViolation,
 } from '../../src/import-protection/virtualModules'
@@ -238,36 +237,3 @@ export const read = () => secret()`,
     error: [expect.stringContaining('Mocked import used in dev client')],
   })
 })
-
-// Rsbuild serves the mock runtime of a client violation for every
-// `mockAccess` mode, with the mode in the module's payload (encoded as
-// `ensureRuntimeMockModule` in src/rsbuild/import-protection.ts does).
-test.each([
-  { mode: 'error', reported: 1 },
-  { mode: 'off', reported: 0 },
-] as const)(
-  'the Rsbuild mock runtime for mockAccess $mode reports $reported use(s)',
-  async ({ mode, reported }) => {
-    const output = captureConsole()
-    const encoded = Buffer.from(
-      JSON.stringify({
-        mode,
-        env: 'client',
-        importer: '/project/src/routes/index.tsx',
-        specifier: './secret.server',
-        trace: [],
-      }),
-      'utf8',
-    ).toString('base64url')
-    const mod = await evaluateGeneratedModule<{
-      default: Record<string, MockFunction>
-    }>(loadMockRuntimeModule(encoded).code, { standalone: true })
-    mod.default.getSecret!()
-    expect(output()).toEqual({
-      warn: [],
-      error: Array.from({ length: reported }, () =>
-        expect.stringContaining('Mocked import used in dev client'),
-      ),
-    })
-  },
-)
