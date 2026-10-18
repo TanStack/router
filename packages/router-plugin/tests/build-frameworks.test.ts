@@ -22,14 +22,21 @@ const sharedModule = `export const shared = {
 }
 `
 
+/**
+ * A route whose options and split component read an imported module's state
+ * and state the route file declares, each counting its evaluations.
+ */
 const route = (
   framework: Framework,
 ) => `${routeHead(framework)}import { shared } from '../shared'
+const local = {
+  inits: ((globalThis as any).__localInits = ((globalThis as any).__localInits ?? 0) + 1),
+}
 function Page() {
-  return <p>{'MARK_COMPONENT ' + shared.inits}</p>
+  return <p>{'MARK_COMPONENT ' + shared.inits + ' ' + local.inits}</p>
 }
 export const Route = createFileRoute('/')({
-  staticData: { label: 'MARK_ROUTE', shared },
+  staticData: { label: 'MARK_ROUTE', shared, local },
   component: Page,
 })
 `
@@ -40,6 +47,15 @@ const frameworkMarkers: Record<Framework, RegExp> = {
   solid: /solid-proxy|["']solid-js(?:\/[\w-]+)*["']/,
   vue: /__v_isRef|["']vue(?:\/[\w-]+)*["']/,
 }
+
+/** What a run returns: evaluations of each state, and what the route read. */
+const stateScript = `{
+  inits: { shared: globalThis.__sharedInits, local: globalThis.__localInits },
+  routeShared: {
+    shared: entry.Route.options.staticData.shared.inits,
+    local: entry.Route.options.staticData.local.inits,
+  },
+}`
 
 const builds = new Map<string, ReturnType<typeof buildRoute>>()
 
@@ -75,14 +91,14 @@ async function buildRoute(
     const run = await app.run(
       env === 'ssr'
         ? `const html = await entry.render(entry.Route.options.component)
-return { html, inits: globalThis.__sharedInits, routeShared: entry.Route.options.staticData.shared.inits }`
+return { html, ...${stateScript} }`
         : `await entry.mount(entry.Route.options.component)
-return { inits: globalThis.__sharedInits, routeShared: entry.Route.options.staticData.shared.inits }`,
+return ${stateScript}`,
     )
     const result = run.result as {
       html?: string
-      inits: number
-      routeShared: number
+      inits: { shared: number; local: number }
+      routeShared: { shared: number; local: number }
     }
     return {
       placement: {
@@ -106,7 +122,7 @@ return { inits: globalThis.__sharedInits, routeShared: entry.Route.options.stati
 }
 
 describe.each(bundlers)('%s', (bundler) => {
-  describe.each(['solid', 'vue'] as const)('%s', (framework) => {
+  describe.each(frameworks)('%s', (framework) => {
     describe.each(['ssr', 'client'] as const)('%s build', (env) => {
       test(
         'the split component loads lazily and renders',
@@ -116,7 +132,7 @@ describe.each(bundlers)('%s', (bundler) => {
             route: 'eager',
             component: 'lazy',
           })
-          expect(result.html).toContain('MARK_COMPONENT 1')
+          expect(result.html).toContain('MARK_COMPONENT 1 1')
         },
         timeout,
       )
@@ -125,8 +141,8 @@ describe.each(bundlers)('%s', (bundler) => {
         'module state shared by the route and the component is initialised once',
         async () => {
           const result = await cachedBuild(bundler, framework, env)
-          expect(result.inits).toBe(1)
-          expect(result.routeShared).toBe(1)
+          expect(result.inits).toEqual({ shared: 1, local: 1 })
+          expect(result.routeShared).toEqual({ shared: 1, local: 1 })
         },
         timeout,
       )
