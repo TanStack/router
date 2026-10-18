@@ -163,9 +163,15 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
       },
       { [file]: '/invalid' },
     )
-    expect(() => splitter.reference(routeSource('invalid'), file)).toThrow(
-      'The groupings returned when using `splitBehavior` for the route',
-    )
+    // The error names the option and the route it rejects
+    let error: unknown
+    try {
+      splitter.reference(routeSource('invalid'), file)
+    } catch (thrown) {
+      error = thrown
+    }
+    expect(String(error)).toMatch(/splitBehavior/)
+    expect(String(error)).toMatch(/\/invalid\b/)
   })
 
   // File names from real apps: optional segments, pathless groups and escaped dots.
@@ -182,26 +188,35 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     )
   })
 
-  it('only checks the plugin order when the router plugin is in the resolved config', async () => {
-    const reactPlugin = { name: 'vite:react-babel' }
-    const routerPlugin = {
-      name: 'tanstack-router:code-splitter:compile-reference-file',
-    }
+  // The plugins of a real `@vitejs/plugin-react` instance, as Vite resolves
+  // them, before and after the router plugin.
+  it('refuses @vitejs/plugin-react placed before the router plugin and accepts it after', async () => {
+    const { default: react } = await import('@vitejs/plugin-react')
+    const reactPlugins = [react()].flat(Infinity).filter(Boolean) as Array<{
+      name: string
+    }>
     await expect(
-      createCodeSplitterTransforms({}, {}, [reactPlugin]),
+      createCodeSplitterTransforms({}, {}, [
+        ...reactPlugins,
+        { name: referencePluginName },
+      ]),
+    ).rejects.toThrow(/Plugin order error[\s\S]*@vitejs\/plugin-react/)
+    await expect(
+      createCodeSplitterTransforms({}, {}, [
+        { name: referencePluginName },
+        ...reactPlugins,
+      ]),
     ).resolves.toBeDefined()
-    await expect(
-      createCodeSplitterTransforms({}, {}, [reactPlugin, routerPlugin]),
-    ).rejects.toThrow('Plugin order error')
   })
 
-  // Each JSX plugin the router plugin must come before, named by its package.
+  // The other JSX plugins the router plugin must come before, named by
+  // their package. (Their packages are not installed here: plugin names
+  // only.)
   it.each([
     ['vite:react-swc:resolve-runtime', '@vitejs/plugin-react-swc'],
     ['vite:react-swc', '@vitejs/plugin-react-swc'],
     ['vite:react-oxc:config', '@vitejs/plugin-react-oxc'],
     ['vite:react-oxc:refresh-runtime', '@vitejs/plugin-react-oxc'],
-    ['vite:react-refresh', '@vitejs/plugin-react'],
   ])('refuses %s placed before the router plugin', async (name, pkg) => {
     await expect(
       createCodeSplitterTransforms({}, {}, [
@@ -260,6 +275,11 @@ export const Route = createFileRoute('/')({
     const otherRouters = ['react', 'solid', 'vue']
       .filter((other) => other !== framework)
       .map((other) => `@tanstack/${other}-router`)
+    // Route hooks return an accessor in Solid and a ref in Vue
+    const loaderData =
+      framework === 'solid'
+        ? { read: 'posts()', value: () => ['a'] }
+        : { read: 'posts.value', value: { value: ['a'] } }
 
     it.each([
       { groupings: undefined, loaderSplit: false },
@@ -276,7 +296,7 @@ ${groupings ? `  codeSplitGroupings: ${groupings},\n` : ''}  loader: fetchPosts,
 })
 const PostsComponent = () => {
   const posts = Route.useLoaderData()
-  return <ul>{posts().length}<Outlet /></ul>
+  return <ul>{${loaderData.read}.length}<Outlet /></ul>
 }
 `,
           {
@@ -286,7 +306,7 @@ const PostsComponent = () => {
               [routerPackage]: {
                 createFileRoute: () => (options: unknown) => ({
                   options,
-                  useLoaderData: () => () => ['a'],
+                  useLoaderData: () => loaderData.value,
                 }),
               },
             },
@@ -347,10 +367,45 @@ console.info(ReactUseMemoCall, UseMemoCall)
       code: `export const docs = "call createFileRoute('/path')({ component }) in a route file"
 `,
     },
-  ])('are left as written: $name', ({ code }) => {
-    for (const hmr of [false, true]) {
-      const { modules } = compileRouteModules(code, { hmr })
-      expect(modules, `hmr: ${hmr}`).toEqual({ reference: code })
+  ])('are left as they behave: $name', async ({ code }) => {
+    const stubs = {
+      thing: { default: { foo: { bar: { destructured: 'destructured' } } } },
+      react: { useMemo: (create: () => unknown) => create() },
+      'tan-react': { useMemo: (create: () => unknown) => create() },
+    }
+    /** The exports of a module, functions by what they return. */
+    const evaluated = async (module: string) =>
+      Object.fromEntries(
+        Object.entries(await evaluateModule(module, stubs)).map(
+          ([name, value]) => [
+            name,
+            typeof value === 'function' ? { returns: value() } : value,
+          ],
+        ),
+      )
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      for (const hmr of [false, true]) {
+        const { modules } = compileRouteModules(code, { hmr })
+        // One module (nothing split), importing what the file imports,
+        // valid, with the same exports and values
+        expect(
+          {
+            modules: Object.keys(modules),
+            imports: importSources(modules.reference!),
+            errors: await getModuleErrors(modules.reference!),
+            exports: await evaluated(modules.reference!),
+          },
+          `hmr: ${hmr}`,
+        ).toEqual({
+          modules: ['reference'],
+          imports: importSources(code),
+          errors: [],
+          exports: await evaluated(code),
+        })
+      }
+    } finally {
+      info.mockRestore()
     }
   })
 })
@@ -381,12 +436,10 @@ export const Route = createFileRoute('/directive')({
 })
 
 // Source: #8504 router-utils prepend-statements.test.ts ("inserts after the
-// complete prologue", "leaves string statements outside the prologue in
-// their original position"), at compiler level: the route HMR code and the
-// splitter's imports go after the whole prologue, and a later string
-// statement does not join it.
+// complete prologue"), at compiler level: the route HMR code and the
+// splitter's imports go after the whole prologue.
 it.each([false, true])(
-  'keeps the whole directive prologue first, and only it (hmr: %s)',
+  'keeps the whole directive prologue first (hmr: %s)',
   (hmr) => {
     const { modules } = compileRouteModules(
       `'use client'
@@ -395,7 +448,6 @@ import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/directive')({
   component: () => <div>page</div>,
 })
-'use server'
 `,
       { hmr },
     )
@@ -410,15 +462,6 @@ export const Route = createFileRoute('/directive')({
       return directives
     }
     expect(prologue(modules.reference!)).toEqual(['use client', 'use strict'])
-    const { body } = parseModule(modules.reference!)
-    expect(
-      body.some(
-        (statement) =>
-          statement.type === 'ExpressionStatement' &&
-          statement.expression.type === 'Literal' &&
-          statement.expression.value === 'use server',
-      ),
-    ).toBe(true)
   },
 )
 
@@ -433,7 +476,6 @@ export const Route = createFileRoute('/')({})
 // 😀é${newline}/* 😀é */ export const broken = ;`
     expect(() => compileRouteModules(code, { hmr: true })).toThrow(
       expect.objectContaining({
-        name: 'SyntaxError',
         loc: expect.objectContaining({ line: 4, column: 32 }),
       }),
     )

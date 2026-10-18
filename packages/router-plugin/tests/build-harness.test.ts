@@ -5,10 +5,16 @@
  * has its own controls in `@tanstack/compiler-test-utils`.
  */
 import { describe, expect, test } from 'vitest'
-import { bundlers } from '@tanstack/compiler-test-utils/build-harness'
-import { build, routeApp } from './build-harness'
+import {
+  BuildError,
+  bundlers,
+} from '@tanstack/compiler-test-utils/build-harness'
+import { build, buildWithRsbuild, routeApp } from './build-harness'
 import { head } from './regression-helpers'
-import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
+import type {
+  BuildResult,
+  Bundler,
+} from '@tanstack/compiler-test-utils/build-harness'
 
 const timeout = 60_000
 
@@ -27,11 +33,17 @@ const heavy = `export function heavy(label: string) {
 `
 
 async function buildSplitRoute(bundler: Bundler, env: 'ssr' | 'client') {
-  const app = await build({
-    bundler,
+  return describeSplitRoute(
+    await build({
+      bundler,
+      env,
+      files: routeApp(splitRoute, { env, files: { 'heavy.ts': heavy } }),
+    }),
     env,
-    files: routeApp(splitRoute, { env, files: { 'heavy.ts': heavy } }),
-  })
+  )
+}
+
+async function describeSplitRoute(app: BuildResult, env: 'ssr' | 'client') {
   const placement = {
     route: app.where('MARK_ROUTE'),
     component: app.where('MARK_COMPONENT'),
@@ -96,20 +108,62 @@ describe.each(bundlers.filter((bundler) => bundler !== 'esbuild'))(
   },
 )
 
+// Rsbuild with its production defaults and the router plugin of Rspack,
+// as an Rsbuild app adds it.
+test(
+  'router plugin with Rsbuild loads a split component lazily and renders it (client)',
+  async () => {
+    const app = await buildWithRsbuild({
+      files: routeApp(splitRoute, {
+        env: 'client',
+        files: { 'heavy.ts': heavy },
+      }),
+    })
+    expect(await describeSplitRoute(app, 'client')).toEqual(
+      splitRouteExpected.client,
+    )
+  },
+  timeout,
+)
+
 // Bug: the esbuild adapter never runs the route generator in a build (its
 // generator only initialises in `esbuild.config`; generation happens in
 // `watchChange`), so the code splitter knows no route files and splits
 // nothing. The code splitter's esbuild adapter also never initialises its
 // config (no `esbuild` hook calls `initUserConfig`), so it would throw once
 // it saw a route file.
+// Splitting, or telling the user that esbuild cannot (a build error or a
+// warning naming esbuild and `autoCodeSplitting`), are both valid fixes
+// (decision D3 (c)).
 // Impact: `tanstackRouter({ autoCodeSplitting: true })` with esbuild bundles
 // every route component into the entry, without telling the user.
 test.fails.each(['ssr', 'client'] as const)(
-  'router plugin with esbuild loads a split component lazily and renders it (%s)',
+  'router plugin with esbuild loads a split component lazily and renders it, or says it cannot (%s)',
   async (env) => {
-    expect(await buildSplitRoute('esbuild', env)).toEqual(
-      splitRouteExpected[env],
-    )
+    const saysEsbuildCannotSplit = (message: string) =>
+      /esbuild/i.test(message) && /autoCodeSplitting/.test(message)
+    let app: BuildResult
+    try {
+      app = await build({
+        bundler: 'esbuild',
+        env,
+        files: routeApp(splitRoute, { env, files: { 'heavy.ts': heavy } }),
+      })
+    } catch (error) {
+      if (
+        error instanceof BuildError &&
+        error.errors.some(saysEsbuildCannotSplit)
+      ) {
+        return
+      }
+      throw error
+    }
+    if (
+      [...app.warnings, ...app.consoleMessages].some(saysEsbuildCannotSplit)
+    ) {
+      return
+    }
+    expect(await describeSplitRoute(app, env)).toEqual(splitRouteExpected[env])
   },
   timeout,
 )

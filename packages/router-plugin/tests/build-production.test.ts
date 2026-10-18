@@ -11,7 +11,13 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { build, frameworks, routeApp, routeHead } from './build-harness'
+import {
+  build,
+  buildWithRsbuild,
+  frameworks,
+  routeApp,
+  routeHead,
+} from './build-harness'
 import { routerDevServer } from './dev-server'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 import type { Framework } from './build-harness'
@@ -106,21 +112,26 @@ async function collectDevMarkers(framework: Framework) {
 }
 
 async function productionBuild(
-  bundler: Bundler,
+  bundler: Bundler | 'rsbuild',
   framework: Framework,
   autoCodeSplitting: boolean,
 ) {
-  const app = await build({
-    bundler,
-    framework,
-    env: 'client',
-    nodeEnv: null,
-    pluginOptions: {
-      autoCodeSplitting,
-      codeSplittingOptions: { addHmr: undefined },
-    },
-    files: routeApp(route(framework), { env: 'client', framework }),
-  })
+  const pluginOptions = {
+    autoCodeSplitting,
+    codeSplittingOptions: { addHmr: undefined },
+  }
+  const files = routeApp(route(framework), { env: 'client', framework })
+  const app =
+    bundler === 'rsbuild'
+      ? await buildWithRsbuild({ nodeEnv: null, pluginOptions, files })
+      : await build({
+          bundler,
+          framework,
+          env: 'client',
+          nodeEnv: null,
+          pluginOptions,
+          files,
+        })
   const run = await app.run(`await entry.mount(entry.Route.options.component)`)
   return { app, html: run.html }
 }
@@ -131,7 +142,7 @@ async function productionBuild(
  * project.
  */
 async function expectProductionClientBundle(
-  bundler: Bundler,
+  bundler: Bundler | 'rsbuild',
   framework: Framework,
   autoCodeSplitting: boolean,
 ) {
@@ -164,6 +175,16 @@ describe.each(['vite', 'rspack', 'webpack'] as const)('%s', (bundler) => {
     timeout,
   )
 })
+
+// Rsbuild with its production defaults (React apps), the router plugin of
+// Rspack added as an Rsbuild app adds it.
+test.each([true, false])(
+  'a production react client bundle (autoCodeSplitting: %s) has no dev-only code and no absolute path (rsbuild)',
+  async (autoCodeSplitting) => {
+    await expectProductionClientBundle('rsbuild', 'react', autoCodeSplitting)
+  },
+  timeout,
+)
 
 test.each(['solid', 'vue'] as const)(
   'a production %s client bundle without code splitting has no dev-only code and no absolute path (vite)',

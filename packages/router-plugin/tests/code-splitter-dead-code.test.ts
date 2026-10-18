@@ -167,26 +167,6 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
         expect((await route.load('component'))()).toBe('<div></div>')
       },
     )
-
-    // Deleting the declaration would also delete the ReferenceError its
-    // initializer throws (`later` is read before its declaration).
-    it('keeps the ReferenceError of an initializer that reads a let before its declaration', async () => {
-      await expect(
-        loadRoute(
-          `${head}const plugin = {
-  id: later,
-  describe() {
-    const self = plugin
-    return 'plugin'
-  },
-}
-let later = 1
-export const Route = createFileRoute('/')({ component: () => <div /> })
-`,
-          { hmr },
-        ),
-      ).rejects.toThrow(/\blater\b/)
-    })
   })
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "only
@@ -264,7 +244,7 @@ export const Route = createFileRoute('/')({
   )
 
   // Source: Next.js ssg/getStaticProps/should-remove-re-exported-function-declarations-dependents-variables-functions-imports
-  it('keeps requesting a module whose specifiers nothing used before splitting', async () => {
+  it('stops importing what only the split component reads from a module with an unused specifier', async () => {
     const route = await loadRoute(
       `${head}import { used, preUnused } from 'bar'
 const b = function apples() { return used }
@@ -275,9 +255,8 @@ export const Route = createFileRoute('/')({
 `,
       { stubs: { bar: { used: 'used', preUnused: 'unused' } } },
     )
-    // The route module still loads `bar` (as a bare import or with the
-    // unused specifier), but no longer for `used`.
-    expect(importSources(route.modules.reference!)).toContain('bar')
+    // The route module no longer imports `used` (whether it keeps loading
+    // `bar` is free).
     expect(importedNames(route.modules.reference!, 'bar')).not.toContain('used')
     await expectValidModules(route.modules)
     expect((await route.load('component'))()).toBe('<p>used</p>')

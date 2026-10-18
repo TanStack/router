@@ -1,3 +1,4 @@
+import { parseSync as parseWithBabel } from '@babel/core'
 import { parseSync, transformWithOxc } from 'vite'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
@@ -168,7 +169,8 @@ export const Route = createFileRoute('/')({
 
   // Import assertions (`assert { type: 'json' }`) are the deprecated form of
   // import attributes; the modules the code splitter emits use the `with`
-  // keyword, which current runtimes and bundlers accept.
+  // keyword, which current runtimes and bundlers accept. Supporting `assert`
+  // can be dropped (with this test) once nobody uses it (decision D9).
   it('compiles an import assertion of a route file into an import attribute', async () => {
     const route = await loadRoute(
       `${head}import data from './data.json' assert { type: 'json' }
@@ -232,31 +234,56 @@ export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
 
 describe('exports of the route file', () => {
   it.each([
-    { name: 'as-is', exports: 'export { Foo }' },
-    { name: 'renamed', exports: 'export { Foo as Bar }' },
+    { name: 'as-is', exports: 'export { Foo }', exported: 'Foo' },
+    { name: 'renamed', exports: 'export { Foo as Bar }', exported: 'Bar' },
   ])(
     'are not redeclared when they re-export an import $name',
-    async ({ exports }) => {
-      const { modules } =
-        compileRouteModules(`${head}import { Foo } from './foo'
+    async ({ exports, exported }) => {
+      const Foo = () => '<b>foo</b>'
+      const route = await loadRoute(
+        `${head}import { Foo } from './foo'
 ${exports}
 export const Route = createFileRoute('/')({ component: Page })
 function Page() {
   return <Foo />
 }
-`)
-      await expectValidModules(modules)
+`,
+        { stubs: { './foo': { Foo } } },
+      )
+      await expectValidModules(route.modules)
+      // Another module of the app imports the re-export (ruling P1)
+      const importer = await route.importFromRoute(
+        `export { ${exported} } from '${routeSpecifier}'`,
+      )
+      expect([importer[exported], (await route.load('component'))()]).toEqual([
+        Foo,
+        '<b>foo</b>',
+      ])
     },
   )
 
+  // That `getStuff` runs once is pinned in known-bugs-code-splitter.test.ts
+  // ("module state that the reference module keeps for a destructuring with
+  // one exported binding is initialized once"): the chunk calls it again.
   it('are not redeclared when destructured next to a non-exported binding', async () => {
-    const { modules } = compileRouteModules(`${head}const { a, b } = getStuff()
+    const route = await loadRoute(
+      `${head}import { getStuff } from './stuff'
+const { a, b } = getStuff()
 export { a }
 export const Route = createFileRoute('/')({
   component: () => <div>{a}{b}</div>,
 })
-`)
-    await expectValidModules(modules)
+`,
+      { stubs: { './stuff': { getStuff: () => ({ a: 'A', b: 'B' }) } } },
+    )
+    await expectValidModules(route.modules)
+    const importer = await route.importFromRoute(
+      `export { a } from '${routeSpecifier}'`,
+    )
+    expect([importer.a, (await route.load('component'))()]).toEqual([
+      'A',
+      '<div>AB</div>',
+    ])
   })
 
   it.each([
@@ -318,8 +345,9 @@ export { Route, title }
     let created = 0
     const route = await loadRoute(
       `import { createFileRoute, createRoute } from '@tanstack/react-router'
+import { Route as rootRoute } from './__root'
 export const legacy = createRoute({
-  getParentRoute: () => null as any,
+  getParentRoute: () => rootRoute,
   path: '/legacy',
   component: () => <p>legacy</p>,
 })
@@ -335,6 +363,7 @@ export const Route = createFileRoute('/')({
               return { options }
             },
           },
+          './__root': { Route: { options: {} } },
         },
       },
     )
@@ -968,12 +997,28 @@ return globalThis.dbLoaded ?? null`,
 
   it('keeps decorators before `export` for legacy decorator transforms', () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only
-    // accept decorators before the `export` keyword.
-    const { reference } =
-      compileRouteModules(`${head}@observable export class Store { @observable count = 0 }
-export const Route = createFileRoute('/')({ component: () => <div /> })
-`).modules
-    expect(reference).toMatch(/@observable\s+export class Store\b/)
+    // accept decorators before the `export` keyword: every emitted module
+    // must still parse with them.
+    const { modules } =
+      compileRouteModules(`${head}import { injectable } from 'tsyringe'
+import { observable } from 'mobx'
+@injectable() export class Store { @observable count = 0 }
+export const Route = createFileRoute('/')({
+  loader: () => new Store().count,
+  component: () => <div />,
+})
+`)
+    expect(Object.keys(modules).length).toBeGreaterThan(1)
+    for (const code of Object.values(modules)) {
+      expect(() =>
+        parseWithBabel(code, {
+          babelrc: false,
+          configFile: false,
+          filename: 'module.tsx',
+          parserOpts: { plugins: ['typescript', 'jsx', 'decorators-legacy'] },
+        }),
+      ).not.toThrow()
+    }
   })
 
   // Auto-accessor fields (TypeScript 4.9+, ES decorators; MobX 6 and Lit use

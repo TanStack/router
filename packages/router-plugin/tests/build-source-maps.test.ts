@@ -206,6 +206,9 @@ export const Route = createFileRoute('/')({ component: Page })
 // plugin's transform is the first loader of a route file. The bundler then
 // maps the chunk to the code splitter's output instead of the route file.
 // (On webpack the harness's own TypeScript loader composes the map it gets.)
+// These rows flip once unplugin keeps the map: with a loader passing an
+// identity map in front of unplugin's (so it returns the plugin's map), all
+// four pass (checked 2026-10-18).
 // Source: oracle-gaps M1; upstream (unplugin), not the router plugin.
 // Impact: stack traces, devtools and error trackers point at lines of the
 // generated split module (here line 3 instead of line 5 of the route file).
