@@ -13,7 +13,8 @@ const jsxRuntime = /(["'])react\/jsx-runtime\1/g
 /**
  * Evaluates a route file with a stub of the router packages (any framework's)
  * and returns its exports. The stub provides the route constructors
- * (`createFileRoute`, `createLazyFileRoute`; a route is `{ id, options }`)
+ * (`createFileRoute`, `createLazyFileRoute`; a route is `{ id, options,
+ * createdWith }`, `createdWith` naming the constructor)
  * and, for each name in `routerExports`, an export of that name whose value
  * is the name (`default` for a default export). JSX compiles to calls of a
  * stub JSX runtime. Like a bundler, fails on an invalid module or an import of
@@ -25,8 +26,8 @@ export async function evaluateRouteFile(
 ): Promise<Record<string, any>> {
   const { code: javascript } = await transformWithOxc(code, 'route.tsx')
   const router = `data:text/javascript,${encodeURIComponent(
-    `export const createFileRoute = (id) => (options) => ({ id, options })
-export const createLazyFileRoute = createFileRoute
+    `export const createFileRoute = (id) => (options) => ({ id, options, createdWith: 'createFileRoute' })
+export const createLazyFileRoute = (id) => (options) => ({ id, options, createdWith: 'createLazyFileRoute' })
 ${routerExports
   .map((name) =>
     name === 'default'

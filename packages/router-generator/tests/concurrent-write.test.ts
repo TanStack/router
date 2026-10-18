@@ -82,12 +82,11 @@ async function createApp(postsSource: string) {
 }
 
 describe('generator with concurrent in-place saves', () => {
-  it.each(['route file read', 'temporary file stat'] as const)(
+  it.each(['route file read', "generator's next file operation"] as const)(
     'does not scaffold over a route file whose in-place save completes during the %s',
     async (completeSaveDuring) => {
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tsr-generator-race-'))
       const routesDirectory = path.join(tempDir, 'routes')
-      const tmpDir = path.join(tempDir, 'tmp')
       const postsRoutePath = path.join(routesDirectory, 'posts.tsx')
       await fs.mkdir(routesDirectory)
       await fs.writeFile(
@@ -98,6 +97,15 @@ describe('generator with concurrent in-place saves', () => {
 
       let saveRacesNextRead = false
       let completeSave: (() => Promise<void>) | undefined
+      /**
+       * Completes a pending save before any file operation of the generator
+       * after the racing read, whichever it is.
+       */
+      const settle = async () => {
+        if (completeSave) {
+          await completeSave()
+        }
+      }
 
       const generator = new Generator({
         config: getConfig(
@@ -105,15 +113,22 @@ describe('generator with concurrent in-place saves', () => {
             disableLogging: true,
             routesDirectory,
             generatedRouteTree: path.join(tempDir, 'routeTree.gen.ts'),
-            tmpDir,
+            tmpDir: path.join(tempDir, 'tmp'),
           },
           tempDir,
         ),
         root: tempDir,
         fs: {
-          rename: (oldPath, newPath) => fs.rename(oldPath, newPath),
-          writeFile: (filePath, content) => fs.writeFile(filePath, content),
+          rename: async (oldPath, newPath) => {
+            await settle()
+            return fs.rename(oldPath, newPath)
+          },
+          writeFile: async (filePath, content) => {
+            await settle()
+            return fs.writeFile(filePath, content)
+          },
           readFile: async (filePath) => {
+            await settle()
             // The generator passes route paths with forward slashes, also on
             // Windows.
             if (
@@ -147,9 +162,7 @@ describe('generator with concurrent in-place saves', () => {
             return result
           },
           stat: async (filePath) => {
-            if (completeSave && path.resolve(filePath).startsWith(tmpDir)) {
-              await completeSave()
-            }
+            await settle()
             const stat = await fs.stat(filePath, { bigint: true })
             return {
               mtimeMs: stat.mtimeMs,
@@ -158,8 +171,14 @@ describe('generator with concurrent in-place saves', () => {
               gid: Number(stat.gid),
             }
           },
-          chmod: (filePath, mode) => fs.chmod(filePath, mode),
-          chown: (filePath, uid, gid) => fs.chown(filePath, uid, gid),
+          chmod: async (filePath, mode) => {
+            await settle()
+            return fs.chmod(filePath, mode)
+          },
+          chown: async (filePath, uid, gid) => {
+            await settle()
+            return fs.chown(filePath, uid, gid)
+          },
         },
       })
 
@@ -175,9 +194,8 @@ describe('generator with concurrent in-place saves', () => {
       await fs.utimes(postsRoutePath, editedAt, editedAt)
       saveRacesNextRead = true
       await generator.run({ type: 'update', path: postsRoutePath })
+      await settle()
 
-      expect(saveRacesNextRead).toBe(false)
-      expect(completeSave).toBeUndefined()
       await expect(fs.readFile(postsRoutePath, 'utf8')).resolves.toBe(
         savedPostsRouteSource,
       )

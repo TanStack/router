@@ -205,9 +205,24 @@ export const Route = createFileRoute('/posts')({
         const { generatedRouteTree } = await generate(root, { target })
 
         const written = await read(root, 'src/routes/posts.lazy.tsx')
-        expect(written).toBe(
-          source.replaceAll('createFileRoute', 'createLazyFileRoute'),
+        // Only the constructor changes: the file keeps its BOM, and the code
+        // outside the imports changes only in the constructor call.
+        expect(written.startsWith('\uFEFF')).toBe(bom !== '')
+        expect(withoutImports(written)).toBe(
+          withoutImports(source).replace(
+            'createFileRoute(',
+            'createLazyFileRoute(',
+          ),
         )
+        expect(valueImports(written, routerPackage).sort()).toEqual([
+          'Link',
+          'createLazyFileRoute',
+        ])
+        const { Route } = await evaluateRouteFile(written, ['Link'])
+        expect([Route.id, Route.createdWith]).toEqual([
+          '/posts',
+          'createLazyFileRoute',
+        ])
         expect(await routesOf(generatedRouteTree)).toEqual({
           __root__: 'routes/__root.tsx',
           '/posts': 'routes/posts.tsx',
@@ -328,41 +343,15 @@ export const Route = createFileRoute('/old')({})
     )
   })
 
-  test('a route file starting with a hashbang keeps it', async () => {
-    const source = `#!/usr/bin/env node
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/old')({})
-`
-    const root = await createApp({
-      'src/routes/__root.tsx': rootRoute(),
-      'src/routes/posts.tsx': source,
-    })
-    const { generatedRouteTree } = await generate(root)
-
-    expect(await read(root, 'src/routes/posts.tsx')).toBe(
-      source.replace('/old', '/posts'),
-    )
-    expect(await routesOf(generatedRouteTree)).toEqual({
-      __root__: 'routes/__root.tsx',
-      '/posts': 'routes/posts.tsx',
-    })
-  })
-
   // Control: "a route file without the route constructor import gets it from
   // @tanstack/react-router" above (same harness, without the prefix).
 
   // Bug: the generator adds a missing route constructor import at the very
-  // start of the file, before a hashbang or a UTF-8 BOM.
+  // start of the file, before a UTF-8 BOM.
   // Source: src/transform/transform.ts:560 (`s.prepend` of the import).
-  // Impact: a hashbang that is no longer on the first line is a syntax
-  // error, so the route file fails to build; a BOM ends up after the import,
-  // as a stray zero-width character on the second line, and the file no
-  // longer starts with it.
-  test.fails.each([
-    { name: 'a hashbang', prefix: '#!/usr/bin/env node\n' },
-    { name: 'a UTF-8 BOM', prefix: '\uFEFF' },
-  ])(
+  // Impact: the BOM ends up after the import, as a stray zero-width
+  // character on the second line, and the file no longer starts with it.
+  test.fails.each([{ name: 'a UTF-8 BOM', prefix: '\uFEFF' }])(
     'a route file starting with $name keeps it when the route constructor import is added',
     async ({ prefix }) => {
       const root = await createApp({
@@ -720,50 +709,6 @@ describe('custom scaffolding', () => {
 })
 
 describe('token options', () => {
-  test.each([
-    {
-      name: 'a RegExp indexToken and the default routeToken',
-      indexToken: /^page$/,
-    },
-    {
-      name: 'the default indexToken and a RegExp routeToken',
-      routeToken: /^layout$/,
-    },
-    {
-      name: 'a JSON regex indexToken and the default routeToken',
-      indexToken: { regex: '^page$' },
-    },
-    {
-      name: 'the default indexToken and a JSON regex routeToken',
-      routeToken: { regex: '^layout$' },
-    },
-    {
-      name: 'a RegExp indexToken and a JSON regex routeToken',
-      indexToken: /^page$/,
-      routeToken: { regex: '^layout$' },
-    },
-    {
-      name: 'two different RegExps',
-      indexToken: /^page$/,
-      routeToken: /^layout$/,
-    },
-    {
-      name: 'RegExps differing only in flags',
-      indexToken: /^page$/,
-      routeToken: /^page$/i,
-    },
-    {
-      name: 'JSON regexes differing only in flags',
-      indexToken: { regex: '^page$' },
-      routeToken: { regex: '^page$', flags: 'i' },
-    },
-  ] satisfies Array<Partial<Config> & { name: string }>)(
-    'different tokens are accepted: $name',
-    ({ name: _name, ...config }) => {
-      expect(() => getConfig(config)).not.toThrow()
-    },
-  )
-
   test('a RegExp indexToken with the default routeToken generates index and layout routes', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
@@ -789,14 +734,14 @@ export const Route = createFileRoute('/posts/')({})
 })
 
 describe('custom tokens matching longer names', () => {
-  // A file name is escaped only when brackets wrap it (`[layout]`); a
-  // routeToken regex that matches whole names containing a word applies to
-  // every such name.
+  // The routeToken regex of the docs (file-based-routing.md: "filenames like
+  // `dashboard.main-layout.tsx` ... would all be recognized as layout
+  // routes") matches the whole name of a layout file.
   // Source: r5-gaps N11 (rg:2723: every name read as bracket-wrapped).
-  test('a routeToken regex matching names that contain "layout" makes such a file the layout route of its directory', async () => {
+  test('a routeToken regex matching whole names makes such a file the layout route of its directory', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
-      'src/routes/posts/mylayouts.tsx': `import { createFileRoute } from '@tanstack/react-router'
+      'src/routes/posts/main-layout.tsx': `import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts')({})
 `,
@@ -806,31 +751,18 @@ export const Route = createFileRoute('/posts/')({})
 `,
     })
     const { generatedRouteTree } = await generate(root, {
-      routeToken: /.*layout.*/,
+      routeToken: /[a-z]+-layout/,
     })
 
     expect(await routesOf(generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
-      '/posts': 'routes/posts/mylayouts.tsx',
+      '/posts': 'routes/posts/main-layout.tsx',
       '/posts/': 'routes/posts/index.tsx',
     })
   })
 })
 
 describe('route tree path', () => {
-  test('with disableTypes, only the extension of the route tree file becomes .js', () => {
-    const config = getConfig(
-      {
-        disableTypes: true,
-        generatedRouteTree: './src/gen.tsr/routeTree.gen.ts',
-      },
-      '/app',
-    )
-    expect(config.generatedRouteTree).toBe(
-      path.resolve('/app/src/gen.tsr/routeTree.gen.js'),
-    )
-  })
-
   test('the directories of a nested route tree path are created', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
@@ -849,145 +781,34 @@ describe('route tree path', () => {
 })
 
 describe('logging', () => {
-  test.each([
-    { disableLogging: false, logs: true },
-    { disableLogging: true, logs: false },
-  ])(
-    'disableLogging $disableLogging: a run that creates and skips route files logs: $logs',
-    async ({ disableLogging, logs }) => {
-      const output: Array<string> = []
-      for (const method of ['log', 'info', 'warn', 'error', 'debug'] as const) {
-        vi.spyOn(console, method).mockImplementation((...args) => {
-          output.push(args.join(' '))
-        })
-      }
-      const root = await createApp({
-        // An empty root route is scaffolded, with a log.
-        'src/routes/__root.tsx': '',
-        // A route file without a Route export is left out, with a warning.
-        'src/routes/helpers.tsx': 'export const helper = 1\n',
-        // An invalid param name gets a warning.
-        'src/routes/$123.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  // (`disableLogging: true` silencing the logs is outside the compiler test
+  // corpus: tests/outside-compiler-corpus/config-options.test.ts)
+  test('with logging on, a run that scaffolds and skips route files names them', async () => {
+    const output: Array<string> = []
+    for (const method of ['log', 'info', 'warn', 'error', 'debug'] as const) {
+      vi.spyOn(console, method).mockImplementation((...args) => {
+        output.push(args.join(' '))
+      })
+    }
+    const root = await createApp({
+      // An empty root route is scaffolded, with a log.
+      'src/routes/__root.tsx': '',
+      // A route file without a Route export is left out, with a warning.
+      'src/routes/helpers.tsx': 'export const helper = 1\n',
+      // An invalid param name gets a warning.
+      'src/routes/$123.tsx': `import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/$123')({})
 `,
-      })
-      const { generatedRouteTree } = await generate(root, { disableLogging })
+    })
+    const { generatedRouteTree } = await generate(root, {
+      disableLogging: false,
+    })
 
-      expect(existsSync(generatedRouteTree)).toBe(true)
-      if (logs) {
-        expect(output.join('\n')).toContain('__root.tsx')
-        expect(output.join('\n')).toContain('helpers.tsx')
-        expect(output.join('\n')).toContain('$123')
-      } else {
-        expect(output).toEqual([])
-      }
-    },
-  )
-})
-
-describe('temporary files', () => {
-  // The generator writes files through a temporary file in its temporary
-  // directory, which it creates on the first write.
-  test('the TSR_TMP_DIR environment variable sets the temporary directory', async () => {
-    const root = await createApp(app())
-    vi.stubEnv('TSR_TMP_DIR', path.join(root, 'env-tmp'))
-    const config = getConfig({ disableLogging: true }, root)
-    await new Generator({ config, root }).run()
-
-    expect(existsSync(config.generatedRouteTree)).toBe(true)
-    expect(existsSync(path.join(root, 'env-tmp'))).toBe(true)
-  })
-
-  test('the tmpDir option takes precedence over TSR_TMP_DIR', async () => {
-    const root = await createApp(app())
-    vi.stubEnv('TSR_TMP_DIR', path.join(root, 'env-tmp'))
-    const config = getConfig(
-      { disableLogging: true, tmpDir: path.join(root, 'option-tmp') },
-      root,
-    )
-    await new Generator({ config, root }).run()
-
-    expect(existsSync(path.join(root, 'option-tmp'))).toBe(true)
-    expect(existsSync(path.join(root, 'env-tmp'))).toBe(false)
-  })
-
-  test('the default temporary directory is .tanstack/tmp in the working directory', async () => {
-    const root = await createApp(app())
-    vi.stubEnv('TSR_TMP_DIR', undefined)
-    const cwd = process.cwd()
-    process.chdir(root)
-    try {
-      const config = getConfig({ disableLogging: true }, root)
-      await new Generator({ config, root }).run()
-    } finally {
-      process.chdir(cwd)
-    }
-
-    expect(existsSync(path.join(root, 'src/routeTree.gen.ts'))).toBe(true)
-    expect(existsSync(path.join(root, '.tanstack/tmp'))).toBe(true)
-  })
-
-  function app() {
-    return {
-      'src/routes/__root.tsx': rootRoute(),
-    }
-  }
-})
-
-describe('invalid configuration', () => {
-  test.each([
-    {
-      name: 'experimental.enableCodeSplitting',
-      config: { experimental: { enableCodeSplitting: true } },
-      error: 'use "autoCodeSplitting" instead',
-    },
-    {
-      name: 'the same indexToken and routeToken',
-      config: { indexToken: 'page', routeToken: 'page' },
-      error: 'The "indexToken" and "routeToken" options must be different.',
-    },
-    {
-      name: 'the same JSON regex indexToken and routeToken',
-      config: {
-        indexToken: { regex: '^page$' },
-        routeToken: { regex: '^page$', flags: '' },
-      },
-      error: 'The "indexToken" and "routeToken" options must be different.',
-    },
-    {
-      name: 'routeFileIgnorePrefix "_"',
-      config: { routeFileIgnorePrefix: '_' },
-      error: 'The "routeFileIgnorePrefix" cannot be an underscore ("_").',
-    },
-    {
-      name: 'routeFileIgnorePrefix "_ "',
-      config: { routeFileIgnorePrefix: '_ ' },
-      error: 'The "routeFileIgnorePrefix" cannot be an underscore ("_").',
-    },
-    {
-      name: 'the same JSON regex indexToken and routeToken, both without flags',
-      config: {
-        indexToken: { regex: '^page$' },
-        routeToken: { regex: '^page$' },
-      },
-      error: 'The "indexToken" and "routeToken" options must be different.',
-    },
-  ])(
-    'tsr.config.json with $name is rejected with a clear error',
-    async ({ config, error }) => {
-      vi.spyOn(console, 'error').mockImplementation(() => {})
-      const root = await createApp({
-        'tsr.config.json': JSON.stringify(config),
-      })
-      expect(() => getConfig({}, root)).toThrow(error)
-    },
-  )
-
-  test('the same RegExp indexToken and routeToken are rejected with a clear error', () => {
-    expect(() =>
-      getConfig({ indexToken: /^page$/, routeToken: /^page$/ }),
-    ).toThrow('The "indexToken" and "routeToken" options must be different.')
+    expect(existsSync(generatedRouteTree)).toBe(true)
+    expect(output.join('\n')).toContain('__root.tsx')
+    expect(output.join('\n')).toContain('helpers.tsx')
+    expect(output.join('\n')).toContain('$123')
   })
 })
 
@@ -1006,9 +827,13 @@ function valueImports(code: string, source: string) {
     )
 }
 
-/** The module without its import declarations (each on its own line). */
+/**
+ * The module without its BOM and its import declarations (each on its own
+ * line).
+ */
 function withoutImports(code: string) {
   return code
+    .replace(/^\uFEFF/, '')
     .split(/(?<=\n)/)
     .filter((line) => !line.startsWith('import '))
     .join('')

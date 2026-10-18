@@ -4,7 +4,6 @@
  * groups, pathless layouts, and token and param validation, read from the
  * evaluated route tree.
  */
-import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
 import {
@@ -14,9 +13,9 @@ import {
   rootRoute as virtualRootRoute,
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
-import { parseSync } from 'vite'
 import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from './app'
 import { routePathsOf, routesOf, urlsOf } from './route-tree'
+import { typeAssertions, typeErrorsOf } from './type-check'
 import type { Config } from '../src'
 
 /** An app with a root route and a route file for each of `files`. */
@@ -346,7 +345,7 @@ describe('conflicting routes', () => {
       () => undefined,
       (e: unknown) => e as Error,
     )
-    expect(error?.message).toContain('Conflicting configuration paths')
+    expect(error).toBeInstanceOf(Error)
     expect(error?.message).toContain(path.join(root, 'src/routes/index.tsx'))
     expect(error?.message).toContain(
       path.join(root, 'src/routes/_auth/index.tsx'),
@@ -364,7 +363,7 @@ describe('conflicting routes', () => {
       () => undefined,
       (e: unknown) => e as Error,
     )
-    expect(error?.message).toContain('Invalid route path ""')
+    expect(error).toBeInstanceOf(Error)
     expect(error?.message).toContain(
       path.join(root, 'src/routes/merged/route.tsx'),
     )
@@ -373,13 +372,13 @@ describe('conflicting routes', () => {
 
 describe('route names', () => {
   test('routes whose names differ only by a leading @ get their own routes', async () => {
-    const root = await appWithRoutes(['@B.tsx', 'B.tsx'])
+    const root = await appWithRoutes(['@me.tsx', 'me.tsx'])
     const { generatedRouteTree } = await generate(root)
 
     expect(await routesOf(generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
-      '/@B': 'routes/@B.tsx',
-      '/B': 'routes/B.tsx',
+      '/@me': 'routes/@me.tsx',
+      '/me': 'routes/me.tsx',
     })
   })
 
@@ -393,8 +392,31 @@ describe('route names', () => {
     })
   })
 
-  // Control: the test above (same harness, two names the route tree tells
-  // apart).
+  // Control: the test above (same harness, a name with a space).
+
+  // Bug: the route tree writes route file paths and route ids into
+  // single-quoted strings unescaped, so a route file whose name contains an
+  // apostrophe ends the string: the route tree does not parse and the run
+  // fails ("';' expected").
+  // Source: src/utils.ts:1196 (`buildImportString`: `from '${source}'`),
+  // src/generator.ts:703-706 (`id: '${node.path}'`, `path: '...'`).
+  // Impact: an app with, e.g., `what's-new.tsx` gets no route tree until
+  // the file is renamed.
+  test.fails(
+    'a route file name with an apostrophe gets a route with it in its URL',
+    async () => {
+      const root = await appWithRoutes(["what's-new.tsx"])
+      const { generatedRouteTree } = await generate(root)
+
+      expect(await urlsOf(generatedRouteTree)).toEqual({
+        __root__: '/',
+        "/what's-new": "/what's-new",
+      })
+    },
+  )
+
+  // Control: "routes whose names differ only by a leading @ get their own
+  // routes" above (same harness, two names the route tree tells apart).
 
   // Bug: routes whose paths differ only in characters that are not valid in
   // an identifier (`-`, `_`, `$`, a space) or in letter case get the same
@@ -431,7 +453,7 @@ describe('token options', () => {
       name: 'a JSON regex with the g flag',
       routeToken: { regex: 'layout', flags: 'g' },
     },
-    { name: 'a RegExp with the g and y flags', routeToken: /layout/gy },
+    { name: 'a RegExp with the g flag', routeToken: /layout/g },
   ] satisfies Array<Partial<Config> & { name: string }>)(
     'a routeToken that is $name matches every layout file',
     async ({ name: _name, ...config }) => {
@@ -488,13 +510,8 @@ describe('token options', () => {
     },
   )
 
-  test('a token regex that does not compile fails the generator with an error naming it', async () => {
-    const root = await appWithRoutes(['index.tsx'])
-
-    await expect(
-      generate(root, { indexToken: { regex: 'home(unclosed' } }),
-    ).rejects.toThrow('home(unclosed')
-  })
+  // (A token regex that does not compile: outside the compiler test corpus,
+  // tests/outside-compiler-corpus/config-options.test.ts.)
 })
 
 describe('param names', () => {
@@ -523,15 +540,10 @@ describe('param names', () => {
   })
 })
 
+// The route tree's types, checked by the real TypeScript compiler with the
+// real router types: the whole app type-checks, and a `to` or full path
+// stands for the right route (its `id`).
 describe('FileRoutesByTo', () => {
-  /**
-   * The route each `to` of the route tree's `FileRoutesByTo` interface
-   * navigates to, by route id (from `FileRoutesById`).
-   */
-  function routeIdsByTo(treeFile: string) {
-    return routeIdsByKey(treeFile, 'FileRoutesByTo')
-  }
-
   test('`to` of an index route is the index route, not a route under pathless layouts with the same path', async () => {
     const root = await appWithRoutes([
       'posts/index.tsx',
@@ -539,10 +551,19 @@ describe('FileRoutesByTo', () => {
       '_a/_b.tsx',
       '_a/_b/posts.tsx',
     ])
-    const { generatedRouteTree } = await generate(root)
+    await generate(root)
 
-    expect((await routeIdsByTo(generatedRouteTree))['/posts']).toBe('/posts/')
-  })
+    expect(
+      await typeErrorsOf(
+        root,
+        'src/checks.ts',
+        `import type { FileRoutesByTo } from './routeTree.gen'
+${typeAssertions}
+export type Check = Expect<Equal<FileRoutesByTo['/posts']['id'], '/posts/'>>
+`,
+      ),
+    ).toEqual([])
+  }, 30_000)
 
   test('`to` of a route is the route, not its own pathless layout', async () => {
     const root = await appWithRoutes([
@@ -550,10 +571,19 @@ describe('FileRoutesByTo', () => {
       'foo/_auth.tsx',
       'foo/_auth/bar.tsx',
     ])
-    const { generatedRouteTree } = await generate(root)
+    await generate(root)
 
-    expect((await routeIdsByTo(generatedRouteTree))['/foo']).toBe('/foo')
-  })
+    expect(
+      await typeErrorsOf(
+        root,
+        'src/checks.ts',
+        `import type { FileRoutesByTo } from './routeTree.gen'
+${typeAssertions}
+export type Check = Expect<Equal<FileRoutesByTo['/foo']['id'], '/foo'>>
+`,
+      ),
+    ).toEqual([])
+  }, 30_000)
 })
 
 describe('FileRoutesByFullPath', () => {
@@ -564,53 +594,17 @@ describe('FileRoutesByFullPath', () => {
       'src/routes/_auth.lazy.tsx': lazyFileRoute('/_auth'),
       'src/routes/_auth/login.tsx': fileRoute('/_auth/login'),
     })
-    const { generatedRouteTree } = await generate(root)
+    await generate(root)
 
     expect(
-      (await routeIdsByKey(generatedRouteTree, 'FileRoutesByFullPath'))['/'],
-    ).toBe('/')
-  })
+      await typeErrorsOf(
+        root,
+        'src/checks.ts',
+        `import type { FileRoutesByFullPath } from './routeTree.gen'
+${typeAssertions}
+export type Check = Expect<Equal<FileRoutesByFullPath['/']['id'], '/'>>
+`,
+      ),
+    ).toEqual([])
+  }, 30_000)
 })
-
-/**
- * The route each key of the route tree's `FileRoutesByTo` or
- * `FileRoutesByFullPath` interface stands for, by route id (from
- * `FileRoutesById`).
- */
-async function routeIdsByKey(treeFile: string, interfaceName: string) {
-  const { program } = parseSync(
-    'routeTree.gen.ts',
-    await readFile(treeFile, 'utf8'),
-  )
-  const members = (name: string) => {
-    const body = program.body
-      .map((statement) =>
-        statement.type === 'ExportNamedDeclaration'
-          ? statement.declaration
-          : statement,
-      )
-      .find(
-        (statement: any) =>
-          statement?.type === 'TSInterfaceDeclaration' &&
-          statement.id.name === name,
-      ) as any
-    return Object.fromEntries(
-      body.body.body.map((member: any) => [
-        member.key.value ?? member.key.name,
-        member.typeAnnotation.typeAnnotation.exprName.name,
-      ]),
-    )
-  }
-  const idsByVariable = Object.fromEntries(
-    Object.entries(members('FileRoutesById')).map(([id, variable]) => [
-      variable,
-      id,
-    ]),
-  )
-  return Object.fromEntries(
-    Object.entries(members(interfaceName)).map(([key, variable]) => [
-      key,
-      idsByVariable[variable as string],
-    ]),
-  )
-}

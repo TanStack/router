@@ -75,6 +75,12 @@ export const Route = createRootRoute()
 `,
     'src/routes/page.tsx': `${routeHead}export const Route = createFileRoute('/page')({ server: { handlers: {} }, component: Page })\n`,
     'src/routes/api.tsx': `${routeHead}export const Route = createFileRoute('/api')({ server: { handlers: {} } })\n`,
+    // The same two routes with string option keys, and with an aliased
+    // Route export.
+    'src/routes/string-keys.tsx': `${routeHead}export const Route = createFileRoute('/string-keys')({ 'server': { handlers: {} }, 'component': Page })\n`,
+    'src/routes/string-keys-api.tsx': `${routeHead}export const Route = createFileRoute('/string-keys-api')({ 'server': { handlers: {} } })\n`,
+    'src/routes/aliased.tsx': `${routeHead}const PageRoute = createFileRoute('/aliased')({ server: { handlers: {} }, component: Page })\nexport { PageRoute as Route }\n`,
+    'src/routes/aliased-api.tsx': `${routeHead}const ApiRoute = createFileRoute('/aliased-api')({ server: { handlers: {} } })\nexport { ApiRoute as Route }\n`,
     'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
@@ -137,6 +143,30 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
       expect(clientRoutes).not.toContain('/api')
     },
   )
+
+  // Option keys written as strings and a Route exported under an alias are
+  // read like the plain ones above (same build; moved from router-generator
+  // known-bugs.test.ts, which read the generator's internal option keys).
+  describe.each([
+    {
+      name: 'string option keys',
+      page: '/string-keys',
+      api: '/string-keys-api',
+    },
+    { name: 'an aliased Route export', page: '/aliased', api: '/aliased-api' },
+  ])('$name', ({ page, api }) => {
+    test('a route with server handlers and a component is in the client route tree', () => {
+      expect(clientRoutes).toContain(page)
+    })
+
+    // Rsbuild does not prune the client route tree yet (pinned above).
+    ;(bundler === 'vite' ? test : test.fails)(
+      'a route with only server handlers is not in the client route tree',
+      () => {
+        expect(clientRoutes).not.toContain(api)
+      },
+    )
+  })
 
   // Bug: the route generator records only plain, non-computed, non-method
   // property keys of the route options (`createFileRouteProps`), so a

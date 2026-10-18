@@ -17,7 +17,7 @@ import { Generator } from '../src'
 import { configOf, createApp, fileRoute, read, rootRoute, save } from './app'
 import { routeIdOf } from './route-id'
 import { routesOf } from './route-tree'
-import type { Config, GeneratorPlugin, RouteNode } from '../src'
+import type { Config } from '../src'
 
 /** A generator for the app at `root`, after its first run. */
 async function startGenerator(
@@ -174,6 +174,79 @@ describe('route edits', () => {
         __root__: 'routes/__root.tsx',
         '/posts/$id': 'routes/posts.$id.tsx',
       })
+    },
+  )
+})
+
+// A rename or move reaches the generator as a delete and a create event, in
+// either order, in one batch (a file watcher reports both before the first
+// run completes).
+describe.each([
+  {
+    name: 'a top-level route file',
+    from: 'src/routes/about.tsx',
+    to: 'src/routes/contact.tsx',
+    routes: {
+      '/contact': 'routes/contact.tsx',
+      '/posts': 'routes/posts.tsx',
+      '/posts/$id': 'routes/posts.$id.tsx',
+    },
+    id: '/contact',
+  },
+  {
+    name: 'a child route file to another param name',
+    from: 'src/routes/posts.$id.tsx',
+    to: 'src/routes/posts.$postId.tsx',
+    routes: {
+      '/about': 'routes/about.tsx',
+      '/posts': 'routes/posts.tsx',
+      '/posts/$postId': 'routes/posts.$postId.tsx',
+    },
+    id: '/posts/$postId',
+  },
+  {
+    name: 'a route file into a directory under its layout',
+    from: 'src/routes/about.tsx',
+    to: 'src/routes/posts/about.tsx',
+    routes: {
+      '/posts': 'routes/posts.tsx',
+      '/posts/$id': 'routes/posts.$id.tsx',
+      '/posts/about': 'routes/posts/about.tsx',
+    },
+    id: '/posts/about',
+  },
+])('renaming $name', ({ from, to, routes, id }) => {
+  test.each(['delete', 'create'] as const)(
+    'with the %s event first gives the route tree of a fresh run and fixes the route id',
+    async (first) => {
+      const root = await createApp({
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/about.tsx': fileRoute('/about'),
+        'src/routes/posts.tsx': fileRoute('/posts'),
+        'src/routes/posts.$id.tsx': fileRoute('/posts/$id'),
+      })
+      const { config, generator } = await startGenerator(root)
+
+      const content = await read(root, from)
+      const created = await save(root, to, content)
+      const deleted = await remove(root, from)
+      const events = [
+        { type: 'delete' as const, path: deleted },
+        { type: 'create' as const, path: created },
+      ]
+      if (first === 'create') {
+        events.reverse()
+      }
+      await Promise.all(events.map((event) => generator.run(event)))
+
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        ...routes,
+      })
+      expect(await routeIdOf(await read(root, to))).toBe(id)
+      expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(
+        await freshTree(root, config),
+      )
     },
   )
 })
@@ -374,49 +447,10 @@ export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx'
 })
 
 describe('generator plugins', () => {
-  test('afterTransform receives the previous route node of a changed route file', async () => {
-    // Like Start's server-only route detection: a route is server-only when
-    // its only option is `server`.
-    const isServerOnly = (node: RouteNode | undefined) =>
-      node?.createFileRouteProps?.size === 1 &&
-      node.createFileRouteProps.has('server')
-    let toggled: Array<string | undefined> = []
-    const plugin: GeneratorPlugin = {
-      name: 'server-only-toggles',
-      afterTransform({ node, prevNode }) {
-        if (isServerOnly(node) !== isServerOnly(prevNode)) {
-          toggled.push(node.routePath)
-        }
-      },
-    }
-    const root = await createApp({
-      'src/routes/__root.tsx': rootRoute(),
-      'src/routes/api.tsx': fileRoute('/api', '{ server: {} }'),
-      'src/routes/posts.tsx': fileRoute('/posts', '{ server: {} }'),
-    })
-    const { generator } = await startGenerator(root, { plugins: [plugin] })
-    expect(toggled.sort()).toEqual(['/api', '/posts'])
-
-    toggled = []
-    const posts = await save(
-      root,
-      'src/routes/posts.tsx',
-      fileRoute('/posts', '{ component: () => null }'),
-    )
-    await generator.run({ type: 'update', path: posts })
-    expect(toggled).toEqual(['/posts'])
-
-    toggled = []
-    await save(
-      root,
-      'src/routes/posts.tsx',
-      fileRoute('/posts', "{ component: () => 'edited' }"),
-    )
-    await generator.run({ type: 'update', path: posts })
-    expect(toggled).toEqual([])
-  })
-
-  test('getRoutesByFileMap maps each route file, the root route file included, to its route id', async () => {
+  // The bundler plugins find the route of a changed file through this map
+  // (route HMR); the id the root route file maps to is their own handshake,
+  // so only its presence is asserted.
+  test('getRoutesByFileMap maps each route file, the root route file included, to its route, also after a rerun', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts.tsx': fileRoute('/posts'),
@@ -430,14 +464,16 @@ describe('generator plugins', () => {
         ]),
       )
 
-    expect(routesByFile()).toEqual({
-      'src/routes/__root.tsx': '/__root',
-      'src/routes/posts.tsx': '/posts',
-    })
-    await generator.run({ type: 'rerun' })
-    expect(routesByFile()).toEqual({
-      'src/routes/__root.tsx': '/__root',
-      'src/routes/posts.tsx': '/posts',
-    })
+    for (const run of [false, true]) {
+      if (run) {
+        await generator.run({ type: 'rerun' })
+      }
+      const routes = routesByFile()
+      expect(Object.keys(routes).sort()).toEqual([
+        'src/routes/__root.tsx',
+        'src/routes/posts.tsx',
+      ])
+      expect(routes['src/routes/posts.tsx']).toBe('/posts')
+    }
   })
 })

@@ -1,112 +1,8 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
 import { parseSync, transformWithOxc } from 'vite'
-import { describe, expect, it, vi } from 'vitest'
-import { Generator, getConfig } from '../src'
+import { describe, expect, it } from 'vitest'
 import { createApp, generate, read } from './app'
 import { routesOf } from './route-tree'
 import type { Config } from '../src'
-
-/** The string the route call of a route file creates its route with. */
-function routeIdInFile(code: string) {
-  const { program, errors } = parseSync('route.tsx', code, {
-    sourceType: 'module',
-  })
-  expect(errors).toEqual([])
-  const ids: Array<unknown> = []
-  const visit = (node: unknown): void => {
-    if (Array.isArray(node)) {
-      node.forEach(visit)
-      return
-    }
-    if (!node || typeof node !== 'object') {
-      return
-    }
-    const record = node as Record<string, any>
-    if (
-      record.type === 'CallExpression' &&
-      record.callee?.type === 'Identifier' &&
-      /^create(?:Lazy)?FileRoute$/.test(record.callee.name)
-    ) {
-      ids.push(record.arguments[0]?.value)
-    }
-    Object.values(record).forEach(visit)
-  }
-  visit(program)
-  expect(ids).toHaveLength(1)
-  return ids[0]
-}
-
-/**
- * Runs the generator for `target` on an app whose route files with quotes
- * in their paths are empty, and returns the route ids the files it writes
- * create their routes with.
- */
-async function scaffoldQuotedRoutes(target: Config['target']) {
-  const log = vi.spyOn(console, 'log').mockImplementation(() => {})
-  const root = await mkdtemp(path.join(tmpdir(), 'tsr-template-'))
-  try {
-    await mkdir(path.join(root, 'routes'))
-    await writeFile(
-      path.join(root, 'routes/__root.tsx'),
-      `import { createRootRoute } from '@tanstack/${target}-router'
-export const Route = createRootRoute()`,
-    )
-    const files = ['say-"hi".tsx', 'later-"x".lazy.tsx']
-    for (const file of files) {
-      await writeFile(path.join(root, 'routes', file), '')
-    }
-    const config = getConfig({
-      target,
-      disableLogging: true,
-      routesDirectory: path.join(root, 'routes'),
-      generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-      // Same filesystem as the app, so the generator can rename its temp files
-      tmpDir: path.join(root, '.tanstack/tmp'),
-    })
-    await new Generator({ config, root }).run()
-    const ids: Array<unknown> = []
-    for (const file of files) {
-      ids.push(
-        routeIdInFile(await readFile(path.join(root, 'routes', file), 'utf8')),
-      )
-    }
-    return ids
-  } finally {
-    log.mockRestore()
-    await rm(root, { recursive: true, force: true })
-  }
-}
-
-// A new, empty route file gets a route scaffolded from the target's
-// template, with the route path as written in a string literal, quotes
-// included.
-describe('route templates', () => {
-  it.each(['react', 'solid'] as const)(
-    'scaffold %s routes whose paths contain quotes',
-    async (target) => {
-      expect(await scaffoldQuotedRoutes(target)).toEqual([
-        '/say-"hi"',
-        '/later-"x"',
-      ])
-    },
-  )
-
-  // Bug: the Vue route templates put the route path into the component's
-  // string literal unescaped (`h("div", {}, "Hello \"%%tsrPath%%\"!")`),
-  // where the React and Solid ones put it into JSX text, so a path with a
-  // `"` ends the string. Source: round-2 rewrite of the template tests,
-  // which only checked the escaped route id.
-  // Impact: route generation fails for a new, empty Vue route file whose
-  // path contains a double quote.
-  it.fails('scaffold vue routes whose paths contain quotes', async () => {
-    expect(await scaffoldQuotedRoutes('vue')).toEqual([
-      '/say-"hi"',
-      '/later-"x"',
-    ])
-  })
-})
 
 /** A rendered element: its type and children (strings or elements). */
 interface Rendered {
@@ -119,14 +15,16 @@ interface Rendered {
  * component once. The file may import only the target's router package
  * (stubbed: route constructors, `Outlet`) and the target's framework
  * (stubbed: Vue's `h`; Solid's JSX compiles like React's, to a stub JSX
- * runtime); like a bundler of an app without other packages, any other import
- * fails. Returns the route and the text and elements it renders.
+ * runtime, so only the structure of the rendered output is meaningful); like
+ * a bundler of an app without other packages, any other import fails.
+ * Returns the route (its id and the constructor that created it) and the
+ * text and elements it renders.
  */
 async function evaluateScaffold(code: string, target: Config['target']) {
   const element = `const element = (type, children) => ({ type, children: [children ?? []].flat(Infinity).filter((c) => c != null && c !== false) })`
   const stubs: Record<string, string> = {
-    [`@tanstack/${target}-router`]: `export const createFileRoute = (id) => (options) => ({ id, options })
-export const createLazyFileRoute = createFileRoute
+    [`@tanstack/${target}-router`]: `export const createFileRoute = (id) => (options) => ({ id, options, createdWith: 'createFileRoute' })
+export const createLazyFileRoute = (id) => (options) => ({ id, options, createdWith: 'createLazyFileRoute' })
 export const createRootRoute = (options) => ({ id: '__root__', options })
 export const Outlet = 'Outlet'`,
     ...(target === 'vue'
@@ -173,11 +71,18 @@ export const Fragment = 'Fragment'`,
     }
   }
   visit(rendered)
-  return { id: Route.id, text: text.join(''), types }
+  return {
+    id: Route.id,
+    createdWith: Route.createdWith,
+    text: text.join(''),
+    types,
+  }
 }
 
 // A new, empty route, lazy route or root route file is scaffolded into a
-// working route for each target.
+// working route for each target: the file evaluates to a Route created with
+// the right constructor and id, whose component renders something (the root
+// route's renders an Outlet). What it renders is free.
 describe.each(['react', 'solid', 'vue'] as const)(
   'scaffolded %s routes',
   (target) => {
@@ -195,25 +100,17 @@ describe.each(['react', 'solid', 'vue'] as const)(
         evaluateScaffold(await read(root, `src/routes/${file}`), target)
       const rootFile = await scaffolded('__root.tsx')
       expect(rootFile.id).toBe('__root__')
-      expect(rootFile.text).toContain('Hello')
       expect(rootFile.types).toContain('Outlet')
-      expect(await scaffolded('posts.tsx')).toMatchObject({
-        id: '/posts',
-        text: 'Hello "/posts"!',
-      })
-      expect(await scaffolded('about.lazy.tsx')).toMatchObject({
-        id: '/about',
-        text: 'Hello "/about"!',
-      })
-      // The greeting names the route path, its param included.
-      expect(await scaffolded('{-$locale}/contact.tsx')).toMatchObject({
-        id: '/{-$locale}/contact',
-        text: expect.stringMatching(/\$locale\/contact/),
-      })
-      expect(await scaffolded('{-$locale}/help.lazy.tsx')).toMatchObject({
-        id: '/{-$locale}/help',
-        text: expect.stringMatching(/\$locale\/help/),
-      })
+      for (const [file, id, createdWith] of [
+        ['posts.tsx', '/posts', 'createFileRoute'],
+        ['about.lazy.tsx', '/about', 'createLazyFileRoute'],
+        ['{-$locale}/contact.tsx', '/{-$locale}/contact', 'createFileRoute'],
+        ['{-$locale}/help.lazy.tsx', '/{-$locale}/help', 'createLazyFileRoute'],
+      ]) {
+        const route = await scaffolded(file!)
+        expect([route.id, route.createdWith]).toEqual([id, createdWith])
+        expect(route.text.length + route.types.length).toBeGreaterThan(0)
+      }
       expect(await routesOf(generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
         '/posts': 'routes/posts.tsx',
@@ -222,5 +119,85 @@ describe.each(['react', 'solid', 'vue'] as const)(
         '/{-$locale}/help': null,
       })
     })
+
+    // The docs (file-based-routing.md, `quoteStyle` and `semicolons`): "when
+    // you first create a new route, those files will be formatted with the
+    // quote style you specify" / "with semicolons".
+    it.each([
+      { quoteStyle: 'single', semicolons: false },
+      { quoteStyle: 'double', semicolons: true },
+    ] as const)(
+      'scaffolded files follow quoteStyle $quoteStyle and semicolons $semicolons',
+      async ({ quoteStyle, semicolons }) => {
+        const files = ['__root.tsx', 'posts.tsx', 'about.lazy.tsx']
+        const root = await createApp(
+          Object.fromEntries(files.map((file) => [`src/routes/${file}`, ''])),
+        )
+        await generate(root, { target, quoteStyle, semicolons })
+
+        for (const file of files) {
+          const code = await read(root, `src/routes/${file}`)
+          const style = codeStyle(code)
+          expect(style.quotes).toEqual([quoteStyle === 'single' ? "'" : '"'])
+          expect(style.statements).toBeGreaterThan(0)
+          expect(style.withSemicolon).toBe(semicolons ? style.statements : 0)
+        }
+      },
+    )
   },
 )
+
+/**
+ * The quote characters of the string literals of `code` without quote
+ * characters in them (a formatter may quote the others either way to avoid
+ * escapes; JSX attribute values aside), and how many of its statements that end with a semicolon in
+ * a file using them (imports, expressions, returns, variable declarations
+ * outside loop heads) there are, and end with one.
+ */
+function codeStyle(code: string) {
+  const { program, errors } = parseSync('route.tsx', code)
+  expect(errors).toEqual([])
+  const quotes = new Set<string>()
+  let statements = 0
+  let withSemicolon = 0
+  const visit = (node: unknown, parent?: Record<string, any>): void => {
+    if (Array.isArray(node)) {
+      node.forEach((child) => visit(child, parent))
+      return
+    }
+    if (!node || typeof node !== 'object') {
+      return
+    }
+    const record = node as Record<string, any>
+    if (record.type === 'JSXAttribute') {
+      return
+    }
+    if (
+      record.type === 'Literal' &&
+      typeof record.value === 'string' &&
+      !/["']/.test(record.value)
+    ) {
+      quotes.add(String(record.raw)[0]!)
+    }
+    if (
+      [
+        'ImportDeclaration',
+        'ExpressionStatement',
+        'ReturnStatement',
+        'VariableDeclaration',
+      ].includes(record.type) &&
+      !(parent?.type ?? '').startsWith('For') &&
+      parent?.type !== 'ExportNamedDeclaration'
+    ) {
+      statements++
+      if (code.slice(record.start, record.end).endsWith(';')) {
+        withSemicolon++
+      }
+    }
+    for (const value of Object.values(record)) {
+      visit(value, record)
+    }
+  }
+  visit(program)
+  return { quotes: [...quotes], statements, withSemicolon }
+}

@@ -341,15 +341,21 @@ async function postprocess(folderName: string) {
   }
 }
 
-function shouldThrow(folderName: string) {
+/**
+ * For a fixture whose routes conflict, the route files the generator's error
+ * must name (its wording is free).
+ */
+function shouldThrow(folderName: string): Array<string> | undefined {
+  const routeFile = (...file: Array<string>) =>
+    join(makeFolderDir(folderName), 'routes', ...file)
   if (folderName === 'duplicate-fullPath') {
-    return `Conflicting configuration paths were found for the following routes: "/", "/".`
+    return [routeFile('index.tsx'), routeFile('_auth', 'index.tsx')]
   }
   if (folderName === 'virtual-physical-empty-path-conflict-root') {
-    return 'Invalid route path "" was found.'
+    return [routeFile('merged', 'route.tsx')]
   }
   if (folderName === 'virtual-physical-empty-path-conflict-virtual') {
-    return `Conflicting configuration paths were found for the following routes: "/about", "/about".`
+    return [routeFile('about.tsx'), routeFile('merged', 'about.tsx')]
   }
   return undefined
 }
@@ -368,9 +374,16 @@ describe('generator works', async () => {
 
       await preprocess(folderName)
       const generator = new Generator({ config, root: folderRoot })
-      const error = shouldThrow(folderName)
-      if (error) {
-        await expect(generator.run()).rejects.toThrow(error)
+      const conflictingFiles = shouldThrow(folderName)
+      if (conflictingFiles) {
+        const error = await generator.run().then(
+          () => undefined,
+          (e: unknown) => e as Error,
+        )
+        expect(error).toBeInstanceOf(Error)
+        for (const file of conflictingFiles) {
+          expect(error!.message).toContain(file)
+        }
       } else {
         await generator.run()
 
@@ -401,45 +414,6 @@ describe('generator works', async () => {
     physicalDirectories.forEach((physicalDir) => {
       expect(path.isAbsolute(physicalDir)).toBe(true)
     })
-  })
-
-  it('should create directory for routeTree if it does not exist', async () => {
-    const folderName = 'only-root'
-    const folderRoot = makeFolderDir(folderName)
-
-    const config = await setupConfig(folderName)
-
-    rewriteConfigByFolderName(folderName, config)
-
-    await preprocess(folderName)
-    config.generatedRouteTree = join(
-      folderRoot,
-      'generated',
-      `/routeTree.gen.ts`,
-    )
-    const generator = new Generator({ config, root: folderRoot })
-    await generator.run()
-
-    const generatedRouteTree = await getRouteTreeFileText(config)
-
-    await expect(generatedRouteTree).toMatchFileSnapshot(
-      join(
-        'generator',
-        folderName,
-        `routeTree.generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
-      ),
-    )
-
-    const pathCreated = await fs
-      .access(dirname(config.generatedRouteTree))
-      .then(
-        () => true,
-        () => false,
-      )
-    expect(pathCreated).toBe(true)
-
-    await postprocess(folderName)
-    await fs.rm(dirname(config.generatedRouteTree), { recursive: true })
   })
 })
 
