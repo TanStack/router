@@ -50,8 +50,8 @@ describe('prerendered pages', () => {
    * Runs the route generator with Start's prerender plugin on an app with a
    * root route and `routes` (route files by path relative to the routes
    * directory). Returns the paths Start prerenders. (This reads the pages the
-   * prerender plugin hands to Start's prerender step, without a build;
-   * start-build-prerender.test.ts runs the step.)
+   * prerender plugin hands to Start's prerender step, without a build or the
+   * step itself.)
    */
   async function prerenderedPaths(routes: Record<string, string>) {
     const root = await mkdtemp(path.join(tmpdir(), 'tss-route-options-'))
