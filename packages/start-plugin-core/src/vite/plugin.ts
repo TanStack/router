@@ -41,7 +41,10 @@ import {
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
 import { createVirtualModule } from './createVirtualModule'
-import { discoverRequestMetadata } from './deployment-metadata'
+import {
+  createDeploymentRenderBuiltUrl,
+  discoverRequestMetadata,
+} from './deployment-metadata'
 
 import type {
   TanStackStartVitePluginCoreOptions,
@@ -115,6 +118,8 @@ export function tanStackStartVite(
           startConfig,
         })
 
+        let renderBuiltUrl: ((filename: string) => string) | undefined
+
         if (command === 'build') {
           const deploymentMetadataSource =
             await discoverRequestMetadata(viteConfig)
@@ -123,6 +128,16 @@ export function tanStackStartVite(
             deploymentMetadata = await resolveDeploymentMetadata(
               deploymentMetadataSource,
             )
+          }
+
+          if (deploymentMetadata) {
+            renderBuiltUrl = createDeploymentRenderBuiltUrl({
+              deploymentMetadata,
+              publicBase: resolvedStartConfig.basePaths.publicBase,
+              hasUserRenderBuiltUrl: Boolean(
+                viteConfig.experimental?.renderBuiltUrl,
+              ),
+            })
           }
         }
 
@@ -196,6 +211,7 @@ export function tanStackStartVite(
           // see https://vite.dev/config/shared-options.html#apptype
           // this will prevent vite from injecting middlewares that we don't want
           appType: viteConfig.appType ?? 'custom',
+          experimental: renderBuiltUrl ? { renderBuiltUrl } : undefined,
           environments: viteConfigPlan.environments,
           resolve: viteConfigPlan.resolve,
           define: createViteDefineConfig({

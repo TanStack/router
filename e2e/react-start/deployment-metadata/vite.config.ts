@@ -25,6 +25,8 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   build: {
     outDir,
+    // force url for asset tests
+    assetsInlineLimit: 0,
   },
   plugins: [
     withDeploymentMetadata && fakeDeploymentProvider(),

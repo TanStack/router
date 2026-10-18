@@ -4,6 +4,7 @@ import { createLogger } from '../utils'
 // types
 import type { UserConfig } from 'vite'
 import type { RequestMetadata } from '@vitejs/deployment-metadata-types'
+import type { ResolvedDeploymentMetadata } from '@tanstack/start-server-core'
 import type { RequestMetadataSource } from '../deployment-metadata-module'
 
 const VDM0001_MAPPERS: Partial<
@@ -48,4 +49,33 @@ export async function discoverRequestMetadata(
   }
 
   return undefined
+}
+
+export function createDeploymentRenderBuiltUrl(opts: {
+  deploymentMetadata: ResolvedDeploymentMetadata
+  publicBase: string
+  hasUserRenderBuiltUrl: boolean
+}): ((filename: string) => string) | undefined {
+  const queryCarrier = opts.deploymentMetadata.carriers.find(
+    (carrier) => carrier.type === 'query',
+  )
+
+  if (!queryCarrier) {
+    return undefined
+  }
+
+  if (opts.hasUserRenderBuiltUrl) {
+    logger.warn(
+      'experimental.renderBuiltUrl is already configured, so built asset urls are not tagged with the deployment id. Skew protection for assets is disabled.',
+    )
+
+    return undefined
+  }
+
+  const base = opts.publicBase.endsWith('/')
+    ? opts.publicBase
+    : `${opts.publicBase}/`
+  const query = `${encodeURIComponent(queryCarrier.name)}=${encodeURIComponent(opts.deploymentMetadata.value)}`
+
+  return (filename) => `${base}${filename}?${query}`
 }
