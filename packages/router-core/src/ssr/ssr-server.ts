@@ -455,7 +455,8 @@ export function attachRouterServerSsrUtils({
       if (cleanupStarted || router.serverSsr !== serverSsr) {
         return
       }
-      if (router._serverResult?.type === 'redirect') {
+      const result = router._serverResult
+      if (result?.type === 'redirect') {
         return
       }
       const dehydrate = router.options.dehydrate
@@ -470,6 +471,9 @@ export function attachRouterServerSsrUtils({
       }
       opts?.signal?.throwIfAborted()
       if (cleanupStarted || router.serverSsr !== serverSsr) {
+        return
+      }
+      if (router._serverResult?.type === 'redirect') {
         return
       }
       let matchesToDehydrate = _getRenderedMatches(router.stores.matches.get())

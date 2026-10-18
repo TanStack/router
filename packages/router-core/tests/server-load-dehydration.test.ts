@@ -134,6 +134,60 @@ test('skips custom dehydration when a lifecycle-started load settles as a redire
   }
 })
 
+test('does not serialize old matches when a custom dehydration hook starts a redirect', async () => {
+  const started = createControlledPromise<void>()
+  const gate = createControlledPromise<void>()
+  let calls = 0
+  let nested: Promise<void> | undefined
+  let nestedSettlement: Promise<Array<PromiseSettledResult<void>>> | undefined
+  const rootRoute = new BaseRootRoute({})
+  const route = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async () => {
+      if (++calls === 1) {
+        return { unsupported: () => 'server-only value' }
+      }
+      started.resolve()
+      await gate
+      throw redirect({ href: '/target', statusCode: 307 })
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([route]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    isServer: true,
+    dehydrate: () => {
+      nested = router.load()
+      nestedSettlement = Promise.allSettled([nested])
+      return {}
+    },
+  })
+  const render = vi.fn(() => new Response('unexpected HTML'))
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    const responsePromise = createRequestHandler({
+      request: new Request('http://localhost/'),
+      createRouter: () => router,
+    })(render)
+    await started
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(render).not.toHaveBeenCalled()
+    gate.resolve()
+    const response = await responsePromise
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe('/target')
+    expect(render).not.toHaveBeenCalled()
+    expect(errorSpy).not.toHaveBeenCalled()
+    await expect(nested).resolves.toBeUndefined()
+  } finally {
+    gate.resolve()
+    await nestedSettlement
+    router.serverSsr?.cleanup()
+    errorSpy.mockRestore()
+  }
+})
+
 test('rejects the request when a lifecycle-started load fails during dehydration', async () => {
   const fixture = setup('lifecycle-error')
   const render = vi.fn(() => new Response('unexpected HTML'))
