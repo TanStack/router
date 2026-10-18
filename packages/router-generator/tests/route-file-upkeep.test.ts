@@ -5,14 +5,22 @@
  * imported from the router package, and leaves everything else as the user
  * wrote it. Read back from disk and evaluated.
  *
- * An unused import of the other route constructor may be removed or kept
- * (coordinator ruling on audit D ASK-1): tests accept either, and always
- * check that the file evaluates, has the right id, binds the right
- * constructor once and keeps its code outside the imports.
+ * What the generator may change is checked by `expectOnlyOwnedEdits`
+ * (owned-edits.ts): the id argument, the constructor callee and the router
+ * package imports, whose other bindings stay. An unused import of the other
+ * route constructor may be removed or kept (coordinator ruling on audit D
+ * ASK-1; SPEC J1.2), and the printing of an edited import (quotes,
+ * semicolons, line) is free.
  */
+import path from 'node:path'
 import { parseSync } from 'vite'
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import {
+  diagnosticsOf,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { createApp, generate, read, rootRoute } from './app'
+import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
 import { evaluateModule, routesOf } from './route-tree'
 import type { Config } from '../src'
@@ -57,6 +65,8 @@ async function upkeep(
     error = e as Error
   }
   return {
+    root,
+    file: path.join(root, 'src/routes', file),
     written: await read(root, `src/routes/${file}`),
     routes,
     warnings,
@@ -77,55 +87,34 @@ function routerValueImports(code: string) {
 }
 
 /**
- * The module without its BOM and its import declarations, and without the
- * lines that held nothing but import declarations.
- */
-function withoutImports(code: string) {
-  const source = code.replace(/^\uFEFF/, '')
-  const { program } = parseSync('route.tsx', source)
-  const removed = '\u0000'
-  let marked = ''
-  let last = 0
-  for (const statement of program.body) {
-    if (statement.type === 'ImportDeclaration') {
-      marked += source.slice(last, statement.start) + removed
-      last = statement.end
-    }
-  }
-  marked += source.slice(last)
-  return marked
-    .split(/(?<=\n)/)
-    .filter(
-      (line) =>
-        !(line.includes(removed) && line.replaceAll(removed, '').trim() === ''),
-    )
-    .map((line) => line.replaceAll(removed, ''))
-    .join('')
-}
-
-/**
- * Asserts the upkeep of a route file: it evaluates with the real router, its
- * Route is created with `createdWith` and `id`, which it binds once from the
- * router package, and its code outside the imports is `expected`'s.
+ * Asserts the upkeep of a route file written from `source`: it evaluates
+ * with the real router, its Route is created with `createdWith` and `id`,
+ * which it binds once from the router package, and it changed only where
+ * the generator may edit it (owned-edits.ts).
  */
 async function expectRouteFile(
   written: string,
   {
     id,
     createdWith = 'createFileRoute',
-    expected,
+    source,
+    fileName,
   }: {
     id: string
     createdWith?: 'createFileRoute' | 'createLazyFileRoute'
-    expected: string
+    source: string
+    fileName?: string
   },
 ) {
-  await evaluateModule(written)
-  expect(routeCallOf(written)).toEqual({ constructor: createdWith, id })
+  await evaluateModule(written, fileName)
+  expect(routeCallOf(written, fileName)).toEqual({
+    constructor: createdWith,
+    id,
+  })
   expect(
     routerValueImports(written).filter((name) => name === createdWith),
   ).toHaveLength(1)
-  expect(withoutImports(written)).toBe(withoutImports(expected))
+  expectOnlyOwnedEdits(source, written, fileName)
 }
 
 describe('route ids the generator fixes', () => {
@@ -154,10 +143,7 @@ export const Route = ${call}
 `
     const { written, routes } = await upkeep('new.tsx', source)
 
-    await expectRouteFile(written, {
-      id: '/new',
-      expected: source.replace('/old', '/new'),
-    })
+    await expectRouteFile(written, { id: '/new', source })
     expect(routes).toEqual({
       __root__: 'routes/__root.tsx',
       '/new': 'routes/new.tsx',
@@ -178,10 +164,12 @@ export { Route }
 `,
     },
     {
-      name: 'another, not exported route call',
-      body: `const OtherRoute = createFileRoute('/other')({})
+      // (one route per route file, DECISIONS 2026-10-18: the other call is
+      // an ordinary function call with a path-like string argument)
+      name: 'another call with a path argument before it',
+      body: `const otherPath = encodeURI('/other')
 export const Route = createFileRoute('/old')({})
-export const other = OtherRoute
+export const other = otherPath
 `,
     },
   ])(
@@ -190,10 +178,7 @@ export const other = OtherRoute
       const source = `import { createFileRoute } from ${router}\n\n${body}`
       const { written } = await upkeep('new.tsx', source)
 
-      await expectRouteFile(written, {
-        id: '/new',
-        expected: source.replace('/old', '/new'),
-      })
+      await expectRouteFile(written, { id: '/new', source })
     },
   )
 
@@ -208,7 +193,7 @@ export const Route = createFileRoute('/old')({
 `
     const { written, routes } = await upkeep('new.ts', source)
 
-    expect(written).toBe(source.replace('/old', '/new'))
+    await expectRouteFile(written, { id: '/new', source, fileName: 'new.ts' })
     expect(routes).toEqual({
       __root__: 'routes/__root.tsx',
       '/new': 'routes/new.ts',
@@ -288,21 +273,8 @@ export const Route = createLazyFileRoute('/old')({})
     async ({ source }) => {
       const { written } = await upkeep('new.tsx', source)
 
-      await expectRouteFile(written, {
-        id: '/new',
-        expected: source
-          .replace('/old', '/new')
-          .replace('createLazyFileRoute(', 'createFileRoute('),
-      })
-      // An import declaration keeps its semicolon (or lack of one).
-      const routerImports = written
-        .split(/\r?\n/)
-        .filter((line) => line.startsWith('import ') && line.includes(router))
-      for (const line of routerImports) {
-        expect(line.endsWith(';')).toBe(source.includes(`${router};`))
-      }
-      // A type import stays a type import.
-      expect(routerValueImports(written)).not.toContain('LinkProps')
+      // (a type import stays a type import: expectOnlyOwnedEdits)
+      await expectRouteFile(written, { id: '/new', source })
     },
   )
 
@@ -321,7 +293,7 @@ export const Route = createFileRoute('/new')({
     await expectRouteFile(written, {
       id: '/new',
       createdWith: 'createLazyFileRoute',
-      expected: source.replace('createFileRoute(', 'createLazyFileRoute('),
+      source,
     })
   })
 
@@ -370,13 +342,7 @@ export const Route = createFileRoute('/new')({})
         source,
       )
 
-      await expectRouteFile(written, {
-        id: '/new',
-        createdWith,
-        expected: lazy
-          ? source.replace('createFileRoute(', 'createLazyFileRoute(')
-          : source,
-      })
+      await expectRouteFile(written, { id: '/new', createdWith, source })
     },
   )
 })
@@ -385,56 +351,30 @@ describe('missing route constructor imports', () => {
   test.each([
     {
       name: 'LF line endings',
-      newline: '\n',
-      lines: ['// a', "export const Route = createFileRoute('/old')({})", ''],
+      source: "// a\nexport const Route = createFileRoute('/old')({})\n",
     },
     {
       name: 'CRLF line endings',
-      newline: '\r\n',
-      lines: ['// a', "export const Route = createFileRoute('/old')({})", ''],
+      source: "// a\r\nexport const Route = createFileRoute('/old')({})\r\n",
     },
     {
       name: 'a single line',
-      newline: '\n',
-      lines: ["export const Route = createFileRoute('/old')({})"],
+      source: "export const Route = createFileRoute('/old')({})",
     },
     {
       name: 'an import of another package',
-      newline: '\n',
-      lines: [
-        "import { useState } from 'react'",
-        '',
-        "export const Route = createFileRoute('/old')({})",
-        '',
-      ],
+      source: `import { useState } from 'react'
+
+export const state = useState
+export const Route = createFileRoute('/old')({})
+`,
     },
   ])(
-    'a route file without the constructor import gets it on its own line, with $name',
-    async ({ newline, lines }) => {
-      const source = lines.join(newline)
+    'a route file without the constructor import gets it, with $name',
+    async ({ source }) => {
       const { written } = await upkeep('new.tsx', source)
 
-      const other = newline === '\n' ? '\r\n' : '\n'
-      const outputLines = written.split(newline)
-      expect(outputLines.filter((line) => !line.startsWith('import '))).toEqual(
-        lines
-          .filter((line) => !line.startsWith('import '))
-          .map((line) => line.replace('/old', '/new')),
-      )
-      // No other line ending is mixed in.
-      expect(
-        other === '\n' ? /(?<!\r)\n/.test(written) : written.includes('\r'),
-      ).toBe(false)
-      // The other imports stay.
-      for (const line of lines.filter((line) => line.startsWith('import '))) {
-        expect(outputLines).toContain(line)
-      }
-      expect(routerValueImports(written)).toEqual(['createFileRoute'])
-      await evaluateModule(written)
-      expect(routeCallOf(written)).toEqual({
-        constructor: 'createFileRoute',
-        id: '/new',
-      })
+      await expectRouteFile(written, { id: '/new', source })
     },
   )
 
@@ -452,41 +392,23 @@ describe('missing route constructor imports', () => {
 import { Link } from ${router}`,
       uses: 'Router.Link, Link',
     },
+    {
+      name: 'a namespace import, in a file using semicolons',
+      imports: `import * as Router from ${router};`,
+      uses: 'Router',
+    },
   ])(
     'a route file calling createFileRoute next to $name gets it bound once',
     async ({ imports, uses }) => {
-      const body = `export const uses = [${uses}]
+      const source = `${imports}
+export const uses = [${uses}]
 export const Route = createFileRoute('/old')({})
 `
-      const { written } = await upkeep('new.tsx', `${imports}\n${body}`)
+      const { written } = await upkeep('new.tsx', source)
 
-      await expectRouteFile(written, {
-        id: '/new',
-        expected: body.replace('/old', '/new'),
-      })
+      await expectRouteFile(written, { id: '/new', source })
     },
   )
-
-  test('the added import ends with a semicolon in a file using them', async () => {
-    const source = `import * as Router from ${router};
-export const r = Router;
-export const Route = createFileRoute('/old')({});
-`
-    const { written } = await upkeep('new.tsx', source)
-
-    await expectRouteFile(written, {
-      id: '/new',
-      expected: source.replace('/old', '/new'),
-    })
-    const added = written
-      .split('\n')
-      .filter(
-        (line) =>
-          line.startsWith('import ') && line.includes('createFileRoute'),
-      )
-    expect(added).toHaveLength(1)
-    expect(added[0]).toMatch(/;$/)
-  })
 
   test.each([
     {
@@ -507,19 +429,8 @@ export const Route = createFileRoute('/old')({})
   ])('type imports stay type-only: $name', async ({ source }) => {
     const { written } = await upkeep('new.tsx', source)
 
-    await expectRouteFile(written, {
-      id: '/new',
-      expected: source.replace('/old', '/new'),
-    })
-    expect(routerValueImports(written)).not.toContain('LinkProps')
-    const { module } = parseSync('route.tsx', written)
-    expect(
-      module.staticImports.flatMap((statement) =>
-        statement.entries
-          .filter((entry) => entry.isType)
-          .map((entry) => entry.localName.value),
-      ),
-    ).toEqual(['LinkProps'])
+    // (expectOnlyOwnedEdits: `LinkProps` is still imported as a type)
+    await expectRouteFile(written, { id: '/new', source })
   })
 })
 
@@ -535,9 +446,11 @@ describe('stale imports of the other constructor', () => {
       ].join('\r\n'),
     },
     {
-      name: 'a BOM and astral characters before them',
+      // (BOM-free: SPEC §2.1 selects BOM-free UTF-8 sources; a BOM is
+      // characterised in tests/outside-compiler-corpus/bom.test.ts)
+      name: 'astral characters before them and in the route call',
       source: [
-        '\uFEFF// 😀',
+        '// 😀',
         `import { createLazyFileRoute } from ${router}`,
         `import { createFileRoute } from ${router}`,
         "export const Route = createFileRoute(/* 🚀 */ '/old')({})",
@@ -579,16 +492,7 @@ export const Route = createFileRoute('/old')({})`,
   ])('a route file with $name gets its id fixed', async ({ source }) => {
     const { written } = await upkeep('new.tsx', source)
 
-    await expectRouteFile(written, {
-      id: '/new',
-      expected: source.replace('/old', '/new'),
-    })
-    // The file keeps its BOM and its line endings.
-    expect(written.startsWith('\uFEFF')).toBe(source.startsWith('\uFEFF'))
-    const crlf = source.includes('\r\n')
-    expect(crlf ? /(?<!\r)\n/.test(written) : written.includes('\r')).toBe(
-      false,
-    )
+    await expectRouteFile(written, { id: '/new', source })
   })
 })
 
@@ -612,9 +516,10 @@ export const Route = makeRoute()({})
     expect(written).toBe(source)
   })
 
-  // A route id the generator cannot rewrite, or a malformed route call: the
-  // user is told which file, by a failed run or by a warning (the file then
-  // stays as it is).
+  // A route id that is not a string literal: replacing it with the right
+  // literal (everything else as owned-edits.ts allows) and an actionable
+  // diagnostic naming the file (a failed run or a warning; the file then
+  // stays as it is) are both correct (SPEC J1.1).
   test.each([
     {
       name: 'an id read from a variable',
@@ -630,6 +535,33 @@ const x = 'old'
 export const Route = createFileRoute(\`/\${x}\`)({})
 `,
     },
+  ])(
+    'a route file with $name gets the literal id or is reported by name',
+    async ({ source }) => {
+      const { root, file, written, routes, warnings, error } = await upkeep(
+        'new.tsx',
+        source,
+      )
+
+      if (routeCallOf(written).id === '/new') {
+        await expectRouteFile(written, { id: '/new', source })
+        expect(routes).toEqual({
+          __root__: 'routes/__root.tsx',
+          '/new': 'routes/new.tsx',
+        })
+      } else {
+        expectDiagnostic(
+          [...diagnosticsOf(error), ...diagnosticsOf(warnings, 'warning')],
+          { file, root },
+        )
+        expect(written).toBe(source)
+      }
+    },
+  )
+
+  // A malformed route call: the user is told which file, by a failed run or
+  // by a warning (the file then stays as it is).
+  test.each([
     {
       name: 'options passed to createFileRoute directly',
       source: `import { createFileRoute } from ${router}
@@ -638,20 +570,24 @@ export const Route = createFileRoute({ component: () => null })
     },
     {
       name: 'options passed to createLazyFileRoute directly',
-      file: 'new.lazy.tsx',
+      fileName: 'new.lazy.tsx',
       source: `import { createLazyFileRoute } from ${router}
 export const Route = createLazyFileRoute({ component: () => null })
 `,
     },
   ])(
     'a route file with $name is reported by name',
-    async ({ source, file = 'new.tsx' }) => {
-      const { written, warnings, error } = await upkeep(file, source)
+    async ({ source, fileName = 'new.tsx' }) => {
+      const { root, file, written, warnings, error } = await upkeep(
+        fileName,
+        source,
+      )
 
-      if (error) {
-        expect(error.message).toContain(file)
-      } else {
-        expect(warnings.join('\n')).toContain(file)
+      expectDiagnostic(
+        [...diagnosticsOf(error), ...diagnosticsOf(warnings, 'warning')],
+        { file, root },
+      )
+      if (!error) {
         expect(written).toBe(source)
       }
     },

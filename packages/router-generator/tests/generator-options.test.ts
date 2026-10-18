@@ -9,9 +9,14 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { parseSync } from 'vite'
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import {
+  captureConsole,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator, getConfig } from '../src'
+import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf, routeIdOf } from './route-id'
-import { evaluateModule, routesOf } from './route-tree'
+import { routesOf, withRouteTree } from './route-tree'
 import type { Config } from '../src'
 
 let roots: Array<string> = []
@@ -88,21 +93,13 @@ function Posts() {
 }
 `
 
+  // (UTF-8 BOMs: outside the compiler test corpus, SPEC \u00A72.1 selects
+  // BOM-free sources; tests/outside-compiler-corpus/bom.test.ts)
   test.each([
     {
       name: 'CRLF line endings',
       file: 'posts.tsx',
       source: postsRoute().replaceAll('\n', '\r\n'),
-    },
-    {
-      name: 'a UTF-8 BOM',
-      file: 'posts.tsx',
-      source: `\uFEFF${postsRoute()}`,
-    },
-    {
-      name: 'a UTF-8 BOM and CRLF line endings',
-      file: 'posts.tsx',
-      source: `\uFEFF${postsRoute()}`.replaceAll('\n', '\r\n'),
     },
     {
       name: 'quoteStyle double and semicolons, in a file using them',
@@ -167,8 +164,12 @@ export const Route = createFileRoute('/old')({
       const { generatedRouteTree } = await generate(root, config)
 
       const written = await read(root, `src/routes/${file}`)
-      expect(written).toBe(source.replace(/(['"])\/old\1/, '$1/posts$1'))
-      expect(await routeIdOf(written)).toBe('/posts')
+      // (the quote character of the edited id is free, SPEC J1.2)
+      expectOnlyOwnedEdits(source, written, file)
+      expect(routeCallOf(written, file)).toEqual({
+        constructor: 'createFileRoute',
+        id: '/posts',
+      })
       expect(await routesOf(generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
         '/posts': `routes/${file}`,
@@ -180,13 +181,12 @@ export const Route = createFileRoute('/old')({
     const routerPackage = `@tanstack/${target}-router`
 
     test.each([
-      { name: 'LF', newline: '\n', bom: '' },
-      { name: 'CRLF and a BOM', newline: '\r\n', bom: '\uFEFF' },
+      { name: 'LF', newline: '\n' },
+      { name: 'CRLF', newline: '\r\n' },
     ])(
       'a lazy route file created with createFileRoute gets createLazyFileRoute, with $name',
-      async ({ newline, bom }) => {
-        const source =
-          `${bom}import { Link, createFileRoute } from '${routerPackage}'
+      async ({ newline }) => {
+        const source = `import { Link, createFileRoute } from '${routerPackage}'
 
 export const Route = createFileRoute('/posts')({
   component: () => <Link to="/">Home</Link>,
@@ -205,19 +205,14 @@ export const Route = createFileRoute('/posts')({
         const { generatedRouteTree } = await generate(root, { target })
 
         const written = await read(root, 'src/routes/posts.lazy.tsx')
-        // Only the constructor changes: the file keeps its BOM, and the code
-        // outside the imports changes only in the constructor call.
-        expect(written.startsWith('\uFEFF')).toBe(bom !== '')
-        expect(withoutImports(written)).toBe(
-          withoutImports(source).replace(
-            'createFileRoute(',
-            'createLazyFileRoute(',
+        // Only the constructor changes: `Link` stays bound, and the now
+        // unused `createFileRoute` import may stay or go (SPEC J1.2).
+        expectOnlyOwnedEdits(source, written)
+        expect(
+          valueImports(written, routerPackage).filter(
+            (name) => name === 'createLazyFileRoute',
           ),
-        )
-        expect(valueImports(written, routerPackage).sort()).toEqual([
-          'Link',
-          'createLazyFileRoute',
-        ])
+        ).toHaveLength(1)
         expect(routeCallOf(written)).toEqual({
           constructor: 'createLazyFileRoute',
           id: '/posts',
@@ -243,16 +238,12 @@ export const Route = createFileRoute('/old')({
       await generate(root, { target })
 
       const written = await read(root, 'src/routes/posts.tsx')
-      expect(valueImports(written, routerPackage)).toEqual(
-        expect.arrayContaining(['createFileRoute', 'Link']),
-      )
       expect(routeCallOf(written)).toEqual({
         constructor: 'createFileRoute',
         id: '/posts',
       })
-      expect(withoutImports(written)).toBe(
-        withoutImports(source.replace('/old', '/posts')),
-      )
+      // (`Link` stays bound: expectOnlyOwnedEdits)
+      expectOnlyOwnedEdits(source, written)
     })
   })
 })
@@ -338,36 +329,21 @@ export const Route = createFileRoute('/old')({})
       '/日本語': 'routes/日本語.tsx',
       '/日本語/$id': 'routes/日本語.$id.tsx',
     })
-    expect(await read(root, 'src/routes/café.tsx')).toBe(
-      route.replace('/old', '/café'),
-    )
-    expect(await read(root, 'src/routes/日本語.$id.tsx')).toBe(
-      route.replace('/old', '/日本語/$id'),
-    )
+    for (const [file, id] of [
+      ['café.tsx', '/café'],
+      ['日本語.$id.tsx', '/日本語/$id'],
+    ] as const) {
+      const written = await read(root, `src/routes/${file}`)
+      expectOnlyOwnedEdits(route, written)
+      expect(routeCallOf(written)).toEqual({
+        constructor: 'createFileRoute',
+        id,
+      })
+    }
   })
 
-  // Control: "a route file without the route constructor import gets it from
-  // @tanstack/react-router" above (same harness, without the prefix).
-
-  // Bug: the generator adds a missing route constructor import at the very
-  // start of the file, before a UTF-8 BOM.
-  // Source: src/transform/transform.ts:560 (`s.prepend` of the import).
-  // Impact: the BOM ends up after the import, as a stray zero-width
-  // character on the second line, and the file no longer starts with it.
-  test.fails.each([{ name: 'a UTF-8 BOM', prefix: '\uFEFF' }])(
-    'a route file starting with $name keeps it when the route constructor import is added',
-    async ({ prefix }) => {
-      const root = await createApp({
-        'src/routes/__root.tsx': rootRoute(),
-        'src/routes/posts.tsx': `${prefix}export const Route = createFileRoute('/old')({})\n`,
-      })
-      await generate(root)
-
-      const written = await read(root, 'src/routes/posts.tsx')
-      expect(written.startsWith(prefix)).toBe(true)
-      expect(await routeIdOf(written)).toBe('/posts')
-    },
-  )
+  // (A route file starting with a UTF-8 BOM: outside the compiler test
+  // corpus, tests/outside-compiler-corpus/bom.test.ts.)
 })
 
 describe('virtual route config in tsr.config.json', () => {
@@ -495,13 +471,19 @@ export const Route = createLazyFileRoute('/posts')({})
       const code = await readFile(generatedRouteTree, 'utf8')
       const { program, errors } = parseSync('routeTree.gen.ts', code)
       expect(errors).toEqual([])
+      // The quotes of the string literals without quote characters in them
+      // (a printer may quote the others either way to avoid escapes).
       const quotes = new Set<string>()
       const visit = (node: unknown) => {
         if (Array.isArray(node)) {
           node.forEach(visit)
         } else if (node && typeof node === 'object') {
           const { type, value, raw } = node as Record<string, unknown>
-          if (type === 'Literal' && typeof value === 'string') {
+          if (
+            type === 'Literal' &&
+            typeof value === 'string' &&
+            !/["']/.test(value)
+          ) {
             quotes.add(String(raw)[0]!)
           }
           Object.values(node).forEach(visit)
@@ -678,6 +660,9 @@ export const Route = createLazyFileRoute('/about')({})
 })
 
 describe('custom scaffolding', () => {
+  // The lazy template uses an option a lazy route takes (`component`;
+  // `staticData` is no option of createLazyFileRoute: tsc TS2353,
+  // api/router/createLazyFileRouteFunction.md:22-28).
   test('customScaffolding in tsr.config.json scaffolds new route and lazy route files', async () => {
     const root = await createApp({
       'tsr.config.json': JSON.stringify({
@@ -685,24 +670,30 @@ describe('custom scaffolding', () => {
           routeTemplate:
             '%%tsrImports%%\n\n%%tsrExportStart%%{ staticData: { template: "route" } }%%tsrExportEnd%%\n',
           lazyRouteTemplate:
-            '%%tsrImports%%\n\n%%tsrExportStart%%{ staticData: { template: "lazy" } }%%tsrExportEnd%%\n',
+            '%%tsrImports%%\n\n%%tsrExportStart%%{ component: () => "lazy template" }%%tsrExportEnd%%\n',
         },
       }),
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts.tsx': '',
       'src/routes/about.lazy.tsx': '',
     })
-    await generate(root)
+    const { generatedRouteTree } = await generate(root)
 
-    for (const [file, constructor, id, template] of [
-      ['posts.tsx', 'createFileRoute', '/posts', 'route'],
-      ['about.lazy.tsx', 'createLazyFileRoute', '/about', 'lazy'],
+    for (const [file, constructor, id] of [
+      ['posts.tsx', 'createFileRoute', '/posts'],
+      ['about.lazy.tsx', 'createLazyFileRoute', '/about'],
     ]) {
-      const code = await read(root, `src/routes/${file}`)
-      expect(routeCallOf(code)).toEqual({ constructor, id })
-      const { exports } = await evaluateModule(code)
-      expect(exports.Route.options.staticData).toEqual({ template })
+      expect(routeCallOf(await read(root, `src/routes/${file}`))).toEqual({
+        constructor,
+        id,
+      })
     }
+    await withRouteTree(generatedRouteTree, async ({ router, renderAt }) => {
+      expect(router.routesById['/posts']!.options.staticData).toEqual({
+        template: 'route',
+      })
+      expect(await renderAt('/about')).toContain('lazy template')
+    })
   })
 })
 
@@ -779,34 +770,53 @@ describe('route tree path', () => {
 })
 
 describe('logging', () => {
-  // (`disableLogging: true` silencing the logs is outside the compiler test
-  // corpus: tests/outside-compiler-corpus/config-options.test.ts)
-  test('with logging on, a run that scaffolds and skips route files names them', async () => {
-    const output: Array<string> = []
-    for (const method of ['log', 'info', 'warn', 'error', 'debug'] as const) {
-      vi.spyOn(console, method).mockImplementation((...args) => {
-        output.push(args.join(' '))
-      })
-    }
-    const root = await createApp({
-      // An empty root route is scaffolded, with a log.
-      'src/routes/__root.tsx': '',
-      // A route file without a Route export is left out, with a warning.
-      'src/routes/helpers.tsx': 'export const helper = 1\n',
-      // An invalid param name gets a warning.
-      'src/routes/$123.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  /**
+   * An app whose run scaffolds a route file (an empty root route) and skips
+   * one (a route file without a Route export).
+   */
+  const app = () => ({
+    'src/routes/__root.tsx': '',
+    'src/routes/helpers.tsx': 'export const helper = 1\n',
+    'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/$123')({})
+export const Route = createFileRoute('/')({})
 `,
-    })
-    const { generatedRouteTree } = await generate(root, {
-      disableLogging: false,
-    })
+  })
 
-    expect(existsSync(generatedRouteTree)).toBe(true)
-    expect(output.join('\n')).toContain('__root.tsx')
-    expect(output.join('\n')).toContain('helpers.tsx')
-    expect(output.join('\n')).toContain('$123')
+  // A route file without a Route export is left out with a warning naming it
+  // (SPEC J1.12, G5); what else the run logs is free.
+  test('with logging on, a route file without a Route export is left out with a warning naming it', async () => {
+    const root = await createApp(app())
+    const { result: config, diagnostics } = await captureConsole(() =>
+      generate(root, { disableLogging: false }),
+    )
+
+    expectDiagnostic(diagnostics, {
+      severity: ['warning', 'error'],
+      file: path.join(root, 'src/routes/helpers.tsx'),
+      root,
+    })
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/': 'routes/index.tsx',
+    })
+  })
+
+  // `disableLogging` silences the route generation logging (SPEC J1.12);
+  // actionable warnings stay allowed (G5).
+  test('with disableLogging, a run that scaffolds and skips route files logs no route generation messages', async () => {
+    const root = await createApp(app())
+    const { result: config, diagnostics } = await captureConsole(() =>
+      generate(root, { disableLogging: true }),
+    )
+
+    expect(
+      diagnostics.filter((diagnostic) => diagnostic.severity === 'info'),
+    ).toEqual([])
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/': 'routes/index.tsx',
+    })
   })
 })
 
@@ -823,16 +833,4 @@ function valueImports(code: string, source: string) {
         .filter((entry) => !entry.isType)
         .map((entry) => entry.localName.value),
     )
-}
-
-/**
- * The module without its BOM and its import declarations (each on its own
- * line).
- */
-function withoutImports(code: string) {
-  return code
-    .replace(/^\uFEFF/, '')
-    .split(/(?<=\n)/)
-    .filter((line) => !line.startsWith('import '))
-    .join('')
 }
