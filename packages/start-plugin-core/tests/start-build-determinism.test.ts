@@ -84,14 +84,17 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
-  // A `generateFunctionId` giving two server fns the same id: the builds
-  // deduplicate it, and each client id must reach its own handler in the
-  // SSR build, which compiles the two modules in the opposite order.
-  // Source: oracle-gaps H3 (dedup suffix depends on compile order).
+  // A `generateFunctionId` giving two server fns the same id. Either the
+  // build fails with an error naming the id, or each server fn gets its own
+  // id and each client id reaches its own handler in the SSR build, which
+  // compiles the two modules in the opposite order. A build that silently
+  // runs the wrong handler is never right.
+  // Source: oracle-gaps H3 (dedup suffix depends on compile order);
+  // coordinator ruling 2026-10-18 (either outcome).
   test(
-    'with colliding custom ids and opposite compile orders, each client id runs its own handler in the SSR build',
+    'with colliding custom ids and opposite compile orders, the build fails naming the id, or each client id runs its own handler in the SSR build',
     async () => {
-      const { client, ssr } = await buildStart({
+      const outcome = await buildStart({
         bundler,
         files: {
           'src/a.ts': appFiles['src/a.ts']!,
@@ -107,7 +110,12 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
         },
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
         start: { serverFns: { generateFunctionId: () => 'same-id' } },
-      })
+      }).catch((error: unknown) => error)
+      if (outcome instanceof Error) {
+        expect(outcome.message).toContain('same-id')
+        return
+      }
+      const { client, ssr } = outcome as StartBuild
       const ids = (
         await client.run(
           `return { a: entry.greetA.functionId, b: entry.greetB.functionId }`,

@@ -15,7 +15,8 @@
  * (`startRuntimeFiles`, and `routerRuntimeFiles` for apps with routes):
  * server functions run their handler, SSR callers go through the generated
  * server fn resolver, client RPCs throw when called, server builds keep
- * middleware as written. The app's entries are the harness's: the client and
+ * middleware as written, and a middleware's `.server()` throws on the client
+ * (the `browser` export condition). The app's entries are the harness's: the client and
  * server entries Start builds import `#tanstack-start-entry` (`src/start.ts`
  * when the app has one), `#tanstack-router-entry` (`src/router.ts`, a stub
  * unless the app has one) and the test's entry module, whose exports `run()`
@@ -74,15 +75,19 @@ export const startRuntimeFiles: Record<string, string> = {
     name: '@tanstack/react-start',
     type: 'module',
     sideEffects: false,
-    exports: importExports({
-      '.': './index.js',
-      './client-rpc': './client-rpc.js',
-      './server-rpc': './server-rpc.js',
-      './ssr-rpc': './ssr-rpc.js',
-      './server': './server.js',
-      './server-only': './marker.js',
-      './client-only': './marker.js',
-    }),
+    exports: {
+      // The client gets a `createMiddleware` whose `.server()` throws:
+      // the client build must not call it (Start removes it).
+      '.': { browser: './index.client.js', import: { default: './index.js' } },
+      ...importExports({
+        './client-rpc': './client-rpc.js',
+        './server-rpc': './server-rpc.js',
+        './ssr-rpc': './ssr-rpc.js',
+        './server': './server.js',
+        './server-only': './marker.js',
+        './client-only': './marker.js',
+      }),
+    },
   }),
   [`${startPackage}/index.js`]: `const uncompiled = (name) => () => {
   throw new Error('uncompiled Start factory: ' + name)
@@ -91,7 +96,6 @@ export function createServerFn() {
   let validator
   const builder = {
     middleware: () => builder,
-    inputValidator: () => builder,
     validator(value) {
       validator = value
       return builder
@@ -130,6 +134,16 @@ export function createMiddleware(options) {
   return builder
 }
 export const createStart = (getOptions) => ({ getOptions })
+`,
+  [`${startPackage}/index.client.js`]: `import { createMiddleware as createServerMiddleware } from './index.js'
+export * from './index.js'
+export function createMiddleware(options) {
+  const builder = createServerMiddleware(options)
+  builder.server = () => {
+    throw new Error('createMiddleware().server() called on the client')
+  }
+  return builder
+}
 `,
   [`${startPackage}/client-rpc.js`]: `export const createClientRpc = (id) =>
   Object.assign(

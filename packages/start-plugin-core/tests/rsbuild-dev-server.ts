@@ -20,6 +20,7 @@ import { startRuntimeFiles } from './build-harness'
 import { testLoaderFiles, useTestLoaders } from './rsbuild-test-loaders'
 import type { ImportProtectionOptions } from '../src/schema'
 import type { GenerateFunctionIdFnOptional } from '../src/start-compiler/types'
+import type { StartCompilerImportTransform } from '../src/types'
 import type {
   RsbuildDevServer,
   RsbuildDevServerOptions,
@@ -93,9 +94,15 @@ export function startRsbuildDevServer(
  * the app has them.
  */
 export function startRsbuildStartDevServer(
-  options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'>,
+  options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
+    /**
+     * External import transforms of the Start compiler, which a framework
+     * package passes to Start's plugin (e.g. React's RSC CSS transform).
+     */
+    compilerTransforms?: Array<StartCompilerImportTransform>
+  },
 ): Promise<RsbuildDevServer> {
-  const { files, ...devServerOptions } = options
+  const { files, compilerTransforms, ...devServerOptions } = options
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-start-dev-server-',
@@ -126,10 +133,46 @@ export const Route = createRootRoute()
         },
         providerEnvironmentName: 'ssr',
         ssrIsProvider: true,
+        compilerTransforms,
       }),
       useTestLoaders(root),
     ],
   })
+}
+
+/**
+ * Runs the JavaScript the dev server's `client` environment emitted, like a
+ * browser loading the page (in a fresh VM context), then `script` (the body
+ * of an async function) in the same context. Returns what the script
+ * returns (`result`), or the message of what it throws (`error`). (A
+ * script must not await an import-protection mock: the mock is a thenable
+ * that resolves to itself, which blocks the process.)
+ */
+export async function runInClient(
+  server: Pick<RsbuildDevServer, 'outputs'>,
+  script: string,
+): Promise<{ result: unknown } | { error: string }> {
+  const context = vm.createContext({ console: { ...console } })
+  context.self = context
+  context.globalThis = context
+  for (const code of Object.values(await server.outputs('client'))) {
+    vm.runInContext(code, context)
+  }
+  try {
+    const run = vm.runInContext(
+      `(async () => {\n${script}\n})`,
+      context,
+    ) as () => Promise<unknown>
+    return { result: await run() }
+  } catch (error) {
+    // errors of the VM context are not `instanceof Error` here
+    return {
+      error:
+        typeof error === 'object' && error !== null && 'message' in error
+          ? String(error.message)
+          : String(error),
+    }
+  }
 }
 
 /**

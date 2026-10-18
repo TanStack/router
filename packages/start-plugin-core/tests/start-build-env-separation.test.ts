@@ -517,6 +517,51 @@ return results`)
   })
 })
 
+describe("Vite build with Vite's default client target", () => {
+  // The harness builds for `esnext`; Vite's default client target
+  // (`baseline-widely-available`) lowers newer syntax after Start compiled
+  // the module.
+  // Source: audit E2 missing coverage #5.
+  test(
+    'a server function handler is only in the SSR build, and the client calls the server',
+    async () => {
+      const { client, ssr } = await buildStart({
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { secret } from './secret'
+export const greet = createServerFn().handler(async () => secret?.() ?? 'MARK_NONE')
+export const label = () => 'MARK_CLIENT_LABEL'
+`,
+          'secret.ts': `export const secret = () => 'MARK_HANDLER'\n`,
+          'entry.ts': `export { greet, label } from './fns'\n`,
+        },
+        viteConfig: {
+          environments: {
+            client: { build: { target: 'baseline-widely-available' } },
+          },
+        },
+      })
+      expect({
+        handler: client.where('MARK_HANDLER'),
+        label: client.where('MARK_CLIENT_LABEL'),
+      }).toEqual({ handler: 'nowhere', label: 'eager' })
+      expect((await ssr.run(`return await entry.greet()`)).result).toBe(
+        'MARK_HANDLER',
+      )
+      expect(
+        (
+          await client.run(`try {
+  entry.greet()
+} catch (error) {
+  return error.message.startsWith('client RPC ')
+}`)
+        ).result,
+      ).toBe(true)
+    },
+    timeout,
+  )
+})
+
 describe('Vite: an environment built twice by one builder', () => {
   // `@vitejs/plugin-rsc` runs a scan build of an environment before its real
   // build, with the same plugins: the second build compiles server fns

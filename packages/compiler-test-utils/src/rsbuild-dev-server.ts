@@ -59,6 +59,12 @@ const defaultHmr = false
 /** Hot-update chunks and manifests (`*.hot-update.js`, `.json`). */
 const hotUpdate = /\.hot-update\.[^/]*$/
 
+/**
+ * Hot-update chunks (`*.hot-update.js`, or `.mjs` for ES module output, as
+ * Start's client environment emits), not their manifests.
+ */
+const hotUpdateChunk = /\.hot-update\.[cm]?js$/
+
 export interface RsbuildDevServer {
   /** App root on disk. */
   root: string
@@ -77,7 +83,9 @@ export interface RsbuildDevServer {
   outputs: (environment?: string) => Promise<Record<string, string>>
   /**
    * The hot-update chunks an environment (default: the only one) emitted by
-   * the last compile (`hmr` only), by path relative to its output directory.
+   * the compiles since the last `edit()` began (`hmr` only; an edit may cause
+   * more than one compile, e.g. when a plugin writes a file the watcher then
+   * reports), by path relative to its output directory.
    */
   hotUpdates: (environment?: string) => Promise<Record<string, string>>
   /** Modules (paths relative to the app root) the last compile built. */
@@ -113,8 +121,8 @@ export async function createRsbuildDevServer(
   const compiles = trackCompiles()
   /** Output directory of each environment. */
   const distPaths: Record<string, string> = {}
-  /** Hot-update chunks of the last compile, by environment. */
-  const hotUpdateFiles: Record<string, Array<string>> = {}
+  /** Hot-update chunks of the compiles since the last edit, by environment. */
+  const hotUpdateFiles: Record<string, Set<string>> = {}
   const harnessPlugin: RsbuildPlugin = {
     name: 'rsbuild-dev-server-harness',
     setup(api) {
@@ -132,10 +140,13 @@ export async function createRsbuildDevServer(
         const names = Object.keys(environments)
         all.forEach((environmentStats, index) => {
           const { compilation } = environmentStats
-          hotUpdateFiles[compilation.name ?? names[index]!] = compilation
-            .getAssets()
-            .map((asset) => asset.name)
-            .filter((name) => hotUpdate.test(name) && name.endsWith('.js'))
+          const name = compilation.name ?? names[index]!
+          const files = (hotUpdateFiles[name] ??= new Set())
+          for (const asset of compilation.getAssets()) {
+            if (hotUpdateChunk.test(asset.name)) {
+              files.add(asset.name)
+            }
+          }
         })
         for (const environmentStats of all) {
           const { compilation } = environmentStats
@@ -229,7 +240,12 @@ export async function createRsbuildDevServer(
   return {
     root,
     rsbuild,
-    edit: (files) => compiles.edit(root, files, compileTimeout),
+    edit: (files) => {
+      for (const name of Object.keys(hotUpdateFiles)) {
+        hotUpdateFiles[name]!.clear()
+      }
+      return compiles.edit(root, files, compileTimeout)
+    },
     outputs: async (environment) => {
       const files = await readJavaScript(distPathOf(environment))
       return Object.fromEntries(
@@ -241,7 +257,11 @@ export async function createRsbuildDevServer(
       const name = environment ?? Object.keys(distPaths)[0]!
       const files: Record<string, string> = {}
       for (const file of hotUpdateFiles[name] ?? []) {
-        files[file] = await readFile(path.join(distPath, file), 'utf8')
+        try {
+          files[file] = await readFile(path.join(distPath, file), 'utf8')
+        } catch {
+          // Removed by a later compile
+        }
       }
       return files
     },
