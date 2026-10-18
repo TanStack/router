@@ -353,23 +353,24 @@ export const spread = renderToReadableStream(...args)
     ).toEqual(['x'])
   })
 
-  // Bug: the transform skips `renderToReadableStream` calls with more than one
-  // argument (rscCssTransform.ts `args.length !== 1`).
-  // Impact: a stream rendered with options (e.g. `onError`) has no CSS, so its
-  // styles never arrive.
-  // Source: decision D8 (a).
-  test.fails(
-    'renderToReadableStream(<JSX />, options) streams the CSS and keeps the options',
-    async () => {
-      const { module, calls } = await evaluateCompiled(`
+  // The second `options` argument is undocumented: React Start's public
+  // type is `renderToReadableStream(node: React.ReactNode)` (src/flight.stub.ts;
+  // `options` is only typed under the react-server condition). It must not
+  // break: the compiled call still runs, the options reach the runtime
+  // unchanged and a stream is produced. CSS for it is not required (user
+  // ruling 2026-10-18, loosening decision D8 (a)): the stream may carry the
+  // CSS or not.
+  test('renderToReadableStream(<JSX />, options) still renders and keeps the options', async () => {
+    const { module, calls } = await evaluateCompiled(`
 import { renderToReadableStream } from '@tanstack/react-start/rsc'
 export const options = { onError: () => {} }
 export const stream = renderToReadableStream(<Card />, options)
 `)
-      expect(module.stream).toEqual(streamWithCss('card'))
-      expect(calls[0]!.args[1]).toBe(module.options)
-    },
-  )
+    expect(module.stream).toEqual(expect.stringMatching(/^(css)?card(css)?$/))
+    expect(calls).toHaveLength(1)
+    expect(calls[0]!.args).toHaveLength(2)
+    expect(calls[0]!.args[1]).toBe(module.options)
+  })
 
   // Bug: the transform only wraps an argument that is JSX itself, not a
   // conditional or logical expression whose branches are all JSX, which is
@@ -430,17 +431,24 @@ export const stream = renderToReadableStream(${argument})
     },
   )
 
-  // Whether a plain-data model (its elements are not the stream's root, and
-  // get no CSS) warns in dev is not decided yet (user ruling 2026-10-18):
-  // only its payload is asserted.
-  test('dev: renderToReadableStream with a plain-data model streams the model', async () => {
-    const { module } = await evaluateCompiled(
-      `import { renderToReadableStream } from '@tanstack/react-start/rsc'
+  // A plain-data model (`{ card: <Card /> }`) is undocumented too: the
+  // public type takes a `React.ReactNode` (src/flight.stub.ts). It must not
+  // break: the compiled call still runs and the model reaches the runtime
+  // unchanged. Neither CSS for its elements nor a dev warning is required,
+  // and their absence is not required either (user rulings 2026-10-18).
+  test.each(['dev', 'build'] as const)(
+    '%s: renderToReadableStream with a plain-data model streams the model',
+    async (mode) => {
+      const { module, calls } = await evaluateCompiled(
+        `import { renderToReadableStream } from '@tanstack/react-start/rsc'
 export const stream = renderToReadableStream({ card: <Card /> })`,
-      { mode: 'dev' },
-    )
-    expect(module.stream).toEqual({ card: 'card' })
-  })
+        { mode },
+      )
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.args[0]).toEqual({ card: 'card' })
+      expect(module.stream).toEqual({ card: 'card' })
+    },
+  )
 })
 
 // Which environments of a Vite dev server with the Start compiler plugin, set
