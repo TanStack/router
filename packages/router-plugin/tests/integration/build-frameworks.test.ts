@@ -79,6 +79,10 @@ async function buildRoute(
     bundler,
     env,
     framework,
+    // No outcome here depends on webpack's minifier (terser), which takes
+    // most of a webpack build: placement and evaluation counts of live code,
+    // the rendering, and which framework runtimes the bundle holds.
+    ...(bundler === 'webpack' && { minify: false }),
     // Files outlive the test that built them; the result is all we keep
     registerCleanup: undefined,
     files: routeApp(route(framework), {

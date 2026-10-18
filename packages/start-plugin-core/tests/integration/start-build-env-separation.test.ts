@@ -152,7 +152,9 @@ ${callByIdExports}`,
     timeout,
   )
 
-  describe('server code of each construct', () => {
+  // Concurrent: the rows share one build and run it in Node processes and
+  // browser pages; only the last test builds (the one build in the block).
+  describe.concurrent('server code of each construct', () => {
     /**
      * `src/deps/<name>.ts`: an export returning `marker`, in a module whose
      * top-level code also sets it.
@@ -479,10 +481,14 @@ const next = (options) => options
     )
 
     /** What `run` returns in the client and in the SSR build. */
-    const callInBoth = async (run: string) => ({
-      client: (await build.client.run(run)).result,
-      ssr: (await build.ssr.run(run)).result,
-    })
+    const callInBoth = async (run: string) => {
+      // Independent runs: a browser page and a Node process, side by side.
+      const [client, ssr] = await Promise.all([
+        build.client.run(run),
+        build.ssr.run(run),
+      ])
+      return { client: client.result, ssr: ssr.result }
+    }
 
     // Control for the pin below (same build): the inline chain.
     test('an isomorphic fn written as one chain runs its implementation in each build', async () => {
