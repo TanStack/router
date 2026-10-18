@@ -13926,6 +13926,9 @@ importers:
 
   packages/compiler-test-utils:
     dependencies:
+      '@playwright/test':
+        specifier: ^1.63.0
+        version: 1.63.0
       '@rsbuild/core':
         specifier: 'catalog:'
         version: 2.2.5
