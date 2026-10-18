@@ -488,16 +488,27 @@ export const createStart = (options) => ({
 }
 
 /**
- * JSX runtime of evaluated modules: intrinsic elements render as tags,
- * components are called with their props.
+ * JSX runtime of evaluated modules: intrinsic elements render as tags with
+ * their props (other than `children` and React's `key`) as JSON with sorted
+ * keys, functions as `"<function>"` (`<p {"id":"x"}>`, `<p>` without props),
+ * so a lost or changed attribute shows in the output; components are called
+ * with their props.
  */
 const jsxToText = `const __Fragment = Symbol('Fragment')
+const __attributes = (props) => {
+  const names = Object.keys(props ?? {}).filter((name) => name !== 'children' && name !== 'key').sort()
+  if (names.length === 0) return ''
+  return ' ' + JSON.stringify(
+    Object.fromEntries(names.map((name) => [name, props[name]])),
+    (_, value) => (typeof value === 'function' ? '<function>' : value),
+  )
+}
 const __jsx = (type, props, ...children) => {
   const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
   if (type === __Fragment) return text
   if (typeof type === 'function') return type(children.length ? { ...props, children: text } : { ...props })
   if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
-  return '<' + type + '>' + text + '</' + type + '>'
+  return '<' + type + __attributes(props) + '>' + text + '</' + type + '>'
 }
 `
 
@@ -1040,10 +1051,11 @@ function chunkBoundaryStart(
 }
 
 /**
- * Compiles a module with `<Hydrate>` and loads the split chunks it imports,
- * ordered like their boundaries in the source module (found through each
- * chunk's source map). A module the compiler leaves untouched is its own
- * parent, without chunks.
+ * Compiles a module with `<Hydrate>` and loads the split chunks it imports
+ * (`chunks`, as the plugin serves them, before the bundler compiles them; ids
+ * in `chunkIds`), ordered like their boundaries in the source module (found
+ * through each chunk's source map). A module the compiler leaves untouched is
+ * its own parent, without chunks.
  */
 export async function compileHydrate(
   env: 'client' | 'server',
@@ -1062,7 +1074,7 @@ export async function compileHydrate(
     if (chunk === null) {
       throw new Error(`expected virtual module ${id} to load`)
     }
-    return chunk
+    return { id, chunk }
   })
   // Only the outermost boundaries: a chunk maps to the boundary whose children
   // it renders, not to a boundary nested in them.
@@ -1081,12 +1093,18 @@ export async function compileHydrate(
         ),
     )
   const ordered = loaded
-    .map((chunk) => ({
+    .map(({ id, chunk }) => ({
+      id,
       chunk,
       start: chunkBoundaryStart(chunk, code, boundaries),
     }))
     .sort((a, b) => a.start - b.start)
-  return { parent, chunks: ordered.map(({ chunk }) => chunk.code), plugin }
+  return {
+    parent,
+    chunks: ordered.map(({ chunk }) => chunk.code),
+    chunkIds: ordered.map(({ id }) => id),
+    plugin,
+  }
 }
 
 /**
@@ -1104,28 +1122,82 @@ export async function compileFirstChunk(plugin: HydratePlugin, parent: string) {
 }
 
 /**
- * The component an evaluated `<Hydrate>` chunk exports: its only exported
- * function.
+ * The export of the chunk `chunkId` that the client `parent` renders: the
+ * name it gives `lazyRouteComponent(load, name)` (default `default`) with the
+ * `load` that imports the chunk. The parent is evaluated (its imports linked
+ * to `stubs` over the parent-module stubs, others to no-op functions) and
+ * creates its lazy components then (a lazy component created in render would
+ * remount on every render).
  */
-export function getChunkComponent(module: Record<string, any>) {
-  const functions = new Set(
-    Object.values(module).filter((value) => typeof value === 'function'),
-  )
-  if (functions.size !== 1) {
+export async function chunkExportName(
+  parent: string,
+  chunkId: string,
+  options: { framework?: Framework; stubs?: Record<string, ModuleStub> } = {},
+) {
+  const framework = options.framework ?? 'react'
+  const routerPackage = `@tanstack/${framework}-router`
+  const lazy: Array<{
+    load: () => Promise<{ chunkId?: string }>
+    name: string
+  }> = []
+  const chunkIds = new Set(getChunkIds(parent))
+  const parentId = chunkId.split('?')[0]!
+  const graph = createTestModuleGraph({
+    modules: { [parentId]: parent },
+    stubs: {
+      ...hydrateStubs(framework),
+      ...options.stubs,
+      [routerPackage]: {
+        ...(options.stubs?.[routerPackage] as Record<string, unknown>),
+        lazyRouteComponent: (
+          load: () => Promise<{ chunkId?: string }>,
+          name = 'default',
+        ) => {
+          lazy.push({ load, name })
+          return () => null
+        },
+      },
+    },
+    fallbackStub: (_, names) =>
+      Object.fromEntries([...names].map((name) => [name, () => undefined])),
+    framework,
+    // Each chunk is a module naming its id.
+    load: (id) =>
+      chunkIds.has(id) ? `export const chunkId = ${JSON.stringify(id)}` : null,
+  })
+  await graph.import(parentId)
+  const names = new Set<string>()
+  for (const { load, name } of lazy) {
+    if ((await load()).chunkId === chunkId) {
+      names.add(name)
+    }
+  }
+  if (names.size !== 1) {
     throw new Error(
-      `expected the chunk to export one component, got ${functions.size}`,
+      `expected the parent to render one export of ${chunkId}, got ${[...names].join(', ') || 'none'}`,
     )
   }
-  return [...functions][0] as (props: Record<string, unknown>) => any
+  return [...names][0]!
 }
 
-/** Renders the component a `<Hydrate>` chunk exports with the given props. */
+/**
+ * Renders, with the given props, the `<Hydrate>` chunk `chunk` (the code of
+ * the chunk `chunkId`, evaluated with `stubs`): the export of it that the
+ * client `parent` renders (`chunkExportName`).
+ */
 export async function renderChunk(
+  parent: string,
+  chunkId: string,
   chunk: string,
   props: Record<string, unknown> = {},
   stubs: Record<string, ModuleStub> = {},
 ) {
-  return getChunkComponent(await evaluateModule(chunk, stubs))(props)
+  const name = await chunkExportName(parent, chunkId)
+  const component = (await evaluateModule(chunk, stubs))[name]
+  if (typeof component !== 'function') {
+    throw new Error(`expected the chunk to export a component as ${name}`)
+  }
+  return component(props)
 }
 
 /**
@@ -1172,8 +1244,8 @@ export const hydrateParentStubs = hydrateStubs('react')
  * chunks'. Returns the evaluated parent, the ids of the chunks it imports
  * (`chunkIds`, in source order), `lazyChunks` (every lazy chunk component and
  * whether it rendered) and `preloaded` (the chunk each `preload()` call
- * loaded, by id and evaluated, in call order; loading the chunks here is not
- * a preload). The parent and every chunk must be valid modules; they may
+ * loaded, by id, evaluated, and the component of it the lazy component
+ * renders, in call order; loading the chunks here is not a preload). The parent and every chunk must be valid modules; they may
  * read the globals the source reads. With `chunksFromSource`, the chunks
  * load the way Rsbuild loads them: given the source file's code, from a
  * Hydrate plugin that did not compile the parent (e.g. another build
@@ -1204,7 +1276,11 @@ export async function loadClientModule(
     load: () => Promise<Record<string, any>>
     component?: (props: unknown) => unknown
   }> = []
-  const preloaded: Array<{ id: string; module: Record<string, any> }> = []
+  const preloaded: Array<{
+    id: string
+    module: Record<string, any>
+    component: (props: Record<string, unknown>) => any
+  }> = []
   const loadedChunkIds: Array<string> = []
   /** Id of the chunk an evaluated chunk namespace is. */
   const chunkIdOf = async (namespace: unknown) => {
@@ -1244,6 +1320,7 @@ export async function loadClientModule(
               preloaded.push({
                 id: await chunkIdOf(namespace),
                 module: namespace,
+                component: namespace[name],
               })
               return namespace
             },

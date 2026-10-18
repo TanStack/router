@@ -16,7 +16,6 @@ import {
   compileServer,
   createServerGraph,
   evaluateModule,
-  getChunkComponent,
   getChunkIds,
   hydrateParentStubs,
   importSources,
@@ -353,7 +352,7 @@ const chunk = () => import('/test/src/module.tsx?tss-hydrate=0_x')`),
   })
 
   test('compileHydrate orders chunks like their boundaries in the source', async () => {
-    const { chunks } = await compileHydrate(
+    const { parent, chunks, chunkIds } = await compileHydrate(
       'client',
       `${head}export function Page() {
   return <div><Hydrate><p>first</p></Hydrate><Hydrate><p>second</p></Hydrate><Hydrate><section><Hydrate><p>nested</p></Hydrate></section></Hydrate></div>
@@ -363,8 +362,16 @@ export function Other() {
 }`,
     )
     const rendered = []
-    for (const chunk of chunks) {
-      rendered.push(await renderChunk(chunk, {}, hydrateParentStubs))
+    for (const [index, chunk] of chunks.entries()) {
+      rendered.push(
+        await renderChunk(
+          parent,
+          chunkIds[index]!,
+          chunk,
+          {},
+          hydrateParentStubs,
+        ),
+      )
     }
     expect(rendered).toEqual([
       '<p>first</p>',
@@ -402,7 +409,7 @@ export function Page() {
     await b!.p!()
     expect(preloaded).toHaveLength(1)
     expect(chunkIds).toContain(preloaded[0]!.id)
-    expect(getChunkComponent(preloaded[0]!.module)({})).toBe('<p>b</p>')
+    expect(preloaded[0]!.component({})).toBe('<p>b</p>')
   })
 
   test('loadClientModule loads the chunks of nested boundaries', async () => {

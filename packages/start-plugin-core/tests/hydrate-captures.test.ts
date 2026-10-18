@@ -14,7 +14,9 @@ import type { ModuleStub } from './regression-helpers'
 // itself, so no captured local here is named like them (pinned in
 // known-bugs-hydrate.test.ts).
 
-const head = `import { Hydrate } from '@tanstack/react-start'\n`
+const head = `import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
+`
 
 /**
  * Compiles `code` for the client, loads it with its chunks (every module
@@ -118,7 +120,7 @@ test.each<{
       await renderPage(`export function Page() {
   const value = 'outer'
   const field = 'value'
-  return <Hydrate><p>${children}</p></Hydrate>
+  return <Hydrate when={load()}><p>${children}</p></Hydrate>
 }`),
     ).toBe(`[${expected}]`)
   },
@@ -129,7 +131,7 @@ test('client: the children read a module binding past a block-level function', a
   expect(
     await renderPage(`const value = 'module'
 export function Page() {
-  return <Hydrate><p>{(() => {
+  return <Hydrate when={load()}><p>{(() => {
   const seen = value
   {
     function value() {}
@@ -147,7 +149,7 @@ test('client: the children read a catch parameter', async () => {
   try {
     throw new Error('caught')
   } catch (error) {
-    return <Hydrate><p>{error.message}</p></Hydrate>
+    return <Hydrate when={load()}><p>{error.message}</p></Hydrate>
   }
 }`),
   ).toBe('[<p>caught</p>]')
@@ -164,7 +166,7 @@ export function Page({ entries }) {
   const out = []
   for (const [key, value] of entries) {
     const label = key + '-'
-    out.push(<Hydrate key={key}><Row v={label + value} /></Hydrate>)
+    out.push(<Hydrate when={load()} key={key}><Row v={label + value} /></Hydrate>)
   }
   return <ul>{out}</ul>
 }`,
@@ -186,7 +188,7 @@ describe('a binding named like an intrinsic tag', () => {
       code: `const div = sideEffect('div')
 console.log(div)
 export function Page() {
-  return <Hydrate><div>x</div></Hydrate>
+  return <Hydrate when={load()}><div>x</div></Hydrate>
 }`,
     },
     {
@@ -194,7 +196,7 @@ export function Page() {
       code: `export function Page() {
   const div = sideEffect('div')
   console.log(div)
-  return <Hydrate><div>x</div></Hydrate>
+  return <Hydrate when={load()}><div>x</div></Hydrate>
 }`,
     },
   ])(
@@ -221,14 +223,16 @@ test('client: names the children declare themselves shadow the locals of the com
       `export function Page({ value }) {
   const x = 'outer'
   console.log(x)
-  return <Hydrate>
+  return <Hydrate when={load()}>
     <input value={value} onChange={(e) => { const value = e.target.value; return value }} />
     <p>{(() => { try { throw new Error('e') } catch (err) { const x = 'catch:' + err.message; return x } })()}</p>
   </Hydrate>
 }`,
       { value: 'v' },
     ),
-  ).toBe('[<input></input><p>catch:e</p>]')
+  ).toBe(
+    '[<input {"onChange":"<function>","value":"v"}></input><p>catch:e</p>]',
+  )
 })
 
 // Source: Qwik optimizer example_functional_component_capture_props,
@@ -239,7 +243,7 @@ test('client: the children read destructured params with defaults and rests, and
       `function Child(props) { return <b>{props.x + props.extra}</b> }
 export function Page({ a: [b = 1], ...c }) {
   const extra = '!'
-  return <Hydrate><p>{b}</p><Child {...c} {...{ extra }} /></Hydrate>
+  return <Hydrate when={load()}><p>{b}</p><Child {...c} {...{ extra }} /></Hydrate>
 }`,
       { a: [], x: 'X' },
     ),
@@ -259,7 +263,7 @@ function List<T>(props: { items: Array<T> }) { return <ul>{props.items.length}</
 export function Page({ v }: { v: unknown }) {
   type Local = string
   interface Box { value: Local }
-  return <Hydrate><List<Box> items={[v] as Array<Shape>} /><p>{format<Local>(v as Local) + (v satisfies unknown as Box['value'] as Shape)}</p></Hydrate>
+  return <Hydrate when={load()}><List<Box> items={[v] as Array<Shape>} /><p>{format<Local>(v as Local) + (v satisfies unknown as Box['value'] as Shape)}</p></Hydrate>
 }`,
       { v: 'x' },
     ),
@@ -271,15 +275,21 @@ describe('names the compiler generates', () => {
    * A page with a prefetched boundary and a nested one, whose children read
    * `reads` (an array expression); `setup` runs first in the component.
    */
-  const page = (reads: string, setup = '') => `${head}export function Page() {
-  ${setup}return <><Hydrate prefetch><p>{${reads}.join('|')}</p></Hydrate><Hydrate><section><Hydrate><b>nested</b></Hydrate></section></Hydrate></>
+  const page = (
+    reads: string,
+    setup = '',
+  ) => `${head}import { idle } from '@tanstack/react-start/hydration'
+export function Page() {
+  ${setup}return <><Hydrate when={load()} prefetch={idle()}><p>{${reads}.join('|')}</p></Hydrate><Hydrate when={load()}><section><Hydrate when={load()}><b>nested</b></Hydrate></section></Hydrate></>
 }`
   /**
    * The names the compiler introduces for `page` (in any output), which the
    * fixtures below declare themselves: no test depends on which names the
-   * compiler picks.
+   * compiler picks. The probe's children read a local, so the names the
+   * compiler introduces to pass captured values to a chunk are among them.
    */
-  const introducedNames = () => generatedNames(page('[]'))
+  const introducedNames = () =>
+    generatedNames(page('[captured]', `const captured = 'c'\n  `))
 
   let globals: Array<string> = []
   afterEach(() => {
@@ -355,7 +365,7 @@ function Show() { return <b>{value + ':' + label}</b> }
 export function Page() {
   const label = 'local'
   const value = 'local-value'
-  return <Hydrate><Row text={label} /><Show /><i>{value}</i></Hydrate>
+  return <Hydrate when={load()}><Row text={label} /><Show /><i>{value}</i></Hydrate>
 }`,
       {},
       {
@@ -371,7 +381,7 @@ test('client: a nested boundary reads the locals of the component around its enc
   const { module, lazyChunks } =
     await loadClientModule(`${head}export function Page({ isOpen, fee }) {
   const label = 'fee'
-  return <Hydrate><section><Hydrate><p>{label + ':' + (isOpen ? fee : 0)}</p></Hydrate></section></Hydrate>
+  return <Hydrate when={load()}><section><Hydrate when={load()}><p>{label + ':' + (isOpen ? fee : 0)}</p></Hydrate></section></Hydrate>
 }`)
   expect(module.Page({ isOpen: true, fee: 5 })).toBe(
     '[<section>[<p>fee:5</p>]</section>]',
@@ -407,7 +417,7 @@ test('client: the children read locals through a property value and a computed m
   const label = 'Ada'
   const key = 'name'
   const items = { name: 'Lovelace' }
-  return <Hydrate><p>{({ text: label }).text}{items[key]}</p></Hydrate>
+  return <Hydrate when={load()}><p>{({ text: label }).text}{items[key]}</p></Hydrate>
 }`),
   ).toBe('[<p>AdaLovelace</p>]')
 })
@@ -418,7 +428,7 @@ test('client: member names and object keys are no reads of a local declared late
   expect(
     await renderPage(
       `export function Page({ obj }) {
-  const el = <Hydrate><p>{obj.later}{({ later: '!' }).later}</p></Hydrate>
+  const el = <Hydrate when={load()}><p>{obj.later}{({ later: '!' }).later}</p></Hydrate>
   const later = 1
   console.log(later)
   return el
@@ -455,7 +465,7 @@ test('client: the children render a local component and read a local value', asy
       `export function Page({ name }) {
   const count = 1
   const Local = (props) => <b>{name}{props.count === count ? '' : '!'}</b>
-  return <Hydrate><Local count={count}/><span>{name}</span></Hydrate>
+  return <Hydrate when={load()}><Local count={count}/><span>{name}</span></Hydrate>
 }`,
       { name: 'n' },
     ),

@@ -21,7 +21,7 @@ import {
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import { startDevServer } from './dev-server'
 import { startRsbuildDevServer } from './rsbuild-dev-server'
-import { getChunkComponent, getChunkIds } from './regression-helpers'
+import { getChunkIds } from './regression-helpers'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { StartBuild } from './build-harness'
 
@@ -36,9 +36,10 @@ const startManifest = JSON.parse(
  * Stand-ins of the packages a `<Hydrate>` module imports: React's JSX
  * runtimes render intrinsic elements as tags, `Hydrate` records its boundary
  * id (`globalThis.__boundaryIds`) and renders its children between brackets,
- * and `lazyRouteComponent` renders the component it loaded (after
- * `preload()`); every lazy component is listed in
- * `globalThis.__lazyComponents` (`renderThroughChunks`).
+ * and `lazyRouteComponent(load, name)` renders the export `name`
+ * (`exportName`) of the module it loaded (after `preload()`); every lazy
+ * component is listed in `globalThis.__lazyComponents`
+ * (`renderThroughChunks`).
  */
 const hydrateRuntimeFiles: Record<string, string> = {
   'node_modules/@tanstack/react-start/package.json': JSON.stringify({
@@ -55,6 +56,7 @@ export const Hydrate = (props) => {
 }
 `,
   'node_modules/@tanstack/react-start/hydration.js': `export const idle = () => 'idle'
+export const load = () => 'load'
 export const visible = () => 'visible'
 `,
   'node_modules/@tanstack/react-router/package.json': JSON.stringify({
@@ -73,6 +75,7 @@ export function lazyRouteComponent(load, name = 'default') {
     Lazy.rendered = true
     return loaded(props)
   }
+  Lazy.exportName = name
   Lazy.preload = async () => {
     loaded = (await load())[name]
     Lazy.loaded = true
@@ -306,13 +309,14 @@ export function Page() {
             ...hydrateRuntimeFiles,
             'src/lib.ts': `export const source = ['lib-marker', { b: 'B' }]\n`,
             'src/page.tsx': `import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
 import { source } from './lib'
 const [a, { b }] = source
 function helper(value: string) {
   return value + ' helper-marker'
 }
 export function Page() {
-  return <Hydrate><p>{helper(a + b)}</p></Hydrate>
+  return <Hydrate when={load()}><p>{helper(a + b)}</p></Hydrate>
 }
 `,
             'entry.ts': `export { Page } from './src/page'\n`,
@@ -334,15 +338,16 @@ export function Page() {
     const splitBoundariesFiles = (reader = '') => ({
       'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
 export const Route = createFileRoute('/')({
   pendingComponent: Pending,
   component: Page,${reader}
 })
 function Pending() {
-  return <Hydrate><p>pending-marker</p></Hydrate>
+  return <Hydrate when={load()}><p>pending-marker</p></Hydrate>
 }
 function Page() {
-  return <section><Hydrate><p>page-marker</p></Hydrate></section>
+  return <section><Hydrate when={load()}><p>page-marker</p></Hydrate></section>
 }
 `,
       'src/router.ts': `import { routeTree } from './routeTree.gen'
@@ -449,8 +454,9 @@ export const getRouter = () => ({ routeTree })
         files: {
           ...hydrateRuntimeFiles,
           'src/hydrated-widgets.tsx': `import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
 export function UnusedHydratedWidget() {
-  return <div><Hydrate><section>unused-hydrated-marker</section></Hydrate></div>
+  return <div><Hydrate when={load()}><section>unused-hydrated-marker</section></Hydrate></div>
 }
 export function UsedHydratedWidget() {
   return <p>used</p>
@@ -518,10 +524,11 @@ export { UsedPlainWidget } from './src/plain-widgets'
 }
 `,
           'src/page.tsx': `import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
 import { withName } from './with-name'
 export const Widget = ${widget}
 export function Page() {
-  return <Hydrate><Widget /></Hydrate>
+  return <Hydrate when={load()}><Widget /></Hydrate>
 }
 `,
           'entry.ts': `export { Page } from './src/page'\n`,
@@ -585,11 +592,12 @@ export function Page() {
       'client: a throw in the children maps to its line in the page ($name)',
       async ({ minify }) => {
         const page = `import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
 import { chart } from './chart'
 const title = 'title'
 export function Page() {
   return (
-    <Hydrate>
+    <Hydrate when={load()}>
       <b>{title}{chart.missing.MARK_HYDRATE_THROW}</b>
     </Hydrate>
   )
@@ -625,11 +633,16 @@ export function Page() {
 )
 
 describe('Vite dev server', () => {
+  const globals = globalThis as { __lazyComponents?: Array<any> }
+  afterAll(() => {
+    delete globals.__lazyComponents
+  })
   const page = (
     text: string,
   ) => `import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
 export function Page() {
-  return <Hydrate><p>${text}</p></Hydrate>
+  return <Hydrate when={load()}><p>${text}</p></Hydrate>
 }
 `
 
@@ -650,20 +663,48 @@ export function Page() {
       expect(chunkUrl).toBeDefined()
 
       const server = await startDevServer({ files })
-      const render = async (url: string) =>
-        getChunkComponent(
-          await evaluateServed(server, url, {
-            // The stand-in packages are served like project modules.
-            skip: /^\/@vite\b/,
-          }),
-        )({})
-      expect(await render(chunkUrl!)).toBe('<p>Old</p>')
+      // The stand-in packages are served like project modules.
+      const evaluate = (url: string) =>
+        evaluateServed(server, url, { skip: /^\/@vite\b/ })
+      /**
+       * Renders the page through its lazy chunk (`renderThroughChunks`), and
+       * the chunk `chunk` (evaluated before) as the page renders it: its
+       * export the page's lazy component names.
+       */
+      const render = async (chunk: Record<string, any>) => {
+        // The lazy components the stand-in `lazyRouteComponent` creates.
+        const lazy: Array<any> = []
+        globals.__lazyComponents = lazy
+        const pageModule = await evaluate('/src/page.tsx')
+        let html: unknown
+        for (let attempt = 0; html === undefined; attempt++) {
+          try {
+            html = pageModule.Page()
+          } catch (error) {
+            if (attempt > 5) {
+              throw error
+            }
+            await Promise.all(lazy.map((component) => component.preload()))
+          }
+        }
+        expect(lazy).toHaveLength(1)
+        return { html, chunk: chunk[lazy[0]!.exportName]({}) }
+      }
+      // Requested before the page module was compiled.
+      const chunk = await evaluate(chunkUrl!)
+      expect(await render(chunk)).toEqual({
+        html: '[<p>Old</p>]',
+        chunk: '<p>Old</p>',
+      })
 
       await server.edit({ 'src/page.tsx': page('New') })
 
       // The chunk the edited parent module imports.
       const [editedUrl] = getChunkIds(await server.transform('/src/page.tsx'))
-      expect(await render(editedUrl!)).toBe('<p>New</p>')
+      expect(await render(await evaluate(editedUrl!))).toEqual({
+        html: '[<p>New</p>]',
+        chunk: '<p>New</p>',
+      })
     },
     timeout,
   )
@@ -675,9 +716,11 @@ describe('Vite dev server, Solid', () => {
     'node_modules/@tanstack/solid-start/package.json': JSON.stringify({
       name: '@tanstack/solid-start',
       type: 'module',
-      exports: { '.': './index.js' },
+      exports: { '.': './index.js', './hydration': './hydration.js' },
     }),
     'node_modules/@tanstack/solid-start/index.js': `export const Hydrate = (props) => '[' + (props.children ?? '') + ']'
+`,
+    'node_modules/@tanstack/solid-start/hydration.js': `export const load = () => 'load'
 `,
     'node_modules/@tanstack/solid-router/package.json': JSON.stringify({
       name: '@tanstack/solid-router',
@@ -688,6 +731,7 @@ describe('Vite dev server, Solid', () => {
   let loaded
   const Lazy = (props) => {
     if (!loaded) throw new Error('lazy component rendered before it loaded')
+    Lazy.rendered = true
     return loaded(props)
   }
   Lazy.preload = async () => {
@@ -711,8 +755,9 @@ describe('Vite dev server, Solid', () => {
   const page = (
     text: string,
   ) => `import { Hydrate } from '@tanstack/solid-start'
+import { load } from '@tanstack/solid-start/hydration'
 export function Page() {
-  return <Hydrate><section><Hydrate><p>${text}</p></Hydrate></section></Hydrate>
+  return <Hydrate when={load()}><section><Hydrate when={load()}><p>${text}</p></Hydrate></section></Hydrate>
 }
 `
 
@@ -745,27 +790,47 @@ export function Page() {
         delete globals.__solidLazyComponents
       })
       /**
-       * Renders the chunk the page module imports once the lazy component of
-       * its nested boundary has loaded (like the browser before it hydrates
-       * the nested boundary).
+       * Renders the page module like the browser once its boundaries
+       * hydrate: each lazy component (of the page's boundary, then of the one
+       * nested in its chunk) loads its chunk, and the page renders through
+       * them. Returns the HTML and whether every lazy component rendered.
        */
       const render = async () => {
-        const lazy: Array<{ preload: () => Promise<void> }> = []
+        const lazy: Array<{
+          preload: () => Promise<void>
+          rendered?: boolean
+        }> = []
         globals.__solidLazyComponents = lazy
-        const [chunkUrl] = getChunkIds(await server.transform('/src/page.tsx'))
-        const chunk = await evaluateServed(server, chunkUrl!, {
+        const { Page } = await evaluateServed(server, '/src/page.tsx', {
           // The stand-in packages are served like project modules.
           skip: /^\/@vite\b/,
         })
-        expect(lazy).toHaveLength(1)
-        await Promise.all(lazy.map((component) => component.preload()))
-        return getChunkComponent(chunk)({})
+        for (let attempt = 0; ; attempt++) {
+          try {
+            const html = Page()
+            return {
+              html,
+              lazy: lazy.map((component) => component.rendered === true),
+            }
+          } catch (error) {
+            if (attempt > 5) {
+              throw error
+            }
+            await Promise.all(lazy.map((component) => component.preload()))
+          }
+        }
       }
-      expect(await render()).toBe('<section>[<p>Old</p>]</section>')
+      expect(await render()).toEqual({
+        html: '[<section>[<p>Old</p>]</section>]',
+        lazy: [true, true],
+      })
 
       await server.edit({ 'src/page.tsx': page('New') })
 
-      expect(await render()).toBe('<section>[<p>New</p>]</section>')
+      expect(await render()).toEqual({
+        html: '[<section>[<p>New</p>]</section>]',
+        lazy: [true, true],
+      })
     },
     timeout,
   )
@@ -780,8 +845,9 @@ describe('Rsbuild dev server', () => {
       const page = (
         marker: string,
       ) => `import { Hydrate } from '@tanstack/react-start'
+import { load } from '@tanstack/react-start/hydration'
 export function Page() {
-  return <Hydrate><p>${marker}</p></Hydrate>
+  return <Hydrate when={load()}><p>${marker}</p></Hydrate>
 }
 `
       const server = await startRsbuildDevServer({
