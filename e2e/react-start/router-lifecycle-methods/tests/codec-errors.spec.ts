@@ -132,6 +132,32 @@ test.describe('codec error - hydrate throws on the client, ssr: true route', () 
     expect((await readClientRuns(page))['cehts-loader']).toBe(1)
   })
 
+  test('SSR: a hydrate redirect leaves destination callbacks to normal loading', async ({
+    page,
+  }) => {
+    const response = await page.goto(
+      '/codec-error-hydrate-throws-ssr?hydrateRedirect=true',
+    )
+    expect(response?.status()).toBe(200)
+    const html = await response!.text()
+    expect(html).toContain('data-testid="cehts-component"')
+    expect(html).toContain('ssr-loader-value')
+
+    await awaitHydrated(page)
+    await expect(page).toHaveURL(
+      /\/codec-error-hydrate-throws-ssr\?hydrateRedirect=true$/,
+    )
+    await expect(page.getByTestId('cehts-value')).toHaveText('ssr-loader-value')
+    await expect(page.getByTestId('cehts-error-component')).toHaveCount(0)
+    const runs = await readClientRuns(page)
+    expect({
+      handler: runs['cehts-loader'] ?? 0,
+      hydrate: runs['cehts-redirect-hydrate'] ?? 0,
+      destination: runs['cehts-redirect-search'] ?? 0,
+      onError: runs['cehts-onError'] ?? 0,
+    }).toEqual({ handler: 1, hydrate: 1, destination: 0, onError: 0 })
+  })
+
   test('client nav: hydrate is not involved, the route renders', async ({
     page,
   }) => {

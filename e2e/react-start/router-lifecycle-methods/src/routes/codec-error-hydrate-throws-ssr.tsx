@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { countClientRun } from '~/utils/origin'
 
 // A throwing `hydrate` on an `ssr: true` route: the server rendered the
@@ -14,10 +14,25 @@ export const Route = createFileRoute('/codec-error-hydrate-throws-ssr')({
       return { value: 'ssr-loader-value' }
     },
     dehydrate: true,
-    hydrate: ({ data }) => {
-      if (data.value) throw new Error('TSR_E2E_HYDRATE_THROW_SSR')
+    hydrate: ({ data, location }) => {
+      if (location.searchStr === '?hydrateRedirect=true') {
+        countClientRun('cehts-redirect-hydrate')
+        throw redirect({
+          to: '/',
+          search: () => {
+            countClientRun('cehts-redirect-search')
+            throw new Error('TSR_E2E_HYDRATE_REDIRECT_SEARCH')
+          },
+        })
+      }
+      if (data.value) {
+        throw new Error('TSR_E2E_HYDRATE_THROW_SSR')
+      }
       return data
     },
+  },
+  onError: () => {
+    countClientRun('cehts-onError')
   },
   component: () => (
     <div data-testid="cehts-component">
