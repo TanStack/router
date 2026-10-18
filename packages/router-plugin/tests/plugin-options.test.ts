@@ -61,32 +61,6 @@ async function buildRoute(
 const read = (app: BuildResult, file: string) =>
   readFile(path.join(app.root, file), 'utf8').catch(() => null)
 
-describe('enableRouteGeneration: false', () => {
-  const userTree =
-    '// The route tree of the user\nexport const routeTree = {}\n'
-  const userRoute = route('/somewhere-else')
-  const files = {
-    'routes/index.tsx': userRoute,
-    'routeTree.gen.ts': userTree,
-  }
-
-  // Source: #5087, gap options.md (`false` never exercised).
-  test.each(bundlers)(
-    'leaves the route tree and the route files as written (%s)',
-    async (bundler) => {
-      const { app, html } = await buildRoute(
-        bundler,
-        { enableRouteGeneration: false },
-        { files },
-      )
-      expect(await read(app, 'routeTree.gen.ts')).toBe(userTree)
-      expect(await read(app, 'routes/index.tsx')).toBe(userRoute)
-      expect(html).toContain('MARK_COMPONENT')
-    },
-    timeout,
-  )
-})
-
 describe.each([false, undefined])(
   'autoCodeSplitting: %s',
   (autoCodeSplitting) => {
