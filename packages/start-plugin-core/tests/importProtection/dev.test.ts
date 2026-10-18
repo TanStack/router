@@ -218,7 +218,92 @@ describe('the trace of a client import of a denied file', () => {
     },
     timeout,
   )
+
+  // In every Start app, a module imports the router entry: Start's client
+  // runtime. The trace still starts at the router entry.
+  // Source: r5-gaps N8 (spc:4060, 4062: the module graph trace does not stop
+  // at an entry).
+  test(
+    'starts at the router entry when another module imports the router entry',
+    async () => {
+      const server = await startProtectedDevServer({
+        ...deniedFileApp,
+        'src/main.ts': `export * from './entry'\n`,
+      })
+      await server.load('/src/main.ts')
+      const reports = violationReports(server.logs)
+      expect(reports).not.toEqual([])
+      for (const report of reports) {
+        expect(traceModules(report)).toEqual(['src/entry.ts', 'src/a.ts'])
+      }
+    },
+    timeout,
+  )
+
+  // The dev twin of the build test in reported-location.test.ts "the trace is
+  // the shortest import chain".
+  // Source: r5-gaps N8 (spc:4072, 4073: the module graph search revisits
+  // modules).
+  test(
+    'is the shortest import chain',
+    async () => {
+      const server = await startProtectedDevServer({
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/s.ts': `import { secret } from './secret.server'
+export const s = () => secret()
+`,
+        'src/c.ts': `import { s } from './s'\nexport const c = () => s()\n`,
+        'src/a.ts': `import { c } from './c'
+import { s } from './s'
+export const page = () => c() + s()
+`,
+        'src/entry.ts': `export * from './a'\n`,
+      })
+      await server.load('/src/entry.ts')
+      const reports = violationReports(server.logs)
+      expect(reports).not.toEqual([])
+      for (const report of reports) {
+        expect(traceModules(report)).toEqual([
+          'src/entry.ts',
+          'src/a.ts',
+          'src/s.ts',
+        ])
+      }
+    },
+    timeout,
+  )
 })
+
+// Edits in the order people make them: a module, then the module importing
+// it, each loaded by the client in between.
+// Source: r5-gaps N1 (spc:1680: dropping the edges of the first edit left
+// the importer's edges pointing at nothing, and the second edit's HMR
+// handling threw).
+test(
+  'an edit of a module, then of its importer, updates both without an error',
+  async () => {
+    const server = await startProtectedDevServer({
+      'src/b.ts': `export const b = () => 'b1'\n`,
+      'src/a.ts': `import { b } from './b'\nexport const a = () => 'a1' + b()\n`,
+      'src/entry.ts': `export * from './a'\n`,
+    })
+    await server.load('/src/entry.ts')
+    const logged = server.logs.length
+    const updates = [
+      ...(await server.edit({ 'src/b.ts': `export const b = () => 'b2'\n` })),
+    ]
+    await server.load('/src/entry.ts')
+    updates.push(
+      ...(await server.edit({
+        'src/a.ts': `import { b } from './b'\nexport const a = () => 'a2' + b()\n`,
+      })),
+    )
+    expect(updates.filter(({ type }) => type === 'error')).toEqual([])
+    expect(server.logs.slice(logged)).toEqual([])
+    expect((await evaluateServed(server, '/src/entry.ts')).a()).toBe('a2b2')
+  },
+  timeout,
+)
 
 // Import protection checks only JavaScript and TypeScript modules; edits of
 // the app's other modules update as usual.
@@ -242,6 +327,30 @@ export const count = () => data.count
       'src/data.json': `{ "count": 2 }\n`,
     })
     expect(updates.filter(({ type }) => type === 'error')).toEqual([])
+    expect(server.logs.slice(logged)).toEqual([])
+  },
+  timeout,
+)
+
+// A CSS file that another one `@import`s is in Vite's module graph only as
+// a file (a module without an id).
+// Source: r5-gaps N2 (spc:4916: such a module reached import protection's
+// HMR handling, which threw).
+test(
+  'an edit of a CSS file another CSS module @imports updates it without an error',
+  async () => {
+    const server = await startProtectedDevServer({
+      'src/base.css': `.page { color: red }\n`,
+      'src/style.css': `@import './base.css';\n.title { color: green }\n`,
+      'src/entry.ts': `import './style.css'\nexport const page = 1\n`,
+    })
+    await server.load('/src/entry.ts')
+    const logged = server.logs.length
+    const updates = await server.edit({
+      'src/base.css': `.page { color: blue }\n`,
+    })
+    expect(updates.filter(({ type }) => type === 'error')).toEqual([])
+    expect(updates).not.toEqual([])
     expect(server.logs.slice(logged)).toEqual([])
   },
   timeout,
@@ -1047,6 +1156,85 @@ export const startInstance = { leak }
     timeout,
   )
 
+  // Source: r5-gaps N7 (spc:4641: the factory module's violations found when
+  // the Start compiler looked it up, which include the imports used inside
+  // `.server()`, were logged without waiting for its compiled imports).
+  test(
+    'a server fn factory module calling a denied file at the top level is logged at that use only, not at the imports it uses inside .server()',
+    async () => {
+      const tail = `export const secret = getSecret()\n`
+      const server = await startProtectedDevServer(serverFnFactoryApp(tail))
+      await server.load('/src/entry.ts')
+      await server.idle()
+      expect(loggedViolations(server.logs).sort()).toEqual([
+        `client src/factory.ts:9:${tail.indexOf('getSecret') + 1}`,
+        'client src/leak.ts:2:27',
+      ])
+    },
+    timeout,
+  )
+
+  /**
+   * `serverFnFactoryApp` without the leak, whose server fn factory module
+   * re-exports `request` of `src/other.ts`, which calls the denied
+   * `getRequest()` at the top level. The client loads the app. Returns the
+   * reports logged and the use in `src/other.ts`.
+   */
+  async function reExportedByAFactory() {
+    const other = `import { getRequest } from '@tanstack/react-start/server'
+${factoryTopLevelCall}`
+    const app: Record<string, string> = {
+      ...serverFnFactoryApp(`export { request } from './other'\n`),
+      'src/other.ts': other,
+      'src/entry.ts': `export { fn } from './usage'\n`,
+    }
+    delete app['src/leak.ts']
+    const server = await startProtectedDevServer(app)
+    const client = await server.load('/src/entry.ts')
+    await server.idle()
+    expect(Object.keys(client)).toContain('/src/other.ts')
+    return {
+      reports: violationReports(server.logs),
+      use: locationIn('src/other.ts', other, 2, 'getRequest()'),
+    }
+  }
+
+  // Source: r5-gaps N3 (spc:5428: the client's edge from a module the Start
+  // compiler looked up to the modules it imports).
+  test(
+    'a denied import of a module a server fn factory module re-exports is logged, with a trace to the use',
+    async () => {
+      const { reports, use } = await reExportedByAFactory()
+      expect(reports).toHaveLength(1)
+      expect(reports[0]!.trace.map(({ at }) => at)).toEqual([
+        expect.stringMatching(/^src\/entry\.ts\b/),
+        expect.stringMatching(/^src\/usage\.ts\b/),
+        expect.stringMatching(/^src\/factory\.ts\b/),
+        use,
+      ])
+    },
+    timeout,
+  )
+
+  // Bug: the location of the use is read from a source map of the module
+  // whose `sources` are relative to it (`other.ts`), and import protection
+  // takes the source as it is (import-protection/sourceLocation.ts
+  // `mapGeneratedToOriginal`, `orig.source`), so `Importer:` names the
+  // file without its directory. The trace, located from the module's id,
+  // is right.
+  // Impact: in dev, the warning for a module a server fn factory module
+  // re-exports names `other.ts:2:24` instead of `src/other.ts:2:24` (low:
+  // diagnostics only; an editor link does not open the file).
+  // Source: found writing the r5-gaps N3 test above.
+  test.fails(
+    'a denied import of a module a server fn factory module re-exports is reported at the use, with its path',
+    async () => {
+      const { reports, use } = await reExportedByAFactory()
+      expect(reports.map(({ importer }) => importer)).toEqual([use])
+    },
+    timeout,
+  )
+
   // Source: mutation run R3 ip-vite V7 (spc:5415). The factory module's
   // violations wait for its compiled imports (the Start compiler looked it
   // up), and its denied file import comes before its denied specifier.
@@ -1153,6 +1341,13 @@ export const q = () => [read(), request(), slow]
         `client ${locationIn('src/p.ts', p, 3, 'secret()')}`,
         `client ${locationIn('src/p.ts', p, 4, 'getRequest()')}`,
       ])
+      // Source: r5-gaps N8 (spc:4216, 4218, 4219: the trace from Vite's
+      // module graph, which does not have the importer yet, replaced it).
+      for (const report of violationReports(server.logs)) {
+        expect(
+          report.trace.map(({ at }) => at.replace(/:\d+:\d+$/, '')),
+        ).toEqual(['src/entry.ts', 'src/q.ts', 'src/p.ts'])
+      }
     },
     timeout,
   )
@@ -1320,6 +1515,73 @@ export const leak = () => secret()
   )
 })
 
+describe("an app's server entry, with Start's whole plugin", () => {
+  const handler = `import { widget } from './widget.client'
+export const handler = () => widget()
+`
+  /**
+   * An app whose `src/handler.ts` uses the client-only file
+   * `src/widget.client.ts`, imported by the app's server entry
+   * `src/server.ts` or by its router entry `src/router.ts`.
+   */
+  const handlerApp = (importer: 'src/server.ts' | 'src/router.ts') => ({
+    'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+    'src/handler.ts': handler,
+    ...(importer === 'src/server.ts' && {
+      'src/server.ts': `import { handler } from './handler'
+export default { fetch: () => new Response(String(handler())) }
+`,
+    }),
+    'src/router.ts':
+      importer === 'src/router.ts'
+        ? `import { handler } from './handler'\nexport const getRouter = () => handler\n`
+        : `export const getRouter = () => undefined\n`,
+  })
+  const handlerUse = `server ${locationIn('src/handler.ts', handler, 2, 'widget()')}`
+
+  const startApp = (files: Record<string, string>) =>
+    startDevServer({ start: {}, files, config: { server: { hmr: false } } })
+
+  // Control for the pin below (same harness).
+  test(
+    'a client-only import of a module the router entry imports is mocked on the server and logged',
+    async () => {
+      const server = await startApp(handlerApp('src/router.ts'))
+      const router = await server.import('/src/router.ts')
+      expect(String(router.getRouter()())).not.toContain('MARK_CLIENT')
+      expect(loggedViolations(server.logs)).toEqual([handlerUse])
+    },
+    timeout,
+  )
+
+  // Bug: dev import protection only logs violations it can reach from the
+  // entries it registers, Start's router entry and start entry
+  // (vite/import-protection-plugin/plugin.ts `registerEntries`). The app's
+  // server entry is not one, and the entry branch of `resolveId` (no
+  // importer) never runs in dev, where Vite passes `<root>/index.html` as
+  // the importer, so the modules only the server entry imports are
+  // unreachable and their violations are discarded. The server twin of the
+  // client entry pin above.
+  // Impact: in dev (mock mode), a client-only import reached from the app's
+  // custom server entry (`src/server.ts`) is mocked on the server without
+  // any warning (the request returns the mock's value).
+  // Source: mutation run R4 final re-audit (M3).
+  test.fails(
+    'a client-only import of a module the server entry imports is mocked on the server and logged',
+    async () => {
+      const server = await startApp(handlerApp('src/server.ts'))
+      // (what Start's dev server runs for a request)
+      const entry = await server.import('virtual:tanstack-start-server-entry')
+      const response: Response = await entry.default.fetch(
+        new Request('http://localhost/'),
+      )
+      expect(await response.text()).not.toContain('MARK_CLIENT')
+      expect(loggedViolations(server.logs)).toEqual([handlerUse])
+    },
+    timeout,
+  )
+})
+
 // Vite's full-bundle dev (`experimental.bundledDev`), which Start supports:
 // Rolldown bundles the client, so a module can be transformed before its
 // importers.
@@ -1373,6 +1635,211 @@ export const request = () => getRequest()
         `client ${deniedFileUse}`,
         `client ${locationIn('src/x.ts', x, 2, 'getRequest()')}`,
       ])
+    },
+    timeout,
+  )
+
+  /** The modules of the trace of each report logged in `logs`. */
+  const traces = (logs: Array<string>) =>
+    violationReports(logs).map((report) =>
+      report.trace.map(({ at }) => at.replace(/:\d+:\d+$/, '')),
+    )
+
+  // Source: r5-gaps N8 (spc:4997, 4998: every importer taken as an entry).
+  test(
+    'the trace of a denied file imported through a chain of modules leads from the router entry',
+    async () => {
+      const server = await startProtectedDevServer(
+        {
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/lib/a.ts': `import { secret } from '../secret.server'
+export const read = () => secret()
+`,
+          'src/b.ts': `export { read } from './lib/a'\n`,
+          'src/entry.ts': `export * from './b'\n`,
+        },
+        {},
+        { bundledDev: { entry: 'src/entry.ts' } },
+      )
+      await server.clientBundle()
+      const logged = traces(server.logs)
+      expect(logged).not.toEqual([])
+      for (const trace of logged) {
+        expect(trace).toEqual(['src/entry.ts', 'src/b.ts', 'src/lib/a.ts'])
+      }
+    },
+    timeout,
+  )
+
+  // Bug: in full-bundle dev, import protection takes each client module of
+  // `src/routes` as an entry, so that a violation under a route the bundle
+  // reaches before the router entry's imports are known is not discarded
+  // (vite/import-protection-plugin/plugin.ts `resolveId`, bundled dev
+  // `env.graph.addEntry(normalizedImporter)`); the trace then stops at the
+  // first entry it meets.
+  // Impact: in full-bundle dev, the trace of a violation under a route
+  // starts at the route module: it does not show how the app reaches the
+  // route (unbundled dev and builds start at the router entry). Low:
+  // diagnostics only.
+  // Source: mutation run R4 final re-audit (M4).
+  test.fails(
+    'the trace of a denied file imported from a module of src/routes leads from the router entry',
+    async () => {
+      const server = await startProtectedDevServer(
+        {
+          ...deniedFileApp,
+          'src/routes/page.ts': `export { read } from '../a'\n`,
+          'src/entry.ts': `export * from './routes/page'\n`,
+        },
+        {},
+        { bundledDev: { entry: 'src/entry.ts' } },
+      )
+      await server.clientBundle()
+      const logged = traces(server.logs)
+      expect(logged).not.toEqual([])
+      for (const trace of logged) {
+        expect(trace).toEqual(['src/entry.ts', 'src/routes/page.ts', 'src/a.ts'])
+      }
+    },
+    timeout,
+  )
+
+  // Full-bundle dev bundles only the client: the server still loads modules
+  // one by one, and its traces do not change.
+  // Source: r5-gaps N8 (spc:4991, 4992: route modules taken as server
+  // entries).
+  test(
+    'the SSR trace of a .client file imported from a module of src/routes leads from the router entry',
+    async () => {
+      const server = await startProtectedDevServer(
+        {
+          'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+          'src/a.ts': `import { widget } from './widget.client'
+export const read = () => widget()
+`,
+          'src/routes/page.ts': `export { read } from '../a'\n`,
+          'src/entry.ts': `export * from './routes/page'\n`,
+        },
+        {},
+        { bundledDev: { entry: 'src/entry.ts' } },
+      )
+      await server.load('/src/entry.ts', { environment: 'ssr' })
+      const logged = traces(server.logs)
+      expect(logged).not.toEqual([])
+      for (const trace of logged) {
+        expect(trace).toEqual(['src/entry.ts', 'src/routes/page.ts', 'src/a.ts'])
+      }
+    },
+    timeout,
+  )
+
+  /**
+   * An app whose server fn factory module is a denied file
+   * (`src/factory.server.ts`); `src/usage.ts`, which the router entry
+   * re-exports, defines a server fn with it.
+   */
+  const deniedFactoryApp = {
+    'src/factory.server.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const mw = createMiddleware({ type: 'function' }).server(({ next }) => next())
+export const createSecretFn = createServerFn().middleware([mw])
+export const marker = 'MARK_SECRET'
+`,
+    'src/usage.ts': `import { createSecretFn } from './factory.server'
+export const fn = createSecretFn().handler(async () => 'data')
+`,
+    'src/entry.ts': `export { fn } from './usage'\n`,
+  }
+  const deniedFactoryUse = 'src/usage.ts:2:19'
+
+  // Source: r5-gaps N7 (spc:2154: the mock the Start compiler's lookup of the
+  // denied factory module gets).
+  test(
+    'a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at the use',
+    async () => {
+      const server = await startProtectedDevServer(
+        deniedFactoryApp,
+        {},
+        { bundledDev: { entry: 'src/entry.ts' } },
+      )
+      const bundle = await server.clientBundle()
+      expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toContain(
+        `client ${deniedFactoryUse}`,
+      )
+    },
+    timeout,
+  )
+
+  // Bug: the Start compiler looks up the factory in the denied file's mock
+  // (`import mock from 'tanstack-start-import-protection:mock'`) with its
+  // lookup query, and the Vite adapter loads the silent mock only by its
+  // exact id (vite/import-protection-plugin/virtualModules.ts
+  // `loadResolvedVirtualModule`): Rolldown cannot load
+  // `\0tanstack-start-import-protection:mock?server-fn-module-lookup`. With
+  // the default `mockAccess`, the mock-runtime module hides it (the control
+  // above).
+  // Impact: in full-bundle dev with `mockAccess: 'off'`, an app with a server
+  // fn built from a factory in a denied file fails to bundle the client
+  // (UNLOADABLE_DEPENDENCY). Low: opt-in option, unusual layout.
+  // Source: mutation run R4 final re-audit (M2).
+  test.fails(
+    'with mockAccess off, a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at the use',
+    async () => {
+      const server = await startProtectedDevServer(
+        deniedFactoryApp,
+        { mockAccess: 'off' },
+        { bundledDev: { entry: 'src/entry.ts' } },
+      )
+      const bundle = await server.clientBundle()
+      expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toContain(
+        `client ${deniedFactoryUse}`,
+      )
+    },
+    timeout,
+  )
+
+  // Start's virtual client entry, the bundle's input, imports the app's
+  // `src/client.tsx`, which may import modules before the router entry's
+  // imports reach them.
+  // Source: r5-gaps N6 (spc:4664-4698: the violations of a module the bundle
+  // reaches before the router entry does are kept until it does).
+  test(
+    'a denied import of a module the bundle input imports before the router entry reaches it is logged at the use',
+    async () => {
+      let release!: () => void
+      const released = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      // Holds the router entry until the page module is transformed
+      const slowEntry: Plugin = {
+        name: 'slow-entry',
+        enforce: 'pre',
+        async transform(_code, id) {
+          if (id.endsWith('/src/entry.ts')) {
+            await released
+          } else if (id.endsWith('/src/page.ts')) {
+            setTimeout(release, 50)
+          }
+          return null
+        },
+      }
+      const server = await startProtectedDevServer(
+        {
+          ...deniedFileApp,
+          'src/page.ts': `export { read } from './a'\n`,
+          'src/entry.ts': `export { read } from './page'\n`,
+          'src/client.ts': `import { read } from './page'
+import * as router from './entry'
+export const app = [read, router]
+`,
+        },
+        {},
+        { bundledDev: { entry: 'src/client.ts' }, plugins: [slowEntry] },
+      )
+      const bundle = await server.clientBundle()
+      expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
+      expect(loggedViolations(server.logs)).toEqual([`client ${deniedFileUse}`])
     },
     timeout,
   )
@@ -1450,6 +1917,17 @@ export const Page = () => <div>{String(secret())}</div>
       environment: 'client',
       importProtection: { client: { files: ['**/private/**'] } },
       expected: 'client src/a.tsx:2:40',
+    },
+    // Source: r5-gaps N7 (spc:4144: a module without exports, imported for
+    // its side effects, was located in its compiled code).
+    {
+      name: 'a use of a denied file in a module without exports (client)',
+      a: `import { secret } from './private/db'
+console.log(<div>{String(secret())}</div>)
+`,
+      environment: 'client',
+      importProtection: { client: { files: ['**/private/**'] } },
+      expected: 'client src/a.tsx:2:26',
     },
     {
       name: 'a client-only marker (SSR)',
