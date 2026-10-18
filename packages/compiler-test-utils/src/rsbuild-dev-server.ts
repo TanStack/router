@@ -137,7 +137,8 @@ export async function createRsbuildDevServer(
           source: { entry: { index: `./${entry}` } },
           dev: { writeToDisk: true, hmr: false, liveReload: false },
           server: { printUrls: false },
-          output: { sourceMap: false, minify: false },
+          // Rsbuild's default source maps in development, as in an app
+          output: { minify: false },
           tools: { htmlPlugin: false },
           performance: { chunkSplit: { strategy: 'all-in-one' } },
           plugins: [
