@@ -16,7 +16,7 @@ import {
 } from '@tanstack/virtual-file-routes'
 import { parseSync } from 'vite'
 import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from './app'
-import { routesOf, urlsOf } from './route-tree'
+import { routePathsOf, routesOf, urlsOf } from './route-tree'
 import type { Config } from '../src'
 
 /** An app with a root route and a route file for each of `files`. */
@@ -218,6 +218,99 @@ describe('layouts and groups', () => {
       '/about': 'routes/about.tsx',
       '/_auth': 'routes/_auth.tsx',
     })
+  })
+
+  // A layout with a piece file only (no route file) still adds no path
+  // segment, and is no page of its own.
+  // Source: r5-gaps N5 (rg:455: such a layout got `path: '/'`, which makes
+  // the router match the layout itself at `/`).
+  test('a pathless layout with only a Vue component piece in a route group has no path', async () => {
+    const root = await createApp({
+      'src/routes/__root.ts': rootRoute('vue'),
+      'src/routes/(group)/_layout.component.vue': `<template><slot /></template>\n`,
+      'src/routes/(group)/_layout/inner.ts': fileRoute(
+        '/(group)/_layout/inner',
+        '{}',
+        'vue',
+      ),
+    })
+    const { generatedRouteTree } = await generate(root, { target: 'vue' })
+
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      '/(group)/_layout': '/',
+      '/(group)/_layout/inner': '/inner',
+    })
+    expect((await routePathsOf(generatedRouteTree))['/(group)/_layout']).toBe(
+      undefined,
+    )
+  })
+
+  // Bug: a pathless layout with a lazy route file only (`foo/_auth.lazy.tsx`,
+  // no `foo/_auth.tsx`) or a Vue piece only (`foo/_layout.component.vue`)
+  // becomes a route without a file whose node is typed `static`, and the
+  // route tree prints a `path` only for non-pathless nodes and for nodes
+  // typed `pathless_layout` (src/generator.ts, the `path:` option of
+  // `createUpdateRoutes`), so the layout loses the `/foo` prefix it carries
+  // when nothing above it is a route. The route tree's types still say
+  // `/foo/bar`. A layout with a route file (`foo/_auth.tsx`) is right.
+  // Impact: the child route matches `/bar` instead of `/foo/bar`, and
+  // links typed `/foo/bar` lead nowhere. Unlike the pending PIN-A ruling
+  // (a pathless layout with a route file under a lazy-only route: which
+  // route is its parent), here the URL disagrees with the generated types.
+  // Source: mutation run R4 final re-audit (G1).
+  test.fails.each<{
+    name: string
+    target: 'react' | 'vue'
+    files: Record<string, string>
+    child: string
+  }>([
+    {
+      name: 'a lazy route file',
+      target: 'react',
+      files: {
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/foo/_auth.lazy.tsx': lazyFileRoute('/foo/_auth'),
+        'src/routes/foo/_auth/bar.tsx': fileRoute('/foo/_auth/bar'),
+      },
+      child: '/foo/_auth/bar',
+    },
+    {
+      name: 'a Vue component piece',
+      target: 'vue',
+      files: {
+        'src/routes/__root.ts': rootRoute('vue'),
+        'src/routes/foo/_layout.component.vue': `<template><slot /></template>\n`,
+        'src/routes/foo/_layout/bar.ts': fileRoute(
+          '/foo/_layout/bar',
+          '{}',
+          'vue',
+        ),
+      },
+      child: '/foo/_layout/bar',
+    },
+  ])(
+    'a pathless layout with only $name under a path keeps the path in the URLs of its children',
+    async ({ target, files, child }) => {
+      const root = await createApp(files)
+      const { generatedRouteTree } = await generate(root, { target })
+
+      expect((await urlsOf(generatedRouteTree))[child]).toBe('/foo/bar')
+    },
+  )
+
+  // Control for the pin above (same harness).
+  test('a pathless layout with a route file under a path keeps the path in the URLs of its children', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/foo/_auth.tsx': fileRoute('/foo/_auth'),
+      'src/routes/foo/_auth/bar.tsx': fileRoute('/foo/_auth/bar'),
+    })
+    const { generatedRouteTree } = await generate(root)
+
+    expect((await urlsOf(generatedRouteTree))['/foo/_auth/bar']).toBe(
+      '/foo/bar',
+    )
   })
 
   test('two sections with grandchildren give a valid route tree without formatting', async () => {

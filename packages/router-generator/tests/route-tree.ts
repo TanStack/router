@@ -51,7 +51,7 @@ function stubRoute(file: string | null) {
   options: {},
   update(options) { Object.assign(this.options, options); return this },
   updateLoader(options) { Object.assign(this.options, options); return this },
-  lazy(importer) { this.options.lazy = { importer: String(importer) }; return this },
+  lazy(importer) { this.options.lazy = { importer: String(importer) }; this.lazyFn = importer; return this },
   _addFileChildren(children) { this.children = children; return this },
   _addFileTypes() { return this },
 })`
@@ -86,6 +86,8 @@ interface EvaluatedRoute {
   /** The route file, relative to the tree (null for a route without a file). */
   file: string | null
   options: Record<string, any>
+  /** The function the route tree gave `route.lazy()`, if any. */
+  lazyFn?: () => Promise<unknown>
   /**
    * The URL path the route matches: the `path` options of the route and its
    * parents joined (a route without a `path`, such as a pathless layout,
@@ -101,7 +103,10 @@ interface EvaluatedRoute {
  * recorded lazy import loads. Like a bundler, fails on an invalid module or a
  * static or dynamic import that does not resolve to a file.
  */
-async function evaluateRouteTree(treeFile: string) {
+async function evaluateRouteTree(
+  treeFile: string,
+  importLazily?: (file: string) => Record<string, unknown>,
+) {
   const evaluation = ++evaluations
   const source = await readFile(treeFile, 'utf8')
   const { code } = await transformWithOxc(source, path.basename(treeFile))
@@ -135,17 +140,35 @@ async function evaluateRouteTree(treeFile: string) {
       text: JSON.stringify(replacement),
     })
   }
+  /** The module each dynamic import loads, by specifier. */
+  const lazyModules = new Map<string, string>()
   for (const dynamicImport of module.dynamicImports) {
     const literal = code.slice(
       dynamicImport.moduleRequest.start,
       dynamicImport.moduleRequest.end,
     )
     const specifier = literal.slice(1, -1)
-    if (!(await resolveImport(specifier, treeFile))) {
+    const file = await resolveImport(specifier, treeFile)
+    if (!file) {
       throw new Error(
         `The route tree dynamic import "${specifier}" does not resolve`,
       )
     }
+    lazyModules.set(specifier, relative(file))
+    if (importLazily) {
+      // `import(` → the loader of the evaluation
+      replacements.push({
+        start: dynamicImport.start,
+        end: dynamicImport.moduleRequest.start,
+        text: `globalThis.__tsrRouteTreeImport${evaluation}(`,
+      })
+    }
+  }
+  if (importLazily) {
+    ;(globalThis as Record<string, unknown>)[
+      `__tsrRouteTreeImport${evaluation}`
+    ] = (specifier: string) =>
+      Promise.resolve().then(() => importLazily(lazyModules.get(specifier)!))
   }
 
   let linked = code
@@ -164,6 +187,7 @@ async function evaluateRouteTree(treeFile: string) {
       id: '__root__',
       file: routeTree.file,
       options: routeTree.options,
+      lazyFn: routeTree.lazyFn,
       url: '/',
     },
   ]
@@ -178,7 +202,13 @@ async function evaluateRouteTree(treeFile: string) {
         child.options.path === undefined
           ? parentUrl
           : joinPaths(parentUrl, child.options.path)
-      routes.push({ id, file: child.file, options: child.options, url })
+      routes.push({
+        id,
+        file: child.file,
+        options: child.options,
+        lazyFn: child.lazyFn,
+        url,
+      })
       visit(id, url, child.children)
     }
   }
@@ -260,4 +290,39 @@ export async function urlsOf(
 ): Promise<Record<string, string>> {
   const { routes } = await evaluateRouteTree(treeFile)
   return Object.fromEntries(routes.map(({ id, url }) => [id, url]))
+}
+
+/**
+ * Evaluates the generated route tree at `treeFile` (see `evaluateRouteTree`)
+ * and returns the `path` option each route gets, by route id (the root route
+ * as `__root__`); undefined for a route without one. Router-core treats a
+ * route with a `path`, even `/`, as a page the URL can match on its own, and
+ * a route without one (a pathless layout) as a wrapper of its children.
+ */
+export async function routePathsOf(
+  treeFile: string,
+): Promise<Record<string, string | undefined>> {
+  const { routes } = await evaluateRouteTree(treeFile)
+  return Object.fromEntries(routes.map(({ id, options }) => [id, options.path]))
+}
+
+/**
+ * Evaluates the generated route tree at `treeFile` (see `evaluateRouteTree`)
+ * and loads the lazy route of route `routeId` the way the router does
+ * (`route.lazy(fn)`: the route's options are those of the lazy route `fn`
+ * resolves to), each module the route tree imports dynamically being
+ * `importModule(file)` (file relative to the tree). Returns the value `fn`
+ * resolves to, or undefined when the route has no lazy route.
+ */
+export async function loadLazyRoute(
+  treeFile: string,
+  routeId: string,
+  importModule: (file: string) => Record<string, unknown>,
+): Promise<unknown> {
+  const { routes } = await evaluateRouteTree(treeFile, importModule)
+  const route = routes.find(({ id }) => id === routeId)
+  if (!route) {
+    throw new Error(`No route ${routeId} in the route tree`)
+  }
+  return route.lazyFn?.()
 }

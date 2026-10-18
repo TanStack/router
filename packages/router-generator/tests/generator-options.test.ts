@@ -788,6 +788,35 @@ export const Route = createFileRoute('/posts/')({})
   })
 })
 
+describe('custom tokens matching longer names', () => {
+  // A file name is escaped only when brackets wrap it (`[layout]`); a
+  // routeToken regex that matches whole names containing a word applies to
+  // every such name.
+  // Source: r5-gaps N11 (rg:2723: every name read as bracket-wrapped).
+  test('a routeToken regex matching names that contain "layout" makes such a file the layout route of its directory', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/posts/mylayouts.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({})
+`,
+      'src/routes/posts/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts/')({})
+`,
+    })
+    const { generatedRouteTree } = await generate(root, {
+      routeToken: /.*layout.*/,
+    })
+
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/posts': 'routes/posts/mylayouts.tsx',
+      '/posts/': 'routes/posts/index.tsx',
+    })
+  })
+})
+
 describe('route tree path', () => {
   test('with disableTypes, only the extension of the route tree file becomes .js', () => {
     const config = getConfig(
