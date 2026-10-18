@@ -2,13 +2,13 @@
  * Start's router wiring on a running Vite dev server, with Start's whole
  * Vite plugin (dev-server.ts `start`): the client route tree, which leaves
  * out server-only routes, follows edits that turn a route into a page or
- * into a server-only route.
+ * into a server-only route; an edited page route hot-updates in a real
+ * browser page.
  */
+import react from '@vitejs/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'
-import {
-  describeHmr,
-  evaluateServed,
-} from '@tanstack/compiler-test-utils/dev-server'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
 import { startDevServer } from './dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
@@ -146,102 +146,121 @@ export const getRouter = () => ({ routeTree })
   )
 })
 
-describe('Vite dev: route HMR', () => {
+describe('Vite dev: route HMR in a real page', () => {
   // Start's client code splitting adds route HMR (Start forces `addHmr` on
-  // the client): when the browser applies the hot update of an edited page
-  // route, the live route runs the new options and keeps its split
-  // component (no remount). The framework's refresh plugin, which makes the
-  // module an HMR boundary and patches the component body, is not mounted:
-  // the test applies the update the way Vite's HMR client does (the new
-  // module evaluates with the hot data of the old one, then the old one's
-  // accept callback gets it).
+  // the client). A real Vite dev server with Start's whole Vite plugin and
+  // `@vitejs/plugin-react` serves an app with the real router to a real page
+  // (headless Chromium), Vite's own watcher reports the edits, and Vite's
+  // HMR client, React Refresh and the route HMR code apply them. The edited
+  // page route shows its new loader data and component without a full
+  // reload, and its split component keeps its state (no remount).
+  // The page is the app's `index.html`, rendered on the client: Start's SSR
+  // document needs the real `@tanstack/react-start`, which depends on this
+  // package. Start's SSR with HMR in a real app: e2e/react-start/hmr.
   // Source: mutation round 3 start-router I/J (spc:6046).
   test(
-    'a hot update of an edited page route applies its new options to the live route and keeps its split component',
+    'an edited page route shows its new loader and component without a full reload, and its split component keeps its state',
     async () => {
-      const page = (marker: string) =>
-        `${head}export const Route = createFileRoute('/page')({ loader: () => '${marker}', component: () => 'MARK_PAGE' })\n`
+      const page = (loader: string, text: string) =>
+        `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+function Page() {
+  const [count, setCount] = useState(0)
+  const data = Route.useLoaderData()
+  return <button onClick={() => setCount(count + 1)}>${text} {data} count {count}</button>
+}
+export const Route = createFileRoute('/')({ loader: () => '${loader}', component: Page })
+`
       const server = await startDevServer({
         start: {},
+        realRouter: true,
+        browser: true,
+        // Pre-bundled up front, as Vite does for an app that installed them
+        // (the router is a linked workspace package here)
+        config: {
+          optimizeDeps: {
+            include: [
+              'react',
+              'react/jsx-dev-runtime',
+              'react-dom',
+              'react-dom/client',
+              '@tanstack/react-router',
+            ],
+          },
+        },
+        plugins: [react()],
         files: {
-          'src/routes/page.tsx': page('MARK_LOADER_V1'),
-          'src/router.ts': `import { routeTree } from './routeTree.gen'
-export const getRouter = () => ({ routeTree })
+          'index.html': `<!doctype html>
+<html>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
 `,
+          'src/main.tsx': `import { createRoot } from 'react-dom/client'
+import { RouterProvider } from '@tanstack/react-router'
+import { getRouter } from './router'
+createRoot(document.getElementById('app')!).render(<RouterProvider router={getRouter()} />)
+`,
+          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+          'src/routes/index.tsx': page('loader v1', 'Page v1'),
         },
       })
-      /** The hot data of each module, and the accept callbacks. */
-      const hotData = new Map<string, Record<string, unknown>>()
-      const accepted: Array<(module: unknown) => void> = []
-      const viteClient = {
-        createHotContext: (ownerPath: string) => {
-          const data = hotData.get(ownerPath) ?? {}
-          hotData.set(ownerPath, data)
-          return {
-            data,
-            accept: (callback?: (module: unknown) => void) => {
-              if (typeof callback === 'function') {
-                accepted.push(callback)
-              }
-            },
-            acceptExports() {},
-            dispose() {},
-            prune() {},
-            invalidate() {},
-            on() {},
-            off() {},
-            send() {},
+      const fullReloads = () =>
+        server.hmr.filter(
+          (message) =>
+            message.environment === 'client' && message.type === 'full-reload',
+        )
+      /** Waits until the dev server sent no HMR message for a while. */
+      const quiet = async () => {
+        let count = server.hmr.length
+        let since = Date.now()
+        for (;;) {
+          await new Promise((resolve) => setTimeout(resolve, 25))
+          if (server.hmr.length !== count) {
+            count = server.hmr.length
+            since = Date.now()
+          } else if (Date.now() - since >= 300) {
+            await server.idle()
+            return
           }
-        },
-      }
-      /** Evaluates the served page route module, as the browser loads it. */
-      const loadPage = async () =>
-        (
-          await evaluateServed(server, '/src/routes/page.tsx', {
-            skip: /^\/@vite\b/,
-            stubs: { '/@vite/client': viteClient },
-          })
-        ).Route as {
-          options: { loader: () => unknown; component: unknown }
         }
-      const global = globalThis as Record<string, unknown>
-      const hadWindow = 'window' in global
-      const browser: Record<string, unknown> = {}
-      global.window = browser
-      onTestFinished(() => {
-        if (!hadWindow) {
-          delete global.window
-        }
-      })
-
-      const live = await loadPage()
-      const component = live.options.component
-      // The router the page created (`window.__TSR_ROUTER__`)
-      browser.__TSR_ROUTER__ = {
-        routesById: { '/page': live },
-        _replaceRouteChunk() {},
-        buildRouteTree() {},
-        setRoutes() {},
-        resolvePathCache: new Map(),
       }
-      expect(live.options.loader()).toBe('MARK_LOADER_V1')
-
-      const messages = await server.edit({
-        'src/routes/page.tsx': page('MARK_LOADER_V2'),
+      const browser = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
       })
-      // An edit of a client route module: the client is told
-      expect(
-        messages.filter((message) => message.environment === 'client'),
-      ).not.toEqual([])
-      const callbacks = [...accepted]
-      const updated = await loadPage()
-      for (const callback of callbacks) {
-        callback({ Route: updated })
-      }
+      const shows = (text: string) =>
+        browser.waitForText(text, { selector: '#app' })
+      await shows('Page v1 loader v1 count 0')
+      await quiet()
+      await browser.page.locator('#app button').click()
+      await browser.page.locator('#app button').click()
+      await shows('Page v1 loader v1 count 2')
 
-      expect(callbacks).not.toEqual([])
-      expect(live.options.loader()).toBe('MARK_LOADER_V2')
-      expect(live.options.component).toBe(component)
+      // Route options outside the split component change
+      await server.write({
+        'src/routes/index.tsx': page('loader v2', 'Page v1'),
+      })
+      await shows('Page v1 loader v2 count 2')
+      await quiet()
+
+      // The split component changes
+      await server.write({
+        'src/routes/index.tsx': page('loader v2', 'Page v2'),
+      })
+      await shows('Page v2 loader v2 count 2')
+      await quiet()
+
+      expect(browser.loads()).toBe(1)
+      expect(describeHmr(fullReloads())).toEqual([])
+      expect(browser.errors).toEqual([])
     },
     timeout,
   )

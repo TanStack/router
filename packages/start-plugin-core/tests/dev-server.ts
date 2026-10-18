@@ -56,7 +56,7 @@ export interface StartDevServerOptions extends Omit<
    * (`tanstackStart(options)`) instead of the compiler plugin alone (then
    * `environments` and `providerEnvName` do not apply: client and SSR, SSR
    * as the provider). `@tanstack/react-router` is the build harness's
-   * stand-in (`routerRuntimeFiles`); the app's client and server entries are
+   * stand-in (`routerRuntimeFiles`) unless `realRouter`; the app's client and server entries are
    * empty, and `src/router.ts` and `src/routes/__root.tsx` are stubs unless
    * the app has them.
    */
@@ -67,11 +67,16 @@ export interface StartDevServerOptions extends Omit<
    * transform).
    */
   compilerTransforms?: Array<StartCompilerImportTransform>
+  /**
+   * With `start`: the app imports the real `@tanstack/react-router` (a
+   * devDependency of this package) instead of the build harness's stand-in,
+   * e.g. to run in a browser page (`browser`). Default `false`.
+   */
+  realRouter?: boolean
 }
 
 /** The files the harness adds to an app with Start's plugin, unless it has them. */
 const startPluginFiles = {
-  ...routerRuntimeFiles,
   'harness/client-entry.ts': `export {}\n`,
   'harness/server-entry.ts': `export {}\n`,
   'harness/start.ts': `export const startInstance = undefined\n`,
@@ -118,6 +123,7 @@ export function startDevServer(
     providerEnvName = 'ssr',
     start,
     compilerTransforms,
+    realRouter = false,
     ...devServerOptions
   } = options
   /** Server environments Vite does not create by default. */
@@ -129,7 +135,12 @@ export function startDevServer(
     prefix: '.start-dev-server-',
     registerCleanup: onTestFinished,
     ...devServerOptions,
-    files: { ...startRuntimeFiles, ...(start && startPluginFiles), ...files },
+    files: {
+      ...startRuntimeFiles,
+      ...(start && !realRouter && routerRuntimeFiles),
+      ...(start && startPluginFiles),
+      ...files,
+    },
     plugins: ({ root }) => [
       start
         ? startPlugin(root, start, compilerTransforms)
