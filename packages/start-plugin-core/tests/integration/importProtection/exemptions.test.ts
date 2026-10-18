@@ -12,6 +12,10 @@ import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { afterAll, afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
+  describeValue,
+  describeValuePrelude,
+} from '../../importProtection/mock-helpers'
+import {
   reportedViolations,
   startProtectedDevServer,
 } from '../../importProtection/start-apps'
@@ -20,8 +24,28 @@ import type { ImportProtectionOptions } from '../../../src/schema'
 
 const timeout = 60_000
 
-/** What a use of a mock returns, converted to a string. */
-const mockText = '[import-protection mock]'
+/**
+ * What a use gives, described: the real value's text, `a safe mock`
+ * (`mock-helpers.ts`), or what calling it threw.
+ */
+const mockText = 'a safe mock'
+const read = (use: () => unknown) => {
+  try {
+    return describeValue(use(), 'MARK_')
+  } catch (error) {
+    return `throws: ${String(error)}`
+  }
+}
+/** `read` for the scripts of a build (`describeValuePrelude`). */
+const readPrelude = `${describeValuePrelude}
+const read = (use) => {
+  try {
+    return describeValue(use(), 'MARK_')
+  } catch (error) {
+    return 'throws: ' + String(error)
+  }
+}
+`
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -107,7 +131,7 @@ const reportedFiles = (output: string | Array<string>) =>
   ].sort()
 
 /** What each re-exported use returns, and whether the denied file ran. */
-const readScript = `const read = (use) => { try { return String(use()) } catch (error) { return 'throws: ' + error } }
+const readScript = `${readPrelude}
 return {
   exempt: read(entry.exemptRead),
   other: read(entry.otherRead),
@@ -207,13 +231,6 @@ describe.each(exemptions)(
       // The mock reports each use in the browser console.
       vi.spyOn(console, 'error').mockImplementation(() => {})
       const module = await evaluateServed(server, '/src/entry.ts')
-      const read = (use: () => unknown) => {
-        try {
-          return String(use())
-        } catch (error) {
-          return `throws: ${String(error)}`
-        }
-      }
       return {
         exempt: read(module.exemptRead),
         other: read(module.otherRead),
@@ -286,15 +303,12 @@ type ExcludedOutcome = Record<'vendor' | 'widget' | 'package', Use> & {
   reported: Array<string>
 }
 
-const excludedReadScript = `const read = (use, loaded) => {
-  let value
-  try { value = String(use()) } catch (error) { value = 'throws: ' + error }
-  return { read: value, loaded: globalThis[loaded] ?? null }
-}
+const excludedReadScript = `${readPrelude}
+const use = (fn, loaded) => ({ read: read(fn), loaded: globalThis[loaded] ?? null })
 return {
-  vendor: read(entry.vendorRead, 'vendorLoaded'),
-  widget: read(entry.widgetRead, 'widgetLoaded'),
-  package: read(entry.packageRead, 'packageLoaded'),
+  vendor: use(entry.vendorRead, 'vendorLoaded'),
+  widget: use(entry.widgetRead, 'widgetLoaded'),
+  package: use(entry.packageRead, 'packageLoaded'),
 }`
 
 /** The real module of a use: its value, and its file ran. */
@@ -430,21 +444,13 @@ describe('vite dev: excludeFiles', () => {
     const module = await evaluateServed(server, '/src/entry.ts', {
       skip: /^\/@(vite|react-refresh)\b/,
     })
-    const read = (use: () => unknown, loaded: string): Use => {
-      let value: string
-      try {
-        value = String(use())
-      } catch (error) {
-        value = `throws: ${String(error)}`
-      }
-      return {
-        read: value,
-        loaded: (globalThis as Record<string, unknown>)[loaded] ?? null,
-      }
-    }
+    const use = (fn: () => unknown, loaded: string): Use => ({
+      read: read(fn),
+      loaded: (globalThis as Record<string, unknown>)[loaded] ?? null,
+    })
     return {
-      vendor: read(module.vendorRead, 'vendorLoaded'),
-      package: read(module.packageRead, 'packageLoaded'),
+      vendor: use(module.vendorRead, 'vendorLoaded'),
+      package: use(module.packageRead, 'packageLoaded'),
       reported: reportedFiles(server.logs),
     }
   }

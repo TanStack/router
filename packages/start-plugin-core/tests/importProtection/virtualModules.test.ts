@@ -1,11 +1,13 @@
 /**
- * The mock modules import protection serves, evaluated as ES modules: what
- * a mock is when used, that the build mock of a denied file stands alone,
- * and that the dev mock of a client violation reports each use through the
- * browser console. Which names each mock exposes is covered by
- * analysis.exports.test.ts ("mock modules expose every importable name").
+ * The mock modules import protection serves, evaluated as ES modules and
+ * linked to the virtual modules the adapter resolves for them: what a mock
+ * is when used (a safe mock, `mock-helpers.ts`), and that the dev mock of a
+ * client violation reports each use through the browser console as
+ * `mockAccess` says. Which names each mock exposes is covered by
+ * analysis.exports.test.ts ("mock modules expose every importable name");
+ * what the mocks of a real app do, by the mock-mode rows of
+ * integration/importProtection/{build,dev}.test.ts.
  */
-import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   generateDevSelfDenialModule,
@@ -14,97 +16,46 @@ import {
   mockRuntimeModuleIdFromViolation,
 } from '../../src/import-protection/virtualModules'
 import {
-  loadResolvedVirtualModule,
-  resolveInternalVirtualModuleId,
-} from '../../src/vite/import-protection-plugin/virtualModules'
-import { evaluateWithMock, isMock } from './mock-helpers'
+  evaluateMockModule,
+  evaluateWithMock,
+  expectSafeMock,
+} from './mock-helpers'
 import type { ViolationInfo } from '../../src/import-protection/trace'
-
-type MockValue = {
-  toString: () => string
-  valueOf: () => string
-  toJSON: () => string
-}
-
-type MockFunction = {
-  (): MockValue
-}
-
-/**
- * Evaluates a generated module as an ES module; its imports link to the
- * virtual modules import protection serves (none when `standalone`).
- */
-function evaluateGeneratedModule<T>(
-  code: string,
-  options: { standalone?: boolean } = {},
-): Promise<T> {
-  const id = '/test/mock.js'
-  return createModuleGraph({
-    modules: { [id]: code },
-    ...(!options.standalone && {
-      resolve: (specifier: string) => resolveInternalVirtualModuleId(specifier),
-      load: (virtualId: string) => loadResolvedVirtualModule(virtualId)?.code,
-    }),
-  }).import(id) as Promise<T>
-}
 
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
 describe('the silent mock', () => {
-  test('supports primitive conversion for called mocks', async () => {
-    const mod = await evaluateGeneratedModule<{ default: MockFunction }>(
-      loadSilentMockModule().code,
-    )
-    const value = mod.default()
-
-    expect(String(value)).toBe('[import-protection mock]')
-    expect(value.toString()).toBe('[import-protection mock]')
-    expect(value.valueOf()).toBe('[import-protection mock]')
-    expect(JSON.stringify(value)).toBe('"[import-protection mock]"')
+  test('is a safe mock, as is what it gives', async () => {
+    const mod = await evaluateMockModule(loadSilentMockModule().code)
+    expectSafeMock(mod.default)
+    expectSafeMock(mod.default())
+    expectSafeMock(new mod.default.Client())
   })
 
-  // Replaces assertions on the purity annotations in the generated text; the
-  // build-level effect (an unused mock is dropped from the bundle) is pinned
-  // in known-bugs.test.ts.
-  test('links on its own, and evaluating and using it has no side effects', async () => {
+  // The build-level effect (an unused mock is dropped from the bundle) is
+  // pinned in integration/importProtection/known-bugs.test.ts.
+  test('evaluating and using it has no side effects', async () => {
     const globals = Object.getOwnPropertyNames(globalThis)
     const output = (['log', 'info', 'warn', 'error'] as const).map((method) =>
       vi.spyOn(console, method).mockImplementation(() => {}),
     )
-    const mod = await evaluateGeneratedModule<{
-      default: Record<string, MockFunction>
-    }>(loadSilentMockModule().code, { standalone: true })
-    String(mod.default.anything!())
+    const mod = await evaluateMockModule(loadSilentMockModule().code)
+    String(mod.default.anything())
     expect(Object.getOwnPropertyNames(globalThis)).toEqual(globals)
     expect(output.filter((spy) => spy.mock.calls.length > 0)).toEqual([])
-  })
-
-  test('`new` on a member returns a mock', async () => {
-    const mod = await evaluateGeneratedModule<{
-      default: Record<string, new () => unknown>
-    }>(loadSilentMockModule().code)
-    expect(isMock(new mod.default.Client!())).toBe(true)
   })
 })
 
 describe('the build mock of a denied file', () => {
-  // Evaluated with nothing to link to: the build mock imports nothing.
-  test('supports primitive conversion for named export calls', async () => {
-    const mod = await evaluateGeneratedModule<{ getSecret: MockFunction }>(
-      generateSelfContainedMockModule(['getSecret']).code,
-      { standalone: true },
+  test('exposes its exports as safe mocks, as is what they give', async () => {
+    const mod = await evaluateMockModule(
+      generateSelfContainedMockModule(['getSecret', 'api']).code,
     )
-
-    expect(String(mod.getSecret())).toBe('[import-protection mock]')
-  })
-
-  test('`new` on a member of an export returns a mock', async () => {
-    const mod = await evaluateGeneratedModule<{
-      api: Record<string, new () => unknown>
-    }>(generateSelfContainedMockModule(['api']).code, { standalone: true })
-    expect(isMock(new mod.api.Client!())).toBe(true)
+    expectSafeMock(mod.getSecret)
+    expectSafeMock(mod.getSecret())
+    expectSafeMock(new mod.api.Client())
   })
 })
 
@@ -142,8 +93,8 @@ function captureConsole() {
 }
 
 // In dev, the mock served in place of a denied file imports a mock runtime
-// chosen for the violation (`mockAccess`, the environment): in the client,
-// each use of the mock reports the violation in the browser console.
+// chosen for the violation (`mockAccess`): each use of the mock reports the
+// violation in the browser console.
 describe('the dev mock of a denied file', () => {
   /**
    * Evaluates the dev mock of a denied file exporting `getSecret`, for
@@ -154,16 +105,25 @@ describe('the dev mock of a denied file', () => {
   async function useDevMock(
     mode: 'error' | 'warn' | 'off',
     info: ViolationInfo = violation,
-    use: (mod: { getSecret: any }) => unknown = (mod) => mod.getSecret(),
+    use: (mod: Record<string, any>) => unknown = (mod) => mod.getSecret(),
   ) {
     const output = captureConsole()
     const runtimeId = mockRuntimeModuleIdFromViolation(info, mode, '/project')
-    const mod = await evaluateGeneratedModule<{ getSecret: MockFunction }>(
+    const mod = await evaluateMockModule(
       generateDevSelfDenialModule(['getSecret'], runtimeId).code,
     )
     use(mod)
     return output()
   }
+
+  test('is a safe mock, whatever mockAccess', async () => {
+    for (const mode of ['error', 'warn', 'off'] as const) {
+      await useDevMock(mode, violation, (mod) => {
+        expectSafeMock(mod.getSecret)
+        expectSafeMock(mod.getSecret())
+      })
+    }
+  })
 
   test.each([
     { mode: 'error', method: 'error' },
@@ -186,7 +146,7 @@ describe('the dev mock of a denied file', () => {
     },
   )
 
-  test.each<{ name: string; use: (mod: { getSecret: any }) => unknown }>([
+  test.each<{ name: string; use: (mod: Record<string, any>) => unknown }>([
     { name: 'a conversion to a string', use: (mod) => String(mod.getSecret) },
     { name: 'a toString() call', use: (mod) => mod.getSecret.toString() },
     { name: '`new`', use: (mod) => new mod.getSecret() },
@@ -203,15 +163,8 @@ describe('the dev mock of a denied file', () => {
     })
   })
 
-  test.each([
-    { name: 'mockAccess off', mode: 'off', info: violation },
-    {
-      name: 'a server environment',
-      mode: 'error',
-      info: { ...violation, env: 'ssr', envType: 'server' },
-    },
-  ] as const)('$name: a use is not reported', async ({ mode, info }) => {
-    expect(await useDevMock(mode, info)).toEqual({ warn: [], error: [] })
+  test('mockAccess off: a use is not reported', async () => {
+    expect(await useDevMock('off')).toEqual({ warn: [], error: [] })
   })
 })
 

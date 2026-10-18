@@ -4,6 +4,7 @@ import {
   buildTrace,
   formatViolation,
 } from '../../src/import-protection/trace'
+import { violationReports } from './violation-report'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 
 describe('ImportGraph', () => {
@@ -211,12 +212,23 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    expect(formatted).toContain('Import denied in client environment')
+    // (the report's sections, read by the adapter the app tests use)
+    expect(violationReports(formatted)).toEqual([
+      expect.objectContaining({
+        environment: 'client',
+        importer: 'src/routes/index.tsx',
+        specifier: '@tanstack/react-start/server',
+        trace: [
+          { at: 'src/main.tsx', entry: true, imports: undefined },
+          {
+            at: 'src/routes/index.tsx',
+            entry: false,
+            imports: './routes/index',
+          },
+        ],
+      }),
+    ])
     expect(formatted).toContain('specifier pattern')
-    expect(formatted).toContain('@tanstack/react-start/server')
-    expect(formatted).toContain('src/routes/index.tsx')
-    expect(formatted).toContain('Trace:')
-    expect(formatted).toContain('(entry)')
   })
 
   test('formats file violation correctly', () => {
@@ -298,7 +310,9 @@ describe('formatViolation', () => {
     }
 
     const formatted = formatViolation(info, '/project')
-    expect(formatted).toContain('Import denied in server environment')
+    expect(violationReports(formatted)).toEqual([
+      expect.objectContaining({ environment: 'server' }),
+    ])
   })
 
   test('client-in-server violation with JSX suggests ClientOnly', () => {

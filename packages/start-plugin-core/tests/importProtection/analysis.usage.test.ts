@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { findPostCompileUsagePos } from '../../src/import-protection/analysis'
-import { locationOf, usageLocation } from './usage-location'
+import { compileFor, importSources } from '../regression-helpers'
 
 function pos(code: string, source: string) {
   return findPostCompileUsagePos(code, source)
@@ -289,14 +289,24 @@ export const later = x`
   })
 })
 
-// The violation import protection reports for a denied import in a module the
-// Start compiler compiled: none when every use is inside code the compiler
-// removes from the environment (a safe boundary), so that the compiled module
-// no longer imports it, else one at the use that leaks.
-describe('usage location after the Start compiler', () => {
+// Whether the Start compiler keeps a module's import of a denied source in
+// the output of an environment: an import used only inside code the compiler
+// removes from the environment (a safe boundary) does not survive, so there
+// is no edge for import protection to report (SPEC J6.4); a use the
+// compiler keeps does. Where a surviving use is reported is read from real
+// apps: integration/importProtection/reported-location.test.ts.
+describe('a denied import after the Start compiler', () => {
   const imports = `import { createServerFn, createServerOnlyFn, createClientOnlyFn, createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
 import { denied } from 'denied'
 `
+
+  /** Whether the output of `output` for `code` still imports `denied`. */
+  async function survives(code: string, output: 'client' | 'ssr' | 'provider') {
+    const compiled = await compileFor(output, code, {
+      id: '/test/src/module.tsx',
+    })
+    return importSources(compiled.code ?? code).includes('denied')
+  }
 
   test.each([
     {
@@ -371,9 +381,9 @@ export const fn = Start.createServerOnlyFn(() => denied())`,
       body: `export const fn = createIsomorphicFn().client((() => denied()))`,
     },
   ] as const)(
-    '$output: no violation is reported for a use inside $name',
+    '$output: an import used only inside $name does not survive',
     async ({ output, body }) => {
-      expect(await usageLocation(imports + body, output)).toBeUndefined()
+      expect(await survives(imports + body, output)).toBe(false)
     },
   )
 
@@ -383,25 +393,20 @@ export const fn = Start.createServerOnlyFn(() => denied())`,
       output: 'provider',
       body: `export const fn = createServerFn().handler(async () => denied())`,
     },
-  ] as const)(
-    '$output: a use inside $name is reported',
-    async ({ output, body }) => {
-      const code = imports + body
-      expect(await usageLocation(code, output)).toEqual(
-        locationOf(code, 3, 'denied()'),
-      )
-    },
-  )
-
-  test('client: a use after a server fn handler is reported', async () => {
-    const code = `${imports}export const fn = createServerFn().handler(async () => {
+    {
+      name: 'a function after a server fn handler, in the client',
+      output: 'client',
+      body: `export const fn = createServerFn().handler(async () => {
   return denied()
 })
 export function leakyReference() {
   return denied()
-}`
-    expect(await usageLocation(code, 'client')).toEqual(
-      locationOf(code, 7, 'denied()'),
-    )
-  })
+}`,
+    },
+  ] as const)(
+    '$output: an import used inside $name survives',
+    async ({ output, body }) => {
+      expect(await survives(imports + body, output)).toBe(true)
+    },
+  )
 })

@@ -1,10 +1,19 @@
 /**
  * Helpers of the import-protection tests that run Start's import protection
- * on a real app: a Vite dev server with Start's import-protection Vite
- * plugin (after the Start compiler, like the Start plugin orders them), a
- * stand-in `react` JSX runtime, and the violations import protection reports
- * to the user (dev server warnings, build errors and warnings), read from the
- * text it prints.
+ * on a real app.
+ *
+ * `startProtectedDevServer` is the focused adapter harness: a Vite dev
+ * server with Start's import-protection Vite plugin wired by hand after the
+ * Start compiler, like the Start plugin orders them, with the environments,
+ * entries and options a test chooses. It shows what the adapter does; that
+ * Start's whole plugin wires it (its entries, its provider environment, the
+ * `importProtection` option of `tanstackStart()`) is checked through
+ * `startDevServer({ start })` (dev.test.ts, "with Start's whole plugin").
+ *
+ * The violations a run reports are read two ways: structured, as
+ * `onViolation` receives them (`server.violations`), and as the text the
+ * user sees, through the adapter of `violation-report.ts`
+ * (`reportedViolations`, `violationTexts`, `violationReports`).
  */
 import path from 'node:path'
 import { expect } from 'vitest'
@@ -13,8 +22,16 @@ import { startDevServer } from '../dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { ImportProtectionOptions } from '../../src/schema'
 import type { ImportProtectionPluginOptions } from '../../src/vite/import-protection-plugin/types'
+import type { ViolationInfo } from '../../src/import-protection/trace'
 import type { StartDevServerOptions } from '../dev-server'
 import type { PluginOption } from 'vite'
+
+export {
+  reportedViolations,
+  violationReports,
+  violationTexts,
+} from './violation-report'
+export type { ReportedViolation } from './violation-report'
 
 export interface ProtectedDevServerOptions {
   /**
@@ -41,17 +58,25 @@ export interface ProtectedDevServerOptions {
   bundledDev?: StartDevServerOptions['bundledDev']
 }
 
+export interface ProtectedDevServer extends DevServer {
+  /**
+   * Every violation `onViolation` received, in order (the app's own
+   * `onViolation`, when it has one, still decides).
+   */
+  violations: Array<ViolationInfo>
+}
+
 /**
  * Starts a Vite dev server (`startDevServer`) on an app of `files` with
  * Start's import protection, configured by `importProtection` (Start's
  * `importProtection` option; source directory `src`), and with Start's
  * entries registered (`options.router`).
  */
-export function startProtectedDevServer(
+export async function startProtectedDevServer(
   files: Record<string, string>,
   importProtection: ImportProtectionOptions = {},
   options: ProtectedDevServerOptions = {},
-): Promise<DevServer> {
+): Promise<ProtectedDevServer> {
   const {
     router = 'src/entry.ts',
     providerEnvironment = 'ssr',
@@ -66,7 +91,16 @@ export function startProtectedDevServer(
       ? []
       : [{ name: providerEnvironment, type: 'server' as const }]),
   ]
-  return startDevServer({
+  const violations: Array<ViolationInfo> = []
+  const userOnViolation = importProtection?.onViolation
+  const recording: ImportProtectionOptions = {
+    ...importProtection,
+    onViolation: (info) => {
+      violations.push(info as ViolationInfo)
+      return userOnViolation?.(info)
+    },
+  }
+  const server = await startDevServer({
     files,
     bundledDev,
     config,
@@ -77,7 +111,7 @@ export function startProtectedDevServer(
     plugins: ({ root }) => [
       importProtectionPlugin({
         getConfig: (() => ({
-          startConfig: { importProtection },
+          startConfig: { importProtection: recording },
           resolvedStartConfig: {
             srcDirectory: path.join(root, 'src'),
             routerFilePath: path.join(root, router),
@@ -94,6 +128,7 @@ export function startProtectedDevServer(
       ...plugins,
     ],
   })
+  return Object.assign(server, { violations })
 }
 
 /**
@@ -134,56 +169,6 @@ export { leak } from './leak'
  */
 export const factoryTopLevelCall = `export const request = getRequest()\n`
 
-/** A stand-in `react` package with the JSX runtime compiled JSX imports. */
-export const reactRuntimeFiles: Record<string, string> = {
-  'node_modules/react/package.json': JSON.stringify({
-    name: 'react',
-    type: 'module',
-    exports: {
-      './jsx-runtime': './jsx-runtime.js',
-      './jsx-dev-runtime': './jsx-runtime.js',
-    },
-  }),
-  'node_modules/react/jsx-runtime.js': `export const Fragment = Symbol('Fragment')
-export const jsx = (type, props) => (typeof type === 'function' ? type(props) : type)
-export const jsxs = jsx
-export const jsxDEV = jsx
-`,
-}
-
-export interface ReportedViolation {
-  /** `client` or `server`. */
-  environment: string
-  /**
-   * Where the violation is reported (`Importer:`): the importer relative to
-   * the app root, with `:line:column` when the report has a location.
-   */
-  importer: string
-}
-
-/**
- * The import-protection violations reported in `output` (dev server logs,
- * build errors or warnings), in order.
- */
-export function reportedViolations(
-  output: string | Array<string>,
-): Array<ReportedViolation> {
-  const text = Array.isArray(output) ? output.join('\n') : output
-  return text
-    .split('[import-protection] Import denied in ')
-    .slice(1)
-    .map((report) => ({
-      environment: /^(\w+)/.exec(report)![1]!,
-      importer: /Importer: (\S+)/.exec(report)?.[1] ?? '',
-    }))
-}
-
-/** The text of each import-protection violation report in `output`, in order. */
-export function violationTexts(output: string | Array<string>): Array<string> {
-  const text = Array.isArray(output) ? output.join('\n') : output
-  return text.split('[import-protection] Import denied in ').slice(1)
-}
-
 /**
  * Checks the report of a marker violation (a module marked server-only
  * imported by the client, or client-only imported by the server): it names
@@ -194,18 +179,18 @@ export function violationTexts(output: string | Array<string>): Array<string> {
  * location is fine (coordinator ruling on audit F ASK-1).
  */
 export function expectMarkerViolation(
-  report: string,
+  report: { importer: string; text: string },
   locations: { marker: string; use: string },
 ) {
   const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const markedFile = locations.marker.replace(/:\d+$/, '')
-  expect(/Importer: (\S+)/.exec(report)?.[1]).toMatch(
+  expect(report.importer).toMatch(
     new RegExp(
       `^(?:${escape(locations.marker)}:\\d+|${escape(markedFile)}|${escape(locations.use)})$`,
     ),
   )
   for (const file of [markedFile, locations.use.replace(/:\d+:\d+$/, '')]) {
-    expect(report).toContain(file)
+    expect(report.text).toContain(file)
   }
 }
 
@@ -236,4 +221,24 @@ export async function rejection(promise: Promise<unknown>): Promise<Error> {
     return error as Error
   }
   throw new Error('expected the promise to reject')
+}
+
+/**
+ * The import-protection violations `onViolation` received, as
+ * `<environment type> <importer>` relative to `root` (with `:line:column`
+ * when located), each distinct value once, in order.
+ */
+export function receivedViolations(
+  violations: Array<ViolationInfo>,
+  root: string,
+): Array<string> {
+  return distinct(
+    violations.map((info) => {
+      const file = path.relative(root, info.importer).split(path.sep).join('/')
+      const location = info.importerLoc
+        ? `:${info.importerLoc.line}:${info.importerLoc.column}`
+        : ''
+      return `${info.envType} ${file}${location}`
+    }),
+  )
 }

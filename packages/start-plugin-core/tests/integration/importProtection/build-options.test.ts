@@ -7,14 +7,14 @@
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   distinct,
   expectMarkerViolation,
   rejection,
   reportedViolations,
-  violationTexts,
+  violationReports,
 } from '../../importProtection/start-apps'
-import { violationReports } from '../../importProtection/violation-report'
 import type { ImportProtectionOptions } from '../../../src/schema'
 
 const timeout = 60_000
@@ -248,10 +248,11 @@ export const read = () => getRequest()
             },
           }),
         )
-        const reports = violationTexts(error.message)
+        const reports = violationReports(error.message)
         expect(reports).not.toEqual([])
         for (const report of reports) {
-          expect(report).toMatch(/Denied by [^\n]*\/\^db-lib\$\//)
+          // (the rule that matched is in the report)
+          expect(report.text).toContain('/^db-lib$/')
         }
       },
       timeout,
@@ -372,9 +373,9 @@ export const secret = () => 'MARK_SECRET'
             start: { importProtection: { client: { excludeFiles: [] } } },
           }),
         )
-        const [report, ...others] = violationTexts(error.message)
+        const [report, ...others] = violationReports(error.message)
         expect(others).toEqual([])
-        expect(report).toMatch(/^client environment/)
+        expect(report!.environment).toBe('client')
         expectMarkerViolation(report!, {
           marker: 'node_modules/db-lib/index.js:1',
           use: 'src/entry.ts:2:27',
@@ -488,7 +489,7 @@ export const read = () => getRequest()
     )
 
     test(
-      'in mock mode, it gets each import of a denied specifier with the file the specifier resolves to; the mocks are silent',
+      'in mock mode, it gets each import of a denied specifier with the file the specifier resolves to; the mocks are safe (and silent with mockAccess off)',
       async () => {
         const seen: Array<Violation> = []
         const { client } = await buildStart({
@@ -499,10 +500,10 @@ export const read = () => getRequest()
             'src/a.ts': `import { secret } from 'db-lib'
 import { secret as mail } from 'mail-lib'
 import { b } from './b'
-export const a = () => String(secret()) + String(mail()) + '|' + b()
+export const a = () => [secret(), mail(), b()]
 `,
             'src/b.ts': `import { secret } from 'db-lib'
-export const b = () => String(secret())
+export const b = () => secret()
 `,
             'src/entry.ts': `import { a } from './a'
 export const read = () => a()
@@ -512,6 +513,7 @@ export const read = () => a()
           start: {
             importProtection: {
               behavior: 'mock',
+              mockAccess: 'off',
               client: { specifiers: ['db-lib', 'mail-lib'] },
               onViolation: (info) => {
                 seen.push(info as Violation)
@@ -535,9 +537,11 @@ export const read = () => a()
           'src/a.ts mail-lib -> node_modules/mail-lib/index.js',
           'src/b.ts db-lib -> node_modules/db-lib/index.js',
         ])
-        expect(await client.run(`return entry.read()`)).toMatchObject({
-          result:
-            '[import-protection mock][import-protection mock]|[import-protection mock]',
+        expect(
+          await client.run(`${describeValuePrelude}
+return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`),
+        ).toMatchObject({
+          result: ['a safe mock', 'a safe mock', 'a safe mock'],
           logs: [],
         })
       },
