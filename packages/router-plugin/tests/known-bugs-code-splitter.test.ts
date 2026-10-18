@@ -677,13 +677,13 @@ export const Route = createFileRoute('/')({
     async () => {
       const calls: Array<unknown> = []
       await evaluateModule(
-        transformWithRouteHmrPlugin(`${head}import { init } from './init'
+        (await transformWithRouteHmrPlugin(`${head}import { init } from './init'
 const analytics = init('analytics')
 export type Analytics = typeof analytics
 export const Route = createFileRoute('/')({
   component: () => <p>component</p>,
 })
-`),
+`)),
         {
           './init': {
             init: (value: unknown) => {
@@ -1358,9 +1358,9 @@ export const Route = createFileRoute('/')({ component: Page })
   // Impact: every split chunk loads the re-exported modules and the class.
   test.fails(
     'split chunks do not re-export or declare the re-exports and default class of the route file',
-    () => {
+    async () => {
       const { graph } =
-        compileRouteModules(`${head}export { getPaths, a as getProps } from './lib'
+        (await compileRouteModules(`${head}export { getPaths, a as getProps } from './lib'
 export { foo, bar as baz } from './lib'
 export { helper } from './default-lib'
 export default class Test {
@@ -1372,7 +1372,7 @@ export const Route = createFileRoute('/')({
   component: () => <div>home</div>,
   errorComponent: () => <div>error</div>,
 })
-`)
+`))
       /** Sources a module imports or re-exports from. */
       const requested = (code: string) => [
         ...importSources(code),
@@ -2311,10 +2311,10 @@ describe('TypeScript-only syntax', () => {
   // splitting is on.
   test.fails('a decorator after `export` compiles', async () => {
     const { modules } =
-      compileRouteModules(`${head}import { injectable } from 'tsyringe'
+      (await compileRouteModules(`${head}import { injectable } from 'tsyringe'
 export @injectable() class Store {}
 export const Route = createFileRoute('/')({ component: () => <div /> })
-`)
+`))
     await expectValidModules(modules)
   })
 
@@ -2326,9 +2326,9 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
   // splitting is on.
   test.fails(
     'a class with a parameter decorator that the split component uses compiles into parseable modules',
-    () => {
+    async () => {
       const { modules } =
-        compileRouteModules(`${head}import { Inject } from './di'
+        (await compileRouteModules(`${head}import { Inject } from './di'
 class Service {
   constructor(@Inject() readonly dep: unknown) {}
 }
@@ -2336,7 +2336,7 @@ export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{String(new Service(1).dep)}</p>,
 })
-`)
+`))
       expect(Object.keys(modules).length).toBeGreaterThan(1)
       for (const code of Object.values(modules)) {
         parseModule(code)
@@ -2357,11 +2357,11 @@ export const Route = createFileRoute('/')({
   ])(
     'a type-only import re-exported as `export { Settings }` is erased (%s)',
     async (importDeclaration) => {
-      const { modules } = compileRouteModules(`${head}${importDeclaration}
+      const { modules } = (await compileRouteModules(`${head}${importDeclaration}
 export { Settings }
 export const Route = createFileRoute('/')({
   component: () => <p>index</p>,
-})`)
+})`))
       await expectValidModules(modules)
     },
   )
@@ -2392,8 +2392,8 @@ export const Route = createFileRoute('/')({
 })`,
       source: './server/db',
     },
-  ])('split chunks do not import what only $name reads', ({ code, source }) => {
-    const { graph } = compileRouteModules(`${head}${code}\n`)
+  ])('split chunks do not import what only $name reads', async ({ code, source }) => {
+    const { graph } = (await compileRouteModules(`${head}${code}\n`))
     const chunks = [...graph.importKinds]
       .filter(([, kind]) => kind === 'dynamic')
       .map(([id]) => graph.modules.get(id)!)
@@ -2463,7 +2463,7 @@ function Page() {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `
-      await expectValidModules(compileRouteModules(code).modules)
+      await expectValidModules((await compileRouteModules(code)).modules)
       expect(await (await loadRoute(code)).render('component')).toBe(
         '<p>-1</p>',
       )
@@ -2480,7 +2480,7 @@ export const Route = createFileRoute('/')({ component: Page })
 }
 export const Route = createFileRoute('/')({ component: Page })
 `
-    await expectValidModules(compileRouteModules(code).modules)
+    await expectValidModules((await compileRouteModules(code)).modules)
     return (await loadRoute(code)).render('component')
   }
 
@@ -3157,15 +3157,15 @@ ${serverOptions}
   // Node): what the client compile of a Solid route still imports is
   // checked here, the built Solid app runs in
   // integration/build-frameworks.test.ts.
-  test('server-only options of a Solid file route written as properties are removed with their imports', () => {
-    const { modules } = compileRouteModules(
+  test('server-only options of a Solid file route written as properties are removed with their imports', async () => {
+    const { modules } = (await compileRouteModules(
       `import { createFileRoute } from '@tanstack/solid-router'
 import { db } from './secret-db'
 export const Route = createFileRoute('/')({
 ${serverOptions}
 })`,
       { deleteNodes, targetFramework: 'solid' },
-    )
+    ))
     expect(
       Object.values(modules).filter((module) =>
         importSources(module).includes('./secret-db'),

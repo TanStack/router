@@ -19,15 +19,12 @@ import {
   refreshScope,
   transformWithReactRefresh,
 } from './lazy-tracking'
-import { routeModuleId } from './plugin-host'
 import type { TargetFramework } from './plugin-host'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { ESTree } from 'vite'
 import type { Stubs } from './lazy-tracking'
 
 export {
-  webpackCompiler,
-  routeModuleId,
   importRequests,
   compileRouteModules,
   eagerModuleIds,
@@ -39,12 +36,10 @@ export {
   importedNames,
   exportedNames,
   routeFile,
-  createCodeSplitterTransforms,
-  generatedRouteId,
   transformWithRouteHmrPlugin,
   createRouteHmrTransform,
 } from './plugin-host'
-export type { TargetFramework, WebpackCompilerStub } from './plugin-host'
+export type { TargetFramework } from './plugin-host'
 export {
   componentModules,
   routeSpecifier,
@@ -76,7 +71,7 @@ export async function evaluateModule(
     framework?: TargetFramework
   } = {},
 ): Promise<Record<string, (...args: Array<any>) => any>> {
-  const id = routeModuleId(options.filename ?? 'module.tsx')
+  const id = `/${options.filename ?? 'module.tsx'}`
   const moduleGraph = createModuleGraph({
     modules: { [id]: code },
     stubs,
@@ -103,7 +98,7 @@ export async function evaluateRouteModule(
   stubs: Stubs = {},
   options: { importMeta?: Record<string, unknown> } = {},
 ) {
-  const id = routeModuleId()
+  const id = '/route.tsx'
   const registered = new Map<unknown, string>()
   const moduleGraph = createModuleGraph({
     modules: { [id]: code },

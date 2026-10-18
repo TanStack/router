@@ -359,7 +359,7 @@ export const Route = createFileRoute('/')({ component: page })`,
    * off), evaluates it and returns its route.
    */
   async function evaluateUnsplitRoute(code: string) {
-    const { Route } = await evaluateModule(transformWithRouteHmrPlugin(code), {
+    const { Route } = await evaluateModule((await transformWithRouteHmrPlugin(code)), {
       '@tanstack/react-router': {
         createFileRoute: () => (options: unknown) => ({ options }),
       },

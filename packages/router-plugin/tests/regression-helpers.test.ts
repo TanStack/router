@@ -28,8 +28,8 @@ describe('compileRouteModules', () => {
   component: () => <p>page</p>,
 })`
 
-  it('returns the modules the output imports, and only those', () => {
-    const { modules, ids } = compileRouteModules(route)
+  it('returns the modules the output imports, and only those', async () => {
+    const { modules, ids } = (await compileRouteModules(route))
     expect(Object.keys(modules)).toEqual(['reference', 'lazy 1'])
     // Every module but the route module is imported by another one.
     const imported = Object.values(modules).flatMap((code) =>
@@ -38,19 +38,21 @@ describe('compileRouteModules', () => {
     expect(imported).toContain(ids['lazy 1'])
   })
 
-  it('labels a module that the route module and a chunk import statically as shared', () => {
+  it('labels a module that the route module and a chunk import statically as shared', async () => {
     const { modules, ids } =
-      compileRouteModules(`${head}const shared = { value: 1 }
+      (await compileRouteModules(`${head}const shared = { value: 1 }
 export const Route = createFileRoute('/')({
   loader: () => shared.value,
   component: () => <p>{shared.value}</p>,
-})`)
+})`))
     expect(Object.keys(modules).sort()).toEqual([
       'lazy 1',
       'reference',
       'shared',
     ])
-    expect(routeModuleSources(modules.reference!)).toContain(ids.shared)
+    expect(routeModuleSources(modules.reference!, ids.reference!)).toContain(
+      ids.shared,
+    )
   })
 })
 
@@ -294,9 +296,9 @@ export const Route = createRootRoute({ component: () => <p>root</p> })`)
 describe('output validation', () => {
   it('lets the modules of a route read the globals the route file reads', async () => {
     const { modules } =
-      compileRouteModules(`${head}export const Route = createFileRoute('/')({
+      (await compileRouteModules(`${head}export const Route = createFileRoute('/')({
   component: () => <p>{APP_VERSION}</p>,
-})`)
+})`))
     await expectValidModules(modules)
     await expect(
       expectValidModules({ chunk: 'export const read = () => APP_VERSION' }),
@@ -377,11 +379,11 @@ export const Route = createFileRoute('/')({
     expect(await grouped.groups()).toEqual([['component', 'loader']])
     expect(await (await grouped.load('loader'))()).toBe('data')
 
-    const unsplit = compileRouteModules(route, {
+    const unsplit = (await compileRouteModules(route, {
       pluginOptions: {
         codeSplittingOptions: { splitBehavior: () => [] },
       },
-    })
+    }))
     expect(Object.keys(unsplit.modules)).toEqual(['reference'])
   })
 })

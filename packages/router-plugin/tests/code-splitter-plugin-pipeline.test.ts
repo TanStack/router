@@ -1,8 +1,15 @@
-import { describe, expect, it, vi } from 'vitest'
+import path from 'node:path'
+import { describe, expect, it } from 'vitest'
+import {
+  captureConsole,
+  captureThrow,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
+import { renderRouteComponent, routerDevServer } from './dev-server'
+import { boundaryRecorder, createRouterHost } from './plugin-host'
 import {
   compileRouteModules,
-  createCodeSplitterTransforms,
   createRouteHmrTransform,
   createRouteLoader,
   evaluateModule,
@@ -16,7 +23,9 @@ import {
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
+import type { PluginOption } from 'vite'
 import type { Config } from '../src/core/config'
+import type { RouteGraph } from './plugin-host'
 
 const routeSource = (name: string) => `
 import { createFileRoute } from '@tanstack/react-router'
@@ -29,94 +38,51 @@ export const Route = createFileRoute('/${name}')({
 })
 `
 
-const referencePluginName =
-  'tanstack-router:code-splitter:compile-reference-file'
+/** Whether the route module loads a module of its route lazily. */
+const splitsSomething = (graph: RouteGraph) =>
+  [...graph.importKinds.values()].includes('dynamic')
 
-/** Ids of the modules of `file` a compiled module imports, by kind. */
-function routeModuleRequests(code: string, file: string) {
-  const requests = importRequests(code).filter(
-    ({ specifier }) => specifier.split('?')[0] === file,
-  )
-  return {
-    lazy: requests.filter((request) => request.dynamic),
-    eager: requests.filter((request) => !request.dynamic),
-  }
-}
+/** The real Vite plugins of a framework plugin instance, as Vite resolves them. */
+const pluginsOf = (plugin: PluginOption) =>
+  ([plugin] as Array<unknown>).flat(10).filter(Boolean) as Array<PluginOption>
 
-type Transforms = Awaited<ReturnType<typeof createCodeSplitterTransforms>>
-
-/**
- * Compiles a route file and every module of it its output imports, like a
- * bundler: the route module, then the modules it imports lazily (split
- * chunks) and statically.
- */
-function compileAll(splitter: Transforms, code: string, file: string) {
-  const modules: Record<string, string | null> = {
-    [file]: splitter.reference(code, file),
-  }
-  const queue = [modules[file]!]
-  while (queue.length > 0) {
-    const { lazy, eager } = routeModuleRequests(queue.shift()!, file)
-    for (const { specifier } of [...lazy, ...eager]) {
-      if (specifier in modules) {
-        continue
-      }
-      const compile = specifier.includes('tsr-split=')
-        ? splitter.virtual
-        : splitter.shared
-      modules[specifier] = compile(code, specifier)
-      queue.push(modules[specifier] ?? '')
-    }
-  }
-  return modules
-}
-
+// The router plugin's public Vite adapter in a real Vite dev server
+// (plugin-host.ts): Vite resolves the config, orders the plugins, applies
+// their hook filters and resolves and loads the emitted modules.
 describe('code-splitter plugin pipeline', () => {
   it('compiles a split module the same way when its id has extra query parameters', async () => {
-    const file = routeFile('query')
-    const code = routeSource('query')
-    const splitter = await createCodeSplitterTransforms(
-      {},
-      { [file]: '/query' },
-    )
-    const { lazy, eager } = routeModuleRequests(
-      splitter.reference(code, file)!,
-      file,
-    )
-    expect(lazy.length).toBeGreaterThan(0)
-    for (const { specifier } of [...lazy, ...eager]) {
-      const compile = lazy.some((request) => request.specifier === specifier)
-        ? splitter.virtual
-        : splitter.shared
-      const query = specifier.slice(file.length + 1)
-      const output = compile(code, specifier)
-      expect(output, specifier).toEqual(expect.any(String))
-      expect(compile(code, `${file}?${query}&t=123`)).toBe(output)
-      expect(compile(code, `${file}?t=123&${query}`)).toBe(output)
+    const host = createRouterHost()
+    const graph = await host.compile(routeSource('query'), {
+      filename: 'query.tsx',
+      routeId: '/query',
+    })
+    const emitted = [...graph.modules.keys()].filter((id) => id !== graph.id)
+    expect(emitted.length).toBeGreaterThan(0)
+    for (const id of emitted) {
+      const [file, query] = id.split('?') as [string, string]
+      expect(await host.emit(`${file}?${query}&t=123`), id).toBe(
+        graph.modules.get(id),
+      )
+      expect(await host.emit(`${file}?t=123&${query}`), id).toBe(
+        graph.modules.get(id),
+      )
     }
   })
 
   it('compiles the modules of a route the same way after compiling another route', async () => {
-    const files = {
-      first: routeFile('first'),
-      other: routeFile('other'),
-    }
-    const routes = { [files.first]: '/first', [files.other]: '/other' }
-    const code = routeSource('first')
-    const fresh = compileAll(
-      await createCodeSplitterTransforms({}, routes),
-      code,
-      files.first,
-    )
-    const reused = await createCodeSplitterTransforms({}, routes)
-    reused.reference(
+    const first = { filename: 'first.tsx', routeId: '/first' }
+    const fresh = await createRouterHost().compile(routeSource('first'), first)
+    const reused = createRouterHost()
+    await reused.compile(
       `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/other')({ component: () => <p /> })
 `,
-      files.other,
+      { filename: 'other.tsx', routeId: '/other' },
     )
-    expect(Object.keys(fresh).length).toBeGreaterThan(1)
-    expect(compileAll(reused, code, files.first)).toEqual(fresh)
+    expect(fresh.modules.size).toBeGreaterThan(1)
+    expect(
+      (await reused.compile(routeSource('first'), first)).modules,
+    ).toEqual(fresh.modules)
   })
 
   it('splits by the plugin-level splitBehavior for the route id', async () => {
@@ -147,25 +113,21 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     ])
   })
 
-  it('rejects invalid splitBehavior groupings', async () => {
-    const file = routeFile('invalid')
-    const splitter = await createCodeSplitterTransforms(
-      {
-        codeSplittingOptions: {
-          splitBehavior: () => [['component'], ['component']],
-        },
-      },
-      { [file]: '/invalid' },
+  it('rejects invalid splitBehavior groupings with an error naming the option and the route file', async () => {
+    expectDiagnostic(
+      await captureThrow(() =>
+        compileRouteModules(routeSource('invalid'), {
+          filename: 'invalid.tsx',
+          routeId: '/invalid',
+          pluginOptions: {
+            codeSplittingOptions: {
+              splitBehavior: () => [['component'], ['component']],
+            },
+          },
+        }),
+      ),
+      { severity: 'error', file: 'invalid.tsx', names: ['splitBehavior'] },
     )
-    // The error names the option and the route it rejects
-    let error: unknown
-    try {
-      splitter.reference(routeSource('invalid'), file)
-    } catch (thrown) {
-      error = thrown
-    }
-    expect(String(error)).toMatch(/splitBehavior/)
-    expect(String(error)).toMatch(/\/invalid\b/)
   })
 
   // File names from real apps: optional segments, pathless groups and escaped dots.
@@ -183,30 +145,27 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     ])
   })
 
-  // The plugins of a real `@vitejs/plugin-react` instance, as Vite resolves
-  // them, before and after the router plugin.
+  // A real `@vitejs/plugin-react` instance in the Vite config, before and
+  // after the router plugin.
   it('refuses @vitejs/plugin-react placed before the router plugin and accepts it after', async () => {
     const { default: react } = await import('@vitejs/plugin-react')
-    const reactPlugins = [react()].flat(Infinity).filter(Boolean) as Array<{
-      name: string
-    }>
     await expect(
-      createCodeSplitterTransforms({}, {}, [
-        ...reactPlugins,
-        { name: referencePluginName },
-      ]),
+      createRouterHost({ plugins: { before: pluginsOf(react()) } }).compile(
+        routeSource('order'),
+      ),
     ).rejects.toThrow(/Plugin order error[\s\S]*@vitejs\/plugin-react/)
-    await expect(
-      createCodeSplitterTransforms({}, {}, [
-        { name: referencePluginName },
-        ...reactPlugins,
-      ]),
-    ).resolves.toBeDefined()
+    expect(
+      splitsSomething(
+        await createRouterHost({
+          plugins: { after: pluginsOf(react()) },
+        }).compile(routeSource('order')),
+      ),
+    ).toBe(true)
   })
 
   // The other JSX plugins the router plugin must come before, named by
-  // their package. (Their packages are not installed here: plugin names
-  // only.)
+  // their package. (Their packages are not installed here: Vite plugins
+  // with their names, ordered before the router plugin's `pre` plugins.)
   it.each([
     ['vite:react-swc:resolve-runtime', '@vitejs/plugin-react-swc'],
     ['vite:react-swc', '@vitejs/plugin-react-swc'],
@@ -214,28 +173,31 @@ export const Route = createFileRoute('/other')({ component: () => <p /> })
     ['vite:react-oxc:refresh-runtime', '@vitejs/plugin-react-oxc'],
   ])('refuses %s placed before the router plugin', async (name, pkg) => {
     await expect(
-      createCodeSplitterTransforms({}, {}, [
-        { name },
-        { name: referencePluginName },
-      ]),
+      createRouterHost({
+        plugins: { before: [{ name, enforce: 'pre' }] },
+      }).compile(routeSource('order')),
     ).rejects.toThrow(pkg)
   })
 
   it('refuses vite-plugin-solid placed before the router plugin of a Solid app', async () => {
     const { default: solid } = await import('vite-plugin-solid')
-    const solidPlugins = [solid()].flat() as Array<{ name: string }>
+    const route = `import { createFileRoute } from '@tanstack/solid-router'
+export const Route = createFileRoute('/')({ component: () => <p>solid</p> })
+`
     await expect(
-      createCodeSplitterTransforms({ target: 'solid' }, {}, [
-        ...solidPlugins,
-        { name: referencePluginName },
-      ]),
+      createRouterHost({
+        targetFramework: 'solid',
+        plugins: { before: pluginsOf(solid()) },
+      }).compile(route),
     ).rejects.toThrow(/Plugin order error[\s\S]*vite-plugin-solid/)
-    await expect(
-      createCodeSplitterTransforms({ target: 'solid' }, {}, [
-        { name: referencePluginName },
-        ...solidPlugins,
-      ]),
-    ).resolves.toBeDefined()
+    expect(
+      splitsSomething(
+        await createRouterHost({
+          targetFramework: 'solid',
+          plugins: { after: pluginsOf(solid()) },
+        }).compile(route),
+      ),
+    ).toBe(true)
   })
 
   // A dev server compiles each edit of a route file with the same plugin
@@ -295,10 +257,10 @@ const PostsComponent = () => {
   return <ul>{${read}.length}<Outlet /></ul>
 }
 `
-        const { modules } = compileRouteModules(code, {
+        const { modules } = (await compileRouteModules(code, {
           targetFramework: framework,
           routeId: '/posts',
-        })
+        }))
         await expectValidModules(modules)
         for (const [name, module] of Object.entries(modules)) {
           for (const other of otherRouters) {
@@ -323,93 +285,173 @@ const PostsComponent = () => {
   })
 })
 
-describe('modules that are not route files', () => {
-  it.each([
-    {
-      // Shape of the deleted code-splitter snapshot fixture destructuring
-      name: 'a module without a route',
-      code: `import thing from 'thing'
-
+// Modules the router plugin does not own pass its transform untouched, and
+// behave as written, in a real app (SPEC J2.1, G15): the composed
+// `tanstackRouter` plugin (route generator and code splitter, or route HMR
+// when splitting is off) in a real Vite dev server, which also loads a lazy
+// route file the generator registers but which is never split further.
+// Only route files the generator registers are the router plugin's; a
+// module mentioning or calling a route factory is not one, whatever it
+// imports.
+describe('modules the router plugin does not own', () => {
+  const files = {
+    'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>home</p> })
+`,
+    // A lazy route file: registered, not split further (J2.1).
+    'routes/posts.lazy.tsx': `import { createLazyFileRoute } from '@tanstack/react-router'
+export const Route = createLazyFileRoute('/posts')({
+  component: () => <p>posts</p>,
+  pendingComponent: () => <p>pending posts</p>,
+})
+`,
+    // An API module of the app using router APIs, mentioning a route
+    // factory in a string.
+    'src/api.ts': `import { redirect } from '@tanstack/react-router'
+export const docs = "call createFileRoute('/path')({ component }) in a route file"
+export function guard(user: string | undefined) {
+  if (!user) {
+    throw redirect({ to: '/login' })
+  }
+  return user
+}
+`,
+    // Code-based routes (code-splitting.md:73-75: no automatic splitting).
+    'src/code-routes.tsx': `import { createRootRoute, createRoute } from '@tanstack/react-router'
+import { fetchItems } from './items'
+const root = createRootRoute()
+export const itemsRoute = createRoute({
+  getParentRoute: () => root,
+  path: '/items',
+  loader: () => fetchItems(),
+  component: () => <p>items</p>,
+  errorComponent: () => <p>items failed</p>,
+})
+export const routeTree = root.addChildren([itemsRoute])
+`,
+    'src/items.ts': `export const fetchItems = () => ['item']\n`,
+    // A factory of the same name from an unrelated module.
+    'src/unrelated-factory.tsx': `import { createFileRoute } from './not-the-router'
+export const Route = createFileRoute('/unrelated')({
+  loader: () => 'unrelated data',
+  component: () => <p>unrelated</p>,
+})
+`,
+    'src/not-the-router.ts': `export const createFileRoute = (path: string) => (options: Record<string, unknown>) => ({ path, options })\n`,
+    // A locally declared factory shadowing the router's name.
+    'src/shadowed-factory.tsx': `function createFileRoute(path: string) {
+  return (options: Record<string, unknown>) => ({ path, options })
+}
+export const Route = createFileRoute('/shadowed')({
+  loader: () => 'shadowed data',
+  component: () => <p>shadowed</p>,
+})
+`,
+    // Shapes of deleted snapshot fixtures (destructuring, function as
+    // parameter), in a module that is not a route.
+    'src/destructuring.ts': `const thing = { foo: { bar: { destructured: 'destructured' } } }
 export function test() {
   const {
     foo: {
       bar: { destructured },
     },
   } = thing
-
   return destructured
 }
+export const doubled = [1, 2].map(function double(value) {
+  return value * 2
+})
 `,
-    },
-    {
-      // Shape of the deleted code-splitter snapshot fixture function-as-parameter
-      name: 'a module passing named function expressions',
-      code: `import * as React from 'react'
-import { useMemo } from 'tan-react'
+  }
+  const unowned = Object.keys(files).filter(
+    (file) => file !== 'routes/index.tsx',
+  )
 
-const ReactUseMemoCall = React.useMemo(function performAction() {
-  return 'true'
-}, [])
-
-const UseMemoCall = useMemo(function performAction() {
-  return 'true'
-}, [])
-
-console.info(ReactUseMemoCall, UseMemoCall)
-`,
-    },
-    {
-      name: 'a module mentioning a route factory in a string',
-      code: `export const docs = "call createFileRoute('/path')({ component }) in a route file"
-`,
-    },
-  ])('are left as they behave: $name', async ({ code }) => {
-    const stubs = {
-      thing: { default: { foo: { bar: { destructured: 'destructured' } } } },
-      react: { useMemo: (create: () => unknown) => create() },
-      'tan-react': { useMemo: (create: () => unknown) => create() },
-    }
-    /** The exports of a module, functions by what they return. */
-    const evaluated = async (module: string) =>
-      Object.fromEntries(
-        Object.entries(await evaluateModule(module, stubs)).map(
-          ([name, value]) => [
-            name,
-            typeof value === 'function' ? { returns: value() } : value,
-          ],
-        ),
-      )
-    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
-    try {
-      for (const hmr of [false, true]) {
-        const { modules } = compileRouteModules(code, { hmr })
-        // One module (nothing split), importing what the file imports,
-        // valid, with the same exports and values
-        expect(
-          {
-            modules: Object.keys(modules),
-            imports: importSources(modules.reference!),
-            errors: await getModuleErrors(modules.reference!),
-            exports: await evaluated(modules.reference!),
-          },
-          `hmr: ${hmr}`,
-        ).toEqual({
-          modules: ['reference'],
-          imports: importSources(code),
-          errors: [],
-          exports: await evaluated(code),
-        })
+  it.each([
+    { name: 'code splitting on', autoCodeSplitting: true },
+    { name: 'code splitting off (route HMR)', autoCodeSplitting: false },
+  ])(
+    'pass through the router plugin and behave as written ($name)',
+    async ({ autoCodeSplitting }) => {
+      const recorded = new Map<string, string>()
+      const server = await routerDevServer({
+        files,
+        pluginOptions: { autoCodeSplitting },
+        plugins: [boundaryRecorder(recorded)],
+      })
+      const api = await server.import('/src/api.ts')
+      const code = await server.import('/src/code-routes.tsx')
+      const unrelated = await server.import('/src/unrelated-factory.tsx')
+      const shadowed = await server.import('/src/shadowed-factory.tsx')
+      const destructuring = await server.import('/src/destructuring.ts')
+      const lazy = await server.import('/routes/posts.lazy.tsx')
+      // The router plugin left each module as it was (the router transform
+      // boundary, before Vite's own transforms).
+      for (const file of unowned.filter((file) => !file.endsWith('.lazy.tsx'))) {
+        const id = path.join(server.root, file)
+        expect(recorded.get(id), file).toBe(files[file as keyof typeof files])
       }
-    } finally {
-      info.mockRestore()
-    }
-  })
+      // The lazy route module is not split: none of its options loads
+      // from another module of the file.
+      const lazyId = path.join(server.root, 'routes/posts.lazy.tsx')
+      expect(
+        importRequests(recorded.get(lazyId)!, lazyId).filter(
+          ({ specifier }) => specifier.split('?')[0]!.endsWith('posts.lazy.tsx'),
+        ),
+      ).toEqual([])
+      let redirected: unknown
+      try {
+        api.guard(undefined)
+      } catch (error) {
+        redirected = error
+      }
+      expect({
+        docs: api.docs,
+        guard: api.guard('user'),
+        redirected: (redirected as { options?: unknown } | undefined)?.options,
+        test: destructuring.test(),
+        doubled: destructuring.doubled,
+        unrelated: [unrelated.Route.path, unrelated.Route.options.loader()],
+        shadowed: [shadowed.Route.path, shadowed.Route.options.loader()],
+        items: [
+          await code.itemsRoute.options.loader(),
+          // Not lazy: the components are the functions the module wrote.
+          'preload' in code.itemsRoute.options.component,
+          'preload' in code.itemsRoute.options.errorComponent,
+        ],
+        lazy: 'preload' in lazy.Route.options.component,
+      }).toEqual({
+        docs: "call createFileRoute('/path')({ component }) in a route file",
+        guard: 'user',
+        redirected: expect.objectContaining({ to: '/login' }),
+        test: 'destructured',
+        doubled: [2, 4],
+        unrelated: ['/unrelated', 'unrelated data'],
+        shadowed: ['/shadowed', 'shadowed data'],
+        items: [['item'], false, false],
+        lazy: false,
+      })
+      expect([
+        await renderRouteComponent(code.itemsRoute.options.component),
+        await renderRouteComponent(unrelated.Route.options.component),
+        await renderRouteComponent(shadowed.Route.options.component),
+        await renderRouteComponent(lazy.Route.options.component),
+        await renderRouteComponent(lazy.Route.options.pendingComponent),
+      ]).toEqual([
+        '<p>items</p>',
+        '<p>unrelated</p>',
+        '<p>shadowed</p>',
+        '<p>posts</p>',
+        '<p>pending posts</p>',
+      ])
+    },
+  )
 })
 
 // Shape of the deleted code-splitter snapshot fixture directive-prologue. A
 // directive only applies as the first statement of a module.
-it('keeps the directive prologue of a route file first in every module', () => {
-  const { modules } = compileRouteModules(`'use client'
+it('keeps the directive prologue of a route file first in every module', async () => {
+  const { modules } = (await compileRouteModules(`'use client'
 
 import { createFileRoute } from '@tanstack/react-router'
 
@@ -420,7 +462,7 @@ export const Route = createFileRoute('/directive')({
   component: () => <div>{label}</div>,
   errorComponent: () => <div>error</div>,
 })
-`)
+`))
   expect(Object.keys(modules).length).toBeGreaterThan(1)
   for (const [name, code] of Object.entries(modules)) {
     const [first] = parseModule(code).body
@@ -436,8 +478,8 @@ export const Route = createFileRoute('/directive')({
 // splitter's imports go after the whole prologue.
 it.each([false, true])(
   'keeps the whole directive prologue first (hmr: %s)',
-  (hmr) => {
-    const { modules } = compileRouteModules(
+  async (hmr) => {
+    const { modules } = (await compileRouteModules(
       `'use client'
 'use strict'
 import { createFileRoute } from '@tanstack/react-router'
@@ -446,7 +488,7 @@ export const Route = createFileRoute('/directive')({
 })
 `,
       { hmr },
-    )
+    ))
     const prologue = (code: string) => {
       const directives: Array<string> = []
       for (const statement of parseModule(code).body) {
@@ -466,11 +508,11 @@ export const Route = createFileRoute('/directive')({
 // the plugin reports where in it the error is.
 it.each(['\n', '\r\n', '\r', '\u2028', '\u2029'])(
   'reports the line and column of a syntax error in a route file with %j line endings and Unicode source',
-  (newline) => {
+  async (newline) => {
     const code = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({})
 // 😀é${newline}/* 😀é */ export const broken = ;`
-    expect(() => compileRouteModules(code, { hmr: true })).toThrow(
+    await expect(compileRouteModules(code, { hmr: true })).rejects.toThrow(
       expect.objectContaining({
         loc: expect.objectContaining({ line: 4, column: 32 }),
       }),
@@ -479,7 +521,7 @@ export const Route = createFileRoute('/')({})
 )
 
 describe('route HMR plugin without code splitting', () => {
-  function transformWith(
+  async function transformWith(
     options: Partial<Config> & { target: 'solid' | 'vue' },
   ) {
     const code = `
@@ -488,10 +530,7 @@ export const Route = createFileRoute('/hmr')({
   component: () => <p>hmr</p>,
 })
 `
-    return transformWithRouteHmrPlugin(code, options, {
-      file: routeFile('hmr'),
-      routeId: '/hmr',
-    })
+    return transformWithRouteHmrPlugin(code, options, routeFile('hmr'))
   }
 
   /** Server-rendered HTML without Vue's and Solid's hydration markers. */
@@ -508,7 +547,7 @@ export const Route = createFileRoute('/hmr')({
   it.each(['solid', 'vue'] as const)(
     'keeps a %s route valid and rendering when compiled with HMR',
     async (target) => {
-      const output = transformWith({ target })
+      const output = await transformWith({ target })
       expect(await getModuleErrors(output)).toEqual([])
       const { Route } = await evaluateModule(output, routerStubs(target), {
         framework: target,
@@ -526,7 +565,7 @@ export const Route = createFileRoute('/hmr')({
   // import fixes TypeScript's "inferred type cannot be named" error); #8504
   // (a guard against a printer bug, yuku-toolchain/yuku#258).
   it('keeps a route with an empty type-only import valid', async () => {
-    const output = transformWithRouteHmrPlugin(
+    const output = (await transformWithRouteHmrPlugin(
       `import type {} from 'zod'
 import { createFileRoute } from '@tanstack/solid-router'
 export const Route = createFileRoute('/hmr')({
@@ -534,8 +573,8 @@ export const Route = createFileRoute('/hmr')({
 })
 `,
       { target: 'solid' },
-      { file: routeFile('hmr'), routeId: '/hmr' },
-    )
+      routeFile('hmr'),
+    ))
     expect(await getModuleErrors(output)).toEqual([])
     const { Route } = await evaluateModule(output, routerStubs('solid'), {
       framework: 'solid',
@@ -571,17 +610,12 @@ describe('a route created inside a function', () => {
     run: () => Promise<T>,
     fileOf: (result: T) => string,
   ) {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      const result = await run()
-      const file = fileOf(result)
-      const reported = warn.mock.calls.some((args) =>
-        args.map(String).join(' ').includes(file),
-      )
-      return { result, reported }
-    } finally {
-      warn.mockRestore()
-    }
+    const { result, diagnostics } = await captureConsole(run)
+    const reported = diagnostics.some(
+      ({ severity, text }) =>
+        severity === 'warning' && text.includes(fileOf(result)),
+    )
+    return { result, reported }
   }
 
   /** Route files whose `/made` route a function of the file creates. */
@@ -765,31 +799,36 @@ export function makeChild(label: string) {
 export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
 `
 
-  /** Calls of `console.warn` during `run`, as text. */
-  function warnings(run: () => void) {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      run()
-      return warn.mock.calls.map((args) => args.map(String).join(' '))
-    } finally {
-      warn.mockRestore()
-    }
+  /** Warnings logged during `run`, as text. */
+  async function warnings(run: () => Promise<unknown>) {
+    const { diagnostics } = await captureConsole(run)
+    return diagnostics
+      .filter(({ severity }) => severity === 'warning')
+      .map(({ text }) => text)
   }
 
-  // Each plugin path: a transform of route files registered as `/made`.
+  /**
+   * Each plugin path in the host: a transform of route files registered as
+   * `/made`, returning whether it split something.
+   */
   const pluginPaths = {
-    'code splitter': async (files: Array<string>) =>
-      (
-        await createCodeSplitterTransforms(
-          {},
-          Object.fromEntries(files.map((file) => [file, '/made'])),
+    'code splitter': () => {
+      const host = createRouterHost()
+      return async (code: string, file: string) =>
+        splitsSomething(
+          await host.compile(code, { filename: file, routeId: '/made' }),
         )
-      ).reference,
-    'route HMR plugin': async (files: Array<string>) =>
-      createRouteHmrTransform(
+    },
+    'route HMR plugin': async (files: Array<string>) => {
+      const transform = await createRouteHmrTransform(
         { target: 'react' },
-        Object.fromEntries(files.map((file) => [file, '/made'])),
-      ),
+        files,
+      )
+      return async (code: string, file: string) => {
+        await transform(code, file)
+        return false
+      }
+    },
   }
 
   describe.each(Object.entries(pluginPaths))('through the %s', (_, create) => {
@@ -802,7 +841,7 @@ export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
     ])('is not reported for %s', async (_, code) => {
       const file = routeFile('made')
       const transform = await create([file])
-      expect(warnings(() => transform(code, file))).toEqual([])
+      expect(await warnings(() => transform(code, file))).toEqual([])
     })
   })
 
@@ -812,13 +851,12 @@ export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
     'built in %s is split, or reported once per file across repeated transforms',
     async (_, route) => {
       const files = [routeFile('made'), routeFile('other')]
-      const transform = await pluginPaths['code splitter'](files)
+      const transform = pluginPaths['code splitter']()
       const split = new Set<string>()
-      const reported = warnings(() => {
+      const reported = await warnings(async () => {
         for (let edit = 0; edit < 3; edit++) {
           for (const file of files) {
-            const output = transform(`${route('data')}// edit ${edit}\n`, file)
-            if (output && routeModuleRequests(output, file).lazy.length > 0) {
+            if (await transform(`${route('data')}// edit ${edit}\n`, file)) {
               split.add(file)
             }
           }

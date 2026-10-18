@@ -214,7 +214,7 @@ export async function loadRoute(code: string, options: LoadRouteOptions = {}) {
  */
 export function createRouteLoader(options: LoadRouteOptions = {}) {
   const compile = createRouteGraphCompiler(options)
-  return (code: string) => linkRoute(code, compile(code), options)
+  return async (code: string) => linkRoute(code, await compile(code), options)
 }
 
 /**

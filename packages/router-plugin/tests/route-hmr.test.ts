@@ -53,8 +53,8 @@ describe('the modules of a Solid or Vue route compiled with HMR', () => {
     { framework: 'vue', style: 'webpack' },
   ] as const)(
     '$framework ($style style): import the router package of the framework and no React code',
-    ({ framework, style }) => {
-      const { modules } = compileRouteModules(
+    async ({ framework, style }) => {
+      const { modules } = (await compileRouteModules(
         fileRoute(
           'data',
           'component: PostsComponent,',
@@ -68,7 +68,7 @@ describe('the modules of a Solid or Vue route compiled with HMR', () => {
           hmr: true,
           pluginOptions: { plugin: { hmr: { style } } },
         },
-      )
+      ))
       expect(importSources(modules.reference!)).toContain(
         `@tanstack/${framework}-router`,
       )
@@ -104,8 +104,8 @@ describe('route modules compiled for the dev server', () => {
       route: `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({ component: () => <div>root</div> })`,
     },
-  ])('$name', ({ route }) => {
-    const { reference } = compileRouteModules(route, { hmr: true }).modules
+  ])('$name', async ({ route }) => {
+    const { reference } = (await compileRouteModules(route, { hmr: true })).modules
     it.each([
       { name: 'a hot API without data', hot: { accept() {}, dispose() {} } },
       { name: 'no hot API', hot: undefined },
@@ -246,11 +246,11 @@ function RootComponent() {
   ] as const)('in $mode', ({ options }) => {
     it.each(routes)(
       'have no HMR code ($name)',
-      ({ route, targetFramework }) => {
-        const loaded = compileRouteModules(route, {
+      async ({ route, targetFramework }) => {
+        const loaded = (await compileRouteModules(route, {
           targetFramework,
           ...options,
-        })
+        }))
         for (const [name, code] of Object.entries(loaded.modules)) {
           expect(code, name).not.toMatch(
             /import\.meta\.(?:webpackHot|hot)\b|\bmodule\.hot\b/,

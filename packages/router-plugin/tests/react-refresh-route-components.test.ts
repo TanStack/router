@@ -31,8 +31,8 @@ import {
 import type { ExportedRouteOptionsCase } from './dev-server'
 
 /** Compiles every module the code splitter emits, with React HMR. */
-function compileWithCodeSplitting(code: string) {
-  return compileRouteModules(code, { hmr: true }).modules
+async function compileWithCodeSplitting(code: string) {
+  return (await compileRouteModules(code, { hmr: true })).modules
 }
 
 describe('React Refresh registers route components', () => {
@@ -43,9 +43,9 @@ describe('React Refresh registers route components', () => {
     ['an anonymous function expression', `function () { return <p>hi</p> }`],
     ['a parenthesized arrow function', `(() => <p>hi</p>)`],
   ])('written inline as %s', async (_, component) => {
-    const code = transformWithRouteHmrPlugin(
+    const code = (await transformWithRouteHmrPlugin(
       `${head}export const Route = createFileRoute('/')({ component: ${component} })`,
-    )
+    ))
     await expectRegisteredRouteOption(code, 'component')
   })
 
@@ -57,7 +57,7 @@ describe('React Refresh registers route components', () => {
       notFoundComponent: '() => <p>not found</p>',
       shellComponent: '({ children }) => <html><body>{children}</body></html>',
     }
-    const { reference } = compileWithCodeSplitting(
+    const { reference } = await compileWithCodeSplitting(
       `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({
 ${Object.entries(options)
@@ -80,7 +80,7 @@ ${Object.entries(options)
       'errorComponent',
       'component',
     ]
-    const { reference } = compileWithCodeSplitting(
+    const { reference } = await compileWithCodeSplitting(
       `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({
 ${options.map((option) => `  ${option}: ${option},`).join('\n')}
@@ -103,7 +103,7 @@ ${options
 
   // Source: add-hmr snapshot fixture createRootRouteWithContext-type-args.
   it('of a root route created with context type arguments', async () => {
-    const { reference } = compileWithCodeSplitting(
+    const { reference } = await compileWithCodeSplitting(
       `import { createRootRouteWithContext } from '@tanstack/react-router'
 interface MyRouterContext {
   auth: boolean
@@ -138,14 +138,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   ])(
     'declared lowercase as %s, by renaming it',
     async (_, declaration, extension) => {
-      const code = transformWithRouteHmrPlugin(
+      const code = (await transformWithRouteHmrPlugin(
         `${head}${declaration}\nexport const Route = createFileRoute('/')({ component: page })`,
         { target: 'react' },
-        {
-          file: routeFile('index').replace(/\.tsx$/, `.${extension}`),
-          routeId: '/',
-        },
-      )
+        routeFile('index').replace(/\.tsx$/, `.${extension}`),
+      ))
       await expectRegisteredRouteOption(code, 'component')
     },
   )
@@ -163,7 +160,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     'renamed lowercase and exported (%s), keeping what importers get',
     async (_, declaration) => {
       const source = `${head}${declaration}\nexport const Route = createFileRoute('/')({ component: page })`
-      const code = transformWithRouteHmrPlugin(source)
+      const code = (await transformWithRouteHmrPlugin(source))
       await expectRegisteredRouteOption(code, 'component')
       // Modules importing the component get the one the route renders.
       const { exports, Route } = await evaluateRouteModule(code)
@@ -177,10 +174,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
   // Source: ReactFreshBabelPlugin-test "does not consider require-like methods to be HOCs"
   it('but leaves an imported lowercase component to the module that declares it', async () => {
-    const code = transformWithRouteHmrPlugin(
+    const code = (await transformWithRouteHmrPlugin(
       `${head}import { page } from './page'
 export const Route = createFileRoute('/')({ component: page })`,
-    )
+    ))
     const page = () => null
     expect(
       await getRouteOption(code, 'component', { './page': { page } }),
@@ -189,13 +186,13 @@ export const Route = createFileRoute('/')({ component: page })`,
 
   // Source: ReactFreshBabelPlugin-test "registers top-level function declarations"
   it('renames only the component binding, not an inner binding with its name', async () => {
-    const code = transformWithRouteHmrPlugin(
+    const code = (await transformWithRouteHmrPlugin(
       `${head}function page() {
   const page = 'inner-marker'
   return <p>{page}</p>
 }
 export const Route = createFileRoute('/')({ component: page })`,
-    )
+    ))
     await expectRegisteredRouteOption(code, 'component')
     const { Route } = await evaluateModule(code, {
       '@tanstack/react-router': {
@@ -210,16 +207,16 @@ export const Route = createFileRoute('/')({ component: page })`,
   // Source: ReactFreshIntegration-test "preserves state ..." (families are
   // matched by registration name)
   it('names hoisted components after their option, so adding options keeps the family', async () => {
-    const before = transformWithRouteHmrPlugin(
+    const before = (await transformWithRouteHmrPlugin(
       `${head}export const Route = createFileRoute('/')({ component: () => <p>v1</p> })`,
-    )
-    const after = transformWithRouteHmrPlugin(
+    ))
+    const after = (await transformWithRouteHmrPlugin(
       `${head}export const Route = createFileRoute('/')({
   pendingComponent: () => <p>pending</p>,
   errorComponent: () => <p>error</p>,
   component: () => <p>v2</p>,
 })`,
-    )
+    ))
     expect(await expectRegisteredRouteOption(after, 'component')).toBe(
       await expectRegisteredRouteOption(before, 'component'),
     )
@@ -249,7 +246,7 @@ export const Route = createFileRoute('/')({
   component: ${component},
 })`
 
-    const hmr = transformWithRouteHmrPlugin(source)
+    const hmr = (await transformWithRouteHmrPlugin(source))
     const hoisted = await expectRegisteredRouteOption(hmr, 'component')
     expect((await reactRefresh(hmr)).signatures.get(hoisted)).toBe(expected)
 
@@ -275,13 +272,13 @@ describe('route HMR leaves options React Refresh does not handle as they are', (
   // Loosened: the method keeps working. Being refreshable is the goal pinned
   // by the "method shorthand" rows of known-bugs-route-hmr.test.ts.
   it('keeps a method-shorthand component option working', async () => {
-    const code = transformWithRouteHmrPlugin(
+    const code = (await transformWithRouteHmrPlugin(
       `${head}export const Route = createFileRoute('/')({
   component() {
     return <p>hi</p>
   },
 })`,
-    )
+    ))
     expect(await getModuleErrors(code)).toEqual([])
     const component = await getRouteOption(code, 'component')
     expect(await renderComponent(component)).toBe('<p>hi</p>')

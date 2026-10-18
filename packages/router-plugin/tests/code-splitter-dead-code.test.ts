@@ -193,9 +193,9 @@ function pong(): number { return ping() }
 export const Route = createFileRoute('/')({ component: () => <p>{helper()}</p> })
 `
   it('keeps the modules of unused functions, one calling a helper of the split component, valid', async () => {
-    await expectValidModules(compileRouteModules(unusedFunctions).modules)
+    await expectValidModules((await compileRouteModules(unusedFunctions)).modules)
     await expectValidModules(
-      compileRouteModules(unusedFunctions, { hmr: true }).modules,
+      (await compileRouteModules(unusedFunctions, { hmr: true })).modules,
     )
     expect(await renderSplitComponent(unusedFunctions)).toBe('<p>helper</p>')
   })
@@ -359,7 +359,7 @@ export const Route = createFileRoute('/')({
     {
       name: 'a route module compiled for HMR',
       load: async (code: string, stubs: Record<string, any>) => {
-        const output = transformWithRouteHmrPlugin(code)
+        const output = (await transformWithRouteHmrPlugin(code))
         await evaluateModule(output, stubs)
         return output
       },
@@ -508,14 +508,14 @@ function Unused() {
   // Bundlers drop unused calls of a function annotated #__NO_SIDE_EFFECTS__,
   // so the annotation must move with the function, also when every output
   // module repeats a file-level pragma comment.
-  it('keeps the #__NO_SIDE_EFFECTS__ annotation of a function in every module that declares it, in a file with a pragma', () => {
+  it('keeps the #__NO_SIDE_EFFECTS__ annotation of a function in every module that declares it, in a file with a pragma', async () => {
     const { modules } =
-      compileRouteModules(`/** @jsxImportSource @emotion/react */
+      (await compileRouteModules(`/** @jsxImportSource @emotion/react */
 ${head}/* #__NO_SIDE_EFFECTS__ */ function makeLabel() { return 'label' }
 export const Route = createFileRoute('/')({
   component: () => <p>{makeLabel()}</p>,
 })
-`)
+`))
     const declaring = Object.entries(modules).filter(([, code]) =>
       declaredNames(code).has('makeLabel'),
     )
