@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@tanstack/compiler-test-utils": "workspace:*",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/vue-router": "workspace:*",
     "@types/node": ">=20",
