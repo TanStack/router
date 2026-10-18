@@ -91,4 +91,25 @@ describe('prerender response body', () => {
       '<html></html>',
     )
   })
+
+  it('treats a case-insensitive HTML media type as HTML', async () => {
+    vi.mocked(fsp.writeFile).mockClear()
+    const request = vi.fn(
+      async () =>
+        new Response('<html></html>', {
+          status: 200,
+          headers: { 'content-type': 'TEXT/HTML; charset=UTF-8' },
+        }),
+    )
+
+    await prerender({
+      startConfig: makeStartConfig('/about'),
+      handler: { getClientOutputDirectory: () => '/client', request },
+    })
+
+    expect(fsp.writeFile).toHaveBeenCalledExactlyOnceWith(
+      '/client/about/index.html',
+      '<html></html>',
+    )
+  })
 })

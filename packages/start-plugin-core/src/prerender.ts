@@ -162,7 +162,10 @@ export async function prerender({
             prerenderOptions.outputPath || page.path
           ).split(/[?#]/)[0]!
 
-          const contentType = res.headers.get('content-type') || ''
+          // Media types are case-insensitive (RFC 9110), so 'TEXT/HTML' is HTML.
+          const contentType = (
+            res.headers.get('content-type') || ''
+          ).toLowerCase()
           const isImplicitHTML =
             !cleanPagePath.endsWith('.html') && contentType.includes('html')
 
