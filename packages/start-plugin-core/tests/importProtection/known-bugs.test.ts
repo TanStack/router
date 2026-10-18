@@ -2,20 +2,23 @@
  * Known import-protection bugs. Each test asserts correct behaviour for a bug
  * on main and is marked .fails; remove .fails when the bug is fixed.
  */
+import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { transformWithOxc } from 'vite'
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
 import { buildStart, startBundlers } from '../build-harness'
 import { runRsbuildClient, startRsbuildDevServer } from '../rsbuild-dev-server'
 import { evaluateWithMock, isMock, selfMock } from './mock-helpers'
 import {
   factoryTopLevelCall,
+  reactRuntimeFiles,
   rejection,
   reportedViolations,
   serverFnFactoryApp,
   startProtectedDevServer,
 } from './start-apps'
 import type { RsbuildConfig } from '@rsbuild/core'
+import type { ImportProtectionOptions } from '../../src/schema'
 
 const mockModule = `data:text/javascript,${encodeURIComponent(
   `export default new Proxy({}, { get: (_, key) => typeof key === 'string' ? 'mock:' + key : undefined })`,
@@ -606,4 +609,221 @@ const secret = data.secret`,
     },
     60_000,
   )
+})
+
+/**
+ * App-level twins of the pins above on internal functions (rewrite and mock
+ * modules): a real app with each input, on a Vite dev server (mock mode, the
+ * dev default) and in mock-mode builds. `src/entry.ts` exports `read()`; a
+ * use of a denied import must read the mock, whose text is `expected`
+ * unless a row says otherwise, and the app must load or build.
+ * Source: audit F, missing coverage 1.
+ */
+describe('app-level twins of the mock pins', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  /** A dependency `name` exporting `query`, denied by `client.specifiers`. */
+  const deniedDependency = (name: string) => ({
+    [`node_modules/${name}/package.json`]: JSON.stringify({
+      name,
+      type: 'module',
+      exports: { '.': './index.js' },
+    }),
+    [`node_modules/${name}/index.js`]: `export const query = () => 'MARK_SECRET'\n`,
+  })
+
+  const mockText = '[import-protection mock]'
+
+  interface TwinCase {
+    files: Record<string, string>
+    importProtection?: ImportProtectionOptions
+    /** What `String(entry.read())` returns (default: the mock's text). */
+    expected?: string
+  }
+
+  const twins: Record<string, TwinCase> = {
+    // Twin of "a denied namespace re-export keeps its exported name".
+    'a module re-exporting a denied file as a namespace': {
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/barrel.ts': `export * as secrets from './secret.server'\n`,
+        'src/entry.ts': `import { secrets } from './barrel'
+export const read = () => secrets.secret()
+`,
+      },
+    },
+    // Twin of "a namespace re-export" (the mock of a denied file).
+    'a denied file re-exporting a namespace': {
+      files: {
+        'src/helpers.ts': `export const format = () => 'MARK_SECRET'\n`,
+        'src/lib.server.ts': `export * as helpers from './helpers'\n`,
+        'src/entry.ts': `import { helpers } from './lib.server'
+export const read = () => helpers.format()
+`,
+      },
+    },
+    // Twin of "the mock of a denied file exporting `delete` exports it" and
+    // "a denied import used as `api.delete()` evaluates to a mock".
+    'a denied file exporting `delete`, used as `api.delete()`': {
+      files: {
+        'src/api.server.ts': `const remove = () => 'MARK_SECRET'
+export { remove as delete }
+`,
+        'src/entry.ts': `import * as api from './api.server'
+export const read = () => api.delete()
+`,
+      },
+    },
+    // Twin of "a JSX pragma that leads a denied import stays in effect": the
+    // page renders with the runtime its pragma names.
+    'a JSX pragma leading a denied import': {
+      files: {
+        ...reactRuntimeFiles,
+        'node_modules/custom-jsx/package.json': JSON.stringify({
+          name: 'custom-jsx',
+          type: 'module',
+          exports: {
+            './jsx-runtime': './jsx-runtime.js',
+            './jsx-dev-runtime': './jsx-runtime.js',
+          },
+        }),
+        'node_modules/custom-jsx/jsx-runtime.js': `export const Fragment = Symbol('Fragment')
+export const jsx = () => 'MARK_CUSTOM_JSX'
+export const jsxs = jsx
+export const jsxDEV = jsx
+`,
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/page.tsx': `/** @jsxImportSource custom-jsx */
+import { secret } from './secret.server'
+export const Page = () => <div>{String(secret())}</div>
+`,
+        'src/entry.ts': `import { Page } from './page'
+export const read = () => Page()
+`,
+      },
+      expected: 'MARK_CUSTOM_JSX',
+    },
+    // Twin of "a namespace member read before the import".
+    'a namespace member read in a function declared before the import': {
+      files: {
+        ...deniedDependency('db-lib'),
+        'src/entry.ts': `export function read() {
+  return db.query()
+}
+import * as db from 'db-lib'
+`,
+      },
+      importProtection: { client: { specifiers: ['db-lib'] } },
+    },
+    // Twin of "an enum and a namespace" (the mock of a denied file).
+    'a denied file exporting an enum and a namespace': {
+      files: {
+        'src/model.server.ts': `export enum Color {
+  Red = 'MARK_SECRET',
+}
+export namespace Util {
+  export const x = 'MARK_SECRET'
+}
+`,
+        'src/entry.ts': `import { Color, Util } from './model.server'
+export const read = () => [String(Color.Red), String(Util.x)].join()
+`,
+      },
+      expected: `${mockText},${mockText}`,
+    },
+  }
+
+  /**
+   * The channels on which main fails each twin (`.fails`, red reason in
+   * brackets). The JSX pragma twin passes everywhere: with the default JSX
+   * pipeline, JSX is compiled before import protection rewrites the import
+   * (the internal pin needs a JSX plugin that runs after the rewrite).
+   */
+  const failsOn: Record<string, Array<string>> = {
+    // Bug: same as "a denied namespace re-export keeps its exported name"
+    // (the dev rewrite of the importer drops `export * as ns`).
+    // Impact: in dev, the page fails to load [SyntaxError: '/src/barrel.ts'
+    // does not provide an export named 'secrets']. Builds mock the denied
+    // file itself and pass.
+    'a module re-exporting a denied file as a namespace': ['vite dev'],
+    // Bug: same as "a namespace re-export" (the self-contained mock of a
+    // denied file skips `export * as ns`).
+    // Impact: a mock-mode build fails [Vite MISSING_EXPORT, Rspack
+    // ESModulesLinkingError 'helpers']. Vite dev passes.
+    'a denied file re-exporting a namespace': ['vite build', 'rsbuild build'],
+    // Bug: same as "the mock of a denied file exporting `delete` exports it"
+    // (`export const delete = mock.delete` in every mock module).
+    // Impact: the dev page and mock-mode builds fail with a parse error
+    // [Unexpected token 'delete'; PARSE_ERROR; Expected ident].
+    'a denied file exporting `delete`, used as `api.delete()`': [
+      'vite dev',
+      'vite build',
+      'rsbuild build',
+    ],
+    // Bug: same as "a namespace member read before the import" (the mock
+    // edge of a denied specifier only exports the members read after the
+    // import). Rsbuild mocks the whole namespace and passes.
+    // Impact: the read gets `undefined` [db.query is not a function; Vite
+    // build: (void 0) is not a function].
+    'a namespace member read in a function declared before the import': [
+      'vite dev',
+      'vite build',
+    ],
+    // NEW bug (Rsbuild), not the internal pin's cause (Vite passes): a
+    // mock-mode Rsbuild production build ships the real value of an enum
+    // member of a denied file [read 'MARK_SECRET,[import-protection mock]',
+    // the bundle contains MARK_SECRET]; the namespace member is mocked.
+    // Cause: Rsbuild's production SWC config collects exported enums
+    // (`collectTypeScriptInfo.exportedEnum: isProd`), and Rspack inlines
+    // `Color.Red` into the importer (`String("MARK_SECRET")`) from the
+    // denied file's own source; the import-protection loader's mock (which
+    // does export `Color`) is never read. A scratch build with
+    // `exportedEnum: false` mocks it.
+    // Impact: server-only values declared as enum members reach the client
+    // bundle in mock mode (`behavior: { build: 'mock' }`), with only a
+    // warning.
+    'a denied file exporting an enum and a namespace': ['rsbuild build'],
+  }
+
+  const twinTest = (channel: string, name: string) =>
+    (failsOn[name] ?? []).includes(channel) ? test.fails : test
+
+  for (const [name, twin] of Object.entries(twins)) {
+    const { files, importProtection = {}, expected = mockText } = twin
+    twinTest('vite dev', name)(
+      `vite dev: ${name}`,
+      async () => {
+        const server = await startProtectedDevServer(files, importProtection)
+        // The mock reports each use in the browser console.
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        const module = await evaluateServed(server, '/src/entry.ts', {
+          skip: /^\/@(vite|react-refresh)\b/,
+        })
+        expect(String(module.read())).toBe(expected)
+      },
+      30_000,
+    )
+    for (const bundler of startBundlers) {
+      twinTest(`${bundler} build`, name)(
+        `${bundler} build, mock mode: ${name}`,
+        async () => {
+          const { client } = await buildStart({
+            bundler,
+            files,
+            entry: 'src/entry.ts',
+            start: {
+              importProtection: { ...importProtection, behavior: 'mock' },
+            },
+          })
+          expect({
+            read: (await client.run(`return String(entry.read())`)).result,
+            hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
+          }).toEqual({ read: expected, hasRealCode: false })
+        },
+        60_000,
+      )
+    }
+  }
 })
