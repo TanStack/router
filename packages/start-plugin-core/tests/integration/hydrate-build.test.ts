@@ -165,10 +165,13 @@ async function expectHydratesLikeServer(
   build: { client: BuildResult; ssr: BuildResult },
   render: string,
 ) {
-  const server = (await build.ssr.run(renderThroughChunks(render)))
-    .result as Rendered
-  const client = (await build.client.run(renderThroughChunks(render)))
-    .result as Rendered
+  // Independent runs: a Node process and a browser page, side by side.
+  const [ssrRun, clientRun] = await Promise.all([
+    build.ssr.run(renderThroughChunks(render)),
+    build.client.run(renderThroughChunks(render)),
+  ])
+  const server = ssrRun.result as Rendered
+  const client = clientRun.result as Rendered
   expect({ html: client.html, ids: client.ids }).toEqual({
     html: server.html,
     ids: server.ids,

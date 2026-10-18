@@ -8,10 +8,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { moduleLang } from '@tanstack/compiler-test-utils/module-linker'
-import {
-  freeIdentifiers,
-  getModuleErrors,
-} from '@tanstack/compiler-test-utils/validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import { parseSync } from 'vite'
 import { expect } from 'vitest'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
@@ -522,17 +519,17 @@ export function countAcrossModules(
 /**
  * Asserts that every module is valid, reporting the errors by module name.
  * For the modules of `compileRouteModules`, the globals the route file reads
- * itself may be read by its modules too.
+ * itself may be read by its modules too, and a name the route file binds
+ * must not lose its binding in them (`source` of `getModuleErrors`).
  */
 export async function expectValidModules(modules: Record<string, string>) {
   const source = routeSources.get(modules)
   const filename = source ? `module.${moduleLang(source.id)}` : undefined
-  const globals = source
-    ? await freeIdentifiers(source.code, filename)
-    : undefined
   const errors: Record<string, Array<string>> = {}
   for (const [name, code] of Object.entries(modules)) {
-    errors[name] = await getModuleErrors(code, filename, { globals })
+    errors[name] = await getModuleErrors(code, filename, {
+      source: source?.code,
+    })
   }
   expect(errors).toEqual(
     Object.fromEntries(Object.keys(modules).map((name) => [name, []])),

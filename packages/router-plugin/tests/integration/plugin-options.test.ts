@@ -40,6 +40,9 @@ async function buildRoute(
   const app = await build({
     bundler,
     env: 'client',
+    // No outcome here depends on webpack's minifier (terser): placement of
+    // live code, the rendering and the generated route tree.
+    ...(bundler === 'webpack' && { minify: false }),
     pluginOptions,
     routerPlugins: options.routes,
     files: routeApp(options.files?.['routes/index.tsx'] ?? route(), {

@@ -1171,8 +1171,9 @@ ${head}export function Page() {
   // Impact: the client renders the parent's JSX through another factory than
   // the server (a hydration mismatch), or throws "h is not defined". In a
   // project whose default JSX runtime is classic, Oxc then compiles the
-  // parent's JSX to `React.createElement` without `React` in scope (the module
-  // validator reports it first).
+  // parent's JSX to `React.createElement` without `React` in scope. The
+  // harness validates modules as an automatic-runtime project, so the
+  // rendering fails here.
   test.fails(
     'client: a module with a classic JSX pragma renders through its factory',
     async () => {

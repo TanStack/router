@@ -5,10 +5,7 @@
  */
 import { expect } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
-import {
-  freeIdentifiers,
-  getModuleErrors,
-} from '@tanstack/compiler-test-utils/validate-module'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 import type { StartCompilerTransformResult } from '../src/types'
 import {
@@ -411,9 +408,9 @@ export async function loadClientModule(
       },
     },
   }
-  // The globals the source reads may be read by its modules too.
-  const globals = await freeIdentifiers(code)
-  expect(await getModuleErrors(parent, undefined, { globals })).toEqual([])
+  // The globals the source reads may be read by its modules too, and a name
+  // the source binds must not lose its binding.
+  expect(await getModuleErrors(parent, undefined, { source: code })).toEqual([])
   const chunkPlugin = options.chunksFromSource
     ? createHydrateCompilerPlugin()
     : plugin
@@ -453,7 +450,9 @@ export async function loadClientModule(
   const module = await graph.import(id)
   options.beforeChunksLoad?.(module)
   for (const chunk of chunks) {
-    expect(await getModuleErrors(chunk, undefined, { globals })).toEqual([])
+    expect(await getModuleErrors(chunk, undefined, { source: code })).toEqual(
+      [],
+    )
   }
   // Loading a chunk may create the lazy components of nested boundaries,
   // which the iteration reaches as they are appended.

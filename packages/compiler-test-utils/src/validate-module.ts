@@ -16,6 +16,41 @@ import { knownGlobals } from './known-globals'
 import type { ESTree, Rolldown } from 'vite'
 
 /**
+ * The JSX settings of the project a module belongs to: what its bundler's JSX
+ * transform starts from before it reads the module's own pragmas
+ * (`@jsxRuntime`, `@jsxImportSource`, `@jsx`, `@jsxFrag`). React's automatic
+ * runtime by default, as `@vitejs/plugin-react` and Rsbuild's
+ * `pluginReact()` configure it.
+ */
+export interface ProjectJsx {
+  /** Default `automatic`. */
+  runtime?: 'automatic' | 'classic'
+  /** Automatic runtime: the module of `jsx-runtime` (default `react`). */
+  importSource?: string
+  /** Classic runtime: the element factory (default `React.createElement`). */
+  pragma?: string
+  /** Classic runtime: the fragment (default `React.Fragment`). */
+  pragmaFrag?: string
+}
+
+export interface ModuleErrorOptions {
+  /** Names the module may read as globals besides the known ones. */
+  globals?: Iterable<string>
+  /** The JSX settings of the module's project (see `ProjectJsx`). */
+  jsx?: ProjectJsx
+  /**
+   * The source module the checked module was compiled from (same language
+   * as `filename`). Names the source itself reads without declaring them
+   * are allowed. A name the source declares, imports or binds as a
+   * parameter, but that the compiled module reads without a binding and the
+   * source never reads without one, is a lost local binding: an error even
+   * when a global has that name (e.g. a dropped `const status` whose reads
+   * now read `window.status`).
+   */
+  source?: string
+}
+
+/**
  * Validates generated code the way a browser or bundler sees it, without using
  * the compiler's own parser: erase TypeScript (keeping every value import) and
  * parse the result as a JavaScript module with semantic checks. This rejects
@@ -24,20 +59,22 @@ import type { ESTree, Rolldown } from 'vite'
  * undeclared bindings.
  *
  * It also rejects references to names that are neither declared nor imported
- * in the module, once JSX is compiled the way a bundler compiles it (so a
- * classic `@jsx` or `@jsxFrag` pragma reads its factory or fragment, and
- * `@jsxImportSource` its runtime module): such a reference throws a
- * ReferenceError when it runs. Known globals (`known-globals.ts`), reads a
- * `typeof` check guards (see `unboundNames`), and `globals` (e.g. the
- * globals the route file itself reads) are allowed, and so are references in
- * code that tree-shaking deletes (see the top of this file).
+ * in the module, once JSX is compiled the way the project's bundler compiles
+ * it: by Oxc (Vite's transform) with the project's JSX settings (`jsx`),
+ * which applies the module's own pragmas where it honours them, so a classic
+ * factory or fragment is read like any other name. Such a reference throws a
+ * ReferenceError when it runs. Globals of the browser and of Node.js
+ * (`known-globals.ts`), reads a `typeof` check guards (see `unboundNames`),
+ * `globals` and the names the `source` reads itself are allowed, and so are
+ * references in code that tree-shaking deletes (see the top of this file).
+ * With a `source`, a lost local binding is an error (see `source`).
  *
  * @returns the error messages; an empty array means the module is valid.
  */
 export async function getModuleErrors(
   code: string,
   filename = 'module.tsx',
-  options: { globals?: Iterable<string> } = {},
+  options: ModuleErrorOptions = {},
 ): Promise<Array<string>> {
   let javascript: string
   try {
@@ -57,36 +94,59 @@ export async function getModuleErrors(
     return errors.map((error) => error.message)
   }
   const allowed = new Set(options.globals)
-  const compiled = await compileModule(code, filename)
-  let names = [...freeNamesOf(compiled)].filter((name) => !allowed.has(name))
+  /** Names the source binds but never reads without a binding. */
+  const lost = new Set<string>()
+  if (options.source !== undefined) {
+    let source: string
+    try {
+      source = await compileModule(options.source, filename, options.jsx)
+    } catch (error) {
+      throw new Error(
+        `the source module is invalid: ${stripVTControlCharacters((error as Error).message)}`,
+      )
+    }
+    const sourceReads = unboundNames(source)
+    sourceReads.forEach((name) => allowed.add(name))
+    for (const name of boundNames(source)) {
+      if (!sourceReads.has(name)) {
+        lost.add(name)
+      }
+    }
+  }
+  const compiled = await compileModule(code, filename, options.jsx)
+  let names = [...unboundNames(compiled)].filter(
+    (name) => lost.has(name) || !(knownGlobals.has(name) || allowed.has(name)),
+  )
   // Tree-shaking only deletes code, so it runs only when there is a name to
   // clear.
   if (names.length > 0) {
     let kept: Set<string>
     try {
-      kept = freeNamesOf(await treeShake(compiled))
+      kept = unboundNames(await treeShake(compiled))
     } catch (error) {
       return [stripVTControlCharacters((error as Error).message)]
     }
     names = names.filter((name) => kept.has(name))
   }
-  return names.map(
-    (name) => `\`${name}\` is referenced but never declared or imported`,
+  return names.map((name) =>
+    lost.has(name)
+      ? `\`${name}\` is bound in the source module, but read here without a binding`
+      : `\`${name}\` is referenced but never declared or imported`,
   )
 }
 
 /**
  * Names a module references without declaring or importing them, other than
  * known globals and reads a `typeof` check guards, once TypeScript is erased
- * and JSX compiled with the project default (React's automatic runtime) or
- * the module's own JSX pragmas (a `@jsx` or `@jsxFrag` pragma alone selects
- * the classic runtime, see `jsxRuntime`). Dead code counts too.
+ * and JSX compiled with the project's JSX settings (`jsx`, see `ProjectJsx`)
+ * and the module's own pragmas. Dead code counts too.
  */
 export async function freeIdentifiers(
   code: string,
   filename = 'module.tsx',
+  options: { jsx?: ProjectJsx } = {},
 ): Promise<Set<string>> {
-  return freeNamesOf(await compileModule(code, filename))
+  return freeNamesOf(await compileModule(code, filename, options.jsx))
 }
 
 /**
@@ -106,10 +166,22 @@ export function unboundNames(javascript: string): Set<string> {
   return analyzeScopes(program)
 }
 
-/** The module with TypeScript erased and JSX compiled (see `jsxRuntime`). */
-async function compileModule(code: string, filename: string) {
+/**
+ * The module with TypeScript erased and JSX compiled by Oxc from the
+ * project's JSX settings; Oxc applies the module's own pragmas over them.
+ */
+async function compileModule(
+  code: string,
+  filename: string,
+  jsx: ProjectJsx = {},
+) {
   const { code: javascript } = await transformWithOxc(code, filename, {
-    jsx: { runtime: jsxRuntime(code, filename) },
+    jsx: {
+      runtime: jsx.runtime ?? 'automatic',
+      importSource: jsx.importSource ?? 'react',
+      ...(jsx.pragma !== undefined && { pragma: jsx.pragma }),
+      ...(jsx.pragmaFrag !== undefined && { pragmaFrag: jsx.pragmaFrag }),
+    },
     typescript: { onlyRemoveTypeImports: true },
   })
   return javascript
@@ -169,43 +241,55 @@ async function treeShake(javascript: string): Promise<string> {
 }
 
 /**
- * The JSX runtime a module is compiled with. Oxc (the transform of Vite) and
- * the other bundlers' transforms read the module's `@jsxRuntime`,
- * `@jsxImportSource`, `@jsx` and `@jsxFrag` pragmas themselves; this only
- * picks the default they start from.
- *
- * The default is React's automatic runtime, except for a module that sets
- * `@jsx` or `@jsxFrag` without `@jsxRuntime` or `@jsxImportSource`: that
- * module is compiled with the classic runtime, so its factory and fragment
- * names are read. Under the automatic runtime such a pragma means nothing
- * (Oxc and TypeScript ignore it, esbuild ignores it with a warning) or
- * fails the build (SWC, so Rspack, and Babel reject it), so the module only
- * works as written in a project whose default runtime is classic.
- *
- * Pragmas anywhere in the module count here, while Oxc only reads the ones
- * that lead the module: a compiler that inserts code above a pragma still
- * outputs a module of the same (classic) project, whose JSX Oxc then
- * compiles with the default factory (`React.createElement`).
+ * Names a JavaScript module binds anywhere: imports, variables, functions,
+ * classes, parameters and catch parameters.
  */
-function jsxRuntime(code: string, filename: string): 'classic' | 'automatic' {
-  const { comments } = parseSync(filename, code, { sourceType: 'module' })
-  const pragmas = new Set<string>()
-  for (const comment of comments) {
-    for (const match of comment.value.matchAll(
-      /@jsx(Runtime|ImportSource|Frag)?\s+(\S+)/g,
-    )) {
-      const pragma = match[1] ?? ''
-      if (pragma === 'Runtime') {
-        // Oxc honours the module's own `@jsxRuntime` over the default.
-        return match[2] === 'classic' ? 'classic' : 'automatic'
+function boundNames(javascript: string): Set<string> {
+  const { program } = parseSync('module.js', javascript, {
+    sourceType: 'module',
+  })
+  const names = new Set<string>()
+  const add = (pattern: unknown) =>
+    patternNames(pattern).forEach((name) => names.add(name))
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(visit)
+      return
+    }
+    if (!isNode(node)) {
+      return
+    }
+    switch (node.type) {
+      case 'ImportSpecifier':
+      case 'ImportDefaultSpecifier':
+      case 'ImportNamespaceSpecifier':
+        add(node.local)
+        break
+      case 'VariableDeclarator':
+        add(node.id)
+        break
+      case 'FunctionDeclaration':
+      case 'FunctionExpression':
+      case 'ArrowFunctionExpression':
+        add(node.id)
+        ;(node.params as Array<Node>).forEach(add)
+        break
+      case 'ClassDeclaration':
+      case 'ClassExpression':
+        add(node.id)
+        break
+      case 'CatchClause':
+        add(node.param)
+        break
+    }
+    for (const [key, value] of Object.entries(node)) {
+      if (key !== 'type' && typeof value === 'object') {
+        visit(value)
       }
-      pragmas.add(pragma)
     }
   }
-  return !pragmas.has('ImportSource') &&
-    (pragmas.has('') || pragmas.has('Frag'))
-    ? 'classic'
-    : 'automatic'
+  visit(program)
+  return names
 }
 
 /**
