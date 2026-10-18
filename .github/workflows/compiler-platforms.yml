@@ -2,8 +2,11 @@ name: Compiler Platforms
 
 # The main PR workflow only runs on Linux x64 (glibc). The compilers load a
 # native Yuku binary per platform and handle platform-specific paths, so run
-# their unit tests and a Vite and Rsbuild production build on the other
-# platforms we ship to.
+# their fast test tier (test:unit), a small integration smoke set without a
+# browser (test:integration:smoke: real Vite and Rsbuild builds) and a Vite and
+# Rsbuild production build on the other platforms we ship to. The rest of the
+# slow tier (test:integration, including the Chromium tests) runs on Linux x64
+# in the main PR workflow.
 
 on:
   pull_request:
@@ -12,6 +15,7 @@ on:
       - 'packages/router-generator/**'
       - 'packages/router-plugin/**'
       - 'packages/start-plugin-core/**'
+      - 'packages/compiler-test-utils/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/compiler-platforms.yml'
   schedule:
@@ -89,10 +93,15 @@ jobs:
           --filter "@tanstack/router-plugin..."
           --filter "@tanstack/start-plugin-core..."
           --filter "tanstack-react-start-e2e-basic..."
-      - name: Unit tests
+      - name: Unit tests (fast tier)
         run: >-
           pnpm nx run-many --targets=test:unit
           --projects=@tanstack/router-generator,@tanstack/router-plugin,@tanstack/start-plugin-core
+          --skip-nx-cache --outputStyle=static
+      - name: Integration smoke (no browser)
+        run: >-
+          pnpm nx run-many --targets=test:integration:smoke
+          --projects=@tanstack/router-plugin,@tanstack/start-plugin-core
           --skip-nx-cache --outputStyle=static
       - name: Production builds
         run: >-

@@ -30,7 +30,7 @@
     "test:unit": "vitest --project unit",
     "test:unit:dev": "vitest --project unit --watch",
     "test:integration": "vitest --project integration",
-    "test:integration:smoke": "vitest --project integration integration/build-production.test.ts -t \"vite a production react client bundle has no dev-only code|autoCodeSplitting: true. has no dev-only code\"",
+    "test:integration:smoke": "vitest --project integration integration/build-production.test.ts -t \"vite.*a production react client bundle has no dev-only code|autoCodeSplitting: true. has no dev-only code\"",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
