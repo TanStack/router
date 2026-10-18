@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { defineDeploymentParticipant } from '@vitejs/deployment-metadata-helper'
 import {
   SUPPORTED_VDM0001_VERSIONS,
+  createDeploymentRenderBuiltUrl,
   discoverRequestMetadata,
 } from '../src/vite/deployment-metadata'
 import {
@@ -205,6 +206,63 @@ describe('generateDeploymentMetadataModule', () => {
   test('exports null without metadata', () => {
     expect(generateDeploymentMetadataModule(undefined)).toBe(
       'export const deploymentMetadata = null',
+    )
+  })
+})
+
+describe('createDeploymentRenderBuiltUrl', () => {
+  const headerCarrier = { type: 'header', name: 'x-deployment-id' } as const
+  const queryCarrier = { type: 'query', name: 'dpl' } as const
+
+  test('tags built urls with the first query carrier', () => {
+    const renderBuiltUrl = createDeploymentRenderBuiltUrl({
+      deploymentMetadata: {
+        value: 'dpl 123',
+        carriers: [headerCarrier, queryCarrier],
+      },
+      publicBase: '/app/',
+      hasUserRenderBuiltUrl: false,
+    })
+
+    expect(renderBuiltUrl?.('assets/logo-abc.svg')).toBe(
+      '/app/assets/logo-abc.svg?dpl=dpl%20123',
+    )
+  })
+
+  test('joins an absolute url base', () => {
+    const renderBuiltUrl = createDeploymentRenderBuiltUrl({
+      deploymentMetadata: { value: 'dpl_123', carriers: [queryCarrier] },
+      publicBase: 'https://cdn.example.com/app',
+      hasUserRenderBuiltUrl: false,
+    })
+
+    expect(renderBuiltUrl?.('assets/logo-abc.svg')).toBe(
+      'https://cdn.example.com/app/assets/logo-abc.svg?dpl=dpl_123',
+    )
+  })
+
+  test('leaves built urls alone without a query carrier', () => {
+    expect(
+      createDeploymentRenderBuiltUrl({
+        deploymentMetadata: { value: 'dpl_123', carriers: [headerCarrier] },
+        publicBase: '/',
+        hasUserRenderBuiltUrl: false,
+      }),
+    ).toBeUndefined()
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  test('keeps a user configured renderBuiltUrl and warns', () => {
+    expect(
+      createDeploymentRenderBuiltUrl({
+        deploymentMetadata: { value: 'dpl_123', carriers: [queryCarrier] },
+        publicBase: '/',
+        hasUserRenderBuiltUrl: true,
+      }),
+    ).toBeUndefined()
+    expect(warn).toHaveBeenCalledWith(
+      '[deployment-metadata]',
+      'experimental.renderBuiltUrl is already configured, so built asset urls are not tagged with the deployment id. Skew protection for assets is disabled.',
     )
   })
 })

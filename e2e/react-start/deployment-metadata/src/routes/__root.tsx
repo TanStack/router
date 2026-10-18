@@ -1,9 +1,12 @@
+/// <reference types="vite/client" />
 import {
   HeadContent,
   Outlet,
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
+
+import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -19,6 +22,7 @@ export const Route = createRootRoute({
         title: 'Deployment Metadata E2E Test',
       },
     ],
+    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   component: RootComponent,
 })

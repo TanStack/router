@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { readCarrierGet, readCarrierPost } from '~/serverFns'
+import logoUrl from '~/assets/logo.svg'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -20,6 +21,10 @@ function Home() {
     <div>
       <h1>Deployment metadata</h1>
       {hydrated ? <span data-testid="hydrated" /> : null}
+
+      <div className="css-url-asset" data-testid="css-url-asset" />
+
+      <img src={logoUrl} alt="" data-testid="js-asset" />
 
       <button
         data-testid="call-post"
