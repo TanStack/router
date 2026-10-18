@@ -1,45 +1,25 @@
 /**
- * Documented Start plugin options have their effect in real builds, through
- * Start's Vite and Rsbuild plugins (build-harness.ts).
+ * Documented Start plugin options that reach the compilers (server fn ids,
+ * the code splitter, the route tree) have their effect in real builds,
+ * through Start's Vite and Rsbuild plugins (build-harness.ts). (Options that
+ * only become runtime defines are tested in
+ * outside-compiler-corpus/start-build-options.test.ts.)
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
-import {
-  buildStart,
-  routerRuntimeFiles,
-  startBundlers,
-  startRuntimeFiles,
-} from './build-harness'
+import { buildStart, routerRuntimeFiles, startBundlers } from './build-harness'
 import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
 
-/**
- * The stand-in client RPC, with the URL the real one
- * (`@tanstack/start-client-core` `createClientRpc`) calls.
- */
-const clientRpcWithUrl = {
-  ...startRuntimeFiles,
-  'node_modules/@tanstack/react-start/client-rpc.js': `export const createClientRpc = (id) =>
-  Object.assign(() => {}, {
-    functionId: id,
-    url: process.env.TSS_SERVER_FN_BASE + id,
-  })
-`,
-}
-
 const greetFiles = {
-  ...clientRpcWithUrl,
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler(async () => 'MARK_HANDLER')
 `,
   'src/client-entry.ts': `export { greet } from './fns'\n`,
-  // The server-fn HTTP handler routes requests under this base
-  // (`@tanstack/start-server-core` `createStartHandler`).
   'src/ssr-entry.ts': `export { greet } from './fns'
-export const serverFnBase = () => process.env.TSS_SERVER_FN_BASE
 export { getServerFnById } from '#tanstack-start-server-fn-resolver'
 `,
 }
@@ -117,33 +97,6 @@ export const config: Register['config'] = { brand: 'OTHER' }`
 `
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  // Source: oracle-gaps "Start options never exercised" (serverFns.base).
-  test.each([
-    { start: {}, base: '/_serverFn/' },
-    {
-      start: { serverFns: { base: '/rpc' }, router: { basepath: '/app' } },
-      base: '/app/rpc/',
-    },
-  ])(
-    'serverFns.base and router.basepath: the client calls $base<id>, the base the server routes',
-    async ({ start, base }) => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: greetFiles,
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        start,
-      })
-      const rpc = (
-        await client.run(
-          `return { id: entry.greet.functionId, url: entry.greet.url }`,
-        )
-      ).result as { id: string; url: string }
-      expect(rpc.url).toBe(`${base}${rpc.id}`)
-      expect((await ssr.run(`return entry.serverFnBase()`)).result).toBe(base)
-    },
-    timeout,
-  )
-
   // Source: oracle-gaps "Start options never exercised"
   // (serverFns.generateFunctionId returning undefined).
   test(
@@ -189,54 +142,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
           )
         ).result,
       ).toBe('MARK_HANDLER')
-    },
-    timeout,
-  )
-
-  /**
-   * What `process.env.NODE_ENV` reads in the SSR build when the server runs
-   * with `NODE_ENV=staging`.
-   */
-  async function serverNodeEnv(staticNodeEnv?: boolean) {
-    const { ssr } = await buildStart({
-      bundler,
-      files: {
-        'src/entry.ts': `export const nodeEnv = () => process.env.NODE_ENV\n`,
-      },
-      entry: 'src/entry.ts',
-      start:
-        staticNodeEnv === undefined
-          ? {}
-          : { server: { build: { staticNodeEnv } } },
-    })
-    return (
-      await ssr.run(`process.env.NODE_ENV = 'staging'
-return entry.nodeEnv()`)
-    ).result
-  }
-
-  // Source: oracle-gaps "Start options never exercised"
-  // (server.build.staticNodeEnv), docs guide/environment-variables.md.
-  test(
-    'server.build.staticNodeEnv (default): the server build has the build-time NODE_ENV',
-    async () => {
-      expect(await serverNodeEnv()).toBe('production')
-    },
-    timeout,
-  )
-
-  // Bug (Rsbuild): only Start's Vite plugin reads `staticNodeEnv`
-  // (vite/planning.ts `createViteDefineConfig`); the Rsbuild plugin never
-  // does, and Rsbuild replaces `process.env.NODE_ENV` in every build.
-  // Impact: on Rsbuild, `staticNodeEnv: false` (documented for both
-  // bundlers) has no effect: a build deployed to several environments reads
-  // the build-time NODE_ENV everywhere.
-  // Source: oracle-gaps "Start options never exercised"; docs
-  // guide/environment-variables.md "When to Disable Static Replacement".
-  ;(bundler === 'rsbuild' ? test.fails : test)(
-    'server.build.staticNodeEnv false: the server build reads NODE_ENV at runtime',
-    async () => {
-      expect(await serverNodeEnv(false)).toBe('staging')
     },
     timeout,
   )
@@ -304,6 +209,18 @@ export const getRouter = () => ({ routeTree })
         client: expected,
         ssr: expected,
       })
+      // Wherever they are, the route's loader and component still run.
+      const script = `const route = Object.values(entry.getRouter().routeTree.children).find(
+  (candidate) => candidate.options.id === '/',
+)
+const { loader, component } = route.options
+await component.preload?.()
+return { loader: await loader(), component: component() }`
+      const runs = { loader: 'MARK_LOADER', component: 'MARK_COMPONENT' }
+      expect({
+        client: (await client.run(script)).result,
+        ssr: (await ssr.run(script)).result,
+      }).toEqual({ client: runs, ssr: runs })
     },
     timeout,
   )
