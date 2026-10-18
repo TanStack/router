@@ -1,55 +1,38 @@
 /**
  * Known `<Hydrate>` split bugs. Each test asserts correct behaviour for a bug
  * on main and is marked .fails; remove .fails when the bug is fixed.
+ *
+ * The modules are compiled by the real Start compiler and rendered with the
+ * real React, `@tanstack/react-router` and Start's real `Hydrate` and
+ * hydration strategies (`render.ts`): the uncompiled source is the reference
+ * of what a page renders, and the client output must render the markup the
+ * server output renders (hydration ids included) once its chunks loaded.
  */
 import { describe, expect, test } from 'vitest'
 import {
   compileErrorMessage,
   compileHydrate,
-  evaluateModule,
   expectRenderedThroughChunks,
-  hydrateParentStubs,
-  loadClientModule as loadHydrateClient,
-  renderBoundaries,
-  settle,
+  expectRendersLikeSource,
+  renderClient,
+  renderServer,
+  renderSource,
+  startPackage,
 } from './regression-helpers'
 import { generatedNames } from './hydrate-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
 `
 
 /**
- * JSX runtime of the evaluated modules: intrinsic elements render as tags and,
- * like React, components never receive `key` (nor `ref` before React 19).
+ * Like `head`, with the `idle()` strategy, whose boundaries render their
+ * hydration id (`load()` boundaries render none): fixtures about which id a
+ * boundary hydrates with use it.
  */
-const reactRuntime = `const __Fragment = Symbol('Fragment')
-const __jsx = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
-  if (type === __Fragment) return text
-  if (typeof type === 'function') {
-    const { key, ref, ...rest } = props ?? {}
-    return type(children.length ? { ...rest, children: text } : rest)
-  }
-  if (typeof type !== 'string') throw new Error('cannot render ' + String(type))
-  return '<' + type + '>' + text + '</' + type + '>'
-}
+const idleHead = `import { Hydrate } from '@tanstack/react-start'
+import { idle } from '@tanstack/react-start/hydration'
 `
-
-/**
- * Evaluates `code` compiled for the client once its `<Hydrate>` chunks have
- * loaded, rendering through the React-like runtime (`loadClientModule`).
- */
-function loadClientModule(
-  code: string,
-  options: Omit<
-    NonNullable<Parameters<typeof loadHydrateClient>[1]>,
-    'runtime'
-  > = {},
-) {
-  return loadHydrateClient(code, { ...options, runtime: reactRuntime })
-}
 
 /**
  * Clear compile errors that a fix may reject split children with, matched
@@ -61,45 +44,21 @@ const rejections = {
   Route: /\bHydrate\b[^]*\bRoute\b/,
 }
 
+/**
+ * Every chunk the client output can import is requested while the page
+ * renders (every boundary of the fixtures renders): no chunk ships that the
+ * page never loads.
+ */
+function expectNoUnusedChunks(client: {
+  chunkIds: Array<string>
+  requestedAtLoad: Array<string>
+  lazy: Array<string>
+}) {
+  const requested = [...client.requestedAtLoad, ...client.lazy]
+  expect(client.chunkIds.filter((id) => !requested.includes(id))).toEqual([])
+}
+
 describe('harness controls', () => {
-  test('client: loadClientModule renders every boundary through its lazy chunk', async () => {
-    const { module, lazyChunks } =
-      await loadClientModule(`${head}const helper = () => '!'
-export function Page() {
-  const label = 'hi'
-  return <><Hydrate when={load()}><p>{label}{helper()}</p></Hydrate><Hydrate when={load()}><b>two</b></Hydrate></>
-}`)
-    expect(module.Page()).toBe('[<p>hi!</p>][<b>two</b>]')
-    expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true, true])
-  })
-
-  test('client: loadClientModule links stubs and runs app code before the chunks load', async () => {
-    const events: Array<string> = []
-    const { module } = await loadClientModule(
-      `${head}import { Link } from '@tanstack/react-router'
-import { label } from './label'
-export function Page() {
-  return <Hydrate when={load()}><p><Link />{label()}</p></Hydrate>
-}`,
-      {
-        stubs: {
-          // Merged with the lazy chunk loader the harness provides.
-          '@tanstack/react-router': { Link: () => 'link ' },
-          './label': {
-            get label() {
-              events.push('label linked')
-              return () => 'stubbed'
-            },
-          },
-        },
-        beforeChunksLoad: (parent) =>
-          events.push(`app code with ${Object.keys(parent).join()}`),
-      },
-    )
-    expect(module.Page()).toBe('[<p>link stubbed</p>]')
-    expect(events).toEqual(['app code with Page', 'label linked'])
-  })
-
   test('client: the rejection matchers ignore the code frame of an unrelated error', async () => {
     const error = await compileHydrate(
       'client',
@@ -125,21 +84,15 @@ describe('boundaries and ids', () => {
   test.fails(
     'a Hydrate inside a fallback does not shift the chunks of later boundaries',
     async () => {
-      const code = `${head}export function Page() {
+      const { client } =
+        await expectRendersLikeSource(`${idleHead}export function Page() {
   return <div>
-    <Hydrate when={load()} fallback={<Hydrate when={load()}><p>inner</p></Hydrate>}><p>outer</p></Hydrate>
-    <Hydrate when={load()}><p>second</p></Hydrate>
+    <Hydrate when={idle()} fallback={<Hydrate when={idle()}><p>inner</p></Hydrate>}><p>outer</p></Hydrate>
+    <Hydrate when={idle()}><p>second</p></Hydrate>
   </div>
-}`
-      const render = (m: Record<string, any>) => m.Page()
-      const serverIds = (await renderBoundaries('server', code, render)).ids
-      expect(serverIds).toHaveLength(2)
-      expect((await renderBoundaries('client', code, render)).ids).toEqual(
-        expect.arrayContaining(serverIds),
-      )
-      const { module, lazyChunks } = await loadClientModule(code)
-      expect(module.Page()).toBe('<div>[<p>outer</p>][<p>second</p>]</div>')
-      expectRenderedThroughChunks(lazyChunks)
+}`)
+      expect(client.html).toContain('<p>outer</p>')
+      expect(client.html).toContain('<p>second</p>')
     },
   )
 
@@ -156,40 +109,39 @@ describe('boundaries and ids', () => {
     {
       name: 'a self-recursive component',
       code: `export function Tree({ node }) {
-  return <li>{node.label}<Hydrate when={load()}><ul>{node.children.map((child) => <Tree node={child} />)}</ul></Hydrate></li>
+  return <li>{node.label}<Hydrate when={idle()}><ul>{node.children.map((child) => <Tree node={child} />)}</ul></Hydrate></li>
 }`,
-      render: (module: Record<string, any>) =>
-        module.Tree({
-          node: { label: 'a', children: [{ label: 'b', children: [] }] },
-        }),
+      component: 'Tree',
+      props: { node: { label: 'a', children: [{ label: 'b', children: [] }] } },
+      rendered: 'b',
     },
     {
       name: 'mutually recursive components',
       code: `function Branch({ depth }) { return depth ? <Leaf depth={depth - 1} /> : null }
 export function Leaf({ depth }) {
-  return <Hydrate when={load()}><Branch depth={depth} /></Hydrate>
+  return <Hydrate when={idle()}><Branch depth={depth} /></Hydrate>
 }`,
-      render: (module: Record<string, any>) => module.Leaf({ depth: 2 }),
+      component: 'Leaf',
+      props: { depth: 2 },
+      rendered: 'data-ts-hydrate-id',
     },
     {
       name: 'a component with its own boundary inside another boundary',
-      code: `function Widget() { return <Hydrate when={load()}><b>widget</b></Hydrate> }
+      code: `function Widget() { return <Hydrate when={idle()}><b>widget</b></Hydrate> }
 export function Page() {
-  return <Hydrate when={load()}><section><Widget /></section></Hydrate>
+  return <Hydrate when={idle()}><section><Widget /></section></Hydrate>
 }`,
-      render: (module: Record<string, any>) => module.Page(),
+      component: 'Page',
+      props: {},
+      rendered: '<b>widget</b>',
     },
   ])(
     'client: $name hydrates like the server renders it',
-    async ({ code, render }) => {
-      const server = await renderBoundaries('server', `${head}${code}`, render)
-      expect(server.ids.length).toBeGreaterThan(1)
-      expect(
-        await renderBoundaries('client', `${head}${code}`, render),
-      ).toEqual(server)
-      const { module, lazyChunks } = await loadClientModule(`${head}${code}`)
-      render(module)
-      expectRenderedThroughChunks(lazyChunks)
+    async ({ code, component, props, rendered }) => {
+      const { client } = await expectRendersLikeSource(`${idleHead}${code}`, {
+        render: (m, h) => h(m[component], props),
+      })
+      expect(client.html).toContain(rendered)
     },
   )
 
@@ -198,38 +150,40 @@ export function Page() {
   test.fails(
     'client: a local component named Hydrate is left alone',
     async () => {
-      const { module, lazyChunks } =
-        await loadClientModule(`${head}export function Page() {
+      const code = `${head}export function Page() {
   return <Hydrate when={load()}><p>real</p></Hydrate>
 }
 export function Local() {
   const Hydrate = (props: { children: unknown }) => props.children
   return <Hydrate><p>local</p></Hydrate>
-}`)
-      expect({
-        page: module.Page(),
-        local: module.Local(),
-        chunks: lazyChunks.length,
-      }).toEqual({ page: '[<p>real</p>]', local: '<p>local</p>', chunks: 1 })
+}`
+      const { client: page } = await expectRendersLikeSource(code)
+      expect(page.html).toContain('<p>real</p>')
+      // The local component renders its children in place: nothing loads.
+      const { client: local } = await expectRendersLikeSource(code, {
+        render: (m, h) => h(m.Local),
+        split: false,
+      })
+      expect(local.html).toBe('<p>local</p>')
+      expect(local.lazy).toEqual([])
     },
   )
 
   // Goal (enhancement): the `Hydrate` member of a namespace import splits its
-  // children like a named import. Today it is left unsplit in both
-  // environments, which is safe (hydrate-split-modules.test.ts).
+  // children like a named import (DECISIONS 2026-10-18: namespace imports
+  // must be recognised). Today it is left unsplit in both environments,
+  // which is safe (hydrate-split-modules.test.ts).
   test.fails(
     'client: a namespace-imported <Start.Hydrate> is split',
     async () => {
-      const { module, lazyChunks } =
-        await loadClientModule(`import * as Start from '@tanstack/react-start'
+      // The client renders like the server, through split code.
+      const { client } =
+        await expectRendersLikeSource(`import * as Start from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
 export function Page() {
   return <Start.Hydrate when={load()}><p>child</p></Start.Hydrate>
 }`)
-      expect({ page: module.Page(), chunks: lazyChunks.length }).toEqual({
-        page: '[<p>child</p>]',
-        chunks: 1,
-      })
+      expect(client.html).toContain('<p>child</p>')
     },
   )
 
@@ -247,8 +201,8 @@ export function Page() {
       code: `export function Page(props) {
   return <Hydrate {...props} />
 }`,
-      props: { children: 'spread' },
-      html: '[spread]',
+      spread: true,
+      rendered: 'spread',
       split: false,
     },
     {
@@ -258,8 +212,8 @@ import { Chart } from './chart'
 export function Page() {
   return <Hydrate when={idle()} children={<Chart />} />
 }`,
-      props: {},
-      html: '[chart]',
+      spread: false,
+      rendered: 'chart',
       split: true,
     },
     {
@@ -270,23 +224,21 @@ export function Page() {
       code: `export function Page() {
   return <Hydrate when={load()} children="text" />
 }`,
-      props: {},
-      html: '[text]',
+      spread: false,
+      rendered: 'text',
       split: false,
     },
   ])(
     'client: children passed through $name render without unused chunks',
-    async ({ code, props, html, split }) => {
-      const { module, lazyChunks } = await loadClientModule(`${head}${code}`, {
-        stubs: { './chart': { Chart: () => 'chart' } },
+    async ({ code, spread, rendered, split }) => {
+      const { load } = await startPackage('@tanstack/react-start/hydration')
+      const { client } = await expectRendersLikeSource(`${head}${code}`, {
+        props: spread ? { when: load(), children: 'spread' } : {},
+        files: { './chart': `export const Chart = () => 'chart'` },
+        split,
       })
-      expect({
-        html: module.Page(props),
-        unusedChunks: lazyChunks.filter((chunk) => !chunk.rendered).length,
-      }).toEqual({ html, unusedChunks: 0 })
-      if (split) {
-        expectRenderedThroughChunks(lazyChunks)
-      }
+      expect(client.html).toContain(rendered)
+      expectNoUnusedChunks(client)
     },
   )
 
@@ -300,16 +252,11 @@ export function Page() {
   test.fails(
     'client: a boundary nested in a children prop hydrates with the id the server renders',
     async () => {
-      const code = `${head}export function Page() {
-  return <Hydrate when={load()} children={<section><Hydrate when={load()}><p>inner</p></Hydrate></section>} />
-}`
-      const render = (module: Record<string, any>) => module.Page()
-      const server = await renderBoundaries('server', code, render)
-      expect(server).toEqual({
-        html: '[<section>[<p>inner</p>]</section>]',
-        ids: [expect.any(String), expect.any(String)],
-      })
-      expect(await renderBoundaries('client', code, render)).toEqual(server)
+      const { client } =
+        await expectRendersLikeSource(`${idleHead}export function Page() {
+  return <Hydrate when={idle()} children={<section><Hydrate when={idle()}><p>inner</p></Hydrate></section>} />
+}`)
+      expect(client.html).toContain('<p>inner</p>')
     },
   )
 
@@ -325,7 +272,7 @@ export function Page() {
     {
       name: 'multi-line text with entities',
       text: '\n      Fish &amp;\n      Chips &copy;\n    ',
-      rendered: 'Fish & Chips ©',
+      rendered: 'Fish &amp; Chips ©',
     },
     {
       name: 'lines with trailing whitespace',
@@ -335,12 +282,13 @@ export function Page() {
   ])(
     'client: a text-only child renders like JSX text: $name',
     async ({ text, rendered }) => {
-      const jsx = await evaluateModule(`export const text = <>${text}</>`)
-      expect(jsx.text).toBe(rendered)
-      const { module } = await loadClientModule(`${head}export function Page() {
+      const { source } = await expectRendersLikeSource(
+        `${head}export function Page() {
   return <Hydrate when={load()}>${text}</Hydrate>
-}`)
-      expect(module.Page()).toBe(`[${rendered}]`)
+}`,
+        { split: false },
+      )
+      expect(source.html).toContain(`<!--$-->${rendered}<!--/$-->`)
     },
   )
 
@@ -354,55 +302,26 @@ export function Page() {
   test.fails(
     'client: spaces around a single child on one line render like on the server',
     async () => {
-      const jsx = await evaluateModule(`export const text = <> <p>x</p> </>`)
-      const code = `${head}export function Page() {
+      const { source } = await expectRendersLikeSource(
+        `${head}export function Page() {
   return <Hydrate when={load()}> <p>x</p> </Hydrate>
-}`
-      const render = (m: Record<string, any>) => m.Page()
-      const server = await renderBoundaries('server', code, render)
-      expect(server.html).toBe(`[${jsx.text}]`)
-      expect((await renderBoundaries('client', code, render)).html).toBe(
-        server.html,
+}`,
+        { split: false },
       )
+      expect(source.html).toContain('<!--$--> <p>x</p> <!--/$-->')
     },
   )
 
   /**
-   * Renders `Page` of `code` compiled for `env` (on the client once its
-   * chunks have loaded) and records each `<Hydrate>` it renders: its id and
-   * its children (and, on the client, `lazyChunks`). `<ClientOnly>` renders its fallback on the server and its
-   * children on the client.
+   * The markup of the boundary that renders `children` (its marker and
+   * hydration id included), if `html` has one.
    */
-  async function renderPage(env: 'client' | 'server', code: string) {
-    const boundaries: Array<{ h: unknown; children: unknown }> = []
-    const stubs = {
-      ...hydrateParentStubs,
-      '@tanstack/react-start': {
-        Hydrate: (props: { h?: unknown; children?: unknown }) => {
-          boundaries.push({ h: props.h, children: props.children })
-          return `[${props.children ?? ''}]`
-        },
-        createServerFn: () => ({ handler: (rpc: unknown) => rpc }),
-      },
-      '@tanstack/react-router': {
-        ...hydrateParentStubs['@tanstack/react-router'],
-        ClientOnly: (props: { children?: unknown; fallback?: unknown }) =>
-          env === 'server' ? props.fallback : props.children,
-      },
-    }
-    const { module, lazyChunks } =
-      env === 'server'
-        ? {
-            module: await evaluateModule(
-              (await compileHydrate('server', code)).parent,
-              stubs,
-              { runtime: reactRuntime },
-            ),
-            lazyChunks: [],
-          }
-        : await loadClientModule(code, { stubs })
-    const html = module.Page()
-    return { html, boundaries, lazyChunks }
+  function boundaryRendering(html: string, children: string) {
+    return html.match(
+      new RegExp(
+        `<div data-ts-hydrate-id="[^"]*"[^>]*><!--\\$-->${children.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}<!--/\\$--></div>`,
+      ),
+    )?.[0]
   }
 
   // Bug: the Hydrate plugin numbers boundaries after the other Start
@@ -419,100 +338,94 @@ export function Page() {
   // `loadHydrateVirtualModule`.
   test.fails.each([
     {
+      // `<ClientOnly>` renders its fallback on the server and, before
+      // hydration, on the client.
       name: 'a boundary in <ClientOnly> children (removed on the server)',
       code: `import { Hydrate } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
+import { idle } from '@tanstack/react-start/hydration'
 import { ClientOnly } from '@tanstack/react-router'
 export function Page() {
   return <div>
-    <ClientOnly fallback={<i>fallback</i>}><Hydrate when={load()}><p>a</p></Hydrate></ClientOnly>
-    <Hydrate when={load()}><p>b</p></Hydrate>
+    <ClientOnly fallback={<i>fallback</i>}><Hydrate when={idle()}><p>a</p></Hydrate></ClientOnly>
+    <Hydrate when={idle()}><p>b</p></Hydrate>
   </div>
 }`,
-      client: '<div>[<p>a</p>][<p>b</p>]</div>',
     },
     {
       name: 'a boundary in an isomorphic .server() (removed on the client)',
       code: `import { Hydrate, createIsomorphicFn } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
+import { idle } from '@tanstack/react-start/hydration'
 const panel = createIsomorphicFn()
-  .server(() => <Hydrate when={load()}><p>a</p></Hydrate>)
+  .server(() => <Hydrate when={idle()}><p>a</p></Hydrate>)
   .client(() => <i>client</i>)
 export function Page() {
-  return <div>{panel()}<Hydrate when={load()}><p>b</p></Hydrate></div>
+  return <div>{panel()}<Hydrate when={idle()}><p>b</p></Hydrate></div>
 }`,
-      client: '<div><i>client</i>[<p>b</p>]</div>',
     },
     {
       name: 'a boundary in a createServerOnlyFn (removed on the client)',
       code: `import { Hydrate, createServerOnlyFn } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
-export const panel = createServerOnlyFn(() => <Hydrate when={load()}><p>a</p></Hydrate>)
+import { idle } from '@tanstack/react-start/hydration'
+export const panel = createServerOnlyFn(() => <Hydrate when={idle()}><p>a</p></Hydrate>)
 export function Page() {
-  return <div><Hydrate when={load()}><p>b</p></Hydrate></div>
+  return <div><Hydrate when={idle()}><p>b</p></Hydrate></div>
 }`,
-      client: '<div>[<p>b</p>]</div>',
     },
     {
       name: 'a boundary in a server fn handler (removed on the client)',
       code: `import { Hydrate, createServerFn } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
-export const panel = createServerFn().handler(async () => <Hydrate when={load()}><p>a</p></Hydrate>)
+import { idle } from '@tanstack/react-start/hydration'
+export const panel = createServerFn().handler(async () => <Hydrate when={idle()}><p>a</p></Hydrate>)
 export function Page() {
-  return <div><Hydrate when={load()}><p>b</p></Hydrate></div>
+  return <div><Hydrate when={idle()}><p>b</p></Hydrate></div>
 }`,
-      client: '<div>[<p>b</p>]</div>',
     },
     {
       name: 'a boundary in an isomorphic .client() (removed on the server)',
       code: `import { Hydrate, createIsomorphicFn } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
+import { idle } from '@tanstack/react-start/hydration'
 const panel = createIsomorphicFn()
   .server(() => <i>server</i>)
-  .client(() => <Hydrate when={load()}><p>a</p></Hydrate>)
+  .client(() => <Hydrate when={idle()}><p>a</p></Hydrate>)
 export function Page() {
-  return <div>{panel()}<Hydrate when={load()}><p>b</p></Hydrate></div>
+  return <div>{panel()}<Hydrate when={idle()}><p>b</p></Hydrate></div>
 }`,
-      client: '<div>[<p>a</p>][<p>b</p>]</div>',
     },
     {
       // The component is only referenced from the removed handler, so the
       // client drops it too.
       name: 'a component with a boundary that only a server fn handler renders (removed on the client)',
       code: `import { Hydrate, createServerFn } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
+import { idle } from '@tanstack/react-start/hydration'
 function ServerPanel() {
-  return <Hydrate when={load()}><p>a</p></Hydrate>
+  return <Hydrate when={idle()}><p>a</p></Hydrate>
 }
 export const panel = createServerFn().handler(async () => <ServerPanel />)
 export function Page() {
-  return <div><Hydrate when={load()}><p>b</p></Hydrate></div>
+  return <div><Hydrate when={idle()}><p>b</p></Hydrate></div>
 }`,
-      client: '<div>[<p>b</p>]</div>',
     },
     {
       name: 'a boundary in a createClientOnlyFn (a stub on the server)',
       code: `import { Hydrate, createClientOnlyFn } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
-export const panel = createClientOnlyFn(() => <Hydrate when={load()}><p>a</p></Hydrate>)
+import { idle } from '@tanstack/react-start/hydration'
+export const panel = createClientOnlyFn(() => <Hydrate when={idle()}><p>a</p></Hydrate>)
 export function Page() {
-  return <div><Hydrate when={load()}><p>b</p></Hydrate></div>
+  return <div><Hydrate when={idle()}><p>b</p></Hydrate></div>
 }`,
-      client: '<div>[<p>b</p>]</div>',
     },
   ])(
     'a later boundary keeps its id and its children next to $name',
-    async ({ code, client }) => {
-      const idOfB = (boundaries: Array<{ h: unknown; children: unknown }>) =>
-        boundaries.find((boundary) => boundary.children === '<p>b</p>')?.h
-      const server = await renderPage('server', code)
-      const rendered = await renderPage('client', code)
-      expect(idOfB(server.boundaries)).toBeDefined()
-      expect({
-        html: rendered.html,
-        id: idOfB(rendered.boundaries),
-      }).toEqual({ html: client, id: idOfB(server.boundaries) })
-      expectRenderedThroughChunks(rendered.lazyChunks)
+    async ({ code }) => {
+      // The rest of the page may differ between the environments (that is
+      // the code they remove): the later boundary renders the same markup,
+      // id included, through split code on the client.
+      const server = await renderServer(code)
+      const client = await renderClient(code)
+      const later = boundaryRendering(server.html, '<p>b</p>')
+      expect(later).toBeDefined()
+      expect(boundaryRendering(client.html, '<p>b</p>')).toBe(later)
+      expectRenderedThroughChunks(client)
     },
   )
 })
@@ -524,14 +437,13 @@ describe('values captured by the children', () => {
   test.fails(
     'client: captured locals named key and ref reach the split children',
     async () => {
-      const { module, lazyChunks } =
-        await loadClientModule(`${head}export function Page() {
+      const { client } =
+        await expectRendersLikeSource(`${head}export function Page() {
   const key = 'k'
   const ref = 'r'
   return <Hydrate when={load()}><p>{key}{ref}</p></Hydrate>
 }`)
-      expect(module.Page()).toBe('[<p>kr</p>]')
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain('<p>k<!-- -->r</p>')
     },
   )
 
@@ -545,13 +457,14 @@ describe('values captured by the children', () => {
   test.fails.each(['_Local', '$Local', 'ÉLocal', '组件'])(
     'client: the split children render a local component named %s',
     async (name) => {
-      const { module, lazyChunks } =
-        await loadClientModule(`${head}export function Page({ label }) {
+      const { client } = await expectRendersLikeSource(
+        `${head}export function Page({ label }) {
   const ${name} = () => <b>{label}</b>
   return <Hydrate when={load()}><${name} /><i>{label}</i></Hydrate>
-}`)
-      expect(module.Page({ label: 'l' })).toBe('[<b>l</b><i>l</i>]')
-      expectRenderedThroughChunks(lazyChunks)
+}`,
+        { props: { label: 'l' } },
+      )
+      expect(client.html).toContain('<b>l</b><i>l</i>')
     },
   )
 
@@ -569,35 +482,41 @@ export function Page() {
   const ui = { Home }
   return <Hydrate when={load()}><ui.Home /></Hydrate>
 }`,
-      html: '[<i>home</i>]',
+      rendered: '<i>home</i>',
     },
     {
       name: 'a capitalized destructured prop',
       code: `export function Page({ Model }) {
   return <Hydrate when={load()}><Model.Item /></Hydrate>
 }`,
-      html: '[<b>item</b>]',
+      rendered: '<b>item</b>',
     },
   ])(
     'client: the split children render member-expression tags of $name',
-    async ({ code, html }) => {
-      const { module, lazyChunks } = await loadClientModule(`${head}${code}`)
-      expect(module.Page({ Model: { Item: () => '<b>item</b>' } })).toBe(html)
-      expectRenderedThroughChunks(lazyChunks)
+    async ({ code, rendered }) => {
+      const { client } = await expectRendersLikeSource(`${head}${code}`, {
+        render: (m, h) =>
+          h(m.Page, { Model: { Item: () => h('b', null, 'item') } }),
+      })
+      expect(client.html).toContain(rendered)
     },
   )
 
-  /** `Icons` picks a component per id: `<Icon />` renders it. */
-  const iconStubs = {
-    './icons': { icons: { a: () => '<i>a</i>', b: () => '<i>b</i>' } },
+  /** `icons` maps ids to components. */
+  const iconFiles = {
+    './icons': `export const icons = { a: () => <i>a</i>, b: () => <i>b</i> }`,
   }
-  const renderIcons = (module: Record<string, any>) =>
-    module.Icons({ ids: ['a', 'b'] })
+  const renderIcons = {
+    files: iconFiles,
+    render: (m: Record<string, any>, h: (...args: Array<any>) => unknown) =>
+      h(m.Icons, { ids: ['a', 'b'] }),
+  }
 
-  // Control for the pin below (same harness): a component the component body
-  // binds outside the boundary is a capture, passed to the chunk.
+  // Control for the pin below (same rendering): a component the component
+  // body binds outside the boundary is a capture, passed to the chunk.
   test('client: the split children render a component bound outside the boundary', async () => {
-    const code = `${head}import { icons } from './icons'
+    const { client } = await expectRendersLikeSource(
+      `${head}import { icons } from './icons'
 export function Icons({ ids }) {
   const Icon = icons[ids[0]]
   return (
@@ -605,18 +524,10 @@ export function Icons({ ids }) {
       <ul>{ids.map((id) => <li key={id}><Icon /></li>)}</ul>
     </Hydrate>
   )
-}`
-    const server = await renderBoundaries('server', code, renderIcons, {
-      stubs: iconStubs,
-    })
-    expect(server.html).toBe('[<ul><li><i>a</i></li><li><i>a</i></li></ul>]')
-    expect(
-      (
-        await renderBoundaries('client', code, renderIcons, {
-          stubs: iconStubs,
-        })
-      ).html,
-    ).toBe(server.html)
+}`,
+      renderIcons,
+    )
+    expect(client.html).toContain('<ul><li><i>a</i></li><li><i>a</i></li></ul>')
   })
 
   // Bug: a JSX tag naming a binding declared inside the children (`const Icon
@@ -631,7 +542,8 @@ export function Icons({ ids }) {
   test.fails(
     'client: the split children render a component bound inside them',
     async () => {
-      const code = `${head}import { icons } from './icons'
+      const { client } = await expectRendersLikeSource(
+        `${head}import { icons } from './icons'
 export function Icons({ ids }) {
   return (
     <Hydrate when={load()}>
@@ -643,18 +555,12 @@ export function Icons({ ids }) {
       </ul>
     </Hydrate>
   )
-}`
-      const server = await renderBoundaries('server', code, renderIcons, {
-        stubs: iconStubs,
-      })
-      expect(server.html).toBe('[<ul><li><i>a</i></li><li><i>b</i></li></ul>]')
-      expect(
-        (
-          await renderBoundaries('client', code, renderIcons, {
-            stubs: iconStubs,
-          })
-        ).html,
-      ).toBe(server.html)
+}`,
+        renderIcons,
+      )
+      expect(client.html).toContain(
+        '<ul><li><i>a</i></li><li><i>b</i></li></ul>',
+      )
     },
   )
 
@@ -668,15 +574,16 @@ export function Icons({ ids }) {
   test.fails(
     'client: property names, method keys and optional members are no reads of a local',
     async () => {
-      const { module, lazyChunks } =
-        await loadClientModule(`${head}export function Page({ obj }) {
+      const { client } = await expectRendersLikeSource(
+        `${head}export function Page({ obj }) {
   const el = <Hydrate when={load()}><p>{obj?.later + ({ later() { return '!' } }).later()}</p></Hydrate>
   const later = 1
   console.log(later)
   return el
-}`)
-      expect(module.Page({ obj: { later: 'L' } })).toBe('[<p>L!</p>]')
-      expectRenderedThroughChunks(lazyChunks)
+}`,
+        { props: { obj: { later: 'L' } } },
+      )
+      expect(client.html).toContain('<p>L!</p>')
     },
   )
 
@@ -686,15 +593,14 @@ export function Icons({ ids }) {
   // Source: Qwik optimizer example_ts_enums (component-local enum) (#8504
   // hydrate-captures.test.ts, red on main)
   test.fails('client: the split children read a local enum', async () => {
-    const { module, lazyChunks } =
-      await loadClientModule(`${head}export function Page() {
+    const { client } =
+      await expectRendersLikeSource(`${head}export function Page() {
   enum Color {
     Red = 'red',
   }
   return <Hydrate when={load()}><p>{Color.Red}</p></Hydrate>
 }`)
-    expect(module.Page()).toBe('[<p>red</p>]')
-    expectRenderedThroughChunks(lazyChunks)
+    expect(client.html).toContain('<p>red</p>')
   })
 
   // Bug: split children reading the component's `arguments` are moved into
@@ -707,15 +613,20 @@ export function Icons({ ids }) {
   test.fails(
     "client: split children reading the component's arguments render its props",
     async () => {
-      const loaded = await loadClientModule(`${head}export function Page() {
+      const code = `${head}export function Page() {
   return <Hydrate when={load()}><p>{arguments[0].title}</p></Hydrate>
-}`).catch((error: Error) => error)
-      if (loaded instanceof Error) {
-        expect(compileErrorMessage(loaded)).toMatch(rejections.arguments)
+}`
+      const compiled = await compileHydrate('client', code).catch(
+        (error: Error) => error,
+      )
+      if (compiled instanceof Error) {
+        expect(compileErrorMessage(compiled)).toMatch(rejections.arguments)
         return
       }
-      expect(loaded.module.Page({ title: 'Hello' })).toBe('[<p>Hello</p>]')
-      expectRenderedThroughChunks(loaded.lazyChunks)
+      const { client } = await expectRendersLikeSource(code, {
+        props: { title: 'Hello' },
+      })
+      expect(client.html).toContain('<p>Hello</p>')
     },
   )
 
@@ -728,29 +639,29 @@ export function Icons({ ids }) {
     {
       name: 'a function expression',
       children: `<ul>{items.map(function (this: { prefix: string }, item: string) { return <li>{this.prefix + item}</li> }, { prefix: '>' })}</ul>`,
-      rendered: '[<ul><li>>a</li><li>>b</li></ul>]',
+      rendered: '<ul><li>&gt;a</li><li>&gt;b</li></ul>',
     },
     {
       name: 'a class',
       children: `<p>{new (class { label = 'inner'; read() { return this.label } })().read()}</p>`,
-      rendered: '[<p>inner</p>]',
+      rendered: '<p>inner</p>',
     },
     {
       name: 'an object method',
       children: `<p>{({ label: 'inner', read() { return this.label } }).read()}</p>`,
-      rendered: '[<p>inner</p>]',
+      rendered: '<p>inner</p>',
     },
   ])(
     'client: split children may use the own `this` of $name',
     async ({ children, rendered }) => {
-      const code = `${head}export function Page({ items }) {
+      // Both environments compile, and the client renders like the server.
+      const { client } = await expectRendersLikeSource(
+        `${head}export function Page({ items }) {
   return <Hydrate when={load()}>${children}</Hydrate>
-}`
-      const { module, lazyChunks } = await loadClientModule(code)
-      expect(module.Page({ items: ['a', 'b'] })).toBe(rendered)
-      const server = await compileHydrate('server', code)
-      expect(await getModuleErrors(server.parent)).toEqual([])
-      expectRenderedThroughChunks(lazyChunks)
+}`,
+        { props: { items: ['a', 'b'] } },
+      )
+      expect(client.html).toContain(rendered)
     },
   )
 
@@ -775,12 +686,12 @@ export async function Page() {
         expect(compileErrorMessage(compiled)).toMatch(rejections.await)
         return
       }
-      // Every emitted module is valid (`loadClientModule`).
-      const { module, lazyChunks } = await loadClientModule(code, {
-        stubs: { './data': { loadData: async () => 'data' } },
+      // Every emitted module is valid, and the client renders like the
+      // server.
+      const { client } = await expectRendersLikeSource(code, {
+        files: { './data': `export const loadData = async () => 'data'` },
       })
-      expect(await module.Page()).toBe('[<p>data</p>]')
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain('<p>data</p>')
     },
   )
 })
@@ -801,8 +712,8 @@ function Label() { return <span>{useContext(Theme)}</span> }
 export function Page() {
   return <Theme.Provider value="dark"><Hydrate when={load()}><Label /></Hydrate></Theme.Provider>
 }`,
-      // The context the parent created first.
-      html: '[<span>context 1</span>]',
+      // The value the parent provides.
+      rendered: '<span>dark</span>',
     },
     {
       name: 'let reassigned by the parent',
@@ -811,28 +722,16 @@ export function bump() { clicks++ }
 export function Page() {
   return <Hydrate when={load()}><p>{clicks}</p></Hydrate>
 }`,
-      html: '[<p>1</p>]',
+      rendered: '<p>1</p>',
     },
   ])(
     'client: the children use the module-level $name of the parent module',
-    async ({ code, html }) => {
-      let contexts = 0
-      const { module, lazyChunks } = await loadClientModule(`${head}${code}`, {
-        stubs: {
-          react: {
-            createContext: () => ({
-              Provider: (props: { children: unknown }) => props.children,
-              instance: ++contexts,
-            }),
-            useContext: (context: { instance: number }) =>
-              `context ${context.instance}`,
-          },
-        },
+    async ({ code, rendered }) => {
+      const { client } = await expectRendersLikeSource(`${head}${code}`, {
         // App code runs before the boundary hydrates.
-        beforeChunksLoad: (parent) => parent.bump?.(),
+        beforeRender: (module) => module.bump?.(),
       })
-      expect(module.Page()).toBe(html)
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain(rendered)
     },
   )
 
@@ -845,38 +744,24 @@ export function Page() {
   test.fails(
     'client: an exported declaration the children use has one instance, initialized once',
     async () => {
-      let stores = 0
-      const { module, lazyChunks } = await loadClientModule(
+      const { client } = await expectRendersLikeSource(
         `${head}import { makeStore } from './store'
 export const store = makeStore()
 export function Page() {
   return <Hydrate when={load()}><p>{store.id}</p></Hydrate>
 }`,
         {
-          stubs: {
-            './store': { makeStore: () => ({ id: ++stores }) },
+          // Each store gets the next id: a second instance renders 2.
+          files: {
+            './store': `let stores = 0
+export const makeStore = () => ({ id: ++stores })`,
           },
         },
       )
-      expect({
-        html: module.Page(),
-        exported: module.store.id,
-        stores,
-      }).toEqual({ html: '[<p>1</p>]', exported: 1, stores: 1 })
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.module.store.id).toBe(1)
+      expect(client.html).toContain('<p>1</p>')
     },
   )
-
-  /** Router stub recording the routes it creates. */
-  const routerStub = (created: Array<string>) => ({
-    '@tanstack/react-router': {
-      createFileRoute:
-        (id: string) => (options: { loader?: () => unknown }) => {
-          created.push(id)
-          return { id, useLoaderData: () => options.loader?.() }
-        },
-    },
-  })
 
   // Bug: the client chunk removes the module's `Route`
   // (`removeModuleLevelBindings(ast, new Set(['Route']))`) without importing
@@ -890,9 +775,9 @@ export function Page() {
       name: 'directly',
       code: `export const Route = createFileRoute('/posts')({ component: Page })
 export function Page() {
-  return <Hydrate when={load()}><p>{Route.id}</p></Hydrate>
+  return <Hydrate when={load()}><p>{Route.options.id}</p></Hydrate>
 }`,
-      rendered: '[<p>/posts</p>]',
+      rendered: '<p>/posts</p>',
     },
     {
       name: 'through a module helper',
@@ -901,34 +786,35 @@ export function Page() {
   component: Page,
 })
 function Comments() {
-  return <p>{Route.useLoaderData()}</p>
+  return <p>{Route.options.loader() + ':' + Route.options.id}</p>
 }
 export function Page() {
   return <Hydrate when={load()}><Comments /></Hydrate>
 }`,
-      rendered: '[<p>data</p>]',
+      rendered: '<p>data:/posts</p>',
     },
     {
       name: 'exported under a specifier',
       code: `const Route = createFileRoute('/posts')({ component: Page })
 export { Route }
 export function Page() {
-  return <Hydrate when={load()}><p>{Route.id}</p></Hydrate>
+  return <Hydrate when={load()}><p>{Route.options.id}</p></Hydrate>
 }`,
-      rendered: '[<p>/posts</p>]',
+      rendered: '<p>/posts</p>',
     },
   ])(
     'client: split children reading Route $name use the one route',
     async ({ code, rendered }) => {
-      const created: Array<string> = []
-      const { module, lazyChunks } = await loadClientModule(
+      const { client } = await expectRendersLikeSource(
         `${head}import { createFileRoute } from '@tanstack/react-router'
 ${code}`,
-        { stubs: routerStub(created) },
+        {
+          // The route tree updates the module's route (routeTree.gen.ts):
+          // the children read the route the module exports.
+          beforeRender: (module) => module.Route.update({ id: '/posts' }),
+        },
       )
-      expect(module.Page()).toBe(rendered)
-      expect(created).toEqual(['/posts'])
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain(rendered)
     },
   )
 
@@ -939,15 +825,14 @@ ${code}`,
   test.fails(
     'client: an unexported component named Route that the children render reaches the chunk',
     async () => {
-      const { module, lazyChunks } =
-        await loadClientModule(`${head}function Route() {
+      const { client } =
+        await expectRendersLikeSource(`${head}function Route() {
   return <p>local</p>
 }
 export function Page() {
   return <Hydrate when={load()}><Route /></Hydrate>
 }`)
-      expect(module.Page()).toBe('[<p>local</p>]')
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain('<p>local</p>')
     },
   )
 
@@ -963,31 +848,30 @@ export function Page() {
       setup: `function Card({ children }) { return <div>{children}</div> }
 Card.Title = function Title() { return <h1>t</h1> }`,
       children: '<Card><Card.Title /></Card>',
-      rendered: '[<div><h1>t</h1></div>]',
+      rendered: '<div><h1>t</h1></div>',
     },
     {
       name: 'Object.assign on a component',
       setup: `function Tabs({ children }) { return <ul>{children}</ul> }
 Object.assign(Tabs, { Tab: () => <li>tab</li> })`,
       children: '<Tabs><Tabs.Tab /></Tabs>',
-      rendered: '[<ul><li>tab</li></ul>]',
+      rendered: '<ul><li>tab</li></ul>',
     },
     {
       name: 'a registry filled by a top-level call',
       setup: `const registry = new Map()
 registry.set('a', 'A')`,
       children: `<p>{registry.get('a')}</p>`,
-      rendered: '[<p>A</p>]',
+      rendered: '<p>A</p>',
     },
   ])(
     'client: $name that the children rely on reaches the chunk',
     async ({ setup, children, rendered }) => {
-      const { module, lazyChunks } = await loadClientModule(`${head}${setup}
+      const { client } = await expectRendersLikeSource(`${head}${setup}
 export function Page() {
   return <Hydrate when={load()}>${children}</Hydrate>
 }`)
-      expect(module.Page()).toBe(rendered)
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain(rendered)
     },
   )
 
@@ -999,14 +883,13 @@ export function Page() {
   test.fails(
     'client: a var declared in a nested block that the children read reaches the chunk',
     async () => {
-      const { module, lazyChunks } = await loadClientModule(`${head}try {
+      const { client } = await expectRendersLikeSource(`${head}try {
   var label = JSON.parse('"nested"')
 } catch {}
 export function Page() {
   return <Hydrate when={load()}><p>{label}</p></Hydrate>
 }`)
-      expect(module.Page()).toBe('[<p>nested</p>]')
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain('<p>nested</p>')
     },
   )
 
@@ -1018,7 +901,7 @@ export function Page() {
   test.fails(
     'client: a TypeScript import alias used by the split children is declared in the chunk',
     async () => {
-      const { module, lazyChunks } = await loadClientModule(
+      const { client } = await expectRendersLikeSource(
         `${head}import { visible } from '@tanstack/react-start/hydration'
 import * as ui from './ui'
 import Card = ui.Card
@@ -1029,15 +912,12 @@ export function Page() {
   return <Hydrate when={visible()}><Panel /></Hydrate>
 }`,
         {
-          stubs: {
-            './ui': {
-              Card: (props: { title: string }) => `<b>${props.title}</b>`,
-            },
+          files: {
+            './ui': `export const Card = (props: { title: string }) => <b>{props.title}</b>`,
           },
         },
       )
-      expect(module.Page()).toBe('[<b>hi</b>]')
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain('<b>hi</b>')
     },
   )
 
@@ -1058,7 +938,7 @@ export function Page() {
 export function Page() {
   return <Hydrate when={load()}><p>{DefaultFn()}</p></Hydrate>
 }`,
-      rendered: ['[<p>default</p>]', '[<p>default</p>]'],
+      rendered: '<p>default</p>',
     },
     {
       name: 'TypeScript enums and namespaces',
@@ -1067,7 +947,7 @@ namespace Labels { export const quiet = 'quiet' }
 export function Page() {
   return <Hydrate when={load()}><p>{Tone.Loud + ':' + Labels.quiet}</p></Hydrate>
 }`,
-      rendered: ['[<p>LOUD:quiet</p>]', '[<p>LOUD:quiet</p>]'],
+      rendered: '<p>LOUD:quiet</p>',
     },
     {
       name: 'a let the children only assign',
@@ -1075,14 +955,16 @@ export function Page() {
 export function Page() {
   return <Hydrate when={load()}><p>{(() => { renders = 1 })()}</p></Hydrate>
 }`,
-      rendered: ['[<p></p>]', '[<p></p>]'],
+      rendered: '<p></p>',
     },
   ])(
     'client: $name used by the children reaches the chunk',
     async ({ code, rendered }) => {
-      const { module, lazyChunks } = await loadClientModule(`${head}${code}`)
-      expect([module.Page(), module.Page()]).toEqual(rendered)
-      expectRenderedThroughChunks(lazyChunks)
+      // Rendered twice.
+      const { client } = await expectRendersLikeSource(`${head}${code}`, {
+        render: (m, h) => [h(m.Page, { key: 1 }), h(m.Page, { key: 2 })],
+      })
+      expect(client.html).toContain(rendered)
     },
   )
 
@@ -1122,43 +1004,41 @@ export function Page() {
   return <><Hydrate when={load()} prefetch={idle()}><p>{[${[...(probe ? ['captured'] : []), ...names.map(read)].join(', ')}].join('|')}</p></Hydrate><Hydrate when={load()}><section><Hydrate when={load()}><b>nested</b></Hydrate></section></Hydrate></>
 }`
       // Whichever names the compiler picks for this page, including the
-      // names it passes captured values under.
+      // names it passes captured values under (none is a valid choice: then
+      // nothing can collide).
       const names = await generatedNames(page([], true))
-      expect(names).not.toEqual([])
-      const { module, lazyChunks } = await loadClientModule(page(names))
-      expect(module.Page()).toBe(
-        `[<p>${names.map(value).join('|')}</p>][<section>[<b>nested</b>]</section>]`,
-      )
-      expectRenderedThroughChunks(lazyChunks)
+      const { client } = await expectRendersLikeSource(page(names))
+      expect(client.html).toContain(`<p>${names.map(value).join('|')}</p>`)
+      expect(client.html).toContain('<b>nested</b>')
     },
   )
 
-  /** Emotion's `jsx`, rendering intrinsic elements as `<css:tag>`. */
-  const emotion = {
-    jsx: (type: unknown, props: object | null, ...children: Array<unknown>) => {
-      const text = children.flat(Infinity).join('')
-      if (typeof type === 'function') {
-        return type(children.length ? { ...props, children: text } : props)
-      }
-      return `<css:${String(type)}>${text}</css:${String(type)}>`
-    },
-  }
-  const pragmaModule = `/** @jsx jsx */
-import { jsx } from '@emotion/react'
+  /**
+   * A module rendering through a classic JSX pragma naming a factory of the
+   * app (`./h`, which marks every element it creates with `data-h`), like
+   * Emotion's `jsx`; the children also call the factory directly.
+   */
+  const pragmaModule = `/** @jsxRuntime classic */
+/** @jsx h */
+import { h } from './h'
 ${head}export function Page() {
-  return <div><Hydrate when={load()}><p css={{ color: 'red' }}>{jsx('i', null)}</p></Hydrate></div>
+  return <div><Hydrate when={load()}><p>{h('i', null)}</p></Hydrate></div>
 }`
-  const pragmaHtml = '<css:div>[<css:p><css:i></css:i></css:p>]</css:div>'
+  const pragmaFiles = {
+    './h': `import { createElement } from 'react'
+export function h(type, props, ...children) {
+  return createElement(type, { ...props, 'data-h': '' }, ...children)
+}`,
+  }
 
   // Control for the JSX pragma pin below (same rendering).
   test('server: a module with a classic JSX pragma renders through its factory', async () => {
-    const { parent } = await compileHydrate('server', pragmaModule)
-    const { Page } = await evaluateModule(
-      parent,
-      { ...hydrateParentStubs, '@emotion/react': emotion },
-      { runtime: reactRuntime },
-    )
-    expect(Page()).toBe(pragmaHtml)
+    const source = await renderSource(pragmaModule, { files: pragmaFiles })
+    expect(source.html).toContain('<div data-h="">')
+    expect(source.html).toContain('<p data-h=""><i data-h=""></i></p>')
+    expect(
+      (await renderServer(pragmaModule, { files: pragmaFiles })).html,
+    ).toBe(source.html)
   })
 
   // Bug: dead-code elimination does not count a classic JSX pragma
@@ -1171,17 +1051,14 @@ ${head}export function Page() {
   // Impact: the client renders the parent's JSX through another factory than
   // the server (a hydration mismatch), or throws "h is not defined". In a
   // project whose default JSX runtime is classic, Oxc then compiles the
-  // parent's JSX to `React.createElement` without `React` in scope. The
-  // harness validates modules as an automatic-runtime project, so the
-  // rendering fails here.
+  // parent's JSX to `React.createElement` without `React` in scope.
   test.fails(
     'client: a module with a classic JSX pragma renders through its factory',
     async () => {
-      const { module, lazyChunks } = await loadClientModule(pragmaModule, {
-        stubs: { '@emotion/react': emotion },
+      const { client } = await expectRendersLikeSource(pragmaModule, {
+        files: pragmaFiles,
       })
-      expect(settle(() => module.Page())).toBe(pragmaHtml)
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain('<div data-h="">')
     },
   )
 })

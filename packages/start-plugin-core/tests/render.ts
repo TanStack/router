@@ -1,31 +1,56 @@
 /**
- * Splits `<Hydrate>` children into chunks with the Start compiler and the
- * hydrate plugin, loads and renders the chunks, and renders a page's
- * boundaries through them. Re-exported by `regression-helpers.ts`.
+ * `<Hydrate>` modules compiled by the Start compiler and its Hydrate plugin,
+ * then evaluated and rendered in this process with the real packages: React
+ * and `react-dom`, the real `@tanstack/react-router` (its
+ * `lazyRouteComponent`, `ClientOnly`) and Start's real `Hydrate` and
+ * hydration strategies (`@tanstack/react-start-client`, which
+ * `@tanstack/react-start` re-exports). Re-exported by `regression-helpers.ts`.
+ *
+ * - `compileHydrate(env, code)`: the compiled parent module and the chunks it
+ *   imports, as the plugin serves them (the host contract of the plugin).
+ * - `renderSource`, `renderServer`, `renderClient`: the uncompiled source,
+ *   the server output and the client output (its chunks loaded through the
+ *   parent's own dynamic imports, each compiled like the bundler compiles the
+ *   virtual module) rendered to HTML by `react-dom/static`, which waits for
+ *   lazy components and Suspense like a streaming server render does. A
+ *   render error (React's `onError`) fails the render.
+ * - `expectClientRendersLikeServer`: the client output renders the markup
+ *   the server output renders (boundary markers and ids included) and loads
+ *   split code while it renders.
+ *
+ * Rendering the client output here runs it outside a browser: the real
+ * `Hydrate` takes its server path (no gate, children rendered), which is
+ * what the markup comparison needs. Hydration itself, effects, `prefetch`,
+ * `onHydrated` and events need a page: `integration/hydrate-pages.ts`.
+ *
+ * Solid: `@tanstack/solid-router` cannot be linked in process (its build
+ * calls client-only Solid APIs under Node; see router-plugin's
+ * `lazy-tracking.ts`), so Solid modules are only compiled here.
  */
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { expect } from 'vitest'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
+import { workspacePackage } from '@tanstack/compiler-test-utils/workspace-packages'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
-import type { StartCompilerTransformResult } from '../src/types'
-import {
-  isNode,
-  moduleRequests,
-  parseModule,
-  staticSpecifier,
-  walk,
-} from './imports'
-import type { Node } from './imports'
+import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+import { moduleRequests } from './imports'
 import {
   createStartCompiler,
   createTestModuleGraph,
-  evaluateModule,
   moduleId,
 } from './regression-helpers'
+import type {
+  ModuleGraph,
+  ModuleStub,
+} from '@tanstack/compiler-test-utils/module-linker'
+import type { StartCompilerTransformResult } from '../src/types'
 import type { Framework } from './regression-helpers'
-import { chunkBoundaryStart } from './source-maps'
 
 type HydratePlugin = ReturnType<typeof createHydrateCompilerPlugin>
+
+/** Where the real packages of an in-process graph resolve from. */
+export const packagesDir = path.dirname(fileURLToPath(import.meta.url))
 
 /** Ids of the virtual modules the Hydrate plugin serves (its host contract). */
 const hydrateVirtualModuleIds =
@@ -42,86 +67,29 @@ export function getChunkIds(code: string) {
   })
 }
 
-/** The name of a JSX element, as written (`Hydrate`, `Start.Hydrate`). */
-function jsxElementName(name: unknown): string | undefined {
-  if (!isNode(name)) {
-    return undefined
-  }
-  if (name.type === 'JSXIdentifier') {
-    return name.name as string
-  }
-  if (name.type === 'JSXMemberExpression') {
-    const object = jsxElementName(name.object)
-    return object === undefined
-      ? undefined
-      : `${object}.${(name.property as Node).name as string}`
-  }
-  return undefined
-}
-
 /**
- * The JSX element names that refer to the `Hydrate` component of a
- * `@tanstack/*-start` package in a module: its named imports and the
- * `Hydrate` member of its namespace imports.
+ * Loads a `<Hydrate>` chunk the way the bundler loads the virtual module
+ * (`code`: the source module's code, as Rsbuild passes it).
  */
-function hydrateElementNames(program: unknown) {
-  const names = new Set<string>()
-  walk(program, (node) => {
-    if (
-      node.type !== 'ImportDeclaration' ||
-      !/^@tanstack\/[\w-]+-start$/.test(staticSpecifier(node.source) ?? '')
-    ) {
-      return
-    }
-    for (const specifier of node.specifiers as Array<Node>) {
-      const local = (specifier.local as Node).name as string
-      if (specifier.type === 'ImportNamespaceSpecifier') {
-        names.add(`${local}.Hydrate`)
-      } else if (
-        specifier.type === 'ImportSpecifier' &&
-        ((specifier.imported as Node).name ??
-          (specifier.imported as Node).value) === 'Hydrate'
-      ) {
-        names.add(local)
-      }
-    }
-  })
-  return names
-}
-
-/** The `<Hydrate>` elements of a module, in source order. */
-function hydrateElements(code: string) {
-  const program = parseModule(code)
-  const names = hydrateElementNames(program)
-  const elements: Array<Node> = []
-  walk(program, (node) => {
-    if (
-      node.type === 'JSXElement' &&
-      names.has(jsxElementName((node.openingElement as Node).name) ?? '')
-    ) {
-      elements.push(node)
-    }
-  })
-  return elements
-}
-
-/** Loads a `<Hydrate>` chunk the way the bundler loads the virtual module. */
 export function loadChunk(
   plugin: HydratePlugin,
   env: 'client' | 'server',
   id: string,
+  code?: string,
 ) {
-  return loadChunkResult(plugin, env, id)?.code ?? null
+  return loadChunkResult(plugin, env, id, code)?.code ?? null
 }
 
 function loadChunkResult(
   plugin: HydratePlugin,
   env: 'client' | 'server',
   id: string,
+  code?: string,
 ): StartCompilerTransformResult | null {
   return (
     plugin.loadVirtualModule?.({
       id,
+      code,
       root: '/test',
       env,
       envName: env === 'client' ? 'client' : 'ssr',
@@ -130,11 +98,10 @@ function loadChunkResult(
 }
 
 /**
- * Compiles a module with `<Hydrate>` and loads the split chunks it imports
- * (`chunks`, as the plugin serves them, before the bundler compiles them; ids
- * in `chunkIds`), ordered like their boundaries in the source module (found
- * through each chunk's source map). A module the compiler leaves untouched is
- * its own parent, without chunks.
+ * Compiles a module with `<Hydrate>` for `env` and loads the split chunks it
+ * imports (`chunks`, as the plugin serves them, before the bundler compiles
+ * them; their ids in `chunkIds`, in import order). A module the compiler
+ * leaves untouched is its own parent, without chunks.
  */
 export async function compileHydrate(
   env: 'client' | 'server',
@@ -148,42 +115,15 @@ export async function compileHydrate(
     framework: options.framework,
   })
   const parent = (await compile(code, options.id)) ?? code
-  const loaded = getChunkIds(parent).map((id) => {
-    const chunk = loadChunkResult(plugin, env, id)
+  const chunkIds = getChunkIds(parent)
+  const chunks = chunkIds.map((id) => {
+    const chunk = loadChunk(plugin, env, id)
     if (chunk === null) {
       throw new Error(`expected virtual module ${id} to load`)
     }
-    return { id, chunk }
+    return chunk
   })
-  // Only the outermost boundaries: a chunk maps to the boundary whose children
-  // it renders, not to a boundary nested in them.
-  const boundaries = hydrateElements(code)
-    .map((element) => ({
-      start: element.start as number,
-      end: element.end as number,
-    }))
-    .filter(
-      (range, _, ranges) =>
-        !ranges.some(
-          (other) =>
-            other !== range &&
-            other.start <= range.start &&
-            range.end <= other.end,
-        ),
-    )
-  const ordered = loaded
-    .map(({ id, chunk }) => ({
-      id,
-      chunk,
-      start: chunkBoundaryStart(chunk, code, boundaries),
-    }))
-    .sort((a, b) => a.start - b.start)
-  return {
-    parent,
-    chunks: ordered.map(({ chunk }) => chunk.code),
-    chunkIds: ordered.map(({ id }) => id),
-    plugin,
-  }
+  return { parent, chunks, chunkIds, plugin }
 }
 
 /**
@@ -201,215 +141,200 @@ export async function compileFirstChunk(plugin: HydratePlugin, parent: string) {
 }
 
 /**
- * The export of the chunk `chunkId` that the client `parent` renders: the
- * name it gives `lazyRouteComponent(load, name)` (default `default`) with the
- * `load` that imports the chunk. The parent is evaluated (its imports linked
- * to `stubs` over the parent-module stubs, others to no-op functions) and
- * creates its lazy components then (a lazy component created in render would
- * remount on every render).
+ * The built `@tanstack/react-start-client`, whose `Hydrate` and hydration
+ * strategies `@tanstack/react-start` re-exports (this package's `test:unit`
+ * depends on its `build`).
  */
-export async function chunkExportName(
-  parent: string,
-  chunkId: string,
-  options: { framework?: Framework; stubs?: Record<string, ModuleStub> } = {},
-) {
-  const framework = options.framework ?? 'react'
-  const routerPackage = `@tanstack/${framework}-router`
-  const lazy: Array<{
-    load: () => Promise<{ chunkId?: string }>
-    name: string
-  }> = []
-  const chunkIds = new Set(getChunkIds(parent))
-  const parentId = chunkId.split('?')[0]!
-  const graph = createTestModuleGraph({
-    modules: { [parentId]: parent },
-    stubs: {
-      ...hydrateStubs(framework),
-      ...options.stubs,
-      [routerPackage]: {
-        ...(options.stubs?.[routerPackage] as Record<string, unknown>),
-        lazyRouteComponent: (
-          load: () => Promise<{ chunkId?: string }>,
-          name = 'default',
-        ) => {
-          lazy.push({ load, name })
-          return () => null
-        },
-      },
-    },
-    fallbackStub: (_, names) =>
-      Object.fromEntries([...names].map((name) => [name, () => undefined])),
-    framework,
-    // Each chunk is a module naming its id.
-    load: (id) =>
-      chunkIds.has(id) ? `export const chunkId = ${JSON.stringify(id)}` : null,
-  })
-  await graph.import(parentId)
-  const names = new Set<string>()
-  for (const { load, name } of lazy) {
-    if ((await load()).chunkId === chunkId) {
-      names.add(name)
+const reactStartClient = workspacePackage('@tanstack/react-start-client')
+const importer = createModuleGraph({ packages: packagesDir })
+
+let startPackages: Promise<Record<string, ModuleStub>> | undefined
+
+/**
+ * `@tanstack/react-start` and `@tanstack/react-start/hydration` as the
+ * package exports them: Start's runtime (`./start-runtime`, which every test
+ * graph links) with the real `Hydrate` of `@tanstack/react-start-client`, and
+ * its real hydration strategies.
+ */
+function reactStartPackages() {
+  startPackages ??= (async () => {
+    const [{ Hydrate }, hydration, { startClientCore }] = await Promise.all([
+      importer.importPackage(
+        path.join(reactStartClient, 'dist/esm/Hydrate.js'),
+      ),
+      importer.importPackage(
+        path.join(reactStartClient, 'dist/esm/hydration.js'),
+      ),
+      import('./start-runtime'),
+    ])
+    return {
+      '@tanstack/react-start': { ...startClientCore, Hydrate },
+      '@tanstack/react-start/hydration': { ...hydration },
     }
+  })()
+  return startPackages
+}
+
+/**
+ * The module the test graphs link for a `@tanstack/react-start` specifier
+ * (`@tanstack/react-start`, `@tanstack/react-start/hydration`): e.g. a real
+ * hydration strategy for a global the page reads.
+ */
+export async function startPackage(specifier: string) {
+  return (await reactStartPackages())[specifier] as Record<string, any>
+}
+
+/** What a test renders: React nodes made with `h` (React's `createElement`). */
+export type Render = (
+  module: Record<string, any>,
+  h: (type: any, props?: any, ...children: Array<any>) => unknown,
+) => unknown
+
+export interface RenderOptions {
+  /** What to render; default `<Page {...props} />`. */
+  render?: Render
+  /** Props of the default render. */
+  props?: Record<string, unknown>
+  /** Id the module is compiled under (default `/test/src/module.tsx`). */
+  id?: string
+  /**
+   * Project modules the module imports, by relative specifier from
+   * `/test/src` (`'./widgets'`, a `.tsx` module) or absolute id, linked as
+   * they are (TypeScript and JSX erased like any module).
+   */
+  files?: Record<string, string>
+  /** Modules by specifier, linked over the real packages. */
+  stubs?: Record<string, ModuleStub>
+  /** Runs app code once the module evaluated, before it renders. */
+  beforeRender?: (module: Record<string, any>) => unknown
+}
+
+const projectId = (specifier: string) =>
+  specifier.startsWith('./')
+    ? `/test/src/${specifier.slice(2)}${/\.[cm]?[jt]sx?$/.test(specifier) ? '' : '.tsx'}`
+    : specifier
+
+const projectFiles = (files: Record<string, string> = {}) =>
+  Object.fromEntries(
+    Object.entries(files).map(([specifier, code]) => [
+      projectId(specifier),
+      code,
+    ]),
+  )
+
+/** A graph of the module `id` (`code`) linked to the real packages. */
+async function realGraph(
+  id: string,
+  code: string,
+  options: Pick<RenderOptions, 'files' | 'stubs'> & {
+    load?: (id: string) => Promise<string | null>
+    env: 'client' | 'server'
+  },
+) {
+  return createTestModuleGraph({
+    modules: { ...projectFiles(options.files), [id]: code },
+    stubs: { ...(await reactStartPackages()), ...options.stubs },
+    packages: packagesDir,
+    env: options.env,
+    load: options.load,
+  })
+}
+
+/**
+ * Renders what `options.render` returns with the graph's React to HTML
+ * (`react-dom/static`), once every lazy component and Suspense boundary
+ * resolved. An error React reports while rendering fails the render.
+ */
+export async function renderGraph(
+  graph: ModuleGraph,
+  module: Record<string, any>,
+  options: Pick<RenderOptions, 'render' | 'props'> = {},
+): Promise<string> {
+  const [React, { prerenderToNodeStream }] = await Promise.all([
+    graph.importPackage('react'),
+    graph.importPackage('react-dom/static'),
+  ])
+  const render: Render =
+    options.render ?? ((m, h) => h(m.Page, options.props ?? {}))
+  // Rendered inside a component: hooks a test's render calls run in it.
+  const Root = () => render(module, React.createElement)
+  const errors: Array<unknown> = []
+  const { prelude } = await prerenderToNodeStream(React.createElement(Root), {
+    onError: (error: unknown) => {
+      errors.push(error)
+    },
+  })
+  let html = ''
+  for await (const part of prelude) {
+    html += String(part)
   }
-  if (names.size !== 1) {
-    throw new Error(
-      `expected the parent to render one export of ${chunkId}, got ${[...names].join(', ') || 'none'}`,
+  if (errors.length > 0) {
+    throw new AggregateError(
+      errors,
+      `rendering failed: ${errors.map((error) => (error instanceof Error ? error.message : String(error))).join('; ')}`,
     )
   }
-  return [...names][0]!
+  return html
 }
 
 /**
- * Renders, with the given props, the `<Hydrate>` chunk `chunk` (the code of
- * the chunk `chunkId`, evaluated with `stubs`): the export of it that the
- * client `parent` renders (`chunkExportName`).
+ * Renders the uncompiled `code` (the reference: `<Hydrate>` renders its
+ * children in place).
  */
-export async function renderChunk(
-  parent: string,
-  chunkId: string,
-  chunk: string,
-  props: Record<string, unknown> = {},
-  stubs: Record<string, ModuleStub> = {},
-) {
-  const name = await chunkExportName(parent, chunkId)
-  const component = (await evaluateModule(chunk, stubs))[name]
-  if (typeof component !== 'function') {
-    throw new Error(`expected the chunk to export a component as ${name}`)
-  }
-  return component(props)
-}
-
-/**
- * Parent-module stubs of a framework (default `react`): `<Hydrate>` marks
- * where its children render, lazy chunks render their props.
- */
-export function hydrateStubs(
-  framework: Framework = 'react',
-): Record<string, Record<string, unknown>> {
-  return {
-    [`@tanstack/${framework}-start`]: {
-      Hydrate: (props: { children: unknown }) => `[${props.children ?? ''}]`,
-    },
-    [`@tanstack/${framework}-start/hydration`]: {
-      idle: () => 'idle',
-      visible: () => 'visible',
-      interaction: () => 'interaction',
-      load: () => 'load',
-      media: () => 'media',
-      never: () => 'never',
-    },
-    [`@tanstack/${framework}-router`]: {
-      lazyRouteComponent: () => (props: Record<string, unknown>) =>
-        `lazy(${Object.keys(props)
-          .filter((name) => name !== 'children')
-          .sort()
-          .map((name) => `${name}=${String(props[name])}`)
-          .join(',')})`,
-    },
-  }
-}
-
-/** The React parent-module stubs (`hydrateStubs('react')`). */
-export const hydrateParentStubs = hydrateStubs('react')
-
-/**
- * Compiles `code` for the client (React unless `framework` says otherwise)
- * and evaluates it once its `<Hydrate>` chunks have loaded, like the browser
- * does: the parent and the chunks are one linked module graph (each chunk
- * compiled like the bundler compiles the virtual module),
- * `lazyRouteComponent(load, exportName)` loads its chunk through `load()` and
- * renders the export it names, and its `preload()` loads the chunk too.
- * `beforeChunksLoad` runs app code between the parent's evaluation and the
- * chunks'. Returns the evaluated parent, the ids of the chunks it imports
- * (`chunkIds`, in source order), `lazyChunks` (every lazy chunk component and
- * whether it rendered) and `preloaded` (the chunk each `preload()` call
- * loaded, by id, evaluated, and the component of it the lazy component
- * renders, in call order; loading the chunks here is not a preload). The parent and every chunk must be valid modules; they may
- * read the globals the source reads. With `chunksFromSource`, the chunks
- * load the way Rsbuild loads them: given the source file's code, from a
- * Hydrate plugin that did not compile the parent (e.g. another build
- * worker).
- */
-export async function loadClientModule(
-  code: string,
-  options: {
-    stubs?: Record<string, ModuleStub>
-    beforeChunksLoad?: (module: Record<string, any>) => void
-    runtime?: string
-    /** Id the module is compiled under. */
-    id?: string
-    /** Default `react`. */
-    framework?: Framework
-    chunksFromSource?: boolean
-  } = {},
-) {
+export async function renderSource(code: string, options: RenderOptions = {}) {
   const id = options.id ?? moduleId
-  const framework = options.framework ?? 'react'
-  const { parent, chunks, plugin } = await compileHydrate('client', code, {
-    id,
-    framework,
-  })
-  const lazyChunks: Array<{ name: string; rendered: boolean }> = []
-  const loaders: Array<{
-    name: string
-    load: () => Promise<Record<string, any>>
-    component?: (props: unknown) => unknown
-  }> = []
-  const preloaded: Array<{
-    id: string
-    module: Record<string, any>
-    component: (props: Record<string, unknown>) => any
-  }> = []
-  const loadedChunkIds: Array<string> = []
-  /** Id of the chunk an evaluated chunk namespace is. */
-  const chunkIdOf = async (namespace: unknown) => {
-    for (const chunkId of loadedChunkIds) {
-      if ((await graph.import(chunkId)) === namespace) {
-        return chunkId
-      }
-    }
-    throw new Error('preload() loaded a module that is not a chunk')
+  const graph = await realGraph(id, code, { ...options, env: 'client' })
+  const module = await graph.import(id)
+  await options.beforeRender?.(module)
+  return { html: await renderGraph(graph, module, options), module, graph }
+}
+
+/** Compiles `code` for the server and renders the result. */
+export async function renderServer(code: string, options: RenderOptions = {}) {
+  const id = options.id ?? moduleId
+  const { parent } = await compileHydrate('server', code, { id })
+  expect(await getModuleErrors(parent, undefined, { source: code })).toEqual([])
+  const graph = await realGraph(id, parent, { ...options, env: 'server' })
+  const module = await graph.import(id)
+  await options.beforeRender?.(module)
+  return {
+    html: await renderGraph(graph, module, options),
+    module,
+    parent,
+    graph,
   }
-  const routerPackage = `@tanstack/${framework}-router`
-  const userStubs = options.stubs ?? {}
-  const stubs: Record<string, ModuleStub> = {
-    ...hydrateStubs(framework),
-    ...userStubs,
-    [routerPackage]: {
-      ...(userStubs[routerPackage] as Record<string, unknown>),
-      lazyRouteComponent: (
-        load: () => Promise<Record<string, any>>,
-        name = 'default',
-      ) => {
-        const lazyChunk = { name, rendered: false }
-        const loader: (typeof loaders)[number] = { name, load }
-        lazyChunks.push(lazyChunk)
-        loaders.push(loader)
-        return Object.assign(
-          (props: unknown) => {
-            lazyChunk.rendered = true
-            if (!loader.component) {
-              throw new Error(`lazy chunk ${name} rendered before it loaded`)
-            }
-            return loader.component(props)
-          },
-          {
-            preload: async () => {
-              const namespace = await load()
-              preloaded.push({
-                id: await chunkIdOf(namespace),
-                module: namespace,
-                component: namespace[name],
-              })
-              return namespace
-            },
-          },
-        )
-      },
-    },
-  }
-  // The globals the source reads may be read by its modules too, and a name
-  // the source binds must not lose its binding.
+}
+
+export interface ClientOptions extends RenderOptions {
+  /**
+   * The chunks load the way Rsbuild loads them: given the source file's
+   * code, from a Hydrate plugin that did not compile the parent (e.g.
+   * another build worker).
+   */
+  chunksFromSource?: boolean
+  /** An already compiled client parent and the plugin that compiled it. */
+  compiled?: { parent: string; plugin: HydratePlugin }
+  /** Source of a chunk, instead of the plugin's (e.g. an edited source). */
+  loadChunk?: (chunkId: string) => string | null
+}
+
+/**
+ * Compiles `code` for the client (unless `compiled` is given) and evaluates
+ * it like the browser does: the parent module and, when they are imported,
+ * its chunks (each compiled for the client under its virtual module id,
+ * like the bundler compiles it) form one linked graph. Every emitted module
+ * is checked to be valid (`getModuleErrors`, with the source as the
+ * evidence of its bindings). `requestedAtLoad` lists what evaluating the
+ * parent requested (graph module ids, stub and package specifiers);
+ * `loadedChunks` the ids of the chunk modules the graph fetched and
+ * compiled so far (the linker fetches the targets of dynamic imports
+ * ahead of their evaluation, so this says which chunks exist, not which
+ * ones a render needed: that is `renderClient`'s `lazy`).
+ */
+export async function loadClient(code: string, options: ClientOptions = {}) {
+  const id = options.id ?? moduleId
+  const { parent, plugin } =
+    options.compiled ?? (await compileHydrate('client', code, { id }))
   expect(await getModuleErrors(parent, undefined, { source: code })).toEqual([])
   const chunkPlugin = options.chunksFromSource
     ? createHydrateCompilerPlugin()
@@ -417,13 +342,11 @@ export async function loadClientModule(
   const { compile } = createStartCompiler({
     env: 'client',
     compilerPlugins: [chunkPlugin],
-    framework,
   })
-  const graph = createTestModuleGraph({
-    modules: { [id]: parent },
-    stubs,
-    runtime: options.runtime,
-    framework,
+  const loadedChunks: Array<string> = []
+  const graph = await realGraph(id, parent, {
+    ...options,
+    env: 'client',
     // The bundler compiles each virtual module it loads like any other module.
     load: async (chunkId) => {
       // The linker also probes ids with extensions appended, which are no
@@ -431,92 +354,104 @@ export async function loadClientModule(
       if (chunkId.split('?')[0] !== id.split('?')[0]) {
         return null
       }
-      const chunk = options.chunksFromSource
-        ? (chunkPlugin.loadVirtualModule?.({
-            id: chunkId,
-            code,
-            root: '/test',
-            env: 'client',
-            envName: 'client',
-          })?.code ?? null)
-        : loadChunk(plugin, 'client', chunkId)
+      const chunk = options.loadChunk
+        ? options.loadChunk(chunkId)
+        : loadChunk(
+            chunkPlugin,
+            'client',
+            chunkId,
+            options.chunksFromSource ? code : undefined,
+          )
       if (chunk === null) {
         return null
       }
-      loadedChunkIds.push(chunkId)
-      return (await compile(chunk, chunkId)) ?? chunk
+      loadedChunks.push(chunkId)
+      const compiled = (await compile(chunk, chunkId)) ?? chunk
+      expect(
+        await getModuleErrors(compiled, undefined, { source: code }),
+        chunkId,
+      ).toEqual([])
+      return compiled
     },
   })
   const module = await graph.import(id)
-  options.beforeChunksLoad?.(module)
-  for (const chunk of chunks) {
-    expect(await getModuleErrors(chunk, undefined, { source: code })).toEqual(
-      [],
-    )
+  return {
+    module,
+    graph,
+    parent,
+    plugin,
+    chunkIds: getChunkIds(parent),
+    requestedAtLoad: [...graph.requested],
+    loadedChunks,
   }
-  // Loading a chunk may create the lazy components of nested boundaries,
-  // which the iteration reaches as they are appended.
-  for (const loader of loaders) {
-    loader.component = (await loader.load())[loader.name]
-  }
-  return { module, chunkIds: getChunkIds(parent), lazyChunks, preloaded }
 }
 
 /**
- * The children were split and rendered through their chunks: the client
- * created at least one lazy chunk component (`loadClientModule`), and every
- * one rendered.
+ * `loadClient`, then renders the client module (`renderGraph`). `lazy` lists
+ * the graph modules the render requested that loading the parent did not:
+ * the split code the render loaded on demand.
  */
-export function expectRenderedThroughChunks(
-  lazyChunks: Array<{ rendered: boolean }>,
-) {
-  expect(lazyChunks.length).toBeGreaterThan(0)
-  expect(lazyChunks.filter((chunk) => !chunk.rendered)).toEqual([])
+export async function renderClient(code: string, options: ClientOptions = {}) {
+  const loaded = await loadClient(code, options)
+  await options.beforeRender?.(loaded.module)
+  const html = await renderGraph(loaded.graph, loaded.module, options)
+  const lazy = loaded.graph.requested.filter(
+    (requested) =>
+      !loaded.requestedAtLoad.includes(requested) &&
+      loaded.graph.has(requested),
+  )
+  return { ...loaded, html, lazy }
+}
+
+/** The render loaded split code on demand (`renderClient`'s `lazy`). */
+export function expectRenderedThroughChunks(rendered: { lazy: Array<string> }) {
+  expect(rendered.lazy).not.toEqual([])
 }
 
 /**
- * Renders `code` compiled for `env` and records the boundary id (`h`) each
- * `<Hydrate>` renders with: on the server the id in its markup, on the client
- * the id it hydrates with (chunks loaded, `loadClientModule`). `stubs` are
- * linked over the parent-module stubs (`hydrateStubs`); the recording
- * `Hydrate` is added to the `@tanstack/<framework>-start` stub.
+ * The client output renders the markup the server output renders (the
+ * boundary markers and hydration ids of the real `Hydrate` included, so
+ * the client would hydrate the server's HTML), and loaded split code while
+ * rendering (unless `split: false`). Returns both renders.
  */
-export async function renderBoundaries(
-  env: 'client' | 'server',
+export async function expectClientRendersLikeServer(
   code: string,
-  render: (module: Record<string, any>) => unknown,
-  options: {
-    id?: string
-    framework?: Framework
-    stubs?: Record<string, ModuleStub>
-    runtime?: string
-  } = {},
+  options: ClientOptions & { split?: boolean } = {},
 ) {
-  const { stubs: userStubs = {}, runtime, ...compileOptions } = options
-  const framework = options.framework ?? 'react'
-  const ids: Array<unknown> = []
-  const Hydrate = (props: { children?: unknown; h?: unknown }) => {
-    ids.push(props.h)
-    return `[${props.children ?? ''}]`
+  const server = await renderServer(code, options)
+  const client = await renderClient(code, options)
+  expect(client.html).toBe(server.html)
+  if (options.split !== false) {
+    expectRenderedThroughChunks(client)
   }
-  const startPackage = `@tanstack/${framework}-start`
-  const stubs = {
-    ...hydrateStubs(framework),
-    ...userStubs,
-    [startPackage]: {
-      ...(userStubs[startPackage] as Record<string, unknown> | undefined),
-      Hydrate,
-    },
-  }
-  const module =
-    env === 'server'
-      ? await evaluateModule(
-          (await compileHydrate('server', code, compileOptions)).parent,
-          stubs,
-          { framework, runtime },
-        )
-      : (await loadClientModule(code, { ...compileOptions, stubs, runtime }))
-          .module
-  const html = render(module)
-  return { html, ids }
+  return { server, client }
+}
+
+/**
+ * `html` with the value of every hydration id Start's `Hydrate` renders
+ * (`data-ts-hydrate-id`) blanked: what is left is the markup the uncompiled
+ * source must render too. The id may carry a compiler-assigned part that
+ * the source has not (SPEC J5.4, §5.17); the server and client renders are
+ * compared with their ids.
+ */
+export function withoutHydrationIds(html: string) {
+  return html.replace(/ data-ts-hydrate-id="[^"]*"/g, ' data-ts-hydrate-id=""')
+}
+
+/**
+ * The uncompiled source, the server output and the client output render
+ * the same markup (`expectClientRendersLikeServer`; the source's markup
+ * compared without hydration ids, `withoutHydrationIds`), and the client
+ * loaded split code while rendering (unless `split: false`).
+ */
+export async function expectRendersLikeSource(
+  code: string,
+  options: ClientOptions & { split?: boolean } = {},
+) {
+  const source = await renderSource(code, options)
+  const rendered = await expectClientRendersLikeServer(code, options)
+  expect(withoutHydrationIds(rendered.server.html)).toBe(
+    withoutHydrationIds(source.html),
+  )
+  return { source, ...rendered }
 }

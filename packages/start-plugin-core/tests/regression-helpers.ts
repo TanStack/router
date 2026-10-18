@@ -52,14 +52,18 @@ export {
   loadChunk,
   compileHydrate,
   compileFirstChunk,
-  chunkExportName,
-  renderChunk,
-  hydrateStubs,
-  hydrateParentStubs,
-  loadClientModule,
+  renderGraph,
+  renderSource,
+  renderServer,
+  loadClient,
+  renderClient,
   expectRenderedThroughChunks,
-  renderBoundaries,
+  expectClientRendersLikeServer,
+  expectRendersLikeSource,
+  startPackage,
+  withoutHydrationIds,
 } from './render'
+export type { Render, RenderOptions, ClientOptions } from './render'
 
 export type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 
@@ -348,11 +352,13 @@ export function callerRpcId(fn: unknown): string | undefined {
 }
 
 /**
- * JSX runtime of evaluated modules: intrinsic elements render as tags with
- * their props (other than `children` and React's `key`) as JSON with sorted
- * keys, functions as `"<function>"` (`<p {"id":"x"}>`, `<p>` without props),
- * so a lost or changed attribute shows in the output; components are called
- * with their props.
+ * Deprecated JSX stand-in (the linker's `runtime` option) of the graphs
+ * that link no real packages, for the suites that still compare rendered
+ * strings (FIX-PLAN S09: the Start compiler suites move to real rendering
+ * in wave 3; the `<Hydrate>` and `<ClientOnly>` suites render with the real
+ * packages, `render.ts`): intrinsic elements render as tags with their
+ * props (other than `children` and React's `key`) as JSON with sorted keys,
+ * functions as `"<function>"`; components are called with their props.
  */
 const jsxToText = `const __Fragment = Symbol('Fragment')
 const __attributes = (props) => {
@@ -375,7 +381,9 @@ const __jsx = (type, props, ...children) => {
 /**
  * A graph of linked modules (`createModuleGraph`) whose imports resolve to
  * `stubs` (by specifier) over the Start runtime of `framework`
- * (default `react`), and whose JSX renders through `runtime` (default:
+ * (default `react`). A graph that links the real packages (`packages`)
+ * compiles JSX with React's automatic runtime and renders with the real
+ * React; any other renders JSX through `runtime` (default: the deprecated
  * `jsxToText`).
  */
 export function createTestModuleGraph(
@@ -385,7 +393,9 @@ export function createTestModuleGraph(
   return createModuleGraph({
     ...graphOptions,
     stubs: { ...startRuntime(framework, env), ...graphOptions.stubs },
-    runtime: graphOptions.runtime ?? jsxToText,
+    runtime:
+      graphOptions.runtime ??
+      (graphOptions.packages === undefined ? jsxToText : undefined),
   })
 }
 

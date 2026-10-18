@@ -17,12 +17,12 @@ import {
   compileServer,
   createServerGraph,
   evaluateModule,
+  expectClientRendersLikeServer,
   getChunkIds,
-  hydrateParentStubs,
   importSources,
-  loadClientModule,
-  renderBoundaries,
-  renderChunk,
+  loadChunk,
+  renderClient,
+  renderServer,
 } from './regression-helpers'
 
 describe('server functions', () => {
@@ -429,7 +429,9 @@ export const load = () => import('./lazy')`),
 })
 
 describe('<Hydrate> helpers', () => {
-  const head = `import { Hydrate } from '@tanstack/react-start'\n`
+  const head = `import { Hydrate } from '@tanstack/react-start'
+import { idle } from '@tanstack/react-start/hydration'
+`
 
   test('getChunkIds lists the dynamic imports the Hydrate plugin serves', () => {
     expect(
@@ -439,94 +441,73 @@ const chunk = () => import('/test/src/module.tsx?tss-hydrate=0_x')`),
     ).toEqual(['/test/src/module.tsx?tss-hydrate=0_x'])
   })
 
-  test('compileHydrate orders chunks like their boundaries in the source', async () => {
-    const { parent, chunks, chunkIds } = await compileHydrate(
-      'client',
-      `${head}export function Page() {
-  return <div><Hydrate><p>first</p></Hydrate><Hydrate><p>second</p></Hydrate><Hydrate><section><Hydrate><p>nested</p></Hydrate></section></Hydrate></div>
-}
-export function Other() {
-  return <Hydrate><p>fourth</p></Hydrate>
-}`,
-    )
-    const rendered = []
-    for (const [index, chunk] of chunks.entries()) {
-      rendered.push(
-        await renderChunk(
-          parent,
-          chunkIds[index]!,
-          chunk,
-          {},
-          hydrateParentStubs,
-        ),
-      )
-    }
-    expect(rendered).toEqual([
-      '<p>first</p>',
-      '<p>second</p>',
-      '<section>[<p>nested</p>]</section>',
-      '<p>fourth</p>',
-    ])
-  })
-
-  test('loadClientModule: preload() loads the chunk of its own boundary, and loading the chunks is not a preload', async () => {
-    const boundaries: Array<{ children: unknown; p?: () => Promise<unknown> }> =
-      []
-    const { module, chunkIds, preloaded } = await loadClientModule(
-      `${head}import { idle } from '@tanstack/react-start/hydration'
-export function Page() {
-  return <><Hydrate><p>a</p></Hydrate><Hydrate prefetch={idle()}><p>b</p></Hydrate></>
-}`,
-      {
-        stubs: {
-          '@tanstack/react-start': {
-            Hydrate: (props: {
-              children: unknown
-              p?: () => Promise<unknown>
-            }) => {
-              boundaries.push(props)
-              return `[${props.children}]`
-            },
-          },
-        },
-      },
-    )
-    expect(module.Page()).toBe('[<p>a</p>][<p>b</p>]')
-    expect(preloaded).toEqual([])
-    const b = boundaries[1]
-    await b!.p!()
-    expect(preloaded).toHaveLength(1)
-    expect(chunkIds).toContain(preloaded[0]!.id)
-    expect(preloaded[0]!.component({})).toBe('<p>b</p>')
-  })
-
-  test('loadClientModule loads the chunks of nested boundaries', async () => {
-    const { module, lazyChunks } =
-      await loadClientModule(`${head}export function Page() {
-  return <Hydrate><section><Hydrate><p>inner</p></Hydrate></section></Hydrate>
-}`)
-    expect(module.Page()).toBe('[<section>[<p>inner</p>]</section>]')
-    expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true, true])
-  })
-
-  test('renderBoundaries records the boundary ids the server and the client render', async () => {
-    const code = `${head}export function Page({ flag }) {
-  return <div>{flag ? <Hydrate><p>yes</p></Hydrate> : <Hydrate><p>no</p></Hydrate>}<Hydrate><p>last</p></Hydrate></div>
+  test('renderClient renders nested boundaries through code it loads while rendering', async () => {
+    const code = `${head}export function Page() {
+  return <Hydrate when={idle()}><section><Hydrate when={idle()}><p>inner</p></Hydrate></section></Hydrate>
 }`
-    const rendered = async (flag: boolean) => {
-      const render = (module: Record<string, any>) => module.Page({ flag })
-      return {
-        server: await renderBoundaries('server', code, render),
-        client: await renderBoundaries('client', code, render),
-      }
-    }
-    const yes = await rendered(true)
-    const no = await rendered(false)
-    expect(yes.client).toEqual(yes.server)
-    expect(no.client).toEqual(no.server)
-    expect(yes.server.html).toBe('<div>[<p>yes</p>][<p>last</p>]</div>')
-    expect(yes.server.ids).toHaveLength(2)
-    expect(no.server.ids[0]).not.toBe(yes.server.ids[0])
-    expect(no.server.ids[1]).toBe(yes.server.ids[1])
+    const { server, client } = await expectClientRendersLikeServer(code)
+    expect(server.html).toContain('<section>')
+    expect(server.html).toContain('<p>inner</p>')
+    // Nothing the children render loaded with the parent module.
+    expect(client.requestedAtLoad.filter((id) => client.graph.has(id))).toEqual(
+      [],
+    )
+    expect(client.lazy).not.toEqual([])
   })
+
+  // The comparison sees a client that renders other children than the
+  // server: its chunks are loaded from an edited source (as a chunk loaded
+  // for the wrong boundary or from stale code would render).
+  test('expectClientRendersLikeServer fails when the client renders other children', async () => {
+    const code = `${head}export function Page() {
+  return <div><Hydrate when={idle()}><p>first</p></Hydrate><Hydrate when={idle()}><p>second</p></Hydrate></div>
+}`
+    const server = await renderServer(code)
+    const compiled = await compileHydrate('client', code)
+    const edited = code.replace('second', 'other')
+    const client = await renderClient(code, {
+      compiled,
+      loadChunk: (id) => loadChunk(compiled.plugin, 'client', id, edited),
+    })
+    expect(client.html).toContain('<p>other</p>')
+    expect(client.html).not.toBe(server.html)
+    await expect(
+      expectClientRendersLikeServer(code, {
+        compiled,
+        loadChunk: (id) => loadChunk(compiled.plugin, 'client', id, edited),
+      }),
+    ).rejects.toThrow()
+  })
+
+  test('a render error fails the render', async () => {
+    await expect(
+      renderServer(`${head}export function Page() {
+  return <Hydrate when={idle()}><p>{(() => { throw new Error('render-error-marker') })()}</p></Hydrate>
+}`),
+    ).rejects.toThrow('render-error-marker')
+  })
+
+  // Boundaries in mutually exclusive branches at the same position may get
+  // the same identity (SPEC J5.4); what is required is server/client
+  // agreement in each render and distinct identities among the boundaries
+  // rendered together. Switching branches in a hydrated page:
+  // integration/hydrate-pages.test.ts.
+  // Source: S37 (V1 start)
+  test.each([true, false])(
+    'the client renders the hydration ids the server renders, flag %s',
+    async (flag) => {
+      const code = `${head}export function Page({ flag }) {
+  return <div>{flag ? <Hydrate when={idle()}><p>yes</p></Hydrate> : <Hydrate when={idle()}><p>no</p></Hydrate>}<Hydrate when={idle()}><p>last</p></Hydrate></div>
+}`
+      const { server } = await expectClientRendersLikeServer(code, {
+        props: { flag },
+      })
+      expect(server.html).toContain(flag ? '<p>yes</p>' : '<p>no</p>')
+      const ids = [
+        ...server.html.matchAll(/data-ts-hydrate-id="([^"]*)"/g),
+      ].map((match) => match[1])
+      expect(ids).toHaveLength(2)
+      expect(new Set(ids).size).toBe(2)
+    },
+  )
 })
