@@ -2667,28 +2667,32 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         parent && Promise.resolve(parent),
         laneOptions,
       ).then((result) => {
-        if (!isCurrent() || index >= committed.length) {
-          return getParentSnapshot(match, result)
-        }
-        // A transform keeps the server's `updatedAt`.
-        if (result[0 /* kind */]) {
-          // A pending boundary at a terminal match would replace the
-          // boundary the server rendered.
-          if (!terminal) {
-            if (process.env.NODE_ENV !== 'production' && index < failed) {
-              failure = result[1]
+        if (isCurrent() && index < committed.length) {
+          // A transform keeps the server's `updatedAt`.
+          if (result[0 /* kind */]) {
+            // A pending boundary at a terminal match would replace the
+            // boundary the server rendered.
+            if (!terminal) {
+              if (process.env.NODE_ENV !== 'production' && index < failed) {
+                failure = result[1]
+              }
+              failed = Math.min(failed, index)
+            } else if (
+              process.env.NODE_ENV !== 'production' &&
+              result[0 /* kind */] !== CANCELED
+            ) {
+              ;(ignored ??= []).push([
+                index,
+                route,
+                'loader.hydrate',
+                result[1],
+              ])
             }
-            failed = Math.min(failed, index)
-          } else if (
-            process.env.NODE_ENV !== 'production' &&
-            result[0 /* kind */] !== CANCELED
-          ) {
-            ;(ignored ??= []).push([index, route, 'loader.hydrate', result[1]])
-          }
-        } else {
-          match.loaderData = result[1 /* data */]
-          if (!transported) {
-            match.updatedAt = Date.now()
+          } else {
+            match.loaderData = result[1 /* data */]
+            if (!transported) {
+              match.updatedAt = Date.now()
+            }
           }
         }
         return getParentSnapshot(match, result)
