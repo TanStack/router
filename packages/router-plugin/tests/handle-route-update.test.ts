@@ -170,11 +170,14 @@ async function hotUpdateRoute(
   }
 }
 
-/** An edited route file creating its route with `options` (source text). */
-const routeSource = (options = '{}', imports = '') =>
+/**
+ * An edited route file creating the route `routeId` with `options` (source
+ * text).
+ */
+const routeSource = (routeId: string, options = '{}', imports = '') =>
   `import { createFileRoute } from '@tanstack/react-router'
 ${imports}
-export const Route = createFileRoute('/hot')(${options})
+export const Route = createFileRoute(${JSON.stringify(routeId)})(${options})
 `
 
 function getProcessedTreeRouteForPath(
@@ -217,7 +220,7 @@ describe('handleRouteUpdate', () => {
     await hotUpdateRoute(
       router,
       pathlessRoute.id,
-      routeSource('{ staticData: { hot: true } }'),
+      routeSource(pathlessRoute.id, '{ staticData: { hot: true } }'),
     )
     expect((router.routesById as any)[pathlessRoute.id].options).toMatchObject({
       staticData: { hot: true },
@@ -250,7 +253,7 @@ describe('handleRouteUpdate', () => {
     await hotUpdateRoute(
       router,
       parentRoute.id,
-      routeSource('{ staticData: { hot: true } }'),
+      routeSource(parentRoute.id, '{ staticData: { hot: true } }'),
     )
     expect((router.routesById as any)[parentRoute.id].options).toMatchObject({
       staticData: { hot: true },
@@ -281,9 +284,12 @@ describe('handleRouteUpdate', () => {
     await hotUpdateRoute(
       router,
       itemRoute.id,
-      routeSource(`{
+      routeSource(
+        itemRoute.id,
+        `{
   params: { parse: ({ itemId }) => ({ itemId }) },
-}`),
+}`,
+      ),
     )
 
     expect(router.getMatchedRoutes('/items/abc')[2]?.id).toBe(itemRoute.id)
@@ -295,7 +301,7 @@ describe('handleRouteUpdate', () => {
     const rootRoute = new BaseRootRoute({})
     const router = createTestRouter(rootRoute)
     const code = transformWithRouteHmrPlugin(
-      routeSource(`{ loader: () => 'x' }`),
+      routeSource('/hot', `{ loader: () => 'x' }`),
       { target: 'react' },
       { file: routeFile('hot'), routeId: '/hot' },
     )
@@ -333,7 +339,11 @@ describe('handleRouteUpdate', () => {
     const routeTree = rootRoute.addChildren([asAnyRoute(itemRoute)])
     const router = createTestRouter(routeTree)
 
-    const { Route } = await hotUpdateRoute(router, itemRoute.id, routeSource())
+    const { Route } = await hotUpdateRoute(
+      router,
+      itemRoute.id,
+      routeSource(itemRoute.id),
+    )
     const newRoute = Route as unknown as AnyRoute
 
     expect(newRoute.id).toBe(itemRoute.id)
@@ -346,47 +356,35 @@ describe('handleRouteUpdate', () => {
     expect((newRoute as any).options.path).toBe((itemRoute as any).options.path)
   })
 
-  it('uses a fresh source lazy importer without erasing an omitted one', async () => {
-    const oldImporter = vi.fn(async () => ({ options: {} }) as any)
-    const newImporter = vi.fn(async () => ({ options: {} }) as any)
+  // The generated route tree gives a route the options of its `.lazy.tsx`
+  // file (`.lazy(() => import('./items.lazy'))`); the edited route file
+  // does not have them, and the route keeps them across the update.
+  it("keeps the lazy options the route tree gave the route when the route's file is edited", async () => {
+    const LazyComponent = () => 'lazy component'
+    const lazyImporter = vi.fn(
+      async () => ({ options: { component: LazyComponent } }) as any,
+    )
     const rootRoute = new BaseRootRoute({})
     const itemRoute = new BaseRoute({
       getParentRoute: () => asAnyRoute(rootRoute),
       path: '/items/$itemId',
-    }).lazy(oldImporter)
+    }).lazy(lazyImporter)
     const router = createTestRouter(
       rootRoute.addChildren([asAnyRoute(itemRoute)]),
     )
+    const liveOptions = () => (router.routesById as any)[itemRoute.id].options
 
     await router.loadRouteChunk(itemRoute)
-    expect([
-      oldImporter.mock.calls.length,
-      newImporter.mock.calls.length,
-    ]).toEqual([1, 0])
+    expect(liveOptions().component).toBe(LazyComponent)
 
-    // The update loads the edited module's lazy options...
     await hotUpdateRoute(
       router,
       itemRoute.id,
-      `import { createFileRoute } from '@tanstack/react-router'
-import { newImporter } from './importer'
-export const Route = createFileRoute('/items/$itemId')({}).lazy(newImporter)
-`,
-      { './importer': { newImporter } },
+      routeSource(itemRoute.id, `{ loader: () => 'edited' }`),
     )
     await router.loadRouteChunk(itemRoute)
-    expect([
-      oldImporter.mock.calls.length,
-      newImporter.mock.calls.length,
-    ]).toEqual([1, 1])
-
-    // ...and an update that has none keeps loading them.
-    await hotUpdateRoute(router, itemRoute.id, routeSource())
-    await router.loadRouteChunk(itemRoute)
-    expect([
-      oldImporter.mock.calls.length,
-      newImporter.mock.calls.length,
-    ]).toEqual([1, 2])
+    expect(liveOptions().loader()).toBe('edited')
+    expect(liveOptions().component).toBe(LazyComponent)
   })
 
   it('removes stale loader data when a hot route removes its loader', async () => {
@@ -408,7 +406,7 @@ export const Route = createFileRoute('/items/$itemId')({}).lazy(newImporter)
     ])
     expect(router.state.matches[1]!.loaderData).toBe('stale loader data')
 
-    await hotUpdateRoute(router, hotRoute.id, routeSource())
+    await hotUpdateRoute(router, hotRoute.id, routeSource(hotRoute.id))
     await vi.waitFor(() => {
       expect(router.state.matches.map((match) => match.routeId)).toEqual([
         rootRoute.id,
@@ -486,6 +484,7 @@ export const Route = createRootRoute({ loader: newLoader })
       router,
       hotRoute.id,
       routeSource(
+        hotRoute.id,
         '{ loader: newLoader }',
         `import { newLoader } from './loader'`,
       ),
@@ -529,10 +528,13 @@ export const Route = createRootRoute({ loader: newLoader })
     await hotUpdateRoute(
       router,
       itemRoute.id,
-      routeSource(`{
+      routeSource(
+        itemRoute.id,
+        `{
   params: { parse: ({ itemId }) => ({ itemId, parser: 'new' }) },
   context: () => ({ source: 'new' }),
-}`),
+}`,
+      ),
     )
 
     await vi.waitFor(() => {
@@ -572,7 +574,7 @@ export const Route = createRootRoute({ loader: newLoader })
     await hotUpdateRoute(
       router,
       parentRoute.id,
-      routeSource(`{ context: () => ({ source: 'new' }) }`),
+      routeSource(parentRoute.id, `{ context: () => ({ source: 'new' }) }`),
     )
 
     await vi.waitFor(() => {
@@ -608,7 +610,7 @@ export const Route = createRootRoute({ loader: newLoader })
     expect(beforeLoad).toHaveBeenCalledTimes(1)
     expect(loader).toHaveBeenCalledTimes(1)
 
-    await hotUpdateRoute(router, hotRoute.id, routeSource())
+    await hotUpdateRoute(router, hotRoute.id, routeSource(hotRoute.id))
     await router.navigate({ to: '/hot' })
 
     const match = router.state.matches.find(
@@ -689,7 +691,7 @@ export const Route = createRootRoute({ loader: newLoader })
     ).not.toBeNull()
 
     await act(async () => {
-      await hotUpdateRoute(router, hotRoute.id, routeSource())
+      await hotUpdateRoute(router, hotRoute.id, routeSource(hotRoute.id))
       await vi.waitFor(() => {
         expect(router.state.matches[1]!.routeId).toBe(hotRoute.id)
         expect(router.state.matches[1]!.meta).toBeUndefined()
