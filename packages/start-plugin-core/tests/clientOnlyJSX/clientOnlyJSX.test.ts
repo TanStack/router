@@ -7,9 +7,12 @@ import {
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 // On the server, `<ClientOnly>` (of a TanStack router package) renders its
-// fallback: its children, and the modules only they import, are gone from
-// the SSR output. The client keeps them. Other components named ClientOnly
-// are left alone.
+// fallback: its children are gone from the SSR output, so the server never
+// evaluates them (the evaluated JSX runtime calls components and props
+// eagerly; on the server, the libraries the children use throw when
+// called). Whether the SSR output keeps their imports is left open (neutral
+// names, user ruling 2026-10-17). The client keeps them. Other components
+// named ClientOnly are left alone.
 // N4 (replaces the former snapshot fixtures of this directory).
 describe('<ClientOnly> children', () => {
   const libraries = {
@@ -25,6 +28,26 @@ describe('<ClientOnly> children', () => {
       ClientOnly: (props: { children?: string }) => props.children ?? '',
     },
   }
+  /**
+   * The libraries the children of `childModules` use, as the server must
+   * never run them: each export throws when called.
+   */
+  const serverLibraries = (childModules: Array<string>) =>
+    Object.fromEntries(
+      childModules.map((specifier) => [
+        specifier,
+        Object.fromEntries(
+          Object.keys(libraries[specifier as keyof typeof libraries]).map(
+            (name) => [
+              name,
+              () => {
+                throw new Error(`client-only code ran during SSR: ${name}`)
+              },
+            ],
+          ),
+        ),
+      ]),
+    )
   /** `ClientOnly` renders its fallback on the server, its children on the client. */
   const router = (env: 'client' | 'server') => ({
     '@tanstack/react-router': {
@@ -143,11 +166,9 @@ export function MyComponent() {
     async ({ code, childModules, ssr, client }) => {
       const server = (await compileCode('ssr', code)) ?? code
       expect(await getModuleErrors(server)).toEqual([])
-      for (const childModule of childModules) {
-        expect(importSources(server)).not.toContain(childModule)
-      }
       const { MyComponent: ServerComponent } = await evaluateModule(server, {
         ...libraries,
+        ...serverLibraries(childModules),
         ...router('server'),
       })
       expect(ServerComponent()).toBe(ssr)

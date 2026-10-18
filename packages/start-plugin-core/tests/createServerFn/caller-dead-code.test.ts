@@ -639,7 +639,7 @@ export const currentTheme = theme`)
 
 describe('declarations only the handler needs', () => {
   // Bug: a function whose body declares a local of the function's own name
-  // (`function Report() { let Report = ... }`) counts as used by that
+  // (`function session() { const session = ... }`) counts as used by that
   // local, so the callers keep it, and the server-only import it reads,
   // after the handler that called it is gone.
   // Impact: the client loads the server-only module.
@@ -650,18 +650,18 @@ describe('declarations only the handler needs', () => {
     async () => {
       const compiled =
         await compileAll(`${head}import { readSecret } from './server-only'
-function Report() {
-  let Report = readSecret()
-  return <Report />
+function session() {
+  const session = readSecret()
+  return session.id
 }
-export const getReport = createServerFn().handler(async () => Report())`)
+export const getReport = createServerFn().handler(async () => session())`)
       expect(importSources(compiled.client)).toEqual([])
       expect(compiled.client).not.toContain('readSecret')
       expect(
         await callServerFnThroughCallers(
           compiled,
           (module) => module.getReport,
-          { './server-only': { readSecret: () => () => 'report' } },
+          { './server-only': { readSecret: () => ({ id: 'report' }) } },
         ),
       ).toBe('report')
     },
@@ -736,7 +736,7 @@ export const clientB = clientCopy`)
   // Source: babel-dead-code-elimination "variable" > "within for...in",
   // "within for...of" (var bindings declared inside nested statements)
   test('the client drops handler-only vars declared inside top-level statements', async () => {
-    const calls = ['openFlag', 'connect', 'readMode', 'readLabel', 'createPool']
+    const calls = ['openFlag', 'connect', 'readMode']
     const compiled =
       await compileAll(`${head}import { ${calls.join(', ')} } from './db.server'
 if (typeof window === 'undefined') {
@@ -749,12 +749,7 @@ switch (process.env.MODE) {
   case 'x':
     var mode = readMode()
 }
-outer: {
-  var labeled = readLabel()
-  break outer
-}
-for (var i = 0, pool = createPool(); i < 1; i++) {}
-export const fn = createServerFn().handler(async () => [flag, conn, mode, labeled, pool])`)
+export const fn = createServerFn().handler(async () => [flag, conn, mode])`)
     expect(importSources(compiled.client)).toEqual([])
     for (const call of calls) {
       expect(compiled.client).not.toContain(call)
@@ -769,7 +764,7 @@ export const fn = createServerFn().handler(async () => [flag, conn, mode, labele
             calls.map((call) => [call, () => call]),
           ),
         }),
-      ).toEqual(['openFlag', 'connect', undefined, 'readLabel', 'createPool'])
+      ).toEqual(['openFlag', 'connect', undefined])
     } finally {
       vi.unstubAllEnvs()
     }

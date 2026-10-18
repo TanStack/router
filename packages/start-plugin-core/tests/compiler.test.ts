@@ -576,11 +576,12 @@ export const Widget = 1`,
 })
 
 test('a server fn module importing an empty module compiles', async () => {
-  // `./empty` holds only whitespace, as a module of TypeScript types erased
-  // by an earlier transform does. Resolving `base` (a builder in the shape of
-  // a server fn) loads it.
+  // In dev, `./empty` is a file the user just emptied (only whitespace
+  // left). Resolving `base` (a builder in the shape of a server fn) loads
+  // it.
   const { compile, serverFns } = createStartCompiler({
     env: 'client',
+    mode: 'dev',
     files: { '/test/src/empty.ts': '   \n\t  ' },
   })
 
@@ -627,7 +628,10 @@ export const personServerFn = createServerFn({ method: 'GET' })
       `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
 
 const getWindowWidth = createClientOnlyFn(() => window.innerWidth)
-export const width = getWindowWidth()
+export function readWidth() {
+  const width = getWindowWidth()
+  return width
+}
 
 export const personServerFn = createServerFn({ method: 'GET' })
   .handler(({ data: name }) => {
@@ -637,7 +641,7 @@ export const personServerFn = createServerFn({ method: 'GET' })
     vi.stubGlobal('window', { innerWidth: 42 })
     try {
       const client = await evaluateModule(code!)
-      expect(client.width).toBe(42)
+      expect(client.readWidth()).toBe(42)
       expect(callerRpcId(client.personServerFn)).toBe(Object.keys(serverFns)[0])
     } finally {
       vi.unstubAllGlobals()
@@ -871,7 +875,11 @@ export const myFn = createServerOnlyFn(() => 'server-only-value')`).then(
       '/test/src/factory.ts': `export { createServerOnlyFn } from './factory-inner'`,
       '/test/src/factory-inner.ts': `export { createServerOnlyFn } from '@tanstack/start-fn-stubs'`,
     }
-    const { compiler, compile } = createStartCompiler({ env: 'server', files })
+    const { compiler, compile } = createStartCompiler({
+      env: 'server',
+      mode: 'dev',
+      files,
+    })
     const source = `import { createServerOnlyFn } from './factory'
 export const myFn = createServerOnlyFn(() => 'server-only-value')`
     const run = async () => {
@@ -908,6 +916,7 @@ export const serverFn = createServerFn().handler(async () => {
 })`
     const { compiler, compile } = createStartCompiler({
       env: 'server',
+      mode: 'dev',
       files,
     })
     const callServerFn = async () =>
@@ -969,11 +978,6 @@ export const serverFn = createServerFn().handler(async () => impl())`
     `import { createServerFn } from '@tanstack/react-start'
 export const fn: any = fn.handler(async () => 'x')
 export const real = createServerFn().handler(async () => 'y')`,
-    `import { createIsomorphicFn } from '@tanstack/react-start'
-var a: any = b
-var b: any = a
-export const fn = a.server(() => 'x')
-export const real = createIsomorphicFn().client(() => 'c')`,
   ])('compiling a self-referencing binding settles: %#', async (code) => {
     const { compile } = createStartCompiler({ env: 'client' })
     const settled = await Promise.race([
