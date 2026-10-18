@@ -952,7 +952,8 @@ export const peek = () => other()
       expect(
         modulesContaining(await server.load('/src/entry.ts'), 'MARK_B_CODE'),
       ).toEqual(['/src/b.ts'])
-      await server.edit(markedApp(serverOnly))
+      // Only the marked module changes
+      await server.edit({ 'src/b.ts': markedApp(serverOnly)['src/b.ts'] })
       await server.load('/src/b.ts')
       const client = await server.load('/src/entry.ts')
       expect(reportedViolations(server.logs)).not.toEqual([])

@@ -148,6 +148,115 @@ describe('dev server harness', () => {
     timeout,
   )
 
+  // A watcher reports a write as a change even when the contents stay the
+  // same (chokidar compares modification times).
+  test(
+    'reports a write that leaves the contents as they were as a change',
+    async () => {
+      const server = await createDevServer({ files })
+      await server.edit({ 'leaf.ts': files['leaf.ts'] })
+      expect(server.events).toEqual([{ event: 'change', file: 'leaf.ts' }])
+    },
+    timeout,
+  )
+
+  // So a plugin that rewrites a file on every file event, even with the same
+  // contents, makes the server handle file events forever (a reload loop).
+  // The plugin waits before writing: the kernel updates modification times
+  // once per clock tick (a few ms), so two writes in one tick look like one.
+  test(
+    'never settles while a plugin rewrites a file with the same contents on each event',
+    async () => {
+      const rewriter: Plugin = {
+        name: 'rewriter',
+        async watchChange() {
+          await new Promise((resolve) => setTimeout(resolve, 25))
+          await server.write({ 'generated.ts': `export const same = 1\n` })
+        },
+      }
+      const server = await createDevServer({ files, plugins: [rewriter] })
+      await expect(
+        server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
+      ).rejects.toThrow(/keep changing after 20 rounds[\s\S]*generated\.ts/)
+    },
+    timeout,
+  )
+
+  test.each([
+    {
+      order: undefined,
+      events: ['unlink a.ts', 'add c.ts'],
+      seen: ['delete a.ts', 'create c.ts'],
+    },
+    {
+      order: 'creations-first' as const,
+      events: ['add c.ts', 'unlink a.ts'],
+      seen: ['create c.ts', 'delete a.ts'],
+    },
+  ])(
+    'reports a rename in the order of the option ($order)',
+    async ({ order, events, seen }) => {
+      const watched: Array<string> = []
+      const server = await createDevServer({
+        files: { 'a.ts': `export const a = 1\n` },
+        plugins: [
+          {
+            name: 'watched',
+            watchChange(id, { event }) {
+              watched.push(`${event} ${path.relative(server.root, id)}`)
+            },
+          },
+        ],
+        fileEvents: { order },
+      })
+      await server.rename('a.ts', 'c.ts')
+      await server.settle()
+      expect(
+        server.events.map(({ event, file }) => `${event} ${file}`),
+      ).toEqual(events)
+      expect(watched).toEqual(seen)
+      expect(await server.transform('/c.ts')).toContain('a = 1')
+    },
+    timeout,
+  )
+
+  test(
+    'batch: emits every event of a round before the server has handled the first one',
+    async () => {
+      const handling: Array<string> = []
+      const slow: Plugin = {
+        name: 'slow',
+        async watchChange(id) {
+          const relative = path.relative(server.root, id)
+          handling.push(`start ${relative}`)
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          handling.push(`end ${relative}`)
+        },
+      }
+      const server = await createDevServer({ files, plugins: [slow] })
+      await server.load('/main.ts')
+      await server.load('/orphan.ts')
+      const messages = await server.edit(
+        {
+          'leaf.ts': `export const leaf = 'v2'\n`,
+          'orphan.ts': `export const orphan = 'v2'\n`,
+        },
+        { batch: true },
+      )
+      expect(handling.slice(0, 2).sort()).toEqual([
+        'start leaf.ts',
+        'start orphan.ts',
+      ])
+      expect(handling).toHaveLength(4)
+      expect(describeHmr(messages).sort()).toEqual([
+        'client: full-reload *',
+        'client: update /main.ts',
+      ])
+      expect((await server.import('/dep.ts')).dep).toBe('dep:v2')
+    },
+    timeout,
+  )
+
   test(
     'serves a request over HTTP like the client environment',
     async () => {

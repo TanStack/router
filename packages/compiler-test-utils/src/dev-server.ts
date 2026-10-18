@@ -8,11 +8,13 @@
  * environment.
  *
  * File events are replayed deterministically instead of coming from a real
- * file watcher: `settle()` compares the app's files with what it saw last,
- * emits an `add`, `change` or `unlink` event for each difference (including
- * files plugins wrote while handling earlier events, e.g. a generated route
- * tree), waits for the server to handle each one, and repeats until the files
- * are stable.
+ * file watcher: `settle()` compares the app's files (contents and
+ * modification times) with what it saw last, emits an `add`, `change` or
+ * `unlink` event for each difference (including files plugins wrote while
+ * handling earlier events, e.g. a generated route tree, even with the same
+ * contents), waits for the server to handle each one, and repeats until the
+ * files are stable. The order of the events and whether they are emitted one
+ * at a time are options (`FileEventOptions`).
  *
  * Plugin-agnostic: the caller supplies the plugins and the directory the apps
  * live in (where their imports resolve).
@@ -23,6 +25,7 @@ import {
   readdir,
   rename,
   rm,
+  stat,
   writeFile,
 } from 'node:fs/promises'
 import path from 'node:path'
@@ -77,6 +80,28 @@ export interface DevServerOptions extends AppOptions {
    * the edited files.
    */
   bundledDev?: { entry: string }
+  /** How `settle()` reports file events by default (see `FileEventOptions`). */
+  fileEvents?: FileEventOptions
+}
+
+/**
+ * How `settle()` reports the file events of a round. A real watcher gives no
+ * order guarantee: chokidar may report a rename as `add` then `unlink`, and
+ * emits events while the server still handles earlier ones.
+ */
+export interface FileEventOptions {
+  /**
+   * `deletions-first` (default): deletions, then creations, then edits (a
+   * rename is `unlink` then `add`). `creations-first`: creations, then
+   * deletions, then edits (a rename is `add` then `unlink`).
+   */
+  order?: 'deletions-first' | 'creations-first'
+  /**
+   * Emits all the events of a round at once, then waits until the server has
+   * handled each of them, instead of waiting for each event before emitting
+   * the next one (default `false`).
+   */
+  batch?: boolean
 }
 
 export interface HmrMessage {
@@ -112,13 +137,18 @@ export interface DevServer {
   rename: (from: string, to: string) => Promise<void>
   /**
    * Reports every change to the app's files since the last call to the
-   * server as watcher events (deletions, then creations, then edits) and
-   * waits until it has handled each one, until no file changes anymore.
-   * Returns the HMR payloads sent meanwhile.
+   * server as watcher events (by default deletions, then creations, then
+   * edits, one at a time; see `FileEventOptions`) and waits until it has
+   * handled each one, until no file changes anymore. A write that leaves a
+   * file's contents as they were is an edit too. Returns the HMR payloads
+   * sent meanwhile.
    */
-  settle: () => Promise<Array<HmrMessage>>
-  /** `write(files)`, then `settle()`. */
-  edit: (files: Record<string, string | null>) => Promise<Array<HmrMessage>>
+  settle: (options?: FileEventOptions) => Promise<Array<HmrMessage>>
+  /** `write(files)`, then `settle(options)`. */
+  edit: (
+    files: Record<string, string | null>,
+    options?: FileEventOptions,
+  ) => Promise<Array<HmrMessage>>
   /** File events `settle()` reported, in order (paths relative to the root). */
   events: Array<{ event: FileEvent; file: string }>
   /**
@@ -361,16 +391,24 @@ export async function createDevServer(
   const file = (relative: string) => path.join(root, relative)
   let snapshot = await readFiles(root)
 
-  /** Emits a watcher event and waits until the server has handled it. */
-  async function report(event: FileEvent, relative: string) {
-    events.push({ event, file: relative })
+  /**
+   * Emits watcher events, all at once, and waits until the server has
+   * handled each of them.
+   */
+  async function report(batch: Array<{ event: FileEvent; file: string }>) {
+    events.push(...batch)
     recordHmr()
+    const described = batch
+      .map(({ event, file: relative }) => `"${event} ${relative}"`)
+      .join(', ')
     if (bundledDev) {
       // Vite's full-bundle mode sends no hot updates: the server has handled
       // the event once the plugins' `watchChange` hooks have, and Vite has
       // invalidated the file's modules right after.
       watchChanges.length = 0
-      vite.watcher.emit(event, file(relative))
+      for (const { event, file: relative } of batch) {
+        vite.watcher.emit(event, file(relative))
+      }
       let timer: ReturnType<typeof setTimeout> | undefined
       try {
         await Promise.race([
@@ -380,7 +418,7 @@ export async function createDevServer(
               () =>
                 reject(
                   new Error(
-                    `the dev server did not handle "${event} ${relative}" within ${eventTimeout} ms`,
+                    `the dev server did not handle ${described} within ${eventTimeout} ms`,
                   ),
                 ),
               eventTimeout,
@@ -393,12 +431,13 @@ export async function createDevServer(
       await new Promise((resolve) => setImmediate(resolve))
       return
     }
+    let unhandled = batch.length
     const handled = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(
         () =>
           finish(
             new Error(
-              `the dev server did not handle "${event} ${relative}" within ${eventTimeout} ms`,
+              `the dev server did not handle ${described} within ${eventTimeout} ms`,
             ),
           ),
         eventTimeout,
@@ -421,10 +460,21 @@ export async function createDevServer(
           resolve()
         }
       }
-      pendingEvent = { resolve: () => finish(), reject: finish }
+      // Vite updates the environments once per event
+      pendingEvent = {
+        resolve: () => {
+          unhandled--
+          if (unhandled === 0) {
+            finish()
+          }
+        },
+        reject: finish,
+      }
     })
     try {
-      vite.watcher.emit(event, file(relative))
+      for (const { event, file: relative } of batch) {
+        vite.watcher.emit(event, file(relative))
+      }
       await handled
       // The payloads are sent right after the last environment updates
       await new Promise((resolve) => setImmediate(resolve))
@@ -447,7 +497,10 @@ export async function createDevServer(
     return client.bundledDev.devEngine
   }
 
-  async function settle() {
+  async function settle(eventOptions: FileEventOptions = {}) {
+    const order =
+      eventOptions.order ?? options.fileEvents?.order ?? 'deletions-first'
+    const batch = eventOptions.batch ?? options.fileEvents?.batch ?? false
     const from = hmr.length
     for (let round = 0; ; round++) {
       const current = await readFiles(root)
@@ -469,14 +522,29 @@ export async function createDevServer(
           `the app's files keep changing after 20 rounds of file events: ${[...removed, ...added, ...changed].join(', ')}`,
         )
       }
-      for (const relative of removed) {
-        await report('unlink', relative)
-      }
-      for (const relative of added) {
-        await report('add', relative)
-      }
-      for (const relative of changed) {
-        await report('change', relative)
+      const deletions = removed.map((relative) => ({
+        event: 'unlink' as const,
+        file: relative,
+      }))
+      const creations = added.map((relative) => ({
+        event: 'add' as const,
+        file: relative,
+      }))
+      const roundEvents = [
+        ...(order === 'creations-first'
+          ? [...creations, ...deletions]
+          : [...deletions, ...creations]),
+        ...changed.map((relative) => ({
+          event: 'change' as const,
+          file: relative,
+        })),
+      ]
+      if (batch) {
+        await report(roundEvents)
+      } else {
+        for (const item of roundEvents) {
+          await report([item])
+        }
       }
     }
     return hmr.slice(from)
@@ -564,9 +632,9 @@ export async function createDevServer(
       await rename(file(from), file(to))
     },
     settle,
-    edit: async (files) => {
+    edit: async (files, eventOptions) => {
       await write(files)
-      return settle()
+      return settle(eventOptions)
     },
     events,
     transform,
@@ -730,7 +798,13 @@ function hmrMessage(environment: string, args: Array<unknown>): HmrMessage {
   return { environment, type: payload.type, paths, payload }
 }
 
-/** Contents of the app's files by path relative to the root. */
+/**
+ * Each app file by path relative to the root: its contents and its
+ * modification time. A watcher reports a write that leaves the contents as
+ * they were as a change too (chokidar compares the modification time). The
+ * kernel updates modification times once per clock tick (a few ms): a
+ * rewrite in the tick of the last snapshot goes unseen.
+ */
 async function readFiles(root: string): Promise<Map<string, string>> {
   const files = new Map<string, string>()
   const visit = async (directory: string) => {
@@ -742,9 +816,10 @@ async function readFiles(root: string): Promise<Map<string, string>> {
         }
       } else if (entry.isFile() || entry.isSymbolicLink()) {
         try {
+          const { mtimeNs } = await stat(full, { bigint: true })
           files.set(
             path.relative(root, full).split(path.sep).join('/'),
-            await readFile(full, 'utf8'),
+            `${mtimeNs}\n${await readFile(full, 'utf8')}`,
           )
         } catch {
           // Removed while reading, or a dangling link
