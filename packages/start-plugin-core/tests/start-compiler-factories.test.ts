@@ -581,9 +581,17 @@ export const serverOnly = createServerOnlyFn(() => db.x())
 export const mw = createMiddleware().server(async ({ next }) =>
   next({ context: { value: db.x() } }),
 )`
+    const uncompiled = () => {
+      throw new Error('uncompiled Start factory')
+    }
     const stubs = {
+      // The package also exports the factories `head` imports, which the
+      // output may still import without calling them.
       '@tanstack/react-start': {
         createMiddleware: () => ({ server: () => 'middleware' }),
+        createClientOnlyFn: uncompiled,
+        createIsomorphicFn: uncompiled,
+        createServerOnlyFn: uncompiled,
       },
       './chart.client': `export const chart = { draw: () => 'drawn' }`,
       './db.server': `export const db = { x: () => 'x' }`,

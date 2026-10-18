@@ -736,12 +736,13 @@ export const Route = createFileRoute('/')({
   // a declaration the loader and the split component share reads the
   // global. Source: TypeScript conformance test
   // expressions/functionCalls/overloadResolutionConstructors.ts; #8504.
-  it('reads an ambient var merged with an interface from the environment in a shared declaration', async () => {
+  async function readsAmbientVar(verbatimModuleSyntax: boolean) {
     vi.stubGlobal('readVersion', () => '1.0')
     onTestFinished(() => {
       vi.unstubAllGlobals()
     })
-    const route = await loadRoute(`${head}interface readVersion {
+    const route = await loadRoute(
+      `${head}interface readVersion {
   (): string
 }
 declare var readVersion: readVersion
@@ -750,12 +751,36 @@ export const Route = createFileRoute('/')({
   loader: () => version,
   component: () => <p>{version}</p>,
 })
-`)
+`,
+      { verbatimModuleSyntax },
+    )
     await expectValidModules(route.modules)
     expect([route.options.loader(), (await route.load('component'))()]).toEqual(
       ['1.0', '<p>1.0</p>'],
     )
+  }
+
+  it('reads an ambient var merged with an interface from the environment in a shared declaration', async () => {
+    await readsAmbientVar(false)
   })
+
+  // Bug: the route module and the split chunk import the ambient var from
+  // the shared module (the interface of the same name stays in them and
+  // counts as a read of the shared binding), and the shared module has no
+  // runtime binding to export. TypeScript erasure without
+  // `verbatimModuleSyntax` drops the unused import by chance.
+  // Source: router-plugin src/core/code-splitter/compilers.ts:143-299
+  // (shared bindings) and the shared imports it adds to every module.
+  // Impact: with `verbatimModuleSyntax` (Vite reads it from tsconfig) the
+  // client build fails ([MISSING_EXPORT] "readVersion" is not exported by
+  // "routes/index.tsx?tsr-shared=1"); in dev the route module fails to load.
+  // NEW (infra-fix H3, 2026-10-18).
+  it.fails(
+    'reads an ambient var merged with an interface from the environment in a shared declaration, with verbatimModuleSyntax',
+    async () => {
+      await readsAmbientVar(true)
+    },
+  )
 
   it('keeps the namespace import that an import alias refers to', async () => {
     const route = await loadRoute(

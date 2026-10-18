@@ -843,11 +843,20 @@ function withRouterStubs(
   return linked
 }
 
-/** Compiles a module with the React Refresh transform `@vitejs/plugin-react` uses. */
-async function transformWithReactRefresh(code: string, id: string) {
+/**
+ * Compiles a module with the React Refresh transform `@vitejs/plugin-react`
+ * uses, erasing TypeScript like the linker's default transform (see
+ * `verbatimModuleSyntax` of `createModuleGraph`).
+ */
+async function transformWithReactRefresh(
+  code: string,
+  id: string,
+  verbatimModuleSyntax = true,
+) {
   const result = await transformWithOxc(code, 'module', {
     lang: moduleLang(id),
     jsx: { runtime: 'classic', ...jsxPragma, refresh: {} },
+    typescript: { onlyRemoveTypeImports: verbatimModuleSyntax },
   })
   return result.code
 }
@@ -880,6 +889,12 @@ type LoadRouteOptions = CompileOptions & {
    * inspect the emitted modules.
    */
   stubUnknownImports?: boolean
+  /**
+   * Erase TypeScript like a project with `verbatimModuleSyntax` (default
+   * `true`: unused value imports still load) or without it (see
+   * `createModuleGraph`).
+   */
+  verbatimModuleSyntax?: boolean
 }
 
 /** Import specifier of the route file in the modules `importFromRoute` adds. */
@@ -933,9 +948,11 @@ async function linkRoute(
         ? graph.id
         : graph.resolve(specifier, importer),
     ...(options.stubUnknownImports && { fallbackStub: identityStub }),
+    verbatimModuleSyntax: options.verbatimModuleSyntax,
     ...(options.refresh && {
       scope: () => refreshScope(registered),
-      transform: transformWithReactRefresh,
+      transform: (code: string, id: string) =>
+        transformWithReactRefresh(code, id, options.verbatimModuleSyntax),
     }),
   })
   const exports = await moduleGraph.import(graph.id)

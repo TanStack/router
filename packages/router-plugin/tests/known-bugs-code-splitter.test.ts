@@ -3464,8 +3464,10 @@ export const Route = createFileRoute('/')({
   loader: () => helper(42),
 })`
 
-  async function callSharedHelper(helper: string) {
-    const route = await loadRoute(sharedHelperRoute(helper))
+  async function callSharedHelper(helper: string, verbatimModuleSyntax = true) {
+    const route = await loadRoute(sharedHelperRoute(helper), {
+      verbatimModuleSyntax,
+    })
     return [
       route.exports.helperAlias === route.exports.helper,
       route.options.beforeLoad(),
@@ -3482,20 +3484,35 @@ export const Route = createFileRoute('/')({
     ).toEqual([true, 'before', 42])
   })
 
+  const overloadedHelper = `export function helper(value: string): string
+export function helper(value: number): number
+export function helper(value: string | number) { return value }`
+
+  // Control for the pin below: TypeScript erasure with
+  // `verbatimModuleSyntax` keeps the import of the shared function.
+  test('an overloaded function the route module and a split loader share keeps working, with verbatimModuleSyntax', async () => {
+    expect(await callSharedHelper(overloadedHelper)).toEqual([
+      true,
+      'before',
+      42,
+    ])
+  })
+
   // Bug: the overload signatures of a function that the route module and a
   // split chunk share stay in both modules, next to the import of the shared
   // function, and the TypeScript transform then takes them for the binding's
   // declaration and drops the import (dead-code elimination never removes
   // overload signatures). Source: #8505.
-  // Impact: the route module fails to load ("Export 'helper' is not defined").
+  // Impact: in a project without `verbatimModuleSyntax`, the route module
+  // fails to load ("Export 'helper' is not defined").
   test.fails(
     'an overloaded function the route module and a split loader share keeps working',
     async () => {
-      expect(
-        await callSharedHelper(`export function helper(value: string): string
-export function helper(value: number): number
-export function helper(value: string | number) { return value }`),
-      ).toEqual([true, 'before', 42])
+      expect(await callSharedHelper(overloadedHelper, false)).toEqual([
+        true,
+        'before',
+        42,
+      ])
     },
   )
 })

@@ -54,6 +54,18 @@ export interface ModuleGraphOptions {
    * values it gave keep their identity.
    */
   fallbackStub?: (specifier: string, names: Set<string>) => ModuleStub
+  /**
+   * The default transform erases TypeScript the way Vite does in a project
+   * with `verbatimModuleSyntax` (default `true`): only `import type`
+   * declarations and `type` specifiers go (`import { type X } from './x'`
+   * still loads `./x`, as `import './x'`), so an import a module never uses
+   * still loads its module. A compiler that leaves a dead import of a
+   * server-only or side-effectful module in its output therefore loads it
+   * here too (user ruling L3, 2026-10-17: an import left with only type uses
+   * need not load; dropping it is the compiler's job). `false` erases
+   * TypeScript like a project without it: imports nothing reads go too.
+   */
+  verbatimModuleSyntax?: boolean
   /** Compiles a module to JavaScript; by default TS and JSX are erased. */
   transform?: (code: string, id: string) => string | Promise<string>
   /**
@@ -290,10 +302,19 @@ function moduleRequests(javascript: string) {
   return { static: [...names.keys()], dynamic, names }
 }
 
-async function defaultTransform(code: string, id: string) {
+/**
+ * Erases TypeScript the way Vite does (see `verbatimModuleSyntax`) and
+ * compiles JSX to calls of `jsxPragma`.
+ */
+async function defaultTransform(
+  code: string,
+  id: string,
+  verbatimModuleSyntax: boolean,
+) {
   const result = await transformWithOxc(code, 'module', {
     lang: moduleLang(id),
     jsx: { runtime: 'classic', ...jsxPragma },
+    typescript: { onlyRemoveTypeImports: verbatimModuleSyntax },
   })
   return result.code
 }
@@ -341,7 +362,10 @@ export function createModuleGraph(
   }
   registry.graphs.set(graph.id, graph)
   const sources = new Map(Object.entries(options.modules ?? {}))
-  const transform = options.transform ?? defaultTransform
+  const transform =
+    options.transform ??
+    ((code: string, id: string) =>
+      defaultTransform(code, id, options.verbatimModuleSyntax ?? true))
   const graphExpression = `${registryExpression}.graphs.get(${graph.id})`
   const preparing = new Map<
     string,

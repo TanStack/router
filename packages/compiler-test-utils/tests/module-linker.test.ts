@@ -187,6 +187,50 @@ export const lazy = () => import('/c.tsx')`,
   })
 })
 
+// Vite erases TypeScript this way in a project with `verbatimModuleSyntax`:
+// an unused value import still loads its module, and so does an import of
+// `type` specifiers only (as `import './x'`); an `import type` does not.
+describe('TypeScript erasure keeps every value import', () => {
+  it('evaluates a module imported but never used, and not one imported with import type', async () => {
+    const modules: Record<string, string> = {
+      '/entry.ts': `import { unused } from '/unused.ts'
+import type { Shape } from '/types.ts'
+import { type Other } from '/specifier.ts'
+export const value: Shape = { key: 'entry' }`,
+      '/unused.ts': `export const unused = 'unused'`,
+      '/types.ts': `export interface Shape { key: string }`,
+      '/specifier.ts': `export interface Other {}`,
+    }
+    const graph = createModuleGraph({
+      modules,
+      resolve: (specifier) => (specifier in modules ? specifier : undefined),
+    })
+    expect((await graph.import('/entry.ts')).value).toEqual({ key: 'entry' })
+    expect([...graph.evaluated].sort()).toEqual([
+      '/entry.ts',
+      '/specifier.ts',
+      '/unused.ts',
+    ])
+  })
+
+  it('without verbatimModuleSyntax, drops the imports nothing reads', async () => {
+    const modules: Record<string, string> = {
+      '/entry.ts': `import { unused } from '/unused.ts'
+import { type Other } from '/specifier.ts'
+export const value = 'entry'`,
+      '/unused.ts': `export const unused = 'unused'`,
+      '/specifier.ts': `export interface Other {}`,
+    }
+    const graph = createModuleGraph({
+      modules,
+      resolve: (specifier) => (specifier in modules ? specifier : undefined),
+      verbatimModuleSyntax: false,
+    })
+    expect((await graph.import('/entry.ts')).value).toBe('entry')
+    expect([...graph.evaluated]).toEqual(['/entry.ts'])
+  })
+})
+
 describe('cycles', () => {
   const graphOf = (modules: Record<string, string>) =>
     createModuleGraph({
