@@ -169,13 +169,10 @@ export const Route = createFileRoute('/old')({
       const written = await read(root, `src/routes/${file}`)
       expect(written).toBe(source.replace(/(['"])\/old\1/, '$1/posts$1'))
       expect(await routeIdOf(written)).toBe('/posts')
-      // (this package has no Solid router: Solid route trees do not load)
-      if (config?.target !== 'solid') {
-        expect(await routesOf(generatedRouteTree)).toEqual({
-          __root__: 'routes/__root.tsx',
-          '/posts': `routes/${file}`,
-        })
-      }
+      expect(await routesOf(generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/posts': `routes/${file}`,
+      })
     },
   )
 
@@ -225,13 +222,10 @@ export const Route = createFileRoute('/posts')({
           constructor: 'createLazyFileRoute',
           id: '/posts',
         })
-        // (this package has no Solid router: Solid route trees do not load)
-        if (target !== 'solid') {
-          expect(await routesOf(generatedRouteTree)).toEqual({
-            __root__: 'routes/__root.tsx',
-            '/posts': 'routes/posts.tsx',
-          })
-        }
+        expect(await routesOf(generatedRouteTree)).toEqual({
+          __root__: 'routes/__root.tsx',
+          '/posts': 'routes/posts.tsx',
+        })
       },
     )
 
@@ -676,13 +670,10 @@ export const Route = createLazyFileRoute('/about')({})
       .module.staticImports.map((statement) => statement.moduleRequest.value)
       .filter((specifier) => !specifier.startsWith('.'))
     expect(new Set(packages)).toEqual(new Set([routerPackage]))
-    // (this package has no Solid router: Solid route trees do not load)
-    if (target !== 'solid') {
-      expect(await routesOf(generatedRouteTree)).toEqual({
-        __root__: 'routes/__root.tsx',
-        '/about': null,
-      })
-    }
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/about': null,
+    })
   })
 })
 

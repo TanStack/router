@@ -111,16 +111,13 @@ describe.each(['react', 'solid', 'vue'] as const)(
         expect([route.id, route.createdWith]).toEqual([id, createdWith])
         expect(route.text.length + route.types.length).toBeGreaterThan(0)
       }
-      // (this package has no Solid router: Solid route trees do not load)
-      if (target !== 'solid') {
-        expect(await routesOf(generatedRouteTree)).toEqual({
-          __root__: 'routes/__root.tsx',
-          '/posts': 'routes/posts.tsx',
-          '/about': null,
-          '/{-$locale}/contact': 'routes/{-$locale}/contact.tsx',
-          '/{-$locale}/help': null,
-        })
-      }
+      expect(await routesOf(generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/posts': 'routes/posts.tsx',
+        '/about': null,
+        '/{-$locale}/contact': 'routes/{-$locale}/contact.tsx',
+        '/{-$locale}/help': null,
+      })
     })
 
     // The docs (file-based-routing.md, `quoteStyle` and `semicolons`): "when

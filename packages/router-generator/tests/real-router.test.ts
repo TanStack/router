@@ -2,11 +2,11 @@
  * Generated route trees loaded by the real router: the app's router package
  * builds a router from the tree (`createRouter`), and each route gets the id,
  * full path and parent its file name or virtual route config gives it; URLs
- * match the expected routes, Vue pages render their single-file components,
- * and the tree's types agree with the router (checked by the real TypeScript
- * compiler with the real router types).
+ * match the expected routes, pages render (React with react-dom), and the
+ * tree's types agree with the router (checked by the real TypeScript compiler
+ * with the real router types). Helpers: real-router.ts.
  */
-import { describe, expect, test } from 'vitest'
+import { describe, test } from 'vitest'
 import {
   index,
   layout,
@@ -14,45 +14,11 @@ import {
   rootRoute as virtualRootRoute,
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
-import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from './app'
-import { withRouteTree } from './route-tree'
-import { typeAssertions, typeErrorsOf } from './type-check'
-import type { Config } from '../src'
+import { rootRoute } from './app'
+import { checkApp, page, routes } from './real-router'
+import type { Case } from './real-router'
 
-/** Route files whose ids the generator fixes. */
-const routes = (files: Array<string>, target: Config['target'] = 'react') =>
-  Object.fromEntries(
-    files.map((file) => [
-      `src/routes/${file}`,
-      file.includes('.lazy.')
-        ? lazyFileRoute('/wrong', '{}', target)
-        : fileRoute('/wrong', '{}', target),
-    ]),
-  )
-
-/** A Vue single-file component rendering `text`, and its child routes. */
-const sfc = (text: string) => `<script setup lang="ts">
-import { Outlet } from '@tanstack/vue-router'
-</script>
-
-<template>
-  <p>${text}</p>
-  <Outlet />
-</template>
-`
-
-interface Case {
-  name: string
-  files: Record<string, string>
-  config?: Partial<Config>
-  /** Route id to its full path and its parent's id (null for the root). */
-  expected: Record<string, [fullPath: string, parent: string | null]>
-  /** URL to the id of the deepest route the router matches for it. */
-  visits: Record<string, string>
-  /** Vue only: URL to the texts its page renders, in order. */
-  pages?: Record<string, Array<string>>
-}
-
+// (the frameworks' pages: real-router-frameworks.test.ts)
 const cases: Array<Case> = [
   {
     name: 'flat, directory, layout, pathless, group, lazy and param routes',
@@ -177,130 +143,56 @@ const cases: Array<Case> = [
       '/legacy': '/legacy/',
     },
   },
-  {
-    name: 'a Vue app with route files and component pieces',
-    config: { target: 'vue' },
+]
+
+describe('the real router on a generated route tree', () => {
+  test.each(cases)(
+    '$name',
+    (testCase) => checkApp(testCase, { types: testCase.types ?? true }),
+    60_000,
+  )
+
+  // A layout route file in a route group directory: `(group)` folders are
+  // left out of the URL (file-naming-conventions.md:15) and a `route.tsx`
+  // file is the route file at its directory's path (:18), so
+  // `(marketing)/route.tsx` is a layout adding no path segment, like a
+  // pathless layout (maintained since #4629, fixture
+  // tests/generator/path-above-route-in-group).
+  const groupLayout: Case = {
+    name: 'a route group layout',
     files: {
-      'src/routes/__root.ts': rootRoute('vue'),
-      'src/routes/__root.component.vue': sfc('root'),
-      ...routes(
-        [
-          'index.ts',
-          'posts.ts',
-          'posts.$postId.ts',
-          '_auth.ts',
-          '_auth/login.ts',
-        ],
-        'vue',
+      'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
+      'src/routes/(marketing)/route.tsx': page(
+        'react',
+        'createFileRoute',
+        'marketing',
+        true,
       ),
-      'src/routes/index.component.vue': sfc('home'),
-      'src/routes/posts.component.vue': sfc('posts'),
-      'src/routes/posts.$postId.component.vue': sfc('post'),
-      'src/routes/_auth.component.vue': sfc('auth'),
-      'src/routes/_auth/login.component.vue': sfc('login'),
-      // A route with a component piece and no route file
-      'src/routes/about.component.vue': sfc('about'),
+      'src/routes/(marketing)/pricing.tsx': page(
+        'react',
+        'createFileRoute',
+        'pricing',
+      ),
     },
     expected: {
       __root__: ['/', null],
-      '/': ['/', '__root__'],
-      '/about': ['/about', '__root__'],
-      '/posts': ['/posts', '__root__'],
-      '/posts/$postId': ['/posts/$postId', '/posts'],
-      '/_auth': ['/', '__root__'],
-      '/_auth/login': ['/login', '/_auth'],
+      '/(marketing)': ['/', '__root__'],
+      '/(marketing)/pricing': ['/pricing', '/(marketing)'],
     },
-    visits: {
-      '/': '/',
-      '/about': '/about',
-      '/posts': '/posts',
-      '/posts/1': '/posts/$postId',
-      '/login': '/_auth/login',
-    },
-    pages: {
-      '/': ['root', 'home'],
-      '/about': ['root', 'about'],
-      '/posts/1': ['root', 'posts', 'post'],
-      '/login': ['root', 'auth', 'login'],
-    },
-  },
-]
+    visits: { '/pricing': '/(marketing)/pricing' },
+    pages: { '/pricing': ['root', 'marketing', 'pricing'] },
+  }
 
-/** Types for Vue single-file component imports, as in a Vue app. */
-const vueShim = `declare module '*.vue' {
-  const component: unknown
-  export default component
-}
-`
-
-/** The texts of the `<p>` elements of server-rendered `html`, in order. */
-const paragraphs = (html: string) =>
-  [...html.matchAll(/<p>([^<]*)<\/p>/g)].map((match) => match[1])
-
-/**
- * Generates the app of `testCase` and checks the router over its route tree
- * and the tree's types against the expected routes.
- */
-async function checkApp({ files, config, expected, visits, pages }: Case) {
-  const root = await createApp({ ...files, 'src/vue-shim.d.ts': vueShim })
-  const { generatedRouteTree } = await generate(root, config)
-
-  await withRouteTree(generatedRouteTree, async (tree) => {
-    const { router } = tree
-    expect(
-      Object.fromEntries(
-        Object.values(router.routesById).map((route) => [
-          route.id,
-          [route.fullPath, route.parentRoute?.id ?? null],
-        ]),
-      ),
-    ).toEqual(expected)
-    expect(
-      Object.fromEntries(
-        Object.keys(visits).map((url) => [
-          url,
-          router.matchRoutes(url).at(-1)?.routeId,
-        ]),
-      ),
-    ).toEqual(visits)
-    for (const [url, texts] of Object.entries(pages ?? {})) {
-      expect(paragraphs(await tree.renderAt(url))).toEqual(texts)
-    }
-  })
-
-  // The tree's types: the same route ids, and for each route the same full
-  // path and parent as the router's.
-  const ids = Object.keys(expected)
-  const checks = ids.map((id, i) => {
-    const [fullPath, parent] = expected[id]!
-    const route = `FileRoutesById[${JSON.stringify(id)}]`
-    const actual = `[${JSON.stringify(id)}, ${route}['fullPath'], ${parent === null ? 'null' : `${route}['parentRoute']['id']`}]`
-    const wanted = JSON.stringify([id, fullPath, parent])
-    // (the assignment names the types of a route that differ)
-    return `export type Check${i} = Expect<Equal<${actual}, ${wanted}>>
-export const check${i}: ${wanted} = null as unknown as ${actual}`
-  })
-  expect(
-    await typeErrorsOf(
-      root,
-      'src/checks.ts',
-      `/// <reference path="./vue-shim.d.ts" />
-import type { FileRoutesById } from './routeTree.gen'
-${typeAssertions}
-export type Ids = Expect<Equal<keyof FileRoutesById, ${ids.map((id) => JSON.stringify(id)).join(' | ')}>>
-${checks.join('\n')}
-`,
-    ),
-  ).toEqual([])
-}
-
-describe('the real router on a generated route tree', () => {
-  test.each(cases)('$name', checkApp, 60_000)
+  test(
+    'the layout route of a route group directory adds no path segment and renders around its children',
+    () => checkApp(groupLayout, { types: false }),
+    60_000,
+  )
 
   // Bug: the route tree types the layout route of a route group directory
   // (`(marketing)/route.tsx`) with `fullPath: ''` in `FileRoutesByPath`,
-  // while the router gives it the full path `/` (a pathless layout,
-  // `_auth.tsx`, is typed `/`, and agrees).
+  // while the router gives it the full path `/` (the test above; a pathless
+  // layout, `_auth.tsx`, is typed `/`, and agrees).
   // Source: src/utils.ts:929-950 (`inferFullPath`: `/(marketing)` without
   // its group is `/`, which is not an index path, so its trailing slash is
   // dropped), printed at src/utils.ts:1260.
@@ -308,19 +200,57 @@ describe('the real router on a generated route tree', () => {
   // links and hooks) say `''` in such a layout while the app sees `/`.
   test.fails(
     'the layout route of a route group directory has the full path of the router in the types',
+    () => checkApp(groupLayout, { runtime: false }),
+    60_000,
+  )
+
+  // Bug: a pathless layout with only a lazy route file
+  // (`settings/_layout.lazy.tsx`, no `settings/_layout.tsx`) gets no `path`
+  // in the route tree, so the router drops the `/settings` prefix its
+  // directory gives it: the child matches `/profile`, not
+  // `/settings/profile`. The tree's types say `/settings/profile`. Lazy-only
+  // route files are supported (guide/code-splitting.md:222-224: a virtual
+  // route anchors the code-split files; SPEC J1.8). Same bug as the G1 pin
+  // in route-paths.test.ts, checked here with matching, rendering and types.
+  // Source: src/generator.ts (the `path:` option of `createUpdateRoutes`:
+  // printed only for non-pathless nodes and nodes typed `pathless_layout`;
+  // a layout without a route file is typed `static`).
+  // Impact: the pages under such a layout are served at the wrong URL, and
+  // typed links to them lead nowhere.
+  test.fails(
+    'a pathless layout with only a lazy route file keeps its directory path',
     () =>
       checkApp({
-        name: 'a route group layout',
+        name: 'a lazy-only pathless layout',
         files: {
-          'src/routes/__root.tsx': rootRoute(),
-          ...routes(['(marketing)/route.tsx', '(marketing)/pricing.tsx']),
+          'src/routes/__root.tsx': page(
+            'react',
+            'createRootRoute',
+            'root',
+            true,
+          ),
+          'src/routes/settings/_layout.lazy.tsx': page(
+            'react',
+            'createLazyFileRoute',
+            'settings',
+            true,
+          ),
+          'src/routes/settings/_layout/profile.tsx': page(
+            'react',
+            'createFileRoute',
+            'profile',
+          ),
         },
         expected: {
           __root__: ['/', null],
-          '/(marketing)': ['/', '__root__'],
-          '/(marketing)/pricing': ['/pricing', '/(marketing)'],
+          '/settings/_layout': ['/settings', '__root__'],
+          '/settings/_layout/profile': [
+            '/settings/profile',
+            '/settings/_layout',
+          ],
         },
-        visits: { '/pricing': '/(marketing)/pricing' },
+        visits: { '/settings/profile': '/settings/_layout/profile' },
+        pages: { '/settings/profile': ['root', 'settings', 'profile'] },
       }),
     60_000,
   )
