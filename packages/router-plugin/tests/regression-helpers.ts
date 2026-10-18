@@ -1182,49 +1182,6 @@ export async function expectRegisteredRouteOption(
   return name!
 }
 
-const memoType = Symbol.for('react.memo')
-const forwardRefType = Symbol.for('react.forward_ref')
-
-/**
- * Asserts that React Refresh can hot-update the component of `option`: the
- * option is a component React Refresh registers, or a `memo(...)` /
- * `forwardRef(...)` (nested or not) of one, since React Refresh resolves
- * those wrappers through the function they wrap.
- */
-export async function expectRefreshableRouteOption(
-  code: string,
-  option: string,
-) {
-  expect(await getModuleErrors(code)).toEqual([])
-  const { Route, registered } = await evaluateRouteModule(code)
-  expect(
-    isRefreshable(Route.options[option], registered),
-    `\`${option}\` is neither a component React Refresh registers nor a memo/forwardRef of one (registered: ${[...registered.values()].join(', ')})`,
-  ).toBe(true)
-}
-
-/**
- * Whether React Refresh can hot-update `component`: it is registered
- * (`registered`, as `loadRoute` and `hotUpdate` record it), or it is a
- * `memo(...)` / `forwardRef(...)` (nested or not) of a registered component.
- */
-export function isRefreshable(
-  component: unknown,
-  registered: Map<unknown, string>,
-) {
-  let current: any = component
-  while (!registered.has(current) && current && typeof current === 'object') {
-    if (current.$$typeof === memoType) {
-      current = current.type
-    } else if (current.$$typeof === forwardRefType) {
-      current = current.render
-    } else {
-      return false
-    }
-  }
-  return registered.has(current)
-}
-
 const getStoreConfig: GetStoreConfig = () => ({
   createMutableStore: createNonReactiveMutableStore,
   createReadonlyStore: createNonReactiveReadonlyStore,

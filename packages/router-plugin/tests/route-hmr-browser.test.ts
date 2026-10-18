@@ -455,6 +455,162 @@ export const Route = createFileRoute('/')(makeOptions('${version}'))
   },
 )
 
+// A React route module stays an HMR boundary of React Refresh in Vite
+// (`@vitejs/plugin-react` reloads the page when a module it compiled
+// exports anything but components, beyond the exports the route HMR code
+// has it ignore), also without a component of its own or as the root route.
+// Sources: react-refresh-route-components "a React route module compiled
+// for Vite stays a Fast Refresh boundary" (it called the refresh runtime's
+// boundary check by hand; ruling 2026-10-18).
+describe.concurrent(
+  'vite: a React route module without a component, and a root route with an inline component',
+  () => {
+    it.for([true, false])(
+      'apply their edits in place (autoCodeSplitting: %s)',
+      { timeout },
+      async (
+        autoCodeSplitting: boolean,
+        { expect, onTestFinished }: TestContext,
+      ) => {
+        const root = (version: string) =>
+          `import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
+import { useState } from 'react'
+export const Route = createRootRoute({
+  component: () => {
+    const [count, setCount] = useState(0)
+    const data = useRouterState({
+      select: (state) => state.matches.map((match) => match.loaderData ?? '').join(''),
+    })
+    return (
+      <div>
+        <button onClick={() => setCount(count + 1)}>root ${version} {data} count {count}</button>
+        <Outlet />
+      </div>
+    )
+  },
+})
+`
+        const index = (version: string) =>
+          `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  loader: () => 'index ${version}',
+  component: undefined,
+})
+`
+        const app = await openRouteHmrPage({
+          onTestFinished,
+          pluginOptions: { autoCodeSplitting },
+          files: {
+            'routes/__root.tsx': root('v1'),
+            'routes/index.tsx': index('v1'),
+          },
+          ready: 'root v1 index v1 count 0',
+        })
+        await click(app, 'root v1 index v1 count', 1)
+        expect(
+          await app.edit(
+            { 'routes/index.tsx': index('v2') },
+            'root v1 index v2 count 1',
+          ),
+        ).toEqual({ reloaded: false })
+        expect(
+          await app.edit(
+            { 'routes/__root.tsx': root('v2') },
+            'root v2 index v2 count 1',
+          ),
+        ).toEqual({ reloaded: false })
+      },
+    )
+  },
+)
+
+// React Refresh patches route components that are not plain declarations
+// in place. Sources: react-refresh-route-components "React Refresh registers
+// split route components" (ReactFreshBabelPlugin-test "registers likely
+// HOCs with inline functions"; #8504 "written inline in a memo / forwardRef
+// call") and "hoists the components of the module's Route when another
+// route is created first" (#8504), which read React Refresh's registrations
+// and modelled how its runtime resolves memo / forwardRef (ruling
+// 2026-10-18). The split bodies have no JSX: with JSX, the code splitter
+// cannot split the call (pinned in known-bugs-code-splitter.test.ts "a
+// component written as memo of an inline arrow is split and renders").
+// Unsplit inline memo / forwardRef components: pinned in
+// known-bugs-route-hmr.test.ts.
+describe.concurrent('vite: an edited React route component written', () => {
+  const rows = [
+    {
+      name: 'inline in a memo call, split',
+      autoCodeSplitting: true,
+      route: (version: string) =>
+        `import { createFileRoute } from '@tanstack/react-router'
+import { memo } from 'react'
+export const Route = createFileRoute('/')({ component: memo(() => 'inline ${version}') })
+`,
+      shows: (version: string) => `inline ${version}`,
+    },
+    {
+      name: 'inline in a forwardRef call, split',
+      autoCodeSplitting: true,
+      route: (version: string) =>
+        `import { createFileRoute } from '@tanstack/react-router'
+import { forwardRef } from 'react'
+export const Route = createFileRoute('/')({
+  component: forwardRef(function (props, ref) {
+    return 'inline ${version}'
+  }),
+})
+`,
+      shows: (version: string) => `inline ${version}`,
+    },
+    // Split: the route module keeps `pendingComponent`. (`extra` is not
+    // exported: `@vitejs/plugin-react` reloads the page on an edit of a
+    // module that exports anything but components and the exports route HMR
+    // has it ignore.)
+    ...[false, true].map((autoCodeSplitting) => ({
+      name: `inline, after another route the module creates (autoCodeSplitting: ${autoCodeSplitting})`,
+      autoCodeSplitting,
+      route: (version: string) =>
+        `import { createFileRoute, createRoute } from '@tanstack/react-router'
+const extra = createRoute({
+  getParentRoute: () => Route,
+  path: 'extra',
+  component: () => <p>extra</p>,
+})
+export const Route = createFileRoute('/')({
+  ${
+    autoCodeSplitting
+      ? `loader: () => new Promise(() => {}),
+  pendingMs: 0,
+  pendingMinMs: 0,
+  pendingComponent: () => <p>pending ${version}</p>,`
+      : `component: () => <p>home ${version}</p>,`
+  }
+})
+`,
+      shows: (version: string) =>
+        autoCodeSplitting ? `pending ${version}` : `home ${version}`,
+    })),
+  ]
+  it.for(rows)(
+    '$name shows in place',
+    { timeout },
+    async (
+      { autoCodeSplitting, route, shows },
+      { expect, onTestFinished }: TestContext,
+    ) => {
+      const app = await openRouteHmrPage({
+        onTestFinished,
+        pluginOptions: { autoCodeSplitting },
+        files: { 'routes/index.tsx': route('v1') },
+        ready: shows('v1'),
+      })
+      expect(
+        await app.edit({ 'routes/index.tsx': route('v2') }, shows('v2')),
+      ).toEqual({ reloaded: false })
+    },
+  )
+})
+
 // Solid and Vue in Vite with their framework's plugin: an edit of a route
 // file shows its new code. Whether it does without a full reload, keeping
 // the split component (decision D10), is pinned in

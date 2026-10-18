@@ -15,13 +15,10 @@ import { describe, expect, test } from 'vitest'
 import type { TestContext } from 'vitest'
 import { build, routeApp } from './build-harness'
 import {
-  compileRouteModules,
   evaluateModule,
-  expectRefreshableRouteOption,
   expectValidModules,
   head,
   hotUpdate,
-  isRefreshable,
   loadRoute,
   routeSpecifier,
   transformWithRouteHmrPlugin,
@@ -31,86 +28,9 @@ import { editRouteFile } from './vite-hot-update'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 import type { PluginOption } from 'vite'
 
-/** Compiles every module the code splitter emits, with React HMR. */
-function compileWithCodeSplitting(code: string) {
-  return compileRouteModules(code, { hmr: true }).modules
-}
-
 describe('React Refresh registration', () => {
-  // Control for the inline component pins below (same assertion).
-  test('a memo of a top-level component is refreshable', async () => {
-    await expectRefreshableRouteOption(
-      transformWithRouteHmrPlugin(`${head}import { memo } from 'react'
-function Page() {
-  return <p>hi</p>
-}
-export const Route = createFileRoute('/')({ component: memo(Page) })`),
-      'component',
-    )
-  })
-
-  // Bug: inline component options that are not plain functions (`memo(...)`,
-  // `forwardRef(...)`, method shorthand, a function wrapped in a TypeScript
-  // `as` / `satisfies`) are neither hoisted nor registered, nor is the
-  // function they wrap.
-  // Impact: on unsplit routes (root routes, or file routes without automatic
-  // code splitting), edits to these components are dropped until a reload.
-  // Source: ReactFreshBabelPlugin-test "registers likely HOCs with inline
-  // functions" and "registers top-level variable declarations with arrow
-  // functions"; #8504 react-refresh-route-components ("written inline and
-  // wrapped in ..."), where the wrapped rows pass.
-  test.fails.each([
-    ...[
-      ['as any', `(() => <p>hi</p>) as any`],
-      ['satisfies', `(() => <p>hi</p>) satisfies FC`],
-    ].map(([wrapper, component]) => ({
-      name: `a function wrapped in ${wrapper}`,
-      code: `${head}import type { FC } from 'react'
-export const Route = createFileRoute('/')({ component: ${component} })`,
-      compile: transformWithRouteHmrPlugin,
-    })),
-    {
-      name: 'memo(() => ...)',
-      code: `${head}import { memo } from 'react'
-export const Route = createFileRoute('/')({ component: memo(() => <p>hi</p>) })`,
-      compile: transformWithRouteHmrPlugin,
-    },
-    {
-      name: 'forwardRef(function () { ... })',
-      code: `${head}import { forwardRef } from 'react'
-export const Route = createFileRoute('/')({
-  component: forwardRef(function (props, ref) {
-    return <p ref={ref}>hi</p>
-  }),
-})`,
-      compile: transformWithRouteHmrPlugin,
-    },
-    {
-      name: 'method shorthand',
-      code: `${head}export const Route = createFileRoute('/')({
-  component() {
-    return <p>hi</p>
-  },
-})`,
-      compile: transformWithRouteHmrPlugin,
-    },
-    {
-      name: 'React.memo(forwardRef(...)) on a root route',
-      code: `import React, { forwardRef } from 'react'
-import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({
-  component: React.memo(forwardRef(function Root(props, ref) {
-    return <p ref={ref}>root</p>
-  })),
-})`,
-      compile: (code: string) => compileWithCodeSplitting(code).reference!,
-    },
-  ])(
-    'registers an inline component written as $name',
-    async ({ code, compile }) => {
-      await expectRefreshableRouteOption(compile(code), 'component')
-    },
-  )
+  // Inline components that are not plain functions (`memo(...)`, ...):
+  // pinned in a real page below ("route HMR in a real page").
 
   /**
    * Loads, with React HMR and React Refresh, a route whose `component` option
@@ -129,30 +49,6 @@ export const Route = createFileRoute('/')({ component: ${name} })`,
     expect(binding).toBeDefined()
     return { binding, registered: [...route.registered.keys()] }
   }
-
-  // Goal (split path of the method-shorthand row above): a method-shorthand
-  // component is refreshable whether the code splitter splits it or keeps it
-  // in the route module.
-  // Bug: same root cause as the method-shorthand row above.
-  // Source: ruling on #8721 "keeps a method-shorthand component option"
-  // (react-refresh-route-components.test.ts, loosened).
-  test.fails(
-    'registers a method-shorthand component of a split route',
-    async () => {
-      const route = await loadRoute(
-        `${head}export const Route = createFileRoute('/')({
-  component() {
-    return <p>hi</p>
-  },
-})`,
-        { hmr: true, refresh: true },
-      )
-      await expectValidModules(route.modules)
-      const component = await route.load('component')
-      expect(component()).toBe('<p>hi</p>')
-      expect(isRefreshable(component, route.registered)).toBe(true)
-    },
-  )
 
   // Source: add-hmr snapshot fixture createFileRoute-lowercase-components:
   // with the default groupings, the lowercase `component` and
@@ -640,6 +536,151 @@ export const Route = createFileRoute('/')({
   ${options}
 })
 `
+
+  /**
+   * Opens a React app in Vite whose route file `file` is `route('v1')`,
+   * waits until it shows `shows('v1')`, edits it to `route('v2')` and
+   * returns whether the page reloaded once it shows `shows('v2')` (waiting
+   * at most `timeout`).
+   */
+  async function editComponent(
+    {
+      file,
+      autoCodeSplitting,
+      route,
+      shows,
+    }: {
+      file: string
+      autoCodeSplitting: boolean
+      route: (version: string) => string
+      shows: (version: string) => string
+    },
+    onTestFinished: TestContext['onTestFinished'],
+    timeout?: number,
+  ) {
+    const app = await openRouteHmrPage({
+      onTestFinished,
+      pluginOptions: { autoCodeSplitting },
+      files: { [file]: route('v1') },
+      ready: shows('v1'),
+    })
+    return app.edit({ [file]: route('v2') }, shows('v2'), { timeout })
+  }
+
+  /** A route at `/` with the `component` option `option`, after `imports`. */
+  const inlineRoute =
+    (imports: string, option: (version: string) => string) =>
+    (version: string) =>
+      `import { createFileRoute } from '@tanstack/react-router'
+${imports}
+export const Route = createFileRoute('/')({
+  ${option(version)},
+})
+`
+
+  // Control for the inline component pins below (same harness).
+  test('vite: an edit of a component passed as memo(Page) shows in place (autoCodeSplitting: false)', async ({
+    expect,
+    onTestFinished,
+  }) => {
+    expect(
+      await editComponent(
+        {
+          file: 'routes/index.tsx',
+          autoCodeSplitting: false,
+          route: inlineRoute(
+            `import { memo } from 'react'
+function Page() {
+  return <p>page v1</p>
+}`,
+            () => 'component: memo(Page)',
+          ),
+          shows: () => 'page v1',
+        },
+        onTestFinished,
+      ),
+    ).toEqual({ reloaded: false })
+  })
+
+  // Bug: inline component options that are not plain functions (`memo(...)`,
+  // `forwardRef(...)`, method shorthand, a function wrapped in a TypeScript
+  // `as` / `satisfies`) are neither hoisted nor registered for React
+  // Refresh, nor is the function they wrap; route HMR keeps the previous
+  // component for React Refresh to patch, which it cannot.
+  // Impact: on unsplit routes (root routes, or file routes without automatic
+  // code splitting), and for a split method-shorthand component, edits to
+  // these components do not show until a reload.
+  // Source: ReactFreshBabelPlugin-test "registers likely HOCs with inline
+  // functions" and "registers top-level variable declarations with arrow
+  // functions"; #8504 react-refresh-route-components ("written inline and
+  // wrapped in ..."), where the wrapped rows pass; ruling on #8721 "keeps a
+  // method-shorthand component option" (split row). Formerly read React
+  // Refresh's registrations and modelled its runtime (ruling 2026-10-18).
+  // Any fix passes: the edit shows without a full reload.
+  test.fails.for([
+    ...[
+      ['as any', '', `(() => <p>inline VERSION</p>) as any`],
+      [
+        'satisfies',
+        `import type { FC } from 'react'`,
+        `(() => <p>inline VERSION</p>) satisfies FC`,
+      ],
+      [
+        'memo(() => ...)',
+        `import { memo } from 'react'`,
+        `memo(() => <p>inline VERSION</p>)`,
+      ],
+      [
+        'forwardRef(function () { ... })',
+        `import { forwardRef } from 'react'`,
+        `forwardRef(function (props, ref) {
+    return <p ref={ref}>inline VERSION</p>
+  })`,
+      ],
+    ].map(([name, imports, component]) => ({
+      name: name!,
+      file: 'routes/index.tsx',
+      autoCodeSplitting: false,
+      route: inlineRoute(
+        imports!,
+        (version) => `component: ${component!.replace('VERSION', version)}`,
+      ),
+      shows: (version: string) => `inline ${version}`,
+    })),
+    ...[false, true].map((autoCodeSplitting) => ({
+      name: 'method shorthand',
+      file: 'routes/index.tsx',
+      autoCodeSplitting,
+      route: inlineRoute(
+        '',
+        (version) => `component() {
+    return <p>inline ${version}</p>
+  }`,
+      ),
+      shows: (version: string) => `inline ${version}`,
+    })),
+    {
+      name: 'React.memo(forwardRef(...)) on a root route',
+      file: 'routes/__root.tsx',
+      autoCodeSplitting: true,
+      route: (version: string) => `import React, { forwardRef } from 'react'
+import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({
+  component: React.memo(forwardRef(function Root(props, ref) {
+    return <p ref={ref}>root ${version}</p>
+  })),
+})
+`,
+      shows: (version: string) => `root ${version}`,
+    },
+  ])(
+    'vite: an edit of an inline component written as $name shows in place (autoCodeSplitting: $autoCodeSplitting)',
+    async (row, { expect, onTestFinished }: TestContext) => {
+      expect(await editComponent(row, onTestFinished, pinTimeout)).toEqual({
+        reloaded: false,
+      })
+    },
+  )
 
   // Bug: route HMR keeps the previous split components only for React: for
   // Solid and Vue, the route module creates a new lazy component on every
