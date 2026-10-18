@@ -392,8 +392,27 @@ describe('route names', () => {
     })
   })
 
-  // Control: the test above (same harness, two names the route tree tells
-  // apart).
+  // Control: the test above (same harness, a name with a space).
+
+  // Bug: the route tree imports each route file with its path written into
+  // a single-quoted string unescaped, so a route file whose name contains an
+  // apostrophe ends the string: the route tree does not parse and the run
+  // fails ("';' expected").
+  // Source: src/utils.ts:1196 (`buildImportString`: `from '${source}'`).
+  // Impact: an app with, e.g., `what's-new.tsx` gets no route tree until
+  // the file is renamed.
+  test.fails('a route file name with an apostrophe gets a route with it in its URL', async () => {
+    const root = await appWithRoutes(["what's-new.tsx"])
+    const { generatedRouteTree } = await generate(root)
+
+    expect(await urlsOf(generatedRouteTree)).toEqual({
+      __root__: '/',
+      "/what's-new": "/what's-new",
+    })
+  })
+
+  // Control: "routes whose names differ only by a leading @ get their own
+  // routes" above (same harness, two names the route tree tells apart).
 
   // Bug: routes whose paths differ only in characters that are not valid in
   // an identifier (`-`, `_`, `$`, a space) or in letter case get the same
