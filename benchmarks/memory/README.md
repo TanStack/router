@@ -2,7 +2,7 @@
 
 Dedicated memory benchmarks for TanStack Router / Start, measured with the
 CodSpeed **memory instrument** (`mode: memory` in
-`.github/workflows/benchmarks.yml`). The workflow runs on every
+`.github/workflows/client-nav-benchmarks.yml`). The workflow runs on every
 push to `main` except docs/examples/e2e-only pushes: CodSpeed compares a PR
 against the run on its merge-base commit, and a main commit without a run makes
 CodSpeed silently fall back to an older base — a single outlier base run then
@@ -258,7 +258,7 @@ WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/mem
 Run the benchmark workflow on an experiment branch:
 
 ```bash
-gh workflow run benchmarks.yml --ref <experiment-branch>
+gh workflow run client-nav-benchmarks.yml --ref <experiment-branch>
 ```
 
 Repeat at the same commit, using distinct branch names if runs should overlap

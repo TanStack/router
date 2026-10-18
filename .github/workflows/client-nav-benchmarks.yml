@@ -22,11 +22,10 @@ on:
       - '!packages/**/__tests__/**'
       - '!packages/**/*.test.*'
       - 'benchmarks/**'
-      - '.nvmrc'
   workflow_dispatch:
 
 concurrency:
-  group: benchmarks-${{ github.ref }}
+  group: client-nav-benchmarks-${{ github.ref }}
   cancel-in-progress: false
   queue: single
 
