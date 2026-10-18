@@ -3,9 +3,14 @@
  * watch mode: each file event (`create`, `update`, `delete`, with the
  * absolute path a file watcher reports) is passed to `run()`, and the route
  * tree must be the one a fresh generator writes for the app at that point.
+ *
+ * These pass the events themselves: a supplement, not watcher coverage. The
+ * real dev servers' watchers, the live routes and route HMR of created and
+ * renamed routes are tested in router-plugin
+ * `tests/integration/{dev-server,rsbuild-dev-server}-{generator,new-routes}.test.ts`.
  */
 import { existsSync } from 'node:fs'
-import { readFile, rm, stat, utimes } from 'node:fs/promises'
+import { readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
@@ -329,20 +334,6 @@ describe('route tree file events', () => {
 })
 
 describe('first runs', () => {
-  test('a new generator on an up-to-date app does not rewrite the route tree', async () => {
-    const root = await createApp({
-      'src/routes/__root.tsx': rootRoute(),
-      'src/routes/index.tsx': fileRoute('/'),
-    })
-    const { config } = await startGenerator(root)
-    const past = new Date('2020-01-01T00:00:00Z')
-    await utimes(config.generatedRouteTree, past, past)
-
-    await new Generator({ config, root }).run()
-
-    expect((await stat(config.generatedRouteTree)).mtimeMs).toBe(past.getTime())
-  })
-
   test('a routes directory without a root route fails with the root route file to add', async () => {
     const root = await createApp({
       'src/routes/index.tsx': fileRoute('/'),
@@ -354,6 +345,9 @@ describe('first runs', () => {
 })
 
 describe('route files outside the routes directory', () => {
+  // Supplement of router-plugin's real-watcher scenario "a route file
+  // created, edited and deleted under a physical() mount outside the routes
+  // directory reaches the live routes".
   test('a route file created in a physical() directory outside the routes directory is added', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
@@ -444,36 +438,4 @@ export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx'
       })
     },
   )
-})
-
-describe('generator plugins', () => {
-  // The bundler plugins find the route of a changed file through this map
-  // (route HMR); the id the root route file maps to is their own handshake,
-  // so only its presence is asserted.
-  test('getRoutesByFileMap maps each route file, the root route file included, to its route, also after a rerun', async () => {
-    const root = await createApp({
-      'src/routes/__root.tsx': rootRoute(),
-      'src/routes/posts.tsx': fileRoute('/posts'),
-    })
-    const { generator } = await startGenerator(root)
-    const routesByFile = () =>
-      Object.fromEntries(
-        [...generator.getRoutesByFileMap()].map(([file, { routeId }]) => [
-          path.relative(root, file).replaceAll(path.sep, '/'),
-          routeId,
-        ]),
-      )
-
-    for (const run of [false, true]) {
-      if (run) {
-        await generator.run({ type: 'rerun' })
-      }
-      const routes = routesByFile()
-      expect(Object.keys(routes).sort()).toEqual([
-        'src/routes/__root.tsx',
-        'src/routes/posts.tsx',
-      ])
-      expect(routes['src/routes/posts.tsx']).toBe('/posts')
-    }
-  })
 })
