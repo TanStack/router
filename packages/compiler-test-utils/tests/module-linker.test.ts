@@ -187,6 +187,81 @@ export const lazy = () => import('/c.tsx')`,
   })
 })
 
+describe('cycles', () => {
+  const graphOf = (modules: Record<string, string>) =>
+    createModuleGraph({
+      modules,
+      resolve: (specifier) => (specifier in modules ? specifier : undefined),
+    })
+
+  it('links a cycle with live bindings, evaluating the imported module first', async () => {
+    const graph = graphOf({
+      '/a.tsx': `import { b, readA, callA } from '/b.tsx'
+export const a = 'A'
+export function hoisted() { return 'hoisted' }
+export const read = () => [b, readA(), callA]`,
+      // A function declaration of a module in the cycle is initialised before
+      // any module of the cycle runs.
+      '/b.tsx': `import { a, hoisted } from '/a.tsx'
+export const b = 'B'
+export const readA = () => a
+export const callA = hoisted()`,
+    })
+    const a = await graph.import('/a.tsx')
+    expect(a.read()).toEqual(['B', 'A', 'hoisted'])
+    expect([...graph.evaluated]).toEqual(['/b.tsx', '/a.tsx'])
+  })
+
+  it('a module of a cycle that reads a binding before its module initialised it throws a ReferenceError (TDZ)', async () => {
+    const graph = graphOf({
+      '/a.tsx': `import { b } from '/b.tsx'
+export const a = 'A'
+export const read = () => b`,
+      '/b.tsx': `import { a } from '/a.tsx'
+export const b = a`,
+    })
+    await expect(graph.import('/a.tsx')).rejects.toThrow(
+      expect.objectContaining({
+        name: 'ReferenceError',
+        message: expect.stringMatching(/before initialization/),
+      }),
+    )
+  })
+})
+
+describe('fallbackStub', () => {
+  // Like one module of a bundle, a stubbed package is one instance for every
+  // module that imports it.
+  it('gives every importer of a specifier the same stub values, and the names each imports', async () => {
+    const calls: Array<Array<string>> = []
+    const modules: Record<string, string> = {
+      '/entry.tsx': `export { fromA } from '/a.tsx'
+export { fromB, other } from '/b.tsx'`,
+      '/a.tsx': `import { createStore } from 'store-lib'
+export const fromA = createStore`,
+      '/b.tsx': `import { createStore, other } from 'store-lib'
+export const fromB = createStore
+export { other }`,
+    }
+    const graph = createModuleGraph({
+      modules,
+      resolve: (specifier) => (specifier in modules ? specifier : undefined),
+      fallbackStub: (_, names) => {
+        calls.push([...names])
+        return Object.fromEntries(
+          [...names].map((name) => [name, { stubbed: name }]),
+        )
+      },
+    })
+    const entry = await graph.import('/entry.tsx')
+    expect(entry.fromA).toEqual({ stubbed: 'createStore' })
+    expect(entry.fromA).toBe(entry.fromB)
+    expect(entry.other).toEqual({ stubbed: 'other' })
+    // Called again only for the name the first importer did not import
+    expect(calls).toEqual([['createStore'], ['other']])
+  })
+})
+
 describe('probeDynamicImports', () => {
   const modules: Record<string, string> = {
     '/route.tsx': `export const loaders = {

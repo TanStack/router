@@ -47,17 +47,13 @@ export interface ModuleGraphOptions {
   ) => string | null | undefined | Promise<string | null | undefined>
   /**
    * Stubs a specifier that is neither a stub nor a module of the graph,
-   * given the names its importer imports from it. Without it (and without
-   * `lenient`), such an import fails to link, or a dynamic one fails when it
-   * runs.
+   * given the names its importer imports from it. Without it, such an import
+   * fails to link, or a dynamic one fails when it runs. One stub serves
+   * every importer of the specifier, like one module of a bundle: it is
+   * called again only for names earlier importers did not import, and the
+   * values it gave keep their identity.
    */
   fallbackStub?: (specifier: string, names: Set<string>) => ModuleStub
-  /**
-   * Gives every import the graph cannot resolve, and every name a module
-   * imports from an object stub without it, an `undefined` value instead of
-   * failing to link.
-   */
-  lenient?: boolean
   /** Compiles a module to JavaScript; by default TS and JSX are erased. */
   transform?: (code: string, id: string) => string | Promise<string>
   /**
@@ -79,8 +75,6 @@ export interface ModuleGraph {
   import: (id: string) => Promise<Record<string, any>>
   /** Adds a module to the graph. */
   add: (id: string, code: string) => void
-  /** Id of the module with this source, if the graph has it. */
-  idOf: (code: string) => string | undefined
   /** Ids of the graph's modules, in the order they started evaluating. */
   evaluated: Array<string>
   /**
@@ -380,15 +374,12 @@ export function createModuleGraph(
   }
 
   /**
-   * URL of a stub, for an importer that imports `names` from it. A stub made
-   * for one importer (`importer`) is an instance of its own.
+   * URL of a stub. An object stub exports its own keys: a stub whose keys
+   * grew since it was served (see `fallbackFor`) is served anew, with the
+   * same values.
    */
-  const stubUrl = (
-    specifier: string,
-    stub: ModuleStub,
-    names: Set<string>,
-    importer?: string,
-  ) => {
+  const firstStubKeys = new Map<string, string>()
+  const stubUrl = (specifier: string, stub: ModuleStub) => {
     if (typeof stub === 'string') {
       const url = graphUrl(graph, 'stub', specifier)
       if (!graph.served.has(url)) {
@@ -400,19 +391,18 @@ export function createModuleGraph(
       }
       return url
     }
-    // An object stub exports its own keys and, in a lenient graph, any name
-    // its importer asks for; each set of names is an instance then.
-    const exported = new Set(Object.keys(stub))
-    if (options.lenient) {
-      names.forEach((name) => exported.add(name))
+    const exported = Object.keys(stub)
+    const keys = exported.join(',')
+    if (!firstStubKeys.has(specifier)) {
+      firstStubKeys.set(specifier, keys)
     }
-    const key =
-      importer !== undefined
-        ? `${specifier}#${importer}`
-        : options.lenient
-          ? `${specifier}#${[...exported].sort().join(',')}`
-          : specifier
-    const url = graphUrl(graph, 'stub', key)
+    const url = graphUrl(
+      graph,
+      'stub',
+      firstStubKeys.get(specifier) === keys
+        ? specifier
+        : `${specifier}#${keys}`,
+    )
     if (!graph.served.has(url)) {
       graph.stubs.set(url, stub)
       const lines = [
@@ -433,6 +423,36 @@ export function createModuleGraph(
       })
     }
     return url
+  }
+
+  /** The fallback stub of each specifier (see `fallbackStub`). */
+  const fallbacks = new Map<string, ModuleStub>()
+  const fallbackFor = (specifier: string, names: Set<string>) => {
+    if (!options.fallbackStub) {
+      return undefined
+    }
+    const known = fallbacks.get(specifier)
+    if (known === undefined) {
+      const stub = options.fallbackStub(specifier, names)
+      const merged = typeof stub === 'string' ? stub : { ...stub }
+      fallbacks.set(specifier, merged)
+      return merged
+    }
+    if (typeof known === 'string') {
+      return known
+    }
+    const missing = new Set([...names].filter((name) => !(name in known)))
+    if (missing.size > 0) {
+      const more = options.fallbackStub(specifier, missing)
+      if (typeof more !== 'string') {
+        for (const [name, value] of Object.entries(more)) {
+          if (!(name in known)) {
+            known[name] = value
+          }
+        }
+      }
+    }
+    return known
   }
 
   /** Serves a module that throws `failure` when it loads. */
@@ -503,7 +523,7 @@ export function createModuleGraph(
           if (options.stubs && Object.hasOwn(options.stubs, specifier)) {
             module.imports.set(
               specifier,
-              stubUrl(specifier, options.stubs[specifier]!, names),
+              stubUrl(specifier, options.stubs[specifier]!),
             )
             return
           }
@@ -527,14 +547,9 @@ export function createModuleGraph(
             dependencies.push({ id: target, dynamic })
             return
           }
-          const fallback =
-            options.fallbackStub?.(specifier, names) ??
-            (options.lenient ? {} : undefined)
+          const fallback = fallbackFor(specifier, names)
           if (fallback !== undefined) {
-            module.imports.set(
-              specifier,
-              stubUrl(specifier, fallback, names, id),
-            )
+            module.imports.set(specifier, stubUrl(specifier, fallback))
             return
           }
           // A dynamic import the graph cannot resolve fails when it runs.
@@ -606,14 +621,6 @@ export function createModuleGraph(
         throw new Error(`Module ${id} is already in the graph`)
       }
       sources.set(id, code)
-    },
-    idOf(code) {
-      for (const [id, source] of sources) {
-        if (source === code) {
-          return id
-        }
-      }
-      return undefined
     },
     evaluated: graph.evaluated,
     probeDynamicImports(run) {
