@@ -25,6 +25,7 @@
     "node": "^22.18.0 || >=24.0.0"
   },
   "dependencies": {
+    "@jridgewell/trace-mapping": "^0.3.31",
     "@playwright/test": "catalog:",
     "@rsbuild/core": "catalog:",
     "esbuild": "^0.28.2",

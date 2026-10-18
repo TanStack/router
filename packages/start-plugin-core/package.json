@@ -136,6 +136,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@mdx-js/loader": "^3.1.1",
+    "@mdx-js/rollup": "^3.1.1",
     "@rsbuild/core": "catalog:",
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
@@ -148,6 +150,7 @@
     "@vitejs/plugin-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
