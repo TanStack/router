@@ -243,21 +243,40 @@ import { getRequest } from '${denied}'
 const request = getRequest()
 export const fn = createServerFn().handler(async () => request)
 `,
-    'src/request.server.ts': `export const getRequest = () => ({ url: '/' })\n`,
+    'src/request.server.ts': `export const getRequest = () => ({ url: 'MARK_REQUEST_SECRET' })\n`,
   })
+
+  /**
+   * Loads `src/a.ts` in the client as the browser does: the URLs of the
+   * served modules with the denied file's code, and the client's server fn
+   * (dependencies loaded from the dev server too).
+   */
+  async function loadClient(
+    server: Awaited<ReturnType<typeof startDevServer>>,
+  ) {
+    const modules = await server.load('/src/a.ts', { skip: /^\/@vite\b/ })
+    const { fn } = await evaluateServed(server, '/src/a.ts', {
+      skip: /^\/@vite\b/,
+    })
+    return {
+      secret: modulesContaining(modules, 'MARK_REQUEST_SECRET'),
+      functionId: typeof fn.functionId,
+    }
+  }
 
   // Control for the pin below (same harness): a denied file goes through the
   // file rule, which mocks the file itself.
   test(
-    'client: a server fn module calling a function of a denied file at the top level is served',
+    'client: a server fn module calling a function of a denied file at the top level loads, without the denied code',
     async () => {
       const server = await startDevServer({
         files: deniedCallFiles('./request.server'),
         plugins: importProtection('src/a.ts'),
       })
-      await expect(server.transform('/src/a.ts')).resolves.toEqual(
-        expect.any(String),
-      )
+      expect(await loadClient(server)).toEqual({
+        secret: [],
+        functionId: 'string',
+      })
     },
     timeout,
   )
@@ -272,15 +291,16 @@ export const fn = createServerFn().handler(async () => request)
   // client entry never loads and the page does not hydrate.
   // Source: issue #8554 (closed without a fix), gap DV38 (gaps/dev-hmr.md).
   test.fails(
-    'client: a server fn module calling a function of a denied specifier at the top level is served',
+    'client: a server fn module calling a function of a denied specifier at the top level loads',
     async () => {
       const server = await startDevServer({
         files: deniedCallFiles('@tanstack/react-start/server'),
         plugins: importProtection('src/a.ts'),
       })
-      await expect(server.transform('/src/a.ts')).resolves.toEqual(
-        expect.any(String),
-      )
+      expect(await loadClient(server)).toEqual({
+        secret: [],
+        functionId: 'string',
+      })
     },
     timeout,
   )
@@ -381,9 +401,9 @@ export const values = [getRequest, server.getRequest]
     {
       name: 'a denied specifier',
       denied: '@tanstack/react-start/server',
-      client: `import { getRequest, "get-headers" as getHeaders } from '@tanstack/react-start/server'
+      client: `import { getRequest, getRequestHeader as getHeader } from '@tanstack/react-start/server'
 import * as server from '@tanstack/react-start/server'
-export const values = [getRequest, getHeaders, server.setCookie]
+export const values = [getRequest, getHeader, server.setCookie]
 `,
     },
   ]
