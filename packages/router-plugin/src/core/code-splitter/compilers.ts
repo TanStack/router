@@ -127,52 +127,62 @@ function unwrapTransparentExpression(node: t.Node): t.Node {
 }
 
 /**
- * The object form of a route option, `loader: { handler, dehydrate, hydrate,
- * ... }`: the object literal and the `handler` member code splitting moves
- * to the chunk (`handler: fn` or `handler() {}`, the last one when the key
- * repeats, as at runtime); the other members stay in the reference file.
- * `holder` is the identifier of `loader: postsLoader` when a same-file
- * variable holds the literal; with a `handler`, `loader` is the variable's
- * only reader besides types.
+ * The handler of an inline object-form loader, or a statically known function
+ * loader. Opaque values stay eager because they may carry lifecycle metadata.
  */
-type ObjectFormOption = {
-  object: t.ObjectExpression
-  /**
-   * `undefined` leaves the whole option in the reference file: there is no
-   * handler, or it is an accessor (`get handler() {}` computes its value at
-   * read time), a fallback literal (`handler: undefined`), or a method using
-   * `super`, which refers to the object it is written in.
-   */
-  handler: t.ObjectProperty | t.ObjectMethod | undefined
-  holder?: t.Identifier
-}
+function getLoaderSplitValue(
+  path: babel.NodePath,
+  value: t.Node,
+): t.Node | undefined {
+  const node = unwrapTransparentExpression(value)
 
-/** `ObjectFormOption` of an option written as an object literal. */
-function getObjectFormOption(object: t.ObjectExpression): ObjectFormOption {
-  let handler: ObjectFormOption['handler']
-
-  for (const member of object.properties) {
-    if (
-      !t.isSpreadElement(member) &&
-      getObjectPropertyKeyName(member) === 'handler'
-    ) {
-      handler = member
+  if (t.isObjectExpression(node)) {
+    let handler: t.ObjectProperty | t.ObjectMethod | undefined
+    for (const member of node.properties) {
+      if (
+        !t.isSpreadElement(member) &&
+        getObjectPropertyKeyName(member) === 'handler'
+      ) {
+        handler = member
+      }
     }
+
+    if (
+      t.isObjectMethod(handler)
+        ? handler.kind !== 'method' ||
+          // Moving a method using `super` would change its home object.
+          t.traverseFast(handler, (child) =>
+            t.isSuper(child) ? t.traverseFast.stop : undefined,
+          )
+        : handler &&
+          isFallbackLiteral(unwrapTransparentExpression(handler.value))
+    ) {
+      return undefined
+    }
+
+    return handler
   }
 
-  if (
-    t.isObjectMethod(handler)
-      ? handler.kind !== 'method' ||
-        // uses `super`, in the parameters too: `handler(ctx = super.x) {}`
-        t.traverseFast(handler, (node) =>
-          t.isSuper(node) ? t.traverseFast.stop : undefined,
-        )
-      : handler && isFallbackLiteral(unwrapTransparentExpression(handler.value))
-  ) {
-    handler = undefined
+  let fn: t.Node = node
+  if (t.isIdentifier(node)) {
+    const binding = path.scope.getBinding(node.name)
+    if (!binding?.constant) {
+      return undefined
+    }
+    const declaration = binding.path.node
+    fn =
+      t.isVariableDeclarator(declaration) &&
+      t.isIdentifier(declaration.id) &&
+      declaration.init
+        ? unwrapTransparentExpression(declaration.init)
+        : declaration
   }
 
-  return { object, handler }
+  return t.isFunctionDeclaration(fn) ||
+    t.isFunctionExpression(fn) ||
+    t.isArrowFunctionExpression(fn)
+    ? node
+    : undefined
 }
 
 /**
@@ -218,93 +228,6 @@ function isFallbackLiteral(node: t.Node): boolean {
  */
 function isTypeReference(reference: babel.NodePath): boolean {
   return reference.findParent((parent) => parent.isTSType()) !== null
-}
-
-/**
- * The value a same-file variable holds (`const postsLoader = ...`), through
- * transparent wrappers (`const postsLoader = { ... } satisfies Loader`).
- * `undefined` when the binding is anything else: an import, a function
- * declaration, a parameter, a destructuring pattern.
- */
-function getVariableInit(binding: Binding | undefined): t.Node | undefined {
-  const declarator = binding?.path.node
-
-  return t.isVariableDeclarator(declarator) &&
-    t.isIdentifier(declarator.id) &&
-    declarator.init
-    ? unwrapTransparentExpression(declarator.init)
-    : undefined
-}
-
-/**
- * The object literal a same-file variable holds, for `loader: postsLoader`
- * with `const postsLoader = { handler, ... }`, and the variable's binding:
- * resolved through the scope the way the route options object is
- * (`resolveIdentifier`), through transparent wrappers on either side
- * (`loader: postsLoader as Loader`, `const postsLoader = { ... } satisfies
- * Loader`). `undefined` when the identifier is bound to anything else: an
- * import, a function, a parameter, a destructuring pattern, a call result.
- */
-function resolveObjectLiteralBinding(
-  path: babel.NodePath,
-  identifier: t.Identifier,
-): { object: t.ObjectExpression; binding: Binding } | undefined {
-  const binding = path.scope.getBinding(identifier.name)
-  const object = getVariableInit(binding)
-
-  return binding && t.isObjectExpression(object)
-    ? { object, binding }
-    : undefined
-}
-
-/**
- * How an object-form `loader` in a split group splits: `ObjectFormOption` of
- * the inline literal, or of the literal a same-file variable holds. The one
- * decision the reference compile, the virtual compile and
- * `computeSharedBindings` share, each reading the scope of the unedited
- * source, so the reference file and the chunk always agree. (The virtual
- * compile removes its shared declarations before it traverses, but its scope
- * is the one `findReferencedIdentifiers` built and Babel cached before that.)
- *
- * Splitting a held object replaces the handler in the object itself, so it
- * keeps its `handler` only while the route option is the variable's only
- * reader (types aside) and the variable is never reassigned. Otherwise
- * another reader, such as `head` calling `postsLoader.handler(ctx)` or a
- * split component reading the object, would get the lazy async wrapper
- * instead of the function, and the whole loader stays in the reference file
- * (or in the shared module, for a split reader). `undefined` for the
- * function form, and for an exported variable, which stays where it is like
- * an exported function.
- */
-function resolveObjectFormLoader(
-  path: babel.NodePath,
-  ast: t.File,
-  value: t.Node,
-): ObjectFormOption | undefined {
-  const node = unwrapTransparentExpression(value)
-
-  if (t.isObjectExpression(node)) {
-    return getObjectFormOption(node)
-  }
-
-  if (!t.isIdentifier(node)) {
-    return undefined
-  }
-
-  const bound = resolveObjectLiteralBinding(path, node)
-
-  if (!bound || hasExport(ast, node)) {
-    return undefined
-  }
-
-  const { handler, object } = getObjectFormOption(bound.object)
-  const onlyReader =
-    bound.binding.constant &&
-    bound.binding.referencePaths.filter(
-      (reference) => !isTypeReference(reference),
-    ).length === 1
-
-  return { object, handler: onlyReader ? handler : undefined, holder: node }
 }
 
 /**
@@ -442,8 +365,7 @@ export function computeSharedBindings(opts: {
     return new Set()
   }
 
-  // Find the route options object — needs babel.traverse for scope resolution
-  // (the call's scope also resolves a `loader` held in a same-file variable)
+  // Find the route options object and scope of same-file function loaders.
   const route = findRouteOptions(ast)
 
   if (!route) {
@@ -452,12 +374,10 @@ export function computeSharedBindings(opts: {
 
   const { routeOptions, callPath } = route
 
-  // The keys this environment deletes are gone from every module, so they
-  // read nothing. The scope still describes the unedited source, which is
-  // what `resolveObjectFormLoader` reads.
+  // Deleted inline properties read no bindings in this environment.
   const deleteNodesTree = buildDeleteNodesTree(opts.deleteNodes)
   if (deleteNodesTree) {
-    deleteObjectProperties(routeOptions, deleteNodesTree, callPath)
+    deleteObjectProperties(routeOptions, deleteNodesTree)
   }
 
   // Each part of the route options with the group it ends up in (-1: the
@@ -482,32 +402,28 @@ export function computeSharedBindings(opts: {
     const groupIndex = opts.codeSplitGroupings.findIndex((group) =>
       group.includes(key as any),
     )
-    const objectForm = isSplitLazyFnKey(key, opts.codeSplitGroupings)
-      ? resolveObjectFormLoader(callPath, ast, prop.value)
-      : undefined
-
-    if (!objectForm) {
+    if (!isSplitLazyFnKey(key, opts.codeSplitGroupings)) {
       pushSplitPart(prop.value, groupIndex)
       continue
     }
 
-    if (!objectForm.handler) {
+    const splitValue = getLoaderSplitValue(callPath, prop.value)
+    if (!splitValue) {
       parts.push([prop.value, -1])
       continue
     }
 
-    // The variable holding the object stays in the reference file, and
-    // `loader` is its only reader besides types: never a shared binding,
-    // also when a chunk names it in a type (`typeof postsLoader.handler`).
-    if (objectForm.holder) {
-      localModuleLevelBindings.delete(objectForm.holder.name)
-    }
-    for (const member of objectForm.object.properties) {
-      if (member === objectForm.handler) {
-        pushSplitPart(member, groupIndex)
-      } else {
-        parts.push([member, -1])
+    const value = unwrapTransparentExpression(prop.value)
+    if (t.isObjectExpression(value)) {
+      for (const member of value.properties) {
+        if (member === splitValue) {
+          pushSplitPart(member, groupIndex)
+        } else {
+          parts.push([member, -1])
+        }
       }
+    } else {
+      pushSplitPart(prop.value, groupIndex)
     }
   }
 
@@ -693,17 +609,13 @@ function buildDeleteNodesTree(
 /**
  * Removes the members of `objectExpression` named in `tree`, descending into
  * object-literal values for nested paths, through transparent TypeScript
- * wrappers (`{ ... } satisfies T`, `{ ... } as const`, `({ ... })`) and
- * through an identifier bound in `scopePath`'s scope to a same-file object
- * literal that is never reassigned, the value the route reads (`loader:
- * postsLoader` with `const postsLoader = { handler, dehydrate, hydrate }`).
- * Spreads, computed keys and other values (calls, functions, imports) are
+ * wrappers (`{ ... } satisfies T`, `{ ... } as const`, `({ ... })`).
+ * Spreads, computed keys and opaque values (identifiers, calls, functions) are
  * left as they are. Returns whether anything was removed.
  */
 function deleteObjectProperties(
   objectExpression: t.ObjectExpression,
   tree: DeleteNodesTree,
-  scopePath: babel.NodePath,
 ): boolean {
   let modified = false
 
@@ -727,15 +639,7 @@ function deleteObjectProperties(
     }
 
     const value = unwrapTransparentExpression(prop.value)
-    const bound = t.isIdentifier(value)
-      ? resolveObjectLiteralBinding(scopePath, value)
-      : undefined
-    const object = bound?.binding.constant ? bound.object : value
-
-    if (
-      t.isObjectExpression(object) &&
-      deleteObjectProperties(object, entry, scopePath)
-    ) {
+    if (t.isObjectExpression(value) && deleteObjectProperties(value, entry)) {
       modified = true
     }
 
@@ -866,7 +770,7 @@ export function compileCodeSplitReferenceRoute(
 
                 if (
                   deleteNodesTree &&
-                  deleteObjectProperties(routeOptions, deleteNodesTree, path)
+                  deleteObjectProperties(routeOptions, deleteNodesTree)
                 ) {
                   modified = true
                 }
@@ -892,23 +796,28 @@ export function compileCodeSplitReferenceRoute(
                   return programPath.stop()
                 }
 
-                // Read before the loop below re-crawls the scope after each
-                // split: the unedited source decides how a loader splits, as
-                // in the virtual compile and `computeSharedBindings`.
-                const objectForms = new Map<t.Node, ObjectFormOption>()
+                // Splitting a preceding option re-crawls scope. Decide from
+                // the original bindings so reference and virtual agree even
+                // when removed code assigned to a function loader.
+                const loaderSplitValues = new Map<
+                  t.ObjectProperty,
+                  t.Node | undefined
+                >()
                 for (const prop of routeOptions.properties) {
-                  const objectForm =
+                  if (
                     t.isObjectProperty(prop) &&
                     isSplitLazyFnKey(
                       getObjectPropertyKeyName(prop),
                       opts.codeSplitGroupings,
                     )
-                      ? resolveObjectFormLoader(path, ast, prop.value)
-                      : undefined
-                  if (objectForm) {
-                    objectForms.set(prop, objectForm)
+                  ) {
+                    loaderSplitValues.set(
+                      prop,
+                      getLoaderSplitValue(path, prop.value),
+                    )
                   }
                 }
+
                 routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
                     const key = getObjectPropertyKeyName(prop)
@@ -950,25 +859,23 @@ export function compileCodeSplitReferenceRoute(
 
                       const splitNodeMeta = SPLIT_NODES_CONFIG.get(key as any)!
 
-                      // `loader: { handler, ... }` or a variable holding
-                      // one: only the handler is split, the other members
-                      // stay in this file (`deleteNodes` already removed
-                      // the ones this environment never reads)
-                      const objectForm = objectForms.get(prop)
-                      const handler = objectForm?.handler
-
-                      if (objectForm && !handler) {
+                      const splitValue =
+                        splitNodeMeta.splitStrategy === 'lazyFn'
+                          ? loaderSplitValues.get(prop)
+                          : prop.value
+                      if (!splitValue) {
                         return
                       }
 
-                      // The value moving to the chunk. `x satisfies T`, `x
-                      // as T`, `x!`, `(x)`: the wrapper is replaced together
-                      // with the value; the virtual file unwraps the same
-                      // way, so both files agree on what moves.
+                      const handler =
+                        t.isObjectProperty(splitValue) ||
+                        t.isObjectMethod(splitValue)
+                          ? splitValue
+                          : undefined
                       const value = t.isObjectMethod(handler)
                         ? handler
                         : unwrapTransparentExpression(
-                            handler ? handler.value : prop.value,
+                            handler ? handler.value : splitValue,
                           )
 
                       if (t.isIdentifier(value)) {
@@ -1054,18 +961,20 @@ export function compileCodeSplitReferenceRoute(
                           `${LAZY_FN_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
                         )()
 
-                        if (!objectForm?.handler) {
+                        if (!handler) {
                           prop.value = lazyFnCall
-                        } else if (t.isObjectProperty(objectForm.handler)) {
-                          objectForm.handler.value = lazyFnCall
+                        } else if (t.isObjectProperty(handler)) {
+                          handler.value = lazyFnCall
                         } else {
                           // `handler() {}` becomes `handler: lazyFn(...)`
-                          const members = objectForm.object.properties
-                          members[members.indexOf(objectForm.handler)] =
-                            t.objectProperty(
-                              t.identifier('handler'),
-                              lazyFnCall,
-                            )
+                          const object = unwrapTransparentExpression(
+                            prop.value,
+                          ) as t.ObjectExpression
+                          const members = object.properties
+                          members[members.indexOf(handler)] = t.objectProperty(
+                            t.identifier('handler'),
+                            lazyFnCall,
+                          )
                         }
                       }
                     }
@@ -1255,10 +1164,8 @@ export function compileCodeSplitVirtualRoute(
 
             function babelHandleVirtual(options: t.Node | undefined) {
               if (t.isObjectExpression(options)) {
-                // as in the reference file: a held object that top-level
-                // code keeps alive here must not keep the deleted keys
                 if (deleteNodesTree) {
-                  deleteObjectProperties(options, deleteNodesTree, path)
+                  deleteObjectProperties(options, deleteNodesTree)
                 }
                 options.properties.forEach((prop) => {
                   if (!t.isObjectProperty(prop)) {
@@ -1276,27 +1183,37 @@ export function compileCodeSplitVirtualRoute(
                     return
                   }
 
-                  let value: t.Node = prop.value
+                  const originalValue = unwrapTransparentExpression(prop.value)
+                  if (
+                    t.isIdentifier(originalValue) &&
+                    hasExport(ast, originalValue)
+                  ) {
+                    knownExportedIdents.add(originalValue.name)
+                    return
+                  }
 
-                  // `loader: { handler, ... }` or a variable holding
-                  // one: the split file exports the handler alone,
-                  // mirroring the reference file
-                  const objectForm =
+                  const splitValue =
                     meta.splitStrategy === 'lazyFn'
-                      ? resolveObjectFormLoader(path, ast, value)
-                      : undefined
+                      ? getLoaderSplitValue(path, prop.value)
+                      : prop.value
+                  if (!splitValue) {
+                    return
+                  }
 
-                  if (objectForm) {
-                    if (!objectForm.handler) {
-                      return
-                    }
-
-                    // detached, so the export does not share nodes with
-                    // the object, which goes with the options (or, held
-                    // in a variable, with dead-code elimination)
-                    const members = objectForm.object.properties
-                    members.splice(members.indexOf(objectForm.handler), 1)
-                    value = getHandlerExpression(objectForm.handler)
+                  let value = splitValue
+                  if (
+                    t.isObjectProperty(splitValue) ||
+                    t.isObjectMethod(splitValue)
+                  ) {
+                    // Detach the handler before the route options are removed.
+                    const object = unwrapTransparentExpression(
+                      prop.value,
+                    ) as t.ObjectExpression
+                    object.properties.splice(
+                      object.properties.indexOf(splitValue),
+                      1,
+                    )
+                    value = getHandlerExpression(splitValue)
                   }
 
                   // `x satisfies T`, `x as T`, `x!`, `(x)`: unwrapped
@@ -1597,35 +1514,16 @@ export function compileCodeSplitSharedRoute(
   const ast = parseAst(opts)
   const refIdents = findReferencedIdentifiers(ast)
 
-  const declMap = buildDeclarationMap(ast)
-
-  // An object-form option held in a shared `const` (`loader: postsLoader`,
-  // read by a split component too) is declared here, so the keys this
-  // environment never reads are removed here, as the reference file removes
-  // them from an inline literal; an import only such a key used goes with it.
-  // Finding the route options takes a traversal, needed only when a shared
-  // binding holds an object literal.
+  // A shared outer options object still contains inline lifecycle objects.
   const deleteNodesTree = buildDeleteNodesTree(opts.deleteNodes)
   if (deleteNodesTree) {
-    for (const name of opts.sharedBindings) {
-      const declarator = declMap.get(name)
-      if (
-        t.isVariableDeclarator(declarator) &&
-        declarator.init &&
-        t.isObjectExpression(unwrapTransparentExpression(declarator.init))
-      ) {
-        const route = findRouteOptions(ast)
-        if (route) {
-          deleteObjectProperties(
-            route.routeOptions,
-            deleteNodesTree,
-            route.callPath,
-          )
-        }
-        break
-      }
+    const route = findRouteOptions(ast)
+    if (route) {
+      deleteObjectProperties(route.routeOptions, deleteNodesTree)
     }
   }
+
+  const declMap = buildDeclarationMap(ast)
 
   // Collect all names that need to stay: shared bindings + their transitive deps
   const localBindings = new Set<string>()

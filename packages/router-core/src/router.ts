@@ -2835,7 +2835,7 @@ export function lazyFn<
       const exported: any = imported[key || 'default']
       if (typeof exported !== 'function' && exported?.handler) {
         throw new Error(
-          `TanStack Router: the lazily imported \`${String(key || 'default')}\` is an object-form loader, which cannot be code split as a whole. Write it in the route file, inline or in a \`const\` there.`,
+          `TanStack Router: the lazily imported \`${String(key || 'default')}\` is an object-form loader, which cannot be code split as a whole. Write the loader object inline in the route options to split only its handler.`,
         )
       }
     }

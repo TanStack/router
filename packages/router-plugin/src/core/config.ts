@@ -67,10 +67,8 @@ export type CodeSplittingOptions = {
    * (`'loader.dehydrate'`). Visited: the options of `createFileRoute`,
    * `createRootRoute` and `createRootRouteWithContext` written inline or
    * held in a variable of the same file, and object-form values written
-   * inline or held in a never-reassigned variable of the same file, also
-   * behind `satisfies`, `as`, `!` or parentheses. A held object is changed
-   * where it is declared, so an exported one loses the keys for its
-   * importers too. Spreads, computed keys and options held in other modules
+   * inline, also behind `satisfies`, `as`, `!` or parentheses. Lifecycle
+   * objects stored in variables, imports, calls, spreads and computed keys
    * are left as they are. Functions and variables that the removed code
    * alone referenced are removed with it, and so are their imports; a class
    * declaration stays. Applies to every build this plugin instance compiles.
