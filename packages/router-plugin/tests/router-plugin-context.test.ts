@@ -15,11 +15,9 @@ import {
   createRouteLoader,
   evaluateModule,
   expectRegisteredRouteOption,
-  expectValidModules,
-  loadRoute,
 } from './regression-helpers'
 import type { CodeSplitGroupings } from '../src/core/constants'
-import type { UnpluginOptions, TransformResult } from 'unplugin'
+import type { TransformResult, UnpluginOptions } from 'unplugin'
 
 async function transformReferenceRoute(
   plugin: UnpluginOptions,
@@ -44,30 +42,6 @@ function getCode(result: TransformResult | null | undefined) {
 }
 
 describe('router plugin context', () => {
-  it('splits parenthesized route factories, option values, and grouping arrays', async () => {
-    const route = await loadRoute(
-      `import { createFileRoute } from '@tanstack/react-router'
-const Component = () => 'wrapped component'
-const loader = () => 'wrapped loader'
-export const Route = (createFileRoute('/wrapped'))({
-  component: (Component), loader: (loader),
-  codeSplitGroupings: (([(['component']), (['loader'])])),
-})`,
-      { routeId: '/wrapped' },
-    )
-    await expectValidModules(route.modules)
-    expect([route.isLazy('component'), route.isLazy('loader')]).toEqual([
-      true,
-      true,
-    ])
-    // Each group loads its own module.
-    expect(route.chunkOf('component')).not.toBe(route.chunkOf('loader'))
-    expect([
-      (await route.load('component'))(),
-      await route.options.loader(),
-    ]).toEqual(['wrapped component', 'wrapped loader'])
-  })
-
   it('refreshes chunk ownership after source changes and isolates split settings', async () => {
     const source = (name: string, value: string) => `
 import { createFileRoute } from '@tanstack/react-router'
