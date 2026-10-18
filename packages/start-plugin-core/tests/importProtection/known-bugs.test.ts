@@ -380,6 +380,24 @@ describe('Rsbuild dev', () => {
     },
   }
 
+  // Control for the pins below (same config and import protection): a
+  // module of that type is compiled, and its code runs in the client.
+  test('a module of another type without a denied import runs in the client', async () => {
+    const server = await startRsbuildDevServer({
+      importProtection: {
+        behavior: 'error',
+        client: { specifiers: ['db-lib'] },
+      },
+      config: pageModules,
+      files: {
+        'src/home.page': `export const page = () => 'MARK_PAGE'\n`,
+        'src/entry.ts': `import { page } from './home.page'\nconsole.log(page())\n`,
+      },
+    })
+    expect(server.errors).toEqual([])
+    expect(await runRsbuildClient(server)).toEqual(['MARK_PAGE'])
+  }, 30_000)
+
   // Bug: Rsbuild import protection checks importers by file extension
   // (`isImportProtectionSourceFile`, rsbuild/import-protection.ts, only
   // JS/TS extensions), and its loader rule only rewrites those files, so an
