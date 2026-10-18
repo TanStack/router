@@ -12,7 +12,7 @@
  * pins are in outside-compiler-corpus/prerender-route-options.test.ts.)
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart, routerRuntimeFiles, startBundlers } from '../build-harness'
+import { buildStart, startBundlers } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -64,7 +64,6 @@ describe.each(startBundlers)('%s build: server-only routes', (bundler) => {
    * carries the row's marker into its server handler.
    */
   const files: Record<string, string> = {
-    ...routerRuntimeFiles,
     'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,

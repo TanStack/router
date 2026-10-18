@@ -13,7 +13,6 @@ import {
   buildStart,
   callByIdExports,
   callByIdPrelude,
-  routerRuntimeFiles,
   startBundlers,
 } from '../build-harness'
 import type { StartBuild } from '../build-harness'
@@ -27,25 +26,6 @@ export const greet = createServerFn().handler(async () => 'MARK_HANDLER')
   'src/client-entry.ts': `export { greet } from './fns'\n`,
   'src/ssr-entry.ts': `export { greet } from './fns'
 ${callByIdExports}`,
-}
-
-/**
- * Type declarations of the stand-in router (`@tanstack/react-start` is the
- * real package, with its types).
- */
-const typeFiles = {
-  'node_modules/@tanstack/react-router/index.d.ts': `export interface FileRoutesByPath {}
-export interface RouteLike {
-  options: any
-  update(options: any): RouteLike
-  _addFileChildren(children: any): RouteLike
-  _addFileTypes<T>(): RouteLike
-}
-export declare function createRootRoute(options?: any): RouteLike
-export declare function createFileRoute(path: any): (options?: any) => RouteLike
-export declare function lazyRouteComponent(...args: Array<any>): any
-export declare function lazyFn(...args: Array<any>): any
-`,
 }
 
 /** Type-checks `files` (relative to `root`); returns the diagnostics. */
@@ -153,7 +133,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
   /** A route whose component and loader each carry a marker. */
   const routeFiles = {
-    ...routerRuntimeFiles,
     'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
@@ -166,7 +145,9 @@ export const Route = createFileRoute('/')({
     'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-    'src/entry.ts': `export { getRouter } from './router'\n`,
+    'src/entry.ts': `export { getRouter } from './router'
+export { renderPath } from '../harness/render'
+`,
   }
 
   // Start passes the router options through to the code splitter of each
@@ -214,14 +195,19 @@ export const getRouter = () => ({ routeTree })
         client: expected,
         ssr: expected,
       })
-      // Wherever they are, the route's loader and component still run.
+      // Wherever they are, the route's loader and component still run: the
+      // real router renders the page at `/`.
       const script = `const route = Object.values(entry.getRouter().routeTree.children).find(
   (candidate) => candidate.options.id === '/',
 )
-const { loader, component } = route.options
-await component.preload?.()
-return { loader: await loader(), component: component() }`
-      const runs = { loader: 'MARK_LOADER', component: 'MARK_COMPONENT' }
+return {
+  loader: await route.options.loader(),
+  page: await entry.renderPath(entry.getRouter().routeTree, '/'),
+}`
+      const runs = {
+        loader: 'MARK_LOADER',
+        page: expect.stringContaining('MARK_COMPONENT'),
+      }
       expect({
         client: (await client.run(script)).result,
         ssr: (await ssr.run(script)).result,
@@ -241,8 +227,6 @@ return { loader: await loader(), component: component() }`
       const { ssr } = await buildStart({
         bundler,
         files: {
-          ...routerRuntimeFiles,
-          ...typeFiles,
           'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,

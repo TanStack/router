@@ -6,7 +6,7 @@
  * boundaries); an update no boundary accepts reloads the page.
  */
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import { routerDevServer, routerPackageStub } from './dev-server'
+import { routerDevServer } from './dev-server'
 import type { HmrMessage } from '@tanstack/compiler-test-utils/dev-server'
 import type { PluginOption, Update } from 'vite'
 import type { TargetFramework } from './regression-helpers'
@@ -30,11 +30,11 @@ export type RouteEdit = {
   files?: Record<string, string>
 }
 
-/** Dependencies, Vite's client and the router package stub (`/@id/...`). */
-const notLoaded = /^\/@id\/|\/node_modules\/|^\/@(?:vite|react-refresh)\b/
+/** Dependencies (the router package: `/@fs/...`) and Vite's client. */
+const notLoaded = /^\/@fs\/|\/node_modules\/|^\/@(?:vite|react-refresh)\b/
 
 /**
- * Starts a dev server (router package stubbed) on an app whose client entry
+ * Starts a dev server on an app whose client entry
  * imports the route tree, loads the entry, what it imports and `loaded` in
  * the client environment, as a page does, edits the route file and returns
  * what the client received: the HMR messages (`describeHmr` lines), the
@@ -48,7 +48,7 @@ export async function editRouteFile(edit: RouteEdit) {
       target: edit.target,
       autoCodeSplitting: edit.autoCodeSplitting,
     },
-    plugins: [routerPackageStub(edit.target), ...(edit.plugins ?? [])],
+    plugins: edit.plugins ?? [],
     files: {
       ...edit.files,
       [file]: edit.route('page'),

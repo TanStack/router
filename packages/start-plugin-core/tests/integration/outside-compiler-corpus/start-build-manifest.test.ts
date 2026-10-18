@@ -9,11 +9,7 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import {
-  buildStart,
-  routerRuntimeFiles,
-  startBundlers,
-} from '../../build-harness'
+import { buildStart, startBundlers } from '../../build-harness'
 import type { StartBuild } from '../../build-harness'
 
 const timeout = 60_000
@@ -27,7 +23,6 @@ const handlers = `server: { handlers: { GET: () => new Response('x') } }`
  * `/api/inner`).
  */
 const files = {
-  ...routerRuntimeFiles,
   'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,

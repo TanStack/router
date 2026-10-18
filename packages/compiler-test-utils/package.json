@@ -13,6 +13,7 @@
     "./rsbuild-dev-server": "./src/rsbuild-dev-server.ts",
     "./run-node": "./src/run-node.ts",
     "./validate-module": "./src/validate-module.ts",
+    "./workspace-packages": "./src/workspace-packages.ts",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -20,6 +21,21 @@
     "test:integration": "vitest --project integration",
     "test:types": "tsc",
     "test:eslint": "eslint ./src ./tests"
+  },
+  "nx": {
+    "targets": {
+      "test:integration": {
+        "dependsOn": [
+          "^build",
+          {
+            "projects": [
+              "@tanstack/history"
+            ],
+            "target": "build"
+          }
+        ]
+      }
+    }
   },
   "engines": {
     "node": "^22.18.0 || >=24.0.0"

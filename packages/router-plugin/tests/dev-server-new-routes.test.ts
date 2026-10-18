@@ -7,7 +7,7 @@
 import react from '@vitejs/plugin-react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import { routerDevServer, routerPackageStub } from './dev-server'
+import { routerDevServer } from './dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 const timeout = 30_000
@@ -132,14 +132,14 @@ describe('created routes in Vite dev', () => {
     'an edit of a created route a page loaded is a hot update',
     async () => {
       const server = await routerDevServer({
-        plugins: [routerPackageStub('react'), react()],
+        plugins: [react()],
         files: {
           'routes/index.tsx': route('/', 'MARK_INDEX'),
           'entry.ts': `export { routeTree } from './routeTree.gen'`,
         },
       })
-      // The router package stub is a virtual module (`/@id/...`).
-      const skip = /^\/@id\/|\/node_modules\/|^\/@(vite|react-refresh)\b/
+      // The router package is served from outside the app (`/@fs/...`).
+      const skip = /^\/@fs\/|\/node_modules\/|^\/@(vite|react-refresh)\b/
       await server.load('/entry.ts', { skip })
       await server.edit({ 'routes/posts.tsx': route('/posts', 'MARK_POSTS') })
       expect(await routeTreePaths(server)).toEqual(['/', '/posts'])

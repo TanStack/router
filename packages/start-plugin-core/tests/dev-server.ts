@@ -3,7 +3,8 @@
  * compiler's Vite plugin (client and SSR environments, SSR as the server fn
  * provider) on a temporary app, through the shared dev-server harness
  * (`@tanstack/compiler-test-utils/dev-server`). `@tanstack/react-start` is the
- * real package (`startRuntimeLinks`). The temporary apps live in this
+ * real package (`startRuntimeLinks`), and `@tanstack/react-router` the real
+ * one too (a dependency of this package). The temporary apps live in this
  * directory.
  *
  * With `start`, the dev server mounts Start's whole Vite plugin instead
@@ -18,11 +19,7 @@ import { onTestFinished } from 'vitest'
 import { startCompilerPlugin } from '../src/vite/start-compiler-plugin/plugin'
 import { tanStackStartVite } from '../src/vite/plugin'
 import { ENTRY_POINTS } from '../src/constants'
-import {
-  reactStartPackage,
-  routerRuntimeFiles,
-  startRuntimeLinks,
-} from './build-harness'
+import { reactStartPackage, startRuntimeLinks } from './build-harness'
 import { createClientRpc, startClientCore } from './start-runtime'
 import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 import type { StartCompilerPluginOptions } from '../src/vite/start-compiler-plugin/plugin'
@@ -76,10 +73,9 @@ export interface StartDevServerOptions extends Omit<
    * Mounts Start's whole Vite plugin with these Start plugin options
    * (`tanstackStart(options)`) instead of the compiler plugin alone (then
    * `environments` and `providerEnvName` do not apply: client and SSR, SSR
-   * as the provider). `@tanstack/react-router` is the build harness's
-   * stand-in (`routerRuntimeFiles`) unless `realRouter`; the app's client and server entries are
-   * empty, and `src/router.ts` and `src/routes/__root.tsx` are stubs unless
-   * the app has them.
+   * as the provider). The app's client and server entries are empty, and
+   * `src/router.ts` and `src/routes/__root.tsx` are stubs unless the app has
+   * them.
    */
   start?: TanStackStartViteInputConfig
   /**
@@ -88,18 +84,11 @@ export interface StartDevServerOptions extends Omit<
    * transform).
    */
   compilerTransforms?: Array<StartCompilerImportTransform>
-  /**
-   * With `start`: the app imports the real `@tanstack/react-router` (a
-   * devDependency of this package) instead of the build harness's stand-in,
-   * e.g. to run in a browser page (`browser`). Default `false`.
-   */
-  realRouter?: boolean
 }
 
 /**
  * The server entry of an app with `start` whose server handles HTTP
- * requests: Start's default one (`@tanstack/react-start/server-entry`),
- * which renders with the real `@tanstack/react-router` (`realRouter`).
+ * requests: Start's default one (`@tanstack/react-start/server-entry`).
  */
 export const startServerEntryFiles = {
   'harness/server-entry.ts': `export { default } from '@tanstack/react-start/server-entry'\n`,
@@ -187,7 +176,6 @@ export function startDevServer(
     providerEnvName = 'ssr',
     start,
     compilerTransforms,
-    realRouter = false,
     ...devServerOptions
   } = options
   /** Server environments Vite does not create by default. */
@@ -200,7 +188,6 @@ export function startDevServer(
     registerCleanup: onTestFinished,
     ...devServerOptions,
     files: {
-      ...(start && !realRouter && routerRuntimeFiles),
       ...(start && startPluginFiles),
       ...files,
     },

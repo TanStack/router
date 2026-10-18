@@ -4,11 +4,13 @@
  * `routeTree.gen.ts`, code splitting on) on a temporary app, through the
  * shared dev-server harness (`@tanstack/compiler-test-utils/dev-server`). The
  * temporary apps live in this directory, so their imports resolve to this
- * package's dependencies.
+ * package's dependencies: the real router packages, React, Solid and Vue.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
+import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
 import { expect, onTestFinished } from 'vitest'
 import { tanstackRouter } from '../src/vite'
 import type {
@@ -40,9 +42,8 @@ export interface RouterDevServerOptions extends Omit<
    */
   pluginOptions?: Partial<Config> | null
   /**
-   * Other Vite plugins, after the router plugin (e.g. a framework plugin or
-   * a stub of a router package), or a function of the app root returning
-   * them.
+   * Other Vite plugins, after the router plugin (e.g. a framework plugin),
+   * or a function of the app root returning them.
    */
   plugins?:
     | Array<PluginOption>
@@ -50,50 +51,10 @@ export interface RouterDevServerOptions extends Omit<
 }
 
 /**
- * A Vite plugin that serves a stub of the router package of `target` (the
- * real packages need their framework's runtime and a DOM): routes keep
- * their options (`{ options }`), and lazy
- * route options (`lazyRouteComponent`, `lazyFn`) call what their module
- * provides and have `load()`, which resolves to it.
- */
-export function routerPackageStub(
-  target: Config['target'] = 'react',
-): PluginOption {
-  const routerPackage = `@tanstack/${target}-router`
-  const stubId = `\0${routerPackage}-stub`
-  return {
-    name: 'router-package-stub',
-    enforce: 'pre',
-    resolveId: (id) => (id === routerPackage ? stubId : undefined),
-    load: (id) =>
-      id === stubId
-        ? `const route = (options) => ({ options })
-export const createFileRoute = () => route
-export const createRootRoute = route
-const lazy = (importer, name) => {
-  const load = async () => (await importer())[name]
-  return Object.assign(async (...args) => (await load())(...args), { load })
-}
-export const lazyRouteComponent = (importer, name = 'default') => lazy(importer, name)
-export const lazyFn = (importer, name = 'default') => lazy(importer, name)`
-        : undefined,
-  }
-}
-
-/**
- * The value of a route option of a route module served with
- * `routerPackageStub`, once its lazy module (if any) loaded.
- */
-export function loadRouteOption(value: any): Promise<unknown> {
-  return typeof value?.load === 'function'
-    ? value.load()
-    : Promise.resolve(value)
-}
-
-/**
- * Starts a dev server (`routerPackageStub` for the router package) on
- * `routes/page.tsx` holding `route` and imports the route module in the SSR
- * environment.
+ * Starts a dev server on `routes/page.tsx` holding `route` and imports the
+ * route module in the SSR environment, with the dev server (the route module
+ * resolves the real router package of the target, a dependency of this
+ * package).
  */
 export async function importRouteModule(
   route: string,
@@ -101,35 +62,102 @@ export async function importRouteModule(
 ) {
   const server = await routerDevServer({
     pluginOptions,
-    plugins: [routerPackageStub(pluginOptions.target)],
     files: { 'routes/page.tsx': route },
   })
-  return server.import('/routes/page.tsx')
+  return { server, routeModule: await server.import('/routes/page.tsx') }
+}
+
+/**
+ * Renders the app's generated route tree (`routeTree.gen.ts`) at `pathname`
+ * through the real router and React, in the SSR environment of `server`:
+ * `createRouter` over the tree, `router.load()` (which runs the loaders and
+ * loads the split route options), then `<RouterProvider>` to HTML. React
+ * targets only. (The router package is the one the served modules use: the
+ * SSR environment's; React and its server renderer are this process's, as
+ * the SSR environment loads them from Node too.)
+ */
+export async function renderRoutePath(
+  server: Pick<DevServer, 'import'>,
+  pathname: string,
+): Promise<string> {
+  const { routeTree } = await server.import('/routeTree.gen.ts')
+  const { RouterProvider, createMemoryHistory, createRouter } =
+    await server.import('@tanstack/react-router')
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: [pathname] }),
+  })
+  await router.load()
+  return renderToString(createElement(RouterProvider, { router }))
+}
+
+/**
+ * The URL `server` serves the router package of `target` at in the client
+ * environment (the built workspace package, outside the app root, which
+ * Vite's resolver picks with its development condition): the key of a stub
+ * of it for `evaluateServed`, e.g. the same package loaded in the SSR
+ * environment (`server.import('@tanstack/react-router')`).
+ */
+export async function servedRouterPackageUrl(
+  server: Pick<DevServer, 'vite' | 'root'>,
+  target: Config['target'] = 'react',
+): Promise<string> {
+  const resolved =
+    await server.vite.environments.client!.pluginContainer.resolveId(
+      `@tanstack/${target}-router`,
+      path.join(server.root, 'routes/__root.tsx'),
+    )
+  if (!resolved) {
+    throw new Error(`@tanstack/${target}-router does not resolve from the app`)
+  }
+  return `/@fs${resolved.id}`
+}
+
+/**
+ * Renders a React component option of a served route module (loaded first,
+ * when the code splitter made it lazy: `preload()` of the real router's lazy
+ * route component) to HTML with React, like a route render does.
+ */
+export async function renderRouteComponent(component: any): Promise<string> {
+  await component.preload?.()
+  return renderToString(createElement(component))
 }
 
 /**
  * Serves `route` as `routes/page.tsx` (`importRouteModule`, with React HMR,
  * `autoCodeSplitting` and the component and the loader in their own chunks)
- * and asserts that each export named in `exported` is the value of the given
- * route options, once loaded.
+ * and asserts that each export named in `exported` is a component the given
+ * route options render as: the export is the option's value, or (a split
+ * option) the real router's lazy component of it, rendering the same HTML
+ * once loaded; the page at `/page` renders through the real router.
  */
 export async function expectExportedRouteOptions(
   route: string,
   exported: Record<string, Array<string>>,
   autoCodeSplitting: boolean,
 ) {
-  const routeModule = await importRouteModule(route, {
+  const { server, routeModule } = await importRouteModule(route, {
     autoCodeSplitting,
     codeSplittingOptions: { defaultBehavior: [['component'], ['loader']] },
   })
   for (const [name, keys] of Object.entries(exported)) {
     expect(routeModule).toHaveProperty(name)
+    expect(routeModule[name], `${name} is a component`).toBeTypeOf('function')
+    const rendered = await renderRouteComponent(routeModule[name])
     for (const key of keys) {
-      expect(routeModule[name], `${name} is the ${key} option`).toBe(
-        await loadRouteOption(routeModule.Route.options[key]),
-      )
+      const option = routeModule.Route.options[key]
+      if (option !== routeModule[name]) {
+        expect(option, `${key} is the lazy ${name}`).toHaveProperty('preload')
+        expect(
+          await renderRouteComponent(option),
+          `${key} renders as ${name}`,
+        ).toBe(rendered)
+      }
     }
   }
+  expect(await renderRoutePath(server, '/page')).toContain(
+    await renderRouteComponent(routeModule.Route.options.component),
+  )
 }
 
 /**
@@ -173,7 +201,7 @@ export class component extends Component { render() { return null } }`,
  * options keep working.
  */
 export async function expectSharedOverloads(autoCodeSplitting: boolean) {
-  const routeModule = await importRouteModule(
+  const { routeModule } = await importRouteModule(
     `import { createFileRoute } from '@tanstack/react-router'
 export function helper(value: string): string
 export function helper(value: number): number
@@ -197,7 +225,8 @@ export const Route = createFileRoute('/page')({
 /**
  * Starts a Vite dev server with the router plugin on an app of `files`
  * (`routes/__root.tsx` defaults to an empty root route of the target's
- * router package).
+ * router package). The app resolves the real router packages
+ * (`@tanstack/{react,solid,vue}-router`, dependencies of this package).
  */
 export function routerDevServer(
   options: RouterDevServerOptions,

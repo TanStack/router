@@ -77,7 +77,6 @@ describe('Vite dev: server fns by id', () => {
     async () => {
       const server = await startDevServer({
         start: {},
-        realRouter: true,
         files: {
           ...startServerEntryFiles,
           'src/first.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -198,7 +197,6 @@ describe('Vite dev: editing a server fn handler', () => {
     async () => {
       const server = await startDevServer({
         start: {},
-        realRouter: true,
         files: {
           ...startServerEntryFiles,
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -237,7 +235,6 @@ export const greet = createServerFn().handler(() => 'after')
     async () => {
       const server = await startDevServer({
         start: {},
-        realRouter: true,
         files: {
           ...startServerEntryFiles,
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -387,7 +384,6 @@ export const label = () => 'MARK_CLIENT_LABEL'
     async () => {
       const server = await startDevServer({
         start: {},
-        realRouter: true,
         plugins: [react()],
         bundledDev: { entry: 'src/entry.ts' },
         files: {
@@ -439,7 +435,6 @@ export const label = () => 'MARK_CLIENT_LABEL'
     async () => {
       const server = await startDevServer({
         start: {},
-        realRouter: true,
         plugins: [react()],
         bundledDev: { entry: 'src/entry.ts' },
         files: {

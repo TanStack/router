@@ -5,12 +5,7 @@ import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
 import { tanstackRouter } from '../src/vite'
-import {
-  loadRouteOption,
-  rootRoute,
-  routerDevServer,
-  routerPackageStub,
-} from './dev-server'
+import { renderRouteComponent, rootRoute, routerDevServer } from './dev-server'
 import {
   createRouteLoader,
   evaluateModule,
@@ -102,7 +97,6 @@ export const Route = createFileRoute('${routePath}')({ component: Page })
 `
     const server = await routerDevServer({
       plugins: [
-        routerPackageStub(),
         tanstackRouter({
           target: 'react',
           routesDirectory: './routes-b',
@@ -125,9 +119,11 @@ export const Route = createFileRoute('${routePath}')({ component: Page })
         [],
       )
       const { Route } = await server.import(url!)
-      const component = await loadRouteOption(Route.options.component)
-      expect(component, url).not.toBe(Route.options.component)
-      expect((component as () => string)(), url).toBe(label)
+      // Split: the option is the real router's lazy component of it
+      expect(Route.options.component, url).toHaveProperty('preload')
+      expect(await renderRouteComponent(Route.options.component), url).toBe(
+        label,
+      )
     }
   }, 30_000)
 

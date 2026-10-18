@@ -9,7 +9,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { expect, onTestFinished, test, vi } from 'vitest'
-import { rootRouteOf, routerDevServer, routerPackageStub } from '../dev-server'
+import { rootRouteOf, routerDevServer } from '../dev-server'
 
 // The temporary apps live in the tests directory, so their imports resolve
 // to this package's dependencies.
@@ -40,7 +40,6 @@ test(
     const printed = recordConsole()
     const server = await routerDevServer({
       pluginOptions: { target: 'solid', autoCodeSplitting: false },
-      plugins: [routerPackageStub('solid')],
       files: {
         'routes/index.tsx': `import { createFileRoute } from '@tanstack/solid-router'
 export const Route = createFileRoute('/')({ loader: () => 'x', component: () => <p>x</p> })`,
@@ -84,7 +83,6 @@ export const Route = createFileRoute('/')({ loader: () => 'x' })`,
           routesDirectory: path.join(app.root, 'routes'),
           generatedRouteTree: path.join(app.root, 'routeTree.gen.ts'),
         }),
-        routerPackageStub('react'),
       ],
     })
     expect(

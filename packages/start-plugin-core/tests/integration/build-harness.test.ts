@@ -12,7 +12,6 @@ import {
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
-  routerRuntimeFiles,
   startBundlers,
 } from '../build-harness'
 
@@ -170,7 +169,6 @@ export const inspect = createServerFn()
       const { client, ssr } = await buildStart({
         bundler,
         files: {
-          ...routerRuntimeFiles,
           'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
@@ -182,17 +180,24 @@ export const Route = createFileRoute('/')({
           'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-          'src/entry.ts': `export { getRouter } from './router'\n`,
+          'src/entry.ts': `export { getRouter } from './router'
+export { renderPath } from '../harness/render'
+`,
         },
         entry: 'src/entry.ts',
       })
       expect(client.where('MARK_COMPONENT')).toBe('lazy')
-      const { result } =
-        await ssr.run(`const routes = Object.values(entry.getRouter().routeTree.children)
-const component = routes[0].options.component
-await component.preload?.()
-return { ids: routes.map((route) => route.options.id), rendered: component() }`)
-      expect(result).toEqual({ ids: ['/'], rendered: 'MARK_COMPONENT' })
+      // The real router over the generated tree renders the page at `/`
+      // (loading the route's component chunk).
+      const { result } = await ssr.run(`const { routeTree } = entry.getRouter()
+return {
+  ids: Object.values(routeTree.children).map((route) => route.options.id),
+  rendered: await entry.renderPath(routeTree, '/'),
+}`)
+      expect(result).toEqual({
+        ids: ['/'],
+        rendered: expect.stringContaining('MARK_COMPONENT'),
+      })
     },
     timeout,
   )

@@ -5,7 +5,7 @@
  * outside-compiler-corpus/start-build-manifest.test.ts.)
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart, routerRuntimeFiles, startBundlers } from '../build-harness'
+import { buildStart, startBundlers } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -18,7 +18,6 @@ const handlers = `server: { handlers: { GET: () => new Response('x') } }`
  * server-only subtree (`/api`, `/api/inner`).
  */
 const files = {
-  ...routerRuntimeFiles,
   'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,

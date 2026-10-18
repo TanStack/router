@@ -133,7 +133,6 @@ describe('editing a server fn factory (SSR)', () => {
   async function editFactorySsr(importFrom: string) {
     const server = await startDevServer({
       start: {},
-      realRouter: true,
       files: {
         ...startServerEntryFiles,
         'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,

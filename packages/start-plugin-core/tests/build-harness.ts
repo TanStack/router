@@ -11,16 +11,16 @@
  * (`@tanstack/compiler-test-utils/build-harness`). The temporary apps live
  * in this directory.
  *
- * `@tanstack/react-start` is the real package (`startRuntimeLinks`): both
- * builds bundle and run Start's runtime. What the test process cannot do is
- * stood in for, each checked against the real runtime in
- * build-harness.test.ts: SSR scripts run in a request context
- * (`inRequestContext`), and a client script observes the requests a server
- * fn call sends (`requestsOfPrelude`). An SSR script calls a server fn by id
- * through Start's own server entry and client RPC (`callByIdPrelude`).
- * `@tanstack/react-router` is a stand-in for apps with routes
- * (`routerRuntimeFiles`). The app's entries are the harness's: the client
- * and server entries Start builds import `#tanstack-start-entry`
+ * `@tanstack/react-start` is the real package (`startRuntimeLinks`), and
+ * `@tanstack/react-router` the real one too (a dependency of this package,
+ * which the apps resolve like any dependency): both builds bundle and run
+ * Start's runtime and the router. What the test process cannot do is stood
+ * in for, each checked against the real runtime in build-harness.test.ts:
+ * SSR scripts run in a request context (`inRequestContext`), and a client
+ * script observes the requests a server fn call sends (`requestsOfPrelude`).
+ * An SSR script calls a server fn by id through Start's own server entry and
+ * client RPC (`callByIdPrelude`). The app's entries are the harness's: the
+ * client and server entries Start builds import `#tanstack-start-entry`
  * (`src/start.ts` when the app has one), `#tanstack-router-entry`
  * (`src/router.ts`, a stub unless the app has one) and the test's entry
  * module, whose exports `run()` gives the script as `entry`. Vite builds run
@@ -30,10 +30,13 @@
  * it; it checks the modules of the source directory (`src`) only.
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { existsSync } from 'node:fs'
-import { mkdir, symlink } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  linkWorkspacePackages,
+  workspacePackage,
+  workspacePackageLinks,
+} from '@tanstack/compiler-test-utils/workspace-packages'
 import {
   BuildError,
   chunksOfBundle,
@@ -65,20 +68,20 @@ import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { InlineConfig, Plugin } from 'vite'
 
 /**
- * The workspace's `@tanstack/react-start` package. Its build (`dist`) is
- * what apps link: the `test:unit` target depends on its `build` target.
+ * The workspace's built `@tanstack/react-start` package, which apps link
+ * (`startRuntimeLinks`): the `test:integration` target depends on its
+ * `build` target, as this package cannot depend on it.
  */
-export const reactStartPackage = fileURLToPath(
-  new URL('../../react-start', import.meta.url),
-)
+export const reactStartPackage = workspacePackage('@tanstack/react-start')
 
 /**
  * Links (`AppOptions.symlinks`) that give an app Start's real runtime:
- * `node_modules/@tanstack/react-start` is the workspace package, so the app
- * bundles and runs the built package with its own export conditions. Its
- * dependencies (`@tanstack/start-client-core`, `@tanstack/start-server-core`,
- * ...) resolve from its real path, as in an installed app. An app whose
- * `files` bring their own `@tanstack/react-start` (hydrate-build.test.ts:
+ * `node_modules/@tanstack/react-start` is the workspace package
+ * (`workspacePackageLinks`), so the app bundles and runs the built package
+ * with its own export conditions. Its dependencies
+ * (`@tanstack/start-client-core`, `@tanstack/start-server-core`, ...)
+ * resolve from its real path, as in an installed app. An app whose `files`
+ * bring their own `@tanstack/react-start` (hydrate-build.test.ts:
  * `<Hydrate>` rendered by a stand-in React) keeps it.
  */
 export function startRuntimeLinks(
@@ -87,20 +90,12 @@ export function startRuntimeLinks(
   if ('node_modules/@tanstack/react-start/package.json' in files) {
     return {}
   }
-  if (!existsSync(path.join(reactStartPackage, 'dist/esm/index.js'))) {
-    throw new Error(
-      `@tanstack/react-start is not built (no ${reactStartPackage}/dist): run the tests through Nx, whose test:unit target builds it first`,
-    )
-  }
-  return { 'node_modules/@tanstack/react-start': reactStartPackage }
+  return workspacePackageLinks(['@tanstack/react-start'])
 }
 
 /** Creates the `startRuntimeLinks()` of an app made without `createApp`. */
-export async function linkStartRuntime(root: string) {
-  for (const [link, target] of Object.entries(startRuntimeLinks())) {
-    await mkdir(path.dirname(path.join(root, link)), { recursive: true })
-    await symlink(target, path.join(root, link))
-  }
+export function linkStartRuntime(root: string) {
+  return linkWorkspacePackages(root, ['@tanstack/react-start'])
 }
 
 /**
@@ -163,9 +158,7 @@ export function runInRequestContext<T>(fn: () => T): T {
 /**
  * Exports of an SSR entry whose script calls server fns by id
  * (`callByIdPrelude`): Start's default server entry (the HTTP handler of a
- * Start app) and Start's client RPC. The server entry renders with the real
- * `@tanstack/react-router`: an app with the stand-in (`routerRuntimeFiles`)
- * cannot load it.
+ * Start app) and Start's client RPC.
  */
 export const callByIdExports = `export { default as startServerEntry } from '@tanstack/react-start/server-entry'
 export { createClientRpc } from '@tanstack/react-start/client-rpc'
@@ -217,53 +210,6 @@ export async function requestsOf(
 /** Prelude of a client script: `requestsOf(fn, options)` (see above). */
 export const requestsOfPrelude = `const requestsOf = ${requestsOf.toString()}
 `
-
-const routerPackage = 'node_modules/@tanstack/react-router'
-
-/**
- * A stand-in `@tanstack/react-router` for apps with routes: a route is its
- * options (`Route.options`), split options load their chunk when called,
- * and the generated route tree links routes as children.
- */
-export const routerRuntimeFiles: Record<string, string> = {
-  [`${routerPackage}/package.json`]: JSON.stringify({
-    name: '@tanstack/react-router',
-    type: 'module',
-    sideEffects: false,
-    exports: { '.': './index.js' },
-  }),
-  [`${routerPackage}/index.js`]: `function createRouteObject(options) {
-  const route = {
-    options,
-    children: undefined,
-    update(extra) {
-      Object.assign(route.options, extra)
-      return route
-    },
-    _addFileChildren(children) {
-      route.children = children
-      return route
-    },
-    _addFileTypes: () => route,
-  }
-  return route
-}
-export const createRootRoute = (options = {}) => createRouteObject(options)
-export const createFileRoute = () => (options = {}) => createRouteObject(options)
-export const lazyFn = (load, name) => async (...args) => (await load())[name](...args)
-export const lazyRouteComponent = (load, name = 'default') => {
-  let loaded
-  const Lazy = (props) => {
-    if (!loaded) throw new Error('lazy component rendered before it loaded')
-    return loaded(props)
-  }
-  Lazy.preload = async () => {
-    loaded = (await load())[name]
-  }
-  return Lazy
-}
-`,
-}
 
 export type StartBundler = 'vite' | 'rsbuild'
 
@@ -355,11 +301,46 @@ globalThis.__tssBuildHarnessApp = { start, router }
 globalThis.${entryGlobal} = entry
 `
 
+/**
+ * `harness/render.ts` of every app: `renderPath(routeTree, pathname)`
+ * renders the app's route tree at `pathname` through the real router and
+ * React (`createRouter` over the tree, `router.load()`, which runs the
+ * loaders and loads the split route options, then `<RouterProvider>` to
+ * HTML), and React's `createElement` and `renderToString` render a
+ * component on its own (e.g. a loaded split component, whose render error
+ * `renderToString` throws). A test's entry re-exports what its scripts use
+ * (`export { renderPath } from '../harness/render'`: `entry.renderPath(...)`).
+ */
+const renderFile = `import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRouter,
+} from '@tanstack/react-router'
+import type { AnyRoute } from '@tanstack/react-router'
+
+export { createElement, renderToString }
+
+export async function renderPath(
+  routeTree: AnyRoute,
+  pathname: string,
+): Promise<string> {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: [pathname] }),
+  })
+  await router.load()
+  return renderToString(createElement(RouterProvider, { router }))
+}
+`
+
 /** The files the harness adds to every app, unless the app has them. */
 const harnessFiles = (entries: { client: string; ssr: string }) => ({
   'harness/client-entry.ts': harnessEntry(entries.client),
   'harness/server-entry.ts': harnessEntry(entries.ssr),
   'harness/start.ts': `export const startInstance = undefined\n`,
+  'harness/render.ts': renderFile,
   'src/router.ts': `export const getRouter = () => undefined\n`,
   // The router generator needs a routes directory (nothing imports the
   // route tree unless the app's router does).
