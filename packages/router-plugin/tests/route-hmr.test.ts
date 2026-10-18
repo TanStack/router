@@ -3,19 +3,16 @@
  * the identity of its components so that the framework's refresh patches
  * them without a remount, and nothing of it ships when HMR is off.
  *
- * Hot updates run with `hotUpdate` (a real `RouterCore` and route classes,
- * the bundler's hot API and React Refresh's runtime): `render(option)` is
- * what the page shows after the update. Compiled modules are evaluated with
- * `loadRoute` / `evaluateModule`; what the route HMR plugin serves, and
- * which edits a Vite dev server hot-updates, is read from a real dev server
- * with the framework's Vite plugin (`editRouteFile`).
+ * What the page shows after an edit is tested in a real dev server and a
+ * real browser page (`route-hmr-browser.test.ts`). Here: the route HMR code
+ * the router plugin emits, run on its own with the bundler's hot API
+ * (`hotUpdate`), compiled modules evaluated with `loadRoute` /
+ * `evaluateModule`, and what the route HMR plugin serves in a real Vite dev
+ * server.
  */
 import { SourceMap } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import react from '@vitejs/plugin-react'
-import vueJsx from '@vitejs/plugin-vue-jsx'
-import solid from 'vite-plugin-solid'
 import { describe, expect, it, onTestFinished, test, vi } from 'vitest'
 import {
   createDevServer,
@@ -26,13 +23,11 @@ import {
   compileRouteModules,
   evaluateModule,
   expectValidModules,
-  generatedRouteId,
   head,
   hotUpdate,
   importSources,
   loadRoute,
 } from './regression-helpers'
-import { editRouteFile } from './vite-hot-update'
 import type { TargetFramework } from './regression-helpers'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -58,206 +53,42 @@ function PostsErrorComponent() {
   return <div>Error loading posts ${version}</div>
 }`
 
-/**
- * Split routes and the component options each one splits. Each fixture is a
- * function of the version: its loader returns it and its components render
- * it, so the update can tell the new code apart.
- */
-const splitRoutes = [
-  {
-    name: 'an arrow function component',
-    route: (version: string) =>
-      fileRoute(version, 'component: PostsComponent,', '').concat(
-        `\nconst PostsComponent = () => <div>posts ${version}</div>`,
-      ),
-    components: ['component'],
-  },
-  {
-    name: 'a function declaration component',
-    route: (version: string) =>
-      fileRoute(version, 'component: PostsComponent,', posts(version)),
-    components: ['component'],
-  },
-  {
-    name: 'two split components',
-    route: (version: string) =>
-      fileRoute(
-        version,
-        'component: PostsComponent,\n  errorComponent: PostsErrorComponent,',
-        posts(version),
-      ),
-    components: ['component', 'errorComponent'],
-  },
-  {
-    name: 'components under quoted keys',
-    route: (version: string) =>
-      fileRoute(
-        version,
-        `'component': PostsComponent,\n  'errorComponent': PostsErrorComponent,`,
-        posts(version),
-      ),
-    components: ['component', 'errorComponent'],
-  },
-  {
-    name: 'a split loader in its own chunk',
-    route: (version: string) =>
-      fileRoute(
-        version,
-        `component: PostsComponent,\n  codeSplitGroupings: [['loader'], ['component']],`,
-        posts(version),
-      ),
-    components: ['component'],
-  },
-  {
-    name: 'a split loader in the component chunk',
-    route: (version: string) =>
-      fileRoute(
-        version,
-        `component: PostsComponent,\n  codeSplitGroupings: [['component', 'loader']],`,
-        posts(version),
-      ),
-    components: ['component'],
-  },
-]
-
-/** What each component option of `splitRoutes` renders in a version. */
-const rendered = (option: string, version: string) =>
-  option === 'component'
-    ? `<div>posts ${version}</div>`
-    : `<div>Error loading posts ${version}</div>`
-
 /** The value a loader of the live route returns, split or not. */
 async function loaderData(update: Awaited<ReturnType<typeof hotUpdate>>) {
   return (await update.load('loader')).call(undefined)
 }
 
-describe('a hot update of a split route', () => {
-  // Source: add-hmr snapshot fixtures arrow-function, function-declaration,
-  // multi-component and string-literal-keys (React, Vite and webpack); the
-  // split loader row replaces react-refresh-route-components "does not keep
-  // a split loader in the HMR data".
-  describe.each(['vite', 'webpack'] as const)('%s', (style) => {
-    it.each(splitRoutes)(
-      'keeps the split components, renders their new code in place and applies the new options ($name)',
-      async ({ route, components }) => {
-        const update = await hotUpdate(route('old'), {
-          style,
-          codeSplitting: true,
-          updated: route('new'),
-        })
-        expect(update.invalidated).toBe(false)
-        for (const option of components) {
-          expect(update.isLazy(option), option).toBe(true)
-          expect(update.live[option], option).toBe(update.previous[option])
-          expect(await update.render(option), option).toBe(
-            rendered(option, 'new'),
-          )
-          expect(update.remounted(option), option).toBe(false)
-        }
-        expect(await loaderData(update)).toBe('new')
-      },
-    )
-  })
-
-  // An edit that adds or removes a split component option.
-  it.each(['vite', 'webpack'] as const)(
-    '%s: renders a split component option the update adds, and drops one it removes',
-    async (style) => {
-      const one = (version: string) =>
-        fileRoute(version, 'component: PostsComponent,', posts(version))
-      const two = (version: string) =>
+describe('the route HMR code of a Solid or Vue route', () => {
+  // Source: add-hmr snapshot fixture solid/arrow-function. Solid and Vue
+  // have no React Refresh to patch a kept component in place: the live route
+  // gets the new component (webpack / Rspack style, the route module runs
+  // again). What the page shows after an edit: route-hmr-browser.test.ts.
+  test.each([
+    { framework: 'solid', codeSplitting: true },
+    { framework: 'vue', codeSplitting: true },
+    { framework: 'solid', codeSplitting: false },
+    { framework: 'vue', codeSplitting: false },
+  ] as const)(
+    '$framework (codeSplitting: $codeSplitting): applies the new options and component with the router package of the framework and no React code',
+    async ({ framework, codeSplitting }) => {
+      const route = (version: string) =>
         fileRoute(
           version,
-          'component: PostsComponent,\n  errorComponent: PostsErrorComponent,',
-          posts(version),
-        )
-      const added = await hotUpdate(one('old'), {
-        style,
-        codeSplitting: true,
-        updated: two('new'),
-      })
-      expect(added.invalidated).toBe(false)
-      expect(added.isLazy('errorComponent')).toBe(true)
-      expect(await added.render('errorComponent')).toBe(
-        rendered('errorComponent', 'new'),
-      )
-      expect(await added.render('component')).toBe(rendered('component', 'new'))
-      const removed = await hotUpdate(two('old'), {
-        style,
-        codeSplitting: true,
-        updated: one('new'),
-      })
-      expect(removed.invalidated).toBe(false)
-      expect(removed.live.errorComponent).toBeUndefined()
-      expect(await removed.render('component')).toBe(
-        rendered('component', 'new'),
-      )
-    },
-  )
-
-  // A split component that reads the route, next to a loader that calls an
-  // import. Source: add-hmr snapshot fixtures (main) whose component reads
-  // `Route.*`.
-  describe.each([
-    { style: 'vite', codeSplitting: true },
-    { style: 'webpack', codeSplitting: true },
-    { style: 'vite', codeSplitting: false },
-    { style: 'webpack', codeSplitting: false },
-  ] as const)('$style (codeSplitting: $codeSplitting)', (options) => {
-    it('updates a route whose component reads the route and whose loader calls an import', async () => {
-      const route = (
-        version: string,
-      ) => `import { createFileRoute } from '@tanstack/react-router'
-import { fetchData } from './api'
-function Page() {
-  return <div>{Route.fullPath} ${version}</div>
-}
-export const Route = createFileRoute('/posts')({
-  loader: () => fetchData('${version}'),
-  component: Page,
-})`
-      const update = await hotUpdate(route('old'), {
-        ...options,
-        routeId: '/posts',
-        updated: route('new'),
-        stubs: { './api': { fetchData: (data: string) => data } },
-      })
-      expect(update.invalidated).toBe(false)
-      expect(update.live.component).toBe(update.previous.component)
-      expect(await loaderData(update)).toBe('new')
-      expect(await update.render('component')).toBe('<div>/posts new</div>')
-      expect(update.remounted('component')).toBe(false)
-    })
-  })
-
-  /** A Solid or Vue split route, compiled for the dev server. */
-  const frameworkRoute = (framework: TargetFramework) => (version: string) =>
-    fileRoute(
-      version,
-      'component: PostsComponent,',
-      `function PostsComponent() {
+          'component: PostsComponent,',
+          `function PostsComponent() {
   return <div>posts ${version}</div>
 }`,
-      framework,
-    )
-
-  // Solid and Vue: webpack / Rspack (whether Vite hot-updates them depends
-  // on their framework plugin: the pins below and known-bugs-route-hmr.test.ts
-  // "Vite HMR boundaries"). Source: add-hmr snapshot fixture
-  // solid/arrow-function.
-  test.each(['solid', 'vue'] as const)(
-    '%s: applies the new options and renders the new component with the router package of the framework',
-    async (framework) => {
-      const route = frameworkRoute(framework)
+          framework,
+        )
       const update = await hotUpdate(route('old'), {
         style: 'webpack',
         targetFramework: framework,
-        codeSplitting: true,
+        codeSplitting,
         updated: route('new'),
       })
       expect(update.invalidated).toBe(false)
       expect(await loaderData(update)).toBe('new')
-      expect(await update.render('component')).toBe('<div>posts new</div>')
+      expect((await update.load('component'))()).toBe('<div>posts new</div>')
       // No React code.
       expect(Object.keys(update.window)).toEqual(['__TSR_ROUTER__'])
       for (const style of ['vite', 'webpack'] as const) {
@@ -273,305 +104,26 @@ export const Route = createFileRoute('/posts')({
       }
     },
   )
-
-  // Bug: route HMR keeps the previous split components only for React: for
-  // Solid and Vue, the route module creates a new lazy component on every
-  // update and `handleRouteUpdate` keeps no component option
-  // (`getFrameworkHmrCompilerPlugins` returns no plugin and the kept
-  // component keys are empty for other targets); in Vite, the route module
-  // is not an HMR boundary either (its accept call is on an alias), so the
-  // page reloads.
-  // Impact: every edit of a Solid or Vue route file reloads the page (Vite)
-  // or remounts the route's component (webpack / Rspack), losing its state,
-  // instead of patching it in place.
-  // Goal (any fix): in a Vite dev server with the framework's plugin, the
-  // edit is a hot update that runs the edited component's module again
-  // (where the framework's refresh patches the component), and the live
-  // route keeps the component the page rendered.
-  // Source: decision D10 (Solid/Vue split components keep their identity
-  // across hot updates, as React's do); gaps H8/H9.
-  test.fails.each([
-    { framework: 'solid', plugin: () => solid() },
-    { framework: 'vue', plugin: () => vueJsx() },
-  ] as const)(
-    '$framework: keeps the split component and updates it in place',
-    async ({ framework, plugin }) => {
-      const route = frameworkRoute(framework)
-      const served = await editRouteFile({
-        target: framework,
-        autoCodeSplitting: true,
-        plugins: [plugin()],
-        route,
-        loaded: ['?tsr-split=component'],
-      })
-      expect(served.messages).not.toContainEqual(
-        expect.stringMatching(/full-reload/),
-      )
-      expect(served.reimports('/routes/index.tsx?tsr-split=component')).toBe(
-        true,
-      )
-      const update = await hotUpdate(route('old'), {
-        style: 'webpack',
-        targetFramework: framework,
-        codeSplitting: true,
-        updated: route('new'),
-      })
-      expect(update.live.component).toBe(update.previous.component)
-    },
-    30_000,
-  )
 })
 
-// What a Vite dev server running `@vitejs/plugin-react` sends the page when a
-// split route file is edited: a hot update, whose boundaries include the
-// split component the page loaded (React Refresh patches it in place, as
-// `hotUpdate` shows above).
-describe('an edit of a React split route in a Vite dev server', () => {
-  it('is a hot update that imports the edited split component again', async () => {
-    const served = await editRouteFile({
-      target: 'react',
-      autoCodeSplitting: true,
-      plugins: [react()],
-      route: (version) =>
-        fileRoute(version, 'component: PostsComponent,', posts(version)),
-      loaded: ['?tsr-split=component'],
-    })
-    expect(served.hotUpdate).toBe(true)
-    expect(served.reimports('/routes/index.tsx?tsr-split=component')).toBe(true)
-  }, 30_000)
-
-  it('is a hot update when the edit changes a value the loader and the split component share', async () => {
-    const served = await editRouteFile({
-      target: 'react',
-      autoCodeSplitting: true,
-      plugins: [react()],
-      route: (version) => `${head}const label = '${version}'
-function PostsComponent() {
-  return <div>{label}</div>
-}
-export const Route = createFileRoute('/')({
-  loader: () => label,
-  component: PostsComponent,
-})`,
-      loaded: ['?tsr-split=component'],
-    })
-    expect(served.hotUpdate).toBe(true)
-  }, 30_000)
-})
-
-describe('a hot update of a root route', () => {
-  const root = (
-    version: string,
-  ) => `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({
-  loader: () => '${version}',
-  component: RootComponent,
-})
-function RootComponent() {
-  return <div>Hello ${version}</div>
-}`
-
-  // Source: add-hmr snapshot fixture createRootRoute and the generated root
-  // route id (`/__root`) test.
-  it.each(['vite', 'webpack'] as const)(
-    '%s: reaches the root route, renders its new component in place and applies the new loader',
-    async (style) => {
-      const update = await hotUpdate(root('old'), {
-        style,
-        codeSplitting: true,
-        routeId: await generatedRouteId('__root.tsx'),
-        updated: root('new'),
-      })
-      expect(update.invalidated).toBe(false)
-      expect(update.live.component).toBe(update.previous.component)
-      expect(await update.render('component')).toBe('<div>Hello new</div>')
-      expect(update.remounted('component')).toBe(false)
-      expect(await loaderData(update)).toBe('new')
-    },
-  )
-
-  // `shellComponent` is a root route option. A shell changes the tree the
-  // route renders in: adding or removing it renders the new components
-  // (React may remount them); editing it patches them in place.
-  // Source: decision on rp:1304 (shellComponent + HMR, 2026-10-18).
-  const shellRoot = (options: Record<string, string>) =>
-    `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({
-${Object.entries(options)
-  .map(([option, value]) => `  ${option}: ${value},`)
-  .join('\n')}
-})`
-  const shell = (version: string) =>
-    `({ children }) => <html><body>${version}{children}</body></html>`
-  const page = (version: string) => `() => <p>${version}</p>`
-  describe.each(['vite', 'webpack'] as const)('%s', (style) => {
-    it.each<{
-      edit: string
-      before: Record<string, string>
-      after: Record<string, string>
-    }>([
-      {
-        edit: 'adds',
-        before: { component: page('old') },
-        after: { shellComponent: shell('new'), component: page('new') },
-      },
-      {
-        edit: 'edits',
-        before: { shellComponent: shell('old'), component: page('old') },
-        after: { shellComponent: shell('new'), component: page('new') },
-      },
-      {
-        edit: 'removes',
-        before: { shellComponent: shell('old'), component: page('old') },
-        after: { component: page('new') },
-      },
-    ])(
-      'an update that $edit the shell component renders the new shell and component',
-      async ({ edit, before, after }) => {
-        const update = await hotUpdate(shellRoot(before), {
-          style,
-          codeSplitting: true,
-          routeId: await generatedRouteId('__root.tsx'),
-          updated: shellRoot(after),
-        })
-        expect(update.invalidated).toBe(false)
-        expect(await update.render('component')).toBe('<p>new</p>')
-        if ('shellComponent' in after) {
-          expect(
-            await update.render('shellComponent', { children: 'page' }),
-          ).toBe('<html><body>newpage</body></html>')
-        } else {
-          expect(update.live.shellComponent).toBeUndefined()
-        }
-        if (edit === 'edits') {
-          expect(update.remounted('component')).toBe(false)
-          expect(update.remounted('shellComponent')).toBe(false)
-        }
-      },
-    )
-  })
-})
-
-describe('a hot update of an unsplit route', () => {
-  const componentOptions = [
-    'component',
-    'pendingComponent',
-    'errorComponent',
-    'notFoundComponent',
-  ]
-  /**
-   * A route at `/` with a component for each of `options` rendering its
-   * option and `version`.
-   */
-  const route = (data: string, options: Array<string>, version = data) =>
-    fileRoute(
-      data,
-      options
-        .map((option) => `${option}: () => <p>${option} ${version}</p>,`)
-        .join('\n  '),
-    )
-
-  it.each(['vite', 'webpack'] as const)(
-    '%s: keeps every component option, renders their new code in place and applies the new loader',
-    async (style) => {
-      const update = await hotUpdate(route('old', componentOptions), {
-        style,
-        updated: route('new', componentOptions),
-      })
-      expect(update.invalidated).toBe(false)
-      for (const option of componentOptions) {
-        expect(update.live[option], option).toBeTypeOf('function')
-        expect(update.live[option], option).toBe(update.previous[option])
-        expect(await update.render(option), option).toBe(`<p>${option} new</p>`)
-        expect(update.remounted(option), option).toBe(false)
-      }
-      expect(await loaderData(update)).toBe('new')
-    },
-  )
-
-  it.each(['vite', 'webpack'] as const)(
-    '%s: drops a component option the update removes',
-    async (style) => {
-      const update = await hotUpdate(
-        route('old', ['component', 'errorComponent']),
-        { style, updated: route('new', ['component']) },
-      )
-      expect(update.live.errorComponent).toBeUndefined()
-      expect(update.live.component).toBe(update.previous.component)
-      expect(await update.render('component')).toBe('<p>component new</p>')
-    },
-  )
-
-  it.each(['vite', 'webpack'] as const)(
-    '%s: renders a component option the update adds',
-    async (style) => {
-      const update = await hotUpdate(route('old', ['component']), {
-        style,
-        updated: route('new', ['component', 'errorComponent'], 'added'),
-      })
-      expect(await update.render('errorComponent')).toBe(
-        '<p>errorComponent added</p>',
-      )
-    },
-  )
-
-  // Solid and Vue have no React Refresh to patch a kept component in place,
-  // so the update renders the new one (webpack / Rspack; see the split
-  // route's Solid and Vue rows for Vite).
-  test.each(['solid', 'vue'] as const)(
-    '%s: renders the new component',
-    async (framework) => {
-      const source = (text: string) =>
-        fileRoute(text, `component: () => <p>${text}</p>,`, '', framework)
-      const update = await hotUpdate(source('old'), {
-        style: 'webpack',
-        targetFramework: framework,
-        updated: source('new'),
-      })
-      expect(update.invalidated).toBe(false)
-      expect(await update.render('component')).toBe('<p>new</p>')
-      expect(await loaderData(update)).toBe('new')
-      expect(Object.keys(update.window)).toEqual(['__TSR_ROUTER__'])
-    },
-  )
-
-  /** A route whose options a factory call builds. */
-  const factoryRoute = (
-    data: string,
-  ) => `import { createFileRoute } from '@tanstack/react-router'
+describe('the route HMR code of a route whose options a factory call builds', () => {
+  // webpack and Rspack run the route module again: its HMR code applies the
+  // options the new factory call built. (In Vite, the edit may reload the
+  // page instead; either way the edit shows: route-hmr-browser.test.ts.)
+  it('webpack: applies the new options', async () => {
+    const factoryRoute = (
+      data: string,
+    ) => `import { createFileRoute } from '@tanstack/react-router'
 import { makeOptions } from './options'
 export const Route = createFileRoute('/')(makeOptions('${data}'))`
-  const options = {
-    './options': {
-      makeOptions: (data: string) => ({ loader: () => data }),
-    },
-  }
-
-  it('webpack: applies route options a factory call builds', async () => {
     const update = await hotUpdate(factoryRoute('old'), {
       style: 'webpack',
       updated: factoryRoute('new'),
-      stubs: options,
-    })
-    expect(update.invalidated).toBe(false)
-    expect(await loaderData(update)).toBe('new')
-  })
-
-  // Bug: a route module in which React Refresh registers no component (its
-  // options come from a factory call, so there is no component to hoist and
-  // the route HMR plugin adds no Fast Refresh anchor) is not a Vite HMR
-  // boundary with `@vitejs/plugin-react`: the route HMR code calls `accept`
-  // on an alias (`const hot = import.meta.hot`), and Vite only takes a
-  // literal `import.meta.hot.accept(` (same root cause as the `.ts` route
-  // module pin of known-bugs-route-hmr.test.ts "Vite HMR boundaries").
-  // Impact: every edit of such a route file reloads the page in Vite dev.
-  // NEW (wave 2): hotUpdate now decides Vite boundaries like Vite
-  // (regression-helpers.test.ts "reloads the page exactly when a Vite dev
-  // server does").
-  it.fails('vite: applies route options a factory call builds', async () => {
-    const update = await hotUpdate(factoryRoute('old'), {
-      updated: factoryRoute('new'),
-      stubs: options,
+      stubs: {
+        './options': {
+          makeOptions: (data: string) => ({ loader: () => data }),
+        },
+      },
     })
     expect(update.invalidated).toBe(false)
     expect(await loaderData(update)).toBe('new')

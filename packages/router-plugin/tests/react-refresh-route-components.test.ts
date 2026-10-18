@@ -26,7 +26,6 @@ import {
   exportedNames,
   getRouteOption,
   head,
-  hotUpdate,
   isRefreshable,
   loadRoute,
   reactRefresh,
@@ -288,46 +287,6 @@ export const Route = createFileRoute('/')({ component: ${component} })`,
     expect(route.isLazy('component')).toBe(true)
     expect(isRefreshable(await route.load('component'), route.registered)).toBe(
       true,
-    )
-  })
-})
-
-// The route HMR code declares bindings of its own (`hotData`,
-// `handleRouteUpdate`, ...); a route file's bindings with the same names keep
-// their values, and the route still hot-updates. (A user binding named `hot`
-// collides: pinned in known-bugs-route-hmr.test.ts.)
-describe('route HMR code next to user bindings with common names', () => {
-  /** A route file with its own `hotData` and `handleRouteUpdate`. */
-  const route = (version: string) => `${head}const hotData = 'data ${version}'
-function handleRouteUpdate() {
-  return 'update ${version}'
-}
-function Page() {
-  return <p>{hotData} {handleRouteUpdate()}</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => hotData,
-  component: Page,
-})`
-
-  describe.each([
-    { compiler: 'automatic code splitting', codeSplitting: true },
-    { compiler: 'the route HMR plugin', codeSplitting: false },
-  ])('with $compiler', ({ codeSplitting }) => {
-    it.each(['vite', 'webpack'] as const)(
-      '%s: keeps the values of hotData and handleRouteUpdate',
-      async (style) => {
-        const update = await hotUpdate(route('old'), {
-          style,
-          codeSplitting,
-          updated: route('new'),
-        })
-        expect(update.invalidated).toBe(false)
-        expect(await (await update.load('loader'))()).toBe('data new')
-        expect(await update.render('component')).toBe(
-          '<p>data new update new</p>',
-        )
-      },
     )
   })
 })

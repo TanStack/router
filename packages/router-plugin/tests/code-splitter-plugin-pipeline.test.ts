@@ -723,7 +723,6 @@ export const Route = (() =>
               hotUpdate(route('old'), {
                 style,
                 codeSplitting,
-                refresh: true,
                 routeId: '/made',
                 updated: route('new'),
               }),
