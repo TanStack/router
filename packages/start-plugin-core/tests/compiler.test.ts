@@ -1407,41 +1407,61 @@ export const factory = createServerFn().middleware([middleware]);`
   ).resolves.toBeNull()
 })
 
-describe('top-level member calls', () => {
-  function createCompilerWithModules(
-    env: 'client' | 'server',
-    virtualModules: Record<string, string>,
-  ) {
-    const resolved: Array<string> = []
-    const loaded: Array<string> = []
-    const compiler: StartCompiler = new StartCompiler({
-      ...getDefaultTestOptions(env),
-      env,
-      mode: 'build',
-      lookupKinds: getLookupKindsForEnv(env),
-      lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
-      getKnownServerFns: () => ({}),
-      resolveId: async (id) => {
-        resolved.push(id)
-        return id in virtualModules ? id : null
-      },
-      loadModule: async (id) => {
-        loaded.push(id)
-        const code = virtualModules[id]
-        if (code) {
-          compiler.ingestModule({ code, id })
-        }
-      },
-    })
-    return { compiler, resolved, loaded }
-  }
+describe.each(['build', 'dev'] as const)(
+  'top-level member calls in %s mode',
+  (mode) => {
+    function createCompilerWithModules(
+      env: 'client' | 'server',
+      virtualModules: Record<string, string>,
+    ) {
+      const resolved: Array<string> = []
+      const loaded: Array<string> = []
+      const compiler: StartCompiler = new StartCompiler({
+        ...getDefaultTestOptions(env),
+        env,
+        mode,
+        devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
+          `/@id${extractedFilename.slice(root.length)}`,
+        lookupKinds: getLookupKindsForEnv(env),
+        lookupConfigurations: getLookupConfigurationsForEnv(env, 'react'),
+        getKnownServerFns: () => ({}),
+        resolveId: async (id) => {
+          resolved.push(id)
+          return id in virtualModules ? id : null
+        },
+        loadModule: async (id) => {
+          loaded.push(id)
+          const code = virtualModules[id]
+          if (code) {
+            compiler.ingestModule({ code, id })
+          }
+        },
+      })
+      return { compiler, resolved, loaded }
+    }
 
-  test('does not load the module behind a named-import receiver such as `z.object()`', async () => {
-    const { compiler, resolved, loaded } = createCompilerWithModules('client', {
-      zod: `export const z = { object: (shape) => shape, string: () => ({}) }`,
-      './api': `export const api = { users: () => [] }`,
-    })
-    const code = `
+    describe.each(['fast', 'full'] as const)('%s traversal', (traversal) => {
+      // An isomorphic function requires full traversal; server functions alone
+      // use the compiler's fast path. Let normal code detection choose the path.
+      const traversalCode =
+        traversal === 'full'
+          ? `import { createIsomorphicFn } from '@tanstack/react-start'
+         export const iso = createIsomorphicFn().client(() => 'client').server(() => 'server')`
+          : ''
+
+      test.each(['client', 'ssr', 'provider'] as const)(
+        'does not resolve or load named-import receivers in %s output',
+        async (output) => {
+          const env = output === 'client' ? 'client' : 'server'
+          const { compiler, resolved, loaded } = createCompilerWithModules(
+            env,
+            {
+              zod: `export const z = { object: (shape) => shape, string: () => ({}) }`,
+              './api': `export const api = { users: () => [] }`,
+            },
+          )
+          const code = `
+      ${traversalCode}
       import { createServerFn } from '@tanstack/react-start'
       import { z } from 'zod'
       import { api } from './api'
@@ -1454,25 +1474,34 @@ describe('top-level member calls', () => {
         .handler(async ({ data }) => ({ id: data.id, users }))
     `
 
-    const result = await compiler.compile({
-      id: '/test/get-user.ts',
-      code,
-      detectedKinds: detectKindsInCode(code, 'client'),
-    })
+          const result = await compiler.compile({
+            id:
+              '/test/get-user.ts' +
+              (output === 'provider' ? '?tss-serverfn-split' : ''),
+            code,
+            detectedKinds: detectKindsInCode(code, env),
+          })
 
-    expect(result).not.toBeNull()
-    expect(result!.code).toContain('createClientRpc')
-    expect(resolved).toEqual([])
-    expect(loaded).toEqual([])
-  })
+          expect(result).not.toBeNull()
+          const rpc = {
+            client: 'createClientRpc',
+            ssr: 'createSsrRpc',
+            provider: 'createServerRpc',
+          }
+          expect(result!.code).toContain(rpc[output])
+          expect(resolved).toEqual([])
+          expect(loaded).toEqual([])
+        },
+      )
 
-  test.each(['client', 'server'] as const)(
-    'still compiles a renamed env-only factory called through a namespace import on %s',
-    async (env) => {
-      const { compiler } = createCompilerWithModules(env, {
-        './factory': `export { createServerOnlyFn as serverOnly } from '@tanstack/start-fn-stubs'`,
-      })
-      const code = `
+      test.each(['client', 'server'] as const)(
+        'still compiles a renamed env-only factory called through a namespace import on %s',
+        async (env) => {
+          const { compiler } = createCompilerWithModules(env, {
+            './factory': `export { createServerOnlyFn as serverOnly } from '@tanstack/start-fn-stubs'`,
+          })
+          const code = `
+        ${traversalCode}
         import { createServerFn } from '@tanstack/react-start'
         import * as factory from './factory'
 
@@ -1481,23 +1510,25 @@ describe('top-level member calls', () => {
         export const fn = createServerFn().handler(async () => impl())
       `
 
-      const result = await compiler.compile({
-        id: '/test/namespace-factory.ts',
-        code,
-        detectedKinds: detectKindsInCode(code, env),
-      })
+          const result = await compiler.compile({
+            id: '/test/namespace-factory.ts',
+            code,
+            detectedKinds: detectKindsInCode(code, env),
+          })
 
-      expect(result).not.toBeNull()
-      if (env === 'server') {
-        expect(result!.code).toContain('server-only-value')
-        expect(result!.code).not.toContain('factory.serverOnly')
-      } else {
-        expect(result!.code).not.toContain('server-only-value')
-        expect(result!.code).toContain('throw new Error')
-      }
-    },
-  )
-})
+          expect(result).not.toBeNull()
+          if (env === 'server') {
+            expect(result!.code).toContain('server-only-value')
+            expect(result!.code).not.toContain('factory.serverOnly')
+          } else {
+            expect(result!.code).not.toContain('server-only-value')
+            expect(result!.code).toContain('throw new Error')
+          }
+        },
+      )
+    })
+  },
+)
 
 test.each([
   `(createServerOnlyFn)(() => 'server-value')`,
