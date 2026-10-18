@@ -2,27 +2,34 @@
  * The forms a `<Hydrate>` boundary is written in, and what each environment
  * makes of it: the server strips the client-only `fallback` however it is
  * passed, `split={false}` keeps the children in place, children that cannot
- * be split are rejected clearly (or, ideally, supported), nested boundaries
- * hydrate with the ids the server renders, and only the `Hydrate` of a
- * `@tanstack/*-start` package is a boundary.
+ * be split are rejected clearly, nested boundaries hydrate with the ids the
+ * server renders, and only the `Hydrate` of a `@tanstack/*-start` package is
+ * a boundary.
+ *
+ * Every output is rendered with the real React, `@tanstack/react-router` and
+ * Start's real `Hydrate` and strategies (`render.ts`) and compared with the
+ * uncompiled source and across environments. What only a browser observes
+ * (the client receiving the fallback, `prefetch`, `onHydrated`, the function
+ * form of `when` running on the client only) is checked by real pages.
  */
-import { afterEach, describe, expect, test } from 'vitest'
-import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+import { afterEach, beforeAll, describe, expect, test } from 'vitest'
+import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   compileErrorMessage,
   compileHydrate,
-  createStartCompiler,
-  evaluateModule,
-  expectRenderedThroughChunks,
-  getChunkIds,
-  hydrateStubs,
+  expectClientRendersLikeServer,
+  expectRendersLikeSource,
   importSources,
-  loadClientModule,
-  renderBoundaries,
-  renderChunk,
+  loadChunk,
+  renderClient,
+  renderServer,
+  renderSource,
+  startPackage,
+  withoutHydrationIds,
 } from './regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import type { Framework, ModuleStub } from './regression-helpers'
+import { packagesDir } from './render'
+import type { Framework, ModuleStub, RenderOptions } from './regression-helpers'
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -40,6 +47,23 @@ function rejections(results: Record<string, unknown>) {
   return Object.values(results)
     .filter((result) => result instanceof Error)
     .map(compileErrorMessage)
+}
+
+/**
+ * The server output of `code` renders the markup the uncompiled source
+ * renders (hydration ids blanked, `withoutHydrationIds`). Returns the server
+ * render.
+ */
+async function expectServerRendersLikeSource(
+  code: string,
+  options: RenderOptions = {},
+) {
+  const source = await renderSource(code, options)
+  const server = await renderServer(code, options)
+  expect(withoutHydrationIds(server.html)).toBe(
+    withoutHydrationIds(source.html),
+  )
+  return server
 }
 
 describe('the server strips the client-only fallback, and only it', () => {
@@ -66,7 +90,6 @@ describe('the server strips the client-only fallback, and only it', () => {
       code: `export function Page() {
   return <Hydrate when={visible()} prefetch={() => 'prefetched'} fallback={<p>fallback-marker</p>} onHydrated={() => 'hydrated'}><p>child</p></Hydrate>
 }`,
-      received: { prefetch: 'prefetched', onHydrated: 'hydrated' },
     },
     {
       name: 'an inline spread',
@@ -135,69 +158,28 @@ export function Page() {
   return <Hydrate split={false} {...props}><p>child</p></Hydrate>
 }`,
     },
-  ] as Array<{
-    name: string
-    code: string
-    received?: { prefetch: string; onHydrated: string }
-  }>
+  ]
 
   /** Every row passes `when={visible()}`, through a prop or a spread. */
   const formsHead = `${head}import { visible } from '@tanstack/react-start/hydration'
 `
 
-  /**
-   * The props other than the children and the fallback that each boundary
-   * received (`prefetch` and `onHydrated` called).
-   */
-  const otherProps = (boundaries: Array<Record<string, unknown>>) =>
-    boundaries.map((props) => ({
-      when: props.when,
-      prefetch: (props.prefetch as (() => unknown) | undefined)?.(),
-      onHydrated: (props.onHydrated as (() => unknown) | undefined)?.(),
-    }))
-  const expectedProps = (received: (typeof forms)[number]['received']) => [
-    {
-      when: 'visible',
-      prefetch: undefined,
-      onHydrated: undefined,
-      ...received,
-    },
-  ]
-
-  /** `<Hydrate>` stubs recording the props each boundary renders with. */
-  const recordingStubs = (boundaries: Array<Record<string, unknown>>) => ({
-    ...hydrateStubs(),
-    '@tanstack/react-start': {
-      Hydrate: (props: Record<string, unknown>) => {
-        boundaries.push(props)
-        return `[${props.children ?? ''}]`
-      },
-    },
+  test.each(forms)('server: $name is removed', async ({ code }) => {
+    const server = await expectServerRendersLikeSource(`${formsHead}${code}`)
+    expect(server.html).toContain('<p>child</p>')
+    expect(server.parent).not.toContain('fallback-marker')
   })
 
-  test.each(forms)('server: $name is removed', async ({ code, received }) => {
-    const { parent } = await compileHydrate('server', `${formsHead}${code}`)
-    expect(await getModuleErrors(parent)).toEqual([])
-    const boundaries: Array<Record<string, unknown>> = []
-    const module = await evaluateModule(parent, recordingStubs(boundaries))
-    expect(module.Page()).toBe('[<p>child</p>]')
-    expect(boundaries.map((props) => props.fallback)).toEqual([undefined])
-    expect(otherProps(boundaries)).toEqual(expectedProps(received))
-    expect(parent).not.toContain('fallback-marker')
-  })
-
+  // That the client boundary receives the fallback (and `prefetch`,
+  // `onHydrated`) is checked by real pages.
   test.each(forms)(
-    'client: $name reaches the boundary',
-    async ({ code, received }) => {
-      const boundaries: Array<Record<string, unknown>> = []
-      const { module } = await loadClientModule(`${formsHead}${code}`, {
-        stubs: recordingStubs(boundaries),
-      })
-      expect(module.Page()).toBe('[<p>child</p>]')
-      expect(boundaries.map((props) => props.fallback)).toEqual([
-        '<p>fallback-marker</p>',
-      ])
-      expect(otherProps(boundaries)).toEqual(expectedProps(received))
+    'client: a boundary with $name renders like the server',
+    async ({ code }) => {
+      const { client } = await expectClientRendersLikeServer(
+        `${formsHead}${code}`,
+        { split: !code.includes('split={false}') },
+      )
+      expect(client.html).toContain('<p>child</p>')
     },
   )
 
@@ -260,125 +242,68 @@ export function Page() { return <Hydrate when={load()} split={false} {...opts}><
   ])(
     'server: a fallback through $name does not load its client-only module',
     async ({ code }) => {
-      const { parent } = await compileHydrate('server', `${head}${code}`)
-      expect(await getModuleErrors(parent)).toEqual([])
-      expect(importSources(parent)).not.toContain('./client-spinner')
-      const boundaries: Array<Record<string, unknown>> = []
-      const module = await evaluateModule(parent, recordingStubs(boundaries))
-      expect(module.Page()).toBe('[<p>child</p>]')
-      expect(boundaries.map((props) => props.fallback)).toEqual([undefined])
+      const server = await expectServerRendersLikeSource(`${head}${code}`, {
+        files: {
+          './client-spinner': `export const Spinner = () => <i>spinner</i>`,
+        },
+      })
+      expect(server.html).toContain('<p>child</p>')
+      expect(server.graph.requested).not.toContain(
+        '/test/src/client-spinner.tsx',
+      )
     },
   )
 
   test('server: a module-level destructuring read by the fallback and the children keeps the children binding', async () => {
-    const { parent } = await compileHydrate(
-      'server',
+    const server = await expectServerRendersLikeSource(
       `${head}const { a, b } = { a: 'A', b: 'B' }
 export function Page() {
   return <Hydrate when={load()} fallback={<p>{a}{b}</p>}><p>{b}</p></Hydrate>
 }`,
     )
-    expect(await getModuleErrors(parent)).toEqual([])
-    const module = await evaluateModule(parent, hydrateStubs())
-    expect(module.Page()).toBe('[<p>B</p>]')
+    expect(server.html).toContain('<p>B</p>')
   })
 
   // Whatever expression `when` is, both environments pass its value to the
-  // boundary (the server strips the fallback next to it).
+  // boundary (the server strips the fallback next to it): the outputs render
+  // the boundary the strategy renders in the source. That the function form
+  // runs on the client only is checked by real pages.
   test.each([
-    { name: 'a strategy call', when: 'idle()', expected: 'idle()' },
+    { name: 'a strategy call', when: 'idle()' },
     {
       name: 'a strategy call with options',
       when: `interaction({ events: 'focusin' })`,
-      expected: 'interaction({"events":"focusin"})',
     },
-    { name: 'a prop', when: 'props.when', expected: 'from-props' },
+    { name: 'a prop', when: 'props.when' },
     {
       name: 'a local',
       setup: `const strategy = media('(min-width: 1px)')\n  `,
       when: 'strategy',
-      expected: 'media("(min-width: 1px)")',
     },
     {
       name: 'a conditional',
       when: 'props.eager ? load() : visible()',
-      expected: 'visible()',
     },
     {
-      name: 'a custom function',
-      when: `() => 'custom'`,
-      expected: 'custom',
+      name: 'a function',
+      when: `() => idle()`,
     },
   ])(
     'when as $name reaches the boundary in both environments',
-    async ({ setup = '', when, expected }) => {
+    async ({ setup = '', when }) => {
+      const { media } = await startPackage('@tanstack/react-start/hydration')
       const code = `${head}import { idle, interaction, media, visible } from '@tanstack/react-start/hydration'
 export function Page(props) {
   ${setup}return <Hydrate when={${when}} fallback={<p>fallback-marker</p>}><p>child</p></Hydrate>
 }`
-      /** Strategy stubs rendering their call. */
-      const strategy =
-        (name: string) =>
-        (...args: Array<unknown>) =>
-          `${name}(${args.map((arg) => JSON.stringify(arg)).join(',')})`
-      let lazyChunks: Array<{ rendered: boolean }> = []
-      const render = async (env: 'client' | 'server') => {
-        const boundaries: Array<Record<string, unknown>> = []
-        const stubs = {
-          ...recordingStubs(boundaries),
-          '@tanstack/react-start/hydration': Object.fromEntries(
-            ['idle', 'interaction', 'load', 'media', 'visible'].map((name) => [
-              name,
-              strategy(name),
-            ]),
-          ),
-        }
-        let module: Record<string, any>
-        if (env === 'server') {
-          const { parent } = await compileHydrate('server', code)
-          module = await evaluateModule(parent, stubs)
-        } else {
-          const loaded = await loadClientModule(code, { stubs })
-          module = loaded.module
-          lazyChunks = loaded.lazyChunks
-        }
-        return {
-          html: module.Page({ when: 'from-props', eager: false }),
-          when: boundaries.map((props) =>
-            typeof props.when === 'function' ? props.when() : props.when,
-          ),
-          fallback: boundaries.map((props) => props.fallback),
-        }
-      }
-      expect(await render('server')).toEqual({
-        html: '[<p>child</p>]',
-        when: [expected],
-        fallback: [undefined],
+      const { server, client } = await expectRendersLikeSource(code, {
+        props: { when: media('(max-width: 2px)'), eager: false },
       })
-      expect(await render('client')).toEqual({
-        html: '[<p>child</p>]',
-        when: [expected],
-        fallback: ['<p>fallback-marker</p>'],
-      })
-      expectRenderedThroughChunks(lazyChunks)
+      expect(client.html).toContain('<p>child</p>')
+      expect(server.parent).not.toContain('fallback-marker')
     },
   )
 })
-
-/**
- * JSX runtime passing children to components as they are (a single child
- * unwrapped), so a function child reaches the component.
- */
-const rawChildrenRuntime = `const __Fragment = Symbol('Fragment')
-const __jsx = (type, props, ...children) => {
-  if (typeof type === 'function') {
-    return type(children.length === 0 ? { ...props } : { ...props, children: children.length === 1 ? children[0] : children })
-  }
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
-  if (type === __Fragment) return text
-  return '<' + type + '>' + text + '</' + type + '>'
-}
-`
 
 /** A page whose boundary, with the given `split` value, has a function child. */
 const functionChildPage = (
@@ -387,20 +312,6 @@ const functionChildPage = (
 export function Page() {
   return <Hydrate when={idle()} split=${split}>{() => <p>render prop</p>}</Hydrate>
 }`
-
-/**
- * `<Hydrate>` stubs rendering a function child as `fn(<its output>)` and
- * other children inside the boundary.
- */
-const functionChildStubs = (framework: Framework = 'react') => ({
-  ...hydrateStubs(framework),
-  [`@tanstack/${framework}-start`]: {
-    Hydrate: (props: { children?: unknown }) =>
-      typeof props.children === 'function'
-        ? `fn(${props.children()})`
-        : `[${props.children ?? ''}]`,
-  },
-})
 
 describe('split={false}', () => {
   // Source: hydrate-when-transform.test.ts "respects parenthesized
@@ -434,39 +345,27 @@ describe('split={false}', () => {
   test.each([true, false])(
     'a dynamic split={flag} (%s) still splits the children',
     async (flag) => {
-      const code = `${head}export function Page({ flag }) {
+      const { client } = await expectRendersLikeSource(
+        `${head}export function Page({ flag }) {
   return <Hydrate when={load()} split={flag}><p>child</p></Hydrate>
-}`
-      const render = (module: Record<string, any>) => module.Page({ flag })
-      const server = await renderBoundaries('server', code, render)
-      expect(server.html).toBe('[<p>child</p>]')
-      expect(await renderBoundaries('client', code, render)).toEqual(server)
-      const { module, lazyChunks } = await loadClientModule(code)
-      expect(render(module)).toBe('[<p>child</p>]')
-      expectRenderedThroughChunks(lazyChunks)
+}`,
+        { props: { flag } },
+      )
+      expect(client.html).toContain('<p>child</p>')
     },
   )
 
   /**
-   * Both environments render the function child of a `split` boundary in
-   * place, without chunks.
+   * The function child of a `split` boundary stays in place: no chunk loads,
+   * and every output renders like the uncompiled source (what React makes
+   * of a function child is the framework's behaviour, not the compiler's).
    */
   async function expectFunctionChildInPlace(split: string) {
-    const code = functionChildPage(split)
-    const server = await compileHydrate('server', code)
-    expect(getChunkIds(server.parent)).toEqual([])
-    const serverModule = await evaluateModule(
-      server.parent,
-      functionChildStubs(),
-      { runtime: rawChildrenRuntime },
-    )
-    expect(serverModule.Page()).toBe('fn(<p>render prop</p>)')
-    const client = await loadClientModule(code, {
-      stubs: functionChildStubs(),
-      runtime: rawChildrenRuntime,
+    const { client } = await expectRendersLikeSource(functionChildPage(split), {
+      split: false,
     })
-    expect(client.chunkIds).toEqual([])
-    expect(client.module.Page()).toBe('fn(<p>render prop</p>)')
+    expect(client.loadedChunks).toEqual([])
+    expect(client.lazy).toEqual([])
   }
 })
 
@@ -496,79 +395,29 @@ export function Page() {
 })
 
 describe('hooks called by the children', () => {
-  /**
-   * JSX runtime recording how deep in component calls the code runs
-   * (`globalThis.__componentDepth`; 0 in the code of the component the test
-   * calls).
-   */
-  const depthRuntime = `const __Fragment = Symbol('Fragment')
-const __jsx = (type, props, ...children) => {
-  const text = children.flat(Infinity).filter((c) => c != null && c !== false && c !== true).join('')
-  if (type === __Fragment) return text
-  if (typeof type === 'function') {
-    globalThis.__componentDepth = (globalThis.__componentDepth ?? 0) + 1
-    try {
-      return type(children.length ? { ...props, children: text } : { ...props })
-    } finally {
-      globalThis.__componentDepth--
-    }
-  }
-  return '<' + type + '>' + text + '</' + type + '>'
-}
-`
-
-  afterEach(() => {
-    delete (globalThis as { __componentDepth?: number }).__componentDepth
-  })
-
-  /**
-   * Renders `Page` of `code` in both environments (the client once its chunks
-   * have loaded) and records each hook call: its name and the component
-   * depth it ran at.
-   */
-  async function renderHooks(code: string) {
-    const render = async (env: 'client' | 'server') => {
-      const calls: Array<string> = []
-      const hook = (name: string) => () => {
-        calls.push(
-          `${name}@${(globalThis as { __componentDepth?: number }).__componentDepth ?? 0}`,
-        )
-        return name
-      }
-      const stubs: Record<string, ModuleStub> = {
-        react: { useId: hook('useId') },
-        './hooks': {
-          useThing: hook('useThing'),
-          useA: hook('useA'),
-          useB: hook('useB'),
-          useC: hook('useC'),
-        },
-      }
-      const rendered = await renderBoundaries(env, code, (m) => m.Page(), {
-        stubs,
-        runtime: depthRuntime,
-      })
-      return { ...rendered, calls }
-    }
-    return { server: await render('server'), client: await render('client') }
+  /** A real hook whose value depends on the component that calls it. */
+  const hooks = {
+    './hooks': `import { useId } from 'react'
+export const useThing = () => useId()`,
   }
 
   /**
    * A hook the children call must run in the render of the component around
    * the boundary, like on the server (a hook called from another component
    * on the client breaks the rules of hooks: `useId` mismatches, state is
-   * lost). A clear compile error is a valid outcome too.
+   * lost): every output renders the markup the source renders, ids
+   * included. A clear compile error is a valid outcome too. The fixtures use
+   * `idle()`, whose boundary renders an id of its own: a `useId` call moved
+   * below it then returns another id.
    */
-  async function expectHookCallKeptOrRejected(code: string, hook: string) {
+  async function expectHookCallKeptOrRejected(code: string) {
     const results = await compileEnvs(code)
     const messages = rejections(results)
     if (messages.length > 0) {
       expect(messages).toContainEqual(expect.stringMatching(/hook/i))
       return
     }
-    const { server, client } = await renderHooks(code)
-    expect(server.calls).toEqual([`${hook}@0`])
-    expect(client).toEqual(server)
+    await expectRendersLikeSource(code, { files: hooks, split: false })
   }
 
   // Source: hydrate-when-transform.test.ts "rejects hook calls that would be
@@ -581,11 +430,11 @@ const __jsx = (type, props, ...children) => {
     '$name in the children runs in the parent render, or is rejected clearly',
     async ({ call }) => {
       await expectHookCallKeptOrRejected(
-        `${head}import { useThing } from './hooks'
+        `${head}import { idle } from '@tanstack/react-start/hydration'
+import { useThing } from './hooks'
 export function Page() {
-  return <Hydrate when={load()}><p>{${call}}</p></Hydrate>
+  return <Hydrate when={idle()}><p>{${call}}</p></Hydrate>
 }`,
-        'useThing',
       )
     },
   )
@@ -593,18 +442,20 @@ export function Page() {
   // The props of the boundary itself are not its children: they render in
   // the parent on both sides, so a hook call there does not stop the split.
   test('a hook call in the props of the boundary runs in the parent render, and the children still split', async () => {
-    const code = `${head}import { useThing } from './hooks'
+    const { client } = await expectRendersLikeSource(
+      `${head}import { useThing } from './hooks'
 export function Page() {
   return <Hydrate when={useThing()}><p>child</p></Hydrate>
-}`
-    const { server, client } = await renderHooks(code)
-    expect(server.calls).toEqual(['useThing@0'])
-    expect(client).toEqual(server)
-    const { module, lazyChunks } = await loadClientModule(code, {
-      stubs: { './hooks': { useThing: () => 'idle' } },
-    })
-    expect(module.Page()).toBe('[<p>child</p>]')
-    expectRenderedThroughChunks(lazyChunks)
+}`,
+      {
+        files: {
+          './hooks': `import { useId } from 'react'
+import { idle } from '@tanstack/react-start/hydration'
+export const useThing = () => (useId(), idle())`,
+        },
+      },
+    )
+    expect(client.html).toContain('<p>child</p>')
   })
 
   // Bug: hook calls are only detected when the callee is a bare identifier,
@@ -618,40 +469,11 @@ export function Page() {
     async () => {
       await expectHookCallKeptOrRejected(
         `import * as React from 'react'
-${head}export function Page() {
-  return <Hydrate when={load()}><p id={React.useId()}>x</p></Hydrate>
-}`,
-        'useId',
-      )
-    },
-  )
-
-  // Goal: hooks the children call are supported: they run in the parent's
-  // render, in source order with the parent's own hooks, and the chunk
-  // receives their values. Today they are rejected.
-  test.fails(
-    "hooks in the children run in the parent's render, in source order",
-    async () => {
-      const code = `${head}import { useA, useB, useC } from './hooks'
+${head}import { idle } from '@tanstack/react-start/hydration'
 export function Page() {
-  return <>{useA()}<Hydrate when={load()}><p>{useB()}</p></Hydrate>{useC()}</>
-}`
-      const { server, client } = await renderHooks(code)
-      expect(server.calls).toEqual(['useA@0', 'useB@0', 'useC@0'])
-      expect(client).toEqual(server)
-      // The children are still split.
-      const hook = (name: string) => () => name
-      const { module, lazyChunks } = await loadClientModule(code, {
-        stubs: {
-          './hooks': {
-            useA: hook('useA'),
-            useB: hook('useB'),
-            useC: hook('useC'),
-          },
-        },
-      })
-      expect(module.Page()).toBe('useA[<p>useB</p>]useC')
-      expectRenderedThroughChunks(lazyChunks)
+  return <Hydrate when={idle()}><p id={React.useId()}>x</p></Hydrate>
+}`,
+      )
     },
   )
 })
@@ -685,7 +507,6 @@ export class Page extends Base {
     )
   }
 }`
-  const render = (module: Record<string, any>) => new module.Page().render()
 
   // Source: hydrateWhen ThisCapture and SuperCapture error fixtures (the
   // super fixture read a class field, which renders undefined).
@@ -708,40 +529,30 @@ export class Page extends Base {
         ).not.toEqual([])
         return
       }
-      expect(await renderBoundaries('client', code, render)).toEqual(
-        await renderBoundaries('server', code, render),
-      )
-    },
-  )
-
-  // Goal: `this` and `super` reads are values the parent can pass to the
-  // chunk, so such children split. Today they are rejected.
-  test.fails.each([
-    { name: 'this', code: thisPage, html: '[<p>this</p>]' },
-    { name: 'super', code: superPage, html: '[<p>super</p>]' },
-  ])(
-    'the children reading $name render through the chunk',
-    async ({ code, html }) => {
-      const { module, lazyChunks } = await loadClientModule(code)
-      expect(render(module)).toBe(html)
-      expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true])
+      await expectRendersLikeSource(code, {
+        render: (module) => new module.Page().render(),
+        split: false,
+      })
     },
   )
 })
 
 describe('nested boundaries', () => {
+  // The outer boundary uses `idle()` (the original fixture: `visible()`),
+  // whose boundary renders an id: every boundary's id is compared.
   // Source: hydrate-when-transform.test.ts "supports nested Hydrate
   // boundaries in extracted virtual modules", "keeps sibling boundary ids
   // stable after nested boundaries"; hydrateWhen.test.ts "should extract
   // virtual modules and keep nested ids stable" and the Nested fixture
   // (gap H6).
   test('a nested boundary and a later sibling hydrate with the ids the server renders', async () => {
-    const code = `${head}import { idle, interaction, visible } from '@tanstack/react-start/hydration'
+    const { client } = await expectRendersLikeSource(
+      `${head}import { idle, interaction } from '@tanstack/react-start/hydration'
 import { NestedButton, Outer, Sibling } from './widgets'
 export function Page() {
   return (
     <>
-      <Hydrate when={visible()}>
+      <Hydrate when={idle()}>
         <Outer />
         <Hydrate when={interaction()}>
           <NestedButton />
@@ -752,35 +563,26 @@ export function Page() {
       </Hydrate>
     </>
   )
-}`
-    const stubs = {
-      './widgets': {
-        Outer: () => '<section>Outer</section>',
-        NestedButton: () => '<button>Nested</button>',
-        Sibling: () => '<aside>Sibling</aside>',
+}`,
+      {
+        files: {
+          './widgets': `export const Outer = () => <section>Outer</section>
+export const NestedButton = () => <button>Nested</button>
+export const Sibling = () => <aside>Sibling</aside>`,
+        },
       },
-    }
-    const render = (module: Record<string, any>) => module.Page()
-    const server = await renderBoundaries('server', code, render, { stubs })
-    expect(server.html).toBe(
-      '[<section>Outer</section>[<button>Nested</button>]][<aside>Sibling</aside>]',
     )
-    expect(new Set(server.ids).size).toBe(3)
-    expect(await renderBoundaries('client', code, render, { stubs })).toEqual(
-      server,
-    )
-    // Every lazy chunk the client creates renders.
-    const { module, lazyChunks } = await loadClientModule(code, { stubs })
-    render(module)
-    expect(lazyChunks.length).toBeGreaterThan(0)
-    expect(lazyChunks.filter((chunk) => !chunk.rendered)).toEqual([])
+    expect(client.html).toContain('<section>Outer</section>')
+    expect(client.html).toContain('<button>Nested</button>')
+    expect(client.html).toContain('<aside>Sibling</aside>')
   })
 })
 
 describe('which elements are boundaries', () => {
   // Source: hydrateWhen Renamed fixture (gap H11)
   test('a renamed import of Hydrate is a boundary', async () => {
-    const code = `import { Hydrate as HW } from '@tanstack/react-start'
+    const { client } = await expectRendersLikeSource(
+      `import { Hydrate as HW } from '@tanstack/react-start'
 import { interaction } from '@tanstack/react-start/hydration'
 import { SearchBox } from './search'
 export function Page() {
@@ -789,31 +591,13 @@ export function Page() {
       <SearchBox />
     </HW>
   )
-}`
-    const events: Array<string> = []
-    const stubs = {
-      './search': {
-        get SearchBox() {
-          events.push('search linked')
-          return () => '<input></input>'
-        },
-      },
-    }
-    const render = (module: Record<string, any>) => module.Page()
-    const server = await renderBoundaries('server', code, render, { stubs })
-    expect(server).toEqual({ html: '[<input></input>]', ids: [server.ids[0]] })
-    expect(server.ids[0]).toBeDefined()
-    events.length = 0
-    const { module, lazyChunks } = await loadClientModule(code, {
-      stubs,
-      beforeChunksLoad: () => events.push('chunks load'),
-    })
-    expect(events).toEqual(['chunks load', 'search linked'])
-    expect(module.Page()).toBe('[<input></input>]')
-    expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true])
-    expect(await renderBoundaries('client', code, render, { stubs })).toEqual(
-      server,
+}`,
+      { files: { './search': `export const SearchBox = () => <input />` } },
     )
+    expect(client.html).toContain('<input/>')
+    // The children's module loads with the chunk, not with the parent.
+    expect(client.requestedAtLoad).not.toContain('/test/src/search.tsx')
+    expect(client.lazy).toContain('/test/src/search.tsx')
   })
 
   describe('elements that are not the Start Hydrate', () => {
@@ -822,6 +606,39 @@ export function Page() {
       delete (globalThis as { visible?: unknown }).visible
     })
 
+    /** The real React the rendered graphs get. */
+    let React: Record<string, any>
+    beforeAll(async () => {
+      React = await createModuleGraph({ packages: packagesDir }).importPackage(
+        'react',
+      )
+    })
+
+    /**
+     * A component of the app named `Hydrate`: renders the props it receives
+     * (functions as their type), its fallback and its children. The linker
+     * maps a package specifier to a stub only, so it is written here, with
+     * the real React.
+     */
+    const Foreign = ({ children, ...props }: Record<string, unknown>) =>
+      React.createElement(
+        'div',
+        {
+          'data-props': JSON.stringify(props, (key, value: unknown) =>
+            typeof value === 'function'
+              ? typeof value
+              : key === 'fallback'
+                ? 'rendered'
+                : value,
+          ),
+        },
+        props.fallback,
+        children,
+      )
+
+    // Both environments leave the element as written: it receives the props
+    // the uncompiled source passes (the fallback included) and renders like
+    // it, and the client loads no chunk.
     // Source: hydrateWhen NoImport, NotFromTanstack and WrongImportName
     // fixtures (gap H12)
     test.each([
@@ -829,7 +646,7 @@ export function Page() {
         name: 'a global Hydrate',
         code: `export function Page() {
   return (
-    <Hydrate when={visible()}>
+    <Hydrate when={visible()} fallback={<p>fallback-marker</p>}>
       <p>No transform</p>
     </Hydrate>
   )
@@ -843,65 +660,50 @@ export function Page() {
 import { visible } from '@tanstack/react-start/hydration'
 export function Page() {
   return (
-    <Hydrate when={visible()}>
+    <Hydrate when={visible()} fallback={<p>fallback-marker</p>}>
       <p>No transform</p>
     </Hydrate>
   )
 }`,
-        stubs: { 'not-tanstack-start': 'Hydrate' },
+        stubs: { 'not-tanstack-start': { Hydrate: Foreign } },
         global: false,
       },
     ])('$name is left alone', async ({ code, stubs, global }) => {
-      const received: Array<Record<string, unknown>> = []
-      const Foreign = (props: Record<string, unknown>) => {
-        received.push(props)
-        return `{${props.children ?? ''}}`
-      }
-      const moduleStubs: Record<string, ModuleStub> = {}
-      for (const [specifier, name] of Object.entries(stubs)) {
-        moduleStubs[specifier] = { [name]: Foreign }
-      }
       if (global) {
         Object.assign(globalThis, { Hydrate: Foreign, visible: () => 'v' })
       }
-      for (const env of ['client', 'server'] as const) {
-        expect(getChunkIds((await compileHydrate(env, code)).parent)).toEqual(
-          [],
-        )
-      }
-      const server = await evaluateModule(
-        (await compileHydrate('server', code)).parent,
-        { ...hydrateStubs(), ...moduleStubs },
-      )
-      const client = await loadClientModule(code, { stubs: moduleStubs })
-      expect([server.Page(), client.module.Page()]).toEqual([
-        '{<p>No transform</p>}',
-        '{<p>No transform</p>}',
-      ])
-      expect(received.map((props) => 'h' in props)).toEqual([false, false])
+      const options = { stubs: stubs as Record<string, ModuleStub> }
+      const source = await renderSource(code, options)
+      expect(source.html).toContain('<p>fallback-marker</p><p>No transform</p>')
+      expect((await renderServer(code, options)).html).toBe(source.html)
+      const client = await renderClient(code, options)
+      expect(client.html).toBe(source.html)
+      expect(client.loadedChunks).toEqual([])
     })
   })
 
   // Splitting it is the goal (pinned in known-bugs-hydrate.test.ts); left
-  // unsplit, both environments render the same.
+  // unsplit, both environments render the same. `idle()` renders an id, so
+  // the comparison covers it.
   test('a namespace-imported <Start.Hydrate> hydrates like the server renders it', async () => {
-    const code = `import * as Start from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
+    const { client } = await expectRendersLikeSource(
+      `import * as Start from '@tanstack/react-start'
+import { idle } from '@tanstack/react-start/hydration'
 export function Page() {
-  return <Start.Hydrate when={load()}><p>child</p></Start.Hydrate>
-}`
-    const render = (module: Record<string, any>) => module.Page()
-    const server = await renderBoundaries('server', code, render)
-    expect(server.html).toBe('[<p>child</p>]')
-    expect(await renderBoundaries('client', code, render)).toEqual(server)
+  return <Start.Hydrate when={idle()}><p>child</p></Start.Hydrate>
+}`,
+      { split: false },
+    )
+    expect(client.html).toContain('<p>child</p>')
   })
 
+  // `@tanstack/solid-router` cannot be linked in process (`render.ts`): the
+  // outputs are checked to be valid, split on the client, and to need no
+  // React package.
   // Source: hydrate-when-transform.test.ts "uses the Solid Router import
-  // source for Solid Hydrate boundaries" (gap H22). A Solid module graph has
-  // no React packages: importing one fails to link.
+  // source for Solid Hydrate boundaries" (gap H22).
   test('Solid: a Hydrate of @tanstack/solid-start splits with the Solid packages', async () => {
-    const { module, lazyChunks } = await loadClientModule(
-      `import { Hydrate } from '@tanstack/solid-start'
+    const code = `import { Hydrate } from '@tanstack/solid-start'
 import { visible } from '@tanstack/solid-start/hydration'
 export function Page() {
   return (
@@ -912,11 +714,23 @@ export function Page() {
 }
 function Widget(props: { title: string }) {
   return <p>{props.title}</p>
-}`,
-      { framework: 'solid' },
-    )
-    expect(module.Page()).toBe('[<p>Hello</p>]')
-    expect(lazyChunks.map((chunk) => chunk.rendered)).toEqual([true])
+}`
+    const isReact = (source: string) =>
+      /^(?:react|react-dom)(?:\/|$)|^@tanstack\/react-/.test(source)
+    for (const env of ['client', 'server'] as const) {
+      const { parent, chunks, chunkIds } = await compileHydrate(env, code, {
+        framework: 'solid',
+      })
+      if (env === 'client') {
+        expect(chunkIds).not.toEqual([])
+      }
+      for (const output of [parent, ...chunks]) {
+        expect(
+          await getModuleErrors(output, undefined, { source: code }),
+        ).toEqual([])
+        expect(importSources(output).filter(isReact)).toEqual([])
+      }
+    }
   })
 })
 
@@ -927,26 +741,17 @@ function Widget(props: { title: string }) {
 // Source: hydrate-when-transform.test.ts "invalidates cached Hydrate source
 // for virtual module loads" (the compiler half of gaps H21 / DV42)
 test('client: a chunk loaded with the edited source before the parent is compiled again renders the new children', async () => {
-  const plugin = createHydrateCompilerPlugin()
-  const { compile } = createStartCompiler({
-    env: 'client',
-    compilerPlugins: [plugin],
-  })
   const source = (text: string) => `${head}export function Page() {
   return <Hydrate when={load()}><p>${text}</p></Hydrate>
 }`
-  const parent = (await compile(source('Old')))!
-  const [id] = getChunkIds(parent)
-  const loadChunk = (code?: string) =>
-    plugin.loadVirtualModule!({
-      id: id!,
-      code,
-      root: '/test',
-      env: 'client',
-      envName: 'client',
-    })!.code
-  expect(await renderChunk(parent, id!, loadChunk())).toBe('<p>Old</p>')
-  expect(await renderChunk(parent, id!, loadChunk(source('New')))).toBe(
-    '<p>New</p>',
-  )
+  const compiled = await compileHydrate('client', source('Old'))
+  const render = async (edited?: string) =>
+    (
+      await renderClient(source('Old'), {
+        compiled,
+        loadChunk: (id) => loadChunk(compiled.plugin, 'client', id, edited),
+      })
+    ).html
+  expect(await render()).toContain('<p>Old</p>')
+  expect(await render(source('New'))).toContain('<p>New</p>')
 })
