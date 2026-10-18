@@ -55,6 +55,11 @@ const config = defineConfig({
           name: 'integration',
           include: ['tests/integration/**/*.test.ts?(x)'],
           environment: 'node',
+          // The dev servers and their module runners run in the test
+          // process, and `vite dev` runs with `development`: Vitest's `test`
+          // would be baked into the served client code (e.g. the RSC HMR
+          // client is set up under `development` only).
+          env: { NODE_ENV: 'development' },
           testTimeout: 60_000,
           hookTimeout: 60_000,
         },
