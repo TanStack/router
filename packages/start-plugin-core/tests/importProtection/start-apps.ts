@@ -7,6 +7,7 @@
  * text it prints.
  */
 import path from 'node:path'
+import { expect } from 'vitest'
 import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
 import { startDevServer } from '../dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
@@ -58,19 +59,21 @@ export function startProtectedDevServer(
     config = {},
     bundledDev,
   } = options
+  const environments = [
+    { name: 'client', type: 'client' as const },
+    { name: 'ssr', type: 'server' as const },
+    ...(providerEnvironment === 'ssr'
+      ? []
+      : [{ name: providerEnvironment, type: 'server' as const }]),
+  ]
   return startDevServer({
     files,
     bundledDev,
-    config:
-      providerEnvironment === 'ssr'
-        ? config
-        : {
-            ...config,
-            environments: {
-              ...config.environments,
-              [providerEnvironment]: { consumer: 'server' },
-            },
-          },
+    config,
+    // The Start compiler compiles the provider environment too, and creates
+    // it as a server environment.
+    environments,
+    providerEnvName: providerEnvironment,
     plugins: ({ root }) => [
       importProtectionPlugin({
         getConfig: (() => ({
@@ -85,13 +88,7 @@ export function startProtectedDevServer(
           },
         })) as unknown as ImportProtectionPluginOptions['getConfig'],
         framework: 'react',
-        environments: [
-          { name: 'client', type: 'client' },
-          { name: 'ssr', type: 'server' },
-          ...(providerEnvironment === 'ssr'
-            ? []
-            : [{ name: providerEnvironment, type: 'server' as const }]),
-        ],
+        environments,
         providerEnvName: providerEnvironment,
       }),
       ...plugins,
@@ -179,6 +176,32 @@ export function reportedViolations(
       environment: /^(\w+)/.exec(report)![1]!,
       importer: /Importer: (\S+)/.exec(report)?.[1] ?? '',
     }))
+}
+
+/** The text of each import-protection violation report in `output`, in order. */
+export function violationTexts(output: string | Array<string>): Array<string> {
+  const text = Array.isArray(output) ? output.join('\n') : output
+  return text.split('[import-protection] Import denied in ').slice(1)
+}
+
+/**
+ * Checks the report of a marker violation (a module marked server-only
+ * imported by the client, or client-only imported by the server): it names
+ * both the marked module and its importer, and reports the violation either
+ * at the marker import in the marked module (`marked`) or at the importer's
+ * use of the import (`importer`), both `file:line:column`. Either location
+ * is fine (coordinator ruling on audit F ASK-1).
+ */
+export function expectMarkerViolation(
+  report: string,
+  locations: { marked: string; importer: string },
+) {
+  expect([locations.marked, locations.importer]).toContain(
+    /Importer: (\S+)/.exec(report)?.[1],
+  )
+  for (const location of [locations.marked, locations.importer]) {
+    expect(report).toContain(location.replace(/:\d+:\d+$/, ''))
+  }
 }
 
 /** Each distinct value of `values`, in order. */
