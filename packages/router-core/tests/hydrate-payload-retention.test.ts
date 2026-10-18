@@ -139,3 +139,52 @@ test.each([false, true])(
     }
   },
 )
+
+test('releases the completed async beforeLoad contribution while its hydration handoff remains live', async () => {
+  let contribution: WeakRef<object> | undefined
+  let navigate: WeakRef<object> | undefined
+  const build = (isServer: boolean) => {
+    const root = new BaseRootRoute({})
+    const page = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/',
+      beforeLoad: {
+        handler: () => ({ ready: true }),
+        dehydrate: true,
+        hydrate: async (options) => {
+          await Promise.resolve()
+          const result = { ready: options.data.ready }
+          contribution = new WeakRef(result)
+          navigate = new WeakRef(options.navigate)
+          return result
+        },
+      },
+    })
+    return createTestRouter({
+      routeTree: root.addChildren([page]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      isServer,
+    })
+  }
+  window.$_TSR = await dehydrateToBootstrap(build(true), { routes: {} })
+  const router = build(false)
+  try {
+    await hydrate(router)
+    expect(contribution).toBeDefined()
+    expect(navigate).toBeDefined()
+    window.$_TSR!.h()
+    window.$_TSR!.e()
+    delete window.$_TSR
+    for (let i = 0; i < 4; i++) {
+      await new Promise((resolve) => setTimeout(resolve))
+      gc()
+    }
+    expect(router.state.matches.at(-1)?.context).toEqual({ ready: true })
+    expect(contribution!.deref()).toBeUndefined()
+    expect(navigate!.deref()).toBeUndefined()
+  } finally {
+    router.clearCache()
+    router.history.destroy()
+    delete window.$_TSR
+  }
+})
