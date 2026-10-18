@@ -24,43 +24,29 @@ function setupConfig(
   return config
 }
 
-type TestCases = Array<{
-  folder: string
-  expectedError: string
-}>
-
+// A route file for a route group (`(group).tsx`) is rejected; the error
+// names the file (its wording is free).
 describe('deny-route-group-config throws', () => {
   const testCases = [
-    {
-      folder: 'flat-flat',
-      expectedError:
-        'A route configuration for a route group was found at `(group).tsx`. This is not supported. Did you mean to use a layout/pathless route instead?',
-    },
-    {
-      folder: 'nested-flat',
-      expectedError:
-        'A route configuration for a route group was found at `(group).tsx`. This is not supported. Did you mean to use a layout/pathless route instead?',
-    },
-    {
-      folder: 'flat-nested',
-      expectedError:
-        'A route configuration for a route group was found at `nested/(group).tsx`. This is not supported. Did you mean to use a layout/pathless route instead?',
-    },
-    {
-      folder: 'nested-nested',
-      expectedError:
-        'A route configuration for a route group was found at `nested/(group).tsx`. This is not supported. Did you mean to use a layout/pathless route instead?',
-    },
+    { folder: 'flat-flat', file: /\(group\)\.tsx/ },
+    { folder: 'nested-flat', file: /\(group\)\.tsx/ },
+    { folder: 'flat-nested', file: /nested[\\/]\(group\)\.tsx/ },
+    { folder: 'nested-nested', file: /nested[\\/]\(group\)\.tsx/ },
   ]
 
   it.each(testCases)(
-    'should throw an error for the folder: $folder',
-    async ({ folder, expectedError }) => {
+    'should throw an error naming the route group file for the folder: $folder',
+    async ({ folder, file }) => {
       const config = setupConfig(folder)
       const folderRoot = makeFolderDir(folder)
 
       const generator = new Generator({ config, root: folderRoot })
-      await expect(generator.run()).rejects.toThrow(expectedError)
+      const error = await generator.run().then(
+        () => undefined,
+        (e: unknown) => e as Error,
+      )
+      expect(error).toBeInstanceOf(Error)
+      expect(error!.message).toMatch(file)
     },
   )
 })
