@@ -59,6 +59,12 @@ const defaultHmr = false
 /** Hot-update chunks and manifests (`*.hot-update.js`, `.json`). */
 const hotUpdate = /\.hot-update\.[^/]*$/
 
+/**
+ * Hot-update chunks (`*.hot-update.js`, or `.mjs` for ES module output, as
+ * Start's client environment emits), not their manifests.
+ */
+const hotUpdateChunk = /\.hot-update\.[cm]?js$/
+
 export interface RsbuildDevServer {
   /** App root on disk. */
   root: string
@@ -135,7 +141,7 @@ export async function createRsbuildDevServer(
           hotUpdateFiles[compilation.name ?? names[index]!] = compilation
             .getAssets()
             .map((asset) => asset.name)
-            .filter((name) => hotUpdate.test(name) && name.endsWith('.js'))
+            .filter((name) => hotUpdateChunk.test(name))
         })
         for (const environmentStats of all) {
           const { compilation } = environmentStats

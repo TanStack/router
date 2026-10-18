@@ -87,6 +87,42 @@ import { fn2 } from './a2'
   )
 })
 
+describe('Rsbuild dev with HMR: editing a server fn module', () => {
+  // The client gets an edit as a hot update (Rsbuild's default, `dev.hmr`):
+  // the hot-update chunk of a server fn module carries the client's edit,
+  // and the edited handler stays on the server.
+  // Source: audit E2 missing coverage #4 (the Rsbuild hot-update path never
+  // ran in tests).
+  test(
+    "the client's hot update has the edited client code and not the edited handler, which the server runs",
+    async () => {
+      const fns = (
+        version: string,
+      ) => `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler(async () => 'MARK_HANDLER_${version}')
+export const label = () => 'MARK_LABEL_${version}'
+`
+      const server = await startRsbuildStartDevServer({
+        hmr: true,
+        files: {
+          'src/fns.ts': fns('V1'),
+          'src/entry.ts': `export { greet, label } from './fns'\n`,
+        },
+      })
+      await server.edit({ 'src/fns.ts': fns('V2') })
+      expect(server.errors).toEqual([])
+      const update = Object.values(await server.hotUpdates('client')).join('\n')
+      expect({
+        label: update.includes('MARK_LABEL_V2'),
+        handler: update.includes('MARK_HANDLER_V2'),
+      }).toEqual({ label: true, handler: false })
+      const ssr = Object.values(await server.outputs('ssr')).join('\n')
+      expect(ssr).toContain('MARK_HANDLER_V2')
+    },
+    timeout,
+  )
+})
+
 describe('Rsbuild dev: removing a server fn module', () => {
   // The generated server fn resolver lists every server fn by id; a module
   // the app no longer has must leave it, or the next compile of the server
