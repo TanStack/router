@@ -397,3 +397,52 @@ test.each(['context', 'beforeLoad'] as const)(
     }
   },
 )
+
+test('a synchronous component preload failure yields to its queued replacement navigation before projecting assets', async () => {
+  const completed = createControlledPromise<void>()
+  const projected: Array<Array<string>> = []
+  let queued = false
+  let router!: AnyRouter
+  const build = (isServer: boolean) => {
+    const root = new BaseRootRoute({
+      component: Object.assign(() => null, {
+        preload: () => {
+          if (!isServer && !queued) {
+            queued = true
+            queueMicrotask(() => {
+              router
+                .navigate({ to: '/other' })
+                .then(completed.resolve, completed.reject)
+            })
+            throw new Error('component failed')
+          }
+          return Promise.resolve()
+        },
+      }),
+      head: isServer
+        ? undefined
+        : ({ matches }) => {
+            projected.push(matches.map((match) => match.routeId))
+            return {}
+          },
+    })
+    const page = new BaseRoute({ getParentRoute: () => root, path: '/page' })
+    const other = new BaseRoute({ getParentRoute: () => root, path: '/other' })
+    return createTestRouter({
+      routeTree: root.addChildren([page, other]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer,
+    })
+  }
+  window.$_TSR = await dehydrateToBootstrap(build(true), manifest)
+  router = build(false)
+  try {
+    await Promise.all([hydrate(router), completed])
+    expect(router.state.location.pathname).toBe('/other')
+    expect(projected.length).toBeGreaterThan(0)
+    expect(projected.every((matches) => !matches.includes('/page'))).toBe(true)
+  } finally {
+    router.clearCache()
+    router.history.destroy()
+  }
+})

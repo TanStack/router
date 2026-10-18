@@ -23,6 +23,7 @@ const {
 }: typeof import('../dist/esm/isServer/development.js') = require('@tanstack/router-core/isServer')
 const {
   BaseRootRoute,
+  createControlledPromise,
   BaseRoute,
   RouterCore,
   createNonReactiveMutableStore,
@@ -44,6 +45,8 @@ const {
 const workloads = [
   'client-load',
   'preload',
+  'async-client-load',
+  'async-preload',
   'no-hook-client-load',
   'no-hook-preload',
   'raw',
@@ -59,6 +62,9 @@ const workloads = [
   'assets-sync-client-load',
   'assets-async-client-load',
   'assets-mixed-preload',
+  'chunks-mixed',
+  'chunks-ready',
+  'chunk-fallback',
 ] as const
 type Workload = (typeof workloads)[number]
 type Data = Record<string, number>
@@ -78,6 +84,7 @@ type Calls = {
   failedHydrate: number
   heads: number
   scripts: number
+  chunks: number
 }
 const emptyCalls = (): Calls => ({
   inputs: 0,
@@ -88,6 +95,7 @@ const emptyCalls = (): Calls => ({
   failedHydrate: 0,
   heads: 0,
   scripts: 0,
+  chunks: 0,
 })
 const getStoreConfig: GetStoreConfig = (options) => {
   if (isServer ?? options.isServer) {
@@ -111,6 +119,7 @@ function createRouter(
   workload: Workload,
   server: boolean,
   calls: Calls,
+  pendingChunk?: Promise<void>,
 ): AnyRouter {
   const consume = (options: LifecycleArgs) => {
     calls.inputs +=
@@ -128,7 +137,7 @@ function createRouter(
       return value
     }
     const handler =
-      workload === 'rerun-async'
+      workload === 'rerun-async' || workload.startsWith('async-')
         ? async (options: LifecycleArgs) => {
             await Promise.resolve()
             return synchronousHandler(options)
@@ -147,6 +156,15 @@ function createRouter(
     if (workload.startsWith('rerun')) {
       return { handler, dehydrate: false as const }
     }
+    const clientTransform = workload.startsWith('chunks-')
+      ? (options: LifecycleArgs & { data: Data }) => {
+          assert.equal(
+            calls.chunks,
+            workload === 'chunks-mixed' ? depth / 2 : depth,
+          )
+          return transform(options)
+        }
+      : transform
     return {
       handler,
       dehydrate: true as const,
@@ -159,7 +177,7 @@ function createRouter(
                 await Promise.resolve()
                 return transform(options)
               }
-            : transform,
+            : clientTransform,
     }
   }
   const noHooks = workload.startsWith('no-hook-')
@@ -169,6 +187,34 @@ function createRouter(
       : {
           context: lifecycle('context', index),
           beforeLoad: lifecycle('beforeLoad', index),
+          ...(workload.startsWith('chunks-') &&
+          (workload === 'chunks-ready' || index % 2 === 0)
+            ? {
+                component: Object.assign(() => null, {
+                  preload: () =>
+                    Promise.resolve().then(() => {
+                      calls.chunks++
+                    }),
+                }),
+              }
+            : undefined),
+          ...(workload === 'chunk-fallback' && !server
+            ? {
+                component: Object.assign(() => null, {
+                  preload: () => {
+                    calls.chunks++
+                    if (index === 1) {
+                      return Promise.reject(
+                        new Error('chunk hydration fallback'),
+                      )
+                    }
+                    return index === depth - 1
+                      ? pendingChunk
+                      : Promise.resolve()
+                  },
+                }),
+              }
+            : undefined),
           ...(workload.includes('assets-')
             ? {
                 head: () => {
@@ -292,14 +338,20 @@ for (const depth of [4, 16]) {
               router: AnyRouter
               calls: Calls
               preloadMatches?: Array<AnyRouteMatch>
+              pendingChunk?: ReturnType<typeof createControlledPromise<void>>
             }
           | undefined
         const before = () => {
           assert.equal(sample, undefined)
           const calls = emptyCalls()
+          const pendingChunk =
+            workload === 'chunk-fallback'
+              ? createControlledPromise<void>()
+              : undefined
           sample = {
             calls,
-            router: createRouter(depth, workload, false, calls),
+            pendingChunk,
+            router: createRouter(depth, workload, false, calls, pendingChunk),
           }
           if (scripts) {
             window.$_TSR = replay(scripts)
@@ -320,7 +372,7 @@ for (const depth of [4, 16]) {
             }
           }
         }
-        const after = () => {
+        const after = async () => {
           const current = sample
           sample = undefined
           if (!current) {
@@ -330,6 +382,20 @@ for (const depth of [4, 16]) {
             const matches =
               current.preloadMatches ?? current.router.state.matches
             assert.equal(matches.length, depth)
+            if (workload === 'chunk-fallback') {
+              assert.equal(matches[0]!.status, 'success')
+              assert.deepEqual(matches[0]!.context, { c0: 0, b0: 0 })
+              for (const match of matches.slice(1)) {
+                assert.equal(match.status, 'pending')
+              }
+              assert.equal(current.calls.context, 0)
+              assert.equal(current.calls.beforeLoad, 0)
+              assert.equal(current.calls.contextHydrate, 1)
+              assert.equal(current.calls.beforeLoadHydrate, 1)
+              assert.equal(current.calls.chunks, depth)
+              assert.equal(current.router.state.resolvedLocation, undefined)
+              return
+            }
             const expected: Data = {}
             for (let index = 0; index < depth; index++) {
               if (
@@ -391,6 +457,14 @@ for (const depth of [4, 16]) {
                     : depth,
               )
             }
+            assert.equal(
+              calls.chunks,
+              workload === 'chunks-mixed'
+                ? depth / 2
+                : workload === 'chunks-ready'
+                  ? depth
+                  : 0,
+            )
             assert.equal(calls.heads, workload.includes('assets-') ? depth : 0)
             assert.equal(
               calls.scripts,
@@ -403,6 +477,12 @@ for (const depth of [4, 16]) {
               )
             }
           } finally {
+            // Drain the abandoned import outside timing before the next sample.
+            if (current.pendingChunk) {
+              current.pendingChunk.resolve()
+              await current.pendingChunk
+              await Promise.resolve()
+            }
             dispose(current.router)
             window.$_TSR = previousBootstrap
           }
@@ -410,7 +490,7 @@ for (const depth of [4, 16]) {
         try {
           before()
           await run()
-          after()
+          await after()
           const result = await bench(
             name,
             { async: true, beforeEach: before, afterEach: after },
@@ -440,6 +520,7 @@ for (const depth of [4, 16]) {
           )
         } finally {
           if (sample) {
+            sample.pendingChunk?.resolve()
             dispose(sample.router)
             sample = undefined
           }

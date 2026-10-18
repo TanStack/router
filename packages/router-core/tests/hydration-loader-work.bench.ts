@@ -42,6 +42,8 @@ const workloads = [
   'all-active-sync',
   'all-active-async',
   'alternating',
+  'client-sync',
+  'client-async',
 ] as const
 type Workload = (typeof workloads)[number]
 type Calls = { loaders: number; hydrates: number }
@@ -80,7 +82,7 @@ function createRouter(
   const loaderAt = (index: number) => {
     const handler = () => {
       calls.loaders++
-      return index
+      return workload === 'client-async' ? Promise.resolve(index) : index
     }
     if (!isActive(workload, index)) {
       return handler
@@ -189,17 +191,22 @@ for (const depth of [4, 16]) {
         )
         const previousBootstrap = window.$_TSR
         const previousRouter = self.__TSR_ROUTER__
-        const scripts = await serialize(depth, workload)
+        const client = workload.startsWith('client-')
+        const scripts = client ? undefined : await serialize(depth, workload)
         let sample: { router: AnyRouter; calls: Calls } | undefined
         const before = () => {
           assert.equal(sample, undefined)
           const calls = { loaders: 0, hydrates: 0 }
           const router = createRouter(depth, workload, false, calls)
           sample = { router, calls }
-          window.$_TSR = replay(scripts)
+          window.$_TSR = scripts ? replay(scripts) : previousBootstrap
         }
         const run = async () => {
-          await hydrate(sample!.router)
+          if (client) {
+            await sample!.router.load()
+          } else {
+            await hydrate(sample!.router)
+          }
         }
         const after = () => {
           const current = sample
@@ -210,16 +217,19 @@ for (const depth of [4, 16]) {
           try {
             const matches = current.router.state.matches
             assert.equal(matches.length, depth)
-            assert.equal(current.calls.loaders, 0)
+            assert.equal(current.calls.loaders, client ? depth : 0)
             assert.equal(
               current.calls.hydrates,
-              matches.filter((_, index) => isActive(workload, index)).length,
+              client
+                ? 0
+                : matches.filter((_, index) => isActive(workload, index))
+                    .length,
             )
             for (const [index, match] of matches.entries()) {
               assert.equal(match.status, 'success')
               assert.equal(
                 match.loaderData,
-                index + Number(isActive(workload, index)),
+                index + Number(!client && isActive(workload, index)),
               )
             }
             assert.equal(
@@ -241,7 +251,7 @@ for (const depth of [4, 16]) {
             { beforeEach: before, afterEach: after },
             run,
           ).run({
-            time: 500,
+            time: Number(process.env.HYDRATION_BENCH_TIME_MS ?? 500),
             iterations: 100,
             warmupTime: 100,
             warmupIterations: 20,

@@ -188,3 +188,77 @@ test('releases the completed async beforeLoad contribution while its hydration h
     delete window.$_TSR
   }
 })
+
+test.each([false, true])(
+  'releases a reported context transform failure while its handoff remains live: terminal %s',
+  async (terminal) => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let wire: WeakRef<object> | undefined
+    let error: WeakRef<Error> | undefined
+    const build = (isServer: boolean) => {
+      const root = new BaseRootRoute({ context: () => ({ root: true }) })
+      const page = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/page',
+        context: {
+          handler: () => ({ page: true }),
+          dehydrate: () => ({
+            values: Array.from({ length: 2048 }, (_, i) => i),
+          }),
+          hydrate: ({ data }) => {
+            wire = new WeakRef(data)
+            const failure = new Error('context transform failed', {
+              cause: data,
+            })
+            error = new WeakRef(failure)
+            throw failure
+          },
+        },
+        loader: () => {
+          if (terminal) {
+            throw new Error('server boundary')
+          }
+        },
+      })
+      return createTestRouter({
+        routeTree: root.addChildren([page]),
+        history: createMemoryHistory({ initialEntries: ['/page'] }),
+        isServer,
+      })
+    }
+    window.$_TSR = await dehydrateToBootstrap(build(true), { routes: {} })
+    const router = build(false)
+    try {
+      await hydrate(router)
+      expect(
+        router.state.matches.map((match) => [
+          match.routeId,
+          match.status,
+          match.context,
+        ]),
+      ).toEqual([
+        ['__root__', 'success', { root: true }],
+        ['/page', terminal ? 'error' : 'pending', { root: true }],
+      ])
+      expect(warning).toHaveBeenCalledOnce()
+      expect(wire).toBeDefined()
+      expect(error).toBeDefined()
+      window.$_TSR!.h()
+      window.$_TSR!.e()
+      delete window.$_TSR
+      // The warning observer must release its own diagnostic arguments first.
+      warning.mockClear()
+      for (let i = 0; i < 8; i++) {
+        await new Promise((resolve) => setTimeout(resolve))
+        gc()
+      }
+      expect(wire!.deref()).toBeUndefined()
+      expect(error!.deref()).toBeUndefined()
+    } finally {
+      warning.mockRestore()
+      router.clearCache()
+      router.history.destroy()
+      delete window.$_TSR
+    }
+  },
+)
