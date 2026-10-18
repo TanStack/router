@@ -185,7 +185,11 @@ function parseReport(block: Array<string>): Array<ViolationReport> {
     )
   }
   const environments = [
-    ...new Set(headerOf(block).join(' ').match(/\b(client|server)\b/g) ?? []),
+    ...new Set(
+      headerOf(block)
+        .join(' ')
+        .match(/\b(client|server)\b/g) ?? [],
+    ),
   ]
   if (environments.length !== 1) {
     throw new Error(

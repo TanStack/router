@@ -105,7 +105,7 @@ describe('the dev mock of a denied file', () => {
   async function useDevMock(
     mode: 'error' | 'warn' | 'off',
     info: ViolationInfo = violation,
-    use: (mod: { getSecret: any }) => unknown = (mod) => mod.getSecret(),
+    use: (mod: Record<string, any>) => unknown = (mod) => mod.getSecret(),
   ) {
     const output = captureConsole()
     const runtimeId = mockRuntimeModuleIdFromViolation(info, mode, '/project')
@@ -146,7 +146,7 @@ describe('the dev mock of a denied file', () => {
     },
   )
 
-  test.each<{ name: string; use: (mod: { getSecret: any }) => unknown }>([
+  test.each<{ name: string; use: (mod: Record<string, any>) => unknown }>([
     { name: 'a conversion to a string', use: (mod) => String(mod.getSecret) },
     { name: 'a toString() call', use: (mod) => mod.getSecret.toString() },
     { name: '`new`', use: (mod) => new mod.getSecret() },

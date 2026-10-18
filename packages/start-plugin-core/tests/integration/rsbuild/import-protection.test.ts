@@ -110,30 +110,34 @@ exports.page = () => secret
 // environment too: Start's default rules deny `*.client.*` files to it.
 // Source: audit F-H4 (the other Rsbuild dev tests run import protection on
 // the client environment only).
-test('Rsbuild dev with Start: a server import of a .client file is mocked on the server and reported', async () => {
-  const server = await startRsbuildStartDevServer({
-    compileTimeout,
-    files: {
-      'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
-      'src/entry.ts': `import { widget } from './widget.client'
+test(
+  'Rsbuild dev with Start: a server import of a .client file is mocked on the server and reported',
+  async () => {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      files: {
+        'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+        'src/entry.ts': `import { widget } from './widget.client'
 export const read = () => widget()
 console.log(read())
 `,
-    },
-  })
-  expect(server.errors).toEqual([])
-  expect(
-    distinct(
-      reportedViolations(server.warnings).map(
-        ({ environment, importer }) => `${environment} ${importer}`,
+      },
+    })
+    expect(server.errors).toEqual([])
+    expect(
+      distinct(
+        reportedViolations(server.warnings).map(
+          ({ environment, importer }) => `${environment} ${importer}`,
+        ),
       ),
-    ),
-  ).toEqual(['server src/entry.ts:2:27'])
-  const code = async (environment: string) =>
-    Object.values(await server.outputs(environment)).join('\n')
-  expect(await code('ssr')).not.toContain('MARK_CLIENT')
-  expect(await code('client')).toContain('MARK_CLIENT')
-}, timeout)
+    ).toEqual(['server src/entry.ts:2:27'])
+    const code = async (environment: string) =>
+      Object.values(await server.outputs(environment)).join('\n')
+    expect(await code('ssr')).not.toContain('MARK_CLIENT')
+    expect(await code('client')).toContain('MARK_CLIENT')
+  },
+  timeout,
+)
 
 // Source: round 4 mutation testing (rsbuild host, `behavior` in dev).
 describe('Rsbuild dev: behavior', () => {
@@ -148,7 +152,7 @@ describe('Rsbuild dev: behavior', () => {
     '$behavior: a violation is reported in the compile $reportedAs',
     async ({ behavior, reportedAs }) => {
       const server = await startRsbuildDevServer({
-      compileTimeout,
+        compileTimeout,
         importProtection: { behavior },
         files: {
           'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
@@ -190,7 +194,7 @@ console.log(secret(), other)
     "log '$log': a rebuild for an unrelated edit reports $afterRebuild",
     async ({ log, afterRebuild }) => {
       const server = await startRsbuildDevServer({
-      compileTimeout,
+        compileTimeout,
         importProtection: { log },
         files: app,
       })
@@ -215,7 +219,7 @@ console.log(secret(), other)
     'a compile in which $module is missing reports only that',
     async ({ file }) => {
       const server = await startRsbuildDevServer({
-      compileTimeout,
+        compileTimeout,
         importProtection: {},
         files: app,
       })
@@ -231,32 +235,36 @@ console.log(secret(), other)
 
   // Source: mutation run R3 ip-rsbuild R4 (the resolve cache of a previous
   // compile).
-  test('a denied specifier that an edit makes resolve elsewhere is reported with its new target', async () => {
-    const resolved: Array<string | undefined> = []
-    const server = await startRsbuildDevServer({
-      compileTimeout,
-      importProtection: {
-        client: { specifiers: [/^\.\/lib$/] },
-        onViolation: (info) => {
-          // relative to the app root (src/...)
-          resolved.push(
-            (info as ViolationInfo).resolved?.replace(/^.*\/(?=src\/)/, ''),
-          )
+  test(
+    'a denied specifier that an edit makes resolve elsewhere is reported with its new target',
+    async () => {
+      const resolved: Array<string | undefined> = []
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: {
+          client: { specifiers: [/^\.\/lib$/] },
+          onViolation: (info) => {
+            // relative to the app root (src/...)
+            resolved.push(
+              (info as ViolationInfo).resolved?.replace(/^.*\/(?=src\/)/, ''),
+            )
+          },
         },
-      },
-      files: {
-        'src/lib.ts': `export const lib = 1\n`,
-        'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib)\n`,
-      },
-    })
-    expect(resolved).toEqual(['src/lib.ts'])
-    await server.edit({
-      'src/lib.ts': null,
-      'src/lib/index.ts': `export const lib = 2\n`,
-      'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib, 2)\n`,
-    })
-    expect(resolved).toEqual(['src/lib.ts', 'src/lib/index.ts'])
-  }, timeout)
+        files: {
+          'src/lib.ts': `export const lib = 1\n`,
+          'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib)\n`,
+        },
+      })
+      expect(resolved).toEqual(['src/lib.ts'])
+      await server.edit({
+        'src/lib.ts': null,
+        'src/lib/index.ts': `export const lib = 2\n`,
+        'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib, 2)\n`,
+      })
+      expect(resolved).toEqual(['src/lib.ts', 'src/lib/index.ts'])
+    },
+    timeout,
+  )
 })
 
 // Rsbuild's `source.transformImport` rewrites a library's named imports
@@ -384,41 +392,45 @@ export const read = () => secret() + other
 }, 60_000)
 
 // Source: mutation run R3 ip-rsbuild R7 and ip-misc P10.
-test('Rsbuild dev: the client mock of each denied import reports its own use in the browser console', async () => {
-  const server = await startRsbuildDevServer({
+test(
+  'Rsbuild dev: the client mock of each denied import reports its own use in the browser console',
+  async () => {
+    const server = await startRsbuildDevServer({
       compileTimeout,
-    importProtection: { client: { specifiers: ['db-lib'] } },
-    files: {
-      'node_modules/db-lib/package.json': JSON.stringify({
-        name: 'db-lib',
-        type: 'module',
-        exports: { '.': './index.js' },
-      }),
-      'node_modules/db-lib/index.js': `export const query = () => 'MARK_LIB'\n`,
-      'src/a.server.ts': `export const a = () => 'MARK_A'\n`,
-      'src/b.server.ts': `export const b = () => 'MARK_B'\n`,
-      'src/entry.ts': `import { a } from './a.server'
+      importProtection: { client: { specifiers: ['db-lib'] } },
+      files: {
+        'node_modules/db-lib/package.json': JSON.stringify({
+          name: 'db-lib',
+          type: 'module',
+          exports: { '.': './index.js' },
+        }),
+        'node_modules/db-lib/index.js': `export const query = () => 'MARK_LIB'\n`,
+        'src/a.server.ts': `export const a = () => 'MARK_A'\n`,
+        'src/b.server.ts': `export const b = () => 'MARK_B'\n`,
+        'src/entry.ts': `import { a } from './a.server'
 import { b } from './b.server'
 import { query } from 'db-lib'
 console.log(a(), b(), query())
 `,
-    },
-  })
-  expect(server.errors).toEqual([])
-  const messages = await runRsbuildClient(server)
-  expect(messages.filter((message) => message.includes('MARK_'))).toEqual([])
-  expect(
-    [
-      ...new Set(
-        messages
-          .filter((message) =>
-            message.includes('Mocked import used in dev client'),
-          )
-          .map((message) => /Denied import: "([^"]+)"/.exec(message)?.[1]),
-      ),
-    ].sort(),
-  ).toEqual(['db-lib', 'src/a.server.ts', 'src/b.server.ts'])
-}, timeout)
+      },
+    })
+    expect(server.errors).toEqual([])
+    const messages = await runRsbuildClient(server)
+    expect(messages.filter((message) => message.includes('MARK_'))).toEqual([])
+    expect(
+      [
+        ...new Set(
+          messages
+            .filter((message) =>
+              message.includes('Mocked import used in dev client'),
+            )
+            .map((message) => /Denied import: "([^"]+)"/.exec(message)?.[1]),
+        ),
+      ].sort(),
+    ).toEqual(['db-lib', 'src/a.server.ts', 'src/b.server.ts'])
+  },
+  timeout,
+)
 
 // Source: round 4 mutation testing (rsbuild host, `mockAccess`).
 describe('Rsbuild dev: mockAccess', () => {
@@ -434,7 +446,7 @@ describe('Rsbuild dev: mockAccess', () => {
     '$mockAccess: the use of a mocked import is reported with console $reports',
     async ({ mockAccess, reports }) => {
       const server = await startRsbuildDevServer({
-      compileTimeout,
+        compileTimeout,
         importProtection: {
           mockAccess,
           client: { specifiers: ['db-lib'] },

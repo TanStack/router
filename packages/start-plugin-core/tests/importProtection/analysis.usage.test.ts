@@ -301,10 +301,7 @@ import { denied } from 'denied'
 `
 
   /** Whether the output of `output` for `code` still imports `denied`. */
-  async function survives(
-    code: string,
-    output: 'client' | 'ssr' | 'provider',
-  ) {
+  async function survives(code: string, output: 'client' | 'ssr' | 'provider') {
     const compiled = await compileFor(output, code, {
       id: '/test/src/module.tsx',
     })

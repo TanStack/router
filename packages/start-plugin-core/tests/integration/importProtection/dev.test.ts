@@ -8,7 +8,7 @@
  */
 import path from 'node:path'
 import mdx from '@mdx-js/rollup'
-import * as jsxRuntime from 'react/jsx-runtime'
+import { createRequire } from 'node:module'
 import { evaluateServed } from '@tanstack/compiler-test-utils/dev-server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { startDevServer } from '../../dev-server'
@@ -30,9 +30,14 @@ import {
 import type { ViolationReport } from '../../importProtection/violation-report'
 import type { ImportProtectionOptions } from '../../../src/schema'
 import type { ViolationInfo } from '../../../src/import-protection/trace'
-import type { Plugin } from 'vite'
+import type { DevEnvironment, Plugin } from 'vite'
 
 const timeout = 30_000
+
+/** The real React JSX runtime (a dependency of this package, no types). */
+const jsxRuntime = createRequire(import.meta.url)(
+  'react/jsx-runtime',
+) as Record<string, unknown>
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -144,9 +149,7 @@ describe('a client import of a denied file', () => {
     async () => {
       const { server } = await addDeniedImportByAnEdit()
       const reports = violationReports(server.logs)
-      expect(distinct(reports.map((v) => v.importer))).toEqual([
-        deniedFileUse,
-      ])
+      expect(distinct(reports.map((v) => v.importer))).toEqual([deniedFileUse])
       for (const report of reports) {
         expect(traceModules(report)).toEqual(['src/entry.ts', 'src/a.ts'])
       }
@@ -655,9 +658,11 @@ export const read = () => [getRequest()]
       })
       captureMockAccess()
       const described = async () =>
-        ((await evaluateServed(server, '/src/entry.ts')).read() as Array<unknown>).map(
-          (value) => describeValue(value, 'MARK_'),
-        )
+        (
+          (
+            await evaluateServed(server, '/src/entry.ts')
+          ).read() as Array<unknown>
+        ).map((value) => describeValue(value, 'MARK_'))
       expect(await described()).toEqual(['a safe mock'])
       await server.edit({
         'src/a.ts': `import { getRequest, getResponse } from '@tanstack/react-start/server'
@@ -1286,8 +1291,9 @@ export const createSecretFn = createServerFn().middleware([mw])
         const helper = path.join(root, 'src/helper.ts')
         const deadline = Date.now() + 5_000
         while (
-          !this.environment.moduleGraph.getModuleById(helper)
-            ?.transformResult &&
+          !(this.environment as DevEnvironment).moduleGraph.getModuleById(
+            helper,
+          )?.transformResult &&
           Date.now() < deadline
         ) {
           await new Promise((resolve) => setTimeout(resolve, 5))

@@ -26,7 +26,9 @@ describe('the safe-mock probe', () => {
     const node = (): unknown =>
       new Proxy(function () {}, {
         get: (_target, prop) =>
-          prop === Symbol.toPrimitive || prop === 'toString' || prop === 'toJSON'
+          prop === Symbol.toPrimitive ||
+          prop === 'toString' ||
+          prop === 'toJSON'
             ? () => label
             : node(),
         apply: () => node(),
@@ -63,7 +65,7 @@ describe('the safe-mock probe', () => {
   })
 
   test('rejects a mock that throws on construction', () => {
-    const value = new Proxy(function () {}, {
+    const value: any = new Proxy(function () {}, {
       get: () => value,
       apply: () => value,
       construct: () => {

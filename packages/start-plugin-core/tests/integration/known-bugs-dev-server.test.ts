@@ -418,7 +418,9 @@ export const values = [getRequest, getHeader, server.setCookie]
     async ({ client }) => {
       const { module } = await evaluateClient({ 'src/c.ts': client })
       const { values } = module as { values: Array<unknown> }
-      expect(values.map((value: unknown) => isSafeMock(value))).toEqual(values.map(() => true))
+      expect(values.map((value: unknown) => isSafeMock(value))).toEqual(
+        values.map(() => true),
+      )
     },
     timeout,
   )

@@ -702,7 +702,10 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
    */
   const blamedImporter = (info: ViolationInfo) => {
     const fromRoot = (file: string | undefined) =>
-      file?.split(path.sep).join('/').replace(/^.*?\/(?=src\/)/, '')
+      file
+        ?.split(path.sep)
+        .join('/')
+        .replace(/^.*?\/(?=src\/)/, '')
     const importer = fromRoot(info.importer)
     return importer === 'src/marked.ts'
       ? fromRoot(info.trace.at(-2)?.file)
@@ -835,13 +838,15 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
     timeout,
   )
 
-  // Bug: same two bugs, on one app: in a mock-mode build, the exempt
-  // importer of a server-only-marked module gets a mock (Rsbuild: the marked
-  // module is mocked for every importer), or the real module with a
-  // violation reported for it (Vite: markers are not mocked at all, and
-  // `ignoreImporters` does not apply to them).
-  // Impact: as above; the non-exempt importer is fine on Rsbuild (a safe
-  // mock, reported), and runs the real server-only code on Vite.
+  // Bug: the same bugs, on one app, in a mock-mode build. Rsbuild: the
+  // marked module is mocked for every importer, the exempt one included,
+  // and the one report is at the marked module (`src/marked.ts`), not at
+  // the other importer. Vite: the exempt importer gets the real module and
+  // the other a mock, but the marker import of the marked module itself is
+  // reported too (`ignoreImporters` does not apply to it, the pin above),
+  // so the reports name `src/marked.ts` besides `src/other.ts`.
+  // Impact: as above; on Rsbuild, code a project exempts gets a mock; on
+  // both, the report does not single out the importer at fault.
   test.fails(
     'in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is reported',
     async () => {

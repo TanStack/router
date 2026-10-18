@@ -280,22 +280,26 @@ describe('Rsbuild dev', () => {
 
   // Control for the pins below (same config and import protection): a
   // module of that type is compiled, and its code runs in the client.
-  test('a module of another type without a denied import runs in the client', async () => {
-    const server = await startRsbuildDevServer({
-      compileTimeout,
-      importProtection: {
-        behavior: 'error',
-        client: { specifiers: ['db-lib'] },
-      },
-      config: pageModules,
-      files: {
-        'src/home.page': `export const page = () => 'MARK_PAGE'\n`,
-        'src/entry.ts': `import { page } from './home.page'\nconsole.log(page())\n`,
-      },
-    })
-    expect(server.errors).toEqual([])
-    expect(await runRsbuildClient(server)).toEqual(['MARK_PAGE'])
-  }, timeout)
+  test(
+    'a module of another type without a denied import runs in the client',
+    async () => {
+      const server = await startRsbuildDevServer({
+        compileTimeout,
+        importProtection: {
+          behavior: 'error',
+          client: { specifiers: ['db-lib'] },
+        },
+        config: pageModules,
+        files: {
+          'src/home.page': `export const page = () => 'MARK_PAGE'\n`,
+          'src/entry.ts': `import { page } from './home.page'\nconsole.log(page())\n`,
+        },
+      })
+      expect(server.errors).toEqual([])
+      expect(await runRsbuildClient(server)).toEqual(['MARK_PAGE'])
+    },
+    timeout,
+  )
 
   // Bug: Rsbuild import protection checks importers by file extension
   // (`isImportProtectionSourceFile`, rsbuild/import-protection.ts, only
@@ -363,25 +367,29 @@ describe('Rsbuild dev', () => {
   // ("never reported") while the dev harness only waited for `done`; the
   // harness now fails the compile wait with the error Rspack reports
   // (mutation run R3c).
-  test('an onViolation that throws ends the compile with its error', async () => {
-    const outcome = await startRsbuildDevServer({
-      importProtection: {
-        onViolation: () => {
-          throw new Error('MARK_THROWN')
+  test(
+    'an onViolation that throws ends the compile with its error',
+    async () => {
+      const outcome = await startRsbuildDevServer({
+        importProtection: {
+          onViolation: () => {
+            throw new Error('MARK_THROWN')
+          },
         },
-      },
-      // Only a guard: the failed compile ends the wait.
-      compileTimeout,
-      files: {
-        'src/secret.server.ts': `export const secret = () => 'secret'\n`,
-        'src/entry.ts': `import { secret } from './secret.server'\nconsole.log(secret())\n`,
-      },
-    }).then(
-      (server) => server.errors.join('\n'),
-      (error: Error) => error.message,
-    )
-    expect(outcome).toContain('MARK_THROWN')
-  }, timeout)
+        // Only a guard: the failed compile ends the wait.
+        compileTimeout,
+        files: {
+          'src/secret.server.ts': `export const secret = () => 'secret'\n`,
+          'src/entry.ts': `import { secret } from './secret.server'\nconsole.log(secret())\n`,
+        },
+      }).then(
+        (server) => server.errors.join('\n'),
+        (error: Error) => error.message,
+      )
+      expect(outcome).toContain('MARK_THROWN')
+    },
+    timeout,
+  )
 })
 
 describe.each(startBundlers)('%s build', (bundler) => {

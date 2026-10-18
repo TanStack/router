@@ -28,7 +28,12 @@ const violation: ViolationInfo = {
   trace: [
     { file: '/project/src/entry.ts', specifier: './a', line: 2, column: 1 },
     { file: '/project/src/a.ts', specifier: './b', line: 3, column: 1 },
-    { file: '/project/src/b.ts', specifier: './secret.server', line: 4, column: 27 },
+    {
+      file: '/project/src/b.ts',
+      specifier: './secret.server',
+      line: 4,
+      column: 27,
+    },
   ],
   snippet: {
     lines: [
@@ -78,7 +83,12 @@ describe('the report adapter', () => {
 
   test('reads each report of a log, in order, with the entries around them', () => {
     const server = formatViolation(
-      { ...violation, env: 'ssr', envType: 'server', importer: '/project/src/s.ts' },
+      {
+        ...violation,
+        env: 'ssr',
+        envType: 'server',
+        importer: '/project/src/s.ts',
+      },
       '/project',
     )
     expect(
