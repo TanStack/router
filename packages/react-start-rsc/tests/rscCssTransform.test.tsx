@@ -185,6 +185,9 @@ async function evaluateCompiled(
     ? 'rspackRsc'
     : 'viteRsc'
   const graph = createModuleGraph({
+    // Stand-in until FIX-PLAN A3c replaces this harness with a real RSC
+    // provider build (W2-b removed the linker's default text renderer).
+    runtime: jsxAsText,
     modules: { [id]: compiled ?? code },
     stubs: {
       '@tanstack/react-start/rsc': rsc,
@@ -202,7 +205,23 @@ async function evaluateCompiled(
   return { module: await graph.import(id), calls, warnings }
 }
 
+/**
+ * JSX as text (the linker's deprecated `runtime` option): intrinsic elements
+ * become tags, components are called. One line, so that line numbers stay
+ * those of the module.
+ */
+const jsxAsText = [
+  `const __Fragment = Symbol('Fragment');`,
+  `const __jsx = (type, props, ...children) => {`,
+  `const text = children.flat(Infinity).filter((child) => child != null && child !== false && child !== true).join('');`,
+  `if (type === __Fragment) return text;`,
+  `if (typeof type === 'function') return type({ ...props, children: text });`,
+  `if (typeof type !== 'string') throw new Error('cannot render ' + String(type));`,
+  `return '<' + type + '>' + text + '</' + type + '>'; };`,
+].join(' ')
+
 /** `value` in the CSS envelope of the runtime, with the CSS `css`. */
+
 const withCss = (value: unknown) =>
   createRscCssEnvelope(value, { __tanstackStartRscCss: 'css' })
 
