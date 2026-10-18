@@ -572,9 +572,9 @@ describe.each(startBundlers)(
       test.each(passing)(
         'allows the import of %s: the build succeeds and the client gets the real module',
         async (denied) => {
-          expect(
-            await clientRead(bundler, appUsing(denied), allowAll),
-          ).toEqual(allowed)
+          expect(await clientRead(bundler, appUsing(denied), allowAll)).toEqual(
+            allowed,
+          )
         },
         timeout,
       )

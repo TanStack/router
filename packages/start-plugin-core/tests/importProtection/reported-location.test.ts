@@ -376,7 +376,10 @@ describe.each(startBundlers)(
         expect(
           trace.slice(-3).map(({ at, imports }) => ({ at, imports })),
         ).toEqual([
-          { at: expect.stringMatching(/^src\/entry\.ts:2:\d+$/), imports: './a' },
+          {
+            at: expect.stringMatching(/^src\/entry\.ts:2:\d+$/),
+            imports: './a',
+          },
           { at: expect.stringMatching(/^src\/a\.ts:3:\d+$/), imports: './b' },
           { at: 'src/b.ts:4:27', imports: './secret.server' },
         ])
