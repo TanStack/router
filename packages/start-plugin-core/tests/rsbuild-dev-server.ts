@@ -3,10 +3,11 @@
  * with the Start compiler's Rsbuild transforms (`client` environment) on a
  * temporary app, through the shared Rsbuild dev-server harness
  * (`@tanstack/compiler-test-utils/rsbuild-dev-server`).
- * `@tanstack/react-start` is the stand-in package of the build harness
- * (`startRuntimeFiles`). With `importProtection`, Start's Rsbuild import
- * protection also runs on the `client` environment. `runRsbuildClient()` runs
- * the emitted client code. The temporary apps live in this directory.
+ * `@tanstack/react-start` is the real package (`startRuntimeLinks` of the
+ * build harness). With `importProtection`, Start's Rsbuild import protection
+ * also runs on the `client` environment. `runRsbuildClient()` runs the
+ * emitted client code in a VM context with a browser's web APIs. The
+ * temporary apps live in this directory.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,7 +17,7 @@ import { onTestFinished } from 'vitest'
 import { registerImportProtection } from '../src/rsbuild/import-protection'
 import { registerStartCompilerTransforms } from '../src/rsbuild/start-compiler-host'
 import { tanStackStartRsbuild } from '../src/rsbuild/plugin'
-import { startRuntimeFiles } from './build-harness'
+import { startRuntimeLinks } from './build-harness'
 import { testLoaderFiles, useTestLoaders } from './rsbuild-test-loaders'
 import type { ImportProtectionOptions } from '../src/schema'
 import type { GenerateFunctionIdFnOptional } from '../src/start-compiler/types'
@@ -27,6 +28,75 @@ import type {
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
+/**
+ * Web APIs of a browser that Node.js has too (the WinterTC minimum common
+ * API): a VM context has only the language's globals, and Start's client
+ * runtime uses these (e.g. `TextDecoder` when its module loads).
+ */
+const webApis = [
+  'AbortController',
+  'AbortSignal',
+  'Blob',
+  'BroadcastChannel',
+  'ByteLengthQueuingStrategy',
+  'CompressionStream',
+  'CountQueuingStrategy',
+  'Crypto',
+  'CryptoKey',
+  'CustomEvent',
+  'DOMException',
+  'DecompressionStream',
+  'Event',
+  'EventTarget',
+  'File',
+  'FormData',
+  'Headers',
+  'MessageChannel',
+  'MessageEvent',
+  'MessagePort',
+  'ReadableByteStreamController',
+  'ReadableStream',
+  'ReadableStreamBYOBReader',
+  'ReadableStreamBYOBRequest',
+  'ReadableStreamDefaultController',
+  'ReadableStreamDefaultReader',
+  'Request',
+  'Response',
+  'SubtleCrypto',
+  'TextDecoder',
+  'TextDecoderStream',
+  'TextEncoder',
+  'TextEncoderStream',
+  'TransformStream',
+  'TransformStreamDefaultController',
+  'URL',
+  'URLSearchParams',
+  'WritableStream',
+  'WritableStreamDefaultController',
+  'WritableStreamDefaultWriter',
+  'atob',
+  'btoa',
+  'clearInterval',
+  'clearTimeout',
+  'crypto',
+  'fetch',
+  'navigator',
+  'performance',
+  'queueMicrotask',
+  'setInterval',
+  'setTimeout',
+  'structuredClone',
+]
+
+/** The `webApis` of this process, for a VM context. */
+export function webGlobals(): Record<string, unknown> {
+  return Object.fromEntries(
+    webApis.map((name) => [
+      name,
+      (globalThis as Record<string, unknown>)[name],
+    ]),
+  )
+}
 
 /**
  * Starts an Rsbuild dev server with the Start compiler on an app of `files`
@@ -47,9 +117,19 @@ export function startRsbuildDevServer(
     prefix: '.start-rsbuild-dev-server-',
     registerCleanup: onTestFinished,
     ...devServerOptions,
-    config: { environments: { client: {} }, ...devServerOptions.config },
+    config: {
+      environments: { client: {} },
+      // The server fn base Start's plugin defines, which Start's client
+      // runtime reads (the compiler alone defines nothing).
+      source: {
+        define: {
+          'process.env.TSS_SERVER_FN_BASE': JSON.stringify('/_serverFn/'),
+        },
+      },
+      ...devServerOptions.config,
+    },
+    symlinks: { ...startRuntimeLinks(files), ...devServerOptions.symlinks },
     files: {
-      ...startRuntimeFiles,
       ...testLoaderFiles,
       ...files,
     },
@@ -108,8 +188,8 @@ export function startRsbuildStartDevServer(
     prefix: '.start-rsbuild-start-dev-server-',
     registerCleanup: onTestFinished,
     ...devServerOptions,
+    symlinks: { ...startRuntimeLinks(files), ...devServerOptions.symlinks },
     files: {
-      ...startRuntimeFiles,
       ...testLoaderFiles,
       'harness/client-entry.ts': `import '../src/entry'\n`,
       'harness/server-entry.ts': `import '../src/entry'
@@ -152,8 +232,9 @@ export async function runInClient(
   server: Pick<RsbuildDevServer, 'outputs'>,
   script: string,
 ): Promise<{ result: unknown } | { error: string }> {
-  const context = vm.createContext({ console: { ...console } })
+  const context = vm.createContext({ ...webGlobals(), console: { ...console } })
   context.self = context
+  context.window = context
   context.globalThis = context
   for (const code of Object.values(await server.outputs('client'))) {
     vm.runInContext(code, context)
@@ -202,6 +283,7 @@ export async function runRsbuildClient(
       )
     }
   const context = vm.createContext({
+    ...webGlobals(),
     console: {
       log: recorder('log'),
       info: recorder('info'),
@@ -210,6 +292,7 @@ export async function runRsbuildClient(
     },
   })
   context.self = context
+  context.window = context
   context.globalThis = context
   for (const code of Object.values(await server.outputs())) {
     vm.runInContext(code, context)

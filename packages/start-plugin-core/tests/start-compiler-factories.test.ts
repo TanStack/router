@@ -569,10 +569,10 @@ export const mw = createMiddleware().server(async ({ next }) =>
       throw new Error('uncompiled Start factory')
     }
     const stubs = {
-      // The package also exports the factories `head` imports, which the
-      // output may still import without calling them.
+      // Start's real runtime. The output may still import the factories
+      // `head` imports, but never calls them uncompiled (they throw here).
       '@tanstack/react-start': {
-        createMiddleware: () => ({ server: () => 'middleware' }),
+        ...startClientCore,
         createClientOnlyFn: uncompiled,
         createIsomorphicFn: uncompiled,
         createServerOnlyFn: uncompiled,
@@ -586,11 +586,13 @@ export const mw = createMiddleware().server(async ({ next }) =>
     const ssr = await compileCode('ssr', code)
     expect(importSources(ssr!)).toEqual(['./db.server'])
     const ssrModule = await evaluateModule(ssr!, stubs)
-    expect([ssrModule.iso(), ssrModule.serverOnly(), ssrModule.mw]).toEqual([
-      'x',
-      'x',
-      'middleware',
-    ])
+    expect([
+      ssrModule.iso(),
+      ssrModule.serverOnly(),
+      await ssrModule.mw.options.server({
+        next: (options: unknown) => options,
+      }),
+    ]).toEqual(['x', 'x', { context: { value: 'x' } }])
   })
 
   // Source: babel-dead-code-elimination "variable" > "within for...in";

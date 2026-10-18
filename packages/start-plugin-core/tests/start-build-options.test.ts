@@ -9,7 +9,12 @@ import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
-import { buildStart, routerRuntimeFiles, startBundlers } from './build-harness'
+import {
+  buildStart,
+  callByIdPrelude,
+  routerRuntimeFiles,
+  startBundlers,
+} from './build-harness'
 import type { StartBuild } from './build-harness'
 
 const timeout = 60_000
@@ -24,11 +29,11 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
 `,
 }
 
-/** Type declarations of the stand-in packages. */
+/**
+ * Type declarations of the stand-in router (`@tanstack/react-start` is the
+ * real package, with its types).
+ */
 const typeFiles = {
-  'node_modules/@tanstack/react-start/index.d.ts': `export interface Register {}
-export declare function createStart<T>(getOptions: () => T): { getOptions: () => T }
-`,
   'node_modules/@tanstack/react-router/index.d.ts': `export interface FileRoutesByPath {}
 export interface RouteLike {
   options: any
@@ -108,12 +113,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
         start: { serverFns: { generateFunctionId: () => undefined } },
       })
-      const id = (await client.run(`return entry.greet.functionId`)).result
+      const id = (await client.run(`return entry.greet.serverFnMeta.id`)).result
       expect(id).toEqual(expect.stringMatching(/./))
       expect(
         (
           await ssr.run(
-            `return await (await entry.getServerFnById(${JSON.stringify(id)}, { origin: 'client' }))({})`,
+            `${callByIdPrelude}return await callById(${JSON.stringify(id)})`,
           )
         ).result,
       ).toBe('MARK_HANDLER')
@@ -132,13 +137,13 @@ describe.each(startBundlers)('%s build', (bundler) => {
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
         start: { serverFns: { generateFunctionId: () => 'my-custom-id' } },
       })
-      expect((await client.run(`return entry.greet.functionId`)).result).toBe(
-        'my-custom-id',
-      )
+      expect(
+        (await client.run(`return entry.greet.serverFnMeta.id`)).result,
+      ).toBe('my-custom-id')
       expect(
         (
           await ssr.run(
-            `return await (await entry.getServerFnById('my-custom-id', { origin: 'client' }))({})`,
+            `${callByIdPrelude}return await callById('my-custom-id')`,
           )
         ).result,
       ).toBe('MARK_HANDLER')

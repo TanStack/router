@@ -40,6 +40,21 @@
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
+  "nx": {
+    "targets": {
+      "test:unit": {
+        "dependsOn": [
+          "^build",
+          {
+            "projects": [
+              "@tanstack/react-start"
+            ],
+            "target": "build"
+          }
+        ]
+      }
+    }
+  },
   "type": "module",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",

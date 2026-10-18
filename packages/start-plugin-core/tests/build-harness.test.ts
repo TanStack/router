@@ -7,7 +7,13 @@
  */
 import { describe, expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
-import { buildStart, routerRuntimeFiles, startBundlers } from './build-harness'
+import {
+  buildStart,
+  callByIdPrelude,
+  requestsOfPrelude,
+  routerRuntimeFiles,
+  startBundlers,
+} from './build-harness'
 
 const timeout = 60_000
 
@@ -68,7 +74,7 @@ describe.each(startBundlers)('%s', (bundler) => {
   )
 
   test(
-    'a server fn is an RPC by id on the client, and the SSR build resolves the same id through the generated resolver',
+    "a server fn is Start's RPC on the client: calling it fetches its URL, which carries its id; the SSR build runs the handler, directly and by that id",
     async () => {
       const { client, ssr } = await buildStart({
         bundler,
@@ -83,16 +89,27 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
         },
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
+      // The client run has no server: `requestsOf` records the requests
+      // the call sends.
       const clientRpc = (
-        await client.run(`try {
-  entry.greet()
-  return 'called'
-} catch (error) {
-  return { id: entry.greet.functionId, message: error.message }
+        await client.run(`${requestsOfPrelude}
+return {
+  id: entry.greet.serverFnMeta.id,
+  url: entry.greet.url,
+  requests: await requestsOf(entry.greet),
 }`)
-      ).result as { id: string; message: string }
-      expect(clientRpc.message).toBe(`client RPC ${clientRpc.id}`)
-      const { result } = await ssr.run(`const settle = async (run) => {
+      ).result as {
+        id: string
+        url: string
+        requests: Array<{ url: string; method: string }>
+      }
+      expect(clientRpc).toEqual({
+        id: expect.any(String),
+        url: `/_serverFn/${clientRpc.id}`,
+        requests: [{ url: clientRpc.url, method: 'GET' }],
+      })
+      const { result } = await ssr.run(`${callByIdPrelude}
+const settle = async (run) => {
   try {
     return await run()
   } catch (error) {
@@ -101,14 +118,47 @@ export { getServerFnById } from '#tanstack-start-server-fn-resolver'
 }
 const id = ${JSON.stringify(clientRpc.id)}
 return {
-  sameId: entry.greet.functionId === id,
-  resolved: await settle(async () => (await entry.getServerFnById(id, { origin: 'server' }))()),
-  unknown: await settle(() => entry.getServerFnById('unknown-id', { origin: 'server' })),
+  sameId: entry.greet.serverFnMeta.id === id,
+  called: await settle(() => entry.greet()),
+  byId: await settle(() => callById(id)),
+  unknown: await settle(() => callById('unknown-id')),
 }`)
       expect(result).toEqual({
         sameId: true,
-        resolved: 'hello',
+        called: 'hello',
+        byId: 'hello',
         unknown: expect.stringMatching(/not found/),
+      })
+    },
+    timeout,
+  )
+
+  // The request context is the one piece of Start the harness stands in for
+  // (`inRequestContext`): Start's own runtime reads it.
+  test(
+    'SSR scripts run in a request context that Start’s runtime reads',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/fns.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const middleware = createMiddleware({ type: 'function' }).server(
+  ({ next, context }) =>
+    next({ context: { fromMiddleware: 'MARK_MIDDLEWARE', given: context } }),
+)
+export const inspect = createServerFn()
+  .middleware([middleware])
+  .handler(async ({ context, method }) => ({ method, context }))
+`,
+          'src/entry.ts': `export { inspect } from './fns'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      // Without a request context, Start's runtime throws ("No Start
+      // context found").
+      expect((await ssr.run(`return await entry.inspect()`)).result).toEqual({
+        method: 'GET',
+        context: { fromMiddleware: 'MARK_MIDDLEWARE', given: {} },
       })
     },
     timeout,

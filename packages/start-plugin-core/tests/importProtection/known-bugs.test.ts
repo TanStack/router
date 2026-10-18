@@ -306,10 +306,14 @@ describe('Vite dev, behavior "error"', () => {
     return app
   }
 
-  /** The violations loading the app reports, or `'loaded'`. */
+  /**
+   * The violations loading the app's modules reports, or `'loaded'`. (Not
+   * the modules of `@tanstack/react-start/server`, which imports Start's
+   * entries, which only Start's whole plugin provides.)
+   */
   async function loadOutcome(files: Record<string, string>) {
     const server = await startProtectedDevServer(files, { behavior: 'error' })
-    return server.load('/src/entry.ts').then(
+    return server.load('/src/entry.ts', { skip: /^\/@(vite|fs)\// }).then(
       () => 'loaded',
       (error: Error) =>
         reportedViolations(error.message).map(

@@ -8,6 +8,7 @@ import {
   createStartCompiler,
   evaluateModule,
   importSources,
+  startClientCore,
 } from '../regression-helpers'
 import {
   declaredNames,
@@ -31,11 +32,15 @@ const uncompiled = () => {
 }
 
 /**
- * Start's own middleware factory module, stubbed so that calling
- * `.server()` fails: a module evaluates only without it.
+ * Start's own middleware factory module: the real `createMiddleware`, whose
+ * builder fails the test when `.server()` is called, so a module evaluates
+ * only without it.
  */
 const middlewareFactoryStub = {
-  createMiddleware: () => ({ server: uncompiled }),
+  createMiddleware: (...args: Array<unknown>) => ({
+    ...startClientCore.createMiddleware(...args),
+    server: uncompiled,
+  }),
 }
 
 describe('createMiddleware compiles correctly', () => {
@@ -158,8 +163,8 @@ export const middleware = middlewareModule.createMiddleware().server(() => {
 
     expect(result).not.toBeNull()
     expect(result).not.toContain('server-only-middleware')
-    // The client runtime's `.server()` throws: the module evaluates only
-    // without it.
+    // `.server()` fails the test (`middlewareFactoryStub`): the module
+    // evaluates only without it.
     const { middleware } = await evaluateModule(result!, {
       './createMiddleware': middlewareFactoryStub,
     })
