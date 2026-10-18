@@ -87,7 +87,12 @@
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "@tanstack/solid-router": "workspace:*",
+    "react-dom": "catalog:",
+    "solid-js": "catalog:",
+    "vite-plugin-solid": "catalog:",
+    "@types/react-dom": "catalog:"
   },
   "nx": {
     "targets": {
