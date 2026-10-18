@@ -267,11 +267,14 @@ export const mw = createMiddleware({ type: 'function' })
   .server(({ next }) => next({ context: { marker: '${marker}' } }))
 `
 
+  // With Start's whole Vite plugin (its environments and import
+  // protection, not the compiler plugin alone).
   // Source: oracle-gaps H4 / DV31 (no dev edit of createMiddleware).
   test(
     'the client never gets the edited .server(), and SSR runs the new one',
     async () => {
       const server = await startDevServer({
+        start: {},
         files: { 'src/mw.ts': middleware('MARK_SERVER_V1') },
       })
       /** What `.server()` puts in the context on the server. */
