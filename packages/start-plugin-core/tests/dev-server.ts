@@ -26,7 +26,7 @@ import {
 import { createClientRpc, startClientCore } from './start-runtime'
 import type { ModuleStub } from '@tanstack/compiler-test-utils/module-linker'
 import type { StartCompilerPluginOptions } from '../src/vite/start-compiler-plugin/plugin'
-import type { TanStackStartInputConfig } from '../src/schema'
+import type { TanStackStartViteInputConfig } from '../src/vite/schema'
 import type { StartCompilerImportTransform } from '../src/types'
 import type { PluginOption } from 'vite'
 import type {
@@ -81,7 +81,7 @@ export interface StartDevServerOptions extends Omit<
    * empty, and `src/router.ts` and `src/routes/__root.tsx` are stubs unless
    * the app has them.
    */
-  start?: TanStackStartInputConfig
+  start?: TanStackStartViteInputConfig
   /**
    * With `start`: external import transforms of the Start compiler, which a
    * framework package passes to Start's plugin (e.g. React's RSC CSS
@@ -153,7 +153,7 @@ export const Route = createRootRoute()
 /** Start's Vite plugin with the core options `@tanstack/react-start` passes. */
 export function startPlugin(
   root: string,
-  start: TanStackStartInputConfig,
+  start: TanStackStartViteInputConfig,
   compilerTransforms: Array<StartCompilerImportTransform> | undefined,
 ) {
   return tanStackStartVite(
