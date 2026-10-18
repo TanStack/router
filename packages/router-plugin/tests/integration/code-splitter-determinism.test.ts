@@ -1,3 +1,5 @@
+// Slow-tier half of this suite: the tests that need a real tool. Its
+// in-process tests are in ../code-splitter-determinism.test.ts (fast tier).
 /**
  * Code splitting does not depend on where the project lives or on how the
  * platform spells paths: the same route compiles to the same modules under

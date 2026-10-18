@@ -1,3 +1,5 @@
+// Slow-tier half of this suite: the tests that need a real tool. Its
+// in-process tests are in ../known-bugs-code-splitter.test.ts (fast tier).
 /**
  * Known code-splitter bugs. Each test asserts correct behaviour for a bug on
  * main and is marked .fails; remove .fails when the bug is fixed.

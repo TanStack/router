@@ -1,3 +1,5 @@
+// Slow-tier half of this suite: the tests that need a real tool. Its
+// in-process tests are in ../code-splitter-plugin-pipeline.test.ts (fast tier).
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { expect, it } from 'vitest'
 import { build, routeApp } from '../build-harness'

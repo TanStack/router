@@ -1,3 +1,5 @@
+// Slow-tier half of this suite: the tests that need a real tool. Its
+// in-process tests are in ../../rsbuild/normalized-client-build.test.ts (fast tier).
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { promisify } from 'node:util'
