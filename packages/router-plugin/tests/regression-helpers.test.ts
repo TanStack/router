@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest'
 import { routerDevServer } from './dev-server'
 import {
   compileRouteModules,
-  componentChunk,
+  componentModules,
+  evaluateModule,
   expectRegisteredRouteOption,
   expectValidModules,
   generatedRouteId,
@@ -17,9 +18,12 @@ import {
   importRequests,
   importSources,
   loadRoute,
+  loadRouteGraph,
+  renderComponent,
   routeModuleSources,
   routeSpecifier,
 } from './regression-helpers'
+import type { RouteGraph } from './plugin-host'
 
 describe('compileRouteModules', () => {
   const route = `${head}export const Route = createFileRoute('/')({
@@ -52,80 +56,190 @@ export const Route = createFileRoute('/')({
   })
 })
 
-describe('loadRoute labels each lazy module by the route options that load it', () => {
-  const options = [
-    'loader',
-    'component',
-    'errorComponent',
-    'notFoundComponent',
-    'pendingComponent',
-  ]
-  const route = (groupings: string) => `${head}const shared = { value: 'v' }
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: ${groupings},
-${options.map((option) => `  ${option}: () => <p>{shared.value}${option}</p>,`).join('\n')}
-})`
-
-  it('finds the module of every lazy option without evaluating it', async () => {
-    const loaded = await loadRoute(
-      route(JSON.stringify(options.map((option) => [option]))),
-    )
-    expect(Object.keys(loaded.modules).sort()).toEqual([
-      'lazy component',
-      'lazy errorComponent',
-      'lazy loader',
-      'lazy notFoundComponent',
-      'lazy pendingComponent',
-      'reference',
-      'shared',
-    ])
-    // Every module only imported lazily is labelled by an option.
-    const lazyIds = [...loaded.graph.importKinds]
-      .filter(([, kind]) => kind === 'dynamic')
-      .map(([id]) => id)
-      .sort()
-    expect(
-      options.map((option) => loaded.ids[`lazy ${option}`]).sort(),
-    ).toEqual(lazyIds)
-    expect(loaded.evaluated).toEqual([loaded.ids.reference])
-    for (const option of options) {
-      expect(loaded.chunkOf(option)).toBe(loaded.modules[`lazy ${option}`])
-      const value = await loaded.load(option)
-      expect(loaded.evaluated).toContain(loaded.ids[`lazy ${option}`])
-      expect(value()).toBe(`<p>v${option}</p>`)
+/**
+ * A fixed route graph, as a compiler could emit it, with the route module
+ * at `/route.tsx`: `modules` by id, each id importable by its own name.
+ */
+function fixedGraph(modules: Record<string, string>): RouteGraph {
+  const ids = new Map(Object.entries(modules))
+  const importKinds = new Map<string, 'static' | 'dynamic'>()
+  for (const [id, code] of ids) {
+    for (const { specifier, dynamic } of importRequests(code, id)) {
+      if (ids.has(specifier) && importKinds.get(specifier) !== 'static') {
+        importKinds.set(specifier, dynamic ? 'dynamic' : 'static')
+      }
     }
+  }
+  return {
+    id: '/route.tsx',
+    modules: ids,
+    importKinds,
+    resolve: (specifier) => (ids.has(specifier) ? specifier : undefined),
+  }
+}
+
+// Controls of what `loadRoute` observes, on fixed graphs (not the code
+// splitter's output): laziness, loading and grouping through the router's
+// lazy contract and the modules requested, whatever helper builds a lazy
+// value and however many modules a group loads (SPEC J2.6, §5.3, §5.8).
+describe('loadRoute observes lazy options by their loading', () => {
+  const route = `import { createFileRoute, lazyRouteComponent, lazyFn } from '@tanstack/react-router'
+import { shared } from '/shared.tsx'
+export const Route = createFileRoute('/')({
+  loader: lazyFn(() => import('/loader.tsx'), 'loader'),
+  component: lazyRouteComponent(() => import('/component.tsx'), 'component'),
+  errorComponent: () => <p>error {shared}</p>,
+})`
+  const modules = {
+    '/route.tsx': route,
+    '/shared.tsx': `export const shared = 'shared'`,
+    '/loader.tsx': `import { heavy } from './heavy'
+export const loader = () => heavy`,
+    '/component.tsx': `import { shared } from '/shared.tsx'
+export const component = () => <p>page {shared}</p>`,
+  }
+  const stubs = { './heavy': { heavy: 'heavy data' } }
+
+  it('tells lazy options from eager ones without loading them', async () => {
+    const loaded = await loadRouteGraph(fixedGraph(modules), { stubs })
+    expect(
+      await Promise.all(
+        ['loader', 'component', 'errorComponent', 'pendingComponent'].map(
+          (option) => loaded.isLazy(option),
+        ),
+      ),
+    ).toEqual([true, true, false, false])
+    expect(loaded.evaluated).toEqual(['/shared.tsx', '/route.tsx'])
+    expect(loaded.eager).not.toContain('./heavy')
+    expect(loaded.eager).toContain('/shared.tsx')
   })
 
-  it('labels a module that several options load with all of them', async () => {
-    const loaded = await loadRoute(
-      route(
-        `[['loader', 'component'], ['errorComponent', 'notFoundComponent']]`,
-      ),
-    )
-    expect(Object.keys(loaded.modules).sort()).toEqual([
-      'lazy component+loader',
-      'lazy errorComponent+notFoundComponent',
-      'reference',
-      'shared',
+  it('loads, renders and calls options the way the router does', async () => {
+    const loaded = await loadRouteGraph(fixedGraph(modules), { stubs })
+    expect([
+      await loaded.render('component'),
+      await loaded.render('errorComponent'),
+      await loaded.options.loader(),
+      await loaded.renderRoute(),
+    ]).toEqual([
+      '<p>page shared</p>',
+      '<p>error shared</p>',
+      'heavy data',
+      '<p>page shared</p>',
     ])
-    expect(loaded.chunkOf('loader')).toBe(loaded.chunkOf('component'))
-    expect(() => loaded.chunkOf('pendingComponent')).toThrow(
-      'does not load one module',
+    expect(loaded.evaluated).toEqual([
+      '/shared.tsx',
+      '/route.tsx',
+      '/component.tsx',
+      '/loader.tsx',
+    ])
+    expect(loaded.requested).toContain('./heavy')
+  })
+
+  it('gives the modules loading an option evaluates, and its groups', async () => {
+    const loaded = await loadRouteGraph(fixedGraph(modules), { stubs })
+    expect(await loaded.loadedBy('component')).toEqual([
+      modules['/component.tsx'],
+    ])
+    expect(await loaded.loadedBy('loader')).toEqual([modules['/loader.tsx']])
+    await expect(loaded.loadedBy('errorComponent')).rejects.toThrow(
+      'loads no module',
+    )
+    expect(await loaded.groups()).toEqual([['component'], ['loader']])
+    // Observed in forks: the route the test inspects loaded nothing more.
+    expect(loaded.evaluated).toEqual(['/shared.tsx', '/route.tsx'])
+  })
+
+  // Another valid compiler: its own lazy wrapper, an intermediate module
+  // loading a group's modules, and the grouped options in other modules.
+  it('accepts an equivalent wrapper and an intermediate module', async () => {
+    const loaded = await loadRouteGraph(
+      fixedGraph({
+        '/route.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createElement } from 'react'
+const group = () => import('/group.tsx')
+let Loaded
+function Page(props) {
+  return createElement(Loaded, props)
+}
+Page.preload = async () => {
+  Loaded = (await group()).Page
+}
+export const Route = createFileRoute('/')({
+  loader: async (context) => (await group()).loader(context),
+  component: Page,
+})`,
+        '/group.tsx': `export { Page } from '/page.tsx'
+export { loader } from '/data.tsx'`,
+        '/page.tsx': `export const Page = () => <p>page</p>`,
+        '/data.tsx': `export const loader = () => 'data'`,
+      }),
+    )
+    expect([
+      await loaded.isLazy('component'),
+      await loaded.isLazy('loader'),
+    ]).toEqual([true, true])
+    expect(await loaded.groups()).toEqual([['component', 'loader']])
+    expect((await loaded.loadedBy('component')).length).toBe(3)
+    expect([
+      await loaded.render('component'),
+      await loaded.options.loader(),
+    ]).toEqual(['<p>page</p>', 'data'])
+  })
+
+  // A wrong compiler: the component's module imports the error
+  // component's module, so the error component loads with the component
+  // (but not the reverse).
+  it('shows an independent group that loads with another one', async () => {
+    const loaded = await loadRouteGraph(
+      fixedGraph({
+        '/route.tsx': `import { createFileRoute, lazyRouteComponent } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component: lazyRouteComponent(() => import('/component.tsx'), 'component'),
+  errorComponent: lazyRouteComponent(() => import('/error.tsx'), 'errorComponent'),
+})`,
+        '/component.tsx': `import '/error.tsx'
+export const component = () => <p>page</p>`,
+        '/error.tsx': `export const errorComponent = () => <p>error</p>`,
+      }),
+    )
+    expect(await loaded.groups()).toEqual([
+      ['component', 'errorComponent'],
+      ['errorComponent'],
+    ])
+  })
+
+  it('renders the route through the real router, with its hooks', async () => {
+    const loaded = await loadRouteGraph(
+      fixedGraph({
+        '/route.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/posts')({
+  loader: () => ['a', 'b'],
+  component: () => <p>{Route.useLoaderData().length} {Route.useSearch().page} {Route.fullPath}</p>,
+})`,
+      }),
+      { routeId: '/posts' },
+    )
+    expect(await loaded.renderRoute({ at: '/posts?page=3' })).toBe(
+      '<p>2 3 /posts</p>',
     )
   })
 })
 
-describe('componentChunk', () => {
-  it('stubs the imports of the route file and returns the component chunk', async () => {
-    const chunk = await componentChunk(`${head}import { format } from './format'
+describe('componentModules', () => {
+  it('stubs the imports of the route file and returns the modules of the component', async () => {
+    const loaded =
+      await componentModules(`${head}import { format } from './format'
 import { label } from './label'
 const prefix = label('route')
 export const Route = createFileRoute('/')({
   loader: () => prefix,
   component: () => <p>{format('page')}</p>,
 })`)
-    expect(importSources(chunk)).toContain('./format')
-    expect(importSources(chunk)).not.toContain('./label')
+    expect(loaded.flatMap((code) => importSources(code))).toContain('./format')
+    expect(loaded.flatMap((code) => importSources(code))).not.toContain(
+      './label',
+    )
   })
 })
 
@@ -138,7 +252,7 @@ export const Route = createFileRoute('/')({
     const other =
       await route.importFromRoute(`import { store, Route } from '${routeSpecifier}'
 export const read = () => [store.count, typeof Route]`)
-    expect((await route.load('component'))()).toBe('<p>1</p>')
+    expect(await route.render('component')).toBe('<p>1</p>')
     expect(other.read()).toEqual([1, 'object'])
     expect(route.exports.store).toBe(
       (await route.importFromRoute(`export { store } from '${routeSpecifier}'`))
@@ -162,25 +276,20 @@ export const Route = createFileRoute('/')({
       },
     )
     expect(route.evaluated).toEqual([route.ids.reference])
-    expect([route.isLazy('component'), route.isLazy('loader')]).toEqual([
-      true,
-      false,
-    ])
     expect(route.options.loader()).toBe('data')
-    const component = await route.load('component')
-    expect(route.evaluated).toEqual([
-      route.ids.reference,
-      route.ids['lazy component'],
+    expect([await route.render('component'), effects]).toEqual([
+      '<p>2</p>',
+      ['route', 'component'],
     ])
-    expect([component(), effects]).toEqual(['<p>2</p>', ['route', 'component']])
+    expect(route.evaluated).toEqual([route.ids.reference, route.ids['lazy 1']])
   })
 
   it('returns an option that is not split as it is', async () => {
     const route =
       await loadRoute(`import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({ component: () => <p>root</p> })`)
-    expect(route.isLazy('component')).toBe(false)
-    expect((await route.load('component'))()).toBe('<p>root</p>')
+    expect(await route.isLazy('component')).toBe(false)
+    expect(await route.render('component')).toBe('<p>root</p>')
   })
 })
 
@@ -219,26 +328,39 @@ export const Route = createFileRoute('/')({ component: Page })`,
 })
 
 describe('framework and plugin options', () => {
-  it.each(['solid', 'vue'] as const)(
-    'loadRoute compiles a %s route with its router package',
-    async (framework) => {
-      const route = await loadRoute(
-        `import { createFileRoute } from '@tanstack/${framework}-router'
+  it('loadRoute compiles a vue route with its router package and renders it with Vue', async () => {
+    const route = await loadRoute(
+      `import { createFileRoute } from '@tanstack/vue-router'
 export const Route = createFileRoute('/')({
-  component: () => <p>${framework}</p>,
+  loader: () => ['a'],
+  component: () => {
+    const data = Route.useLoaderData()
+    return <p>vue {data.value.length}</p>
+  },
 })`,
-        { targetFramework: framework },
-      )
-      expect(importSources(route.modules.reference!)).toContain(
-        `@tanstack/${framework}-router`,
-      )
-      expect(importSources(route.modules.reference!)).not.toContain(
-        '@tanstack/react-router',
-      )
-      expect(route.isLazy('component')).toBe(true)
-      expect((await route.load('component'))()).toBe(`<p>${framework}</p>`)
-    },
-  )
+      { targetFramework: 'vue' },
+    )
+    expect(await route.isLazy('component')).toBe(true)
+    // Vue's SSR output carries fragment markers
+    expect((await route.renderRoute()).replace(/<!--.*?-->/g, '')).toBe(
+      '<p>vue 1</p>',
+    )
+  })
+
+  // The Solid router ships JSX source for bundlers (`solid` condition): it
+  // cannot be linked in process. Real Solid builds: build-frameworks.test.ts.
+  it('renders a Solid component with the Solid plugin and Solid SSR', async () => {
+    const { Page } = await evaluateModule(
+      `export const Page = (props: { name: string }) => <p>solid {props.name}</p>`,
+      {},
+      { framework: 'solid' },
+    )
+    // Solid's SSR output carries hydration keys and markers
+    const html = await renderComponent(Page, { name: 'x' }, 'solid')
+    expect(html.replace(/<!--.*?-->| data-hk="[^"]*"/g, '')).toBe(
+      '<p>solid x</p>',
+    )
+  })
 
   const route = `${head}export const Route = createFileRoute('/')({
   loader: () => 'data',
@@ -247,21 +369,14 @@ export const Route = createFileRoute('/')({
 
   it('compileRouteModules and loadRoute take the code-splitting options of the plugin', async () => {
     const byDefault = await loadRoute(route)
-    expect(byDefault.isLazy('loader')).toBe(false)
+    expect(await byDefault.isLazy('loader')).toBe(false)
 
     const grouped = await loadRoute(route, {
       pluginOptions: {
         codeSplittingOptions: { defaultBehavior: [['loader', 'component']] },
       },
     })
-    expect([grouped.isLazy('loader'), grouped.isLazy('component')]).toEqual([
-      true,
-      true,
-    ])
-    expect(Object.keys(grouped.modules)).toEqual([
-      'reference',
-      'lazy component+loader',
-    ])
+    expect(await grouped.groups()).toEqual([['component', 'loader']])
     expect(await (await grouped.load('loader'))()).toBe('data')
 
     const unsplit = compileRouteModules(route, {

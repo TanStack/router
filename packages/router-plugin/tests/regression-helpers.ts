@@ -7,20 +7,21 @@
  * (`hmr-model.ts`) live in their own modules and are re-exported here.
  */
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
+import { frameworkTransform } from '@tanstack/compiler-test-utils/render'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
-import * as React from 'react'
 import { parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
 import { build, routeApp } from './build-harness'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { ESTree } from 'vite'
 import {
+  packagesDirectory,
   refreshScope,
   transformWithReactRefresh,
-  withRouterStubs,
 } from './lazy-tracking'
 import type { Stubs } from './lazy-tracking'
 import { routeModuleId } from './plugin-host'
+import type { TargetFramework } from './plugin-host'
 
 export {
   webpackCompiler,
@@ -43,10 +44,12 @@ export {
 } from './plugin-host'
 export type { TargetFramework, WebpackCompilerStub } from './plugin-host'
 export {
-  componentChunk,
+  componentModules,
   routeSpecifier,
   loadRoute,
+  loadRouteGraph,
   createRouteLoader,
+  renderComponent,
 } from './lazy-tracking'
 export { hotUpdate } from './hmr-model'
 export type { HotUpdateOptions } from './hmr-model'
@@ -56,21 +59,32 @@ export { declaredNames } from '@tanstack/compiler-test-utils/validate-module'
 export const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
 /**
- * Evaluates an emitted module like a runtime would: JSX becomes plain calls
- * that render to text, and imports of every form (named, default, namespace,
- * side-effect only, re-exports) link to `stubs`, keyed by specifier, as real
- * ES modules. `importMeta` is assigned to `import.meta` before the module
- * runs. Every call evaluates a fresh module instance.
+ * Evaluates an emitted module like a runtime would: imports of every form
+ * (named, default, namespace, side-effect only, re-exports) link to `stubs`,
+ * keyed by specifier, as real ES modules, and other bare imports to the real
+ * installed packages; JSX compiles with the real transform of `framework`
+ * (default React) into real elements (render them with `renderComponent`).
+ * `importMeta` is assigned to `import.meta` before the module runs. Every
+ * call evaluates a fresh module instance.
  */
 export async function evaluateModule(
   code: string,
   stubs: Stubs = {},
-  options: { importMeta?: Record<string, unknown>; filename?: string } = {},
+  options: {
+    importMeta?: Record<string, unknown>
+    filename?: string
+    framework?: TargetFramework
+  } = {},
 ): Promise<Record<string, (...args: Array<any>) => any>> {
   const id = routeModuleId(options.filename ?? 'module.tsx')
   const moduleGraph = createModuleGraph({
     modules: { [id]: code },
     stubs,
+    packages: packagesDirectory,
+    transform: frameworkTransform(
+      options.framework ?? 'react',
+      packagesDirectory,
+    ),
     ...(options.importMeta && { importMeta: () => options.importMeta! }),
   })
   return moduleGraph.import(id)
@@ -78,11 +92,11 @@ export async function evaluateModule(
 
 /**
  * Evaluates one compiled route module on its own with the React Refresh
- * transform: the router package is stubbed, `react` is React, `stubs`
- * provide other imports and any remaining import is a module whose imports
- * are identity functions (`connect(Page)` returns `Page`). `importMeta` is
- * assigned to `import.meta` before the module runs. Returns its exports, its
- * `Route` and what React Refresh registered.
+ * transform: the router package and React are the real ones, `stubs`
+ * provide other imports and any remaining import no package provides is a
+ * module whose imports are identity functions (`connect(Page)` returns
+ * `Page`). `importMeta` is assigned to `import.meta` before the module runs.
+ * Returns its exports, its `Route` and what React Refresh registered.
  */
 export async function evaluateRouteModule(
   code: string,
@@ -93,7 +107,8 @@ export async function evaluateRouteModule(
   const registered = new Map<unknown, string>()
   const moduleGraph = createModuleGraph({
     modules: { [id]: code },
-    stubs: withRouterStubs({ react: React, ...stubs }, new Map()),
+    stubs,
+    packages: packagesDirectory,
     fallbackStub: (_, names) =>
       Object.fromEntries(
         [...names].map((name) => [name, (value: unknown) => value]),
