@@ -5,6 +5,8 @@
  * helpers (route-tree.ts) read from the tree with their stub of the router.
  * This validates the helpers (route ids and URL paths derived from
  * `getParentRoute`, lazy route constructors) that the other tests rely on.
+ * The app also type-checks with the real TypeScript compiler, and the route
+ * ids of the tree's types are the router's.
  */
 import { symlink } from 'node:fs/promises'
 import path from 'node:path'
@@ -19,6 +21,7 @@ import {
 } from '@tanstack/virtual-file-routes'
 import { createApp, fileRoute, generate, lazyFileRoute, rootRoute } from './app'
 import { routePathsOf, urlsOf } from './route-tree'
+import { typeAssertions, typeErrorsOf } from './type-check'
 import type { Config } from '../src'
 
 /** This package's dependencies, for the app to import the router from. */
@@ -98,8 +101,8 @@ describe('the real router on a generated route tree', () => {
     },
   ])('$name', async ({ files, config }) => {
     const root = await createApp(files)
-    await symlink(nodeModules, path.join(root, 'node_modules'), 'junction')
     const { generatedRouteTree } = await generate(root, config)
+    await symlink(nodeModules, path.join(root, 'node_modules'), 'junction')
 
     const { routeTree } = await import(/* @vite-ignore */ generatedRouteTree)
     const router = createRouter({ routeTree })
@@ -116,5 +119,17 @@ describe('the real router on a generated route tree', () => {
         ]),
       ),
     ).toEqual(await routePathsOf(generatedRouteTree))
-  }, 30_000)
+
+    const ids = realRoutes.map((route) => JSON.stringify(route.id)).join(' | ')
+    expect(
+      await typeErrorsOf(
+        root,
+        'src/checks.ts',
+        `import type { FileRoutesById } from './routeTree.gen'
+${typeAssertions}
+export type Check = Expect<Equal<keyof FileRoutesById, ${ids}>>
+`,
+      ),
+    ).toEqual([])
+  }, 60_000)
 })
