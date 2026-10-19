@@ -169,6 +169,12 @@ export interface BundleTarget {
    * after an edit.
    */
   rebuildAfter?: Record<string, string>
+  /**
+   * webpack and Rspack: adjusts the bundler's configuration the harness
+   * built before the compiler is created (e.g. a persistent `cache`), as an
+   * app's own configuration file would set it.
+   */
+  configure?: (options: Record<string, unknown>) => void
 }
 
 export interface RunResult {
@@ -362,6 +368,7 @@ interface BundlerConfig {
   sourceRules: Array<Record<string, unknown>> | undefined
   conditions: Array<string>
   rebuildAfter: Record<string, string> | undefined
+  configure: ((options: Record<string, unknown>) => void) | undefined
 }
 
 /** An emitted chunk, as a bundler reports it. */
@@ -403,9 +410,13 @@ async function bundle(
     sourceRules: target.sourceRules,
     conditions: target.conditions ?? [],
     rebuildAfter: target.rebuildAfter,
+    configure: target.configure,
   }
   if (config.rebuildAfter && bundler !== 'webpack' && bundler !== 'rspack') {
     throw new Error(`rebuildAfter: not supported for ${bundler}`)
+  }
+  if (config.configure && bundler !== 'webpack' && bundler !== 'rspack') {
+    throw new Error(`configure: not supported for ${bundler}`)
   }
   const warnings: Array<string> = []
   const consoleMessages: Array<string> = []
@@ -635,6 +646,7 @@ async function buildWithWebpackApi(
     infrastructureLogging: { level: 'none' },
     plugins: config.plugin ? [config.plugin()] : [],
   }
+  config.configure?.(options)
 
   if (config.rebuildAfter) {
     const stats = await watchAndRebuild(
