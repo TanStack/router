@@ -36,4 +36,4 @@ export type UseRouteContextResult<
   TSelected,
 > = unknown extends TSelected
   ? ResolveUseRouteContext<TRouter, TFrom, TStrict>
-  : TSelected
+  : NoInfer<TSelected>
