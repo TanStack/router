@@ -219,6 +219,14 @@ export const startBundlers: ReadonlyArray<StartBundler> = ['vite', 'rsbuild']
 export interface StartBuildOptions {
   /** Default `vite`. */
   bundler?: StartBundler
+  /**
+   * The Start framework package of the app (default `react`): Start's
+   * plugin gets the options that package passes, and `solid` links the
+   * built `@tanstack/solid-start` and `@tanstack/solid-router` too (the
+   * dependencies of a Solid Start app). The app's JSX plugin (e.g.
+   * `vite-plugin-solid`) comes from `viteConfig`.
+   */
+  framework?: 'react' | 'solid'
   /** App files by path relative to the app root. */
   files: Record<string, string>
   /**
@@ -353,7 +361,7 @@ export const Route = createRootRoute()
 function reactStartCoreOptions(target: BuildTarget) {
   const { root } = target
   return {
-    framework: 'react',
+    framework: target.framework,
     defaultEntryPaths: {
       client: path.join(root, 'harness/client-entry.ts'),
       server: path.join(root, 'harness/server-entry.ts'),
@@ -387,11 +395,19 @@ export async function buildStart(
       ...(bundler === 'rsbuild' && testLoaderFiles),
       ...files,
     },
-    symlinks: startRuntimeLinks(files),
+    symlinks: {
+      ...startRuntimeLinks(files),
+      ...(options.framework === 'solid' &&
+        workspacePackageLinks([
+          '@tanstack/solid-start',
+          '@tanstack/solid-router',
+        ])),
+    },
   })
   const mode = options.mode ?? 'production'
   const target: BuildTarget = {
     root: app.root,
+    framework: options.framework ?? 'react',
     mode,
     minify: options.minify ?? mode === 'production',
     sourcemap: options.sourcemap ?? false,
@@ -446,6 +462,7 @@ type Env = 'client' | 'ssr'
 
 interface BuildTarget {
   root: string
+  framework: 'react' | 'solid'
   mode: BuildMode
   minify: boolean
   sourcemap: boolean
