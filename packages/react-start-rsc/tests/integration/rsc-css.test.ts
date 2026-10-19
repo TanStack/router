@@ -363,9 +363,11 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
 
     // Bug: a call whose result is immediately member-called
     // (`renderServerComponent(...).then()`) is recorded as the inner call of
-    // a method chain and never visited as a candidate itself. Same root
-    // cause as the `createServerOnlyFn(...).bind()` pin in
-    // start-plugin-core/tests/known-bugs-start-compiler.test.ts.
+    // a method chain and never visited as a candidate itself. The root cause
+    // is shared with the other Start factories (e.g. a
+    // `createServerOnlyFn(...).bind()`); this is its only pin.
+    // Source: start-plugin-core/src/start-compiler/compiler.ts, candidate
+    // detection ("inner call in a chain").
     // Impact: the server component renders without its CSS.
     test.fails(
       'renderServerComponent styles the server component when its result is chained',
