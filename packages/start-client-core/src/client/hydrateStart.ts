@@ -1,4 +1,4 @@
-import { DEV_STYLES_STALE_EVENT } from '@tanstack/router-core'
+import { markDevStylesStale } from '@tanstack/router-core'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { startInstance } from '#tanstack-start-entry'
 import {
@@ -64,10 +64,6 @@ async function hydrateStart(): Promise<AnyRouter> {
   return router
 }
 
-function notifyDevStylesStale() {
-  window.dispatchEvent(new Event(DEV_STYLES_STALE_EVENT))
-}
-
 function hydrateStartWithHmr(): Promise<AnyRouter> {
   const hot = import.meta.hot ?? import.meta.webpackHot
 
@@ -77,7 +73,7 @@ function hydrateStartWithHmr(): Promise<AnyRouter> {
 
   // Tell HeadContent that the SSR dev styles snapshot is outdated.
   if (hot.on) {
-    hot.on('vite:afterUpdate', notifyDevStylesStale)
+    hot.on('vite:afterUpdate', markDevStylesStale)
   } else if (hot.addStatusHandler) {
     let applied = false
     hot.addStatusHandler((status) => {
@@ -85,7 +81,7 @@ function hydrateStartWithHmr(): Promise<AnyRouter> {
         applied = true
       } else if (status === 'idle' && applied) {
         applied = false
-        notifyDevStylesStale()
+        markDevStylesStale()
       }
     })
   }

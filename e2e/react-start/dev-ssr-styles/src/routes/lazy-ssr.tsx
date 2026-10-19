@@ -13,6 +13,7 @@ function LazySsr() {
       {/* Kept outside the Suspense boundary's parent re-render path so that
           hydration state changes don't force the boundary to client-render. */}
       <HydrationMarker />
+      <div data-testid="lazy-ssr-hmr-probe" />
       <Suspense fallback={null}>
         <LazySsrPanel />
       </Suspense>

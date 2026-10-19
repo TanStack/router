@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { DEV_STYLES_ATTR, DEV_STYLES_STALE_EVENT } from '@tanstack/router-core'
+import { DEV_STYLES_ATTR, onDevStylesStale } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
 import { Asset } from './Asset'
@@ -44,20 +44,18 @@ export const HeadContent = Vue.defineComponent({
     }
 
     const stale = Vue.ref(false)
-    const markStale = () => {
-      stale.value = true
-      // Also drop links that are not owned by this component (hydration mismatch)
-      document
-        .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
-        .forEach((el) => el.remove())
-    }
+    let unsubscribe: (() => void) | undefined
 
     Vue.onMounted(() => {
-      window.addEventListener(DEV_STYLES_STALE_EVENT, markStale)
+      unsubscribe = onDevStylesStale(() => {
+        stale.value = true
+        // Also drop links that are not owned by this component (hydration mismatch)
+        document
+          .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
+          .forEach((el) => el.remove())
+      })
     })
-    Vue.onBeforeUnmount(() => {
-      window.removeEventListener(DEV_STYLES_STALE_EVENT, markStale)
-    })
+    Vue.onBeforeUnmount(() => unsubscribe?.())
 
     return () =>
       renderTags(
