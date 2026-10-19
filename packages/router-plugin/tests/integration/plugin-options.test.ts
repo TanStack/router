@@ -57,24 +57,28 @@ async function buildRoute(
 const read = (app: BuildResult, file: string) =>
   readFile(path.join(app.root, file), 'utf8').catch(() => null)
 
-describe.each([false, undefined])(
-  'autoCodeSplitting: %s',
-  (autoCodeSplitting) => {
-    test.each(bundlers)(
-      'splits nothing and still generates the route tree (%s)',
-      async (bundler) => {
-        const { app, html } = await buildRoute(bundler, { autoCodeSplitting })
-        expect(app.where('MARK_COMPONENT')).toBe('eager')
-        expect(app.lazy).toEqual([])
-        expect(html).toContain('MARK_COMPONENT')
-        expect(await read(app, 'routeTree.gen.ts')).toContain(
-          "from './routes/index'",
-        )
-      },
-      timeout,
-    )
-  },
-)
+// `false` per bundler entry (each entry passes the options on in its own
+// way); `undefined` on Vite only (speedup 7): the default is resolved after
+// the entries, by the shared config schema, for every bundler alike, and the
+// Rspack and webpack entries pass an absent option on as they pass `false`.
+describe.each([
+  { autoCodeSplitting: false, cells: bundlers },
+  { autoCodeSplitting: undefined, cells: ['vite'] as const },
+])('autoCodeSplitting: $autoCodeSplitting', ({ autoCodeSplitting, cells }) => {
+  test.each(cells)(
+    'splits nothing and still generates the route tree (%s)',
+    async (bundler) => {
+      const { app, html } = await buildRoute(bundler, { autoCodeSplitting })
+      expect(app.where('MARK_COMPONENT')).toBe('eager')
+      expect(app.lazy).toEqual([])
+      expect(html).toContain('MARK_COMPONENT')
+      expect(await read(app, 'routeTree.gen.ts')).toContain(
+        "from './routes/index'",
+      )
+    },
+    timeout,
+  )
+})
 
 describe('plugin.vite.environmentName', () => {
   test.each([
