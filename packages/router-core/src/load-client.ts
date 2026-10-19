@@ -2084,8 +2084,6 @@ export async function loadClientRoute(
     : undefined
   if (resolvedPrefix) {
     controller = hydrationController!
-  } else {
-    hydrationController?.abort()
   }
   if (preflight.signal.aborted) {
     transferMatchResources(router, matches)
