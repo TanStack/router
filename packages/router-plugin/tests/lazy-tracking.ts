@@ -15,7 +15,8 @@
  *   route it creates, the route's options.
  * - `evaluated`: compiled modules evaluated so far (load observer);
  *   `eager`: the route module and every module its load requested (compiled
- *   modules, stubs, packages); `requested`: everything requested so far.
+ *   modules, stubs, packages), `eagerModules` the code of the compiled ones;
+ *   `requested`: everything requested so far.
  * - `isLazy(option)`: loading the option requests a compiled module that has
  *   not loaded with the route module.
  * - `load(option)`: the option as the router uses it, once its module loaded
@@ -32,6 +33,9 @@
  * - `groups()`: which lazy options load together. Activating a lazy option
  *   makes every option of its group available (its loading requests nothing
  *   new); options of another group stay unrequested.
+ * - `importBindings(names)`: the live bindings another module of the app
+ *   imports from the route file (`@tanstack/compiler-test-utils/importers`),
+ *   to compare with what the route uses and to call (SPEC G9).
  * - `importFromRoute(source)`: another module of the app importing the route
  *   module (`'#route'`), for identity checks through a real importer.
  * - `registered`: what React Refresh registered (`refresh`).
@@ -46,6 +50,7 @@
 
  */
 import path from 'node:path'
+import { importBindings } from '@tanstack/compiler-test-utils/importers'
 import { createLazyProbe } from '@tanstack/compiler-test-utils/lazy-probe'
 import {
   createModuleGraph,
@@ -315,6 +320,11 @@ async function linkRoute(
     evaluated: moduleGraph.evaluated,
     /** The route module and every module its load requested (see the header). */
     eager,
+    /** Code of the compiled modules among `eager`: what loads with the route. */
+    eagerModules: eager.flatMap((id) => {
+      const loaded = graph.modules.get(id)
+      return loaded === undefined ? [] : [loaded]
+    }),
     /** Every module requested so far (see `ModuleGraph.requested`). */
     requested: moduleGraph.requested,
     isLazy: probe.isLazy,
@@ -361,6 +371,14 @@ async function linkRoute(
      * module, and returns its exports: it imports the route file as
      * `routeSpecifier` (`'#route'`) and gets the instance the route uses.
      */
+    /**
+     * The live bindings `names` (`default` for the default export) as
+     * another module of the app imports them from the route file.
+     */
+    importBindings: (names: Array<string>) =>
+      importBindings(moduleGraph, routeSpecifier, names, {
+        id: `/importer-${++importers}.ts`,
+      }),
     importFromRoute: (source: string) => {
       const id = `/importer-${++importers}.tsx`
       moduleGraph.add(id, source)

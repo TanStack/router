@@ -20,8 +20,16 @@ describe('server-only route options on the client', () => {
   /** Start's client configuration of the code splitter. */
   const deleteNodes = ['ssr', 'server', 'headers']
 
-  /** A client build with Start's `deleteNodes`, reading a server secret. */
-  async function secretPlacement(bundler: Bundler, option: string) {
+  /**
+   * A client build with Start's `deleteNodes` of a route whose `option`
+   * reads a server secret (its options object followed by `cast`, e.g.
+   * `as any`).
+   */
+  async function secretPlacement(
+    bundler: Bundler,
+    option: string,
+    cast = '',
+  ) {
     const app = await build({
       bundler,
       env: 'client',
@@ -31,7 +39,7 @@ describe('server-only route options on the client', () => {
 export const Route = createFileRoute('/')({
   ${option},
   component: () => <p>page</p>,
-})
+}${cast})
 `,
         {
           env: 'client',
@@ -65,6 +73,28 @@ export const Route = createFileRoute('/')({
     async (bundler) => {
       expect(
         await secretPlacement(bundler, 'ssr() { return !!readSecret() }'),
+      ).toBe('nowhere')
+    },
+    60_000,
+  )
+
+  // Bug: build-level canary of the typed-wrapper pin in
+  // ../known-bugs-code-splitter.test.ts (same root cause: options wrapped in
+  // a cast or `satisfies` are not read). Whether the server handler ships
+  // is decided by the router transform (the options object keeps
+  // referencing it), so one bundler shows it (speedup 7: the Rspack and
+  // webpack cells are decided by the same transform as the Vite cell).
+  // Impact: the server handler and its server-only import reach the client
+  // bundle.
+  test.fails.each(['as never', 'as any', 'satisfies object'])(
+    'a client build has no server code of options wrapped in `%s` (vite)',
+    async (cast) => {
+      expect(
+        await secretPlacement(
+          'vite',
+          'server: { handlers: { GET: () => readSecret() } }',
+          ` ${cast}`,
+        ),
       ).toBe('nowhere')
     },
     60_000,

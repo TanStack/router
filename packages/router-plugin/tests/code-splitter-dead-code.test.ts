@@ -30,16 +30,6 @@ async function renderSplitComponent(code: string) {
   return (await loadRoute(code)).render('component')
 }
 
-/**
- * The code of each compiled module that loads with the route module (the
- * route module and what it imports statically, facades included).
- */
-function eagerModules(route: Awaited<ReturnType<typeof loadRoute>>) {
-  return route.eager.flatMap((id) => {
-    const code = route.graph.modules.get(id)
-    return code === undefined ? [] : [code]
-  })
-}
 
 describe('the reference module only drops code that splitting left unused', () => {
   describe.each(hmrModes)('with hmr: $hmr', ({ hmr }) => {
@@ -241,7 +231,7 @@ export const Route = createFileRoute('/')({
     // What loads with the route no longer imports `used` (whether it keeps
     // loading `bar` is free).
     expect(
-      eagerModules(route).flatMap((code) => importedNames(code, 'bar')),
+      route.eagerModules.flatMap((code) => importedNames(code, 'bar')),
     ).not.toContain('used')
     await expectValidModules(route.modules)
     expect(await route.render('component')).toBe('<p>used</p>')
@@ -505,27 +495,9 @@ function Unused() {
     expect(await route.render('component')).toBe('<p>heavy</p>')
   })
 
-  // Bundlers drop unused calls of a function annotated #__NO_SIDE_EFFECTS__,
-  // so the annotation must move with the function, also when every output
-  // module repeats a file-level pragma comment.
-  it('keeps the #__NO_SIDE_EFFECTS__ annotation of a function in every module that declares it, in a file with a pragma', async () => {
-    const { modules } =
-      (await compileRouteModules(`/** @jsxImportSource @emotion/react */
-${head}/* #__NO_SIDE_EFFECTS__ */ function makeLabel() { return 'label' }
-export const Route = createFileRoute('/')({
-  component: () => <p>{makeLabel()}</p>,
-})
-`))
-    const declaring = Object.entries(modules).filter(([, code]) =>
-      declaredNames(code).has('makeLabel'),
-    )
-    expect(declaring.length).toBeGreaterThan(0)
-    for (const [name, code] of declaring) {
-      expect(code, name).toMatch(
-        /\/\*\s*[#@]__NO_SIDE_EFFECTS__\s*\*\/\s*function makeLabel\(/,
-      )
-    }
-  })
+  // A function annotated #__NO_SIDE_EFFECTS__ keeps its annotation where the
+  // code splitter moves it (a file with a pragma): its unused calls leave
+  // production builds, integration/code-splitter-dead-code.test.ts.
 
   // Source: React Compiler hook-ref-callback.js and
   // dont-memoize-primitive-function-call-non-escaping.js: a function shared by
@@ -649,7 +621,7 @@ export const Route = createFileRoute('/')({
       )
       // What loads with the route holds nothing of the component, what the
       // component loads nothing of the loader.
-      const eager = eagerModules(route)
+      const eager = route.eagerModules
       expect(
         eager.flatMap((code) => importedNames(code, './messages')),
       ).not.toContain('chunkMessage')

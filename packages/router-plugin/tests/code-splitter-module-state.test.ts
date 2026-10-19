@@ -948,10 +948,11 @@ export const Route = createFileRoute('/')({ component: Panel })
         },
       )
       await expectValidModules(route.modules)
-      expect([
-        route.exports.usePanelState(),
-        await route.render('component'),
-      ]).toEqual(['state', 'panel'])
+      const { usePanelState } = await route.importBindings(['usePanelState'])
+      expect([usePanelState(), await route.render('component')]).toEqual([
+        'state',
+        'panel',
+      ])
     },
   )
 
@@ -976,11 +977,12 @@ export const Route = createFileRoute('/')({
       },
     )
     await expectValidModules(route.modules)
-    expect([
-      await route.render('component'),
-      calls,
-      route.exports.title,
-    ]).toEqual(['<p>t</p>', 1, 't'])
+    const { title } = await route.importBindings(['title'])
+    expect([await route.render('component'), title, calls]).toEqual([
+      '<p>t</p>',
+      't',
+      1,
+    ])
   })
 })
 
@@ -1022,11 +1024,11 @@ ${options}
     expect({
       rendered,
       inits,
-      importsInitWithoutStore: route.eager.includes('./init') && atLoad === 0,
+      loadsInitUnused: route.eager.includes('./init') && atLoad === 0,
     }).toEqual({
       rendered: ['<p>shared</p>', '<p>shared</p>'],
       inits: 1,
-      importsInitWithoutStore: false,
+      loadsInitUnused: false,
     })
   })
 

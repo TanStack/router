@@ -50,14 +50,18 @@ export const Route = createFileRoute('/')({
         },
       },
     )
-    // The route module imports nothing only the split components read, and
-    // no split chunk imports what only the loader reads.
-    expect(importedNames(route.modules.reference!, './messages')).toEqual([
-      'otherMessage',
-    ])
-    expect(importedNames(route.modules.reference!, './other')).toEqual([
-      'default',
-    ])
+    // Nothing that loads with the route module (the route module and the
+    // modules it imports statically, V1 split F30) imports what only the
+    // split components read, and no split chunk imports what only the loader
+    // reads.
+    expect(
+      route.eagerModules.flatMap((code) => importedNames(code, './messages')),
+    ).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^(?:default|targetMessage|namespaced|\*)$/)]),
+    )
+    expect(
+      route.eagerModules.flatMap((code) => importedNames(code, './other')),
+    ).not.toEqual(expect.arrayContaining([expect.stringMatching(/^(?:x|\*)$/)]))
     for (const option of ['component', 'errorComponent', 'notFoundComponent']) {
       const loaded = await route.loadedBy(option)
       expect(
@@ -318,7 +322,8 @@ export const Route = createFileRoute('/')({
 export default ${declaration}
 `)
       await expectValidModules(route.modules)
-      const exported = route.exports.default
+      // As another module of the app imports it.
+      const { default: exported } = await route.importBindings(['default'])
       expect(typeof exported).toBe('function')
       expect(type === 'class' ? new exported().x : exported()).toBe(
         type === 'class' ? 1 : null,
@@ -424,7 +429,8 @@ export const Route = createFileRoute('/')({
 })
 `)
     await expectValidModules(route.modules)
-    expect([route.exports.reset(), await route.render('component')]).toEqual([
+    const { reset } = await route.importBindings(['reset'])
+    expect([reset(), await route.render('component')]).toEqual([
       0,
       '<h1>Home</h1>',
     ])
@@ -623,7 +629,8 @@ export const Route = createFileRoute('/')({
 })
 `)
       expect(await route.render('component')).toBe('<p>h</p>')
-      expect(route.exports.helper()).toBe('h')
+      const { helper } = await route.importBindings(['helper'])
+      expect(helper()).toBe('h')
     },
   )
 
