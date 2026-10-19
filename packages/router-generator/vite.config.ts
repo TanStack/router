@@ -26,6 +26,9 @@ const config = defineConfig({
       {
         // Fast tier, after `unit` (`test:unit`): the type tests of the
         // route trees the `unit` run generated (tests/generator/**/*.test-d.ts).
+        // One Vitest run selects both projects (so command-line options such
+        // as `--maxWorkers` reach both): Vitest runs type tests in a group of
+        // their own, after the groups of the runtime tests.
         extends: true,
         test: {
           name: 'types',
