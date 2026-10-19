@@ -29,7 +29,6 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { startDevServer, startServerEntryFiles } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
-import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 const timeout = 60_000
 
@@ -201,7 +200,7 @@ export function Widgets() {
  * React's recoverable errors.
  */
 async function editLoadedChild(
-  server: Pick<DevServer, 'edit'>,
+  server: { edit: (files: Record<string, string>) => Promise<unknown> },
   browser: BrowserPage,
   widgets: (children: string, label: string) => string,
 ) {
@@ -213,20 +212,39 @@ async function editLoadedChild(
         document.querySelector(selector)?.closest('section')?.textContent ?? '',
       `[data-child=${name}]`,
     )
-  const step = async () =>
-    ({
+  /**
+   * What the page shows once both sections are rendered and unchanged for
+   * 100 ms (a hot update that remounts the module's components, as Solid's
+   * does, re-renders them one after the other).
+   */
+  const step = async () => {
+    const read = async () => ({
       a: await section('a'),
       b: await section('b'),
       ...(await page.evaluate(() => ({
         effects: (globalThis as any).__effects ?? 0,
         recoverable: (globalThis as any).__recoverable ?? [],
       }))),
-    }) as {
-      a: string
-      b: string
-      effects: number
-      recoverable: Array<string>
+    })
+    const deadline = Date.now() + 10_000
+    let last = await read()
+    for (;;) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      const next = await read()
+      if (next.a && next.b && JSON.stringify(next) === JSON.stringify(last)) {
+        return next as {
+          a: string
+          b: string
+          effects: number
+          recoverable: Array<string>
+        }
+      }
+      if (Date.now() > deadline) {
+        throw new Error(`the page did not settle: ${JSON.stringify(next)}`)
+      }
+      last = next
     }
+  }
   /** Clicks child `name` until its section shows `expected`. */
   const clickUntil = async (name: string, expected: string) => {
     const deadline = Date.now() + 10_000
