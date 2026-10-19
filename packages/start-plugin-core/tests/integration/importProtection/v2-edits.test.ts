@@ -27,7 +27,7 @@ import {
   runInClient,
   startRsbuildStartDevServer,
 } from '../../rsbuild-dev-server'
-import { reportedImporters, runRsbuildSsr } from './v2-hosts'
+import { reportedImporters, runRsbuildSsr, settledAcrossTurn } from './v2-hosts'
 
 const timeout = 60_000
 const compileTimeout = timeout
@@ -321,15 +321,15 @@ describe('rsbuild dev', () => {
         // edit each once Rspack bundles watchpack >= 2.6. (Settled first
         // too: a compile the start or the previous step still has pending
         // would pause the watcher while the first removal lands.)
-        await server.settle()
+        await settledAcrossTurn(server)
         await server.edit({ 'src/secret.server.ts': null })
-        await server.settle()
+        await settledAcrossTurn(server)
         await server.edit({ 'src/widget.client.ts': null })
-        await server.settle()
+        await settledAcrossTurn(server)
         await server.edit({ 'src/secret.server.ts': secretServer(index) })
-        await server.settle()
+        await settledAcrossTurn(server)
         await server.edit({ 'src/widget.client.ts': widgetClient(index) })
-        await server.settle()
+        await settledAcrossTurn(server)
         await server.edit(stepEdits(step.live))
       }
       const values = (ran: { result: unknown } | { error: string }) => {

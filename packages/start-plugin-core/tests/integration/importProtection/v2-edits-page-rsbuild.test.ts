@@ -21,6 +21,7 @@ import {
   pageWidget,
   reportedImporters,
   secretServerModule,
+  settledAcrossTurn,
 } from './v2-hosts'
 
 const timeout = 60_000
@@ -76,11 +77,11 @@ const run = () =>
         // Merge the steps back once Rspack bundles watchpack >= 2.6.
         // (Settled first too: a compile the previous step still has
         // pending would pause the watcher while the removal lands.)
-        await server.settle()
+        await settledAcrossTurn(server)
         await server.edit({ 'src/secret.server.ts': null })
-        await server.settle()
+        await settledAcrossTurn(server)
         await server.edit({ 'src/secret.server.ts': secretServerModule })
-        await server.settle()
+        await settledAcrossTurn(server)
         await server.edit({ 'src/widget.tsx': pageWidget(step, live) })
       }
       await browser.waitForText(`step-${step}`, {

@@ -103,6 +103,23 @@ export function reportedImporters(
 }
 
 /**
+ * `settle()` on both sides of a turn of the event loop. Rspack's
+ * MultiCompiler starts the compile of a dependent environment (Start's
+ * `ssr` after `client`) through its queue on the tick after its parent's
+ * compile ended, which `settle()` cannot see yet: a write landing while that
+ * compile runs is reported late, and a removal never (FOLLOWUPS "UPSTREAM
+ * (W3-harness2)"). Yielding a turn lets the queue start it; the second
+ * `settle()` waits for it. Not a timer.
+ */
+export async function settledAcrossTurn(
+  server: Pick<RsbuildDevServer, 'settle'>,
+): Promise<void> {
+  await server.settle()
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  await server.settle()
+}
+
+/**
  * Runs the SSR output of an Rsbuild dev server with Start's plugin (a
  * CommonJS bundle for Node) in a fresh VM context, as Node loads the
  * server, then `script` (the body of an async function) in the same
