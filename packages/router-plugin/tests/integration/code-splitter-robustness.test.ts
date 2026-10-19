@@ -6,39 +6,87 @@ import { expect, test } from 'vitest'
 import { build, clientMountEntry, rootRoute } from '../build-harness'
 import { head } from '../regression-helpers'
 
-test.each(['vite', 'rspack', 'webpack'] as const)(
-  'a route file with a non-ASCII name is generated, split and rendered (%s)',
-  async (bundler) => {
-    const app = await build({
-      bundler,
-      env: 'client',
-      files: {
-        'routes/__root.tsx': rootRoute,
-        'routes/café.日本語.tsx': `${head}function Page() {
-  return <p>MARK_COMPONENT</p>
+/**
+ * One app per bundler holds both unusual route files (speedup 6): a route
+ * file with a non-ASCII name (its route at `/café/日本語`, re-exported by
+ * the entry as `CafeRoute`) and a JavaScript route file (`routes/index.jsx`,
+ * the entry's `Route`). Built once and run once per route; each test reads
+ * its own route's markers.
+ */
+type BundlerName = 'vite' | 'rspack' | 'webpack'
+
+const results = new Map<BundlerName, ReturnType<typeof buildApp>>()
+
+function appOf(bundler: BundlerName) {
+  let result = results.get(bundler)
+  if (!result) {
+    result = buildApp(bundler)
+    results.set(bundler, result)
+  }
+  return result
+}
+
+async function buildApp(bundler: BundlerName) {
+  const app = await build({
+    bundler,
+    env: 'client',
+    // Files outlive the test that built them; the result is all we keep
+    registerCleanup: undefined,
+    files: {
+      'routes/__root.tsx': rootRoute,
+      'routes/café.日本語.tsx': `${head}function Page() {
+  return <p>MARK_CAFE_COMPONENT</p>
 }
 export const Route = createFileRoute('/café/日本語')({
-  staticData: { label: 'MARK_ROUTE' },
+  staticData: { label: 'MARK_CAFE_ROUTE' },
   component: Page,
 })
 `,
-        'entry.ts': clientMountEntry.replace(
-          "'./routes/index'",
-          "'./routes/café.日本語'",
-        ),
-      },
-    })
-    const run = await app.run(
-      `await entry.mount(entry.Route.options.component)`,
+      'routes/index.jsx': `${head}const shared = { label: 'MARK_SHARED' }
+function Page() {
+  return <p>MARK_COMPONENT {shared.label}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => shared,
+  component: Page,
+})
+`,
+      'entry.ts': `${clientMountEntry}export { Route as CafeRoute } from './routes/café.日本語'
+`,
+    },
+  })
+  try {
+    const cafe = await app.run(
+      `await entry.mount(entry.CafeRoute.options.component)`,
     )
-    expect({
-      route: app.where('MARK_ROUTE'),
-      component: app.where('MARK_COMPONENT'),
-      html: run.html,
-    }).toEqual({
+    const jsx = await app.run(
+      `await entry.mount(entry.Route.options.component)
+return entry.Route.options.loader().label`,
+    )
+    return {
+      cafe: {
+        route: app.where('MARK_CAFE_ROUTE'),
+        component: app.where('MARK_CAFE_COMPONENT'),
+        html: cafe.html,
+      },
+      jsx: {
+        component: app.where('MARK_COMPONENT'),
+        html: jsx.html,
+        loaded: jsx.result,
+      },
+    }
+  } finally {
+    await app.dispose()
+  }
+}
+
+test.each(['vite', 'rspack', 'webpack'] as const)(
+  'a route file with a non-ASCII name is generated, split and rendered (%s)',
+  async (bundler) => {
+    expect((await appOf(bundler)).cafe).toEqual({
       route: 'eager',
       component: 'lazy',
-      html: '<div id="root"><p>MARK_COMPONENT</p></div>',
+      html: '<div id="root"><p>MARK_CAFE_COMPONENT</p></div>',
     })
   },
   120_000,
@@ -49,32 +97,7 @@ export const Route = createFileRoute('/café/日本語')({
 test.each(['vite', 'rspack', 'webpack'] as const)(
   'a .jsx route file is generated, split and rendered (%s)',
   async (bundler) => {
-    const app = await build({
-      bundler,
-      env: 'client',
-      files: {
-        'routes/__root.tsx': rootRoute,
-        'routes/index.jsx': `${head}const shared = { label: 'MARK_SHARED' }
-function Page() {
-  return <p>MARK_COMPONENT {shared.label}</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => shared,
-  component: Page,
-})
-`,
-        'entry.ts': clientMountEntry,
-      },
-    })
-    const run = await app.run(
-      `await entry.mount(entry.Route.options.component)
-return entry.Route.options.loader().label`,
-    )
-    expect({
-      component: app.where('MARK_COMPONENT'),
-      html: run.html,
-      loaded: run.result,
-    }).toEqual({
+    expect((await appOf(bundler)).jsx).toEqual({
       component: 'lazy',
       html: '<div id="root"><p>MARK_COMPONENT MARK_SHARED</p></div>',
       loaded: 'MARK_SHARED',
