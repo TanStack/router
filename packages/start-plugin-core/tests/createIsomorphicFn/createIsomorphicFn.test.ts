@@ -1,10 +1,10 @@
 import { describe, expect, test, vi } from 'vitest'
+import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
   compileCode,
   evaluateModule,
   importSources,
 } from '../regression-helpers'
-import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 
 // Each output runs only its environment's implementation; an isomorphic fn
 // without one for that environment is a no-op returning undefined, and the

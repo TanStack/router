@@ -1377,7 +1377,7 @@ describe('CommonJS dependencies', () => {
 module.exports = function (app) {
   return app.handler(reset)
 }`,
-      run: (module: { exports: any }) => module.exports(app),
+      run: (cjs: { exports: any }) => cjs.exports(app),
     },
     {
       name: 'a with statement',
@@ -1387,7 +1387,7 @@ module.exports = function (app) {
     return app.handler(PI)
   }
 }`,
-      run: (module: { exports: any }) => module.exports.run(app),
+      run: (cjs: { exports: any }) => cjs.exports.run(app),
     },
     {
       name: 'a top-level return',
@@ -1396,17 +1396,17 @@ module.exports = function (app) {
 exports.run = function (app) {
   return app.handler(1)
 }`,
-      run: (module: { exports: any }) => module.exports.run,
+      run: (cjs: { exports: any }) => cjs.exports.run,
     },
   ])(
     'a CommonJS dependency with $name compiles and keeps its meaning',
     async ({ id, code, run }) => {
       // Runs a CommonJS module (sloppy mode) and reads what `run` reads.
       const evaluate = (source: string) => {
-        const module = { exports: {} as any }
+        const cjs = { exports: {} as any }
 
-        new Function('module', 'exports', source)(module, module.exports)
-        return run(module)
+        new Function('module', 'exports', source)(cjs, cjs.exports)
+        return run(cjs)
       }
       for (const env of ['client', 'server'] as const) {
         const { compile } = createStartCompiler({ env })
