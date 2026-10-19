@@ -7,9 +7,82 @@
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import vm from 'node:vm'
+import { startServerEntryFiles } from '../../dev-server'
 import { reportedViolations } from '../../importProtection/start-apps'
 import type { ReportOutput } from '../../importProtection/violation-report'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+
+// ---------------------------------------------------------------------------
+// The V2-14 page app (v2-edits-page.test.ts on Vite, v2-edits-page-rsbuild
+// .test.ts on Rsbuild): a Start app a browser opens (Start's default server
+// and client entries, the real router over the generated route tree) whose
+// index route renders `Widget` on the client only (`ssr: false`).
+
+export const secretServerModule = `export const secret = () => 'MARK_SECRET'\n`
+
+/**
+ * `src/widget.tsx` at `step`; `live`: also uses the denied import live
+ * (and gives it to the page, `window.liveSecret`).
+ */
+export const pageWidget = (
+  step: number,
+  live: boolean,
+) => `import { createIsomorphicFn } from '@tanstack/react-start'
+import { secret } from './secret.server'
+const read = createIsomorphicFn()
+  .server(() => secret())
+  .client(() => 'MARK_CLIENT_BRANCH')
+export function Widget() {
+${
+  live
+    ? `  ;(window as unknown as Record<string, unknown>).liveSecret = secret
+  return <p data-testid="widget">{read() + ' ' + String(secret()) + ' step-${step}'}</p>`
+    : `  return <p data-testid="widget">{read() + ' step-${step}'}</p>`
+}
+}
+`
+
+export const pageApp = {
+  ...startServerEntryFiles,
+  'harness/client-entry.ts': `import { createElement } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { StartClient } from '@tanstack/react-start/client'
+hydrateRoot(document, createElement(StartClient))
+`,
+  'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+  'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({ component: Root })
+function Root() {
+  return (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <div id="app"><Outlet /></div>
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+`,
+  'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Widget } from '../widget'
+export const Route = createFileRoute('/')({ ssr: false, component: Widget })
+`,
+  'src/secret.server.ts': secretServerModule,
+  'src/widget.tsx': pageWidget(1, false),
+}
+
+/** The steps of the page: allowed, denied (live use), allowed again. */
+export const pageSteps = [
+  { step: 1, live: false },
+  { step: 2, live: true },
+  { step: 3, live: false },
+] as const
 
 /**
  * The importers of the violations reported for `environment` (`client` or

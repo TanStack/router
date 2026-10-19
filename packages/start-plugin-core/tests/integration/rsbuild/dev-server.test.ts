@@ -264,10 +264,12 @@ export const ${name} = createServerFn().handler(async () => 'MARK_${name}')
           'src/entry.ts': `export { a } from './a'\nexport { b } from './b'\n`,
         },
       })
-      await server.edit({
-        'src/b.ts': null,
-        'src/entry.ts': `export { a } from './a'\n`,
-      })
+      // The deletion in its own edit, before the entry's: a write landing
+      // while Rspack compiles the deletion can be lost (FOLLOWUPS "UPSTREAM
+      // (W3-harness2)": watchpack 2.5.2 vendored by Rspack). Merge the two
+      // edits back once Rspack bundles watchpack >= 2.6.
+      await server.edit({ 'src/b.ts': null })
+      await server.edit({ 'src/entry.ts': `export { a } from './a'\n` })
       expect(server.errors).toEqual([])
       const ssr = Object.values(await server.outputs('ssr')).join('\n')
       expect(ssr).toContain('MARK_a')

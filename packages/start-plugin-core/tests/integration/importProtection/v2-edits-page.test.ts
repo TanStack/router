@@ -12,75 +12,17 @@
 import react from '@vitejs/plugin-react'
 import { afterAll, describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { startDevServer, startServerEntryFiles } from '../../dev-server'
+import { startDevServer } from '../../dev-server'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
-import { reportedImporters } from './v2-hosts'
+import {
+  pageApp,
+  pageSteps,
+  pageWidget,
+  reportedImporters,
+  secretServerModule,
+} from './v2-hosts'
 
 const timeout = 30_000
-
-const secretServer = `export const secret = () => 'MARK_SECRET'\n`
-
-/**
- * `src/widget.tsx` at `step`; `live`: also uses the denied import live
- * (and gives it to the page, `window.liveSecret`).
- */
-const widget = (
-  step: number,
-  live: boolean,
-) => `import { createIsomorphicFn } from '@tanstack/react-start'
-import { secret } from './secret.server'
-const read = createIsomorphicFn()
-  .server(() => secret())
-  .client(() => 'MARK_CLIENT_BRANCH')
-export function Widget() {
-${
-  live
-    ? `  ;(window as unknown as Record<string, unknown>).liveSecret = secret
-  return <p data-testid="widget">{read() + ' ' + String(secret()) + ' step-${step}'}</p>`
-    : `  return <p data-testid="widget">{read() + ' step-${step}'}</p>`
-}
-}
-`
-
-/**
- * A Start app a browser opens (Start's default server and client entries,
- * the real router over the generated route tree) whose index route renders
- * `Widget` on the client only (`ssr: false`).
- */
-const app = {
-  ...startServerEntryFiles,
-  'harness/client-entry.ts': `import { createElement } from 'react'
-import { hydrateRoot } from 'react-dom/client'
-import { StartClient } from '@tanstack/react-start/client'
-hydrateRoot(document, createElement(StartClient))
-`,
-  'src/router.ts': `import { createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-export const getRouter = () => createRouter({ routeTree })
-`,
-  'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({ component: Root })
-function Root() {
-  return (
-    <html>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <div id="app"><Outlet /></div>
-        <Scripts />
-      </body>
-    </html>
-  )
-}
-`,
-  'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { Widget } from '../widget'
-export const Route = createFileRoute('/')({ ssr: false, component: Widget })
-`,
-  'src/secret.server.ts': secretServer,
-  'src/widget.tsx': widget(1, false),
-}
 
 /** Pre-bundled up front, as Vite does for an app that installed them. */
 const config = {
@@ -112,12 +54,6 @@ interface StepOutcome {
   reported: Array<string>
 }
 
-const steps = [
-  { step: 1, live: false },
-  { step: 2, live: true },
-  { step: 3, live: false },
-] as const
-
 /** The server and page close after the last test. */
 const cleanups: Array<() => Promise<void>> = []
 afterAll(async () => {
@@ -138,21 +74,21 @@ const run = () =>
       browser: true,
       config,
       plugins: [react()],
-      files: app,
+      files: pageApp,
       registerCleanup,
     })
     const browser = await openPage(new URL('/', server.url).href, {
       registerCleanup,
     })
     const result: Array<StepOutcome> = []
-    for (const { step, live } of steps) {
+    for (const { step, live } of pageSteps) {
       let since = { logs: 0, hmr: 0 }
       if (step > 1) {
         await server.edit({ 'src/secret.server.ts': null })
-        await server.edit({ 'src/secret.server.ts': secretServer })
+        await server.edit({ 'src/secret.server.ts': secretServerModule })
         await server.idle()
         since = { logs: server.logs.length, hmr: server.hmr.length }
-        await server.edit({ 'src/widget.tsx': widget(step, live) })
+        await server.edit({ 'src/widget.tsx': pageWidget(step, live) })
       }
       await browser.waitForText(`step-${step}`, {
         selector: '[data-testid=widget]',
@@ -184,7 +120,7 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
     return result
   })())
 
-describe.each(steps)('step $step (live use: $live)', ({ step, live }) => {
+describe.each(pageSteps)('step $step (live use: $live)', ({ step, live }) => {
   const outcome = async () => (await run())[step - 1]!
 
   test(

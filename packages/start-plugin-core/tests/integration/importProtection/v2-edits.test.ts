@@ -232,6 +232,15 @@ describe('vite dev', () => {
             'src/secret.server.ts': secretServer(index),
             'src/widget.client.ts': widgetClient(index),
           })
+          // The recreated state, loaded in both environments before the
+          // step's edit: the handling of the recreations (the SSR runner's
+          // reload, the transforms it starts) ends here, by the loads'
+          // completion, not by a timer, so the logs from `since` on are the
+          // step's edit alone.
+          await evaluateServed(server, '/src/router.ts', {
+            stubs: servedStartRuntime,
+          })
+          await server.import('/src/router.ts', 'ssr')
           await server.idle()
           // The logs of the step: from its edit on
           since = server.logs.length
@@ -273,7 +282,12 @@ describe('vite dev', () => {
     // before any request, built from the previous version of the file (its
     // code frame shows the removed line `export const liveWidget = () =>
     // widget()`). With the default `log: 'once'` the dedupe hides it. The
-    // client twin (step 2 of `src/client-side.ts`) logs nothing.
+    // client twin (step 2 of `src/client-side.ts`) logs nothing. Traced
+    // (W3-harness2): logged ~35 ms into the edit's handling, inside
+    // `edit()`'s settle, from `processPendingViolations` reached through
+    // `resolveId` while the Start compiler resolves `./widget.client` in
+    // the SSR transform of the edited file (the SSR runner's reload), with
+    // the location of the previous version.
     // Impact: after a fix, the dev server reports the violation the fix
     // removed, as if it were still there (SPEC J6.13: no stale report).
     // Source: FIX-PLAN V2-14.
@@ -299,24 +313,21 @@ describe('rsbuild dev', () => {
     const outcomes: Array<StepOutcome> = []
     for (const [index, step] of steps.entries()) {
       if (index > 0) {
-        // Known upstream flake (FOLLOWUPS "Rspack loses a file removal
-        // that lands while a compile runs"): a removal that lands while
-        // the watcher is paused for a compile is never reported, and the
-        // first removal starts a compile at once. Not worked around here.
-        await server.edit({
-          'src/secret.server.ts': null,
-          'src/widget.client.ts': null,
-        })
-        // Recreated with the step's edit (W3-ip-v2): recreated on their
-        // own, under load the second file was never compiled (very likely
-        // the same mechanism: a change landing while the watcher is paused,
-        // with an mtime before the compile's start); the edited importers
-        // resolve them again.
-        await server.edit({
-          'src/secret.server.ts': secretServer(index),
-          'src/widget.client.ts': widgetClient(index),
-          ...stepEdits(step.live),
-        })
+        // Each deletion and each recreation in its own edit, settled before
+        // the next write: a removal (or a write) landing while Rspack
+        // compiles the previous one can be lost (FOLLOWUPS "UPSTREAM
+        // (W3-harness2)": watchpack 2.5.2 vendored by Rspack, fixed in
+        // 2.6.0). Merge the deletions, then the recreations, back into one
+        // edit each once Rspack bundles watchpack >= 2.6.
+        await server.edit({ 'src/secret.server.ts': null })
+        await server.settle()
+        await server.edit({ 'src/widget.client.ts': null })
+        await server.settle()
+        await server.edit({ 'src/secret.server.ts': secretServer(index) })
+        await server.settle()
+        await server.edit({ 'src/widget.client.ts': widgetClient(index) })
+        await server.settle()
+        await server.edit(stepEdits(step.live))
       }
       const values = (ran: { result: unknown } | { error: string }) => {
         expect(ran).toEqual({ result: expect.anything() })
