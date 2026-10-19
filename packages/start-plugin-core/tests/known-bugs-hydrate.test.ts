@@ -169,23 +169,10 @@ export function Local() {
     },
   )
 
-  // Goal (enhancement): the `Hydrate` member of a namespace import splits its
-  // children like a named import (DECISIONS 2026-10-18: namespace imports
-  // must be recognised). Today it is left unsplit in both environments,
-  // which is safe (hydrate-split-modules.test.ts).
-  test.fails(
-    'client: a namespace-imported <Start.Hydrate> is split',
-    async () => {
-      // The client renders like the server, through split code.
-      const { client } =
-        await expectRendersLikeSource(`import * as Start from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
-export function Page() {
-  return <Start.Hydrate when={load()}><p>child</p></Start.Hydrate>
-}`)
-      expect(client.html).toContain('<p>child</p>')
-    },
-  )
+  // The goal that a namespace-imported `<Start.Hydrate>` is split like a
+  // named import (DECISIONS 2026-10-18) is pinned on real hydration:
+  // integration/hydrate-pages-react.ts and hydrate-pages-solid.test.ts "a
+  // namespace-imported Start.Hydrate loads its children when it hydrates".
 
   // Bug: the boundary's children are only read from JSX children, never from
   // a `children` prop or spread.

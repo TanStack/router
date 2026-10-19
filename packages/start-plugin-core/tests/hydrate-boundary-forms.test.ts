@@ -13,6 +13,12 @@
  * form of `when` running on the client only) is checked by real pages.
  */
 import { afterEach, beforeAll, describe, expect, test } from 'vitest'
+import {
+  captureThrow,
+  diagnosticPosition,
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { createModuleGraph } from '@tanstack/compiler-test-utils/module-linker'
 import { getModuleErrors } from '@tanstack/compiler-test-utils/validate-module'
 import {
@@ -29,25 +35,11 @@ import {
   withoutHydrationIds,
 } from './regression-helpers'
 import { packagesDir } from './render'
-import type { Framework, ModuleStub, RenderOptions } from './regression-helpers'
+import type { ModuleStub, RenderOptions } from './regression-helpers'
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
 `
-
-/** Compiles `code` for each environment, or returns the error it throws. */
-async function compileEnvs(code: string, framework?: Framework) {
-  const compiled = async (env: 'client' | 'server') =>
-    compileHydrate(env, code, { framework }).catch((error: Error) => error)
-  return { client: await compiled('client'), server: await compiled('server') }
-}
-
-/** The messages of the compile errors among `results`, without code frames. */
-function rejections(results: Record<string, unknown>) {
-  return Object.values(results)
-    .filter((result) => result instanceof Error)
-    .map(compileErrorMessage)
-}
 
 /**
  * The server output of `code` renders the markup the uncompiled source
@@ -127,6 +119,7 @@ export function Page() {
     {
       // Source: hydrateWhenSplitFalse.tsx fixture (main)
       name: 'a module-level element',
+      moduleLevel: true,
       code: `const fallback = <p>fallback-marker</p>
 export function Page() {
   return <Hydrate when={visible()} fallback={fallback}><p>child</p></Hydrate>
@@ -134,6 +127,7 @@ export function Page() {
     },
     {
       name: 'a module-level element with split={false}',
+      moduleLevel: true,
       code: `const fallback = <p>fallback-marker</p>
 export function Page() {
   return <Hydrate when={visible()} split={false} fallback={fallback}><p>child</p></Hydrate>
@@ -164,11 +158,19 @@ export function Page() {
   const formsHead = `${head}import { visible } from '@tanstack/react-start/hydration'
 `
 
-  test.each(forms)('server: $name is removed', async ({ code }) => {
-    const server = await expectServerRendersLikeSource(`${formsHead}${code}`)
-    expect(server.html).toContain('<p>child</p>')
-    expect(server.parent).not.toContain('fallback-marker')
-  })
+  // A module-level element the boundary reads stays declared or not: the
+  // prop is removed, and what is left of the module is dead code (SPEC
+  // §5.9; FIX-PLAN HYD-11).
+  test.each(forms)(
+    'server: $name is removed',
+    async ({ code, moduleLevel }) => {
+      const server = await expectServerRendersLikeSource(`${formsHead}${code}`)
+      expect(server.html).toContain('<p>child</p>')
+      if (!moduleLevel) {
+        expect(server.parent).not.toContain('fallback-marker')
+      }
+    },
+  )
 
   // That the client boundary receives the fallback (and `prefetch`,
   // `onHydrated`) is checked by real pages.
@@ -305,137 +307,180 @@ export function Page(props) {
   )
 })
 
-/** A page whose boundary, with the given `split` value, has a function child. */
-const functionChildPage = (
-  split: string,
+/**
+ * A page whose boundary, with the given `split` attribute (`''`: none), has
+ * `children`; `setup` comes before the component.
+ */
+const childrenPage = (
+  children: string,
+  split = '',
+  setup = '',
 ) => `${head}import { idle } from '@tanstack/react-start/hydration'
-export function Page() {
-  return <Hydrate when={idle()} split=${split}>{() => <p>render prop</p>}</Hydrate>
+import { useThing } from './hooks'
+${setup}export function Page({ flag }: { flag?: boolean }) {
+  return <Hydrate when={idle()}${split}>${children}</Hydrate>
 }`
 
-describe('split={false}', () => {
-  // Source: hydrate-when-transform.test.ts "respects parenthesized
-  // split={false}"; hydrateWhen SplitFalseFunctionChild fixture.
-  test.each([
-    { name: 'false', split: '{false}' },
-    { name: 'a parenthesized false', split: '{(false)}' },
-  ])('$name keeps function-as-children in place', async ({ split }) => {
-    await expectFunctionChildInPlace(split)
-  })
+/** A class component whose boundary reads `this` or `super`. */
+const classPage = (
+  read: 'this' | 'super',
+  split = '',
+) => `${head}import { idle } from '@tanstack/react-start/hydration'
+class Base {
+  get title() {
+    return 'super'
+  }
+}
+export class Page extends Base {
+  title2 = 'this'
+  render() {
+    return (
+      <Hydrate when={idle()}${split}>
+        <p>{${read === 'this' ? 'this.title2' : 'super.title'}}</p>
+      </Hydrate>
+    )
+  }
+}`
 
-  // Only the literal `split={false}` opts out (docs); the string "false" is
-  // a mistake of untyped callers (TypeScript rejects it): it keeps the
-  // function child in place too, or is rejected clearly.
-  // Source: hydrate-split-modules.test.ts "split=\"false\" keeps
-  // function-as-children in place"
-  test('the string "false" keeps function-as-children in place, or is rejected clearly', async () => {
-    const results = await compileEnvs(functionChildPage('"false"'))
-    const messages = rejections(results)
-    if (messages.length > 0) {
-      expect(messages).toContainEqual(expect.stringMatching(/\bHydrate\b/))
-      return
-    }
-    await expectFunctionChildInPlace('"false"')
-  })
+/** A real hook whose value depends on the component that calls it. */
+const hooks = {
+  './hooks': `import { useId } from 'react'
+export const useThing = () => useId()`,
+}
 
-  // Only a literal opts out at compile time (docs): a dynamic value splits
-  // the children whatever its value, and they hydrate like the server
-  // renders them.
-  // Source: gap H14 (round2/oracle-gaps)
-  test.each([true, false])(
-    'a dynamic split={flag} (%s) still splits the children',
-    async (flag) => {
-      const { client } = await expectRendersLikeSource(
-        `${head}export function Page({ flag }) {
-  return <Hydrate when={load()} split={flag}><p>child</p></Hydrate>
-}`,
-        { props: { flag } },
-      )
-      expect(client.html).toContain('<p>child</p>')
+/**
+ * The documented fixes of children that cannot be split (deferred-hydration
+ * docs, "These patterns cannot be split"): `split={false}` or moving the UI
+ * into a (child, function) component.
+ */
+const documentedFix =
+  /split=\{false\}|\b(child|function|separate|own|named) components?\b/i
+
+/**
+ * The client compilation, which extracts the children, rejects `code` with
+ * an error (SPEC J5.5) naming the unsafe pattern (`pattern`, matched in the
+ * message without its code frame) and a documented fix (`documentedFix`),
+ * and reporting a line of the boundary (the frame marks it, or a
+ * position). Wording and frame layout are free (SPEC §5.7). The file is
+ * named by the bundler that runs the compiler (hydrate-build.test.ts). The
+ * server compilation renders the children in place: rejecting them there
+ * is neither required nor forbidden.
+ */
+async function expectExtractionRejected(code: string, pattern: RegExp) {
+  const diagnostics = await captureThrow(() => compileHydrate('client', code))
+  const message = compileErrorMessage(diagnostics[0]!.raw)
+  expect(message).toMatch(pattern)
+  expect(message).toMatch(documentedFix)
+  const first = diagnosticPosition(code, '<Hydrate').line
+  const last = diagnosticPosition(code, '</Hydrate>').line
+  const lines = Array.from(
+    { length: last - first + 1 },
+    (_, index) => first + index,
+  )
+  expect(
+    lines.filter(
+      (line) =>
+        findDiagnostics(diagnostics, {
+          severity: 'error',
+          position: { line },
+          source: code,
+        }).length > 0,
+    ),
+    `a line of the boundary (${first}-${last})`,
+  ).not.toEqual([])
+}
+
+/** The unsafe children of SPEC J5.5 and what the rejection must name. */
+const unsafeChildren = [
+  {
+    name: 'a function child (an arrow)',
+    code: (split = '') => childrenPage('{() => <p>child</p>}', split),
+    pattern: /function/i,
+  },
+  {
+    name: 'a function child (a parenthesized arrow)',
+    code: (split = '') => childrenPage('{(() => <p>child</p>)}', split),
+    pattern: /function/i,
+  },
+  {
+    name: 'a function child (a function expression)',
+    code: (split = '') =>
+      childrenPage('{function () { return <p>child</p> }}', split),
+    pattern: /function/i,
+  },
+  {
+    name: 'a hook call',
+    code: (split = '') => childrenPage('<p>{useThing()}</p>', split),
+    pattern: /\bhooks?\b/i,
+  },
+  {
+    name: 'a parenthesized hook call',
+    code: (split = '') => childrenPage('<p>{(useThing)()}</p>', split),
+    pattern: /\bhooks?\b/i,
+  },
+]
+
+describe('children that cannot be split', () => {
+  // Source: hydrate-when-transform.test.ts "rejects function-as-children
+  // unless the boundary opts out of splitting", "rejects hook calls that
+  // would be moved into an extracted component", "rejects parenthesized
+  // unsafe extraction"; hydrateWhen FunctionChild and HookCall error
+  // fixtures; FIX-PLAN HYD-07.
+  test.each(unsafeChildren)(
+    'client: $name is rejected with the fix',
+    async ({ code, pattern }) => {
+      await expectExtractionRejected(code(), pattern)
     },
   )
 
-  /**
-   * The function child of a `split` boundary stays in place: no chunk loads,
-   * and every output renders like the uncompiled source (what React makes
-   * of a function child is the framework's behaviour, not the compiler's).
-   */
-  async function expectFunctionChildInPlace(split: string) {
-    const { client } = await expectRendersLikeSource(functionChildPage(split), {
-      split: false,
-    })
-    expect(client.loadedChunks).toEqual([])
-    expect(client.lazy).toEqual([])
-  }
-})
-
-describe('children that cannot be split', () => {
-  // A React component cannot render a function child, so a split boundary
-  // with one is rejected (by either environment).
-  // Source: hydrate-when-transform.test.ts "rejects function-as-children
-  // unless the boundary opts out of splitting", "rejects parenthesized
-  // unsafe extraction" (row 1); hydrateWhen FunctionChild error fixture.
-  test.each([
-    { name: 'an arrow', child: '{() => <p>child</p>}' },
-    { name: 'a parenthesized arrow', child: '{(() => <p>child</p>)}' },
-    {
-      name: 'a function expression',
-      child: '{function () { return <p>child</p> }}',
+  // Only the literal `split={false}` opts out (docs): a dynamic `split`
+  // extracts, so it rejects the same children.
+  // Source: FIX-PLAN HYD-07 (dynamic-split rows)
+  test.each(unsafeChildren)(
+    'client: $name with a dynamic split={flag} is rejected with the fix',
+    async ({ code, pattern }) => {
+      await expectExtractionRejected(code(' split={flag}'), pattern)
     },
-  ])('a function child ($name) is rejected', async ({ child }) => {
-    const results =
-      await compileEnvs(`${head}import { idle } from '@tanstack/react-start/hydration'
-export function Page() {
-  return <Hydrate when={idle()}>${child}</Hydrate>
-}`)
-    expect(rejections(results)).toContainEqual(
-      expect.stringMatching(/Hydrate[^]*function/),
-    )
-  })
-})
+  )
 
-describe('hooks called by the children', () => {
-  /** A real hook whose value depends on the component that calls it. */
-  const hooks = {
-    './hooks': `import { useId } from 'react'
-export const useThing = () => useId()`,
-  }
-
-  /**
-   * A hook the children call must run in the render of the component around
-   * the boundary, like on the server (a hook called from another component
-   * on the client breaks the rules of hooks: `useId` mismatches, state is
-   * lost): every output renders the markup the source renders, ids
-   * included. A clear compile error is a valid outcome too. The fixtures use
-   * `idle()`, whose boundary renders an id of its own: a `useId` call moved
-   * below it then returns another id.
-   */
-  async function expectHookCallKeptOrRejected(code: string) {
-    const results = await compileEnvs(code)
-    const messages = rejections(results)
-    if (messages.length > 0) {
-      expect(messages).toContainEqual(expect.stringMatching(/hook/i))
-      return
-    }
-    await expectRendersLikeSource(code, { files: hooks, split: false })
-  }
-
-  // Source: hydrate-when-transform.test.ts "rejects hook calls that would be
-  // moved into an extracted component", "rejects parenthesized unsafe
-  // extraction" (row 2); hydrateWhen HookCall error fixture.
+  // With the literal `split={false}` the compiler neither extracts nor
+  // rejects the children (SPEC J5.5): every output renders like the
+  // uncompiled source (what React makes of a function child is the
+  // framework's business) and nothing loads lazily.
+  // Source: hydrate-when-transform.test.ts "respects parenthesized
+  // split={false}"; hydrateWhen SplitFalseFunctionChild fixture; FIX-PLAN
+  // HYD-07 (literal-false controls)
   test.each([
-    { name: 'a hook call', call: 'useThing()' },
-    { name: 'a parenthesized hook call', call: '(useThing)()' },
+    ...unsafeChildren.map(({ name, code }) => ({
+      name,
+      code: code(' split={false}'),
+      render: undefined,
+    })),
+    {
+      name: 'a function child with a parenthesized false',
+      code: childrenPage('{() => <p>child</p>}', ' split={(false)}'),
+      render: undefined,
+    },
+    {
+      name: 'a read of this',
+      code: classPage('this', ' split={false}'),
+      render: (module: Record<string, any>) => new module.Page().render(),
+    },
+    {
+      name: 'a read of super',
+      code: classPage('super', ' split={false}'),
+      render: (module: Record<string, any>) => new module.Page().render(),
+    },
   ])(
-    '$name in the children runs in the parent render, or is rejected clearly',
-    async ({ call }) => {
-      await expectHookCallKeptOrRejected(
-        `${head}import { idle } from '@tanstack/react-start/hydration'
-import { useThing } from './hooks'
-export function Page() {
-  return <Hydrate when={idle()}><p>{${call}}</p></Hydrate>
-}`,
-      )
+    '$name with split={false} stays in place in both environments',
+    async ({ code, render }) => {
+      const { client } = await expectRendersLikeSource(code, {
+        files: hooks,
+        render,
+        split: false,
+      })
+      expect(client.loadedChunks).toEqual([])
+      expect(client.lazy).toEqual([])
     },
   )
 
@@ -458,83 +503,74 @@ export const useThing = () => (useId(), idle())`,
     expect(client.html).toContain('<p>child</p>')
   })
 
+  // Only a literal opts out at compile time (docs): a dynamic value splits
+  // the children whatever its value, and they hydrate like the server
+  // renders them.
+  // Source: gap H14 (round2/oracle-gaps)
+  test.each([true, false])(
+    'a dynamic split={flag} (%s) still splits the children',
+    async (flag) => {
+      const { client } = await expectRendersLikeSource(
+        `${head}export function Page({ flag }) {
+  return <Hydrate when={load()} split={flag}><p>child</p></Hydrate>
+}`,
+        { props: { flag } },
+      )
+      expect(client.html).toContain('<p>child</p>')
+    },
+  )
+
   // Bug: hook calls are only detected when the callee is a bare identifier,
-  // so `React.useId()` in the children moves into the chunk component.
+  // so `React.useId()` in the children moves into the chunk component
+  // instead of being rejected (SPEC J5.5).
   // Impact: the hook runs in another component on the client than on the
   // server (`useId` mismatches, hydration errors).
-  // Source: Qwik optimizer example_use_optimization (known-bugs-hydrate.test.ts).
-  // #8504 has no test for it and still moves `React.useId()` into the chunk.
+  // Source: Qwik optimizer example_use_optimization. #8504 has no test for
+  // it and still moves `React.useId()` into the chunk.
   test.fails(
-    'a hook called through a namespace in the children runs in the parent render, or is rejected clearly',
+    'client: a hook called through a namespace is rejected with the fix',
     async () => {
-      await expectHookCallKeptOrRejected(
+      await expectExtractionRejected(
         `import * as React from 'react'
-${head}import { idle } from '@tanstack/react-start/hydration'
-export function Page() {
-  return <Hydrate when={idle()}><p id={React.useId()}>x</p></Hydrate>
-}`,
+${childrenPage('<p id={React.useId()}>x</p>')}`,
+        /\bhooks?\b/i,
       )
     },
   )
-})
 
-describe('this and super in the children', () => {
-  const thisPage = `${head}import { idle } from '@tanstack/react-start/hydration'
-export class Page {
-  title = 'this'
-  render() {
-    return (
-      <Hydrate when={idle()}>
-        <p>{this.title}</p>
-      </Hydrate>
-    )
-  }
-}`
-  // `title` is a getter: a class field would be an own property of the
-  // instance, which `super.title` does not read.
-  const superPage = `${head}import { idle } from '@tanstack/react-start/hydration'
-class Base {
-  get title() {
-    return 'super'
-  }
-}
-export class Page extends Base {
-  render() {
-    return (
-      <Hydrate when={idle()}>
-        <p>{super.title}</p>
-      </Hydrate>
-    )
-  }
-}`
-
-  // Source: hydrateWhen ThisCapture and SuperCapture error fixtures (the
-  // super fixture read a class field, which renders undefined).
-  test.each([
-    { name: 'this', code: thisPage },
-    { name: 'super', code: superPage },
+  // Bug: the rejection of `this` and `super` captures names no fix: the
+  // docs' "Wrap the UI in a function component or use split={false}" is
+  // missing from the error (function children and hook calls name theirs).
+  // Impact: the user of a class component gets "cannot code-split JSX that
+  // captures this" and no way out (SPEC J5.5: the error names the fix).
+  // Source: FIX-PLAN HYD-07 (documented fix); hydrateWhen ThisCapture and
+  // SuperCapture error fixtures.
+  test.fails.each([
+    { name: 'this', code: classPage('this') },
+    { name: 'super', code: classPage('super') },
   ])(
-    'the children reading $name render like on the server, or are rejected clearly',
+    'client: children reading $name are rejected with the fix',
     async ({ name, code }) => {
-      const messages = rejections(await compileEnvs(code))
-      if (messages.length > 0) {
-        // The message names what the children read; the function-as-children
-        // rejection (which mentions "this boundary") does not count.
-        expect(
-          messages.filter(
-            (message) =>
-              new RegExp(`\\b${name}\\b`).test(message) &&
-              !/\bfunction\b/i.test(message),
-          ),
-        ).not.toEqual([])
-        return
-      }
-      await expectRendersLikeSource(code, {
-        render: (module) => new module.Page().render(),
-        split: false,
-      })
+      await expectExtractionRejected(code, new RegExp(`\\b${name}\\b`))
     },
   )
+
+  // What the pin above asks besides the fix holds on main: the client
+  // rejects the read, naming it, at the boundary.
+  test.each([
+    { name: 'this', code: classPage('this') },
+    { name: 'super', code: classPage('super') },
+  ])('client: children reading $name are rejected', async ({ name, code }) => {
+    const diagnostics = await captureThrow(() => compileHydrate('client', code))
+    expect(compileErrorMessage(diagnostics[0]!.raw)).toMatch(
+      new RegExp(`\\b${name}\\b`),
+    )
+    expectDiagnostic(diagnostics, {
+      severity: 'error',
+      position: { line: diagnosticPosition(code, '<Hydrate').line },
+      source: code,
+    })
+  })
 })
 
 describe('nested boundaries', () => {
@@ -668,11 +704,45 @@ export function Page() {
         stubs: { 'not-tanstack-start': { Hydrate: Foreign } },
         global: false,
       },
-    ])('$name is left alone', async ({ code, stubs, global }) => {
+      // A namespace of another package and a binding shadowing the Start
+      // namespace are look-alikes (SPEC J5.1, G15).
+      // Source: FIX-PLAN §D "Namespace <Hydrate>" (negatives)
+      {
+        name: 'a Hydrate member of a namespace of another package',
+        code: `import * as Start from 'not-tanstack-start'
+import { visible } from '@tanstack/react-start/hydration'
+export function Page() {
+  return (
+    <Start.Hydrate when={visible()} fallback={<p>fallback-marker</p>}>
+      <p>No transform</p>
+    </Start.Hydrate>
+  )
+}`,
+        stubs: { 'not-tanstack-start': { Hydrate: Foreign } },
+        global: false,
+      },
+      {
+        name: 'a Hydrate member of a local shadowing the Start namespace',
+        code: `import * as Start from '@tanstack/react-start'
+import { visible } from '@tanstack/react-start/hydration'
+import type { ComponentType } from 'react'
+export const startHydrate = Start.Hydrate
+export function Page({ Start }: { Start: { Hydrate: ComponentType<any> } }) {
+  return (
+    <Start.Hydrate when={visible()} fallback={<p>fallback-marker</p>}>
+      <p>No transform</p>
+    </Start.Hydrate>
+  )
+}`,
+        stubs: {},
+        global: false,
+        props: { Start: { Hydrate: Foreign } },
+      },
+    ])('$name is left alone', async ({ code, stubs, global, props }) => {
       if (global) {
         Object.assign(globalThis, { Hydrate: Foreign, visible: () => 'v' })
       }
-      const options = { stubs: stubs as Record<string, ModuleStub> }
+      const options = { stubs: stubs as Record<string, ModuleStub>, props }
       const source = await renderSource(code, options)
       expect(source.html).toContain('<p>fallback-marker</p><p>No transform</p>')
       expect((await renderServer(code, options)).html).toBe(source.html)
@@ -682,20 +752,10 @@ export function Page() {
     })
   })
 
-  // Splitting it is the goal (pinned in known-bugs-hydrate.test.ts); left
-  // unsplit, both environments render the same. `idle()` renders an id, so
-  // the comparison covers it.
-  test('a namespace-imported <Start.Hydrate> hydrates like the server renders it', async () => {
-    const { client } = await expectRendersLikeSource(
-      `import * as Start from '@tanstack/react-start'
-import { idle } from '@tanstack/react-start/hydration'
-export function Page() {
-  return <Start.Hydrate when={idle()}><p>child</p></Start.Hydrate>
-}`,
-      { split: false },
-    )
-    expect(client.html).toContain('<p>child</p>')
-  })
+  // A namespace-imported `<Start.Hydrate>` (React and Solid, Vite and
+  // Rsbuild) hydrates the server's HTML in real pages
+  // (integration/hydrate-pages-*.test.ts "namespace-imported Start.Hydrate
+  // boundaries"), where splitting it is pinned as a goal.
 
   // `@tanstack/solid-router` cannot be linked in process (`render.ts`): the
   // outputs are checked to be valid, split on the client, and to need no

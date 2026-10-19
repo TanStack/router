@@ -299,13 +299,35 @@ export function Page() {
   ${setup}return <><Hydrate when={load()} prefetch={idle()}><p>{${reads}.join('|')}</p></Hydrate><Hydrate when={load()}><section><Hydrate when={load()}><b>nested</b></Hydrate></section></Hydrate></>
 }`
   /**
-   * The names the compiler introduces for `page` (in any output), which the
+   * Names a compiler could give what it generates (the helpers and props of
+   * a lazy chunk component): always declared by the fixtures below, so they
+   * check something even when the compiler introduces no name at all (SPEC
+   * §5.1; FIX-PLAN HYD-22).
+   */
+  const fixedNames = [
+    'lazy',
+    'chunk',
+    'Chunk',
+    'HydrateChunk',
+    'HydrateChildren',
+    'captures',
+    'props',
+    'p',
+    'h',
+  ]
+  /**
+   * The names the compiler introduces for `page` (in any output), and
+   * `fixedNames`, which the
    * fixtures below declare themselves: no test depends on which names the
    * compiler picks. The probe's children read a local, so the names the
    * compiler introduces to pass captured values to a chunk are among them.
    */
-  const introducedNames = () =>
-    generatedNames(page('[captured]', `const captured = 'c'\n  `))
+  const introducedNames = async () => [
+    ...new Set([
+      ...(await generatedNames(page('[captured]', `const captured = 'c'\n  `))),
+      ...fixedNames,
+    ]),
+  ]
 
   let globals: Array<string> = []
   afterEach(() => {
@@ -320,7 +342,6 @@ export function Page() {
   // references"
   test('client: globals named like the generated bindings keep their values', async () => {
     globals = await introducedNames()
-    expect(globals).not.toEqual([])
     for (const name of globals) {
       ;(globalThis as Record<string, unknown>)[name] = `global:${name}`
     }
@@ -345,7 +366,6 @@ ${page(`['child']`)}`,
     'client: $scope bindings named like the generated bindings keep their values',
     async ({ scope, reads }) => {
       const names = await introducedNames()
-      expect(names).not.toEqual([])
       const values = names.map((name) => `${scope}:${name}`).join('|')
       const declare = names
         .map((name) => `const ${name} = '${scope}:${name}'`)
